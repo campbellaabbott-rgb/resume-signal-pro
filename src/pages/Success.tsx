@@ -14,8 +14,6 @@ import {
   Home,
   Printer
 } from "lucide-react";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { AnalysisResults, type AnalysisData } from "@/components/AnalysisResults";
@@ -229,67 +227,10 @@ const Success = () => {
     }
   };
 
-  const handleSaveAsPdf = async () => {
-    if (!analysisRef.current) return;
-    
-    setIsGeneratingPdf(true);
-    try {
-      const canvas = await html2canvas(analysisRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#0a0a0f'
-      });
-      
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-      
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgHeight = canvas.height;
-      const imgWidth = canvas.width;
-      
-      // Calculate total pages needed
-      const scaledHeight = imgHeight * (pdfWidth / imgWidth);
-      const pageHeight = pdfHeight;
-      let heightLeft = scaledHeight;
-      let position = 0;
-      
-      // First page
-      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, scaledHeight);
-      heightLeft -= pageHeight;
-      
-      // Add more pages if needed
-      while (heightLeft > 0) {
-        position -= pageHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, scaledHeight);
-        heightLeft -= pageHeight;
-      }
-      
-      // Open PDF in new tab
-      const pdfBlob = pdf.output('blob');
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      window.open(pdfUrl, '_blank');
-      
-      toast({
-        title: "PDF generated!",
-        description: "Your analysis PDF is now open in a new tab.",
-      });
-    } catch (err) {
-      console.error("PDF generation error:", err);
-      toast({
-        title: "Failed to generate PDF",
-        description: "Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGeneratingPdf(false);
-    }
+  const handleSaveAsPdf = () => {
+    // Use browser print with PDF option - this opens the print dialog
+    // where users can select "Save as PDF" as the destination
+    window.print();
   };
 
   const isSharedView = !!shareIdParam;
