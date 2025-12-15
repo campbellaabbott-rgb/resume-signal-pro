@@ -1,13 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import * as pdfjsLib from "https://esm.sh/pdfjs-dist@3.11.174/legacy/build/pdf.mjs?target=deno";
+// @ts-ignore - pdfjs-serverless types issue
+import { getDocument } from "https://esm.sh/pdfjs-serverless@0.4.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-// Disable worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = "";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -30,25 +28,17 @@ serve(async (req) => {
 
     // Convert file to typed array
     const arrayBuffer = await file.arrayBuffer();
-    const typedArray = new Uint8Array(arrayBuffer);
+    const data = new Uint8Array(arrayBuffer);
 
-    // Load PDF with worker disabled
-    const loadingTask = pdfjsLib.getDocument({
-      data: typedArray,
-      useWorkerFetch: false,
-      isEvalSupported: false,
-      useSystemFonts: true,
-      disableFontFace: true,
-      verbosity: 0,
-    });
+    // Load PDF using pdfjs-serverless (designed for edge environments)
+    const document = await getDocument({ data, useSystemFonts: true }).promise;
     
-    const pdf = await loadingTask.promise;
-    console.log("PDF loaded. Pages:", pdf.numPages);
+    console.log("PDF loaded. Pages:", document.numPages);
 
     // Extract text from all pages
     let fullText = "";
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
+    for (let i = 1; i <= document.numPages; i++) {
+      const page = await document.getPage(i);
       const textContent = await page.getTextContent();
       const pageText = textContent.items
         .map((item: unknown) => (item as { str?: string }).str || "")
@@ -62,7 +52,7 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         text: fullText.trim(),
-        pages: pdf.numPages 
+        pages: document.numPages 
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
