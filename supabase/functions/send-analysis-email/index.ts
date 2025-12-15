@@ -12,15 +12,29 @@ const corsHeaders = {
 interface AnalysisEmailRequest {
   email: string;
   shareId: string;
+  origin?: string;
   analysis: {
-    overallScore: number;
-    summary: string;
-    atsOptimizedBullets: Array<{ original: string; improved: string; explanation: string }>;
-    actionVerbs: Array<{ weak: string; strong: string; context: string }>;
-    keywordSuggestions: Array<{ keyword: string; reason: string; priority: string }>;
-    redFlags: Array<{ issue: string; impact: string; fix: string }>;
-    topStrengths: string[];
-    criticalFixes: string[];
+    industry?: string;
+    experienceLevel?: string;
+    summaryRewrite?: {
+      professionalSummary: string;
+      linkedInHeadline: string;
+    };
+    optimizedBullets: Array<{ original: string; improved: string; reason: string }>;
+    quantificationOpportunities?: Array<{ context: string; suggestion: string; example: string }>;
+    skillsGap?: {
+      missingTechnical: string[];
+      missingSoft: string[];
+      recommendations: string;
+    };
+    industryInsights?: {
+      whatRecruitersLookFor: string;
+      competitiveAdvantage: string;
+      commonMistakes: string;
+    };
+    actionVerbs: Array<{ weak: string; strong: string }>;
+    keywords: string[];
+    redFlags: string[];
   };
 }
 
@@ -29,13 +43,11 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[SEND-ANALYSIS-EMAIL] ${step}${detailsStr}`);
 };
 
-// Email validation function
 function isValidEmail(email: string): boolean {
   const regex = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
   return regex.test(email) && email.length <= 254;
 }
 
-// HTML escape function to prevent XSS
 function escapeHtml(text: string | undefined | null): string {
   if (!text) return '';
   return String(text)
@@ -54,8 +66,8 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const { email, shareId, analysis }: AnalysisEmailRequest = await req.json();
-    logStep("Received request", { email: email ? '***@***' : 'missing', shareId: shareId || 'missing', hasAnalysis: !!analysis });
+    const { email, shareId, origin, analysis }: AnalysisEmailRequest = await req.json();
+    logStep("Received request", { email: email ? '***@***' : 'missing', shareId: shareId || 'missing', hasAnalysis: !!analysis, origin: origin || 'missing' });
 
     if (!email || !analysis) {
       return new Response(
@@ -64,7 +76,6 @@ serve(async (req) => {
       );
     }
 
-    // Validate email format
     if (!isValidEmail(email)) {
       logStep("Invalid email format");
       return new Response(
@@ -94,34 +105,146 @@ serve(async (req) => {
       }
     }
 
-    const shareUrl = shareId ? `https://resumebooster.app/success?share=${escapeHtml(shareId)}` : 'https://resumebooster.app';
+    // Use origin from request or fall back to header
+    const baseUrl = origin || req.headers.get("origin") || "https://resumebooster.app";
+    const shareUrl = shareId ? `${baseUrl}/success?share=${escapeHtml(shareId)}` : baseUrl;
 
-    // Build the email HTML with escaped content
-    const bulletsHtml = analysis.atsOptimizedBullets?.slice(0, 3).map(b => `
-      <div style="margin-bottom: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
-        <p style="margin: 0 0 8px 0; color: #dc3545; text-decoration: line-through;">${escapeHtml(b.original)}</p>
-        <p style="margin: 0 0 8px 0; color: #28a745; font-weight: 600;">${escapeHtml(b.improved)}</p>
-        <p style="margin: 0; color: #6c757d; font-size: 14px;">${escapeHtml(b.explanation)}</p>
+    // Build summary section
+    const summaryHtml = analysis.summaryRewrite?.professionalSummary ? `
+      <div style="margin-bottom: 32px;">
+        <h2 style="color: #333; border-bottom: 2px solid #0066cc; padding-bottom: 8px; margin-bottom: 16px;">📝 Your Professional Summary</h2>
+        <div style="padding: 16px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid #0066cc;">
+          <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #333;">${escapeHtml(analysis.summaryRewrite.professionalSummary)}</p>
+        </div>
+        ${analysis.summaryRewrite.linkedInHeadline ? `
+          <div style="margin-top: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+            <p style="margin: 0 0 4px 0; font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">LinkedIn Headline</p>
+            <p style="margin: 0; font-weight: 600; color: #333;">${escapeHtml(analysis.summaryRewrite.linkedInHeadline)}</p>
+          </div>
+        ` : ''}
       </div>
-    `).join('') || '';
+    ` : '';
 
-    const redFlagsHtml = analysis.redFlags?.slice(0, 3).map(r => `
-      <div style="margin-bottom: 12px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
-        <p style="margin: 0 0 4px 0; font-weight: 600; color: #856404;">${escapeHtml(r.issue)}</p>
-        <p style="margin: 0; color: #856404; font-size: 14px;"><strong>Fix:</strong> ${escapeHtml(r.fix)}</p>
+    // Build industry insights section
+    const industryHtml = analysis.industryInsights?.whatRecruitersLookFor ? `
+      <div style="margin-bottom: 32px;">
+        <h2 style="color: #333; border-bottom: 2px solid #17a2b8; padding-bottom: 8px; margin-bottom: 16px;">🎯 ${escapeHtml(analysis.industry || 'Industry')} Insights</h2>
+        <div style="padding: 16px; background: #e8f4f8; border-radius: 8px; margin-bottom: 12px;">
+          <p style="margin: 0 0 4px 0; font-weight: 600; color: #0c5460;">What Recruiters Look For</p>
+          <p style="margin: 0; color: #333; font-size: 14px;">${escapeHtml(analysis.industryInsights.whatRecruitersLookFor)}</p>
+        </div>
+        ${analysis.industryInsights.competitiveAdvantage ? `
+          <div style="padding: 16px; background: #d4edda; border-radius: 8px; margin-bottom: 12px;">
+            <p style="margin: 0 0 4px 0; font-weight: 600; color: #155724;">Your Competitive Edge</p>
+            <p style="margin: 0; color: #333; font-size: 14px;">${escapeHtml(analysis.industryInsights.competitiveAdvantage)}</p>
+          </div>
+        ` : ''}
+        ${analysis.industryInsights.commonMistakes ? `
+          <div style="padding: 16px; background: #fff3cd; border-radius: 8px;">
+            <p style="margin: 0 0 4px 0; font-weight: 600; color: #856404;">Common Mistakes to Avoid</p>
+            <p style="margin: 0; color: #333; font-size: 14px;">${escapeHtml(analysis.industryInsights.commonMistakes)}</p>
+          </div>
+        ` : ''}
       </div>
-    `).join('') || '';
+    ` : '';
 
-    const strengthsHtml = analysis.topStrengths?.map(s => `
-      <li style="margin-bottom: 8px; color: #155724;">${escapeHtml(s)}</li>
-    `).join('') || '';
+    // Build skills gap section
+    const skillsHtml = analysis.skillsGap && (analysis.skillsGap.missingTechnical?.length || analysis.skillsGap.missingSoft?.length) ? `
+      <div style="margin-bottom: 32px;">
+        <h2 style="color: #333; border-bottom: 2px solid #6f42c1; padding-bottom: 8px; margin-bottom: 16px;">🧠 Skills Gap Analysis</h2>
+        ${analysis.skillsGap.missingTechnical?.length ? `
+          <div style="margin-bottom: 16px;">
+            <p style="margin: 0 0 8px 0; font-weight: 600; color: #6f42c1; font-size: 14px;">Technical Skills to Add</p>
+            <div>${analysis.skillsGap.missingTechnical.map(s => `<span style="display: inline-block; margin: 4px; padding: 6px 12px; background: #f3e8ff; color: #6f42c1; border-radius: 16px; font-size: 13px;">${escapeHtml(s)}</span>`).join('')}</div>
+          </div>
+        ` : ''}
+        ${analysis.skillsGap.missingSoft?.length ? `
+          <div style="margin-bottom: 16px;">
+            <p style="margin: 0 0 8px 0; font-weight: 600; color: #495057; font-size: 14px;">Soft Skills to Highlight</p>
+            <div>${analysis.skillsGap.missingSoft.map(s => `<span style="display: inline-block; margin: 4px; padding: 6px 12px; background: #e9ecef; color: #495057; border-radius: 16px; font-size: 13px;">${escapeHtml(s)}</span>`).join('')}</div>
+          </div>
+        ` : ''}
+        ${analysis.skillsGap.recommendations ? `
+          <div style="padding: 12px; background: #f8f9fa; border-radius: 8px;">
+            <p style="margin: 0; color: #6c757d; font-size: 14px;">💡 ${escapeHtml(analysis.skillsGap.recommendations)}</p>
+          </div>
+        ` : ''}
+      </div>
+    ` : '';
 
-    const keywordsHtml = analysis.keywordSuggestions?.slice(0, 5).map(k => `
-      <span style="display: inline-block; margin: 4px; padding: 6px 12px; background: #e7f1ff; color: #0066cc; border-radius: 16px; font-size: 14px;">${escapeHtml(k.keyword)}</span>
-    `).join('') || '';
+    // Build quantification opportunities section
+    const quantHtml = analysis.quantificationOpportunities?.length ? `
+      <div style="margin-bottom: 32px;">
+        <h2 style="color: #333; border-bottom: 2px solid #28a745; padding-bottom: 8px; margin-bottom: 16px;">📊 Quantification Opportunities</h2>
+        ${analysis.quantificationOpportunities.map(opp => `
+          <div style="margin-bottom: 16px; padding: 16px; background: #f8f9fa; border-radius: 8px;">
+            <p style="margin: 0 0 8px 0; color: #6c757d; font-size: 14px;">"${escapeHtml(opp.context)}"</p>
+            <p style="margin: 0 0 12px 0; color: #333; font-size: 14px;">→ ${escapeHtml(opp.suggestion)}</p>
+            <div style="padding: 12px; background: #d4edda; border-radius: 6px;">
+              <p style="margin: 0 0 4px 0; font-size: 11px; color: #155724; text-transform: uppercase; letter-spacing: 0.5px;">Example</p>
+              <p style="margin: 0; font-weight: 600; color: #155724;">${escapeHtml(opp.example)}</p>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    ` : '';
 
-    const safeScore = Number(analysis.overallScore) || 0;
-    const safeSummary = escapeHtml(analysis.summary);
+    // Build bullets section (ALL bullets, not just 3)
+    const bulletsHtml = analysis.optimizedBullets?.length ? `
+      <div style="margin-bottom: 32px;">
+        <h2 style="color: #333; border-bottom: 2px solid #28a745; padding-bottom: 8px; margin-bottom: 16px;">✓ ATS-Optimized Bullet Points</h2>
+        ${analysis.optimizedBullets.map(b => `
+          <div style="margin-bottom: 20px; padding: 16px; background: #f8f9fa; border-radius: 8px;">
+            <div style="margin-bottom: 12px;">
+              <p style="margin: 0 0 4px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Before</p>
+              <p style="margin: 0; color: #6c757d; text-decoration: line-through; font-size: 14px;">${escapeHtml(b.original)}</p>
+            </div>
+            <div style="margin-bottom: 12px;">
+              <p style="margin: 0 0 4px 0; font-size: 11px; color: #28a745; text-transform: uppercase; letter-spacing: 0.5px;">After</p>
+              <p style="margin: 0; color: #155724; font-weight: 600; font-size: 14px;">${escapeHtml(b.improved)}</p>
+            </div>
+            <p style="margin: 0; color: #6c757d; font-size: 13px; font-style: italic;">💡 ${escapeHtml(b.reason)}</p>
+          </div>
+        `).join('')}
+      </div>
+    ` : '';
+
+    // Build action verbs section
+    const verbsHtml = analysis.actionVerbs?.length ? `
+      <div style="margin-bottom: 32px;">
+        <h2 style="color: #333; border-bottom: 2px solid #fd7e14; padding-bottom: 8px; margin-bottom: 16px;">⚡ Stronger Action Verbs</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+          ${analysis.actionVerbs.map(v => `
+            <tr>
+              <td style="padding: 8px 12px; border-bottom: 1px solid #e9ecef; color: #6c757d; text-decoration: line-through;">${escapeHtml(v.weak)}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #e9ecef; color: #6c757d;">→</td>
+              <td style="padding: 8px 12px; border-bottom: 1px solid #e9ecef; color: #fd7e14; font-weight: 600;">${escapeHtml(v.strong)}</td>
+            </tr>
+          `).join('')}
+        </table>
+      </div>
+    ` : '';
+
+    // Build keywords section
+    const keywordsHtml = analysis.keywords?.length ? `
+      <div style="margin-bottom: 32px;">
+        <h2 style="color: #333; border-bottom: 2px solid #0066cc; padding-bottom: 8px; margin-bottom: 16px;">🔑 Recommended Keywords</h2>
+        <div>${analysis.keywords.map(k => `<span style="display: inline-block; margin: 4px; padding: 8px 14px; background: #e7f1ff; color: #0066cc; border-radius: 20px; font-size: 14px; font-weight: 500;">${escapeHtml(k)}</span>`).join('')}</div>
+        <p style="margin: 16px 0 0 0; color: #6c757d; font-size: 13px;">💡 Naturally incorporate these keywords into your experience bullets and skills section.</p>
+      </div>
+    ` : '';
+
+    // Build red flags section
+    const redFlagsHtml = analysis.redFlags?.length ? `
+      <div style="margin-bottom: 32px;">
+        <h2 style="color: #333; border-bottom: 2px solid #dc3545; padding-bottom: 8px; margin-bottom: 16px;">⚠️ Red Flags to Fix</h2>
+        ${analysis.redFlags.map(r => `
+          <div style="margin-bottom: 12px; padding: 14px; background: #fff5f5; border-left: 4px solid #dc3545; border-radius: 4px;">
+            <p style="margin: 0; color: #721c24; font-size: 14px;">${escapeHtml(r)}</p>
+          </div>
+        `).join('')}
+      </div>
+    ` : '';
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -130,63 +253,46 @@ serve(async (req) => {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
       </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        
-        <div style="text-align: center; margin-bottom: 32px;">
-          <h1 style="color: #0066cc; margin: 0;">Resume Booster</h1>
-          <p style="color: #6c757d; margin: 8px 0 0 0;">Your Analysis Results</p>
-        </div>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 640px; margin: 0 auto; padding: 20px; background: #f5f5f5;">
+        <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #0066cc, #0052a3); color: white; padding: 32px; text-align: center;">
+            <h1 style="margin: 0 0 8px 0; font-size: 28px;">Resume Booster</h1>
+            <p style="margin: 0; opacity: 0.9;">Your Complete Analysis Report</p>
+            ${analysis.industry ? `
+              <div style="margin-top: 16px;">
+                <span style="display: inline-block; padding: 6px 14px; background: rgba(255,255,255,0.2); border-radius: 20px; font-size: 13px;">
+                  ${escapeHtml(analysis.industry)} • ${escapeHtml(analysis.experienceLevel || 'Professional')} Level
+                </span>
+              </div>
+            ` : ''}
+          </div>
 
-        <div style="background: linear-gradient(135deg, #0066cc, #0052a3); color: white; padding: 24px; border-radius: 12px; text-align: center; margin-bottom: 32px;">
-          <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.9;">Overall Score</p>
-          <p style="margin: 0; font-size: 48px; font-weight: bold;">${safeScore}/100</p>
-        </div>
+          <!-- Content -->
+          <div style="padding: 32px;">
+            ${summaryHtml}
+            ${industryHtml}
+            ${skillsHtml}
+            ${quantHtml}
+            ${bulletsHtml}
+            ${verbsHtml}
+            ${keywordsHtml}
+            ${redFlagsHtml}
 
-        <div style="margin-bottom: 32px;">
-          <h2 style="color: #333; border-bottom: 2px solid #0066cc; padding-bottom: 8px;">Summary</h2>
-          <p style="color: #555;">${safeSummary}</p>
-        </div>
+            <!-- CTA -->
+            <div style="text-align: center; margin: 40px 0 20px 0;">
+              <a href="${shareUrl}" style="display: inline-block; background: #0066cc; color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">View Analysis Online</a>
+            </div>
+          </div>
 
-        ${analysis.topStrengths?.length ? `
-        <div style="margin-bottom: 32px;">
-          <h2 style="color: #333; border-bottom: 2px solid #28a745; padding-bottom: 8px;">✓ Top Strengths</h2>
-          <ul style="padding-left: 20px;">
-            ${strengthsHtml}
-          </ul>
-        </div>
-        ` : ''}
+          <!-- Footer -->
+          <div style="border-top: 1px solid #e9ecef; padding: 24px; text-align: center; background: #f8f9fa;">
+            <p style="margin: 0 0 8px 0; color: #6c757d; font-size: 14px;">This analysis was generated by Resume Booster</p>
+            <p style="margin: 0; color: #6c757d; font-size: 13px;">Save this email to access your results anytime</p>
+          </div>
 
-        ${analysis.atsOptimizedBullets?.length ? `
-        <div style="margin-bottom: 32px;">
-          <h2 style="color: #333; border-bottom: 2px solid #0066cc; padding-bottom: 8px;">ATS-Optimized Bullets</h2>
-          ${bulletsHtml}
-          ${analysis.atsOptimizedBullets.length > 3 ? `<p style="color: #6c757d; font-style: italic;">+ ${analysis.atsOptimizedBullets.length - 3} more improvements in full report</p>` : ''}
         </div>
-        ` : ''}
-
-        ${analysis.redFlags?.length ? `
-        <div style="margin-bottom: 32px;">
-          <h2 style="color: #333; border-bottom: 2px solid #ffc107; padding-bottom: 8px;">⚠ Red Flags to Fix</h2>
-          ${redFlagsHtml}
-        </div>
-        ` : ''}
-
-        ${analysis.keywordSuggestions?.length ? `
-        <div style="margin-bottom: 32px;">
-          <h2 style="color: #333; border-bottom: 2px solid #0066cc; padding-bottom: 8px;">Suggested Keywords</h2>
-          <div>${keywordsHtml}</div>
-        </div>
-        ` : ''}
-
-        <div style="text-align: center; margin: 40px 0;">
-          <a href="${shareUrl}" style="display: inline-block; background: #0066cc; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600;">View Full Analysis</a>
-        </div>
-
-        <div style="border-top: 1px solid #e9ecef; padding-top: 24px; text-align: center; color: #6c757d; font-size: 14px;">
-          <p style="margin: 0 0 8px 0;">This analysis was generated by Resume Booster</p>
-          <p style="margin: 0;">Save this email to access your results anytime</p>
-        </div>
-
       </body>
       </html>
     `;
@@ -196,7 +302,7 @@ serve(async (req) => {
     const emailResponse = await resend.emails.send({
       from: "Resume Booster <onboarding@resend.dev>",
       to: [email],
-      subject: `Your Resume Analysis: Score ${safeScore}/100`,
+      subject: `Your Complete Resume Analysis - ${analysis.industry || 'Professional'} Resume`,
       html: emailHtml,
     });
 
