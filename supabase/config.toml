@@ -2,3 +2,6 @@ project_id = "bwhdazbotpblihdxcmho"
 
 [functions.create-checkout]
 verify_jwt = false
+
+[functions.analyze-resume]
+verify_jwt = false
