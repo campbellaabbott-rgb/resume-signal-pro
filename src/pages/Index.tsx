@@ -28,34 +28,25 @@ const Index = () => {
 
   const handleFileSelect = async (file: File) => {
     setSelectedFile(file);
-    
+
     if (file.type === "text/plain") {
       const text = await file.text();
       setResumeText(text);
-    } else if (file.type === "application/pdf") {
-      // Parse PDF using edge function
+      return;
+    }
+
+    if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+      // Parse PDF using backend function
       setIsLoading(true);
       try {
         const formData = new FormData();
         formData.append("file", file);
 
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-pdf`,
-          {
-            method: "POST",
-            body: formData,
-            headers: {
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            },
-          }
-        );
+        const { data, error } = await supabase.functions.invoke("parse-pdf", {
+          body: formData,
+        });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to parse PDF");
-        }
-
-        const data = await response.json();
+        if (error) throw error;
 
         if (data?.success && data?.text) {
           setResumeText(data.text);
@@ -70,40 +61,33 @@ const Index = () => {
         console.error("PDF parsing error:", error);
         toast({
           title: "PDF parsing failed",
-          description: "Could not extract text from the PDF. Please try pasting the text manually.",
+          description:
+            "Could not extract text from the PDF. Please try pasting the text manually.",
           variant: "destructive",
         });
         setSelectedFile(null);
       } finally {
         setIsLoading(false);
       }
-    } else if (
-      file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-      file.name.endsWith(".docx")
+      return;
+    }
+
+    if (
+      file.type ===
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      file.name.toLowerCase().endsWith(".docx")
     ) {
-      // Parse DOCX using edge function
+      // Parse DOCX using backend function
       setIsLoading(true);
       try {
         const formData = new FormData();
         formData.append("file", file);
 
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-docx`,
-          {
-            method: "POST",
-            body: formData,
-            headers: {
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            },
-          }
-        );
+        const { data, error } = await supabase.functions.invoke("parse-docx", {
+          body: formData,
+        });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to parse DOCX");
-        }
-
-        const data = await response.json();
+        if (error) throw error;
 
         if (data?.success && data?.text) {
           setResumeText(data.text);
@@ -118,7 +102,8 @@ const Index = () => {
         console.error("DOCX parsing error:", error);
         toast({
           title: "Document parsing failed",
-          description: "Could not extract text from the DOCX. Please try pasting the text manually.",
+          description:
+            "Could not extract text from the DOCX. Please try pasting the text manually.",
           variant: "destructive",
         });
         setSelectedFile(null);
