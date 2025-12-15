@@ -39,11 +39,23 @@ const Index = () => {
         const formData = new FormData();
         formData.append("file", file);
 
-        const { data, error } = await supabase.functions.invoke("parse-pdf", {
-          body: formData,
-        });
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-pdf`,
+          {
+            method: "POST",
+            body: formData,
+            headers: {
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+          }
+        );
 
-        if (error) throw error;
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to parse PDF");
+        }
+
+        const data = await response.json();
 
         if (data?.success && data?.text) {
           setResumeText(data.text);
@@ -75,11 +87,23 @@ const Index = () => {
         const formData = new FormData();
         formData.append("file", file);
 
-        const { data, error } = await supabase.functions.invoke("parse-docx", {
-          body: formData,
-        });
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-docx`,
+          {
+            method: "POST",
+            body: formData,
+            headers: {
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+          }
+        );
 
-        if (error) throw error;
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to parse DOCX");
+        }
+
+        const data = await response.json();
 
         if (data?.success && data?.text) {
           setResumeText(data.text);
