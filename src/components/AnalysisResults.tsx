@@ -29,22 +29,28 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
   ];
 
   return (
-    <section className="py-16 md:py-24 relative">
+    <section className="py-16 md:py-24 relative print-section" id="analysis-results">
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
       
       <div className="container relative">
         <div className="max-w-4xl mx-auto space-y-10">
+          {/* Print-only header */}
+          <div className="hidden print:block print-header">
+            <h1 className="text-2xl font-bold mb-2">Resume Booster Analysis</h1>
+            <p className="text-sm text-gray-600">Generated on {new Date().toLocaleDateString()}</p>
+          </div>
+
           {/* Header with stats */}
           <div className="text-center space-y-8">
-            <div>
+            <div className="no-print">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/20 text-sm text-success mb-4">
                 <CheckCircle2 className="w-4 h-4" />
                 Analysis Complete
               </div>
               <h2 className="text-3xl md:text-4xl font-bold">Your Resume Breakdown</h2>
               <p className="text-muted-foreground mt-3 max-w-lg mx-auto">
-                Here's what we found and how to fix it. Apply these changes to increase your interview chances.
+                Here is what we found and how to fix it. Apply these changes to increase your interview chances.
               </p>
             </div>
 

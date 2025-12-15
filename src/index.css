@@ -130,3 +130,121 @@
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70;
   }
 }
+
+/* Print styles for PDF export */
+@media print {
+  /* Hide non-essential elements */
+  header,
+  footer,
+  .no-print,
+  button,
+  input,
+  .animate-bounce {
+    display: none !important;
+  }
+
+  /* Reset background and colors for print */
+  body,
+  .bg-background,
+  .bg-card,
+  .bg-card\/50 {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Ensure good contrast */
+  .text-foreground,
+  .text-muted-foreground,
+  h1, h2, h3, h4, h5, h6, p, span, li {
+    color: black !important;
+  }
+
+  /* Style cards for print */
+  .rounded-2xl,
+  .rounded-xl {
+    border: 1px solid #e5e5e5 !important;
+    background: white !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Primary colored text */
+  .text-primary,
+  .text-success,
+  .text-warning {
+    color: #2563eb !important;
+  }
+
+  .text-destructive {
+    color: #dc2626 !important;
+  }
+
+  /* Keyword pills */
+  .bg-primary\/10 {
+    background: #dbeafe !important;
+    border-color: #93c5fd !important;
+  }
+
+  /* Before/After labels */
+  .bg-success\/20 {
+    background: #dcfce7 !important;
+  }
+
+  .bg-muted,
+  .bg-muted\/30,
+  .bg-muted\/50 {
+    background: #f5f5f5 !important;
+  }
+
+  /* Red flag cards */
+  .bg-destructive\/5,
+  .bg-destructive\/10 {
+    background: #fef2f2 !important;
+    border-color: #fecaca !important;
+  }
+
+  /* Page breaks */
+  .print-section {
+    page-break-inside: avoid;
+  }
+
+  section {
+    page-break-before: auto;
+    page-break-after: auto;
+  }
+
+  /* Proper margins */
+  @page {
+    margin: 1cm;
+    size: A4;
+  }
+
+  /* Add print header */
+  .print-header {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  /* Ensure line-through shows */
+  .line-through {
+    text-decoration: line-through !important;
+    color: #9ca3af !important;
+  }
+
+  /* Hide background effects */
+  .absolute,
+  .pointer-events-none {
+    display: none !important;
+  }
+
+  /* Show main content */
+  main {
+    padding-top: 0 !important;
+  }
+
+  .container {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+}
