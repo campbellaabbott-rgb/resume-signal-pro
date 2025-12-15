@@ -61,7 +61,7 @@ const Success = () => {
         return;
       }
 
-      const resumeText = sessionStorage.getItem('resumeText');
+      const resumeText = localStorage.getItem('resumeText');
       
       if (!resumeText) {
         setError("Resume data not found. Please try uploading again.");
@@ -88,7 +88,7 @@ const Success = () => {
         const { shareId: newShareId, ...analysisResult } = data;
         setAnalysisData(analysisResult);
         setShareId(newShareId);
-        sessionStorage.removeItem('resumeText');
+        localStorage.removeItem('resumeText');
         
         toast({
           title: "Payment successful!",
