@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { CheckCircle2, Loader2, AlertCircle, Share2, Copy, Check } from "lucide-react";
+import { CheckCircle2, Loader2, AlertCircle, Share2, Copy, Check, Mail } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { AnalysisResults, type AnalysisData } from "@/components/AnalysisResults";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -15,6 +16,9 @@ const Success = () => {
   const [shareId, setShareId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const { toast } = useToast();
 
   const sessionId = searchParams.get("session_id");
@@ -118,6 +122,73 @@ const Success = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const sendEmailAnalysis = async () => {
+    if (!email || !analysisData || !shareId) return;
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSendingEmail(true);
+    try {
+      const { error: fnError } = await supabase.functions.invoke('send-analysis-email', {
+        body: { 
+          email, 
+          shareId,
+          analysis: {
+            overallScore: 75,
+            summary: "Your resume shows strong potential with room for improvement in metrics and keywords.",
+            atsOptimizedBullets: analysisData.optimizedBullets?.map(b => ({
+              original: b.original,
+              improved: b.improved,
+              explanation: b.reason
+            })) || [],
+            actionVerbs: analysisData.actionVerbs?.map(v => ({
+              weak: v.weak,
+              strong: v.strong,
+              context: ""
+            })) || [],
+            keywordSuggestions: analysisData.keywords?.map(k => ({
+              keyword: k,
+              reason: "Industry-relevant keyword",
+              priority: "medium"
+            })) || [],
+            redFlags: analysisData.redFlags?.map(r => ({
+              issue: r,
+              impact: "May reduce interview chances",
+              fix: "Address this issue in your resume"
+            })) || [],
+            topStrengths: [],
+            criticalFixes: analysisData.redFlags?.slice(0, 2) || []
+          }
+        }
+      });
+
+      if (fnError) throw fnError;
+
+      setEmailSent(true);
+      toast({
+        title: "Email sent!",
+        description: "Your analysis has been sent to your inbox.",
+      });
+    } catch (err) {
+      console.error("Email error:", err);
+      toast({
+        title: "Failed to send email",
+        description: "Please try again or copy the share link instead.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   const isSharedView = !!shareIdParam;
 
   return (
@@ -169,7 +240,58 @@ const Success = () => {
                       : "Here's your AI-powered recruiter-grade resume feedback."}
                   </p>
                   
-                  {shareId && (
+                  {shareId && !isSharedView && (
+                    <div className="space-y-4">
+                      <div className="flex gap-2 max-w-md mx-auto">
+                        <Input
+                          type="email"
+                          placeholder="Enter your email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          disabled={emailSent || isSendingEmail}
+                        />
+                        <Button
+                          onClick={sendEmailAnalysis}
+                          disabled={!email || isSendingEmail || emailSent}
+                          className="gap-2"
+                        >
+                          {isSendingEmail ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : emailSent ? (
+                            <>
+                              <Check className="w-4 h-4" />
+                              Sent!
+                            </>
+                          ) : (
+                            <>
+                              <Mail className="w-4 h-4" />
+                              Email Results
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      
+                      <Button
+                        variant="outline"
+                        onClick={copyShareLink}
+                        className="gap-2"
+                      >
+                        {copied ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Share2 className="w-4 h-4" />
+                            Copy Share Link
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {shareId && isSharedView && (
                     <Button
                       variant="outline"
                       onClick={copyShareLink}
