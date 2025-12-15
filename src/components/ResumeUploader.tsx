@@ -99,15 +99,19 @@ export function ResumeUploader({
   const hasLinkedInContent = linkedInMode === "url" ? !!linkedInText : !!localLinkedInText.trim();
 
   return (
-    <section id="upload" className="py-20 relative">
+    <section 
+      id="upload" 
+      className="py-20 relative scroll-mt-20" 
+      aria-labelledby="upload-heading"
+    >
       {/* Section background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/[0.02] to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/[0.02] to-transparent pointer-events-none" aria-hidden="true" />
       
       <div className="container relative">
         <div className="max-w-3xl mx-auto">
           {/* Section header */}
           <div className="text-center mb-10">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">
+            <h2 id="upload-heading" className="text-2xl md:text-3xl font-bold mb-3">
               Upload Your Resume & LinkedIn
             </h2>
             <p className="text-muted-foreground">
@@ -126,30 +130,36 @@ export function ResumeUploader({
             </div>
 
             {/* Resume Mode Toggle */}
-            <div className="flex justify-start mb-4">
+            <div className="flex justify-start mb-4" role="tablist" aria-label="Resume input method">
               <div className="inline-flex rounded-xl bg-card border border-border p-1 shadow-sm">
                 <button
                   onClick={() => setResumeMode("upload")}
+                  role="tab"
+                  aria-selected={resumeMode === "upload"}
+                  aria-controls="resume-upload-panel"
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                    "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 min-h-[44px] touch-manipulation",
                     resumeMode === "upload"
                       ? "bg-primary text-primary-foreground shadow-md"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   )}
                 >
-                  <Upload className="w-4 h-4" />
+                  <Upload className="w-4 h-4" aria-hidden="true" />
                   Upload
                 </button>
                 <button
                   onClick={() => setResumeMode("paste")}
+                  role="tab"
+                  aria-selected={resumeMode === "paste"}
+                  aria-controls="resume-paste-panel"
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                    "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 min-h-[44px] touch-manipulation",
                     resumeMode === "paste"
                       ? "bg-primary text-primary-foreground shadow-md"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   )}
                 >
-                  <FileText className="w-4 h-4" />
+                  <FileText className="w-4 h-4" aria-hidden="true" />
                   Paste
                 </button>
               </div>
@@ -347,33 +357,35 @@ export function ResumeUploader({
               size="xl"
               disabled={isLoading || !canProceed}
               onClick={resumeMode === "paste" ? handleTextPaste : handleCheckoutClick}
-              className="min-w-[320px] h-14 text-base gap-3 shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-shadow"
+              className="min-w-[320px] h-14 text-base gap-3 shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-shadow touch-manipulation"
+              aria-busy={isLoading}
+              aria-describedby="payment-info"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Processing...
+                  <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+                  <span>Processing...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-5 h-5" />
-                  Analyze Resume {hasLinkedInContent ? "+ LinkedIn" : ""} — $25
+                  <Sparkles className="w-5 h-5" aria-hidden="true" />
+                  <span>Analyze Resume {hasLinkedInContent ? "+ LinkedIn" : ""} — $25</span>
                 </>
               )}
             </Button>
             
-            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+            <div id="payment-info" className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
               <div className="flex items-center gap-1.5">
-                <CreditCard className="w-3.5 h-3.5" />
+                <CreditCard className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>Secure payment via Stripe</span>
               </div>
-              <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+              <span className="w-1 h-1 rounded-full bg-muted-foreground/30" aria-hidden="true" />
               <span>Results delivered instantly</span>
             </div>
             
             {!hasLinkedInContent && (
               <p className="text-xs text-muted-foreground">
-                💡 Add your LinkedIn profile above for a more comprehensive analysis
+                <span aria-hidden="true">💡</span> Add your LinkedIn profile above for a more comprehensive analysis
               </p>
             )}
           </div>

@@ -225,7 +225,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="pt-16">
+      <main id="main-content" className="pt-16" role="main">
         <Hero />
         
         <ResumeUploader

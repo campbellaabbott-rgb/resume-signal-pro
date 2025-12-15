@@ -15,9 +15,12 @@ const trustBadges = [
 
 export function Hero() {
   return (
-    <section className="relative py-24 md:py-36 overflow-hidden">
+    <section 
+      className="relative py-24 md:py-36 overflow-hidden" 
+      aria-labelledby="hero-heading"
+    >
       {/* Background effects */}
-      <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/8 rounded-full blur-[150px]" />
         <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px]" />
         <div className="absolute top-1/2 right-0 w-[300px] h-[300px] bg-accent/5 rounded-full blur-[80px]" />
@@ -26,6 +29,7 @@ export function Hero() {
       {/* Grid pattern overlay */}
       <div 
         className="absolute inset-0 opacity-[0.02] pointer-events-none"
+        aria-hidden="true"
         style={{
           backgroundImage: `linear-gradient(hsl(var(--primary)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--primary)) 1px, transparent 1px)`,
           backgroundSize: '60px 60px'
@@ -35,8 +39,8 @@ export function Hero() {
       <div className="container relative">
         <div className="max-w-4xl mx-auto text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm text-primary mb-8 animate-fade-in backdrop-blur-sm">
-            <span className="relative flex h-2 w-2">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm text-primary mb-8 animate-fade-in backdrop-blur-sm" role="status">
+            <span className="relative flex h-2 w-2" aria-hidden="true">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
             </span>
@@ -44,7 +48,11 @@ export function Hero() {
           </div>
           
           {/* Heading */}
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+          <h1 
+            id="hero-heading"
+            className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 animate-fade-in" 
+            style={{ animationDelay: "0.1s" }}
+          >
             Stop guessing.{" "}
             <span className="text-gradient-primary block md:inline">Start landing interviews.</span>
           </h1>
@@ -56,22 +64,26 @@ export function Hero() {
           </p>
           
           {/* Feature cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-12 animate-fade-in" style={{ animationDelay: "0.3s" }}>
+          <ul 
+            className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-12 animate-fade-in list-none p-0" 
+            style={{ animationDelay: "0.3s" }}
+            aria-label="Key features"
+          >
             {features.map((feature) => (
-              <div
+              <li
                 key={feature.label}
-                className="group relative p-4 rounded-xl bg-card/50 border border-border/50 backdrop-blur-sm hover:border-primary/30 hover:bg-card/80 transition-all duration-300"
+                className="group relative p-4 rounded-xl bg-card/50 border border-border/50 backdrop-blur-sm hover:border-primary/30 hover:bg-card/80 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary"
               >
                 <div className="flex flex-col items-center text-center gap-2">
-                  <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors" aria-hidden="true">
                     <feature.icon className="w-5 h-5" />
                   </div>
                   <span className="text-sm font-medium text-foreground">{feature.label}</span>
                   <span className="text-xs text-muted-foreground hidden md:block">{feature.description}</span>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
           
           {/* Price + CTA */}
           <div className="animate-fade-in space-y-6" style={{ animationDelay: "0.4s" }}>
@@ -84,20 +96,23 @@ export function Hero() {
             </div>
             
             {/* Trust badges */}
-            <div className="flex flex-wrap justify-center gap-6 pt-4">
+            <ul className="flex flex-wrap justify-center gap-6 pt-4 list-none p-0" aria-label="Trust indicators">
               {trustBadges.map((badge) => (
-                <div key={badge.label} className="flex items-center gap-2 text-muted-foreground">
-                  <badge.icon className="w-4 h-4 text-primary/70" />
+                <li key={badge.label} className="flex items-center gap-2 text-muted-foreground">
+                  <badge.icon className="w-4 h-4 text-primary/70" aria-hidden="true" />
                   <span className="text-sm">{badge.label}</span>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </div>
       </div>
       
       {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce hidden md:block">
+      <div 
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce hidden md:block" 
+        aria-hidden="true"
+      >
         <div className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex justify-center pt-2">
           <div className="w-1 h-2 rounded-full bg-muted-foreground/50" />
         </div>
