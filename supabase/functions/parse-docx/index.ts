@@ -6,6 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -23,7 +25,33 @@ serve(async (req) => {
       });
     }
 
-    console.log("Parsing DOCX:", file.name, "Size:", file.size);
+    // File size validation
+    if (file.size > MAX_FILE_SIZE) {
+      console.log(`[PARSE-DOCX] File too large: ${file.size} bytes`);
+      return new Response(JSON.stringify({ error: "File too large. Maximum size is 10MB." }), {
+        status: 413,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // File type validation
+    const validDocxTypes = [
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword'
+    ];
+    const isValidType = validDocxTypes.includes(file.type) || 
+                        file.name.toLowerCase().endsWith('.docx') || 
+                        file.name.toLowerCase().endsWith('.doc');
+    
+    if (!isValidType) {
+      console.log(`[PARSE-DOCX] Invalid file type: ${file.type}`);
+      return new Response(JSON.stringify({ error: "Invalid file type. Please upload a Word document." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log("[PARSE-DOCX] Parsing file:", file.name, "Size:", file.size);
 
     // Convert file to array buffer
     const arrayBuffer = await file.arrayBuffer();
@@ -32,10 +60,10 @@ serve(async (req) => {
     const result = await mammoth.extractRawText({ arrayBuffer });
     const text = result.value.trim();
 
-    console.log("DOCX parsed successfully. Text length:", text.length);
+    console.log("[PARSE-DOCX] DOCX parsed successfully. Text length:", text.length);
 
     if (result.messages && result.messages.length > 0) {
-      console.log("Mammoth messages:", result.messages);
+      console.log("[PARSE-DOCX] Mammoth messages:", result.messages);
     }
 
     return new Response(
@@ -46,13 +74,11 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: unknown) {
-    console.error("Error parsing DOCX:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("[PARSE-DOCX] Error:", error);
 
     return new Response(
       JSON.stringify({
-        error: "Failed to parse DOCX",
-        details: errorMessage,
+        error: "Failed to parse document. Please ensure the file is a valid Word document.",
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
