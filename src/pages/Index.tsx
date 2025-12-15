@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { ResumeUploader } from "@/components/ResumeUploader";
+import { SocialProof } from "@/components/SocialProof";
 import { Footer } from "@/components/Footer";
 import { FAQ } from "@/components/FAQ";
 import { useToast } from "@/hooks/use-toast";
@@ -170,6 +171,8 @@ const Index = () => {
           isLoading={isLoading}
           hasContent={!!resumeText || !!selectedFile}
         />
+        
+        <SocialProof />
         
         <FAQ />
       </main>
