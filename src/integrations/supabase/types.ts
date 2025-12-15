@@ -43,7 +43,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_analysis_by_share_id: {
+        Args: { share_id_param: string }
+        Returns: {
+          analysis_result: Json
+          created_at: string
+          id: string
+          resume_text: string
+          share_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

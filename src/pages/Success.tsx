@@ -72,25 +72,23 @@ const Success = () => {
     };
 
     const loadAnalysis = async () => {
-      // If share ID is provided, load from database
+      // If share ID is provided, load from database via secure RPC function
       if (shareIdParam) {
         try {
           const { data, error: dbError } = await supabase
-            .from("resume_analyses")
-            .select("analysis_result, share_id")
-            .eq("share_id", shareIdParam)
-            .maybeSingle();
+            .rpc("get_analysis_by_share_id", { share_id_param: shareIdParam });
 
           if (dbError) throw dbError;
 
-          if (!data) {
+          if (!data || data.length === 0) {
             setError("Analysis not found. The link may be invalid or expired.");
             setIsLoading(false);
             return;
           }
 
-          setAnalysisData(data.analysis_result as unknown as AnalysisData);
-          setShareId(data.share_id);
+          const analysis = data[0];
+          setAnalysisData(analysis.analysis_result as unknown as AnalysisData);
+          setShareId(analysis.share_id);
           setIsLoading(false);
           return;
         } catch (err) {
