@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -126,10 +127,35 @@ Return ONLY valid JSON, no markdown formatting or code blocks.`;
       throw new Error("Invalid analysis format");
     }
 
-    console.log("Analysis complete:", JSON.stringify(analysis).slice(0, 200));
+    console.log("Analysis complete, saving to database...");
+
+    // Save to database using service role
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: savedAnalysis, error: dbError } = await supabase
+      .from("resume_analyses")
+      .insert({
+        resume_text: resumeText,
+        analysis_result: analysis,
+      })
+      .select("share_id")
+      .single();
+
+    if (dbError) {
+      console.error("Database error:", dbError);
+      // Still return analysis even if save fails
+      return new Response(
+        JSON.stringify({ ...analysis, shareId: null }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log("Analysis saved with share_id:", savedAnalysis.share_id);
 
     return new Response(
-      JSON.stringify(analysis),
+      JSON.stringify({ ...analysis, shareId: savedAnalysis.share_id }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
