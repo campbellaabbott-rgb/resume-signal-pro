@@ -1,5 +1,6 @@
-import { CheckCircle2, AlertCircle, Lightbulb, Zap, AlertTriangle, ArrowRight, TrendingUp } from "lucide-react";
+import { CheckCircle2, AlertCircle, Lightbulb, Zap, AlertTriangle, ArrowRight, TrendingUp, Gauge } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
 
 export interface AnalysisData {
   optimizedBullets: {
@@ -19,6 +20,43 @@ interface AnalysisResultsProps {
   data: AnalysisData;
 }
 
+// Calculate resume strength score based on analysis
+function calculateResumeScore(data: AnalysisData): { score: number; label: string; color: string } {
+  // Start with base score
+  let score = 50;
+  
+  // Positive factors (improvements available = good analysis)
+  score += Math.min(data.optimizedBullets.length * 3, 15); // Up to 15 points for bullets
+  score += Math.min(data.actionVerbs.length * 2, 10); // Up to 10 points for verbs
+  score += Math.min(data.keywords.length * 1.5, 15); // Up to 15 points for keywords
+  
+  // Negative factors (red flags reduce score)
+  score -= Math.min(data.redFlags.length * 8, 30); // Lose up to 30 points for red flags
+  
+  // Ensure score is between 0 and 100
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  
+  // Determine label and color
+  let label: string;
+  let color: string;
+  
+  if (score >= 80) {
+    label = "Excellent";
+    color = "text-success";
+  } else if (score >= 65) {
+    label = "Good";
+    color = "text-primary";
+  } else if (score >= 50) {
+    label = "Fair";
+    color = "text-warning";
+  } else {
+    label = "Needs Work";
+    color = "text-destructive";
+  }
+  
+  return { score, label, color };
+}
+
 export function AnalysisResults({ data }: AnalysisResultsProps) {
   // Calculate stats
   const stats = [
@@ -27,6 +65,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
     { label: "Keywords Added", value: data.keywords.length, icon: Lightbulb },
     { label: "Issues Found", value: data.redFlags.length, icon: AlertTriangle },
   ];
+
+  const resumeScore = calculateResumeScore(data);
 
   return (
     <section className="py-16 md:py-24 relative print-section" id="analysis-results">
@@ -52,6 +92,38 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               <p className="text-muted-foreground mt-3 max-w-lg mx-auto">
                 Here is what we found and how to fix it. Apply these changes to increase your interview chances.
               </p>
+            </div>
+
+            {/* Resume Strength Score */}
+            <div className="max-w-md mx-auto">
+              <div className="p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Gauge className="w-5 h-5 text-primary" />
+                    <span className="text-sm font-medium text-muted-foreground">Resume Strength</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={cn("text-2xl font-bold", resumeScore.color)}>
+                      {resumeScore.score}
+                    </span>
+                    <span className="text-muted-foreground">/100</span>
+                  </div>
+                </div>
+                <Progress 
+                  value={resumeScore.score} 
+                  className="h-3 bg-muted"
+                />
+                <div className="flex justify-between items-center mt-3">
+                  <span className={cn("text-sm font-medium", resumeScore.color)}>
+                    {resumeScore.label}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {resumeScore.score >= 65 
+                      ? "Above average for your industry" 
+                      : "Apply our suggestions to improve"}
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Stats grid */}
