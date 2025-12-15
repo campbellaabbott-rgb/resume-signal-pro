@@ -123,8 +123,8 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      // Store resume text in sessionStorage for use after payment
-      sessionStorage.setItem('resumeText', contentToAnalyze);
+      // Store resume text in localStorage for use after payment (persists across tabs)
+      localStorage.setItem('resumeText', contentToAnalyze);
 
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { resumeData: contentToAnalyze },
@@ -144,7 +144,7 @@ const Index = () => {
       }
     } catch (error) {
       console.error("Checkout error:", error);
-      sessionStorage.removeItem('resumeText'); // Clean up on error
+      localStorage.removeItem('resumeText'); // Clean up on error
       toast({
         title: "Checkout failed",
         description: "There was an error creating your checkout session. Please try again.",
