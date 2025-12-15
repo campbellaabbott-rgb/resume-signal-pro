@@ -1,14 +1,36 @@
 import { 
   CheckCircle2, AlertCircle, Lightbulb, Zap, AlertTriangle, ArrowRight, 
-  TrendingUp, Gauge, User, Briefcase, Target, BarChart3, Brain, Copy, Check
+  TrendingUp, Gauge, User, Briefcase, Target, BarChart3, Brain, Copy, Check,
+  Linkedin, Eye, Search, Star, MessageSquare, Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
 
+export interface LinkedInAnalysis {
+  headlineOptimization?: {
+    current: string;
+    improved: string;
+    whyBetter: string;
+  };
+  aboutSectionRewrite?: string;
+  experienceOptimization?: {
+    role: string;
+    issue: string;
+    improved: string;
+  }[];
+  skillsToAdd?: string[];
+  skillsToRemove?: string[];
+  seoKeywords?: string[];
+  profileVisibilityTips?: string[];
+  featuredSectionIdeas?: string[];
+  recommendationStrategy?: string;
+}
+
 export interface AnalysisData {
   industry?: string;
   experienceLevel?: string;
+  hasLinkedIn?: boolean;
   summaryRewrite?: {
     professionalSummary: string;
     linkedInHeadline: string;
@@ -39,6 +61,7 @@ export interface AnalysisData {
   }[];
   keywords: string[];
   redFlags: string[];
+  linkedInAnalysis?: LinkedInAnalysis;
 }
 
 interface AnalysisResultsProps {
@@ -54,7 +77,6 @@ function calculateResumeScore(data: AnalysisData): { score: number; label: strin
   score += Math.min(data.keywords.length * 1.5, 15);
   score -= Math.min(data.redFlags.length * 8, 30);
   
-  // Bonus for having good structure (summary, skills)
   if (data.summaryRewrite?.professionalSummary) score += 5;
   if (data.skillsGap && data.skillsGap.missingTechnical.length < 3) score += 5;
   
@@ -118,6 +140,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
   ];
 
   const resumeScore = calculateResumeScore(data);
+  const linkedIn = data.linkedInAnalysis;
 
   return (
     <section className="py-16 md:py-24 relative print-section" id="analysis-results">
@@ -136,9 +159,9 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             <div className="no-print">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/20 text-sm text-success mb-4">
                 <CheckCircle2 className="w-4 h-4" />
-                Analysis Complete
+                Analysis Complete {data.hasLinkedIn && "+ LinkedIn"}
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold">Your Resume Breakdown</h2>
+              <h2 className="text-3xl md:text-4xl font-bold">Your {data.hasLinkedIn ? "Full Profile" : "Resume"} Breakdown</h2>
               <p className="text-muted-foreground mt-3 max-w-lg mx-auto">
                 Here is what we found and how to fix it. Apply these changes to increase your interview chances.
               </p>
@@ -154,6 +177,12 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs font-medium capitalize">
                       <User className="w-3 h-3" />
                       {data.experienceLevel} level
+                    </span>
+                  )}
+                  {data.hasLinkedIn && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0A66C2]/10 text-[#0A66C2] text-xs font-medium">
+                      <Linkedin className="w-3 h-3" />
+                      LinkedIn included
                     </span>
                   )}
                 </div>
@@ -211,6 +240,247 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               })}
             </div>
           </div>
+
+          {/* LinkedIn Analysis Section */}
+          {linkedIn && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 rounded-xl bg-[#0A66C2]/10">
+                  <Linkedin className="w-6 h-6 text-[#0A66C2]" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">LinkedIn Profile Optimization</h3>
+                  <p className="text-sm text-muted-foreground">Make your profile stand out to recruiters</p>
+                </div>
+              </div>
+
+              {/* Headline Optimization */}
+              {linkedIn.headlineOptimization && (
+                <ResultCard
+                  icon={Sparkles}
+                  title="Headline Optimization"
+                  subtitle="Your headline is the first thing recruiters see"
+                  iconColor="text-[#0A66C2]"
+                  bgColor="bg-[#0A66C2]/10"
+                  borderColor="border-[#0A66C2]/20"
+                >
+                  <div className="space-y-4">
+                    {linkedIn.headlineOptimization.current && linkedIn.headlineOptimization.current !== "Not provided" && (
+                      <div className="p-3 rounded-xl bg-muted/30">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current</span>
+                        <p className="text-sm text-muted-foreground mt-1 line-through">{linkedIn.headlineOptimization.current}</p>
+                      </div>
+                    )}
+                    <div className="p-4 rounded-xl bg-[#0A66C2]/5 border border-[#0A66C2]/20">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-[#0A66C2]">Optimized Headline</span>
+                        <CopyButton text={linkedIn.headlineOptimization.improved} label="Copy" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground">{linkedIn.headlineOptimization.improved}</p>
+                    </div>
+                    {linkedIn.headlineOptimization.whyBetter && (
+                      <div className="flex items-start gap-2 px-1">
+                        <Lightbulb className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                        <p className="text-xs text-muted-foreground">{linkedIn.headlineOptimization.whyBetter}</p>
+                      </div>
+                    )}
+                  </div>
+                </ResultCard>
+              )}
+
+              {/* About Section Rewrite */}
+              {linkedIn.aboutSectionRewrite && (
+                <ResultCard
+                  icon={User}
+                  title="About Section Rewrite"
+                  subtitle="Tell your story in a compelling way"
+                  iconColor="text-[#0A66C2]"
+                  bgColor="bg-[#0A66C2]/10"
+                  borderColor="border-[#0A66C2]/20"
+                >
+                  <div className="p-4 rounded-xl bg-muted/30">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your New About Section</span>
+                      <CopyButton text={linkedIn.aboutSectionRewrite} label="Copy About" />
+                    </div>
+                    <p className="text-sm leading-relaxed text-foreground whitespace-pre-line">
+                      {linkedIn.aboutSectionRewrite}
+                    </p>
+                  </div>
+                </ResultCard>
+              )}
+
+              {/* Experience Optimization */}
+              {linkedIn.experienceOptimization && linkedIn.experienceOptimization.length > 0 && (
+                <ResultCard
+                  icon={Briefcase}
+                  title="Experience Descriptions"
+                  subtitle="Optimize your role descriptions for maximum impact"
+                  iconColor="text-[#0A66C2]"
+                  bgColor="bg-[#0A66C2]/10"
+                  borderColor="border-[#0A66C2]/20"
+                >
+                  <div className="space-y-4">
+                    {linkedIn.experienceOptimization.map((exp, index) => (
+                      <div key={index} className="p-4 rounded-xl bg-muted/30">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm font-semibold text-foreground">{exp.role}</span>
+                          <CopyButton text={exp.improved} label="Copy" />
+                        </div>
+                        {exp.issue && (
+                          <div className="flex items-start gap-2 mb-3 p-2 rounded-lg bg-warning/5 border border-warning/20">
+                            <AlertTriangle className="w-3 h-3 text-warning mt-0.5 shrink-0" />
+                            <p className="text-xs text-warning">{exp.issue}</p>
+                          </div>
+                        )}
+                        <div className="p-3 rounded-lg bg-success/5 border border-success/20">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-success">Improved</span>
+                          <p className="text-sm text-foreground mt-1">{exp.improved}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ResultCard>
+              )}
+
+              {/* Skills Optimization */}
+              {((linkedIn.skillsToAdd && linkedIn.skillsToAdd.length > 0) || (linkedIn.skillsToRemove && linkedIn.skillsToRemove.length > 0)) && (
+                <ResultCard
+                  icon={Star}
+                  title="Skills Optimization"
+                  subtitle="Update your skills to match what recruiters search for"
+                  iconColor="text-[#0A66C2]"
+                  bgColor="bg-[#0A66C2]/10"
+                  borderColor="border-[#0A66C2]/20"
+                >
+                  <div className="space-y-5">
+                    {linkedIn.skillsToAdd && linkedIn.skillsToAdd.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wide text-success mb-3 flex items-center gap-2">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Skills to Add
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {linkedIn.skillsToAdd.map((skill, index) => (
+                            <span key={index} className="px-3 py-1.5 rounded-full bg-success/10 border border-success/20 text-sm font-medium text-success">
+                              + {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {linkedIn.skillsToRemove && linkedIn.skillsToRemove.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wide text-destructive mb-3 flex items-center gap-2">
+                          <AlertCircle className="w-3 h-3" />
+                          Consider Removing
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {linkedIn.skillsToRemove.map((skill, index) => (
+                            <span key={index} className="px-3 py-1.5 rounded-full bg-destructive/10 border border-destructive/20 text-sm font-medium text-destructive line-through">
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </ResultCard>
+              )}
+
+              {/* SEO Keywords */}
+              {linkedIn.seoKeywords && linkedIn.seoKeywords.length > 0 && (
+                <ResultCard
+                  icon={Search}
+                  title="SEO Keywords"
+                  subtitle="Keywords recruiters use to find candidates like you"
+                  iconColor="text-[#0A66C2]"
+                  bgColor="bg-[#0A66C2]/10"
+                  borderColor="border-[#0A66C2]/20"
+                >
+                  <div className="flex flex-wrap gap-2">
+                    {linkedIn.seoKeywords.map((keyword, index) => (
+                      <span key={index} className="px-4 py-2 rounded-full bg-[#0A66C2]/10 border border-[#0A66C2]/20 text-sm font-medium text-[#0A66C2]">
+                        {keyword}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-4">
+                    💡 Sprinkle these keywords naturally throughout your headline, about, and experience sections.
+                  </p>
+                </ResultCard>
+              )}
+
+              {/* Profile Visibility Tips */}
+              {linkedIn.profileVisibilityTips && linkedIn.profileVisibilityTips.length > 0 && (
+                <ResultCard
+                  icon={Eye}
+                  title="Profile Visibility Tips"
+                  subtitle="Actionable steps to increase your profile views"
+                  iconColor="text-[#0A66C2]"
+                  bgColor="bg-[#0A66C2]/10"
+                  borderColor="border-[#0A66C2]/20"
+                >
+                  <ul className="space-y-3">
+                    {linkedIn.profileVisibilityTips.map((tip, index) => (
+                      <li key={index} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30">
+                        <div className="w-6 h-6 rounded-full bg-[#0A66C2]/10 flex items-center justify-center shrink-0">
+                          <span className="text-xs font-bold text-[#0A66C2]">{index + 1}</span>
+                        </div>
+                        <span className="text-sm text-foreground">{tip}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </ResultCard>
+              )}
+
+              {/* Featured Section Ideas */}
+              {linkedIn.featuredSectionIdeas && linkedIn.featuredSectionIdeas.length > 0 && (
+                <ResultCard
+                  icon={Star}
+                  title="Featured Section Ideas"
+                  subtitle="Content to showcase at the top of your profile"
+                  iconColor="text-[#0A66C2]"
+                  bgColor="bg-[#0A66C2]/10"
+                  borderColor="border-[#0A66C2]/20"
+                >
+                  <div className="space-y-3">
+                    {linkedIn.featuredSectionIdeas.map((idea, index) => (
+                      <div key={index} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30">
+                        <Sparkles className="w-4 h-4 text-[#0A66C2] mt-0.5 shrink-0" />
+                        <span className="text-sm text-foreground">{idea}</span>
+                      </div>
+                    ))}
+                  </div>
+                </ResultCard>
+              )}
+
+              {/* Recommendation Strategy */}
+              {linkedIn.recommendationStrategy && (
+                <ResultCard
+                  icon={MessageSquare}
+                  title="Recommendation Strategy"
+                  subtitle="How to get quality recommendations that matter"
+                  iconColor="text-[#0A66C2]"
+                  bgColor="bg-[#0A66C2]/10"
+                  borderColor="border-[#0A66C2]/20"
+                >
+                  <div className="p-4 rounded-xl bg-muted/30">
+                    <p className="text-sm leading-relaxed text-foreground">{linkedIn.recommendationStrategy}</p>
+                  </div>
+                </ResultCard>
+              )}
+            </div>
+          )}
+
+          {/* Divider between LinkedIn and Resume sections */}
+          {linkedIn && (
+            <div className="flex items-center gap-4 py-4">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-sm font-medium text-muted-foreground">Resume Analysis</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+          )}
 
           {/* Summary & LinkedIn Rewrite */}
           {data.summaryRewrite?.professionalSummary && (
@@ -513,7 +783,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
           {/* Bottom CTA */}
           <div className="text-center pt-8 space-y-4">
             <p className="text-muted-foreground">
-              Apply these changes to your resume and watch your interview rate improve!
+              Apply these changes to your resume {data.hasLinkedIn && "and LinkedIn profile "}and watch your interview rate improve!
             </p>
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <CheckCircle2 className="w-4 h-4 text-success" />
