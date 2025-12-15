@@ -9,5 +9,8 @@ verify_jwt = false
 [functions.parse-pdf]
 verify_jwt = false
 
+[functions.parse-docx]
+verify_jwt = false
+
 [functions.send-analysis-email]
 verify_jwt = false
