@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Upload, FileText, X, Loader2 } from "lucide-react";
+import { Upload, FileText, X, Loader2, AlertCircle, Sparkles, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -122,34 +122,47 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
   const canAnalyze = mode === "paste" ? !!textInput.trim() : !!extractedText.trim();
 
   return (
-    <div className="rounded-xl bg-card border border-border p-6 md:p-8 text-left">
-      <div className="space-y-2 mb-6">
-        <h2 className="text-xl font-semibold">Resume not found in this tab</h2>
-        <p className="text-sm text-muted-foreground">
-          Your payment went through, but your resume text didnt carry over. Re-upload the file or paste the text to generate your results.
-        </p>
+    <div className="rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 p-6 md:p-8 text-left max-w-xl mx-auto">
+      {/* Header */}
+      <div className="flex items-start gap-4 mb-6">
+        <div className="p-3 rounded-xl bg-warning/10 border border-warning/20 shrink-0">
+          <AlertCircle className="w-6 h-6 text-warning" />
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold mb-1">Resume Not Found</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Your payment was successful! We just need your resume again to generate your analysis.
+          </p>
+        </div>
       </div>
 
+      {/* Mode toggle */}
       <div className="flex justify-center mb-6">
-        <div className="inline-flex rounded-lg bg-muted/30 border border-border p-1">
+        <div className="inline-flex rounded-xl bg-muted/30 border border-border p-1.5">
           <button
             onClick={() => setMode("upload")}
             className={cn(
-              "px-4 py-2 rounded-md text-sm font-medium transition-all",
-              mode === "upload" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+              mode === "upload" 
+                ? "bg-primary text-primary-foreground shadow-md" 
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
             )}
             type="button"
           >
+            <Upload className="w-4 h-4" />
             Upload File
           </button>
           <button
             onClick={() => setMode("paste")}
             className={cn(
-              "px-4 py-2 rounded-md text-sm font-medium transition-all",
-              mode === "paste" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+              mode === "paste" 
+                ? "bg-primary text-primary-foreground shadow-md" 
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
             )}
             type="button"
           >
+            <FileText className="w-4 h-4" />
             Paste Text
           </button>
         </div>
@@ -167,37 +180,47 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
           }}
           onDrop={handleDrop}
           className={cn(
-            "rounded-xl bg-muted/20 border-2 border-dashed border-border p-10 text-center",
-            dragOver && "border-primary",
+            "rounded-xl bg-muted/20 border-2 border-dashed p-8 text-center transition-all duration-200",
+            dragOver 
+              ? "border-primary bg-primary/5 scale-[1.02]" 
+              : "border-border/50 hover:border-primary/40",
+            selectedFile && extractedText && "border-success/50 bg-success/5"
           )}
         >
           {selectedFile ? (
-            <div className="space-y-4">
-              <div className="inline-flex items-center gap-3 px-4 py-3 rounded-lg bg-secondary">
-                <FileText className="w-6 h-6 text-primary" />
-                <span className="text-sm font-medium">{selectedFile.name}</span>
+            <div className="space-y-4 animate-scale-in">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-success/10 mb-2">
+                {isExtracting ? (
+                  <Loader2 className="w-7 h-7 text-primary animate-spin" />
+                ) : (
+                  <CheckCircle2 className="w-7 h-7 text-success" />
+                )}
+              </div>
+              <div className="inline-flex items-center gap-3 px-4 py-2.5 rounded-xl bg-card border border-border">
+                <FileText className="w-5 h-5 text-primary" />
+                <span className="text-sm font-medium max-w-[180px] truncate">{selectedFile.name}</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     clearFile();
                   }}
-                  className="p-1 hover:bg-muted rounded-full transition-colors"
+                  className="p-1 hover:bg-muted rounded-lg transition-colors"
                   type="button"
                 >
                   <X className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {isExtracting ? "Extracting text..." : extractedText ? "Text extracted. Ready to analyze." : ""}
+              <p className="text-sm text-muted-foreground">
+                {isExtracting ? "Extracting text..." : extractedText ? "Ready to analyze!" : ""}
               </p>
             </div>
           ) : (
             <>
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 mb-4">
                 <Upload className="w-8 h-8 text-primary" />
               </div>
-              <p className="text-base font-medium mb-2">Drop your resume here</p>
-              <p className="text-sm text-muted-foreground mb-6">PDF, DOCX, or TXT</p>
+              <p className="text-lg font-medium mb-1">Drop your resume here</p>
+              <p className="text-sm text-muted-foreground mb-5">PDF, DOCX, or TXT files supported</p>
               <label>
                 <input
                   type="file"
@@ -205,8 +228,11 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                <Button variant="outline" asChild>
-                  <span>Browse files</span>
+                <Button variant="outline" size="lg" className="gap-2" asChild>
+                  <span>
+                    <FileText className="w-4 h-4" />
+                    Browse Files
+                  </span>
                 </Button>
               </label>
             </>
@@ -214,22 +240,28 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
         </div>
       ) : (
         <div className="space-y-3">
-          <textarea
-            value={textInput}
-            onChange={(e) => setTextInput(e.target.value)}
-            placeholder="Paste your resume content here..."
-            className="w-full h-56 p-4 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none font-mono text-sm"
-          />
-          <p className="text-xs text-muted-foreground text-center">{textInput.length} characters</p>
+          <div className="relative">
+            <textarea
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              placeholder="Paste your resume content here...&#10;&#10;Include your work experience, skills, and education."
+              className="w-full h-56 p-4 rounded-xl bg-background/50 border border-border/50 text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 resize-none text-sm leading-relaxed transition-all"
+            />
+            <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-lg bg-card/80 border border-border text-xs text-muted-foreground">
+              {textInput.length.toLocaleString()} chars
+            </div>
+          </div>
         </div>
       )}
 
-      <div className="mt-6 flex items-center justify-center">
+      {/* Submit button */}
+      <div className="mt-6 flex flex-col items-center gap-3">
         <Button
           variant="hero"
           size="xl"
           disabled={disabled || isExtracting || !canAnalyze}
           onClick={() => onResumeTextReady(mode === "paste" ? textInput.trim() : extractedText.trim())}
+          className="min-w-[200px] gap-2"
         >
           {isExtracting ? (
             <>
@@ -237,9 +269,15 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
               Extracting...
             </>
           ) : (
-            "Analyze Now"
+            <>
+              <Sparkles className="w-5 h-5" />
+              Generate Analysis
+            </>
           )}
         </Button>
+        <p className="text-xs text-muted-foreground">
+          Your analysis will be ready in seconds
+        </p>
       </div>
     </div>
   );
