@@ -1,13 +1,38 @@
-import { CheckCircle2, AlertCircle, Lightbulb, Zap, AlertTriangle, ArrowRight, TrendingUp, Gauge } from "lucide-react";
+import { 
+  CheckCircle2, AlertCircle, Lightbulb, Zap, AlertTriangle, ArrowRight, 
+  TrendingUp, Gauge, User, Briefcase, Target, BarChart3, Brain, Copy, Check
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
+import { useState } from "react";
 
 export interface AnalysisData {
+  industry?: string;
+  experienceLevel?: string;
+  summaryRewrite?: {
+    professionalSummary: string;
+    linkedInHeadline: string;
+  };
   optimizedBullets: {
     original: string;
     improved: string;
     reason: string;
   }[];
+  quantificationOpportunities?: {
+    context: string;
+    suggestion: string;
+    example: string;
+  }[];
+  skillsGap?: {
+    missingTechnical: string[];
+    missingSoft: string[];
+    recommendations: string;
+  };
+  industryInsights?: {
+    whatRecruitersLookFor: string;
+    competitiveAdvantage: string;
+    commonMistakes: string;
+  };
   actionVerbs: {
     weak: string;
     strong: string;
@@ -22,21 +47,19 @@ interface AnalysisResultsProps {
 
 // Calculate resume strength score based on analysis
 function calculateResumeScore(data: AnalysisData): { score: number; label: string; color: string } {
-  // Start with base score
   let score = 50;
   
-  // Positive factors (improvements available = good analysis)
-  score += Math.min(data.optimizedBullets.length * 3, 15); // Up to 15 points for bullets
-  score += Math.min(data.actionVerbs.length * 2, 10); // Up to 10 points for verbs
-  score += Math.min(data.keywords.length * 1.5, 15); // Up to 15 points for keywords
+  score += Math.min(data.optimizedBullets.length * 3, 15);
+  score += Math.min(data.actionVerbs.length * 2, 10);
+  score += Math.min(data.keywords.length * 1.5, 15);
+  score -= Math.min(data.redFlags.length * 8, 30);
   
-  // Negative factors (red flags reduce score)
-  score -= Math.min(data.redFlags.length * 8, 30); // Lose up to 30 points for red flags
+  // Bonus for having good structure (summary, skills)
+  if (data.summaryRewrite?.professionalSummary) score += 5;
+  if (data.skillsGap && data.skillsGap.missingTechnical.length < 3) score += 5;
   
-  // Ensure score is between 0 and 100
   score = Math.max(0, Math.min(100, Math.round(score)));
   
-  // Determine label and color
   let label: string;
   let color: string;
   
@@ -57,8 +80,36 @@ function calculateResumeScore(data: AnalysisData): { score: number; label: strin
   return { score, label, color };
 }
 
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  
+  return (
+    <button
+      onClick={handleCopy}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+    >
+      {copied ? (
+        <>
+          <Check className="w-3 h-3" />
+          Copied!
+        </>
+      ) : (
+        <>
+          <Copy className="w-3 h-3" />
+          {label}
+        </>
+      )}
+    </button>
+  );
+}
+
 export function AnalysisResults({ data }: AnalysisResultsProps) {
-  // Calculate stats
   const stats = [
     { label: "Bullets Improved", value: data.optimizedBullets.length, icon: TrendingUp },
     { label: "Verb Upgrades", value: data.actionVerbs.length, icon: Zap },
@@ -70,7 +121,6 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
 
   return (
     <section className="py-16 md:py-24 relative print-section" id="analysis-results">
-      {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
       
       <div className="container relative">
@@ -92,6 +142,22 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               <p className="text-muted-foreground mt-3 max-w-lg mx-auto">
                 Here is what we found and how to fix it. Apply these changes to increase your interview chances.
               </p>
+              
+              {/* Industry & Experience Badge */}
+              {data.industry && (
+                <div className="flex items-center justify-center gap-3 mt-4">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs font-medium">
+                    <Briefcase className="w-3 h-3" />
+                    {data.industry}
+                  </span>
+                  {data.experienceLevel && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs font-medium capitalize">
+                      <User className="w-3 h-3" />
+                      {data.experienceLevel} level
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Resume Strength Score */}
@@ -146,6 +212,181 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             </div>
           </div>
 
+          {/* Summary & LinkedIn Rewrite */}
+          {data.summaryRewrite?.professionalSummary && (
+            <ResultCard
+              icon={User}
+              title="Professional Summary & LinkedIn"
+              subtitle="Ready-to-use summary and headline optimized for your profile"
+              iconColor="text-primary"
+              bgColor="bg-primary/10"
+              borderColor="border-primary/20"
+            >
+              <div className="space-y-6">
+                <div className="p-4 rounded-xl bg-muted/30">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Professional Summary
+                    </span>
+                    <CopyButton text={data.summaryRewrite.professionalSummary} label="Copy Summary" />
+                  </div>
+                  <p className="text-sm leading-relaxed text-foreground">
+                    {data.summaryRewrite.professionalSummary}
+                  </p>
+                </div>
+                
+                {data.summaryRewrite.linkedInHeadline && (
+                  <div className="p-4 rounded-xl bg-muted/30">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        LinkedIn Headline
+                      </span>
+                      <CopyButton text={data.summaryRewrite.linkedInHeadline} label="Copy Headline" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">
+                      {data.summaryRewrite.linkedInHeadline}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </ResultCard>
+          )}
+
+          {/* Industry Insights */}
+          {data.industryInsights?.whatRecruitersLookFor && (
+            <ResultCard
+              icon={Target}
+              title={`${data.industry || "Industry"} Insights`}
+              subtitle="Tailored advice based on what recruiters in your field prioritize"
+              iconColor="text-cyan-500"
+              bgColor="bg-cyan-500/10"
+              borderColor="border-cyan-500/20"
+            >
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-muted/30">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                    What Recruiters Look For
+                  </h4>
+                  <p className="text-sm text-foreground leading-relaxed">
+                    {data.industryInsights.whatRecruitersLookFor}
+                  </p>
+                </div>
+                
+                {data.industryInsights.competitiveAdvantage && (
+                  <div className="p-4 rounded-xl bg-success/5 border border-success/20">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-success mb-2">
+                      Your Competitive Edge
+                    </h4>
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {data.industryInsights.competitiveAdvantage}
+                    </p>
+                  </div>
+                )}
+                
+                {data.industryInsights.commonMistakes && (
+                  <div className="p-4 rounded-xl bg-warning/5 border border-warning/20">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-warning mb-2">
+                      Common Mistakes to Avoid
+                    </h4>
+                    <p className="text-sm text-foreground leading-relaxed">
+                      {data.industryInsights.commonMistakes}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </ResultCard>
+          )}
+
+          {/* Skills Gap Analysis */}
+          {data.skillsGap && (data.skillsGap.missingTechnical.length > 0 || data.skillsGap.missingSoft.length > 0) && (
+            <ResultCard
+              icon={Brain}
+              title="Skills Gap Analysis"
+              subtitle="Key skills missing from your resume that recruiters expect"
+              iconColor="text-violet-500"
+              bgColor="bg-violet-500/10"
+              borderColor="border-violet-500/20"
+            >
+              <div className="space-y-5">
+                {data.skillsGap.missingTechnical.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+                      Technical Skills to Add
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {data.skillsGap.missingTechnical.map((skill, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-sm font-medium text-violet-400"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {data.skillsGap.missingSoft.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+                      Soft Skills to Highlight
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {data.skillsGap.missingSoft.map((skill, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1.5 rounded-full bg-muted text-sm font-medium text-foreground"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {data.skillsGap.recommendations && (
+                  <div className="p-4 rounded-xl bg-muted/30 mt-4">
+                    <div className="flex items-start gap-2">
+                      <Lightbulb className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {data.skillsGap.recommendations}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ResultCard>
+          )}
+
+          {/* Quantification Opportunities */}
+          {data.quantificationOpportunities && data.quantificationOpportunities.length > 0 && (
+            <ResultCard
+              icon={BarChart3}
+              title="Quantification Opportunities"
+              subtitle="Turn vague statements into impressive metrics"
+              iconColor="text-emerald-500"
+              bgColor="bg-emerald-500/10"
+              borderColor="border-emerald-500/20"
+            >
+              <div className="space-y-4">
+                {data.quantificationOpportunities.map((opp, index) => (
+                  <div key={index} className="p-4 rounded-xl bg-muted/30">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      <span className="font-medium text-foreground">"{opp.context}"</span>
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      → {opp.suggestion}
+                    </p>
+                    <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-emerald-500">Example</span>
+                      <p className="text-sm font-medium text-foreground mt-1">{opp.example}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ResultCard>
+          )}
+
           {/* ATS-Optimized Bullets */}
           <ResultCard
             icon={CheckCircle2}
@@ -159,7 +400,6 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               {data.optimizedBullets.map((bullet, index) => (
                 <div key={index} className="group">
                   <div className="grid md:grid-cols-2 gap-4 p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
-                    {/* Before */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <span className="px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">
@@ -171,12 +411,12 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       </p>
                     </div>
                     
-                    {/* After */}
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between gap-2">
                         <span className="px-2 py-0.5 rounded text-xs font-medium bg-success/20 text-success">
                           AFTER
                         </span>
+                        <CopyButton text={bullet.improved} label="Copy" />
                       </div>
                       <p className="text-sm text-foreground leading-relaxed font-medium">
                         {bullet.improved}
@@ -184,7 +424,6 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     </div>
                   </div>
                   
-                  {/* Reason */}
                   <div className="flex items-start gap-2 mt-3 px-4">
                     <Lightbulb className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
                     <p className="text-xs text-muted-foreground italic">
@@ -300,7 +539,6 @@ interface ResultCardProps {
 function ResultCard({ icon: Icon, title, subtitle, iconColor, bgColor, borderColor, children }: ResultCardProps) {
   return (
     <div className="rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 overflow-hidden animate-fade-in">
-      {/* Header */}
       <div className={cn("px-6 py-5 border-b", borderColor, bgColor)}>
         <div className="flex items-center gap-3">
           <div className={cn("p-2.5 rounded-xl", bgColor, iconColor)}>
@@ -313,7 +551,6 @@ function ResultCard({ icon: Icon, title, subtitle, iconColor, bgColor, borderCol
         </div>
       </div>
       
-      {/* Content */}
       <div className="p-6">
         {children}
       </div>
