@@ -53,6 +53,12 @@ serve(async (req) => {
 
 Analyze the provided resume and return a JSON object with EXACTLY this structure:
 {
+  "industry": "detected industry (e.g., 'Software Engineering', 'Marketing', 'Finance')",
+  "experienceLevel": "entry | mid | senior | executive",
+  "summaryRewrite": {
+    "professionalSummary": "A 2-3 sentence powerful professional summary for the top of their resume",
+    "linkedInHeadline": "An optimized LinkedIn headline under 120 characters"
+  },
   "optimizedBullets": [
     {
       "original": "exact text from their resume that needs improvement",
@@ -60,6 +66,23 @@ Analyze the provided resume and return a JSON object with EXACTLY this structure
       "reason": "brief explanation of the improvement"
     }
   ],
+  "quantificationOpportunities": [
+    {
+      "context": "The vague statement or area from their resume",
+      "suggestion": "How to add specific metrics here",
+      "example": "Example of what it could look like with numbers"
+    }
+  ],
+  "skillsGap": {
+    "missingTechnical": ["skill1", "skill2"],
+    "missingSoft": ["skill1", "skill2"],
+    "recommendations": "Brief paragraph on how to address skill gaps"
+  },
+  "industryInsights": {
+    "whatRecruitersLookFor": "2-3 sentences on what recruiters in this industry prioritize",
+    "competitiveAdvantage": "What would make this candidate stand out",
+    "commonMistakes": "1-2 common resume mistakes in this industry to avoid"
+  },
   "actionVerbs": [
     { "weak": "weak verb found in resume", "strong": "stronger replacement" }
   ],
@@ -68,10 +91,16 @@ Analyze the provided resume and return a JSON object with EXACTLY this structure
 }
 
 Guidelines:
-- optimizedBullets: Find 3-5 weak bullet points and rewrite them with specific metrics, outcomes, and impact. If metrics aren't available, estimate reasonable ones or show how to frame the achievement better.
-- actionVerbs: Identify 4-6 weak verbs (helped, worked, assisted, etc.) and suggest powerful alternatives (spearheaded, engineered, orchestrated, etc.)
-- keywords: Suggest 6-8 industry-relevant keywords that are missing but would improve ATS matching
-- redFlags: List 3-5 specific issues recruiters would notice (gaps, missing metrics, vague descriptions, formatting issues, etc.)
+- industry: Detect the candidate's industry from job titles, skills, and experience
+- experienceLevel: Assess based on years of experience and role seniority
+- summaryRewrite: Create a compelling professional summary and LinkedIn headline that highlights their strongest selling points
+- optimizedBullets: Find 3-5 weak bullet points and rewrite them with specific metrics, outcomes, and impact
+- quantificationOpportunities: Find 3-4 places where vague statements could be strengthened with specific numbers, percentages, or metrics
+- skillsGap: Identify 3-5 missing technical skills and 2-3 soft skills that are standard for their role/industry
+- industryInsights: Provide specific advice tailored to their detected industry
+- actionVerbs: Identify 4-6 weak verbs and suggest powerful alternatives
+- keywords: Suggest 6-8 industry-relevant keywords missing from the resume
+- redFlags: List 3-5 specific issues recruiters would notice
 
 Return ONLY valid JSON, no markdown formatting or code blocks.`;
 
@@ -152,14 +181,22 @@ Return ONLY valid JSON, no markdown formatting or code blocks.`;
       );
     }
 
-    // Validate the response structure
+    // Validate the response structure (check core fields)
     if (!analysis.optimizedBullets || !analysis.actionVerbs || !analysis.keywords || !analysis.redFlags) {
-      console.error("[ANALYZE-RESUME] Invalid analysis structure");
+      console.error("[ANALYZE-RESUME] Invalid analysis structure - missing core fields");
       return new Response(
         JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Ensure optional new fields have defaults if missing
+    analysis.industry = analysis.industry || "General";
+    analysis.experienceLevel = analysis.experienceLevel || "mid";
+    analysis.summaryRewrite = analysis.summaryRewrite || { professionalSummary: "", linkedInHeadline: "" };
+    analysis.quantificationOpportunities = analysis.quantificationOpportunities || [];
+    analysis.skillsGap = analysis.skillsGap || { missingTechnical: [], missingSoft: [], recommendations: "" };
+    analysis.industryInsights = analysis.industryInsights || { whatRecruitersLookFor: "", competitiveAdvantage: "", commonMistakes: "" };
 
     console.log("[ANALYZE-RESUME] Analysis complete, saving to database...");
 
