@@ -1,22 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { resolvePDFJS } from "https://esm.sh/pdfjs-serverless@0.4.1?target=deno";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// pdfjs-serverless is designed for edge/serverless runtimes; import as a namespace to avoid
-// brittle named-export differences across ESM wrappers.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import * as pdfjsServerless from "https://esm.sh/pdfjs-serverless@0.4.1?target=deno";
-
 type PdfTextItem = { str?: string };
-
-function resolveGetDocument() {
-  const mod: any = pdfjsServerless as any;
-  return mod.getDocument ?? mod.default?.getDocument;
-}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -25,11 +15,6 @@ serve(async (req) => {
   }
 
   try {
-    const getDocument = resolveGetDocument();
-    if (typeof getDocument !== "function") {
-      throw new Error("PDF parser module loaded but getDocument() export was not found");
-    }
-
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 
@@ -42,17 +27,24 @@ serve(async (req) => {
 
     console.log("Parsing PDF:", file.name, "Size:", file.size);
 
+    // Convert file to typed array
     const arrayBuffer = await file.arrayBuffer();
     const data = new Uint8Array(arrayBuffer);
 
-    // Load PDF
-    const document = await getDocument({ data, useSystemFonts: true }).promise;
-    console.log("PDF loaded. Pages:", document.numPages);
+    // Initialize PDF.js (serverless wrapper)
+    const { getDocument } = await resolvePDFJS();
+
+    const doc = await getDocument({
+      data,
+      useSystemFonts: true,
+    }).promise;
+
+    console.log("PDF loaded. Pages:", doc.numPages);
 
     // Extract text from all pages
     let fullText = "";
-    for (let i = 1; i <= document.numPages; i++) {
-      const page = await document.getPage(i);
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
       const textContent = await page.getTextContent();
       const pageText = (textContent.items as unknown[])
         .map((item) => (item as PdfTextItem).str ?? "")
@@ -67,7 +59,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         text,
-        pages: document.numPages,
+        pages: doc.numPages,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
