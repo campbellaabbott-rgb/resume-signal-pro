@@ -133,12 +133,13 @@ const Index = () => {
       if (error) throw error;
 
       if (data?.url) {
-        // Use window.open as fallback if location.href fails
-        const opened = window.open(data.url, "_blank");
-        if (!opened) {
-          // Fallback: try direct navigation if popup blocked
-          window.location.href = data.url;
+        // Tie the resume text to this specific checkout session (more reliable than a single global key)
+        if (data?.sessionId) {
+          localStorage.setItem(`resumeText:${data.sessionId}`, contentToAnalyze);
         }
+
+        // Navigate in the same tab to avoid cross-tab storage issues after returning from Stripe
+        window.location.href = data.url;
       } else {
         throw new Error("No checkout URL received");
       }
