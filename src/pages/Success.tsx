@@ -11,7 +11,8 @@ import {
   FileText,
   ArrowRight,
   Download,
-  Home
+  Home,
+  Printer
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -407,7 +408,7 @@ const Success = () => {
                   
                   {/* Action cards */}
                   {shareId && !isSharedView && (
-                    <div className="grid md:grid-cols-2 gap-4 max-w-lg mx-auto pt-4">
+                    <div className="grid md:grid-cols-3 gap-4 max-w-2xl mx-auto pt-4">
                       {/* Email card */}
                       <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 space-y-3">
                         <div className="flex items-center gap-2 text-sm font-medium">
@@ -444,6 +445,26 @@ const Success = () => {
                         </Button>
                       </div>
                       
+                      {/* Download PDF card */}
+                      <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Printer className="w-4 h-4 text-primary" />
+                          Download PDF
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Save your analysis as a PDF document
+                        </p>
+                        <Button
+                          variant="outline"
+                          onClick={() => window.print()}
+                          className="w-full gap-2"
+                          size="sm"
+                        >
+                          <Download className="w-4 h-4" />
+                          Save as PDF
+                        </Button>
+                      </div>
+                      
                       {/* Share card */}
                       <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 space-y-3">
                         <div className="flex items-center gap-2 text-sm font-medium">
@@ -451,7 +472,7 @@ const Success = () => {
                           Share Results
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Get a link to share your analysis with others
+                          Get a link to share your analysis
                         </p>
                         <Button
                           variant="outline"
@@ -466,7 +487,7 @@ const Success = () => {
                             </>
                           ) : (
                             <>
-                              <Download className="w-4 h-4" />
+                              <Share2 className="w-4 h-4" />
                               Copy Link
                             </>
                           )}
@@ -476,24 +497,35 @@ const Success = () => {
                   )}
                   
                   {shareId && isSharedView && (
-                    <Button
-                      variant="outline"
-                      onClick={copyShareLink}
-                      className="gap-2"
-                      size="lg"
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="w-4 h-4" />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Share2 className="w-4 h-4" />
-                          Copy Share Link
-                        </>
-                      )}
-                    </Button>
+                    <div className="flex flex-wrap justify-center gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => window.print()}
+                        className="gap-2"
+                        size="lg"
+                      >
+                        <Download className="w-4 h-4" />
+                        Save as PDF
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={copyShareLink}
+                        className="gap-2"
+                        size="lg"
+                      >
+                        {copied ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Share2 className="w-4 h-4" />
+                            Copy Share Link
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   )}
 
                   {/* Scroll indicator */}
