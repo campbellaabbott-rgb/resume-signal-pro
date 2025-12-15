@@ -64,13 +64,13 @@ const Success = () => {
   }, [isLoading, shareIdParam, sessionId]);
 
   useEffect(() => {
-    const runAnalysis = async (resumeText: string) => {
+    const runAnalysis = async (resumeText: string, linkedInText?: string) => {
       try {
-        console.log("Starting AI analysis...");
+        console.log("Starting AI analysis...", linkedInText ? "(with LinkedIn)" : "");
         setCurrentStep(3);
 
         const { data, error: fnError } = await supabase.functions.invoke("analyze-resume", {
-          body: { resumeText },
+          body: { resumeText, linkedInText },
         });
 
         if (fnError) {
@@ -87,15 +87,19 @@ const Success = () => {
         setAnalysisData(analysisResult);
         setShareId(newShareId);
 
-        // Clean up stored resume text after successful analysis
+        // Clean up stored data after successful analysis
         if (sessionId) {
           localStorage.removeItem(`resumeText:${sessionId}`);
+          localStorage.removeItem(`linkedInText:${sessionId}`);
         }
         localStorage.removeItem("resumeText");
+        localStorage.removeItem("linkedInText");
 
         toast({
           title: "Payment successful!",
-          description: "Your AI-powered resume analysis is ready.",
+          description: data.hasLinkedIn 
+            ? "Your resume + LinkedIn analysis is ready." 
+            : "Your AI-powered resume analysis is ready.",
         });
       } catch (err) {
         console.error("Analysis error:", err);
@@ -145,18 +149,22 @@ const Success = () => {
       }
 
       // Prefer session-scoped key, fallback to legacy key
-      const stored =
+      const storedResume =
         localStorage.getItem(`resumeText:${sessionId}`) ||
         localStorage.getItem("resumeText");
 
-      if (!stored || !stored.trim()) {
+      const storedLinkedIn =
+        localStorage.getItem(`linkedInText:${sessionId}`) ||
+        localStorage.getItem("linkedInText");
+
+      if (!storedResume || !storedResume.trim()) {
         setNeedsResume(true);
         setIsLoading(false);
         return;
       }
 
       setNeedsResume(false);
-      await runAnalysis(stored);
+      await runAnalysis(storedResume, storedLinkedIn || undefined);
     };
 
     loadAnalysis();

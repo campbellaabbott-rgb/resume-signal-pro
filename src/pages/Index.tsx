@@ -12,6 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [resumeText, setResumeText] = useState<string>("");
+  const [linkedInText, setLinkedInText] = useState<string>("");
+  const [isScrapingLinkedIn, setIsScrapingLinkedIn] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -36,7 +38,6 @@ const Index = () => {
     }
 
     if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-      // Parse PDF using backend function
       setIsLoading(true);
       try {
         const formData = new FormData();
@@ -61,8 +62,7 @@ const Index = () => {
         console.error("PDF parsing error:", error);
         toast({
           title: "PDF parsing failed",
-          description:
-            "Could not extract text from the PDF. Please try pasting the text manually.",
+          description: "Could not extract text from the PDF. Please try pasting the text manually.",
           variant: "destructive",
         });
         setSelectedFile(null);
@@ -73,11 +73,9 @@ const Index = () => {
     }
 
     if (
-      file.type ===
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
       file.name.toLowerCase().endsWith(".docx")
     ) {
-      // Parse DOCX using backend function
       setIsLoading(true);
       try {
         const formData = new FormData();
@@ -102,8 +100,7 @@ const Index = () => {
         console.error("DOCX parsing error:", error);
         toast({
           title: "Document parsing failed",
-          description:
-            "Could not extract text from the DOCX. Please try pasting the text manually.",
+          description: "Could not extract text from the DOCX. Please try pasting the text manually.",
           variant: "destructive",
         });
         setSelectedFile(null);
@@ -113,13 +110,45 @@ const Index = () => {
     }
   };
 
-  const handleTextSubmit = (text: string) => {
-    setResumeText(text);
-    handleCheckout(text);
+  const handleScrapeLinkedIn = async (url: string) => {
+    setIsScrapingLinkedIn(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("scrape-linkedin", {
+        body: { url },
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.text) {
+        setLinkedInText(data.text);
+        toast({
+          title: "LinkedIn profile fetched",
+          description: "Your profile content has been extracted successfully.",
+        });
+      } else {
+        throw new Error(data?.error || "Failed to fetch LinkedIn profile");
+      }
+    } catch (error: any) {
+      console.error("LinkedIn scraping error:", error);
+      toast({
+        title: "Could not fetch profile",
+        description: error?.message || "Please try pasting your profile content instead.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsScrapingLinkedIn(false);
+    }
   };
 
-  const handleCheckout = async (text?: string) => {
+  const handleTextSubmit = (text: string, linkedIn?: string) => {
+    setResumeText(text);
+    if (linkedIn) setLinkedInText(linkedIn);
+    handleCheckout(text, linkedIn);
+  };
+
+  const handleCheckout = async (text?: string, linkedIn?: string) => {
     const contentToAnalyze = text || resumeText;
+    const linkedInContent = linkedIn || linkedInText;
     
     if (!contentToAnalyze && !selectedFile) {
       toast({
@@ -133,23 +162,33 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      // Store resume text in localStorage for use after payment (persists across tabs)
+      // Store resume text and LinkedIn text in localStorage for use after payment
       localStorage.setItem('resumeText', contentToAnalyze);
+      if (linkedInContent) {
+        localStorage.setItem('linkedInText', linkedInContent);
+      } else {
+        localStorage.removeItem('linkedInText');
+      }
 
       const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { resumeData: contentToAnalyze },
+        body: { 
+          resumeData: contentToAnalyze,
+          hasLinkedIn: !!linkedInContent
+        },
       });
 
       if (error) throw error;
 
       if (data?.url) {
-        // Tie the resume text to this specific checkout session (more reliable than a single global key)
+        // Tie the data to this specific checkout session
         if (data?.sessionId) {
           localStorage.setItem(`resumeText:${data.sessionId}`, contentToAnalyze);
+          if (linkedInContent) {
+            localStorage.setItem(`linkedInText:${data.sessionId}`, linkedInContent);
+          }
         }
 
         // In the embedded preview, navigation to Stripe can be blocked.
-        // If we're inside an iframe, open checkout in a new tab.
         const inIframe = window.self !== window.top;
         if (inIframe) {
           const win = window.open(data.url, "_blank", "noopener,noreferrer");
@@ -163,14 +202,15 @@ const Index = () => {
           return;
         }
 
-        // Navigate in the same tab (best for preserving state across the checkout redirect)
+        // Navigate in the same tab
         window.location.assign(data.url);
       } else {
         throw new Error("No checkout URL received");
       }
     } catch (error) {
       console.error("Checkout error:", error);
-      localStorage.removeItem('resumeText'); // Clean up on error
+      localStorage.removeItem('resumeText');
+      localStorage.removeItem('linkedInText');
       toast({
         title: "Checkout failed",
         description: "There was an error creating your checkout session. Please try again.",
@@ -191,9 +231,13 @@ const Index = () => {
         <ResumeUploader
           onFileSelect={handleFileSelect}
           onTextSubmit={handleTextSubmit}
-          onCheckout={() => handleCheckout()}
+          onCheckout={(linkedIn) => handleCheckout(undefined, linkedIn)}
           isLoading={isLoading}
           hasContent={!!resumeText || !!selectedFile}
+          linkedInText={linkedInText}
+          onLinkedInTextChange={setLinkedInText}
+          isScrapingLinkedIn={isScrapingLinkedIn}
+          onScrapeLinkedIn={handleScrapeLinkedIn}
         />
         
         <SocialProof />
