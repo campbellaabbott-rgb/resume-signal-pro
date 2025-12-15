@@ -9,7 +9,7 @@ export function Header() {
             <div className="p-2 rounded-lg bg-primary/10">
               <FileText className="w-5 h-5 text-primary" />
             </div>
-            <span className="font-semibold text-lg">Signal Booster</span>
+            <span className="font-semibold text-lg">Revenue Booster</span>
           </div>
           <div className="text-sm text-muted-foreground">
             Recruiter-grade feedback
