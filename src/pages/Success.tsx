@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { 
   CheckCircle2, 
@@ -14,6 +14,7 @@ import {
   Home,
   Printer
 } from "lucide-react";
+import html2pdf from "html2pdf.js";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { AnalysisResults, type AnalysisData } from "@/components/AnalysisResults";
@@ -43,6 +44,8 @@ const Success = () => {
   const [email, setEmail] = useState("");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const analysisRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const sessionId = searchParams.get("session_id");
@@ -222,6 +225,45 @@ const Success = () => {
       });
     } finally {
       setIsSendingEmail(false);
+    }
+  };
+
+  const handleSaveAsPdf = async () => {
+    if (!analysisRef.current) return;
+    
+    setIsGeneratingPdf(true);
+    try {
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: 'resume-analysis.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#0a0a0f'
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      const pdfBlob = await html2pdf().set(opt).from(analysisRef.current).outputPdf('blob');
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      window.open(pdfUrl, '_blank');
+      
+      toast({
+        title: "PDF generated!",
+        description: "Your analysis PDF is now open in a new tab.",
+      });
+    } catch (err) {
+      console.error("PDF generation error:", err);
+      toast({
+        title: "Failed to generate PDF",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPdf(false);
     }
   };
 
@@ -443,12 +485,17 @@ const Success = () => {
                         </p>
                         <Button
                           variant="outline"
-                          onClick={() => window.print()}
+                          onClick={handleSaveAsPdf}
+                          disabled={isGeneratingPdf}
                           className="w-full gap-2"
                           size="sm"
                         >
-                          <Download className="w-4 h-4" />
-                          Save as PDF
+                          {isGeneratingPdf ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Download className="w-4 h-4" />
+                          )}
+                          {isGeneratingPdf ? "Generating..." : "Save as PDF"}
                         </Button>
                       </div>
                       
@@ -487,12 +534,17 @@ const Success = () => {
                     <div className="flex flex-wrap justify-center gap-3">
                       <Button
                         variant="outline"
-                        onClick={() => window.print()}
+                        onClick={handleSaveAsPdf}
+                        disabled={isGeneratingPdf}
                         className="gap-2"
                         size="lg"
                       >
-                        <Download className="w-4 h-4" />
-                        Save as PDF
+                        {isGeneratingPdf ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4" />
+                        )}
+                        {isGeneratingPdf ? "Generating..." : "Save as PDF"}
                       </Button>
                       <Button
                         variant="outline"
@@ -544,7 +596,11 @@ const Success = () => {
           </div>
         </section>
 
-        {analysisData && <AnalysisResults data={analysisData} />}
+        {analysisData && (
+          <div ref={analysisRef}>
+            <AnalysisResults data={analysisData} />
+          </div>
+        )}
       </main>
       
       <Footer />
