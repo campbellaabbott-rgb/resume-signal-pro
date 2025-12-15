@@ -27,13 +27,42 @@ const Index = () => {
   const handleFileSelect = async (file: File) => {
     setSelectedFile(file);
     
-    // Read file content if it's a text file
     if (file.type === "text/plain") {
       const text = await file.text();
       setResumeText(text);
-    } else {
-      // For PDF, we'll handle this on the backend
-      setResumeText(`[PDF: ${file.name}]`);
+    } else if (file.type === "application/pdf") {
+      // Parse PDF using edge function
+      setIsLoading(true);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const { data, error } = await supabase.functions.invoke("parse-pdf", {
+          body: formData,
+        });
+
+        if (error) throw error;
+
+        if (data?.success && data?.text) {
+          setResumeText(data.text);
+          toast({
+            title: "PDF parsed successfully",
+            description: `Extracted text from ${data.pages} page(s).`,
+          });
+        } else {
+          throw new Error(data?.error || "Failed to parse PDF");
+        }
+      } catch (error) {
+        console.error("PDF parsing error:", error);
+        toast({
+          title: "PDF parsing failed",
+          description: "Could not extract text from the PDF. Please try pasting the text manually.",
+          variant: "destructive",
+        });
+        setSelectedFile(null);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
