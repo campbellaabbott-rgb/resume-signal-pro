@@ -139,8 +139,23 @@ const Index = () => {
           localStorage.setItem(`resumeText:${data.sessionId}`, contentToAnalyze);
         }
 
-        // Navigate in the same tab to avoid cross-tab storage issues after returning from Stripe
-        window.location.href = data.url;
+        // In the embedded preview, navigation to Stripe can be blocked.
+        // If we're inside an iframe, open checkout in a new tab.
+        const inIframe = window.self !== window.top;
+        if (inIframe) {
+          const win = window.open(data.url, "_blank", "noopener,noreferrer");
+          if (!win) {
+            toast({
+              title: "Popup blocked",
+              description: "Allow popups for this site to open Stripe Checkout.",
+              variant: "destructive",
+            });
+          }
+          return;
+        }
+
+        // Navigate in the same tab (best for preserving state across the checkout redirect)
+        window.location.assign(data.url);
       } else {
         throw new Error("No checkout URL received");
       }
