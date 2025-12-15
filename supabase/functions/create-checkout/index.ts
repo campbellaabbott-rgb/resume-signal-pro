@@ -34,7 +34,14 @@ serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       line_items: [
         {
-          price: "price_1SedUsHBplUUV1CgUzlRGaSU",
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "Resume Booster Analysis",
+              description: "AI-powered resume analysis with actionable feedback",
+            },
+            unit_amount: 2500, // $25.00
+          },
           quantity: 1,
         },
       ],
