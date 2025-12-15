@@ -1,12 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import * as pdfjsLib from "https://esm.sh/pdfjs-dist@3.11.174/legacy/build/pdf.mjs?target=deno";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Use pdfjs-dist legacy build with explicit worker disable
-const pdfjsLib = await import("https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.mjs");
+// Disable worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = "";
 
 serve(async (req) => {
@@ -51,7 +51,7 @@ serve(async (req) => {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
       const pageText = textContent.items
-        .map((item: { str?: string }) => item.str || "")
+        .map((item: unknown) => (item as { str?: string }).str || "")
         .join(" ");
       fullText += pageText + "\n\n";
     }
