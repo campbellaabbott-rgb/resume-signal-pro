@@ -190,31 +190,18 @@ const Success = () => {
         body: { 
           email, 
           shareId,
+          origin: window.location.origin,
           analysis: {
-            overallScore: 75,
-            summary: "Your resume shows strong potential with room for improvement in metrics and keywords.",
-            atsOptimizedBullets: analysisData.optimizedBullets?.map(b => ({
-              original: b.original,
-              improved: b.improved,
-              explanation: b.reason
-            })) || [],
-            actionVerbs: analysisData.actionVerbs?.map(v => ({
-              weak: v.weak,
-              strong: v.strong,
-              context: ""
-            })) || [],
-            keywordSuggestions: analysisData.keywords?.map(k => ({
-              keyword: k,
-              reason: "Industry-relevant keyword",
-              priority: "medium"
-            })) || [],
-            redFlags: analysisData.redFlags?.map(r => ({
-              issue: r,
-              impact: "May reduce interview chances",
-              fix: "Address this issue in your resume"
-            })) || [],
-            topStrengths: [],
-            criticalFixes: analysisData.redFlags?.slice(0, 2) || []
+            industry: analysisData.industry,
+            experienceLevel: analysisData.experienceLevel,
+            summaryRewrite: analysisData.summaryRewrite,
+            optimizedBullets: analysisData.optimizedBullets || [],
+            quantificationOpportunities: analysisData.quantificationOpportunities,
+            skillsGap: analysisData.skillsGap,
+            industryInsights: analysisData.industryInsights,
+            actionVerbs: analysisData.actionVerbs || [],
+            keywords: analysisData.keywords || [],
+            redFlags: analysisData.redFlags || []
           }
         }
       });
@@ -224,7 +211,7 @@ const Success = () => {
       setEmailSent(true);
       toast({
         title: "Email sent!",
-        description: "Your analysis has been sent to your inbox.",
+        description: "Your complete analysis has been sent to your inbox.",
       });
     } catch (err) {
       console.error("Email error:", err);
