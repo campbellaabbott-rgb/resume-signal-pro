@@ -64,6 +64,42 @@ const Index = () => {
       } finally {
         setIsLoading(false);
       }
+    } else if (
+      file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      file.name.endsWith(".docx")
+    ) {
+      // Parse DOCX using edge function
+      setIsLoading(true);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const { data, error } = await supabase.functions.invoke("parse-docx", {
+          body: formData,
+        });
+
+        if (error) throw error;
+
+        if (data?.success && data?.text) {
+          setResumeText(data.text);
+          toast({
+            title: "Document parsed successfully",
+            description: "Text extracted from your Word document.",
+          });
+        } else {
+          throw new Error(data?.error || "Failed to parse DOCX");
+        }
+      } catch (error) {
+        console.error("DOCX parsing error:", error);
+        toast({
+          title: "Document parsing failed",
+          description: "Could not extract text from the DOCX. Please try pasting the text manually.",
+          variant: "destructive",
+        });
+        setSelectedFile(null);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 

@@ -33,12 +33,21 @@ export function ResumeUploader({
     setDragOver(false);
   }, []);
 
+  const isValidFileType = (file: File) => {
+    const validTypes = [
+      "application/pdf",
+      "text/plain",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+    return validTypes.includes(file.type) || file.name.endsWith(".docx");
+  };
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
     
     const file = e.dataTransfer.files[0];
-    if (file && (file.type === "application/pdf" || file.type === "text/plain")) {
+    if (file && isValidFileType(file)) {
       setSelectedFile(file);
       onFileSelect(file);
     }
@@ -134,12 +143,12 @@ export function ResumeUploader({
                     Drop your resume here
                   </p>
                   <p className="text-sm text-muted-foreground mb-6">
-                    PDF or TXT files up to 5MB
+                    PDF, DOCX, or TXT files up to 5MB
                   </p>
                   <label>
                     <input
                       type="file"
-                      accept=".pdf,.txt"
+                      accept=".pdf,.txt,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       onChange={handleFileChange}
                       className="hidden"
                     />
