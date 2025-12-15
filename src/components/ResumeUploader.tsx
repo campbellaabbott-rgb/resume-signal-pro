@@ -6,10 +6,18 @@ import { cn } from "@/lib/utils";
 interface ResumeUploaderProps {
   onFileSelect: (file: File) => void;
   onTextSubmit: (text: string) => void;
+  onCheckout: () => void;
   isLoading?: boolean;
+  hasContent?: boolean;
 }
 
-export function ResumeUploader({ onFileSelect, onTextSubmit, isLoading }: ResumeUploaderProps) {
+export function ResumeUploader({ 
+  onFileSelect, 
+  onTextSubmit, 
+  onCheckout,
+  isLoading,
+  hasContent 
+}: ResumeUploaderProps) {
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [textInput, setTextInput] = useState("");
@@ -48,11 +56,13 @@ export function ResumeUploader({ onFileSelect, onTextSubmit, isLoading }: Resume
     setSelectedFile(null);
   };
 
-  const handleTextSubmit = () => {
+  const handleTextPaste = () => {
     if (textInput.trim()) {
       onTextSubmit(textInput.trim());
     }
   };
+
+  const canProceed = mode === "upload" ? !!selectedFile : !!textInput.trim();
 
   return (
     <section className="py-16">
@@ -112,7 +122,7 @@ export function ResumeUploader({ onFileSelect, onTextSubmit, isLoading }: Resume
                     </button>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Ready to analyze. Click the button below to proceed.
+                    Ready to analyze. Click the button below to proceed to payment.
                   </p>
                 </div>
               ) : (
@@ -159,22 +169,22 @@ export function ResumeUploader({ onFileSelect, onTextSubmit, isLoading }: Resume
             <Button
               variant="hero"
               size="xl"
-              disabled={isLoading || (mode === "upload" ? !selectedFile : !textInput.trim())}
-              onClick={mode === "paste" ? handleTextSubmit : undefined}
+              disabled={isLoading || !canProceed}
+              onClick={mode === "paste" ? handleTextPaste : onCheckout}
             >
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Analyzing...
+                  Processing...
                 </>
               ) : (
                 <>
-                  Analyze for $25
+                  Pay $25 & Analyze
                 </>
               )}
             </Button>
             <p className="text-xs text-muted-foreground mt-3">
-              Secure payment via Stripe
+              Secure payment via Stripe • Instant results
             </p>
           </div>
         </div>
