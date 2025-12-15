@@ -6,6 +6,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const MAX_RESUME_LENGTH = 50000; // 50K characters max
+
+// Generic error messages for clients
+const ERROR_MESSAGES = {
+  INTERNAL: 'An error occurred while processing your request. Please try again.',
+  INVALID_INPUT: 'Invalid input provided.',
+  SERVICE_UNAVAILABLE: 'Service temporarily unavailable. Please try again later.',
+  RATE_LIMITED: 'Too many requests. Please try again later.',
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -14,17 +24,29 @@ serve(async (req) => {
   try {
     const { resumeText } = await req.json();
     
-    if (!resumeText || resumeText.trim().length === 0) {
+    if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length === 0) {
       return new Response(
         JSON.stringify({ error: 'Resume text is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Input length validation
+    if (resumeText.length > MAX_RESUME_LENGTH) {
+      console.log(`[ANALYZE-RESUME] Resume too long: ${resumeText.length} characters`);
+      return new Response(
+        JSON.stringify({ error: 'Resume text is too long. Please limit to 50,000 characters.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY is not configured");
-      throw new Error("AI service not configured");
+      console.error("[ANALYZE-RESUME] LOVABLE_API_KEY is not configured");
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const systemPrompt = `You are an expert ATS (Applicant Tracking System) resume analyst and recruiter. Write like a recruiter, not a career coach. Be direct with no motivational language. Prioritize measurable impact over generic advice.
@@ -53,7 +75,7 @@ Guidelines:
 
 Return ONLY valid JSON, no markdown formatting or code blocks.`;
 
-    console.log("Calling Lovable AI for resume analysis...");
+    console.log("[ANALYZE-RESUME] Calling AI for resume analysis...");
     
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -72,33 +94,39 @@ Return ONLY valid JSON, no markdown formatting or code blocks.`;
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("[ANALYZE-RESUME] AI gateway error:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Service is busy. Please try again in a moment." }),
+          JSON.stringify({ error: ERROR_MESSAGES.RATE_LIMITED }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "Service temporarily unavailable." }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
-      throw new Error("AI analysis failed");
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
     
     if (!content) {
-      console.error("No content in AI response:", data);
-      throw new Error("Empty AI response");
+      console.error("[ANALYZE-RESUME] No content in AI response:", data);
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    console.log("Raw AI response:", content);
+    console.log("[ANALYZE-RESUME] Raw AI response received");
 
     // Parse the JSON response
     let analysis;
@@ -117,17 +145,23 @@ Return ONLY valid JSON, no markdown formatting or code blocks.`;
       
       analysis = JSON.parse(cleanContent.trim());
     } catch (parseError) {
-      console.error("Failed to parse AI response:", parseError, content);
-      throw new Error("Failed to parse analysis results");
+      console.error("[ANALYZE-RESUME] Failed to parse AI response:", parseError);
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Validate the response structure
     if (!analysis.optimizedBullets || !analysis.actionVerbs || !analysis.keywords || !analysis.redFlags) {
-      console.error("Invalid analysis structure:", analysis);
-      throw new Error("Invalid analysis format");
+      console.error("[ANALYZE-RESUME] Invalid analysis structure");
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    console.log("Analysis complete, saving to database...");
+    console.log("[ANALYZE-RESUME] Analysis complete, saving to database...");
 
     // Save to database using service role
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -144,7 +178,7 @@ Return ONLY valid JSON, no markdown formatting or code blocks.`;
       .single();
 
     if (dbError) {
-      console.error("Database error:", dbError);
+      console.error("[ANALYZE-RESUME] Database error:", dbError);
       // Still return analysis even if save fails
       return new Response(
         JSON.stringify({ ...analysis, shareId: null }),
@@ -152,7 +186,7 @@ Return ONLY valid JSON, no markdown formatting or code blocks.`;
       );
     }
 
-    console.log("Analysis saved with share_id:", savedAnalysis.share_id);
+    console.log("[ANALYZE-RESUME] Analysis saved successfully");
 
     return new Response(
       JSON.stringify({ ...analysis, shareId: savedAnalysis.share_id }),
@@ -160,9 +194,9 @@ Return ONLY valid JSON, no markdown formatting or code blocks.`;
     );
 
   } catch (error) {
-    console.error("Error in analyze-resume function:", error);
+    console.error("[ANALYZE-RESUME] Error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Analysis failed" }),
+      JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

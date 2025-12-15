@@ -6,6 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
+
 type PdfTextItem = { str?: string };
 
 serve(async (req) => {
@@ -25,7 +27,25 @@ serve(async (req) => {
       });
     }
 
-    console.log("Parsing PDF:", file.name, "Size:", file.size);
+    // File size validation
+    if (file.size > MAX_FILE_SIZE) {
+      console.log(`[PARSE-PDF] File too large: ${file.size} bytes`);
+      return new Response(JSON.stringify({ error: "File too large. Maximum size is 10MB." }), {
+        status: 413,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // File type validation
+    if (!file.type.includes('pdf') && !file.name.toLowerCase().endsWith('.pdf')) {
+      console.log(`[PARSE-PDF] Invalid file type: ${file.type}`);
+      return new Response(JSON.stringify({ error: "Invalid file type. Please upload a PDF file." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log("[PARSE-PDF] Parsing file:", file.name, "Size:", file.size);
 
     // Convert file to typed array
     const arrayBuffer = await file.arrayBuffer();
@@ -39,7 +59,7 @@ serve(async (req) => {
       useSystemFonts: true,
     }).promise;
 
-    console.log("PDF loaded. Pages:", doc.numPages);
+    console.log("[PARSE-PDF] PDF loaded. Pages:", doc.numPages);
 
     // Extract text from all pages
     let fullText = "";
@@ -53,7 +73,7 @@ serve(async (req) => {
     }
 
     const text = fullText.trim();
-    console.log("PDF parsed successfully. Text length:", text.length);
+    console.log("[PARSE-PDF] PDF parsed successfully. Text length:", text.length);
 
     return new Response(
       JSON.stringify({
@@ -64,13 +84,11 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: unknown) {
-    console.error("Error parsing PDF:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
+    console.error("[PARSE-PDF] Error:", error);
+    
     return new Response(
       JSON.stringify({
-        error: "Failed to parse PDF",
-        details: errorMessage,
+        error: "Failed to parse PDF. Please ensure the file is a valid PDF document.",
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
