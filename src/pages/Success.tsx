@@ -230,59 +230,84 @@ const Success = () => {
 
   const handleSaveAsPdf = async () => {
     if (!analysisRef.current) return;
-    
+
     setIsGeneratingPdf(true);
     try {
       // Dynamic imports to avoid build issues
       const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-        import('html2canvas'),
-        import('jspdf')
+        import("html2canvas"),
+        import("jspdf"),
       ]);
-      
+
+      console.log("[PDF] Generating resume analysis PDF...");
+
       const canvas = await html2canvas(analysisRef.current, {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#0a0a0f'
+        backgroundColor: "#0a0a0f",
       });
-      
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
       const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
       });
-      
+
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const imgHeight = canvas.height;
       const imgWidth = canvas.width;
-      
+
       // Calculate total pages needed
       const scaledHeight = imgHeight * (pdfWidth / imgWidth);
       const pageHeight = pdfHeight;
       let heightLeft = scaledHeight;
       let position = 0;
-      
+
       // First page
-      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, scaledHeight);
+      pdf.addImage(imgData, "JPEG", 0, position, pdfWidth, scaledHeight);
       heightLeft -= pageHeight;
-      
+
       // Add more pages if needed
       while (heightLeft > 0) {
         position -= pageHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, scaledHeight);
+        pdf.addImage(imgData, "JPEG", 0, position, pdfWidth, scaledHeight);
         heightLeft -= pageHeight;
       }
-      
-      // Direct download
-      pdf.save('resume-analysis.pdf');
-      
-      toast({
-        title: "PDF downloaded!",
-        description: "Check your Downloads folder.",
-      });
+
+      const pdfBlob = pdf.output("blob");
+      const blobUrl = URL.createObjectURL(pdfBlob);
+
+      const ua = navigator.userAgent;
+      const isSafari =
+        /safari/i.test(ua) && !/chrome|crios|fxios|android/i.test(ua);
+
+      if (isSafari) {
+        // Safari often blocks programmatic downloads after async work.
+        // Opening the PDF in a new tab reliably uses the native PDF viewer.
+        window.open(blobUrl, "_blank", "noopener,noreferrer");
+        toast({
+          title: "PDF opened",
+          description: "Safari blocks automatic downloads. Use the viewer’s Download button.",
+        });
+      } else {
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = "resume-analysis.pdf";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        toast({
+          title: "PDF downloaded!",
+          description: "Check your Downloads folder.",
+        });
+      }
+
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
     } catch (err) {
       console.error("PDF generation error:", err);
       toast({
