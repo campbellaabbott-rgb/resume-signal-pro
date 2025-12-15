@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { CheckCircle2, Loader2, AlertCircle, Share2, Copy, Check, Mail } from "lucide-react";
+import { CheckCircle2, Loader2, AlertCircle, Share2, Check, Mail } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { AnalysisResults, type AnalysisData } from "@/components/AnalysisResults";
+import { ResumeRecovery } from "@/components/ResumeRecovery";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 const Success = () => {
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
+  const [needsResume, setNeedsResume] = useState(false);
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [shareId, setShareId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -25,6 +27,50 @@ const Success = () => {
   const shareIdParam = searchParams.get("share");
 
   useEffect(() => {
+    const runAnalysis = async (resumeText: string) => {
+      try {
+        console.log("Starting AI analysis...");
+
+        const { data, error: fnError } = await supabase.functions.invoke("analyze-resume", {
+          body: { resumeText },
+        });
+
+        if (fnError) {
+          console.error("Function error:", fnError);
+          throw new Error(fnError.message || "Analysis failed");
+        }
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        const { shareId: newShareId, ...analysisResult } = data;
+        setAnalysisData(analysisResult);
+        setShareId(newShareId);
+
+        // Clean up stored resume text after successful analysis
+        if (sessionId) {
+          localStorage.removeItem(`resumeText:${sessionId}`);
+        }
+        localStorage.removeItem("resumeText");
+
+        toast({
+          title: "Payment successful!",
+          description: "Your AI-powered resume analysis is ready.",
+        });
+      } catch (err) {
+        console.error("Analysis error:", err);
+        setError(err instanceof Error ? err.message : "Failed to analyze resume");
+        toast({
+          title: "Analysis failed",
+          description: "There was an issue analyzing your resume. Please contact support.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     const loadAnalysis = async () => {
       // If share ID is provided, load from database
       if (shareIdParam) {
@@ -61,50 +107,19 @@ const Success = () => {
         return;
       }
 
-      const resumeText = localStorage.getItem('resumeText');
-      
-      if (!resumeText) {
-        setError("Resume data not found. Please try uploading again.");
+      // Prefer session-scoped key, fallback to legacy key
+      const stored =
+        localStorage.getItem(`resumeText:${sessionId}`) ||
+        localStorage.getItem("resumeText");
+
+      if (!stored || !stored.trim()) {
+        setNeedsResume(true);
         setIsLoading(false);
         return;
       }
 
-      try {
-        console.log("Starting AI analysis...");
-        
-        const { data, error: fnError } = await supabase.functions.invoke('analyze-resume', {
-          body: { resumeText }
-        });
-
-        if (fnError) {
-          console.error("Function error:", fnError);
-          throw new Error(fnError.message || "Analysis failed");
-        }
-
-        if (data.error) {
-          throw new Error(data.error);
-        }
-
-        const { shareId: newShareId, ...analysisResult } = data;
-        setAnalysisData(analysisResult);
-        setShareId(newShareId);
-        localStorage.removeItem('resumeText');
-        
-        toast({
-          title: "Payment successful!",
-          description: "Your AI-powered resume analysis is ready.",
-        });
-      } catch (err) {
-        console.error("Analysis error:", err);
-        setError(err instanceof Error ? err.message : "Failed to analyze resume");
-        toast({
-          title: "Analysis failed",
-          description: "There was an issue analyzing your resume. Please contact support.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
+      setNeedsResume(false);
+      await runAnalysis(stored);
     };
 
     loadAnalysis();
@@ -213,6 +228,53 @@ const Success = () => {
                       : "Our AI is reviewing your resume with recruiter-grade precision."}
                   </p>
                 </div>
+              ) : needsResume ? (
+                <ResumeRecovery
+                  disabled={isLoading}
+                  onResumeTextReady={(text) => {
+                    // Persist in case the page reloads during analysis
+                    if (sessionId) {
+                      localStorage.setItem(`resumeText:${sessionId}`, text);
+                    }
+                    localStorage.setItem("resumeText", text);
+
+                    setNeedsResume(false);
+                    setIsLoading(true);
+                    setError(null);
+
+                    // Trigger analysis with the newly provided text
+                    void supabase.functions
+                      .invoke("analyze-resume", { body: { resumeText: text } })
+                      .then(({ data, error: fnError }) => {
+                        if (fnError) throw fnError;
+                        if (data?.error) throw new Error(data.error);
+
+                        const { shareId: newShareId, ...analysisResult } = data;
+                        setAnalysisData(analysisResult);
+                        setShareId(newShareId);
+
+                        if (sessionId) {
+                          localStorage.removeItem(`resumeText:${sessionId}`);
+                        }
+                        localStorage.removeItem("resumeText");
+
+                        toast({
+                          title: "Analysis ready",
+                          description: "Your resume analysis is ready below.",
+                        });
+                      })
+                      .catch((err) => {
+                        console.error("Analysis error:", err);
+                        setError(err instanceof Error ? err.message : "Failed to analyze resume");
+                        toast({
+                          title: "Analysis failed",
+                          description: "There was an issue analyzing your resume. Please try again.",
+                          variant: "destructive",
+                        });
+                      })
+                      .finally(() => setIsLoading(false));
+                  }}
+                />
               ) : error ? (
                 <div className="space-y-6">
                   <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-destructive/10">
