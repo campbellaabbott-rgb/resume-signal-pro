@@ -36,18 +36,11 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://lovable.dev";
 
-    // Create a one-time payment session
+    // Create a one-time payment session with dedicated price ID
     const session = await stripe.checkout.sessions.create({
       line_items: [
         {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: "Resume Booster Analysis",
-              description: "AI-powered resume analysis with actionable feedback",
-            },
-            unit_amount: 2500, // $25.00
-          },
+          price: "price_1SekyXHBplUUV1CgfJWeRFsf",
           quantity: 1,
         },
       ],
