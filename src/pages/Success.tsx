@@ -24,7 +24,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-const analysisSteps = [
+// Analysis progress steps
+const analysisSteps: Array<{id: number; label: string; icon: typeof CheckCircle2}> = [
   { id: 1, label: "Payment verified", icon: CheckCircle2 },
   { id: 2, label: "Parsing resume", icon: FileText },
   { id: 3, label: "AI analysis", icon: Sparkles },
@@ -227,10 +228,71 @@ const Success = () => {
     }
   };
 
-  const handleSaveAsPdf = () => {
-    // Use browser print with PDF option - this opens the print dialog
-    // where users can select "Save as PDF" as the destination
-    window.print();
+  const handleSaveAsPdf = async () => {
+    if (!analysisRef.current) return;
+    
+    setIsGeneratingPdf(true);
+    try {
+      // Dynamic imports to avoid build issues
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf')
+      ]);
+      
+      const canvas = await html2canvas(analysisRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#0a0a0f'
+      });
+      
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgHeight = canvas.height;
+      const imgWidth = canvas.width;
+      
+      // Calculate total pages needed
+      const scaledHeight = imgHeight * (pdfWidth / imgWidth);
+      const pageHeight = pdfHeight;
+      let heightLeft = scaledHeight;
+      let position = 0;
+      
+      // First page
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, scaledHeight);
+      heightLeft -= pageHeight;
+      
+      // Add more pages if needed
+      while (heightLeft > 0) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, scaledHeight);
+        heightLeft -= pageHeight;
+      }
+      
+      // Direct download
+      pdf.save('resume-analysis.pdf');
+      
+      toast({
+        title: "PDF downloaded!",
+        description: "Check your Downloads folder.",
+      });
+    } catch (err) {
+      console.error("PDF generation error:", err);
+      toast({
+        title: "Failed to generate PDF",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   const isSharedView = !!shareIdParam;
