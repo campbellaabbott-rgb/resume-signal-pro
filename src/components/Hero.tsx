@@ -18,13 +18,13 @@ export function Hero() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm text-primary mb-8 animate-fade-in">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            Recruiter-grade analysis
+            Resume Booster
           </div>
           
           {/* Heading */}
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-            Stop guessing what{" "}
-            <span className="text-gradient-primary">recruiters see</span>
+            Boost your resume.{" "}
+            <span className="text-gradient-primary">Land more interviews.</span>
           </h1>
           
           {/* Subheading */}
