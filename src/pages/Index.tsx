@@ -4,6 +4,7 @@ import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { ResumeUploader } from "@/components/ResumeUploader";
 import { Footer } from "@/components/Footer";
+import { FAQ } from "@/components/FAQ";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -127,6 +128,8 @@ const Index = () => {
           isLoading={isLoading}
           hasContent={!!resumeText || !!selectedFile}
         />
+        
+        <FAQ />
       </main>
       
       <Footer />
