@@ -421,7 +421,46 @@ export function ResumeUploader({
           </div>
 
           {/* Submit Buttons */}
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-5">
+            {/* Free Scan - Primary Option */}
+            {onFreeScan && (
+              <div className="space-y-3">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  disabled={isFreeScanLoading || !canProceed}
+                  onClick={onFreeScan}
+                  className="min-w-[320px] h-12 text-base gap-2 border-2 border-primary/50 bg-primary/5 hover:bg-primary/10 hover:border-primary transition-all touch-manipulation"
+                >
+                  {isFreeScanLoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>Scanning...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-5 h-5 text-primary" />
+                      <span>Try Free Keyword Scan</span>
+                      <span className="ml-1 px-2 py-0.5 rounded-full bg-success/20 text-success text-xs font-medium">FREE</span>
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Get 5 keyword suggestions instantly • 3 free scans/day
+                </p>
+              </div>
+            )}
+
+            {/* Divider */}
+            {onFreeScan && (
+              <div className="flex items-center gap-4">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground font-medium">or get the full report</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+            )}
+
+            {/* Full Analysis - Paid Option */}
             <Button
               variant="hero"
               size="xl"
@@ -452,34 +491,8 @@ export function ResumeUploader({
               <span className="w-1 h-1 rounded-full bg-muted-foreground/30" aria-hidden="true" />
               <span>Results delivered instantly</span>
             </div>
-
-            {/* Free Scan Option */}
-            {onFreeScan && (
-              <div className="pt-2">
-                <button
-                  onClick={onFreeScan}
-                  disabled={isFreeScanLoading || !canProceed}
-                  className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isFreeScanLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Scanning...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="w-4 h-4" />
-                      <span>Try Free Keyword Scan First</span>
-                    </>
-                  )}
-                </button>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Get 5 keyword suggestions free (3 scans/day)
-                </p>
-              </div>
-            )}
             
-            {!hasLinkedInContent && !hasJobDescriptionContent && !onFreeScan && (
+            {!hasLinkedInContent && !hasJobDescriptionContent && (
               <p className="text-xs text-muted-foreground">
                 <span aria-hidden="true">💡</span> Add LinkedIn profile or job description for a more targeted analysis
               </p>
