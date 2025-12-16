@@ -1,8 +1,20 @@
 import { 
   AlertTriangle, CheckCircle2, ArrowRight, FileWarning, 
-  TrendingUp, Zap, Lightbulb, Target, BarChart3 
+  TrendingUp, Zap, Lightbulb, Target, BarChart3, FileText,
+  ListChecks, Gauge
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const sampleATSScore = {
+  overall: 72,
+  breakdown: [
+    { name: "Job Title Match", score: 12, max: 15 },
+    { name: "Skills Match", score: 22, max: 30 },
+    { name: "Action Verb Usage", score: 11, max: 15 },
+    { name: "Keyword Coverage", score: 14, max: 20 },
+    { name: "Formatting Score", score: 13, max: 20 },
+  ]
+};
 
 const sampleParsingIssues = {
   detectedIssues: [
@@ -10,7 +22,6 @@ const sampleParsingIssues = {
     "Job dates are not in preferred structure",
     "Special bullets hinder scanning"
   ],
-  severity: "medium",
   criticalFixes: [
     "Use Month Year format (e.g., Jan 2020 - Present)",
     "Replace fancy bullets with standard hyphens or dots",
@@ -24,12 +35,30 @@ const sampleBullet = {
   reason: "Added team size, measurable outcome, and specific revenue impact"
 };
 
-const sampleKeywords = ["Cross-functional collaboration", "Revenue growth", "Agile methodology", "Stakeholder management"];
+const sampleResumeLength = {
+  currentPages: 3,
+  recommendedPages: 2,
+  reasoning: "With 8 years of experience, a 2-page resume is optimal. Consider condensing older roles."
+};
+
+const sampleActionPlan = [
+  "Add 3-5 quantified achievements to your most recent role",
+  "Replace passive phrases with strong action verbs",
+  "Include 'cross-functional' and 'stakeholder management' keywords",
+  "Fix date formatting for ATS compatibility"
+];
 
 const sampleRedFlags = [
   "Employment gap of 8 months not addressed",
   "Generic objective statement instead of targeted summary"
 ];
+
+function getScoreColor(score: number, max: number) {
+  const pct = (score / max) * 100;
+  if (pct >= 70) return "text-success";
+  if (pct >= 50) return "text-warning";
+  return "text-destructive";
+}
 
 export function AnalysisPreview() {
   return (
@@ -51,62 +80,68 @@ export function AnalysisPreview() {
         </div>
 
         <div className="max-w-4xl mx-auto grid gap-6">
-          {/* ATS Parsing Issues Preview */}
-          <div className="p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-warning/30 hover:border-warning/50 transition-all duration-300">
+          {/* ATS Score Breakdown */}
+          <div className="p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-primary/30 hover:border-primary/50 transition-all duration-300">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <FileWarning className="w-5 h-5 text-warning" />
-                <span className="text-sm font-semibold">Formatting & Parsing Issues</span>
-                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">NEW</span>
+                <Gauge className="w-5 h-5 text-primary" />
+                <span className="text-sm font-semibold">ATS Compatibility Score</span>
               </div>
-              <span className={cn(
-                "px-2 py-0.5 rounded-full text-xs font-bold uppercase",
-                "bg-warning/20 text-warning"
-              )}>
-                {sampleParsingIssues.severity} severity
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-primary">{sampleATSScore.overall}</span>
+                <span className="text-sm text-muted-foreground">/100</span>
+              </div>
             </div>
             
-            <p className="text-xs text-muted-foreground mb-4">
-              These formatting issues may cause ATS systems to incorrectly parse or reject your resume.
-            </p>
-            
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-warning/5 border border-warning/20">
-                <span className="text-xs font-semibold uppercase tracking-wide text-warning flex items-center gap-1.5 mb-2">
-                  <AlertTriangle className="w-3 h-3" />
-                  Detected Issues
-                </span>
-                <ul className="space-y-2">
-                  {sampleParsingIssues.detectedIssues.map((issue, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                      <span className="text-warning mt-0.5">•</span>
-                      {issue}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              
-              <div className="p-4 rounded-xl bg-success/5 border border-success/20">
-                <span className="text-xs font-semibold uppercase tracking-wide text-success flex items-center gap-1.5 mb-2">
-                  <CheckCircle2 className="w-3 h-3" />
-                  Critical Fixes
-                </span>
-                <ul className="space-y-2">
-                  {sampleParsingIssues.criticalFixes.map((fix, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                      <ArrowRight className="w-3 h-3 text-success mt-1 shrink-0" />
-                      {fix}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              {sampleATSScore.breakdown.map((item, i) => (
+                <div key={i} className="p-3 rounded-xl bg-muted/30 border border-border/50 text-center">
+                  <div className={cn("text-lg font-bold", getScoreColor(item.score, item.max))}>
+                    {item.score}/{item.max}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1 leading-tight">{item.name}</div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Two column grid for other previews */}
+          {/* Two column grid */}
           <div className="grid md:grid-cols-2 gap-6">
-            {/* Bullet Improvement Preview */}
+            {/* ATS Parsing Issues */}
+            <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-warning/30 hover:border-warning/50 transition-all duration-300">
+              <div className="flex items-center gap-2 mb-4">
+                <FileWarning className="w-5 h-5 text-warning" />
+                <span className="text-sm font-semibold">Formatting Issues</span>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="p-3 rounded-lg bg-warning/5 border border-warning/20">
+                  <span className="text-xs font-semibold text-warning mb-2 block">Detected</span>
+                  <ul className="space-y-1.5">
+                    {sampleParsingIssues.detectedIssues.slice(0, 2).map((issue, i) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-foreground">
+                        <span className="text-warning">•</span>
+                        {issue}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div className="p-3 rounded-lg bg-success/5 border border-success/20">
+                  <span className="text-xs font-semibold text-success mb-2 block">Fixes</span>
+                  <ul className="space-y-1.5">
+                    {sampleParsingIssues.criticalFixes.slice(0, 2).map((fix, i) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-foreground">
+                        <ArrowRight className="w-3 h-3 text-success mt-0.5 shrink-0" />
+                        {fix}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Bullet Improvement */}
             <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300">
               <div className="flex items-center gap-2 mb-4">
                 <TrendingUp className="w-5 h-5 text-primary" />
@@ -116,12 +151,12 @@ export function AnalysisPreview() {
               <div className="space-y-3">
                 <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20">
                   <span className="text-xs font-semibold text-destructive">Before</span>
-                  <p className="text-sm text-foreground mt-1 line-through opacity-70">{sampleBullet.original}</p>
+                  <p className="text-xs text-foreground mt-1 line-through opacity-70">{sampleBullet.original}</p>
                 </div>
                 
                 <div className="p-3 rounded-lg bg-success/5 border border-success/20">
                   <span className="text-xs font-semibold text-success">After</span>
-                  <p className="text-sm text-foreground mt-1 font-medium">{sampleBullet.improved}</p>
+                  <p className="text-xs text-foreground mt-1 font-medium">{sampleBullet.improved}</p>
                 </div>
                 
                 <div className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -130,37 +165,57 @@ export function AnalysisPreview() {
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Keywords & Red Flags Preview */}
-            <div className="space-y-4">
-              <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300">
-                <div className="flex items-center gap-2 mb-3">
-                  <Lightbulb className="w-5 h-5 text-primary" />
-                  <span className="text-sm font-semibold">Recommended Keywords</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {sampleKeywords.map((keyword, i) => (
-                    <span key={i} className="px-2.5 py-1 rounded-full bg-primary/10 text-xs text-primary font-medium">
-                      {keyword}
+          {/* Three column grid */}
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Resume Length */}
+            <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="w-5 h-5 text-primary" />
+                <span className="text-sm font-semibold">Resume Length</span>
+              </div>
+              <div className="flex items-baseline gap-2 mb-2">
+                <span className="text-2xl font-bold text-warning">{sampleResumeLength.currentPages}</span>
+                <span className="text-muted-foreground">→</span>
+                <span className="text-2xl font-bold text-success">{sampleResumeLength.recommendedPages}</span>
+                <span className="text-xs text-muted-foreground">pages</span>
+              </div>
+              <p className="text-xs text-muted-foreground">{sampleResumeLength.reasoning}</p>
+            </div>
+
+            {/* Action Plan */}
+            <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-primary/20 hover:border-primary/40 transition-all duration-300">
+              <div className="flex items-center gap-2 mb-3">
+                <ListChecks className="w-5 h-5 text-primary" />
+                <span className="text-sm font-semibold">Action Plan</span>
+              </div>
+              <ol className="space-y-2">
+                {sampleActionPlan.slice(0, 3).map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-foreground">
+                    <span className="w-4 h-4 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center shrink-0 font-medium">
+                      {i + 1}
                     </span>
-                  ))}
-                </div>
+                    {item}
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            {/* Red Flags */}
+            <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-destructive/20 hover:border-destructive/30 transition-all duration-300">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+                <span className="text-sm font-semibold">Red Flags</span>
               </div>
-              
-              <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-destructive/20 hover:border-destructive/30 transition-all duration-300">
-                <div className="flex items-center gap-2 mb-3">
-                  <AlertTriangle className="w-5 h-5 text-destructive" />
-                  <span className="text-sm font-semibold">Red Flags</span>
-                </div>
-                <ul className="space-y-2">
-                  {sampleRedFlags.map((flag, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                      <Target className="w-3 h-3 text-destructive mt-1 shrink-0" />
-                      {flag}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <ul className="space-y-2">
+                {sampleRedFlags.map((flag, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-foreground">
+                    <Target className="w-3 h-3 text-destructive mt-0.5 shrink-0" />
+                    {flag}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
 
@@ -168,7 +223,7 @@ export function AnalysisPreview() {
           <div className="text-center pt-4">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 text-sm text-muted-foreground">
               <Zap className="w-4 h-4 text-primary" />
-              Plus 5 more sections: Skills Gap, Industry Insights, Action Verbs, Summary Rewrite & more
+              Plus: Skills Gap, Industry Insights, Action Verbs, Keywords, Summary Rewrite & LinkedIn Analysis
             </div>
           </div>
         </div>
