@@ -74,6 +74,23 @@ const getAnalysisTools = (hasLinkedIn: boolean) => [{
           },
           required: ["currentIssues", "recommendations", "sectionOrder"]
         },
+        atsParsingIssues: {
+          type: "object",
+          properties: {
+            detectedIssues: { 
+              type: "array", 
+              items: { type: "string" }, 
+              description: "Specific formatting/parsing issues that will break ATS systems (e.g., headers not readable, tables/text boxes used, unicode bullets, contact info format, graphics/images, multi-column layouts)" 
+            },
+            severity: { type: "string", enum: ["low", "medium", "high"], description: "Overall severity of parsing issues" },
+            criticalFixes: { 
+              type: "array", 
+              items: { type: "string" }, 
+              description: "Most critical fixes needed for ATS compatibility" 
+            }
+          },
+          required: ["detectedIssues", "severity", "criticalFixes"]
+        },
         summaryRewrite: {
           type: "object",
           properties: {
@@ -188,8 +205,8 @@ const getAnalysisTools = (hasLinkedIn: boolean) => [{
       },
       required: [
         "industry", "experienceLevel", "atsScore", "readabilityMetrics", "formatRecommendations",
-        "summaryRewrite", "optimizedBullets", "quantificationOpportunities", "skillsGap",
-        "industryInsights", "actionVerbs", "keywords", "redFlags", "resumeLength"
+        "atsParsingIssues", "summaryRewrite", "optimizedBullets", "quantificationOpportunities", 
+        "skillsGap", "industryInsights", "actionVerbs", "keywords", "redFlags", "resumeLength"
       ]
     }
   }
@@ -339,6 +356,14 @@ Your task is to provide a comprehensive resume analysis using the submit_resume_
 
 Analysis Guidelines:
 - ATS Score: Calculate based on keyword density, formatting compatibility, structure, and content relevance
+- ATS Parsing Issues: Identify specific formatting problems that break ATS parsing:
+  * Headers not readable by ATS (custom fonts, images as headers)
+  * Tables, text boxes, or multi-column layouts that get scrambled
+  * Unicode/fancy bullets that break parsing (use standard bullets)
+  * Contact info not in standard parseable format
+  * Graphics, logos, or images that ATS cannot read
+  * Special characters or fonts that don't parse correctly
+  * Job dates not in preferred structure (Month Year - Month Year)
 - Readability: Assess clarity, jargon usage, and scanability
 - Format: Identify layout issues and recommend improvements
 - Bullets: Find weak points and rewrite with STAR method (Situation, Task, Action, Result)
@@ -462,6 +487,7 @@ Be specific, use examples from their actual resume, and prioritize actionable im
     analysis.atsScore = analysis.atsScore || { score: 0, breakdown: { keywordMatch: 0, formatting: 0, structure: 0, relevance: 0 }, improvements: [] };
     analysis.readabilityMetrics = analysis.readabilityMetrics || { grade: "C", bulletPointClarity: "", jargonLevel: "moderate", suggestions: [] };
     analysis.formatRecommendations = analysis.formatRecommendations || { currentIssues: [], recommendations: [], sectionOrder: [] };
+    analysis.atsParsingIssues = analysis.atsParsingIssues || { detectedIssues: [], severity: "low", criticalFixes: [] };
     analysis.summaryRewrite = analysis.summaryRewrite || { professionalSummary: "", linkedInHeadline: "" };
     analysis.quantificationOpportunities = analysis.quantificationOpportunities || [];
     analysis.skillsGap = analysis.skillsGap || { missingTechnical: [], missingSoft: [], recommendations: "" };
