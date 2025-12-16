@@ -1,7 +1,7 @@
 import { 
   CheckCircle2, AlertCircle, Lightbulb, Zap, AlertTriangle, ArrowRight, 
   TrendingUp, Gauge, User, Briefcase, Target, BarChart3, Brain, Copy, Check,
-  Linkedin, Eye, Search, Star, MessageSquare, Sparkles, FileText, BookOpen, Layout
+  Linkedin, Eye, Search, Star, MessageSquare, Sparkles, FileText, BookOpen, Layout, FileStack
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
@@ -82,6 +82,11 @@ export interface AnalysisData {
   }[];
   keywords: string[];
   redFlags: string[];
+  resumeLength?: {
+    recommendedPages: number;
+    currentAssessment: string;
+    reasoning: string;
+  };
   linkedInAnalysis?: LinkedInAnalysis;
 }
 
@@ -282,6 +287,33 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       </ul>
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Resume Length Recommendation */}
+            {data.resumeLength && (
+              <div className="max-w-2xl mx-auto">
+                <div className="p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50">
+                  <div className="flex items-center gap-2 mb-4">
+                    <FileStack className="w-5 h-5 text-primary" />
+                    <span className="text-sm font-medium">Recommended Resume Length</span>
+                    <span className="ml-auto px-3 py-1 rounded-full bg-primary/10 text-primary text-lg font-bold">
+                      {data.resumeLength.recommendedPages} {data.resumeLength.recommendedPages === 1 ? 'Page' : 'Pages'}
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current Assessment</span>
+                      <p className="text-sm text-foreground mt-1">{data.resumeLength.currentAssessment}</p>
+                    </div>
+                    
+                    <div>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Why This Length?</span>
+                      <p className="text-sm text-muted-foreground mt-1">{data.resumeLength.reasoning}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

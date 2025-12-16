@@ -140,6 +140,15 @@ const getAnalysisTools = (hasLinkedIn: boolean) => [{
         },
         keywords: { type: "array", items: { type: "string" }, description: "6-8 industry keywords to add" },
         redFlags: { type: "array", items: { type: "string" }, description: "3-5 issues recruiters would notice" },
+        resumeLength: {
+          type: "object",
+          properties: {
+            recommendedPages: { type: "number", description: "Recommended number of pages (1, 2, or 3)" },
+            currentAssessment: { type: "string", description: "Assessment of their current resume length" },
+            reasoning: { type: "string", description: "Why this page count is recommended based on their experience level and industry" }
+          },
+          required: ["recommendedPages", "currentAssessment", "reasoning"]
+        },
         ...(hasLinkedIn ? {
           linkedInAnalysis: {
             type: "object",
@@ -180,7 +189,7 @@ const getAnalysisTools = (hasLinkedIn: boolean) => [{
       required: [
         "industry", "experienceLevel", "atsScore", "readabilityMetrics", "formatRecommendations",
         "summaryRewrite", "optimizedBullets", "quantificationOpportunities", "skillsGap",
-        "industryInsights", "actionVerbs", "keywords", "redFlags"
+        "industryInsights", "actionVerbs", "keywords", "redFlags", "resumeLength"
       ]
     }
   }
