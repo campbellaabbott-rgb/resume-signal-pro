@@ -33,6 +33,166 @@ const cleanupOldSessions = () => {
   }
 };
 
+// Tool definition for structured resume analysis output
+const getAnalysisTools = (hasLinkedIn: boolean) => [{
+  type: "function",
+  function: {
+    name: "submit_resume_analysis",
+    description: "Submit the complete resume analysis with all sections",
+    parameters: {
+      type: "object",
+      properties: {
+        industry: { type: "string", description: "Detected industry (e.g., 'Software Engineering', 'Marketing', 'Finance')" },
+        experienceLevel: { type: "string", enum: ["entry", "mid", "senior", "executive"], description: "Career experience level" },
+        atsScore: {
+          type: "object",
+          properties: {
+            score: { type: "number", description: "ATS compatibility score from 0-100" },
+            breakdown: {
+              type: "object",
+              properties: {
+                keywordMatch: { type: "number", description: "Keyword optimization score 0-100" },
+                formatting: { type: "number", description: "Format compatibility score 0-100" },
+                structure: { type: "number", description: "Structure/organization score 0-100" },
+                relevance: { type: "number", description: "Content relevance score 0-100" }
+              },
+              required: ["keywordMatch", "formatting", "structure", "relevance"]
+            },
+            improvements: { type: "array", items: { type: "string" }, description: "Top 3-5 ways to improve ATS score" }
+          },
+          required: ["score", "breakdown", "improvements"]
+        },
+        readabilityMetrics: {
+          type: "object",
+          properties: {
+            grade: { type: "string", enum: ["A", "B", "C", "D", "F"], description: "Overall readability grade" },
+            bulletPointClarity: { type: "string", description: "Assessment of bullet point clarity" },
+            jargonLevel: { type: "string", enum: ["low", "moderate", "high"], description: "Amount of industry jargon used" },
+            suggestions: { type: "array", items: { type: "string" }, description: "Readability improvement suggestions" }
+          },
+          required: ["grade", "bulletPointClarity", "jargonLevel", "suggestions"]
+        },
+        formatRecommendations: {
+          type: "object",
+          properties: {
+            currentIssues: { type: "array", items: { type: "string" }, description: "Current formatting issues detected" },
+            recommendations: { type: "array", items: { type: "string" }, description: "Specific formatting improvements" },
+            sectionOrder: { type: "array", items: { type: "string" }, description: "Recommended section order for this candidate" }
+          },
+          required: ["currentIssues", "recommendations", "sectionOrder"]
+        },
+        summaryRewrite: {
+          type: "object",
+          properties: {
+            professionalSummary: { type: "string", description: "2-3 sentence professional summary for resume" },
+            linkedInHeadline: { type: "string", description: "Optimized LinkedIn headline under 120 chars" }
+          },
+          required: ["professionalSummary", "linkedInHeadline"]
+        },
+        optimizedBullets: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              original: { type: "string", description: "Original weak bullet from resume" },
+              improved: { type: "string", description: "Rewritten with metrics and impact" },
+              reason: { type: "string", description: "Brief explanation of improvement" }
+            },
+            required: ["original", "improved", "reason"]
+          },
+          description: "3-5 bullet point improvements"
+        },
+        quantificationOpportunities: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              context: { type: "string", description: "Vague statement from resume" },
+              suggestion: { type: "string", description: "How to add metrics" },
+              example: { type: "string", description: "Example with numbers" }
+            },
+            required: ["context", "suggestion", "example"]
+          },
+          description: "3-4 quantification opportunities"
+        },
+        skillsGap: {
+          type: "object",
+          properties: {
+            missingTechnical: { type: "array", items: { type: "string" }, description: "3-5 missing technical skills" },
+            missingSoft: { type: "array", items: { type: "string" }, description: "2-3 missing soft skills" },
+            recommendations: { type: "string", description: "How to address skill gaps" }
+          },
+          required: ["missingTechnical", "missingSoft", "recommendations"]
+        },
+        industryInsights: {
+          type: "object",
+          properties: {
+            whatRecruitersLookFor: { type: "string", description: "What recruiters in this industry prioritize" },
+            competitiveAdvantage: { type: "string", description: "What would make candidate stand out" },
+            commonMistakes: { type: "string", description: "Common resume mistakes in this industry" }
+          },
+          required: ["whatRecruitersLookFor", "competitiveAdvantage", "commonMistakes"]
+        },
+        actionVerbs: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              weak: { type: "string", description: "Weak verb found in resume" },
+              strong: { type: "string", description: "Stronger replacement" }
+            },
+            required: ["weak", "strong"]
+          },
+          description: "4-6 verb improvements"
+        },
+        keywords: { type: "array", items: { type: "string" }, description: "6-8 industry keywords to add" },
+        redFlags: { type: "array", items: { type: "string" }, description: "3-5 issues recruiters would notice" },
+        ...(hasLinkedIn ? {
+          linkedInAnalysis: {
+            type: "object",
+            properties: {
+              headlineOptimization: {
+                type: "object",
+                properties: {
+                  current: { type: "string" },
+                  improved: { type: "string" },
+                  whyBetter: { type: "string" }
+                },
+                required: ["current", "improved", "whyBetter"]
+              },
+              aboutSectionRewrite: { type: "string", description: "3-4 paragraph About section" },
+              experienceOptimization: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    role: { type: "string" },
+                    issue: { type: "string" },
+                    improved: { type: "string" }
+                  },
+                  required: ["role", "issue", "improved"]
+                }
+              },
+              skillsToAdd: { type: "array", items: { type: "string" } },
+              skillsToRemove: { type: "array", items: { type: "string" } },
+              seoKeywords: { type: "array", items: { type: "string" } },
+              profileVisibilityTips: { type: "array", items: { type: "string" } },
+              featuredSectionIdeas: { type: "array", items: { type: "string" } },
+              recommendationStrategy: { type: "string" }
+            },
+            required: ["headlineOptimization", "aboutSectionRewrite", "experienceOptimization", "skillsToAdd", "skillsToRemove", "seoKeywords", "profileVisibilityTips", "featuredSectionIdeas", "recommendationStrategy"]
+          }
+        } : {})
+      },
+      required: [
+        "industry", "experienceLevel", "atsScore", "readabilityMetrics", "formatRecommendations",
+        "summaryRewrite", "optimizedBullets", "quantificationOpportunities", "skillsGap",
+        "industryInsights", "actionVerbs", "keywords", "redFlags"
+      ]
+    }
+  }
+}];
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -132,103 +292,32 @@ serve(async (req) => {
 
     const systemPrompt = `You are an expert ATS resume analyst, recruiter, and LinkedIn optimization specialist. Write like a recruiter, not a career coach. Be direct with no motivational language. Prioritize measurable impact over generic advice.
 
-Analyze the provided resume${hasLinkedIn ? ' and LinkedIn profile' : ''} and return a JSON object with EXACTLY this structure:
-{
-  "industry": "detected industry (e.g., 'Software Engineering', 'Marketing', 'Finance')",
-  "experienceLevel": "entry | mid | senior | executive",
-  "summaryRewrite": {
-    "professionalSummary": "A 2-3 sentence powerful professional summary for the top of their resume",
-    "linkedInHeadline": "An optimized LinkedIn headline under 120 characters"
-  },
-  "optimizedBullets": [
-    {
-      "original": "exact text from their resume that needs improvement",
-      "improved": "rewritten version with metrics and impact",
-      "reason": "brief explanation of the improvement"
-    }
-  ],
-  "quantificationOpportunities": [
-    {
-      "context": "The vague statement or area from their resume",
-      "suggestion": "How to add specific metrics here",
-      "example": "Example of what it could look like with numbers"
-    }
-  ],
-  "skillsGap": {
-    "missingTechnical": ["skill1", "skill2"],
-    "missingSoft": ["skill1", "skill2"],
-    "recommendations": "Brief paragraph on how to address skill gaps"
-  },
-  "industryInsights": {
-    "whatRecruitersLookFor": "2-3 sentences on what recruiters in this industry prioritize",
-    "competitiveAdvantage": "What would make this candidate stand out",
-    "commonMistakes": "1-2 common resume mistakes in this industry to avoid"
-  },
-  "actionVerbs": [
-    { "weak": "weak verb found in resume", "strong": "stronger replacement" }
-  ],
-  "keywords": ["keyword1", "keyword2"],
-  "redFlags": ["specific issue 1", "specific issue 2"]${hasLinkedIn ? `,
-  "linkedInAnalysis": {
-    "headlineOptimization": {
-      "current": "Their current headline or 'Not provided' if not visible",
-      "improved": "Optimized headline under 120 chars with keywords",
-      "whyBetter": "Brief explanation of the improvement"
-    },
-    "aboutSectionRewrite": "A compelling 3-4 paragraph About section that tells their story, highlights achievements, and includes a call-to-action",
-    "experienceOptimization": [
-      {
-        "role": "Job title at Company",
-        "issue": "What's wrong with current description",
-        "improved": "Rewritten description with metrics and keywords"
-      }
-    ],
-    "skillsToAdd": ["skill1", "skill2", "skill3"],
-    "skillsToRemove": ["outdated skill1", "irrelevant skill2"],
-    "seoKeywords": ["keyword1", "keyword2", "keyword3"],
-    "profileVisibilityTips": [
-      "Specific tip 1 to increase profile views",
-      "Specific tip 2 for better searchability",
-      "Specific tip 3 for engagement"
-    ],
-    "featuredSectionIdeas": [
-      "Type of content to feature and why",
-      "Another content idea"
-    ],
-    "recommendationStrategy": "How to request and give recommendations effectively"
-  }` : ''}
-}
+Your task is to provide a comprehensive resume analysis using the submit_resume_analysis tool. Be thorough and specific.
 
-Guidelines:
-- industry: Detect the candidate's industry from job titles, skills, and experience
-- experienceLevel: Assess based on years of experience and role seniority
-- summaryRewrite: Create a compelling professional summary and LinkedIn headline that highlights their strongest selling points
-- optimizedBullets: Find 3-5 weak bullet points and rewrite them with specific metrics, outcomes, and impact
-- quantificationOpportunities: Find 3-4 places where vague statements could be strengthened with specific numbers
-- skillsGap: Identify 3-5 missing technical skills and 2-3 soft skills standard for their role/industry
-- industryInsights: Provide specific advice tailored to their detected industry
-- actionVerbs: Identify 4-6 weak verbs and suggest powerful alternatives
-- keywords: Suggest 6-8 industry-relevant keywords missing from the resume
-- redFlags: List 3-5 specific issues recruiters would notice${hasLinkedIn ? `
+Analysis Guidelines:
+- ATS Score: Calculate based on keyword density, formatting compatibility, structure, and content relevance
+- Readability: Assess clarity, jargon usage, and scanability
+- Format: Identify layout issues and recommend improvements
+- Bullets: Find weak points and rewrite with STAR method (Situation, Task, Action, Result)
+- Quantification: Identify vague statements and suggest specific metrics
+- Skills Gap: Compare to industry standards for their role/level
+- Industry Insights: Provide specific, actionable advice for their field
 
-LinkedIn-specific guidelines:
-- headlineOptimization: Make headline keyword-rich, specific, and compelling - NOT generic titles
-- aboutSectionRewrite: Write in first person, tell their career story, include achievements with numbers, end with what they're looking for
-- experienceOptimization: Find 2-3 role descriptions to improve with metrics and action verbs
-- skillsToAdd: Suggest 5-8 in-demand skills they should add based on their industry
-- skillsToRemove: Identify 2-3 outdated or irrelevant skills hurting their profile
-- seoKeywords: List 8-10 keywords recruiters search for in their industry
-- profileVisibilityTips: Give 3-5 specific, actionable tips (posting frequency, engagement strategies, profile settings)
-- featuredSectionIdeas: Suggest 2-3 types of content to feature
-- recommendationStrategy: Explain how to get quality recommendations` : ''}
+${hasLinkedIn ? `LinkedIn Guidelines:
+- Headline: Make it keyword-rich and compelling, NOT generic job titles
+- About: Write in first person, tell their story, include achievements
+- Experience: Improve 2-3 role descriptions with metrics
+- Skills: Suggest in-demand skills to add, outdated ones to remove
+- SEO: List keywords recruiters search for
+- Visibility: Give specific, actionable profile optimization tips` : ''}
 
-Return ONLY valid JSON, no markdown formatting or code blocks.`;
+Be specific, use examples from their actual resume, and prioritize actionable improvements.`;
 
-    console.log(`[ANALYZE-RESUME] Calling AI for analysis... (hasLinkedIn: ${hasLinkedIn})`);
+    console.log(`[ANALYZE-RESUME] Calling AI with enhanced model for analysis... (hasLinkedIn: ${hasLinkedIn})`);
     
     const userMessage = hasLinkedIn 
-      ? `Analyze this resume and LinkedIn profile:\n\n=== RESUME ===\n${resumeText}\n\n=== LINKEDIN PROFILE ===\n${linkedInText}`
-      : `Analyze this resume:\n\n${resumeText}`;
+      ? `Analyze this resume and LinkedIn profile thoroughly:\n\n=== RESUME ===\n${resumeText}\n\n=== LINKEDIN PROFILE ===\n${linkedInText}`
+      : `Analyze this resume thoroughly:\n\n${resumeText}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -237,11 +326,13 @@ Return ONLY valid JSON, no markdown formatting or code blocks.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro", // Upgraded from flash to pro for better analysis
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage }
         ],
+        tools: getAnalysisTools(hasLinkedIn),
+        tool_choice: { type: "function", function: { name: "submit_resume_analysis" } }
       }),
     });
 
@@ -269,40 +360,51 @@ Return ONLY valid JSON, no markdown formatting or code blocks.`;
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-    
-    if (!content) {
-      console.error("[ANALYZE-RESUME] No content in AI response:", data);
-      return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    console.log("[ANALYZE-RESUME] AI response received");
 
-    console.log("[ANALYZE-RESUME] Raw AI response received");
-
+    // Extract analysis from tool call
     let analysis;
-    try {
-      let cleanContent = content.trim();
-      if (cleanContent.startsWith('```json')) {
-        cleanContent = cleanContent.slice(7);
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    
+    if (toolCall && toolCall.function?.arguments) {
+      try {
+        analysis = JSON.parse(toolCall.function.arguments);
+        console.log("[ANALYZE-RESUME] Successfully parsed tool call response");
+      } catch (parseError) {
+        console.error("[ANALYZE-RESUME] Failed to parse tool call arguments:", parseError);
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-      if (cleanContent.startsWith('```')) {
-        cleanContent = cleanContent.slice(3);
+    } else {
+      // Fallback: try to parse from message content
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) {
+        console.error("[ANALYZE-RESUME] No content or tool call in AI response:", data);
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-      if (cleanContent.endsWith('```')) {
-        cleanContent = cleanContent.slice(0, -3);
+
+      try {
+        let cleanContent = content.trim();
+        if (cleanContent.startsWith('```json')) cleanContent = cleanContent.slice(7);
+        if (cleanContent.startsWith('```')) cleanContent = cleanContent.slice(3);
+        if (cleanContent.endsWith('```')) cleanContent = cleanContent.slice(0, -3);
+        analysis = JSON.parse(cleanContent.trim());
+        console.log("[ANALYZE-RESUME] Parsed fallback content response");
+      } catch (parseError) {
+        console.error("[ANALYZE-RESUME] Failed to parse AI response:", parseError);
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-      
-      analysis = JSON.parse(cleanContent.trim());
-    } catch (parseError) {
-      console.error("[ANALYZE-RESUME] Failed to parse AI response:", parseError);
-      return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
     }
 
+    // Validate core fields
     if (!analysis.optimizedBullets || !analysis.actionVerbs || !analysis.keywords || !analysis.redFlags) {
       console.error("[ANALYZE-RESUME] Invalid analysis structure - missing core fields");
       return new Response(
@@ -311,9 +413,12 @@ Return ONLY valid JSON, no markdown formatting or code blocks.`;
       );
     }
 
-    // Ensure optional fields have defaults
+    // Ensure all fields have defaults
     analysis.industry = analysis.industry || "General";
     analysis.experienceLevel = analysis.experienceLevel || "mid";
+    analysis.atsScore = analysis.atsScore || { score: 0, breakdown: { keywordMatch: 0, formatting: 0, structure: 0, relevance: 0 }, improvements: [] };
+    analysis.readabilityMetrics = analysis.readabilityMetrics || { grade: "C", bulletPointClarity: "", jargonLevel: "moderate", suggestions: [] };
+    analysis.formatRecommendations = analysis.formatRecommendations || { currentIssues: [], recommendations: [], sectionOrder: [] };
     analysis.summaryRewrite = analysis.summaryRewrite || { professionalSummary: "", linkedInHeadline: "" };
     analysis.quantificationOpportunities = analysis.quantificationOpportunities || [];
     analysis.skillsGap = analysis.skillsGap || { missingTechnical: [], missingSoft: [], recommendations: "" };
@@ -345,7 +450,7 @@ Return ONLY valid JSON, no markdown formatting or code blocks.`;
       );
     }
 
-    console.log("[ANALYZE-RESUME] Analysis saved successfully");
+    console.log("[ANALYZE-RESUME] Analysis saved successfully with enhanced metrics");
 
     return new Response(
       JSON.stringify({ ...analysis, shareId: savedAnalysis.share_id }),

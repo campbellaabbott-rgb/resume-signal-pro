@@ -31,6 +31,27 @@ export interface AnalysisData {
   industry?: string;
   experienceLevel?: string;
   hasLinkedIn?: boolean;
+  atsScore?: {
+    score: number;
+    breakdown: {
+      keywordMatch: number;
+      formatting: number;
+      structure: number;
+      relevance: number;
+    };
+    improvements: string[];
+  };
+  readabilityMetrics?: {
+    grade: string;
+    bulletPointClarity: string;
+    jargonLevel: string;
+    suggestions: string[];
+  };
+  formatRecommendations?: {
+    currentIssues: string[];
+    recommendations: string[];
+    sectionOrder: string[];
+  };
   summaryRewrite?: {
     professionalSummary: string;
     linkedInHeadline: string;
@@ -221,7 +242,51 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               </div>
             </div>
 
-            {/* Stats grid */}
+            {/* ATS Score Section */}
+            {data.atsScore && (
+              <div className="max-w-2xl mx-auto">
+                <div className="p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-primary" />
+                      <span className="text-sm font-medium text-muted-foreground">ATS Compatibility Score</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={cn("text-2xl font-bold", data.atsScore.score >= 70 ? "text-success" : data.atsScore.score >= 50 ? "text-warning" : "text-destructive")}>
+                        {data.atsScore.score}
+                      </span>
+                      <span className="text-muted-foreground">/100</span>
+                    </div>
+                  </div>
+                  <Progress value={data.atsScore.score} className="h-3 bg-muted mb-4" />
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    {Object.entries(data.atsScore.breakdown).map(([key, value]) => (
+                      <div key={key} className="text-center p-2 rounded-lg bg-muted/30">
+                        <div className="text-lg font-bold text-foreground">{value}</div>
+                        <div className="text-xs text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {data.atsScore.improvements.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top Improvements</span>
+                      <ul className="space-y-1">
+                        {data.atsScore.improvements.slice(0, 3).map((item, i) => (
+                          <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                            <ArrowRight className="w-3 h-3 text-primary mt-1 shrink-0" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {stats.map((stat) => {
                 const StatIcon = stat.icon;
