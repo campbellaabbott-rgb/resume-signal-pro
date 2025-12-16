@@ -32,6 +32,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Check per-function rate limit
     const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
       p_ip: clientIp,
       p_function: 'parse-pdf',
@@ -43,6 +44,23 @@ serve(async (req) => {
       console.error("[PARSE-PDF] Rate limit check error:", rlError);
     } else if (!allowed) {
       console.log(`[PARSE-PDF] Rate limit exceeded for IP: ${clientIp}`);
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check global rate limit (100 req/hr across ALL functions)
+    const { data: globalAllowed, error: globalRlError } = await supabase.rpc('check_global_rate_limit', {
+      p_ip: clientIp,
+      p_max_requests: 100,
+      p_window_minutes: 60
+    });
+
+    if (globalRlError) {
+      console.error("[PARSE-PDF] Global rate limit check error:", globalRlError);
+    } else if (!globalAllowed) {
+      console.log(`[PARSE-PDF] Global rate limit exceeded for IP: ${clientIp}`);
       return new Response(
         JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
