@@ -86,13 +86,7 @@ export function Hero() {
           </ul>
           
           {/* Price + CTA */}
-          <div className="animate-fade-in space-y-6" style={{ animationDelay: "0.4s" }}>
-            {/* Social proof */}
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Users className="w-4 h-4 text-primary" />
-              <span>Trusted by <span className="font-semibold text-foreground">10,000+</span> job seekers</span>
-            </div>
-            
+          <div className="animate-fade-in space-y-5" style={{ animationDelay: "0.4s" }}>
             <div className="inline-flex flex-col items-center p-6 rounded-2xl bg-gradient-to-b from-card/80 to-card/40 border border-border/50 backdrop-blur-sm">
               <div className="flex items-baseline gap-1 mb-1">
                 <span className="text-4xl md:text-5xl font-bold text-foreground">$25</span>
@@ -100,9 +94,13 @@ export function Hero() {
               </div>
               <p className="text-sm text-muted-foreground">No subscriptions • No hidden fees • Instant results</p>
               <p className="text-xs text-primary mt-2 font-medium">One interview = $25 paid for itself</p>
+              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/30 text-sm text-muted-foreground">
+                <Users className="w-4 h-4 text-primary" />
+                <span>Trusted by <span className="font-semibold text-foreground">10,000+</span> job seekers</span>
+              </div>
             </div>
             
-            {/* See Sample Button - Prominent */}
+            {/* See Sample Button */}
             <div className="flex justify-center">
               <button
                 onClick={() => document.getElementById('preview')?.scrollIntoView({ behavior: 'smooth' })}
