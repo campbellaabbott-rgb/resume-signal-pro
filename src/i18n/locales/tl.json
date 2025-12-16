@@ -1,0 +1,45 @@
+{
+  "header": {
+    "tagline": "Recruiter-grade AI feedback",
+    "getStarted": "Magsimula",
+    "start": "Simula"
+  },
+  "hero": {
+    "badge": "AI-Powered Resume Analysis",
+    "freeScan": "Libreng Scan",
+    "heading": "Huwag nang hulaan.",
+    "headingHighlight": "Simulan na ang makakuha ng interview.",
+    "subheading": "Kumuha ng tapat at recruiter-level na feedback sa iyong resume. Walang paliguy-ligoy — praktikal na mga pagwawasto lamang na makakatulong sa iyo na ma-hire.",
+    "price": "$25",
+    "oneTime": "isang beses lang",
+    "nofees": "Walang subscription • Walang nakatagong bayad • Instant na resulta",
+    "roi": "Isang interview = Bawi na ang $25",
+    "trusted": "Pinagkakatiwalaan ng",
+    "jobSeekers": "mga naghahanap ng trabaho",
+    "seeSample": "Tingnan ang Sample Analysis",
+    "features": {
+      "atsBullets": "ATS-optimized na bullets",
+      "atsBulletsDesc": "Talunin ang mga robot",
+      "actionVerbs": "Mas malakas na action verbs",
+      "actionVerbsDesc": "Magpakita kaagad",
+      "keywords": "Mga suhestiyon sa keyword",
+      "keywordsDesc": "I-match sa job description",
+      "redFlags": "Red flag detection",
+      "redFlagsDesc": "Ayusin ang mga problema"
+    },
+    "trust": {
+      "secure": "Secure at Private",
+      "results": "Resulta sa 30 segundo",
+      "approved": "Recruiter-approved"
+    }
+  },
+  "footer": {
+    "copyright": "© {{year}} Resume Booster. Lahat ng karapatan ay nakalaan.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "contact": "Makipag-ugnayan"
+  },
+  "language": {
+    "select": "Pumili ng Wika"
+  }
+}

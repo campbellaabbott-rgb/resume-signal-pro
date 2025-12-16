@@ -1,0 +1,45 @@
+{
+  "header": {
+    "tagline": "Feedback de IA nivel reclutador",
+    "getStarted": "Comenzar",
+    "start": "Iniciar"
+  },
+  "hero": {
+    "badge": "Análisis de CV con IA",
+    "freeScan": "Escaneo Gratis",
+    "heading": "Deja de adivinar.",
+    "headingHighlight": "Empieza a conseguir entrevistas.",
+    "subheading": "Obtén comentarios brutalmente honestos de nivel reclutador sobre tu currículum. Sin rodeos, sin endulzar — solo correcciones prácticas que te ayudan a ser contratado.",
+    "price": "$25",
+    "oneTime": "único pago",
+    "nofees": "Sin suscripciones • Sin tarifas ocultas • Resultados instantáneos",
+    "roi": "Una entrevista = $25 recuperados",
+    "trusted": "Confiado por",
+    "jobSeekers": "buscadores de empleo",
+    "seeSample": "Ver Análisis de Ejemplo",
+    "features": {
+      "atsBullets": "Viñetas optimizadas para ATS",
+      "atsBulletsDesc": "Vence a los robots",
+      "actionVerbs": "Verbos de acción más fuertes",
+      "actionVerbsDesc": "Destaca al instante",
+      "keywords": "Sugerencias de palabras clave",
+      "keywordsDesc": "Coincide con descripciones de trabajo",
+      "redFlags": "Detección de señales de alerta",
+      "redFlagsDesc": "Corrige problemas críticos"
+    },
+    "trust": {
+      "secure": "Seguro y Privado",
+      "results": "Resultados en 30 segundos",
+      "approved": "Aprobado por reclutadores"
+    }
+  },
+  "footer": {
+    "copyright": "© {{year}} Resume Booster. Todos los derechos reservados.",
+    "privacy": "Política de Privacidad",
+    "terms": "Términos de Servicio",
+    "contact": "Contacto"
+  },
+  "language": {
+    "select": "Seleccionar Idioma"
+  }
+}
