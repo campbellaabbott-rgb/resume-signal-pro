@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Check, X, Minus } from "lucide-react";
+import { useCurrency } from "@/hooks/use-currency";
 
 type FeatureStatus = "yes" | "no" | "partial";
 
@@ -51,6 +52,7 @@ function StatusIcon({ status }: { status: FeatureStatus }) {
 
 export function ComparisonTable() {
   const { t } = useTranslation();
+  const { formatPrice, isLocalCurrency } = useCurrency();
 
   return (
     <section id="comparison" className="py-20 border-t border-border">
@@ -74,7 +76,9 @@ export function ComparisonTable() {
                   <th className="p-4 text-center">
                     <div className="flex flex-col items-center gap-1">
                       <span className="font-bold text-primary">Resume Booster</span>
-                      <span className="text-xs text-muted-foreground">$25</span>
+                      <span className="text-xs text-muted-foreground">
+                        $25 {isLocalCurrency && <span className="text-primary/70">≈ {formatPrice(25)}</span>}
+                      </span>
                     </div>
                   </th>
                   <th className="p-4 text-center">
@@ -145,7 +149,7 @@ export function ComparisonTable() {
               onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth" })}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all duration-300 hover:scale-105"
             >
-              {t("comparison.cta")}
+              {t("comparison.ctaText")} — $25 {isLocalCurrency && <span className="opacity-80">≈ {formatPrice(25)}</span>}
             </button>
           </div>
         </div>
