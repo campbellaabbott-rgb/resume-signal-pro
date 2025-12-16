@@ -24,6 +24,7 @@ interface FreeKeywordResult {
   formatGrade: string;
   formatIssue: string;
   resumeLength: { currentPages: number; recommendedPages: number; verdict: "too_short" | "just_right" | "too_long" };
+  wordCount?: { current: number; idealMin: number; idealMax: number; verdict: "too_few" | "ideal" | "too_many" };
   redFlags: { issue: string; impact: string }[];
   keywords: { keyword: string; reason: string }[];
 }
@@ -353,6 +354,7 @@ const Index = () => {
                 formatGrade={freeKeywordResult.formatGrade}
                 formatIssue={freeKeywordResult.formatIssue}
                 resumeLength={freeKeywordResult.resumeLength}
+                wordCount={freeKeywordResult.wordCount}
                 redFlags={freeKeywordResult.redFlags}
                 keywords={freeKeywordResult.keywords}
                 onGetFullAnalysis={() => handleCheckout()}
