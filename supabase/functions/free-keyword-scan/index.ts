@@ -19,7 +19,7 @@ async function sendNotificationEmail(ip: string, industry: string, atsScore: num
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Resume Booster <noreply@resumebooster.work>",
+        from: "Resume Booster <onboarding@resend.dev>",
         to: [ADMIN_EMAIL],
         subject: `🔍 New Free Scan: ${industry} (ATS ${atsScore})`,
         html: `
