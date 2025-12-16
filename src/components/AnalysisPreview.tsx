@@ -1,10 +1,9 @@
 import { 
   AlertTriangle, CheckCircle2, ArrowRight, FileWarning, 
   TrendingUp, Zap, Lightbulb, Target, BarChart3, FileText,
-  ListChecks, Gauge
+  ListChecks, Gauge, Linkedin
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
 const sampleATSScore = {
   overall: 72,
   breakdown: [
@@ -53,6 +52,16 @@ const sampleRedFlags = [
   "Generic objective statement instead of targeted summary"
 ];
 
+const sampleLinkedIn = {
+  headlineSuggestion: "Senior Product Manager | B2B SaaS | Driving 40% Revenue Growth",
+  aboutImprovement: "Your About section lacks quantified achievements. Add metrics like team size, revenue impact, or user growth.",
+  profileStrength: 78,
+  recommendations: [
+    "Add featured section showcasing key projects",
+    "Request 2-3 recommendations from colleagues",
+    "Include industry-specific keywords in headline"
+  ]
+};
 function getScoreColor(score: number, max: number) {
   const pct = (score / max) * 100;
   if (pct >= 70) return "text-success";
@@ -219,11 +228,52 @@ export function AnalysisPreview() {
             </div>
           </div>
 
+          {/* LinkedIn Analysis Preview */}
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-[#0077B5]/10 to-card/50 backdrop-blur-sm border border-[#0077B5]/30 hover:border-[#0077B5]/50 transition-all duration-300">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Linkedin className="w-5 h-5 text-[#0077B5]" />
+                <span className="text-sm font-semibold">LinkedIn Analysis</span>
+                <span className="text-xs bg-[#0077B5]/20 text-[#0077B5] px-2 py-0.5 rounded-full">Included Free</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-lg font-bold text-[#0077B5]">{sampleLinkedIn.profileStrength}%</span>
+                <span className="text-xs text-muted-foreground">strength</span>
+              </div>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="p-3 rounded-lg bg-success/5 border border-success/20">
+                  <span className="text-xs font-semibold text-success mb-1 block">Suggested Headline</span>
+                  <p className="text-xs text-foreground font-medium">{sampleLinkedIn.headlineSuggestion}</p>
+                </div>
+                
+                <div className="p-3 rounded-lg bg-warning/5 border border-warning/20">
+                  <span className="text-xs font-semibold text-warning mb-1 block">About Section</span>
+                  <p className="text-xs text-foreground">{sampleLinkedIn.aboutImprovement}</p>
+                </div>
+              </div>
+              
+              <div className="p-3 rounded-lg bg-[#0077B5]/5 border border-[#0077B5]/20">
+                <span className="text-xs font-semibold text-[#0077B5] mb-2 block">Profile Recommendations</span>
+                <ul className="space-y-2">
+                  {sampleLinkedIn.recommendations.map((rec, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-foreground">
+                      <CheckCircle2 className="w-3 h-3 text-[#0077B5] mt-0.5 shrink-0" />
+                      {rec}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* Plus more indicator */}
           <div className="text-center pt-4">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 text-sm text-muted-foreground">
               <Zap className="w-4 h-4 text-primary" />
-              Plus: Skills Gap, Industry Insights, Action Verbs, Keywords, Summary Rewrite & LinkedIn Analysis
+              Plus: Skills Gap, Industry Insights, Action Verbs, Keywords & Summary Rewrite
             </div>
           </div>
         </div>
