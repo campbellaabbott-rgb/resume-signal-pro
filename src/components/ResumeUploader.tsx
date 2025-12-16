@@ -133,6 +133,7 @@ export function ResumeUploader({
             <div className="flex justify-start mb-4" role="tablist" aria-label="Resume input method">
               <div className="inline-flex rounded-xl bg-card border border-border p-1 shadow-sm">
                 <button
+                  id="resume-upload-tab"
                   onClick={() => setResumeMode("upload")}
                   role="tab"
                   aria-selected={resumeMode === "upload"}
@@ -148,6 +149,7 @@ export function ResumeUploader({
                   Upload
                 </button>
                 <button
+                  id="resume-paste-tab"
                   onClick={() => setResumeMode("paste")}
                   role="tab"
                   aria-selected={resumeMode === "paste"}
@@ -167,6 +169,9 @@ export function ResumeUploader({
 
             {resumeMode === "upload" ? (
               <div
+                id="resume-upload-panel"
+                role="tabpanel"
+                aria-labelledby="resume-upload-tab"
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
@@ -226,7 +231,7 @@ export function ResumeUploader({
                 )}
               </div>
             ) : (
-              <div className="relative">
+              <div id="resume-paste-panel" role="tabpanel" aria-labelledby="resume-paste-tab" className="relative">
                 <textarea
                   value={textInput}
                   onChange={(e) => setTextInput(e.target.value)}
