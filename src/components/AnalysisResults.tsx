@@ -32,6 +32,20 @@ export interface AnalysisData {
   industry?: string;
   experienceLevel?: string;
   hasLinkedIn?: boolean;
+  hasJobDescription?: boolean;
+  jobDescriptionAlignment?: {
+    matchScore: number;
+    extractedKeywords: string[];
+    missingKeywords: string[];
+    suggestedEdits: {
+      section: string;
+      currentText: string;
+      suggestedText: string;
+      jdAlignment: string;
+    }[];
+    roleMatchAnalysis: string;
+    gapAnalysis: string;
+  };
   atsScore?: {
     score: number;
     breakdown: {
@@ -290,6 +304,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
   // Build sections for navigation
   const sections = [
     { id: "overview", label: "Overview", icon: Gauge },
+    ...(data.jobDescriptionAlignment ? [{ id: "jdalignment", label: "JD Match", icon: Target }] : []),
     ...(linkedIn ? [{ id: "linkedin", label: "LinkedIn", icon: Linkedin }] : []),
     ...(data.atsParsingIssues && safeArray(data.atsParsingIssues.detectedIssues).length > 0 ? [{ id: "parsing", label: "Parsing Issues", icon: FileWarning }] : []),
     ...(data.summaryRewrite?.professionalSummary ? [{ id: "summary", label: "Summary", icon: User }] : []),
@@ -456,6 +471,79 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                           </li>
                         ))}
                       </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Job Description Alignment Section */}
+            {data.jobDescriptionAlignment && (
+              <div className="max-w-2xl mx-auto animate-fade-in" id="jdalignment" style={{ animationDelay: "0.52s" }}>
+                <div className="p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-success/30 hover:border-success/50 transition-all duration-300">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Target className="w-5 h-5 text-success" />
+                      <span className="text-sm font-medium">Job Description Match</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={cn("text-2xl font-bold tabular-nums", data.jobDescriptionAlignment.matchScore >= 70 ? "text-success" : data.jobDescriptionAlignment.matchScore >= 50 ? "text-warning" : "text-destructive")}>
+                        {data.jobDescriptionAlignment.matchScore}%
+                      </span>
+                    </div>
+                  </div>
+                  <Progress value={data.jobDescriptionAlignment.matchScore} className="h-3 bg-muted mb-4" />
+                  
+                  {/* Role Match Analysis */}
+                  <p className="text-sm text-muted-foreground mb-4">{data.jobDescriptionAlignment.roleMatchAnalysis}</p>
+                  
+                  {/* Extracted Keywords */}
+                  {safeArray(data.jobDescriptionAlignment.extractedKeywords).length > 0 && (
+                    <div className="mb-4">
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">JD Keywords Found</span>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {safeArray(data.jobDescriptionAlignment.extractedKeywords).map((kw, i) => (
+                          <span key={i} className="px-2 py-1 rounded-lg bg-success/10 text-success text-xs font-medium">{kw}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Missing Keywords */}
+                  {safeArray(data.jobDescriptionAlignment.missingKeywords).length > 0 && (
+                    <div className="mb-4">
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Missing from Resume</span>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {safeArray(data.jobDescriptionAlignment.missingKeywords).map((kw, i) => (
+                          <span key={i} className="px-2 py-1 rounded-lg bg-warning/10 text-warning text-xs font-medium">{kw}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Suggested Edits */}
+                  {safeArray(data.jobDescriptionAlignment.suggestedEdits).length > 0 && (
+                    <div className="space-y-3 mt-4">
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Suggested Edits</span>
+                      {safeArray(data.jobDescriptionAlignment.suggestedEdits).map((edit, i) => (
+                        <div key={i} className="p-3 rounded-xl bg-muted/30 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-primary">{edit.section}</span>
+                            <span className="text-xs text-muted-foreground">→ {edit.jdAlignment}</span>
+                          </div>
+                          <p className="text-xs text-destructive line-through">{edit.currentText}</p>
+                          <p className="text-xs text-success">{edit.suggestedText}</p>
+                          <CopyButton text={edit.suggestedText} label="Copy" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Gap Analysis */}
+                  {data.jobDescriptionAlignment.gapAnalysis && (
+                    <div className="mt-4 p-3 rounded-xl bg-warning/5 border border-warning/20">
+                      <span className="text-xs font-medium text-warning">Gap Analysis</span>
+                      <p className="text-sm text-muted-foreground mt-1">{data.jobDescriptionAlignment.gapAnalysis}</p>
                     </div>
                   )}
                 </div>

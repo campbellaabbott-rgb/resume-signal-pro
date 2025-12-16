@@ -21,6 +21,7 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [resumeText, setResumeText] = useState<string>("");
   const [linkedInText, setLinkedInText] = useState<string>("");
+  const [jobDescriptionText, setJobDescriptionText] = useState<string>("");
   const [isScrapingLinkedIn, setIsScrapingLinkedIn] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
@@ -155,15 +156,17 @@ const Index = () => {
     }
   };
 
-  const handleTextSubmit = (text: string, linkedIn?: string) => {
+  const handleTextSubmit = (text: string, linkedIn?: string, jobDescription?: string) => {
     setResumeText(text);
     if (linkedIn) setLinkedInText(linkedIn);
-    handleCheckout(text, linkedIn);
+    if (jobDescription) setJobDescriptionText(jobDescription);
+    handleCheckout(text, linkedIn, jobDescription);
   };
 
-  const handleCheckout = async (text?: string, linkedIn?: string) => {
+  const handleCheckout = async (text?: string, linkedIn?: string, jobDescription?: string) => {
     const contentToAnalyze = text || resumeText;
     const linkedInContent = linkedIn || linkedInText;
+    const jobDescriptionContent = jobDescription || jobDescriptionText;
     
     if (!contentToAnalyze && !selectedFile) {
       toast({
@@ -180,7 +183,8 @@ const Index = () => {
       // Store resume data server-side (returns UUID, not PII in browser)
       const { data: tempSessionData, error: tempError } = await supabase.rpc('store_temp_resume', {
         p_resume: contentToAnalyze,
-        p_linkedin: linkedInContent || null
+        p_linkedin: linkedInContent || null,
+        p_job_description: jobDescriptionContent || null
       });
 
       if (tempError) {
@@ -251,13 +255,15 @@ const Index = () => {
         <ResumeUploader
           onFileSelect={handleFileSelect}
           onTextSubmit={handleTextSubmit}
-          onCheckout={(linkedIn) => handleCheckout(undefined, linkedIn)}
+          onCheckout={(linkedIn, jobDescription) => handleCheckout(undefined, linkedIn, jobDescription)}
           isLoading={isLoading}
           hasContent={!!resumeText || !!selectedFile}
           linkedInText={linkedInText}
           onLinkedInTextChange={setLinkedInText}
           isScrapingLinkedIn={isScrapingLinkedIn}
           onScrapeLinkedIn={handleScrapeLinkedIn}
+          jobDescriptionText={jobDescriptionText}
+          onJobDescriptionTextChange={setJobDescriptionText}
         />
         
         <AnalysisPreview />

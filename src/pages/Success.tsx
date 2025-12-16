@@ -88,13 +88,13 @@ const Success = () => {
   }, []);
 
   useEffect(() => {
-    const runAnalysis = async (resumeText: string, linkedInText?: string, stripeSessionId?: string) => {
+    const runAnalysis = async (resumeText: string, linkedInText?: string, jobDescriptionText?: string, stripeSessionId?: string) => {
       try {
-        console.log("Starting AI analysis...", linkedInText ? "(with LinkedIn)" : "");
+        console.log("Starting AI analysis...", linkedInText ? "(with LinkedIn)" : "", jobDescriptionText ? "(with Job Description)" : "");
         setCurrentStep(3);
 
         const { data, error: fnError } = await supabase.functions.invoke("analyze-resume", {
-          body: { resumeText, linkedInText, sessionId: stripeSessionId },
+          body: { resumeText, linkedInText, jobDescriptionText, sessionId: stripeSessionId },
         });
 
         if (fnError) {
@@ -195,18 +195,19 @@ const Success = () => {
           return;
         }
 
-        if (!tempData || tempData.length === 0 || !tempData[0].resume_text) {
+        if (!tempData || tempData.length === 0 || !(tempData[0] as any).resume_text) {
           // Data expired or not found
           setNeedsResume(true);
           setIsLoading(false);
           return;
         }
 
-        const storedResume = tempData[0].resume_text;
-        const storedLinkedIn = tempData[0].linkedin_text;
+        const storedResume = (tempData[0] as any).resume_text;
+        const storedLinkedIn = (tempData[0] as any).linkedin_text;
+        const storedJobDescription = (tempData[0] as any).job_description_text;
 
         setNeedsResume(false);
-        await runAnalysis(storedResume, storedLinkedIn || undefined, sessionId);
+        await runAnalysis(storedResume, storedLinkedIn || undefined, storedJobDescription || undefined, sessionId);
       } catch (err) {
         console.error("Error loading temp resume:", err);
         setNeedsResume(true);
