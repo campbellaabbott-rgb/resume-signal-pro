@@ -21,6 +21,8 @@ import {
 interface FreeKeywordResult {
   industry: string;
   atsScoreEstimate: number;
+  formatGrade: string;
+  formatIssue: string;
   keywords: { keyword: string; reason: string }[];
 }
 
@@ -200,6 +202,8 @@ const Index = () => {
         setFreeKeywordResult({
           industry: data.industry,
           atsScoreEstimate: data.atsScoreEstimate,
+          formatGrade: data.formatGrade,
+          formatIssue: data.formatIssue,
           keywords: data.keywords,
         });
         
@@ -342,6 +346,8 @@ const Index = () => {
               <FreeKeywordResults
                 industry={freeKeywordResult.industry}
                 atsScoreEstimate={freeKeywordResult.atsScoreEstimate}
+                formatGrade={freeKeywordResult.formatGrade}
+                formatIssue={freeKeywordResult.formatIssue}
                 keywords={freeKeywordResult.keywords}
                 onGetFullAnalysis={() => handleCheckout()}
                 isLoading={isLoading}
