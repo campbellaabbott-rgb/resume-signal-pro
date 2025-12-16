@@ -606,7 +606,7 @@ serve(async (req) => {
     logStep("Sending email", { to: email ? '***@***' : 'missing' });
 
     const emailResponse = await resend.emails.send({
-      from: "Resume Booster <onboarding@resend.dev>",
+      from: "Resume Booster <noreply@resumebooster.app>",
       to: [email],
       subject: `Your Complete Resume Analysis Report - ${analysis.industry || 'Professional'} Resume`,
       html: emailHtml,
