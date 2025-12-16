@@ -281,6 +281,13 @@ export function FreeKeywordResults({
     e.preventDefault();
     if (!email.trim()) return;
 
+    // Check honeypot - if filled, silently ignore (it's a bot)
+    const honeypotValue = (e.target as HTMLFormElement).querySelector<HTMLInputElement>('[name="website"]')?.value;
+    if (honeypotValue) {
+      setIsSubscribed(true); // Fake success
+      return;
+    }
+
     const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
     if (!emailRegex.test(email)) {
       toast({
@@ -294,13 +301,42 @@ export function FreeKeywordResults({
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.rpc('save_free_scan_lead', {
-        p_email: email,
-        p_industry: industry,
-        p_ats_score: atsScoreEstimate
+      const { data, error } = await supabase.functions.invoke('save-lead', {
+        body: { 
+          email, 
+          industry, 
+          atsScore: atsScoreEstimate,
+          honeypot: honeypotValue || ''
+        }
       });
 
-      if (error) throw error;
+      if (error) {
+        // Parse error response
+        const errorBody = error?.context?.body;
+        if (errorBody) {
+          try {
+            const parsed = typeof errorBody === 'string' ? JSON.parse(errorBody) : errorBody;
+            toast({
+              title: "Couldn't save email",
+              description: parsed.error || "Please try again.",
+              variant: "destructive",
+            });
+            return;
+          } catch {
+            // Fall through to generic error
+          }
+        }
+        throw error;
+      }
+
+      if (data?.error) {
+        toast({
+          title: "Couldn't save email",
+          description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
 
       setIsSubscribed(true);
       toast({
@@ -710,6 +746,15 @@ export function FreeKeywordResults({
           </div>
         ) : (
           <form onSubmit={handleEmailSubmit} className="flex gap-2">
+            {/* Honeypot field - hidden from users, bots will fill it */}
+            <input
+              type="text"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              className="absolute -left-[9999px] opacity-0 h-0 w-0"
+              aria-hidden="true"
+            />
             <input
               type="email"
               value={email}

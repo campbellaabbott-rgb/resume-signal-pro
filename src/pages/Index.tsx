@@ -47,6 +47,7 @@ const Index = () => {
   const [jobDescriptionText, setJobDescriptionText] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [freeKeywordResult, setFreeKeywordResult] = useState<FreeKeywordResult | null>(null);
+  const [honeypot, setHoneypot] = useState<string>(""); // Honeypot field for bot detection
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
 
@@ -166,7 +167,7 @@ const Index = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke("free-keyword-scan", {
-        body: { resumeText: contentToAnalyze },
+        body: { resumeText: contentToAnalyze, honeypot },
       });
 
       // Check for rate limit in error response or data
@@ -351,6 +352,18 @@ const Index = () => {
       
       <main id="main-content" className="pt-16" role="main">
         <Hero />
+        
+        {/* Hidden honeypot field for bot detection */}
+        <input
+          type="text"
+          name="website"
+          value={honeypot}
+          onChange={(e) => setHoneypot(e.target.value)}
+          tabIndex={-1}
+          autoComplete="off"
+          className="absolute -left-[9999px] opacity-0 h-0 w-0"
+          aria-hidden="true"
+        />
         
         <ResumeUploader
           onFileSelect={handleFileSelect}

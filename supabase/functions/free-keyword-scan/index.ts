@@ -28,7 +28,39 @@ serve(async (req) => {
   }
 
   try {
-    const { resumeText } = await req.json();
+    const { resumeText, honeypot } = await req.json();
+
+    const clientIp = getClientIp(req);
+
+    // Honeypot check - if filled, it's a bot
+    if (honeypot && honeypot.trim() !== '') {
+      console.log(`[FREE-KEYWORD-SCAN] Honeypot triggered for IP: ${clientIp}`);
+      // Return fake success to not alert the bot
+      return new Response(
+        JSON.stringify({
+          success: true,
+          industry: "General",
+          atsScoreEstimate: 65,
+          formatGrade: "B",
+          formatIssue: "Some formatting improvements needed.",
+          resumeLength: { currentPages: 1, recommendedPages: 1, verdict: "just_right" },
+          wordCount: { current: 500, idealMin: 400, idealMax: 600, verdict: "ideal" },
+          experienceLevel: { level: "mid", yearsEstimate: "3-5 years" },
+          sectionCheck: { hasContact: true, hasSummary: true, hasExperience: true, hasEducation: true, hasSkills: true, missingSections: [] },
+          contactInfo: { hasEmail: true, hasPhone: true, hasLinkedIn: true, missingItems: [] },
+          topStrength: { title: "Good Structure", description: "Resume is well organized" },
+          quantificationScore: { score: 50, verdict: "average", tip: "Add more metrics" },
+          actionVerbGrade: { grade: "B", issue: "Good verb usage" },
+          readabilityScore: { score: 70, verdict: "readable", issue: "Clear writing" },
+          bulletImpactScore: { score: 55, verdict: "balanced", tip: "Focus on achievements" },
+          keywordDensity: { level: "moderate", explanation: "Good keyword presence" },
+          improvementPotential: { level: "medium", estimatedScoreIncrease: 15, topPriority: "Add metrics" },
+          redFlags: [{ issue: "Generic bullets", impact: "Less memorable" }],
+          keywords: [{ keyword: "leadership", reason: "Common requirement" }]
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length === 0) {
       return new Response(
@@ -57,9 +89,25 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const clientIp = getClientIp(req);
 
-    // Check rate limit: 4 free scans per day per IP
+    // Global rate limit: max 100 requests per hour across all functions
+    const { data: globalAllowed, error: globalRlError } = await supabase.rpc('check_global_rate_limit', {
+      p_ip: clientIp,
+      p_max_requests: 100,
+      p_window_minutes: 60
+    });
+
+    if (globalRlError) {
+      console.error("[FREE-KEYWORD-SCAN] Global rate limit check error:", globalRlError);
+    } else if (!globalAllowed) {
+      console.log(`[FREE-KEYWORD-SCAN] Global rate limit exceeded for IP: ${clientIp}`);
+      return new Response(
+        JSON.stringify({ error: 'Too many requests. Please try again later.', rateLimited: true }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Function-specific rate limit: 4 free scans per day per IP
     const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
       p_function: 'free-keyword-scan',
       p_ip: clientIp,

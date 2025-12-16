@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.free-keyword-scan]
 verify_jwt = false
+
+[functions.save-lead]
+verify_jwt = false
