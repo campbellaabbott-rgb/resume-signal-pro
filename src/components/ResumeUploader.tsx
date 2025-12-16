@@ -1,18 +1,20 @@
 import { useState, useCallback } from "react";
-import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Link2, Globe } from "lucide-react";
+import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Link2, Globe, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface ResumeUploaderProps {
   onFileSelect: (file: File) => void;
-  onTextSubmit: (text: string, linkedInText?: string) => void;
-  onCheckout: (linkedInText?: string) => void;
+  onTextSubmit: (text: string, linkedInText?: string, jobDescriptionText?: string) => void;
+  onCheckout: (linkedInText?: string, jobDescriptionText?: string) => void;
   isLoading?: boolean;
   hasContent?: boolean;
   linkedInText?: string;
   onLinkedInTextChange?: (text: string) => void;
   isScrapingLinkedIn?: boolean;
   onScrapeLinkedIn?: (url: string) => Promise<void>;
+  jobDescriptionText?: string;
+  onJobDescriptionTextChange?: (text: string) => void;
 }
 
 export function ResumeUploader({ 
@@ -24,7 +26,9 @@ export function ResumeUploader({
   linkedInText = "",
   onLinkedInTextChange,
   isScrapingLinkedIn,
-  onScrapeLinkedIn
+  onScrapeLinkedIn,
+  jobDescriptionText = "",
+  onJobDescriptionTextChange
 }: ResumeUploaderProps) {
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -34,6 +38,8 @@ export function ResumeUploader({
   const [linkedInUrl, setLinkedInUrl] = useState("");
   const [localLinkedInText, setLocalLinkedInText] = useState("");
   const [showLinkedIn, setShowLinkedIn] = useState(true);
+  const [showJobDescription, setShowJobDescription] = useState(true);
+  const [localJobDescriptionText, setLocalJobDescriptionText] = useState("");
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -86,17 +92,20 @@ export function ResumeUploader({
   const handleTextPaste = () => {
     if (textInput.trim()) {
       const finalLinkedInText = linkedInMode === "paste" ? localLinkedInText : linkedInText;
-      onTextSubmit(textInput.trim(), finalLinkedInText || undefined);
+      const finalJobDescriptionText = localJobDescriptionText || jobDescriptionText;
+      onTextSubmit(textInput.trim(), finalLinkedInText || undefined, finalJobDescriptionText || undefined);
     }
   };
 
   const handleCheckoutClick = () => {
     const finalLinkedInText = linkedInMode === "paste" ? localLinkedInText : linkedInText;
-    onCheckout(finalLinkedInText || undefined);
+    const finalJobDescriptionText = localJobDescriptionText || jobDescriptionText;
+    onCheckout(finalLinkedInText || undefined, finalJobDescriptionText || undefined);
   };
 
   const canProceed = resumeMode === "upload" ? !!selectedFile : !!textInput.trim();
   const hasLinkedInContent = linkedInMode === "url" ? !!linkedInText : !!localLinkedInText.trim();
+  const hasJobDescriptionContent = !!localJobDescriptionText.trim() || !!jobDescriptionText;
 
   return (
     <section 

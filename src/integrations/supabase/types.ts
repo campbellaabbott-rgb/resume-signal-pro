@@ -66,6 +66,7 @@ export type Database = {
         Row: {
           created_at: string | null
           expires_at: string
+          job_description_text: string | null
           linkedin_text: string | null
           resume_text: string
           session_id: string
@@ -73,6 +74,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           expires_at?: string
+          job_description_text?: string | null
           linkedin_text?: string | null
           resume_text: string
           session_id?: string
@@ -80,6 +82,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           expires_at?: string
+          job_description_text?: string | null
           linkedin_text?: string | null
           resume_text?: string
           session_id?: string
@@ -140,17 +143,29 @@ export type Database = {
           share_id: string
         }[]
       }
-      get_temp_resume: {
-        Args: { p_session_id: string }
-        Returns: {
-          linkedin_text: string
-          resume_text: string
-        }[]
-      }
-      store_temp_resume: {
-        Args: { p_linkedin?: string; p_resume: string }
-        Returns: string
-      }
+      get_temp_resume:
+        | {
+            Args: { p_session_id: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.get_temp_resume(p_session_id => text), public.get_temp_resume(p_session_id => uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"[]
+          }
+        | {
+            Args: { p_session_id: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.get_temp_resume(p_session_id => text), public.get_temp_resume(p_session_id => uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"[]
+          }
+      store_temp_resume:
+        | { Args: { p_linkedin?: string; p_resume: string }; Returns: string }
+        | {
+            Args: {
+              p_job_description?: string
+              p_linkedin?: string
+              p_resume: string
+            }
+            Returns: string
+          }
     }
     Enums: {
       [_ in never]: never
