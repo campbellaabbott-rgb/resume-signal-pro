@@ -579,10 +579,10 @@ export function FreeKeywordResults({
           <p className={cn("text-2xl font-bold", getScoreColor(atsScoreEstimate))}>
             {atsScoreEstimate}<span className="text-sm text-muted-foreground">/100</span>
           </p>
-          <div className="flex items-center gap-1 mt-1 text-muted-foreground">
-            <Lock className="w-3 h-3" />
-            <span className="text-xs">{t('freeScan.breakdownLocked')}</span>
-          </div>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {atsScoreEstimate >= 80 ? "✓ Great! You'll pass most ATS" : 
+             atsScoreEstimate >= 60 ? "⚠ May get filtered out" : "✗ High rejection risk"}
+          </p>
         </div>
 
         {/* Format Grade */}
@@ -596,7 +596,11 @@ export function FreeKeywordResults({
             <p className={cn("text-2xl font-bold", getGradeColor(formatGrade))}>{formatGrade}</p>
             <span className={cn("text-xs font-medium", getGradeColor(formatGrade))}>{getGradeLabel(formatGrade)}</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">{formatIssue}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {formatGrade === "A" ? "✓ ATS can read this well" : 
+             formatGrade === "B" ? "✓ Minor formatting tweaks needed" : 
+             formatGrade === "C" ? "⚠ May cause parsing errors" : "✗ ATS may scramble your info"}
+          </p>
         </div>
 
         {/* Quantification Score */}
@@ -609,7 +613,10 @@ export function FreeKeywordResults({
           <p className={cn("text-2xl font-bold", getQuantificationColor(quantificationScore.verdict))}>
             {quantificationScore.score}<span className="text-sm text-muted-foreground">%</span>
           </p>
-          <p className="text-xs text-muted-foreground mt-1">{quantificationScore.tip}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {quantificationScore.verdict === "strong" ? "✓ Good use of numbers" : 
+             quantificationScore.verdict === "average" ? "⚠ Add more metrics ($, %, #)" : "✗ Numbers make you stand out"}
+          </p>
         </div>
 
         {/* Action Verb Grade */}
@@ -623,7 +630,11 @@ export function FreeKeywordResults({
             <p className={cn("text-2xl font-bold", getGradeColor(actionVerbGrade.grade))}>{actionVerbGrade.grade}</p>
             <span className={cn("text-xs font-medium", getGradeColor(actionVerbGrade.grade))}>{getGradeLabel(actionVerbGrade.grade)}</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">{actionVerbGrade.issue}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {actionVerbGrade.grade === "A" ? "✓ Strong, powerful verbs" : 
+             actionVerbGrade.grade === "B" ? "✓ Good variety of verbs" : 
+             actionVerbGrade.grade === "C" ? "⚠ Use stronger words" : "✗ Weak verbs hurt impact"}
+          </p>
         </div>
       </div>
 
@@ -640,7 +651,10 @@ export function FreeKeywordResults({
             <p className={cn("text-2xl font-bold", getLengthColor(resumeLength.verdict))}>{resumeLength.currentPages}</p>
             <span className="text-sm text-muted-foreground">/ {resumeLength.recommendedPages}</span>
           </div>
-          <p className={cn("text-xs font-medium mt-1", getLengthColor(resumeLength.verdict))}>{getLengthLabel(resumeLength.verdict)}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {resumeLength.verdict === "just_right" ? "✓ Perfect length for your level" : 
+             resumeLength.verdict === "too_short" ? "⚠ Add more accomplishments" : "⚠ Recruiters may skip long resumes"}
+          </p>
         </div>
 
         {/* Word Count */}
@@ -651,7 +665,10 @@ export function FreeKeywordResults({
             <MetricTooltip metricKey="words" />
           </div>
           <p className={cn("text-2xl font-bold", getWordCountColor(wordCount.verdict))}>{wordCount.current}</p>
-          <p className="text-xs text-muted-foreground mt-1">{wordCount.idealMin}-{wordCount.idealMax} {t('freeScan.ideal')}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {wordCount.verdict === "ideal" ? `✓ Sweet spot: ${wordCount.idealMin}-${wordCount.idealMax}` : 
+             wordCount.verdict === "too_few" ? "⚠ Looks thin — add content" : "⚠ Too dense — trim fat"}
+          </p>
         </div>
 
         {/* Section Check */}
@@ -662,12 +679,10 @@ export function FreeKeywordResults({
             <MetricTooltip metricKey="sections" />
           </div>
           <p className={cn("text-2xl font-bold", getSectionColor())}>{getSectionScore()}</p>
-          {sectionCheck.missingSections.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-1">Missing: {sectionCheck.missingSections[0]}</p>
-          )}
-          {sectionCheck.missingSections.length === 0 && (
-            <p className="text-xs text-success mt-1">All present!</p>
-          )}
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {sectionCheck.missingSections.length === 0 ? "✓ All key sections present" : 
+             `⚠ Add: ${sectionCheck.missingSections[0]}`}
+          </p>
         </div>
 
         {/* Contact Info */}
@@ -678,12 +693,10 @@ export function FreeKeywordResults({
             <MetricTooltip metricKey="contact" />
           </div>
           <p className={cn("text-2xl font-bold", getContactColor())}>{getContactScore()}</p>
-          {contactInfo.missingItems.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-1">Add: {contactInfo.missingItems[0]}</p>
-          )}
-          {contactInfo.missingItems.length === 0 && (
-            <p className="text-xs text-success mt-1">Complete!</p>
-          )}
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {contactInfo.missingItems.length === 0 ? "✓ Easy for recruiters to reach you" : 
+             `⚠ Add ${contactInfo.missingItems[0]}`}
+          </p>
         </div>
       </div>
 
@@ -699,7 +712,10 @@ export function FreeKeywordResults({
           <p className={cn("text-2xl font-bold", getReadabilityColor(readabilityScore.verdict))}>
             {readabilityScore.score}<span className="text-sm text-muted-foreground">%</span>
           </p>
-          <p className="text-xs text-muted-foreground mt-1">{readabilityScore.issue}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {readabilityScore.verdict === "easy_to_scan" ? "✓ Quick 6-second scan friendly" : 
+             readabilityScore.verdict === "readable" ? "⚠ Some sections hard to scan" : "✗ Recruiters will skip this"}
+          </p>
         </div>
 
         {/* Bullet Impact Score */}
@@ -712,7 +728,10 @@ export function FreeKeywordResults({
           <p className={cn("text-2xl font-bold", getBulletImpactColor(bulletImpactScore.verdict))}>
             {bulletImpactScore.score}<span className="text-sm text-muted-foreground">%</span>
           </p>
-          <p className="text-xs text-muted-foreground mt-1">{bulletImpactScore.tip}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {bulletImpactScore.verdict === "achievement_focused" ? "✓ Shows results, not tasks" : 
+             bulletImpactScore.verdict === "balanced" ? "⚠ Add more achievements" : "✗ Lists duties, not wins"}
+          </p>
         </div>
 
         {/* Keyword Density */}
@@ -725,7 +744,10 @@ export function FreeKeywordResults({
           <p className={cn("text-xl font-bold capitalize", getKeywordDensityColor(keywordDensity.level))}>
             {keywordDensity.level}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">{keywordDensity.explanation}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {keywordDensity.level === "dense" ? "✓ ATS will find your skills" : 
+             keywordDensity.level === "moderate" ? "⚠ Add more industry terms" : "✗ Missing key search terms"}
+          </p>
         </div>
 
         {/* Improvement Potential */}
@@ -741,7 +763,10 @@ export function FreeKeywordResults({
             </p>
             <span className="text-xs text-muted-foreground">pts</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">{improvementPotential.topPriority}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {improvementPotential.level === "high" ? "🚀 Big gains possible!" : 
+             improvementPotential.level === "medium" ? "📈 Room to improve" : "✓ Already optimized"}
+          </p>
         </div>
       </div>
 
@@ -824,21 +849,22 @@ export function FreeKeywordResults({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
         {/* Industry Benchmark */}
         <div className="rounded-2xl bg-card border border-border p-5">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-2">
             <Target className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold flex-1">Industry Benchmark</h4>
+            <h4 className="font-semibold flex-1">How You Compare</h4>
             <MetricTooltip metricKey="industryBenchmark" />
           </div>
+          <p className="text-xs text-muted-foreground mb-4">See how your resume stacks up against other {industry} professionals</p>
           
           {/* Score Comparison */}
           <div className="flex items-center gap-3 mb-4">
             {/* Your Score */}
             <div className="flex-1">
               <div className="flex items-baseline gap-2 mb-1.5">
-                <span className="text-xs text-muted-foreground">Your Score</span>
+                <span className="text-xs font-medium text-foreground">You</span>
                 <span className={cn("text-lg font-bold", getScoreColor(atsScoreEstimate))}>{atsScoreEstimate}</span>
               </div>
-              <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+              <div className="h-3 bg-muted rounded-full overflow-hidden">
                 <div 
                   className={cn("h-full rounded-full transition-all", 
                     atsScoreEstimate >= 75 ? "bg-success" : atsScoreEstimate >= 60 ? "bg-warning" : "bg-destructive"
@@ -856,45 +882,51 @@ export function FreeKeywordResults({
             {/* Industry Avg */}
             <div className="flex-1">
               <div className="flex items-baseline gap-2 mb-1.5 justify-end">
-                <span className="text-xs text-muted-foreground">{industry} Avg</span>
-                <span className="text-lg font-bold text-foreground">{industryBenchmark.industryAvg}</span>
+                <span className="text-xs font-medium text-foreground">Others</span>
+                <span className="text-lg font-bold text-muted-foreground">{industryBenchmark.industryAvg}</span>
               </div>
-              <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+              <div className="h-3 bg-muted rounded-full overflow-hidden">
                 <div className="h-full bg-muted-foreground/40 rounded-full" style={{ width: `${industryBenchmark.industryAvg}%` }} />
               </div>
             </div>
           </div>
           
-          {/* Percentile Badge */}
+          {/* Percentile Badge with explanation */}
           <div className={cn(
-            "text-center py-2.5 px-4 rounded-lg text-sm font-semibold",
-            industryBenchmark.comparison === "above" ? "bg-success/15 text-success" :
-            industryBenchmark.comparison === "at" ? "bg-warning/15 text-warning" : "bg-destructive/15 text-destructive"
+            "text-center py-3 px-4 rounded-lg mb-3",
+            industryBenchmark.comparison === "above" ? "bg-success/15" :
+            industryBenchmark.comparison === "at" ? "bg-warning/15" : "bg-destructive/15"
           )}>
-            {industryBenchmark.percentile}
+            <p className={cn("text-lg font-bold",
+              industryBenchmark.comparison === "above" ? "text-success" :
+              industryBenchmark.comparison === "at" ? "text-warning" : "text-destructive"
+            )}>
+              {industryBenchmark.percentile}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {industryBenchmark.comparison === "above" 
+                ? `Better than most ${industry} candidates` 
+                : industryBenchmark.comparison === "at" 
+                  ? "Average — won't stand out" 
+                  : "Below average — needs work"}
+            </p>
           </div>
           
-          {/* Score Difference & Context */}
-          <div className="mt-4 pt-3 border-t border-border/50">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="text-muted-foreground">Score Difference</span>
-              <span className={cn("font-semibold",
-                atsScoreEstimate > industryBenchmark.industryAvg ? "text-success" :
-                atsScoreEstimate < industryBenchmark.industryAvg ? "text-destructive" : "text-foreground"
-              )}>
-                {atsScoreEstimate > industryBenchmark.industryAvg 
-                  ? `+${atsScoreEstimate - industryBenchmark.industryAvg} above average`
-                  : atsScoreEstimate < industryBenchmark.industryAvg 
-                    ? `${atsScoreEstimate - industryBenchmark.industryAvg} below average`
-                    : "At industry average"}
-              </span>
-            </div>
+          {/* What This Means */}
+          <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+            <p className="text-xs font-medium text-foreground mb-1">
+              {industryBenchmark.comparison === "above" 
+                ? "✓ You're ahead of the competition" 
+                : industryBenchmark.comparison === "at" 
+                  ? "⚠ You're blending in with the crowd"
+                  : "✗ Stronger candidates will beat you"}
+            </p>
             <p className="text-xs text-muted-foreground leading-relaxed">
               {industryBenchmark.comparison === "above" 
-                ? `Your resume outperforms most ${industry} professionals. Focus on maintaining this edge with regular updates.`
+                ? "Your resume is more likely to get past ATS filters and catch a recruiter's eye. Keep it updated!"
                 : industryBenchmark.comparison === "at" 
-                  ? `Your resume is competitive with other ${industry} candidates. Small improvements can help you stand out.`
-                  : `Your resume needs work to compete with other ${industry} professionals. The full analysis shows exactly what to fix.`}
+                  ? "You'll pass some ATS screens, but won't stand out. A few tweaks could move you into the top tier."
+                  : "Many ATS systems will filter you out before a human sees your resume. The full analysis shows exactly what to fix."}
             </p>
           </div>
         </div>
