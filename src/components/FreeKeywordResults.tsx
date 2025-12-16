@@ -603,6 +603,29 @@ export function FreeKeywordResults({
         </div>
       </div>
 
+      {/* Upgrade CTA Box 1 */}
+      <div className="rounded-2xl bg-destructive/10 border-2 border-destructive/50 p-5 mb-5">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-full bg-destructive/20">
+            <Lock className="w-5 h-5 text-destructive" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-bold text-destructive mb-1">Your Resume Has {redFlags.length}+ Issues Recruiters Will Notice</h4>
+            <p className="text-sm text-muted-foreground mb-3">
+              Get the full analysis with specific fixes, rewritten bullet points, and ATS-optimized suggestions.
+            </p>
+            <Button 
+              onClick={onGetFullAnalysis}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Fix These Issues - $25
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Red Flags Details */}
       {redFlags.length > 0 && (
         <div className="rounded-2xl bg-destructive/5 border border-destructive/20 p-5 mb-5">
@@ -644,6 +667,29 @@ export function FreeKeywordResults({
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Upgrade CTA Box 2 */}
+      <div className="rounded-2xl bg-destructive/10 border-2 border-destructive/50 p-5 mb-5">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-full bg-destructive/20">
+            <AlertTriangle className="w-5 h-5 text-destructive" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-bold text-destructive mb-1">Don't Lose This Job to a Stronger Resume</h4>
+            <p className="text-sm text-muted-foreground mb-3">
+              Your free scan found problems. The full report shows you exactly how to fix them with recruiter-approved rewrites.
+            </p>
+            <Button 
+              onClick={onGetFullAnalysis}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Get Full Analysis - $25
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
         </div>
       </div>
 
