@@ -126,6 +126,10 @@
       "dataStorage": {
         "question": "Iniimbak ba ninyo ang aking resume data?",
         "answer": "Hindi. Hindi namin iniimbak o kinokolekta ang content ng iyong resume. Ang iyong resume ay pinoproseso sa real-time para likhain ang iyong pagsusuri, at agad na itinatapon. Hindi namin kinukunan ang iyong personal na impormasyon."
+      },
+      "vsChatGPT": {
+        "question": "Bakit ito mas maganda kaysa ChatGPT o resume templates?",
+        "answer": "Ang Resume Booster ay sadyang ginawa para sa ATS optimization na may 5-kategoryang weighted scoring system, 14 industry-specific na templates, at recruiter-calibrated feedback. Hindi tulad ng ChatGPT, makakakuha ka ng consistent 10-section structured output nang walang prompt engineering. Hindi tulad ng templates, nagbibigay kami ng personalized rewrites, LinkedIn analysis, at job description alignment. Ang iyong data ay agad na itinatapon—hindi ginagamit para sa training."
       }
     }
   },
