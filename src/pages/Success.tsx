@@ -26,7 +26,6 @@ import { cn } from "@/lib/utils";
 import { 
   getResumeData, 
   removeResumeData, 
-  setResumeData,
   cleanupExpiredResumeData 
 } from "@/hooks/use-resume-storage";
 
@@ -98,13 +97,11 @@ const Success = () => {
         setAnalysisData(analysisResult);
         setShareId(newShareId);
 
-        // Clean up stored data after successful analysis
+        // Clean up stored temp session IDs after successful analysis
         if (sessionId) {
-          removeResumeData(`resumeText:${sessionId}`);
-          removeResumeData(`linkedInText:${sessionId}`);
+          removeResumeData(`tempSessionId:${sessionId}`);
         }
-        removeResumeData("resumeText");
-        removeResumeData("linkedInText");
+        removeResumeData("tempSessionId");
 
         toast({
           title: "Payment successful!",
@@ -159,23 +156,48 @@ const Success = () => {
         return;
       }
 
-      // Prefer session-scoped key, fallback to legacy key
-      const storedResume =
-        getResumeData(`resumeText:${sessionId}`) ||
-        getResumeData("resumeText");
+      // Prefer session-scoped temp session ID, fallback to legacy key
+      const tempSessionId =
+        getResumeData(`tempSessionId:${sessionId}`) ||
+        getResumeData("tempSessionId");
 
-      const storedLinkedIn =
-        getResumeData(`linkedInText:${sessionId}`) ||
-        getResumeData("linkedInText");
-
-      if (!storedResume || !storedResume.trim()) {
+      if (!tempSessionId) {
+        // No server-side temp session - show recovery UI
         setNeedsResume(true);
         setIsLoading(false);
         return;
       }
 
-      setNeedsResume(false);
-      await runAnalysis(storedResume, storedLinkedIn || undefined, sessionId);
+      // Retrieve resume data from server-side storage (auto-deletes after retrieval)
+      try {
+        const { data: tempData, error: tempError } = await supabase.rpc('get_temp_resume', {
+          p_session_id: tempSessionId
+        });
+
+        if (tempError) {
+          console.error("Error retrieving temp resume:", tempError);
+          setNeedsResume(true);
+          setIsLoading(false);
+          return;
+        }
+
+        if (!tempData || tempData.length === 0 || !tempData[0].resume_text) {
+          // Data expired or not found
+          setNeedsResume(true);
+          setIsLoading(false);
+          return;
+        }
+
+        const storedResume = tempData[0].resume_text;
+        const storedLinkedIn = tempData[0].linkedin_text;
+
+        setNeedsResume(false);
+        await runAnalysis(storedResume, storedLinkedIn || undefined, sessionId);
+      } catch (err) {
+        console.error("Error loading temp resume:", err);
+        setNeedsResume(true);
+        setIsLoading(false);
+      }
     };
 
     loadAnalysis();
@@ -430,11 +452,7 @@ const Success = () => {
                   <ResumeRecovery
                     disabled={isLoading}
                     onResumeTextReady={(text) => {
-                      if (sessionId) {
-                        setResumeData(`resumeText:${sessionId}`, text);
-                      }
-                      setResumeData("resumeText", text);
-
+                      // User already paid - send directly to analysis without storing locally
                       setNeedsResume(false);
                       setIsLoading(true);
                       setCurrentStep(2);
@@ -449,11 +467,6 @@ const Success = () => {
                           const { shareId: newShareId, ...analysisResult } = data;
                           setAnalysisData(analysisResult);
                           setShareId(newShareId);
-
-                          if (sessionId) {
-                            removeResumeData(`resumeText:${sessionId}`);
-                          }
-                          removeResumeData("resumeText");
 
                           toast({
                             title: "Analysis ready",

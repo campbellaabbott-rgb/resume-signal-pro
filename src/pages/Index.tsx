@@ -176,30 +176,34 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      // Store resume text and LinkedIn text with timestamps for expiry
-      setResumeData('resumeText', contentToAnalyze);
-      if (linkedInContent) {
-        setResumeData('linkedInText', linkedInContent);
-      } else {
-        removeResumeData('linkedInText');
+      // Store resume data server-side (returns UUID, not PII in browser)
+      const { data: tempSessionData, error: tempError } = await supabase.rpc('store_temp_resume', {
+        p_resume: contentToAnalyze,
+        p_linkedin: linkedInContent || null
+      });
+
+      if (tempError) {
+        console.error("Failed to store resume data:", tempError);
+        throw new Error("Failed to prepare resume data");
       }
+
+      // Store only the temp session UUID locally (no PII)
+      setResumeData('tempSessionId', tempSessionData);
 
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { 
           resumeData: contentToAnalyze,
-          hasLinkedIn: !!linkedInContent
+          hasLinkedIn: !!linkedInContent,
+          tempSessionId: tempSessionData
         },
       });
 
       if (error) throw error;
 
       if (data?.url) {
-        // Tie the data to this specific checkout session
+        // Tie the temp session ID to this specific checkout session
         if (data?.sessionId) {
-          setResumeData(`resumeText:${data.sessionId}`, contentToAnalyze);
-          if (linkedInContent) {
-            setResumeData(`linkedInText:${data.sessionId}`, linkedInContent);
-          }
+          setResumeData(`tempSessionId:${data.sessionId}`, tempSessionData);
         }
 
         // In the embedded preview, navigation to Stripe can be blocked.
@@ -225,8 +229,7 @@ const Index = () => {
       }
     } catch (error) {
       console.error("Checkout error:", error);
-      removeResumeData('resumeText');
-      removeResumeData('linkedInText');
+      removeResumeData('tempSessionId');
       toast({
         title: "Checkout failed",
         description: "There was an error creating your checkout session. Please try again.",
