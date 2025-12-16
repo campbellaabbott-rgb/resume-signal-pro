@@ -83,6 +83,24 @@ export type Database = {
         }
         Relationships: []
       }
+      used_stripe_sessions: {
+        Row: {
+          ip_address: string | null
+          session_id: string
+          used_at: string
+        }
+        Insert: {
+          ip_address?: string | null
+          session_id: string
+          used_at?: string
+        }
+        Update: {
+          ip_address?: string | null
+          session_id?: string
+          used_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

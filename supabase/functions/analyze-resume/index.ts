@@ -19,18 +19,11 @@ const ERROR_MESSAGES = {
   SESSION_USED: 'This session has already been used for analysis.',
 };
 
-// Track used session IDs in memory (persists across requests within same instance)
-const usedSessions = new Map<string, number>();
-
-// Clean up old sessions (older than 24 hours)
-const cleanupOldSessions = () => {
-  const now = Date.now();
-  const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-  for (const [sessionId, timestamp] of usedSessions.entries()) {
-    if (now - timestamp > maxAge) {
-      usedSessions.delete(sessionId);
-    }
-  }
+// Helper to get client IP from request
+const getClientIp = (req: Request): string => {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+         req.headers.get('x-real-ip') || 
+         'unknown'
 };
 
 // Tool definition for structured resume analysis output
@@ -210,9 +203,29 @@ serve(async (req) => {
       );
     }
 
-    // Check if session was already used (in-memory check)
-    cleanupOldSessions();
-    if (usedSessions.has(sessionId)) {
+    // Initialize Supabase client for persistent session tracking
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("[ANALYZE-RESUME] Supabase credentials not configured");
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const clientIp = getClientIp(req);
+
+    // Check if session was already used (persistent database check)
+    const { data: existingSession } = await supabase
+      .from('used_stripe_sessions')
+      .select('session_id')
+      .eq('session_id', sessionId)
+      .maybeSingle();
+
+    if (existingSession) {
       console.log(`[ANALYZE-RESUME] Session already used: ${sessionId}`);
       return new Response(
         JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
@@ -253,8 +266,22 @@ serve(async (req) => {
 
     console.log(`[ANALYZE-RESUME] Payment verified for session: ${sessionId}`);
 
-    // Mark session as used
-    usedSessions.set(sessionId, Date.now());
+    // Mark session as used in database (persistent)
+    const { error: insertError } = await supabase
+      .from('used_stripe_sessions')
+      .insert({ session_id: sessionId, ip_address: clientIp });
+
+    if (insertError) {
+      // If insert fails due to duplicate, session was used concurrently
+      if (insertError.code === '23505') {
+        console.log(`[ANALYZE-RESUME] Session used concurrently: ${sessionId}`);
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.error("[ANALYZE-RESUME] Failed to mark session as used:", insertError);
+    }
     
     if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length === 0) {
       return new Response(
@@ -428,10 +455,6 @@ Be specific, use examples from their actual resume, and prioritize actionable im
     analysis.hasLinkedIn = hasLinkedIn;
 
     console.log("[ANALYZE-RESUME] Analysis complete, saving to database...");
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: savedAnalysis, error: dbError } = await supabase
       .from("resume_analyses")
