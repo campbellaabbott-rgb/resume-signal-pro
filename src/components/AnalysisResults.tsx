@@ -2,7 +2,7 @@ import {
   CheckCircle2, AlertCircle, Lightbulb, Zap, AlertTriangle, ArrowRight, 
   TrendingUp, Gauge, User, Briefcase, Target, BarChart3, Brain, Copy, Check,
   Linkedin, Eye, Search, Star, MessageSquare, Sparkles, FileText, BookOpen, Layout, FileStack,
-  ChevronUp, Menu
+  ChevronUp, Menu, FileWarning
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
@@ -52,6 +52,11 @@ export interface AnalysisData {
     currentIssues: string[];
     recommendations: string[];
     sectionOrder: string[];
+  };
+  atsParsingIssues?: {
+    detectedIssues: string[];
+    severity: string;
+    criticalFixes: string[];
   };
   summaryRewrite?: {
     professionalSummary: string;
@@ -283,6 +288,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
   const sections = [
     { id: "overview", label: "Overview", icon: Gauge },
     ...(linkedIn ? [{ id: "linkedin", label: "LinkedIn", icon: Linkedin }] : []),
+    ...(data.atsParsingIssues && safeArray(data.atsParsingIssues.detectedIssues).length > 0 ? [{ id: "parsing", label: "Parsing Issues", icon: FileWarning }] : []),
     ...(data.summaryRewrite?.professionalSummary ? [{ id: "summary", label: "Summary", icon: User }] : []),
     ...(data.industryInsights?.whatRecruitersLookFor ? [{ id: "industry", label: "Industry", icon: Target }] : []),
     ...(data.skillsGap && (safeArray(data.skillsGap.missingTechnical).length > 0 || safeArray(data.skillsGap.missingSoft).length > 0) ? [{ id: "skills", label: "Skills Gap", icon: Brain }] : []),
@@ -438,7 +444,68 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               </div>
             )}
 
-            {/* Resume Length Recommendation */}
+            {/* ATS Parsing Issues Section */}
+            {data.atsParsingIssues && safeArray(data.atsParsingIssues.detectedIssues).length > 0 && (
+              <div className="max-w-2xl mx-auto animate-fade-in" id="parsing" style={{ animationDelay: "0.55s" }}>
+                <div className="p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-warning/30 hover:border-warning/50 transition-all duration-300">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <FileWarning className="w-5 h-5 text-warning" />
+                      <span className="text-sm font-medium">Formatting & Parsing Issues</span>
+                    </div>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-xs font-bold uppercase",
+                      data.atsParsingIssues.severity === "high" ? "bg-destructive/20 text-destructive" :
+                      data.atsParsingIssues.severity === "medium" ? "bg-warning/20 text-warning" :
+                      "bg-success/20 text-success"
+                    )}>
+                      {data.atsParsingIssues.severity} severity
+                    </span>
+                  </div>
+                  
+                  <p className="text-xs text-muted-foreground mb-4">
+                    These formatting issues may cause ATS systems to incorrectly parse or reject your resume.
+                  </p>
+                  
+                  <div className="space-y-4">
+                    {/* Detected Issues */}
+                    <div className="p-4 rounded-xl bg-warning/5 border border-warning/20">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-warning flex items-center gap-1.5 mb-2">
+                        <AlertTriangle className="w-3 h-3" />
+                        Detected Issues
+                      </span>
+                      <ul className="space-y-2">
+                        {data.atsParsingIssues.detectedIssues.map((issue, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                            <span className="text-warning mt-0.5">•</span>
+                            {issue}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    {/* Critical Fixes */}
+                    {safeArray(data.atsParsingIssues.criticalFixes).length > 0 && (
+                      <div className="p-4 rounded-xl bg-success/5 border border-success/20">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-success flex items-center gap-1.5 mb-2">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Critical Fixes
+                        </span>
+                        <ul className="space-y-2">
+                          {data.atsParsingIssues.criticalFixes.map((fix, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                              <ArrowRight className="w-3 h-3 text-success mt-1 shrink-0" />
+                              {fix}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {data.resumeLength && (
               <div className="max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: "0.6s" }}>
                 <div className="p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300">
