@@ -425,6 +425,52 @@ EXPERIENCE LEVEL DETECTION & PERSONALIZATION:
 - Senior (8-15 yrs): Leadership, strategic impact, scope of influence. 2 pages optimal.
 - Executive (15+ yrs): Board-level achievements, business outcomes. 2-3 pages acceptable.
 
+STUDENT & NEW GRADUATE TEMPLATES (apply when detected):
+
+**CURRENT STUDENT (no degree listed as completed):**
+- Resume structure: Education FIRST (school, expected graduation, GPA if 3.5+, relevant coursework)
+- What to highlight: Projects, internships, part-time work, leadership roles, technical skills
+- Section order: Education → Skills → Projects → Experience → Activities
+- Keywords to add: "Expected graduation [date]", relevant coursework names, certifications
+- Common mistakes: Listing high school (remove after freshman year), no projects section, missing technical skills
+- Red flags to fix: Empty experience section (add projects/volunteer work), no skills section, GPA hidden when strong
+- What recruiters want: Demonstrated initiative, relevant projects, learning agility, any real-world experience
+- Metrics for students: Project scope (users, data size), competition placements, club membership numbers, event attendance organized
+
+**RECENT GRADUATE (0-1 year post-degree):**
+- Resume structure: Education still prominent but Experience can come first if relevant
+- What to highlight: Internships with metrics, capstone/thesis projects, any full-time experience
+- Section order: Experience (if relevant) → Education → Projects → Skills
+- Keywords: Degree name, graduation date, internship company names, tools/technologies used
+- Common mistakes: Still listing coursework (minimize), no quantified internship impact, missing portfolio/GitHub
+- Red flags: Employment gap without explanation, no internship experience, only listing job duties not achievements
+- What recruiters want: Internship impact, ability to work in teams, technical foundation, eagerness to learn
+- Metrics to add: Internship project outcomes, users impacted, efficiency improvements, any revenue/cost numbers
+
+**CAREER CHANGER (switching industries):**
+- Resume structure: Lead with transferable skills summary, then relevant experience
+- What to highlight: Transferable skills, relevant certifications, bootcamp/courses, side projects
+- Section order: Summary (critical) → Skills → Relevant Experience → Other Experience → Education
+- Keywords: Bridge keywords (skills that apply to both old and new field), new certifications, bootcamp names
+- Common mistakes: No summary explaining transition, burying relevant experience, missing new credentials
+- Red flags: No explanation of career change, outdated skills prominent, no evidence of new field knowledge
+- What recruiters want: Clear narrative of WHY changing, evidence of commitment (courses, projects, certs), transferable wins
+- Metrics: Use old-field metrics but frame for new field relevance
+
+**INTERNSHIP-FOCUSED (multiple internships, no full-time):**
+- Treat internships as full work experience - quantify everything
+- Metrics to add: Projects completed, tools used, team size, any measurable outcomes
+- Format each internship with 3-4 bullet points minimum
+- Highlight return offers or extensions as strong signals
+
+**ACADEMIC/RESEARCH BACKGROUND (PhD, research-heavy):**
+- For industry roles: Lead with industry-relevant skills, minimize academic jargon
+- Publications: Include only if relevant to target role, or summarize as "X publications in [field]"
+- Teaching: Frame as leadership/communication, include class sizes
+- Grants: Include $ amounts - shows ability to secure funding
+- Common mistake: 5-page CV format for industry (condense to 2 pages max)
+- What industry recruiters want: Practical application of research, collaboration, ability to explain complex topics simply
+
 INDUSTRY-SPECIFIC ANALYSIS (detect from resume and apply relevant guidance):
 
 **SOFTWARE ENGINEERING/TECH:**
