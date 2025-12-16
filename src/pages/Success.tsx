@@ -7,7 +7,6 @@ import {
   AlertCircle, 
   Share2, 
   Check, 
-  Mail,
   Sparkles,
   FileText,
   ArrowRight,
@@ -21,7 +20,6 @@ import { Footer } from "@/components/Footer";
 import { AnalysisResults, type AnalysisData } from "@/components/AnalysisResults";
 import { ResumeRecovery } from "@/components/ResumeRecovery";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,9 +60,6 @@ const Success = () => {
   const [shareId, setShareId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
-  const [isSendingEmail, setIsSendingEmail] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const analysisRef = useRef<HTMLDivElement>(null);
@@ -232,68 +227,6 @@ const Success = () => {
       description: t('success.toast.linkCopiedDesc'),
     });
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const sendEmailAnalysis = async () => {
-    if (!email || !analysisData || !shareId) return;
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      toast({
-        title: t('success.toast.invalidEmail'),
-        description: t('success.toast.invalidEmailDesc'),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSendingEmail(true);
-    try {
-      const { error: fnError } = await supabase.functions.invoke('send-analysis-email', {
-        body: { 
-          email, 
-          shareId,
-          origin: window.location.origin,
-          analysis: {
-            industry: analysisData.industry,
-            experienceLevel: analysisData.experienceLevel,
-            hasLinkedIn: analysisData.hasLinkedIn,
-            hasJobDescription: analysisData.hasJobDescription,
-            atsScore: analysisData.atsScore,
-            readabilityMetrics: analysisData.readabilityMetrics,
-            formatRecommendations: analysisData.formatRecommendations,
-            resumeLength: analysisData.resumeLength,
-            summaryRewrite: analysisData.summaryRewrite,
-            optimizedBullets: analysisData.optimizedBullets || [],
-            quantificationOpportunities: analysisData.quantificationOpportunities,
-            skillsGap: analysisData.skillsGap,
-            industryInsights: analysisData.industryInsights,
-            actionVerbs: analysisData.actionVerbs || [],
-            keywords: analysisData.keywords || [],
-            redFlags: analysisData.redFlags || [],
-            linkedInAnalysis: analysisData.linkedInAnalysis,
-            jobDescriptionAlignment: analysisData.jobDescriptionAlignment
-          }
-        }
-      });
-
-      if (fnError) throw fnError;
-
-      setEmailSent(true);
-      toast({
-        title: t('success.toast.emailSent'),
-        description: t('success.toast.emailSentDesc'),
-      });
-    } catch (err) {
-      console.error("Email error:", err);
-      toast({
-        title: t('success.toast.emailFailed'),
-        description: t('success.toast.emailFailedDesc'),
-        variant: "destructive",
-      });
-    } finally {
-      setIsSendingEmail(false);
-    }
   };
 
   const handleSaveAsPdf = async () => {
@@ -556,43 +489,7 @@ const Success = () => {
                   
                   {/* Action cards */}
                   {shareId && !isSharedView && (
-                    <div className="grid md:grid-cols-4 gap-4 max-w-3xl mx-auto pt-4">
-                      {/* Email card */}
-                      <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 space-y-3">
-                        <div className="flex items-center gap-2 text-sm font-medium">
-                          <Mail className="w-4 h-4 text-primary" />
-                          {t('success.actions.emailResults')}
-                        </div>
-                        <Input
-                          type="email"
-                          placeholder={t('success.actions.emailPlaceholder')}
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          disabled={emailSent || isSendingEmail}
-                          className="bg-background/50"
-                        />
-                        <Button
-                          onClick={sendEmailAnalysis}
-                          disabled={!email || isSendingEmail || emailSent}
-                          className="w-full gap-2"
-                          size="sm"
-                        >
-                          {isSendingEmail ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : emailSent ? (
-                            <>
-                              <Check className="w-4 h-4" />
-                              {t('success.actions.sent')}
-                            </>
-                          ) : (
-                            <>
-                              <Mail className="w-4 h-4" />
-                              {t('success.actions.send')}
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                      
+                    <div className="grid md:grid-cols-3 gap-4 max-w-2xl mx-auto pt-4">
                       {/* Download PDF card */}
                       <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 space-y-3">
                         <div className="flex items-center gap-2 text-sm font-medium">
