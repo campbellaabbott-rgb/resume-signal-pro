@@ -34,8 +34,8 @@ export default function Privacy() {
               
               <h3 className="text-xl font-medium mb-3 text-foreground">2.1 Information You Provide</h3>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2 mb-4">
-                <li><strong className="text-foreground">Resume Content:</strong> The text, formatting, and information contained in resumes you upload (PDF, DOCX, or text format)</li>
-                <li><strong className="text-foreground">LinkedIn Profile Data:</strong> Professional information you provide via URL scraping or direct text input</li>
+                <li><strong className="text-foreground">Resume Content:</strong> The text and information contained in resumes you upload (PDF, DOCX, or text format). <strong className="text-primary">Important: We do not store your resume content.</strong> Your resume is processed in real-time to generate your analysis and is immediately discarded afterward.</li>
+                <li><strong className="text-foreground">LinkedIn Profile Data:</strong> Professional information you provide via URL scraping or direct text input. This data is also processed in real-time and not stored.</li>
                 <li><strong className="text-foreground">Email Address:</strong> If you opt to receive your analysis via email</li>
                 <li><strong className="text-foreground">Payment Information:</strong> Processed by Stripe; we receive confirmation of payment but do not store full credit card numbers</li>
               </ul>
@@ -100,9 +100,10 @@ export default function Privacy() {
               <h2 className="text-2xl font-semibold mb-4 text-foreground">6. Data Retention</h2>
               <p className="text-muted-foreground leading-relaxed mb-4">We retain your information as follows:</p>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-                <li><strong className="text-foreground">Resume Analysis Results:</strong> Retained indefinitely to allow access via shareable links, unless you request deletion</li>
+                <li><strong className="text-foreground">Resume and LinkedIn Content:</strong> <strong className="text-primary">Not retained.</strong> Your resume and LinkedIn data are processed in real-time and immediately discarded. We do not store your original resume content.</li>
+                <li><strong className="text-foreground">Analysis Results:</strong> The AI-generated feedback and suggestions (not your original resume) may be retained to allow access via shareable links, unless you request deletion</li>
                 <li><strong className="text-foreground">Payment Records:</strong> Retained as required by tax and financial regulations (typically 7 years)</li>
-                <li><strong className="text-foreground">Account Information:</strong> Retained until you request deletion</li>
+                <li><strong className="text-foreground">Email Address:</strong> If provided, retained only as needed for sending your analysis results</li>
                 <li><strong className="text-foreground">Log Data:</strong> Retained for up to 90 days for security and debugging purposes</li>
               </ul>
             </section>
