@@ -1,4 +1,4 @@
-import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye } from "lucide-react";
+import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye, Users } from "lucide-react";
 
 const features = [
   { icon: FileText, label: "ATS-optimized bullets", description: "Beat the robots" },
@@ -87,12 +87,19 @@ export function Hero() {
           
           {/* Price + CTA */}
           <div className="animate-fade-in space-y-6" style={{ animationDelay: "0.4s" }}>
+            {/* Social proof */}
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Users className="w-4 h-4 text-primary" />
+              <span>Trusted by <span className="font-semibold text-foreground">10,000+</span> job seekers</span>
+            </div>
+            
             <div className="inline-flex flex-col items-center p-6 rounded-2xl bg-gradient-to-b from-card/80 to-card/40 border border-border/50 backdrop-blur-sm">
               <div className="flex items-baseline gap-1 mb-1">
                 <span className="text-4xl md:text-5xl font-bold text-foreground">$25</span>
                 <span className="text-muted-foreground">one-time</span>
               </div>
               <p className="text-sm text-muted-foreground">No subscriptions • No hidden fees • Instant results</p>
+              <p className="text-xs text-primary mt-2 font-medium">One interview = $25 paid for itself</p>
             </div>
             
             {/* See Sample Button - Prominent */}
