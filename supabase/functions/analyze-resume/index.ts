@@ -166,6 +166,11 @@ const getAnalysisTools = (hasLinkedIn: boolean) => [{
           },
           required: ["recommendedPages", "currentAssessment", "reasoning"]
         },
+        actionPlan: {
+          type: "array",
+          items: { type: "string" },
+          description: "4-6 specific, prioritized action items for the candidate to implement immediately. Each should be concrete and actionable (e.g., 'Add X keyword to top 3 bullets', 'Rewrite summary to highlight Y skill', 'Fix red flag: remove Z'). Order by impact - most important first."
+        },
         ...(hasLinkedIn ? {
           linkedInAnalysis: {
             type: "object",
@@ -206,7 +211,7 @@ const getAnalysisTools = (hasLinkedIn: boolean) => [{
       required: [
         "industry", "experienceLevel", "atsScore", "readabilityMetrics", "formatRecommendations",
         "atsParsingIssues", "summaryRewrite", "optimizedBullets", "quantificationOpportunities", 
-        "skillsGap", "industryInsights", "actionVerbs", "keywords", "redFlags", "resumeLength"
+        "skillsGap", "industryInsights", "actionVerbs", "keywords", "redFlags", "resumeLength", "actionPlan"
       ]
     }
   }

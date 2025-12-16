@@ -2,7 +2,7 @@ import {
   CheckCircle2, AlertCircle, Lightbulb, Zap, AlertTriangle, ArrowRight, 
   TrendingUp, Gauge, User, Briefcase, Target, BarChart3, Brain, Copy, Check,
   Linkedin, Eye, Search, Star, MessageSquare, Sparkles, FileText, BookOpen, Layout, FileStack,
-  ChevronUp, Menu, FileWarning
+  ChevronUp, Menu, FileWarning, ListChecks
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
@@ -93,6 +93,7 @@ export interface AnalysisData {
     currentAssessment: string;
     reasoning: string;
   };
+  actionPlan?: string[];
   linkedInAnalysis?: LinkedInAnalysis;
 }
 
@@ -273,6 +274,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
   const actionVerbs = safeArray(data.actionVerbs);
   const keywords = safeArray(data.keywords);
   const redFlags = safeArray(data.redFlags);
+  const actionPlan = safeArray(data.actionPlan);
   const linkedIn = data.linkedInAnalysis;
   
   const stats = [
@@ -296,6 +298,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
     ...(actionVerbs.length > 0 ? [{ id: "verbs", label: "Verbs", icon: Zap }] : []),
     ...(keywords.length > 0 ? [{ id: "keywords", label: "Keywords", icon: Lightbulb }] : []),
     ...(redFlags.length > 0 ? [{ id: "redflags", label: "Red Flags", icon: AlertTriangle }] : []),
+    ...(actionPlan.length > 0 ? [{ id: "actionplan", label: "Action Plan", icon: ListChecks }] : []),
   ];
   
   // Track active section on scroll
@@ -1216,6 +1219,37 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     </li>
                   ))}
                 </ul>
+            </ResultCard>
+            </div>
+          )}
+
+          {/* Action Plan / Sprint Checklist */}
+          {actionPlan.length > 0 && (
+            <div id="actionplan">
+              <ResultCard
+                icon={ListChecks}
+                title="Action Plan"
+                subtitle="Your prioritized to-do list - tackle these in order for maximum impact"
+                iconColor="text-success"
+                bgColor="bg-success/10"
+                borderColor="border-success/20"
+              >
+                <div className="space-y-3">
+                  {actionPlan.map((item, index) => (
+                    <div
+                      key={index}
+                      className="flex items-start gap-4 p-4 rounded-xl bg-success/5 border border-success/10 hover:bg-success/10 transition-colors group"
+                    >
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-success/20 text-success font-bold text-sm shrink-0">
+                        {index + 1}
+                      </div>
+                      <span className="text-sm text-foreground leading-relaxed pt-1">{item}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-4">
+                  Tip: Complete these tasks in order. Each one builds on the previous to maximize your resume's impact.
+                </p>
               </ResultCard>
             </div>
           )}
