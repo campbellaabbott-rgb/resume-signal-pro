@@ -39,22 +39,25 @@ export type Database = {
         Row: {
           analysis_result: Json
           created_at: string
+          expires_at: string | null
           id: string
-          resume_text: string
+          resume_text: string | null
           share_id: string
         }
         Insert: {
           analysis_result: Json
           created_at?: string
+          expires_at?: string | null
           id?: string
-          resume_text: string
+          resume_text?: string | null
           share_id?: string
         }
         Update: {
           analysis_result?: Json
           created_at?: string
+          expires_at?: string | null
           id?: string
-          resume_text?: string
+          resume_text?: string | null
           share_id?: string
         }
         Relationships: []
@@ -113,6 +116,11 @@ export type Database = {
           p_max_requests: number
           p_window_minutes?: number
         }
+        Returns: boolean
+      }
+      cleanup_expired_analyses: { Args: never; Returns: number }
+      delete_analysis_by_share_id: {
+        Args: { p_share_id: string }
         Returns: boolean
       }
       get_analysis_by_share_id: {
