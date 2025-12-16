@@ -64,13 +64,13 @@ const Success = () => {
   }, [isLoading, shareIdParam, sessionId]);
 
   useEffect(() => {
-    const runAnalysis = async (resumeText: string, linkedInText?: string) => {
+    const runAnalysis = async (resumeText: string, linkedInText?: string, stripeSessionId?: string) => {
       try {
         console.log("Starting AI analysis...", linkedInText ? "(with LinkedIn)" : "");
         setCurrentStep(3);
 
         const { data, error: fnError } = await supabase.functions.invoke("analyze-resume", {
-          body: { resumeText, linkedInText },
+          body: { resumeText, linkedInText, sessionId: stripeSessionId },
         });
 
         if (fnError) {
@@ -164,7 +164,7 @@ const Success = () => {
       }
 
       setNeedsResume(false);
-      await runAnalysis(storedResume, storedLinkedIn || undefined);
+      await runAnalysis(storedResume, storedLinkedIn || undefined, sessionId);
     };
 
     loadAnalysis();
@@ -430,7 +430,7 @@ const Success = () => {
                       setError(null);
 
                       void supabase.functions
-                        .invoke("analyze-resume", { body: { resumeText: text } })
+                        .invoke("analyze-resume", { body: { resumeText: text, sessionId } })
                         .then(({ data, error: fnError }) => {
                           if (fnError) throw fnError;
                           if (data?.error) throw new Error(data.error);

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Stripe from "https://esm.sh/stripe@18.5.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +15,22 @@ const ERROR_MESSAGES = {
   INVALID_INPUT: 'Invalid input provided.',
   SERVICE_UNAVAILABLE: 'Service temporarily unavailable. Please try again later.',
   RATE_LIMITED: 'Too many requests. Please try again later.',
+  PAYMENT_REQUIRED: 'Payment verification required.',
+  SESSION_USED: 'This session has already been used for analysis.',
+};
+
+// Track used session IDs in memory (persists across requests within same instance)
+const usedSessions = new Map<string, number>();
+
+// Clean up old sessions (older than 24 hours)
+const cleanupOldSessions = () => {
+  const now = Date.now();
+  const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+  for (const [sessionId, timestamp] of usedSessions.entries()) {
+    if (now - timestamp > maxAge) {
+      usedSessions.delete(sessionId);
+    }
+  }
 };
 
 serve(async (req) => {
@@ -22,7 +39,62 @@ serve(async (req) => {
   }
 
   try {
-    const { resumeText, linkedInText } = await req.json();
+    const { resumeText, linkedInText, sessionId } = await req.json();
+
+    // CRITICAL: Verify Stripe payment before analysis
+    if (!sessionId) {
+      console.log("[ANALYZE-RESUME] Missing sessionId - payment verification required");
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if session was already used (in-memory check)
+    cleanupOldSessions();
+    if (usedSessions.has(sessionId)) {
+      console.log(`[ANALYZE-RESUME] Session already used: ${sessionId}`);
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify Stripe payment
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) {
+      console.error("[ANALYZE-RESUME] STRIPE_SECRET_KEY is not set");
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    
+    let session;
+    try {
+      session = await stripe.checkout.sessions.retrieve(sessionId);
+    } catch (stripeError) {
+      console.error("[ANALYZE-RESUME] Invalid Stripe session:", stripeError);
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (session.payment_status !== 'paid') {
+      console.warn(`[ANALYZE-RESUME] Unpaid session attempted: ${sessionId}, status: ${session.payment_status}`);
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
+        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`[ANALYZE-RESUME] Payment verified for session: ${sessionId}`);
+
+    // Mark session as used
+    usedSessions.set(sessionId, Date.now());
     
     if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length === 0) {
       return new Response(
