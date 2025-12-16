@@ -414,7 +414,33 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[ANALYZE-RESUME] Payment verified for session: ${sessionId}`);
+    // Verify minimum payment amount ($20 USD equivalent to account for currency fluctuations)
+    const MIN_AMOUNT_CENTS = 2000; // $20 USD minimum
+    const amountPaid = session.amount_total || 0;
+    const currency = session.currency?.toLowerCase() || 'usd';
+    
+    // Approximate exchange rates to USD for validation (conservative minimums)
+    const currencyToUsdMinRates: Record<string, number> = {
+      usd: 1, cad: 0.65, gbp: 1.15, eur: 1.0, inr: 0.011, aud: 0.60,
+      jpy: 0.006, mxn: 0.045, brl: 0.15, php: 0.016, sgd: 0.70,
+      nzd: 0.55, chf: 1.05, sek: 0.085, nok: 0.085, dkk: 0.13,
+      pln: 0.23, zar: 0.05, hkd: 0.12, krw: 0.0007, thb: 0.027,
+      myr: 0.21, idr: 0.00006, ils: 0.26, aed: 0.27, twd: 0.03,
+      czk: 0.04, huf: 0.0024, ron: 0.20
+    };
+    
+    const rateToUsd = currencyToUsdMinRates[currency] || 0.01;
+    const amountInUsdCents = amountPaid * rateToUsd;
+    
+    if (amountInUsdCents < MIN_AMOUNT_CENTS) {
+      console.warn(`[ANALYZE-RESUME] Insufficient payment: ${amountPaid} ${currency} (≈$${(amountInUsdCents/100).toFixed(2)} USD)`);
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
+        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`[ANALYZE-RESUME] Payment verified: ${amountPaid} ${currency} for session: ${sessionId}`);
 
     // Mark session as used in database (persistent)
     const { error: insertError } = await supabase
