@@ -430,18 +430,18 @@ export function ResumeUploader({
                   size="lg"
                   disabled={isFreeScanLoading || !canProceed}
                   onClick={onFreeScan}
-                  className="min-w-[320px] h-14 text-base gap-2 border-2 border-success/60 bg-success/10 hover:bg-success/15 hover:border-success transition-all touch-manipulation"
+                  className="min-w-[320px] h-14 text-base gap-2 border-2 border-success bg-success/20 hover:bg-success/30 hover:border-success text-success font-semibold shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:shadow-[0_0_30px_rgba(34,197,94,0.6)] transition-all touch-manipulation animate-pulse-subtle"
                 >
                   {isFreeScanLoading ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Analyzing your resume...</span>
+                      <span className="text-foreground">Analyzing your resume...</span>
                     </>
                   ) : (
                     <>
-                      <Zap className="w-5 h-5 text-success" />
+                      <Zap className="w-5 h-5 text-success fill-success/30" />
                       <span>Get Free Resume Scan</span>
-                      <span className="ml-1 px-2.5 py-1 rounded-full bg-success/30 text-success text-xs font-bold uppercase tracking-wide">6 Insights Free</span>
+                      <span className="ml-1 px-2.5 py-1 rounded-full bg-success text-success-foreground text-xs font-bold uppercase tracking-wide">6 Insights Free</span>
                     </>
                   )}
                 </Button>
