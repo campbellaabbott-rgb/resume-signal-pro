@@ -41,5 +41,190 @@
   },
   "language": {
     "select": "Pumili ng Wika"
+  },
+  "uploader": {
+    "title": "I-upload ang Iyong Resume at LinkedIn",
+    "subtitle": "Kumuha ng komprehensibong pagsusuri ng iyong resume",
+    "linkedinBonus": "+ LinkedIn profile optimization",
+    "resume": {
+      "title": "Ang Iyong Resume",
+      "required": "*Kinakailangan",
+      "freeIncluded": "Libre na kasama ang scan!",
+      "upload": "I-upload",
+      "paste": "I-paste",
+      "dropHere": "I-drop ang iyong resume dito",
+      "fileTypes": "PDF, DOCX, o TXT (max 10MB)",
+      "browse": "Mag-browse ng files",
+      "pasteHere": "I-paste ang content ng iyong resume dito...",
+      "chars": "karakter"
+    },
+    "linkedin": {
+      "title": "Ang Iyong LinkedIn Profile",
+      "paidOnly": "Bayad na pagsusuri lamang",
+      "hide": "Itago",
+      "show": "Ipakita",
+      "description": "Idagdag ang iyong LinkedIn para sa",
+      "benefits": "headline optimization, About section rewrite, SEO keywords,",
+      "andMore": "at visibility tips.",
+      "uploadPdf": "I-upload ang PDF",
+      "uploadLinkedIn": "I-upload ang LinkedIn PDF",
+      "exportTip": "I-export ang iyong profile mula sa LinkedIn bilang PDF",
+      "parsing": "Pinaparsing ang PDF...",
+      "pasteHere": "Kopyahin at i-paste ang content ng iyong LinkedIn profile dito...",
+      "includeTip": "Isama: Headline, About section, Experience descriptions, Skills"
+    },
+    "jobDescription": {
+      "title": "Target na Job Description",
+      "optional": "Opsyonal",
+      "hide": "Itago",
+      "show": "Ipakita",
+      "description": "Kumuha ng",
+      "matchScore": "match score",
+      "and": "at",
+      "tailoredFeedback": "tailored feedback",
+      "forRole": "para sa iyong target na role",
+      "pasteHere": "I-paste ang job description na inaaplayan mo...",
+      "tip": "Tip: Isama ang buong job posting para sa pinakamahusay na resulta"
+    },
+    "actions": {
+      "freeScan": "Libreng Scan",
+      "quickInsights": "Kumuha ng mabilis na insights",
+      "processing": "Pinoproseso...",
+      "getFullAnalysis": "Kumuha ng Buong Pagsusuri",
+      "forOnly": "sa halagang",
+      "includes": "Kasama ang ATS optimization, bullet rewrites at action plan"
+    }
+  },
+  "faq": {
+    "title": "Mga Madalas Itanong",
+    "subtitle": "Lahat ng kailangan mong malaman tungkol sa Resume Booster",
+    "questions": {
+      "whatDoIGet": {
+        "question": "Ano ang makukuha ko sa Resume Booster?",
+        "answer": "Makakakuha ka ng komprehensibong pagsusuri kasama ang ATS-optimized bullet point rewrites, mas malakas na action verb suggestions, keyword recommendations para sa iyong industriya, at red flags na maaaring mapansin ng mga recruiter. Lahat ay nakasulat sa direkta at actionable na wika."
+      },
+      "howLong": {
+        "question": "Gaano katagal ang pagsusuri?",
+        "answer": "Ang iyong resume analysis ay nalilikha agad pagkatapos ng bayad. Makikita mo ang iyong mga resulta sa success page sa loob ng ilang segundo."
+      },
+      "fileFormats": {
+        "question": "Anong file formats ang tinatanggap ninyo?",
+        "answer": "Tumatanggap kami ng PDF files, Word documents (DOCX), at plain text. Mag-upload lang ng iyong resume file o direktang i-paste ang resume text sa input field."
+      },
+      "subscription": {
+        "question": "Ito ba ay subscription?",
+        "answer": "Hindi. Ang Resume Booster ay isang beses na bayad na $25. Walang subscriptions, paulit-ulit na charges, o upsells."
+      },
+      "share": {
+        "question": "Maaari ko bang ibahagi ang aking pagsusuri sa iba?",
+        "answer": "Oo! Pagkatapos makumpleto ang iyong pagsusuri, maaari kang kumopya ng shareable link para ipadala sa mga mentor, career coaches, o sinumang gusto mong hingan ng feedback."
+      },
+      "whoWrites": {
+        "question": "Sino ang nagsusulat ng feedback?",
+        "answer": "Ang feedback ay nililikha ng AI na sinanay na mag-isip tulad ng recruiter. Nakatutok ito sa talagang mahalaga sa hiring process, hindi generic na career advice."
+      },
+      "dataStorage": {
+        "question": "Iniimbak ba ninyo ang aking resume data?",
+        "answer": "Hindi. Hindi namin iniimbak o kinokolekta ang content ng iyong resume. Ang iyong resume ay pinoproseso sa real-time para likhain ang iyong pagsusuri, at agad na itinatapon. Hindi namin kinukunan ang iyong personal na impormasyon."
+      }
+    }
+  },
+  "socialProof": {
+    "stats": {
+      "analyzed": "Mga resume na nasuri",
+      "betterResults": "Nag-ulat ng mas magandang resulta",
+      "deliveryTime": "Karaniwang oras ng paghahatid"
+    },
+    "testimonials": {
+      "engineer": {
+        "quote": "Nakakuha ng 3 interviews sa unang linggo ko pagkatapos gamitin ito. Nakakapagbukas ng mata ang red flags section.",
+        "role": "Software Engineer"
+      },
+      "pm": {
+        "quote": "Sa wakas naintindihan ko kung bakit hindi nakakakuha ng tugon ang resume ko. Direkta, actionable, sulit ang bawat piso.",
+        "role": "Product Manager"
+      },
+      "graduate": {
+        "quote": "Ang keyword suggestions ay nakatulong sa akin na i-tailor ang resume ko nang perpekto. Nakuha ko ang pangarap kong internship!",
+        "role": "Bagong Graduate"
+      }
+    },
+    "trustMessage": "Sumali sa libu-libong naghahanap ng trabaho na nagpabuti ng kanilang resume gamit ang tapat at recruiter-grade na feedback."
+  },
+  "preview": {
+    "badge": "Sample Analysis",
+    "title": "Tingnan Kung Ano ang Makukuha Mo",
+    "subtitle": "Narito ang preview ng detailed at actionable na feedback sa bawat pagsusuri",
+    "atsScore": "ATS Compatibility Score",
+    "jdMatch": "Job Description Match",
+    "addJd": "Magdagdag ng JD para dito",
+    "match": "match",
+    "matchingSkills": "Mga Matching Skills",
+    "missingKeywords": "Mga Nawawalang Keywords",
+    "alignmentTip": "Alignment Tip",
+    "formattingIssues": "Mga Isyu sa Formatting",
+    "detected": "Nadetect",
+    "fixes": "Mga Ayos",
+    "atsBullets": "ATS-Optimized Bullets",
+    "before": "Bago",
+    "after": "Pagkatapos",
+    "resumeLength": "Haba ng Resume",
+    "pages": "mga pahina",
+    "actionPlan": "Action Plan",
+    "redFlags": "Mga Red Flag",
+    "linkedinAnalysis": "LinkedIn Analysis",
+    "includedFree": "Kasama nang Libre",
+    "strength": "lakas",
+    "suggestedHeadline": "Iminumungkahing Headline",
+    "aboutSection": "About Section",
+    "profileRecommendations": "Mga Rekomendasyon sa Profile",
+    "plusMore": "Dagdag pa: Skills Gap, Industry Insights, Action Verbs, Keywords at Summary Rewrite"
+  },
+  "freeScan": {
+    "complete": "17-Point na Libreng Scan Kumpleto",
+    "preview": "Narito ang iyong komprehensibong preview",
+    "detected": "Nadetect",
+    "atsScore": "ATS Score",
+    "breakdownLocked": "Naka-lock ang breakdown",
+    "format": "Format",
+    "metrics": "Metrics",
+    "verbs": "Verbs",
+    "pages": "Mga Pahina",
+    "words": "Mga Salita",
+    "ideal": "ideal",
+    "sections": "Mga Section",
+    "contact": "Contact",
+    "readability": "Readability",
+    "bulletImpact": "Bullet Impact",
+    "keywordDensity": "Keyword Density",
+    "excellent": "Napakahusay",
+    "good": "Maganda",
+    "fair": "Katamtaman",
+    "needsWork": "Kailangang Pagbutihin",
+    "perfect": "Perpekto",
+    "tooShort": "Masyadong Maikli",
+    "tooLong": "Masyadong Mahaba",
+    "topStrength": "Pangunahing Lakas",
+    "redFlags": "Mga Red Flag na Nadetect",
+    "impactLabel": "Epekto",
+    "improvementPotential": "Potensyal ng Pagpapabuti",
+    "estimatedIncrease": "Tinatantyang +{{points}} puntos sa buong optimization",
+    "topPriority": "Pangunahing priyoridad",
+    "missingKeywords": "Mga Nawawalang Keywords",
+    "lockMessage": "Ang buong pagsusuri ay magbubukas ng {{count}} pang keywords + suggestions",
+    "emailCapture": {
+      "title": "Kumuha ng resume tips sa iyong inbox",
+      "placeholder": "Ilagay ang iyong email",
+      "button": "Mag-subscribe",
+      "sending": "Ipinapadala...",
+      "subscribed": "Subscribed ka na!"
+    },
+    "cta": {
+      "title": "I-unlock ang Iyong Buong Pagsusuri",
+      "description": "Kumuha ng komprehensibong feedback na may detailed na bullet rewrites, ATS optimization strategies, at prioritized na action plan.",
+      "button": "Kumuha ng Buong Pagsusuri",
+      "price": "$25",
+      "processing": "Pinoproseso..."
+    }
   }
 }

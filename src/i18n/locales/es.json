@@ -41,5 +41,190 @@
   },
   "language": {
     "select": "Seleccionar Idioma"
+  },
+  "uploader": {
+    "title": "Sube tu CV y LinkedIn",
+    "subtitle": "Obtén un análisis completo de tu currículum",
+    "linkedinBonus": "+ optimización de perfil de LinkedIn",
+    "resume": {
+      "title": "Tu Currículum",
+      "required": "*Requerido",
+      "freeIncluded": "¡Escaneo gratis incluido!",
+      "upload": "Subir",
+      "paste": "Pegar",
+      "dropHere": "Arrastra tu currículum aquí",
+      "fileTypes": "PDF, DOCX o TXT (máx 10MB)",
+      "browse": "Buscar archivos",
+      "pasteHere": "Pega el contenido de tu currículum aquí...",
+      "chars": "caracteres"
+    },
+    "linkedin": {
+      "title": "Tu Perfil de LinkedIn",
+      "paidOnly": "Solo análisis de pago",
+      "hide": "Ocultar",
+      "show": "Mostrar",
+      "description": "Agrega tu LinkedIn para",
+      "benefits": "optimización de titular, reescritura de Acerca de, palabras clave SEO,",
+      "andMore": "y consejos de visibilidad.",
+      "uploadPdf": "Subir PDF",
+      "uploadLinkedIn": "Subir PDF de LinkedIn",
+      "exportTip": "Exporta tu perfil de LinkedIn como PDF",
+      "parsing": "Analizando PDF...",
+      "pasteHere": "Copia y pega el contenido de tu perfil de LinkedIn aquí...",
+      "includeTip": "Incluye: Titular, sección Acerca de, descripciones de experiencia, Habilidades"
+    },
+    "jobDescription": {
+      "title": "Descripción del Puesto Objetivo",
+      "optional": "Opcional",
+      "hide": "Ocultar",
+      "show": "Mostrar",
+      "description": "Obtén",
+      "matchScore": "puntuación de coincidencia",
+      "and": "y",
+      "tailoredFeedback": "comentarios personalizados",
+      "forRole": "para tu puesto objetivo",
+      "pasteHere": "Pega la descripción del trabajo al que aplicas...",
+      "tip": "Consejo: Incluye la publicación completa para mejores resultados"
+    },
+    "actions": {
+      "freeScan": "Escaneo Gratis",
+      "quickInsights": "Obtén información rápida",
+      "processing": "Procesando...",
+      "getFullAnalysis": "Obtener Análisis Completo",
+      "forOnly": "por solo",
+      "includes": "Incluye optimización ATS, reescritura de viñetas y plan de acción"
+    }
+  },
+  "faq": {
+    "title": "Preguntas Frecuentes",
+    "subtitle": "Todo lo que necesitas saber sobre Resume Booster",
+    "questions": {
+      "whatDoIGet": {
+        "question": "¿Qué obtengo con Resume Booster?",
+        "answer": "Obtienes un análisis completo que incluye reescritura de viñetas optimizadas para ATS, sugerencias de verbos de acción más fuertes, recomendaciones de palabras clave para tu industria y señales de alerta que los reclutadores podrían notar. Todo está escrito en lenguaje directo y práctico."
+      },
+      "howLong": {
+        "question": "¿Cuánto tiempo tarda el análisis?",
+        "answer": "Tu análisis de currículum se genera instantáneamente después del pago. Verás tus resultados en la página de éxito en segundos."
+      },
+      "fileFormats": {
+        "question": "¿Qué formatos de archivo aceptan?",
+        "answer": "Aceptamos archivos PDF, documentos de Word (DOCX) y texto plano. Simplemente sube tu archivo de currículum o pega el texto directamente en el campo de entrada."
+      },
+      "subscription": {
+        "question": "¿Es una suscripción?",
+        "answer": "No. Resume Booster es un pago único de $25. No hay suscripciones, cargos recurrentes ni ventas adicionales."
+      },
+      "share": {
+        "question": "¿Puedo compartir mi análisis con otros?",
+        "answer": "¡Sí! Después de completar tu análisis, puedes copiar un enlace para compartir con mentores, asesores de carrera o cualquier persona de quien quieras recibir comentarios."
+      },
+      "whoWrites": {
+        "question": "¿Quién escribe los comentarios?",
+        "answer": "Los comentarios son generados por IA entrenada para pensar como un reclutador. Se enfoca en lo que realmente importa en el proceso de contratación, no en consejos genéricos de carrera."
+      },
+      "dataStorage": {
+        "question": "¿Almacenan los datos de mi currículum?",
+        "answer": "No. No almacenamos ni recopilamos el contenido de tu currículum. Tu currículum se procesa en tiempo real para generar tu análisis y luego se descarta inmediatamente. Nunca retenemos tu información personal."
+      }
+    }
+  },
+  "socialProof": {
+    "stats": {
+      "analyzed": "Currículums analizados",
+      "betterResults": "Reportan mejores resultados",
+      "deliveryTime": "Tiempo promedio de entrega"
+    },
+    "testimonials": {
+      "engineer": {
+        "quote": "Conseguí 3 entrevistas en mi primera semana después de usarlo. La sección de señales de alerta fue reveladora.",
+        "role": "Ingeniero de Software"
+      },
+      "pm": {
+        "quote": "Por fin entendí por qué mi currículum no recibía respuestas. Directo, práctico, vale cada centavo.",
+        "role": "Gerente de Producto"
+      },
+      "graduate": {
+        "quote": "Las sugerencias de palabras clave me ayudaron a personalizar mi currículum perfectamente. ¡Conseguí mi pasantía soñada!",
+        "role": "Recién Graduado"
+      }
+    },
+    "trustMessage": "Únete a miles de buscadores de empleo que han mejorado sus currículums con comentarios honestos de nivel reclutador."
+  },
+  "preview": {
+    "badge": "Análisis de Ejemplo",
+    "title": "Mira lo que Obtendrás",
+    "subtitle": "Aquí tienes una vista previa de los comentarios detallados y prácticos en cada análisis",
+    "atsScore": "Puntuación de Compatibilidad ATS",
+    "jdMatch": "Coincidencia con Descripción de Trabajo",
+    "addJd": "Agrega una descripción para esto",
+    "match": "coincidencia",
+    "matchingSkills": "Habilidades Coincidentes",
+    "missingKeywords": "Palabras Clave Faltantes",
+    "alignmentTip": "Consejo de Alineación",
+    "formattingIssues": "Problemas de Formato",
+    "detected": "Detectados",
+    "fixes": "Correcciones",
+    "atsBullets": "Viñetas Optimizadas para ATS",
+    "before": "Antes",
+    "after": "Después",
+    "resumeLength": "Longitud del Currículum",
+    "pages": "páginas",
+    "actionPlan": "Plan de Acción",
+    "redFlags": "Señales de Alerta",
+    "linkedinAnalysis": "Análisis de LinkedIn",
+    "includedFree": "Incluido Gratis",
+    "strength": "fortaleza",
+    "suggestedHeadline": "Titular Sugerido",
+    "aboutSection": "Sección Acerca de",
+    "profileRecommendations": "Recomendaciones de Perfil",
+    "plusMore": "Además: Brecha de Habilidades, Perspectivas de Industria, Verbos de Acción, Palabras Clave y Reescritura de Resumen"
+  },
+  "freeScan": {
+    "complete": "Escaneo Gratis de 17 Puntos Completo",
+    "preview": "Aquí está tu vista previa completa",
+    "detected": "Detectado",
+    "atsScore": "Puntuación ATS",
+    "breakdownLocked": "Desglose bloqueado",
+    "format": "Formato",
+    "metrics": "Métricas",
+    "verbs": "Verbos",
+    "pages": "Páginas",
+    "words": "Palabras",
+    "ideal": "ideal",
+    "sections": "Secciones",
+    "contact": "Contacto",
+    "readability": "Legibilidad",
+    "bulletImpact": "Impacto de Viñetas",
+    "keywordDensity": "Densidad de Palabras Clave",
+    "excellent": "Excelente",
+    "good": "Bueno",
+    "fair": "Regular",
+    "needsWork": "Necesita Trabajo",
+    "perfect": "Perfecto",
+    "tooShort": "Muy Corto",
+    "tooLong": "Muy Largo",
+    "topStrength": "Principal Fortaleza",
+    "redFlags": "Señales de Alerta Detectadas",
+    "impactLabel": "Impacto",
+    "improvementPotential": "Potencial de Mejora",
+    "estimatedIncrease": "Estimado +{{points}} puntos con optimización completa",
+    "topPriority": "Prioridad máxima",
+    "missingKeywords": "Palabras Clave Faltantes",
+    "lockMessage": "El análisis completo desbloquea {{count}} palabras clave más + sugerencias",
+    "emailCapture": {
+      "title": "Recibe consejos de currículum en tu correo",
+      "placeholder": "Ingresa tu correo",
+      "button": "Suscribirse",
+      "sending": "Enviando...",
+      "subscribed": "¡Estás suscrito!"
+    },
+    "cta": {
+      "title": "Desbloquea tu Análisis Completo",
+      "description": "Obtén comentarios completos con reescrituras detalladas de viñetas, estrategias de optimización ATS y un plan de acción priorizado.",
+      "button": "Obtener Análisis Completo",
+      "price": "$25",
+      "processing": "Procesando..."
+    }
   }
 }
