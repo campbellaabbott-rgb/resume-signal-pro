@@ -134,6 +134,24 @@
       }
     }
   },
+  "comparison": {
+    "title": "Why Resume Booster?",
+    "subtitle": "See how we compare to other options",
+    "feature": "Feature",
+    "templates": "Templates",
+    "free": "Free",
+    "cta": "Try It Now — $25",
+    "features": {
+      "atsScoring": "5-Category ATS Scoring",
+      "industryTemplates": "14 Industry-Specific Templates",
+      "consistentOutput": "Consistent Structured Output",
+      "linkedinAnalysis": "LinkedIn Profile Analysis",
+      "jobAlignment": "Job Description Alignment",
+      "noPromptNeeded": "No Prompt Engineering Required",
+      "recruiterCalibrated": "Recruiter-Calibrated Feedback",
+      "privacyFirst": "Data Never Used for Training"
+    }
+  },
   "socialProof": {
     "stats": {
       "analyzed": "Resumes analyzed",

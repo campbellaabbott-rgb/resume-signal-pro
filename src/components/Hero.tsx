@@ -121,7 +121,7 @@ export function Hero() {
                 <span>{t('hero.seeSample')}</span>
               </button>
               <button
-                onClick={() => document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' })}
+                onClick={() => document.getElementById('comparison')?.scrollIntoView({ behavior: 'smooth' })}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-accent/20 border border-accent/40 text-accent-foreground font-medium hover:bg-accent/30 hover:border-accent/60 transition-all duration-300 hover:scale-105"
               >
                 <Zap className="w-5 h-5 text-yellow-400" />

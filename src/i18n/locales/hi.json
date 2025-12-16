@@ -134,6 +134,24 @@
       }
     }
   },
+  "comparison": {
+    "title": "Resume Booster क्यों?",
+    "subtitle": "देखें हम अन्य विकल्पों से कैसे तुलना करते हैं",
+    "feature": "सुविधा",
+    "templates": "टेम्पलेट्स",
+    "free": "मुफ्त",
+    "cta": "अभी आज़माएं — $25",
+    "features": {
+      "atsScoring": "5-श्रेणी ATS स्कोरिंग",
+      "industryTemplates": "14 इंडस्ट्री-स्पेसिफिक टेम्पलेट्स",
+      "consistentOutput": "एक जैसा स्ट्रक्चर्ड आउटपुट",
+      "linkedinAnalysis": "LinkedIn प्रोफाइल विश्लेषण",
+      "jobAlignment": "जॉब डिस्क्रिप्शन अलाइनमेंट",
+      "noPromptNeeded": "कोई प्रॉम्प्ट इंजीनियरिंग नहीं",
+      "recruiterCalibrated": "रिक्रूटर-कैलिब्रेटेड फीडबैक",
+      "privacyFirst": "डेटा कभी ट्रेनिंग के लिए उपयोग नहीं"
+    }
+  },
   "socialProof": {
     "stats": {
       "analyzed": "रिज़्यूमे विश्लेषित",

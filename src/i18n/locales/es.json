@@ -134,6 +134,24 @@
       }
     }
   },
+  "comparison": {
+    "title": "¿Por qué Resume Booster?",
+    "subtitle": "Mira cómo nos comparamos con otras opciones",
+    "feature": "Característica",
+    "templates": "Plantillas",
+    "free": "Gratis",
+    "cta": "Pruébalo Ahora — $25",
+    "features": {
+      "atsScoring": "Puntuación ATS de 5 Categorías",
+      "industryTemplates": "14 Plantillas por Industria",
+      "consistentOutput": "Salida Estructurada Consistente",
+      "linkedinAnalysis": "Análisis de Perfil LinkedIn",
+      "jobAlignment": "Alineación con Descripción de Trabajo",
+      "noPromptNeeded": "Sin Necesidad de Crear Prompts",
+      "recruiterCalibrated": "Feedback Calibrado por Reclutadores",
+      "privacyFirst": "Datos Nunca Usados para Entrenamiento"
+    }
+  },
   "socialProof": {
     "stats": {
       "analyzed": "Currículums analizados",
