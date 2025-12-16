@@ -364,6 +364,58 @@ export function ResumeUploader({
             )}
           </div>
 
+          {/* Job Description Section */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-success/10">
+                  <Target className="w-4 h-4 text-success" />
+                </div>
+                <h3 className="font-semibold">Target Job Description</h3>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">New!</span>
+              </div>
+              <button
+                onClick={() => setShowJobDescription(!showJobDescription)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showJobDescription ? "Hide" : "Show"}
+              </button>
+            </div>
+
+            {showJobDescription && (
+              <div className="rounded-2xl bg-card/30 border border-border/30 p-5 space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Paste a job description to get <span className="text-foreground font-medium">JD-resume match score, extracted keywords,</span> and tailored resume edits.
+                </p>
+
+                <div className="relative">
+                  <textarea
+                    value={localJobDescriptionText}
+                    onChange={(e) => setLocalJobDescriptionText(e.target.value)}
+                    placeholder="Paste the job description you're applying for...&#10;&#10;This helps us tailor your resume to match the specific role and increase your ATS match score."
+                    className="w-full h-40 p-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 resize-none text-sm leading-relaxed transition-all"
+                  />
+                  <div className="absolute bottom-3 right-3 px-2 py-1 rounded-lg bg-card border border-border text-xs text-muted-foreground">
+                    {localJobDescriptionText.length.toLocaleString()} chars
+                  </div>
+                </div>
+
+                {localJobDescriptionText.trim() && (
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
+                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                    <span className="text-sm text-success">Job description added</span>
+                    <button
+                      onClick={() => setLocalJobDescriptionText("")}
+                      className="ml-auto p-1 hover:bg-success/10 rounded-lg transition-colors"
+                    >
+                      <X className="w-3 h-3 text-success" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Submit Button */}
           <div className="text-center space-y-4">
             <Button
@@ -383,7 +435,7 @@ export function ResumeUploader({
               ) : (
                 <>
                   <Sparkles className="w-5 h-5" aria-hidden="true" />
-                  <span>Analyze Resume {hasLinkedInContent ? "+ LinkedIn" : ""} — $25</span>
+                  <span>Analyze Resume {hasLinkedInContent || hasJobDescriptionContent ? "+" : ""} {hasLinkedInContent ? " LinkedIn" : ""}{hasLinkedInContent && hasJobDescriptionContent ? " +" : ""}{hasJobDescriptionContent ? " JD Match" : ""} — $25</span>
                 </>
               )}
             </Button>
@@ -397,9 +449,9 @@ export function ResumeUploader({
               <span>Results delivered instantly</span>
             </div>
             
-            {!hasLinkedInContent && (
+            {!hasLinkedInContent && !hasJobDescriptionContent && (
               <p className="text-xs text-muted-foreground">
-                <span aria-hidden="true">💡</span> Add your LinkedIn profile above for a more comprehensive analysis
+                <span aria-hidden="true">💡</span> Add LinkedIn profile or job description for a more targeted analysis
               </p>
             )}
           </div>

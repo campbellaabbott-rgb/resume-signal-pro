@@ -143,19 +143,14 @@ export type Database = {
           share_id: string
         }[]
       }
-      get_temp_resume:
-        | {
-            Args: { p_session_id: string }
-            Returns: {
-              error: true
-            } & "Could not choose the best candidate function between: public.get_temp_resume(p_session_id => text), public.get_temp_resume(p_session_id => uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"[]
-          }
-        | {
-            Args: { p_session_id: string }
-            Returns: {
-              error: true
-            } & "Could not choose the best candidate function between: public.get_temp_resume(p_session_id => text), public.get_temp_resume(p_session_id => uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"[]
-          }
+      get_temp_resume: {
+        Args: { p_session_id: string }
+        Returns: {
+          job_description_text: string
+          linkedin_text: string
+          resume_text: string
+        }[]
+      }
       store_temp_resume:
         | { Args: { p_linkedin?: string; p_resume: string }; Returns: string }
         | {
