@@ -3,12 +3,109 @@ import { useTranslation } from "react-i18next";
 import { 
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
-  Trophy, Hash, Pencil, XCircle, CheckCircle
+  Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+// Tooltip explanations for each metric
+const metricTooltips = {
+  atsScore: {
+    title: "ATS Score",
+    description: "Measures how well your resume will perform in Applicant Tracking Systems that 98% of Fortune 500 companies use.",
+    whyMatters: "A low score means your resume may never reach a human recruiter."
+  },
+  format: {
+    title: "Format Grade",
+    description: "Evaluates your resume's structure, layout, and ATS-readability.",
+    whyMatters: "Poor formatting causes ATS parsing errors, losing your key information."
+  },
+  metrics: {
+    title: "Quantification Score",
+    description: "Measures how many of your achievements include numbers, percentages, or metrics.",
+    whyMatters: "Recruiters spend 6 seconds scanning—numbers catch their eye first."
+  },
+  verbs: {
+    title: "Action Verb Grade",
+    description: "Rates the strength and variety of action verbs starting your bullet points.",
+    whyMatters: "Strong verbs like 'Spearheaded' beat weak ones like 'Helped' or 'Assisted'."
+  },
+  pages: {
+    title: "Resume Length",
+    description: "Checks if your resume length matches industry standards for your experience level.",
+    whyMatters: "Too long = skipped. Too short = lacking substance."
+  },
+  words: {
+    title: "Word Count",
+    description: "Measures if you have enough content to showcase your value.",
+    whyMatters: "The sweet spot varies by experience—too few words signals inexperience."
+  },
+  sections: {
+    title: "Section Check",
+    description: "Verifies all essential resume sections are present (Summary, Experience, Education, Skills).",
+    whyMatters: "Missing sections are immediate red flags for recruiters."
+  },
+  contact: {
+    title: "Contact Info",
+    description: "Checks for email, phone, and LinkedIn presence.",
+    whyMatters: "Recruiters can't hire you if they can't contact you."
+  },
+  readability: {
+    title: "Readability Score",
+    description: "Measures how easy your resume is to scan quickly.",
+    whyMatters: "Recruiters average 6-7 seconds per resume—make every word count."
+  },
+  bulletImpact: {
+    title: "Bullet Impact",
+    description: "Analyzes if your bullets focus on achievements vs. just listing responsibilities.",
+    whyMatters: "Achievement-focused bullets prove value; responsibility lists don't."
+  },
+  keywordDensity: {
+    title: "Keyword Density",
+    description: "Measures industry-relevant keyword presence for ATS matching.",
+    whyMatters: "Too few keywords = no ATS match. Too many = keyword stuffing penalty."
+  },
+  improvementPotential: {
+    title: "Improvement Potential",
+    description: "Estimated score increase possible with optimization.",
+    whyMatters: "Shows how much room you have to outcompete other candidates."
+  },
+  industryBenchmark: {
+    title: "Industry Benchmark",
+    description: "Compares your score against others in your field.",
+    whyMatters: "Know where you stand against your direct competition."
+  },
+  timeline: {
+    title: "Career Timeline",
+    description: "Analyzes job tenure, gaps, and career progression patterns.",
+    whyMatters: "Recruiters look for stability and growth—gaps need explanation."
+  }
+};
+
+// Reusable tooltip component for metrics
+const MetricTooltip = ({ metricKey }: { metricKey: keyof typeof metricTooltips }) => {
+  const tooltip = metricTooltips[metricKey];
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <HelpCircle className="w-3 h-3 text-muted-foreground/50 hover:text-muted-foreground cursor-help transition-colors" />
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[280px] p-3">
+        <p className="font-semibold text-foreground mb-1">{tooltip.title}</p>
+        <p className="text-xs text-muted-foreground mb-2">{tooltip.description}</p>
+        <p className="text-xs text-primary font-medium">💡 {tooltip.whyMatters}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+};
 
 interface KeywordSuggestion {
   keyword: string;
@@ -456,6 +553,7 @@ export function FreeKeywordResults({
   };
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
       {/* Header */}
       <div className="text-center mb-6">
@@ -475,7 +573,8 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getScoreBgColor(atsScoreEstimate))}>
           <div className="flex items-center gap-2 mb-1">
             <Target className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">{t('freeScan.atsScore')}</p>
+            <p className="text-xs text-muted-foreground flex-1">{t('freeScan.atsScore')}</p>
+            <MetricTooltip metricKey="atsScore" />
           </div>
           <p className={cn("text-2xl font-bold", getScoreColor(atsScoreEstimate))}>
             {atsScoreEstimate}<span className="text-sm text-muted-foreground">/100</span>
@@ -490,7 +589,8 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getGradeBgColor(formatGrade))}>
           <div className="flex items-center gap-2 mb-1">
             <FileCheck className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">{t('freeScan.format')}</p>
+            <p className="text-xs text-muted-foreground flex-1">{t('freeScan.format')}</p>
+            <MetricTooltip metricKey="format" />
           </div>
           <div className="flex items-baseline gap-1">
             <p className={cn("text-2xl font-bold", getGradeColor(formatGrade))}>{formatGrade}</p>
@@ -503,7 +603,8 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getQuantificationBgColor(quantificationScore.verdict))}>
           <div className="flex items-center gap-2 mb-1">
             <Hash className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">{t('freeScan.metrics')}</p>
+            <p className="text-xs text-muted-foreground flex-1">{t('freeScan.metrics')}</p>
+            <MetricTooltip metricKey="metrics" />
           </div>
           <p className={cn("text-2xl font-bold", getQuantificationColor(quantificationScore.verdict))}>
             {quantificationScore.score}<span className="text-sm text-muted-foreground">%</span>
@@ -515,7 +616,8 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getGradeBgColor(actionVerbGrade.grade))}>
           <div className="flex items-center gap-2 mb-1">
             <Pencil className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">{t('freeScan.verbs')}</p>
+            <p className="text-xs text-muted-foreground flex-1">{t('freeScan.verbs')}</p>
+            <MetricTooltip metricKey="verbs" />
           </div>
           <div className="flex items-baseline gap-1">
             <p className={cn("text-2xl font-bold", getGradeColor(actionVerbGrade.grade))}>{actionVerbGrade.grade}</p>
@@ -531,7 +633,8 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getLengthBgColor(resumeLength.verdict))}>
           <div className="flex items-center gap-2 mb-1">
             <FileText className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">{t('freeScan.pages')}</p>
+            <p className="text-xs text-muted-foreground flex-1">{t('freeScan.pages')}</p>
+            <MetricTooltip metricKey="pages" />
           </div>
           <div className="flex items-baseline gap-1">
             <p className={cn("text-2xl font-bold", getLengthColor(resumeLength.verdict))}>{resumeLength.currentPages}</p>
@@ -544,7 +647,8 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getWordCountBgColor(wordCount.verdict))}>
           <div className="flex items-center gap-2 mb-1">
             <Type className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">{t('freeScan.words')}</p>
+            <p className="text-xs text-muted-foreground flex-1">{t('freeScan.words')}</p>
+            <MetricTooltip metricKey="words" />
           </div>
           <p className={cn("text-2xl font-bold", getWordCountColor(wordCount.verdict))}>{wordCount.current}</p>
           <p className="text-xs text-muted-foreground mt-1">{wordCount.idealMin}-{wordCount.idealMax} {t('freeScan.ideal')}</p>
@@ -554,7 +658,8 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getSectionBgColor())}>
           <div className="flex items-center gap-2 mb-1">
             <LayoutList className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">{t('freeScan.sections')}</p>
+            <p className="text-xs text-muted-foreground flex-1">{t('freeScan.sections')}</p>
+            <MetricTooltip metricKey="sections" />
           </div>
           <p className={cn("text-2xl font-bold", getSectionColor())}>{getSectionScore()}</p>
           {sectionCheck.missingSections.length > 0 && (
@@ -569,7 +674,8 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getContactBgColor())}>
           <div className="flex items-center gap-2 mb-1">
             <Phone className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">{t('freeScan.contact')}</p>
+            <p className="text-xs text-muted-foreground flex-1">{t('freeScan.contact')}</p>
+            <MetricTooltip metricKey="contact" />
           </div>
           <p className={cn("text-2xl font-bold", getContactColor())}>{getContactScore()}</p>
           {contactInfo.missingItems.length > 0 && (
@@ -587,7 +693,8 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getReadabilityBgColor(readabilityScore.verdict))}>
           <div className="flex items-center gap-2 mb-1">
             <FileText className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">{t('freeScan.readability')}</p>
+            <p className="text-xs text-muted-foreground flex-1">{t('freeScan.readability')}</p>
+            <MetricTooltip metricKey="readability" />
           </div>
           <p className={cn("text-2xl font-bold", getReadabilityColor(readabilityScore.verdict))}>
             {readabilityScore.score}<span className="text-sm text-muted-foreground">%</span>
@@ -599,7 +706,8 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getBulletImpactBgColor(bulletImpactScore.verdict))}>
           <div className="flex items-center gap-2 mb-1">
             <Target className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">{t('freeScan.bulletImpact')}</p>
+            <p className="text-xs text-muted-foreground flex-1">{t('freeScan.bulletImpact')}</p>
+            <MetricTooltip metricKey="bulletImpact" />
           </div>
           <p className={cn("text-2xl font-bold", getBulletImpactColor(bulletImpactScore.verdict))}>
             {bulletImpactScore.score}<span className="text-sm text-muted-foreground">%</span>
@@ -611,7 +719,8 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getKeywordDensityBgColor(keywordDensity.level))}>
           <div className="flex items-center gap-2 mb-1">
             <Hash className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">{t('freeScan.keywordDensity')}</p>
+            <p className="text-xs text-muted-foreground flex-1">{t('freeScan.keywordDensity')}</p>
+            <MetricTooltip metricKey="keywordDensity" />
           </div>
           <p className={cn("text-xl font-bold capitalize", getKeywordDensityColor(keywordDensity.level))}>
             {keywordDensity.level}
@@ -623,7 +732,8 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getImprovementPotentialBgColor(improvementPotential.level))}>
           <div className="flex items-center gap-2 mb-1">
             <Zap className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">{t('freeScan.improvementPotential')}</p>
+            <p className="text-xs text-muted-foreground flex-1">{t('freeScan.improvementPotential')}</p>
+            <MetricTooltip metricKey="improvementPotential" />
           </div>
           <div className="flex items-baseline gap-1">
             <p className={cn("text-xl font-bold", getImprovementPotentialColor(improvementPotential.level))}>
@@ -716,7 +826,8 @@ export function FreeKeywordResults({
         <div className="rounded-2xl bg-card border border-border p-5">
           <div className="flex items-center gap-2 mb-4">
             <Target className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold">Industry Benchmark</h4>
+            <h4 className="font-semibold flex-1">Industry Benchmark</h4>
+            <MetricTooltip metricKey="industryBenchmark" />
           </div>
           
           {/* Score Comparison */}
@@ -792,7 +903,8 @@ export function FreeKeywordResults({
         <div className="rounded-2xl bg-card border border-border p-5">
           <div className="flex items-center gap-2 mb-3">
             <FileText className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold">Career Timeline</h4>
+            <h4 className="font-semibold flex-1">Career Timeline</h4>
+            <MetricTooltip metricKey="timeline" />
           </div>
           <div className="space-y-2">
             <div className="flex justify-between items-center p-2 rounded-lg bg-muted/30">
@@ -1145,5 +1257,6 @@ export function FreeKeywordResults({
         <p className="text-xs text-muted-foreground mt-2">One interview pays for itself</p>
       </div>
     </div>
+    </TooltipProvider>
   );
 }
