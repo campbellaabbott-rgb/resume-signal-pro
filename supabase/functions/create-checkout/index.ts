@@ -9,11 +9,62 @@ const corsHeaders = {
 
 const RATE_LIMIT = 10; // 10 requests per hour
 const RATE_WINDOW_MINUTES = 60;
+const BASE_PRICE_USD = 25;
+
+// Supported currencies with exchange rates (approximate, updated periodically)
+// Amount is in smallest currency unit (cents, pence, etc.)
+const CURRENCY_RATES: Record<string, { rate: number; minUnit: number }> = {
+  usd: { rate: 1, minUnit: 100 },
+  cad: { rate: 1.40, minUnit: 100 },
+  gbp: { rate: 0.79, minUnit: 100 },
+  eur: { rate: 0.92, minUnit: 100 },
+  inr: { rate: 84.50, minUnit: 100 },
+  aud: { rate: 1.58, minUnit: 100 },
+  jpy: { rate: 154, minUnit: 1 }, // JPY has no decimal
+  mxn: { rate: 20.20, minUnit: 100 },
+  brl: { rate: 6.10, minUnit: 100 },
+  php: { rate: 58.50, minUnit: 100 },
+  sgd: { rate: 1.35, minUnit: 100 },
+  nzd: { rate: 1.75, minUnit: 100 },
+  chf: { rate: 0.89, minUnit: 100 },
+  sek: { rate: 10.90, minUnit: 100 },
+  nok: { rate: 11.20, minUnit: 100 },
+  dkk: { rate: 6.90, minUnit: 100 },
+  pln: { rate: 4.05, minUnit: 100 },
+  zar: { rate: 18.20, minUnit: 100 },
+  hkd: { rate: 7.80, minUnit: 100 },
+  krw: { rate: 1420, minUnit: 1 }, // KRW has no decimal
+  thb: { rate: 35.00, minUnit: 100 },
+  myr: { rate: 4.45, minUnit: 100 },
+  idr: { rate: 15900, minUnit: 100 },
+  ils: { rate: 3.65, minUnit: 100 },
+  aed: { rate: 3.67, minUnit: 100 },
+  twd: { rate: 32.50, minUnit: 100 },
+  czk: { rate: 23.50, minUnit: 100 },
+  huf: { rate: 390, minUnit: 100 },
+  ron: { rate: 4.60, minUnit: 100 },
+};
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
+
+function calculateAmount(currency: string): { amount: number; currency: string } {
+  const lowerCurrency = currency.toLowerCase();
+  const currencyData = CURRENCY_RATES[lowerCurrency];
+  
+  if (!currencyData) {
+    // Fallback to USD if currency not supported
+    return { amount: BASE_PRICE_USD * 100, currency: "usd" };
+  }
+  
+  const convertedAmount = BASE_PRICE_USD * currencyData.rate;
+  const roundedAmount = Math.round(convertedAmount);
+  const amountInSmallestUnit = roundedAmount * currencyData.minUnit;
+  
+  return { amount: amountInSmallestUnit, currency: lowerCurrency };
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -78,18 +129,28 @@ serve(async (req) => {
     }
     logStep("Stripe key verified");
 
-    const { resumeData } = await req.json();
-    logStep("Received request", { hasResumeData: !!resumeData });
+    const { resumeData, currency: requestedCurrency } = await req.json();
+    logStep("Received request", { hasResumeData: !!resumeData, currency: requestedCurrency });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-
     const origin = req.headers.get("origin") || "https://lovable.dev";
 
-    // Create a one-time payment session with dedicated price ID
+    // Calculate amount in the requested currency
+    const { amount, currency } = calculateAmount(requestedCurrency || "usd");
+    logStep("Calculated price", { amount, currency, baseUSD: BASE_PRICE_USD });
+
+    // Create a one-time payment session with dynamic pricing for multi-currency
     const session = await stripe.checkout.sessions.create({
       line_items: [
         {
-          price: "price_1SekyXHBplUUV1CgfJWeRFsf",
+          price_data: {
+            currency: currency,
+            product_data: {
+              name: "Resume Booster Analysis",
+              description: "Comprehensive AI-powered resume analysis with ATS optimization, bullet rewrites, and action plan",
+            },
+            unit_amount: amount,
+          },
           quantity: 1,
         },
       ],
@@ -98,10 +159,12 @@ serve(async (req) => {
       cancel_url: `${origin}/?canceled=true`,
       metadata: {
         resumeData: resumeData ? JSON.stringify(resumeData).slice(0, 500) : "",
+        originalCurrency: currency,
+        baseAmountUSD: BASE_PRICE_USD.toString(),
       },
     });
 
-    logStep("Checkout session created", { sessionId: session.id });
+    logStep("Checkout session created", { sessionId: session.id, currency, amount });
 
     return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
