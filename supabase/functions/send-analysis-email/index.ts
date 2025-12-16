@@ -603,7 +603,7 @@ serve(async (req) => {
       </html>
     `;
 
-    logStep("Sending email");
+    logStep("Sending email", { to: email ? '***@***' : 'missing' });
 
     const emailResponse = await resend.emails.send({
       from: "Resume Booster <onboarding@resend.dev>",
@@ -612,9 +612,23 @@ serve(async (req) => {
       html: emailHtml,
     });
 
-    logStep("Email sent successfully");
+    // Log full response for debugging
+    logStep("Resend API response", { 
+      id: emailResponse?.data?.id || 'no-id',
+      error: emailResponse?.error ? JSON.stringify(emailResponse.error) : null
+    });
 
-    return new Response(JSON.stringify({ success: true }), {
+    if (emailResponse?.error) {
+      console.error("[SEND-ANALYSIS-EMAIL] Resend error:", emailResponse.error);
+      return new Response(
+        JSON.stringify({ error: "Email delivery failed. Please check your email address and try again." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    logStep("Email sent successfully", { emailId: emailResponse?.data?.id });
+
+    return new Response(JSON.stringify({ success: true, emailId: emailResponse?.data?.id }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
