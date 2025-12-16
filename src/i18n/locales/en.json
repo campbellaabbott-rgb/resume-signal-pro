@@ -226,5 +226,75 @@
       "price": "$25",
       "processing": "Processing..."
     }
+  },
+  "success": {
+    "loading": "Analyzing your resume...",
+    "loadingShared": "Loading analysis...",
+    "loadingDesc": "Our AI is reviewing your resume with recruiter-grade precision.",
+    "loadingSharedDesc": "Fetching the saved analysis.",
+    "steps": {
+      "payment": "Payment verified",
+      "parsing": "Parsing resume",
+      "analysis": "AI analysis",
+      "generating": "Generating feedback"
+    },
+    "error": {
+      "title": "Analysis Failed",
+      "notFound": "Analysis not found. The link may be invalid or expired.",
+      "generic": "Failed to load analysis.",
+      "tryAgain": "Please try uploading your resume again.",
+      "backHome": "Back to Home"
+    },
+    "toast": {
+      "paymentSuccess": "Payment successful!",
+      "analysisReady": "Your AI-powered resume analysis is ready.",
+      "analysisReadyLinkedIn": "Your resume + LinkedIn analysis is ready.",
+      "analysisFailed": "Analysis failed",
+      "analysisFailedDesc": "There was an issue analyzing your resume. Please contact support.",
+      "linkCopied": "Link copied!",
+      "linkCopiedDesc": "Share this link to let others view your analysis.",
+      "emailSent": "Email sent!",
+      "emailSentDesc": "Your complete analysis has been sent to your inbox.",
+      "emailFailed": "Failed to send email",
+      "emailFailedDesc": "Please try again or copy the share link instead.",
+      "invalidEmail": "Invalid email",
+      "invalidEmailDesc": "Please enter a valid email address.",
+      "pdfDownloaded": "PDF downloaded!",
+      "pdfDownloadedDesc": "Check your Downloads folder.",
+      "pdfFailed": "Failed to generate PDF",
+      "pdfFailedDesc": "Please try again.",
+      "dataDeleted": "Data deleted",
+      "dataDeletedDesc": "Your resume analysis has been permanently deleted.",
+      "deleteFailed": "Failed to delete data",
+      "deleteFailedDesc": "Please try again or contact support."
+    },
+    "actions": {
+      "share": "Share",
+      "copied": "Copied!",
+      "downloadPdf": "Download PDF",
+      "generating": "Generating...",
+      "emailResults": "Email Your Results",
+      "emailPlaceholder": "Enter your email",
+      "send": "Send",
+      "sending": "Sending...",
+      "sent": "Sent!",
+      "newAnalysis": "New Analysis",
+      "deleteData": "Delete My Data",
+      "deleteConfirm": "Delete Analysis Data",
+      "deleteWarning": "This action cannot be undone. This will permanently delete your resume analysis from our servers.",
+      "cancel": "Cancel",
+      "deleting": "Deleting..."
+    },
+    "sharedView": "Viewing shared analysis"
+  },
+  "common": {
+    "backToHome": "Back to Home",
+    "lastUpdated": "Last updated"
+  },
+  "privacy": {
+    "title": "Privacy Policy"
+  },
+  "terms": {
+    "title": "Terms of Service"
   }
 }

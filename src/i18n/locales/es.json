@@ -181,7 +181,7 @@
     "plusMore": "Además: Brecha de Habilidades, Perspectivas de Industria, Verbos de Acción, Palabras Clave y Reescritura de Resumen"
   },
   "freeScan": {
-    "complete": "Escaneo Gratis de 17 Puntos Completo",
+    "complete": "Escaneo Gratuito de 17 Puntos Completado",
     "preview": "Aquí está tu vista previa completa",
     "detected": "Detectado",
     "atsScore": "Puntuación ATS",
@@ -200,16 +200,16 @@
     "excellent": "Excelente",
     "good": "Bueno",
     "fair": "Regular",
-    "needsWork": "Necesita Trabajo",
+    "needsWork": "Necesita Mejoras",
     "perfect": "Perfecto",
     "tooShort": "Muy Corto",
     "tooLong": "Muy Largo",
-    "topStrength": "Principal Fortaleza",
+    "topStrength": "Fortaleza Principal",
     "redFlags": "Señales de Alerta Detectadas",
     "impactLabel": "Impacto",
     "improvementPotential": "Potencial de Mejora",
     "estimatedIncrease": "Estimado +{{points}} puntos con optimización completa",
-    "topPriority": "Prioridad máxima",
+    "topPriority": "Prioridad principal",
     "missingKeywords": "Palabras Clave Faltantes",
     "lockMessage": "El análisis completo desbloquea {{count}} palabras clave más + sugerencias",
     "emailCapture": {
@@ -220,11 +220,81 @@
       "subscribed": "¡Estás suscrito!"
     },
     "cta": {
-      "title": "Desbloquea tu Análisis Completo",
-      "description": "Obtén comentarios completos con reescrituras detalladas de viñetas, estrategias de optimización ATS y un plan de acción priorizado.",
+      "title": "Desbloquea Tu Análisis Completo",
+      "description": "Obtén retroalimentación completa con reescrituras detalladas de viñetas, estrategias de optimización ATS y un plan de acción priorizado.",
       "button": "Obtener Análisis Completo",
       "price": "$25",
       "processing": "Procesando..."
     }
+  },
+  "success": {
+    "loading": "Analizando tu currículum...",
+    "loadingShared": "Cargando análisis...",
+    "loadingDesc": "Nuestra IA está revisando tu currículum con precisión de reclutador.",
+    "loadingSharedDesc": "Obteniendo el análisis guardado.",
+    "steps": {
+      "payment": "Pago verificado",
+      "parsing": "Analizando currículum",
+      "analysis": "Análisis de IA",
+      "generating": "Generando retroalimentación"
+    },
+    "error": {
+      "title": "Análisis Fallido",
+      "notFound": "Análisis no encontrado. El enlace puede ser inválido o haber expirado.",
+      "generic": "Error al cargar el análisis.",
+      "tryAgain": "Por favor intenta subir tu currículum de nuevo.",
+      "backHome": "Volver al Inicio"
+    },
+    "toast": {
+      "paymentSuccess": "¡Pago exitoso!",
+      "analysisReady": "Tu análisis de currículum con IA está listo.",
+      "analysisReadyLinkedIn": "Tu análisis de currículum + LinkedIn está listo.",
+      "analysisFailed": "Análisis fallido",
+      "analysisFailedDesc": "Hubo un problema analizando tu currículum. Por favor contacta soporte.",
+      "linkCopied": "¡Enlace copiado!",
+      "linkCopiedDesc": "Comparte este enlace para que otros vean tu análisis.",
+      "emailSent": "¡Correo enviado!",
+      "emailSentDesc": "Tu análisis completo ha sido enviado a tu bandeja de entrada.",
+      "emailFailed": "Error al enviar correo",
+      "emailFailedDesc": "Por favor intenta de nuevo o copia el enlace para compartir.",
+      "invalidEmail": "Correo inválido",
+      "invalidEmailDesc": "Por favor ingresa una dirección de correo válida.",
+      "pdfDownloaded": "¡PDF descargado!",
+      "pdfDownloadedDesc": "Revisa tu carpeta de Descargas.",
+      "pdfFailed": "Error al generar PDF",
+      "pdfFailedDesc": "Por favor intenta de nuevo.",
+      "dataDeleted": "Datos eliminados",
+      "dataDeletedDesc": "Tu análisis de currículum ha sido eliminado permanentemente.",
+      "deleteFailed": "Error al eliminar datos",
+      "deleteFailedDesc": "Por favor intenta de nuevo o contacta soporte."
+    },
+    "actions": {
+      "share": "Compartir",
+      "copied": "¡Copiado!",
+      "downloadPdf": "Descargar PDF",
+      "generating": "Generando...",
+      "emailResults": "Enviar Resultados por Correo",
+      "emailPlaceholder": "Ingresa tu correo",
+      "send": "Enviar",
+      "sending": "Enviando...",
+      "sent": "¡Enviado!",
+      "newAnalysis": "Nuevo Análisis",
+      "deleteData": "Eliminar Mis Datos",
+      "deleteConfirm": "Eliminar Datos del Análisis",
+      "deleteWarning": "Esta acción no se puede deshacer. Esto eliminará permanentemente tu análisis de currículum de nuestros servidores.",
+      "cancel": "Cancelar",
+      "deleting": "Eliminando..."
+    },
+    "sharedView": "Viendo análisis compartido"
+  },
+  "common": {
+    "backToHome": "Volver al Inicio",
+    "lastUpdated": "Última actualización"
+  },
+  "privacy": {
+    "title": "Política de Privacidad"
+  },
+  "terms": {
+    "title": "Términos de Servicio"
   }
 }

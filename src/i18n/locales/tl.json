@@ -181,50 +181,120 @@
     "plusMore": "Dagdag pa: Skills Gap, Industry Insights, Action Verbs, Keywords at Summary Rewrite"
   },
   "freeScan": {
-    "complete": "17-Point na Libreng Scan Kumpleto",
+    "complete": "17-Point Free Scan Kumpleto",
     "preview": "Narito ang iyong komprehensibong preview",
-    "detected": "Nadetect",
+    "detected": "Na-detect",
     "atsScore": "ATS Score",
     "breakdownLocked": "Naka-lock ang breakdown",
     "format": "Format",
     "metrics": "Metrics",
     "verbs": "Verbs",
-    "pages": "Mga Pahina",
-    "words": "Mga Salita",
+    "pages": "Pahina",
+    "words": "Salita",
     "ideal": "ideal",
-    "sections": "Mga Section",
+    "sections": "Seksyon",
     "contact": "Contact",
     "readability": "Readability",
     "bulletImpact": "Bullet Impact",
     "keywordDensity": "Keyword Density",
-    "excellent": "Napakahusay",
-    "good": "Maganda",
+    "excellent": "Mahusay",
+    "good": "Mabuti",
     "fair": "Katamtaman",
-    "needsWork": "Kailangang Pagbutihin",
+    "needsWork": "Kailangan ng Pagpapabuti",
     "perfect": "Perpekto",
     "tooShort": "Masyadong Maikli",
     "tooLong": "Masyadong Mahaba",
     "topStrength": "Pangunahing Lakas",
-    "redFlags": "Mga Red Flag na Nadetect",
+    "redFlags": "Mga Red Flag na Na-detect",
     "impactLabel": "Epekto",
-    "improvementPotential": "Potensyal ng Pagpapabuti",
-    "estimatedIncrease": "Tinatantyang +{{points}} puntos sa buong optimization",
+    "improvementPotential": "Potensyal na Pagpapabuti",
+    "estimatedIncrease": "Tinatayang +{{points}} puntos sa buong optimization",
     "topPriority": "Pangunahing priyoridad",
-    "missingKeywords": "Mga Nawawalang Keywords",
-    "lockMessage": "Ang buong pagsusuri ay magbubukas ng {{count}} pang keywords + suggestions",
+    "missingKeywords": "Mga Nawawalang Keyword",
+    "lockMessage": "Ang buong pagsusuri ay nag-a-unlock ng {{count}} pang keywords + suhestiyon",
     "emailCapture": {
-      "title": "Kumuha ng resume tips sa iyong inbox",
+      "title": "Makakuha ng mga tip sa resume sa iyong inbox",
       "placeholder": "Ilagay ang iyong email",
       "button": "Mag-subscribe",
-      "sending": "Ipinapadala...",
-      "subscribed": "Subscribed ka na!"
+      "sending": "Nagpapadala...",
+      "subscribed": "Naka-subscribe ka na!"
     },
     "cta": {
       "title": "I-unlock ang Iyong Buong Pagsusuri",
-      "description": "Kumuha ng komprehensibong feedback na may detailed na bullet rewrites, ATS optimization strategies, at prioritized na action plan.",
+      "description": "Kumuha ng komprehensibong feedback na may detalyadong bullet rewrites, ATS optimization strategies, at prioritized na action plan.",
       "button": "Kumuha ng Buong Pagsusuri",
       "price": "$25",
       "processing": "Pinoproseso..."
     }
+  },
+  "success": {
+    "loading": "Sinusuri ang iyong resume...",
+    "loadingShared": "Naglo-load ng pagsusuri...",
+    "loadingDesc": "Sinusuri ng aming AI ang iyong resume nang may katumpakan ng recruiter.",
+    "loadingSharedDesc": "Kinukuha ang naka-save na pagsusuri.",
+    "steps": {
+      "payment": "Na-verify ang bayad",
+      "parsing": "Pina-parse ang resume",
+      "analysis": "AI analysis",
+      "generating": "Gumagawa ng feedback"
+    },
+    "error": {
+      "title": "Nabigo ang Pagsusuri",
+      "notFound": "Hindi nahanap ang pagsusuri. Maaaring invalid o expired na ang link.",
+      "generic": "Nabigong ma-load ang pagsusuri.",
+      "tryAgain": "Pakisubukan muli na i-upload ang iyong resume.",
+      "backHome": "Bumalik sa Home"
+    },
+    "toast": {
+      "paymentSuccess": "Matagumpay ang pagbabayad!",
+      "analysisReady": "Handa na ang iyong AI-powered resume analysis.",
+      "analysisReadyLinkedIn": "Handa na ang iyong resume + LinkedIn analysis.",
+      "analysisFailed": "Nabigo ang pagsusuri",
+      "analysisFailedDesc": "May problema sa pagsusuri ng iyong resume. Pakicontact ang support.",
+      "linkCopied": "Na-copy ang link!",
+      "linkCopiedDesc": "I-share ang link na ito para makita ng iba ang iyong pagsusuri.",
+      "emailSent": "Naipadala ang email!",
+      "emailSentDesc": "Ang iyong kumpletong pagsusuri ay naipadala na sa iyong inbox.",
+      "emailFailed": "Hindi naipadala ang email",
+      "emailFailedDesc": "Pakisubukan muli o i-copy ang share link.",
+      "invalidEmail": "Invalid na email",
+      "invalidEmailDesc": "Pakilagay ng valid na email address.",
+      "pdfDownloaded": "Na-download ang PDF!",
+      "pdfDownloadedDesc": "Tingnan ang iyong Downloads folder.",
+      "pdfFailed": "Hindi nagawa ang PDF",
+      "pdfFailedDesc": "Pakisubukan muli.",
+      "dataDeleted": "Na-delete ang data",
+      "dataDeletedDesc": "Ang iyong resume analysis ay permanenteng na-delete na.",
+      "deleteFailed": "Hindi na-delete ang data",
+      "deleteFailedDesc": "Pakisubukan muli o i-contact ang support."
+    },
+    "actions": {
+      "share": "I-share",
+      "copied": "Na-copy!",
+      "downloadPdf": "I-download ang PDF",
+      "generating": "Gumagawa...",
+      "emailResults": "I-email ang Resulta",
+      "emailPlaceholder": "Ilagay ang iyong email",
+      "send": "Ipadala",
+      "sending": "Nagpapadala...",
+      "sent": "Naipadala!",
+      "newAnalysis": "Bagong Pagsusuri",
+      "deleteData": "I-delete ang Aking Data",
+      "deleteConfirm": "I-delete ang Analysis Data",
+      "deleteWarning": "Hindi na maibabalik ang aksyong ito. Permanenteng ide-delete nito ang iyong resume analysis mula sa aming servers.",
+      "cancel": "Kanselahin",
+      "deleting": "Dine-delete..."
+    },
+    "sharedView": "Tinitingnan ang na-share na pagsusuri"
+  },
+  "common": {
+    "backToHome": "Bumalik sa Home",
+    "lastUpdated": "Huling na-update"
+  },
+  "privacy": {
+    "title": "Patakaran sa Privacy"
+  },
+  "terms": {
+    "title": "Mga Tuntunin ng Serbisyo"
   }
 }
