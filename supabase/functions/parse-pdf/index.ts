@@ -8,12 +8,54 @@ const corsHeaders = {
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
 
+// Simple in-memory rate limiter (resets on function restart)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+const checkRateLimit = (ip: string, maxRequests = 20, windowMs = 3600000): boolean => {
+  const now = Date.now();
+  const record = rateLimitMap.get(ip);
+  
+  // Clean up old entries periodically
+  if (rateLimitMap.size > 1000) {
+    for (const [key, value] of rateLimitMap.entries()) {
+      if (now > value.resetAt) {
+        rateLimitMap.delete(key);
+      }
+    }
+  }
+  
+  if (!record || now > record.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  
+  if (record.count >= maxRequests) {
+    return false;
+  }
+  
+  record.count++;
+  return true;
+};
+
 type PdfTextItem = { str?: string };
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Rate limiting: 20 requests per IP per hour
+  const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
+                   req.headers.get('x-real-ip') || 
+                   'unknown';
+  
+  if (!checkRateLimit(clientIp, 20, 3600000)) {
+    console.log(`[PARSE-PDF] Rate limit exceeded for IP: ${clientIp}`);
+    return new Response(
+      JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+      { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   try {
