@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      free_scan_leads: {
+        Row: {
+          ats_score_estimate: number | null
+          created_at: string
+          email: string
+          id: string
+          industry: string | null
+        }
+        Insert: {
+          ats_score_estimate?: number | null
+          created_at?: string
+          email: string
+          id?: string
+          industry?: string | null
+        }
+        Update: {
+          ats_score_estimate?: number | null
+          created_at?: string
+          email?: string
+          id?: string
+          industry?: string | null
+        }
+        Relationships: []
+      }
       rate_limits: {
         Row: {
           function_name: string
@@ -150,6 +174,10 @@ export type Database = {
           linkedin_text: string
           resume_text: string
         }[]
+      }
+      save_free_scan_lead: {
+        Args: { p_ats_score?: number; p_email: string; p_industry?: string }
+        Returns: boolean
       }
       store_temp_resume:
         | { Args: { p_linkedin?: string; p_resume: string }; Returns: string }
