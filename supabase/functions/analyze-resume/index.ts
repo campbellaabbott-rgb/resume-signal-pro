@@ -425,12 +425,91 @@ EXPERIENCE LEVEL DETECTION & PERSONALIZATION:
 - Senior (8-15 yrs): Leadership, strategic impact, scope of influence. 2 pages optimal.
 - Executive (15+ yrs): Board-level achievements, business outcomes. 2-3 pages acceptable.
 
-INDUSTRY-SPECIFIC KEYWORDS TO CHECK:
-- Tech: CI/CD, Agile, cloud platforms, languages, frameworks, system design
-- Finance: P&L, AUM, risk management, compliance, modeling, Bloomberg
-- Sales: quota attainment, pipeline, ARR, CAC, LTV, territory management
-- Marketing: CAC, ROAS, attribution, funnel metrics, channel performance
-- Healthcare: HIPAA, EMR/EHR, patient outcomes, clinical protocols
+INDUSTRY-SPECIFIC ANALYSIS (detect from resume and apply relevant guidance):
+
+**SOFTWARE ENGINEERING/TECH:**
+- Keywords: CI/CD, Agile/Scrum, AWS/GCP/Azure, Docker, Kubernetes, microservices, REST APIs, Git, system design, scalability
+- Metrics to add: latency reduction %, uptime %, users served, code coverage, deployment frequency, PR review time
+- Red flags: No GitHub/portfolio link, outdated tech stack (jQuery without React/Vue), no metrics on scale
+- What recruiters want: Quantified impact, system design experience, collaboration signals
+
+**DATA SCIENCE/ML/AI:**
+- Keywords: Python, TensorFlow/PyTorch, SQL, A/B testing, model deployment, MLOps, feature engineering, statistical analysis
+- Metrics: Model accuracy improvement %, revenue impact, prediction latency, data pipeline scale (TB processed)
+- Red flags: No mention of production deployment, only academic projects, missing business impact
+- What recruiters want: End-to-end ML lifecycle experience, business outcome focus
+
+**PRODUCT MANAGEMENT:**
+- Keywords: roadmap, user research, A/B testing, PRD, OKRs, stakeholder management, go-to-market, product-market fit
+- Metrics: Revenue impact, user growth %, feature adoption %, NPS improvement, time-to-market reduction
+- Red flags: No metrics, feature-focused instead of outcome-focused, no cross-functional collaboration examples
+- What recruiters want: Strategic thinking, data-driven decisions, stakeholder influence
+
+**SALES/BUSINESS DEVELOPMENT:**
+- Keywords: quota attainment, pipeline generation, ARR/MRR, CAC, LTV, Salesforce, enterprise sales, consultative selling
+- Metrics: % to quota (aim for 100%+), deal size, pipeline value, win rate, revenue closed
+- Red flags: No quota numbers, vague "exceeded targets", missing deal sizes, no CRM mention
+- What recruiters want: Consistent quota achievement, deal size progression, hunting vs farming clarity
+
+**MARKETING:**
+- Keywords: CAC, ROAS, attribution, funnel optimization, SEO/SEM, content strategy, marketing automation, brand awareness
+- Metrics: CAC reduction %, conversion rate improvement, traffic growth, campaign ROI, lead generation numbers
+- Red flags: No metrics, "managed social media" without results, missing channel expertise
+- What recruiters want: Channel expertise + metrics, budget responsibility, growth mindset
+
+**FINANCE/ACCOUNTING:**
+- Keywords: P&L, budgeting, forecasting, GAAP, financial modeling, variance analysis, audit, compliance, ERP
+- Metrics: Budget managed, cost savings achieved, audit findings reduced, forecast accuracy
+- Red flags: No $ amounts, missing software (SAP, Oracle, NetSuite), no compliance/audit experience
+- What recruiters want: Scale of responsibility, accuracy track record, systems expertise
+
+**CONSULTING:**
+- Keywords: client engagement, stakeholder management, deliverables, frameworks, change management, executive presentations
+- Metrics: Project value, client satisfaction scores, utilization rate, proposals won
+- Red flags: No client-facing examples, missing firm methodology, vague project descriptions
+- What recruiters want: Client impact, problem-solving examples, communication skills
+
+**HUMAN RESOURCES:**
+- Keywords: talent acquisition, HRIS, employee engagement, performance management, compensation, compliance, DEI
+- Metrics: Time-to-fill, cost-per-hire, retention rate, engagement scores, headcount managed
+- Red flags: No metrics, missing systems (Workday, ADP), no strategic HR examples
+- What recruiters want: Metrics-driven approach, business partnership examples
+
+**OPERATIONS/SUPPLY CHAIN:**
+- Keywords: process improvement, Six Sigma, lean, inventory management, logistics, vendor management, ERP
+- Metrics: Cost reduction %, efficiency gains, cycle time reduction, inventory turnover, on-time delivery %
+- Red flags: No quantified improvements, missing methodologies, no scale indicators
+- What recruiters want: Continuous improvement mindset, scale of operations managed
+
+**HEALTHCARE/CLINICAL:**
+- Keywords: HIPAA, EMR/EHR (Epic, Cerner), patient outcomes, clinical protocols, care coordination, quality metrics
+- Metrics: Patient satisfaction scores, readmission rates, compliance scores, caseload size
+- Red flags: Missing certifications, no EMR experience, HIPAA not mentioned
+- What recruiters want: Compliance awareness, patient outcome focus, technology adoption
+
+**LEGAL:**
+- Keywords: litigation, contract negotiation, due diligence, regulatory compliance, case management, legal research
+- Metrics: Cases managed, deal value, settlement amounts, contract volume, cost savings
+- Red flags: No bar admission, missing practice areas, no deal/case values
+- What recruiters want: Specialization clarity, deal/case complexity, business acumen
+
+**DESIGN (UX/UI/GRAPHIC):**
+- Keywords: Figma, user research, prototyping, design systems, accessibility, A/B testing, wireframing
+- Metrics: Conversion improvement %, user satisfaction scores, design system adoption, usability test results
+- Red flags: No portfolio link, missing tools, no user research mention, only "pretty" without outcomes
+- What recruiters want: Portfolio link (CRITICAL), user-centered process, business impact
+
+**PROJECT/PROGRAM MANAGEMENT:**
+- Keywords: PMP, Agile, Scrum, stakeholder management, risk mitigation, resource allocation, Jira, MS Project
+- Metrics: Projects delivered, budget managed, on-time delivery %, team size led, cost savings
+- Red flags: No methodology mentioned, missing scale indicators, no risk/issue examples
+- What recruiters want: Complexity handled, methodology expertise, leadership examples
+
+**CUSTOMER SUCCESS/SUPPORT:**
+- Keywords: NPS, CSAT, retention, churn reduction, onboarding, account management, Zendesk, Salesforce
+- Metrics: Retention rate, NPS improvement, response time, ticket resolution, revenue retained
+- Red flags: No metrics, missing tools, only reactive support (no proactive success)
+- What recruiters want: Retention impact, escalation handling, customer advocacy examples
 
 ATS PARSING ISSUES TO FLAG:
 - Tables/columns (scramble text order)
