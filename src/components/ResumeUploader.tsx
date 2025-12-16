@@ -430,7 +430,7 @@ export function ResumeUploader({
                   size="lg"
                   disabled={isFreeScanLoading || !canProceed}
                   onClick={onFreeScan}
-                  className="min-w-[320px] h-14 text-base gap-2 border-2 border-success bg-success/20 hover:bg-success/30 hover:border-success text-success font-semibold shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:shadow-[0_0_30px_rgba(34,197,94,0.6)] transition-all touch-manipulation animate-pulse-subtle"
+                  className="min-w-[320px] h-14 text-base gap-2 border border-success/50 bg-success/10 hover:bg-success/20 hover:border-success/70 text-success font-medium shadow-[0_0_12px_rgba(34,197,94,0.25)] hover:shadow-[0_0_18px_rgba(34,197,94,0.4)] transition-all touch-manipulation disabled:shadow-[0_0_12px_rgba(34,197,94,0.25)] disabled:border-success/40 disabled:text-success/70 disabled:bg-success/5"
                 >
                   {isFreeScanLoading ? (
                     <>
