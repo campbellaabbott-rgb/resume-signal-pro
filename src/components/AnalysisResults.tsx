@@ -1,7 +1,7 @@
 import { 
   CheckCircle2, AlertCircle, Lightbulb, Zap, AlertTriangle, ArrowRight, 
   TrendingUp, Gauge, User, Briefcase, Target, BarChart3, Brain, Copy, Check,
-  Linkedin, Eye, Search, Star, MessageSquare, Sparkles
+  Linkedin, Eye, Search, Star, MessageSquare, Sparkles, FileText, BookOpen, Layout
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
@@ -286,6 +286,110 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               </div>
             )}
 
+            {/* Readability & Format Grid */}
+            {(data.readabilityMetrics || data.formatRecommendations) && (
+              <div className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+                {/* Readability Metrics */}
+                {data.readabilityMetrics && (
+                  <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50">
+                    <div className="flex items-center gap-2 mb-4">
+                      <BookOpen className="w-5 h-5 text-primary" />
+                      <span className="text-sm font-medium">Readability</span>
+                      <span className={cn(
+                        "ml-auto px-2 py-0.5 rounded-full text-xs font-bold",
+                        data.readabilityMetrics.grade === "A" ? "bg-success/20 text-success" :
+                        data.readabilityMetrics.grade === "B" ? "bg-primary/20 text-primary" :
+                        data.readabilityMetrics.grade === "C" ? "bg-warning/20 text-warning" :
+                        "bg-destructive/20 text-destructive"
+                      )}>
+                        Grade {data.readabilityMetrics.grade}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-3 mb-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Jargon Level</span>
+                        <span className={cn(
+                          "font-medium capitalize",
+                          data.readabilityMetrics.jargonLevel === "low" ? "text-success" :
+                          data.readabilityMetrics.jargonLevel === "moderate" ? "text-warning" :
+                          "text-destructive"
+                        )}>
+                          {data.readabilityMetrics.jargonLevel}
+                        </span>
+                      </div>
+                      {data.readabilityMetrics.bulletPointClarity && (
+                        <p className="text-xs text-muted-foreground">
+                          {data.readabilityMetrics.bulletPointClarity}
+                        </p>
+                      )}
+                    </div>
+                    
+                    {data.readabilityMetrics.suggestions.length > 0 && (
+                      <div className="space-y-1.5">
+                        {data.readabilityMetrics.suggestions.slice(0, 3).map((s, i) => (
+                          <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                            <Lightbulb className="w-3 h-3 text-primary mt-0.5 shrink-0" />
+                            {s}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Format Recommendations */}
+                {data.formatRecommendations && (
+                  <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Layout className="w-5 h-5 text-primary" />
+                      <span className="text-sm font-medium">Format & Structure</span>
+                    </div>
+                    
+                    {data.formatRecommendations.currentIssues.length > 0 && (
+                      <div className="mb-3">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-destructive">Issues</span>
+                        <ul className="mt-1.5 space-y-1">
+                          {data.formatRecommendations.currentIssues.slice(0, 2).map((issue, i) => (
+                            <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                              <AlertCircle className="w-3 h-3 text-destructive mt-0.5 shrink-0" />
+                              {issue}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {data.formatRecommendations.recommendations.length > 0 && (
+                      <div className="mb-3">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-success">Recommendations</span>
+                        <ul className="mt-1.5 space-y-1">
+                          {data.formatRecommendations.recommendations.slice(0, 2).map((rec, i) => (
+                            <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                              <CheckCircle2 className="w-3 h-3 text-success mt-0.5 shrink-0" />
+                              {rec}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {data.formatRecommendations.sectionOrder.length > 0 && (
+                      <div>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recommended Section Order</span>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {data.formatRecommendations.sectionOrder.map((section, i) => (
+                            <span key={i} className="px-2 py-0.5 rounded-full bg-muted text-xs">
+                              {i + 1}. {section}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {stats.map((stat) => {
