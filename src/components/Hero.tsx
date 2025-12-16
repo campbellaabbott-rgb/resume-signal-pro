@@ -1,4 +1,4 @@
-import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star } from "lucide-react";
+import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye } from "lucide-react";
 
 const features = [
   { icon: FileText, label: "ATS-optimized bullets", description: "Beat the robots" },
@@ -104,6 +104,17 @@ export function Hero() {
                 </li>
               ))}
             </ul>
+            
+            {/* See Sample link */}
+            <button
+              onClick={() => document.getElementById('preview')?.scrollIntoView({ behavior: 'smooth' })}
+              className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors mt-4 group"
+            >
+              <Eye className="w-4 h-4" />
+              <span className="underline underline-offset-4 decoration-primary/30 group-hover:decoration-primary/60 transition-colors">
+                See what you'll get
+              </span>
+            </button>
           </div>
         </div>
       </div>
