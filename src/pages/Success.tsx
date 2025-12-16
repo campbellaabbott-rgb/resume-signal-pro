@@ -238,6 +238,11 @@ const Success = () => {
           analysis: {
             industry: analysisData.industry,
             experienceLevel: analysisData.experienceLevel,
+            hasLinkedIn: analysisData.hasLinkedIn,
+            atsScore: analysisData.atsScore,
+            readabilityMetrics: analysisData.readabilityMetrics,
+            formatRecommendations: analysisData.formatRecommendations,
+            resumeLength: analysisData.resumeLength,
             summaryRewrite: analysisData.summaryRewrite,
             optimizedBullets: analysisData.optimizedBullets || [],
             quantificationOpportunities: analysisData.quantificationOpportunities,
@@ -245,7 +250,8 @@ const Success = () => {
             industryInsights: analysisData.industryInsights,
             actionVerbs: analysisData.actionVerbs || [],
             keywords: analysisData.keywords || [],
-            redFlags: analysisData.redFlags || []
+            redFlags: analysisData.redFlags || [],
+            linkedInAnalysis: analysisData.linkedInAnalysis
           }
         }
       });
