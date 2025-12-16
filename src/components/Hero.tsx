@@ -1,19 +1,22 @@
 import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye, Users, Sparkles } from "lucide-react";
-
-const features = [
-  { icon: FileText, label: "ATS-optimized bullets", description: "Beat the robots" },
-  { icon: Zap, label: "Stronger action verbs", description: "Stand out instantly" },
-  { icon: Target, label: "Keyword suggestions", description: "Match job descriptions" },
-  { icon: AlertTriangle, label: "Red flag detection", description: "Fix deal-breakers" },
-];
-
-const trustBadges = [
-  { icon: Shield, label: "Secure & Private" },
-  { icon: Clock, label: "Results in 30 seconds" },
-  { icon: Star, label: "Recruiter-approved" },
-];
+import { useTranslation } from "react-i18next";
 
 export function Hero() {
+  const { t } = useTranslation();
+
+  const features = [
+    { icon: FileText, labelKey: "hero.features.atsBullets", descKey: "hero.features.atsBulletsDesc" },
+    { icon: Zap, labelKey: "hero.features.actionVerbs", descKey: "hero.features.actionVerbsDesc" },
+    { icon: Target, labelKey: "hero.features.keywords", descKey: "hero.features.keywordsDesc" },
+    { icon: AlertTriangle, labelKey: "hero.features.redFlags", descKey: "hero.features.redFlagsDesc" },
+  ];
+
+  const trustBadges = [
+    { icon: Shield, labelKey: "hero.trust.secure" },
+    { icon: Clock, labelKey: "hero.trust.results" },
+    { icon: Star, labelKey: "hero.trust.approved" },
+  ];
+
   return (
     <section 
       className="relative py-24 md:py-36 overflow-hidden" 
@@ -45,14 +48,14 @@ export function Hero() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
               </span>
-              AI-Powered Resume Analysis
+              {t('hero.badge')}
             </div>
             <button
               onClick={() => document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' })}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/30 text-sm text-success font-medium hover:bg-success/20 hover:border-success/50 transition-all duration-300 backdrop-blur-sm"
             >
               <Sparkles className="w-4 h-4" />
-              Try Free Scan
+              {t('hero.freeScan')}
             </button>
           </div>
           
@@ -62,14 +65,13 @@ export function Hero() {
             className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 animate-fade-in" 
             style={{ animationDelay: "0.1s" }}
           >
-            Stop guessing.{" "}
-            <span className="text-gradient-primary block md:inline">Start landing interviews.</span>
+            {t('hero.heading')}{" "}
+            <span className="text-gradient-primary block md:inline">{t('hero.headingHighlight')}</span>
           </h1>
           
           {/* Subheading */}
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-12 animate-fade-in leading-relaxed" style={{ animationDelay: "0.2s" }}>
-            Get brutally honest, recruiter-grade feedback on your resume. 
-            No fluff, no sugar-coating — just actionable fixes that get you hired.
+            {t('hero.subheading')}
           </p>
           
           {/* Feature cards */}
@@ -80,15 +82,15 @@ export function Hero() {
           >
             {features.map((feature) => (
               <li
-                key={feature.label}
+                key={feature.labelKey}
                 className="group relative p-4 rounded-xl bg-card/50 border border-border/50 backdrop-blur-sm hover:border-primary/30 hover:bg-card/80 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary"
               >
                 <div className="flex flex-col items-center text-center gap-2">
                   <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors" aria-hidden="true">
                     <feature.icon className="w-5 h-5" />
                   </div>
-                  <span className="text-sm font-medium text-foreground">{feature.label}</span>
-                  <span className="text-xs text-muted-foreground hidden md:block">{feature.description}</span>
+                  <span className="text-sm font-medium text-foreground">{t(feature.labelKey)}</span>
+                  <span className="text-xs text-muted-foreground hidden md:block">{t(feature.descKey)}</span>
                 </div>
               </li>
             ))}
@@ -98,14 +100,14 @@ export function Hero() {
           <div className="animate-fade-in space-y-5" style={{ animationDelay: "0.4s" }}>
             <div className="inline-flex flex-col items-center p-6 rounded-2xl bg-gradient-to-b from-card/80 to-card/40 border border-border/50 backdrop-blur-sm">
               <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-4xl md:text-5xl font-bold text-foreground">$25</span>
-                <span className="text-muted-foreground">one-time</span>
+                <span className="text-4xl md:text-5xl font-bold text-foreground">{t('hero.price')}</span>
+                <span className="text-muted-foreground">{t('hero.oneTime')}</span>
               </div>
-              <p className="text-sm text-muted-foreground">No subscriptions • No hidden fees • Instant results</p>
-              <p className="text-xs text-primary mt-2 font-medium">One interview = $25 paid for itself</p>
+              <p className="text-sm text-muted-foreground">{t('hero.nofees')}</p>
+              <p className="text-xs text-primary mt-2 font-medium">{t('hero.roi')}</p>
               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/30 text-sm text-muted-foreground">
                 <Users className="w-4 h-4 text-primary" />
-                <span>Trusted by <span className="font-semibold text-foreground">10,000+</span> job seekers</span>
+                <span>{t('hero.trusted')} <span className="font-semibold text-foreground">10,000+</span> {t('hero.jobSeekers')}</span>
               </div>
             </div>
             
@@ -116,16 +118,16 @@ export function Hero() {
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary/10 border border-primary/30 text-primary font-medium hover:bg-primary/20 hover:border-primary/50 transition-all duration-300 hover:scale-105 group"
               >
                 <Eye className="w-5 h-5" />
-                <span>See Sample Analysis</span>
+                <span>{t('hero.seeSample')}</span>
               </button>
             </div>
             
             {/* Trust badges */}
             <ul className="flex flex-wrap justify-center gap-6 pt-2 list-none p-0" aria-label="Trust indicators">
               {trustBadges.map((badge) => (
-                <li key={badge.label} className="flex items-center gap-2 text-muted-foreground">
+                <li key={badge.labelKey} className="flex items-center gap-2 text-muted-foreground">
                   <badge.icon className="w-4 h-4 text-primary/70" aria-hidden="true" />
-                  <span className="text-sm">{badge.label}</span>
+                  <span className="text-sm">{t(badge.labelKey)}</span>
                 </li>
               ))}
             </ul>

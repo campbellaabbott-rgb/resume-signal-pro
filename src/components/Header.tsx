@@ -1,8 +1,12 @@
 import { Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export function Header() {
+  const { t } = useTranslation();
+  
   const scrollToUpload = () => {
     document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -25,10 +29,11 @@ export function Header() {
             </span>
           </a>
           
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground hidden sm:block" aria-hidden="true">
-              Recruiter-grade AI feedback
+          <div className="flex items-center gap-2 sm:gap-4">
+            <span className="text-sm text-muted-foreground hidden md:block" aria-hidden="true">
+              {t('header.tagline')}
             </span>
+            <LanguageSwitcher variant="compact" />
             <Button 
               variant="default" 
               size="sm" 
@@ -37,8 +42,8 @@ export function Header() {
               aria-label="Get started - scroll to upload section"
             >
               <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-              <span className="hidden sm:inline">Get Started</span>
-              <span className="sm:hidden">Start</span>
+              <span className="hidden sm:inline">{t('header.getStarted')}</span>
+              <span className="sm:hidden">{t('header.start')}</span>
             </Button>
           </div>
         </nav>

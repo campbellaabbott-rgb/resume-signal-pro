@@ -1,0 +1,45 @@
+{
+  "header": {
+    "tagline": "Recruiter-grade AI feedback",
+    "getStarted": "Get Started",
+    "start": "Start"
+  },
+  "hero": {
+    "badge": "AI-Powered Resume Analysis",
+    "freeScan": "Try Free Scan",
+    "heading": "Stop guessing.",
+    "headingHighlight": "Start landing interviews.",
+    "subheading": "Get brutally honest, recruiter-grade feedback on your resume. No fluff, no sugar-coating — just actionable fixes that get you hired.",
+    "price": "$25",
+    "oneTime": "one-time",
+    "nofees": "No subscriptions • No hidden fees • Instant results",
+    "roi": "One interview = $25 paid for itself",
+    "trusted": "Trusted by",
+    "jobSeekers": "job seekers",
+    "seeSample": "See Sample Analysis",
+    "features": {
+      "atsBullets": "ATS-optimized bullets",
+      "atsBulletsDesc": "Beat the robots",
+      "actionVerbs": "Stronger action verbs",
+      "actionVerbsDesc": "Stand out instantly",
+      "keywords": "Keyword suggestions",
+      "keywordsDesc": "Match job descriptions",
+      "redFlags": "Red flag detection",
+      "redFlagsDesc": "Fix deal-breakers"
+    },
+    "trust": {
+      "secure": "Secure & Private",
+      "results": "Results in 30 seconds",
+      "approved": "Recruiter-approved"
+    }
+  },
+  "footer": {
+    "copyright": "© {{year}} Resume Booster. All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "contact": "Contact"
+  },
+  "language": {
+    "select": "Select Language"
+  }
+}
