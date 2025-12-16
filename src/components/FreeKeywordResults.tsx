@@ -38,8 +38,8 @@ export function FreeKeywordResults({
   atsScoreEstimate,
   formatGrade,
   formatIssue,
-  resumeLength,
-  redFlags,
+  resumeLength: resumeLengthProp,
+  redFlags: redFlagsProp,
   keywords,
   onGetFullAnalysis,
   isLoading
@@ -48,6 +48,10 @@ export function FreeKeywordResults({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const { toast } = useToast();
+
+  // Safe defaults for new properties
+  const resumeLength = resumeLengthProp || { currentPages: 1, recommendedPages: 1, verdict: "just_right" as const };
+  const redFlags = redFlagsProp || [];
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-success";
