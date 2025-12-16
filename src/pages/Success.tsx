@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { 
   CheckCircle2, 
   Loader2, 
@@ -12,7 +12,8 @@ import {
   ArrowRight,
   Download,
   Home,
-  Printer
+  Printer,
+  Trash2
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -20,6 +21,17 @@ import { AnalysisResults, type AnalysisData } from "@/components/AnalysisResults
 import { ResumeRecovery } from "@/components/ResumeRecovery";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -50,8 +62,10 @@ const Success = () => {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const analysisRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const sessionId = searchParams.get("session_id");
   const shareIdParam = searchParams.get("share");
@@ -367,6 +381,36 @@ const Success = () => {
     }
   };
 
+  const handleDeleteData = async () => {
+    if (!shareId) return;
+
+    setIsDeleting(true);
+    try {
+      const { data, error: deleteError } = await supabase.rpc('delete_analysis_by_share_id', {
+        p_share_id: shareId
+      });
+
+      if (deleteError) throw deleteError;
+
+      toast({
+        title: "Data deleted",
+        description: "Your resume analysis has been permanently deleted.",
+      });
+
+      // Redirect to home after deletion
+      navigate('/');
+    } catch (err) {
+      console.error("Delete error:", err);
+      toast({
+        title: "Failed to delete data",
+        description: "Please try again or contact support.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const isSharedView = !!shareIdParam;
 
   return (
@@ -528,7 +572,7 @@ const Success = () => {
                   
                   {/* Action cards */}
                   {shareId && !isSharedView && (
-                    <div className="grid md:grid-cols-3 gap-4 max-w-2xl mx-auto pt-4">
+                    <div className="grid md:grid-cols-4 gap-4 max-w-3xl mx-auto pt-4">
                       {/* Email card */}
                       <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 space-y-3">
                         <div className="flex items-center gap-2 text-sm font-medium">
@@ -618,6 +662,51 @@ const Success = () => {
                           )}
                         </Button>
                       </div>
+
+                      {/* Delete Data card - GDPR compliance */}
+                      <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-destructive/20 space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                          Delete My Data
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Permanently delete this analysis
+                        </p>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full gap-2 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                              size="sm"
+                              disabled={isDeleting}
+                            >
+                              {isDeleting ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                              {isDeleting ? "Deleting..." : "Delete Data"}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete your analysis data?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. Your resume analysis will be permanently deleted from our servers. This helps ensure your privacy under GDPR and CCPA regulations.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={handleDeleteData}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Yes, delete my data
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
                   )}
                   
@@ -655,6 +744,40 @@ const Success = () => {
                           </>
                         )}
                       </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="gap-2 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                            size="lg"
+                            disabled={isDeleting}
+                          >
+                            {isDeleting ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                            {isDeleting ? "Deleting..." : "Delete My Data"}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete your analysis data?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. Your resume analysis will be permanently deleted from our servers. This helps ensure your privacy under GDPR and CCPA regulations.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleDeleteData}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Yes, delete my data
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   )}
 
