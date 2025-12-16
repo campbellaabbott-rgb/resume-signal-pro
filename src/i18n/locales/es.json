@@ -320,5 +320,26 @@
   },
   "terms": {
     "title": "Términos de Servicio"
+  },
+  "stickyCta": {
+    "title": "¿Listo para conseguir más entrevistas?",
+    "subtitle": "Obtén retroalimentación de reclutador en 30 segundos",
+    "mobileTitle": "Analiza tu currículum →",
+    "button": "Analizar Mi Currículum"
+  },
+  "finalCta": {
+    "urgency": "Tu currículum podría estar costándote entrevistas ahora mismo",
+    "heading": "No Dejes Escapar Otra Oportunidad",
+    "subheading": "Obtén los cambios exactos que los reclutadores quieren ver. Un análisis podría cambiarlo todo.",
+    "benefits": {
+      "ats": "Puntuación ATS con desglose de 5 puntos",
+      "keywords": "Palabras clave específicas de la industria",
+      "redFlags": "Señales de alerta que notan los reclutadores",
+      "linkedin": "Optimización del perfil de LinkedIn"
+    },
+    "oneTime": "pago único",
+    "guarantee": "Resultados instantáneos • Sin suscripción",
+    "button": "Obtener Mi Análisis Ahora",
+    "roi": "💡 Una entrevista = $25 recuperados"
   }
 }

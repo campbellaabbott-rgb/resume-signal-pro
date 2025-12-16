@@ -320,5 +320,26 @@
   },
   "terms": {
     "title": "Terms of Service"
+  },
+  "stickyCta": {
+    "title": "Ready to land more interviews?",
+    "subtitle": "Get recruiter-grade feedback in 30 seconds",
+    "mobileTitle": "Get your resume analyzed →",
+    "button": "Analyze My Resume"
+  },
+  "finalCta": {
+    "urgency": "Your resume might be losing you interviews right now",
+    "heading": "Don't Let Another Opportunity Slip Away",
+    "subheading": "Get the exact fixes recruiters want to see. One analysis could change everything.",
+    "benefits": {
+      "ats": "ATS score with 5-point breakdown",
+      "keywords": "Industry-specific keyword gaps",
+      "redFlags": "Red flags recruiters notice",
+      "linkedin": "LinkedIn profile optimization"
+    },
+    "oneTime": "one-time",
+    "guarantee": "Instant results • No subscription",
+    "button": "Get My Analysis Now",
+    "roi": "💡 One interview = $25 paid for itself"
   }
 }

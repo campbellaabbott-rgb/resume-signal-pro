@@ -320,5 +320,26 @@
   },
   "terms": {
     "title": "Mga Tuntunin ng Serbisyo"
+  },
+  "stickyCta": {
+    "title": "Handa nang makakuha ng mas maraming interview?",
+    "subtitle": "Makakuha ng recruiter-grade feedback sa 30 segundo",
+    "mobileTitle": "I-analyze ang iyong resume →",
+    "button": "I-analyze ang Aking Resume"
+  },
+  "finalCta": {
+    "urgency": "Maaaring nawawalan ka ng mga interview dahil sa iyong resume ngayon",
+    "heading": "Huwag Hayaang Mawala ang Isa Pang Pagkakataon",
+    "subheading": "Makuha ang eksaktong mga ayos na gusto makita ng mga recruiter. Isang pagsusuri ay maaaring magbago ng lahat.",
+    "benefits": {
+      "ats": "ATS score na may 5-point breakdown",
+      "keywords": "Industry-specific na mga kulang na keyword",
+      "redFlags": "Red flags na napapansin ng mga recruiter",
+      "linkedin": "LinkedIn profile optimization"
+    },
+    "oneTime": "isang beses lang",
+    "guarantee": "Instant na resulta • Walang subscription",
+    "button": "Kunin ang Aking Analysis Ngayon",
+    "roi": "💡 Isang interview = $25 na-recover"
   }
 }
