@@ -408,7 +408,7 @@ export function FreeKeywordResults({
             <p className={cn("text-2xl font-bold", getGradeColor(formatGrade))}>{formatGrade}</p>
             <span className={cn("text-xs font-medium", getGradeColor(formatGrade))}>{getGradeLabel(formatGrade)}</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{formatIssue}</p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{formatIssue}</p>
         </div>
 
         {/* Quantification Score */}
@@ -420,7 +420,7 @@ export function FreeKeywordResults({
           <p className={cn("text-2xl font-bold", getQuantificationColor(quantificationScore.verdict))}>
             {quantificationScore.score}<span className="text-sm text-muted-foreground">%</span>
           </p>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{quantificationScore.tip}</p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{quantificationScore.tip}</p>
         </div>
 
         {/* Action Verb Grade */}
@@ -433,7 +433,7 @@ export function FreeKeywordResults({
             <p className={cn("text-2xl font-bold", getGradeColor(actionVerbGrade.grade))}>{actionVerbGrade.grade}</p>
             <span className={cn("text-xs font-medium", getGradeColor(actionVerbGrade.grade))}>{getGradeLabel(actionVerbGrade.grade)}</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{actionVerbGrade.issue}</p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{actionVerbGrade.issue}</p>
         </div>
       </div>
 
@@ -470,7 +470,7 @@ export function FreeKeywordResults({
           </div>
           <p className={cn("text-2xl font-bold", getSectionColor())}>{getSectionScore()}</p>
           {sectionCheck.missingSections.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">Missing: {sectionCheck.missingSections[0]}</p>
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">Missing: {sectionCheck.missingSections[0]}</p>
           )}
           {sectionCheck.missingSections.length === 0 && (
             <p className="text-xs text-success mt-1">All present!</p>
@@ -485,7 +485,7 @@ export function FreeKeywordResults({
           </div>
           <p className={cn("text-2xl font-bold", getContactColor())}>{getContactScore()}</p>
           {contactInfo.missingItems.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">Add: {contactInfo.missingItems[0]}</p>
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">Add: {contactInfo.missingItems[0]}</p>
           )}
           {contactInfo.missingItems.length === 0 && (
             <p className="text-xs text-success mt-1">Complete!</p>
@@ -504,7 +504,7 @@ export function FreeKeywordResults({
           <p className={cn("text-2xl font-bold", getReadabilityColor(readabilityScore.verdict))}>
             {readabilityScore.score}<span className="text-sm text-muted-foreground">%</span>
           </p>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{readabilityScore.issue}</p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{readabilityScore.issue}</p>
         </div>
 
         {/* Bullet Impact Score */}
@@ -516,7 +516,7 @@ export function FreeKeywordResults({
           <p className={cn("text-2xl font-bold", getBulletImpactColor(bulletImpactScore.verdict))}>
             {bulletImpactScore.score}<span className="text-sm text-muted-foreground">%</span>
           </p>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{bulletImpactScore.tip}</p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{bulletImpactScore.tip}</p>
         </div>
 
         {/* Keyword Density */}
@@ -528,7 +528,7 @@ export function FreeKeywordResults({
           <p className={cn("text-xl font-bold capitalize", getKeywordDensityColor(keywordDensity.level))}>
             {keywordDensity.level}
           </p>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{keywordDensity.explanation}</p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{keywordDensity.explanation}</p>
         </div>
 
         {/* Improvement Potential */}
@@ -543,7 +543,7 @@ export function FreeKeywordResults({
             </p>
             <span className="text-xs text-muted-foreground">pts</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{improvementPotential.topPriority}</p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{improvementPotential.topPriority}</p>
         </div>
       </div>
 
