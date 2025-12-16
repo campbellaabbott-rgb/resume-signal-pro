@@ -1,4 +1,4 @@
-import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye, Users } from "lucide-react";
+import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye, Users, Sparkles } from "lucide-react";
 
 const features = [
   { icon: FileText, label: "ATS-optimized bullets", description: "Beat the robots" },
@@ -100,11 +100,18 @@ export function Hero() {
               </div>
             </div>
             
-            {/* See Sample Button */}
-            <div className="flex justify-center">
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row justify-center gap-3">
+              <button
+                onClick={() => document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' })}
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-semibold hover:from-primary/90 hover:to-primary/70 transition-all duration-300 hover:scale-105 shadow-lg shadow-primary/25 group"
+              >
+                <Sparkles className="w-5 h-5" />
+                <span>Try Free Scan</span>
+              </button>
               <button
                 onClick={() => document.getElementById('preview')?.scrollIntoView({ behavior: 'smooth' })}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary/10 border border-primary/30 text-primary font-medium hover:bg-primary/20 hover:border-primary/50 transition-all duration-300 hover:scale-105 group"
+                className="inline-flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-primary/10 border border-primary/30 text-primary font-medium hover:bg-primary/20 hover:border-primary/50 transition-all duration-300 hover:scale-105 group"
               >
                 <Eye className="w-5 h-5" />
                 <span>See Sample Analysis</span>
