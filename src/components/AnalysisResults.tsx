@@ -2,13 +2,32 @@ import {
   CheckCircle2, AlertCircle, Lightbulb, Zap, AlertTriangle, ArrowRight, 
   TrendingUp, Gauge, User, Briefcase, Target, BarChart3, Brain, Copy, Check,
   Linkedin, Eye, Search, Star, MessageSquare, Sparkles, FileText, BookOpen, Layout, FileStack,
-  ChevronUp, Menu, FileWarning, ListChecks
+  ChevronUp, Menu, FileWarning, ListChecks, Users, Hash, Clock, Calendar, Link, Award, Image, Camera
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
 
 export interface LinkedInAnalysis {
+  profileScore?: {
+    overall: number;
+    breakdown: {
+      headline: number;
+      about: number;
+      experience: number;
+      skills: number;
+      engagement: number;
+    };
+  };
+  completenessChecklist?: {
+    hasPhoto: boolean;
+    hasBanner: boolean;
+    hasCustomUrl: boolean;
+    hasCertifications: boolean;
+    hasRecommendations: boolean;
+    hasProjects: boolean;
+    missingItems: string[];
+  };
   headlineOptimization?: {
     current: string;
     improved: string;
@@ -23,6 +42,23 @@ export interface LinkedInAnalysis {
   skillsToAdd?: string[];
   skillsToRemove?: string[];
   seoKeywords?: string[];
+  contentStrategy?: {
+    postIdeas: {
+      topic: string;
+      hook: string;
+      format: "text" | "carousel" | "poll" | "video" | "article";
+    }[];
+    postingFrequency: string;
+    bestTimes: string;
+    engagementTips: string[];
+    hashtagStrategy: string[];
+  };
+  connectionStrategy?: {
+    targetConnections: string[];
+    connectionMessageTemplate: string;
+    networkingTips: string[];
+    groupsToJoin: string[];
+  };
   profileVisibilityTips?: string[];
   featuredSectionIdeas?: string[];
   recommendationStrategy?: string;
@@ -848,6 +884,261 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   <p className="text-sm text-muted-foreground">Personalized recommendations to boost your profile visibility</p>
                 </div>
               </div>
+
+              {/* Profile Score */}
+              {linkedIn.profileScore && (
+                <div className="p-6 rounded-2xl bg-gradient-to-br from-[#0A66C2]/5 to-[#0A66C2]/10 border border-[#0A66C2]/20">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Gauge className="w-5 h-5 text-[#0A66C2]" />
+                      <span className="font-semibold">LinkedIn Profile Score</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "text-3xl font-bold tabular-nums",
+                        linkedIn.profileScore.overall >= 80 ? "text-success" :
+                        linkedIn.profileScore.overall >= 60 ? "text-[#0A66C2]" :
+                        linkedIn.profileScore.overall >= 40 ? "text-warning" : "text-destructive"
+                      )}>
+                        {linkedIn.profileScore.overall}
+                      </span>
+                      <span className="text-muted-foreground">/100</span>
+                    </div>
+                  </div>
+                  <Progress value={linkedIn.profileScore.overall} className="h-3 mb-4" />
+                  
+                  <div className="grid grid-cols-5 gap-2">
+                    {Object.entries(linkedIn.profileScore.breakdown).map(([key, value]) => (
+                      <div key={key} className="text-center p-2 rounded-lg bg-card/50">
+                        <div className={cn(
+                          "text-lg font-bold tabular-nums",
+                          value >= 16 ? "text-success" : value >= 12 ? "text-[#0A66C2]" : value >= 8 ? "text-warning" : "text-destructive"
+                        )}>
+                          {value}/20
+                        </div>
+                        <div className="text-xs text-muted-foreground capitalize">{key}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Completeness Checklist */}
+              {linkedIn.completenessChecklist && (
+                <ResultCard
+                  icon={ListChecks}
+                  title="Profile Completeness"
+                  subtitle="Essential elements for a complete LinkedIn profile"
+                  iconColor="text-[#0A66C2]"
+                  bgColor="bg-[#0A66C2]/10"
+                  borderColor="border-[#0A66C2]/20"
+                >
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                    {[
+                      { key: "hasPhoto", label: "Profile Photo", icon: Camera },
+                      { key: "hasBanner", label: "Banner Image", icon: Image },
+                      { key: "hasCustomUrl", label: "Custom URL", icon: Link },
+                      { key: "hasCertifications", label: "Certifications", icon: Award },
+                      { key: "hasRecommendations", label: "Recommendations", icon: MessageSquare },
+                      { key: "hasProjects", label: "Projects", icon: FileStack },
+                    ].map(({ key, label, icon: Icon }) => {
+                      const hasItem = linkedIn.completenessChecklist?.[key as keyof typeof linkedIn.completenessChecklist];
+                      return (
+                        <div key={key} className={cn(
+                          "flex items-center gap-2 p-3 rounded-lg border transition-colors",
+                          hasItem 
+                            ? "bg-success/5 border-success/20" 
+                            : "bg-warning/5 border-warning/20"
+                        )}>
+                          <Icon className={cn("w-4 h-4", hasItem ? "text-success" : "text-warning")} />
+                          <span className="text-sm">{label}</span>
+                          {hasItem ? (
+                            <CheckCircle2 className="w-4 h-4 text-success ml-auto" />
+                          ) : (
+                            <AlertCircle className="w-4 h-4 text-warning ml-auto" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {safeArray(linkedIn.completenessChecklist.missingItems).length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">What's Missing</span>
+                      {linkedIn.completenessChecklist.missingItems.map((item, i) => (
+                        <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-warning/5 border border-warning/20">
+                          <AlertTriangle className="w-3 h-3 text-warning mt-0.5 shrink-0" />
+                          <span className="text-xs text-foreground">{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ResultCard>
+              )}
+
+              {/* Content Strategy */}
+              {linkedIn.contentStrategy && (
+                <ResultCard
+                  icon={FileText}
+                  title="Content Strategy"
+                  subtitle="What to post and when to maximize your reach"
+                  iconColor="text-[#0A66C2]"
+                  bgColor="bg-[#0A66C2]/10"
+                  borderColor="border-[#0A66C2]/20"
+                >
+                  <div className="space-y-5">
+                    {/* Posting Schedule */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="p-3 rounded-lg bg-muted/30">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Calendar className="w-4 h-4 text-[#0A66C2]" />
+                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Frequency</span>
+                        </div>
+                        <p className="text-sm text-foreground">{linkedIn.contentStrategy.postingFrequency}</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/30">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock className="w-4 h-4 text-[#0A66C2]" />
+                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Best Times</span>
+                        </div>
+                        <p className="text-sm text-foreground">{linkedIn.contentStrategy.bestTimes}</p>
+                      </div>
+                    </div>
+
+                    {/* Post Ideas */}
+                    {safeArray(linkedIn.contentStrategy.postIdeas).length > 0 && (
+                      <div>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 block">Content Ideas</span>
+                        <div className="space-y-3">
+                          {linkedIn.contentStrategy.postIdeas.map((idea, i) => (
+                            <div key={i} className="p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium text-sm text-foreground">{idea.topic}</span>
+                                <span className={cn(
+                                  "px-2 py-0.5 rounded-full text-xs font-medium",
+                                  idea.format === "carousel" ? "bg-purple-500/20 text-purple-500" :
+                                  idea.format === "poll" ? "bg-amber-500/20 text-amber-500" :
+                                  idea.format === "video" ? "bg-red-500/20 text-red-500" :
+                                  idea.format === "article" ? "bg-blue-500/20 text-blue-500" :
+                                  "bg-muted text-muted-foreground"
+                                )}>
+                                  {idea.format}
+                                </span>
+                              </div>
+                              <div className="flex items-start gap-2">
+                                <Sparkles className="w-3 h-3 text-[#0A66C2] mt-1 shrink-0" />
+                                <p className="text-xs text-muted-foreground italic">"{idea.hook}"</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Hashtags */}
+                    {safeArray(linkedIn.contentStrategy.hashtagStrategy).length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <Hash className="w-4 h-4 text-[#0A66C2]" />
+                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Hashtags to Use</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {linkedIn.contentStrategy.hashtagStrategy.map((tag, i) => (
+                            <span key={i} className="px-3 py-1.5 rounded-full bg-[#0A66C2]/10 border border-[#0A66C2]/20 text-sm text-[#0A66C2]">
+                              #{tag.replace(/^#/, "")}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Engagement Tips */}
+                    {safeArray(linkedIn.contentStrategy.engagementTips).length > 0 && (
+                      <div>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 block">Engagement Tips</span>
+                        <ul className="space-y-2">
+                          {linkedIn.contentStrategy.engagementTips.map((tip, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                              <Lightbulb className="w-4 h-4 text-[#0A66C2] mt-0.5 shrink-0" />
+                              {tip}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </ResultCard>
+              )}
+
+              {/* Connection Strategy */}
+              {linkedIn.connectionStrategy && (
+                <ResultCard
+                  icon={Users}
+                  title="Connection Strategy"
+                  subtitle="Grow your network strategically"
+                  iconColor="text-[#0A66C2]"
+                  bgColor="bg-[#0A66C2]/10"
+                  borderColor="border-[#0A66C2]/20"
+                >
+                  <div className="space-y-5">
+                    {/* Target Connections */}
+                    {safeArray(linkedIn.connectionStrategy.targetConnections).length > 0 && (
+                      <div>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 block">Who to Connect With</span>
+                        <div className="flex flex-wrap gap-2">
+                          {linkedIn.connectionStrategy.targetConnections.map((target, i) => (
+                            <span key={i} className="px-3 py-1.5 rounded-full bg-success/10 border border-success/20 text-sm text-success">
+                              {target}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Connection Message Template */}
+                    {linkedIn.connectionStrategy.connectionMessageTemplate && (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Connection Request Template</span>
+                          <CopyButton text={linkedIn.connectionStrategy.connectionMessageTemplate} label="Copy Template" />
+                        </div>
+                        <div className="p-4 rounded-xl bg-muted/30 border border-border">
+                          <p className="text-sm text-foreground whitespace-pre-line">{linkedIn.connectionStrategy.connectionMessageTemplate}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Groups to Join */}
+                    {safeArray(linkedIn.connectionStrategy.groupsToJoin).length > 0 && (
+                      <div>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 block">LinkedIn Groups to Join</span>
+                        <div className="space-y-2">
+                          {linkedIn.connectionStrategy.groupsToJoin.map((group, i) => (
+                            <div key={i} className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
+                              <Users className="w-4 h-4 text-[#0A66C2]" />
+                              <span className="text-sm text-foreground">{group}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Networking Tips */}
+                    {safeArray(linkedIn.connectionStrategy.networkingTips).length > 0 && (
+                      <div>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 block">Networking Tips</span>
+                        <ul className="space-y-2">
+                          {linkedIn.connectionStrategy.networkingTips.map((tip, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                              <ArrowRight className="w-4 h-4 text-[#0A66C2] mt-0.5 shrink-0" />
+                              {tip}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </ResultCard>
+              )}
 
               {/* Headline Optimization */}
               {linkedIn.headlineOptimization && (

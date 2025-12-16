@@ -177,6 +177,37 @@ const getAnalysisTools = (hasLinkedIn: boolean, hasJobDescription: boolean) => [
           linkedInAnalysis: {
             type: "object",
             properties: {
+              profileScore: {
+                type: "object",
+                properties: {
+                  overall: { type: "number", description: "Overall LinkedIn profile optimization score 0-100" },
+                  breakdown: {
+                    type: "object",
+                    properties: {
+                      headline: { type: "number", description: "Headline effectiveness 0-20" },
+                      about: { type: "number", description: "About section quality 0-20" },
+                      experience: { type: "number", description: "Experience descriptions 0-20" },
+                      skills: { type: "number", description: "Skills relevance 0-20" },
+                      engagement: { type: "number", description: "Profile engagement potential 0-20" }
+                    },
+                    required: ["headline", "about", "experience", "skills", "engagement"]
+                  }
+                },
+                required: ["overall", "breakdown"]
+              },
+              completenessChecklist: {
+                type: "object",
+                properties: {
+                  hasPhoto: { type: "boolean", description: "Whether profile appears to have a professional photo" },
+                  hasBanner: { type: "boolean", description: "Whether they mention or seem to have a custom banner" },
+                  hasCustomUrl: { type: "boolean", description: "Whether they have a custom LinkedIn URL" },
+                  hasCertifications: { type: "boolean", description: "Whether certifications section is utilized" },
+                  hasRecommendations: { type: "boolean", description: "Whether they have recommendations" },
+                  hasProjects: { type: "boolean", description: "Whether projects section is utilized" },
+                  missingItems: { type: "array", items: { type: "string" }, description: "List of missing profile elements with why they matter" }
+                },
+                required: ["hasPhoto", "hasBanner", "hasCustomUrl", "hasCertifications", "hasRecommendations", "hasProjects", "missingItems"]
+              },
               headlineOptimization: {
                 type: "object",
                 properties: {
@@ -202,11 +233,44 @@ const getAnalysisTools = (hasLinkedIn: boolean, hasJobDescription: boolean) => [
               skillsToAdd: { type: "array", items: { type: "string" } },
               skillsToRemove: { type: "array", items: { type: "string" } },
               seoKeywords: { type: "array", items: { type: "string" } },
+              contentStrategy: {
+                type: "object",
+                properties: {
+                  postIdeas: { 
+                    type: "array", 
+                    items: { 
+                      type: "object",
+                      properties: {
+                        topic: { type: "string" },
+                        hook: { type: "string", description: "First line that grabs attention" },
+                        format: { type: "string", enum: ["text", "carousel", "poll", "video", "article"] }
+                      },
+                      required: ["topic", "hook", "format"]
+                    },
+                    description: "3-4 content ideas tailored to their industry" 
+                  },
+                  postingFrequency: { type: "string", description: "Recommended posting schedule" },
+                  bestTimes: { type: "string", description: "Best times to post for their industry" },
+                  engagementTips: { type: "array", items: { type: "string" }, description: "3-4 tips for engaging with others' content" },
+                  hashtagStrategy: { type: "array", items: { type: "string" }, description: "5-7 hashtags to use" }
+                },
+                required: ["postIdeas", "postingFrequency", "bestTimes", "engagementTips", "hashtagStrategy"]
+              },
+              connectionStrategy: {
+                type: "object",
+                properties: {
+                  targetConnections: { type: "array", items: { type: "string" }, description: "Types of people to connect with (job titles, companies)" },
+                  connectionMessageTemplate: { type: "string", description: "Template for personalized connection request" },
+                  networkingTips: { type: "array", items: { type: "string" }, description: "3-4 strategic networking tips" },
+                  groupsToJoin: { type: "array", items: { type: "string" }, description: "3-4 LinkedIn groups relevant to their field" }
+                },
+                required: ["targetConnections", "connectionMessageTemplate", "networkingTips", "groupsToJoin"]
+              },
               profileVisibilityTips: { type: "array", items: { type: "string" } },
               featuredSectionIdeas: { type: "array", items: { type: "string" } },
               recommendationStrategy: { type: "string" }
             },
-            required: ["headlineOptimization", "aboutSectionRewrite", "experienceOptimization", "skillsToAdd", "skillsToRemove", "seoKeywords", "profileVisibilityTips", "featuredSectionIdeas", "recommendationStrategy"]
+            required: ["profileScore", "completenessChecklist", "headlineOptimization", "aboutSectionRewrite", "experienceOptimization", "skillsToAdd", "skillsToRemove", "seoKeywords", "contentStrategy", "connectionStrategy", "profileVisibilityTips", "featuredSectionIdeas", "recommendationStrategy"]
           }
         } : {}),
         ...(hasJobDescription ? {
