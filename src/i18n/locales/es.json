@@ -141,6 +141,7 @@
     "templates": "Plantillas",
     "free": "Gratis",
     "cta": "Pruébalo Ahora — $25",
+    "ctaText": "Pruébalo Ahora",
     "features": {
       "atsScoring": "Puntuación ATS de 5 Categorías",
       "industryTemplates": "14 Plantillas por Industria",

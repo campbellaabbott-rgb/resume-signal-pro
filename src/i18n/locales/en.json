@@ -141,6 +141,7 @@
     "templates": "Templates",
     "free": "Free",
     "cta": "Try It Now — $25",
+    "ctaText": "Try It Now",
     "features": {
       "atsScoring": "5-Category ATS Scoring",
       "industryTemplates": "14 Industry-Specific Templates",

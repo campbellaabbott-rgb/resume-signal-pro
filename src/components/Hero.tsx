@@ -1,8 +1,10 @@
 import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye, Users, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useCurrency } from "@/hooks/use-currency";
 
 export function Hero() {
   const { t } = useTranslation();
+  const { formatPrice, isLocalCurrency } = useCurrency();
 
   const features = [
     { icon: FileText, labelKey: "hero.features.atsBullets", descKey: "hero.features.atsBulletsDesc" },
@@ -103,6 +105,11 @@ export function Hero() {
                 <span className="text-4xl md:text-5xl font-bold text-foreground">{t('hero.price')}</span>
                 <span className="text-muted-foreground">{t('hero.oneTime')}</span>
               </div>
+              {isLocalCurrency && (
+                <p className="text-sm text-primary/80 font-medium">
+                  ≈ {formatPrice(25)}
+                </p>
+              )}
               <p className="text-sm text-muted-foreground">{t('hero.nofees')}</p>
               <p className="text-xs text-primary mt-2 font-medium">{t('hero.roi')}</p>
               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/30 text-sm text-muted-foreground">
