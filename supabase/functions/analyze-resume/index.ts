@@ -250,6 +250,23 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const clientIp = getClientIp(req);
 
+    // Check global rate limit (100 req/hr across ALL functions)
+    const { data: globalAllowed, error: globalRlError } = await supabase.rpc('check_global_rate_limit', {
+      p_ip: clientIp,
+      p_max_requests: 100,
+      p_window_minutes: 60
+    });
+
+    if (globalRlError) {
+      console.error("[ANALYZE-RESUME] Global rate limit check error:", globalRlError);
+    } else if (!globalAllowed) {
+      console.log(`[ANALYZE-RESUME] Global rate limit exceeded for IP: ${clientIp}`);
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.RATE_LIMITED }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Check if session was already used (persistent database check)
     const { data: existingSession } = await supabase
       .from('used_stripe_sessions')

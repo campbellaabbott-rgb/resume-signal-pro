@@ -33,6 +33,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Check per-function rate limit
     const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
       p_ip: clientIp,
       p_function: 'create-checkout',
@@ -44,6 +45,23 @@ serve(async (req) => {
       console.error("[CREATE-CHECKOUT] Rate limit check error:", rlError);
     } else if (!allowed) {
       logStep("Rate limit exceeded", { ip: clientIp });
+      return new Response(
+        JSON.stringify({ error: "Too many requests. Please try again later." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check global rate limit (100 req/hr across ALL functions)
+    const { data: globalAllowed, error: globalRlError } = await supabase.rpc('check_global_rate_limit', {
+      p_ip: clientIp,
+      p_max_requests: 100,
+      p_window_minutes: 60
+    });
+
+    if (globalRlError) {
+      console.error("[CREATE-CHECKOUT] Global rate limit check error:", globalRlError);
+    } else if (!globalAllowed) {
+      logStep("Global rate limit exceeded", { ip: clientIp });
       return new Response(
         JSON.stringify({ error: "Too many requests. Please try again later." }),
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }

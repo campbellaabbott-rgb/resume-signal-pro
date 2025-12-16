@@ -109,6 +109,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_global_rate_limit: {
+        Args: {
+          p_ip: string
+          p_max_requests?: number
+          p_window_minutes?: number
+        }
+        Returns: boolean
+      }
       check_rate_limit: {
         Args: {
           p_function: string
