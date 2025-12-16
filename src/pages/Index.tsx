@@ -42,6 +42,12 @@ interface FreeKeywordResult {
   redFlags: { issue: string; impact: string }[];
   keywords: { keyword: string; reason: string }[];
   topSkipReasons?: string[];
+  powerWords?: string[];
+  weakPhrases?: { phrase: string; suggestion: string }[];
+  timelineAnalysis?: { avgTenure: string; progression: "stagnant" | "steady" | "rapid" | "unclear"; hasGaps: boolean; gapNote?: string; totalYears: string };
+  industryBenchmark?: { industryAvg: number; comparison: "below" | "at" | "above"; percentile: string };
+  quickWins?: { fix: string; timeEstimate: string; impact: "low" | "medium" | "high" }[];
+  sampleRewrite?: { before: string; after: string; improvement: string };
 }
 
 const Index = () => {
@@ -410,6 +416,12 @@ const Index = () => {
                 redFlags={freeKeywordResult.redFlags}
                 keywords={freeKeywordResult.keywords}
                 topSkipReasons={freeKeywordResult.topSkipReasons}
+                powerWords={freeKeywordResult.powerWords}
+                weakPhrases={freeKeywordResult.weakPhrases}
+                timelineAnalysis={freeKeywordResult.timelineAnalysis}
+                industryBenchmark={freeKeywordResult.industryBenchmark}
+                quickWins={freeKeywordResult.quickWins}
+                sampleRewrite={freeKeywordResult.sampleRewrite}
                 onGetFullAnalysis={() => handleCheckout()}
                 isLoading={isLoading}
               />

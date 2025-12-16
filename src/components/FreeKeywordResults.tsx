@@ -93,6 +93,37 @@ interface ImprovementPotential {
   topPriority: string;
 }
 
+interface WeakPhrase {
+  phrase: string;
+  suggestion: string;
+}
+
+interface TimelineAnalysis {
+  avgTenure: string;
+  progression: "stagnant" | "steady" | "rapid" | "unclear";
+  hasGaps: boolean;
+  gapNote?: string;
+  totalYears: string;
+}
+
+interface IndustryBenchmark {
+  industryAvg: number;
+  comparison: "below" | "at" | "above";
+  percentile: string;
+}
+
+interface QuickWin {
+  fix: string;
+  timeEstimate: string;
+  impact: "low" | "medium" | "high";
+}
+
+interface SampleRewrite {
+  before: string;
+  after: string;
+  improvement: string;
+}
+
 interface FreeKeywordResultsProps {
   industry: string;
   atsScoreEstimate: number;
@@ -115,6 +146,12 @@ interface FreeKeywordResultsProps {
   onGetFullAnalysis: () => void;
   isLoading?: boolean;
   topSkipReasons?: string[];
+  powerWords?: string[];
+  weakPhrases?: WeakPhrase[];
+  timelineAnalysis?: TimelineAnalysis;
+  industryBenchmark?: IndustryBenchmark;
+  quickWins?: QuickWin[];
+  sampleRewrite?: SampleRewrite;
 }
 
 export function FreeKeywordResults({
@@ -138,7 +175,13 @@ export function FreeKeywordResults({
   keywords,
   onGetFullAnalysis,
   isLoading,
-  topSkipReasons: topSkipReasonsProp
+  topSkipReasons: topSkipReasonsProp,
+  powerWords: powerWordsProp,
+  weakPhrases: weakPhrasesProp,
+  timelineAnalysis: timelineAnalysisProp,
+  industryBenchmark: industryBenchmarkProp,
+  quickWins: quickWinsProp,
+  sampleRewrite: sampleRewriteProp
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
@@ -161,6 +204,12 @@ export function FreeKeywordResults({
   const improvementPotential = improvementPotentialProp || { level: "medium" as const, estimatedScoreIncrease: 15, topPriority: "Add quantified achievements" };
   const redFlags = redFlagsProp || [];
   const topSkipReasons = topSkipReasonsProp || [];
+  const powerWords = powerWordsProp || [];
+  const weakPhrases = weakPhrasesProp || [];
+  const timelineAnalysis = timelineAnalysisProp || { avgTenure: "2 years", progression: "steady" as const, hasGaps: false, totalYears: "5 years" };
+  const industryBenchmark = industryBenchmarkProp || { industryAvg: 72, comparison: "at" as const, percentile: "Top 50%" };
+  const quickWins = quickWinsProp || [];
+  const sampleRewrite = sampleRewriteProp;
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-success";
@@ -657,6 +706,199 @@ export function FreeKeywordResults({
               <span className="font-medium text-foreground">Why:</span>{" "}
               People want clarity first — reasons matter more than solutions.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Industry Benchmark & Timeline Analysis */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+        {/* Industry Benchmark */}
+        <div className="rounded-2xl bg-card border border-border p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Target className="w-4 h-4 text-primary" />
+            <h4 className="font-semibold">Industry Benchmark</h4>
+          </div>
+          <div className="flex items-center gap-4 mb-3">
+            <div className="flex-1">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-muted-foreground">Your Score</span>
+                <span className={cn("font-medium", getScoreColor(atsScoreEstimate))}>{atsScoreEstimate}</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className={cn("h-full rounded-full transition-all", 
+                    atsScoreEstimate >= 75 ? "bg-success" : atsScoreEstimate >= 60 ? "bg-warning" : "bg-destructive"
+                  )}
+                  style={{ width: `${atsScoreEstimate}%` }}
+                />
+              </div>
+            </div>
+            <div className="text-center px-2">
+              <span className="text-xs text-muted-foreground">vs</span>
+            </div>
+            <div className="flex-1">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-muted-foreground">{industry} Avg</span>
+                <span className="font-medium text-foreground">{industryBenchmark.industryAvg}</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-muted-foreground/50 rounded-full" style={{ width: `${industryBenchmark.industryAvg}%` }} />
+              </div>
+            </div>
+          </div>
+          <div className={cn(
+            "text-center p-2 rounded-lg text-sm font-medium",
+            industryBenchmark.comparison === "above" ? "bg-success/10 text-success" :
+            industryBenchmark.comparison === "at" ? "bg-warning/10 text-warning" : "bg-destructive/10 text-destructive"
+          )}>
+            {industryBenchmark.percentile}
+          </div>
+        </div>
+
+        {/* Timeline Analysis */}
+        <div className="rounded-2xl bg-card border border-border p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="w-4 h-4 text-primary" />
+            <h4 className="font-semibold">Career Timeline</h4>
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center p-2 rounded-lg bg-muted/30">
+              <span className="text-sm text-muted-foreground">Total Experience</span>
+              <span className="text-sm font-medium text-foreground">{timelineAnalysis.totalYears}</span>
+            </div>
+            <div className="flex justify-between items-center p-2 rounded-lg bg-muted/30">
+              <span className="text-sm text-muted-foreground">Avg Job Tenure</span>
+              <span className="text-sm font-medium text-foreground">{timelineAnalysis.avgTenure}</span>
+            </div>
+            <div className="flex justify-between items-center p-2 rounded-lg bg-muted/30">
+              <span className="text-sm text-muted-foreground">Career Progression</span>
+              <span className={cn("text-sm font-medium capitalize",
+                timelineAnalysis.progression === "rapid" ? "text-success" :
+                timelineAnalysis.progression === "steady" ? "text-foreground" :
+                timelineAnalysis.progression === "stagnant" ? "text-warning" : "text-muted-foreground"
+              )}>
+                {timelineAnalysis.progression}
+              </span>
+            </div>
+            {timelineAnalysis.hasGaps && (
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-warning/10 border border-warning/20">
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
+                <span className="text-sm text-warning">{timelineAnalysis.gapNote || "Employment gaps detected"}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Power Words & Weak Phrases */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+        {/* Power Words */}
+        {powerWords.length > 0 && (
+          <div className="rounded-2xl bg-success/5 border border-success/20 p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Trophy className="w-4 h-4 text-success" />
+              <h4 className="font-semibold text-success">Strong Words You're Using</h4>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {powerWords.map((word, index) => (
+                <span key={index} className="px-3 py-1 bg-success/10 text-success text-sm font-medium rounded-full border border-success/20">
+                  {word}
+                </span>
+              ))}
+            </div>
+            <p className="text-xs text-success/70 mt-3">Keep using these! Recruiters love them.</p>
+          </div>
+        )}
+
+        {/* Weak Phrases */}
+        {weakPhrases.length > 0 && (
+          <div className="rounded-2xl bg-destructive/5 border border-destructive/20 p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <XCircle className="w-4 h-4 text-destructive" />
+              <h4 className="font-semibold text-destructive">Weak Phrases to Eliminate</h4>
+            </div>
+            <div className="space-y-2">
+              {weakPhrases.map((item, index) => (
+                <div key={index} className="p-2 rounded-lg bg-background/50">
+                  <span className="text-sm font-medium text-destructive line-through">"{item.phrase}"</span>
+                  <p className="text-xs text-muted-foreground mt-1">{item.suggestion}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Quick Wins */}
+      {quickWins.length > 0 && (
+        <div className="rounded-2xl bg-primary/5 border border-primary/20 p-5 mb-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Zap className="w-4 h-4 text-primary" />
+            <h4 className="font-semibold">Quick Wins (5 min or less)</h4>
+          </div>
+          <div className="space-y-3">
+            {quickWins.map((win, index) => (
+              <div key={index} className="flex items-start gap-3 p-3 rounded-xl bg-background/50 border border-border/50">
+                <div className={cn(
+                  "shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                  win.impact === "high" ? "bg-success/20 text-success" :
+                  win.impact === "medium" ? "bg-warning/20 text-warning" : "bg-muted text-muted-foreground"
+                )}>
+                  {index + 1}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">{win.fix}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-muted-foreground">⏱️ {win.timeEstimate}</span>
+                    <span className={cn(
+                      "text-xs px-2 py-0.5 rounded-full",
+                      win.impact === "high" ? "bg-success/10 text-success" :
+                      win.impact === "medium" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"
+                    )}>
+                      {win.impact} impact
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sample Rewrite */}
+      {sampleRewrite && (
+        <div className="rounded-2xl bg-gradient-to-br from-primary/10 to-success/10 border border-primary/30 p-5 mb-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <h4 className="font-semibold">Sample Rewrite Preview</h4>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary ml-auto">Free teaser</span>
+          </div>
+          
+          <div className="space-y-3">
+            <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20">
+              <p className="text-xs text-destructive font-medium mb-1">❌ BEFORE (from your resume)</p>
+              <p className="text-sm text-foreground italic">"{sampleRewrite.before}"</p>
+            </div>
+            
+            <div className="flex justify-center">
+              <ArrowRight className="w-4 h-4 text-primary" />
+            </div>
+            
+            <div className="p-3 rounded-xl bg-success/10 border border-success/20">
+              <p className="text-xs text-success font-medium mb-1">✅ AFTER (optimized)</p>
+              <p className="text-sm text-foreground font-medium">"{sampleRewrite.after}"</p>
+            </div>
+            
+            <div className="text-center p-2 rounded-lg bg-background/50 border border-border/50">
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">Why it's better:</span> {sampleRewrite.improvement}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2 mt-4 p-2 rounded-lg bg-primary/10 border border-primary/20">
+            <Lock className="w-3 h-3 text-primary" />
+            <span className="text-xs text-primary">Get all your bullet points rewritten in the full $25 analysis</span>
           </div>
         </div>
       )}
