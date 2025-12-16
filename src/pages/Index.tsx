@@ -169,12 +169,34 @@ const Index = () => {
         body: { resumeText: contentToAnalyze },
       });
 
-      if (error) throw error;
+      // Check for rate limit in error response or data
+      if (error) {
+        // Parse error context for rate limit info
+        const errorContext = error?.context;
+        if (errorContext?.body) {
+          try {
+            const errorBody = typeof errorContext.body === 'string' 
+              ? JSON.parse(errorContext.body) 
+              : errorContext.body;
+            if (errorBody?.rateLimited) {
+              toast({
+                title: "Daily limit reached",
+                description: "You've used all 4 free scans today. Get the full analysis for $25!",
+                variant: "destructive",
+              });
+              return;
+            }
+          } catch {
+            // Not JSON, continue with regular error handling
+          }
+        }
+        throw error;
+      }
 
       if (data?.rateLimited) {
         toast({
           title: "Daily limit reached",
-          description: "You've used all 3 free scans today. Get the full analysis for $25!",
+          description: "You've used all 4 free scans today. Get the full analysis for $25!",
           variant: "destructive",
         });
         return;
@@ -211,6 +233,18 @@ const Index = () => {
       }
     } catch (error: any) {
       console.error("Free scan error:", error);
+      
+      // Check if error message contains rate limit info
+      const errorMsg = error?.message?.toLowerCase() || '';
+      if (errorMsg.includes('rate') || errorMsg.includes('limit') || errorMsg.includes('429')) {
+        toast({
+          title: "Daily limit reached",
+          description: "You've used all 4 free scans today. Get the full analysis for $25!",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       toast({
         title: "Analysis failed",
         description: error?.message || "Please try again.",
