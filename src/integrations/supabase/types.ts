@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      rate_limits: {
+        Row: {
+          function_name: string
+          ip_address: string
+          request_count: number | null
+          window_start: string | null
+        }
+        Insert: {
+          function_name: string
+          ip_address: string
+          request_count?: number | null
+          window_start?: string | null
+        }
+        Update: {
+          function_name?: string
+          ip_address?: string
+          request_count?: number | null
+          window_start?: string | null
+        }
+        Relationships: []
+      }
       resume_analyses: {
         Row: {
           analysis_result: Json
@@ -43,6 +64,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_rate_limit: {
+        Args: {
+          p_function: string
+          p_ip: string
+          p_max_requests: number
+          p_window_minutes?: number
+        }
+        Returns: boolean
+      }
       get_analysis_by_share_id: {
         Args: { share_id_param: string }
         Returns: {
