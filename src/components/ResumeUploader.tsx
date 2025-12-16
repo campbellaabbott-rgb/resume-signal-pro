@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Target, Zap } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +32,7 @@ export function ResumeUploader({
   jobDescriptionText = "",
   onJobDescriptionTextChange
 }: ResumeUploaderProps) {
+  const { t } = useTranslation();
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [textInput, setTextInput] = useState("");
@@ -140,18 +142,16 @@ export function ResumeUploader({
       className="py-20 relative scroll-mt-20" 
       aria-labelledby="upload-heading"
     >
-      {/* Section background */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/[0.02] to-transparent pointer-events-none" aria-hidden="true" />
       
       <div className="container relative">
         <div className="max-w-3xl mx-auto">
-          {/* Section header */}
           <div className="text-center mb-10">
             <h2 id="upload-heading" className="text-2xl md:text-3xl font-bold mb-3">
-              Upload Your Resume & LinkedIn
+              {t('uploader.title')}
             </h2>
             <p className="text-muted-foreground">
-              Get a comprehensive analysis of your resume <span className="text-primary font-medium">+ LinkedIn profile optimization</span>
+              {t('uploader.subtitle')} <span className="text-primary font-medium">{t('uploader.linkedinBonus')}</span>
             </p>
           </div>
 
@@ -161,12 +161,11 @@ export function ResumeUploader({
               <div className="p-2 rounded-lg bg-primary/10">
                 <FileText className="w-4 h-4 text-primary" />
               </div>
-              <h3 className="font-semibold">Your Resume</h3>
-              <span className="text-xs text-destructive">*Required</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">Free scan included!</span>
+              <h3 className="font-semibold">{t('uploader.resume.title')}</h3>
+              <span className="text-xs text-destructive">{t('uploader.resume.required')}</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">{t('uploader.resume.freeIncluded')}</span>
             </div>
 
-            {/* Resume Mode Toggle */}
             <div className="flex justify-start mb-4" role="tablist" aria-label="Resume input method">
               <div className="inline-flex rounded-xl bg-card border border-border p-1 shadow-sm">
                 <button
@@ -183,7 +182,7 @@ export function ResumeUploader({
                   )}
                 >
                   <Upload className="w-4 h-4" aria-hidden="true" />
-                  Upload
+                  {t('uploader.resume.upload')}
                 </button>
                 <button
                   id="resume-paste-tab"
@@ -199,7 +198,7 @@ export function ResumeUploader({
                   )}
                 >
                   <FileText className="w-4 h-4" aria-hidden="true" />
-                  Paste
+                  {t('uploader.resume.paste')}
                 </button>
               </div>
             </div>
@@ -245,10 +244,10 @@ export function ResumeUploader({
                       <Upload className="w-7 h-7 text-primary" />
                     </div>
                     <p className="text-lg font-semibold mb-1">
-                      Drop your resume here
+                      {t('uploader.resume.dropHere')}
                     </p>
                     <p className="text-sm text-muted-foreground mb-4">
-                      PDF, DOCX, or TXT (max 10MB)
+                      {t('uploader.resume.fileTypes')}
                     </p>
                     <label>
                       <input
@@ -260,7 +259,7 @@ export function ResumeUploader({
                       <Button variant="outline" size="sm" className="gap-2" asChild>
                         <span>
                           <FileText className="w-4 h-4" />
-                          Browse files
+                          {t('uploader.resume.browse')}
                         </span>
                       </Button>
                     </label>
@@ -272,11 +271,11 @@ export function ResumeUploader({
                 <textarea
                   value={textInput}
                   onChange={(e) => setTextInput(e.target.value)}
-                  placeholder="Paste your resume content here..."
+                  placeholder={t('uploader.resume.pasteHere')}
                   className="w-full h-48 p-4 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 resize-none text-sm leading-relaxed transition-all"
                 />
                 <div className="absolute bottom-3 right-3 px-2 py-1 rounded-lg bg-card/80 border border-border text-xs text-muted-foreground">
-                  {textInput.length.toLocaleString()} chars
+                  {textInput.length.toLocaleString()} {t('uploader.resume.chars')}
                 </div>
               </div>
             )}
@@ -289,24 +288,23 @@ export function ResumeUploader({
               <div className="p-2 rounded-lg bg-[#0A66C2]/10">
                 <Linkedin className="w-4 h-4 text-[#0A66C2]" />
               </div>
-              <h3 className="font-semibold">Your LinkedIn Profile</h3>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-[#0A66C2]/10 text-[#0A66C2] font-medium">Paid analysis only</span>
+              <h3 className="font-semibold">{t('uploader.linkedin.title')}</h3>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-[#0A66C2]/10 text-[#0A66C2] font-medium">{t('uploader.linkedin.paidOnly')}</span>
             </div>
               <button
                 onClick={() => setShowLinkedIn(!showLinkedIn)}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                {showLinkedIn ? "Hide" : "Show"}
+                {showLinkedIn ? t('uploader.linkedin.hide') : t('uploader.linkedin.show')}
               </button>
             </div>
 
             {showLinkedIn && (
               <div className="rounded-2xl bg-card/30 border border-border/30 p-5 space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Add your LinkedIn for <span className="text-foreground font-medium">headline optimization, About section rewrite, SEO keywords,</span> and visibility tips.
+                  {t('uploader.linkedin.description')} <span className="text-foreground font-medium">{t('uploader.linkedin.benefits')}</span> {t('uploader.linkedin.andMore')}
                 </p>
 
-                {/* LinkedIn Mode Toggle */}
                 <div className="flex justify-start">
                   <div className="inline-flex rounded-xl bg-muted/50 border border-border p-1">
                     <button
@@ -319,7 +317,7 @@ export function ResumeUploader({
                       )}
                     >
                       <Upload className="w-4 h-4" />
-                      Upload PDF
+                      {t('uploader.linkedin.uploadPdf')}
                     </button>
                     <button
                       onClick={() => setLinkedInMode("paste")}
@@ -331,7 +329,7 @@ export function ResumeUploader({
                       )}
                     >
                       <FileText className="w-4 h-4" />
-                      Paste
+                      {t('uploader.resume.paste')}
                     </button>
                   </div>
                 </div>
@@ -342,7 +340,7 @@ export function ResumeUploader({
                       <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
                         <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
                         <span className="text-sm text-success truncate max-w-[200px]">{linkedInFile.name}</span>
-                        <span className="text-sm text-success">({linkedInText.length.toLocaleString()} chars)</span>
+                        <span className="text-sm text-success">({linkedInText.length.toLocaleString()} {t('uploader.resume.chars')})</span>
                         <button
                           onClick={() => {
                             setLinkedInFile(null);
@@ -373,13 +371,13 @@ export function ResumeUploader({
                         {isParsingLinkedIn ? (
                           <>
                             <Loader2 className="w-6 h-6 text-[#0A66C2] animate-spin mb-2" />
-                            <span className="text-sm text-muted-foreground">Parsing PDF...</span>
+                            <span className="text-sm text-muted-foreground">{t('uploader.linkedin.parsing')}</span>
                           </>
                         ) : (
                           <>
                             <Upload className="w-6 h-6 text-[#0A66C2] mb-2" />
-                            <span className="text-sm font-medium text-foreground">Upload LinkedIn PDF</span>
-                            <span className="text-xs text-muted-foreground mt-1">Export your profile from LinkedIn as PDF</span>
+                            <span className="text-sm font-medium text-foreground">{t('uploader.linkedin.uploadLinkedIn')}</span>
+                            <span className="text-xs text-muted-foreground mt-1">{t('uploader.linkedin.exportTip')}</span>
                           </>
                         )}
                       </label>
@@ -390,11 +388,11 @@ export function ResumeUploader({
                     <textarea
                       value={localLinkedInText}
                       onChange={(e) => setLocalLinkedInText(e.target.value)}
-                      placeholder="Copy and paste your LinkedIn profile content here...&#10;&#10;Include: Headline, About section, Experience descriptions, Skills"
+                      placeholder={`${t('uploader.linkedin.pasteHere')}\n\n${t('uploader.linkedin.includeTip')}`}
                       className="w-full h-40 p-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[#0A66C2]/50 focus:border-[#0A66C2]/50 resize-none text-sm leading-relaxed transition-all"
                     />
                     <div className="absolute bottom-3 right-3 px-2 py-1 rounded-lg bg-card border border-border text-xs text-muted-foreground">
-                      {localLinkedInText.length.toLocaleString()} chars
+                      {localLinkedInText.length.toLocaleString()} {t('uploader.resume.chars')}
                     </div>
                   </div>
                 )}
@@ -409,32 +407,32 @@ export function ResumeUploader({
                 <div className="p-2 rounded-lg bg-success/10">
                   <Target className="w-4 h-4 text-success" />
                 </div>
-                <h3 className="font-semibold">Target Job Description</h3>
+                <h3 className="font-semibold">{t('uploader.jobDescription.title')}</h3>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">New!</span>
               </div>
               <button
                 onClick={() => setShowJobDescription(!showJobDescription)}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                {showJobDescription ? "Hide" : "Show"}
+                {showJobDescription ? t('uploader.jobDescription.hide') : t('uploader.jobDescription.show')}
               </button>
             </div>
 
             {showJobDescription && (
               <div className="rounded-2xl bg-card/30 border border-border/30 p-5 space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Paste a job description to get <span className="text-foreground font-medium">JD-resume match score, extracted keywords,</span> and tailored resume edits.
+                  {t('uploader.jobDescription.description')} <span className="text-foreground font-medium">{t('uploader.jobDescription.matchScore')}, extracted keywords,</span> {t('uploader.jobDescription.and')} {t('uploader.jobDescription.tailoredFeedback')}.
                 </p>
 
                 <div className="relative">
                   <textarea
                     value={localJobDescriptionText}
                     onChange={(e) => setLocalJobDescriptionText(e.target.value)}
-                    placeholder="Paste the job description you're applying for...&#10;&#10;This helps us tailor your resume to match the specific role and increase your ATS match score."
+                    placeholder={`${t('uploader.jobDescription.pasteHere')}\n\n${t('uploader.jobDescription.tip')}`}
                     className="w-full h-40 p-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 resize-none text-sm leading-relaxed transition-all"
                   />
                   <div className="absolute bottom-3 right-3 px-2 py-1 rounded-lg bg-card border border-border text-xs text-muted-foreground">
-                    {localJobDescriptionText.length.toLocaleString()} chars
+                    {localJobDescriptionText.length.toLocaleString()} {t('uploader.resume.chars')}
                   </div>
                 </div>
 
@@ -456,7 +454,6 @@ export function ResumeUploader({
 
           {/* Submit Buttons */}
           <div className="text-center space-y-5">
-            {/* Free Scan - Primary Option */}
             {onFreeScan && (
               <div className="space-y-3">
                 <Button
@@ -469,12 +466,12 @@ export function ResumeUploader({
                   {isFreeScanLoading ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span className="text-foreground">Analyzing your resume...</span>
+                      <span className="text-foreground">{t('uploader.actions.processing')}</span>
                     </>
                   ) : (
                     <>
                       <Zap className="w-5 h-5 text-success fill-success/30" />
-                      <span>Get Free Resume Scan</span>
+                      <span>{t('uploader.actions.freeScan')}</span>
                       <span className="ml-1 px-2.5 py-1 rounded-full bg-success text-success-foreground text-xs font-bold uppercase tracking-wide">13 Insights Free</span>
                     </>
                   )}
@@ -500,7 +497,6 @@ export function ResumeUploader({
               </div>
             )}
 
-            {/* Divider */}
             {onFreeScan && (
               <div className="flex items-center gap-4">
                 <div className="flex-1 h-px bg-border" />
@@ -509,7 +505,6 @@ export function ResumeUploader({
               </div>
             )}
 
-            {/* Full Analysis - Paid Option */}
             <Button
               variant="hero"
               size="xl"
@@ -522,12 +517,12 @@ export function ResumeUploader({
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
-                  <span>Processing...</span>
+                  <span>{t('uploader.actions.processing')}</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-5 h-5" aria-hidden="true" />
-                  <span>Get Full Analysis — $25</span>
+                  <span>{t('uploader.actions.getFullAnalysis')} — $25</span>
                 </>
               )}
             </Button>

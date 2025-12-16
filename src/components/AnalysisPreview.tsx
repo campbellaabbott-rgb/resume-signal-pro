@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { 
   AlertTriangle, CheckCircle2, ArrowRight, FileWarning, 
   TrendingUp, Zap, Lightbulb, Target, BarChart3, FileText,
@@ -8,11 +9,11 @@ import { cn } from "@/lib/utils";
 const sampleATSScore = {
   overall: 72,
   breakdown: [
-    { name: "Job Title Match", score: 12, max: 15 },
-    { name: "Skills Match", score: 22, max: 30 },
-    { name: "Action Verb Usage", score: 11, max: 15 },
-    { name: "Keyword Coverage", score: 14, max: 20 },
-    { name: "Formatting Score", score: 13, max: 20 },
+    { nameKey: "Job Title Match", score: 12, max: 15 },
+    { nameKey: "Skills Match", score: 22, max: 30 },
+    { nameKey: "Action Verb Usage", score: 11, max: 15 },
+    { nameKey: "Keyword Coverage", score: 14, max: 20 },
+    { nameKey: "Formatting Score", score: 13, max: 20 },
   ]
 };
 
@@ -91,6 +92,8 @@ function getMatchBgColor(pct: number) {
 }
 
 export function AnalysisPreview() {
+  const { t } = useTranslation();
+
   return (
     <section className="py-20 relative overflow-hidden" id="preview">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/[0.02] to-transparent pointer-events-none" />
@@ -99,13 +102,13 @@ export function AnalysisPreview() {
         <div className="text-center mb-12">
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-xs font-medium text-primary mb-4">
             <BarChart3 className="w-3 h-3" />
-            Sample Analysis
+            {t('preview.badge')}
           </span>
           <h2 className="text-2xl md:text-3xl font-bold mb-3">
-            See What You'll Get
+            {t('preview.title')}
           </h2>
           <p className="text-muted-foreground max-w-lg mx-auto">
-            Here's a preview of the detailed, actionable feedback in every analysis
+            {t('preview.subtitle')}
           </p>
         </div>
 
@@ -115,7 +118,7 @@ export function AnalysisPreview() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Gauge className="w-5 h-5 text-primary" />
-                <span className="text-sm font-semibold">ATS Compatibility Score</span>
+                <span className="text-sm font-semibold">{t('preview.atsScore')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-2xl font-bold text-primary">{sampleATSScore.overall}</span>
@@ -129,7 +132,7 @@ export function AnalysisPreview() {
                   <div className={cn("text-lg font-bold", getScoreColor(item.score, item.max))}>
                     {item.score}/{item.max}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1 leading-tight">{item.name}</div>
+                  <div className="text-xs text-muted-foreground mt-1 leading-tight">{item.nameKey}</div>
                 </div>
               ))}
             </div>
@@ -140,18 +143,17 @@ export function AnalysisPreview() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Briefcase className="w-5 h-5 text-primary" />
-                <span className="text-sm font-semibold">Job Description Match</span>
-                <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Add a JD for this</span>
+                <span className="text-sm font-semibold">{t('preview.jdMatch')}</span>
+                <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">{t('preview.addJd')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className={cn("text-2xl font-bold", getMatchColor(sampleJDMatch.matchPercentage))}>
                   {sampleJDMatch.matchPercentage}%
                 </span>
-                <span className="text-sm text-muted-foreground">match</span>
+                <span className="text-sm text-muted-foreground">{t('preview.match')}</span>
               </div>
             </div>
             
-            {/* Progress bar */}
             <div className="h-2 bg-muted rounded-full mb-4 overflow-hidden">
               <div 
                 className={cn("h-full rounded-full transition-all", getMatchBgColor(sampleJDMatch.matchPercentage))}
@@ -161,7 +163,7 @@ export function AnalysisPreview() {
             
             <div className="grid md:grid-cols-3 gap-4">
               <div className="p-3 rounded-lg bg-success/5 border border-success/20">
-                <span className="text-xs font-semibold text-success mb-2 block">Matching Skills</span>
+                <span className="text-xs font-semibold text-success mb-2 block">{t('preview.matchingSkills')}</span>
                 <div className="flex flex-wrap gap-1">
                   {sampleJDMatch.matchingSkills.slice(0, 3).map((skill, i) => (
                     <span key={i} className="text-xs bg-success/10 text-success px-2 py-0.5 rounded">
@@ -172,7 +174,7 @@ export function AnalysisPreview() {
               </div>
               
               <div className="p-3 rounded-lg bg-warning/5 border border-warning/20">
-                <span className="text-xs font-semibold text-warning mb-2 block">Missing Keywords</span>
+                <span className="text-xs font-semibold text-warning mb-2 block">{t('preview.missingKeywords')}</span>
                 <div className="flex flex-wrap gap-1">
                   {sampleJDMatch.missingKeywords.map((keyword, i) => (
                     <span key={i} className="text-xs bg-warning/10 text-warning px-2 py-0.5 rounded">
@@ -183,7 +185,7 @@ export function AnalysisPreview() {
               </div>
               
               <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                <span className="text-xs font-semibold text-primary mb-2 block">Alignment Tip</span>
+                <span className="text-xs font-semibold text-primary mb-2 block">{t('preview.alignmentTip')}</span>
                 <p className="text-xs text-foreground leading-relaxed">{sampleJDMatch.alignmentSuggestion}</p>
               </div>
             </div>
@@ -195,12 +197,12 @@ export function AnalysisPreview() {
             <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-warning/30 hover:border-warning/50 transition-all duration-300">
               <div className="flex items-center gap-2 mb-4">
                 <FileWarning className="w-5 h-5 text-warning" />
-                <span className="text-sm font-semibold">Formatting Issues</span>
+                <span className="text-sm font-semibold">{t('preview.formattingIssues')}</span>
               </div>
               
               <div className="space-y-3">
                 <div className="p-3 rounded-lg bg-warning/5 border border-warning/20">
-                  <span className="text-xs font-semibold text-warning mb-2 block">Detected</span>
+                  <span className="text-xs font-semibold text-warning mb-2 block">{t('preview.detected')}</span>
                   <ul className="space-y-1.5">
                     {sampleParsingIssues.detectedIssues.slice(0, 2).map((issue, i) => (
                       <li key={i} className="flex items-start gap-2 text-xs text-foreground">
@@ -212,7 +214,7 @@ export function AnalysisPreview() {
                 </div>
                 
                 <div className="p-3 rounded-lg bg-success/5 border border-success/20">
-                  <span className="text-xs font-semibold text-success mb-2 block">Fixes</span>
+                  <span className="text-xs font-semibold text-success mb-2 block">{t('preview.fixes')}</span>
                   <ul className="space-y-1.5">
                     {sampleParsingIssues.criticalFixes.slice(0, 2).map((fix, i) => (
                       <li key={i} className="flex items-start gap-2 text-xs text-foreground">
@@ -229,17 +231,17 @@ export function AnalysisPreview() {
             <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300">
               <div className="flex items-center gap-2 mb-4">
                 <TrendingUp className="w-5 h-5 text-primary" />
-                <span className="text-sm font-semibold">ATS-Optimized Bullets</span>
+                <span className="text-sm font-semibold">{t('preview.atsBullets')}</span>
               </div>
               
               <div className="space-y-3">
                 <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20">
-                  <span className="text-xs font-semibold text-destructive">Before</span>
+                  <span className="text-xs font-semibold text-destructive">{t('preview.before')}</span>
                   <p className="text-xs text-foreground mt-1 line-through opacity-70">{sampleBullet.original}</p>
                 </div>
                 
                 <div className="p-3 rounded-lg bg-success/5 border border-success/20">
-                  <span className="text-xs font-semibold text-success">After</span>
+                  <span className="text-xs font-semibold text-success">{t('preview.after')}</span>
                   <p className="text-xs text-foreground mt-1 font-medium">{sampleBullet.improved}</p>
                 </div>
                 
@@ -257,13 +259,13 @@ export function AnalysisPreview() {
             <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300">
               <div className="flex items-center gap-2 mb-3">
                 <FileText className="w-5 h-5 text-primary" />
-                <span className="text-sm font-semibold">Resume Length</span>
+                <span className="text-sm font-semibold">{t('preview.resumeLength')}</span>
               </div>
               <div className="flex items-baseline gap-2 mb-2">
                 <span className="text-2xl font-bold text-warning">{sampleResumeLength.currentPages}</span>
                 <span className="text-muted-foreground">→</span>
                 <span className="text-2xl font-bold text-success">{sampleResumeLength.recommendedPages}</span>
-                <span className="text-xs text-muted-foreground">pages</span>
+                <span className="text-xs text-muted-foreground">{t('preview.pages')}</span>
               </div>
               <p className="text-xs text-muted-foreground">{sampleResumeLength.reasoning}</p>
             </div>
@@ -272,7 +274,7 @@ export function AnalysisPreview() {
             <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-primary/20 hover:border-primary/40 transition-all duration-300">
               <div className="flex items-center gap-2 mb-3">
                 <ListChecks className="w-5 h-5 text-primary" />
-                <span className="text-sm font-semibold">Action Plan</span>
+                <span className="text-sm font-semibold">{t('preview.actionPlan')}</span>
               </div>
               <ol className="space-y-2">
                 {sampleActionPlan.slice(0, 3).map((item, i) => (
@@ -290,7 +292,7 @@ export function AnalysisPreview() {
             <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-destructive/20 hover:border-destructive/30 transition-all duration-300">
               <div className="flex items-center gap-2 mb-3">
                 <AlertTriangle className="w-5 h-5 text-destructive" />
-                <span className="text-sm font-semibold">Red Flags</span>
+                <span className="text-sm font-semibold">{t('preview.redFlags')}</span>
               </div>
               <ul className="space-y-2">
                 {sampleRedFlags.map((flag, i) => (
@@ -308,30 +310,30 @@ export function AnalysisPreview() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Linkedin className="w-5 h-5 text-[#0077B5]" />
-                <span className="text-sm font-semibold">LinkedIn Analysis</span>
-                <span className="text-xs bg-[#0077B5]/20 text-[#0077B5] px-2 py-0.5 rounded-full">Included Free</span>
+                <span className="text-sm font-semibold">{t('preview.linkedinAnalysis')}</span>
+                <span className="text-xs bg-[#0077B5]/20 text-[#0077B5] px-2 py-0.5 rounded-full">{t('preview.includedFree')}</span>
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-lg font-bold text-[#0077B5]">{sampleLinkedIn.profileStrength}%</span>
-                <span className="text-xs text-muted-foreground">strength</span>
+                <span className="text-xs text-muted-foreground">{t('preview.strength')}</span>
               </div>
             </div>
             
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-3">
                 <div className="p-3 rounded-lg bg-success/5 border border-success/20">
-                  <span className="text-xs font-semibold text-success mb-1 block">Suggested Headline</span>
+                  <span className="text-xs font-semibold text-success mb-1 block">{t('preview.suggestedHeadline')}</span>
                   <p className="text-xs text-foreground font-medium">{sampleLinkedIn.headlineSuggestion}</p>
                 </div>
                 
                 <div className="p-3 rounded-lg bg-warning/5 border border-warning/20">
-                  <span className="text-xs font-semibold text-warning mb-1 block">About Section</span>
+                  <span className="text-xs font-semibold text-warning mb-1 block">{t('preview.aboutSection')}</span>
                   <p className="text-xs text-foreground">{sampleLinkedIn.aboutImprovement}</p>
                 </div>
               </div>
               
               <div className="p-3 rounded-lg bg-[#0077B5]/5 border border-[#0077B5]/20">
-                <span className="text-xs font-semibold text-[#0077B5] mb-2 block">Profile Recommendations</span>
+                <span className="text-xs font-semibold text-[#0077B5] mb-2 block">{t('preview.profileRecommendations')}</span>
                 <ul className="space-y-2">
                   {sampleLinkedIn.recommendations.map((rec, i) => (
                     <li key={i} className="flex items-start gap-2 text-xs text-foreground">
@@ -348,7 +350,7 @@ export function AnalysisPreview() {
           <div className="text-center pt-4">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 text-sm text-muted-foreground">
               <Zap className="w-4 h-4 text-primary" />
-              Plus: Skills Gap, Industry Insights, Action Verbs, Keywords & Summary Rewrite
+              {t('preview.plusMore')}
             </div>
           </div>
         </div>
