@@ -69,6 +69,29 @@ interface RedFlag {
   impact: string;
 }
 
+interface ReadabilityScore {
+  score: number;
+  verdict: "hard_to_read" | "readable" | "easy_to_scan";
+  issue: string;
+}
+
+interface BulletImpactScore {
+  score: number;
+  verdict: "responsibility_heavy" | "balanced" | "achievement_focused";
+  tip: string;
+}
+
+interface KeywordDensity {
+  level: "sparse" | "moderate" | "dense";
+  explanation: string;
+}
+
+interface ImprovementPotential {
+  level: "low" | "medium" | "high";
+  estimatedScoreIncrease: number;
+  topPriority: string;
+}
+
 interface FreeKeywordResultsProps {
   industry: string;
   atsScoreEstimate: number;
@@ -82,6 +105,10 @@ interface FreeKeywordResultsProps {
   topStrength?: TopStrength;
   quantificationScore?: QuantificationScore;
   actionVerbGrade?: ActionVerbGrade;
+  readabilityScore?: ReadabilityScore;
+  bulletImpactScore?: BulletImpactScore;
+  keywordDensity?: KeywordDensity;
+  improvementPotential?: ImprovementPotential;
   redFlags: RedFlag[];
   keywords: KeywordSuggestion[];
   onGetFullAnalysis: () => void;
@@ -101,6 +128,10 @@ export function FreeKeywordResults({
   topStrength: topStrengthProp,
   quantificationScore: quantificationScoreProp,
   actionVerbGrade: actionVerbGradeProp,
+  readabilityScore: readabilityScoreProp,
+  bulletImpactScore: bulletImpactScoreProp,
+  keywordDensity: keywordDensityProp,
+  improvementPotential: improvementPotentialProp,
   redFlags: redFlagsProp,
   keywords,
   onGetFullAnalysis,
@@ -120,6 +151,10 @@ export function FreeKeywordResults({
   const topStrength = topStrengthProp || { title: "Clear Experience", description: "Your work history is well-documented" };
   const quantificationScore = quantificationScoreProp || { score: 40, verdict: "average" as const, tip: "Add more metrics" };
   const actionVerbGrade = actionVerbGradeProp || { grade: "B", issue: "Good variety" };
+  const readabilityScore = readabilityScoreProp || { score: 65, verdict: "readable" as const, issue: "Some long sentences" };
+  const bulletImpactScore = bulletImpactScoreProp || { score: 45, verdict: "responsibility_heavy" as const, tip: "Focus on achievements" };
+  const keywordDensity = keywordDensityProp || { level: "moderate" as const, explanation: "Good keyword presence" };
+  const improvementPotential = improvementPotentialProp || { level: "medium" as const, estimatedScoreIncrease: 15, topPriority: "Add quantified achievements" };
   const redFlags = redFlagsProp || [];
 
   const getScoreColor = (score: number) => {
@@ -282,13 +317,62 @@ export function FreeKeywordResults({
     }
   };
 
+  // Helper functions for new metrics
+  const getReadabilityColor = (verdict: string) => {
+    if (verdict === "easy_to_scan") return "text-success";
+    if (verdict === "readable") return "text-warning";
+    return "text-destructive";
+  };
+
+  const getReadabilityBgColor = (verdict: string) => {
+    if (verdict === "easy_to_scan") return "bg-success/10 border-success/20";
+    if (verdict === "readable") return "bg-warning/10 border-warning/20";
+    return "bg-destructive/10 border-destructive/20";
+  };
+
+  const getBulletImpactColor = (verdict: string) => {
+    if (verdict === "achievement_focused") return "text-success";
+    if (verdict === "balanced") return "text-warning";
+    return "text-destructive";
+  };
+
+  const getBulletImpactBgColor = (verdict: string) => {
+    if (verdict === "achievement_focused") return "bg-success/10 border-success/20";
+    if (verdict === "balanced") return "bg-warning/10 border-warning/20";
+    return "bg-destructive/10 border-destructive/20";
+  };
+
+  const getKeywordDensityColor = (level: string) => {
+    if (level === "dense") return "text-success";
+    if (level === "moderate") return "text-warning";
+    return "text-destructive";
+  };
+
+  const getKeywordDensityBgColor = (level: string) => {
+    if (level === "dense") return "bg-success/10 border-success/20";
+    if (level === "moderate") return "bg-warning/10 border-warning/20";
+    return "bg-destructive/10 border-destructive/20";
+  };
+
+  const getImprovementPotentialColor = (level: string) => {
+    if (level === "low") return "text-success";
+    if (level === "medium") return "text-warning";
+    return "text-primary";
+  };
+
+  const getImprovementPotentialBgColor = (level: string) => {
+    if (level === "low") return "bg-success/10 border-success/20";
+    if (level === "medium") return "bg-warning/10 border-warning/20";
+    return "bg-primary/10 border-primary/20";
+  };
+
   return (
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
       {/* Header */}
       <div className="text-center mb-6">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success text-sm font-medium mb-3">
           <Sparkles className="w-4 h-4" />
-          13-Point Free Scan Complete
+          17-Point Free Scan Complete
         </div>
         <h3 className="text-xl font-bold mb-1">Here's your comprehensive preview</h3>
         <p className="text-sm text-muted-foreground">
@@ -408,7 +492,61 @@ export function FreeKeywordResults({
         </div>
       </div>
 
-      {/* Row 3: Special Cards */}
+      {/* Score Cards Grid - Row 3: New Metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+        {/* Readability Score */}
+        <div className={cn("rounded-2xl border p-3", getReadabilityBgColor(readabilityScore.verdict))}>
+          <div className="flex items-center gap-2 mb-1">
+            <FileText className="w-4 h-4 text-primary" />
+            <p className="text-xs text-muted-foreground">Readability</p>
+          </div>
+          <p className={cn("text-2xl font-bold", getReadabilityColor(readabilityScore.verdict))}>
+            {readabilityScore.score}<span className="text-sm text-muted-foreground">%</span>
+          </p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{readabilityScore.issue}</p>
+        </div>
+
+        {/* Bullet Impact Score */}
+        <div className={cn("rounded-2xl border p-3", getBulletImpactBgColor(bulletImpactScore.verdict))}>
+          <div className="flex items-center gap-2 mb-1">
+            <Target className="w-4 h-4 text-primary" />
+            <p className="text-xs text-muted-foreground">Impact</p>
+          </div>
+          <p className={cn("text-2xl font-bold", getBulletImpactColor(bulletImpactScore.verdict))}>
+            {bulletImpactScore.score}<span className="text-sm text-muted-foreground">%</span>
+          </p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{bulletImpactScore.tip}</p>
+        </div>
+
+        {/* Keyword Density */}
+        <div className={cn("rounded-2xl border p-3", getKeywordDensityBgColor(keywordDensity.level))}>
+          <div className="flex items-center gap-2 mb-1">
+            <Hash className="w-4 h-4 text-primary" />
+            <p className="text-xs text-muted-foreground">Keywords</p>
+          </div>
+          <p className={cn("text-xl font-bold capitalize", getKeywordDensityColor(keywordDensity.level))}>
+            {keywordDensity.level}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{keywordDensity.explanation}</p>
+        </div>
+
+        {/* Improvement Potential */}
+        <div className={cn("rounded-2xl border p-3", getImprovementPotentialBgColor(improvementPotential.level))}>
+          <div className="flex items-center gap-2 mb-1">
+            <Zap className="w-4 h-4 text-primary" />
+            <p className="text-xs text-muted-foreground">Potential</p>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <p className={cn("text-xl font-bold", getImprovementPotentialColor(improvementPotential.level))}>
+              +{improvementPotential.estimatedScoreIncrease}
+            </p>
+            <span className="text-xs text-muted-foreground">pts</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{improvementPotential.topPriority}</p>
+        </div>
+      </div>
+
+      {/* Row 4: Special Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
         {/* Top Strength */}
         <div className="rounded-2xl border p-4 bg-success/5 border-success/20">

@@ -163,6 +163,7 @@ export function ResumeUploader({
               </div>
               <h3 className="font-semibold">Your Resume</h3>
               <span className="text-xs text-destructive">*Required</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">Free scan included!</span>
             </div>
 
             {/* Resume Mode Toggle */}
@@ -285,12 +286,12 @@ export function ResumeUploader({
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-[#0A66C2]/10">
-                  <Linkedin className="w-4 h-4 text-[#0A66C2]" />
-                </div>
-                <h3 className="font-semibold">Your LinkedIn Profile</h3>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">Included free!</span>
+              <div className="p-2 rounded-lg bg-[#0A66C2]/10">
+                <Linkedin className="w-4 h-4 text-[#0A66C2]" />
               </div>
+              <h3 className="font-semibold">Your LinkedIn Profile</h3>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-[#0A66C2]/10 text-[#0A66C2] font-medium">Paid analysis only</span>
+            </div>
               <button
                 onClick={() => setShowLinkedIn(!showLinkedIn)}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors"
