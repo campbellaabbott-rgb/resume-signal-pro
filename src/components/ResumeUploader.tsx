@@ -430,23 +430,31 @@ export function ResumeUploader({
                   size="lg"
                   disabled={isFreeScanLoading || !canProceed}
                   onClick={onFreeScan}
-                  className="min-w-[320px] h-12 text-base gap-2 border-2 border-primary/50 bg-primary/5 hover:bg-primary/10 hover:border-primary transition-all touch-manipulation"
+                  className="min-w-[320px] h-14 text-base gap-2 border-2 border-success/60 bg-success/10 hover:bg-success/15 hover:border-success transition-all touch-manipulation"
                 >
                   {isFreeScanLoading ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Scanning...</span>
+                      <span>Analyzing your resume...</span>
                     </>
                   ) : (
                     <>
-                      <Zap className="w-5 h-5 text-primary" />
-                      <span>Try Free Keyword Scan</span>
-                      <span className="ml-1 px-2 py-0.5 rounded-full bg-success/20 text-success text-xs font-medium">FREE</span>
+                      <Zap className="w-5 h-5 text-success" />
+                      <span>Get Free Resume Scan</span>
+                      <span className="ml-1 px-2.5 py-1 rounded-full bg-success/30 text-success text-xs font-bold uppercase tracking-wide">6 Insights Free</span>
                     </>
                   )}
                 </Button>
-                <p className="text-xs text-muted-foreground">
-                  Get 5 keyword suggestions instantly • 3 free scans/day
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground max-w-md mx-auto">
+                  <span className="flex items-center gap-1"><span className="text-success">✓</span> ATS Score</span>
+                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Format Grade</span>
+                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Length Check</span>
+                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Red Flags</span>
+                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Keywords</span>
+                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Industry</span>
+                </div>
+                <p className="text-xs text-muted-foreground/70">
+                  3 free scans per day
                 </p>
               </div>
             )}
