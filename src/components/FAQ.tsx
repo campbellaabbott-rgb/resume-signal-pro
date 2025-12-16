@@ -14,6 +14,7 @@ const faqKeys = [
   "share",
   "whoWrites",
   "dataStorage",
+  "vsChatGPT",
 ];
 
 export function FAQ() {

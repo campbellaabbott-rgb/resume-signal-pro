@@ -126,6 +126,10 @@
       "dataStorage": {
         "question": "¿Almacenan los datos de mi currículum?",
         "answer": "No. No almacenamos ni recopilamos el contenido de tu currículum. Tu currículum se procesa en tiempo real para generar tu análisis y luego se descarta inmediatamente. Nunca retenemos tu información personal."
+      },
+      "vsChatGPT": {
+        "question": "¿Por qué es mejor que ChatGPT o plantillas de currículum?",
+        "answer": "Resume Booster está diseñado específicamente para optimización ATS con un sistema de puntuación ponderado de 5 categorías, 14 plantillas específicas por industria y feedback calibrado por reclutadores. A diferencia de ChatGPT, obtienes una salida estructurada de 10 secciones sin necesidad de crear prompts. A diferencia de las plantillas, proporcionamos reescrituras personalizadas, análisis de LinkedIn y alineación con descripciones de trabajo. Tus datos se descartan inmediatamente, nunca se usan para entrenamiento."
       }
     }
   },

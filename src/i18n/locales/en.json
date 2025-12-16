@@ -126,6 +126,10 @@
       "dataStorage": {
         "question": "Do you store my resume data?",
         "answer": "No. We do not store or collect your resume content. Your resume is processed in real-time to generate your analysis, and then immediately discarded. We never retain your personal information."
+      },
+      "vsChatGPT": {
+        "question": "Why is this better than ChatGPT or resume templates?",
+        "answer": "Resume Booster is purpose-built for ATS optimization with a 5-category weighted scoring system, 14 industry-specific templates, and recruiter-calibrated feedback. Unlike ChatGPT, you get consistent 10-section structured output without prompt engineering. Unlike templates, we provide personalized rewrites, LinkedIn analysis, and job description alignment. Your data is immediately discarded—never used for training."
       }
     }
   },
