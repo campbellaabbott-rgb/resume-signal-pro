@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, FileCheck, FileText, AlertTriangle } from "lucide-react";
+import { Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, FileCheck, FileText, AlertTriangle, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,13 @@ interface ResumeLength {
   verdict: "too_short" | "just_right" | "too_long";
 }
 
+interface WordCount {
+  current: number;
+  idealMin: number;
+  idealMax: number;
+  verdict: "too_few" | "ideal" | "too_many";
+}
+
 interface RedFlag {
   issue: string;
   impact: string;
@@ -27,6 +34,7 @@ interface FreeKeywordResultsProps {
   formatGrade: string;
   formatIssue: string;
   resumeLength: ResumeLength;
+  wordCount?: WordCount;
   redFlags: RedFlag[];
   keywords: KeywordSuggestion[];
   onGetFullAnalysis: () => void;
@@ -39,6 +47,7 @@ export function FreeKeywordResults({
   formatGrade,
   formatIssue,
   resumeLength: resumeLengthProp,
+  wordCount: wordCountProp,
   redFlags: redFlagsProp,
   keywords,
   onGetFullAnalysis,
@@ -51,6 +60,7 @@ export function FreeKeywordResults({
 
   // Safe defaults for new properties
   const resumeLength = resumeLengthProp || { currentPages: 1, recommendedPages: 1, verdict: "just_right" as const };
+  const wordCount = wordCountProp || { current: 500, idealMin: 400, idealMax: 600, verdict: "ideal" as const };
   const redFlags = redFlagsProp || [];
 
   const getScoreColor = (score: number) => {
@@ -100,6 +110,22 @@ export function FreeKeywordResults({
     if (verdict === "just_right") return "Perfect";
     if (verdict === "too_short") return "Too Short";
     return "Too Long";
+  };
+
+  const getWordCountColor = (verdict: string) => {
+    if (verdict === "ideal") return "text-success";
+    return "text-warning";
+  };
+
+  const getWordCountBgColor = (verdict: string) => {
+    if (verdict === "ideal") return "bg-success/10 border-success/20";
+    return "bg-warning/10 border-warning/20";
+  };
+
+  const getWordCountLabel = (verdict: string) => {
+    if (verdict === "ideal") return "Ideal";
+    if (verdict === "too_few") return "Too Few";
+    return "Too Many";
   };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -161,18 +187,18 @@ export function FreeKeywordResults({
       </div>
 
       {/* Score Cards Grid */}
-      <div className="grid grid-cols-2 gap-4 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
         {/* ATS Score */}
         <div className={cn(
-          "rounded-2xl border p-4",
+          "rounded-2xl border p-3",
           getScoreBgColor(atsScoreEstimate)
         )}>
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-1">
             <Target className="w-4 h-4 text-primary" />
             <p className="text-xs text-muted-foreground">ATS Score</p>
           </div>
-          <p className={cn("text-3xl font-bold", getScoreColor(atsScoreEstimate))}>
-            {atsScoreEstimate}<span className="text-lg text-muted-foreground">/100</span>
+          <p className={cn("text-2xl font-bold", getScoreColor(atsScoreEstimate))}>
+            {atsScoreEstimate}<span className="text-sm text-muted-foreground">/100</span>
           </p>
           <div className="flex items-center gap-1 mt-1 text-muted-foreground">
             <Lock className="w-3 h-3" />
@@ -182,41 +208,41 @@ export function FreeKeywordResults({
 
         {/* Format Grade */}
         <div className={cn(
-          "rounded-2xl border p-4",
+          "rounded-2xl border p-3",
           getGradeBgColor(formatGrade)
         )}>
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-1">
             <FileCheck className="w-4 h-4 text-primary" />
             <p className="text-xs text-muted-foreground">Format Grade</p>
           </div>
-          <div className="flex items-baseline gap-2">
-            <p className={cn("text-3xl font-bold", getGradeColor(formatGrade))}>
+          <div className="flex items-baseline gap-1">
+            <p className={cn("text-2xl font-bold", getGradeColor(formatGrade))}>
               {formatGrade}
             </p>
-            <span className={cn("text-sm font-medium", getGradeColor(formatGrade))}>
+            <span className={cn("text-xs font-medium", getGradeColor(formatGrade))}>
               {getGradeLabel(formatGrade)}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
             {formatIssue}
           </p>
         </div>
 
         {/* Resume Length */}
         <div className={cn(
-          "rounded-2xl border p-4",
+          "rounded-2xl border p-3",
           getLengthBgColor(resumeLength.verdict)
         )}>
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-1">
             <FileText className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">Resume Length</p>
+            <p className="text-xs text-muted-foreground">Page Count</p>
           </div>
-          <div className="flex items-baseline gap-2">
-            <p className={cn("text-3xl font-bold", getLengthColor(resumeLength.verdict))}>
+          <div className="flex items-baseline gap-1">
+            <p className={cn("text-2xl font-bold", getLengthColor(resumeLength.verdict))}>
               {resumeLength.currentPages}
             </p>
-            <span className="text-lg text-muted-foreground">
-              / {resumeLength.recommendedPages} pg
+            <span className="text-sm text-muted-foreground">
+              / {resumeLength.recommendedPages}
             </span>
           </div>
           <p className={cn("text-xs font-medium mt-1", getLengthColor(resumeLength.verdict))}>
@@ -224,17 +250,34 @@ export function FreeKeywordResults({
           </p>
         </div>
 
-        {/* Red Flags Preview */}
-        <div className="rounded-2xl border p-4 bg-destructive/5 border-destructive/20">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-4 h-4 text-destructive" />
-            <p className="text-xs text-muted-foreground">Red Flags Found</p>
+        {/* Word Count */}
+        <div className={cn(
+          "rounded-2xl border p-3",
+          getWordCountBgColor(wordCount.verdict)
+        )}>
+          <div className="flex items-center gap-2 mb-1">
+            <Type className="w-4 h-4 text-primary" />
+            <p className="text-xs text-muted-foreground">Word Count</p>
           </div>
-          <p className="text-3xl font-bold text-destructive mb-1">
+          <p className={cn("text-2xl font-bold", getWordCountColor(wordCount.verdict))}>
+            {wordCount.current}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Ideal: {wordCount.idealMin}-{wordCount.idealMax}
+          </p>
+        </div>
+
+        {/* Red Flags Preview */}
+        <div className="rounded-2xl border p-3 bg-destructive/5 border-destructive/20">
+          <div className="flex items-center gap-2 mb-1">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+            <p className="text-xs text-muted-foreground">Red Flags</p>
+          </div>
+          <p className="text-2xl font-bold text-destructive mb-1">
             {redFlags.length}+
           </p>
           {redFlags.length > 0 && (
-            <p className="text-xs text-muted-foreground line-clamp-2">
+            <p className="text-xs text-muted-foreground line-clamp-1">
               {redFlags[0].issue}
             </p>
           )}
