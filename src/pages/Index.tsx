@@ -41,7 +41,6 @@ const Index = () => {
   const [resumeText, setResumeText] = useState<string>("");
   const [linkedInText, setLinkedInText] = useState<string>("");
   const [jobDescriptionText, setJobDescriptionText] = useState<string>("");
-  const [isScrapingLinkedIn, setIsScrapingLinkedIn] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [freeKeywordResult, setFreeKeywordResult] = useState<FreeKeywordResult | null>(null);
   const { toast } = useToast();
@@ -144,36 +143,6 @@ const Index = () => {
       } finally {
         setIsLoading(false);
       }
-    }
-  };
-
-  const handleScrapeLinkedIn = async (url: string) => {
-    setIsScrapingLinkedIn(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("scrape-linkedin", {
-        body: { url },
-      });
-
-      if (error) throw error;
-
-      if (data?.success && data?.text) {
-        setLinkedInText(data.text);
-        toast({
-          title: "LinkedIn profile fetched",
-          description: "Your profile content has been extracted successfully.",
-        });
-      } else {
-        throw new Error(data?.error || "Failed to fetch LinkedIn profile");
-      }
-    } catch (error: any) {
-      console.error("LinkedIn scraping error:", error);
-      toast({
-        title: "Could not fetch profile",
-        description: error?.message || "Please try pasting your profile content instead.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsScrapingLinkedIn(false);
     }
   };
 
@@ -351,8 +320,6 @@ const Index = () => {
           hasContent={!!resumeText || !!selectedFile}
           linkedInText={linkedInText}
           onLinkedInTextChange={setLinkedInText}
-          isScrapingLinkedIn={isScrapingLinkedIn}
-          onScrapeLinkedIn={handleScrapeLinkedIn}
           jobDescriptionText={jobDescriptionText}
           onJobDescriptionTextChange={setJobDescriptionText}
         />
