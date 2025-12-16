@@ -339,36 +339,13 @@ const Success = () => {
         heightLeft -= pageHeight;
       }
 
-      const pdfBlob = pdf.output("blob");
-      const blobUrl = URL.createObjectURL(pdfBlob);
+      // Use jsPDF's native save method for reliable direct downloads
+      pdf.save("resume-analysis.pdf");
 
-      const ua = navigator.userAgent;
-      const isSafari =
-        /safari/i.test(ua) && !/chrome|crios|fxios|android/i.test(ua);
-
-      if (isSafari) {
-        // Safari often blocks programmatic downloads after async work.
-        // Opening the PDF in a new tab reliably uses the native PDF viewer.
-        window.open(blobUrl, "_blank", "noopener,noreferrer");
-        toast({
-          title: "PDF opened",
-          description: "Safari blocks automatic downloads. Use the viewer’s Download button.",
-        });
-      } else {
-        const a = document.createElement("a");
-        a.href = blobUrl;
-        a.download = "resume-analysis.pdf";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-
-        toast({
-          title: "PDF downloaded!",
-          description: "Check your Downloads folder.",
-        });
-      }
-
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      toast({
+        title: "PDF downloaded!",
+        description: "Check your Downloads folder.",
+      });
     } catch (err) {
       console.error("PDF generation error:", err);
       toast({
