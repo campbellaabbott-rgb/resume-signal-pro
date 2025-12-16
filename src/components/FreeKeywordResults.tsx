@@ -901,34 +901,77 @@ export function FreeKeywordResults({
 
         {/* Timeline Analysis */}
         <div className="rounded-2xl bg-card border border-border p-5">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-4">
             <FileText className="w-4 h-4 text-primary" />
             <h4 className="font-semibold flex-1">Career Timeline</h4>
             <MetricTooltip metricKey="timeline" />
           </div>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center p-2 rounded-lg bg-muted/30">
-              <span className="text-sm text-muted-foreground">Total Experience</span>
-              <span className="text-sm font-medium text-foreground">{timelineAnalysis.totalYears}</span>
+          
+          <div className="space-y-3">
+            {/* Total Experience */}
+            <div className="p-3 rounded-lg bg-muted/30">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-sm font-medium text-foreground">Total Experience</span>
+                <span className="text-sm font-bold text-primary">{timelineAnalysis.totalYears}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                How long you've been working in your field
+              </p>
             </div>
-            <div className="flex justify-between items-center p-2 rounded-lg bg-muted/30">
-              <span className="text-sm text-muted-foreground">Avg Job Tenure</span>
-              <span className="text-sm font-medium text-foreground">{timelineAnalysis.avgTenure}</span>
+            
+            {/* Avg Job Tenure */}
+            <div className="p-3 rounded-lg bg-muted/30">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-sm font-medium text-foreground">Avg Time at Each Job</span>
+                <span className={cn("text-sm font-bold",
+                  parseFloat(timelineAnalysis.avgTenure) >= 2 ? "text-success" : 
+                  parseFloat(timelineAnalysis.avgTenure) >= 1 ? "text-warning" : "text-destructive"
+                )}>{timelineAnalysis.avgTenure}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {parseFloat(timelineAnalysis.avgTenure) >= 2 
+                  ? "✓ Good stability — recruiters like 2+ years per role"
+                  : parseFloat(timelineAnalysis.avgTenure) >= 1
+                    ? "⚠ Short tenure may raise questions"
+                    : "⚠ Very short — may be seen as job hopping"}
+              </p>
             </div>
-            <div className="flex justify-between items-center p-2 rounded-lg bg-muted/30">
-              <span className="text-sm text-muted-foreground">Career Progression</span>
-              <span className={cn("text-sm font-medium capitalize",
-                timelineAnalysis.progression === "rapid" ? "text-success" :
-                timelineAnalysis.progression === "steady" ? "text-foreground" :
-                timelineAnalysis.progression === "stagnant" ? "text-warning" : "text-muted-foreground"
-              )}>
-                {timelineAnalysis.progression}
-              </span>
+            
+            {/* Career Progression */}
+            <div className="p-3 rounded-lg bg-muted/30">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-sm font-medium text-foreground">Career Growth</span>
+                <span className={cn("text-sm font-bold capitalize",
+                  timelineAnalysis.progression === "rapid" ? "text-success" :
+                  timelineAnalysis.progression === "steady" ? "text-success" :
+                  timelineAnalysis.progression === "stagnant" ? "text-warning" : "text-muted-foreground"
+                )}>
+                  {timelineAnalysis.progression === "rapid" ? "🚀 Rapid" :
+                   timelineAnalysis.progression === "steady" ? "📈 Steady" :
+                   timelineAnalysis.progression === "stagnant" ? "📊 Flat" : "❓ Unclear"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {timelineAnalysis.progression === "rapid" 
+                  ? "Great! Shows strong advancement and increasing responsibility"
+                  : timelineAnalysis.progression === "steady"
+                    ? "Shows consistent growth — employers like this pattern"
+                    : timelineAnalysis.progression === "stagnant"
+                      ? "Consider highlighting promotions or new responsibilities"
+                      : "Add clearer job titles to show your career path"}
+              </p>
             </div>
+            
+            {/* Employment Gaps Warning */}
             {timelineAnalysis.hasGaps && (
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-warning/10 border border-warning/20">
-                <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
-                <span className="text-sm text-warning">{timelineAnalysis.gapNote || "Employment gaps detected"}</span>
+              <div className="p-3 rounded-lg bg-warning/10 border border-warning/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
+                  <span className="text-sm font-medium text-warning">Employment Gap Detected</span>
+                </div>
+                <p className="text-xs text-warning/80">
+                  {timelineAnalysis.gapNote || "Gaps are common — just be ready to explain them in interviews"}
+                </p>
               </div>
             )}
           </div>
