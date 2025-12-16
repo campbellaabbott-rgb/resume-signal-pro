@@ -59,6 +59,30 @@ export type Database = {
         }
         Relationships: []
       }
+      temp_resume_storage: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          linkedin_text: string | null
+          resume_text: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string
+          linkedin_text?: string | null
+          resume_text: string
+          session_id?: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          linkedin_text?: string | null
+          resume_text?: string
+          session_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -79,9 +103,19 @@ export type Database = {
           analysis_result: Json
           created_at: string
           id: string
-          resume_text: string
           share_id: string
         }[]
+      }
+      get_temp_resume: {
+        Args: { p_session_id: string }
+        Returns: {
+          linkedin_text: string
+          resume_text: string
+        }[]
+      }
+      store_temp_resume: {
+        Args: { p_linkedin?: string; p_resume: string }
+        Returns: string
       }
     }
     Enums: {
