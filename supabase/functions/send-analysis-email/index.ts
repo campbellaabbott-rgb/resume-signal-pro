@@ -32,6 +32,20 @@ interface LinkedInAnalysis {
   recommendationStrategy?: string;
 }
 
+interface JobDescriptionAlignment {
+  matchScore: number;
+  extractedKeywords?: string[];
+  missingKeywords?: string[];
+  suggestedEdits?: Array<{
+    section: string;
+    currentText: string;
+    suggestedText: string;
+    jdAlignment: string;
+  }>;
+  roleMatchAnalysis?: string;
+  gapAnalysis?: string;
+}
+
 interface AnalysisEmailRequest {
   email: string;
   shareId: string;
@@ -40,6 +54,7 @@ interface AnalysisEmailRequest {
     industry?: string;
     experienceLevel?: string;
     hasLinkedIn?: boolean;
+    hasJobDescription?: boolean;
     atsScore?: {
       score: number;
       breakdown: {
@@ -86,6 +101,7 @@ interface AnalysisEmailRequest {
     keywords?: string[];
     redFlags?: string[];
     linkedInAnalysis?: LinkedInAnalysis;
+    jobDescriptionAlignment?: JobDescriptionAlignment;
   };
 }
 
@@ -382,6 +398,72 @@ serve(async (req) => {
       </div>
     ` : '';
 
+    // Build Job Description Alignment Section
+    const jdAlignment = analysis.jobDescriptionAlignment;
+    const jdAlignmentHtml = jdAlignment ? `
+      <div style="margin-bottom: 32px; padding: 24px; background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); border-radius: 16px; color: white;">
+        <div style="display: flex; align-items: center; margin-bottom: 20px;">
+          <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+            <span style="font-size: 20px;">🎯</span>
+          </div>
+          <div style="flex: 1;">
+            <h2 style="margin: 0; font-size: 18px; font-weight: 700;">Job Description Match</h2>
+            <p style="margin: 0; font-size: 13px; opacity: 0.9;">How well your resume aligns with the target role</p>
+          </div>
+          <div style="text-align: center;">
+            <span style="font-size: 32px; font-weight: 800; color: ${jdAlignment.matchScore >= 70 ? '#86efac' : jdAlignment.matchScore >= 50 ? '#fcd34d' : '#fca5a5'};">${jdAlignment.matchScore}%</span>
+            <p style="margin: 0; font-size: 11px; opacity: 0.8;">match</p>
+          </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div style="background: rgba(255,255,255,0.2); height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 20px;">
+          <div style="background: ${jdAlignment.matchScore >= 70 ? '#86efac' : jdAlignment.matchScore >= 50 ? '#fcd34d' : '#fca5a5'}; height: 100%; width: ${jdAlignment.matchScore}%; border-radius: 5px;"></div>
+        </div>
+
+        ${safeArray(jdAlignment.missingKeywords).length > 0 ? `
+          <div style="background: rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+            <p style="margin: 0 0 12px 0; font-size: 12px; font-weight: 600; color: #fca5a5;">Missing Keywords from Job Description</p>
+            <div>${jdAlignment.missingKeywords!.map(k => `<span style="display: inline-block; margin: 4px; padding: 6px 12px; background: rgba(252, 165, 165, 0.2); border-radius: 16px; font-size: 12px; border: 1px solid rgba(252, 165, 165, 0.3);">${escapeHtml(k)}</span>`).join('')}</div>
+          </div>
+        ` : ''}
+
+        ${safeArray(jdAlignment.extractedKeywords).length > 0 ? `
+          <div style="background: rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+            <p style="margin: 0 0 12px 0; font-size: 12px; font-weight: 600; color: #86efac;">Key Requirements from Job Description</p>
+            <div>${jdAlignment.extractedKeywords!.slice(0, 8).map(k => `<span style="display: inline-block; margin: 4px; padding: 6px 12px; background: rgba(134, 239, 172, 0.15); border-radius: 16px; font-size: 12px;">${escapeHtml(k)}</span>`).join('')}</div>
+          </div>
+        ` : ''}
+
+        ${jdAlignment.roleMatchAnalysis ? `
+          <div style="background: rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+            <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; opacity: 0.9;">Role Alignment</p>
+            <p style="margin: 0; font-size: 14px; line-height: 1.6;">${escapeHtml(jdAlignment.roleMatchAnalysis)}</p>
+          </div>
+        ` : ''}
+
+        ${jdAlignment.gapAnalysis ? `
+          <div style="background: rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+            <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; color: #fcd34d;">Gap Analysis</p>
+            <p style="margin: 0; font-size: 14px; line-height: 1.6;">${escapeHtml(jdAlignment.gapAnalysis)}</p>
+          </div>
+        ` : ''}
+
+        ${safeArray(jdAlignment.suggestedEdits).length > 0 ? `
+          <div style="margin-top: 16px;">
+            <p style="margin: 0 0 12px 0; font-size: 12px; font-weight: 600; opacity: 0.9;">Suggested Resume Edits</p>
+            ${jdAlignment.suggestedEdits!.slice(0, 3).map(edit => `
+              <div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+                <p style="margin: 0 0 8px 0; font-size: 11px; opacity: 0.8; text-transform: uppercase;">${escapeHtml(edit.section)} → ${escapeHtml(edit.jdAlignment)}</p>
+                <p style="margin: 0 0 8px 0; font-size: 13px; text-decoration: line-through; opacity: 0.6;">${escapeHtml(edit.currentText)}</p>
+                <p style="margin: 0; font-size: 13px; color: #86efac; font-weight: 500;">${escapeHtml(edit.suggestedText)}</p>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+    ` : '';
+
     // Build Summary Section
     const summaryHtml = analysis.summaryRewrite?.professionalSummary ? `
       <div style="margin-bottom: 32px; padding: 24px; background: #f0f9ff; border-radius: 16px; border: 1px solid #bae6fd;">
@@ -575,6 +657,7 @@ serve(async (req) => {
                   <span style="opacity: 0.6;">•</span>
                   <span style="text-transform: capitalize;">${escapeHtml(analysis.experienceLevel || 'Professional')} Level</span>
                   ${analysis.hasLinkedIn ? `<span style="opacity: 0.6;">•</span><span>+ LinkedIn</span>` : ''}
+                  ${analysis.jobDescriptionAlignment ? `<span style="opacity: 0.6;">•</span><span>${analysis.jobDescriptionAlignment.matchScore}% JD Match</span>` : ''}
                 </div>
               ` : ''}
             </div>
@@ -582,6 +665,7 @@ serve(async (req) => {
             <!-- Content -->
             <div style="padding: 40px;">
               ${atsScoreHtml}
+              ${jdAlignmentHtml}
               ${resumeLengthHtml}
               ${readabilityFormatHtml}
               ${linkedInHtml}

@@ -254,6 +254,7 @@ const Success = () => {
             industry: analysisData.industry,
             experienceLevel: analysisData.experienceLevel,
             hasLinkedIn: analysisData.hasLinkedIn,
+            hasJobDescription: analysisData.hasJobDescription,
             atsScore: analysisData.atsScore,
             readabilityMetrics: analysisData.readabilityMetrics,
             formatRecommendations: analysisData.formatRecommendations,
@@ -266,7 +267,8 @@ const Success = () => {
             actionVerbs: analysisData.actionVerbs || [],
             keywords: analysisData.keywords || [],
             redFlags: analysisData.redFlags || [],
-            linkedInAnalysis: analysisData.linkedInAnalysis
+            linkedInAnalysis: analysisData.linkedInAnalysis,
+            jobDescriptionAlignment: analysisData.jobDescriptionAlignment
           }
         }
       });
