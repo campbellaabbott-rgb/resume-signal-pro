@@ -1,6 +1,49 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Declare EdgeRuntime for background tasks
+declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
+
+const ADMIN_EMAIL = "campbellabbott@gmail.com";
+
+// Send notification email (non-blocking)
+async function sendNotificationEmail(ip: string, industry: string, atsScore: number) {
+  try {
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (!RESEND_API_KEY) return;
+    
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "Resume Booster <noreply@resumebooster.work>",
+        to: [ADMIN_EMAIL],
+        subject: `🔍 New Free Scan: ${industry} (ATS ${atsScore})`,
+        html: `
+          <h2>New Free Resume Scan</h2>
+          <ul>
+            <li><strong>Industry:</strong> ${industry}</li>
+            <li><strong>ATS Score:</strong> ${atsScore}/100</li>
+            <li><strong>IP Address:</strong> ${ip}</li>
+            <li><strong>Time:</strong> ${new Date().toISOString()}</li>
+          </ul>
+        `,
+      }),
+    });
+    
+    if (!response.ok) {
+      console.error("[FREE-KEYWORD-SCAN] Email notification failed:", await response.text());
+    } else {
+      console.log("[FREE-KEYWORD-SCAN] Email notification sent");
+    }
+  } catch (error) {
+    console.error("[FREE-KEYWORD-SCAN] Email notification error:", error);
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -461,6 +504,11 @@ ${resumeText.substring(0, 15000)}
     const redFlags = (analysis.redFlags || []).slice(0, 3);
 
     console.log(`[FREE-KEYWORD-SCAN] Success for IP: ${clientIp}, industry: ${analysis.industry}`);
+
+    // Send notification email in background (non-blocking)
+    EdgeRuntime.waitUntil(
+      sendNotificationEmail(clientIp, analysis.industry || "General", analysis.atsScoreEstimate || 65)
+    );
 
     return new Response(
       JSON.stringify({
