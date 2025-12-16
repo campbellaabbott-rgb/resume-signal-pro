@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolvePDFJS } from "https://esm.sh/pdfjs-serverless@0.4.1?target=deno";
 
 const corsHeaders = {
@@ -7,35 +8,8 @@ const corsHeaders = {
 };
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
-
-// Simple in-memory rate limiter (resets on function restart)
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-const checkRateLimit = (ip: string, maxRequests = 20, windowMs = 3600000): boolean => {
-  const now = Date.now();
-  const record = rateLimitMap.get(ip);
-  
-  // Clean up old entries periodically
-  if (rateLimitMap.size > 1000) {
-    for (const [key, value] of rateLimitMap.entries()) {
-      if (now > value.resetAt) {
-        rateLimitMap.delete(key);
-      }
-    }
-  }
-  
-  if (!record || now > record.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + windowMs });
-    return true;
-  }
-  
-  if (record.count >= maxRequests) {
-    return false;
-  }
-  
-  record.count++;
-  return true;
-};
+const RATE_LIMIT = 20; // 20 requests per hour
+const RATE_WINDOW_MINUTES = 60;
 
 type PdfTextItem = { str?: string };
 
@@ -45,20 +19,36 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Rate limiting: 20 requests per IP per hour
+  // Get client IP for rate limiting
   const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
                    req.headers.get('x-real-ip') || 
                    'unknown';
-  
-  if (!checkRateLimit(clientIp, 20, 3600000)) {
-    console.log(`[PARSE-PDF] Rate limit exceeded for IP: ${clientIp}`);
-    return new Response(
-      JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-      { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
 
   try {
+    console.log(`[PARSE-PDF] Request from IP: ${clientIp}`);
+
+    // Check persistent rate limit
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
+      p_ip: clientIp,
+      p_function: 'parse-pdf',
+      p_max_requests: RATE_LIMIT,
+      p_window_minutes: RATE_WINDOW_MINUTES
+    });
+
+    if (rlError) {
+      console.error("[PARSE-PDF] Rate limit check error:", rlError);
+    } else if (!allowed) {
+      console.log(`[PARSE-PDF] Rate limit exceeded for IP: ${clientIp}`);
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 

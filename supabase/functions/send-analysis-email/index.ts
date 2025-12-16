@@ -9,34 +9,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Rate limiting: 5 emails per IP per hour
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT = 5;
-const RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-
-const checkRateLimit = (ip: string): boolean => {
-  const now = Date.now();
-  const record = rateLimitMap.get(ip);
-  
-  // Clean up old entries
-  for (const [key, value] of rateLimitMap.entries()) {
-    if (now > value.resetTime) {
-      rateLimitMap.delete(key);
-    }
-  }
-  
-  if (!record || now > record.resetTime) {
-    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_WINDOW_MS });
-    return true;
-  }
-  
-  if (record.count >= RATE_LIMIT) {
-    return false;
-  }
-  
-  record.count++;
-  return true;
-};
+const RATE_LIMIT = 5; // 5 emails per hour
+const RATE_WINDOW_MINUTES = 60;
 
 interface AnalysisEmailRequest {
   email: string;
@@ -97,17 +71,30 @@ serve(async (req) => {
                    req.headers.get("x-real-ip") ||
                    "unknown";
 
-  // Check rate limit
-  if (!checkRateLimit(clientIp)) {
-    logStep("Rate limit exceeded", { ip: clientIp });
-    return new Response(
-      JSON.stringify({ error: "Too many requests. Please try again later." }),
-      { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-
   try {
     logStep("Function started", { ip: clientIp });
+
+    // Check persistent rate limit
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
+      p_ip: clientIp,
+      p_function: 'send-analysis-email',
+      p_max_requests: RATE_LIMIT,
+      p_window_minutes: RATE_WINDOW_MINUTES
+    });
+
+    if (rlError) {
+      console.error("[SEND-ANALYSIS-EMAIL] Rate limit check error:", rlError);
+    } else if (!allowed) {
+      logStep("Rate limit exceeded", { ip: clientIp });
+      return new Response(
+        JSON.stringify({ error: "Too many requests. Please try again later." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const { email, shareId, origin, analysis }: AnalysisEmailRequest = await req.json();
     logStep("Received request", { email: email ? '***@***' : 'missing', shareId: shareId || 'missing', hasAnalysis: !!analysis, origin: origin || 'missing' });
@@ -129,10 +116,6 @@ serve(async (req) => {
 
     // Verify shareId exists in database if provided
     if (shareId) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
       const { data: analysisExists } = await supabase
         .from('resume_analyses')
         .select('id')
@@ -232,7 +215,7 @@ serve(async (req) => {
       </div>
     ` : '';
 
-    // Build bullets section (ALL bullets, not just 3)
+    // Build bullets section
     const bulletsHtml = analysis.optimizedBullets?.length ? `
       <div style="margin-bottom: 32px;">
         <h2 style="color: #333; border-bottom: 2px solid #28a745; padding-bottom: 8px; margin-bottom: 16px;">✓ ATS-Optimized Bullet Points</h2>

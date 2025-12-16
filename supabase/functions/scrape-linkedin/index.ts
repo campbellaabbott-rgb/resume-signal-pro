@@ -1,58 +1,49 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Simple in-memory rate limiter (resets on function restart)
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-const checkRateLimit = (ip: string, maxRequests = 5, windowMs = 3600000): boolean => {
-  const now = Date.now();
-  const record = rateLimitMap.get(ip);
-  
-  // Clean up old entries periodically
-  if (rateLimitMap.size > 1000) {
-    for (const [key, value] of rateLimitMap.entries()) {
-      if (now > value.resetAt) {
-        rateLimitMap.delete(key);
-      }
-    }
-  }
-  
-  if (!record || now > record.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + windowMs });
-    return true;
-  }
-  
-  if (record.count >= maxRequests) {
-    return false;
-  }
-  
-  record.count++;
-  return true;
-};
+const RATE_LIMIT = 5; // 5 requests per hour (strict - uses paid Firecrawl API)
+const RATE_WINDOW_MINUTES = 60;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Rate limiting: 5 requests per IP per hour (strict - uses paid Firecrawl API)
+  // Get client IP for rate limiting
   const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
                    req.headers.get('x-real-ip') || 
                    'unknown';
-  
-  if (!checkRateLimit(clientIp, 5, 3600000)) {
-    console.log(`[SCRAPE-LINKEDIN] Rate limit exceeded for IP: ${clientIp}`);
-    return new Response(
-      JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later or paste your profile text instead.' }),
-      { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
 
   try {
+    console.log(`[SCRAPE-LINKEDIN] Request from IP: ${clientIp}`);
+
+    // Check persistent rate limit
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
+      p_ip: clientIp,
+      p_function: 'scrape-linkedin',
+      p_max_requests: RATE_LIMIT,
+      p_window_minutes: RATE_WINDOW_MINUTES
+    });
+
+    if (rlError) {
+      console.error("[SCRAPE-LINKEDIN] Rate limit check error:", rlError);
+    } else if (!allowed) {
+      console.log(`[SCRAPE-LINKEDIN] Rate limit exceeded for IP: ${clientIp}`);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later or paste your profile text instead.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { url } = await req.json();
 
     if (!url) {
