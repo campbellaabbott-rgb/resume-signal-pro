@@ -363,12 +363,14 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               </p>
               
               {/* Industry & Experience Badge */}
-              {data.industry && (
+              {(data.industry || data.jobDescriptionAlignment) && (
                 <div className="flex items-center justify-center gap-3 mt-4 flex-wrap animate-fade-in" style={{ animationDelay: "0.3s" }}>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs font-medium">
-                    <Briefcase className="w-3 h-3" />
-                    {data.industry}
-                  </span>
+                  {data.industry && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs font-medium">
+                      <Briefcase className="w-3 h-3" />
+                      {data.industry}
+                    </span>
+                  )}
                   {data.experienceLevel && (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs font-medium capitalize">
                       <User className="w-3 h-3" />
@@ -379,6 +381,19 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0A66C2]/10 text-[#0A66C2] text-xs font-medium">
                       <Linkedin className="w-3 h-3" />
                       LinkedIn included
+                    </span>
+                  )}
+                  {data.jobDescriptionAlignment && (
+                    <span className={cn(
+                      "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold",
+                      data.jobDescriptionAlignment.matchScore >= 70 
+                        ? "bg-success/10 text-success border border-success/20" 
+                        : data.jobDescriptionAlignment.matchScore >= 50 
+                          ? "bg-warning/10 text-warning border border-warning/20"
+                          : "bg-destructive/10 text-destructive border border-destructive/20"
+                    )}>
+                      <Target className="w-3.5 h-3.5" />
+                      {data.jobDescriptionAlignment.matchScore}% JD Match
                     </span>
                   )}
                 </div>
@@ -416,6 +431,64 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 </div>
               </div>
             </div>
+
+            {/* JD Match Score - Prominent Display */}
+            {data.jobDescriptionAlignment && (
+              <div className="max-w-md mx-auto animate-fade-in" style={{ animationDelay: "0.45s" }}>
+                <div className={cn(
+                  "p-6 rounded-2xl backdrop-blur-sm border transition-all duration-300",
+                  data.jobDescriptionAlignment.matchScore >= 70 
+                    ? "bg-success/5 border-success/30 hover:border-success/50" 
+                    : data.jobDescriptionAlignment.matchScore >= 50 
+                      ? "bg-warning/5 border-warning/30 hover:border-warning/50"
+                      : "bg-destructive/5 border-destructive/30 hover:border-destructive/50"
+                )}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Target className={cn(
+                        "w-5 h-5",
+                        data.jobDescriptionAlignment.matchScore >= 70 
+                          ? "text-success" 
+                          : data.jobDescriptionAlignment.matchScore >= 50 
+                            ? "text-warning"
+                            : "text-destructive"
+                      )} />
+                      <span className="text-sm font-medium text-muted-foreground">Job Description Match</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "text-3xl font-bold tabular-nums",
+                        data.jobDescriptionAlignment.matchScore >= 70 
+                          ? "text-success" 
+                          : data.jobDescriptionAlignment.matchScore >= 50 
+                            ? "text-warning"
+                            : "text-destructive"
+                      )}>
+                        {data.jobDescriptionAlignment.matchScore}%
+                      </span>
+                    </div>
+                  </div>
+                  <Progress 
+                    value={data.jobDescriptionAlignment.matchScore} 
+                    className={cn(
+                      "h-3",
+                      data.jobDescriptionAlignment.matchScore >= 70 
+                        ? "[&>div]:bg-success" 
+                        : data.jobDescriptionAlignment.matchScore >= 50 
+                          ? "[&>div]:bg-warning"
+                          : "[&>div]:bg-destructive"
+                    )}
+                  />
+                  <p className="text-xs text-muted-foreground mt-3">
+                    {data.jobDescriptionAlignment.matchScore >= 70 
+                      ? "Strong alignment with job requirements" 
+                      : data.jobDescriptionAlignment.matchScore >= 50 
+                        ? "Moderate alignment - see suggestions below"
+                        : "Low alignment - significant gaps identified"}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* ATS Score Section */}
             {data.atsScore && (
