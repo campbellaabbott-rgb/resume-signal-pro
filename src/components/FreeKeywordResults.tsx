@@ -714,17 +714,20 @@ export function FreeKeywordResults({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
         {/* Industry Benchmark */}
         <div className="rounded-2xl bg-card border border-border p-5">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-4">
             <Target className="w-4 h-4 text-primary" />
             <h4 className="font-semibold">Industry Benchmark</h4>
           </div>
-          <div className="flex items-center gap-4 mb-3">
+          
+          {/* Score Comparison */}
+          <div className="flex items-center gap-3 mb-4">
+            {/* Your Score */}
             <div className="flex-1">
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-muted-foreground">Your Score</span>
-                <span className={cn("font-medium", getScoreColor(atsScoreEstimate))}>{atsScoreEstimate}</span>
+              <div className="flex items-baseline gap-2 mb-1.5">
+                <span className="text-xs text-muted-foreground">Your Score</span>
+                <span className={cn("text-lg font-bold", getScoreColor(atsScoreEstimate))}>{atsScoreEstimate}</span>
               </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div className="h-2.5 bg-muted rounded-full overflow-hidden">
                 <div 
                   className={cn("h-full rounded-full transition-all", 
                     atsScoreEstimate >= 75 ? "bg-success" : atsScoreEstimate >= 60 ? "bg-warning" : "bg-destructive"
@@ -733,25 +736,55 @@ export function FreeKeywordResults({
                 />
               </div>
             </div>
-            <div className="text-center px-2">
-              <span className="text-xs text-muted-foreground">vs</span>
+            
+            {/* VS Divider */}
+            <div className="flex-shrink-0 w-8 text-center">
+              <span className="text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">vs</span>
             </div>
+            
+            {/* Industry Avg */}
             <div className="flex-1">
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-muted-foreground">{industry} Avg</span>
-                <span className="font-medium text-foreground">{industryBenchmark.industryAvg}</span>
+              <div className="flex items-baseline gap-2 mb-1.5 justify-end">
+                <span className="text-xs text-muted-foreground">{industry} Avg</span>
+                <span className="text-lg font-bold text-foreground">{industryBenchmark.industryAvg}</span>
               </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-muted-foreground/50 rounded-full" style={{ width: `${industryBenchmark.industryAvg}%` }} />
+              <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-muted-foreground/40 rounded-full" style={{ width: `${industryBenchmark.industryAvg}%` }} />
               </div>
             </div>
           </div>
+          
+          {/* Percentile Badge */}
           <div className={cn(
-            "text-center p-2 rounded-lg text-sm font-medium",
-            industryBenchmark.comparison === "above" ? "bg-success/10 text-success" :
-            industryBenchmark.comparison === "at" ? "bg-warning/10 text-warning" : "bg-destructive/10 text-destructive"
+            "text-center py-2.5 px-4 rounded-lg text-sm font-semibold",
+            industryBenchmark.comparison === "above" ? "bg-success/15 text-success" :
+            industryBenchmark.comparison === "at" ? "bg-warning/15 text-warning" : "bg-destructive/15 text-destructive"
           )}>
             {industryBenchmark.percentile}
+          </div>
+          
+          {/* Score Difference & Context */}
+          <div className="mt-4 pt-3 border-t border-border/50">
+            <div className="flex items-center justify-between text-xs mb-2">
+              <span className="text-muted-foreground">Score Difference</span>
+              <span className={cn("font-semibold",
+                atsScoreEstimate > industryBenchmark.industryAvg ? "text-success" :
+                atsScoreEstimate < industryBenchmark.industryAvg ? "text-destructive" : "text-foreground"
+              )}>
+                {atsScoreEstimate > industryBenchmark.industryAvg 
+                  ? `+${atsScoreEstimate - industryBenchmark.industryAvg} above average`
+                  : atsScoreEstimate < industryBenchmark.industryAvg 
+                    ? `${atsScoreEstimate - industryBenchmark.industryAvg} below average`
+                    : "At industry average"}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {industryBenchmark.comparison === "above" 
+                ? `Your resume outperforms most ${industry} professionals. Focus on maintaining this edge with regular updates.`
+                : industryBenchmark.comparison === "at" 
+                  ? `Your resume is competitive with other ${industry} candidates. Small improvements can help you stand out.`
+                  : `Your resume needs work to compete with other ${industry} professionals. The full analysis shows exactly what to fix.`}
+            </p>
           </div>
         </div>
 
