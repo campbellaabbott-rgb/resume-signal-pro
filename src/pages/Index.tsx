@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { ResumeUploader } from "@/components/ResumeUploader";
+import { AnalysisPreview } from "@/components/AnalysisPreview";
 import { SocialProof } from "@/components/SocialProof";
 import { Footer } from "@/components/Footer";
 import { FAQ } from "@/components/FAQ";
@@ -258,6 +259,8 @@ const Index = () => {
           isScrapingLinkedIn={isScrapingLinkedIn}
           onScrapeLinkedIn={handleScrapeLinkedIn}
         />
+        
+        <AnalysisPreview />
         
         <SocialProof />
         
