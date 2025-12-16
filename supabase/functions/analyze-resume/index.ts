@@ -27,6 +27,15 @@ const getClientIp = (req: Request): string => {
          'unknown'
 };
 
+// Escape XML special characters to prevent prompt injection attacks
+const escapeXml = (str: string): string => {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+};
+
 // Tool definition for structured resume analysis output
 const getAnalysisTools = (hasLinkedIn: boolean, hasJobDescription: boolean) => [{
   type: "function",
@@ -647,12 +656,13 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
 
     console.log(`[ANALYZE-RESUME] Calling AI with enhanced model for analysis... (hasLinkedIn: ${hasLinkedIn}, hasJobDescription: ${hasJobDescription})`);
     
-    let userMessage = `Analyze this resume (~${estimatedPages} page${estimatedPages > 1 ? 's' : ''}, ${resumeWordCount} words):\n\n<resume>\n${resumeText}\n</resume>`;
+    // Escape XML special characters to prevent prompt injection attacks
+    let userMessage = `Analyze this resume (~${estimatedPages} page${estimatedPages > 1 ? 's' : ''}, ${resumeWordCount} words):\n\n<resume>\n${escapeXml(resumeText)}\n</resume>`;
     if (hasLinkedIn) {
-      userMessage += `\n\n<linkedin>\n${linkedInText}\n</linkedin>`;
+      userMessage += `\n\n<linkedin>\n${escapeXml(linkedInText)}\n</linkedin>`;
     }
     if (hasJobDescription) {
-      userMessage += `\n\n<job_description>\n${jobDescriptionText}\n</job_description>`;
+      userMessage += `\n\n<job_description>\n${escapeXml(jobDescriptionText)}\n</job_description>`;
     }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
