@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, FileCheck, FileText, AlertTriangle, Type } from "lucide-react";
+import { 
+  Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
+  FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
+  Trophy, Hash, Pencil, XCircle, CheckCircle
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +27,43 @@ interface WordCount {
   verdict: "too_few" | "ideal" | "too_many";
 }
 
+interface ExperienceLevel {
+  level: "entry" | "mid" | "senior" | "executive";
+  yearsEstimate: string;
+}
+
+interface SectionCheck {
+  hasContact: boolean;
+  hasSummary: boolean;
+  hasExperience: boolean;
+  hasEducation: boolean;
+  hasSkills: boolean;
+  missingSections: string[];
+}
+
+interface ContactInfo {
+  hasEmail: boolean;
+  hasPhone: boolean;
+  hasLinkedIn: boolean;
+  missingItems: string[];
+}
+
+interface TopStrength {
+  title: string;
+  description: string;
+}
+
+interface QuantificationScore {
+  score: number;
+  verdict: "weak" | "average" | "strong";
+  tip: string;
+}
+
+interface ActionVerbGrade {
+  grade: string;
+  issue: string;
+}
+
 interface RedFlag {
   issue: string;
   impact: string;
@@ -35,6 +76,12 @@ interface FreeKeywordResultsProps {
   formatIssue: string;
   resumeLength: ResumeLength;
   wordCount?: WordCount;
+  experienceLevel?: ExperienceLevel;
+  sectionCheck?: SectionCheck;
+  contactInfo?: ContactInfo;
+  topStrength?: TopStrength;
+  quantificationScore?: QuantificationScore;
+  actionVerbGrade?: ActionVerbGrade;
   redFlags: RedFlag[];
   keywords: KeywordSuggestion[];
   onGetFullAnalysis: () => void;
@@ -48,6 +95,12 @@ export function FreeKeywordResults({
   formatIssue,
   resumeLength: resumeLengthProp,
   wordCount: wordCountProp,
+  experienceLevel: experienceLevelProp,
+  sectionCheck: sectionCheckProp,
+  contactInfo: contactInfoProp,
+  topStrength: topStrengthProp,
+  quantificationScore: quantificationScoreProp,
+  actionVerbGrade: actionVerbGradeProp,
   redFlags: redFlagsProp,
   keywords,
   onGetFullAnalysis,
@@ -58,9 +111,15 @@ export function FreeKeywordResults({
   const [isSubscribed, setIsSubscribed] = useState(false);
   const { toast } = useToast();
 
-  // Safe defaults for new properties
+  // Safe defaults
   const resumeLength = resumeLengthProp || { currentPages: 1, recommendedPages: 1, verdict: "just_right" as const };
   const wordCount = wordCountProp || { current: 500, idealMin: 400, idealMax: 600, verdict: "ideal" as const };
+  const experienceLevel = experienceLevelProp || { level: "mid" as const, yearsEstimate: "3-5 years" };
+  const sectionCheck = sectionCheckProp || { hasContact: true, hasSummary: false, hasExperience: true, hasEducation: true, hasSkills: true, missingSections: [] };
+  const contactInfo = contactInfoProp || { hasEmail: true, hasPhone: true, hasLinkedIn: false, missingItems: [] };
+  const topStrength = topStrengthProp || { title: "Clear Experience", description: "Your work history is well-documented" };
+  const quantificationScore = quantificationScoreProp || { score: 40, verdict: "average" as const, tip: "Add more metrics" };
+  const actionVerbGrade = actionVerbGradeProp || { grade: "B", issue: "Good variety" };
   const redFlags = redFlagsProp || [];
 
   const getScoreColor = (score: number) => {
@@ -122,18 +181,69 @@ export function FreeKeywordResults({
     return "bg-warning/10 border-warning/20";
   };
 
-  const getWordCountLabel = (verdict: string) => {
-    if (verdict === "ideal") return "Ideal";
-    if (verdict === "too_few") return "Too Few";
-    return "Too Many";
+  const getExperienceLevelLabel = (level: string) => {
+    if (level === "entry") return "Entry Level";
+    if (level === "mid") return "Mid Level";
+    if (level === "senior") return "Senior";
+    return "Executive";
+  };
+
+  const getQuantificationColor = (verdict: string) => {
+    if (verdict === "strong") return "text-success";
+    if (verdict === "average") return "text-warning";
+    return "text-destructive";
+  };
+
+  const getQuantificationBgColor = (verdict: string) => {
+    if (verdict === "strong") return "bg-success/10 border-success/20";
+    if (verdict === "average") return "bg-warning/10 border-warning/20";
+    return "bg-destructive/10 border-destructive/20";
+  };
+
+  const getSectionScore = () => {
+    const total = 5;
+    const present = [sectionCheck.hasContact, sectionCheck.hasSummary, sectionCheck.hasExperience, sectionCheck.hasEducation, sectionCheck.hasSkills].filter(Boolean).length;
+    return `${present}/${total}`;
+  };
+
+  const getSectionColor = () => {
+    const present = [sectionCheck.hasContact, sectionCheck.hasSummary, sectionCheck.hasExperience, sectionCheck.hasEducation, sectionCheck.hasSkills].filter(Boolean).length;
+    if (present === 5) return "text-success";
+    if (present >= 3) return "text-warning";
+    return "text-destructive";
+  };
+
+  const getSectionBgColor = () => {
+    const present = [sectionCheck.hasContact, sectionCheck.hasSummary, sectionCheck.hasExperience, sectionCheck.hasEducation, sectionCheck.hasSkills].filter(Boolean).length;
+    if (present === 5) return "bg-success/10 border-success/20";
+    if (present >= 3) return "bg-warning/10 border-warning/20";
+    return "bg-destructive/10 border-destructive/20";
+  };
+
+  const getContactScore = () => {
+    const total = 3;
+    const present = [contactInfo.hasEmail, contactInfo.hasPhone, contactInfo.hasLinkedIn].filter(Boolean).length;
+    return `${present}/${total}`;
+  };
+
+  const getContactColor = () => {
+    const present = [contactInfo.hasEmail, contactInfo.hasPhone, contactInfo.hasLinkedIn].filter(Boolean).length;
+    if (present === 3) return "text-success";
+    if (present >= 2) return "text-warning";
+    return "text-destructive";
+  };
+
+  const getContactBgColor = () => {
+    const present = [contactInfo.hasEmail, contactInfo.hasPhone, contactInfo.hasLinkedIn].filter(Boolean).length;
+    if (present === 3) return "bg-success/10 border-success/20";
+    if (present >= 2) return "bg-warning/10 border-warning/20";
+    return "bg-destructive/10 border-destructive/20";
   };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!email.trim()) return;
 
-    // Basic email validation
     const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
     if (!emailRegex.test(email)) {
       toast({
@@ -173,26 +283,23 @@ export function FreeKeywordResults({
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto animate-fade-in">
+    <div className="w-full max-w-3xl mx-auto animate-fade-in">
       {/* Header */}
       <div className="text-center mb-6">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success text-sm font-medium mb-3">
           <Sparkles className="w-4 h-4" />
-          Free Scan Complete
+          13-Point Free Scan Complete
         </div>
-        <h3 className="text-xl font-bold mb-1">Here's your preview</h3>
+        <h3 className="text-xl font-bold mb-1">Here's your comprehensive preview</h3>
         <p className="text-sm text-muted-foreground">
-          Detected industry: <span className="text-foreground font-medium">{industry}</span>
+          Detected: <span className="text-foreground font-medium">{industry}</span> • <span className="text-foreground font-medium">{getExperienceLevelLabel(experienceLevel.level)}</span> ({experienceLevel.yearsEstimate})
         </p>
       </div>
 
-      {/* Score Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
+      {/* Score Cards Grid - Row 1: Primary Scores */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
         {/* ATS Score */}
-        <div className={cn(
-          "rounded-2xl border p-3",
-          getScoreBgColor(atsScoreEstimate)
-        )}>
+        <div className={cn("rounded-2xl border p-3", getScoreBgColor(atsScoreEstimate))}>
           <div className="flex items-center gap-2 mb-1">
             <Target className="w-4 h-4 text-primary" />
             <p className="text-xs text-muted-foreground">ATS Score</p>
@@ -207,80 +314,153 @@ export function FreeKeywordResults({
         </div>
 
         {/* Format Grade */}
-        <div className={cn(
-          "rounded-2xl border p-3",
-          getGradeBgColor(formatGrade)
-        )}>
+        <div className={cn("rounded-2xl border p-3", getGradeBgColor(formatGrade))}>
           <div className="flex items-center gap-2 mb-1">
             <FileCheck className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">Format Grade</p>
+            <p className="text-xs text-muted-foreground">Format</p>
           </div>
           <div className="flex items-baseline gap-1">
-            <p className={cn("text-2xl font-bold", getGradeColor(formatGrade))}>
-              {formatGrade}
-            </p>
-            <span className={cn("text-xs font-medium", getGradeColor(formatGrade))}>
-              {getGradeLabel(formatGrade)}
-            </span>
+            <p className={cn("text-2xl font-bold", getGradeColor(formatGrade))}>{formatGrade}</p>
+            <span className={cn("text-xs font-medium", getGradeColor(formatGrade))}>{getGradeLabel(formatGrade)}</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-            {formatIssue}
-          </p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{formatIssue}</p>
         </div>
 
-        {/* Resume Length */}
-        <div className={cn(
-          "rounded-2xl border p-3",
-          getLengthBgColor(resumeLength.verdict)
-        )}>
+        {/* Quantification Score */}
+        <div className={cn("rounded-2xl border p-3", getQuantificationBgColor(quantificationScore.verdict))}>
           <div className="flex items-center gap-2 mb-1">
-            <FileText className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">Page Count</p>
+            <Hash className="w-4 h-4 text-primary" />
+            <p className="text-xs text-muted-foreground">Metrics</p>
+          </div>
+          <p className={cn("text-2xl font-bold", getQuantificationColor(quantificationScore.verdict))}>
+            {quantificationScore.score}<span className="text-sm text-muted-foreground">%</span>
+          </p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{quantificationScore.tip}</p>
+        </div>
+
+        {/* Action Verb Grade */}
+        <div className={cn("rounded-2xl border p-3", getGradeBgColor(actionVerbGrade.grade))}>
+          <div className="flex items-center gap-2 mb-1">
+            <Pencil className="w-4 h-4 text-primary" />
+            <p className="text-xs text-muted-foreground">Verbs</p>
           </div>
           <div className="flex items-baseline gap-1">
-            <p className={cn("text-2xl font-bold", getLengthColor(resumeLength.verdict))}>
-              {resumeLength.currentPages}
-            </p>
-            <span className="text-sm text-muted-foreground">
-              / {resumeLength.recommendedPages}
-            </span>
+            <p className={cn("text-2xl font-bold", getGradeColor(actionVerbGrade.grade))}>{actionVerbGrade.grade}</p>
+            <span className={cn("text-xs font-medium", getGradeColor(actionVerbGrade.grade))}>{getGradeLabel(actionVerbGrade.grade)}</span>
           </div>
-          <p className={cn("text-xs font-medium mt-1", getLengthColor(resumeLength.verdict))}>
-            {getLengthLabel(resumeLength.verdict)}
-          </p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{actionVerbGrade.issue}</p>
+        </div>
+      </div>
+
+      {/* Score Cards Grid - Row 2: Structure & Content */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+        {/* Resume Length */}
+        <div className={cn("rounded-2xl border p-3", getLengthBgColor(resumeLength.verdict))}>
+          <div className="flex items-center gap-2 mb-1">
+            <FileText className="w-4 h-4 text-primary" />
+            <p className="text-xs text-muted-foreground">Pages</p>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <p className={cn("text-2xl font-bold", getLengthColor(resumeLength.verdict))}>{resumeLength.currentPages}</p>
+            <span className="text-sm text-muted-foreground">/ {resumeLength.recommendedPages}</span>
+          </div>
+          <p className={cn("text-xs font-medium mt-1", getLengthColor(resumeLength.verdict))}>{getLengthLabel(resumeLength.verdict)}</p>
         </div>
 
         {/* Word Count */}
-        <div className={cn(
-          "rounded-2xl border p-3",
-          getWordCountBgColor(wordCount.verdict)
-        )}>
+        <div className={cn("rounded-2xl border p-3", getWordCountBgColor(wordCount.verdict))}>
           <div className="flex items-center gap-2 mb-1">
             <Type className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">Word Count</p>
+            <p className="text-xs text-muted-foreground">Words</p>
           </div>
-          <p className={cn("text-2xl font-bold", getWordCountColor(wordCount.verdict))}>
-            {wordCount.current}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Ideal: {wordCount.idealMin}-{wordCount.idealMax}
-          </p>
+          <p className={cn("text-2xl font-bold", getWordCountColor(wordCount.verdict))}>{wordCount.current}</p>
+          <p className="text-xs text-muted-foreground mt-1">{wordCount.idealMin}-{wordCount.idealMax} ideal</p>
+        </div>
+
+        {/* Section Check */}
+        <div className={cn("rounded-2xl border p-3", getSectionBgColor())}>
+          <div className="flex items-center gap-2 mb-1">
+            <LayoutList className="w-4 h-4 text-primary" />
+            <p className="text-xs text-muted-foreground">Sections</p>
+          </div>
+          <p className={cn("text-2xl font-bold", getSectionColor())}>{getSectionScore()}</p>
+          {sectionCheck.missingSections.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">Missing: {sectionCheck.missingSections[0]}</p>
+          )}
+          {sectionCheck.missingSections.length === 0 && (
+            <p className="text-xs text-success mt-1">All present!</p>
+          )}
+        </div>
+
+        {/* Contact Info */}
+        <div className={cn("rounded-2xl border p-3", getContactBgColor())}>
+          <div className="flex items-center gap-2 mb-1">
+            <Phone className="w-4 h-4 text-primary" />
+            <p className="text-xs text-muted-foreground">Contact</p>
+          </div>
+          <p className={cn("text-2xl font-bold", getContactColor())}>{getContactScore()}</p>
+          {contactInfo.missingItems.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">Add: {contactInfo.missingItems[0]}</p>
+          )}
+          {contactInfo.missingItems.length === 0 && (
+            <p className="text-xs text-success mt-1">Complete!</p>
+          )}
+        </div>
+      </div>
+
+      {/* Row 3: Special Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+        {/* Top Strength */}
+        <div className="rounded-2xl border p-4 bg-success/5 border-success/20">
+          <div className="flex items-center gap-2 mb-2">
+            <Trophy className="w-4 h-4 text-success" />
+            <p className="text-xs font-medium text-success">Top Strength</p>
+          </div>
+          <p className="font-semibold text-foreground">{topStrength.title}</p>
+          <p className="text-sm text-muted-foreground">{topStrength.description}</p>
         </div>
 
         {/* Red Flags Preview */}
-        <div className="rounded-2xl border p-3 bg-destructive/5 border-destructive/20">
-          <div className="flex items-center gap-2 mb-1">
+        <div className="rounded-2xl border p-4 bg-destructive/5 border-destructive/20">
+          <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-4 h-4 text-destructive" />
-            <p className="text-xs text-muted-foreground">Red Flags</p>
+            <p className="text-xs font-medium text-destructive">Red Flags Found</p>
           </div>
-          <p className="text-2xl font-bold text-destructive mb-1">
-            {redFlags.length}+
-          </p>
+          <p className="text-2xl font-bold text-destructive mb-1">{redFlags.length}+</p>
           {redFlags.length > 0 && (
-            <p className="text-xs text-muted-foreground line-clamp-1">
-              {redFlags[0].issue}
-            </p>
+            <p className="text-sm text-muted-foreground line-clamp-1">{redFlags[0].issue}</p>
           )}
+        </div>
+      </div>
+
+      {/* Detailed Section Check */}
+      <div className="rounded-2xl bg-card border border-border p-5 mb-5">
+        <div className="flex items-center gap-2 mb-4">
+          <LayoutList className="w-4 h-4 text-primary" />
+          <h4 className="font-semibold">Section Checklist</h4>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {[
+            { label: "Contact", has: sectionCheck.hasContact },
+            { label: "Summary", has: sectionCheck.hasSummary },
+            { label: "Experience", has: sectionCheck.hasExperience },
+            { label: "Education", has: sectionCheck.hasEducation },
+            { label: "Skills", has: sectionCheck.hasSkills },
+          ].map((item) => (
+            <div key={item.label} className={cn(
+              "flex items-center gap-2 p-2 rounded-xl border",
+              item.has ? "bg-success/5 border-success/20" : "bg-destructive/5 border-destructive/20"
+            )}>
+              {item.has ? (
+                <CheckCircle className="w-4 h-4 text-success shrink-0" />
+              ) : (
+                <XCircle className="w-4 h-4 text-destructive shrink-0" />
+              )}
+              <span className={cn("text-sm font-medium", item.has ? "text-success" : "text-destructive")}>
+                {item.label}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -293,10 +473,7 @@ export function FreeKeywordResults({
           </div>
           <div className="space-y-2">
             {redFlags.map((flag, index) => (
-              <div 
-                key={index}
-                className="flex items-start gap-3 p-3 rounded-xl bg-background/50 border border-destructive/10"
-              >
+              <div key={index} className="flex items-start gap-3 p-3 rounded-xl bg-background/50 border border-destructive/10">
                 <span className="text-destructive font-bold text-sm">{index + 1}.</span>
                 <div>
                   <span className="font-medium text-foreground">{flag.issue}</span>
@@ -307,7 +484,7 @@ export function FreeKeywordResults({
           </div>
           <div className="flex items-center gap-1 mt-3 text-muted-foreground">
             <Lock className="w-3 h-3" />
-            <span className="text-xs">More red flags + fixes in full analysis</span>
+            <span className="text-xs">More red flags + how to fix them in full analysis</span>
           </div>
         </div>
       )}
@@ -318,13 +495,9 @@ export function FreeKeywordResults({
           <Zap className="w-4 h-4 text-primary" />
           <h4 className="font-semibold">Missing Keywords to Add</h4>
         </div>
-        
         <div className="space-y-3">
           {keywords.map((item, index) => (
-            <div 
-              key={index}
-              className="flex items-start gap-3 p-3 rounded-xl bg-muted/30 border border-border/50"
-            >
+            <div key={index} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30 border border-border/50">
               <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
               <div>
                 <span className="font-medium text-foreground">{item.keyword}</span>
@@ -366,17 +539,11 @@ export function FreeKeywordResults({
               disabled={isSubmitting || !email.trim()}
               className="h-10 px-4 border-primary/30 hover:bg-primary/10"
             >
-              {isSubmitting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                "Subscribe"
-              )}
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Subscribe"}
             </Button>
           </form>
         )}
-        <p className="text-xs text-muted-foreground mt-2">
-          No spam. Unsubscribe anytime.
-        </p>
+        <p className="text-xs text-muted-foreground mt-2">No spam. Unsubscribe anytime.</p>
       </div>
 
       {/* What's Locked */}
@@ -385,18 +552,17 @@ export function FreeKeywordResults({
           <Lock className="w-4 h-4 text-muted-foreground" />
           <h4 className="font-medium text-muted-foreground">Unlock with Full Analysis</h4>
         </div>
-        
         <div className="grid grid-cols-2 gap-2 text-sm">
           {[
             "Full ATS score breakdown",
             "Bullet point rewrites",
-            "Red flags recruiters see",
+            "Detailed red flag fixes",
             "LinkedIn optimization",
-            "Action verb improvements",
-            "Quantification tips",
+            "Action verb replacements",
+            "Quantification suggestions",
             "Skills gap analysis",
-            "Industry insights",
-            "Resume length guide",
+            "Industry-specific insights",
+            "Summary/headline rewrites",
             "Prioritized action plan"
           ].map((feature, i) => (
             <div key={i} className="flex items-center gap-2 text-muted-foreground">
@@ -418,9 +584,7 @@ export function FreeKeywordResults({
           Get Full Analysis — $25
           <ArrowRight className="w-4 h-4" />
         </Button>
-        <p className="text-xs text-muted-foreground mt-2">
-          One interview pays for itself
-        </p>
+        <p className="text-xs text-muted-foreground mt-2">One interview pays for itself</p>
       </div>
     </div>
   );

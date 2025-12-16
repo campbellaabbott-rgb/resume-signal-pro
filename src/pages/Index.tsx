@@ -25,6 +25,12 @@ interface FreeKeywordResult {
   formatIssue: string;
   resumeLength: { currentPages: number; recommendedPages: number; verdict: "too_short" | "just_right" | "too_long" };
   wordCount?: { current: number; idealMin: number; idealMax: number; verdict: "too_few" | "ideal" | "too_many" };
+  experienceLevel?: { level: "entry" | "mid" | "senior" | "executive"; yearsEstimate: string };
+  sectionCheck?: { hasContact: boolean; hasSummary: boolean; hasExperience: boolean; hasEducation: boolean; hasSkills: boolean; missingSections: string[] };
+  contactInfo?: { hasEmail: boolean; hasPhone: boolean; hasLinkedIn: boolean; missingItems: string[] };
+  topStrength?: { title: string; description: string };
+  quantificationScore?: { score: number; verdict: "weak" | "average" | "strong"; tip: string };
+  actionVerbGrade?: { grade: string; issue: string };
   redFlags: { issue: string; impact: string }[];
   keywords: { keyword: string; reason: string }[];
 }
@@ -208,6 +214,13 @@ const Index = () => {
           formatGrade: data.formatGrade,
           formatIssue: data.formatIssue,
           resumeLength: data.resumeLength,
+          wordCount: data.wordCount,
+          experienceLevel: data.experienceLevel,
+          sectionCheck: data.sectionCheck,
+          contactInfo: data.contactInfo,
+          topStrength: data.topStrength,
+          quantificationScore: data.quantificationScore,
+          actionVerbGrade: data.actionVerbGrade,
           redFlags: data.redFlags,
           keywords: data.keywords,
         });
@@ -355,6 +368,12 @@ const Index = () => {
                 formatIssue={freeKeywordResult.formatIssue}
                 resumeLength={freeKeywordResult.resumeLength}
                 wordCount={freeKeywordResult.wordCount}
+                experienceLevel={freeKeywordResult.experienceLevel}
+                sectionCheck={freeKeywordResult.sectionCheck}
+                contactInfo={freeKeywordResult.contactInfo}
+                topStrength={freeKeywordResult.topStrength}
+                quantificationScore={freeKeywordResult.quantificationScore}
+                actionVerbGrade={freeKeywordResult.actionVerbGrade}
                 redFlags={freeKeywordResult.redFlags}
                 keywords={freeKeywordResult.keywords}
                 onGetFullAnalysis={() => handleCheckout()}
