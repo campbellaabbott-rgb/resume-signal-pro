@@ -23,6 +23,8 @@ interface FreeKeywordResult {
   atsScoreEstimate: number;
   formatGrade: string;
   formatIssue: string;
+  resumeLength: { currentPages: number; recommendedPages: number; verdict: "too_short" | "just_right" | "too_long" };
+  redFlags: { issue: string; impact: string }[];
   keywords: { keyword: string; reason: string }[];
 }
 
@@ -204,6 +206,8 @@ const Index = () => {
           atsScoreEstimate: data.atsScoreEstimate,
           formatGrade: data.formatGrade,
           formatIssue: data.formatIssue,
+          resumeLength: data.resumeLength,
+          redFlags: data.redFlags,
           keywords: data.keywords,
         });
         
@@ -348,6 +352,8 @@ const Index = () => {
                 atsScoreEstimate={freeKeywordResult.atsScoreEstimate}
                 formatGrade={freeKeywordResult.formatGrade}
                 formatIssue={freeKeywordResult.formatIssue}
+                resumeLength={freeKeywordResult.resumeLength}
+                redFlags={freeKeywordResult.redFlags}
                 keywords={freeKeywordResult.keywords}
                 onGetFullAnalysis={() => handleCheckout()}
                 isLoading={isLoading}

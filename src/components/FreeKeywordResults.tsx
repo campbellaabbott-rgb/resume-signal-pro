@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, FileCheck } from "lucide-react";
+import { Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, FileCheck, FileText, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,11 +10,24 @@ interface KeywordSuggestion {
   reason: string;
 }
 
+interface ResumeLength {
+  currentPages: number;
+  recommendedPages: number;
+  verdict: "too_short" | "just_right" | "too_long";
+}
+
+interface RedFlag {
+  issue: string;
+  impact: string;
+}
+
 interface FreeKeywordResultsProps {
   industry: string;
   atsScoreEstimate: number;
   formatGrade: string;
   formatIssue: string;
+  resumeLength: ResumeLength;
+  redFlags: RedFlag[];
   keywords: KeywordSuggestion[];
   onGetFullAnalysis: () => void;
   isLoading?: boolean;
@@ -25,6 +38,8 @@ export function FreeKeywordResults({
   atsScoreEstimate,
   formatGrade,
   formatIssue,
+  resumeLength,
+  redFlags,
   keywords,
   onGetFullAnalysis,
   isLoading
@@ -65,6 +80,22 @@ export function FreeKeywordResults({
     if (grade === "B") return "Good";
     if (grade === "C") return "Fair";
     return "Needs Work";
+  };
+
+  const getLengthColor = (verdict: string) => {
+    if (verdict === "just_right") return "text-success";
+    return "text-warning";
+  };
+
+  const getLengthBgColor = (verdict: string) => {
+    if (verdict === "just_right") return "bg-success/10 border-success/20";
+    return "bg-warning/10 border-warning/20";
+  };
+
+  const getLengthLabel = (verdict: string) => {
+    if (verdict === "just_right") return "Perfect";
+    if (verdict === "too_short") return "Too Short";
+    return "Too Long";
   };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -125,7 +156,7 @@ export function FreeKeywordResults({
         </p>
       </div>
 
-      {/* Score Cards Row */}
+      {/* Score Cards Grid */}
       <div className="grid grid-cols-2 gap-4 mb-5">
         {/* ATS Score */}
         <div className={cn(
@@ -166,7 +197,73 @@ export function FreeKeywordResults({
             {formatIssue}
           </p>
         </div>
+
+        {/* Resume Length */}
+        <div className={cn(
+          "rounded-2xl border p-4",
+          getLengthBgColor(resumeLength.verdict)
+        )}>
+          <div className="flex items-center gap-2 mb-2">
+            <FileText className="w-4 h-4 text-primary" />
+            <p className="text-xs text-muted-foreground">Resume Length</p>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <p className={cn("text-3xl font-bold", getLengthColor(resumeLength.verdict))}>
+              {resumeLength.currentPages}
+            </p>
+            <span className="text-lg text-muted-foreground">
+              / {resumeLength.recommendedPages} pg
+            </span>
+          </div>
+          <p className={cn("text-xs font-medium mt-1", getLengthColor(resumeLength.verdict))}>
+            {getLengthLabel(resumeLength.verdict)}
+          </p>
+        </div>
+
+        {/* Red Flags Preview */}
+        <div className="rounded-2xl border p-4 bg-destructive/5 border-destructive/20">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+            <p className="text-xs text-muted-foreground">Red Flags Found</p>
+          </div>
+          <p className="text-3xl font-bold text-destructive mb-1">
+            {redFlags.length}+
+          </p>
+          {redFlags.length > 0 && (
+            <p className="text-xs text-muted-foreground line-clamp-2">
+              {redFlags[0].issue}
+            </p>
+          )}
+        </div>
       </div>
+
+      {/* Red Flags Details */}
+      {redFlags.length > 0 && (
+        <div className="rounded-2xl bg-destructive/5 border border-destructive/20 p-5 mb-5">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+            <h4 className="font-semibold">Recruiter Red Flags</h4>
+          </div>
+          <div className="space-y-2">
+            {redFlags.map((flag, index) => (
+              <div 
+                key={index}
+                className="flex items-start gap-3 p-3 rounded-xl bg-background/50 border border-destructive/10"
+              >
+                <span className="text-destructive font-bold text-sm">{index + 1}.</span>
+                <div>
+                  <span className="font-medium text-foreground">{flag.issue}</span>
+                  <p className="text-sm text-muted-foreground">{flag.impact}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 mt-3 text-muted-foreground">
+            <Lock className="w-3 h-3" />
+            <span className="text-xs">More red flags + fixes in full analysis</span>
+          </div>
+        </div>
+      )}
 
       {/* Keyword Suggestions */}
       <div className="rounded-2xl bg-card border border-border p-5 mb-5">
