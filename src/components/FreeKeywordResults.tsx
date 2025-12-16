@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { 
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
@@ -137,6 +138,7 @@ export function FreeKeywordResults({
   onGetFullAnalysis,
   isLoading
 }: FreeKeywordResultsProps) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -184,10 +186,10 @@ export function FreeKeywordResults({
   };
 
   const getGradeLabel = (grade: string) => {
-    if (grade === "A") return "Excellent";
-    if (grade === "B") return "Good";
-    if (grade === "C") return "Fair";
-    return "Needs Work";
+    if (grade === "A") return t('freeScan.excellent');
+    if (grade === "B") return t('freeScan.good');
+    if (grade === "C") return t('freeScan.fair');
+    return t('freeScan.needsWork');
   };
 
   const getLengthColor = (verdict: string) => {
@@ -201,9 +203,9 @@ export function FreeKeywordResults({
   };
 
   const getLengthLabel = (verdict: string) => {
-    if (verdict === "just_right") return "Perfect";
-    if (verdict === "too_short") return "Too Short";
-    return "Too Long";
+    if (verdict === "just_right") return t('freeScan.perfect');
+    if (verdict === "too_short") return t('freeScan.tooShort');
+    return t('freeScan.tooLong');
   };
 
   const getWordCountColor = (verdict: string) => {
@@ -317,7 +319,6 @@ export function FreeKeywordResults({
     }
   };
 
-  // Helper functions for new metrics
   const getReadabilityColor = (verdict: string) => {
     if (verdict === "easy_to_scan") return "text-success";
     if (verdict === "readable") return "text-warning";
@@ -372,11 +373,11 @@ export function FreeKeywordResults({
       <div className="text-center mb-6">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success text-sm font-medium mb-3">
           <Sparkles className="w-4 h-4" />
-          17-Point Free Scan Complete
+          {t('freeScan.complete')}
         </div>
-        <h3 className="text-xl font-bold mb-1">Here's your comprehensive preview</h3>
+        <h3 className="text-xl font-bold mb-1">{t('freeScan.preview')}</h3>
         <p className="text-sm text-muted-foreground">
-          Detected: <span className="text-foreground font-medium">{industry}</span> • <span className="text-foreground font-medium">{getExperienceLevelLabel(experienceLevel.level)}</span> ({experienceLevel.yearsEstimate})
+          {t('freeScan.detected')}: <span className="text-foreground font-medium">{industry}</span> • <span className="text-foreground font-medium">{getExperienceLevelLabel(experienceLevel.level)}</span> ({experienceLevel.yearsEstimate})
         </p>
       </div>
 
@@ -386,14 +387,14 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getScoreBgColor(atsScoreEstimate))}>
           <div className="flex items-center gap-2 mb-1">
             <Target className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">ATS Score</p>
+            <p className="text-xs text-muted-foreground">{t('freeScan.atsScore')}</p>
           </div>
           <p className={cn("text-2xl font-bold", getScoreColor(atsScoreEstimate))}>
             {atsScoreEstimate}<span className="text-sm text-muted-foreground">/100</span>
           </p>
           <div className="flex items-center gap-1 mt-1 text-muted-foreground">
             <Lock className="w-3 h-3" />
-            <span className="text-xs">Breakdown locked</span>
+            <span className="text-xs">{t('freeScan.breakdownLocked')}</span>
           </div>
         </div>
 
@@ -401,7 +402,7 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getGradeBgColor(formatGrade))}>
           <div className="flex items-center gap-2 mb-1">
             <FileCheck className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">Format</p>
+            <p className="text-xs text-muted-foreground">{t('freeScan.format')}</p>
           </div>
           <div className="flex items-baseline gap-1">
             <p className={cn("text-2xl font-bold", getGradeColor(formatGrade))}>{formatGrade}</p>
@@ -414,7 +415,7 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getQuantificationBgColor(quantificationScore.verdict))}>
           <div className="flex items-center gap-2 mb-1">
             <Hash className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">Metrics</p>
+            <p className="text-xs text-muted-foreground">{t('freeScan.metrics')}</p>
           </div>
           <p className={cn("text-2xl font-bold", getQuantificationColor(quantificationScore.verdict))}>
             {quantificationScore.score}<span className="text-sm text-muted-foreground">%</span>
@@ -426,7 +427,7 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getGradeBgColor(actionVerbGrade.grade))}>
           <div className="flex items-center gap-2 mb-1">
             <Pencil className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">Verbs</p>
+            <p className="text-xs text-muted-foreground">{t('freeScan.verbs')}</p>
           </div>
           <div className="flex items-baseline gap-1">
             <p className={cn("text-2xl font-bold", getGradeColor(actionVerbGrade.grade))}>{actionVerbGrade.grade}</p>
@@ -442,7 +443,7 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getLengthBgColor(resumeLength.verdict))}>
           <div className="flex items-center gap-2 mb-1">
             <FileText className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">Pages</p>
+            <p className="text-xs text-muted-foreground">{t('freeScan.pages')}</p>
           </div>
           <div className="flex items-baseline gap-1">
             <p className={cn("text-2xl font-bold", getLengthColor(resumeLength.verdict))}>{resumeLength.currentPages}</p>
@@ -455,17 +456,17 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getWordCountBgColor(wordCount.verdict))}>
           <div className="flex items-center gap-2 mb-1">
             <Type className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">Words</p>
+            <p className="text-xs text-muted-foreground">{t('freeScan.words')}</p>
           </div>
           <p className={cn("text-2xl font-bold", getWordCountColor(wordCount.verdict))}>{wordCount.current}</p>
-          <p className="text-xs text-muted-foreground mt-1">{wordCount.idealMin}-{wordCount.idealMax} ideal</p>
+          <p className="text-xs text-muted-foreground mt-1">{wordCount.idealMin}-{wordCount.idealMax} {t('freeScan.ideal')}</p>
         </div>
 
         {/* Section Check */}
         <div className={cn("rounded-2xl border p-3", getSectionBgColor())}>
           <div className="flex items-center gap-2 mb-1">
             <LayoutList className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">Sections</p>
+            <p className="text-xs text-muted-foreground">{t('freeScan.sections')}</p>
           </div>
           <p className={cn("text-2xl font-bold", getSectionColor())}>{getSectionScore()}</p>
           {sectionCheck.missingSections.length > 0 && (
@@ -480,7 +481,7 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getContactBgColor())}>
           <div className="flex items-center gap-2 mb-1">
             <Phone className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">Contact</p>
+            <p className="text-xs text-muted-foreground">{t('freeScan.contact')}</p>
           </div>
           <p className={cn("text-2xl font-bold", getContactColor())}>{getContactScore()}</p>
           {contactInfo.missingItems.length > 0 && (
@@ -498,7 +499,7 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getReadabilityBgColor(readabilityScore.verdict))}>
           <div className="flex items-center gap-2 mb-1">
             <FileText className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">Readability</p>
+            <p className="text-xs text-muted-foreground">{t('freeScan.readability')}</p>
           </div>
           <p className={cn("text-2xl font-bold", getReadabilityColor(readabilityScore.verdict))}>
             {readabilityScore.score}<span className="text-sm text-muted-foreground">%</span>
@@ -510,7 +511,7 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getBulletImpactBgColor(bulletImpactScore.verdict))}>
           <div className="flex items-center gap-2 mb-1">
             <Target className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">Impact</p>
+            <p className="text-xs text-muted-foreground">{t('freeScan.bulletImpact')}</p>
           </div>
           <p className={cn("text-2xl font-bold", getBulletImpactColor(bulletImpactScore.verdict))}>
             {bulletImpactScore.score}<span className="text-sm text-muted-foreground">%</span>
@@ -522,7 +523,7 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getKeywordDensityBgColor(keywordDensity.level))}>
           <div className="flex items-center gap-2 mb-1">
             <Hash className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">Keywords</p>
+            <p className="text-xs text-muted-foreground">{t('freeScan.keywordDensity')}</p>
           </div>
           <p className={cn("text-xl font-bold capitalize", getKeywordDensityColor(keywordDensity.level))}>
             {keywordDensity.level}
@@ -534,7 +535,7 @@ export function FreeKeywordResults({
         <div className={cn("rounded-2xl border p-3", getImprovementPotentialBgColor(improvementPotential.level))}>
           <div className="flex items-center gap-2 mb-1">
             <Zap className="w-4 h-4 text-primary" />
-            <p className="text-xs text-muted-foreground">Potential</p>
+            <p className="text-xs text-muted-foreground">{t('freeScan.improvementPotential')}</p>
           </div>
           <div className="flex items-baseline gap-1">
             <p className={cn("text-xl font-bold", getImprovementPotentialColor(improvementPotential.level))}>
@@ -552,7 +553,7 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border p-4 bg-success/5 border-success/20">
           <div className="flex items-center gap-2 mb-2">
             <Trophy className="w-4 h-4 text-success" />
-            <p className="text-xs font-medium text-success">Top Strength</p>
+            <p className="text-xs font-medium text-success">{t('freeScan.topStrength')}</p>
           </div>
           <p className="font-semibold text-foreground">{topStrength.title}</p>
           <p className="text-sm text-muted-foreground">{topStrength.description}</p>
@@ -562,7 +563,7 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border p-4 bg-destructive/5 border-destructive/20">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-4 h-4 text-destructive" />
-            <p className="text-xs font-medium text-destructive">Red Flags Found</p>
+            <p className="text-xs font-medium text-destructive">{t('freeScan.redFlags')}</p>
           </div>
           <p className="text-2xl font-bold text-destructive mb-1">{redFlags.length}+</p>
           {redFlags.length > 0 && (
@@ -631,7 +632,7 @@ export function FreeKeywordResults({
       <div className="rounded-2xl bg-card border border-border p-5 mb-5">
         <div className="flex items-center gap-2 mb-4">
           <Zap className="w-4 h-4 text-primary" />
-          <h4 className="font-semibold">Missing Keywords to Add</h4>
+          <h4 className="font-semibold">{t('freeScan.missingKeywords')}</h4>
         </div>
         <div className="space-y-3">
           {keywords.map((item, index) => (
@@ -650,7 +651,7 @@ export function FreeKeywordResults({
       <div className="rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 p-5 mb-5">
         <div className="flex items-center gap-2 mb-2">
           <Mail className="w-4 h-4 text-primary" />
-          <h4 className="font-semibold">Get More Resume Tips</h4>
+          <h4 className="font-semibold">{t('freeScan.emailCapture.title')}</h4>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
           Join 10,000+ job seekers getting weekly tips to beat the ATS and land interviews.
@@ -659,7 +660,7 @@ export function FreeKeywordResults({
         {isSubscribed ? (
           <div className="flex items-center gap-2 p-3 rounded-xl bg-success/10 border border-success/20">
             <CheckCircle2 className="w-4 h-4 text-success" />
-            <span className="text-sm text-success font-medium">You're subscribed! Check your inbox.</span>
+            <span className="text-sm text-success font-medium">{t('freeScan.emailCapture.subscribed')}</span>
           </div>
         ) : (
           <form onSubmit={handleEmailSubmit} className="flex gap-2">
@@ -667,7 +668,7 @@ export function FreeKeywordResults({
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
+              placeholder={t('freeScan.emailCapture.placeholder')}
               className="flex-1 h-10 px-4 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 text-sm transition-all"
               disabled={isSubmitting}
             />
@@ -677,7 +678,7 @@ export function FreeKeywordResults({
               disabled={isSubmitting || !email.trim()}
               className="h-10 px-4 border-primary/30 hover:bg-primary/10"
             >
-              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Subscribe"}
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : t('freeScan.emailCapture.button')}
             </Button>
           </form>
         )}
@@ -719,7 +720,7 @@ export function FreeKeywordResults({
           disabled={isLoading}
           className="gap-2 px-8 h-12 text-base font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20"
         >
-          Get Full Analysis — $25
+          {t('freeScan.cta.button')} — {t('freeScan.cta.price')}
           <ArrowRight className="w-4 h-4" />
         </Button>
         <p className="text-xs text-muted-foreground mt-2">One interview pays for itself</p>
