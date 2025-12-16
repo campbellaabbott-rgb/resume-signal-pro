@@ -507,7 +507,8 @@ Be specific, use examples from their actual resume, and prioritize actionable im
     const { data: savedAnalysis, error: dbError } = await supabase
       .from("resume_analyses")
       .insert({
-        resume_text: resumeText + (hasLinkedIn ? `\n\n=== LINKEDIN ===\n${linkedInText}` : ''),
+        // Privacy: Store placeholder instead of actual PII (GDPR/CCPA compliance)
+        resume_text: '[REDACTED - Analysis completed]',
         analysis_result: analysis,
       })
       .select("share_id")
