@@ -7,6 +7,7 @@ import { AnalysisPreview } from "@/components/AnalysisPreview";
 import { SocialProof } from "@/components/SocialProof";
 import { Footer } from "@/components/Footer";
 import { FAQ } from "@/components/FAQ";
+import { ComparisonTable } from "@/components/ComparisonTable";
 import { FreeKeywordResults } from "@/components/FreeKeywordResults";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -410,6 +411,8 @@ const Index = () => {
         )}
         
         <AnalysisPreview />
+        
+        <ComparisonTable />
         
         <SocialProof />
         

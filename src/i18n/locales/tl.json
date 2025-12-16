@@ -134,6 +134,24 @@
       }
     }
   },
+  "comparison": {
+    "title": "Bakit Resume Booster?",
+    "subtitle": "Tingnan kung paano kami kumukumpara sa ibang mga opsyon",
+    "feature": "Feature",
+    "templates": "Templates",
+    "free": "Libre",
+    "cta": "Subukan Ngayon — $25",
+    "features": {
+      "atsScoring": "5-Kategoryang ATS Scoring",
+      "industryTemplates": "14 Industry-Specific na Templates",
+      "consistentOutput": "Consistent Structured Output",
+      "linkedinAnalysis": "LinkedIn Profile Analysis",
+      "jobAlignment": "Job Description Alignment",
+      "noPromptNeeded": "Walang Prompt Engineering Kailangan",
+      "recruiterCalibrated": "Recruiter-Calibrated Feedback",
+      "privacyFirst": "Data Hindi Ginagamit sa Training"
+    }
+  },
   "socialProof": {
     "stats": {
       "analyzed": "Mga resume na nasuri",
