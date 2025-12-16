@@ -16,7 +16,7 @@ const faqs = [
   },
   {
     question: "What file formats do you accept?",
-    answer: "We accept PDF files and plain text. Simply upload your resume file or paste your resume text directly into the input field.",
+    answer: "We accept PDF files, Word documents (DOCX), and plain text. Simply upload your resume file or paste your resume text directly into the input field.",
   },
   {
     question: "Is this a subscription?",
