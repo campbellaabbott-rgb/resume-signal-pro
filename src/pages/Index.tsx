@@ -9,6 +9,8 @@ import { Footer } from "@/components/Footer";
 import { FAQ } from "@/components/FAQ";
 import { ComparisonTable } from "@/components/ComparisonTable";
 import { FreeKeywordResults } from "@/components/FreeKeywordResults";
+import { StickyBottomCTA } from "@/components/StickyBottomCTA";
+import { FinalCTA } from "@/components/FinalCTA";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
 import { supabase } from "@/integrations/supabase/client";
@@ -420,7 +422,21 @@ const Index = () => {
         <SocialProof />
         
         <FAQ />
+        
+        <FinalCTA 
+          onGetStarted={() => {
+            document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
+          }}
+          isLoading={isLoading}
+        />
       </main>
+      
+      <StickyBottomCTA 
+        onGetStarted={() => {
+          document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
+        }}
+        isLoading={isLoading}
+      />
       
       <Footer />
     </div>
