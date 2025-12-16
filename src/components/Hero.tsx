@@ -95,8 +95,19 @@ export function Hero() {
               <p className="text-sm text-muted-foreground">No subscriptions • No hidden fees • Instant results</p>
             </div>
             
+            {/* See Sample Button - Prominent */}
+            <div className="flex justify-center">
+              <button
+                onClick={() => document.getElementById('preview')?.scrollIntoView({ behavior: 'smooth' })}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary/10 border border-primary/30 text-primary font-medium hover:bg-primary/20 hover:border-primary/50 transition-all duration-300 hover:scale-105 group"
+              >
+                <Eye className="w-5 h-5" />
+                <span>See Sample Analysis</span>
+              </button>
+            </div>
+            
             {/* Trust badges */}
-            <ul className="flex flex-wrap justify-center gap-6 pt-4 list-none p-0" aria-label="Trust indicators">
+            <ul className="flex flex-wrap justify-center gap-6 pt-2 list-none p-0" aria-label="Trust indicators">
               {trustBadges.map((badge) => (
                 <li key={badge.label} className="flex items-center gap-2 text-muted-foreground">
                   <badge.icon className="w-4 h-4 text-primary/70" aria-hidden="true" />
@@ -104,17 +115,6 @@ export function Hero() {
                 </li>
               ))}
             </ul>
-            
-            {/* See Sample link */}
-            <button
-              onClick={() => document.getElementById('preview')?.scrollIntoView({ behavior: 'smooth' })}
-              className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors mt-4 group"
-            >
-              <Eye className="w-4 h-4" />
-              <span className="underline underline-offset-4 decoration-primary/30 group-hover:decoration-primary/60 transition-colors">
-                See what you'll get
-              </span>
-            </button>
           </div>
         </div>
       </div>
