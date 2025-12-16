@@ -5,9 +5,51 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Simple in-memory rate limiter (resets on function restart)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+const checkRateLimit = (ip: string, maxRequests = 5, windowMs = 3600000): boolean => {
+  const now = Date.now();
+  const record = rateLimitMap.get(ip);
+  
+  // Clean up old entries periodically
+  if (rateLimitMap.size > 1000) {
+    for (const [key, value] of rateLimitMap.entries()) {
+      if (now > value.resetAt) {
+        rateLimitMap.delete(key);
+      }
+    }
+  }
+  
+  if (!record || now > record.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  
+  if (record.count >= maxRequests) {
+    return false;
+  }
+  
+  record.count++;
+  return true;
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Rate limiting: 5 requests per IP per hour (strict - uses paid Firecrawl API)
+  const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
+                   req.headers.get('x-real-ip') || 
+                   'unknown';
+  
+  if (!checkRateLimit(clientIp, 5, 3600000)) {
+    console.log(`[SCRAPE-LINKEDIN] Rate limit exceeded for IP: ${clientIp}`);
+    return new Response(
+      JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later or paste your profile text instead.' }),
+      { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   try {
@@ -50,7 +92,7 @@ serve(async (req) => {
         url: url.trim(),
         formats: ['markdown'],
         onlyMainContent: true,
-        waitFor: 3000, // Wait for dynamic content to load
+        waitFor: 3000,
       }),
     });
 
@@ -59,7 +101,6 @@ serve(async (req) => {
     if (!response.ok) {
       console.error('[SCRAPE-LINKEDIN] Firecrawl API error:', data);
       
-      // Handle specific error cases
       if (response.status === 402) {
         return new Response(
           JSON.stringify({ success: false, error: 'Scraping service quota exceeded. Please try pasting your profile text instead.' }),
@@ -73,7 +114,6 @@ serve(async (req) => {
       );
     }
 
-    // Extract the markdown content
     const markdown = data.data?.markdown || data.markdown || '';
     
     if (!markdown || markdown.length < 100) {
