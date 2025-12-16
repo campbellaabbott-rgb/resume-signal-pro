@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Link2, Globe, Target } from "lucide-react";
+import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Link2, Globe, Target, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -7,7 +7,9 @@ interface ResumeUploaderProps {
   onFileSelect: (file: File) => void;
   onTextSubmit: (text: string, linkedInText?: string, jobDescriptionText?: string) => void;
   onCheckout: (linkedInText?: string, jobDescriptionText?: string) => void;
+  onFreeScan?: () => void;
   isLoading?: boolean;
+  isFreeScanLoading?: boolean;
   hasContent?: boolean;
   linkedInText?: string;
   onLinkedInTextChange?: (text: string) => void;
@@ -21,7 +23,9 @@ export function ResumeUploader({
   onFileSelect, 
   onTextSubmit, 
   onCheckout,
+  onFreeScan,
   isLoading,
+  isFreeScanLoading,
   hasContent,
   linkedInText = "",
   onLinkedInTextChange,
@@ -416,7 +420,7 @@ export function ResumeUploader({
             )}
           </div>
 
-          {/* Submit Button */}
+          {/* Submit Buttons */}
           <div className="text-center space-y-4">
             <Button
               variant="hero"
@@ -435,7 +439,7 @@ export function ResumeUploader({
               ) : (
                 <>
                   <Sparkles className="w-5 h-5" aria-hidden="true" />
-                  <span>Analyze Resume {hasLinkedInContent || hasJobDescriptionContent ? "+" : ""} {hasLinkedInContent ? " LinkedIn" : ""}{hasLinkedInContent && hasJobDescriptionContent ? " +" : ""}{hasJobDescriptionContent ? " JD Match" : ""} — $25</span>
+                  <span>Get Full Analysis — $25</span>
                 </>
               )}
             </Button>
@@ -448,8 +452,34 @@ export function ResumeUploader({
               <span className="w-1 h-1 rounded-full bg-muted-foreground/30" aria-hidden="true" />
               <span>Results delivered instantly</span>
             </div>
+
+            {/* Free Scan Option */}
+            {onFreeScan && (
+              <div className="pt-2">
+                <button
+                  onClick={onFreeScan}
+                  disabled={isFreeScanLoading || !canProceed}
+                  className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isFreeScanLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Scanning...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4" />
+                      <span>Try Free Keyword Scan First</span>
+                    </>
+                  )}
+                </button>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Get 5 keyword suggestions free (3 scans/day)
+                </p>
+              </div>
+            )}
             
-            {!hasLinkedInContent && !hasJobDescriptionContent && (
+            {!hasLinkedInContent && !hasJobDescriptionContent && !onFreeScan && (
               <p className="text-xs text-muted-foreground">
                 <span aria-hidden="true">💡</span> Add LinkedIn profile or job description for a more targeted analysis
               </p>

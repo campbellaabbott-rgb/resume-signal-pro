@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.scrape-linkedin]
 verify_jwt = false
+
+[functions.free-keyword-scan]
+verify_jwt = false

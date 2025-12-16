@@ -7,6 +7,7 @@ import { AnalysisPreview } from "@/components/AnalysisPreview";
 import { SocialProof } from "@/components/SocialProof";
 import { Footer } from "@/components/Footer";
 import { FAQ } from "@/components/FAQ";
+import { FreeKeywordResults } from "@/components/FreeKeywordResults";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -17,13 +18,21 @@ import {
   setupUnloadCleanup 
 } from "@/hooks/use-resume-storage";
 
+interface FreeKeywordResult {
+  industry: string;
+  atsScoreEstimate: number;
+  keywords: { keyword: string; reason: string }[];
+}
+
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isFreeScanLoading, setIsFreeScanLoading] = useState(false);
   const [resumeText, setResumeText] = useState<string>("");
   const [linkedInText, setLinkedInText] = useState<string>("");
   const [jobDescriptionText, setJobDescriptionText] = useState<string>("");
   const [isScrapingLinkedIn, setIsScrapingLinkedIn] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [freeKeywordResult, setFreeKeywordResult] = useState<FreeKeywordResult | null>(null);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
 
@@ -46,6 +55,7 @@ const Index = () => {
 
   const handleFileSelect = async (file: File) => {
     setSelectedFile(file);
+    setFreeKeywordResult(null); // Clear previous results
 
     if (file.type === "text/plain") {
       const text = await file.text();
@@ -156,8 +166,65 @@ const Index = () => {
     }
   };
 
+  const handleFreeScan = async () => {
+    const contentToAnalyze = resumeText;
+    
+    if (!contentToAnalyze && !selectedFile) {
+      toast({
+        title: "No resume provided",
+        description: "Please upload a file or paste your resume text.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsFreeScanLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("free-keyword-scan", {
+        body: { resumeText: contentToAnalyze },
+      });
+
+      if (error) throw error;
+
+      if (data?.rateLimited) {
+        toast({
+          title: "Daily limit reached",
+          description: "You've used all 3 free scans today. Get the full analysis for $25!",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data?.success) {
+        setFreeKeywordResult({
+          industry: data.industry,
+          atsScoreEstimate: data.atsScoreEstimate,
+          keywords: data.keywords,
+        });
+        
+        // Scroll to results
+        setTimeout(() => {
+          document.getElementById("free-results")?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      } else {
+        throw new Error(data?.error || "Failed to analyze resume");
+      }
+    } catch (error: any) {
+      console.error("Free scan error:", error);
+      toast({
+        title: "Analysis failed",
+        description: error?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFreeScanLoading(false);
+    }
+  };
+
   const handleTextSubmit = (text: string, linkedIn?: string, jobDescription?: string) => {
     setResumeText(text);
+    setFreeKeywordResult(null);
     if (linkedIn) setLinkedInText(linkedIn);
     if (jobDescription) setJobDescriptionText(jobDescription);
     handleCheckout(text, linkedIn, jobDescription);
@@ -256,7 +323,9 @@ const Index = () => {
           onFileSelect={handleFileSelect}
           onTextSubmit={handleTextSubmit}
           onCheckout={(linkedIn, jobDescription) => handleCheckout(undefined, linkedIn, jobDescription)}
+          onFreeScan={handleFreeScan}
           isLoading={isLoading}
+          isFreeScanLoading={isFreeScanLoading}
           hasContent={!!resumeText || !!selectedFile}
           linkedInText={linkedInText}
           onLinkedInTextChange={setLinkedInText}
@@ -265,6 +334,21 @@ const Index = () => {
           jobDescriptionText={jobDescriptionText}
           onJobDescriptionTextChange={setJobDescriptionText}
         />
+
+        {/* Free Keyword Results */}
+        {freeKeywordResult && (
+          <section id="free-results" className="py-12 scroll-mt-20">
+            <div className="container">
+              <FreeKeywordResults
+                industry={freeKeywordResult.industry}
+                atsScoreEstimate={freeKeywordResult.atsScoreEstimate}
+                keywords={freeKeywordResult.keywords}
+                onGetFullAnalysis={() => handleCheckout()}
+                isLoading={isLoading}
+              />
+            </div>
+          </section>
+        )}
         
         <AnalysisPreview />
         
