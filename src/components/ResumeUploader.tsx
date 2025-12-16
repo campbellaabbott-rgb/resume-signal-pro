@@ -378,6 +378,9 @@ export function ResumeUploader({
                             <Upload className="w-6 h-6 text-[#0A66C2] mb-2" />
                             <span className="text-sm font-medium text-foreground">{t('uploader.linkedin.uploadLinkedIn')}</span>
                             <span className="text-xs text-muted-foreground mt-1">{t('uploader.linkedin.exportTip')}</span>
+                            <span className="text-xs text-muted-foreground mt-2 text-center max-w-[280px]">
+                              PDF provides better analysis than a link. Click <span className="font-medium text-[#0A66C2]">Resources</span> tab on your LinkedIn profile to download.
+                            </span>
                           </>
                         )}
                       </label>
