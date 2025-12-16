@@ -441,14 +441,21 @@ export function ResumeUploader({
                     <>
                       <Zap className="w-5 h-5 text-success fill-success/30" />
                       <span>Get Free Resume Scan</span>
-                      <span className="ml-1 px-2.5 py-1 rounded-full bg-success text-success-foreground text-xs font-bold uppercase tracking-wide">7 Insights Free</span>
+                      <span className="ml-1 px-2.5 py-1 rounded-full bg-success text-success-foreground text-xs font-bold uppercase tracking-wide">13 Insights Free</span>
                     </>
                   )}
                 </Button>
-                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground max-w-md mx-auto">
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground max-w-lg mx-auto">
                   <span className="flex items-center gap-1"><span className="text-success">✓</span> ATS Score</span>
-                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Format Grade</span>
-                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Length Check</span>
+                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Format</span>
+                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Metrics %</span>
+                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Verbs</span>
+                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Pages</span>
+                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Words</span>
+                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Sections</span>
+                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Contact</span>
+                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Level</span>
+                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Strength</span>
                   <span className="flex items-center gap-1"><span className="text-success">✓</span> Red Flags</span>
                   <span className="flex items-center gap-1"><span className="text-success">✓</span> Keywords</span>
                   <span className="flex items-center gap-1"><span className="text-success">✓</span> Industry</span>
