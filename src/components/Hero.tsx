@@ -111,14 +111,21 @@ export function Hero() {
               </div>
             </div>
             
-            {/* See Sample Button */}
-            <div className="flex justify-center">
+            {/* CTA Buttons */}
+            <div className="flex flex-wrap justify-center gap-3">
               <button
                 onClick={() => document.getElementById('preview')?.scrollIntoView({ behavior: 'smooth' })}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary/10 border border-primary/30 text-primary font-medium hover:bg-primary/20 hover:border-primary/50 transition-all duration-300 hover:scale-105 group"
               >
                 <Eye className="w-5 h-5" />
                 <span>{t('hero.seeSample')}</span>
+              </button>
+              <button
+                onClick={() => document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' })}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-accent/20 border border-accent/40 text-accent-foreground font-medium hover:bg-accent/30 hover:border-accent/60 transition-all duration-300 hover:scale-105"
+              >
+                <Zap className="w-5 h-5 text-yellow-400" />
+                <span>{t('hero.whyBetter')}</span>
               </button>
             </div>
             
