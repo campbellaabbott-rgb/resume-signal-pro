@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
-import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Link2, Globe, Target, Zap } from "lucide-react";
+import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Target, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ResumeUploaderProps {
   onFileSelect: (file: File) => void;
@@ -13,8 +14,6 @@ interface ResumeUploaderProps {
   hasContent?: boolean;
   linkedInText?: string;
   onLinkedInTextChange?: (text: string) => void;
-  isScrapingLinkedIn?: boolean;
-  onScrapeLinkedIn?: (url: string) => Promise<void>;
   jobDescriptionText?: string;
   onJobDescriptionTextChange?: (text: string) => void;
 }
@@ -29,8 +28,6 @@ export function ResumeUploader({
   hasContent,
   linkedInText = "",
   onLinkedInTextChange,
-  isScrapingLinkedIn,
-  onScrapeLinkedIn,
   jobDescriptionText = "",
   onJobDescriptionTextChange
 }: ResumeUploaderProps) {
@@ -38,12 +35,13 @@ export function ResumeUploader({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [textInput, setTextInput] = useState("");
   const [resumeMode, setResumeMode] = useState<"upload" | "paste">("upload");
-  const [linkedInMode, setLinkedInMode] = useState<"url" | "paste">("url");
-  const [linkedInUrl, setLinkedInUrl] = useState("");
+  const [linkedInMode, setLinkedInMode] = useState<"upload" | "paste">("upload");
+  const [linkedInFile, setLinkedInFile] = useState<File | null>(null);
   const [localLinkedInText, setLocalLinkedInText] = useState("");
   const [showLinkedIn, setShowLinkedIn] = useState(true);
   const [showJobDescription, setShowJobDescription] = useState(true);
   const [localJobDescriptionText, setLocalJobDescriptionText] = useState("");
+  const [isParsingLinkedIn, setIsParsingLinkedIn] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -87,9 +85,34 @@ export function ResumeUploader({
     setSelectedFile(null);
   };
 
-  const handleLinkedInScrape = async () => {
-    if (linkedInUrl.trim() && onScrapeLinkedIn) {
-      await onScrapeLinkedIn(linkedInUrl.trim());
+  const handleLinkedInFileUpload = async (file: File) => {
+    if (!file.type.includes("pdf") && !file.name.toLowerCase().endsWith(".pdf")) {
+      return;
+    }
+    
+    setLinkedInFile(file);
+    setIsParsingLinkedIn(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const { data, error } = await supabase.functions.invoke("parse-pdf", {
+        body: formData,
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.text) {
+        onLinkedInTextChange?.(data.text);
+      } else {
+        throw new Error(data?.error || "Failed to parse LinkedIn PDF");
+      }
+    } catch (error) {
+      console.error("LinkedIn PDF parsing error:", error);
+      setLinkedInFile(null);
+    } finally {
+      setIsParsingLinkedIn(false);
     }
   };
 
@@ -108,7 +131,7 @@ export function ResumeUploader({
   };
 
   const canProceed = resumeMode === "upload" ? !!selectedFile : !!textInput.trim();
-  const hasLinkedInContent = linkedInMode === "url" ? !!linkedInText : !!localLinkedInText.trim();
+  const hasLinkedInContent = linkedInMode === "upload" ? !!linkedInText : !!localLinkedInText.trim();
   const hasJobDescriptionContent = !!localJobDescriptionText.trim() || !!jobDescriptionText;
 
   return (
@@ -286,16 +309,16 @@ export function ResumeUploader({
                 <div className="flex justify-start">
                   <div className="inline-flex rounded-xl bg-muted/50 border border-border p-1">
                     <button
-                      onClick={() => setLinkedInMode("url")}
+                      onClick={() => setLinkedInMode("upload")}
                       className={cn(
                         "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                        linkedInMode === "url"
+                        linkedInMode === "upload"
                           ? "bg-[#0A66C2] text-white shadow-md"
                           : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       )}
                     >
-                      <Link2 className="w-4 h-4" />
-                      URL
+                      <Upload className="w-4 h-4" />
+                      Upload PDF
                     </button>
                     <button
                       onClick={() => setLinkedInMode("paste")}
@@ -312,43 +335,53 @@ export function ResumeUploader({
                   </div>
                 </div>
 
-                {linkedInMode === "url" ? (
+                {linkedInMode === "upload" ? (
                   <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <input
-                          type="url"
-                          value={linkedInUrl}
-                          onChange={(e) => setLinkedInUrl(e.target.value)}
-                          placeholder="linkedin.com/in/yourprofile"
-                          className="w-full h-11 pl-10 pr-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[#0A66C2]/50 focus:border-[#0A66C2]/50 text-sm transition-all"
-                        />
-                      </div>
-                      <Button
-                        variant="outline"
-                        onClick={handleLinkedInScrape}
-                        disabled={!linkedInUrl.trim() || isScrapingLinkedIn}
-                        className="h-11 px-4 border-[#0A66C2]/30 hover:bg-[#0A66C2]/10 hover:border-[#0A66C2]/50"
-                      >
-                        {isScrapingLinkedIn ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          "Fetch"
-                        )}
-                      </Button>
-                    </div>
-                    {linkedInText && (
+                    {linkedInFile && linkedInText ? (
                       <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
                         <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                        <span className="text-sm text-success">Profile fetched ({linkedInText.length.toLocaleString()} chars)</span>
+                        <span className="text-sm text-success truncate max-w-[200px]">{linkedInFile.name}</span>
+                        <span className="text-sm text-success">({linkedInText.length.toLocaleString()} chars)</span>
                         <button
-                          onClick={() => onLinkedInTextChange?.("")}
+                          onClick={() => {
+                            setLinkedInFile(null);
+                            onLinkedInTextChange?.("");
+                          }}
                           className="ml-auto p-1 hover:bg-success/10 rounded-lg transition-colors"
                         >
                           <X className="w-3 h-3 text-success" />
                         </button>
                       </div>
+                    ) : (
+                      <label className={cn(
+                        "flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all",
+                        isParsingLinkedIn 
+                          ? "border-[#0A66C2]/50 bg-[#0A66C2]/5" 
+                          : "border-border/50 hover:border-[#0A66C2]/40 hover:bg-[#0A66C2]/5"
+                      )}>
+                        <input
+                          type="file"
+                          accept=".pdf,application/pdf"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleLinkedInFileUpload(file);
+                          }}
+                          className="hidden"
+                          disabled={isParsingLinkedIn}
+                        />
+                        {isParsingLinkedIn ? (
+                          <>
+                            <Loader2 className="w-6 h-6 text-[#0A66C2] animate-spin mb-2" />
+                            <span className="text-sm text-muted-foreground">Parsing PDF...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-6 h-6 text-[#0A66C2] mb-2" />
+                            <span className="text-sm font-medium text-foreground">Upload LinkedIn PDF</span>
+                            <span className="text-xs text-muted-foreground mt-1">Export your profile from LinkedIn as PDF</span>
+                          </>
+                        )}
+                      </label>
                     )}
                   </div>
                 ) : (
