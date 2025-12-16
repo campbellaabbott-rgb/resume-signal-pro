@@ -7,12 +7,12 @@ const corsHeaders = {
 };
 
 const MAX_RESUME_LENGTH = 50000;
-const FREE_SCANS_PER_DAY = 3;
+const FREE_SCANS_PER_DAY = 4;
 
 const ERROR_MESSAGES = {
   INTERNAL: 'An error occurred. Please try again.',
   INVALID_INPUT: 'Invalid input provided.',
-  RATE_LIMITED: 'You\'ve used all 3 free scans today. Get the full analysis for $25!',
+  RATE_LIMITED: 'You\'ve used all 4 free scans today. Get the full analysis for $25!',
   SERVICE_UNAVAILABLE: 'Service temporarily unavailable.',
 };
 
