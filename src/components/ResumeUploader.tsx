@@ -454,7 +454,7 @@ export function ResumeUploader({
                   <span className="flex items-center gap-1"><span className="text-success">✓</span> Industry</span>
                 </div>
                 <p className="text-xs text-muted-foreground/70">
-                  3 free scans per day
+                  4 free scans per day
                 </p>
               </div>
             )}
