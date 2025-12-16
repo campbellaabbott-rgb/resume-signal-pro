@@ -1,5 +1,6 @@
-import { FileText, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/Logo";
 
 export function Header() {
   const scrollToUpload = () => {
@@ -15,13 +16,14 @@ export function Header() {
         <nav className="flex items-center justify-between h-16" aria-label="Main navigation">
           <a 
             href="/" 
-            className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
+            className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
             aria-label="Resume Booster - Home"
           >
-            <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/10" aria-hidden="true">
-              <FileText className="w-5 h-5 text-primary" />
+            <Logo className="w-9 h-9" />
+            <div className="flex flex-col leading-none">
+              <span className="font-bold text-base tracking-tight">Resume</span>
+              <span className="font-bold text-base tracking-tight text-primary">Booster</span>
             </div>
-            <span className="font-semibold text-lg tracking-tight">Resume Booster</span>
           </a>
           
           <div className="flex items-center gap-4">
