@@ -40,16 +40,17 @@ const getAnalysisTools = (hasLinkedIn: boolean) => [{
         atsScore: {
           type: "object",
           properties: {
-            score: { type: "number", description: "ATS compatibility score from 0-100" },
+            score: { type: "number", description: "ATS compatibility score from 0-100 (sum of all breakdown scores)" },
             breakdown: {
               type: "object",
               properties: {
-                keywordMatch: { type: "number", description: "Keyword optimization score 0-100" },
-                formatting: { type: "number", description: "Format compatibility score 0-100" },
-                structure: { type: "number", description: "Structure/organization score 0-100" },
-                relevance: { type: "number", description: "Content relevance score 0-100" }
+                jobTitleMatch: { type: "number", description: "How well job titles match target roles (0-15 points)" },
+                skillsMatch: { type: "number", description: "Relevant skills coverage (0-30 points)" },
+                actionVerbUsage: { type: "number", description: "Strong action verbs at bullet starts (0-15 points)" },
+                keywordCoverage: { type: "number", description: "Industry keywords present (0-20 points)" },
+                formattingScore: { type: "number", description: "ATS-friendly formatting (0-20 points, deduct for tables/graphics/fancy fonts)" }
               },
-              required: ["keywordMatch", "formatting", "structure", "relevance"]
+              required: ["jobTitleMatch", "skillsMatch", "actionVerbUsage", "keywordCoverage", "formattingScore"]
             },
             improvements: { type: "array", items: { type: "string" }, description: "Top 3-5 ways to improve ATS score" }
           },

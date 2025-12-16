@@ -35,10 +35,11 @@ export interface AnalysisData {
   atsScore?: {
     score: number;
     breakdown: {
-      keywordMatch: number;
-      formatting: number;
-      structure: number;
-      relevance: number;
+      jobTitleMatch: number;
+      skillsMatch: number;
+      actionVerbUsage: number;
+      keywordCoverage: number;
+      formattingScore: number;
     };
     improvements: string[];
   };
@@ -420,11 +421,25 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   <Progress value={data.atsScore.score} className="h-3 bg-muted mb-4" />
                   
                   {data.atsScore.breakdown && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                      {Object.entries(data.atsScore.breakdown).map(([key, value]) => (
-                        <div key={key} className="text-center p-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                          <div className="text-lg font-bold text-foreground tabular-nums">{value}</div>
-                          <div className="text-xs text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</div>
+                    <div className="space-y-2 mb-4">
+                      {[
+                        { key: 'jobTitleMatch', label: 'Job Title Match', max: 15, value: data.atsScore.breakdown.jobTitleMatch },
+                        { key: 'skillsMatch', label: 'Skills Match', max: 30, value: data.atsScore.breakdown.skillsMatch },
+                        { key: 'actionVerbUsage', label: 'Action Verb Usage', max: 15, value: data.atsScore.breakdown.actionVerbUsage },
+                        { key: 'keywordCoverage', label: 'Keyword Coverage', max: 20, value: data.atsScore.breakdown.keywordCoverage },
+                        { key: 'formattingScore', label: 'Formatting/Parsing', max: 20, value: data.atsScore.breakdown.formattingScore },
+                      ].map(({ key, label, max, value }) => (
+                        <div key={key} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                          <span className="text-sm text-muted-foreground">{label}</span>
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              "font-bold tabular-nums",
+                              value / max >= 0.7 ? "text-success" : value / max >= 0.5 ? "text-warning" : "text-destructive"
+                            )}>
+                              {value}
+                            </span>
+                            <span className="text-muted-foreground text-sm">/{max}</span>
+                          </div>
                         </div>
                       ))}
                     </div>
