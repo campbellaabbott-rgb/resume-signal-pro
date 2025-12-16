@@ -8,6 +8,13 @@ import { Footer } from "@/components/Footer";
 import { FAQ } from "@/components/FAQ";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { 
+  cleanupExpiredResumeData, 
+  setResumeData, 
+  removeResumeData, 
+  setCheckoutRedirect,
+  setupUnloadCleanup 
+} from "@/hooks/use-resume-storage";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -17,6 +24,13 @@ const Index = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
+
+  // Cleanup expired data on mount and setup unload handler
+  useEffect(() => {
+    cleanupExpiredResumeData();
+    const cleanup = setupUnloadCleanup();
+    return cleanup;
+  }, []);
 
   useEffect(() => {
     if (searchParams.get("canceled") === "true") {
@@ -162,12 +176,12 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      // Store resume text and LinkedIn text in localStorage for use after payment
-      localStorage.setItem('resumeText', contentToAnalyze);
+      // Store resume text and LinkedIn text with timestamps for expiry
+      setResumeData('resumeText', contentToAnalyze);
       if (linkedInContent) {
-        localStorage.setItem('linkedInText', linkedInContent);
+        setResumeData('linkedInText', linkedInContent);
       } else {
-        localStorage.removeItem('linkedInText');
+        removeResumeData('linkedInText');
       }
 
       const { data, error } = await supabase.functions.invoke("create-checkout", {
@@ -182,9 +196,9 @@ const Index = () => {
       if (data?.url) {
         // Tie the data to this specific checkout session
         if (data?.sessionId) {
-          localStorage.setItem(`resumeText:${data.sessionId}`, contentToAnalyze);
+          setResumeData(`resumeText:${data.sessionId}`, contentToAnalyze);
           if (linkedInContent) {
-            localStorage.setItem(`linkedInText:${data.sessionId}`, linkedInContent);
+            setResumeData(`linkedInText:${data.sessionId}`, linkedInContent);
           }
         }
 
@@ -202,6 +216,8 @@ const Index = () => {
           return;
         }
 
+        // Mark that we're redirecting to checkout (don't cleanup on unload)
+        setCheckoutRedirect(true);
         // Navigate in the same tab
         window.location.assign(data.url);
       } else {
@@ -209,8 +225,8 @@ const Index = () => {
       }
     } catch (error) {
       console.error("Checkout error:", error);
-      localStorage.removeItem('resumeText');
-      localStorage.removeItem('linkedInText');
+      removeResumeData('resumeText');
+      removeResumeData('linkedInText');
       toast({
         title: "Checkout failed",
         description: "There was an error creating your checkout session. Please try again.",

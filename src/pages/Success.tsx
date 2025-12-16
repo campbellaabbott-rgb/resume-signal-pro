@@ -23,6 +23,12 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { 
+  getResumeData, 
+  removeResumeData, 
+  setResumeData,
+  cleanupExpiredResumeData 
+} from "@/hooks/use-resume-storage";
 
 // Analysis progress steps
 const analysisSteps: Array<{id: number; label: string; icon: typeof CheckCircle2}> = [
@@ -63,6 +69,11 @@ const Success = () => {
     }
   }, [isLoading, shareIdParam, sessionId]);
 
+  // Cleanup expired data on mount
+  useEffect(() => {
+    cleanupExpiredResumeData();
+  }, []);
+
   useEffect(() => {
     const runAnalysis = async (resumeText: string, linkedInText?: string, stripeSessionId?: string) => {
       try {
@@ -89,11 +100,11 @@ const Success = () => {
 
         // Clean up stored data after successful analysis
         if (sessionId) {
-          localStorage.removeItem(`resumeText:${sessionId}`);
-          localStorage.removeItem(`linkedInText:${sessionId}`);
+          removeResumeData(`resumeText:${sessionId}`);
+          removeResumeData(`linkedInText:${sessionId}`);
         }
-        localStorage.removeItem("resumeText");
-        localStorage.removeItem("linkedInText");
+        removeResumeData("resumeText");
+        removeResumeData("linkedInText");
 
         toast({
           title: "Payment successful!",
@@ -150,12 +161,12 @@ const Success = () => {
 
       // Prefer session-scoped key, fallback to legacy key
       const storedResume =
-        localStorage.getItem(`resumeText:${sessionId}`) ||
-        localStorage.getItem("resumeText");
+        getResumeData(`resumeText:${sessionId}`) ||
+        getResumeData("resumeText");
 
       const storedLinkedIn =
-        localStorage.getItem(`linkedInText:${sessionId}`) ||
-        localStorage.getItem("linkedInText");
+        getResumeData(`linkedInText:${sessionId}`) ||
+        getResumeData("linkedInText");
 
       if (!storedResume || !storedResume.trim()) {
         setNeedsResume(true);
@@ -420,9 +431,9 @@ const Success = () => {
                     disabled={isLoading}
                     onResumeTextReady={(text) => {
                       if (sessionId) {
-                        localStorage.setItem(`resumeText:${sessionId}`, text);
+                        setResumeData(`resumeText:${sessionId}`, text);
                       }
-                      localStorage.setItem("resumeText", text);
+                      setResumeData("resumeText", text);
 
                       setNeedsResume(false);
                       setIsLoading(true);
@@ -440,9 +451,9 @@ const Success = () => {
                           setShareId(newShareId);
 
                           if (sessionId) {
-                            localStorage.removeItem(`resumeText:${sessionId}`);
+                            removeResumeData(`resumeText:${sessionId}`);
                           }
-                          localStorage.removeItem("resumeText");
+                          removeResumeData("resumeText");
 
                           toast({
                             title: "Analysis ready",
