@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { 
   CheckCircle2, 
   Loader2, 
@@ -41,15 +42,18 @@ import {
   cleanupExpiredResumeData 
 } from "@/hooks/use-resume-storage";
 
-// Analysis progress steps
-const analysisSteps: Array<{id: number; label: string; icon: typeof CheckCircle2}> = [
-  { id: 1, label: "Payment verified", icon: CheckCircle2 },
-  { id: 2, label: "Parsing resume", icon: FileText },
-  { id: 3, label: "AI analysis", icon: Sparkles },
-  { id: 4, label: "Generating feedback", icon: ArrowRight },
-];
-
 const Success = () => {
+  const { t } = useTranslation();
+  
+  // Analysis progress steps
+  const analysisSteps: Array<{id: number; label: string; icon: typeof CheckCircle2}> = [
+    { id: 1, label: t('success.steps.payment'), icon: CheckCircle2 },
+    { id: 2, label: t('success.steps.parsing'), icon: FileText },
+    { id: 3, label: t('success.steps.analysis'), icon: Sparkles },
+    { id: 4, label: t('success.steps.generating'), icon: ArrowRight },
+  ];
+
+
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
@@ -118,17 +122,17 @@ const Success = () => {
         removeResumeData("tempSessionId");
 
         toast({
-          title: "Payment successful!",
+          title: t('success.toast.paymentSuccess'),
           description: data.hasLinkedIn 
-            ? "Your resume + LinkedIn analysis is ready." 
-            : "Your AI-powered resume analysis is ready.",
+            ? t('success.toast.analysisReadyLinkedIn')
+            : t('success.toast.analysisReady'),
         });
       } catch (err) {
         console.error("Analysis error:", err);
-        setError(err instanceof Error ? err.message : "Failed to analyze resume");
+        setError(err instanceof Error ? err.message : t('success.error.generic'));
         toast({
-          title: "Analysis failed",
-          description: "There was an issue analyzing your resume. Please contact support.",
+          title: t('success.toast.analysisFailed'),
+          description: t('success.toast.analysisFailedDesc'),
           variant: "destructive",
         });
       } finally {
@@ -224,8 +228,8 @@ const Success = () => {
     await navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     toast({
-      title: "Link copied!",
-      description: "Share this link to let others view your analysis.",
+      title: t('success.toast.linkCopied'),
+      description: t('success.toast.linkCopiedDesc'),
     });
     setTimeout(() => setCopied(false), 2000);
   };
@@ -236,8 +240,8 @@ const Success = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       toast({
-        title: "Invalid email",
-        description: "Please enter a valid email address.",
+        title: t('success.toast.invalidEmail'),
+        description: t('success.toast.invalidEmailDesc'),
         variant: "destructive",
       });
       return;
@@ -277,14 +281,14 @@ const Success = () => {
 
       setEmailSent(true);
       toast({
-        title: "Email sent!",
-        description: "Your complete analysis has been sent to your inbox.",
+        title: t('success.toast.emailSent'),
+        description: t('success.toast.emailSentDesc'),
       });
     } catch (err) {
       console.error("Email error:", err);
       toast({
-        title: "Failed to send email",
-        description: "Please try again or copy the share link instead.",
+        title: t('success.toast.emailFailed'),
+        description: t('success.toast.emailFailedDesc'),
         variant: "destructive",
       });
     } finally {
@@ -346,14 +350,14 @@ const Success = () => {
       pdf.save("resume-analysis.pdf");
 
       toast({
-        title: "PDF downloaded!",
-        description: "Check your Downloads folder.",
+        title: t('success.toast.pdfDownloaded'),
+        description: t('success.toast.pdfDownloadedDesc'),
       });
     } catch (err) {
       console.error("PDF generation error:", err);
       toast({
-        title: "Failed to generate PDF",
-        description: "Please try again.",
+        title: t('success.toast.pdfFailed'),
+        description: t('success.toast.pdfFailedDesc'),
         variant: "destructive",
       });
     } finally {
@@ -373,8 +377,8 @@ const Success = () => {
       if (deleteError) throw deleteError;
 
       toast({
-        title: "Data deleted",
-        description: "Your resume analysis has been permanently deleted.",
+        title: t('success.toast.dataDeleted'),
+        description: t('success.toast.dataDeletedDesc'),
       });
 
       // Redirect to home after deletion
@@ -382,8 +386,8 @@ const Success = () => {
     } catch (err) {
       console.error("Delete error:", err);
       toast({
-        title: "Failed to delete data",
-        description: "Please try again or contact support.",
+        title: t('success.toast.deleteFailed'),
+        description: t('success.toast.deleteFailedDesc'),
         variant: "destructive",
       });
     } finally {
@@ -420,12 +424,12 @@ const Success = () => {
 
                   <div>
                     <h1 className="text-3xl md:text-4xl font-bold mb-3">
-                      {isSharedView ? "Loading analysis..." : "Analyzing your resume..."}
+                      {isSharedView ? t('success.loadingShared') : t('success.loading')}
                     </h1>
                     <p className="text-muted-foreground text-lg">
                       {isSharedView 
-                        ? "Fetching the saved analysis." 
-                        : "Our AI is reviewing your resume with recruiter-grade precision."}
+                        ? t('success.loadingSharedDesc')
+                        : t('success.loadingDesc')}
                     </p>
                   </div>
 
@@ -522,13 +526,13 @@ const Success = () => {
                     <AlertCircle className="w-10 h-10 text-destructive" />
                   </div>
                   <h1 className="text-3xl md:text-4xl font-bold">
-                    {isSharedView ? "Analysis Not Found" : "Analysis Error"}
+                    {t('success.error.title')}
                   </h1>
                   <p className="text-muted-foreground text-lg max-w-md mx-auto">{error}</p>
                   <Link to="/">
                     <Button variant="outline" size="lg" className="gap-2">
                       <Home className="w-4 h-4" />
-                      Go Back Home
+                      {t('success.error.backHome')}
                     </Button>
                   </Link>
                 </div>
@@ -541,12 +545,12 @@ const Success = () => {
                   
                   <div>
                     <h1 className="text-3xl md:text-4xl font-bold mb-3">
-                      {isSharedView ? "Shared Analysis" : "Your Analysis is Ready!"}
+                      {isSharedView ? t('success.sharedView') : t('success.toast.analysisReady')}
                     </h1>
                     <p className="text-muted-foreground text-lg">
                       {isSharedView 
-                        ? "Viewing a shared resume analysis." 
-                        : "Scroll down to see your detailed recruiter-grade feedback."}
+                        ? t('success.sharedView')
+                        : t('success.loadingDesc')}
                     </p>
                   </div>
                   
@@ -557,11 +561,11 @@ const Success = () => {
                       <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 space-y-3">
                         <div className="flex items-center gap-2 text-sm font-medium">
                           <Mail className="w-4 h-4 text-primary" />
-                          Save to Email
+                          {t('success.actions.emailResults')}
                         </div>
                         <Input
                           type="email"
-                          placeholder="your@email.com"
+                          placeholder={t('success.actions.emailPlaceholder')}
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           disabled={emailSent || isSendingEmail}
@@ -578,12 +582,12 @@ const Success = () => {
                           ) : emailSent ? (
                             <>
                               <Check className="w-4 h-4" />
-                              Sent!
+                              {t('success.actions.sent')}
                             </>
                           ) : (
                             <>
                               <Mail className="w-4 h-4" />
-                              Send Results
+                              {t('success.actions.send')}
                             </>
                           )}
                         </Button>
@@ -593,10 +597,10 @@ const Success = () => {
                       <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 space-y-3">
                         <div className="flex items-center gap-2 text-sm font-medium">
                           <Printer className="w-4 h-4 text-primary" />
-                          Download PDF
+                          {t('success.actions.downloadPdf')}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Save your analysis as a PDF document
+                          {t('success.actions.downloadPdf')}
                         </p>
                         <Button
                           variant="outline"
@@ -610,7 +614,7 @@ const Success = () => {
                           ) : (
                             <Download className="w-4 h-4" />
                           )}
-                          {isGeneratingPdf ? "Generating..." : "Save as PDF"}
+                          {isGeneratingPdf ? t('success.actions.generating') : t('success.actions.downloadPdf')}
                         </Button>
                       </div>
                       

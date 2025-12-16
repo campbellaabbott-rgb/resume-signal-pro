@@ -2,8 +2,12 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function Terms() {
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language === 'es' ? 'es-ES' : i18n.language === 'hi' ? 'hi-IN' : i18n.language === 'tl' ? 'fil-PH' : 'en-US';
+  
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
@@ -14,11 +18,11 @@ export default function Terms() {
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Home
+            {t('common.backToHome')}
           </Link>
           
-          <h1 className="text-4xl font-bold mb-8">Terms of Service</h1>
-          <p className="text-muted-foreground mb-8">Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+          <h1 className="text-4xl font-bold mb-8">{t('terms.title')}</h1>
+          <p className="text-muted-foreground mb-8">{t('common.lastUpdated')}: {new Date().toLocaleDateString(dateLocale, { month: 'long', day: 'numeric', year: 'numeric' })}</p>
           
           <div className="prose prose-invert max-w-none space-y-8">
             <section>
