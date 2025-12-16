@@ -41,6 +41,7 @@ interface FreeKeywordResult {
   improvementPotential?: { level: "low" | "medium" | "high"; estimatedScoreIncrease: number; topPriority: string };
   redFlags: { issue: string; impact: string }[];
   keywords: { keyword: string; reason: string }[];
+  topSkipReasons?: string[];
 }
 
 const Index = () => {
@@ -408,6 +409,7 @@ const Index = () => {
                 improvementPotential={freeKeywordResult.improvementPotential}
                 redFlags={freeKeywordResult.redFlags}
                 keywords={freeKeywordResult.keywords}
+                topSkipReasons={freeKeywordResult.topSkipReasons}
                 onGetFullAnalysis={() => handleCheckout()}
                 isLoading={isLoading}
               />

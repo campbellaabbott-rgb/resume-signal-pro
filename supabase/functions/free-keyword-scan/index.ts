@@ -155,6 +155,7 @@ ANALYSIS RULES:
 15. Bullet Impact Score (0-100): % of bullets that show achievements vs just listing responsibilities
 16. Keyword Density: Rate keyword presence as sparse/moderate/dense
 17. Improvement Potential: How much better the resume could be with optimization (low/medium/high)
+18. Top 5 Skip Reasons: The most important reasons why THIS specific resume is likely being skipped by recruiters/ATS. Be extremely specific to this resume's actual content - not generic advice. Reference specific sections, phrases, or issues you found.
 
 Be direct and specific. No fluff.
 
@@ -331,6 +332,14 @@ ${resumeText.substring(0, 15000)}
                     topPriority: { type: "string", description: "Single most impactful fix (under 12 words)" }
                   },
                   required: ["level", "estimatedScoreIncrease", "topPriority"]
+                },
+                topSkipReasons: {
+                  type: "array",
+                  items: {
+                    type: "string",
+                    description: "A specific reason this resume is being skipped, referencing actual content from the resume"
+                  },
+                  description: "Exactly 5 specific, prioritized reasons why THIS resume is being skipped. Most important first. Be specific to this resume's actual issues - reference specific sections, phrases, or missing elements you found. Not generic advice."
                 }
               },
               required: [
@@ -338,7 +347,7 @@ ${resumeText.substring(0, 15000)}
                 "resumeLength", "wordCount", "experienceLevel", "sectionCheck",
                 "contactInfo", "topStrength", "quantificationScore", "actionVerbGrade",
                 "redFlags", "keywords", "readabilityScore", "bulletImpactScore", 
-                "keywordDensity", "improvementPotential"
+                "keywordDensity", "improvementPotential", "topSkipReasons"
               ]
             }
           }

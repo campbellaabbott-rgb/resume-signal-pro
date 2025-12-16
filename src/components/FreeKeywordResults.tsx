@@ -114,6 +114,7 @@ interface FreeKeywordResultsProps {
   keywords: KeywordSuggestion[];
   onGetFullAnalysis: () => void;
   isLoading?: boolean;
+  topSkipReasons?: string[];
 }
 
 export function FreeKeywordResults({
@@ -136,7 +137,8 @@ export function FreeKeywordResults({
   redFlags: redFlagsProp,
   keywords,
   onGetFullAnalysis,
-  isLoading
+  isLoading,
+  topSkipReasons: topSkipReasonsProp
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
@@ -158,6 +160,7 @@ export function FreeKeywordResults({
   const keywordDensity = keywordDensityProp || { level: "moderate" as const, explanation: "Good keyword presence" };
   const improvementPotential = improvementPotentialProp || { level: "medium" as const, estimatedScoreIncrease: 15, topPriority: "Add quantified achievements" };
   const redFlags = redFlagsProp || [];
+  const topSkipReasons = topSkipReasonsProp || [];
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-success";
@@ -607,6 +610,56 @@ export function FreeKeywordResults({
           )}
         </div>
       </div>
+
+      {/* Top 5 Reasons Your Resume Is Being Skipped */}
+      {topSkipReasons && topSkipReasons.length > 0 && (
+        <div className="rounded-2xl bg-card border border-border p-5 mb-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center justify-center w-6 h-6 rounded bg-success/20 text-success">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+            <h4 className="font-bold text-lg">Top 5 Reasons Your Resume Is Being Skipped</h4>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Not just "red flags" — the <em>most important ones first</em>.
+          </p>
+          
+          {/* Code-style block */}
+          <div className="rounded-xl bg-[hsl(222,47%,11%)] border border-border/50 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 bg-[hsl(222,47%,8%)] border-b border-border/30">
+              <span className="text-xs text-muted-foreground font-mono">priority</span>
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(topSkipReasons.map((r, i) => `${i + 1}. ${r}`).join('\n'));
+                  toast({
+                    title: "Copied to clipboard",
+                    description: "Share this with a friend or mentor for feedback"
+                  });
+                }}
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                Copy
+              </button>
+            </div>
+            <div className="p-4 font-mono text-sm space-y-3">
+              {topSkipReasons.slice(0, 5).map((reason, index) => (
+                <div key={index} className="flex gap-3">
+                  <span className="text-muted-foreground shrink-0">{index + 1}.</span>
+                  <span className="text-foreground/90">{reason}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="mt-4 p-3 rounded-xl bg-muted/30 border border-border/50">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">Why:</span>{" "}
+              People want clarity first — reasons matter more than solutions.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Detailed Section Check */}
       <div className="rounded-2xl bg-card border border-border p-5 mb-5">
