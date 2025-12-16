@@ -441,7 +441,7 @@ export function ResumeUploader({
                     <>
                       <Zap className="w-5 h-5 text-success fill-success/30" />
                       <span>Get Free Resume Scan</span>
-                      <span className="ml-1 px-2.5 py-1 rounded-full bg-success text-success-foreground text-xs font-bold uppercase tracking-wide">6 Insights Free</span>
+                      <span className="ml-1 px-2.5 py-1 rounded-full bg-success text-success-foreground text-xs font-bold uppercase tracking-wide">7 Insights Free</span>
                     </>
                   )}
                 </Button>
