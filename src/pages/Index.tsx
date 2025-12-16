@@ -31,6 +31,10 @@ interface FreeKeywordResult {
   topStrength?: { title: string; description: string };
   quantificationScore?: { score: number; verdict: "weak" | "average" | "strong"; tip: string };
   actionVerbGrade?: { grade: string; issue: string };
+  readabilityScore?: { score: number; verdict: "hard_to_read" | "readable" | "easy_to_scan"; issue: string };
+  bulletImpactScore?: { score: number; verdict: "responsibility_heavy" | "balanced" | "achievement_focused"; tip: string };
+  keywordDensity?: { level: "sparse" | "moderate" | "dense"; explanation: string };
+  improvementPotential?: { level: "low" | "medium" | "high"; estimatedScoreIncrease: number; topPriority: string };
   redFlags: { issue: string; impact: string }[];
   keywords: { keyword: string; reason: string }[];
 }
@@ -190,6 +194,10 @@ const Index = () => {
           topStrength: data.topStrength,
           quantificationScore: data.quantificationScore,
           actionVerbGrade: data.actionVerbGrade,
+          readabilityScore: data.readabilityScore,
+          bulletImpactScore: data.bulletImpactScore,
+          keywordDensity: data.keywordDensity,
+          improvementPotential: data.improvementPotential,
           redFlags: data.redFlags,
           keywords: data.keywords,
         });
@@ -341,6 +349,10 @@ const Index = () => {
                 topStrength={freeKeywordResult.topStrength}
                 quantificationScore={freeKeywordResult.quantificationScore}
                 actionVerbGrade={freeKeywordResult.actionVerbGrade}
+                readabilityScore={freeKeywordResult.readabilityScore}
+                bulletImpactScore={freeKeywordResult.bulletImpactScore}
+                keywordDensity={freeKeywordResult.keywordDensity}
+                improvementPotential={freeKeywordResult.improvementPotential}
                 redFlags={freeKeywordResult.redFlags}
                 keywords={freeKeywordResult.keywords}
                 onGetFullAnalysis={() => handleCheckout()}

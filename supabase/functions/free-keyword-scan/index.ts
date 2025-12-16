@@ -87,7 +87,7 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert ATS resume analyzer. Perform a comprehensive 13-point analysis of the resume.
+    const systemPrompt = `You are an expert ATS resume analyzer. Perform a comprehensive 17-point analysis of the resume.
 
 ANALYSIS RULES:
 1. ATS Score (0-100): Estimate based on keyword density, formatting, and ATS compatibility
@@ -100,9 +100,13 @@ ANALYSIS RULES:
 8. Top Strength: Identify the single best thing about this resume
 9. Quantification Score (0-100): % of bullet points that include numbers/metrics
 10. Action Verb Grade (A-D): Quality and variety of action verbs used
-11. Red Flags: 2 specific issues recruiters would notice immediately
-12. Keywords: 5 missing high-impact keywords for their industry
+11. Red Flags: 3 specific issues recruiters would notice immediately
+12. Keywords: 6 missing high-impact keywords for their industry
 13. Industry: Detect the industry/field
+14. Readability Score (0-100): How easy is the resume to scan quickly (sentence length, structure, bullet clarity)
+15. Bullet Impact Score (0-100): % of bullets that show achievements vs just listing responsibilities
+16. Keyword Density: Rate keyword presence as sparse/moderate/dense
+17. Improvement Potential: How much better the resume could be with optimization (low/medium/high)
 
 Be direct and specific. No fluff.
 
@@ -231,7 +235,7 @@ ${resumeText.substring(0, 15000)}
                     },
                     required: ["issue", "impact"]
                   },
-                  description: "Exactly 2 red flags"
+                  description: "Exactly 3 red flags"
                 },
                 keywords: {
                   type: "array",
@@ -243,14 +247,50 @@ ${resumeText.substring(0, 15000)}
                     },
                     required: ["keyword", "reason"]
                   },
-                  description: "Exactly 5 keyword suggestions"
+                  description: "Exactly 6 keyword suggestions"
+                },
+                readabilityScore: {
+                  type: "object",
+                  properties: {
+                    score: { type: "number", description: "Readability/scannability score 0-100" },
+                    verdict: { type: "string", enum: ["hard_to_read", "readable", "easy_to_scan"], description: "hard_to_read <50, readable 50-75, easy_to_scan >75" },
+                    issue: { type: "string", description: "Main readability issue (under 12 words)" }
+                  },
+                  required: ["score", "verdict", "issue"]
+                },
+                bulletImpactScore: {
+                  type: "object",
+                  properties: {
+                    score: { type: "number", description: "Percentage of achievement-focused bullets vs responsibility-focused (0-100)" },
+                    verdict: { type: "string", enum: ["responsibility_heavy", "balanced", "achievement_focused"], description: "responsibility_heavy <40, balanced 40-65, achievement_focused >65" },
+                    tip: { type: "string", description: "One tip to improve (under 12 words)" }
+                  },
+                  required: ["score", "verdict", "tip"]
+                },
+                keywordDensity: {
+                  type: "object",
+                  properties: {
+                    level: { type: "string", enum: ["sparse", "moderate", "dense"], description: "Industry keyword density" },
+                    explanation: { type: "string", description: "Brief explanation (under 12 words)" }
+                  },
+                  required: ["level", "explanation"]
+                },
+                improvementPotential: {
+                  type: "object",
+                  properties: {
+                    level: { type: "string", enum: ["low", "medium", "high"], description: "How much better this resume could be with optimization" },
+                    estimatedScoreIncrease: { type: "number", description: "Estimated ATS score increase possible (5-30 points)" },
+                    topPriority: { type: "string", description: "Single most impactful fix (under 12 words)" }
+                  },
+                  required: ["level", "estimatedScoreIncrease", "topPriority"]
                 }
               },
               required: [
                 "industry", "atsScoreEstimate", "formatGrade", "formatIssue",
                 "resumeLength", "wordCount", "experienceLevel", "sectionCheck",
                 "contactInfo", "topStrength", "quantificationScore", "actionVerbGrade",
-                "redFlags", "keywords"
+                "redFlags", "keywords", "readabilityScore", "bulletImpactScore", 
+                "keywordDensity", "improvementPotential"
               ]
             }
           }
@@ -296,8 +336,8 @@ ${resumeText.substring(0, 15000)}
     }
 
     // Ensure limits
-    const keywords = (analysis.keywords || []).slice(0, 5);
-    const redFlags = (analysis.redFlags || []).slice(0, 2);
+    const keywords = (analysis.keywords || []).slice(0, 6);
+    const redFlags = (analysis.redFlags || []).slice(0, 3);
 
     console.log(`[FREE-KEYWORD-SCAN] Success for IP: ${clientIp}, industry: ${analysis.industry}`);
 
@@ -316,6 +356,10 @@ ${resumeText.substring(0, 15000)}
         topStrength: analysis.topStrength || { title: "Clear Experience", description: "Your work history is well-documented" },
         quantificationScore: analysis.quantificationScore || { score: 40, verdict: "average", tip: "Add more metrics to your bullets" },
         actionVerbGrade: analysis.actionVerbGrade || { grade: "B", issue: "Good variety but some weak verbs" },
+        readabilityScore: analysis.readabilityScore || { score: 65, verdict: "readable", issue: "Some long sentences" },
+        bulletImpactScore: analysis.bulletImpactScore || { score: 45, verdict: "responsibility_heavy", tip: "Focus on achievements over duties" },
+        keywordDensity: analysis.keywordDensity || { level: "moderate", explanation: "Good keyword presence" },
+        improvementPotential: analysis.improvementPotential || { level: "medium", estimatedScoreIncrease: 15, topPriority: "Add more quantified achievements" },
         redFlags,
         keywords
       }),
