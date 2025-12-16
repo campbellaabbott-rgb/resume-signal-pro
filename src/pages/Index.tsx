@@ -10,6 +10,7 @@ import { FAQ } from "@/components/FAQ";
 import { ComparisonTable } from "@/components/ComparisonTable";
 import { FreeKeywordResults } from "@/components/FreeKeywordResults";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrency } from "@/hooks/use-currency";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   cleanupExpiredResumeData, 
@@ -50,6 +51,7 @@ const Index = () => {
   const [freeKeywordResult, setFreeKeywordResult] = useState<FreeKeywordResult | null>(null);
   const [honeypot, setHoneypot] = useState<string>(""); // Honeypot field for bot detection
   const { toast } = useToast();
+  const { currency } = useCurrency();
   const [searchParams] = useSearchParams();
 
   // Cleanup expired data on mount and setup unload handler
@@ -301,7 +303,8 @@ const Index = () => {
         body: { 
           resumeData: contentToAnalyze,
           hasLinkedIn: !!linkedInContent,
-          tempSessionId: tempSessionData
+          tempSessionId: tempSessionData,
+          currency: currency.code
         },
       });
 
