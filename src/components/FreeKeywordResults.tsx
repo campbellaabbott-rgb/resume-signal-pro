@@ -1,6 +1,9 @@
-import { Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock } from "lucide-react";
+import { useState } from "react";
+import { Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface KeywordSuggestion {
   keyword: string;
@@ -22,6 +25,11 @@ export function FreeKeywordResults({
   onGetFullAnalysis,
   isLoading
 }: FreeKeywordResultsProps) {
+  const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const { toast } = useToast();
+
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-success";
     if (score >= 60) return "text-warning";
@@ -32,6 +40,50 @@ export function FreeKeywordResults({
     if (score >= 80) return "bg-success/10 border-success/20";
     if (score >= 60) return "bg-warning/10 border-warning/20";
     return "bg-destructive/10 border-destructive/20";
+  };
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email.trim()) return;
+
+    // Basic email validation
+    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase.rpc('save_free_scan_lead', {
+        p_email: email,
+        p_industry: industry,
+        p_ats_score: atsScoreEstimate
+      });
+
+      if (error) throw error;
+
+      setIsSubscribed(true);
+      toast({
+        title: "You're on the list!",
+        description: "We'll send you resume tips to help you land more interviews.",
+      });
+    } catch (error: any) {
+      console.error("Email capture error:", error);
+      toast({
+        title: "Something went wrong",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -96,6 +148,50 @@ export function FreeKeywordResults({
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Email Capture */}
+      <div className="rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 p-5 mb-5">
+        <div className="flex items-center gap-2 mb-2">
+          <Mail className="w-4 h-4 text-primary" />
+          <h4 className="font-semibold">Get More Resume Tips</h4>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Join 10,000+ job seekers getting weekly tips to beat the ATS and land interviews.
+        </p>
+        
+        {isSubscribed ? (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-success/10 border border-success/20">
+            <CheckCircle2 className="w-4 h-4 text-success" />
+            <span className="text-sm text-success font-medium">You're subscribed! Check your inbox.</span>
+          </div>
+        ) : (
+          <form onSubmit={handleEmailSubmit} className="flex gap-2">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
+              className="flex-1 h-10 px-4 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 text-sm transition-all"
+              disabled={isSubmitting}
+            />
+            <Button 
+              type="submit" 
+              variant="outline"
+              disabled={isSubmitting || !email.trim()}
+              className="h-10 px-4 border-primary/30 hover:bg-primary/10"
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "Subscribe"
+              )}
+            </Button>
+          </form>
+        )}
+        <p className="text-xs text-muted-foreground mt-2">
+          No spam. Unsubscribe anytime.
+        </p>
       </div>
 
       {/* What's Locked */}
