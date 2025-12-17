@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const RATE_LIMIT = 10; // 10 requests per hour
+const RATE_LIMIT = 30; // 30 requests per hour (increased for checkout - revenue critical)
 const RATE_WINDOW_MINUTES = 60;
 const BASE_PRICE_USD = 25;
 

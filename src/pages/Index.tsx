@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
@@ -23,6 +23,12 @@ import {
   setCheckoutRedirect,
   setupUnloadCleanup 
 } from "@/hooks/use-resume-storage";
+import {
+  saveResumeToSession,
+  getResumeFromSession,
+  clearResumeSession,
+  hasResumeInSession
+} from "@/hooks/use-session-resume";
 
 interface FreeKeywordResult {
   industry: string;
@@ -65,10 +71,24 @@ const Index = () => {
   const { currency } = useCurrency();
   const [searchParams] = useSearchParams();
 
-  // Cleanup expired data on mount and setup unload handler
+  // Cleanup expired data on mount, setup unload handler, and restore from session
   useEffect(() => {
     cleanupExpiredResumeData();
     const cleanup = setupUnloadCleanup();
+    
+    // Restore resume data from session storage (survives page refresh)
+    const sessionData = getResumeFromSession();
+    if (sessionData.resumeText && !resumeText) {
+      console.log('[Session] Restoring resume from session storage');
+      setResumeText(sessionData.resumeText);
+    }
+    if (sessionData.linkedInText && !linkedInText) {
+      setLinkedInText(sessionData.linkedInText);
+    }
+    if (sessionData.jobDescriptionText && !jobDescriptionText) {
+      setJobDescriptionText(sessionData.jobDescriptionText);
+    }
+    
     return cleanup;
   }, []);
 
@@ -89,6 +109,7 @@ const Index = () => {
     if (file.type === "text/plain") {
       const text = await file.text();
       setResumeText(text);
+      saveResumeToSession(text); // Persist to session storage
       return;
     }
 
@@ -106,6 +127,7 @@ const Index = () => {
 
         if (data?.success && data?.text) {
           setResumeText(data.text);
+          saveResumeToSession(data.text); // Persist to session storage
           toast({
             title: "PDF parsed successfully",
             description: `Extracted text from ${data.pages} page(s).`,
@@ -144,6 +166,7 @@ const Index = () => {
 
         if (data?.success && data?.text) {
           setResumeText(data.text);
+          saveResumeToSession(data.text); // Persist to session storage
           toast({
             title: "Document parsed successfully",
             description: "Text extracted from your Word document.",
@@ -275,6 +298,10 @@ const Index = () => {
     setFreeKeywordResult(null);
     if (linkedIn) setLinkedInText(linkedIn);
     if (jobDescription) setJobDescriptionText(jobDescription);
+    
+    // Save to session storage so it persists across refreshes
+    saveResumeToSession(text, linkedIn, jobDescription);
+    
     handleCheckout(text, linkedIn, jobDescription);
   };
 
@@ -324,44 +351,74 @@ const Index = () => {
       // Store only the temp session UUID locally (no PII)
       setResumeData('tempSessionId', tempSessionData);
 
-      const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { 
-          resumeData: contentToAnalyze,
-          hasLinkedIn: !!linkedInContent,
-          tempSessionId: tempSessionData,
-          currency: currency.code
-        },
-      });
+      // Retry logic for create-checkout (up to 2 retries)
+      let lastError: Error | null = null;
+      let checkoutData = null;
+      
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          console.log(`[Checkout] Attempt ${attempt}/3`);
+          const { data, error } = await supabase.functions.invoke("create-checkout", {
+            body: { 
+              resumeData: contentToAnalyze,
+              hasLinkedIn: !!linkedInContent,
+              tempSessionId: tempSessionData,
+              currency: currency.code
+            },
+          });
 
-      if (error) throw error;
-
-      if (data?.url) {
-        // Tie the temp session ID to this specific checkout session
-        if (data?.sessionId) {
-          setResumeData(`tempSessionId:${data.sessionId}`, tempSessionData);
+          if (error) throw error;
+          checkoutData = data;
+          break; // Success, exit retry loop
+        } catch (err: any) {
+          lastError = err;
+          console.warn(`[Checkout] Attempt ${attempt} failed:`, err?.message);
+          if (attempt < 3) {
+            // Wait before retry (exponential backoff: 1s, 2s)
+            await new Promise(r => setTimeout(r, attempt * 1000));
+          }
         }
+      }
 
-        // In the embedded preview, navigation to Stripe can be blocked.
-        const inIframe = window.self !== window.top;
-        if (inIframe) {
-          const win = window.open(data.url, "_blank", "noopener,noreferrer");
-          if (!win) {
+      if (!checkoutData?.url) {
+        throw lastError || new Error("No checkout URL received after retries");
+      }
+
+      // Tie the temp session ID to this specific checkout session
+      if (checkoutData?.sessionId) {
+        setResumeData(`tempSessionId:${checkoutData.sessionId}`, tempSessionData);
+      }
+
+      // Handle navigation to Stripe checkout
+      const inIframe = window.self !== window.top;
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      if (inIframe || isMobile) {
+        // Try popup first
+        const win = window.open(checkoutData.url, "_blank", "noopener,noreferrer");
+        if (!win) {
+          // Popup blocked - copy link to clipboard and show message
+          try {
+            await navigator.clipboard.writeText(checkoutData.url);
             toast({
-              title: "Popup blocked",
-              description: "Allow popups for this site to open Stripe Checkout.",
+              title: "Link copied!",
+              description: "Checkout link copied to clipboard. Paste in a new tab to complete payment.",
+            });
+          } catch {
+            // Clipboard failed - show the URL
+            toast({
+              title: "Open checkout manually",
+              description: "Please open this link in a new tab: " + checkoutData.url.slice(0, 50) + "...",
               variant: "destructive",
             });
           }
-          return;
         }
-
-        // Mark that we're redirecting to checkout (don't cleanup on unload)
-        setCheckoutRedirect(true);
-        // Navigate in the same tab
-        window.location.assign(data.url);
-      } else {
-        throw new Error("No checkout URL received");
+        return;
       }
+
+      // Desktop: navigate in same tab
+      setCheckoutRedirect(true);
+      window.location.assign(checkoutData.url);
     } catch (error: any) {
       console.error("Checkout error:", error);
       removeResumeData('tempSessionId');
