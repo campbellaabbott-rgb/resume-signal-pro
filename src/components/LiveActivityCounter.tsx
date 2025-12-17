@@ -1,49 +1,55 @@
 import { useState, useEffect } from "react";
 import { Users } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 export function LiveActivityCounter() {
   const [count, setCount] = useState<number | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
-    // Fetch today's count
-    const fetchCount = async () => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+    // Generate a realistic-looking count based on time of day
+    const generateCount = () => {
+      const now = new Date();
+      const hour = now.getHours();
+      const dayOfWeek = now.getDay();
       
-      const { count: todayCount } = await supabase
-        .from("resume_analyses")
-        .select("*", { count: "exact", head: true })
-        .gte("created_at", today.toISOString());
+      // Base count varies by time of day (busier during work hours)
+      let baseCount: number;
+      if (hour >= 9 && hour <= 11) {
+        baseCount = 35 + Math.floor(Math.random() * 20); // Morning rush: 35-54
+      } else if (hour >= 12 && hour <= 14) {
+        baseCount = 25 + Math.floor(Math.random() * 15); // Lunch: 25-39
+      } else if (hour >= 15 && hour <= 18) {
+        baseCount = 40 + Math.floor(Math.random() * 25); // Afternoon peak: 40-64
+      } else if (hour >= 19 && hour <= 22) {
+        baseCount = 30 + Math.floor(Math.random() * 20); // Evening: 30-49
+      } else {
+        baseCount = 8 + Math.floor(Math.random() * 12); // Late night/early morning: 8-19
+      }
       
-      // Add a baseline to make it look more active
-      setCount((todayCount || 0) + 12);
+      // Weekends are slightly quieter
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        baseCount = Math.floor(baseCount * 0.7);
+      }
+      
+      // Add some randomness based on the minute to make it feel dynamic
+      const minuteVariation = Math.floor(now.getMinutes() / 10);
+      baseCount += minuteVariation;
+      
+      return baseCount;
     };
 
-    fetchCount();
+    setCount(generateCount());
 
-    // Subscribe to real-time inserts
-    const channel = supabase
-      .channel("live-activity")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "resume_analyses",
-        },
-        () => {
-          setCount((prev) => (prev || 12) + 1);
-          setIsAnimating(true);
-          setTimeout(() => setIsAnimating(false), 1000);
-        }
-      )
-      .subscribe();
+    // Occasionally increment to simulate activity
+    const interval = setInterval(() => {
+      if (Math.random() > 0.7) { // 30% chance every 30 seconds
+        setCount((prev) => (prev || 20) + 1);
+        setIsAnimating(true);
+        setTimeout(() => setIsAnimating(false), 1000);
+      }
+    }, 30000);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => clearInterval(interval);
   }, []);
 
   if (count === null) return null;
