@@ -1,9 +1,85 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Target, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+
+const ANALYSIS_STEPS = [
+  "Parsing resume content...",
+  "Analyzing ATS compatibility...",
+  "Evaluating formatting...",
+  "Scanning keywords...",
+  "Detecting industry...",
+  "Calculating metrics...",
+  "Generating insights...",
+  "Finalizing report..."
+];
+
+const ESTIMATED_TIME_SECONDS = 90; // 1.5 minutes
+
+function FreeScanProgress() {
+  const [progress, setProgress] = useState(0);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    const startTime = Date.now();
+    
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setElapsedSeconds(elapsed);
+      
+      // Progress increases faster at first, then slows down (asymptotic approach to 95%)
+      const newProgress = Math.min(95, (1 - Math.exp(-elapsed / 40)) * 100);
+      setProgress(newProgress);
+      
+      // Cycle through steps based on progress
+      const newStepIndex = Math.min(
+        ANALYSIS_STEPS.length - 1,
+        Math.floor((newProgress / 100) * ANALYSIS_STEPS.length)
+      );
+      setStepIndex(newStepIndex);
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const remainingSeconds = Math.max(0, ESTIMATED_TIME_SECONDS - elapsedSeconds);
+  const remainingMinutes = Math.floor(remainingSeconds / 60);
+  const remainingSecondsDisplay = remainingSeconds % 60;
+
+  return (
+    <div className="min-w-[320px] p-6 rounded-2xl border border-success/30 bg-success/5 space-y-4">
+      <div className="flex items-center justify-center gap-3">
+        <Loader2 className="w-5 h-5 text-success animate-spin" />
+        <span className="text-sm font-medium text-foreground">Analyzing your resume...</span>
+      </div>
+      
+      {/* Progress bar */}
+      <div className="space-y-2">
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-success to-success/70 rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>{Math.round(progress)}% complete</span>
+          <span>
+            ~{remainingMinutes > 0 ? `${remainingMinutes}m ` : ''}{remainingSecondsDisplay}s remaining
+          </span>
+        </div>
+      </div>
+
+      {/* Current step */}
+      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+        <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+        <span>{ANALYSIS_STEPS[stepIndex]}</span>
+      </div>
+    </div>
+  );
+}
 
 interface ResumeUploaderProps {
   onFileSelect: (file: File) => void;
@@ -459,44 +535,41 @@ export function ResumeUploader({
           <div className="text-center space-y-5">
             {onFreeScan && (
               <div className="space-y-3">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  disabled={isFreeScanLoading || !canProceed}
-                  onClick={onFreeScan}
-                  className="min-w-[320px] h-14 text-base gap-2 border border-success/50 bg-success/10 hover:bg-success/20 hover:border-success/70 text-success font-medium shadow-[0_0_12px_rgba(34,197,94,0.25)] hover:shadow-[0_0_18px_rgba(34,197,94,0.4)] transition-all touch-manipulation disabled:shadow-[0_0_12px_rgba(34,197,94,0.25)] disabled:border-success/40 disabled:text-success/70 disabled:bg-success/5"
-                >
-                  {isFreeScanLoading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span className="text-foreground">{t('uploader.actions.processing')}</span>
-                    </>
-                  ) : (
-                    <>
+                {isFreeScanLoading ? (
+                  <FreeScanProgress />
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      disabled={!canProceed}
+                      onClick={onFreeScan}
+                      className="min-w-[320px] h-14 text-base gap-2 border border-success/50 bg-success/10 hover:bg-success/20 hover:border-success/70 text-success font-medium shadow-[0_0_12px_rgba(34,197,94,0.25)] hover:shadow-[0_0_18px_rgba(34,197,94,0.4)] transition-all touch-manipulation disabled:shadow-[0_0_12px_rgba(34,197,94,0.25)] disabled:border-success/40 disabled:text-success/70 disabled:bg-success/5"
+                    >
                       <Zap className="w-5 h-5 text-success fill-success/30" />
                       <span>{t('uploader.actions.freeScan')}</span>
                       <span className="ml-1 px-2.5 py-1 rounded-full bg-success text-success-foreground text-xs font-bold uppercase tracking-wide">17 Insights Free</span>
-                    </>
-                  )}
-                </Button>
-                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground max-w-lg mx-auto">
-                  <span className="flex items-center gap-1"><span className="text-success">✓</span> ATS Score</span>
-                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Format</span>
-                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Metrics %</span>
-                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Verbs</span>
-                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Pages</span>
-                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Words</span>
-                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Sections</span>
-                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Contact</span>
-                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Level</span>
-                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Strength</span>
-                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Red Flags</span>
-                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Keywords</span>
-                  <span className="flex items-center gap-1"><span className="text-success">✓</span> Industry</span>
-                </div>
-                <p className="text-xs text-muted-foreground/70">
-                  4 free scans per day · May take 1-2 minutes
-                </p>
+                    </Button>
+                    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground max-w-lg mx-auto">
+                      <span className="flex items-center gap-1"><span className="text-success">✓</span> ATS Score</span>
+                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Format</span>
+                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Metrics %</span>
+                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Verbs</span>
+                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Pages</span>
+                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Words</span>
+                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Sections</span>
+                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Contact</span>
+                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Level</span>
+                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Strength</span>
+                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Red Flags</span>
+                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Keywords</span>
+                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Industry</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground/70">
+                      4 free scans per day · May take 1-2 minutes
+                    </p>
+                  </>
+                )}
               </div>
             )}
 
