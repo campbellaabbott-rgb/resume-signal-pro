@@ -348,12 +348,31 @@ const Index = () => {
       } else {
         throw new Error("No checkout URL received");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Checkout error:", error);
       removeResumeData('tempSessionId');
+      
+      // Parse specific error messages from the backend
+      let errorTitle = "Checkout failed";
+      let errorDescription = "There was an error creating your checkout session. Please try again.";
+      
+      const errorMessage = error?.message?.toLowerCase() || '';
+      const errorContext = error?.context?.body || '';
+      
+      if (errorMessage.includes('region') || errorContext.includes('region')) {
+        errorTitle = "Service unavailable";
+        errorDescription = "Our checkout service is not available in your region.";
+      } else if (errorMessage.includes('rate') || errorMessage.includes('too many') || errorContext.includes('Too many')) {
+        errorTitle = "Too many attempts";
+        errorDescription = "Please wait a few minutes before trying again.";
+      } else if (errorMessage.includes('unavailable') || errorContext.includes('unavailable')) {
+        errorTitle = "Service temporarily unavailable";
+        errorDescription = "Our payment service is temporarily down. Please try again in a few minutes.";
+      }
+      
       toast({
-        title: "Checkout failed",
-        description: "There was an error creating your checkout session. Please try again.",
+        title: errorTitle,
+        description: errorDescription,
         variant: "destructive",
       });
     } finally {

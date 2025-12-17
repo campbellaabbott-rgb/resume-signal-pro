@@ -196,10 +196,27 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    console.error("[CREATE-CHECKOUT] Error:", error);
-    return new Response(JSON.stringify({ error: "Failed to create checkout session. Please try again." }), {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("[CREATE-CHECKOUT] Error:", errorMessage, error);
+    
+    // Provide more specific error messages
+    let userMessage = "Failed to create checkout session. Please try again.";
+    let statusCode = 500;
+    
+    if (errorMessage.includes('Invalid API Key') || errorMessage.includes('api_key')) {
+      userMessage = "Payment service configuration error. Please contact support.";
+      statusCode = 503;
+    } else if (errorMessage.includes('currency')) {
+      userMessage = "Invalid currency. Please refresh and try again.";
+      statusCode = 400;
+    } else if (errorMessage.includes('amount')) {
+      userMessage = "Invalid payment amount. Please refresh and try again.";
+      statusCode = 400;
+    }
+    
+    return new Response(JSON.stringify({ error: userMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status: statusCode,
     });
   }
 });
