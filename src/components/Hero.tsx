@@ -42,6 +42,11 @@ export function Hero() {
 
   const pricing = getPricingDisplay();
 
+  const handleFreeScanClick = () => {
+    freeScanCta.trackConversion({ source: 'hero_free_scan' });
+    document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const features = [
     { icon: FileText, labelKey: "hero.features.atsBullets", descKey: "hero.features.atsBulletsDesc" },
     { icon: Zap, labelKey: "hero.features.actionVerbs", descKey: "hero.features.actionVerbsDesc" },
@@ -82,7 +87,7 @@ export function Hero() {
           {/* Primary CTA - Big and prominent */}
           <div className="mb-6 sm:mb-8 animate-fade-in">
             <button
-              onClick={() => document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={handleFreeScanClick}
               className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-5 sm:py-6 rounded-2xl bg-gradient-to-r from-success via-success to-emerald-500 text-success-foreground text-lg sm:text-xl font-bold shadow-xl shadow-success/30 hover:shadow-2xl hover:shadow-success/40 active:scale-[0.98] transition-all duration-300 min-h-[64px] touch-manipulation animate-pulse-subtle"
             >
               <Sparkles className="w-6 h-6 sm:w-7 sm:h-7" />
