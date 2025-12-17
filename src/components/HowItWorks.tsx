@@ -97,10 +97,18 @@ export function HowItWorks() {
             {analysisPoints.map((point, index) => (
               <div 
                 key={index}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/50 border border-border/50 hover:border-primary/30 transition-colors group"
+                className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-background/50 border border-border/50 hover:border-primary/30 transition-all duration-300 group animate-fade-in hover:scale-105 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/5"
+                style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'backwards' }}
               >
-                <point.icon className={cn("w-4 h-4", point.color, "group-hover:scale-110 transition-transform")} />
-                <span className="text-[10px] text-center text-muted-foreground leading-tight">
+                <div className="relative">
+                  <point.icon className={cn(
+                    "w-4 h-4 transition-all duration-300",
+                    point.color,
+                    "group-hover:scale-125 group-hover:rotate-6"
+                  )} />
+                  <div className="absolute inset-0 rounded-full bg-current opacity-0 group-hover:opacity-20 blur-md transition-opacity duration-300" />
+                </div>
+                <span className="text-[10px] text-center text-muted-foreground leading-tight group-hover:text-foreground transition-colors">
                   {point.label}
                 </span>
               </div>
