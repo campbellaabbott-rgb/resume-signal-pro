@@ -2,6 +2,18 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 
+// Performance monitoring thresholds (ms)
+const SLOW_REQUEST_THRESHOLD = 30000; // 30s for AI analysis is expected to be slow
+const VERY_SLOW_THRESHOLD = 60000;
+
+// Performance tracking helper
+const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>) => {
+  const duration = Date.now() - startTime;
+  const level = duration > VERY_SLOW_THRESHOLD ? 'CRITICAL' : duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
+  console.log(`[PERF] ${operation} | ${duration}ms | ${level} | success=${success}${details ? ` | ${JSON.stringify(details)}` : ''}`);
+  return duration;
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -365,9 +377,13 @@ const getAnalysisTools = (hasLinkedIn: boolean, hasJobDescription: boolean) => [
 }];
 
 serve(async (req) => {
+  const requestStartTime = Date.now();
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const clientIp = getClientIp(req);
 
   try {
     const { resumeText, linkedInText, jobDescriptionText, sessionId } = await req.json();
@@ -867,6 +883,7 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
       );
     }
 
+    trackPerformance(requestStartTime, 'analyze-resume', true, { hasLinkedIn: !!linkedInText, hasJobDesc: !!jobDescriptionText });
     console.log("[ANALYZE-RESUME] Analysis saved successfully with enhanced metrics");
 
     return new Response(
@@ -875,6 +892,7 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     );
 
   } catch (error) {
+    trackPerformance(requestStartTime, 'analyze-resume', false, { error: error instanceof Error ? error.message : 'Unknown' });
     console.error("[ANALYZE-RESUME] Error:", error);
     return new Response(
       JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),

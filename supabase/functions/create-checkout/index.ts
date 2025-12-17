@@ -2,6 +2,18 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Performance monitoring thresholds (ms)
+const SLOW_REQUEST_THRESHOLD = 5000; // 5s for checkout
+const VERY_SLOW_THRESHOLD = 10000;
+
+// Performance tracking helper
+const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>) => {
+  const duration = Date.now() - startTime;
+  const level = duration > VERY_SLOW_THRESHOLD ? 'CRITICAL' : duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
+  console.log(`[PERF] ${operation} | ${duration}ms | ${level} | success=${success}${details ? ` | ${JSON.stringify(details)}` : ''}`);
+  return duration;
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -144,6 +156,8 @@ async function createStripeSessionWithRetry(
 }
 
 serve(async (req) => {
+  const requestStartTime = Date.now();
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -290,6 +304,7 @@ serve(async (req) => {
     // Create checkout session with retry logic
     const session = await createStripeSessionWithRetry(stripe, sessionParams, idempotencyKey);
 
+    trackPerformance(requestStartTime, 'create-checkout', true, { currency, amount });
     logStep("Checkout session created", { sessionId: session.id, currency, amount });
 
     return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {
@@ -298,6 +313,7 @@ serve(async (req) => {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    trackPerformance(requestStartTime, 'create-checkout', false, { error: errorMessage });
     console.error("[CREATE-CHECKOUT] Error:", errorMessage, error);
     
     // Provide more specific error messages

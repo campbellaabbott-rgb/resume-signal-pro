@@ -1,6 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Performance monitoring
+const SLOW_REQUEST_THRESHOLD = 2000;
+const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>) => {
+  const duration = Date.now() - startTime;
+  const level = duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
+  console.log(`[PERF] ${operation} | ${duration}ms | ${level} | success=${success}${details ? ` | ${JSON.stringify(details)}` : ''}`);
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -77,6 +85,8 @@ const isDisposableEmail = (email: string): boolean => {
 };
 
 serve(async (req) => {
+  const requestStartTime = Date.now();
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -91,10 +101,10 @@ serve(async (req) => {
     );
   }
 
+  const clientIp = getClientIp(req);
+
   try {
     const { email, industry, atsScore, honeypot } = await req.json();
-
-    const clientIp = getClientIp(req);
     console.log(`[SAVE-LEAD] Request from IP: ${clientIp}`);
 
     // Honeypot check - if filled, it's a bot
@@ -172,6 +182,7 @@ serve(async (req) => {
       );
     }
 
+    trackPerformance(requestStartTime, 'save-lead', true);
     console.log(`[SAVE-LEAD] Lead saved successfully for IP: ${clientIp}`);
 
     return new Response(
@@ -180,6 +191,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
+    trackPerformance(requestStartTime, 'save-lead', false, { error: error instanceof Error ? error.message : 'Unknown' });
     console.error("[SAVE-LEAD] Error:", error);
     return new Response(
       JSON.stringify({ error: 'Something went wrong. Please try again.' }),

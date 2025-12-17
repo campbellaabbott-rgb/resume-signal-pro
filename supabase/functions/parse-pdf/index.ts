@@ -2,6 +2,14 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolvePDFJS } from "https://esm.sh/pdfjs-serverless@0.4.1?target=deno";
 
+// Performance monitoring
+const SLOW_REQUEST_THRESHOLD = 3000;
+const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>) => {
+  const duration = Date.now() - startTime;
+  const level = duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
+  console.log(`[PERF] ${operation} | ${duration}ms | ${level} | success=${success}${details ? ` | ${JSON.stringify(details)}` : ''}`);
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -14,6 +22,8 @@ const RATE_WINDOW_MINUTES = 60;
 type PdfTextItem = { str?: string };
 
 serve(async (req) => {
+  const requestStartTime = Date.now();
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -123,6 +133,7 @@ serve(async (req) => {
     }
 
     const text = fullText.trim();
+    trackPerformance(requestStartTime, 'parse-pdf', true, { pages: doc.numPages, textLength: text.length });
     console.log("[PARSE-PDF] PDF parsed successfully. Text length:", text.length);
 
     return new Response(
@@ -134,6 +145,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: unknown) {
+    trackPerformance(requestStartTime, 'parse-pdf', false, { error: error instanceof Error ? error.message : 'Unknown' });
     console.error("[PARSE-PDF] Error:", error);
     
     return new Response(
