@@ -22,7 +22,7 @@ export function Hero() {
 
   return (
     <section 
-      className="relative py-24 md:py-36 overflow-hidden" 
+      className="relative py-16 sm:py-24 md:py-36 overflow-hidden" 
       aria-labelledby="hero-heading"
     >
       {/* Background effects */}
@@ -48,9 +48,9 @@ export function Hero() {
           <div className="mb-8 animate-fade-in">
             <button
               onClick={() => document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' })}
-              className="group relative inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-success to-success/80 text-success-foreground text-lg font-bold shadow-lg shadow-success/25 hover:shadow-xl hover:shadow-success/30 hover:scale-105 transition-all duration-300"
+              className="group relative inline-flex items-center gap-2 sm:gap-3 px-6 sm:px-8 py-4 sm:py-5 rounded-2xl bg-gradient-to-r from-success to-success/80 text-success-foreground text-base sm:text-lg font-bold shadow-lg shadow-success/25 hover:shadow-xl hover:shadow-success/30 active:scale-[0.98] transition-all duration-300 min-h-[52px] touch-manipulation"
             >
-              <Sparkles className="w-6 h-6 animate-pulse" />
+              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
               <span>{t('hero.freeScan')} - It's Free!</span>
               <div className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold animate-bounce">
                 FREE
@@ -78,35 +78,35 @@ export function Hero() {
           {/* Heading */}
           <h1 
             id="hero-heading"
-            className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 animate-fade-in" 
+            className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-4 sm:mb-6 animate-fade-in leading-tight" 
             style={{ animationDelay: "0.1s" }}
           >
             {t('hero.heading')}{" "}
-            <span className="text-gradient-primary block md:inline">{t('hero.headingHighlight')}</span>
+            <span className="text-gradient-primary block sm:inline">{t('hero.headingHighlight')}</span>
           </h1>
           
           {/* Subheading */}
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-12 animate-fade-in leading-relaxed" style={{ animationDelay: "0.2s" }}>
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 sm:mb-12 animate-fade-in leading-relaxed px-2" style={{ animationDelay: "0.2s" }}>
             {t('hero.subheading')}
           </p>
           
           {/* Feature cards */}
           <ul 
-            className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-12 animate-fade-in list-none p-0" 
+            className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 mb-8 sm:mb-12 animate-fade-in list-none p-0" 
             style={{ animationDelay: "0.3s" }}
             aria-label="Key features"
           >
             {features.map((feature) => (
               <li
                 key={feature.labelKey}
-                className="group relative p-4 rounded-xl bg-card/50 border border-border/50 backdrop-blur-sm hover:border-primary/30 hover:bg-card/80 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary"
+                className="group relative p-3 sm:p-4 rounded-xl bg-card/50 border border-border/50 backdrop-blur-sm hover:border-primary/30 hover:bg-card/80 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary active:scale-[0.98] touch-manipulation"
               >
-                <div className="flex flex-col items-center text-center gap-2">
-                  <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors" aria-hidden="true">
-                    <feature.icon className="w-5 h-5" />
+                <div className="flex flex-col items-center text-center gap-1.5 sm:gap-2">
+                  <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors" aria-hidden="true">
+                    <feature.icon className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
-                  <span className="text-sm font-medium text-foreground">{t(feature.labelKey)}</span>
-                  <span className="text-xs text-muted-foreground hidden md:block">{t(feature.descKey)}</span>
+                  <span className="text-xs sm:text-sm font-medium text-foreground leading-tight">{t(feature.labelKey)}</span>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground hidden md:block">{t(feature.descKey)}</span>
                 </div>
               </li>
             ))}
@@ -133,17 +133,17 @@ export function Hero() {
             </div>
             
             {/* CTA Buttons */}
-            <div className="flex flex-wrap justify-center gap-3">
+            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
               <button
                 onClick={() => document.getElementById('preview')?.scrollIntoView({ behavior: 'smooth' })}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary/10 border border-primary/30 text-primary font-medium hover:bg-primary/20 hover:border-primary/50 transition-all duration-300 hover:scale-105 group"
+                className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 sm:py-3.5 rounded-full bg-primary/10 border border-primary/30 text-primary font-medium hover:bg-primary/20 hover:border-primary/50 active:scale-[0.98] transition-all duration-300 min-h-[48px] touch-manipulation"
               >
                 <Eye className="w-5 h-5" />
                 <span>{t('hero.seeSample')}</span>
               </button>
               <button
                 onClick={() => document.getElementById('comparison')?.scrollIntoView({ behavior: 'smooth' })}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-accent/20 border border-accent/40 text-accent-foreground font-medium hover:bg-accent/30 hover:border-accent/60 transition-all duration-300 hover:scale-105"
+                className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 sm:py-3.5 rounded-full bg-accent/20 border border-accent/40 text-accent-foreground font-medium hover:bg-accent/30 hover:border-accent/60 active:scale-[0.98] transition-all duration-300 min-h-[48px] touch-manipulation"
               >
                 <Zap className="w-5 h-5 text-yellow-400" />
                 <span>{t('hero.whyBetter')}</span>
@@ -151,11 +151,11 @@ export function Hero() {
             </div>
             
             {/* Trust badges */}
-            <ul className="flex flex-wrap justify-center gap-6 pt-2 list-none p-0" aria-label="Trust indicators">
+            <ul className="flex flex-wrap justify-center gap-4 sm:gap-6 pt-2 list-none p-0" aria-label="Trust indicators">
               {trustBadges.map((badge) => (
-                <li key={badge.labelKey} className="flex items-center gap-2 text-muted-foreground">
-                  <badge.icon className="w-4 h-4 text-primary/70" aria-hidden="true" />
-                  <span className="text-sm">{t(badge.labelKey)}</span>
+                <li key={badge.labelKey} className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground">
+                  <badge.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary/70" aria-hidden="true" />
+                  <span className="text-xs sm:text-sm">{t(badge.labelKey)}</span>
                 </li>
               ))}
             </ul>

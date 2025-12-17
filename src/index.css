@@ -123,12 +123,40 @@
     @apply border-border;
   }
 
+  html {
+    /* Improve scroll performance on mobile */
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    /* Mobile performance optimizations */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* Prevent pull-to-refresh on mobile when not needed */
+    overscroll-behavior-y: contain;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold tracking-tight;
+  }
+
+  /* Mobile touch optimizations */
+  button, a, [role="button"], input, textarea, select {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Minimum tap target sizes for accessibility */
+  button, [role="button"], a {
+    min-height: 44px;
+  }
+
+  /* Inline links don't need 44px height */
+  p a, span a, li a {
+    min-height: auto;
   }
 }
 
@@ -317,4 +345,84 @@
 
 .animate-bounce-slow {
   animation: bounce-slow 2s ease-in-out infinite;
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 767px) {
+  /* Larger touch targets on mobile */
+  .mobile-touch-target {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  /* Better mobile spacing */
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* Optimize mobile typography */
+  h1 {
+    font-size: clamp(1.75rem, 6vw, 2.5rem);
+    line-height: 1.2;
+  }
+
+  h2 {
+    font-size: clamp(1.5rem, 5vw, 2rem);
+    line-height: 1.25;
+  }
+
+  /* Improve mobile scroll */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .overflow-x-auto::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Safe area insets for notched devices */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+/* Touch feedback for interactive elements */
+@media (hover: none) and (pointer: coarse) {
+  button:active,
+  [role="button"]:active,
+  a:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+
+  /* Larger click areas on touch devices */
+  .touch-expand::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    bottom: -8px;
+    left: -8px;
+  }
+}
+
+/* Optimize animations for mobile performance */
+@media (max-width: 767px) {
+  .animate-fade-in,
+  .animate-scale-in {
+    animation-duration: 0.2s;
+  }
+  
+  /* Reduce complex blur effects on mobile for performance */
+  .blur-\\[150px\\],
+  .blur-\\[100px\\],
+  .blur-\\[80px\\] {
+    filter: blur(50px);
+  }
 }
