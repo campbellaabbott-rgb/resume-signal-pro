@@ -175,6 +175,8 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_analyses: { Args: never; Returns: number }
+      cleanup_expired_stripe_sessions: { Args: never; Returns: number }
+      cleanup_old_rate_limits: { Args: never; Returns: number }
       delete_analysis_by_share_id: {
         Args: { p_share_id: string }
         Returns: boolean
