@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
@@ -13,6 +13,7 @@ import { StickyBottomCTA } from "@/components/StickyBottomCTA";
 import { FinalCTA } from "@/components/FinalCTA";
 import { ExitIntentPopup } from "@/components/ExitIntentPopup";
 import { HowItWorks } from "@/components/HowItWorks";
+import { CheckoutOverlay } from "@/components/CheckoutOverlay";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
 import { supabase } from "@/integrations/supabase/client";
@@ -61,15 +62,20 @@ interface FreeKeywordResult {
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFreeScanLoading, setIsFreeScanLoading] = useState(false);
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [resumeText, setResumeText] = useState<string>("");
   const [linkedInText, setLinkedInText] = useState<string>("");
   const [jobDescriptionText, setJobDescriptionText] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [freeKeywordResult, setFreeKeywordResult] = useState<FreeKeywordResult | null>(null);
   const [honeypot, setHoneypot] = useState<string>(""); // Honeypot field for bot detection
+  const [preStoredSessionId, setPreStoredSessionId] = useState<string | null>(null);
   const { toast } = useToast();
   const { currency } = useCurrency();
   const [searchParams] = useSearchParams();
+  
+  // Track if we're pre-storing to avoid duplicate calls
+  const isPreStoring = useRef(false);
 
   // Cleanup expired data on mount, setup unload handler, and restore from session
   useEffect(() => {
@@ -92,6 +98,30 @@ const Index = () => {
     return cleanup;
   }, []);
 
+  // Pre-store resume server-side when text changes (reduces checkout friction)
+  const preStoreResume = useCallback(async (text: string, linkedIn?: string, jobDesc?: string) => {
+    if (isPreStoring.current || !text || text.length < 50) return;
+    
+    isPreStoring.current = true;
+    try {
+      console.log('[PreStore] Storing resume server-side');
+      const { data: sessionId, error } = await supabase.rpc('store_temp_resume', {
+        p_resume: text,
+        p_linkedin: linkedIn || null,
+        p_job_description: jobDesc || null
+      });
+      
+      if (!error && sessionId) {
+        setPreStoredSessionId(sessionId);
+        console.log('[PreStore] Resume pre-stored with session:', sessionId);
+      }
+    } catch (err) {
+      console.warn('[PreStore] Failed to pre-store (will retry at checkout):', err);
+    } finally {
+      isPreStoring.current = false;
+    }
+  }, []);
+
   useEffect(() => {
     if (searchParams.get("canceled") === "true") {
       toast({
@@ -110,6 +140,7 @@ const Index = () => {
       const text = await file.text();
       setResumeText(text);
       saveResumeToSession(text); // Persist to session storage
+      preStoreResume(text); // Pre-store server-side for faster checkout
       return;
     }
 
@@ -128,6 +159,7 @@ const Index = () => {
         if (data?.success && data?.text) {
           setResumeText(data.text);
           saveResumeToSession(data.text); // Persist to session storage
+          preStoreResume(data.text); // Pre-store server-side for faster checkout
           toast({
             title: "PDF parsed successfully",
             description: `Extracted text from ${data.pages} page(s).`,
@@ -167,6 +199,7 @@ const Index = () => {
         if (data?.success && data?.text) {
           setResumeText(data.text);
           saveResumeToSession(data.text); // Persist to session storage
+          preStoreResume(data.text); // Pre-store server-side for faster checkout
           toast({
             title: "Document parsed successfully",
             description: "Text extracted from your Word document.",
@@ -325,25 +358,37 @@ const Index = () => {
       return;
     }
 
+    // Show full-screen loading overlay
+    setIsCheckoutLoading(true);
     setIsLoading(true);
+    
     console.log("[Checkout] Starting checkout flow", { 
       hasContent: !!contentToAnalyze, 
       contentLength: contentToAnalyze?.length,
       hasLinkedIn: !!linkedInContent,
+      hasPreStoredSession: !!preStoredSessionId,
       currency: currency.code
     });
 
     try {
-      // Store resume data server-side (returns UUID, not PII in browser)
-      const { data: tempSessionData, error: tempError } = await supabase.rpc('store_temp_resume', {
-        p_resume: contentToAnalyze,
-        p_linkedin: linkedInContent || null,
-        p_job_description: jobDescriptionContent || null
-      });
+      // Use pre-stored session ID if available, otherwise store now
+      let tempSessionData = preStoredSessionId;
+      
+      if (!tempSessionData) {
+        console.log("[Checkout] No pre-stored session, storing now");
+        const { data, error: tempError } = await supabase.rpc('store_temp_resume', {
+          p_resume: contentToAnalyze,
+          p_linkedin: linkedInContent || null,
+          p_job_description: jobDescriptionContent || null
+        });
 
-      if (tempError) {
-        console.error("[Checkout] Failed to store resume data:", tempError);
-        throw new Error("Failed to prepare resume data. Please try uploading your resume again.");
+        if (tempError) {
+          console.error("[Checkout] Failed to store resume data:", tempError);
+          throw new Error("Failed to prepare resume data. Please try uploading your resume again.");
+        }
+        tempSessionData = data;
+      } else {
+        console.log("[Checkout] Using pre-stored session:", tempSessionData);
       }
       
       console.log("[Checkout] Resume stored, calling create-checkout");
@@ -351,7 +396,7 @@ const Index = () => {
       // Store only the temp session UUID locally (no PII)
       setResumeData('tempSessionId', tempSessionData);
 
-      // Retry logic for create-checkout (up to 2 retries)
+      // Retry logic for create-checkout (up to 3 attempts)
       let lastError: Error | null = null;
       let checkoutData = null;
       
@@ -390,14 +435,21 @@ const Index = () => {
       }
 
       // Handle navigation to Stripe checkout
-      const inIframe = window.self !== window.top;
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       
-      if (inIframe || isMobile) {
-        // Try popup first
+      if (isMobile) {
+        // Mobile: Direct redirect (more reliable than popup)
+        console.log("[Checkout] Mobile detected, using direct redirect");
+        setCheckoutRedirect(true);
+        window.location.href = checkoutData.url;
+        return;
+      }
+      
+      // Desktop in iframe: try popup, fallback to clipboard
+      const inIframe = window.self !== window.top;
+      if (inIframe) {
         const win = window.open(checkoutData.url, "_blank", "noopener,noreferrer");
         if (!win) {
-          // Popup blocked - copy link to clipboard and show message
           try {
             await navigator.clipboard.writeText(checkoutData.url);
             toast({
@@ -405,7 +457,6 @@ const Index = () => {
               description: "Checkout link copied to clipboard. Paste in a new tab to complete payment.",
             });
           } catch {
-            // Clipboard failed - show the URL
             toast({
               title: "Open checkout manually",
               description: "Please open this link in a new tab: " + checkoutData.url.slice(0, 50) + "...",
@@ -413,6 +464,7 @@ const Index = () => {
             });
           }
         }
+        setIsCheckoutLoading(false);
         return;
       }
 
@@ -422,6 +474,7 @@ const Index = () => {
     } catch (error: any) {
       console.error("Checkout error:", error);
       removeResumeData('tempSessionId');
+      setPreStoredSessionId(null); // Clear pre-stored session on error
       
       // Parse specific error messages from the backend
       let errorTitle = "Checkout failed";
@@ -448,13 +501,15 @@ const Index = () => {
       });
     } finally {
       setIsLoading(false);
+      setIsCheckoutLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-background">
+      <CheckoutOverlay isVisible={isCheckoutLoading} />
       <Header />
-      
+
       <main id="main-content" className="pt-16" role="main">
         <Hero />
         
