@@ -6,9 +6,9 @@ export function Footer() {
   const { t } = useTranslation();
   
   return (
-    <footer className="py-12 border-t border-border" role="contentinfo">
+    <footer className="py-10 sm:py-12 border-t border-border safe-bottom" role="contentinfo">
       <div className="container">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground px-2 sm:px-0">
           <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
           <nav className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center" aria-label="Footer navigation">
             <Link 
