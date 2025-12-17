@@ -347,6 +347,19 @@
   animation: bounce-slow 2s ease-in-out infinite;
 }
 
+@keyframes pulse-subtle {
+  0%, 100% {
+    box-shadow: 0 10px 25px -5px rgba(34, 197, 94, 0.3);
+  }
+  50% {
+    box-shadow: 0 10px 40px -5px rgba(34, 197, 94, 0.5);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
 /* Mobile-specific optimizations */
 @media (max-width: 767px) {
   /* Larger touch targets on mobile */

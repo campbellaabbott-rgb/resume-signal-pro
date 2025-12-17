@@ -288,58 +288,56 @@ export function ResumeUploader({
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 className={cn(
-                  "relative rounded-2xl bg-card/50 backdrop-blur-sm p-8 text-center cursor-pointer border-2 border-dashed transition-all duration-300",
+                  "relative rounded-2xl bg-card/50 backdrop-blur-sm p-6 sm:p-8 text-center cursor-pointer border-2 border-dashed transition-all duration-300",
                   dragOver 
                     ? "border-primary bg-primary/5 scale-[1.01]" 
-                    : "border-border/50 hover:border-primary/40 hover:bg-card/80",
+                    : "border-border/50 hover:border-primary/40 hover:bg-card/80 active:bg-card/90",
                   selectedFile && "border-success/50 bg-success/5"
                 )}
               >
                 {selectedFile ? (
                   <div className="space-y-3 animate-scale-in">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-success/10">
-                      <CheckCircle2 className="w-6 h-6 text-success" />
+                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-success/10">
+                      <CheckCircle2 className="w-7 h-7 text-success" />
                     </div>
-                    <div className="inline-flex items-center gap-3 px-4 py-2 rounded-xl bg-card border border-border">
-                      <FileText className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-medium max-w-[200px] truncate">{selectedFile.name}</span>
+                    <p className="text-base font-medium text-success">Resume uploaded!</p>
+                    <div className="inline-flex items-center gap-3 px-4 py-3 rounded-xl bg-card border border-border max-w-full">
+                      <FileText className="w-5 h-5 text-primary shrink-0" />
+                      <span className="text-sm font-medium truncate">{selectedFile.name}</span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           clearFile();
                         }}
-                        className="p-1 hover:bg-muted rounded-lg transition-colors"
+                        className="p-2 hover:bg-muted rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
+                        aria-label="Remove file"
                       >
-                        <X className="w-4 h-4 text-muted-foreground" />
+                        <X className="w-5 h-5 text-muted-foreground" />
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <>
-                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 mb-4">
-                      <Upload className="w-7 h-7 text-primary" />
+                  <label className="block cursor-pointer">
+                    <input
+                      type="file"
+                      accept=".pdf,.txt,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <div className="inline-flex items-center justify-center w-16 h-16 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 mb-4">
+                      <Upload className="w-8 h-8 sm:w-7 sm:h-7 text-primary" />
                     </div>
-                    <p className="text-lg font-semibold mb-1">
-                      {t('uploader.resume.dropHere')}
+                    <p className="text-lg sm:text-xl font-semibold mb-2">
+                      Tap to upload resume
                     </p>
                     <p className="text-sm text-muted-foreground mb-4">
                       {t('uploader.resume.fileTypes')}
                     </p>
-                    <label>
-                      <input
-                        type="file"
-                        accept=".pdf,.txt,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        onChange={handleFileChange}
-                        className="hidden"
-                      />
-                      <Button variant="outline" size="sm" className="gap-2" asChild>
-                        <span>
-                          <FileText className="w-4 h-4" />
-                          {t('uploader.resume.browse')}
-                        </span>
-                      </Button>
-                    </label>
-                  </>
+                    <div className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-primary/10 border border-primary/30 text-primary font-medium min-h-[48px] touch-manipulation active:bg-primary/20 transition-colors">
+                      <FileText className="w-5 h-5" />
+                      <span>Choose File</span>
+                    </div>
+                  </label>
                 )}
               </div>
             ) : (
@@ -534,7 +532,7 @@ export function ResumeUploader({
           {/* Submit Buttons */}
           <div className="text-center space-y-5">
             {onFreeScan && (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {isFreeScanLoading ? (
                   <FreeScanProgress />
                 ) : (
@@ -544,29 +542,22 @@ export function ResumeUploader({
                       size="lg"
                       disabled={!canProceed}
                       onClick={onFreeScan}
-                      className="min-w-[320px] h-14 text-base gap-2 border border-success/50 bg-success/10 hover:bg-success/20 hover:border-success/70 text-success font-medium shadow-[0_0_12px_rgba(34,197,94,0.25)] hover:shadow-[0_0_18px_rgba(34,197,94,0.4)] transition-all touch-manipulation disabled:shadow-[0_0_12px_rgba(34,197,94,0.25)] disabled:border-success/40 disabled:text-success/70 disabled:bg-success/5"
+                      className="w-full sm:w-auto sm:min-w-[320px] h-16 sm:h-14 text-lg sm:text-base gap-3 border-2 border-success bg-success/10 hover:bg-success/20 hover:border-success text-success font-bold shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)] transition-all touch-manipulation disabled:shadow-none disabled:border-success/40 disabled:text-success/70 disabled:bg-success/5 active:scale-[0.98]"
                     >
-                      <Zap className="w-5 h-5 text-success fill-success/30" />
-                      <span>{t('uploader.actions.freeScan')}</span>
-                      <span className="ml-1 px-2.5 py-1 rounded-full bg-success text-success-foreground text-xs font-bold uppercase tracking-wide">17 Insights Free</span>
+                      <Zap className="w-6 h-6 sm:w-5 sm:h-5 text-success fill-success/30" />
+                      <span>Get Free Score</span>
+                      <span className="px-3 py-1 rounded-full bg-success text-success-foreground text-xs font-bold uppercase tracking-wide animate-pulse">FREE</span>
                     </Button>
-                    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground max-w-lg mx-auto">
+                    <div className="grid grid-cols-3 sm:flex sm:flex-wrap items-center justify-center gap-2 sm:gap-x-3 sm:gap-y-1 text-[11px] sm:text-xs text-muted-foreground max-w-lg mx-auto">
                       <span className="flex items-center gap-1"><span className="text-success">✓</span> ATS Score</span>
                       <span className="flex items-center gap-1"><span className="text-success">✓</span> Format</span>
-                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Metrics %</span>
-                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Verbs</span>
-                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Pages</span>
-                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Words</span>
-                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Sections</span>
-                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Contact</span>
-                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Level</span>
-                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Strength</span>
-                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Red Flags</span>
                       <span className="flex items-center gap-1"><span className="text-success">✓</span> Keywords</span>
+                      <span className="flex items-center gap-1"><span className="text-success">✓</span> Red Flags</span>
                       <span className="flex items-center gap-1"><span className="text-success">✓</span> Industry</span>
+                      <span className="flex items-center gap-1"><span className="text-success">✓</span> +12 more</span>
                     </div>
                     <p className="text-xs text-muted-foreground/70">
-                      4 free scans per day · May take 1-2 minutes
+                      4 free scans per day · Results in ~90 seconds
                     </p>
                   </>
                 )}
