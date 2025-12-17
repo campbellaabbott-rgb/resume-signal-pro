@@ -84,7 +84,7 @@ serve(async (req) => {
     if (!apiKey) {
       console.error('[SCRAPE-LINKEDIN] FIRECRAWL_API_KEY not configured');
       return new Response(
-        JSON.stringify({ success: false, error: 'LinkedIn scraping service not configured' }),
+        JSON.stringify({ success: false, error: 'Profile import unavailable. Please paste your profile text instead.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -112,7 +112,7 @@ serve(async (req) => {
       
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Scraping service quota exceeded. Please try pasting your profile text instead.' }),
+          JSON.stringify({ success: false, error: 'Service temporarily unavailable. Please paste your profile text instead.' }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
