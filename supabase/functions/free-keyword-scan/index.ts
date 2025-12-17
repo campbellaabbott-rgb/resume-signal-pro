@@ -232,6 +232,7 @@ ANALYSIS RULES:
 22. Industry Benchmark: Compare their estimated ATS score to typical scores in their industry
 23. Quick Wins: 3 specific, actionable fixes they can make in under 5 minutes each
 24. Sample Rewrite: Take their WEAKEST bullet point and rewrite it with metrics/impact
+25. ATS System Compatibility: Analyze compatibility with major ATS platforms (Workday, Greenhouse, Lever, Taleo, iCIMS, BambooHR). Rate which systems will parse it best/worst.
 
 Be direct and specific. Quote actual text from the resume when relevant.
 
@@ -472,6 +473,40 @@ ${resumeText.substring(0, 15000)}
                     improvement: { type: "string", description: "What makes the rewrite better (under 12 words)" }
                   },
                   required: ["before", "after", "improvement"]
+                },
+                atsSystemCompatibility: {
+                  type: "object",
+                  properties: {
+                    bestSystems: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          name: { type: "string", description: "ATS name (Workday, Greenhouse, Lever, Taleo, iCIMS, or BambooHR)" },
+                          score: { type: "number", description: "Compatibility score 0-100" },
+                          reason: { type: "string", description: "Why it parses well (under 10 words)" }
+                        },
+                        required: ["name", "score", "reason"]
+                      },
+                      description: "Top 3 ATS systems that will parse this resume best"
+                    },
+                    worstSystems: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          name: { type: "string", description: "ATS name" },
+                          score: { type: "number", description: "Compatibility score 0-100" },
+                          issue: { type: "string", description: "Main parsing issue (under 10 words)" }
+                        },
+                        required: ["name", "score", "issue"]
+                      },
+                      description: "2 ATS systems that may have trouble parsing this resume"
+                    },
+                    overallRating: { type: "string", enum: ["poor", "fair", "good", "excellent"], description: "Overall ATS compatibility rating" },
+                    topIssue: { type: "string", description: "Single biggest ATS compatibility issue to fix (under 15 words)" }
+                  },
+                  required: ["bestSystems", "worstSystems", "overallRating", "topIssue"]
                 }
               },
               required: [
@@ -481,7 +516,7 @@ ${resumeText.substring(0, 15000)}
                 "redFlags", "keywords", "readabilityScore", "bulletImpactScore", 
                 "keywordDensity", "improvementPotential", "topSkipReasons",
                 "powerWords", "weakPhrases", "timelineAnalysis", "industryBenchmark",
-                "quickWins", "sampleRewrite"
+                "quickWins", "sampleRewrite", "atsSystemCompatibility"
               ]
             }
           }
