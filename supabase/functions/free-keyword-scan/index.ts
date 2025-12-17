@@ -70,6 +70,52 @@ const getClientIp = (req: Request): string => {
          'unknown';
 };
 
+// Retry helper for AI API calls with exponential backoff
+const MAX_AI_RETRIES = 2;
+const AI_RETRY_DELAY_MS = 2000;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries: number = MAX_AI_RETRIES
+): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[FREE-KEYWORD-SCAN] AI API attempt ${attempt}/${maxRetries}`);
+      
+      const response = await fetch(url, options);
+      
+      // Don't retry client errors (4xx) except rate limits
+      if (response.ok || (response.status >= 400 && response.status < 500 && response.status !== 429)) {
+        return response;
+      }
+      
+      // Retry on server errors (5xx) and rate limits (429)
+      if (attempt < maxRetries) {
+        const delay = AI_RETRY_DELAY_MS * attempt;
+        console.log(`[FREE-KEYWORD-SCAN] AI API error ${response.status}, retrying in ${delay}ms`);
+        await sleep(delay);
+      } else {
+        return response;
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      if (attempt < maxRetries) {
+        const delay = AI_RETRY_DELAY_MS * attempt;
+        console.log(`[FREE-KEYWORD-SCAN] AI API network error, retrying in ${delay}ms: ${lastError.message}`);
+        await sleep(delay);
+      }
+    }
+  }
+  
+  throw lastError || new Error('AI API request failed after retries');
+}
+
 const getCountryCode = (req: Request): string | null => {
   // Cloudflare/CDN provides country code in cf-ipcountry header
   return req.headers.get('cf-ipcountry') || 
@@ -247,7 +293,7 @@ ${resumeText.substring(0, 15000)}
 
     console.log("[FREE-KEYWORD-SCAN] Calling Lovable AI Gateway...");
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
