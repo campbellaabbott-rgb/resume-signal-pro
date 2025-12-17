@@ -1360,24 +1360,32 @@ export function FreeKeywordResults({
       </div>
 
       {/* Upgrade CTA Box 1 */}
-      <div className="rounded-2xl bg-destructive/10 border-2 border-destructive/50 p-5 mb-5">
-        <div className="flex items-start gap-3">
-          <div className="p-2 rounded-full bg-destructive/20">
-            <Lock className="w-5 h-5 text-destructive" />
+      <div className="rounded-2xl bg-gradient-to-br from-destructive/15 via-destructive/10 to-destructive/5 border-2 border-destructive/40 p-6 mb-5 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-destructive/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-2 rounded-full bg-destructive/20 animate-pulse">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+            </div>
+            <span className="text-xs font-bold uppercase tracking-wider text-destructive/80">Action Required</span>
           </div>
-          <div className="flex-1">
-            <h4 className="font-bold text-destructive mb-1">Your Resume Has {redFlags.length}+ Issues Recruiters Will Notice</h4>
-            <p className="text-sm text-muted-foreground mb-3">
-              Get the full analysis with specific fixes, rewritten bullet points, and ATS-optimized suggestions.
-            </p>
+          <h4 className="text-lg font-bold text-foreground mb-2">
+            {redFlags.length}+ Issues Holding Your Resume Back
+          </h4>
+          <p className="text-sm text-muted-foreground mb-4">
+            Get specific fixes, rewritten bullet points, and ATS-optimized suggestions tailored to your industry.
+          </p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <Button 
               onClick={() => handleUpgradeClick('cta_box_1')}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              size="lg"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-lg shadow-destructive/25 hover:shadow-xl hover:shadow-destructive/30 transition-all"
             >
               <Sparkles className="w-4 h-4 mr-2" />
               {getFirstCtaText()}
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
+            <span className="text-xs text-muted-foreground">Takes 2 minutes • Instant results</span>
           </div>
         </div>
       </div>
@@ -1427,25 +1435,52 @@ export function FreeKeywordResults({
       </div>
 
       {/* Upgrade CTA Box 2 */}
-      <div className="rounded-2xl bg-destructive/10 border-2 border-destructive/50 p-5 mb-5">
-        <div className="flex items-start gap-3">
-          <div className="p-2 rounded-full bg-destructive/20">
-            <AlertTriangle className="w-5 h-5 text-destructive" />
+      <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 border-2 border-primary/30 p-6 mb-5 relative overflow-hidden">
+        <div className="absolute bottom-0 left-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex -space-x-1">
+              <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center">
+                <CheckCircle2 className="w-3 h-3 text-success" />
+              </div>
+              <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center">
+                <CheckCircle2 className="w-3 h-3 text-success" />
+              </div>
+              <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center">
+                <CheckCircle2 className="w-3 h-3 text-success" />
+              </div>
+            </div>
+            <span className="text-xs font-medium text-muted-foreground">10,000+ resumes improved</span>
           </div>
-          <div className="flex-1">
-            <h4 className="font-bold text-destructive mb-1">Don't Lose This Job to a Stronger Resume</h4>
-            <p className="text-sm text-muted-foreground mb-3">
-              Your free scan found problems. The full report shows you exactly how to fix them with recruiter-approved rewrites.
-            </p>
-            <Button 
-              onClick={() => handleUpgradeClick('cta_box_2')}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              {getSecondCtaText()}
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
+          <h4 className="text-lg font-bold text-foreground mb-2">
+            Turn Problems Into Interview Invites
+          </h4>
+          <p className="text-sm text-muted-foreground mb-4">
+            Get recruiter-approved rewrites and industry-specific keywords that actually work.
+          </p>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="text-center p-2 rounded-lg bg-background/50">
+              <div className="text-lg font-bold text-primary">10+</div>
+              <div className="text-[10px] text-muted-foreground">Sections</div>
+            </div>
+            <div className="text-center p-2 rounded-lg bg-background/50">
+              <div className="text-lg font-bold text-primary">50+</div>
+              <div className="text-[10px] text-muted-foreground">Insights</div>
+            </div>
+            <div className="text-center p-2 rounded-lg bg-background/50">
+              <div className="text-lg font-bold text-primary">∞</div>
+              <div className="text-[10px] text-muted-foreground">Rewrites</div>
+            </div>
           </div>
+          <Button 
+            onClick={() => handleUpgradeClick('cta_box_2')}
+            size="lg"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            {getSecondCtaText()}
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
         </div>
       </div>
 
@@ -1523,18 +1558,24 @@ export function FreeKeywordResults({
         </div>
       </div>
 
-      {/* CTA */}
-      <div className="text-center">
+      {/* Final CTA */}
+      <div className="text-center p-6 rounded-2xl bg-gradient-to-br from-primary/10 via-background to-primary/5 border border-primary/20">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-success/10 text-success text-xs font-medium mb-3">
+          <CheckCircle2 className="w-3 h-3" />
+          One-time payment • Instant access
+        </div>
         <Button 
           size="lg" 
           onClick={() => handleUpgradeClick('final_cta')}
           disabled={isLoading}
-          className="gap-2 px-8 h-12 text-base font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20"
+          className="gap-2 px-10 h-14 text-lg font-bold bg-gradient-to-r from-primary via-primary to-primary/80 hover:from-primary/90 hover:via-primary/90 hover:to-primary/70 shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
           {getFinalCtaText()} — {t('freeScan.cta.price')}
-          <ArrowRight className="w-4 h-4" />
+          <ArrowRight className="w-5 h-5" />
         </Button>
-        <p className="text-xs text-muted-foreground mt-2">One interview pays for itself</p>
+        <p className="text-sm text-muted-foreground mt-3">
+          <span className="text-success font-medium">One interview = $25 paid for itself</span>
+        </p>
       </div>
     </div>
     </TooltipProvider>
