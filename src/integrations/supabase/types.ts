@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_scan_stats: {
+        Row: {
+          date: string
+          free_scan_count: number
+          paid_scan_count: number
+          updated_at: string | null
+        }
+        Insert: {
+          date?: string
+          free_scan_count?: number
+          paid_scan_count?: number
+          updated_at?: string | null
+        }
+        Update: {
+          date?: string
+          free_scan_count?: number
+          paid_scan_count?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       free_scan_leads: {
         Row: {
           ats_score_estimate: number | null
@@ -175,6 +196,8 @@ export type Database = {
           resume_text: string
         }[]
       }
+      get_today_scan_count: { Args: never; Returns: number }
+      increment_free_scan_count: { Args: never; Returns: undefined }
       save_free_scan_lead: {
         Args: { p_ats_score?: number; p_email: string; p_industry?: string }
         Returns: boolean

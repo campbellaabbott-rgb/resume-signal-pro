@@ -616,6 +616,18 @@ ${resumeText.substring(0, 15000)}
     const country = getCountryCode(req) || "Unknown";
     console.log(`[FREE-KEYWORD-SCAN] Success for IP: ${clientIp}, country: ${country}, industry: ${analysis.industry}`);
 
+    // Increment daily scan counter in background
+    EdgeRuntime.waitUntil(
+      (async () => {
+        try {
+          await supabase.rpc('increment_free_scan_count');
+          console.log("[FREE-KEYWORD-SCAN] Daily counter incremented");
+        } catch (err) {
+          console.error("[FREE-KEYWORD-SCAN] Failed to increment counter:", err);
+        }
+      })()
+    );
+
     // Send notification email in background (non-blocking)
     EdgeRuntime.waitUntil(
       sendNotificationEmail(clientIp, analysis.industry || "General", analysis.atsScoreEstimate || 65, country)
