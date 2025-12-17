@@ -7,7 +7,7 @@ declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
 const ADMIN_EMAIL = "campbellabbott@gmail.com";
 
 // Send notification email (non-blocking)
-async function sendNotificationEmail(ip: string, industry: string, atsScore: number) {
+async function sendNotificationEmail(ip: string, industry: string, atsScore: number, country: string) {
   try {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) return;
@@ -21,10 +21,11 @@ async function sendNotificationEmail(ip: string, industry: string, atsScore: num
       body: JSON.stringify({
         from: "Resume Booster <onboarding@resend.dev>",
         to: [ADMIN_EMAIL],
-        subject: `🔍 New Free Scan: ${industry} (ATS ${atsScore})`,
+        subject: `🔍 New Free Scan: ${industry} (ATS ${atsScore}) - ${country}`,
         html: `
           <h2>New Free Resume Scan</h2>
           <ul>
+            <li><strong>Country:</strong> ${country}</li>
             <li><strong>Industry:</strong> ${industry}</li>
             <li><strong>ATS Score:</strong> ${atsScore}/100</li>
             <li><strong>IP Address:</strong> ${ip}</li>
@@ -612,11 +613,12 @@ ${resumeText.substring(0, 15000)}
       console.log(`[QUALITY] Benchmark: Score=${analysis.atsScoreEstimate} vs IndustryAvg=${analysis.industryBenchmark.industryAvg}, Comparison=${analysis.industryBenchmark.comparison}, Percentile=${analysis.industryBenchmark.percentile}`);
     }
 
-    console.log(`[FREE-KEYWORD-SCAN] Success for IP: ${clientIp}, industry: ${analysis.industry}`);
+    const country = getCountryCode(req) || "Unknown";
+    console.log(`[FREE-KEYWORD-SCAN] Success for IP: ${clientIp}, country: ${country}, industry: ${analysis.industry}`);
 
     // Send notification email in background (non-blocking)
     EdgeRuntime.waitUntil(
-      sendNotificationEmail(clientIp, analysis.industry || "General", analysis.atsScoreEstimate || 65)
+      sendNotificationEmail(clientIp, analysis.industry || "General", analysis.atsScoreEstimate || 65, country)
     );
 
     return new Response(
