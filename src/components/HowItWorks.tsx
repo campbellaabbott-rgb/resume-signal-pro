@@ -68,7 +68,7 @@ export function HowItWorks() {
             </div>
             <h3 className="font-semibold mb-2">2. AI Analysis</h3>
             <p className="text-sm text-muted-foreground">
-              Google Gemini AI performs 24 distinct checks in ~10 seconds.
+              Our AI performs 24 distinct checks in ~10 seconds.
             </p>
           </div>
           
