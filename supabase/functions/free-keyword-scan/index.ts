@@ -58,7 +58,6 @@ const BLOCKED_COUNTRIES = new Set(['RU', 'NG', 'PK']);
 
 const ERROR_MESSAGES = {
   INTERNAL: 'An error occurred. Please try again.',
-  INVALID_INPUT: 'Invalid input provided.',
   RATE_LIMITED: 'Daily scan limit reached. Upgrade for unlimited access!',
   SERVICE_UNAVAILABLE: 'Service temporarily unavailable.',
   GEO_BLOCKED: 'Service not available in your region.',
@@ -85,7 +84,6 @@ async function fetchWithRetry(
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`[FREE-KEYWORD-SCAN] AI API attempt ${attempt}/${maxRetries}`);
       
       const response = await fetch(url, options);
       
@@ -616,34 +614,17 @@ ${resumeText.substring(0, 15000)}
       sendNotificationEmail(clientIp, analysis.industry || "General", analysis.atsScoreEstimate || 65, country)
     );
 
+    // Build response with analysis data (use actual values, slice arrays)
     return new Response(
       JSON.stringify({
         success: true,
-        industry: analysis.industry || "General",
-        atsScoreEstimate: analysis.atsScoreEstimate || 65,
-        formatGrade: analysis.formatGrade || "B",
-        formatIssue: analysis.formatIssue || "Unable to assess formatting from text.",
-        resumeLength: analysis.resumeLength || { currentPages: 1, recommendedPages: 1, verdict: "just_right" },
-        wordCount: analysis.wordCount || { current: 500, idealMin: 400, idealMax: 600, verdict: "ideal" },
-        experienceLevel: analysis.experienceLevel || { level: "mid", yearsEstimate: "3-5 years" },
-        sectionCheck: analysis.sectionCheck || { hasContact: true, hasSummary: false, hasExperience: true, hasEducation: true, hasSkills: true, missingSections: [] },
-        contactInfo: analysis.contactInfo || { hasEmail: true, hasPhone: true, hasLinkedIn: false, missingItems: [] },
-        topStrength: analysis.topStrength || { title: "Clear Experience", description: "Your work history is well-documented" },
-        quantificationScore: analysis.quantificationScore || { score: 40, verdict: "average", tip: "Add more metrics to your bullets" },
-        actionVerbGrade: analysis.actionVerbGrade || { grade: "B", issue: "Good variety but some weak verbs" },
-        readabilityScore: analysis.readabilityScore || { score: 65, verdict: "readable", issue: "Some long sentences" },
-        bulletImpactScore: analysis.bulletImpactScore || { score: 45, verdict: "responsibility_heavy", tip: "Focus on achievements over duties" },
-        keywordDensity: analysis.keywordDensity || { level: "moderate", explanation: "Good keyword presence" },
-        improvementPotential: analysis.improvementPotential || { level: "medium", estimatedScoreIncrease: 15, topPriority: "Add more quantified achievements" },
+        ...analysis,
+        redFlags: (analysis.redFlags || []).slice(0, 3),
+        keywords: (analysis.keywords || []).slice(0, 6),
         topSkipReasons: (analysis.topSkipReasons || []).slice(0, 5),
         powerWords: (analysis.powerWords || []).slice(0, 5),
         weakPhrases: (analysis.weakPhrases || []).slice(0, 4),
-        timelineAnalysis: analysis.timelineAnalysis || { avgTenure: "2 years", progression: "steady", hasGaps: false, totalYears: "5 years" },
-        industryBenchmark: analysis.industryBenchmark || { industryAvg: 72, comparison: "at", percentile: "Top 50%" },
         quickWins: (analysis.quickWins || []).slice(0, 3),
-        sampleRewrite: analysis.sampleRewrite || { before: "Responsible for managing tasks", after: "Led cross-functional team of 5, delivering 3 projects 20% under budget", improvement: "Added metrics and leadership" },
-        redFlags,
-        keywords
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

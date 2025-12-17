@@ -51,7 +51,6 @@ async function fetchWithRetry(
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`[ANALYZE-RESUME] AI API attempt ${attempt}/${maxRetries}`);
       
       const response = await fetch(url, options);
       
