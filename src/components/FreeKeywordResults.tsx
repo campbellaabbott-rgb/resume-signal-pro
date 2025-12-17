@@ -567,6 +567,33 @@ export function FreeKeywordResults({
         </p>
       </div>
 
+      {/* Percentile Urgency Banner */}
+      {atsScoreEstimate < 80 && (
+        <div className="rounded-2xl bg-gradient-to-r from-destructive/20 via-destructive/10 to-warning/10 border-2 border-destructive/40 p-4 mb-4 animate-pulse-slow">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-destructive/20 animate-bounce-slow">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+              </div>
+              <div>
+                <p className="font-bold text-destructive text-lg">
+                  You rank in the bottom {atsScoreEstimate < 60 ? "30%" : atsScoreEstimate < 70 ? "40%" : "50%"} of applicants
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {atsScoreEstimate < 60 
+                    ? "Most ATS systems will auto-reject your resume" 
+                    : "Your resume may get filtered before a human sees it"}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">Average score needed to pass ATS</p>
+              <p className="text-2xl font-bold text-success">75+</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Score Cards Grid - Row 1: Primary Scores */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
         {/* ATS Score */}
