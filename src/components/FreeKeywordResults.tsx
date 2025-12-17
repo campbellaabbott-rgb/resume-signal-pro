@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useABTest } from "@/hooks/use-ab-test";
 import {
   Tooltip,
   TooltipContent,
@@ -306,6 +307,42 @@ export function FreeKeywordResults({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const { toast } = useToast();
+  
+  // A/B Test for upgrade CTAs
+  const upgradeTest = useABTest('free_scan_upgrade');
+  
+  // CTA text variants for first upgrade box
+  const getFirstCtaText = () => {
+    switch (upgradeTest.variant) {
+      case 'urgency': return 'Fix Now Before It\'s Too Late';
+      case 'value': return 'Get Recruiter-Ready - $25';
+      default: return 'Fix These Issues - $25';
+    }
+  };
+  
+  // CTA text variants for second upgrade box
+  const getSecondCtaText = () => {
+    switch (upgradeTest.variant) {
+      case 'urgency': return 'Don\'t Miss Out - $25';
+      case 'value': return 'Unlock All Fixes - $25';
+      default: return 'Get Full Analysis - $25';
+    }
+  };
+  
+  // CTA text variants for final button
+  const getFinalCtaText = () => {
+    switch (upgradeTest.variant) {
+      case 'urgency': return 'Get It Now';
+      case 'value': return 'Unlock Full Report';
+      default: return t('freeScan.cta.button');
+    }
+  };
+  
+  // Wrap onGetFullAnalysis with conversion tracking
+  const handleUpgradeClick = (source: string) => {
+    upgradeTest.trackConversion({ source });
+    onGetFullAnalysis();
+  };
 
   // Safe defaults
   const resumeLength = resumeLengthProp || { currentPages: 1, recommendedPages: 1, verdict: "just_right" as const };
@@ -1334,11 +1371,11 @@ export function FreeKeywordResults({
               Get the full analysis with specific fixes, rewritten bullet points, and ATS-optimized suggestions.
             </p>
             <Button 
-              onClick={onGetFullAnalysis}
+              onClick={() => handleUpgradeClick('cta_box_1')}
               className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
             >
               <Sparkles className="w-4 h-4 mr-2" />
-              Fix These Issues - $25
+              {getFirstCtaText()}
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
@@ -1401,11 +1438,11 @@ export function FreeKeywordResults({
               Your free scan found problems. The full report shows you exactly how to fix them with recruiter-approved rewrites.
             </p>
             <Button 
-              onClick={onGetFullAnalysis}
+              onClick={() => handleUpgradeClick('cta_box_2')}
               className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
             >
               <Sparkles className="w-4 h-4 mr-2" />
-              Get Full Analysis - $25
+              {getSecondCtaText()}
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
@@ -1490,11 +1527,11 @@ export function FreeKeywordResults({
       <div className="text-center">
         <Button 
           size="lg" 
-          onClick={onGetFullAnalysis}
+          onClick={() => handleUpgradeClick('final_cta')}
           disabled={isLoading}
           className="gap-2 px-8 h-12 text-base font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20"
         >
-          {t('freeScan.cta.button')} — {t('freeScan.cta.price')}
+          {getFinalCtaText()} — {t('freeScan.cta.price')}
           <ArrowRight className="w-4 h-4" />
         </Button>
         <p className="text-xs text-muted-foreground mt-2">One interview pays for itself</p>
