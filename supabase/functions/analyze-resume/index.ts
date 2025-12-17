@@ -36,6 +36,52 @@ const escapeXml = (str: string): string => {
     .replace(/>/g, '&gt;');
 };
 
+// Retry helper for AI API calls with exponential backoff
+const MAX_AI_RETRIES = 2;
+const AI_RETRY_DELAY_MS = 2000;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries: number = MAX_AI_RETRIES
+): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[ANALYZE-RESUME] AI API attempt ${attempt}/${maxRetries}`);
+      
+      const response = await fetch(url, options);
+      
+      // Don't retry client errors (4xx) except rate limits
+      if (response.ok || (response.status >= 400 && response.status < 500 && response.status !== 429)) {
+        return response;
+      }
+      
+      // Retry on server errors (5xx) and rate limits (429)
+      if (attempt < maxRetries) {
+        const delay = AI_RETRY_DELAY_MS * attempt;
+        console.log(`[ANALYZE-RESUME] AI API error ${response.status}, retrying in ${delay}ms`);
+        await sleep(delay);
+      } else {
+        return response; // Return last response on final attempt
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      if (attempt < maxRetries) {
+        const delay = AI_RETRY_DELAY_MS * attempt;
+        console.log(`[ANALYZE-RESUME] AI API network error, retrying in ${delay}ms: ${lastError.message}`);
+        await sleep(delay);
+      }
+    }
+  }
+  
+  throw lastError || new Error('AI API request failed after retries');
+}
+
 // Tool definition for structured resume analysis output
 const getAnalysisTools = (hasLinkedIn: boolean, hasJobDescription: boolean) => [{
   type: "function",
@@ -327,6 +373,42 @@ serve(async (req) => {
   try {
     const { resumeText, linkedInText, jobDescriptionText, sessionId } = await req.json();
 
+    // EARLY INPUT VALIDATION (fail fast before payment verification)
+    if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Resume text is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (resumeText.length > MAX_RESUME_LENGTH) {
+      console.log(`[ANALYZE-RESUME] Resume too long: ${resumeText.length} characters`);
+      return new Response(
+        JSON.stringify({ error: 'Resume text is too long. Please limit to 50,000 characters.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate LinkedIn text if provided
+    const hasLinkedIn = linkedInText && typeof linkedInText === 'string' && linkedInText.trim().length > 0;
+    if (hasLinkedIn && linkedInText.length > MAX_LINKEDIN_LENGTH) {
+      console.log(`[ANALYZE-RESUME] LinkedIn too long: ${linkedInText.length} characters`);
+      return new Response(
+        JSON.stringify({ error: 'LinkedIn text is too long. Please limit to 30,000 characters.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate job description text if provided  
+    const hasJobDescription = jobDescriptionText && typeof jobDescriptionText === 'string' && jobDescriptionText.trim().length > 0;
+    if (hasJobDescription && jobDescriptionText.length > MAX_JOB_DESCRIPTION_LENGTH) {
+      console.log(`[ANALYZE-RESUME] Job description too long: ${jobDescriptionText.length} characters`);
+      return new Response(
+        JSON.stringify({ error: 'Job description is too long. Please limit to 20,000 characters.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // CRITICAL: Verify Stripe payment before analysis
     if (!sessionId) {
       console.log("[ANALYZE-RESUME] Missing sessionId - payment verification required");
@@ -457,41 +539,6 @@ serve(async (req) => {
         );
       }
       console.error("[ANALYZE-RESUME] Failed to mark session as used:", insertError);
-    }
-    
-    if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'Resume text is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (resumeText.length > MAX_RESUME_LENGTH) {
-      console.log(`[ANALYZE-RESUME] Resume too long: ${resumeText.length} characters`);
-      return new Response(
-        JSON.stringify({ error: 'Resume text is too long. Please limit to 50,000 characters.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate LinkedIn text if provided
-    const hasLinkedIn = linkedInText && typeof linkedInText === 'string' && linkedInText.trim().length > 0;
-    if (hasLinkedIn && linkedInText.length > MAX_LINKEDIN_LENGTH) {
-      console.log(`[ANALYZE-RESUME] LinkedIn too long: ${linkedInText.length} characters`);
-      return new Response(
-        JSON.stringify({ error: 'LinkedIn text is too long. Please limit to 30,000 characters.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate job description text if provided
-    const hasJobDescription = jobDescriptionText && typeof jobDescriptionText === 'string' && jobDescriptionText.trim().length > 0;
-    if (hasJobDescription && jobDescriptionText.length > MAX_JOB_DESCRIPTION_LENGTH) {
-      console.log(`[ANALYZE-RESUME] Job description too long: ${jobDescriptionText.length} characters`);
-      return new Response(
-        JSON.stringify({ error: 'Job description is too long. Please limit to 20,000 characters.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -691,7 +738,7 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
       userMessage += `\n\n<job_description>\n${escapeXml(jobDescriptionText)}\n</job_description>`;
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
