@@ -152,29 +152,9 @@ serve(async (req) => {
     // Honeypot check - if filled, it's a bot
     if (honeypot && honeypot.trim() !== '') {
       console.log(`[FREE-KEYWORD-SCAN] Honeypot triggered for IP: ${clientIp}`);
-      // Return fake success to not alert the bot
+      // Return minimal fake success to not alert the bot
       return new Response(
-        JSON.stringify({
-          success: true,
-          industry: "General",
-          atsScoreEstimate: 65,
-          formatGrade: "B",
-          formatIssue: "Some formatting improvements needed.",
-          resumeLength: { currentPages: 1, recommendedPages: 1, verdict: "just_right" },
-          wordCount: { current: 500, idealMin: 400, idealMax: 600, verdict: "ideal" },
-          experienceLevel: { level: "mid", yearsEstimate: "3-5 years" },
-          sectionCheck: { hasContact: true, hasSummary: true, hasExperience: true, hasEducation: true, hasSkills: true, missingSections: [] },
-          contactInfo: { hasEmail: true, hasPhone: true, hasLinkedIn: true, missingItems: [] },
-          topStrength: { title: "Good Structure", description: "Resume is well organized" },
-          quantificationScore: { score: 50, verdict: "average", tip: "Add more metrics" },
-          actionVerbGrade: { grade: "B", issue: "Good verb usage" },
-          readabilityScore: { score: 70, verdict: "readable", issue: "Clear writing" },
-          bulletImpactScore: { score: 55, verdict: "balanced", tip: "Focus on achievements" },
-          keywordDensity: { level: "moderate", explanation: "Good keyword presence" },
-          improvementPotential: { level: "medium", estimatedScoreIncrease: 15, topPriority: "Add metrics" },
-          redFlags: [{ issue: "Generic bullets", impact: "Less memorable" }],
-          keywords: [{ keyword: "leadership", reason: "Common requirement" }]
-        }),
+        JSON.stringify({ success: true, atsScoreEstimate: 65, industry: "General" }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -613,51 +593,8 @@ ${resumeText.substring(0, 15000)}
     const keywords = (analysis.keywords || []).slice(0, 6);
     const redFlags = (analysis.redFlags || []).slice(0, 3);
 
-    // === QUALITY TRACKING LOGS ===
-    const resumeWordCount = resumeText.split(/\s+/).filter(w => w.length > 0).length;
-    const resumeCharCount = resumeText.length;
-    
-    // Check completeness of analysis fields
-    const requiredFields = [
-      'industry', 'atsScoreEstimate', 'formatGrade', 'formatIssue',
-      'resumeLength', 'wordCount', 'experienceLevel', 'sectionCheck',
-      'contactInfo', 'topStrength', 'quantificationScore', 'actionVerbGrade',
-      'readabilityScore', 'bulletImpactScore', 'keywordDensity', 'improvementPotential',
-      'topSkipReasons', 'powerWords', 'weakPhrases', 'timelineAnalysis',
-      'industryBenchmark', 'quickWins', 'sampleRewrite'
-    ];
-    const missingFields = requiredFields.filter(f => !analysis[f]);
-    const completenessScore = Math.round(((requiredFields.length - missingFields.length) / requiredFields.length) * 100);
-    
-    // Log input metrics
-    console.log(`[QUALITY] Input: ${resumeWordCount} words, ${resumeCharCount} chars`);
-    
-    // Log core analysis metrics
-    console.log(`[QUALITY] Core: ATS=${analysis.atsScoreEstimate}, Format=${analysis.formatGrade}, Industry="${analysis.industry}", ExpLevel=${analysis.experienceLevel?.level}`);
-    
-    // Log scores
-    console.log(`[QUALITY] Scores: Quant=${analysis.quantificationScore?.score}, Readability=${analysis.readabilityScore?.score}, BulletImpact=${analysis.bulletImpactScore?.score}`);
-    
-    // Log array counts
-    console.log(`[QUALITY] Arrays: Keywords=${keywords.length}, RedFlags=${redFlags.length}, PowerWords=${(analysis.powerWords || []).length}, WeakPhrases=${(analysis.weakPhrases || []).length}, QuickWins=${(analysis.quickWins || []).length}, SkipReasons=${(analysis.topSkipReasons || []).length}`);
-    
-    // Log completeness
-    console.log(`[QUALITY] Completeness: ${completenessScore}% (${requiredFields.length - missingFields.length}/${requiredFields.length} fields)`);
-    if (missingFields.length > 0) {
-      console.warn(`[QUALITY] Missing fields: ${missingFields.join(', ')}`);
-    }
-    
-    // Log sample rewrite quality (check if it's actually different from original)
-    if (analysis.sampleRewrite?.before && analysis.sampleRewrite?.after) {
-      const rewriteDifferent = analysis.sampleRewrite.before !== analysis.sampleRewrite.after;
-      const rewriteHasMetrics = /\d+/.test(analysis.sampleRewrite.after);
-      console.log(`[QUALITY] SampleRewrite: Different=${rewriteDifferent}, HasMetrics=${rewriteHasMetrics}`);
-    }
-    
-    // Log benchmark comparison
-    if (analysis.industryBenchmark) {
-      console.log(`[QUALITY] Benchmark: Score=${analysis.atsScoreEstimate} vs IndustryAvg=${analysis.industryBenchmark.industryAvg}, Comparison=${analysis.industryBenchmark.comparison}, Percentile=${analysis.industryBenchmark.percentile}`);
-    }
+    // Log core metrics only
+    console.log(`[FREE-KEYWORD-SCAN] Analysis: ATS=${analysis.atsScoreEstimate}, Industry="${analysis.industry}", ExpLevel=${analysis.experienceLevel?.level}`);
 
     const country = getCountryCode(req) || "Unknown";
     console.log(`[FREE-KEYWORD-SCAN] Success for IP: ${clientIp}, country: ${country}, industry: ${analysis.industry}`);
