@@ -87,6 +87,11 @@ const metricTooltips = {
     title: "Career Timeline",
     description: "Analyzes job tenure, gaps, and career progression patterns.",
     whyMatters: "Recruiters look for stability and growth—gaps need explanation."
+  },
+  atsCompatibility: {
+    title: "ATS System Compatibility",
+    description: "Shows how well your resume parses across major Applicant Tracking Systems like Workday, Greenhouse, and Taleo.",
+    whyMatters: "Different companies use different ATS—know which ones will read your resume correctly."
   }
 };
 
@@ -221,6 +226,20 @@ interface SampleRewrite {
   improvement: string;
 }
 
+interface AtsSystemRating {
+  name: string;
+  score: number;
+  reason?: string;
+  issue?: string;
+}
+
+interface AtsSystemCompatibility {
+  bestSystems: AtsSystemRating[];
+  worstSystems: AtsSystemRating[];
+  overallRating: "poor" | "fair" | "good" | "excellent";
+  topIssue: string;
+}
+
 interface FreeKeywordResultsProps {
   industry: string;
   atsScoreEstimate: number;
@@ -249,6 +268,7 @@ interface FreeKeywordResultsProps {
   industryBenchmark?: IndustryBenchmark;
   quickWins?: QuickWin[];
   sampleRewrite?: SampleRewrite;
+  atsSystemCompatibility?: AtsSystemCompatibility;
 }
 
 export function FreeKeywordResults({
@@ -278,7 +298,8 @@ export function FreeKeywordResults({
   timelineAnalysis: timelineAnalysisProp,
   industryBenchmark: industryBenchmarkProp,
   quickWins: quickWinsProp,
-  sampleRewrite: sampleRewriteProp
+  sampleRewrite: sampleRewriteProp,
+  atsSystemCompatibility: atsSystemCompatibilityProp
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
@@ -307,6 +328,19 @@ export function FreeKeywordResults({
   const industryBenchmark = industryBenchmarkProp || { industryAvg: 72, comparison: "at" as const, percentile: "Top 50%" };
   const quickWins = quickWinsProp || [];
   const sampleRewrite = sampleRewriteProp;
+  const atsSystemCompatibility = atsSystemCompatibilityProp || {
+    bestSystems: [
+      { name: "Greenhouse", score: 85, reason: "Clean format" },
+      { name: "Lever", score: 82, reason: "Good structure" },
+      { name: "Workday", score: 78, reason: "Standard layout" }
+    ],
+    worstSystems: [
+      { name: "Taleo", score: 55, issue: "Complex formatting" },
+      { name: "iCIMS", score: 60, issue: "Header parsing" }
+    ],
+    overallRating: "good" as const,
+    topIssue: "Some ATS may struggle with your header format"
+  };
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-success";
@@ -1035,6 +1069,113 @@ export function FreeKeywordResults({
             )}
           </div>
         </div>
+      </div>
+
+      {/* ATS System Compatibility */}
+      <div className="rounded-2xl bg-card border border-border p-5 mb-5">
+        <div className="flex items-center gap-2 mb-2">
+          <FileCheck className="w-4 h-4 text-primary" />
+          <h4 className="font-semibold flex-1">ATS System Compatibility</h4>
+          <MetricTooltip metricKey="atsCompatibility" />
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">
+          See how your resume performs across the most popular Applicant Tracking Systems
+        </p>
+
+        {/* Overall Rating Badge */}
+        <div className={cn(
+          "text-center py-3 px-4 rounded-lg mb-4",
+          atsSystemCompatibility.overallRating === "excellent" ? "bg-success/15" :
+          atsSystemCompatibility.overallRating === "good" ? "bg-success/10" :
+          atsSystemCompatibility.overallRating === "fair" ? "bg-warning/15" : "bg-destructive/15"
+        )}>
+          <p className={cn("text-lg font-bold capitalize",
+            atsSystemCompatibility.overallRating === "excellent" ? "text-success" :
+            atsSystemCompatibility.overallRating === "good" ? "text-success" :
+            atsSystemCompatibility.overallRating === "fair" ? "text-warning" : "text-destructive"
+          )}>
+            {atsSystemCompatibility.overallRating === "excellent" ? "✓ Excellent Compatibility" :
+             atsSystemCompatibility.overallRating === "good" ? "✓ Good Compatibility" :
+             atsSystemCompatibility.overallRating === "fair" ? "⚠ Fair Compatibility" : "✗ Poor Compatibility"}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {atsSystemCompatibility.overallRating === "excellent" 
+              ? "Your resume should parse correctly on most ATS platforms" 
+              : atsSystemCompatibility.overallRating === "good"
+                ? "Most ATS will read your resume correctly"
+                : atsSystemCompatibility.overallRating === "fair"
+                  ? "Some ATS may have trouble parsing your resume"
+                  : "Many ATS will struggle to read your resume properly"}
+          </p>
+        </div>
+
+        {/* Best & Worst Systems Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          {/* Best Systems */}
+          <div className="p-4 rounded-xl bg-success/5 border border-success/20">
+            <div className="flex items-center gap-2 mb-3">
+              <CheckCircle className="w-4 h-4 text-success" />
+              <span className="text-sm font-semibold text-success">Works Best With</span>
+            </div>
+            <div className="space-y-2">
+              {atsSystemCompatibility.bestSystems.map((system, index) => (
+                <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">{system.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{system.reason}</span>
+                    <span className={cn(
+                      "text-xs font-bold px-2 py-0.5 rounded",
+                      system.score >= 80 ? "bg-success/20 text-success" : 
+                      system.score >= 60 ? "bg-warning/20 text-warning" : "bg-destructive/20 text-destructive"
+                    )}>
+                      {system.score}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Worst Systems */}
+          <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-4 h-4 text-destructive" />
+              <span className="text-sm font-semibold text-destructive">May Have Issues</span>
+            </div>
+            <div className="space-y-2">
+              {atsSystemCompatibility.worstSystems.map((system, index) => (
+                <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">{system.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{system.issue}</span>
+                    <span className={cn(
+                      "text-xs font-bold px-2 py-0.5 rounded",
+                      system.score >= 70 ? "bg-warning/20 text-warning" : "bg-destructive/20 text-destructive"
+                    )}>
+                      {system.score}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Top Issue to Fix */}
+        {atsSystemCompatibility.topIssue && (
+          <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+            <p className="text-xs font-medium text-foreground mb-1">
+              💡 Top ATS Issue to Fix
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {atsSystemCompatibility.topIssue}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Power Words & Weak Phrases */}
