@@ -2,6 +2,14 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import mammoth from "https://esm.sh/mammoth@1.6.0";
 
+// Performance monitoring
+const SLOW_REQUEST_THRESHOLD = 3000;
+const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>) => {
+  const duration = Date.now() - startTime;
+  const level = duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
+  console.log(`[PERF] ${operation} | ${duration}ms | ${level} | success=${success}${details ? ` | ${JSON.stringify(details)}` : ''}`);
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -12,6 +20,8 @@ const RATE_LIMIT = 20; // 20 requests per hour
 const RATE_WINDOW_MINUTES = 60;
 
 serve(async (req) => {
+  const requestStartTime = Date.now();
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -110,6 +120,7 @@ serve(async (req) => {
     const result = await mammoth.extractRawText({ arrayBuffer });
     const text = result.value.trim();
 
+    trackPerformance(requestStartTime, 'parse-docx', true, { textLength: text.length });
     console.log("[PARSE-DOCX] DOCX parsed successfully. Text length:", text.length);
 
     if (result.messages && result.messages.length > 0) {
@@ -124,6 +135,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: unknown) {
+    trackPerformance(requestStartTime, 'parse-docx', false, { error: error instanceof Error ? error.message : 'Unknown' });
     console.error("[PARSE-DOCX] Error:", error);
 
     return new Response(

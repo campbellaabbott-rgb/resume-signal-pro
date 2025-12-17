@@ -1,6 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Performance monitoring
+const SLOW_REQUEST_THRESHOLD = 2000;
+const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>) => {
+  const duration = Date.now() - startTime;
+  const level = duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
+  console.log(`[PERF] ${operation} | ${duration}ms | ${level} | success=${success}${details ? ` | ${JSON.stringify(details)}` : ''}`);
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -19,13 +27,16 @@ const getClientIp = (req: Request): string => {
 };
 
 serve(async (req) => {
+  const requestStartTime = Date.now();
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const clientIp = getClientIp(req);
+
   try {
     const { testName, variant, eventType, visitorId, metadata } = await req.json();
-    const clientIp = getClientIp(req);
 
     // Validate inputs
     if (!testName || !variant || !eventType || !visitorId) {
@@ -135,6 +146,7 @@ serve(async (req) => {
       );
     }
 
+    trackPerformance(requestStartTime, 'track-ab-event', true, { testName, eventType });
     console.log(`Tracked ${eventType} for test "${testName}", variant "${variant}", IP: ${clientIp.slice(0, 10)}...`);
 
     return new Response(
@@ -142,6 +154,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
+    trackPerformance(requestStartTime, 'track-ab-event', false, { error: error instanceof Error ? error.message : 'Unknown' });
     console.error('Unexpected error:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),

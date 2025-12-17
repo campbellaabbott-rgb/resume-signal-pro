@@ -4,6 +4,18 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
 
+// Performance monitoring thresholds (ms)
+const SLOW_REQUEST_THRESHOLD = 20000; // 20s - AI analysis takes time
+const VERY_SLOW_THRESHOLD = 45000;
+
+// Performance tracking helper
+const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>) => {
+  const duration = Date.now() - startTime;
+  const level = duration > VERY_SLOW_THRESHOLD ? 'CRITICAL' : duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
+  console.log(`[PERF] ${operation} | ${duration}ms | ${level} | success=${success}${details ? ` | ${JSON.stringify(details)}` : ''}`);
+  return duration;
+};
+
 const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "admin@resumebooster.com";
 
 // Send notification email (non-blocking)
@@ -128,6 +140,8 @@ const isBlockedCountry = (req: Request): boolean => {
 };
 
 serve(async (req) => {
+  const requestStartTime = Date.now();
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -142,10 +156,10 @@ serve(async (req) => {
     );
   }
 
+  const clientIp = getClientIp(req);
+  
   try {
     const { resumeText, honeypot } = await req.json();
-
-    const clientIp = getClientIp(req);
 
     // Honeypot check - if filled, it's a bot
     if (honeypot && honeypot.trim() !== '') {
@@ -615,6 +629,8 @@ ${resumeText.substring(0, 15000)}
     );
 
     // Build response with analysis data (use actual values, slice arrays)
+    trackPerformance(requestStartTime, 'free-keyword-scan', true, { atsScore: analysis.atsScoreEstimate, industry: analysis.industry });
+    
     return new Response(
       JSON.stringify({
         success: true,
@@ -630,6 +646,7 @@ ${resumeText.substring(0, 15000)}
     );
 
   } catch (error) {
+    trackPerformance(requestStartTime, 'free-keyword-scan', false, { error: error instanceof Error ? error.message : 'Unknown' });
     console.error("[FREE-KEYWORD-SCAN] Error:", error);
     return new Response(
       JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
