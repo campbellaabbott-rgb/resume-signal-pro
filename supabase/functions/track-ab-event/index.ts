@@ -6,6 +6,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Rate limits
+const RATE_LIMIT = 50; // max events per IP per hour
+const RATE_WINDOW_MINUTES = 60;
+
+// Get client IP from request headers
+const getClientIp = (req: Request): string => {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    req.headers.get('cf-connecting-ip') ||
+    req.headers.get('x-real-ip') ||
+    'unknown';
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -13,6 +25,7 @@ serve(async (req) => {
 
   try {
     const { testName, variant, eventType, visitorId, metadata } = await req.json();
+    const clientIp = getClientIp(req);
 
     // Validate inputs
     if (!testName || !variant || !eventType || !visitorId) {
@@ -30,12 +43,83 @@ serve(async (req) => {
       );
     }
 
+    // Validate testName and variant (prevent injection)
+    if (!/^[a-z_]{1,50}$/.test(testName)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid test name format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!/^[a-z_]{1,30}$/.test(variant)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid variant format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate visitorId format (should be UUID)
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(visitorId)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid visitor ID format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const { data, error } = await supabase.rpc('track_ab_event', {
+    // Rate limiting check
+    const { data: isAllowed, error: rateLimitError } = await supabase.rpc('check_rate_limit', {
+      p_function: 'track-ab-event',
+      p_ip: clientIp,
+      p_max_requests: RATE_LIMIT,
+      p_window_minutes: RATE_WINDOW_MINUTES
+    });
+
+    if (rateLimitError) {
+      console.error('Rate limit check error:', rateLimitError);
+      // Continue anyway - don't block on rate limit errors
+    } else if (!isAllowed) {
+      console.warn(`Rate limit exceeded for IP: ${clientIp}`);
+      // Silently accept but don't record (don't alert attackers)
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Deduplication: Check if this exact event was already recorded recently
+    // For views: only one view per visitor per test per day
+    // For conversions: only one conversion per visitor per test ever
+    const { data: existingEvent, error: checkError } = await supabase
+      .from('ab_test_events')
+      .select('id')
+      .eq('test_name', testName)
+      .eq('visitor_id', visitorId)
+      .eq('event_type', eventType)
+      .gte('created_at', eventType === 'view' 
+        ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() // last 24h for views
+        : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() // last 90 days for conversions
+      )
+      .limit(1);
+
+    if (checkError) {
+      console.error('Dedup check error:', checkError);
+      // Continue anyway - don't block on dedup errors
+    } else if (existingEvent && existingEvent.length > 0) {
+      console.log(`Duplicate ${eventType} for visitor ${visitorId.slice(0, 8)}... on test "${testName}" - skipping`);
+      // Silently accept but don't record duplicate
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Record the event
+    const { error: insertError } = await supabase.rpc('track_ab_event', {
       p_test_name: testName,
       p_variant: variant,
       p_event_type: eventType,
@@ -43,15 +127,15 @@ serve(async (req) => {
       p_metadata: metadata || {}
     });
 
-    if (error) {
-      console.error('Error tracking A/B event:', error);
+    if (insertError) {
+      console.error('Error tracking A/B event:', insertError);
       return new Response(
         JSON.stringify({ error: 'Failed to track event' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Tracked ${eventType} for test "${testName}", variant "${variant}"`);
+    console.log(`Tracked ${eventType} for test "${testName}", variant "${variant}", IP: ${clientIp.slice(0, 10)}...`);
 
     return new Response(
       JSON.stringify({ success: true }),
