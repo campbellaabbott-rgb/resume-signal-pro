@@ -12,6 +12,7 @@ import { FreeKeywordResults } from "@/components/FreeKeywordResults";
 import { StickyBottomCTA } from "@/components/StickyBottomCTA";
 import { FinalCTA } from "@/components/FinalCTA";
 import { ExitIntentPopup } from "@/components/ExitIntentPopup";
+import { HowItWorks } from "@/components/HowItWorks";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
 import { supabase } from "@/integrations/supabase/client";
@@ -366,6 +367,8 @@ const Index = () => {
       
       <main id="main-content" className="pt-16" role="main">
         <Hero />
+        
+        <HowItWorks />
         
         {/* Hidden honeypot field for bot detection */}
         <input
