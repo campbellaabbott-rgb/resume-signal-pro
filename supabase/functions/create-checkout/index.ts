@@ -45,6 +45,21 @@ const CURRENCY_RATES: Record<string, { rate: number; minUnit: number }> = {
   ron: { rate: 4.60, minUnit: 100 },
 };
 
+// Blocked country codes (ISO 3166-1 alpha-2)
+const BLOCKED_COUNTRIES = new Set(['RU', 'NG', 'PK']);
+
+const getCountryCode = (req: Request): string | null => {
+  return req.headers.get('cf-ipcountry') || 
+         req.headers.get('x-vercel-ip-country') || 
+         null;
+};
+
+const isBlockedCountry = (req: Request): boolean => {
+  const country = getCountryCode(req);
+  if (!country) return false;
+  return BLOCKED_COUNTRIES.has(country.toUpperCase());
+};
+
 const logStep = (step: string, details?: Record<string, unknown>) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
@@ -69,6 +84,16 @@ function calculateAmount(currency: string): { amount: number; currency: string }
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Geo-blocking check
+  if (isBlockedCountry(req)) {
+    const country = getCountryCode(req);
+    console.log(`[CREATE-CHECKOUT] Blocked request from country: ${country}`);
+    return new Response(
+      JSON.stringify({ error: "Service not available in your region." }),
+      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   // Get client IP for rate limiting
