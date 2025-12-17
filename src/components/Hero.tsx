@@ -2,10 +2,45 @@ import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye, Users, 
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { LiveActivityCounter } from "./LiveActivityCounter";
+import { useABTest } from "@/hooks/use-ab-test";
 
 export function Hero() {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
+  
+  // A/B Tests
+  const heroCta = useABTest('hero_cta');
+  const pricingDisplay = useABTest('pricing_display');
+  const freeScanCta = useABTest('free_scan_cta');
+
+  // CTA text variants
+  const getCtaText = () => {
+    switch (heroCta.variant) {
+      case 'urgent': return 'Analyze Now - Limited Spots';
+      case 'benefit': return 'Land More Interviews - $25';
+      default: return 'Get Your Analysis - $25';
+    }
+  };
+
+  // Free scan button text variants
+  const getFreeScanText = () => {
+    switch (freeScanCta.variant) {
+      case 'instant': return 'Get Instant Results';
+      case 'free_badge': return '✨ FREE Scan Available';
+      default: return 'Get Free Resume Score';
+    }
+  };
+
+  // Pricing display variants
+  const getPricingDisplay = () => {
+    switch (pricingDisplay.variant) {
+      case 'starting_at': return { main: 'Starting at $25', sub: 'One-time' };
+      case 'roi_focused': return { main: '$25', sub: '= 1 Interview ROI' };
+      default: return { main: t('hero.price'), sub: t('hero.oneTime') };
+    }
+  };
+
+  const pricing = getPricingDisplay();
 
   const features = [
     { icon: FileText, labelKey: "hero.features.atsBullets", descKey: "hero.features.atsBulletsDesc" },
@@ -51,10 +86,12 @@ export function Hero() {
               className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-5 sm:py-6 rounded-2xl bg-gradient-to-r from-success via-success to-emerald-500 text-success-foreground text-lg sm:text-xl font-bold shadow-xl shadow-success/30 hover:shadow-2xl hover:shadow-success/40 active:scale-[0.98] transition-all duration-300 min-h-[64px] touch-manipulation animate-pulse-subtle"
             >
               <Sparkles className="w-6 h-6 sm:w-7 sm:h-7" />
-              <span>Get Free Resume Score</span>
-              <div className="absolute -top-3 -right-2 sm:-right-3 px-3 py-1 rounded-full bg-destructive text-destructive-foreground text-xs font-bold animate-bounce shadow-lg">
-                FREE
-              </div>
+              <span>{getFreeScanText()}</span>
+              {freeScanCta.variant !== 'free_badge' && (
+                <div className="absolute -top-3 -right-2 sm:-right-3 px-3 py-1 rounded-full bg-destructive text-destructive-foreground text-xs font-bold animate-bounce shadow-lg">
+                  FREE
+                </div>
+              )}
             </button>
             <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5">
@@ -124,8 +161,8 @@ export function Hero() {
           <div className="animate-fade-in space-y-5" style={{ animationDelay: "0.4s" }}>
             <div className="inline-flex flex-col items-center p-6 rounded-2xl bg-gradient-to-b from-card/80 to-card/40 border border-border/50 backdrop-blur-sm">
               <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-4xl md:text-5xl font-bold text-foreground">{t('hero.price')}</span>
-                <span className="text-muted-foreground">{t('hero.oneTime')}</span>
+                <span className="text-4xl md:text-5xl font-bold text-foreground">{pricing.main}</span>
+                <span className="text-muted-foreground">{pricing.sub}</span>
               </div>
               {isLocalCurrency && (
                 <p className="text-sm text-primary/80 font-medium">

@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      ab_test_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          test_name: string
+          variant: string
+          visitor_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          test_name: string
+          variant: string
+          visitor_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          test_name?: string
+          variant?: string
+          visitor_id?: string
+        }
+        Relationships: []
+      }
       daily_scan_stats: {
         Row: {
           date: string
@@ -181,6 +211,15 @@ export type Database = {
         Args: { p_share_id: string }
         Returns: boolean
       }
+      get_ab_test_stats: {
+        Args: { p_test_name: string }
+        Returns: {
+          conversion_rate: number
+          conversions: number
+          variant: string
+          views: number
+        }[]
+      }
       get_analysis_by_share_id: {
         Args: { share_id_param: string }
         Returns: {
@@ -214,6 +253,16 @@ export type Database = {
             }
             Returns: string
           }
+      track_ab_event: {
+        Args: {
+          p_event_type: string
+          p_metadata?: Json
+          p_test_name: string
+          p_variant: string
+          p_visitor_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

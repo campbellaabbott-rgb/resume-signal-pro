@@ -39,9 +39,11 @@ import {
   removeResumeData, 
   cleanupExpiredResumeData 
 } from "@/hooks/use-resume-storage";
+import { useABConversion } from "@/hooks/use-ab-test";
 
 const Success = () => {
   const { t } = useTranslation();
+  const { trackAllConversions } = useABConversion();
   
   // Analysis progress steps
   const analysisSteps: Array<{id: number; label: string; icon: typeof CheckCircle2}> = [
@@ -62,6 +64,7 @@ const Success = () => {
   const [error, setError] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [hasTrackedConversion, setHasTrackedConversion] = useState(false);
   const analysisRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -109,6 +112,12 @@ const Success = () => {
         const { shareId: newShareId, ...analysisResult } = data;
         setAnalysisData(analysisResult);
         setShareId(newShareId);
+
+        // Track A/B test conversion (paid analysis completed)
+        if (!hasTrackedConversion) {
+          trackAllConversions({ type: 'paid_analysis', hasLinkedIn: data.hasLinkedIn });
+          setHasTrackedConversion(true);
+        }
 
         // Clean up stored temp session IDs after successful analysis
         if (sessionId) {
