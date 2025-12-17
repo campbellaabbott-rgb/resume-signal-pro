@@ -24,6 +24,13 @@ export const AB_TESTS = {
     // instant: "Get Instant Results"
     // free_badge: "FREE Scan Available"
   },
+  free_scan_upgrade: {
+    name: 'free_scan_upgrade',
+    variants: ['control', 'urgency', 'value'] as const,
+    // control: "Fix These Issues - $25" / "Get Full Analysis - $25"
+    // urgency: "Fix Now Before It's Too Late" / "Don't Miss Out - $25"
+    // value: "Get Recruiter-Ready - $25" / "Unlock All Fixes - $25"
+  },
   upload_flow: {
     name: 'upload_flow',
     variants: ['control', 'paste_first', 'simplified'] as const,
