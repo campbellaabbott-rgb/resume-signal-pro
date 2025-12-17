@@ -1,6 +1,7 @@
 import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye, Users, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
+import { LiveActivityCounter } from "./LiveActivityCounter";
 
 export function Hero() {
   const { t } = useTranslation();
@@ -58,6 +59,9 @@ export function Hero() {
             <p className="mt-3 text-sm text-muted-foreground">
               No sign-up required • Results in 30 seconds
             </p>
+            <div className="mt-4">
+              <LiveActivityCounter />
+            </div>
           </div>
 
           {/* Badge */}
