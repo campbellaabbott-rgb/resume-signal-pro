@@ -93,15 +93,23 @@ export function Hero() {
                 </div>
               )}
             </button>
-            <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-sm text-muted-foreground">
+            {/* Zero-friction messaging */}
+            <div className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/30 text-success font-medium text-sm">
+              <span>Free</span>
+              <span className="w-1 h-1 rounded-full bg-success/50" />
+              <span>No signup</span>
+              <span className="w-1 h-1 rounded-full bg-success/50" />
+              <span>30 seconds</span>
+            </div>
+            <div className="mt-3 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-success" />
-                No sign-up required
+                <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                No credit card needed
               </span>
               <span className="hidden sm:block w-1 h-1 rounded-full bg-muted-foreground/30" />
               <span className="flex items-center gap-1.5">
-                <Zap className="w-4 h-4 text-yellow-500" />
-                Results in 30 seconds
+                <Shield className="w-3.5 h-3.5 text-primary" />
+                Your resume stays private
               </span>
             </div>
             <div className="mt-4">
