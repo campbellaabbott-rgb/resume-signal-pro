@@ -1323,29 +1323,24 @@ export function FreeKeywordResults({
       </div>
 
       {/* Upgrade CTA Box 1 */}
-      <div className="rounded-2xl bg-gradient-to-r from-destructive/20 via-destructive/10 to-warning/10 border-2 border-destructive/50 p-6 mb-5">
-        <div className="flex flex-col sm:flex-row items-start gap-4">
-          <div className="p-3 rounded-full bg-destructive/20 animate-pulse">
-            <AlertTriangle className="w-6 h-6 text-destructive" />
+      <div className="rounded-2xl bg-destructive/10 border-2 border-destructive/50 p-5 mb-5">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-full bg-destructive/20">
+            <Lock className="w-5 h-5 text-destructive" />
           </div>
           <div className="flex-1">
-            <h4 className="font-bold text-destructive text-lg mb-2">🚨 {redFlags.length}+ Issues Are Killing Your Chances</h4>
-            <p className="text-sm text-muted-foreground mb-4">
-              Every day you wait, other candidates with optimized resumes are getting YOUR interviews.
+            <h4 className="font-bold text-destructive mb-1">Your Resume Has {redFlags.length}+ Issues Recruiters Will Notice</h4>
+            <p className="text-sm text-muted-foreground mb-3">
+              Get the full analysis with specific fixes, rewritten bullet points, and ATS-optimized suggestions.
             </p>
             <Button 
               onClick={onGetFullAnalysis}
-              size="lg"
-              className="w-full sm:w-auto bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold shadow-lg shadow-destructive/30 h-12 text-base"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
             >
-              <Sparkles className="w-5 h-5 mr-2" />
-              Fix My Resume Now — $25
-              <ArrowRight className="w-5 h-5 ml-2" />
+              <Sparkles className="w-4 h-4 mr-2" />
+              Fix These Issues - $25
+              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
-            <p className="text-xs text-muted-foreground mt-3 flex items-center gap-2">
-              <CheckCircle2 className="w-3.5 h-3.5 text-success" />
-              One interview = $25 paid for itself
-            </p>
           </div>
         </div>
       </div>
@@ -1395,25 +1390,24 @@ export function FreeKeywordResults({
       </div>
 
       {/* Upgrade CTA Box 2 */}
-      <div className="rounded-2xl bg-gradient-to-r from-primary/20 via-primary/10 to-success/10 border-2 border-primary/50 p-6 mb-5">
-        <div className="text-center">
-          <h4 className="font-bold text-xl mb-2">⚡ Get Interview-Ready in Minutes</h4>
-          <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-            Stop guessing. Get recruiter-approved rewrites, ATS fixes, and a prioritized action plan.
-          </p>
-          <Button 
-            onClick={onGetFullAnalysis}
-            size="lg"
-            className="w-full sm:w-auto bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-bold shadow-lg shadow-primary/30 h-14 text-lg px-8"
-          >
-            <Sparkles className="w-5 h-5 mr-2" />
-            Unlock Full Report — $25
-            <ArrowRight className="w-5 h-5 ml-2" />
-          </Button>
-          <div className="flex flex-wrap items-center justify-center gap-3 mt-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> Instant delivery</span>
-            <span className="flex items-center gap-1"><Lock className="w-3.5 h-3.5 text-primary" /> 100% secure</span>
-            <span className="flex items-center gap-1"><Target className="w-3.5 h-3.5 text-warning" /> Industry-specific</span>
+      <div className="rounded-2xl bg-destructive/10 border-2 border-destructive/50 p-5 mb-5">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-full bg-destructive/20">
+            <AlertTriangle className="w-5 h-5 text-destructive" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-bold text-destructive mb-1">Don't Lose This Job to a Stronger Resume</h4>
+            <p className="text-sm text-muted-foreground mb-3">
+              Your free scan found problems. The full report shows you exactly how to fix them with recruiter-approved rewrites.
+            </p>
+            <Button 
+              onClick={onGetFullAnalysis}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Get Full Analysis - $25
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
           </div>
         </div>
       </div>
@@ -1492,25 +1486,18 @@ export function FreeKeywordResults({
         </div>
       </div>
 
-      {/* Final CTA */}
-      <div className="text-center p-6 rounded-2xl bg-gradient-to-b from-primary/10 to-transparent border border-primary/20">
-        <p className="text-sm text-muted-foreground mb-3">Ready to stand out from other applicants?</p>
+      {/* CTA */}
+      <div className="text-center">
         <Button 
           size="lg" 
           onClick={onGetFullAnalysis}
           disabled={isLoading}
-          className="w-full sm:w-auto gap-2 px-10 h-14 text-lg font-bold bg-gradient-to-r from-primary via-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-xl shadow-primary/30 animate-pulse-subtle"
+          className="gap-2 px-8 h-12 text-base font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20"
         >
-          <Sparkles className="w-5 h-5" />
           {t('freeScan.cta.button')} — {t('freeScan.cta.price')}
-          <ArrowRight className="w-5 h-5" />
+          <ArrowRight className="w-4 h-4" />
         </Button>
-        <div className="flex flex-wrap items-center justify-center gap-4 mt-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-success" />
-            One interview = $25 paid for itself
-          </span>
-        </div>
+        <p className="text-xs text-muted-foreground mt-2">One interview pays for itself</p>
       </div>
     </div>
     </TooltipProvider>
