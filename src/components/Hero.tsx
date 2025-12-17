@@ -1,4 +1,4 @@
-import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye, Users, Sparkles } from "lucide-react";
+import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye, Users, Sparkles, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { LiveActivityCounter } from "./LiveActivityCounter";
@@ -45,20 +45,28 @@ export function Hero() {
       <div className="container relative">
       <div className="max-w-4xl mx-auto text-center">
           {/* Primary CTA - Big and prominent */}
-          <div className="mb-8 animate-fade-in">
+          <div className="mb-6 sm:mb-8 animate-fade-in">
             <button
               onClick={() => document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' })}
-              className="group relative inline-flex items-center gap-2 sm:gap-3 px-6 sm:px-8 py-4 sm:py-5 rounded-2xl bg-gradient-to-r from-success to-success/80 text-success-foreground text-base sm:text-lg font-bold shadow-lg shadow-success/25 hover:shadow-xl hover:shadow-success/30 active:scale-[0.98] transition-all duration-300 min-h-[52px] touch-manipulation"
+              className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-5 sm:py-6 rounded-2xl bg-gradient-to-r from-success via-success to-emerald-500 text-success-foreground text-lg sm:text-xl font-bold shadow-xl shadow-success/30 hover:shadow-2xl hover:shadow-success/40 active:scale-[0.98] transition-all duration-300 min-h-[64px] touch-manipulation animate-pulse-subtle"
             >
-              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
-              <span>{t('hero.freeScan')} - It's Free!</span>
-              <div className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold animate-bounce">
+              <Sparkles className="w-6 h-6 sm:w-7 sm:h-7" />
+              <span>Get Free Resume Score</span>
+              <div className="absolute -top-3 -right-2 sm:-right-3 px-3 py-1 rounded-full bg-destructive text-destructive-foreground text-xs font-bold animate-bounce shadow-lg">
                 FREE
               </div>
             </button>
-            <p className="mt-3 text-sm text-muted-foreground">
-              No sign-up required • Results in 30 seconds
-            </p>
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-success" />
+                No sign-up required
+              </span>
+              <span className="hidden sm:block w-1 h-1 rounded-full bg-muted-foreground/30" />
+              <span className="flex items-center gap-1.5">
+                <Zap className="w-4 h-4 text-yellow-500" />
+                Results in 30 seconds
+              </span>
+            </div>
             <div className="mt-4">
               <LiveActivityCounter />
             </div>
