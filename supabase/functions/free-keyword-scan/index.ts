@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
 
-const ADMIN_EMAIL = "campbellabbott@gmail.com";
+const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "admin@resumebooster.com";
 
 // Send notification email (non-blocking)
 async function sendNotificationEmail(ip: string, industry: string, atsScore: number, country: string) {
