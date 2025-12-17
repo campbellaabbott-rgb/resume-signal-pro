@@ -59,7 +59,7 @@ const BLOCKED_COUNTRIES = new Set(['RU', 'NG', 'PK']);
 const ERROR_MESSAGES = {
   INTERNAL: 'An error occurred. Please try again.',
   INVALID_INPUT: 'Invalid input provided.',
-  RATE_LIMITED: 'You\'ve used all 4 free scans today. Get the full analysis for $25!',
+  RATE_LIMITED: 'Daily scan limit reached. Upgrade for unlimited access!',
   SERVICE_UNAVAILABLE: 'Service temporarily unavailable.',
   GEO_BLOCKED: 'Service not available in your region.',
 };
