@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ArrowRight, Sparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
+import { useABTest } from "@/hooks/use-ab-test";
 
 interface StickyBottomCTAProps {
   onGetStarted: () => void;
@@ -13,6 +14,21 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
   const [isDismissed, setIsDismissed] = useState(false);
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
+  const heroCta = useABTest('hero_cta');
+
+  // CTA button text variants
+  const getCtaText = () => {
+    switch (heroCta.variant) {
+      case 'urgent': return 'Analyze Now';
+      case 'benefit': return 'Get Hired Faster';
+      default: return t('stickyCta.button');
+    }
+  };
+
+  const handleGetStarted = () => {
+    heroCta.trackConversion({ source: 'sticky_cta' });
+    onGetStarted();
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -59,11 +75,11 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
               </div>
               
               <button
-                onClick={onGetStarted}
+                onClick={handleGetStarted}
                 disabled={isLoading}
                 className="inline-flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-full bg-white text-primary font-semibold hover:bg-white/90 active:scale-[0.98] transition-all shadow-lg disabled:opacity-50 min-h-[44px] touch-manipulation"
               >
-                <span className="text-sm sm:text-base">{t('stickyCta.button')}</span>
+                <span className="text-sm sm:text-base">{getCtaText()}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
               

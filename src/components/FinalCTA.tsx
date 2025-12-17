@@ -1,6 +1,7 @@
 import { ArrowRight, CheckCircle2, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
+import { useABTest } from "@/hooks/use-ab-test";
 
 interface FinalCTAProps {
   onGetStarted: () => void;
@@ -10,6 +11,30 @@ interface FinalCTAProps {
 export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
+  const heroCta = useABTest('hero_cta');
+  const pricingDisplay = useABTest('pricing_display');
+
+  // CTA button text variants
+  const getCtaText = () => {
+    switch (heroCta.variant) {
+      case 'urgent': return 'Get Analysis Now';
+      case 'benefit': return 'Start Landing Interviews';
+      default: return t('finalCta.button');
+    }
+  };
+
+  // Pricing display variants
+  const getPricingSubtext = () => {
+    switch (pricingDisplay.variant) {
+      case 'roi_focused': return '= Your Next Interview';
+      default: return t('finalCta.oneTime');
+    }
+  };
+
+  const handleGetStarted = () => {
+    heroCta.trackConversion({ source: 'final_cta' });
+    onGetStarted();
+  };
 
   const benefits = [
     "finalCta.benefits.ats",
@@ -55,7 +80,7 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
           <div className="inline-flex flex-col items-center p-8 rounded-2xl bg-card/80 border border-border/50 backdrop-blur-sm">
             <div className="flex items-baseline gap-2 mb-2">
               <span className="text-5xl md:text-6xl font-bold text-foreground">$25</span>
-              <span className="text-muted-foreground text-lg">{t('finalCta.oneTime')}</span>
+              <span className="text-muted-foreground text-lg">{getPricingSubtext()}</span>
             </div>
             {isLocalCurrency && (
               <p className="text-sm text-primary font-medium mb-2">
@@ -65,11 +90,11 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
             <p className="text-sm text-muted-foreground mb-4">{t('finalCta.guarantee')}</p>
             
             <button
-              onClick={onGetStarted}
+              onClick={handleGetStarted}
               disabled={isLoading}
               className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-primary text-primary-foreground font-semibold text-lg hover:bg-primary/90 transition-all hover:scale-105 shadow-lg shadow-primary/25 disabled:opacity-50"
             >
-              {t('finalCta.button')}
+              {getCtaText()}
               <ArrowRight className="w-5 h-5" />
             </button>
             
