@@ -283,16 +283,28 @@ const Index = () => {
     const linkedInContent = linkedIn || linkedInText;
     const jobDescriptionContent = jobDescription || jobDescriptionText;
     
-    if (!contentToAnalyze && !selectedFile) {
+    // More detailed validation with specific error messages
+    if (!contentToAnalyze || contentToAnalyze.trim().length < 50) {
+      console.error("[Checkout] No resume content available", { 
+        textProvided: !!text, 
+        resumeTextState: !!resumeText,
+        contentLength: contentToAnalyze?.length 
+      });
       toast({
-        title: "No resume provided",
-        description: "Please upload a file or paste your resume text.",
+        title: "Resume required",
+        description: "Please upload or paste your resume first, then try again.",
         variant: "destructive",
       });
       return;
     }
 
     setIsLoading(true);
+    console.log("[Checkout] Starting checkout flow", { 
+      hasContent: !!contentToAnalyze, 
+      contentLength: contentToAnalyze?.length,
+      hasLinkedIn: !!linkedInContent,
+      currency: currency.code
+    });
 
     try {
       // Store resume data server-side (returns UUID, not PII in browser)
@@ -303,9 +315,11 @@ const Index = () => {
       });
 
       if (tempError) {
-        console.error("Failed to store resume data:", tempError);
-        throw new Error("Failed to prepare resume data");
+        console.error("[Checkout] Failed to store resume data:", tempError);
+        throw new Error("Failed to prepare resume data. Please try uploading your resume again.");
       }
+      
+      console.log("[Checkout] Resume stored, calling create-checkout");
 
       // Store only the temp session UUID locally (no PII)
       setResumeData('tempSessionId', tempSessionData);
@@ -445,7 +459,7 @@ const Index = () => {
                 industryBenchmark={freeKeywordResult.industryBenchmark}
                 quickWins={freeKeywordResult.quickWins}
                 sampleRewrite={freeKeywordResult.sampleRewrite}
-                onGetFullAnalysis={() => handleCheckout()}
+                onGetFullAnalysis={() => handleCheckout(resumeText, linkedInText, jobDescriptionText)}
                 isLoading={isLoading}
               />
             </div>
