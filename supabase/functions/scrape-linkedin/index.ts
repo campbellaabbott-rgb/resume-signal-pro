@@ -27,6 +27,23 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Check global rate limit first (100 req/hr across ALL functions)
+    const { data: globalAllowed, error: globalRlError } = await supabase.rpc('check_global_rate_limit', {
+      p_ip: clientIp,
+      p_max_requests: 100,
+      p_window_minutes: 60
+    });
+
+    if (globalRlError) {
+      console.error("[SCRAPE-LINKEDIN] Global rate limit check error:", globalRlError);
+    } else if (!globalAllowed) {
+      console.log(`[SCRAPE-LINKEDIN] Global rate limit exceeded for IP: ${clientIp}`);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later or paste your profile text instead.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Check per-function rate limit
     const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
       p_ip: clientIp,
@@ -39,23 +56,6 @@ serve(async (req) => {
       console.error("[SCRAPE-LINKEDIN] Rate limit check error:", rlError);
     } else if (!allowed) {
       console.log(`[SCRAPE-LINKEDIN] Rate limit exceeded for IP: ${clientIp}`);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later or paste your profile text instead.' }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Check global rate limit (100 req/hr across ALL functions)
-    const { data: globalAllowed, error: globalRlError } = await supabase.rpc('check_global_rate_limit', {
-      p_ip: clientIp,
-      p_max_requests: 100,
-      p_window_minutes: 60
-    });
-
-    if (globalRlError) {
-      console.error("[SCRAPE-LINKEDIN] Global rate limit check error:", globalRlError);
-    } else if (!globalAllowed) {
-      console.log(`[SCRAPE-LINKEDIN] Global rate limit exceeded for IP: ${clientIp}`);
       return new Response(
         JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later or paste your profile text instead.' }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
