@@ -42,9 +42,26 @@ export function Hero() {
       />
       
       <div className="container relative">
-        <div className="max-w-4xl mx-auto text-center">
-          {/* Badges */}
-          <div className="flex flex-wrap items-center justify-center gap-3 mb-8 animate-fade-in">
+      <div className="max-w-4xl mx-auto text-center">
+          {/* Primary CTA - Big and prominent */}
+          <div className="mb-8 animate-fade-in">
+            <button
+              onClick={() => document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' })}
+              className="group relative inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-success to-success/80 text-success-foreground text-lg font-bold shadow-lg shadow-success/25 hover:shadow-xl hover:shadow-success/30 hover:scale-105 transition-all duration-300"
+            >
+              <Sparkles className="w-6 h-6 animate-pulse" />
+              <span>{t('hero.freeScan')} - It's Free!</span>
+              <div className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold animate-bounce">
+                FREE
+              </div>
+            </button>
+            <p className="mt-3 text-sm text-muted-foreground">
+              No sign-up required • Results in 30 seconds
+            </p>
+          </div>
+
+          {/* Badge */}
+          <div className="flex justify-center mb-6 animate-fade-in" style={{ animationDelay: "0.05s" }}>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm text-primary backdrop-blur-sm" role="status">
               <span className="relative flex h-2 w-2" aria-hidden="true">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -52,13 +69,6 @@ export function Hero() {
               </span>
               {t('hero.badge')}
             </div>
-            <button
-              onClick={() => document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' })}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/30 text-sm text-success font-medium hover:bg-success/20 hover:border-success/50 transition-all duration-300 backdrop-blur-sm"
-            >
-              <Sparkles className="w-4 h-4" />
-              {t('hero.freeScan')}
-            </button>
           </div>
           
           {/* Heading */}
