@@ -11,6 +11,7 @@ import { ComparisonTable } from "@/components/ComparisonTable";
 import { FreeKeywordResults } from "@/components/FreeKeywordResults";
 import { StickyBottomCTA } from "@/components/StickyBottomCTA";
 import { FinalCTA } from "@/components/FinalCTA";
+import { ExitIntentPopup } from "@/components/ExitIntentPopup";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
 import { supabase } from "@/integrations/supabase/client";
@@ -453,6 +454,12 @@ const Index = () => {
       />
       
       <Footer />
+      
+      <ExitIntentPopup 
+        onGetStarted={() => {
+          document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
+        }}
+      />
     </div>
   );
 };
