@@ -10,6 +10,8 @@ const corsHeaders = {
 const RATE_LIMIT = 30; // 30 requests per hour (increased for checkout - revenue critical)
 const RATE_WINDOW_MINUTES = 60;
 const BASE_PRICE_USD = 25;
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1000;
 
 // Supported currencies with exchange rates (approximate, updated periodically)
 // Amount is in smallest currency unit (cents, pence, etc.)
@@ -79,6 +81,66 @@ function calculateAmount(currency: string): { amount: number; currency: string }
   const amountInSmallestUnit = roundedAmount * currencyData.minUnit;
   
   return { amount: amountInSmallestUnit, currency: lowerCurrency };
+}
+
+// Generate idempotency key from client IP and timestamp (5-second window)
+function generateIdempotencyKey(clientIp: string): string {
+  const timeWindow = Math.floor(Date.now() / 5000); // 5-second window
+  return `checkout_${clientIp}_${timeWindow}`;
+}
+
+// Sleep helper for retry delays
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Retry wrapper for Stripe API calls
+async function createStripeSessionWithRetry(
+  stripe: Stripe,
+  sessionParams: Stripe.Checkout.SessionCreateParams,
+  idempotencyKey: string,
+  maxRetries: number = MAX_RETRIES
+): Promise<Stripe.Checkout.Session> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      logStep(`Stripe API attempt ${attempt}/${maxRetries}`);
+      
+      const session = await stripe.checkout.sessions.create(sessionParams, {
+        idempotencyKey: idempotencyKey,
+      });
+      
+      logStep(`Stripe session created successfully on attempt ${attempt}`);
+      return session;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      // Don't retry for certain errors
+      const errorMessage = lastError.message.toLowerCase();
+      if (
+        errorMessage.includes('invalid api key') ||
+        errorMessage.includes('authentication') ||
+        errorMessage.includes('invalid_request_error') ||
+        errorMessage.includes('card_error')
+      ) {
+        logStep(`Non-retryable Stripe error: ${lastError.message}`);
+        throw lastError;
+      }
+      
+      // Log and wait before retry (if not last attempt)
+      if (attempt < maxRetries) {
+        const delay = RETRY_DELAY_MS * attempt; // Exponential backoff
+        logStep(`Stripe API error, retrying in ${delay}ms`, { 
+          attempt, 
+          error: lastError.message 
+        });
+        await sleep(delay);
+      }
+    }
+  }
+  
+  // All retries exhausted
+  logStep(`All ${maxRetries} Stripe API attempts failed`);
+  throw lastError;
 }
 
 serve(async (req) => {
@@ -154,8 +216,29 @@ serve(async (req) => {
     }
     logStep("Stripe key verified");
 
-    const { resumeData, currency: requestedCurrency } = await req.json();
+    // Parse and validate request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch {
+      logStep("Invalid JSON in request body");
+      return new Response(
+        JSON.stringify({ error: "Invalid request format. Please try again." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { resumeData, currency: requestedCurrency } = requestBody;
     logStep("Received request", { hasResumeData: !!resumeData, currency: requestedCurrency });
+
+    // Validate currency format if provided
+    if (requestedCurrency && typeof requestedCurrency !== 'string') {
+      logStep("Invalid currency format");
+      return new Response(
+        JSON.stringify({ error: "Invalid currency format. Please refresh and try again." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const origin = req.headers.get("origin") || "https://lovable.dev";
@@ -164,8 +247,21 @@ serve(async (req) => {
     const { amount, currency } = calculateAmount(requestedCurrency || "usd");
     logStep("Calculated price", { amount, currency, baseUSD: BASE_PRICE_USD });
 
-    // Create a one-time payment session with dynamic pricing for multi-currency
-    const session = await stripe.checkout.sessions.create({
+    // Validate calculated amount (sanity check)
+    if (amount < 100 || amount > 10000000) { // Between $1 and $100,000 equivalent
+      logStep("Invalid calculated amount", { amount });
+      return new Response(
+        JSON.stringify({ error: "Invalid payment amount. Please refresh and try again." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Generate idempotency key to prevent duplicate sessions
+    const idempotencyKey = generateIdempotencyKey(clientIp);
+    logStep("Generated idempotency key", { key: idempotencyKey });
+
+    // Create session params
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       line_items: [
         {
           price_data: {
@@ -187,7 +283,12 @@ serve(async (req) => {
         originalCurrency: currency,
         baseAmountUSD: BASE_PRICE_USD.toString(),
       },
-    });
+      // Additional reliability settings
+      expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // Session expires in 30 minutes
+    };
+
+    // Create checkout session with retry logic
+    const session = await createStripeSessionWithRetry(stripe, sessionParams, idempotencyKey);
 
     logStep("Checkout session created", { sessionId: session.id, currency, amount });
 
@@ -206,12 +307,21 @@ serve(async (req) => {
     if (errorMessage.includes('Invalid API Key') || errorMessage.includes('api_key')) {
       userMessage = "Payment service configuration error. Please contact support.";
       statusCode = 503;
+    } else if (errorMessage.includes('authentication')) {
+      userMessage = "Payment service authentication error. Please contact support.";
+      statusCode = 503;
     } else if (errorMessage.includes('currency')) {
       userMessage = "Invalid currency. Please refresh and try again.";
       statusCode = 400;
     } else if (errorMessage.includes('amount')) {
       userMessage = "Invalid payment amount. Please refresh and try again.";
       statusCode = 400;
+    } else if (errorMessage.includes('rate_limit') || errorMessage.includes('too many requests')) {
+      userMessage = "Payment service is busy. Please wait a moment and try again.";
+      statusCode = 429;
+    } else if (errorMessage.includes('timeout') || errorMessage.includes('network')) {
+      userMessage = "Connection to payment service timed out. Please try again.";
+      statusCode = 503;
     }
     
     return new Response(JSON.stringify({ error: userMessage }), {
