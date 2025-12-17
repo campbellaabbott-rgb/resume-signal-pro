@@ -52,11 +52,15 @@ const corsHeaders = {
 const MAX_RESUME_LENGTH = 50000;
 const FREE_SCANS_PER_DAY = 4;
 
+// Blocked country codes (ISO 3166-1 alpha-2)
+const BLOCKED_COUNTRIES = new Set(['RU', 'NG', 'PK']);
+
 const ERROR_MESSAGES = {
   INTERNAL: 'An error occurred. Please try again.',
   INVALID_INPUT: 'Invalid input provided.',
   RATE_LIMITED: 'You\'ve used all 4 free scans today. Get the full analysis for $25!',
   SERVICE_UNAVAILABLE: 'Service temporarily unavailable.',
+  GEO_BLOCKED: 'Service not available in your region.',
 };
 
 const getClientIp = (req: Request): string => {
@@ -65,9 +69,32 @@ const getClientIp = (req: Request): string => {
          'unknown';
 };
 
+const getCountryCode = (req: Request): string | null => {
+  // Cloudflare/CDN provides country code in cf-ipcountry header
+  return req.headers.get('cf-ipcountry') || 
+         req.headers.get('x-vercel-ip-country') || 
+         null;
+};
+
+const isBlockedCountry = (req: Request): boolean => {
+  const country = getCountryCode(req);
+  if (!country) return false; // Allow if country unknown
+  return BLOCKED_COUNTRIES.has(country.toUpperCase());
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Geo-blocking check
+  if (isBlockedCountry(req)) {
+    const country = getCountryCode(req);
+    console.log(`[FREE-KEYWORD-SCAN] Blocked request from country: ${country}`);
+    return new Response(
+      JSON.stringify({ error: ERROR_MESSAGES.GEO_BLOCKED }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   try {
