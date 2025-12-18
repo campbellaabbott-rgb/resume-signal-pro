@@ -61,30 +61,35 @@ ChartContainer.displayName = "Chart";
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(([_, config]) => config.theme || config.color);
 
-  if (!colorConfig.length) {
-    return null;
-  }
+  const cssContent = React.useMemo(() => {
+    if (!colorConfig.length) {
+      return "";
+    }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
+    return Object.entries(THEMES)
+      .map(
+        ([theme, prefix]) => `
 ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
     return color ? `  --color-${key}: ${color};` : null;
   })
+  .filter(Boolean)
   .join("\n")}
 }
 `,
-          )
-          .join("\n"),
-      }}
-    />
-  );
+      )
+      .join("\n");
+  }, [colorConfig, id]);
+
+  if (!colorConfig.length) {
+    return null;
+  }
+
+  // Use a style element with children instead of dangerouslySetInnerHTML
+  // This is safer and avoids XSS vulnerabilities (CVE-2025-24967)
+  return React.createElement("style", null, cssContent);
 };
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
