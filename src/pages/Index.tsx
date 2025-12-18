@@ -65,6 +65,7 @@ const Index = () => {
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>('verifying');
   const [checkoutError, setCheckoutError] = useState<string | undefined>();
+  const [checkoutUrl, setCheckoutUrl] = useState<string | undefined>(); // Store URL for fallback
   const [resumeText, setResumeText] = useState<string>("");
   const [linkedInText, setLinkedInText] = useState<string>("");
   const [jobDescriptionText, setJobDescriptionText] = useState<string>("");
@@ -78,6 +79,16 @@ const Index = () => {
   
   // Track if we're pre-storing to avoid duplicate calls
   const isPreStoring = useRef(false);
+
+  // Timeout wrapper for promises
+  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, errorMsg: string): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) => 
+        setTimeout(() => reject(new Error(errorMsg)), timeoutMs)
+      )
+    ]);
+  };
 
   // Check network connectivity - more forgiving check
   const checkConnection = async (): Promise<boolean> => {
@@ -403,6 +414,7 @@ const Index = () => {
     // Reset checkout state
     setCheckoutStep('verifying');
     setCheckoutError(undefined);
+    setCheckoutUrl(undefined); // Reset URL
     
     // More detailed validation with specific error messages
     if (!contentToAnalyze || contentToAnalyze.trim().length < 50) {
@@ -430,6 +442,9 @@ const Index = () => {
       hasPreStoredSession: !!preStoredSessionId,
       currency: currency.code
     });
+
+    // Track locally for finally block (outside try scope)
+    let hasReceivedUrl = false;
 
     try {
       // Step 1: Verify connection
@@ -484,12 +499,14 @@ const Index = () => {
 
       // Retry logic for create-checkout (up to 3 attempts)
       let lastError: Error | null = null;
-      let checkoutData = null;
+      let checkoutData: { url?: string; sessionId?: string } | null = null;
       
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
           console.log(`[Checkout] Attempt ${attempt}/3`);
-          const { data, error } = await supabase.functions.invoke("create-checkout", {
+          
+          // Wrap the API call in a timeout (30 seconds per attempt)
+          const apiCall = supabase.functions.invoke("create-checkout", {
             body: { 
               resumeData: contentToAnalyze,
               hasLinkedIn: !!linkedInContent,
@@ -497,6 +514,12 @@ const Index = () => {
               currency: currency.code
             },
           });
+          
+          const { data, error } = await withTimeout(
+            apiCall,
+            30000,
+            "Request timed out. Please check your connection and try again."
+          );
 
           if (error) throw error;
           checkoutData = data;
@@ -514,6 +537,11 @@ const Index = () => {
       if (!checkoutData?.url) {
         throw lastError || new Error("No checkout URL received after retries");
       }
+
+      // Store the checkout URL immediately for fallback use
+      hasReceivedUrl = true;
+      setCheckoutUrl(checkoutData.url);
+      console.log("[Checkout] Checkout URL received and stored for fallback");
 
       // Tie the temp session ID to this specific checkout session
       if (checkoutData?.sessionId) {
@@ -536,25 +564,22 @@ const Index = () => {
         return;
       }
       
-      // Desktop in iframe: try popup, fallback to clipboard
+      // Desktop in iframe: try popup, fallback to overlay with options
       if (inIframe) {
         const win = window.open(checkoutData.url, "_blank", "noopener,noreferrer");
         if (!win) {
-          try {
-            await navigator.clipboard.writeText(checkoutData.url);
-            toast({
-              title: "Link copied!",
-              description: "Checkout link copied to clipboard. Paste in a new tab to complete payment.",
-            });
-          } catch {
-            toast({
-              title: "Open checkout manually",
-              description: "Please open this link in a new tab: " + checkoutData.url.slice(0, 50) + "...",
-              variant: "destructive",
-            });
-          }
+          // Popup blocked - show overlay with fallback options instead of toast
+          console.log("[Checkout] Popup blocked, showing fallback options");
+          setCheckoutError("Your browser blocked the checkout popup.");
+          // Keep overlay visible with URL - user can use fallback buttons
+          return;
         }
+        // Popup opened successfully
         setIsCheckoutLoading(false);
+        toast({
+          title: "Checkout opened",
+          description: "Complete your payment in the new tab.",
+        });
         return;
       }
       // Desktop: navigate in same tab
@@ -583,21 +608,36 @@ const Index = () => {
         errorDescription = "Our payment service is temporarily down. Please try again in a few minutes.";
       }
       
-      toast({
-        title: errorTitle,
-        description: errorDescription,
-        variant: "destructive",
-      });
+      // Only show toast if we don't have a URL (true failure vs popup blocked)
+      if (!hasReceivedUrl) {
+        toast({
+          title: errorTitle,
+          description: errorDescription,
+          variant: "destructive",
+        });
+      }
+      
+      setCheckoutError(errorDescription);
     } finally {
       setIsLoading(false);
-      setIsCheckoutLoading(false);
+      // Don't hide overlay if we have a URL - user needs fallback options
+      if (!hasReceivedUrl) {
+        setIsCheckoutLoading(false);
+      }
     }
   };
 
   const handleRetryCheckout = () => {
     setCheckoutError(undefined);
+    setCheckoutUrl(undefined);
     setCheckoutStep('verifying');
     handleCheckout();
+  };
+
+  const handleCloseCheckout = () => {
+    setIsCheckoutLoading(false);
+    setCheckoutError(undefined);
+    setCheckoutUrl(undefined);
   };
 
   return (
@@ -605,8 +645,10 @@ const Index = () => {
       <CheckoutOverlay 
         isVisible={isCheckoutLoading} 
         currentStep={checkoutStep} 
-        error={checkoutError} 
-        onRetry={checkoutError ? handleRetryCheckout : undefined}
+        error={checkoutError}
+        checkoutUrl={checkoutUrl}
+        onRetry={checkoutError && !checkoutUrl ? handleRetryCheckout : undefined}
+        onClose={handleCloseCheckout}
       />
       <Header />
 

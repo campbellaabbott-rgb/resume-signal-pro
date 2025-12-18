@@ -1,6 +1,7 @@
-import { Loader2, Check, Wifi, CreditCard, ExternalLink, RefreshCw } from "lucide-react";
+import { Loader2, Check, Wifi, CreditCard, ExternalLink, RefreshCw, Copy, ExternalLinkIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 export type CheckoutStep = 'verifying' | 'connecting' | 'redirecting';
 
@@ -8,7 +9,9 @@ interface CheckoutOverlayProps {
   isVisible: boolean;
   currentStep?: CheckoutStep;
   error?: string;
+  checkoutUrl?: string; // Store the URL for manual fallback
   onRetry?: () => void;
+  onClose?: () => void;
 }
 
 const steps: { id: CheckoutStep; label: string; icon: React.ElementType }[] = [
@@ -17,10 +20,46 @@ const steps: { id: CheckoutStep; label: string; icon: React.ElementType }[] = [
   { id: 'redirecting', label: 'Redirecting to checkout', icon: ExternalLink },
 ];
 
-export function CheckoutOverlay({ isVisible, currentStep = 'verifying', error, onRetry }: CheckoutOverlayProps) {
+export function CheckoutOverlay({ 
+  isVisible, 
+  currentStep = 'verifying', 
+  error, 
+  checkoutUrl,
+  onRetry,
+  onClose 
+}: CheckoutOverlayProps) {
+  const [copied, setCopied] = useState(false);
+
   if (!isVisible) return null;
 
   const currentStepIndex = steps.findIndex(s => s.id === currentStep);
+
+  const handleCopyLink = async () => {
+    if (!checkoutUrl) return;
+    try {
+      await navigator.clipboard.writeText(checkoutUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback: select text approach
+      const textArea = document.createElement('textarea');
+      textArea.value = checkoutUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleOpenLink = () => {
+    if (!checkoutUrl) return;
+    window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  // Show fallback UI when we have a URL but there's an error (redirect failed)
+  const showFallbackOptions = checkoutUrl && error;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
@@ -32,18 +71,47 @@ export function CheckoutOverlay({ isVisible, currentStep = 'verifying', error, o
             </div>
             <div className="space-y-2">
               <h3 className="text-xl font-semibold text-foreground">
-                Connection Issue
+                {showFallbackOptions ? "Redirect Blocked" : "Connection Issue"}
               </h3>
               <p className="text-muted-foreground">
-                {error}
+                {showFallbackOptions 
+                  ? "Your browser blocked the redirect. Use the options below to complete checkout."
+                  : error
+                }
               </p>
             </div>
-            {onRetry && (
-              <Button onClick={onRetry} variant="default" className="mt-4">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Try Again
-              </Button>
+            
+            {/* Fallback options when we have the URL */}
+            {showFallbackOptions && (
+              <div className="space-y-3 pt-2">
+                <Button onClick={handleOpenLink} variant="default" className="w-full">
+                  <ExternalLinkIcon className="h-4 w-4 mr-2" />
+                  Open Checkout in New Tab
+                </Button>
+                <Button onClick={handleCopyLink} variant="outline" className="w-full">
+                  <Copy className="h-4 w-4 mr-2" />
+                  {copied ? "Copied!" : "Copy Checkout Link"}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Paste the link in a new browser tab to complete payment
+                </p>
+              </div>
             )}
+            
+            {/* Retry and close buttons */}
+            <div className="flex gap-3 justify-center pt-2">
+              {onRetry && !showFallbackOptions && (
+                <Button onClick={onRetry} variant="default">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
+              )}
+              {onClose && (
+                <Button onClick={onClose} variant="outline">
+                  Close
+                </Button>
+              )}
+            </div>
           </>
         ) : (
           <>
