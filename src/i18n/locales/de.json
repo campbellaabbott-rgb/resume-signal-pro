@@ -1,0 +1,345 @@
+{
+  "header": {
+    "tagline": "Recruiter-KI-Feedback",
+    "getStarted": "Jetzt starten",
+    "start": "Start"
+  },
+  "hero": {
+    "badge": "KI-gestützte Lebenslauf-Analyse",
+    "freeScan": "Kostenloser Scan",
+    "heading": "Schluss mit Raten.",
+    "headingHighlight": "Mehr Vorstellungsgespräche.",
+    "subheading": "Erhalten Sie ehrliches Recruiter-Feedback zu Ihrem Lebenslauf. Keine Floskeln – nur konkrete Verbesserungen, die zum Job führen.",
+    "price": "25 $",
+    "oneTime": "einmalig",
+    "nofees": "Kein Abo • Keine versteckten Kosten • Sofortige Ergebnisse",
+    "roi": "Ein Vorstellungsgespräch = 25 $ amortisiert",
+    "trusted": "Vertrauen von",
+    "jobSeekers": "Bewerbern",
+    "seeSample": "Beispielanalyse ansehen",
+    "whyBetter": "Warum besser als ChatGPT?",
+    "features": {
+      "atsBullets": "ATS-optimierte Stichpunkte",
+      "atsBulletsDesc": "Überwinden Sie die Roboter",
+      "actionVerbs": "Stärkere Aktionsverben",
+      "actionVerbsDesc": "Sofort auffallen",
+      "keywords": "Keyword-Vorschläge",
+      "keywordsDesc": "Stellenausschreibungen matchen",
+      "redFlags": "Red-Flag-Erkennung",
+      "redFlagsDesc": "K.O.-Kriterien beheben"
+    },
+    "trust": {
+      "secure": "Sicher & Privat",
+      "results": "Ergebnisse in 30 Sekunden",
+      "approved": "Recruiter-geprüft"
+    }
+  },
+  "footer": {
+    "copyright": "© {{year}} Resume Booster. Alle Rechte vorbehalten.",
+    "privacy": "Datenschutz",
+    "terms": "Nutzungsbedingungen",
+    "contact": "Kontakt"
+  },
+  "language": {
+    "select": "Sprache wählen"
+  },
+  "uploader": {
+    "title": "Lebenslauf & LinkedIn hochladen",
+    "subtitle": "Erhalten Sie eine umfassende Analyse Ihres Lebenslaufs",
+    "linkedinBonus": "+ LinkedIn-Profil-Optimierung",
+    "resume": {
+      "title": "Ihr Lebenslauf",
+      "required": "*Erforderlich",
+      "freeIncluded": "Kostenloser Scan inklusive!",
+      "upload": "Hochladen",
+      "paste": "Einfügen",
+      "dropHere": "Lebenslauf hier ablegen",
+      "fileTypes": "PDF, DOCX oder TXT (max. 10 MB)",
+      "browse": "Dateien durchsuchen",
+      "pasteHere": "Lebenslauf hier einfügen...",
+      "chars": "Zeichen"
+    },
+    "linkedin": {
+      "title": "Ihr LinkedIn-Profil",
+      "paidOnly": "Nur bei Vollanalyse",
+      "hide": "Ausblenden",
+      "show": "Anzeigen",
+      "description": "Fügen Sie LinkedIn hinzu für",
+      "benefits": "Headline-Optimierung, About-Abschnitt, SEO-Keywords,",
+      "andMore": "und Sichtbarkeits-Tipps.",
+      "uploadPdf": "PDF hochladen",
+      "uploadLinkedIn": "LinkedIn-PDF hochladen",
+      "exportTip": "Exportieren Sie Ihr Profil als PDF von LinkedIn",
+      "parsing": "PDF wird analysiert...",
+      "pasteHere": "LinkedIn-Profil hier einfügen...",
+      "includeTip": "Beinhalten: Headline, About, Erfahrung, Fähigkeiten"
+    },
+    "jobDescription": {
+      "title": "Ziel-Stellenausschreibung",
+      "optional": "Optional",
+      "hide": "Ausblenden",
+      "show": "Anzeigen",
+      "description": "Erhalten Sie",
+      "matchScore": "Match-Score",
+      "and": "und",
+      "tailoredFeedback": "maßgeschneidertes Feedback",
+      "forRole": "für Ihre Zielstelle",
+      "pasteHere": "Stellenausschreibung hier einfügen...",
+      "tip": "Tipp: Fügen Sie die vollständige Ausschreibung ein"
+    },
+    "actions": {
+      "freeScan": "Kostenloser Scan",
+      "quickInsights": "Schnelle Einblicke",
+      "processing": "Wird verarbeitet...",
+      "getFullAnalysis": "Vollanalyse erhalten",
+      "forOnly": "für nur",
+      "includes": "Inkl. ATS-Optimierung, Stichpunkt-Rewrites & Aktionsplan"
+    }
+  },
+  "faq": {
+    "title": "Häufig gestellte Fragen",
+    "subtitle": "Alles, was Sie über Resume Booster wissen müssen",
+    "questions": {
+      "whatDoIGet": {
+        "question": "Was erhalte ich mit Resume Booster?",
+        "answer": "Sie erhalten eine umfassende Analyse mit ATS-optimierten Stichpunkten, stärkeren Aktionsverben, Keyword-Empfehlungen für Ihre Branche und Red Flags, die Recruitern auffallen könnten."
+      },
+      "howLong": {
+        "question": "Wie lange dauert die Analyse?",
+        "answer": "Ihre Lebenslauf-Analyse wird sofort nach Zahlung generiert. Sie sehen Ihre Ergebnisse innerhalb von Sekunden."
+      },
+      "fileFormats": {
+        "question": "Welche Dateiformate werden akzeptiert?",
+        "answer": "Wir akzeptieren PDF-Dateien, Word-Dokumente (DOCX) und Klartext. Laden Sie einfach Ihre Datei hoch oder fügen Sie den Text direkt ein."
+      },
+      "subscription": {
+        "question": "Ist das ein Abo?",
+        "answer": "Nein. Resume Booster ist eine einmalige Zahlung von 25 $. Keine Abos, keine wiederkehrenden Kosten."
+      },
+      "share": {
+        "question": "Kann ich meine Analyse teilen?",
+        "answer": "Ja! Nach Abschluss können Sie einen Link kopieren und an Mentoren, Karriereberater oder andere senden."
+      },
+      "whoWrites": {
+        "question": "Wer schreibt das Feedback?",
+        "answer": "Das Feedback wird von KI generiert, die wie ein Recruiter denkt. Es konzentriert sich auf das, was im Bewerbungsprozess wirklich zählt."
+      },
+      "dataStorage": {
+        "question": "Speichern Sie meine Lebenslaufdaten?",
+        "answer": "Nein. Wir speichern Ihre Lebenslaufinhalte nicht. Ihr Lebenslauf wird in Echtzeit verarbeitet und dann sofort verworfen."
+      },
+      "vsChatGPT": {
+        "question": "Warum ist das besser als ChatGPT?",
+        "answer": "Resume Booster ist speziell für ATS-Optimierung gebaut mit einem 5-Kategorien-Scoring-System, 14 branchenspezifischen Vorlagen und Recruiter-kalibriertem Feedback."
+      }
+    }
+  },
+  "comparison": {
+    "title": "Warum Resume Booster?",
+    "subtitle": "Vergleichen Sie uns mit anderen Optionen",
+    "feature": "Funktion",
+    "templates": "Vorlagen",
+    "free": "Kostenlos",
+    "cta": "Jetzt testen — 25 $",
+    "ctaText": "Jetzt testen",
+    "features": {
+      "atsScoring": "5-Kategorien ATS-Scoring",
+      "industryTemplates": "14 Branchenspezifische Vorlagen",
+      "consistentOutput": "Konsistente strukturierte Ausgabe",
+      "linkedinAnalysis": "LinkedIn-Profil-Analyse",
+      "jobAlignment": "Stellenausschreibungs-Abgleich",
+      "noPromptNeeded": "Kein Prompt-Engineering nötig",
+      "recruiterCalibrated": "Recruiter-kalibriertes Feedback",
+      "privacyFirst": "Daten nie für Training genutzt"
+    }
+  },
+  "socialProof": {
+    "stats": {
+      "analyzed": "Lebensläufe analysiert",
+      "betterResults": "Berichten bessere Ergebnisse",
+      "deliveryTime": "Durchschnittliche Lieferzeit"
+    },
+    "testimonials": {
+      "engineer": {
+        "quote": "3 Vorstellungsgespräche in der ersten Woche. Der Red-Flags-Bereich war augenöffnend.",
+        "role": "Software-Entwickler"
+      },
+      "pm": {
+        "quote": "Endlich verstanden, warum mein Lebenslauf keine Antworten bekam. Jeden Cent wert.",
+        "role": "Produktmanager"
+      },
+      "graduate": {
+        "quote": "Die Keyword-Vorschläge halfen mir, meinen Lebenslauf perfekt anzupassen. Traumjob!",
+        "role": "Absolvent"
+      }
+    },
+    "trustMessage": "Schließen Sie sich Tausenden an, die ihre Lebensläufe mit ehrlichem Recruiter-Feedback verbessert haben."
+  },
+  "preview": {
+    "badge": "Beispielanalyse",
+    "title": "Das erhalten Sie",
+    "subtitle": "Eine Vorschau des detaillierten, umsetzbaren Feedbacks",
+    "atsScore": "ATS-Kompatibilitätswert",
+    "jdMatch": "Stellenausschreibungs-Match",
+    "addJd": "JD hinzufügen für",
+    "match": "Match",
+    "matchingSkills": "Passende Fähigkeiten",
+    "missingKeywords": "Fehlende Keywords",
+    "alignmentTip": "Ausrichtungs-Tipp",
+    "formattingIssues": "Formatierungsprobleme",
+    "detected": "Erkannt",
+    "fixes": "Korrekturen",
+    "atsBullets": "ATS-optimierte Stichpunkte",
+    "before": "Vorher",
+    "after": "Nachher",
+    "resumeLength": "Lebenslauflänge",
+    "pages": "Seiten",
+    "actionPlan": "Aktionsplan",
+    "redFlags": "Red Flags",
+    "linkedinAnalysis": "LinkedIn-Analyse",
+    "includedFree": "Kostenlos inklusive",
+    "strength": "Stärke",
+    "suggestedHeadline": "Vorgeschlagene Headline",
+    "aboutSection": "About-Abschnitt",
+    "profileRecommendations": "Profil-Empfehlungen",
+    "plusMore": "Plus: Skill-Gaps, Branchen-Insights, Aktionsverben, Keywords & Zusammenfassung"
+  },
+  "freeScan": {
+    "complete": "17-Punkte Kostenlos-Scan abgeschlossen",
+    "preview": "Hier ist Ihre umfassende Vorschau",
+    "detected": "Erkannt",
+    "atsScore": "ATS-Score",
+    "breakdownLocked": "Aufschlüsselung gesperrt",
+    "format": "Format",
+    "metrics": "Metriken",
+    "verbs": "Verben",
+    "pages": "Seiten",
+    "words": "Wörter",
+    "ideal": "ideal",
+    "sections": "Abschnitte",
+    "contact": "Kontakt",
+    "readability": "Lesbarkeit",
+    "bulletImpact": "Stichpunkt-Wirkung",
+    "keywordDensity": "Keyword-Dichte",
+    "excellent": "Exzellent",
+    "good": "Gut",
+    "fair": "Befriedigend",
+    "needsWork": "Verbesserungsbedarf",
+    "perfect": "Perfekt",
+    "tooShort": "Zu kurz",
+    "tooLong": "Zu lang",
+    "topStrength": "Top-Stärke",
+    "redFlags": "Red Flags erkannt",
+    "impactLabel": "Wirkung",
+    "improvementPotential": "Verbesserungspotenzial",
+    "estimatedIncrease": "Geschätzt +{{points}} Punkte mit Volloptimierung",
+    "topPriority": "Top-Priorität",
+    "missingKeywords": "Fehlende Keywords",
+    "lockMessage": "Vollanalyse entsperrt {{count}} weitere Keywords + Vorschläge",
+    "emailCapture": {
+      "title": "Lebenslauf-Tipps per E-Mail",
+      "placeholder": "E-Mail eingeben",
+      "button": "Abonnieren",
+      "sending": "Wird gesendet...",
+      "subscribed": "Abonniert!"
+    },
+    "cta": {
+      "title": "Vollständige Analyse freischalten",
+      "description": "Erhalten Sie umfassendes Feedback mit detaillierten Stichpunkt-Rewrites, ATS-Optimierung und priorisiertem Aktionsplan.",
+      "button": "Vollanalyse erhalten",
+      "price": "25 $",
+      "processing": "Wird verarbeitet..."
+    }
+  },
+  "success": {
+    "loading": "Analysiere Ihren Lebenslauf...",
+    "loadingShared": "Lade Analyse...",
+    "loadingDesc": "Unsere KI prüft Ihren Lebenslauf mit Recruiter-Präzision.",
+    "loadingSharedDesc": "Gespeicherte Analyse wird abgerufen.",
+    "steps": {
+      "payment": "Zahlung bestätigt",
+      "parsing": "Lebenslauf wird geparst",
+      "analysis": "KI-Analyse",
+      "generating": "Feedback wird generiert"
+    },
+    "error": {
+      "title": "Analyse fehlgeschlagen",
+      "notFound": "Analyse nicht gefunden. Der Link ist ungültig oder abgelaufen.",
+      "generic": "Analyse konnte nicht geladen werden.",
+      "tryAgain": "Bitte laden Sie Ihren Lebenslauf erneut hoch.",
+      "backHome": "Zurück zur Startseite"
+    },
+    "toast": {
+      "paymentSuccess": "Zahlung erfolgreich!",
+      "analysisReady": "Ihre KI-gestützte Lebenslauf-Analyse ist bereit.",
+      "analysisReadyLinkedIn": "Ihre Lebenslauf + LinkedIn-Analyse ist bereit.",
+      "analysisFailed": "Analyse fehlgeschlagen",
+      "analysisFailedDesc": "Es gab ein Problem. Bitte kontaktieren Sie den Support.",
+      "linkCopied": "Link kopiert!",
+      "linkCopiedDesc": "Teilen Sie diesen Link, um anderen Ihre Analyse zu zeigen.",
+      "emailSent": "E-Mail gesendet!",
+      "emailSentDesc": "Ihre vollständige Analyse wurde an Ihr Postfach gesendet.",
+      "emailFailed": "E-Mail-Versand fehlgeschlagen",
+      "emailFailedDesc": "Bitte versuchen Sie es erneut oder kopieren Sie den Link.",
+      "invalidEmail": "Ungültige E-Mail",
+      "invalidEmailDesc": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+      "pdfDownloaded": "PDF heruntergeladen!",
+      "pdfDownloadedDesc": "Prüfen Sie Ihren Downloads-Ordner.",
+      "pdfFailed": "PDF-Generierung fehlgeschlagen",
+      "pdfFailedDesc": "Bitte versuchen Sie es erneut.",
+      "dataDeleted": "Daten gelöscht",
+      "dataDeletedDesc": "Ihre Lebenslauf-Analyse wurde dauerhaft gelöscht.",
+      "deleteFailed": "Löschung fehlgeschlagen",
+      "deleteFailedDesc": "Bitte versuchen Sie es erneut oder kontaktieren Sie den Support."
+    },
+    "actions": {
+      "share": "Teilen",
+      "copied": "Kopiert!",
+      "downloadPdf": "PDF herunterladen",
+      "generating": "Wird generiert...",
+      "emailResults": "Ergebnisse per E-Mail",
+      "emailPlaceholder": "E-Mail eingeben",
+      "send": "Senden",
+      "sending": "Wird gesendet...",
+      "sent": "Gesendet!",
+      "newAnalysis": "Neue Analyse",
+      "deleteData": "Meine Daten löschen",
+      "deleteConfirm": "Analysedaten löschen",
+      "deleteWarning": "Diese Aktion kann nicht rückgängig gemacht werden. Ihre Analyse wird dauerhaft gelöscht.",
+      "cancel": "Abbrechen",
+      "deleting": "Wird gelöscht..."
+    },
+    "sharedView": "Geteilte Analyse anzeigen"
+  },
+  "common": {
+    "backToHome": "Zurück zur Startseite",
+    "lastUpdated": "Zuletzt aktualisiert"
+  },
+  "privacy": {
+    "title": "Datenschutzrichtlinie"
+  },
+  "terms": {
+    "title": "Nutzungsbedingungen"
+  },
+  "stickyCta": {
+    "title": "Bereit für mehr Vorstellungsgespräche?",
+    "subtitle": "Recruiter-Feedback in 30 Sekunden",
+    "mobileTitle": "Lebenslauf analysieren →",
+    "button": "Lebenslauf analysieren"
+  },
+  "finalCta": {
+    "urgency": "Ihr Lebenslauf könnte Sie gerade Vorstellungsgespräche kosten",
+    "heading": "Verpassen Sie keine weitere Chance",
+    "subheading": "Erhalten Sie die exakten Verbesserungen, die Recruiter sehen wollen.",
+    "benefits": {
+      "ats": "ATS-Score mit 5-Punkte-Aufschlüsselung",
+      "keywords": "Branchenspezifische Keyword-Lücken",
+      "redFlags": "Red Flags, die Recruitern auffallen",
+      "linkedin": "LinkedIn-Profil-Optimierung"
+    },
+    "oneTime": "einmalig",
+    "guarantee": "Sofortige Ergebnisse • Kein Abo",
+    "button": "Jetzt Analyse erhalten",
+    "roi": "💡 Ein Vorstellungsgespräch = 25 $ amortisiert"
+  }
+}
