@@ -2,15 +2,84 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 
+// Declare EdgeRuntime for background tasks
+declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
+
 // Performance monitoring thresholds (ms)
 const SLOW_REQUEST_THRESHOLD = 30000; // 30s for AI analysis is expected to be slow
 const VERY_SLOW_THRESHOLD = 60000;
 
-// Performance tracking helper
-const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>) => {
+const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "admin@resumebooster.com";
+const ALERT_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour between alerts per type
+const alertLastSent: Record<string, number> = {};
+
+// Send alert email (non-blocking, rate-limited)
+async function sendAlert(alertType: string, subject: string, details: Record<string, unknown>) {
+  const now = Date.now();
+  const lastSent = alertLastSent[alertType] || 0;
+  
+  // Rate limit: max 1 alert per type per hour
+  if (now - lastSent < ALERT_COOLDOWN_MS) {
+    console.log(`[ALERT] Skipping ${alertType} alert (cooldown active)`);
+    return;
+  }
+  
+  alertLastSent[alertType] = now;
+  
+  try {
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (!RESEND_API_KEY) {
+      console.log("[ALERT] No RESEND_API_KEY configured");
+      return;
+    }
+    
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "Resume Booster Alerts <onboarding@resend.dev>",
+        to: [ADMIN_EMAIL],
+        subject: `⚠️ ${subject}`,
+        html: `
+          <h2>Edge Function Alert</h2>
+          <p><strong>Alert Type:</strong> ${alertType}</p>
+          <p><strong>Time:</strong> ${new Date().toISOString()}</p>
+          <h3>Details:</h3>
+          <pre style="background:#f4f4f4;padding:15px;border-radius:5px;">${JSON.stringify(details, null, 2)}</pre>
+        `,
+      }),
+    });
+    
+    if (!response.ok) {
+      console.error("[ALERT] Failed to send:", await response.text());
+    } else {
+      console.log(`[ALERT] Sent ${alertType} alert`);
+    }
+  } catch (error) {
+    console.error("[ALERT] Error sending alert:", error);
+  }
+}
+
+// Performance tracking helper with alerting
+const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>, clientIp?: string) => {
   const duration = Date.now() - startTime;
   const level = duration > VERY_SLOW_THRESHOLD ? 'CRITICAL' : duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
   console.log(`[PERF] ${operation} | ${duration}ms | ${level} | success=${success}${details ? ` | ${JSON.stringify(details)}` : ''}`);
+  
+  // Send alert for CRITICAL performance or errors
+  if (level === 'CRITICAL' || !success) {
+    EdgeRuntime.waitUntil(
+      sendAlert(
+        success ? `${operation}_slow` : `${operation}_error`,
+        success ? `${operation} CRITICAL Performance (${duration}ms)` : `${operation} Error`,
+        { operation, duration, level, success, ip: clientIp || 'unknown', ...details }
+      )
+    );
+  }
+  
   return duration;
 };
 
@@ -883,7 +952,7 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
       );
     }
 
-    trackPerformance(requestStartTime, 'analyze-resume', true, { hasLinkedIn: !!linkedInText, hasJobDesc: !!jobDescriptionText });
+    trackPerformance(requestStartTime, 'analyze-resume', true, { hasLinkedIn: !!linkedInText, hasJobDesc: !!jobDescriptionText }, clientIp);
     console.log("[ANALYZE-RESUME] Analysis saved successfully with enhanced metrics");
 
     return new Response(
@@ -892,7 +961,7 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     );
 
   } catch (error) {
-    trackPerformance(requestStartTime, 'analyze-resume', false, { error: error instanceof Error ? error.message : 'Unknown' });
+    trackPerformance(requestStartTime, 'analyze-resume', false, { error: error instanceof Error ? error.message : 'Unknown' }, clientIp);
     console.error("[ANALYZE-RESUME] Error:", error);
     return new Response(
       JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
