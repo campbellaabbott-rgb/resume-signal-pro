@@ -37,7 +37,7 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
           </div>
           <h2 className="text-xl font-bold mb-2">Daily Free Scans Used</h2>
           <p className="text-muted-foreground">
-            You've used all 4 free scans today. Get more scans instantly!
+            You've used all 7 free scans today. Get more scans instantly!
           </p>
         </div>
 
@@ -97,7 +97,7 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
 
         {/* Alternative */}
         <p className="text-center text-xs text-muted-foreground mt-4">
-          Or wait until tomorrow for 4 more free scans
+          Or wait until tomorrow for 7 more free scans
         </p>
       </div>
     </div>
