@@ -1,12 +1,15 @@
-import { Sparkles } from "lucide-react";
+import { Sparkles, CreditCard } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { ScanPackPurchase } from "@/components/ScanPackPurchase";
 
 export function Header() {
   const { t } = useTranslation();
+  const [showScanPackModal, setShowScanPackModal] = useState(false);
   
   const scrollToUpload = () => {
     const uploadSection = document.getElementById('upload');
@@ -42,6 +45,16 @@ export function Header() {
             </span>
             <LanguageSwitcher variant="compact" />
             <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowScanPackModal(true)}
+              className="gap-2 min-h-[44px] min-w-[44px] touch-manipulation hidden sm:flex"
+              aria-label="Buy more scans"
+            >
+              <CreditCard className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Buy Scans</span>
+            </Button>
+            <Button 
               variant="default" 
               size="sm" 
               onClick={scrollToUpload}
@@ -55,6 +68,11 @@ export function Header() {
           </div>
         </nav>
       </div>
+      
+      <ScanPackPurchase 
+        open={showScanPackModal} 
+        onOpenChange={setShowScanPackModal} 
+      />
     </header>
   );
 }

@@ -2,14 +2,22 @@ import { useState } from "react";
 import { Package, Zap, CheckCircle2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useScanCredits } from "@/hooks/use-scan-credits";
 
-interface ScanPackPurchaseProps {
+export interface ScanPackPurchaseProps {
   onClose?: () => void;
   className?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function ScanPackPurchase({ onClose, className }: ScanPackPurchaseProps) {
+export function ScanPackPurchase({ onClose, className, open, onOpenChange }: ScanPackPurchaseProps) {
   const [email, setEmail] = useState("");
   const { purchaseScanPack, isLoading, creditsPerPack, packPrice } = useScanCredits();
 
@@ -20,8 +28,8 @@ export function ScanPackPurchase({ onClose, className }: ScanPackPurchaseProps) 
 
   const isValidEmail = email.includes('@') && email.includes('.');
 
-  return (
-    <div className={`bg-card border border-border rounded-2xl p-6 ${className}`}>
+  const content = (
+    <div className={`bg-card border border-border rounded-2xl p-6 ${className || ''}`}>
       <div className="flex items-center gap-3 mb-4">
         <div className="p-2 rounded-full bg-primary/10">
           <Package className="w-5 h-5 text-primary" />
@@ -95,7 +103,7 @@ export function ScanPackPurchase({ onClose, className }: ScanPackPurchaseProps) 
           )}
         </Button>
 
-        {onClose && (
+        {onClose && !onOpenChange && (
           <Button
             variant="ghost"
             onClick={onClose}
@@ -107,4 +115,21 @@ export function ScanPackPurchase({ onClose, className }: ScanPackPurchaseProps) 
       </div>
     </div>
   );
+
+  // If open/onOpenChange are provided, render as a dialog
+  if (open !== undefined && onOpenChange) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md p-0 border-0 bg-transparent">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Buy Scan Credits</DialogTitle>
+          </DialogHeader>
+          {content}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Otherwise render inline
+  return content;
 }
