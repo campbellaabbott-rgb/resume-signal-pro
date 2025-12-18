@@ -271,7 +271,7 @@ interface FreeKeywordResultsProps {
   quickWins?: QuickWin[];
   sampleRewrite?: SampleRewrite;
   atsSystemCompatibility?: AtsSystemCompatibility;
-  uploadedJobTitles?: string[];
+  uploadedJobs?: { title: string; company: string }[];
 }
 
 export function FreeKeywordResults({
@@ -303,7 +303,7 @@ export function FreeKeywordResults({
   quickWins: quickWinsProp,
   sampleRewrite: sampleRewriteProp,
   atsSystemCompatibility: atsSystemCompatibilityProp,
-  uploadedJobTitles = []
+  uploadedJobs = []
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1035,14 +1035,14 @@ export function FreeKeywordResults({
           </div>
           
           {/* Job-Specific CTA - show when jobs are uploaded */}
-          {uploadedJobTitles.length > 0 && (
+          {uploadedJobs.length > 0 && (
             <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
               <p className="text-xs font-medium text-foreground mb-2">
-                🎯 Want to see how you compare for <span className="text-primary font-semibold">{uploadedJobTitles[0]}</span>?
+                🎯 Want to see how you compare for <span className="text-primary font-semibold">{uploadedJobs[0].title}</span> at <span className="text-primary font-semibold">{uploadedJobs[0].company}</span>?
               </p>
               <Button
                 size="sm"
-                onClick={() => handleUpgradeClick(`benchmark_job_cta_${uploadedJobTitles[0]}`)}
+                onClick={() => handleUpgradeClick(`benchmark_job_cta_${uploadedJobs[0].title}`)}
                 disabled={isLoading}
                 className="w-full gap-2 text-xs h-8"
               >
@@ -1584,30 +1584,30 @@ export function FreeKeywordResults({
       </div>
 
       {/* Job Comparison CTA - show when jobs are uploaded */}
-      {uploadedJobTitles.length > 0 && (
+      {uploadedJobs.length > 0 && (
         <div className="p-5 rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/5 via-background to-primary/10 mb-6">
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="w-4 h-4 text-primary" />
             <h4 className="font-medium text-foreground">See how you compare to your target roles</h4>
           </div>
           <div className="flex flex-wrap gap-2">
-            {uploadedJobTitles.slice(0, 3).map((title, index) => (
+            {uploadedJobs.slice(0, 3).map((job, index) => (
               <Button
                 key={index}
                 variant="outline"
                 size="sm"
-                onClick={() => handleUpgradeClick(`job_cta_${title}`)}
+                onClick={() => handleUpgradeClick(`job_cta_${job.title}`)}
                 disabled={isLoading}
                 className="group border-primary/30 hover:border-primary hover:bg-primary/10 transition-all"
               >
                 <Briefcase className="w-3.5 h-3.5 mr-1.5 text-primary" />
-                <span className="truncate max-w-[180px]">{title}</span>
+                <span className="truncate max-w-[180px]">{job.title}</span>
                 <ArrowRight className="w-3.5 h-3.5 ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
               </Button>
             ))}
-            {uploadedJobTitles.length > 3 && (
+            {uploadedJobs.length > 3 && (
               <span className="inline-flex items-center text-xs text-muted-foreground px-2">
-                +{uploadedJobTitles.length - 3} more
+                +{uploadedJobs.length - 3} more
               </span>
             )}
           </div>

@@ -721,7 +721,7 @@ const Index = () => {
                 industryBenchmark={freeKeywordResult.industryBenchmark}
                 quickWins={freeKeywordResult.quickWins}
                 sampleRewrite={freeKeywordResult.sampleRewrite}
-                uploadedJobTitles={uploadedJobs.map(j => j.title)}
+                uploadedJobs={uploadedJobs}
                 onGetFullAnalysis={() => handleCheckout(resumeText, linkedInText, jobDescriptionText)}
                 isLoading={isLoading}
               />
