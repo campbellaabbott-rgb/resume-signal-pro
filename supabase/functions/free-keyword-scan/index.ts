@@ -87,7 +87,7 @@ const corsHeaders = {
 
 const MAX_RESUME_LENGTH = 50000;
 const MAX_JOB_DESCRIPTION_LENGTH = 15000;
-const FREE_SCANS_PER_DAY = 4;
+const FREE_SCANS_PER_DAY = 7;
 
 // Blocked country codes (ISO 3166-1 alpha-2)
 const BLOCKED_COUNTRIES = new Set(['RU', 'NG', 'PK']);
