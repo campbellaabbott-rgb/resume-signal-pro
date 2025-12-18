@@ -14,8 +14,8 @@ export function LiveActivityCounter() {
       const now = new Date();
       const hoursSinceMidnight = now.getHours() + now.getMinutes() / 60;
       
-      // 30 per hour from midnight, so 201 at ~6:42 AM
-      return Math.floor(hoursSinceMidnight * 30);
+      // Base of 107 + 30 per hour, so ~132 at current time
+      return 107 + Math.floor(hoursSinceMidnight * 30);
     };
 
     // Set initial count
