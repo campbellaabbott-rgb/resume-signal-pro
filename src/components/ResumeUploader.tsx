@@ -224,31 +224,26 @@ export function ResumeUploader({
     setSelectedJob(null);
     
     try {
-      // For CSV files, use the edge function to parse
-      if (file.type === "text/csv" || file.name.endsWith(".csv")) {
-        const formData = new FormData();
-        formData.append("file", file);
-        
-        const { data, error } = await supabase.functions.invoke("parse-spreadsheet", {
-          body: formData,
-        });
-        
-        if (error) throw error;
-        
-        if (data?.success && data?.jobs?.length > 0) {
-          setParsedJobs(data.jobs);
-          onJobsChange?.(data.jobs);
-          // If only one job, auto-select it
-          if (data.jobs.length === 1) {
-            handleJobSelect(data.jobs[0]);
-          }
-        } else if (data?.error) {
-          console.error("Spreadsheet parsing error:", data.error);
-          setLocalJobDescriptionText(`Error: ${data.error}\n\n${data.suggestion || ''}`);
+      // Send all spreadsheet types (CSV, XLSX, XLS) to the edge function
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const { data, error } = await supabase.functions.invoke("parse-spreadsheet", {
+        body: formData,
+      });
+      
+      if (error) throw error;
+      
+      if (data?.success && data?.jobs?.length > 0) {
+        setParsedJobs(data.jobs);
+        onJobsChange?.(data.jobs);
+        // If only one job, auto-select it
+        if (data.jobs.length === 1) {
+          handleJobSelect(data.jobs[0]);
         }
-      } else {
-        // For Excel files - show guidance
-        setLocalJobDescriptionText(`[Spreadsheet uploaded: ${file.name}]\n\nFor best results with Excel files, please export as CSV:\n• In Excel: File > Save As > CSV\n• In Google Sheets: File > Download > CSV`);
+      } else if (data?.error) {
+        console.error("Spreadsheet parsing error:", data.error);
+        setLocalJobDescriptionText(`Error: ${data.error}\n\n${data.suggestion || ''}`);
       }
     } catch (error) {
       console.error("Spreadsheet parsing error:", error);
