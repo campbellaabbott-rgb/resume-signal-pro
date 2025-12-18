@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Target, Zap, Link, Table2 } from "lucide-react";
+import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Target, Zap, Link, Table2, Download } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -505,6 +505,15 @@ export function ResumeUploader({
                             <span className="text-xs text-muted-foreground mt-2 text-center max-w-[280px]">
                               Include columns: Title, Company, Description
                             </span>
+                            <a
+                              href="/sample-jobs.csv"
+                              download="sample-jobs.csv"
+                              onClick={(e) => e.stopPropagation()}
+                              className="mt-3 inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 hover:underline transition-colors"
+                            >
+                              <Download className="w-3 h-3" />
+                              Download sample CSV
+                            </a>
                           </>
                         )}
                       </label>
