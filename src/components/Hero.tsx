@@ -4,6 +4,14 @@ import { useCurrency } from "@/hooks/use-currency";
 import { LiveActivityCounter } from "./LiveActivityCounter";
 import { useABTest } from "@/hooks/use-ab-test";
 
+// Company logos
+import GoogleLogo from "@/assets/logos/google.svg";
+import MicrosoftLogo from "@/assets/logos/microsoft.svg";
+import AmazonLogo from "@/assets/logos/amazon.svg";
+import AppleLogo from "@/assets/logos/apple.svg";
+import MetaLogo from "@/assets/logos/meta.svg";
+import NetflixLogo from "@/assets/logos/netflix.svg";
+
 export function Hero() {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -136,13 +144,13 @@ export function Hero() {
           {/* Trusted by companies */}
           <div className="mt-8 animate-fade-in" style={{ animationDelay: "0.18s" }}>
             <p className="text-xs text-muted-foreground/60 mb-4">Trusted by professionals at</p>
-            <div className="flex flex-wrap justify-center items-center gap-x-6 sm:gap-x-8 gap-y-3 text-muted-foreground/50">
-              <span className="text-base sm:text-lg font-semibold">Google</span>
-              <span className="text-base sm:text-lg font-semibold">Microsoft</span>
-              <span className="text-base sm:text-lg font-semibold">Amazon</span>
-              <span className="text-base sm:text-lg font-semibold">Apple</span>
-              <span className="text-base sm:text-lg font-semibold">Meta</span>
-              <span className="text-base sm:text-lg font-semibold">Netflix</span>
+            <div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-4">
+              <img src={GoogleLogo} alt="Google" className="h-5 w-auto opacity-40 hover:opacity-60 transition-opacity" />
+              <img src={MicrosoftLogo} alt="Microsoft" className="h-5 w-auto opacity-40 hover:opacity-60 transition-opacity" />
+              <img src={AmazonLogo} alt="Amazon" className="h-5 w-auto opacity-40 hover:opacity-60 transition-opacity" />
+              <img src={AppleLogo} alt="Apple" className="h-5 w-auto opacity-40 hover:opacity-60 transition-opacity" />
+              <img src={MetaLogo} alt="Meta" className="h-5 w-auto opacity-40 hover:opacity-60 transition-opacity" />
+              <img src={NetflixLogo} alt="Netflix" className="h-5 w-auto opacity-40 hover:opacity-60 transition-opacity" />
             </div>
           </div>
 
