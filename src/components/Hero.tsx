@@ -45,7 +45,13 @@ export function Hero() {
 
   const handleFreeScanClick = () => {
     freeScanCta.trackConversion({ source: 'hero_free_scan' });
-    document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
+    const uploadSection = document.getElementById('upload');
+    if (uploadSection) {
+      uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      // Fallback: scroll to bottom of hero if upload not found
+      window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
+    }
   };
 
   const features = [
