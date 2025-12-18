@@ -8,7 +8,13 @@ export function Header() {
   const { t } = useTranslation();
   
   const scrollToUpload = () => {
-    document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
+    const uploadSection = document.getElementById('upload');
+    if (uploadSection) {
+      uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      // Fallback: scroll to bottom of hero if upload not found
+      window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
+    }
   };
 
   return (
