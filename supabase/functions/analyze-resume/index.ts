@@ -581,9 +581,13 @@ serve(async (req) => {
     }
 
     // Verify minimum payment amount ($20 USD equivalent to account for currency fluctuations)
+    // OR verify a valid discount/promotion code was applied (for 100% off coupons)
     const MIN_AMOUNT_CENTS = 2000; // $20 USD minimum
     const amountPaid = session.amount_total || 0;
     const currency = session.currency?.toLowerCase() || 'usd';
+    
+    // Check if a discount was applied (handles 100% off coupons)
+    const hasValidDiscount = session.total_details?.amount_discount && session.total_details.amount_discount > 0;
     
     // Approximate exchange rates to USD for validation (conservative minimums)
     const currencyToUsdMinRates: Record<string, number> = {
@@ -598,12 +602,17 @@ serve(async (req) => {
     const rateToUsd = currencyToUsdMinRates[currency] || 0.01;
     const amountInUsdCents = amountPaid * rateToUsd;
     
-    if (amountInUsdCents < MIN_AMOUNT_CENTS) {
-      console.warn(`[ANALYZE-RESUME] Insufficient payment: ${amountPaid} ${currency} (≈$${(amountInUsdCents/100).toFixed(2)} USD)`);
+    // Allow if either: sufficient payment OR valid discount applied
+    if (amountInUsdCents < MIN_AMOUNT_CENTS && !hasValidDiscount) {
+      console.warn(`[ANALYZE-RESUME] Insufficient payment: ${amountPaid} ${currency} (≈$${(amountInUsdCents/100).toFixed(2)} USD), no discount applied`);
       return new Response(
         JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
         { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+    
+    if (hasValidDiscount) {
+      console.log(`[ANALYZE-RESUME] Discount applied: ${session.total_details?.amount_discount} off`);
     }
 
     console.log(`[ANALYZE-RESUME] Payment verified: ${amountPaid} ${currency} for session: ${sessionId}`);
