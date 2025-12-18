@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { 
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
-  Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle
+  Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -271,6 +271,7 @@ interface FreeKeywordResultsProps {
   quickWins?: QuickWin[];
   sampleRewrite?: SampleRewrite;
   atsSystemCompatibility?: AtsSystemCompatibility;
+  uploadedJobTitles?: string[];
 }
 
 export function FreeKeywordResults({
@@ -301,7 +302,8 @@ export function FreeKeywordResults({
   industryBenchmark: industryBenchmarkProp,
   quickWins: quickWinsProp,
   sampleRewrite: sampleRewriteProp,
-  atsSystemCompatibility: atsSystemCompatibilityProp
+  atsSystemCompatibility: atsSystemCompatibilityProp,
+  uploadedJobTitles = []
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1561,6 +1563,40 @@ export function FreeKeywordResults({
           ))}
         </div>
       </div>
+
+      {/* Job Comparison CTA - show when jobs are uploaded */}
+      {uploadedJobTitles.length > 0 && (
+        <div className="p-5 rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/5 via-background to-primary/10 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <h4 className="font-medium text-foreground">See how you compare to your target roles</h4>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {uploadedJobTitles.slice(0, 3).map((title, index) => (
+              <Button
+                key={index}
+                variant="outline"
+                size="sm"
+                onClick={() => handleUpgradeClick(`job_cta_${title}`)}
+                disabled={isLoading}
+                className="group border-primary/30 hover:border-primary hover:bg-primary/10 transition-all"
+              >
+                <Briefcase className="w-3.5 h-3.5 mr-1.5 text-primary" />
+                <span className="truncate max-w-[180px]">{title}</span>
+                <ArrowRight className="w-3.5 h-3.5 ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
+              </Button>
+            ))}
+            {uploadedJobTitles.length > 3 && (
+              <span className="inline-flex items-center text-xs text-muted-foreground px-2">
+                +{uploadedJobTitles.length - 3} more
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            Get job-specific analysis with tailored bullet rewrites for each role
+          </p>
+        </div>
+      )}
 
       {/* Final CTA */}
       <div className="text-center p-6 rounded-2xl bg-gradient-to-br from-primary/10 via-background to-primary/5 border border-primary/20">
