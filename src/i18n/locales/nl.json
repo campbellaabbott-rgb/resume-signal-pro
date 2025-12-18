@@ -1,0 +1,345 @@
+{
+  "header": {
+    "tagline": "Recruiter-niveau AI-feedback",
+    "getStarted": "Aan de slag",
+    "start": "Start"
+  },
+  "hero": {
+    "badge": "AI-gestuurde CV-analyse",
+    "freeScan": "Gratis scan",
+    "heading": "Stop met gissen.",
+    "headingHighlight": "Begin met sollicitatiegesprekken.",
+    "subheading": "Krijg eerlijke recruiter-feedback op je CV. Geen onzin – alleen concrete verbeteringen die je aan een baan helpen.",
+    "price": "$ 25",
+    "oneTime": "eenmalig",
+    "nofees": "Geen abonnement • Geen verborgen kosten • Directe resultaten",
+    "roi": "Eén gesprek = $ 25 terugverdiend",
+    "trusted": "Vertrouwd door",
+    "jobSeekers": "werkzoekenden",
+    "seeSample": "Bekijk voorbeeldanalyse",
+    "whyBetter": "Waarom beter dan ChatGPT?",
+    "features": {
+      "atsBullets": "ATS-geoptimaliseerde bullets",
+      "atsBulletsDesc": "Versla de robots",
+      "actionVerbs": "Sterkere actiewerkwoorden",
+      "actionVerbsDesc": "Val direct op",
+      "keywords": "Keyword-suggesties",
+      "keywordsDesc": "Match vacatures",
+      "redFlags": "Red flag-detectie",
+      "redFlagsDesc": "Los dealbreakers op"
+    },
+    "trust": {
+      "secure": "Veilig & Privé",
+      "results": "Resultaten in 30 seconden",
+      "approved": "Recruiter-goedgekeurd"
+    }
+  },
+  "footer": {
+    "copyright": "© {{year}} Resume Booster. Alle rechten voorbehouden.",
+    "privacy": "Privacybeleid",
+    "terms": "Servicevoorwaarden",
+    "contact": "Contact"
+  },
+  "language": {
+    "select": "Selecteer taal"
+  },
+  "uploader": {
+    "title": "Upload je CV & LinkedIn",
+    "subtitle": "Krijg een uitgebreide analyse van je CV",
+    "linkedinBonus": "+ LinkedIn-profiel optimalisatie",
+    "resume": {
+      "title": "Je CV",
+      "required": "*Vereist",
+      "freeIncluded": "Gratis scan inbegrepen!",
+      "upload": "Uploaden",
+      "paste": "Plakken",
+      "dropHere": "Sleep je CV hier",
+      "fileTypes": "PDF, DOCX of TXT (max 10 MB)",
+      "browse": "Bladeren",
+      "pasteHere": "Plak je CV-inhoud hier...",
+      "chars": "tekens"
+    },
+    "linkedin": {
+      "title": "Je LinkedIn-profiel",
+      "paidOnly": "Alleen bij betaalde analyse",
+      "hide": "Verbergen",
+      "show": "Tonen",
+      "description": "Voeg LinkedIn toe voor",
+      "benefits": "headline-optimalisatie, Over-sectie herschrijven, SEO-keywords,",
+      "andMore": "en zichtbaarheidstips.",
+      "uploadPdf": "Upload PDF",
+      "uploadLinkedIn": "Upload LinkedIn PDF",
+      "exportTip": "Exporteer je profiel als PDF vanaf LinkedIn",
+      "parsing": "PDF wordt geanalyseerd...",
+      "pasteHere": "Plak je LinkedIn-profielinhoud hier...",
+      "includeTip": "Inclusief: Headline, Over-sectie, Ervaringen, Vaardigheden"
+    },
+    "jobDescription": {
+      "title": "Doel-vacature",
+      "optional": "Optioneel",
+      "hide": "Verbergen",
+      "show": "Tonen",
+      "description": "Krijg een",
+      "matchScore": "match-score",
+      "and": "en",
+      "tailoredFeedback": "op maat gemaakte feedback",
+      "forRole": "voor je doelfunctie",
+      "pasteHere": "Plak de vacaturetekst hier...",
+      "tip": "Tip: Voeg de volledige vacature toe voor beste resultaten"
+    },
+    "actions": {
+      "freeScan": "Gratis scan",
+      "quickInsights": "Snelle inzichten",
+      "processing": "Verwerken...",
+      "getFullAnalysis": "Volledige analyse",
+      "forOnly": "voor slechts",
+      "includes": "Inclusief ATS-optimalisatie, bullet-herschrijvingen & actieplan"
+    }
+  },
+  "faq": {
+    "title": "Veelgestelde vragen",
+    "subtitle": "Alles wat je moet weten over Resume Booster",
+    "questions": {
+      "whatDoIGet": {
+        "question": "Wat krijg ik met Resume Booster?",
+        "answer": "Je krijgt een uitgebreide analyse met ATS-geoptimaliseerde bullets, sterkere actiewerkwoorden, keyword-aanbevelingen voor je branche, en red flags die recruiters opvallen."
+      },
+      "howLong": {
+        "question": "Hoe lang duurt de analyse?",
+        "answer": "Je CV-analyse wordt direct na betaling gegenereerd. Je ziet je resultaten binnen enkele seconden."
+      },
+      "fileFormats": {
+        "question": "Welke bestandsformaten worden geaccepteerd?",
+        "answer": "We accepteren PDF-bestanden, Word-documenten (DOCX) en platte tekst. Upload simpelweg je bestand of plak de tekst direct."
+      },
+      "subscription": {
+        "question": "Is dit een abonnement?",
+        "answer": "Nee. Resume Booster is een eenmalige betaling van $ 25. Geen abonnementen, geen terugkerende kosten."
+      },
+      "share": {
+        "question": "Kan ik mijn analyse delen?",
+        "answer": "Ja! Na je analyse kun je een deelbare link kopiëren om naar mentoren of loopbaancoaches te sturen."
+      },
+      "whoWrites": {
+        "question": "Wie schrijft de feedback?",
+        "answer": "De feedback wordt gegenereerd door AI die denkt als een recruiter. Het focust op wat echt telt in het sollicitatieproces."
+      },
+      "dataStorage": {
+        "question": "Slaan jullie mijn CV-gegevens op?",
+        "answer": "Nee. We slaan je CV-inhoud niet op. Je CV wordt real-time verwerkt en dan direct verwijderd."
+      },
+      "vsChatGPT": {
+        "question": "Waarom is dit beter dan ChatGPT?",
+        "answer": "Resume Booster is specifiek gebouwd voor ATS-optimalisatie met een 5-categorie scoring systeem, 14 branchespecifieke templates, en recruiter-gekalibreerde feedback."
+      }
+    }
+  },
+  "comparison": {
+    "title": "Waarom Resume Booster?",
+    "subtitle": "Vergelijk ons met andere opties",
+    "feature": "Functie",
+    "templates": "Templates",
+    "free": "Gratis",
+    "cta": "Probeer nu — $ 25",
+    "ctaText": "Probeer nu",
+    "features": {
+      "atsScoring": "5-categorie ATS-scoring",
+      "industryTemplates": "14 branchespecifieke templates",
+      "consistentOutput": "Consistente gestructureerde output",
+      "linkedinAnalysis": "LinkedIn-profiel analyse",
+      "jobAlignment": "Vacature-afstemming",
+      "noPromptNeeded": "Geen prompt engineering nodig",
+      "recruiterCalibrated": "Recruiter-gekalibreerde feedback",
+      "privacyFirst": "Data nooit gebruikt voor training"
+    }
+  },
+  "socialProof": {
+    "stats": {
+      "analyzed": "CV's geanalyseerd",
+      "betterResults": "Rapporteren betere resultaten",
+      "deliveryTime": "Gemiddelde levertijd"
+    },
+    "testimonials": {
+      "engineer": {
+        "quote": "3 gesprekken in mijn eerste week. De red flags-sectie was echt eye-opening.",
+        "role": "Software Engineer"
+      },
+      "pm": {
+        "quote": "Eindelijk begrepen waarom mijn CV geen reacties kreeg. Elke cent waard.",
+        "role": "Product Manager"
+      },
+      "graduate": {
+        "quote": "De keyword-suggesties hielpen me mijn CV perfect aan te passen. Mijn droomstage gekregen!",
+        "role": "Recent afgestudeerd"
+      }
+    },
+    "trustMessage": "Sluit je aan bij duizenden werkzoekenden die hun CV hebben verbeterd met eerlijke recruiter-feedback."
+  },
+  "preview": {
+    "badge": "Voorbeeldanalyse",
+    "title": "Dit krijg je",
+    "subtitle": "Een preview van de gedetailleerde, actiegerichte feedback",
+    "atsScore": "ATS-compatibiliteitsscore",
+    "jdMatch": "Vacature-match",
+    "addJd": "Voeg vacature toe voor",
+    "match": "match",
+    "matchingSkills": "Matchende vaardigheden",
+    "missingKeywords": "Ontbrekende keywords",
+    "alignmentTip": "Afstemmingstip",
+    "formattingIssues": "Opmaakproblemen",
+    "detected": "Gedetecteerd",
+    "fixes": "Fixes",
+    "atsBullets": "ATS-geoptimaliseerde bullets",
+    "before": "Voor",
+    "after": "Na",
+    "resumeLength": "CV-lengte",
+    "pages": "pagina's",
+    "actionPlan": "Actieplan",
+    "redFlags": "Red Flags",
+    "linkedinAnalysis": "LinkedIn-analyse",
+    "includedFree": "Gratis inbegrepen",
+    "strength": "sterk punt",
+    "suggestedHeadline": "Voorgestelde headline",
+    "aboutSection": "Over-sectie",
+    "profileRecommendations": "Profiel-aanbevelingen",
+    "plusMore": "Plus: Skill-gaps, branche-inzichten, actiewerkwoorden, keywords & samenvatting"
+  },
+  "freeScan": {
+    "complete": "17-punts gratis scan voltooid",
+    "preview": "Hier is je uitgebreide preview",
+    "detected": "Gedetecteerd",
+    "atsScore": "ATS-score",
+    "breakdownLocked": "Uitsplitsing vergrendeld",
+    "format": "Formaat",
+    "metrics": "Metrics",
+    "verbs": "Werkwoorden",
+    "pages": "Pagina's",
+    "words": "Woorden",
+    "ideal": "ideaal",
+    "sections": "Secties",
+    "contact": "Contact",
+    "readability": "Leesbaarheid",
+    "bulletImpact": "Bullet-impact",
+    "keywordDensity": "Keyword-dichtheid",
+    "excellent": "Uitstekend",
+    "good": "Goed",
+    "fair": "Redelijk",
+    "needsWork": "Verbetering nodig",
+    "perfect": "Perfect",
+    "tooShort": "Te kort",
+    "tooLong": "Te lang",
+    "topStrength": "Top-sterkpunt",
+    "redFlags": "Red Flags gedetecteerd",
+    "impactLabel": "Impact",
+    "improvementPotential": "Verbeteringspotentieel",
+    "estimatedIncrease": "Geschat +{{points}} punten met volledige optimalisatie",
+    "topPriority": "Topprioriteit",
+    "missingKeywords": "Ontbrekende keywords",
+    "lockMessage": "Volledige analyse ontgrendelt {{count}} extra keywords + suggesties",
+    "emailCapture": {
+      "title": "Ontvang CV-tips per email",
+      "placeholder": "Voer je email in",
+      "button": "Abonneren",
+      "sending": "Verzenden...",
+      "subscribed": "Geabonneerd!"
+    },
+    "cta": {
+      "title": "Ontgrendel je volledige analyse",
+      "description": "Krijg uitgebreide feedback met gedetailleerde bullet-herschrijvingen, ATS-optimalisatiestrategieën en geprioriteerd actieplan.",
+      "button": "Volledige analyse",
+      "price": "$ 25",
+      "processing": "Verwerken..."
+    }
+  },
+  "success": {
+    "loading": "Je CV wordt geanalyseerd...",
+    "loadingShared": "Analyse laden...",
+    "loadingDesc": "Onze AI beoordeelt je CV met recruiter-precisie.",
+    "loadingSharedDesc": "Opgeslagen analyse wordt opgehaald.",
+    "steps": {
+      "payment": "Betaling geverifieerd",
+      "parsing": "CV wordt geparsed",
+      "analysis": "AI-analyse",
+      "generating": "Feedback wordt gegenereerd"
+    },
+    "error": {
+      "title": "Analyse mislukt",
+      "notFound": "Analyse niet gevonden. De link is ongeldig of verlopen.",
+      "generic": "Kon analyse niet laden.",
+      "tryAgain": "Upload je CV opnieuw.",
+      "backHome": "Terug naar home"
+    },
+    "toast": {
+      "paymentSuccess": "Betaling succesvol!",
+      "analysisReady": "Je AI-gestuurde CV-analyse is klaar.",
+      "analysisReadyLinkedIn": "Je CV + LinkedIn-analyse is klaar.",
+      "analysisFailed": "Analyse mislukt",
+      "analysisFailedDesc": "Er was een probleem. Neem contact op met support.",
+      "linkCopied": "Link gekopieerd!",
+      "linkCopiedDesc": "Deel deze link om je analyse te tonen.",
+      "emailSent": "Email verzonden!",
+      "emailSentDesc": "Je volledige analyse is naar je inbox gestuurd.",
+      "emailFailed": "Verzenden mislukt",
+      "emailFailedDesc": "Probeer opnieuw of kopieer de deellink.",
+      "invalidEmail": "Ongeldige email",
+      "invalidEmailDesc": "Voer een geldig emailadres in.",
+      "pdfDownloaded": "PDF gedownload!",
+      "pdfDownloadedDesc": "Check je Downloads-map.",
+      "pdfFailed": "PDF genereren mislukt",
+      "pdfFailedDesc": "Probeer opnieuw.",
+      "dataDeleted": "Gegevens verwijderd",
+      "dataDeletedDesc": "Je CV-analyse is permanent verwijderd.",
+      "deleteFailed": "Verwijderen mislukt",
+      "deleteFailedDesc": "Probeer opnieuw of neem contact op met support."
+    },
+    "actions": {
+      "share": "Delen",
+      "copied": "Gekopieerd!",
+      "downloadPdf": "Download PDF",
+      "generating": "Genereren...",
+      "emailResults": "Email resultaten",
+      "emailPlaceholder": "Voer je email in",
+      "send": "Verzenden",
+      "sending": "Verzenden...",
+      "sent": "Verzonden!",
+      "newAnalysis": "Nieuwe analyse",
+      "deleteData": "Mijn gegevens verwijderen",
+      "deleteConfirm": "Analysegegevens verwijderen",
+      "deleteWarning": "Dit kan niet ongedaan worden gemaakt. Je analyse wordt permanent verwijderd.",
+      "cancel": "Annuleren",
+      "deleting": "Verwijderen..."
+    },
+    "sharedView": "Gedeelde analyse bekijken"
+  },
+  "common": {
+    "backToHome": "Terug naar home",
+    "lastUpdated": "Laatst bijgewerkt"
+  },
+  "privacy": {
+    "title": "Privacybeleid"
+  },
+  "terms": {
+    "title": "Servicevoorwaarden"
+  },
+  "stickyCta": {
+    "title": "Klaar voor meer sollicitatiegesprekken?",
+    "subtitle": "Recruiter-feedback in 30 seconden",
+    "mobileTitle": "Analyseer je CV →",
+    "button": "Analyseer mijn CV"
+  },
+  "finalCta": {
+    "urgency": "Je CV kost je misschien nu al gesprekken",
+    "heading": "Laat geen kans meer voorbijgaan",
+    "subheading": "Krijg de exacte fixes die recruiters willen zien.",
+    "benefits": {
+      "ats": "ATS-score met 5-punts uitsplitsing",
+      "keywords": "Branchespecifieke keyword-gaps",
+      "redFlags": "Red flags die recruiters opvallen",
+      "linkedin": "LinkedIn-profiel optimalisatie"
+    },
+    "oneTime": "eenmalig",
+    "guarantee": "Directe resultaten • Geen abonnement",
+    "button": "Mijn analyse nu",
+    "roi": "💡 Eén gesprek = $ 25 terugverdiend"
+  }
+}

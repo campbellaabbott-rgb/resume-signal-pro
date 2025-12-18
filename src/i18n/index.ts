@@ -6,12 +6,18 @@ import en from './locales/en.json';
 import es from './locales/es.json';
 import hi from './locales/hi.json';
 import tl from './locales/tl.json';
+import de from './locales/de.json';
+import fr from './locales/fr.json';
+import nl from './locales/nl.json';
 
 export const languages = [
   { code: 'en', name: 'English', flag: '🇺🇸' },
   { code: 'es', name: 'Español', flag: '🇪🇸' },
   { code: 'hi', name: 'हिन्दी', flag: '🇮🇳' },
   { code: 'tl', name: 'Tagalog', flag: '🇵🇭' },
+  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+  { code: 'fr', name: 'Français', flag: '🇫🇷' },
+  { code: 'nl', name: 'Nederlands', flag: '🇳🇱' },
 ];
 
 i18n
@@ -23,6 +29,9 @@ i18n
       es: { translation: es },
       hi: { translation: hi },
       tl: { translation: tl },
+      de: { translation: de },
+      fr: { translation: fr },
+      nl: { translation: nl },
     },
     fallbackLng: 'en',
     interpolation: {

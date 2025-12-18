@@ -1,0 +1,345 @@
+{
+  "header": {
+    "tagline": "Feedback IA niveau recruteur",
+    "getStarted": "Commencer",
+    "start": "Démarrer"
+  },
+  "hero": {
+    "badge": "Analyse de CV par IA",
+    "freeScan": "Scan gratuit",
+    "heading": "Arrêtez de deviner.",
+    "headingHighlight": "Décrochez des entretiens.",
+    "subheading": "Obtenez un feedback honnête et professionnel sur votre CV. Pas de blabla – des corrections concrètes pour décrocher un emploi.",
+    "price": "25 $",
+    "oneTime": "paiement unique",
+    "nofees": "Sans abonnement • Sans frais cachés • Résultats instantanés",
+    "roi": "Un entretien = 25 $ rentabilisés",
+    "trusted": "Fait confiance par",
+    "jobSeekers": "chercheurs d'emploi",
+    "seeSample": "Voir un exemple d'analyse",
+    "whyBetter": "Pourquoi mieux que ChatGPT ?",
+    "features": {
+      "atsBullets": "Puces optimisées ATS",
+      "atsBulletsDesc": "Passez les filtres",
+      "actionVerbs": "Verbes d'action puissants",
+      "actionVerbsDesc": "Démarquez-vous",
+      "keywords": "Suggestions de mots-clés",
+      "keywordsDesc": "Correspondez aux offres",
+      "redFlags": "Détection des signaux d'alerte",
+      "redFlagsDesc": "Corrigez les erreurs critiques"
+    },
+    "trust": {
+      "secure": "Sécurisé et privé",
+      "results": "Résultats en 30 secondes",
+      "approved": "Approuvé par les recruteurs"
+    }
+  },
+  "footer": {
+    "copyright": "© {{year}} Resume Booster. Tous droits réservés.",
+    "privacy": "Politique de confidentialité",
+    "terms": "Conditions d'utilisation",
+    "contact": "Contact"
+  },
+  "language": {
+    "select": "Choisir la langue"
+  },
+  "uploader": {
+    "title": "Téléchargez votre CV et LinkedIn",
+    "subtitle": "Obtenez une analyse complète de votre CV",
+    "linkedinBonus": "+ Optimisation du profil LinkedIn",
+    "resume": {
+      "title": "Votre CV",
+      "required": "*Obligatoire",
+      "freeIncluded": "Scan gratuit inclus !",
+      "upload": "Télécharger",
+      "paste": "Coller",
+      "dropHere": "Déposez votre CV ici",
+      "fileTypes": "PDF, DOCX ou TXT (max 10 Mo)",
+      "browse": "Parcourir",
+      "pasteHere": "Collez le contenu de votre CV ici...",
+      "chars": "caractères"
+    },
+    "linkedin": {
+      "title": "Votre profil LinkedIn",
+      "paidOnly": "Analyse payante uniquement",
+      "hide": "Masquer",
+      "show": "Afficher",
+      "description": "Ajoutez LinkedIn pour",
+      "benefits": "optimisation du titre, réécriture de la section À propos, mots-clés SEO,",
+      "andMore": "et conseils de visibilité.",
+      "uploadPdf": "Télécharger PDF",
+      "uploadLinkedIn": "Télécharger PDF LinkedIn",
+      "exportTip": "Exportez votre profil depuis LinkedIn en PDF",
+      "parsing": "Analyse du PDF...",
+      "pasteHere": "Collez le contenu de votre profil LinkedIn ici...",
+      "includeTip": "Inclure : Titre, À propos, Expériences, Compétences"
+    },
+    "jobDescription": {
+      "title": "Description du poste cible",
+      "optional": "Optionnel",
+      "hide": "Masquer",
+      "show": "Afficher",
+      "description": "Obtenez un",
+      "matchScore": "score de correspondance",
+      "and": "et",
+      "tailoredFeedback": "feedback personnalisé",
+      "forRole": "pour votre poste cible",
+      "pasteHere": "Collez la description du poste...",
+      "tip": "Conseil : Incluez l'offre complète pour de meilleurs résultats"
+    },
+    "actions": {
+      "freeScan": "Scan gratuit",
+      "quickInsights": "Aperçu rapide",
+      "processing": "Traitement...",
+      "getFullAnalysis": "Obtenir l'analyse complète",
+      "forOnly": "pour seulement",
+      "includes": "Inclut optimisation ATS, réécriture des puces & plan d'action"
+    }
+  },
+  "faq": {
+    "title": "Questions fréquentes",
+    "subtitle": "Tout ce que vous devez savoir sur Resume Booster",
+    "questions": {
+      "whatDoIGet": {
+        "question": "Qu'est-ce que j'obtiens avec Resume Booster ?",
+        "answer": "Vous obtenez une analyse complète incluant des puces optimisées ATS, des suggestions de verbes d'action, des recommandations de mots-clés pour votre secteur, et les signaux d'alerte que les recruteurs remarquent."
+      },
+      "howLong": {
+        "question": "Combien de temps prend l'analyse ?",
+        "answer": "Votre analyse est générée instantanément après le paiement. Vous verrez vos résultats en quelques secondes."
+      },
+      "fileFormats": {
+        "question": "Quels formats de fichiers acceptez-vous ?",
+        "answer": "Nous acceptons les fichiers PDF, les documents Word (DOCX) et le texte brut. Téléchargez simplement votre fichier ou collez le texte directement."
+      },
+      "subscription": {
+        "question": "Est-ce un abonnement ?",
+        "answer": "Non. Resume Booster est un paiement unique de 25 $. Pas d'abonnements, pas de frais récurrents."
+      },
+      "share": {
+        "question": "Puis-je partager mon analyse ?",
+        "answer": "Oui ! Après votre analyse, vous pouvez copier un lien partageable pour l'envoyer à des mentors ou conseillers carrière."
+      },
+      "whoWrites": {
+        "question": "Qui écrit le feedback ?",
+        "answer": "Le feedback est généré par une IA entraînée à penser comme un recruteur. Elle se concentre sur ce qui compte vraiment dans le processus de recrutement."
+      },
+      "dataStorage": {
+        "question": "Stockez-vous mes données de CV ?",
+        "answer": "Non. Nous ne stockons pas le contenu de votre CV. Votre CV est traité en temps réel puis immédiatement supprimé."
+      },
+      "vsChatGPT": {
+        "question": "Pourquoi est-ce mieux que ChatGPT ?",
+        "answer": "Resume Booster est conçu spécifiquement pour l'optimisation ATS avec un système de scoring en 5 catégories, 14 modèles sectoriels et un feedback calibré par des recruteurs."
+      }
+    }
+  },
+  "comparison": {
+    "title": "Pourquoi Resume Booster ?",
+    "subtitle": "Comparez-nous aux autres options",
+    "feature": "Fonctionnalité",
+    "templates": "Modèles",
+    "free": "Gratuit",
+    "cta": "Essayer — 25 $",
+    "ctaText": "Essayer",
+    "features": {
+      "atsScoring": "Scoring ATS en 5 catégories",
+      "industryTemplates": "14 modèles sectoriels",
+      "consistentOutput": "Sortie structurée cohérente",
+      "linkedinAnalysis": "Analyse du profil LinkedIn",
+      "jobAlignment": "Alignement avec l'offre d'emploi",
+      "noPromptNeeded": "Pas de prompt engineering requis",
+      "recruiterCalibrated": "Feedback calibré recruteur",
+      "privacyFirst": "Données jamais utilisées pour l'entraînement"
+    }
+  },
+  "socialProof": {
+    "stats": {
+      "analyzed": "CV analysés",
+      "betterResults": "Rapportent de meilleurs résultats",
+      "deliveryTime": "Temps de livraison moyen"
+    },
+    "testimonials": {
+      "engineer": {
+        "quote": "3 entretiens dès la première semaine. La section signaux d'alerte m'a ouvert les yeux.",
+        "role": "Ingénieur logiciel"
+      },
+      "pm": {
+        "quote": "J'ai enfin compris pourquoi mon CV n'obtenait pas de réponses. Chaque centime vaut le coup.",
+        "role": "Chef de produit"
+      },
+      "graduate": {
+        "quote": "Les suggestions de mots-clés m'ont aidé à personnaliser parfaitement mon CV. J'ai décroché mon stage de rêve !",
+        "role": "Jeune diplômé"
+      }
+    },
+    "trustMessage": "Rejoignez des milliers de chercheurs d'emploi qui ont amélioré leurs CV avec un feedback honnête."
+  },
+  "preview": {
+    "badge": "Exemple d'analyse",
+    "title": "Ce que vous obtenez",
+    "subtitle": "Aperçu du feedback détaillé et actionnable",
+    "atsScore": "Score de compatibilité ATS",
+    "jdMatch": "Correspondance avec l'offre",
+    "addJd": "Ajoutez une offre pour",
+    "match": "correspondance",
+    "matchingSkills": "Compétences correspondantes",
+    "missingKeywords": "Mots-clés manquants",
+    "alignmentTip": "Conseil d'alignement",
+    "formattingIssues": "Problèmes de formatage",
+    "detected": "Détecté",
+    "fixes": "Corrections",
+    "atsBullets": "Puces optimisées ATS",
+    "before": "Avant",
+    "after": "Après",
+    "resumeLength": "Longueur du CV",
+    "pages": "pages",
+    "actionPlan": "Plan d'action",
+    "redFlags": "Signaux d'alerte",
+    "linkedinAnalysis": "Analyse LinkedIn",
+    "includedFree": "Inclus gratuitement",
+    "strength": "point fort",
+    "suggestedHeadline": "Titre suggéré",
+    "aboutSection": "Section À propos",
+    "profileRecommendations": "Recommandations de profil",
+    "plusMore": "Plus : Lacunes de compétences, insights sectoriels, verbes d'action, mots-clés & résumé"
+  },
+  "freeScan": {
+    "complete": "Scan gratuit 17 points terminé",
+    "preview": "Voici votre aperçu complet",
+    "detected": "Détecté",
+    "atsScore": "Score ATS",
+    "breakdownLocked": "Détails verrouillés",
+    "format": "Format",
+    "metrics": "Métriques",
+    "verbs": "Verbes",
+    "pages": "Pages",
+    "words": "Mots",
+    "ideal": "idéal",
+    "sections": "Sections",
+    "contact": "Contact",
+    "readability": "Lisibilité",
+    "bulletImpact": "Impact des puces",
+    "keywordDensity": "Densité de mots-clés",
+    "excellent": "Excellent",
+    "good": "Bon",
+    "fair": "Moyen",
+    "needsWork": "À améliorer",
+    "perfect": "Parfait",
+    "tooShort": "Trop court",
+    "tooLong": "Trop long",
+    "topStrength": "Point fort principal",
+    "redFlags": "Signaux d'alerte détectés",
+    "impactLabel": "Impact",
+    "improvementPotential": "Potentiel d'amélioration",
+    "estimatedIncrease": "Estimation +{{points}} points avec optimisation complète",
+    "topPriority": "Priorité absolue",
+    "missingKeywords": "Mots-clés manquants",
+    "lockMessage": "L'analyse complète débloque {{count}} mots-clés supplémentaires + suggestions",
+    "emailCapture": {
+      "title": "Recevez des conseils CV par email",
+      "placeholder": "Entrez votre email",
+      "button": "S'abonner",
+      "sending": "Envoi...",
+      "subscribed": "Inscrit !"
+    },
+    "cta": {
+      "title": "Débloquez votre analyse complète",
+      "description": "Obtenez un feedback complet avec réécriture des puces, stratégies ATS et plan d'action prioritaire.",
+      "button": "Obtenir l'analyse complète",
+      "price": "25 $",
+      "processing": "Traitement..."
+    }
+  },
+  "success": {
+    "loading": "Analyse de votre CV...",
+    "loadingShared": "Chargement de l'analyse...",
+    "loadingDesc": "Notre IA examine votre CV avec la précision d'un recruteur.",
+    "loadingSharedDesc": "Récupération de l'analyse sauvegardée.",
+    "steps": {
+      "payment": "Paiement vérifié",
+      "parsing": "Analyse du CV",
+      "analysis": "Analyse IA",
+      "generating": "Génération du feedback"
+    },
+    "error": {
+      "title": "Échec de l'analyse",
+      "notFound": "Analyse non trouvée. Le lien est invalide ou expiré.",
+      "generic": "Impossible de charger l'analyse.",
+      "tryAgain": "Veuillez réessayer de télécharger votre CV.",
+      "backHome": "Retour à l'accueil"
+    },
+    "toast": {
+      "paymentSuccess": "Paiement réussi !",
+      "analysisReady": "Votre analyse de CV par IA est prête.",
+      "analysisReadyLinkedIn": "Votre analyse CV + LinkedIn est prête.",
+      "analysisFailed": "Échec de l'analyse",
+      "analysisFailedDesc": "Un problème est survenu. Contactez le support.",
+      "linkCopied": "Lien copié !",
+      "linkCopiedDesc": "Partagez ce lien pour montrer votre analyse.",
+      "emailSent": "Email envoyé !",
+      "emailSentDesc": "Votre analyse complète a été envoyée.",
+      "emailFailed": "Échec de l'envoi",
+      "emailFailedDesc": "Réessayez ou copiez le lien de partage.",
+      "invalidEmail": "Email invalide",
+      "invalidEmailDesc": "Veuillez entrer une adresse email valide.",
+      "pdfDownloaded": "PDF téléchargé !",
+      "pdfDownloadedDesc": "Vérifiez votre dossier Téléchargements.",
+      "pdfFailed": "Échec de génération du PDF",
+      "pdfFailedDesc": "Veuillez réessayer.",
+      "dataDeleted": "Données supprimées",
+      "dataDeletedDesc": "Votre analyse a été définitivement supprimée.",
+      "deleteFailed": "Échec de la suppression",
+      "deleteFailedDesc": "Réessayez ou contactez le support."
+    },
+    "actions": {
+      "share": "Partager",
+      "copied": "Copié !",
+      "downloadPdf": "Télécharger PDF",
+      "generating": "Génération...",
+      "emailResults": "Envoyer par email",
+      "emailPlaceholder": "Entrez votre email",
+      "send": "Envoyer",
+      "sending": "Envoi...",
+      "sent": "Envoyé !",
+      "newAnalysis": "Nouvelle analyse",
+      "deleteData": "Supprimer mes données",
+      "deleteConfirm": "Supprimer les données d'analyse",
+      "deleteWarning": "Cette action est irréversible. Votre analyse sera définitivement supprimée.",
+      "cancel": "Annuler",
+      "deleting": "Suppression..."
+    },
+    "sharedView": "Visualisation de l'analyse partagée"
+  },
+  "common": {
+    "backToHome": "Retour à l'accueil",
+    "lastUpdated": "Dernière mise à jour"
+  },
+  "privacy": {
+    "title": "Politique de confidentialité"
+  },
+  "terms": {
+    "title": "Conditions d'utilisation"
+  },
+  "stickyCta": {
+    "title": "Prêt à décrocher plus d'entretiens ?",
+    "subtitle": "Feedback recruteur en 30 secondes",
+    "mobileTitle": "Analysez votre CV →",
+    "button": "Analyser mon CV"
+  },
+  "finalCta": {
+    "urgency": "Votre CV vous fait peut-être perdre des entretiens en ce moment",
+    "heading": "Ne laissez plus passer d'opportunités",
+    "subheading": "Obtenez les corrections exactes que les recruteurs veulent voir.",
+    "benefits": {
+      "ats": "Score ATS avec analyse en 5 points",
+      "keywords": "Lacunes de mots-clés sectoriels",
+      "redFlags": "Signaux d'alerte pour les recruteurs",
+      "linkedin": "Optimisation du profil LinkedIn"
+    },
+    "oneTime": "paiement unique",
+    "guarantee": "Résultats instantanés • Sans abonnement",
+    "button": "Obtenir mon analyse",
+    "roi": "💡 Un entretien = 25 $ rentabilisés"
+  }
+}
