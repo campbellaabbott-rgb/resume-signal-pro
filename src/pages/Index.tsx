@@ -11,7 +11,7 @@ import { ComparisonTable } from "@/components/ComparisonTable";
 import { FreeKeywordResults } from "@/components/FreeKeywordResults";
 import { StickyBottomCTA } from "@/components/StickyBottomCTA";
 import { FinalCTA } from "@/components/FinalCTA";
-import { ExitIntentPopup } from "@/components/ExitIntentPopup";
+
 import { HowItWorks } from "@/components/HowItWorks";
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
 import { useToast } from "@/hooks/use-toast";
@@ -745,11 +745,6 @@ const Index = () => {
       
       <Footer />
       
-      <ExitIntentPopup 
-        onGetStarted={() => {
-          document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
-        }}
-      />
     </div>
   );
 };
