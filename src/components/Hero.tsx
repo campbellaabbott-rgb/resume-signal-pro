@@ -4,11 +4,6 @@ import { useCurrency } from "@/hooks/use-currency";
 import { LiveActivityCounter } from "./LiveActivityCounter";
 import { useABTest } from "@/hooks/use-ab-test";
 
-// Company logos
-import GoogleLogo from "@/assets/logos/google.svg";
-import MicrosoftLogo from "@/assets/logos/microsoft.svg";
-import AppleLogo from "@/assets/logos/apple.svg";
-import NetflixLogo from "@/assets/logos/netflix.svg";
 
 export function Hero() {
   const { t } = useTranslation();
@@ -142,13 +137,13 @@ export function Hero() {
           {/* Trusted by companies */}
           <div className="mt-8 animate-fade-in" style={{ animationDelay: "0.18s" }}>
             <p className="text-xs text-muted-foreground/60 mb-4">Trusted by professionals at</p>
-            <div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-4">
-              <img src={GoogleLogo} alt="Google" className="h-7 sm:h-8 w-auto opacity-60 hover:opacity-80 transition-opacity brightness-0 invert" />
-              <img src={MicrosoftLogo} alt="Microsoft" className="h-7 sm:h-8 w-auto opacity-60 hover:opacity-80 transition-opacity brightness-0 invert" />
+            <div className="flex flex-wrap justify-center items-center gap-x-6 sm:gap-x-8 gap-y-3">
+              <span className="text-sm sm:text-base font-semibold text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">Google</span>
+              <span className="text-sm sm:text-base font-semibold text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">Microsoft</span>
               <span className="text-sm sm:text-base font-semibold text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">Amazon</span>
-              <img src={AppleLogo} alt="Apple" className="h-7 sm:h-8 w-auto opacity-60 hover:opacity-80 transition-opacity brightness-0 invert" />
+              <span className="text-sm sm:text-base font-semibold text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">Apple</span>
               <span className="text-sm sm:text-base font-semibold text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">Meta</span>
-              <img src={NetflixLogo} alt="Netflix" className="h-7 sm:h-8 w-auto opacity-60 hover:opacity-80 transition-opacity brightness-0 invert" />
+              <span className="text-sm sm:text-base font-semibold text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">Netflix</span>
             </div>
           </div>
 
