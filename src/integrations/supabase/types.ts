@@ -182,11 +182,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_scan_credits: {
+        Row: {
+          created_at: string
+          credits_remaining: number
+          email: string
+          id: string
+          total_credits_purchased: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credits_remaining?: number
+          email: string
+          id?: string
+          total_credits_purchased?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credits_remaining?: number
+          email?: string
+          id?: string
+          total_credits_purchased?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      add_scan_credits: {
+        Args: { p_credits: number; p_email: string }
+        Returns: boolean
+      }
       check_global_rate_limit: {
         Args: {
           p_ip: string
@@ -229,6 +260,7 @@ export type Database = {
           share_id: string
         }[]
       }
+      get_scan_credits: { Args: { p_email: string }; Returns: number }
       get_temp_resume: {
         Args: { p_session_id: string }
         Returns: {
@@ -263,6 +295,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      use_scan_credit: { Args: { p_email: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

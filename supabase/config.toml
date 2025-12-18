@@ -29,3 +29,9 @@ verify_jwt = false
 
 [functions.parse-spreadsheet]
 verify_jwt = false
+
+[functions.create-scan-pack-checkout]
+verify_jwt = false
+
+[functions.verify-scan-pack-purchase]
+verify_jwt = false
