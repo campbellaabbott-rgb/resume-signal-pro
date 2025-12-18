@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { Mail } from "lucide-react";
 
 export function Footer() {
   const { t } = useTranslation();
@@ -8,6 +9,18 @@ export function Footer() {
   return (
     <footer className="py-10 sm:py-12 border-t border-border safe-bottom" role="contentinfo">
       <div className="container">
+        {/* Support Email - Prominent */}
+        <div className="flex flex-col items-center gap-2 mb-8 pb-8 border-b border-border/50">
+          <p className="text-sm text-muted-foreground">Questions or feedback?</p>
+          <a 
+            href="mailto:resumeboostersupp@gmail.com" 
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors font-medium"
+          >
+            <Mail className="w-4 h-4" />
+            resumeboostersupp@gmail.com
+          </a>
+        </div>
+        
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground px-2 sm:px-0">
           <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
           <nav className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center" aria-label="Footer navigation">
@@ -23,13 +36,6 @@ export function Footer() {
             >
               {t('footer.terms')}
             </Link>
-            <a 
-              href="mailto:support@resumebooster.com" 
-              className="hover:text-foreground transition-colors focus-visible:outline-none focus-visible:text-primary min-h-[44px] flex items-center touch-manipulation"
-              aria-label="Contact us via email"
-            >
-              {t('footer.contact')}
-            </a>
             <LanguageSwitcher variant="compact" />
           </nav>
         </div>
