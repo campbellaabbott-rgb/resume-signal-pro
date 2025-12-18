@@ -144,13 +144,13 @@ export function Hero() {
           {/* Trusted by companies */}
           <div className="mt-8 animate-fade-in" style={{ animationDelay: "0.18s" }}>
             <p className="text-xs text-muted-foreground/60 mb-4">Trusted by professionals at</p>
-            <div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-4">
-              <img src={GoogleLogo} alt="Google" className="h-5 w-auto opacity-40 hover:opacity-60 transition-opacity" />
-              <img src={MicrosoftLogo} alt="Microsoft" className="h-5 w-auto opacity-40 hover:opacity-60 transition-opacity" />
-              <img src={AmazonLogo} alt="Amazon" className="h-5 w-auto opacity-40 hover:opacity-60 transition-opacity" />
-              <img src={AppleLogo} alt="Apple" className="h-5 w-auto opacity-40 hover:opacity-60 transition-opacity" />
-              <img src={MetaLogo} alt="Meta" className="h-5 w-auto opacity-40 hover:opacity-60 transition-opacity" />
-              <img src={NetflixLogo} alt="Netflix" className="h-5 w-auto opacity-40 hover:opacity-60 transition-opacity" />
+            <div className="flex flex-wrap justify-center items-center gap-x-10 gap-y-4">
+              <img src={GoogleLogo} alt="Google" className="h-7 sm:h-8 w-auto opacity-60 hover:opacity-80 transition-opacity brightness-0 invert" />
+              <img src={MicrosoftLogo} alt="Microsoft" className="h-7 sm:h-8 w-auto opacity-60 hover:opacity-80 transition-opacity brightness-0 invert" />
+              <img src={AmazonLogo} alt="Amazon" className="h-7 sm:h-8 w-auto opacity-60 hover:opacity-80 transition-opacity brightness-0 invert" />
+              <img src={AppleLogo} alt="Apple" className="h-7 sm:h-8 w-auto opacity-60 hover:opacity-80 transition-opacity brightness-0 invert" />
+              <img src={MetaLogo} alt="Meta" className="h-7 sm:h-8 w-auto opacity-60 hover:opacity-80 transition-opacity brightness-0 invert" />
+              <img src={NetflixLogo} alt="Netflix" className="h-7 sm:h-8 w-auto opacity-60 hover:opacity-80 transition-opacity brightness-0 invert" />
             </div>
           </div>
 
