@@ -1,0 +1,363 @@
+{
+  "header": {
+    "tagline": "Recruiter-grade AI feedback",
+    "getStarted": "Get Started",
+    "start": "Start"
+  },
+  "hero": {
+    "badge": "AI-Powered CV Analysis",
+    "freeScan": "Try Free Scan",
+    "heading": "Stop guessing.",
+    "headingHighlight": "Start landing interviews.",
+    "subheading": "Get brutally honest, recruiter-grade feedback on your CV. No fluff, no sugar-coating — just actionable fixes that get you hired.",
+    "price": "£20",
+    "oneTime": "one-time",
+    "nofees": "No subscriptions • No hidden fees • Instant results",
+    "roi": "One interview = £20 paid for itself",
+    "trusted": "Trusted by",
+    "jobSeekers": "job seekers",
+    "seeSample": "See Sample Analysis",
+    "whyBetter": "Why Better Than ChatGPT?",
+    "problemBadge": "85% of CVs never reach a human",
+    "mainHeading": "Is Your CV Being",
+    "mainHeadingHighlight": "Rejected by ATS?",
+    "mainSubheading": "Find out in 30 seconds. Get your ATS score and see exactly what's costing you interviews.",
+    "ctaButton": "Check My CV Now",
+    "freeBadge": "FREE",
+    "noSignup": "No sign-up required",
+    "private": "100% private",
+    "testimonial": "\"This is a very wonderful product. I have just gone through the freemium features & I can confidently say it's going to be a big success.\"",
+    "testimonialAuthor": "Recent user",
+    "trustedBy": "Trusted by professionals at",
+    "freeScanReveals": "Your free scan reveals:",
+    "reveal": {
+      "atsScore": "ATS Score",
+      "keywords": "Missing Keywords",
+      "redFlags": "Red Flags",
+      "quickFixes": "Quick Fixes"
+    },
+    "features": {
+      "atsBullets": "ATS-optimised bullets",
+      "atsBulletsDesc": "Beat the robots",
+      "actionVerbs": "Stronger action verbs",
+      "actionVerbsDesc": "Stand out instantly",
+      "keywords": "Keyword suggestions",
+      "keywordsDesc": "Match job descriptions",
+      "redFlags": "Red flag detection",
+      "redFlagsDesc": "Fix deal-breakers"
+    },
+    "trust": {
+      "secure": "Secure & Private",
+      "results": "Results in 30 seconds",
+      "approved": "Recruiter-approved"
+    }
+  },
+  "footer": {
+    "copyright": "© {{year}} CV Booster. All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "contact": "Contact"
+  },
+  "language": {
+    "select": "Select Language"
+  },
+  "uploader": {
+    "title": "Upload Your CV & LinkedIn",
+    "subtitle": "Get a comprehensive analysis of your CV",
+    "linkedinBonus": "+ LinkedIn profile optimisation",
+    "resume": {
+      "title": "Your CV",
+      "required": "*Required",
+      "freeIncluded": "Free scan included!",
+      "upload": "Upload",
+      "paste": "Paste",
+      "dropHere": "Drop your CV here",
+      "fileTypes": "PDF, DOCX, or TXT (max 10MB)",
+      "browse": "Browse files",
+      "pasteHere": "Paste your CV content here...",
+      "chars": "chars"
+    },
+    "linkedin": {
+      "title": "Your LinkedIn Profile",
+      "paidOnly": "Paid analysis only",
+      "hide": "Hide",
+      "show": "Show",
+      "description": "Add your LinkedIn for",
+      "benefits": "headline optimisation, About section rewrite, SEO keywords,",
+      "andMore": "and visibility tips.",
+      "uploadPdf": "Upload PDF",
+      "uploadLinkedIn": "Upload LinkedIn PDF",
+      "exportTip": "Export your profile from LinkedIn as PDF",
+      "parsing": "Parsing PDF...",
+      "pasteHere": "Copy and paste your LinkedIn profile content here...",
+      "includeTip": "Include: Headline, About section, Experience descriptions, Skills"
+    },
+    "jobDescription": {
+      "title": "Target Job Description",
+      "optional": "Optional",
+      "hide": "Hide",
+      "show": "Show",
+      "description": "Get",
+      "matchScore": "match score",
+      "and": "and",
+      "tailoredFeedback": "tailored feedback",
+      "forRole": "for your target role",
+      "pasteHere": "Paste the job description you're applying to...",
+      "tip": "Tip: Include the full job posting for best results"
+    },
+    "actions": {
+      "freeScan": "Free Scan",
+      "quickInsights": "Get quick insights",
+      "processing": "Processing...",
+      "getFullAnalysis": "Get Full Analysis",
+      "forOnly": "for only",
+      "includes": "Includes ATS optimisation, bullet rewrites & action plan"
+    }
+  },
+  "faq": {
+    "title": "Frequently Asked Questions",
+    "subtitle": "Everything you need to know about CV Booster",
+    "questions": {
+      "whatDoIGet": {
+        "question": "What do I get with CV Booster?",
+        "answer": "You get a comprehensive analysis including ATS-optimised bullet point rewrites, stronger action verb suggestions, keyword recommendations for your industry, and red flags that recruiters might notice. Everything is written in direct, actionable language."
+      },
+      "howLong": {
+        "question": "How long does the analysis take?",
+        "answer": "Your CV analysis is generated instantly after payment. You will see your results on the success page within seconds."
+      },
+      "fileFormats": {
+        "question": "What file formats do you accept?",
+        "answer": "We accept PDF files, Word documents (DOCX), and plain text. Simply upload your CV file or paste your CV text directly into the input field."
+      },
+      "subscription": {
+        "question": "Is this a subscription?",
+        "answer": "No. CV Booster is a one-time payment of £20. There are no subscriptions, recurring charges, or upsells."
+      },
+      "share": {
+        "question": "Can I share my analysis with others?",
+        "answer": "Yes! After your analysis is complete, you can copy a shareable link to send to mentors, career coaches, or anyone you want feedback from."
+      },
+      "whoWrites": {
+        "question": "Who writes the feedback?",
+        "answer": "The feedback is generated by AI trained to think like a recruiter. It focuses on what actually matters in the hiring process, not generic career advice."
+      },
+      "dataStorage": {
+        "question": "Do you store my CV data?",
+        "answer": "No. We do not store or collect your CV content. Your CV is processed in real-time to generate your analysis, and then immediately discarded. We never retain your personal information."
+      },
+      "vsChatGPT": {
+        "question": "Why is this better than ChatGPT or CV templates?",
+        "answer": "CV Booster is purpose-built for ATS optimisation with a 5-category weighted scoring system, 14 industry-specific templates, and recruiter-calibrated feedback. Unlike ChatGPT, you get consistent 10-section structured output without prompt engineering. Unlike templates, we provide personalised rewrites, LinkedIn analysis, and job description alignment. Your data is immediately discarded—never used for training."
+      }
+    }
+  },
+  "comparison": {
+    "title": "Why CV Booster?",
+    "subtitle": "See how we compare to other options",
+    "feature": "Feature",
+    "templates": "Templates",
+    "free": "Free",
+    "cta": "Try It Now — £20",
+    "ctaText": "Try It Now",
+    "features": {
+      "atsScoring": "5-Category ATS Scoring",
+      "industryTemplates": "14 Industry-Specific Templates",
+      "consistentOutput": "Consistent Structured Output",
+      "linkedinAnalysis": "LinkedIn Profile Analysis",
+      "jobAlignment": "Job Description Alignment",
+      "noPromptNeeded": "No Prompt Engineering Required",
+      "recruiterCalibrated": "Recruiter-Calibrated Feedback",
+      "privacyFirst": "Data Never Used for Training"
+    }
+  },
+  "socialProof": {
+    "stats": {
+      "analyzed": "CVs analysed",
+      "betterResults": "Report better results",
+      "deliveryTime": "Average delivery time"
+    },
+    "testimonials": {
+      "engineer": {
+        "quote": "Got 3 interviews in my first week after using this. The red flags section was eye-opening.",
+        "role": "Software Engineer"
+      },
+      "pm": {
+        "quote": "Finally understood why my CV wasn't getting responses. Direct, actionable, worth every penny.",
+        "role": "Product Manager"
+      },
+      "graduate": {
+        "quote": "The keyword suggestions helped me tailor my CV perfectly. Landed my dream internship!",
+        "role": "Recent Graduate"
+      }
+    },
+    "trustMessage": "Join thousands of job seekers who've improved their CVs with honest, recruiter-grade feedback."
+  },
+  "preview": {
+    "badge": "Sample Analysis",
+    "title": "See What You'll Get",
+    "subtitle": "Here's a preview of the detailed, actionable feedback in every analysis",
+    "atsScore": "ATS Compatibility Score",
+    "jdMatch": "Job Description Match",
+    "addJd": "Add a JD for this",
+    "match": "match",
+    "matchingSkills": "Matching Skills",
+    "missingKeywords": "Missing Keywords",
+    "alignmentTip": "Alignment Tip",
+    "formattingIssues": "Formatting Issues",
+    "detected": "Detected",
+    "fixes": "Fixes",
+    "atsBullets": "ATS-Optimised Bullets",
+    "before": "Before",
+    "after": "After",
+    "resumeLength": "CV Length",
+    "pages": "pages",
+    "actionPlan": "Action Plan",
+    "redFlags": "Red Flags",
+    "linkedinAnalysis": "LinkedIn Analysis",
+    "includedFree": "Included Free",
+    "strength": "strength",
+    "suggestedHeadline": "Suggested Headline",
+    "aboutSection": "About Section",
+    "profileRecommendations": "Profile Recommendations",
+    "plusMore": "Plus: Skills Gap, Industry Insights, Action Verbs, Keywords & Summary Rewrite"
+  },
+  "freeScan": {
+    "complete": "17-Point Free Scan Complete",
+    "preview": "Here's your comprehensive preview",
+    "detected": "Detected",
+    "atsScore": "ATS Score",
+    "breakdownLocked": "Breakdown locked",
+    "format": "Format",
+    "metrics": "Metrics",
+    "verbs": "Verbs",
+    "pages": "Pages",
+    "words": "Words",
+    "ideal": "ideal",
+    "sections": "Sections",
+    "contact": "Contact",
+    "readability": "Readability",
+    "bulletImpact": "Bullet Impact",
+    "keywordDensity": "Keyword Density",
+    "excellent": "Excellent",
+    "good": "Good",
+    "fair": "Fair",
+    "needsWork": "Needs Work",
+    "perfect": "Perfect",
+    "tooShort": "Too Short",
+    "tooLong": "Too Long",
+    "topStrength": "Top Strength",
+    "redFlags": "Red Flags Detected",
+    "impactLabel": "Impact",
+    "improvementPotential": "Improvement Potential",
+    "estimatedIncrease": "Estimated +{{points}} points with full optimisation",
+    "topPriority": "Top priority",
+    "missingKeywords": "Missing Keywords",
+    "lockMessage": "Full analysis unlocks {{count}} more keywords + suggestions",
+    "emailCapture": {
+      "title": "Get CV tips in your inbox",
+      "placeholder": "Enter your email",
+      "button": "Subscribe",
+      "sending": "Sending...",
+      "subscribed": "You're subscribed!"
+    },
+    "cta": {
+      "title": "Unlock Your Full Analysis",
+      "description": "Get comprehensive feedback with detailed bullet rewrites, ATS optimisation strategies, and a prioritised action plan.",
+      "button": "Get Full Analysis",
+      "price": "£20",
+      "processing": "Processing..."
+    }
+  },
+  "success": {
+    "loading": "Analysing your CV...",
+    "loadingShared": "Loading analysis...",
+    "loadingDesc": "Our AI is reviewing your CV with recruiter-grade precision.",
+    "loadingSharedDesc": "Fetching the saved analysis.",
+    "steps": {
+      "payment": "Payment verified",
+      "parsing": "Parsing CV",
+      "analysis": "AI analysis",
+      "generating": "Generating feedback"
+    },
+    "error": {
+      "title": "Analysis Failed",
+      "notFound": "Analysis not found. The link may be invalid or expired.",
+      "generic": "Failed to load analysis.",
+      "tryAgain": "Please try uploading your CV again.",
+      "backHome": "Back to Home"
+    },
+    "toast": {
+      "paymentSuccess": "Payment successful!",
+      "analysisReady": "Your AI-powered CV analysis is ready.",
+      "analysisReadyLinkedIn": "Your CV + LinkedIn analysis is ready.",
+      "analysisFailed": "Analysis failed",
+      "analysisFailedDesc": "There was an issue analysing your CV. Please contact support.",
+      "linkCopied": "Link copied!",
+      "linkCopiedDesc": "Share this link to let others view your analysis.",
+      "emailSent": "Email sent!",
+      "emailSentDesc": "Your complete analysis has been sent to your inbox.",
+      "emailFailed": "Failed to send email",
+      "emailFailedDesc": "Please try again or copy the share link instead.",
+      "invalidEmail": "Invalid email",
+      "invalidEmailDesc": "Please enter a valid email address.",
+      "pdfDownloaded": "PDF downloaded!",
+      "pdfDownloadedDesc": "Check your Downloads folder.",
+      "pdfFailed": "Failed to generate PDF",
+      "pdfFailedDesc": "Please try again.",
+      "dataDeleted": "Data deleted",
+      "dataDeletedDesc": "Your CV analysis has been permanently deleted.",
+      "deleteFailed": "Failed to delete data",
+      "deleteFailedDesc": "Please try again or contact support."
+    },
+    "actions": {
+      "share": "Share",
+      "copied": "Copied!",
+      "downloadPdf": "Download PDF",
+      "generating": "Generating...",
+      "emailResults": "Email Your Results",
+      "emailPlaceholder": "Enter your email",
+      "send": "Send",
+      "sending": "Sending...",
+      "sent": "Sent!",
+      "newAnalysis": "New Analysis",
+      "deleteData": "Delete My Data",
+      "deleteConfirm": "Delete Analysis Data",
+      "deleteWarning": "This action cannot be undone. This will permanently delete your CV analysis from our servers.",
+      "cancel": "Cancel",
+      "deleting": "Deleting..."
+    },
+    "sharedView": "Viewing shared analysis"
+  },
+  "common": {
+    "backToHome": "Back to Home",
+    "lastUpdated": "Last updated"
+  },
+  "privacy": {
+    "title": "Privacy Policy"
+  },
+  "terms": {
+    "title": "Terms of Service"
+  },
+  "stickyCta": {
+    "title": "Ready to land more interviews?",
+    "subtitle": "Get recruiter-grade feedback in 30 seconds",
+    "mobileTitle": "Get your CV analysed →",
+    "button": "Analyse My CV"
+  },
+  "finalCta": {
+    "urgency": "Your CV might be losing you interviews right now",
+    "heading": "Don't Let Another Opportunity Slip Away",
+    "subheading": "Get the exact fixes recruiters want to see. One analysis could change everything.",
+    "benefits": {
+      "ats": "ATS score with 5-point breakdown",
+      "keywords": "Industry-specific keyword gaps",
+      "redFlags": "Red flags recruiters notice",
+      "linkedin": "LinkedIn profile optimisation"
+    },
+    "oneTime": "one-time",
+    "guarantee": "Instant results • No subscription",
+    "button": "Get My Analysis Now",
+    "roi": "💡 One interview = £20 paid for itself"
+  }
+}
