@@ -262,6 +262,7 @@ interface FreeKeywordResultsProps {
   redFlags: RedFlag[];
   keywords: KeywordSuggestion[];
   onGetFullAnalysis: () => void;
+  onGetJobAnalysis?: (jobTitle: string, jobCompany: string) => void;
   isLoading?: boolean;
   topSkipReasons?: string[];
   powerWords?: string[];
@@ -302,6 +303,7 @@ export function FreeKeywordResults({
   redFlags: redFlagsProp,
   keywords,
   onGetFullAnalysis,
+  onGetJobAnalysis,
   isLoading,
   topSkipReasons: topSkipReasonsProp,
   powerWords: powerWordsProp,
@@ -1708,12 +1710,12 @@ export function FreeKeywordResults({
         </div>
       </div>
 
-      {/* Job Comparison CTA - show when jobs are uploaded */}
+      {/* Job Comparison CTA - show when jobs are uploaded (FREE feature) */}
       {uploadedJobs.length > 0 && (
-        <div className="p-5 rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/5 via-background to-primary/10 mb-6">
+        <div className="p-5 rounded-2xl border border-success/30 bg-gradient-to-br from-success/5 via-background to-success/10 mb-6">
           <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <h4 className="font-medium text-foreground">See how you compare to your target roles</h4>
+            <Target className="w-4 h-4 text-success" />
+            <h4 className="font-medium text-foreground">Want to see how you compare for <span className="text-primary">{uploadedJobs[0]?.title}</span> at <span className="text-primary">{uploadedJobs[0]?.company}</span>?</h4>
           </div>
           <div className="flex flex-wrap gap-2">
             {uploadedJobs.slice(0, 3).map((job, index) => (
@@ -1721,23 +1723,18 @@ export function FreeKeywordResults({
                 key={index}
                 variant="outline"
                 size="sm"
-                onClick={() => handleUpgradeClick(`job_cta_${job.title}`)}
+                onClick={() => onGetJobAnalysis?.(job.title, job.company)}
                 disabled={isLoading}
-                className="group border-primary/30 hover:border-primary hover:bg-primary/10 transition-all"
+                className="group border-success/30 hover:border-success hover:bg-success/10 transition-all"
               >
-                <Briefcase className="w-3.5 h-3.5 mr-1.5 text-primary" />
-                <span className="truncate max-w-[180px]">{job.title}</span>
-                <ArrowRight className="w-3.5 h-3.5 ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
+                <Target className="w-3.5 h-3.5 mr-1.5 text-success" />
+                <span className="truncate max-w-[180px]">Get Job-Specific Analysis</span>
+                <ArrowRight className="w-3.5 h-3.5 ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-success" />
               </Button>
             ))}
-            {uploadedJobs.length > 3 && (
-              <span className="inline-flex items-center text-xs text-muted-foreground px-2">
-                +{uploadedJobs.length - 3} more
-              </span>
-            )}
           </div>
-          <p className="text-xs text-muted-foreground mt-3">
-            Get job-specific analysis with tailored bullet rewrites for each role
+          <p className="text-xs text-success/80 mt-3 font-medium">
+            ✨ Free — See tailored insights for your target role
           </p>
         </div>
       )}

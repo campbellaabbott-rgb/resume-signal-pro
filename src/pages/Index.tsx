@@ -423,6 +423,105 @@ const Index = () => {
     }
   };
 
+  // Handle job-specific analysis (free re-scan with job context)
+  const handleJobAnalysis = async (jobTitle: string, jobCompany: string) => {
+    const contentToAnalyze = resumeText;
+    
+    if (!contentToAnalyze) {
+      toast({
+        title: "No resume found",
+        description: "Please upload your resume first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Find the job description from uploadedJobs
+    const targetJob = uploadedJobs.find(j => j.title === jobTitle && j.company === jobCompany);
+    const jobDesc = targetJob?.description || `${jobTitle} at ${jobCompany}`;
+
+    setIsFreeScanLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("free-keyword-scan", {
+        body: { resumeText: contentToAnalyze, jobDescriptionText: jobDesc, honeypot },
+      });
+
+      if (error) {
+        const errorContext = error?.context;
+        if (errorContext?.body) {
+          try {
+            const errorBody = typeof errorContext.body === 'string' 
+              ? JSON.parse(errorContext.body) 
+              : errorContext.body;
+            if (errorBody?.rateLimited) {
+              setShowRateLimitUpsell(true);
+              return;
+            }
+          } catch {
+            // Not JSON, continue
+          }
+        }
+        throw error;
+      }
+
+      if (data?.rateLimited) {
+        setShowRateLimitUpsell(true);
+        return;
+      }
+
+      if (data?.success) {
+        setFreeKeywordResult({
+          industry: data.industry,
+          atsScoreEstimate: data.atsScoreEstimate,
+          formatGrade: data.formatGrade,
+          formatIssue: data.formatIssue,
+          resumeLength: data.resumeLength,
+          wordCount: data.wordCount,
+          experienceLevel: data.experienceLevel,
+          sectionCheck: data.sectionCheck,
+          contactInfo: data.contactInfo,
+          topStrength: data.topStrength,
+          quantificationScore: data.quantificationScore,
+          actionVerbGrade: data.actionVerbGrade,
+          readabilityScore: data.readabilityScore,
+          bulletImpactScore: data.bulletImpactScore,
+          keywordDensity: data.keywordDensity,
+          improvementPotential: data.improvementPotential,
+          redFlags: data.redFlags,
+          keywords: data.keywords,
+          jobMatchScore: data.jobMatchScore,
+          jobMatchGrade: data.jobMatchGrade,
+          matchingSkills: data.matchingSkills,
+          missingSkills: data.missingSkills,
+          experienceFit: data.experienceFit,
+          titleAlignment: data.titleAlignment,
+          jobMatchSummary: data.jobMatchSummary,
+        });
+        
+        toast({
+          title: `Job Analysis Complete`,
+          description: `Now showing how you match for ${jobTitle} at ${jobCompany}`,
+        });
+        
+        setTimeout(() => {
+          document.getElementById("free-results")?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      } else {
+        throw new Error(data?.error || "Failed to analyze");
+      }
+    } catch (error: any) {
+      console.error("Job analysis error:", error);
+      toast({
+        title: "Analysis failed",
+        description: error?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFreeScanLoading(false);
+    }
+  };
+
   const handleTextSubmit = (text: string, linkedIn?: string, jobDescription?: string) => {
     setResumeText(text);
     setFreeKeywordResult(null);
@@ -757,7 +856,8 @@ const Index = () => {
                 titleAlignment={freeKeywordResult.titleAlignment}
                 jobMatchSummary={freeKeywordResult.jobMatchSummary}
                 onGetFullAnalysis={() => handleCheckout(resumeText, linkedInText, jobDescriptionText)}
-                isLoading={isLoading}
+                onGetJobAnalysis={handleJobAnalysis}
+                isLoading={isLoading || isFreeScanLoading}
               />
             </div>
           </section>
