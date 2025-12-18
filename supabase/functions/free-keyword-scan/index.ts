@@ -6,7 +6,7 @@ declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
 
 // Performance monitoring thresholds (ms)
 const SLOW_REQUEST_THRESHOLD = 20000; // 20s - AI analysis takes time
-const VERY_SLOW_THRESHOLD = 45000;
+const VERY_SLOW_THRESHOLD = 70000; // 70s - Gemini Pro model takes 40-60s typically
 
 const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "admin@resumebooster.com";
 const ALERT_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour between alerts per type
