@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Target, Zap } from "lucide-react";
+import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Target, Zap, Link, Table2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -120,6 +120,10 @@ export function ResumeUploader({
   const [showLinkedIn, setShowLinkedIn] = useState(true);
   const [showJobDescription, setShowJobDescription] = useState(true);
   const [localJobDescriptionText, setLocalJobDescriptionText] = useState("");
+  const [jobDescriptionMode, setJobDescriptionMode] = useState<"paste" | "url" | "spreadsheet">("paste");
+  const [jobDescriptionUrl, setJobDescriptionUrl] = useState("");
+  const [jobDescriptionFile, setJobDescriptionFile] = useState<File | null>(null);
+  const [isParsingJobDescription, setIsParsingJobDescription] = useState(false);
   const [isParsingLinkedIn, setIsParsingLinkedIn] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -195,23 +199,63 @@ export function ResumeUploader({
     }
   };
 
+  const handleJobDescriptionSpreadsheetUpload = async (file: File) => {
+    const validTypes = [
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-excel",
+      "text/csv"
+    ];
+    const isValid = validTypes.includes(file.type) || 
+                   file.name.endsWith(".xlsx") || 
+                   file.name.endsWith(".xls") || 
+                   file.name.endsWith(".csv");
+    
+    if (!isValid) return;
+    
+    setJobDescriptionFile(file);
+    setIsParsingJobDescription(true);
+    
+    try {
+      // For CSV, read as text directly
+      if (file.type === "text/csv" || file.name.endsWith(".csv")) {
+        const text = await file.text();
+        setLocalJobDescriptionText(text);
+      } else {
+        // For Excel files, we'd need a parser - for now just note the file
+        setLocalJobDescriptionText(`[Spreadsheet uploaded: ${file.name}]\n\nNote: For best results, copy the job listing content and use the "Paste Text" option.`);
+      }
+    } catch (error) {
+      console.error("Spreadsheet parsing error:", error);
+      setJobDescriptionFile(null);
+    } finally {
+      setIsParsingJobDescription(false);
+    }
+  };
+
+  const getFinalJobDescriptionText = () => {
+    if (jobDescriptionMode === "url" && jobDescriptionUrl.trim()) {
+      return `[Job URL: ${jobDescriptionUrl.trim()}]\n\n${localJobDescriptionText}`;
+    }
+    return localJobDescriptionText || jobDescriptionText;
+  };
+
   const handleTextPaste = () => {
     if (textInput.trim()) {
       const finalLinkedInText = linkedInMode === "paste" ? localLinkedInText : linkedInText;
-      const finalJobDescriptionText = localJobDescriptionText || jobDescriptionText;
+      const finalJobDescriptionText = getFinalJobDescriptionText();
       onTextSubmit(textInput.trim(), finalLinkedInText || undefined, finalJobDescriptionText || undefined);
     }
   };
 
   const handleCheckoutClick = () => {
     const finalLinkedInText = linkedInMode === "paste" ? localLinkedInText : linkedInText;
-    const finalJobDescriptionText = localJobDescriptionText || jobDescriptionText;
+    const finalJobDescriptionText = getFinalJobDescriptionText();
     onCheckout(finalLinkedInText || undefined, finalJobDescriptionText || undefined);
   };
 
   const canProceed = resumeMode === "upload" ? !!selectedFile : !!textInput.trim();
   const hasLinkedInContent = linkedInMode === "upload" ? !!linkedInText : !!localLinkedInText.trim();
-  const hasJobDescriptionContent = !!localJobDescriptionText.trim() || !!jobDescriptionText;
+  const hasJobDescriptionContent = !!localJobDescriptionText.trim() || !!jobDescriptionText || !!jobDescriptionUrl.trim() || !!jobDescriptionFile;
 
   return (
     <section 
@@ -230,6 +274,200 @@ export function ResumeUploader({
             <p className="text-muted-foreground">
               {t('uploader.subtitle')} <span className="text-primary font-medium">{t('uploader.linkedinBonus')}</span>
             </p>
+          </div>
+
+          {/* Job Description Section - FIRST */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-success/10">
+                  <Target className="w-4 h-4 text-success" />
+                </div>
+                <h3 className="font-semibold">{t('uploader.jobDescription.title')}</h3>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">Recommended</span>
+              </div>
+              <button
+                onClick={() => setShowJobDescription(!showJobDescription)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showJobDescription ? t('uploader.jobDescription.hide') : t('uploader.jobDescription.show')}
+              </button>
+            </div>
+
+            {showJobDescription && (
+              <div className="rounded-2xl bg-card/30 border border-border/30 p-5 space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  {t('uploader.jobDescription.description')} <span className="text-foreground font-medium">{t('uploader.jobDescription.matchScore')}, extracted keywords,</span> {t('uploader.jobDescription.and')} {t('uploader.jobDescription.tailoredFeedback')}.
+                </p>
+
+                {/* Mode Tabs */}
+                <div className="flex justify-start">
+                  <div className="inline-flex rounded-xl bg-muted/50 border border-border p-1 flex-wrap">
+                    <button
+                      onClick={() => setJobDescriptionMode("paste")}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                        jobDescriptionMode === "paste"
+                          ? "bg-success text-success-foreground shadow-md"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      <FileText className="w-4 h-4" />
+                      Paste Text
+                    </button>
+                    <button
+                      onClick={() => setJobDescriptionMode("url")}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                        jobDescriptionMode === "url"
+                          ? "bg-success text-success-foreground shadow-md"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      <Link className="w-4 h-4" />
+                      Job URL
+                    </button>
+                    <button
+                      onClick={() => setJobDescriptionMode("spreadsheet")}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                        jobDescriptionMode === "spreadsheet"
+                          ? "bg-success text-success-foreground shadow-md"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      <Table2 className="w-4 h-4" />
+                      Spreadsheet
+                    </button>
+                  </div>
+                </div>
+
+                {/* Paste Text Mode */}
+                {jobDescriptionMode === "paste" && (
+                  <div className="relative">
+                    <textarea
+                      value={localJobDescriptionText}
+                      onChange={(e) => setLocalJobDescriptionText(e.target.value)}
+                      placeholder={`${t('uploader.jobDescription.pasteHere')}\n\n${t('uploader.jobDescription.tip')}`}
+                      className="w-full h-40 p-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 resize-none text-sm leading-relaxed transition-all"
+                    />
+                    <div className="absolute bottom-3 right-3 px-2 py-1 rounded-lg bg-card border border-border text-xs text-muted-foreground">
+                      {localJobDescriptionText.length.toLocaleString()} {t('uploader.resume.chars')}
+                    </div>
+                  </div>
+                )}
+
+                {/* URL Mode */}
+                {jobDescriptionMode === "url" && (
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        <Link className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="url"
+                        value={jobDescriptionUrl}
+                        onChange={(e) => setJobDescriptionUrl(e.target.value)}
+                        placeholder="https://linkedin.com/jobs/... or company career page URL"
+                        className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 text-sm transition-all"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      💡 Paste the job listing URL from LinkedIn, Indeed, Glassdoor, or any company career page
+                    </p>
+                    {/* Optional: additional notes textarea */}
+                    <textarea
+                      value={localJobDescriptionText}
+                      onChange={(e) => setLocalJobDescriptionText(e.target.value)}
+                      placeholder="Optional: Add any additional notes about the role..."
+                      className="w-full h-24 p-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 resize-none text-sm leading-relaxed transition-all"
+                    />
+                  </div>
+                )}
+
+                {/* Spreadsheet Mode */}
+                {jobDescriptionMode === "spreadsheet" && (
+                  <div className="space-y-3">
+                    {jobDescriptionFile ? (
+                      <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
+                        <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                        <Table2 className="w-4 h-4 text-success shrink-0" />
+                        <span className="text-sm text-success truncate">{jobDescriptionFile.name}</span>
+                        <button
+                          onClick={() => {
+                            setJobDescriptionFile(null);
+                            setLocalJobDescriptionText("");
+                          }}
+                          className="ml-auto p-1 hover:bg-success/10 rounded-lg transition-colors"
+                        >
+                          <X className="w-3 h-3 text-success" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className={cn(
+                        "flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all",
+                        isParsingJobDescription 
+                          ? "border-success/50 bg-success/5" 
+                          : "border-border/50 hover:border-success/40 hover:bg-success/5"
+                      )}>
+                        <input
+                          type="file"
+                          accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleJobDescriptionSpreadsheetUpload(file);
+                          }}
+                          className="hidden"
+                          disabled={isParsingJobDescription}
+                        />
+                        {isParsingJobDescription ? (
+                          <>
+                            <Loader2 className="w-6 h-6 text-success animate-spin mb-2" />
+                            <span className="text-sm text-muted-foreground">Processing spreadsheet...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Table2 className="w-6 h-6 text-success mb-2" />
+                            <span className="text-sm font-medium text-foreground">Upload job listing spreadsheet</span>
+                            <span className="text-xs text-muted-foreground mt-1">Excel (.xlsx, .xls) or CSV files</span>
+                            <span className="text-xs text-muted-foreground mt-2 text-center max-w-[280px]">
+                              Great for tracking multiple job applications
+                            </span>
+                          </>
+                        )}
+                      </label>
+                    )}
+                  </div>
+                )}
+
+                {/* Success indicator */}
+                {hasJobDescriptionContent && jobDescriptionMode === "paste" && localJobDescriptionText.trim() && (
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
+                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                    <span className="text-sm text-success">Job description added</span>
+                    <button
+                      onClick={() => setLocalJobDescriptionText("")}
+                      className="ml-auto p-1 hover:bg-success/10 rounded-lg transition-colors"
+                    >
+                      <X className="w-3 h-3 text-success" />
+                    </button>
+                  </div>
+                )}
+                
+                {jobDescriptionMode === "url" && jobDescriptionUrl.trim() && (
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
+                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                    <span className="text-sm text-success">Job URL added</span>
+                    <button
+                      onClick={() => setJobDescriptionUrl("")}
+                      className="ml-auto p-1 hover:bg-success/10 rounded-lg transition-colors"
+                    >
+                      <X className="w-3 h-3 text-success" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Resume Section */}
@@ -478,57 +716,6 @@ export function ResumeUploader({
             )}
           </div>
 
-          {/* Job Description Section */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-success/10">
-                  <Target className="w-4 h-4 text-success" />
-                </div>
-                <h3 className="font-semibold">{t('uploader.jobDescription.title')}</h3>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">New!</span>
-              </div>
-              <button
-                onClick={() => setShowJobDescription(!showJobDescription)}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showJobDescription ? t('uploader.jobDescription.hide') : t('uploader.jobDescription.show')}
-              </button>
-            </div>
-
-            {showJobDescription && (
-              <div className="rounded-2xl bg-card/30 border border-border/30 p-5 space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  {t('uploader.jobDescription.description')} <span className="text-foreground font-medium">{t('uploader.jobDescription.matchScore')}, extracted keywords,</span> {t('uploader.jobDescription.and')} {t('uploader.jobDescription.tailoredFeedback')}.
-                </p>
-
-                <div className="relative">
-                  <textarea
-                    value={localJobDescriptionText}
-                    onChange={(e) => setLocalJobDescriptionText(e.target.value)}
-                    placeholder={`${t('uploader.jobDescription.pasteHere')}\n\n${t('uploader.jobDescription.tip')}`}
-                    className="w-full h-40 p-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 resize-none text-sm leading-relaxed transition-all"
-                  />
-                  <div className="absolute bottom-3 right-3 px-2 py-1 rounded-lg bg-card border border-border text-xs text-muted-foreground">
-                    {localJobDescriptionText.length.toLocaleString()} {t('uploader.resume.chars')}
-                  </div>
-                </div>
-
-                {localJobDescriptionText.trim() && (
-                  <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
-                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                    <span className="text-sm text-success">Job description added</span>
-                    <button
-                      onClick={() => setLocalJobDescriptionText("")}
-                      className="ml-auto p-1 hover:bg-success/10 rounded-lg transition-colors"
-                    >
-                      <X className="w-3 h-3 text-success" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
 
           {/* Submit Buttons */}
           <div className="text-center space-y-5">
