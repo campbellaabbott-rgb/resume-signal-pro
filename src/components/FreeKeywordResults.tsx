@@ -666,9 +666,12 @@ export function FreeKeywordResults({
             <div className="p-2 rounded-lg bg-primary/20">
               <Target className="w-5 h-5 text-primary" />
             </div>
-            <div>
-              <h4 className="font-bold text-lg">Job Match Analysis</h4>
-              <p className="text-xs text-muted-foreground">How well your resume matches the target job</p>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <h4 className="font-bold text-lg">Job Match Analysis</h4>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-success/20 text-success font-medium">Free & Unlimited</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Compare your resume against any job — no limits!</p>
             </div>
           </div>
 
