@@ -13,7 +13,7 @@ import { StickyBottomCTA } from "@/components/StickyBottomCTA";
 import { FinalCTA } from "@/components/FinalCTA";
 import { ExitIntentPopup } from "@/components/ExitIntentPopup";
 import { HowItWorks } from "@/components/HowItWorks";
-import { CheckoutOverlay } from "@/components/CheckoutOverlay";
+import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,6 +63,8 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFreeScanLoading, setIsFreeScanLoading] = useState(false);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
+  const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>('verifying');
+  const [checkoutError, setCheckoutError] = useState<string | undefined>();
   const [resumeText, setResumeText] = useState<string>("");
   const [linkedInText, setLinkedInText] = useState<string>("");
   const [jobDescriptionText, setJobDescriptionText] = useState<string>("");
@@ -76,6 +78,44 @@ const Index = () => {
   
   // Track if we're pre-storing to avoid duplicate calls
   const isPreStoring = useRef(false);
+
+  // Check network connectivity
+  const checkConnection = async (): Promise<boolean> => {
+    // First check browser's online status
+    if (!navigator.onLine) {
+      return false;
+    }
+    
+    // Quick connectivity test via Supabase health check
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
+        method: 'HEAD',
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // Check if popups are likely blocked (for desktop in iframe)
+  const checkPopupBlocked = (): boolean => {
+    const inIframe = window.self !== window.top;
+    if (!inIframe) return false;
+    
+    // Test popup capability
+    const testWin = window.open('', '_blank', 'width=1,height=1');
+    if (testWin) {
+      testWin.close();
+      return false;
+    }
+    return true;
+  };
 
   // Cleanup expired data on mount, setup unload handler, and restore from session
   useEffect(() => {
@@ -343,6 +383,10 @@ const Index = () => {
     const linkedInContent = linkedIn || linkedInText;
     const jobDescriptionContent = jobDescription || jobDescriptionText;
     
+    // Reset checkout state
+    setCheckoutStep('verifying');
+    setCheckoutError(undefined);
+    
     // More detailed validation with specific error messages
     if (!contentToAnalyze || contentToAnalyze.trim().length < 50) {
       console.error("[Checkout] No resume content available", { 
@@ -371,6 +415,31 @@ const Index = () => {
     });
 
     try {
+      // Step 1: Verify connection
+      console.log("[Checkout] Step 1: Verifying connection");
+      const isConnected = await checkConnection();
+      if (!isConnected) {
+        setCheckoutError("No internet connection. Please check your network and try again.");
+        setIsCheckoutLoading(false);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Check for popup blockers on desktop in iframe
+      const inIframe = window.self !== window.top;
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      if (inIframe && !isMobile) {
+        const popupsBlocked = checkPopupBlocked();
+        if (popupsBlocked) {
+          console.log("[Checkout] Popup blocker detected, will use clipboard fallback");
+        }
+      }
+      
+      // Step 2: Connect to payment service
+      setCheckoutStep('connecting');
+      console.log("[Checkout] Step 2: Connecting to payment service");
+      
       // Use pre-stored session ID if available, otherwise store now
       let tempSessionData = preStoredSessionId;
       
@@ -434,9 +503,14 @@ const Index = () => {
         setResumeData(`tempSessionId:${checkoutData.sessionId}`, tempSessionData);
       }
 
-      // Handle navigation to Stripe checkout
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      // Step 3: Redirect to checkout
+      setCheckoutStep('redirecting');
+      console.log("[Checkout] Step 3: Redirecting to checkout");
       
+      // Small delay to show the redirecting step
+      await new Promise(r => setTimeout(r, 300));
+
+      // Handle navigation to Stripe checkout
       if (isMobile) {
         // Mobile: Direct redirect (more reliable than popup)
         console.log("[Checkout] Mobile detected, using direct redirect");
@@ -446,7 +520,6 @@ const Index = () => {
       }
       
       // Desktop in iframe: try popup, fallback to clipboard
-      const inIframe = window.self !== window.top;
       if (inIframe) {
         const win = window.open(checkoutData.url, "_blank", "noopener,noreferrer");
         if (!win) {
@@ -467,7 +540,6 @@ const Index = () => {
         setIsCheckoutLoading(false);
         return;
       }
-
       // Desktop: navigate in same tab
       setCheckoutRedirect(true);
       window.location.assign(checkoutData.url);
@@ -507,7 +579,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <CheckoutOverlay isVisible={isCheckoutLoading} />
+      <CheckoutOverlay isVisible={isCheckoutLoading} currentStep={checkoutStep} error={checkoutError} />
       <Header />
 
       <main id="main-content" className="pt-16" role="main">
