@@ -1,12 +1,52 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Declare EdgeRuntime for background tasks
+declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
+
 // Performance monitoring
 const SLOW_REQUEST_THRESHOLD = 2000;
-const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>) => {
+const VERY_SLOW_THRESHOLD = 5000;
+
+const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "admin@resumebooster.com";
+const ALERT_COOLDOWN_MS = 60 * 60 * 1000;
+const alertLastSent: Record<string, number> = {};
+
+async function sendAlert(alertType: string, subject: string, details: Record<string, unknown>) {
+  const now = Date.now();
+  if (now - (alertLastSent[alertType] || 0) < ALERT_COOLDOWN_MS) return;
+  alertLastSent[alertType] = now;
+  
+  try {
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (!RESEND_API_KEY) return;
+    
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: "Resume Booster Alerts <onboarding@resend.dev>",
+        to: [ADMIN_EMAIL],
+        subject: `⚠️ ${subject}`,
+        html: `<h2>Edge Function Alert</h2><p><strong>Type:</strong> ${alertType}</p><p><strong>Time:</strong> ${new Date().toISOString()}</p><pre style="background:#f4f4f4;padding:15px;">${JSON.stringify(details, null, 2)}</pre>`,
+      }),
+    });
+    console.log(`[ALERT] Sent ${alertType}`);
+  } catch (e) { console.error("[ALERT] Error:", e); }
+}
+
+const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>, clientIp?: string) => {
   const duration = Date.now() - startTime;
-  const level = duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
+  const level = duration > VERY_SLOW_THRESHOLD ? 'CRITICAL' : duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
   console.log(`[PERF] ${operation} | ${duration}ms | ${level} | success=${success}${details ? ` | ${JSON.stringify(details)}` : ''}`);
+  
+  if (level === 'CRITICAL' || !success) {
+    EdgeRuntime.waitUntil(sendAlert(
+      success ? `${operation}_slow` : `${operation}_error`,
+      success ? `${operation} CRITICAL (${duration}ms)` : `${operation} Error`,
+      { operation, duration, level, success, ip: clientIp || 'unknown', ...details }
+    ));
+  }
 };
 
 const corsHeaders = {
@@ -182,7 +222,7 @@ serve(async (req) => {
       );
     }
 
-    trackPerformance(requestStartTime, 'save-lead', true);
+    trackPerformance(requestStartTime, 'save-lead', true, {}, clientIp);
     console.log(`[SAVE-LEAD] Lead saved successfully for IP: ${clientIp}`);
 
     return new Response(
@@ -191,7 +231,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    trackPerformance(requestStartTime, 'save-lead', false, { error: error instanceof Error ? error.message : 'Unknown' });
+    trackPerformance(requestStartTime, 'save-lead', false, { error: error instanceof Error ? error.message : 'Unknown' }, clientIp);
     console.error("[SAVE-LEAD] Error:", error);
     return new Response(
       JSON.stringify({ error: 'Something went wrong. Please try again.' }),
