@@ -2,15 +2,80 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Declare EdgeRuntime for background tasks
+declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
+
 // Performance monitoring thresholds (ms)
 const SLOW_REQUEST_THRESHOLD = 5000; // 5s for checkout
 const VERY_SLOW_THRESHOLD = 10000;
 
-// Performance tracking helper
-const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>) => {
+const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "admin@resumebooster.com";
+const ALERT_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour between alerts per type
+const alertLastSent: Record<string, number> = {};
+
+// Send alert email (non-blocking, rate-limited)
+async function sendAlert(alertType: string, subject: string, details: Record<string, unknown>) {
+  const now = Date.now();
+  const lastSent = alertLastSent[alertType] || 0;
+  
+  if (now - lastSent < ALERT_COOLDOWN_MS) {
+    console.log(`[ALERT] Skipping ${alertType} alert (cooldown active)`);
+    return;
+  }
+  
+  alertLastSent[alertType] = now;
+  
+  try {
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (!RESEND_API_KEY) return;
+    
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "Resume Booster Alerts <onboarding@resend.dev>",
+        to: [ADMIN_EMAIL],
+        subject: `🚨 ${subject}`,
+        html: `
+          <h2>Checkout Alert - Revenue Impact</h2>
+          <p><strong>Alert Type:</strong> ${alertType}</p>
+          <p><strong>Time:</strong> ${new Date().toISOString()}</p>
+          <h3>Details:</h3>
+          <pre style="background:#f4f4f4;padding:15px;border-radius:5px;">${JSON.stringify(details, null, 2)}</pre>
+        `,
+      }),
+    });
+    
+    if (!response.ok) {
+      console.error("[ALERT] Failed to send:", await response.text());
+    } else {
+      console.log(`[ALERT] Sent ${alertType} alert`);
+    }
+  } catch (error) {
+    console.error("[ALERT] Error sending alert:", error);
+  }
+}
+
+// Performance tracking helper with alerting
+const trackPerformance = (startTime: number, operation: string, success: boolean, details?: Record<string, unknown>, clientIp?: string) => {
   const duration = Date.now() - startTime;
   const level = duration > VERY_SLOW_THRESHOLD ? 'CRITICAL' : duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
   console.log(`[PERF] ${operation} | ${duration}ms | ${level} | success=${success}${details ? ` | ${JSON.stringify(details)}` : ''}`);
+  
+  // Send alert for CRITICAL performance or errors (checkout is revenue-critical)
+  if (level === 'CRITICAL' || !success) {
+    EdgeRuntime.waitUntil(
+      sendAlert(
+        success ? `${operation}_slow` : `${operation}_error`,
+        success ? `CHECKOUT SLOW (${duration}ms) - Revenue Impact` : `CHECKOUT ERROR - Revenue Impact`,
+        { operation, duration, level, success, ip: clientIp || 'unknown', ...details }
+      )
+    );
+  }
+  
   return duration;
 };
 
@@ -304,7 +369,7 @@ serve(async (req) => {
     // Create checkout session with retry logic
     const session = await createStripeSessionWithRetry(stripe, sessionParams, idempotencyKey);
 
-    trackPerformance(requestStartTime, 'create-checkout', true, { currency, amount });
+    trackPerformance(requestStartTime, 'create-checkout', true, { currency, amount }, clientIp);
     logStep("Checkout session created", { sessionId: session.id, currency, amount });
 
     return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {
@@ -313,7 +378,7 @@ serve(async (req) => {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    trackPerformance(requestStartTime, 'create-checkout', false, { error: errorMessage });
+    trackPerformance(requestStartTime, 'create-checkout', false, { error: errorMessage }, clientIp);
     console.error("[CREATE-CHECKOUT] Error:", errorMessage, error);
     
     // Provide more specific error messages
