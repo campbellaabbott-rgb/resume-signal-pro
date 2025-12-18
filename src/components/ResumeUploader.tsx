@@ -260,6 +260,8 @@ export function ResumeUploader({
 
   const handleJobSelect = (job: JobEntry) => {
     setSelectedJob(job);
+    // Update parent with the selected job for CTAs
+    onJobsChange?.([job]);
     // Format the job description for analysis
     const formattedJob = `Job Title: ${job.title}\nCompany: ${job.company}${job.location ? `\nLocation: ${job.location}` : ''}\n\nJob Description:\n${job.description}`;
     setLocalJobDescriptionText(formattedJob);
