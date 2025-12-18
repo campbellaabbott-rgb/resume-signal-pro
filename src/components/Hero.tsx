@@ -118,6 +118,14 @@ export function Hero() {
                 100% private
               </span>
             </div>
+
+            {/* Anonymous testimonial */}
+            <div className="mt-6 px-4 py-3 rounded-xl bg-card/40 border border-border/30 max-w-md mx-auto">
+              <p className="text-sm text-muted-foreground italic">
+                "This is a very wonderful product. I have just gone through the freemium features & I can confidently say it's going to be a big success."
+              </p>
+              <p className="text-xs text-muted-foreground/60 mt-2">— Recent user</p>
+            </div>
           </div>
 
           {/* Live counter as social proof */}
