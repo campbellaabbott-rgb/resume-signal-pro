@@ -49,6 +49,99 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
   }
 };
 
+// Send lead notification email with customer info
+async function sendLeadNotificationEmail(
+  email: string,
+  ip: string,
+  country: string,
+  industry: string | null,
+  atsScore: number | null
+) {
+  try {
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (!RESEND_API_KEY) return;
+    
+    const scoreColor = atsScore && atsScore >= 80 ? '#22c55e' : atsScore && atsScore >= 60 ? '#eab308' : '#ef4444';
+    const scoreEmoji = atsScore && atsScore >= 80 ? '🟢' : atsScore && atsScore >= 60 ? '🟡' : '🔴';
+    const conversionNote = atsScore && atsScore < 70 ? 'HIGH CONVERSION POTENTIAL - Low score means they need help!' : 'Good candidate for premium upsell';
+    
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "Resume Booster <onboarding@resend.dev>",
+        to: [ADMIN_EMAIL],
+        subject: `${scoreEmoji} NEW LEAD: ${email} | ${industry || 'Unknown'} | ${country}`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; background: #f8fafc;">
+            
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: white; padding: 20px; border-radius: 12px 12px 0 0;">
+              <h1 style="margin: 0; font-size: 20px;">🎯 New Lead Captured!</h1>
+              <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 13px;">${new Date().toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+            </div>
+            
+            <!-- Customer Email - PROMINENT -->
+            <div style="background: #eff6ff; padding: 25px; border-bottom: 2px solid #3b82f6;">
+              <p style="margin: 0 0 8px 0; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">📧 Customer Email</p>
+              <a href="mailto:${email}" style="font-size: 24px; font-weight: bold; color: #1e40af; text-decoration: none;">${email}</a>
+            </div>
+            
+            <!-- Quick Info -->
+            <div style="background: white; padding: 20px;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px;">🌍 Location</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600; color: #1e293b;">${country}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px;">🏢 Industry</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600; color: #1e293b;">${industry || 'Not detected'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px;">📊 ATS Score</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: right;">
+                    <span style="background: ${scoreColor}; color: white; padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: 14px;">${atsScore || 'N/A'}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; color: #64748b; font-size: 13px;">🔍 IP Address</td>
+                  <td style="padding: 10px 0; text-align: right; font-size: 12px; color: #94a3b8; font-family: monospace;">${ip}</td>
+                </tr>
+              </table>
+            </div>
+            
+            <!-- Conversion Note -->
+            <div style="background: #fefce8; padding: 15px 20px; border-left: 4px solid #eab308;">
+              <p style="margin: 0; font-size: 13px; color: #854d0e;"><strong>💡 Note:</strong> ${conversionNote}</p>
+            </div>
+            
+            <!-- CTA -->
+            <div style="background: #f1f5f9; padding: 20px; border-radius: 0 0 12px 12px; text-align: center;">
+              <a href="mailto:${email}?subject=Your%20Resume%20Booster%20Results%20%F0%9F%93%84&body=Hi!%0A%0AThanks%20for%20trying%20our%20free%20resume%20scan.%20I%20noticed%20your%20ATS%20score%20could%20use%20some%20improvement%20%E2%80%93%20I%E2%80%99d%20love%20to%20help%20you%20boost%20it!%0A%0AWould%20you%20be%20interested%20in%20a%20quick%20chat%20about%20how%20to%20optimize%20your%20resume%3F%0A%0ABest%2C%0AResume%20Booster%20Team" 
+                 style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
+                📧 Reply to Lead
+              </a>
+            </div>
+            
+          </div>
+        `,
+      }),
+    });
+    
+    if (!response.ok) {
+      console.error("[SAVE-LEAD] Email notification failed:", await response.text());
+    } else {
+      console.log("[SAVE-LEAD] Lead notification email sent");
+    }
+  } catch (error) {
+    console.error("[SAVE-LEAD] Email notification error:", error);
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -221,6 +314,12 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Send lead notification email in background
+    const country = getCountryCode(req) || 'Unknown';
+    EdgeRuntime.waitUntil(
+      sendLeadNotificationEmail(email, clientIp, country, industry, atsScore)
+    );
 
     trackPerformance(requestStartTime, 'save-lead', true, {}, clientIp);
     console.log(`[SAVE-LEAD] Lead saved successfully for IP: ${clientIp}`);
