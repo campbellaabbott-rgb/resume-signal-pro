@@ -133,6 +133,21 @@ export function Hero() {
             <LiveActivityCounter />
           </div>
 
+          {/* Trusted by companies */}
+          <div className="mt-8 animate-fade-in" style={{ animationDelay: "0.18s" }}>
+            <p className="text-xs text-muted-foreground/60 mb-3">Trusted by professionals at</p>
+            <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2">
+              {["Google", "Microsoft", "Amazon", "Apple", "Meta", "Netflix", "Tesla"].map((company) => (
+                <span 
+                  key={company}
+                  className="text-sm font-semibold text-muted-foreground/50 hover:text-muted-foreground/70 transition-colors"
+                >
+                  {company}
+                </span>
+              ))}
+            </div>
+          </div>
+
           {/* What you'll discover - brief preview */}
           <div className="mt-10 pt-8 border-t border-border/30 animate-fade-in" style={{ animationDelay: "0.2s" }}>
             <p className="text-sm text-muted-foreground mb-4">Your free scan reveals:</p>
