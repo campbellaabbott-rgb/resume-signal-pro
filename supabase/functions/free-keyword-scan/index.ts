@@ -304,7 +304,14 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert ATS resume analyzer. Perform a comprehensive analysis of the resume.
+    const systemPrompt = `You are an expert ATS resume analyzer with MULTILINGUAL capabilities. You can analyze resumes in ANY language including English, Spanish, Portuguese, German, French, Dutch, Hindi, Tagalog, Vietnamese, Croatian, and many more.
+
+LANGUAGE HANDLING:
+- Detect the language of the resume automatically
+- Analyze content in its original language - do NOT require English
+- Provide your analysis output in English (for consistency)
+- Recognize industry-specific keywords in ALL languages
+- Understand international resume formats and conventions
 
 ANALYSIS RULES:
 1. ATS Score (0-100): Estimate based on keyword density, formatting, and ATS compatibility
