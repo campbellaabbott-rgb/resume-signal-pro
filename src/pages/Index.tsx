@@ -11,12 +11,14 @@ import { ComparisonTable } from "@/components/ComparisonTable";
 import { FreeKeywordResults } from "@/components/FreeKeywordResults";
 import { StickyBottomCTA } from "@/components/StickyBottomCTA";
 import { FinalCTA } from "@/components/FinalCTA";
+import { RateLimitUpsell } from "@/components/RateLimitUpsell";
 import { type JobEntry } from "@/components/JobSelector";
 
 import { HowItWorks } from "@/components/HowItWorks";
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
+import { useScanCredits } from "@/hooks/use-scan-credits";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   cleanupExpiredResumeData, 
@@ -83,9 +85,11 @@ const Index = () => {
   const [honeypot, setHoneypot] = useState<string>(""); // Honeypot field for bot detection
   const [preStoredSessionId, setPreStoredSessionId] = useState<string | null>(null);
   const [uploadedJobs, setUploadedJobs] = useState<JobEntry[]>([]);
+  const [showRateLimitUpsell, setShowRateLimitUpsell] = useState(false);
   const { toast } = useToast();
   const { currency } = useCurrency();
   const [searchParams] = useSearchParams();
+  const { verifyPurchase } = useScanCredits();
   
   // Track if we're pre-storing to avoid duplicate calls
   const isPreStoring = useRef(false);
@@ -208,7 +212,26 @@ const Index = () => {
         variant: "destructive",
       });
     }
-  }, [searchParams, toast]);
+    
+    // Handle scan pack purchase success
+    if (searchParams.get("scan_pack_success") === "true") {
+      const sessionId = searchParams.get("session_id");
+      if (sessionId) {
+        verifyPurchase(sessionId);
+        // Clean URL
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+    
+    if (searchParams.get("scan_pack_canceled") === "true") {
+      toast({
+        title: "Purchase canceled",
+        description: "Your scan pack purchase was canceled.",
+        variant: "destructive",
+      });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [searchParams, toast, verifyPurchase]);
 
   const handleFileSelect = async (file: File) => {
     setSelectedFile(file);
@@ -328,11 +351,7 @@ const Index = () => {
               ? JSON.parse(errorContext.body) 
               : errorContext.body;
             if (errorBody?.rateLimited) {
-              toast({
-                title: "Daily limit reached",
-                description: "You've used all 4 free scans today. Get the full analysis for $25!",
-                variant: "destructive",
-              });
+              setShowRateLimitUpsell(true);
               return;
             }
           } catch {
@@ -343,11 +362,7 @@ const Index = () => {
       }
 
       if (data?.rateLimited) {
-        toast({
-          title: "Daily limit reached",
-          description: "You've used all 4 free scans today. Get the full analysis for $25!",
-          variant: "destructive",
-        });
+        setShowRateLimitUpsell(true);
         return;
       }
 
@@ -394,11 +409,7 @@ const Index = () => {
       // Check if error message contains rate limit info
       const errorMsg = error?.message?.toLowerCase() || '';
       if (errorMsg.includes('rate') || errorMsg.includes('limit') || errorMsg.includes('429')) {
-        toast({
-          title: "Daily limit reached",
-          description: "You've used all 4 free scans today. Get the full analysis for $25!",
-          variant: "destructive",
-        });
+        setShowRateLimitUpsell(true);
         return;
       }
       
@@ -777,6 +788,10 @@ const Index = () => {
       
       <Footer />
       
+      {/* Rate Limit Upsell Modal */}
+      {showRateLimitUpsell && (
+        <RateLimitUpsell onClose={() => setShowRateLimitUpsell(false)} />
+      )}
     </div>
   );
 };
