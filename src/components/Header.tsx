@@ -1,5 +1,6 @@
 import { Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -24,8 +25,8 @@ export function Header() {
     >
       <div className="container">
         <nav className="flex items-center justify-between h-16" aria-label="Main navigation">
-          <a 
-            href="/" 
+          <Link 
+            to="/" 
             className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
             aria-label="Resume Booster - Home"
           >
@@ -33,7 +34,7 @@ export function Header() {
             <span className="font-bold text-lg tracking-tight">
               Resume <span className="text-primary">Booster</span>
             </span>
-          </a>
+          </Link>
           
           <div className="flex items-center gap-2 sm:gap-4">
             <span className="text-sm text-muted-foreground hidden md:block" aria-hidden="true">
