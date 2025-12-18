@@ -216,7 +216,7 @@ export default function Privacy() {
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-foreground">15. Data Protection Officer</h2>
               <p className="text-muted-foreground leading-relaxed">
-                For questions about this Privacy Policy, to exercise your data rights, or for privacy-related concerns, please contact our Data Protection team at: <a href="mailto:privacy@resumebooster.com" className="text-primary hover:underline">privacy@resumebooster.com</a>
+                For questions about this Privacy Policy, to exercise your data rights, or for privacy-related concerns, please contact our Data Protection team at: <a href="mailto:resumeboostersupp@gmail.com" className="text-primary hover:underline">resumeboostersupp@gmail.com</a>
               </p>
             </section>
 

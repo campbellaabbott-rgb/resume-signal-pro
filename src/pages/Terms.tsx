@@ -184,7 +184,7 @@ export default function Terms() {
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-foreground">20. Contact Information</h2>
               <p className="text-muted-foreground leading-relaxed">
-                For questions, concerns, or disputes regarding these Terms of Service, please contact us at: <a href="mailto:legal@resumebooster.com" className="text-primary hover:underline">legal@resumebooster.com</a>
+                For questions, concerns, or disputes regarding these Terms of Service, please contact us at: <a href="mailto:resumeboostersupp@gmail.com" className="text-primary hover:underline">resumeboostersupp@gmail.com</a>
               </p>
             </section>
           </div>
