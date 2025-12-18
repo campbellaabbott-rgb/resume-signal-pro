@@ -54,15 +54,15 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div className="text-white">
-                <p className="font-semibold text-sm md:text-base">{t('stickyCta.title')}</p>
-                <p className="text-xs md:text-sm text-white/80">{t('stickyCta.subtitle')}</p>
+                <p className="font-semibold text-sm md:text-base">Get rewritten bullets, not just scores</p>
+                <p className="text-xs md:text-sm text-white/80">Full rewrites + LinkedIn optimization + job-specific tailoring</p>
               </div>
             </div>
             
             {/* Mobile: Compact */}
             <div className="sm:hidden text-white flex-1">
-              <p className="font-semibold text-sm">{t('stickyCta.mobileTitle')}</p>
-              <p className="text-xs text-white/70">$25 {isLocalCurrency && `≈ ${formatPrice(25)}`}</p>
+              <p className="font-semibold text-sm">Get rewritten content, not just scores</p>
+              <p className="text-xs text-white/70">Full analysis • $25 {isLocalCurrency && `≈ ${formatPrice(25)}`}</p>
             </div>
             
             {/* Right: CTA */}
