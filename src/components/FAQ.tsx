@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useCurrency } from "@/hooks/use-currency";
 import {
   Accordion,
   AccordionContent,
@@ -19,6 +20,19 @@ const faqKeys = [
 
 export function FAQ() {
   const { t } = useTranslation();
+  const { formatPrice, isLocalCurrency } = useCurrency();
+  
+  // Replace $25 with local currency in answers
+  const getLocalizedAnswer = (key: string) => {
+    let answer = t(`faq.questions.${key}.answer`);
+    if (isLocalCurrency && answer.includes('$25')) {
+      answer = answer.replace('$25', `$25 (≈ ${formatPrice(25)})`);
+    }
+    if (isLocalCurrency && answer.includes('£20')) {
+      answer = answer.replace('£20', `£20 (≈ ${formatPrice(25)})`);
+    }
+    return answer;
+  };
 
   return (
     <section id="faq" className="py-20 border-t border-border">
@@ -38,7 +52,7 @@ export function FAQ() {
                   {t(`faq.questions.${key}.question`)}
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground">
-                  {t(`faq.questions.${key}.answer`)}
+                  {getLocalizedAnswer(key)}
                 </AccordionContent>
               </AccordionItem>
             ))}

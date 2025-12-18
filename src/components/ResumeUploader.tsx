@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-
+import { useCurrency } from "@/hooks/use-currency";
 const ANALYSIS_STEPS = [
   "Parsing resume content...",
   "Analyzing ATS compatibility...",
@@ -109,6 +109,7 @@ export function ResumeUploader({
   onJobDescriptionTextChange
 }: ResumeUploaderProps) {
   const { t } = useTranslation();
+  const { formatPrice, isLocalCurrency } = useCurrency();
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [textInput, setTextInput] = useState("");
@@ -589,7 +590,7 @@ export function ResumeUploader({
               ) : (
                 <>
                   <Sparkles className="w-5 h-5" aria-hidden="true" />
-                  <span>{t('uploader.actions.getFullAnalysis')} — $25</span>
+                  <span>{t('uploader.actions.getFullAnalysis')} — $25{isLocalCurrency && ` ≈ ${formatPrice(25)}`}</span>
                 </>
               )}
             </Button>

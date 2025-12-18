@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useABTest } from "@/hooks/use-ab-test";
+import { useCurrency } from "@/hooks/use-currency";
 import {
   Tooltip,
   TooltipContent,
@@ -303,6 +304,7 @@ export function FreeKeywordResults({
   atsSystemCompatibility: atsSystemCompatibilityProp
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
+  const { formatPrice, isLocalCurrency } = useCurrency();
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -311,21 +313,23 @@ export function FreeKeywordResults({
   // A/B Test for upgrade CTAs
   const upgradeTest = useABTest('free_scan_upgrade');
   
+  const priceDisplay = isLocalCurrency ? `$25 ≈ ${formatPrice(25)}` : '$25';
+  
   // CTA text variants for first upgrade box
   const getFirstCtaText = () => {
     switch (upgradeTest.variant) {
       case 'urgency': return 'Fix Now Before It\'s Too Late';
-      case 'value': return 'Get Recruiter-Ready - $25';
-      default: return 'Fix These Issues - $25';
+      case 'value': return `Get Recruiter-Ready - ${priceDisplay}`;
+      default: return `Fix These Issues - ${priceDisplay}`;
     }
   };
   
   // CTA text variants for second upgrade box
   const getSecondCtaText = () => {
     switch (upgradeTest.variant) {
-      case 'urgency': return 'Don\'t Miss Out - $25';
-      case 'value': return 'Unlock All Fixes - $25';
-      default: return 'Get Full Analysis - $25';
+      case 'urgency': return `Don't Miss Out - ${priceDisplay}`;
+      case 'value': return `Unlock All Fixes - ${priceDisplay}`;
+      default: return `Get Full Analysis - ${priceDisplay}`;
     }
   };
   
@@ -1574,7 +1578,7 @@ export function FreeKeywordResults({
           <ArrowRight className="w-5 h-5" />
         </Button>
         <p className="text-sm text-muted-foreground mt-3">
-          <span className="text-success font-medium">One interview = $25 paid for itself</span>
+          <span className="text-success font-medium">One interview = {priceDisplay} paid for itself</span>
         </p>
       </div>
     </div>
