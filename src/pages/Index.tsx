@@ -410,7 +410,11 @@ const Index = () => {
     const contentToAnalyze = text || resumeText;
     const linkedInContent = linkedIn || linkedInText;
     const jobDescriptionContent = jobDescription || jobDescriptionText;
-    
+
+    // Optional coupon code from URL (always normalize to UPPERCASE)
+    const couponFromUrl = searchParams.get("coupon");
+    const promoCode = couponFromUrl ? couponFromUrl.trim().toUpperCase() : undefined;
+
     // Reset checkout state
     setCheckoutStep('verifying');
     setCheckoutError(undefined);
@@ -511,7 +515,8 @@ const Index = () => {
               resumeData: contentToAnalyze,
               hasLinkedIn: !!linkedInContent,
               tempSessionId: tempSessionData,
-              currency: currency.code
+              currency: currency.code,
+              promoCode,
             },
           });
           
