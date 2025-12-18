@@ -116,6 +116,11 @@ export function Hero() {
             {/* Minimal trust indicators */}
             <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-3 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5">
+                <Target className="w-4 h-4 text-success" />
+                {t('hero.unlimitedJobs', 'Unlimited job matches')}
+              </span>
+              <span className="hidden sm:block w-1 h-1 rounded-full bg-muted-foreground/30" />
+              <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-success" />
                 {t('hero.noSignup', 'No sign-up required')}
               </span>
