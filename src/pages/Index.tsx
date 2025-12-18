@@ -79,27 +79,44 @@ const Index = () => {
   // Track if we're pre-storing to avoid duplicate calls
   const isPreStoring = useRef(false);
 
-  // Check network connectivity
+  // Check network connectivity - more forgiving check
   const checkConnection = async (): Promise<boolean> => {
     // First check browser's online status
     if (!navigator.onLine) {
+      console.log("[Connection] Browser reports offline");
       return false;
     }
     
-    // Quick connectivity test via Supabase health check
+    // Quick connectivity test - try multiple methods for reliability
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased timeout
       
-      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
-        method: 'HEAD',
-        signal: controller.signal,
-      });
+      // Use Supabase client's built-in health check which handles auth properly
+      const { error } = await supabase.rpc('get_today_scan_count');
       
       clearTimeout(timeoutId);
+      
+      // Even if the RPC returns an error, if we got a response the connection works
+      // Only return false if it was an actual network failure
+      if (error && (error.message?.includes('fetch') || error.message?.includes('network'))) {
+        console.log("[Connection] Network error:", error.message);
+        return false;
+      }
+      
       return true;
-    } catch {
-      return false;
+    } catch (err: any) {
+      // Only fail on actual network errors, not server errors
+      const isNetworkError = err?.message?.includes('fetch') || 
+                            err?.message?.includes('network') ||
+                            err?.message?.includes('Failed to fetch') ||
+                            err?.name === 'AbortError';
+      
+      console.log("[Connection] Check error:", err?.message, "isNetworkError:", isNetworkError);
+      
+      // If it's not clearly a network error, assume connection is OK
+      // and let the actual checkout call handle any errors
+      return !isNetworkError;
     }
   };
 
@@ -577,9 +594,20 @@ const Index = () => {
     }
   };
 
+  const handleRetryCheckout = () => {
+    setCheckoutError(undefined);
+    setCheckoutStep('verifying');
+    handleCheckout();
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <CheckoutOverlay isVisible={isCheckoutLoading} currentStep={checkoutStep} error={checkoutError} />
+      <CheckoutOverlay 
+        isVisible={isCheckoutLoading} 
+        currentStep={checkoutStep} 
+        error={checkoutError} 
+        onRetry={checkoutError ? handleRetryCheckout : undefined}
+      />
       <Header />
 
       <main id="main-content" className="pt-16" role="main">

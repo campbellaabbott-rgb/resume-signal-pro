@@ -1,5 +1,6 @@
-import { Loader2, Check, Wifi, CreditCard, ExternalLink } from "lucide-react";
+import { Loader2, Check, Wifi, CreditCard, ExternalLink, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 export type CheckoutStep = 'verifying' | 'connecting' | 'redirecting';
 
@@ -7,6 +8,7 @@ interface CheckoutOverlayProps {
   isVisible: boolean;
   currentStep?: CheckoutStep;
   error?: string;
+  onRetry?: () => void;
 }
 
 const steps: { id: CheckoutStep; label: string; icon: React.ElementType }[] = [
@@ -15,7 +17,7 @@ const steps: { id: CheckoutStep; label: string; icon: React.ElementType }[] = [
   { id: 'redirecting', label: 'Redirecting to checkout', icon: ExternalLink },
 ];
 
-export function CheckoutOverlay({ isVisible, currentStep = 'verifying', error }: CheckoutOverlayProps) {
+export function CheckoutOverlay({ isVisible, currentStep = 'verifying', error, onRetry }: CheckoutOverlayProps) {
   if (!isVisible) return null;
 
   const currentStepIndex = steps.findIndex(s => s.id === currentStep);
@@ -36,6 +38,12 @@ export function CheckoutOverlay({ isVisible, currentStep = 'verifying', error }:
                 {error}
               </p>
             </div>
+            {onRetry && (
+              <Button onClick={onRetry} variant="default" className="mt-4">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+            )}
           </>
         ) : (
           <>
