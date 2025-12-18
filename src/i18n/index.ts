@@ -12,7 +12,6 @@ import nl from './locales/nl.json';
 
 export const languages = [
   { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'en-CA', name: 'English (Canada)', flag: '🇨🇦' },
   { code: 'es', name: 'Español', flag: '🇪🇸' },
   { code: 'hi', name: 'हिन्दी', flag: '🇮🇳' },
   { code: 'tl', name: 'Tagalog', flag: '🇵🇭' },
