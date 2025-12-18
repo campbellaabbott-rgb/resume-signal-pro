@@ -307,7 +307,7 @@ serve(async (req) => {
       );
     }
 
-    const { resumeData, currency: requestedCurrency } = requestBody;
+    const { resumeData, currency: requestedCurrency, promoCode } = requestBody;
     logStep("Received request", { hasResumeData: !!resumeData, currency: requestedCurrency });
 
     // Validate currency format if provided
@@ -321,6 +321,35 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const origin = req.headers.get("origin") || "https://lovable.dev";
+
+    // Optional coupon code (normalize to UPPERCASE)
+    const normalizedPromoCode =
+      typeof promoCode === "string" ? promoCode.trim().toUpperCase() : "";
+
+    let promotionCodeId: string | null = null;
+
+    if (normalizedPromoCode) {
+      logStep("Promo code provided", { promoCode: normalizedPromoCode });
+
+      const promotionCodes = await stripe.promotionCodes.list({
+        code: normalizedPromoCode,
+        active: true,
+        limit: 1,
+      });
+
+      if (!promotionCodes.data.length) {
+        logStep("Promo code not found/invalid", { promoCode: normalizedPromoCode });
+        return new Response(
+          JSON.stringify({
+            error: "Invalid coupon code. Please check the code and try again.",
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      promotionCodeId = promotionCodes.data[0].id;
+      logStep("Promo code resolved", { promotionCodeId });
+    }
 
     // Calculate amount in the requested currency
     const { amount, currency } = calculateAmount(requestedCurrency || "usd");
@@ -366,6 +395,11 @@ serve(async (req) => {
       // Additional reliability settings
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // Session expires in 30 minutes
     };
+
+    if (promotionCodeId) {
+      sessionParams.discounts = [{ promotion_code: promotionCodeId }];
+      sessionParams.allow_promotion_codes = false;
+    }
 
     // Create checkout session with retry logic
     const session = await createStripeSessionWithRetry(stripe, sessionParams, idempotencyKey);
