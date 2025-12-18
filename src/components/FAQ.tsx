@@ -43,6 +43,18 @@ export function FAQ() {
               </AccordionItem>
             ))}
           </Accordion>
+
+          <div className="mt-12 text-center p-6 rounded-lg bg-muted/30 border border-border">
+            <p className="text-muted-foreground mb-2">
+              {t('faq.stillHaveQuestions', "Still have questions?")}
+            </p>
+            <a
+              href="mailto:resumeboostersupp@gmail.com"
+              className="text-primary hover:underline font-medium"
+            >
+              resumeboostersupp@gmail.com
+            </a>
+          </div>
         </div>
       </div>
     </section>
