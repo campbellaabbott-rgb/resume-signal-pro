@@ -18,6 +18,7 @@ export const languages = [
   { code: 'tl', name: 'Tagalog', flag: '🇵🇭' },
   { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
   { code: 'fr', name: 'Français', flag: '🇫🇷' },
+  { code: 'fr-CA', name: 'Français (Canada)', flag: '🇨🇦' },
   { code: 'nl', name: 'Nederlands', flag: '🇳🇱' },
 ];
 
