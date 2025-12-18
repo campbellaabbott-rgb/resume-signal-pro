@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle2, Zap } from "lucide-react";
+import { ArrowRight, CheckCircle2, Zap, X, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { useABTest } from "@/hooks/use-ab-test";
@@ -36,11 +36,15 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
     onGetStarted();
   };
 
-  const benefits = [
-    "finalCta.benefits.ats",
-    "finalCta.benefits.keywords",
-    "finalCta.benefits.redFlags",
-    "finalCta.benefits.linkedin",
+  const comparisonItems = [
+    { feature: "ATS Score & Diagnostics", free: true, paid: true },
+    { feature: "Red Flags & Missing Keywords", free: true, paid: true },
+    { feature: "Industry Detection", free: true, paid: true },
+    { feature: "Rewritten Bullet Points", free: false, paid: true },
+    { feature: "Stronger Action Verbs", free: false, paid: true },
+    { feature: "LinkedIn Profile Optimization", free: false, paid: true },
+    { feature: "Job Description Alignment", free: false, paid: true },
+    { feature: "Personalized Action Plan", free: false, paid: true },
   ];
 
   return (
@@ -52,7 +56,7 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
       </div>
       
       <div className="container relative">
-        <div className="max-w-3xl mx-auto text-center">
+        <div className="max-w-4xl mx-auto text-center">
           {/* Urgency badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-destructive/10 border border-destructive/30 text-destructive text-sm font-medium mb-6 animate-pulse">
             <Zap className="w-4 h-4" />
@@ -60,24 +64,46 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
           </div>
           
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-            {t('finalCta.heading')}
+            You've seen the problems. Now get the fixes.
           </h2>
-          <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
-            {t('finalCta.subheading')}
+          <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
+            The free scan shows what's wrong. The full analysis gives you rewritten content you can copy-paste.
           </p>
           
-          {/* Benefits list */}
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8 max-w-lg mx-auto text-left">
-            {benefits.map((key) => (
-              <li key={key} className="flex items-center gap-2 text-sm">
-                <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
-                <span>{t(key)}</span>
-              </li>
-            ))}
-          </ul>
+          {/* Free vs Paid Comparison */}
+          <div className="bg-card/80 border border-border/50 rounded-2xl p-6 md:p-8 mb-10 backdrop-blur-sm">
+            <div className="grid grid-cols-3 gap-4 mb-4 text-sm font-semibold">
+              <div className="text-left"></div>
+              <div className="text-center text-muted-foreground">Free Scan</div>
+              <div className="text-center text-primary">Full Analysis</div>
+            </div>
+            
+            <div className="space-y-3">
+              {comparisonItems.map((item, index) => (
+                <div 
+                  key={index} 
+                  className={`grid grid-cols-3 gap-4 py-2 text-sm ${
+                    index < comparisonItems.length - 1 ? 'border-b border-border/30' : ''
+                  }`}
+                >
+                  <div className="text-left text-foreground">{item.feature}</div>
+                  <div className="flex justify-center">
+                    {item.free ? (
+                      <Check className="w-5 h-5 text-success" />
+                    ) : (
+                      <X className="w-5 h-5 text-muted-foreground/40" />
+                    )}
+                  </div>
+                  <div className="flex justify-center">
+                    <Check className="w-5 h-5 text-primary" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
           
           {/* Price + CTA */}
-          <div className="inline-flex flex-col items-center p-8 rounded-2xl bg-card/80 border border-border/50 backdrop-blur-sm">
+          <div className="inline-flex flex-col items-center p-8 rounded-2xl bg-primary/10 border border-primary/30">
             <div className="flex items-baseline gap-2 mb-2">
               <span className="text-5xl md:text-6xl font-bold text-foreground">$25</span>
               <span className="text-muted-foreground text-lg">{getPricingSubtext()}</span>
@@ -92,7 +118,7 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
             <button
               onClick={handleGetStarted}
               disabled={isLoading}
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-primary text-primary-foreground font-semibold text-lg hover:bg-primary/90 transition-all hover:scale-105 shadow-lg shadow-primary/25 disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-primary text-primary-foreground font-semibold text-lg hover:bg-primary/90 transition-all hover:scale-105 shadow-lg shadow-primary/25 disabled:opacity-50 min-h-[44px] touch-manipulation"
             >
               {getCtaText()}
               <ArrowRight className="w-5 h-5" />
