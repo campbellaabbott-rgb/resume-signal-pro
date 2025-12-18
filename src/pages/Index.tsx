@@ -58,6 +58,14 @@ interface FreeKeywordResult {
   industryBenchmark?: { industryAvg: number; comparison: "below" | "at" | "above"; percentile: string };
   quickWins?: { fix: string; timeEstimate: string; impact: "low" | "medium" | "high" }[];
   sampleRewrite?: { before: string; after: string; improvement: string };
+  // Job matching fields (when job description is provided)
+  jobMatchScore?: number;
+  jobMatchGrade?: "A" | "B" | "C" | "D";
+  matchingSkills?: string[];
+  missingSkills?: string[];
+  experienceFit?: "underqualified" | "good_fit" | "overqualified";
+  titleAlignment?: "poor" | "partial" | "strong";
+  jobMatchSummary?: string;
 }
 
 const Index = () => {
@@ -307,7 +315,7 @@ const Index = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke("free-keyword-scan", {
-        body: { resumeText: contentToAnalyze, honeypot },
+        body: { resumeText: contentToAnalyze, jobDescriptionText: jobDescriptionText || undefined, honeypot },
       });
 
       // Check for rate limit in error response or data
@@ -363,6 +371,14 @@ const Index = () => {
           improvementPotential: data.improvementPotential,
           redFlags: data.redFlags,
           keywords: data.keywords,
+          // Job matching fields
+          jobMatchScore: data.jobMatchScore,
+          jobMatchGrade: data.jobMatchGrade,
+          matchingSkills: data.matchingSkills,
+          missingSkills: data.missingSkills,
+          experienceFit: data.experienceFit,
+          titleAlignment: data.titleAlignment,
+          jobMatchSummary: data.jobMatchSummary,
         });
         
         // Scroll to results
@@ -722,6 +738,13 @@ const Index = () => {
                 quickWins={freeKeywordResult.quickWins}
                 sampleRewrite={freeKeywordResult.sampleRewrite}
                 uploadedJobs={uploadedJobs}
+                jobMatchScore={freeKeywordResult.jobMatchScore}
+                jobMatchGrade={freeKeywordResult.jobMatchGrade}
+                matchingSkills={freeKeywordResult.matchingSkills}
+                missingSkills={freeKeywordResult.missingSkills}
+                experienceFit={freeKeywordResult.experienceFit}
+                titleAlignment={freeKeywordResult.titleAlignment}
+                jobMatchSummary={freeKeywordResult.jobMatchSummary}
                 onGetFullAnalysis={() => handleCheckout(resumeText, linkedInText, jobDescriptionText)}
                 isLoading={isLoading}
               />

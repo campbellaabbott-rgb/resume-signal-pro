@@ -272,6 +272,14 @@ interface FreeKeywordResultsProps {
   sampleRewrite?: SampleRewrite;
   atsSystemCompatibility?: AtsSystemCompatibility;
   uploadedJobs?: { title: string; company: string }[];
+  // Job matching props
+  jobMatchScore?: number;
+  jobMatchGrade?: "A" | "B" | "C" | "D";
+  matchingSkills?: string[];
+  missingSkills?: string[];
+  experienceFit?: "underqualified" | "good_fit" | "overqualified";
+  titleAlignment?: "poor" | "partial" | "strong";
+  jobMatchSummary?: string;
 }
 
 export function FreeKeywordResults({
@@ -303,7 +311,14 @@ export function FreeKeywordResults({
   quickWins: quickWinsProp,
   sampleRewrite: sampleRewriteProp,
   atsSystemCompatibility: atsSystemCompatibilityProp,
-  uploadedJobs = []
+  uploadedJobs = [],
+  jobMatchScore,
+  jobMatchGrade,
+  matchingSkills = [],
+  missingSkills = [],
+  experienceFit,
+  titleAlignment,
+  jobMatchSummary
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -644,6 +659,113 @@ export function FreeKeywordResults({
         </p>
       </div>
 
+      {/* Job Match Section - Show when job description was provided */}
+      {jobMatchScore !== undefined && jobMatchGrade && (
+        <div className="rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-success/10 border-2 border-primary/30 p-5 mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-2 rounded-lg bg-primary/20">
+              <Target className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h4 className="font-bold text-lg">Job Match Analysis</h4>
+              <p className="text-xs text-muted-foreground">How well your resume matches the target job</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            {/* Match Score */}
+            <div className={cn("rounded-xl border p-3", getScoreBgColor(jobMatchScore))}>
+              <p className="text-xs text-muted-foreground mb-1">Match Score</p>
+              <p className={cn("text-2xl font-bold", getScoreColor(jobMatchScore))}>
+                {jobMatchScore}<span className="text-sm text-muted-foreground">%</span>
+              </p>
+            </div>
+
+            {/* Match Grade */}
+            <div className={cn("rounded-xl border p-3", getGradeBgColor(jobMatchGrade))}>
+              <p className="text-xs text-muted-foreground mb-1">Match Grade</p>
+              <div className="flex items-baseline gap-1">
+                <p className={cn("text-2xl font-bold", getGradeColor(jobMatchGrade))}>{jobMatchGrade}</p>
+                <span className={cn("text-xs", getGradeColor(jobMatchGrade))}>{getGradeLabel(jobMatchGrade)}</span>
+              </div>
+            </div>
+
+            {/* Experience Fit */}
+            {experienceFit && (
+              <div className={cn("rounded-xl border p-3", 
+                experienceFit === "good_fit" ? "bg-success/10 border-success/20" : "bg-warning/10 border-warning/20"
+              )}>
+                <p className="text-xs text-muted-foreground mb-1">Experience Fit</p>
+                <p className={cn("text-lg font-bold capitalize", 
+                  experienceFit === "good_fit" ? "text-success" : "text-warning"
+                )}>
+                  {experienceFit === "good_fit" ? "Good Fit" : experienceFit === "overqualified" ? "Over" : "Under"}
+                </p>
+              </div>
+            )}
+
+            {/* Title Alignment */}
+            {titleAlignment && (
+              <div className={cn("rounded-xl border p-3", 
+                titleAlignment === "strong" ? "bg-success/10 border-success/20" : 
+                titleAlignment === "partial" ? "bg-warning/10 border-warning/20" : "bg-destructive/10 border-destructive/20"
+              )}>
+                <p className="text-xs text-muted-foreground mb-1">Title Match</p>
+                <p className={cn("text-lg font-bold capitalize", 
+                  titleAlignment === "strong" ? "text-success" : 
+                  titleAlignment === "partial" ? "text-warning" : "text-destructive"
+                )}>
+                  {titleAlignment}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Skills Matching */}
+          <div className="grid sm:grid-cols-2 gap-4 mb-4">
+            {matchingSkills.length > 0 && (
+              <div className="rounded-xl bg-success/5 border border-success/20 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  <p className="text-sm font-medium text-success">Skills You Have</p>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {matchingSkills.slice(0, 5).map((skill, i) => (
+                    <span key={i} className="text-xs px-2 py-1 rounded-full bg-success/10 text-success border border-success/20">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {missingSkills.length > 0 && (
+              <div className="rounded-xl bg-destructive/5 border border-destructive/20 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <XCircle className="w-4 h-4 text-destructive" />
+                  <p className="text-sm font-medium text-destructive">Skills to Add</p>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {missingSkills.slice(0, 5).map((skill, i) => (
+                    <span key={i} className="text-xs px-2 py-1 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Summary */}
+          {jobMatchSummary && (
+            <div className="rounded-xl bg-muted/50 p-3">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">💡 Summary:</span> {jobMatchSummary}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
       {/* Percentile Urgency Banner */}
       {atsScoreEstimate < 80 && (
         <div className="rounded-2xl bg-gradient-to-r from-destructive/20 via-destructive/10 to-warning/10 border-2 border-destructive/40 p-4 mb-4 animate-pulse-slow">
