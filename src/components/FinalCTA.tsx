@@ -37,14 +37,14 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
   };
 
   const comparisonItems = [
-    { feature: "ATS Score & Diagnostics", free: true, paid: true },
+    { feature: "ATS Score & 17 Diagnostics", free: true, paid: true },
     { feature: "Red Flags & Missing Keywords", free: true, paid: true },
-    { feature: "Industry Detection", free: true, paid: true },
-    { feature: "Rewritten Bullet Points", free: false, paid: true },
-    { feature: "Stronger Action Verbs", free: false, paid: true },
+    { feature: "1 Sample Bullet Rewrite", free: true, paid: false },
+    { feature: "ALL Bullets Rewritten with Metrics", free: false, paid: true },
     { feature: "LinkedIn Profile Optimization", free: false, paid: true },
-    { feature: "Job Description Alignment", free: false, paid: true },
-    { feature: "Personalized Action Plan", free: false, paid: true },
+    { feature: "Job-Specific Keyword Tailoring", free: false, paid: true },
+    { feature: "Industry-Specific Templates Applied", free: false, paid: true },
+    { feature: "Complete 10-Section Report", free: false, paid: true },
   ];
 
   return (
