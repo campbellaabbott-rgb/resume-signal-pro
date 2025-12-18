@@ -5,7 +5,6 @@ import {
   CheckCircle2, 
   Loader2, 
   AlertCircle, 
-  Share2, 
   Check, 
   Sparkles,
   FileText,
@@ -13,7 +12,8 @@ import {
   Download,
   Home,
   Printer,
-  Trash2
+  Trash2,
+  Mail
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -60,8 +60,8 @@ const Success = () => {
   const [needsResume, setNeedsResume] = useState(false);
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [shareId, setShareId] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [hasTrackedConversion, setHasTrackedConversion] = useState(false);
@@ -109,9 +109,10 @@ const Success = () => {
         }
 
         setCurrentStep(4);
-        const { shareId: newShareId, ...analysisResult } = data;
+        const { shareId: newShareId, emailSent: wasEmailSent, ...analysisResult } = data;
         setAnalysisData(analysisResult);
         setShareId(newShareId);
+        setEmailSent(wasEmailSent || false);
 
         // Track A/B test conversion (paid analysis completed)
         if (!hasTrackedConversion) {
@@ -127,9 +128,11 @@ const Success = () => {
 
         toast({
           title: t('success.toast.paymentSuccess'),
-          description: data.hasLinkedIn 
-            ? t('success.toast.analysisReadyLinkedIn')
-            : t('success.toast.analysisReady'),
+          description: wasEmailSent 
+            ? "Your analysis is ready and has been emailed to you!"
+            : data.hasLinkedIn 
+              ? t('success.toast.analysisReadyLinkedIn')
+              : t('success.toast.analysisReady'),
         });
       } catch (err) {
         console.error("Analysis error:", err);
@@ -226,17 +229,7 @@ const Success = () => {
     loadAnalysis();
   }, [sessionId, shareIdParam, toast]);
 
-  const copyShareLink = async () => {
-    if (!shareId) return;
-    const shareUrl = `${window.location.origin}/success?share=${shareId}`;
-    await navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    toast({
-      title: t('success.toast.linkCopied'),
-      description: t('success.toast.linkCopiedDesc'),
-    });
-    setTimeout(() => setCopied(false), 2000);
-  };
+  // Email sent notification is handled by the response from analyze-resume
 
   const handleSaveAsPdf = async () => {
     if (!analysisRef.current) return;
@@ -524,33 +517,19 @@ const Success = () => {
                         </Button>
                       </div>
                       
-                      {/* Share card */}
-                      <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 space-y-3">
-                        <div className="flex items-center gap-2 text-sm font-medium">
-                          <Share2 className="w-4 h-4 text-primary" />
-                          Share Results
+                      {/* Email Sent card */}
+                      <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-success/30 space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-medium text-success">
+                          <Mail className="w-4 h-4" />
+                          Email Sent
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Get a link to share your analysis
+                          A copy of your analysis was sent to your email
                         </p>
-                        <Button
-                          variant="outline"
-                          onClick={copyShareLink}
-                          className="w-full gap-2"
-                          size="sm"
-                        >
-                          {copied ? (
-                            <>
-                              <Check className="w-4 h-4" />
-                              Copied!
-                            </>
-                          ) : (
-                            <>
-                              <Share2 className="w-4 h-4" />
-                              Copy Link
-                            </>
-                          )}
-                        </Button>
+                        <div className="flex items-center gap-2 text-success text-sm">
+                          <CheckCircle2 className="w-4 h-4" />
+                          Check your inbox
+                        </div>
                       </div>
 
                       {/* Delete Data card - GDPR compliance */}
@@ -616,24 +595,10 @@ const Success = () => {
                         )}
                         {isGeneratingPdf ? "Generating..." : "Save as PDF"}
                       </Button>
-                      <Button
-                        variant="outline"
-                        onClick={copyShareLink}
-                        className="gap-2"
-                        size="lg"
-                      >
-                        {copied ? (
-                          <>
-                            <Check className="w-4 h-4" />
-                            Copied!
-                          </>
-                        ) : (
-                          <>
-                            <Share2 className="w-4 h-4" />
-                            Copy Share Link
-                          </>
-                        )}
-                      </Button>
+                      <div className="flex items-center gap-2 text-success">
+                        <Mail className="w-5 h-5" />
+                        <span className="text-sm">Results emailed to you</span>
+                      </div>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button

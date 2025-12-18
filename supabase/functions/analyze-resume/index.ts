@@ -562,8 +562,13 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     
     let session;
+    let customerEmail: string | null = null;
     try {
-      session = await stripe.checkout.sessions.retrieve(sessionId);
+      session = await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ['customer_details']
+      });
+      customerEmail = session.customer_details?.email || session.customer_email || null;
+      console.log(`[ANALYZE-RESUME] Customer email: ${customerEmail ? 'found' : 'not found'}`);
     } catch (stripeError) {
       console.error("[ANALYZE-RESUME] Invalid Stripe session:", stripeError);
       return new Response(
@@ -969,11 +974,40 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
       );
     }
 
-    trackPerformance(requestStartTime, 'analyze-resume', true, { hasLinkedIn: !!linkedInText, hasJobDesc: !!jobDescriptionText }, clientIp);
+    // Send analysis results via email (non-blocking)
+    if (customerEmail) {
+      console.log(`[ANALYZE-RESUME] Sending analysis email to: ${customerEmail}`);
+      EdgeRuntime.waitUntil(
+        fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-analysis-email`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: customerEmail,
+            analysisData: analysis,
+            shareId: savedAnalysis.share_id,
+          }),
+        }).then(async (res) => {
+          if (res.ok) {
+            console.log("[ANALYZE-RESUME] Email sent successfully");
+          } else {
+            console.error("[ANALYZE-RESUME] Email send failed:", await res.text());
+          }
+        }).catch((err) => {
+          console.error("[ANALYZE-RESUME] Email send error:", err);
+        })
+      );
+    } else {
+      console.log("[ANALYZE-RESUME] No customer email available, skipping email send");
+    }
+
+    trackPerformance(requestStartTime, 'analyze-resume', true, { hasLinkedIn: !!linkedInText, hasJobDesc: !!jobDescriptionText, emailSent: !!customerEmail }, clientIp);
     console.log("[ANALYZE-RESUME] Analysis saved successfully with enhanced metrics");
 
     return new Response(
-      JSON.stringify({ ...analysis, shareId: savedAnalysis.share_id }),
+      JSON.stringify({ ...analysis, shareId: savedAnalysis.share_id, emailSent: !!customerEmail }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
