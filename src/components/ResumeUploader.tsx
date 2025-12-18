@@ -327,7 +327,7 @@ export function ResumeUploader({
                   <Target className="w-4 h-4 text-success" />
                 </div>
                 <h3 className="font-semibold">{t('uploader.jobDescription.title')}</h3>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">Recommended</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">Free & Unlimited</span>
               </div>
               <button
                 onClick={() => setShowJobDescription(!showJobDescription)}
@@ -340,7 +340,7 @@ export function ResumeUploader({
             {showJobDescription && (
               <div className="rounded-2xl bg-card/30 border border-border/30 p-5 space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  {t('uploader.jobDescription.description')} <span className="text-foreground font-medium">{t('uploader.jobDescription.matchScore')}, extracted keywords,</span> {t('uploader.jobDescription.and')} {t('uploader.jobDescription.tailoredFeedback')}.
+                  <span className="text-success font-medium">✨ Unlimited free job comparisons!</span> {t('uploader.jobDescription.description')} <span className="text-foreground font-medium">{t('uploader.jobDescription.matchScore')}, extracted keywords,</span> {t('uploader.jobDescription.and')} {t('uploader.jobDescription.tailoredFeedback')}.
                 </p>
 
                 {/* Mode Tabs */}
