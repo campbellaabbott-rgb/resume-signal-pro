@@ -21,6 +21,7 @@ export const languages = [
   { code: 'fr', name: 'Français', flag: '🇫🇷' },
   { code: 'fr-CA', name: 'Français (Canada)', flag: '🇨🇦' },
   { code: 'nl', name: 'Nederlands', flag: '🇳🇱' },
+  { code: 'pt', name: 'Português', flag: '🇵🇹' },
 ];
 
 i18n
