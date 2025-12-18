@@ -8,19 +8,16 @@ export function LiveActivityCounter() {
 
   useEffect(() => {
     // Calculate count based on time of day
-    // Starts at 0 at midnight, increases by ~30 per hour
-    // By 7 AM = ~210, by noon = ~360, by 6 PM = ~540
+    // Starts at 201 at midnight, increases by 30 per hour
+    // Resets to 0 at midnight
     const calculateCount = () => {
       const now = new Date();
       const hoursSinceMidnight = now.getHours() + now.getMinutes() / 60;
       
-      // Base rate of ~30 per hour
-      const baseCount = Math.floor(hoursSinceMidnight * 30);
+      // Start at 201, add 30 per hour
+      const baseCount = 201 + Math.floor(hoursSinceMidnight * 30);
       
-      // Add some random variation (±5) to make it feel more organic
-      const variation = Math.floor(Math.random() * 11) - 5;
-      
-      return Math.max(0, baseCount + variation);
+      return baseCount;
     };
 
     // Set initial count
