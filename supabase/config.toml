@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.track-ab-event]
 verify_jwt = false
+
+[functions.parse-spreadsheet]
+verify_jwt = false
