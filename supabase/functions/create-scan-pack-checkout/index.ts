@@ -109,6 +109,7 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
+      allow_promotion_codes: true, // Enable promo codes like TEST100
       success_url: `${origin}/?scan_pack_success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/?scan_pack_canceled=true`,
       metadata: {
