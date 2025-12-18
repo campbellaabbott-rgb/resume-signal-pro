@@ -1030,9 +1030,28 @@ export function FreeKeywordResults({
                 ? "Your resume is more likely to get past ATS filters and catch a recruiter's eye. Keep it updated!"
                 : industryBenchmark.comparison === "at" 
                   ? "You'll pass some ATS screens, but won't stand out. A few tweaks could move you into the top tier."
-                  : "Many ATS systems will filter you out before a human sees your resume. The full analysis shows exactly what to fix."}
+                : "Many ATS systems will filter you out before a human sees your resume. The full analysis shows exactly what to fix."}
             </p>
           </div>
+          
+          {/* Job-Specific CTA - show when jobs are uploaded */}
+          {uploadedJobTitles.length > 0 && (
+            <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
+              <p className="text-xs font-medium text-foreground mb-2">
+                🎯 Want to see how you compare for <span className="text-primary font-semibold">{uploadedJobTitles[0]}</span>?
+              </p>
+              <Button
+                size="sm"
+                onClick={() => handleUpgradeClick(`benchmark_job_cta_${uploadedJobTitles[0]}`)}
+                disabled={isLoading}
+                className="w-full gap-2 text-xs h-8"
+              >
+                <Target className="w-3 h-3" />
+                Get Job-Specific Analysis
+                <ArrowRight className="w-3 h-3" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Timeline Analysis */}
