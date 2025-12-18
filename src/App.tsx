@@ -7,6 +7,7 @@ import Success from "./pages/Success";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
+import { FloatingHelpButton } from "./components/FloatingHelpButton";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <FloatingHelpButton />
     </BrowserRouter>
   </QueryClientProvider>
 );
