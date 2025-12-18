@@ -3,6 +3,7 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
 import en from './locales/en.json';
+import enGB from './locales/en-GB.json';
 import es from './locales/es.json';
 import hi from './locales/hi.json';
 import tl from './locales/tl.json';
@@ -28,6 +29,7 @@ i18n
   .init({
     resources: {
       en: { translation: en },
+      'en-GB': { translation: enGB },
       es: { translation: es },
       hi: { translation: hi },
       tl: { translation: tl },
