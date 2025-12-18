@@ -1,0 +1,364 @@
+{
+  "header": {
+    "tagline": "Feedback de IA de nível recrutador",
+    "getStarted": "Começar",
+    "start": "Iniciar"
+  },
+  "hero": {
+    "badge": "Análise de Currículo com IA",
+    "freeScan": "Experimentar Análise Grátis",
+    "heading": "Pare de adivinhar.",
+    "headingHighlight": "Comece a conseguir entrevistas.",
+    "subheading": "Obtenha feedback honesto e de nível profissional sobre o seu currículo. Sem rodeios — apenas correções práticas que o ajudam a ser contratado.",
+    "price": "$25",
+    "oneTime": "pagamento único",
+    "nofees": "Sem subscrições • Sem taxas ocultas • Resultados instantâneos",
+    "roi": "Uma entrevista = $25 que se paga sozinho",
+    "trusted": "Confiado por",
+    "jobSeekers": "candidatos",
+    "seeSample": "Ver Análise de Exemplo",
+    "whyBetter": "Porquê Melhor que o ChatGPT?",
+    "problemBadge": "85% dos currículos nunca chegam a um humano",
+    "mainHeading": "O Seu Currículo Está a Ser",
+    "mainHeadingHighlight": "Rejeitado pelo ATS?",
+    "mainSubheading": "Descubra em 30 segundos. Obtenha a sua pontuação ATS e veja exatamente o que lhe está a custar entrevistas.",
+    "ctaButton": "Verificar o Meu Currículo Agora",
+    "freeBadge": "GRÁTIS",
+    "noSignup": "Sem registo necessário",
+    "private": "100% privado",
+    "testimonial": "\"Este é um produto maravilhoso. Acabei de experimentar as funcionalidades gratuitas e posso dizer com confiança que vai ser um grande sucesso.\"",
+    "testimonialAuthor": "Utilizador recente",
+    "trustedBy": "Confiado por profissionais da",
+    "freeScanReveals": "A sua análise gratuita revela:",
+    "reveal": {
+      "atsScore": "Pontuação ATS",
+      "keywords": "Palavras-chave em Falta",
+      "redFlags": "Sinais de Alerta",
+      "quickFixes": "Correções Rápidas"
+    },
+    "features": {
+      "atsBullets": "Tópicos otimizados para ATS",
+      "atsBulletsDesc": "Vença os robôs",
+      "actionVerbs": "Verbos de ação mais fortes",
+      "actionVerbsDesc": "Destaque-se instantaneamente",
+      "keywords": "Sugestões de palavras-chave",
+      "keywordsDesc": "Corresponda às descrições de emprego",
+      "redFlags": "Deteção de sinais de alerta",
+      "redFlagsDesc": "Corrija problemas críticos"
+    },
+    "trust": {
+      "secure": "Seguro e Privado",
+      "results": "Resultados em 30 segundos",
+      "approved": "Aprovado por recrutadores"
+    }
+  },
+  "footer": {
+    "copyright": "© {{year}} Resume Booster. Todos os direitos reservados.",
+    "privacy": "Política de Privacidade",
+    "terms": "Termos de Serviço",
+    "contact": "Contacto"
+  },
+  "language": {
+    "select": "Selecionar Idioma"
+  },
+  "uploader": {
+    "title": "Carregue o Seu Currículo e LinkedIn",
+    "subtitle": "Obtenha uma análise abrangente do seu currículo",
+    "linkedinBonus": "+ otimização do perfil LinkedIn",
+    "resume": {
+      "title": "O Seu Currículo",
+      "required": "*Obrigatório",
+      "freeIncluded": "Análise gratuita incluída!",
+      "upload": "Carregar",
+      "paste": "Colar",
+      "dropHere": "Arraste o seu currículo para aqui",
+      "fileTypes": "PDF, DOCX ou TXT (máx. 10MB)",
+      "browse": "Procurar ficheiros",
+      "pasteHere": "Cole o conteúdo do seu currículo aqui...",
+      "chars": "caracteres"
+    },
+    "linkedin": {
+      "title": "O Seu Perfil LinkedIn",
+      "paidOnly": "Apenas na análise paga",
+      "hide": "Ocultar",
+      "show": "Mostrar",
+      "description": "Adicione o seu LinkedIn para",
+      "benefits": "otimização do título, reescrita da secção Sobre, palavras-chave SEO,",
+      "andMore": "e dicas de visibilidade.",
+      "uploadPdf": "Carregar PDF",
+      "uploadLinkedIn": "Carregar PDF do LinkedIn",
+      "exportTip": "Exporte o seu perfil do LinkedIn como PDF",
+      "parsing": "A processar PDF...",
+      "pasteHere": "Copie e cole o conteúdo do seu perfil LinkedIn aqui...",
+      "includeTip": "Inclua: Título, secção Sobre, descrições de Experiência, Competências"
+    },
+    "jobDescription": {
+      "title": "Descrição do Emprego Alvo",
+      "optional": "Opcional",
+      "hide": "Ocultar",
+      "show": "Mostrar",
+      "description": "Obtenha",
+      "matchScore": "pontuação de correspondência",
+      "and": "e",
+      "tailoredFeedback": "feedback personalizado",
+      "forRole": "para a sua função alvo",
+      "pasteHere": "Cole a descrição do emprego a que se está a candidatar...",
+      "tip": "Dica: Inclua a oferta de emprego completa para melhores resultados"
+    },
+    "actions": {
+      "freeScan": "Análise Grátis",
+      "quickInsights": "Obter informações rápidas",
+      "processing": "A processar...",
+      "getFullAnalysis": "Obter Análise Completa",
+      "forOnly": "por apenas",
+      "includes": "Inclui otimização ATS, reescrita de tópicos e plano de ação"
+    }
+  },
+  "faq": {
+    "title": "Perguntas Frequentes",
+    "subtitle": "Tudo o que precisa de saber sobre o Resume Booster",
+    "stillHaveQuestions": "Ainda tem dúvidas?",
+    "questions": {
+      "whatDoIGet": {
+        "question": "O que recebo com o Resume Booster?",
+        "answer": "Recebe uma análise abrangente incluindo reescrita de tópicos otimizados para ATS, sugestões de verbos de ação mais fortes, recomendações de palavras-chave para a sua indústria e sinais de alerta que os recrutadores podem notar. Tudo é escrito em linguagem direta e prática."
+      },
+      "howLong": {
+        "question": "Quanto tempo demora a análise?",
+        "answer": "A análise do seu currículo é gerada instantaneamente após o pagamento. Verá os resultados na página de sucesso em segundos."
+      },
+      "fileFormats": {
+        "question": "Que formatos de ficheiro aceitam?",
+        "answer": "Aceitamos ficheiros PDF, documentos Word (DOCX) e texto simples. Basta carregar o ficheiro do seu currículo ou colar o texto diretamente no campo de entrada."
+      },
+      "subscription": {
+        "question": "Isto é uma subscrição?",
+        "answer": "Não. O Resume Booster é um pagamento único de $25. Não há subscrições, cobranças recorrentes ou vendas adicionais."
+      },
+      "share": {
+        "question": "Posso partilhar a minha análise com outros?",
+        "answer": "Sim! Após a conclusão da análise, pode copiar um link partilhável para enviar a mentores, coaches de carreira ou qualquer pessoa de quem queira feedback."
+      },
+      "whoWrites": {
+        "question": "Quem escreve o feedback?",
+        "answer": "O feedback é gerado por IA treinada para pensar como um recrutador. Foca-se no que realmente importa no processo de contratação, não em conselhos de carreira genéricos."
+      },
+      "dataStorage": {
+        "question": "Armazenam os dados do meu currículo?",
+        "answer": "Não. Não armazenamos nem recolhemos o conteúdo do seu currículo. O seu currículo é processado em tempo real para gerar a análise e depois imediatamente descartado. Nunca retemos as suas informações pessoais."
+      },
+      "vsChatGPT": {
+        "question": "Porque é isto melhor que o ChatGPT ou modelos de currículo?",
+        "answer": "O Resume Booster é construído especificamente para otimização ATS com um sistema de pontuação ponderado de 5 categorias, 14 modelos específicos por indústria e feedback calibrado por recrutadores. Ao contrário do ChatGPT, obtém uma saída estruturada consistente de 10 secções sem engenharia de prompts. Ao contrário dos modelos, fornecemos reescritas personalizadas, análise do LinkedIn e alinhamento com descrições de emprego. Os seus dados são imediatamente descartados — nunca usados para treino."
+      }
+    }
+  },
+  "comparison": {
+    "title": "Porquê o Resume Booster?",
+    "subtitle": "Veja como nos comparamos a outras opções",
+    "feature": "Funcionalidade",
+    "templates": "Modelos",
+    "free": "Grátis",
+    "cta": "Experimente Agora — $25",
+    "ctaText": "Experimente Agora",
+    "features": {
+      "atsScoring": "Pontuação ATS de 5 Categorias",
+      "industryTemplates": "14 Modelos Específicos por Indústria",
+      "consistentOutput": "Saída Estruturada Consistente",
+      "linkedinAnalysis": "Análise do Perfil LinkedIn",
+      "jobAlignment": "Alinhamento com Descrição de Emprego",
+      "noPromptNeeded": "Sem Necessidade de Engenharia de Prompts",
+      "recruiterCalibrated": "Feedback Calibrado por Recrutadores",
+      "privacyFirst": "Dados Nunca Usados para Treino"
+    }
+  },
+  "socialProof": {
+    "stats": {
+      "analyzed": "Currículos analisados",
+      "betterResults": "Reportam melhores resultados",
+      "deliveryTime": "Tempo médio de entrega"
+    },
+    "testimonials": {
+      "engineer": {
+        "quote": "Consegui 3 entrevistas na primeira semana depois de usar isto. A secção de sinais de alerta foi reveladora.",
+        "role": "Engenheiro de Software"
+      },
+      "pm": {
+        "quote": "Finalmente percebi porque o meu currículo não estava a receber respostas. Direto, prático, vale cada cêntimo.",
+        "role": "Gestor de Produto"
+      },
+      "graduate": {
+        "quote": "As sugestões de palavras-chave ajudaram-me a adaptar o meu currículo perfeitamente. Consegui o estágio dos meus sonhos!",
+        "role": "Recém-Licenciado"
+      }
+    },
+    "trustMessage": "Junte-se a milhares de candidatos que melhoraram os seus currículos com feedback honesto e de nível profissional."
+  },
+  "preview": {
+    "badge": "Análise de Exemplo",
+    "title": "Veja o Que Vai Receber",
+    "subtitle": "Aqui está uma pré-visualização do feedback detalhado e prático em cada análise",
+    "atsScore": "Pontuação de Compatibilidade ATS",
+    "jdMatch": "Correspondência com Descrição de Emprego",
+    "addJd": "Adicione uma DE para isto",
+    "match": "correspondência",
+    "matchingSkills": "Competências Correspondentes",
+    "missingKeywords": "Palavras-chave em Falta",
+    "alignmentTip": "Dica de Alinhamento",
+    "formattingIssues": "Problemas de Formatação",
+    "detected": "Detetados",
+    "fixes": "Correções",
+    "atsBullets": "Tópicos Otimizados para ATS",
+    "before": "Antes",
+    "after": "Depois",
+    "resumeLength": "Comprimento do Currículo",
+    "pages": "páginas",
+    "actionPlan": "Plano de Ação",
+    "redFlags": "Sinais de Alerta",
+    "linkedinAnalysis": "Análise do LinkedIn",
+    "includedFree": "Incluído Grátis",
+    "strength": "força",
+    "suggestedHeadline": "Título Sugerido",
+    "aboutSection": "Secção Sobre",
+    "profileRecommendations": "Recomendações de Perfil",
+    "plusMore": "Mais: Lacunas de Competências, Insights da Indústria, Verbos de Ação, Palavras-chave e Reescrita do Resumo"
+  },
+  "freeScan": {
+    "complete": "Análise Gratuita de 17 Pontos Completa",
+    "preview": "Aqui está a sua pré-visualização abrangente",
+    "detected": "Detetado",
+    "atsScore": "Pontuação ATS",
+    "breakdownLocked": "Detalhes bloqueados",
+    "format": "Formato",
+    "metrics": "Métricas",
+    "verbs": "Verbos",
+    "pages": "Páginas",
+    "words": "Palavras",
+    "ideal": "ideal",
+    "sections": "Secções",
+    "contact": "Contacto",
+    "readability": "Legibilidade",
+    "bulletImpact": "Impacto dos Tópicos",
+    "keywordDensity": "Densidade de Palavras-chave",
+    "excellent": "Excelente",
+    "good": "Bom",
+    "fair": "Razoável",
+    "needsWork": "Precisa de Trabalho",
+    "perfect": "Perfeito",
+    "tooShort": "Muito Curto",
+    "tooLong": "Muito Longo",
+    "topStrength": "Principal Ponto Forte",
+    "redFlags": "Sinais de Alerta Detetados",
+    "impactLabel": "Impacto",
+    "improvementPotential": "Potencial de Melhoria",
+    "estimatedIncrease": "Estimativa +{{points}} pontos com otimização completa",
+    "topPriority": "Prioridade máxima",
+    "missingKeywords": "Palavras-chave em Falta",
+    "lockMessage": "A análise completa desbloqueia mais {{count}} palavras-chave + sugestões",
+    "emailCapture": {
+      "title": "Receba dicas de currículo no seu email",
+      "placeholder": "Introduza o seu email",
+      "button": "Subscrever",
+      "sending": "A enviar...",
+      "subscribed": "Subscrito!"
+    },
+    "cta": {
+      "title": "Desbloqueie a Sua Análise Completa",
+      "description": "Obtenha feedback abrangente com reescritas detalhadas de tópicos, estratégias de otimização ATS e um plano de ação prioritizado.",
+      "button": "Obter Análise Completa",
+      "price": "$25",
+      "processing": "A processar..."
+    }
+  },
+  "success": {
+    "loading": "A analisar o seu currículo...",
+    "loadingShared": "A carregar análise...",
+    "loadingDesc": "A nossa IA está a rever o seu currículo com precisão de nível recrutador.",
+    "loadingSharedDesc": "A obter a análise guardada.",
+    "steps": {
+      "payment": "Pagamento verificado",
+      "parsing": "A processar currículo",
+      "analysis": "Análise IA",
+      "generating": "A gerar feedback"
+    },
+    "error": {
+      "title": "Análise Falhou",
+      "notFound": "Análise não encontrada. O link pode ser inválido ou expirado.",
+      "generic": "Falha ao carregar análise.",
+      "tryAgain": "Por favor, tente carregar o seu currículo novamente.",
+      "backHome": "Voltar ao Início"
+    },
+    "toast": {
+      "paymentSuccess": "Pagamento bem-sucedido!",
+      "analysisReady": "A sua análise de currículo com IA está pronta.",
+      "analysisReadyLinkedIn": "A sua análise de currículo + LinkedIn está pronta.",
+      "analysisFailed": "Análise falhou",
+      "analysisFailedDesc": "Houve um problema ao analisar o seu currículo. Por favor, contacte o suporte.",
+      "linkCopied": "Link copiado!",
+      "linkCopiedDesc": "Partilhe este link para permitir que outros vejam a sua análise.",
+      "emailSent": "Email enviado!",
+      "emailSentDesc": "A sua análise completa foi enviada para a sua caixa de entrada.",
+      "emailFailed": "Falha ao enviar email",
+      "emailFailedDesc": "Por favor, tente novamente ou copie o link de partilha.",
+      "invalidEmail": "Email inválido",
+      "invalidEmailDesc": "Por favor, introduza um endereço de email válido.",
+      "pdfDownloaded": "PDF descarregado!",
+      "pdfDownloadedDesc": "Verifique a sua pasta de Transferências.",
+      "pdfFailed": "Falha ao gerar PDF",
+      "pdfFailedDesc": "Por favor, tente novamente.",
+      "dataDeleted": "Dados eliminados",
+      "dataDeletedDesc": "A sua análise de currículo foi permanentemente eliminada.",
+      "deleteFailed": "Falha ao eliminar dados",
+      "deleteFailedDesc": "Por favor, tente novamente ou contacte o suporte."
+    },
+    "actions": {
+      "share": "Partilhar",
+      "copied": "Copiado!",
+      "downloadPdf": "Descarregar PDF",
+      "generating": "A gerar...",
+      "emailResults": "Enviar Resultados por Email",
+      "emailPlaceholder": "Introduza o seu email",
+      "send": "Enviar",
+      "sending": "A enviar...",
+      "sent": "Enviado!",
+      "newAnalysis": "Nova Análise",
+      "deleteData": "Eliminar os Meus Dados",
+      "deleteConfirm": "Eliminar Dados da Análise",
+      "deleteWarning": "Esta ação não pode ser desfeita. Isto irá eliminar permanentemente a sua análise de currículo dos nossos servidores.",
+      "cancel": "Cancelar",
+      "deleting": "A eliminar..."
+    },
+    "sharedView": "A ver análise partilhada"
+  },
+  "common": {
+    "backToHome": "Voltar ao Início",
+    "lastUpdated": "Última atualização"
+  },
+  "privacy": {
+    "title": "Política de Privacidade"
+  },
+  "terms": {
+    "title": "Termos de Serviço"
+  },
+  "stickyCta": {
+    "title": "Pronto para conseguir mais entrevistas?",
+    "subtitle": "Obtenha feedback de nível recrutador em 30 segundos",
+    "mobileTitle": "Analise o seu currículo →",
+    "button": "Analisar o Meu Currículo"
+  },
+  "finalCta": {
+    "urgency": "O seu currículo pode estar a perder-lhe entrevistas agora mesmo",
+    "heading": "Não Deixe Escapar Mais Uma Oportunidade",
+    "subheading": "Obtenha as correções exatas que os recrutadores querem ver. Uma análise pode mudar tudo.",
+    "benefits": {
+      "ats": "Pontuação ATS com detalhes de 5 pontos",
+      "keywords": "Lacunas de palavras-chave específicas da indústria",
+      "redFlags": "Sinais de alerta que os recrutadores notam",
+      "linkedin": "Otimização do perfil LinkedIn"
+    },
+    "oneTime": "pagamento único",
+    "guarantee": "Resultados instantâneos • Sem subscrição",
+    "button": "Obter a Minha Análise Agora",
+    "roi": "💡 Uma entrevista = $25 que se paga sozinho"
+  }
+}

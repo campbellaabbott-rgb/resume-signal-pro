@@ -10,6 +10,7 @@ import tl from './locales/tl.json';
 import de from './locales/de.json';
 import fr from './locales/fr.json';
 import nl from './locales/nl.json';
+import pt from './locales/pt.json';
 
 export const languages = [
   { code: 'en', name: 'English', flag: '🇺🇸' },
@@ -37,6 +38,7 @@ i18n
       de: { translation: de },
       fr: { translation: fr },
       nl: { translation: nl },
+      pt: { translation: pt },
     },
     fallbackLng: 'en',
     interpolation: {
