@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/hooks/use-currency";
 import { JobSelector, type JobEntry } from "@/components/JobSelector";
+import { JobComparisonCTA } from "@/components/JobComparisonCTA";
 const ANALYSIS_STEPS = [
   "Parsing resume content...",
   "Analyzing ATS compatibility...",
@@ -797,6 +798,31 @@ export function ResumeUploader({
             )}
           </div>
 
+
+          {/* Job Comparison CTAs - show when jobs are uploaded */}
+          {parsedJobs.length > 0 && canProceed && (
+            <div className="p-4 rounded-xl border border-primary/20 bg-primary/5">
+              <JobComparisonCTA
+                jobTitles={parsedJobs.map(j => j.title)}
+                onGetStarted={(jobTitle) => {
+                  // Find and select the job if a specific title was clicked
+                  if (jobTitle) {
+                    const job = parsedJobs.find(j => j.title === jobTitle);
+                    if (job) {
+                      handleJobSelect(job);
+                    }
+                  }
+                  // Trigger checkout
+                  if (resumeMode === "paste") {
+                    handleTextPaste();
+                  } else {
+                    handleCheckoutClick();
+                  }
+                }}
+                isLoading={isLoading}
+              />
+            </div>
+          )}
 
           {/* Submit Buttons */}
           <div className="text-center space-y-5">
