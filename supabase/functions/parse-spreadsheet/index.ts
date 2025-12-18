@@ -218,19 +218,89 @@ Deno.serve(async (req) => {
         rows = parseCSV(fileContent);
       }
     } else {
-      // JSON body with content
+      // JSON body - could be content or Google Sheets URL
       const body = await req.json();
-      const fileContent = body.content;
-      fileName = body.fileName || 'data.csv';
       
-      if (!fileContent || fileContent.trim().length === 0) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Empty file content' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      // Handle Google Sheets URL
+      if (body.googleSheetsUrl) {
+        const sheetsUrl = body.googleSheetsUrl;
+        console.log("[parse-spreadsheet] Processing Google Sheets URL:", sheetsUrl);
+        
+        // Extract the spreadsheet ID from various URL formats
+        const sheetIdMatch = sheetsUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+        if (!sheetIdMatch) {
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'Invalid Google Sheets URL. Please copy the URL from your browser address bar.',
+              suggestion: 'The URL should look like: https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/...'
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        const sheetId = sheetIdMatch[1];
+        console.log("[parse-spreadsheet] Extracted sheet ID:", sheetId);
+        
+        // Fetch the sheet as CSV (works for publicly shared sheets)
+        const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+        console.log("[parse-spreadsheet] Fetching from:", exportUrl);
+        
+        try {
+          const response = await fetch(exportUrl, {
+            headers: {
+              'Accept': 'text/csv',
+            }
+          });
+          
+          if (!response.ok) {
+            console.error("[parse-spreadsheet] Google Sheets fetch failed:", response.status, response.statusText);
+            return new Response(
+              JSON.stringify({ 
+                success: false, 
+                error: 'Could not access Google Sheet. Make sure it\'s shared with "Anyone with the link".',
+                suggestion: 'Click Share → Change to "Anyone with the link" → Copy the URL'
+              }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          
+          const csvContent = await response.text();
+          console.log("[parse-spreadsheet] Fetched CSV content, length:", csvContent.length);
+          
+          if (!csvContent || csvContent.trim().length === 0) {
+            return new Response(
+              JSON.stringify({ success: false, error: 'Google Sheet appears to be empty' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          
+          rows = parseCSV(csvContent);
+        } catch (fetchError) {
+          console.error("[parse-spreadsheet] Google Sheets fetch error:", fetchError);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'Failed to fetch Google Sheet. Please check the URL and sharing settings.',
+              suggestion: 'Make sure the sheet is shared with "Anyone with the link"'
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } else {
+        // Regular content-based parsing
+        const fileContent = body.content;
+        fileName = body.fileName || 'data.csv';
+        
+        if (!fileContent || fileContent.trim().length === 0) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'Empty file content' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        rows = parseCSV(fileContent);
       }
-      
-      rows = parseCSV(fileContent);
     }
     
     console.log(`[parse-spreadsheet] Parsed ${rows.length} rows`);

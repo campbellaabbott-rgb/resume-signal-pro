@@ -124,8 +124,10 @@ export function ResumeUploader({
   const [showLinkedIn, setShowLinkedIn] = useState(true);
   const [showJobDescription, setShowJobDescription] = useState(true);
   const [localJobDescriptionText, setLocalJobDescriptionText] = useState("");
-  const [jobDescriptionMode, setJobDescriptionMode] = useState<"paste" | "url" | "spreadsheet">("paste");
+  const [jobDescriptionMode, setJobDescriptionMode] = useState<"paste" | "url" | "spreadsheet" | "gsheets">("paste");
   const [jobDescriptionUrl, setJobDescriptionUrl] = useState("");
+  const [googleSheetsUrl, setGoogleSheetsUrl] = useState("");
+  const [isLoadingGoogleSheet, setIsLoadingGoogleSheet] = useState(false);
   const [jobDescriptionFile, setJobDescriptionFile] = useState<File | null>(null);
   const [isParsingJobDescription, setIsParsingJobDescription] = useState(false);
   const [isParsingLinkedIn, setIsParsingLinkedIn] = useState(false);
@@ -268,6 +270,39 @@ export function ResumeUploader({
     setSelectedJob(null);
     setJobDescriptionFile(null);
     setLocalJobDescriptionText("");
+    setGoogleSheetsUrl("");
+  };
+
+  const handleGoogleSheetsImport = async () => {
+    if (!googleSheetsUrl.trim()) return;
+    
+    setIsLoadingGoogleSheet(true);
+    setParsedJobs([]);
+    setSelectedJob(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("parse-spreadsheet", {
+        body: { googleSheetsUrl: googleSheetsUrl.trim() },
+      });
+      
+      if (error) throw error;
+      
+      if (data?.success && data?.jobs?.length > 0) {
+        setParsedJobs(data.jobs);
+        onJobsChange?.(data.jobs);
+        if (data.jobs.length === 1) {
+          handleJobSelect(data.jobs[0]);
+        }
+      } else if (data?.error) {
+        console.error("Google Sheets parsing error:", data.error);
+        setLocalJobDescriptionText(`Error: ${data.error}\n\n${data.suggestion || ''}`);
+      }
+    } catch (error) {
+      console.error("Google Sheets import error:", error);
+      setLocalJobDescriptionText("Failed to import from Google Sheets. Make sure the sheet is shared with 'Anyone with the link'.");
+    } finally {
+      setIsLoadingGoogleSheet(false);
+    }
   };
 
   const getFinalJobDescriptionText = () => {
@@ -375,7 +410,19 @@ export function ResumeUploader({
                       )}
                     >
                       <Table2 className="w-4 h-4" />
-                      Spreadsheet
+                      Excel/CSV
+                    </button>
+                    <button
+                      onClick={() => setJobDescriptionMode("gsheets")}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                        jobDescriptionMode === "gsheets"
+                          ? "bg-success text-success-foreground shadow-md"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      <Table2 className="w-4 h-4" />
+                      Google Sheets
                     </button>
                   </div>
                 </div>
@@ -503,7 +550,7 @@ export function ResumeUploader({
                           <>
                             <Table2 className="w-6 h-6 text-success mb-2" />
                             <span className="text-sm font-medium text-foreground">Upload job listing spreadsheet</span>
-                            <span className="text-xs text-muted-foreground mt-1">CSV files (Excel coming soon)</span>
+                            <span className="text-xs text-muted-foreground mt-1">Excel (.xlsx, .xls) or CSV files</span>
                             <span className="text-xs text-muted-foreground mt-2 text-center max-w-[280px]">
                               Include columns: Title, Company, Description
                             </span>
@@ -519,6 +566,99 @@ export function ResumeUploader({
                           </>
                         )}
                       </label>
+                    ) : null}
+                  </div>
+                )}
+
+                {/* Google Sheets Mode */}
+                {jobDescriptionMode === "gsheets" && (
+                  <div className="space-y-3">
+                    {/* Show job selector when multiple jobs are parsed */}
+                    {parsedJobs.length > 1 && !selectedJob && (
+                      <JobSelector
+                        jobs={parsedJobs}
+                        selectedJobId={selectedJob?.id || null}
+                        onSelect={handleJobSelect}
+                        onCancel={handleCancelJobSelection}
+                      />
+                    )}
+
+                    {/* Show selected job or URL input */}
+                    {selectedJob ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
+                          <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm text-success font-medium truncate block">{selectedJob.title}</span>
+                            <span className="text-xs text-success/70">{selectedJob.company}</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (parsedJobs.length > 1) {
+                                setSelectedJob(null);
+                                setLocalJobDescriptionText("");
+                              } else {
+                                handleCancelJobSelection();
+                              }
+                            }}
+                            className="p-1 hover:bg-success/10 rounded-lg transition-colors"
+                          >
+                            <X className="w-3 h-3 text-success" />
+                          </button>
+                        </div>
+                        {parsedJobs.length > 1 && (
+                          <p className="text-xs text-muted-foreground">
+                            {parsedJobs.length - 1} other job{parsedJobs.length > 2 ? 's' : ''} available • <button onClick={() => setSelectedJob(null)} className="text-primary hover:underline">change selection</button>
+                          </p>
+                        )}
+                      </div>
+                    ) : parsedJobs.length === 0 ? (
+                      <div className="space-y-3">
+                        <div className="relative">
+                          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                            <Table2 className="w-4 h-4" />
+                          </div>
+                          <input
+                            type="url"
+                            value={googleSheetsUrl}
+                            onChange={(e) => setGoogleSheetsUrl(e.target.value)}
+                            placeholder="https://docs.google.com/spreadsheets/d/..."
+                            className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 text-sm transition-all"
+                            disabled={isLoadingGoogleSheet}
+                          />
+                        </div>
+                        <Button
+                          onClick={handleGoogleSheetsImport}
+                          disabled={!googleSheetsUrl.trim() || isLoadingGoogleSheet}
+                          className="w-full"
+                          variant="outline"
+                        >
+                          {isLoadingGoogleSheet ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                              Importing...
+                            </>
+                          ) : (
+                            <>
+                              <Table2 className="w-4 h-4 mr-2" />
+                              Import from Google Sheets
+                            </>
+                          )}
+                        </Button>
+                        <div className="p-3 rounded-xl bg-muted/50 border border-border/50">
+                          <p className="text-xs text-muted-foreground mb-2">
+                            <span className="font-medium text-foreground">📋 How to use:</span>
+                          </p>
+                          <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                            <li>Open your Google Sheet with job listings</li>
+                            <li>Click <span className="font-medium">Share</span> → <span className="font-medium">Anyone with the link</span></li>
+                            <li>Copy the URL and paste above</li>
+                          </ol>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Include columns: <span className="font-medium">Title, Company, Description</span>
+                          </p>
+                        </div>
+                      </div>
                     ) : null}
                   </div>
                 )}
