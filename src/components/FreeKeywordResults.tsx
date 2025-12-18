@@ -1161,22 +1161,24 @@ export function FreeKeywordResults({
             </p>
           </div>
           
-          {/* Job-Specific CTA - show when jobs are uploaded */}
+          {/* Job-Specific CTA - show when jobs are uploaded (FREE) */}
           {uploadedJobs.length > 0 && (
-            <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
+            <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-success/10 to-success/5 border border-success/20">
               <p className="text-xs font-medium text-foreground mb-2">
-                🎯 Want to see how you compare for <span className="text-primary font-semibold">{uploadedJobs[0].title}</span> at <span className="text-primary font-semibold">{uploadedJobs[0].company}</span>?
+                🎯 Want to see how you compare for <span className="text-success font-semibold">{uploadedJobs[0].title}</span> at <span className="text-success font-semibold">{uploadedJobs[0].company}</span>?
               </p>
               <Button
                 size="sm"
-                onClick={() => handleUpgradeClick(`benchmark_job_cta_${uploadedJobs[0].title}`)}
+                variant="outline"
+                onClick={() => onGetJobAnalysis?.(uploadedJobs[0].title, uploadedJobs[0].company)}
                 disabled={isLoading}
-                className="w-full gap-2 text-xs h-8"
+                className="w-full gap-2 text-xs h-8 border-success/30 hover:bg-success/10 hover:border-success"
               >
-                <Target className="w-3 h-3" />
+                <Target className="w-3 h-3 text-success" />
                 Get Job-Specific Analysis
                 <ArrowRight className="w-3 h-3" />
               </Button>
+              <p className="text-[10px] text-success/70 mt-1.5 text-center">✨ Free</p>
             </div>
           )}
         </div>
