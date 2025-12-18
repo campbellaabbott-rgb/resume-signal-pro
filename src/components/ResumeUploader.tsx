@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/hooks/use-currency";
+import { JobSelector, type JobEntry } from "@/components/JobSelector";
 const ANALYSIS_STEPS = [
   "Parsing resume content...",
   "Analyzing ATS compatibility...",
@@ -125,6 +126,8 @@ export function ResumeUploader({
   const [jobDescriptionFile, setJobDescriptionFile] = useState<File | null>(null);
   const [isParsingJobDescription, setIsParsingJobDescription] = useState(false);
   const [isParsingLinkedIn, setIsParsingLinkedIn] = useState(false);
+  const [parsedJobs, setParsedJobs] = useState<JobEntry[]>([]);
+  const [selectedJob, setSelectedJob] = useState<JobEntry | null>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -214,15 +217,34 @@ export function ResumeUploader({
     
     setJobDescriptionFile(file);
     setIsParsingJobDescription(true);
+    setParsedJobs([]);
+    setSelectedJob(null);
     
     try {
-      // For CSV, read as text directly
+      // For CSV files, use the edge function to parse
       if (file.type === "text/csv" || file.name.endsWith(".csv")) {
-        const text = await file.text();
-        setLocalJobDescriptionText(text);
+        const formData = new FormData();
+        formData.append("file", file);
+        
+        const { data, error } = await supabase.functions.invoke("parse-spreadsheet", {
+          body: formData,
+        });
+        
+        if (error) throw error;
+        
+        if (data?.success && data?.jobs?.length > 0) {
+          setParsedJobs(data.jobs);
+          // If only one job, auto-select it
+          if (data.jobs.length === 1) {
+            handleJobSelect(data.jobs[0]);
+          }
+        } else if (data?.error) {
+          console.error("Spreadsheet parsing error:", data.error);
+          setLocalJobDescriptionText(`Error: ${data.error}\n\n${data.suggestion || ''}`);
+        }
       } else {
-        // For Excel files, we'd need a parser - for now just note the file
-        setLocalJobDescriptionText(`[Spreadsheet uploaded: ${file.name}]\n\nNote: For best results, copy the job listing content and use the "Paste Text" option.`);
+        // For Excel files - show guidance
+        setLocalJobDescriptionText(`[Spreadsheet uploaded: ${file.name}]\n\nFor best results with Excel files, please export as CSV:\n• In Excel: File > Save As > CSV\n• In Google Sheets: File > Download > CSV`);
       }
     } catch (error) {
       console.error("Spreadsheet parsing error:", error);
@@ -230,6 +252,20 @@ export function ResumeUploader({
     } finally {
       setIsParsingJobDescription(false);
     }
+  };
+
+  const handleJobSelect = (job: JobEntry) => {
+    setSelectedJob(job);
+    // Format the job description for analysis
+    const formattedJob = `Job Title: ${job.title}\nCompany: ${job.company}${job.location ? `\nLocation: ${job.location}` : ''}\n\nJob Description:\n${job.description}`;
+    setLocalJobDescriptionText(formattedJob);
+  };
+
+  const handleCancelJobSelection = () => {
+    setParsedJobs([]);
+    setSelectedJob(null);
+    setJobDescriptionFile(null);
+    setLocalJobDescriptionText("");
   };
 
   const getFinalJobDescriptionText = () => {
@@ -388,22 +424,58 @@ export function ResumeUploader({
                 {/* Spreadsheet Mode */}
                 {jobDescriptionMode === "spreadsheet" && (
                   <div className="space-y-3">
-                    {jobDescriptionFile ? (
+                    {/* Show job selector when multiple jobs are parsed */}
+                    {parsedJobs.length > 1 && !selectedJob && (
+                      <JobSelector
+                        jobs={parsedJobs}
+                        selectedJobId={selectedJob?.id || null}
+                        onSelect={handleJobSelect}
+                        onCancel={handleCancelJobSelection}
+                      />
+                    )}
+
+                    {/* Show selected job or file upload */}
+                    {selectedJob ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
+                          <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm text-success font-medium truncate block">{selectedJob.title}</span>
+                            <span className="text-xs text-success/70">{selectedJob.company}</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (parsedJobs.length > 1) {
+                                setSelectedJob(null);
+                                setLocalJobDescriptionText("");
+                              } else {
+                                handleCancelJobSelection();
+                              }
+                            }}
+                            className="p-1 hover:bg-success/10 rounded-lg transition-colors"
+                          >
+                            <X className="w-3 h-3 text-success" />
+                          </button>
+                        </div>
+                        {parsedJobs.length > 1 && (
+                          <p className="text-xs text-muted-foreground">
+                            {parsedJobs.length - 1} other job{parsedJobs.length > 2 ? 's' : ''} available • <button onClick={() => setSelectedJob(null)} className="text-primary hover:underline">change selection</button>
+                          </p>
+                        )}
+                      </div>
+                    ) : jobDescriptionFile && parsedJobs.length === 0 ? (
                       <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
                         <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
                         <Table2 className="w-4 h-4 text-success shrink-0" />
                         <span className="text-sm text-success truncate">{jobDescriptionFile.name}</span>
                         <button
-                          onClick={() => {
-                            setJobDescriptionFile(null);
-                            setLocalJobDescriptionText("");
-                          }}
+                          onClick={handleCancelJobSelection}
                           className="ml-auto p-1 hover:bg-success/10 rounded-lg transition-colors"
                         >
                           <X className="w-3 h-3 text-success" />
                         </button>
                       </div>
-                    ) : (
+                    ) : parsedJobs.length === 0 && !jobDescriptionFile ? (
                       <label className={cn(
                         "flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all",
                         isParsingJobDescription 
@@ -429,14 +501,14 @@ export function ResumeUploader({
                           <>
                             <Table2 className="w-6 h-6 text-success mb-2" />
                             <span className="text-sm font-medium text-foreground">Upload job listing spreadsheet</span>
-                            <span className="text-xs text-muted-foreground mt-1">Excel (.xlsx, .xls) or CSV files</span>
+                            <span className="text-xs text-muted-foreground mt-1">CSV files (Excel coming soon)</span>
                             <span className="text-xs text-muted-foreground mt-2 text-center max-w-[280px]">
-                              Great for tracking multiple job applications
+                              Include columns: Title, Company, Description
                             </span>
                           </>
                         )}
                       </label>
-                    )}
+                    ) : null}
                   </div>
                 )}
 
