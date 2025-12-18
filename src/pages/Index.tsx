@@ -11,6 +11,7 @@ import { ComparisonTable } from "@/components/ComparisonTable";
 import { FreeKeywordResults } from "@/components/FreeKeywordResults";
 import { StickyBottomCTA } from "@/components/StickyBottomCTA";
 import { FinalCTA } from "@/components/FinalCTA";
+import { type JobEntry } from "@/components/JobSelector";
 
 import { HowItWorks } from "@/components/HowItWorks";
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
@@ -73,6 +74,7 @@ const Index = () => {
   const [freeKeywordResult, setFreeKeywordResult] = useState<FreeKeywordResult | null>(null);
   const [honeypot, setHoneypot] = useState<string>(""); // Honeypot field for bot detection
   const [preStoredSessionId, setPreStoredSessionId] = useState<string | null>(null);
+  const [uploadedJobs, setUploadedJobs] = useState<JobEntry[]>([]);
   const { toast } = useToast();
   const { currency } = useCurrency();
   const [searchParams] = useSearchParams();
@@ -686,6 +688,7 @@ const Index = () => {
           onLinkedInTextChange={setLinkedInText}
           jobDescriptionText={jobDescriptionText}
           onJobDescriptionTextChange={setJobDescriptionText}
+          onJobsChange={setUploadedJobs}
         />
 
         {/* Free Keyword Results */}
@@ -718,6 +721,7 @@ const Index = () => {
                 industryBenchmark={freeKeywordResult.industryBenchmark}
                 quickWins={freeKeywordResult.quickWins}
                 sampleRewrite={freeKeywordResult.sampleRewrite}
+                uploadedJobTitles={uploadedJobs.map(j => j.title)}
                 onGetFullAnalysis={() => handleCheckout(resumeText, linkedInText, jobDescriptionText)}
                 isLoading={isLoading}
               />

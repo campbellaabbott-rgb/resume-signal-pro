@@ -95,6 +95,7 @@ interface ResumeUploaderProps {
   onLinkedInTextChange?: (text: string) => void;
   jobDescriptionText?: string;
   onJobDescriptionTextChange?: (text: string) => void;
+  onJobsChange?: (jobs: JobEntry[]) => void;
 }
 
 export function ResumeUploader({ 
@@ -108,7 +109,8 @@ export function ResumeUploader({
   linkedInText = "",
   onLinkedInTextChange,
   jobDescriptionText = "",
-  onJobDescriptionTextChange
+  onJobDescriptionTextChange,
+  onJobsChange
 }: ResumeUploaderProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -235,6 +237,7 @@ export function ResumeUploader({
         
         if (data?.success && data?.jobs?.length > 0) {
           setParsedJobs(data.jobs);
+          onJobsChange?.(data.jobs);
           // If only one job, auto-select it
           if (data.jobs.length === 1) {
             handleJobSelect(data.jobs[0]);
@@ -264,6 +267,7 @@ export function ResumeUploader({
 
   const handleCancelJobSelection = () => {
     setParsedJobs([]);
+    onJobsChange?.([]);
     setSelectedJob(null);
     setJobDescriptionFile(null);
     setLocalJobDescriptionText("");
