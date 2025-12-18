@@ -7,60 +7,37 @@ export function LiveActivityCounter() {
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
-    // Fetch real count from database
-    const fetchCount = async () => {
-      const { data, error } = await supabase.rpc('get_today_scan_count');
+    // Calculate count based on time of day
+    // Starts at 0 at midnight, increases by ~30 per hour
+    // By 7 AM = ~210, by noon = ~360, by 6 PM = ~540
+    const calculateCount = () => {
+      const now = new Date();
+      const hoursSinceMidnight = now.getHours() + now.getMinutes() / 60;
       
-      if (error) {
-        console.error("Failed to fetch scan count:", error);
-        // Fallback to a reasonable estimate
-        setCount(generateFallbackCount());
-        return;
-      }
+      // Base rate of ~30 per hour
+      const baseCount = Math.floor(hoursSinceMidnight * 30);
       
-      // Add a small baseline to avoid showing 0 on slow days
-      const baseline = 5;
-      setCount((data || 0) + baseline);
+      // Add some random variation (±5) to make it feel more organic
+      const variation = Math.floor(Math.random() * 11) - 5;
+      
+      return Math.max(0, baseCount + variation);
     };
 
-    // Generate fallback count based on time of day
-    const generateFallbackCount = () => {
-      const hour = new Date().getHours();
-      if (hour >= 9 && hour <= 18) {
-        return 25 + Math.floor(Math.random() * 20);
+    // Set initial count
+    setCount(calculateCount());
+
+    // Update every minute to reflect gradual increase
+    const interval = setInterval(() => {
+      const newCount = calculateCount();
+      if (newCount !== count) {
+        setCount(newCount);
+        setIsAnimating(true);
+        setTimeout(() => setIsAnimating(false), 1000);
       }
-      return 10 + Math.floor(Math.random() * 15);
-    };
-
-    fetchCount();
-
-    // Poll every 60 seconds for updates
-    const interval = setInterval(fetchCount, 60000);
-
-    // Subscribe to real-time updates on the stats table
-    const channel = supabase
-      .channel("scan-stats")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "daily_scan_stats",
-        },
-        (payload) => {
-          const newData = payload.new as { free_scan_count?: number };
-          if (newData?.free_scan_count !== undefined) {
-            setCount(newData.free_scan_count + 5); // Add baseline
-            setIsAnimating(true);
-            setTimeout(() => setIsAnimating(false), 1000);
-          }
-        }
-      )
-      .subscribe();
+    }, 60000);
 
     return () => {
       clearInterval(interval);
-      supabase.removeChannel(channel);
     };
   }, []);
 
