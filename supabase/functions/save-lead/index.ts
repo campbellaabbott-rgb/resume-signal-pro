@@ -199,14 +199,71 @@ const getClientIp = (req: Request): string => {
 // Blocked country codes (ISO 3166-1 alpha-2)
 const BLOCKED_COUNTRIES = new Set(['RU', 'NG', 'PK']);
 
-const getCountryCode = (req: Request): string | null => {
+// Country cache to avoid repeated API calls for same IP
+const countryCache = new Map<string, { country: string; timestamp: number }>();
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+const getCountryFromHeaders = (req: Request): string | null => {
   return req.headers.get('cf-ipcountry') || 
          req.headers.get('x-vercel-ip-country') || 
+         req.headers.get('x-country-code') ||
          null;
 };
 
-const isBlockedCountry = (req: Request): boolean => {
-  const country = getCountryCode(req);
+// Fetch country from ipinfo.io API (fallback when headers missing)
+async function getCountryFromIpInfo(ip: string): Promise<string | null> {
+  if (!ip || ip === 'unknown') return null;
+  
+  // Check cache first
+  const cached = countryCache.get(ip);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.country;
+  }
+  
+  try {
+    const IPINFO_API_KEY = Deno.env.get("IPINFO_API_KEY");
+    if (!IPINFO_API_KEY) {
+      console.log("[SAVE-LEAD] IPINFO_API_KEY not configured");
+      return null;
+    }
+    
+    const response = await fetch(`https://ipinfo.io/${ip}?token=${IPINFO_API_KEY}`, {
+      signal: AbortSignal.timeout(2000) // 2 second timeout
+    });
+    
+    if (!response.ok) {
+      console.log(`[SAVE-LEAD] ipinfo.io error: ${response.status}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    const country = data.country || null;
+    
+    // Cache the result
+    if (country) {
+      countryCache.set(ip, { country, timestamp: Date.now() });
+    }
+    
+    console.log(`[SAVE-LEAD] ipinfo.io resolved IP ${ip} to country: ${country}`);
+    return country;
+  } catch (error) {
+    console.log(`[SAVE-LEAD] ipinfo.io lookup failed: ${error instanceof Error ? error.message : 'Unknown'}`);
+    return null;
+  }
+}
+
+// Get country code with fallback to ipinfo.io
+async function getCountryCode(req: Request, clientIp: string): Promise<string | null> {
+  // Try CDN headers first (fastest)
+  const headerCountry = getCountryFromHeaders(req);
+  if (headerCountry) return headerCountry;
+  
+  // Fallback to ipinfo.io API
+  return await getCountryFromIpInfo(clientIp);
+}
+
+const isBlockedCountry = async (req: Request, clientIp: string): Promise<boolean> => {
+  const country = await getCountryCode(req, clientIp);
   if (!country) return false;
   return BLOCKED_COUNTRIES.has(country.toUpperCase());
 };
@@ -224,17 +281,17 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Geo-blocking check
-  if (isBlockedCountry(req)) {
-    const country = getCountryCode(req);
+  const clientIp = getClientIp(req);
+
+  // Geo-blocking check (async with ipinfo.io fallback)
+  if (await isBlockedCountry(req, clientIp)) {
+    const country = await getCountryCode(req, clientIp);
     console.log(`[SAVE-LEAD] Blocked request from country: ${country}`);
     return new Response(
       JSON.stringify({ error: 'Service not available in your region.' }),
       { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-
-  const clientIp = getClientIp(req);
 
   try {
     const { email, industry, atsScore, honeypot } = await req.json();
@@ -315,10 +372,10 @@ serve(async (req) => {
       );
     }
 
-    // Send lead notification email in background
-    const country = getCountryCode(req) || 'Unknown';
+    // Send lead notification email in background (get country async)
+    const countryPromise = getCountryCode(req, clientIp).then(c => c || 'Unknown');
     EdgeRuntime.waitUntil(
-      sendLeadNotificationEmail(email, clientIp, country, industry, atsScore)
+      countryPromise.then(country => sendLeadNotificationEmail(email, clientIp, country, industry, atsScore))
     );
 
     trackPerformance(requestStartTime, 'save-lead', true, {}, clientIp);

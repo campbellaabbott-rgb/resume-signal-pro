@@ -150,15 +150,72 @@ async function fetchWithRetry(
   throw lastError || new Error('AI API request failed after retries');
 }
 
-const getCountryCode = (req: Request): string | null => {
+// Country cache to avoid repeated API calls for same IP
+const countryCache = new Map<string, { country: string; timestamp: number }>();
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+const getCountryFromHeaders = (req: Request): string | null => {
   // Cloudflare/CDN provides country code in cf-ipcountry header
   return req.headers.get('cf-ipcountry') || 
          req.headers.get('x-vercel-ip-country') || 
+         req.headers.get('x-country-code') ||
          null;
 };
 
-const isBlockedCountry = (req: Request): boolean => {
-  const country = getCountryCode(req);
+// Fetch country from ipinfo.io API (fallback when headers missing)
+async function getCountryFromIpInfo(ip: string): Promise<string | null> {
+  if (!ip || ip === 'unknown') return null;
+  
+  // Check cache first
+  const cached = countryCache.get(ip);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.country;
+  }
+  
+  try {
+    const IPINFO_API_KEY = Deno.env.get("IPINFO_API_KEY");
+    if (!IPINFO_API_KEY) {
+      console.log("[FREE-KEYWORD-SCAN] IPINFO_API_KEY not configured");
+      return null;
+    }
+    
+    const response = await fetch(`https://ipinfo.io/${ip}?token=${IPINFO_API_KEY}`, {
+      signal: AbortSignal.timeout(2000) // 2 second timeout
+    });
+    
+    if (!response.ok) {
+      console.log(`[FREE-KEYWORD-SCAN] ipinfo.io error: ${response.status}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    const country = data.country || null;
+    
+    // Cache the result
+    if (country) {
+      countryCache.set(ip, { country, timestamp: Date.now() });
+    }
+    
+    console.log(`[FREE-KEYWORD-SCAN] ipinfo.io resolved IP ${ip} to country: ${country}`);
+    return country;
+  } catch (error) {
+    console.log(`[FREE-KEYWORD-SCAN] ipinfo.io lookup failed: ${error instanceof Error ? error.message : 'Unknown'}`);
+    return null;
+  }
+}
+
+// Get country code with fallback to ipinfo.io
+async function getCountryCode(req: Request, clientIp: string): Promise<string | null> {
+  // Try CDN headers first (fastest)
+  const headerCountry = getCountryFromHeaders(req);
+  if (headerCountry) return headerCountry;
+  
+  // Fallback to ipinfo.io API
+  return await getCountryFromIpInfo(clientIp);
+}
+
+const isBlockedCountry = async (req: Request, clientIp: string): Promise<boolean> => {
+  const country = await getCountryCode(req, clientIp);
   if (!country) return false; // Allow if country unknown
   return BLOCKED_COUNTRIES.has(country.toUpperCase());
 };
@@ -170,17 +227,17 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Geo-blocking check
-  if (isBlockedCountry(req)) {
-    const country = getCountryCode(req);
+  const clientIp = getClientIp(req);
+
+  // Geo-blocking check (async with ipinfo.io fallback)
+  if (await isBlockedCountry(req, clientIp)) {
+    const country = await getCountryCode(req, clientIp);
     console.log(`[FREE-KEYWORD-SCAN] Blocked request from country: ${country}`);
     return new Response(
       JSON.stringify({ error: ERROR_MESSAGES.GEO_BLOCKED }),
       { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-
-  const clientIp = getClientIp(req);
   
   try {
     const { resumeText, jobDescriptionText, honeypot } = await req.json();
@@ -714,7 +771,7 @@ ${resumeText.substring(0, 15000)}
     // Log core metrics only
     console.log(`[FREE-KEYWORD-SCAN] Analysis: ATS=${analysis.atsScoreEstimate}, Industry="${analysis.industry}", ExpLevel=${analysis.experienceLevel?.level}`);
 
-    const country = getCountryCode(req) || "Unknown";
+    const country = await getCountryCode(req, clientIp) || "Unknown";
     console.log(`[FREE-KEYWORD-SCAN] Success for IP: ${clientIp}, country: ${country}, industry: ${analysis.industry}`);
 
     // Increment daily scan counter in background
