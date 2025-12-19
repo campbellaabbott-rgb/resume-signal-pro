@@ -279,6 +279,12 @@
     page-break-inside: avoid;
   }
 
+  /* Prevent page breaks inside analysis cards */
+  .pdf-keep-together {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
   section {
     page-break-before: auto;
     page-break-after: auto;

@@ -1764,7 +1764,7 @@ interface ResultCardProps {
 
 function ResultCard({ icon: Icon, title, subtitle, iconColor, bgColor, borderColor, children }: ResultCardProps) {
   return (
-    <div className="rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 overflow-hidden animate-fade-in hover:border-primary/20 transition-all duration-300">
+    <div className="rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 overflow-hidden animate-fade-in hover:border-primary/20 transition-all duration-300 pdf-keep-together">
       <div className={cn("px-6 py-5 border-b", borderColor, bgColor)}>
         <div className="flex items-center gap-3">
           <div className={cn("p-2.5 rounded-xl", bgColor, iconColor)}>

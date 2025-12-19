@@ -242,16 +242,8 @@ const Success = () => {
         import("jspdf"),
       ]);
 
-      console.log("[PDF] Generating resume analysis PDF...");
+      console.log("[PDF] Generating resume analysis PDF with smart page breaks...");
 
-      const canvas = await html2canvas(analysisRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#0a0a0f",
-      });
-
-      const imgData = canvas.toDataURL("image/jpeg", 0.95);
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
@@ -260,25 +252,90 @@ const Success = () => {
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgHeight = canvas.height;
-      const imgWidth = canvas.width;
+      const margin = 10; // 10mm margins
+      const usableHeight = pdfHeight - (margin * 2);
+      const usableWidth = pdfWidth - (margin * 2);
 
-      // Calculate total pages needed
-      const scaledHeight = imgHeight * (pdfWidth / imgWidth);
-      const pageHeight = pdfHeight;
-      let heightLeft = scaledHeight;
-      let position = 0;
+      // Find all major sections to render separately
+      const sections = analysisRef.current.querySelectorAll('[id]');
+      const sectionElements: HTMLElement[] = [];
+      
+      // If we have identifiable sections, use them; otherwise fall back to children
+      if (sections.length > 0) {
+        sections.forEach(el => {
+          if (el instanceof HTMLElement && el.offsetHeight > 0) {
+            sectionElements.push(el);
+          }
+        });
+      }
 
-      // First page
-      pdf.addImage(imgData, "JPEG", 0, position, pdfWidth, scaledHeight);
-      heightLeft -= pageHeight;
+      // Fallback: if no sections found, use direct children of the container
+      if (sectionElements.length === 0) {
+        const children = analysisRef.current.children;
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i];
+          if (child instanceof HTMLElement && child.offsetHeight > 0) {
+            sectionElements.push(child);
+          }
+        }
+      }
 
-      // Add more pages if needed
-      while (heightLeft > 0) {
-        position -= pageHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, position, pdfWidth, scaledHeight);
-        heightLeft -= pageHeight;
+      // If still no sections, capture the whole thing
+      if (sectionElements.length === 0) {
+        sectionElements.push(analysisRef.current);
+      }
+
+      let currentY = margin;
+      let isFirstPage = true;
+
+      for (let i = 0; i < sectionElements.length; i++) {
+        const section = sectionElements[i];
+        
+        const canvas = await html2canvas(section, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: "#0a0a0f",
+        });
+
+        const imgData = canvas.toDataURL("image/jpeg", 0.92);
+        const imgWidth = usableWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        // Check if we need a new page
+        if (!isFirstPage && currentY + imgHeight > pdfHeight - margin) {
+          pdf.addPage();
+          currentY = margin;
+        }
+
+        // If section is taller than a page, we need to split it
+        if (imgHeight > usableHeight) {
+          // For very tall sections, split across pages
+          const scaledHeight = canvas.height * (usableWidth / canvas.width);
+          let heightLeft = scaledHeight;
+          let sourceY = 0;
+          
+          while (heightLeft > 0) {
+            const sliceHeight = Math.min(usableHeight, heightLeft);
+            
+            if (sourceY > 0) {
+              pdf.addPage();
+              currentY = margin;
+            }
+            
+            pdf.addImage(imgData, "JPEG", margin, currentY, imgWidth, scaledHeight, undefined, 'FAST', 0);
+            
+            heightLeft -= sliceHeight;
+            sourceY += sliceHeight;
+            currentY = margin + sliceHeight;
+          }
+        } else {
+          // Section fits on current page or new page
+          pdf.addImage(imgData, "JPEG", margin, currentY, imgWidth, imgHeight);
+          currentY += imgHeight + 5; // 5mm gap between sections
+        }
+
+        isFirstPage = false;
       }
 
       // Use jsPDF's native save method for reliable direct downloads
