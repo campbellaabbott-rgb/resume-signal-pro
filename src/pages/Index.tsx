@@ -68,6 +68,21 @@ interface FreeKeywordResult {
   experienceFit?: "underqualified" | "good_fit" | "overqualified";
   titleAlignment?: "poor" | "partial" | "strong";
   jobMatchSummary?: string;
+  applicationRecommendation?: {
+    recommendation: "strong_apply" | "apply_with_changes" | "apply_as_stretch" | "do_not_apply";
+    reasoning: string;
+    confidence: "high" | "medium" | "low";
+  };
+  skillGapActions?: {
+    action: string;
+    priority: "must_have" | "should_have" | "nice_to_have";
+    timeframe: string;
+  }[];
+  competitiveAssessment?: {
+    likelyPosition: "top_candidate" | "competitive" | "middle_of_pack" | "unlikely_to_advance";
+    strengthVsField: string;
+    weaknessVsField: string;
+  };
 }
 
 const Index = () => {
@@ -855,6 +870,9 @@ const Index = () => {
                 experienceFit={freeKeywordResult.experienceFit}
                 titleAlignment={freeKeywordResult.titleAlignment}
                 jobMatchSummary={freeKeywordResult.jobMatchSummary}
+                applicationRecommendation={freeKeywordResult.applicationRecommendation}
+                skillGapActions={freeKeywordResult.skillGapActions}
+                competitiveAssessment={freeKeywordResult.competitiveAssessment}
                 onGetFullAnalysis={() => handleCheckout(resumeText, linkedInText, jobDescriptionText)}
                 onGetJobAnalysis={handleJobAnalysis}
                 isLoading={isLoading || isFreeScanLoading}

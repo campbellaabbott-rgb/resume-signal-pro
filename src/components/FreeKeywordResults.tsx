@@ -242,6 +242,24 @@ interface AtsSystemCompatibility {
   topIssue: string;
 }
 
+interface ApplicationRecommendation {
+  recommendation: "strong_apply" | "apply_with_changes" | "apply_as_stretch" | "do_not_apply";
+  reasoning: string;
+  confidence: "high" | "medium" | "low";
+}
+
+interface SkillGapAction {
+  action: string;
+  priority: "must_have" | "should_have" | "nice_to_have";
+  timeframe: string;
+}
+
+interface CompetitiveAssessment {
+  likelyPosition: "top_candidate" | "competitive" | "middle_of_pack" | "unlikely_to_advance";
+  strengthVsField: string;
+  weaknessVsField: string;
+}
+
 interface FreeKeywordResultsProps {
   industry: string;
   atsScoreEstimate: number;
@@ -281,6 +299,9 @@ interface FreeKeywordResultsProps {
   experienceFit?: "underqualified" | "good_fit" | "overqualified";
   titleAlignment?: "poor" | "partial" | "strong";
   jobMatchSummary?: string;
+  applicationRecommendation?: ApplicationRecommendation;
+  skillGapActions?: SkillGapAction[];
+  competitiveAssessment?: CompetitiveAssessment;
 }
 
 export function FreeKeywordResults({
@@ -320,7 +341,10 @@ export function FreeKeywordResults({
   missingSkills = [],
   experienceFit,
   titleAlignment,
-  jobMatchSummary
+  jobMatchSummary,
+  applicationRecommendation,
+  skillGapActions = [],
+  competitiveAssessment
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -677,6 +701,63 @@ export function FreeKeywordResults({
             </div>
           </div>
 
+          {/* Application Recommendation Banner */}
+          {applicationRecommendation && (
+            <div className={cn(
+              "rounded-xl p-4 mb-4 border-2",
+              applicationRecommendation.recommendation === "strong_apply" ? "bg-success/10 border-success/40" :
+              applicationRecommendation.recommendation === "apply_with_changes" ? "bg-warning/10 border-warning/40" :
+              applicationRecommendation.recommendation === "apply_as_stretch" ? "bg-primary/10 border-primary/40" :
+              "bg-destructive/10 border-destructive/40"
+            )}>
+              <div className="flex items-center gap-3 mb-2">
+                <div className={cn(
+                  "p-2 rounded-full",
+                  applicationRecommendation.recommendation === "strong_apply" ? "bg-success/20" :
+                  applicationRecommendation.recommendation === "apply_with_changes" ? "bg-warning/20" :
+                  applicationRecommendation.recommendation === "apply_as_stretch" ? "bg-primary/20" :
+                  "bg-destructive/20"
+                )}>
+                  {applicationRecommendation.recommendation === "strong_apply" ? (
+                    <CheckCircle2 className="w-5 h-5 text-success" />
+                  ) : applicationRecommendation.recommendation === "apply_with_changes" ? (
+                    <Zap className="w-5 h-5 text-warning" />
+                  ) : applicationRecommendation.recommendation === "apply_as_stretch" ? (
+                    <Target className="w-5 h-5 text-primary" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-destructive" />
+                  )}
+                </div>
+                <div>
+                  <p className={cn(
+                    "font-bold text-lg",
+                    applicationRecommendation.recommendation === "strong_apply" ? "text-success" :
+                    applicationRecommendation.recommendation === "apply_with_changes" ? "text-warning" :
+                    applicationRecommendation.recommendation === "apply_as_stretch" ? "text-primary" :
+                    "text-destructive"
+                  )}>
+                    {applicationRecommendation.recommendation === "strong_apply" ? "✓ Strong Match — Apply Now!" :
+                     applicationRecommendation.recommendation === "apply_with_changes" ? "⚡ Good Fit — Apply After Quick Fixes" :
+                     applicationRecommendation.recommendation === "apply_as_stretch" ? "🎯 Stretch Role — Apply as Reach" :
+                     "✗ Poor Fit — Consider Other Roles"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">{applicationRecommendation.reasoning}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Confidence:</span>
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full font-medium",
+                  applicationRecommendation.confidence === "high" ? "bg-success/20 text-success" :
+                  applicationRecommendation.confidence === "medium" ? "bg-warning/20 text-warning" :
+                  "bg-muted text-muted-foreground"
+                )}>
+                  {applicationRecommendation.confidence}
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             {/* Match Score */}
             <div className={cn("rounded-xl border p-3", getScoreBgColor(jobMatchScore))}>
@@ -726,6 +807,40 @@ export function FreeKeywordResults({
             )}
           </div>
 
+          {/* Competitive Assessment */}
+          {competitiveAssessment && (
+            <div className="rounded-xl bg-card border border-border p-4 mb-4">
+              <h5 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-primary" />
+                How You Compare to Other Applicants
+              </h5>
+              <div className="flex items-center gap-3 mb-3">
+                <div className={cn(
+                  "px-3 py-1.5 rounded-lg font-semibold text-sm",
+                  competitiveAssessment.likelyPosition === "top_candidate" ? "bg-success/20 text-success" :
+                  competitiveAssessment.likelyPosition === "competitive" ? "bg-primary/20 text-primary" :
+                  competitiveAssessment.likelyPosition === "middle_of_pack" ? "bg-warning/20 text-warning" :
+                  "bg-destructive/20 text-destructive"
+                )}>
+                  {competitiveAssessment.likelyPosition === "top_candidate" ? "🏆 Top Candidate" :
+                   competitiveAssessment.likelyPosition === "competitive" ? "💪 Competitive" :
+                   competitiveAssessment.likelyPosition === "middle_of_pack" ? "📊 Middle of Pack" :
+                   "⚠️ Unlikely to Advance"}
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg bg-success/5 border border-success/20">
+                  <p className="text-xs text-success font-medium mb-1">Your Advantage</p>
+                  <p className="text-sm text-foreground">{competitiveAssessment.strengthVsField}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20">
+                  <p className="text-xs text-destructive font-medium mb-1">Your Gap</p>
+                  <p className="text-sm text-foreground">{competitiveAssessment.weaknessVsField}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Skills Matching */}
           <div className="grid sm:grid-cols-2 gap-4 mb-4">
             {matchingSkills.length > 0 && (
@@ -760,6 +875,34 @@ export function FreeKeywordResults({
               </div>
             )}
           </div>
+
+          {/* Skill Gap Actions - What to do to be considered */}
+          {skillGapActions.length > 0 && (
+            <div className="rounded-xl bg-card border border-border p-4 mb-4">
+              <h5 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-warning" />
+                What You Need to Do to Be Considered
+              </h5>
+              <div className="space-y-2">
+                {skillGapActions.slice(0, 5).map((action, i) => (
+                  <div key={i} className="flex items-start gap-3 p-2 rounded-lg bg-muted/30">
+                    <div className={cn(
+                      "px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 mt-0.5",
+                      action.priority === "must_have" ? "bg-destructive/20 text-destructive" :
+                      action.priority === "should_have" ? "bg-warning/20 text-warning" :
+                      "bg-muted text-muted-foreground"
+                    )}>
+                      {action.priority === "must_have" ? "Must" : action.priority === "should_have" ? "Should" : "Nice"}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-foreground">{action.action}</p>
+                      <p className="text-xs text-muted-foreground">⏱ {action.timeframe}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Summary */}
           {jobMatchSummary && (
