@@ -315,7 +315,10 @@ JOB MATCHING ANALYSIS (REQUIRED when job description is provided):
 29. Missing Skills: List 5 critical skills/keywords from the job that are MISSING from the resume
 30. Experience Fit: How well their experience level matches job requirements
 31. Title Alignment: How close their current/past titles are to the target job
-32. Job Match Summary: One sentence explaining match quality and top priority to improve` : ''}
+32. Job Match Summary: One sentence explaining match quality and top priority to improve
+33. Application Recommendation: Based on the overall fit, provide a clear recommendation
+34. Skill Gap Actions: Specific actions they must take to be considered for this role
+35. Competitive Assessment: How they compare to likely other applicants for this specific role` : ''}
 
 Be direct and specific. Quote actual text from the resume when relevant.
 
@@ -616,7 +619,40 @@ ${resumeText.substring(0, 15000)}
                 },
                 experienceFit: { type: "string", enum: ["underqualified", "good_fit", "overqualified"], description: "How experience matches job. Only provide if job description given." },
                 titleAlignment: { type: "string", enum: ["poor", "partial", "strong"], description: "How well titles align with target job. Only provide if job description given." },
-                jobMatchSummary: { type: "string", description: "One sentence on match quality and top improvement priority. Only provide if job description given." }
+                jobMatchSummary: { type: "string", description: "One sentence on match quality and top improvement priority. Only provide if job description given." },
+                applicationRecommendation: {
+                  type: "object",
+                  properties: {
+                    recommendation: { type: "string", enum: ["strong_apply", "apply_with_changes", "apply_as_stretch", "do_not_apply"], description: "Clear recommendation for whether to apply" },
+                    reasoning: { type: "string", description: "Brief explanation of why this recommendation (under 20 words)" },
+                    confidence: { type: "string", enum: ["high", "medium", "low"], description: "Confidence level in this recommendation" }
+                  },
+                  required: ["recommendation", "reasoning", "confidence"],
+                  description: "Application recommendation. Only provide if job description given."
+                },
+                skillGapActions: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      action: { type: "string", description: "Specific action to take (under 15 words)" },
+                      priority: { type: "string", enum: ["must_have", "should_have", "nice_to_have"] },
+                      timeframe: { type: "string", description: "How long this would take (e.g., '1 week', '2-3 months')" }
+                    },
+                    required: ["action", "priority", "timeframe"]
+                  },
+                  description: "3-5 specific actions to close the skill gap. Only provide if job description given."
+                },
+                competitiveAssessment: {
+                  type: "object",
+                  properties: {
+                    likelyPosition: { type: "string", enum: ["top_candidate", "competitive", "middle_of_pack", "unlikely_to_advance"], description: "Where they likely rank among applicants" },
+                    strengthVsField: { type: "string", description: "Their biggest advantage over other applicants (under 15 words)" },
+                    weaknessVsField: { type: "string", description: "Their biggest disadvantage vs other applicants (under 15 words)" }
+                  },
+                  required: ["likelyPosition", "strengthVsField", "weaknessVsField"],
+                  description: "Competitive assessment. Only provide if job description given."
+                }
               },
               required: [
                 "industry", "atsScoreEstimate", "formatGrade", "formatIssue",
