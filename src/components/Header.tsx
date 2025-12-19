@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ScanPackPurchase } from "@/components/ScanPackPurchase";
-
+import { ScanCreditsCounter } from "@/components/ScanCreditsCounter";
 export function Header() {
   const { t } = useTranslation();
   const [showScanPackModal, setShowScanPackModal] = useState(false);
@@ -44,15 +44,16 @@ export function Header() {
               {t('header.tagline')}
             </span>
             <LanguageSwitcher variant="compact" />
+            <ScanCreditsCounter />
             <Button 
               variant="outline" 
               size="sm" 
               onClick={() => setShowScanPackModal(true)}
               className="gap-2 min-h-[44px] min-w-[44px] touch-manipulation hidden sm:flex"
-              aria-label="Buy more scans"
+              aria-label="Buy more scans - $10 for 30 scans"
             >
               <CreditCard className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Buy Scans</span>
+              <span>$10 / 30 Scans</span>
             </Button>
             <Button 
               variant="default" 

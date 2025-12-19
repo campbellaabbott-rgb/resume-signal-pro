@@ -35,8 +35,8 @@ export function ScanPackPurchase({ onClose, className, open, onOpenChange }: Sca
           <Package className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="font-semibold text-lg">Scan Credit Pack</h3>
-          <p className="text-sm text-muted-foreground">Get more scans without daily limits</p>
+          <h3 className="font-semibold text-lg">$10 for 30 Scans</h3>
+          <p className="text-sm text-muted-foreground">Up to 7 scans free daily • Need more? Buy a pack!</p>
         </div>
       </div>
 
