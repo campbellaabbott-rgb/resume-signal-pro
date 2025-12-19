@@ -3,8 +3,9 @@ import { useTranslation } from "react-i18next";
 import { 
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
-  Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download
+  Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple
 } from "lucide-react";
+import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -2000,7 +2001,8 @@ export function FreeKeywordResults({
           {getFinalCtaText()} — {t('freeScan.cta.price')}
           <ArrowRight className="w-5 h-5" />
         </Button>
-        <p className="text-sm text-muted-foreground mt-3">
+        <WalletPaymentBadge className="mt-3" />
+        <p className="text-sm text-muted-foreground mt-2">
           <span className="text-success font-medium">One interview = {priceDisplay} paid for itself</span>
         </p>
       </div>

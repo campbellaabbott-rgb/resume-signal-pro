@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
-import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Target, Zap, Link, Table2, Download } from "lucide-react";
+import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Target, Zap, Link, Table2, Download, Apple } from "lucide-react";
+import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -1030,13 +1031,16 @@ export function ResumeUploader({
               )}
             </Button>
             
-            <div id="payment-info" className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <CreditCard className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>Secure payment via Stripe</span>
+            <div id="payment-info" className="flex flex-col items-center gap-2">
+              <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <CreditCard className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Secure payment via Stripe</span>
+                </div>
+                <span className="w-1 h-1 rounded-full bg-muted-foreground/30" aria-hidden="true" />
+                <span>Results delivered instantly</span>
               </div>
-              <span className="w-1 h-1 rounded-full bg-muted-foreground/30" aria-hidden="true" />
-              <span>Results delivered instantly</span>
+              <WalletPaymentBadge />
             </div>
             
             {!hasLinkedInContent && !hasJobDescriptionContent && (
