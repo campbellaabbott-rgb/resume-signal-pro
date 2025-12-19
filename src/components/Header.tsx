@@ -1,4 +1,4 @@
-import { Sparkles, CreditCard } from "lucide-react";
+import { Sparkles, CreditCard, Package } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
@@ -7,9 +7,12 @@ import { Logo } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ScanPackPurchase } from "@/components/ScanPackPurchase";
 import { ScanCreditsCounter } from "@/components/ScanCreditsCounter";
+import { ProductSelectionModal } from "@/components/ProductSelectionModal";
+
 export function Header() {
   const { t } = useTranslation();
   const [showScanPackModal, setShowScanPackModal] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
   
   const scrollToUpload = () => {
     const uploadSection = document.getElementById('upload');
@@ -53,12 +56,12 @@ export function Header() {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => setShowScanPackModal(true)}
+              onClick={() => setShowProductModal(true)}
               className="gap-2 min-h-[44px] min-w-[44px] touch-manipulation hidden sm:flex"
-              aria-label="Buy more scans - $10 for 30 scans"
+              aria-label="View available packages"
             >
-              <CreditCard className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>$10 / 30 Scans</span>
+              <Package className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Packages</span>
             </Button>
             <Button 
               variant="default" 
@@ -78,6 +81,11 @@ export function Header() {
       <ScanPackPurchase 
         open={showScanPackModal} 
         onOpenChange={setShowScanPackModal} 
+      />
+      
+      <ProductSelectionModal 
+        open={showProductModal} 
+        onOpenChange={setShowProductModal} 
       />
       </header>
     </>
