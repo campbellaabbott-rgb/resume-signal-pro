@@ -6,7 +6,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const analysisPoints = [
-  { icon: Target, label: "ATS Score", color: "text-primary" },
+  { icon: Target, label: "AI-ATS Score", color: "text-primary" },
   { icon: FileCheck, label: "Format Grade", color: "text-success" },
   { icon: FileText, label: "Resume Length", color: "text-warning" },
   { icon: Type, label: "Word Count", color: "text-primary" },
@@ -46,7 +46,7 @@ export function HowItWorks() {
             24-Point Deep Resume Scan
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Our AI analyzes every word, phrase, and section of your resume against real recruiter standards and ATS requirements.
+            Our AI simulates how modern AI-powered ATS systems scan your resume, analyzing every word against real recruiter standards.
           </p>
         </div>
 

@@ -21,14 +21,14 @@ import {
 // Tooltip explanations for each metric
 const metricTooltips = {
   atsScore: {
-    title: "ATS Score",
-    description: "Measures how well your resume will perform in Applicant Tracking Systems that 98% of Fortune 500 companies use.",
+    title: "AI-ATS Score",
+    description: "Our AI simulates how modern AI-powered Applicant Tracking Systems scan your resume—the same technology 98% of Fortune 500 companies use.",
     whyMatters: "A low score means your resume may never reach a human recruiter."
   },
   format: {
     title: "Format Grade",
-    description: "Evaluates your resume's structure, layout, and ATS-readability.",
-    whyMatters: "Poor formatting causes ATS parsing errors, losing your key information."
+    description: "Evaluates your resume's structure, layout, and AI-ATS readability.",
+    whyMatters: "Poor formatting causes AI-ATS parsing errors, losing your key information."
   },
   metrics: {
     title: "Quantification Score",
@@ -72,8 +72,8 @@ const metricTooltips = {
   },
   keywordDensity: {
     title: "Keyword Density",
-    description: "Measures industry-relevant keyword presence for ATS matching.",
-    whyMatters: "Too few keywords = no ATS match. Too many = keyword stuffing penalty."
+    description: "Measures industry-relevant keyword presence for AI-ATS matching.",
+    whyMatters: "Too few keywords = no AI-ATS match. Too many = keyword stuffing penalty."
   },
   improvementPotential: {
     title: "Improvement Potential",
@@ -91,9 +91,9 @@ const metricTooltips = {
     whyMatters: "Recruiters look for stability and growth—gaps need explanation."
   },
   atsCompatibility: {
-    title: "ATS System Compatibility",
-    description: "Shows how well your resume parses across major Applicant Tracking Systems like Workday, Greenhouse, and Taleo.",
-    whyMatters: "Different companies use different ATS—know which ones will read your resume correctly."
+    title: "AI-ATS System Compatibility",
+    description: "Shows how well your resume parses across major AI-powered Applicant Tracking Systems like Workday, Greenhouse, and Taleo.",
+    whyMatters: "Different companies use different AI-ATS systems—know which ones will read your resume correctly."
   }
 };
 
