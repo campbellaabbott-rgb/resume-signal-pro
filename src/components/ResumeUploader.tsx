@@ -9,7 +9,7 @@ import { JobSelector, type JobEntry } from "@/components/JobSelector";
 import { JobComparisonCTA } from "@/components/JobComparisonCTA";
 const ANALYSIS_STEPS = [
   "Parsing resume content...",
-  "Analyzing ATS compatibility...",
+  "Running AI-ATS simulation...",
   "Evaluating formatting...",
   "Scanning keywords...",
   "Detecting industry...",

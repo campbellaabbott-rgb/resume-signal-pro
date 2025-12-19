@@ -20,8 +20,8 @@
     "whyBetter": "Why Better Than ChatGPT?",
     "problemBadge": "85% of resumes never reach a human",
     "mainHeading": "Is Your Resume Being",
-    "mainHeadingHighlight": "Rejected by ATS?",
-    "mainSubheading": "Find out in 30 seconds. Get your ATS score and see exactly what's costing you interviews.",
+    "mainHeadingHighlight": "Rejected by AI-Powered ATS?",
+    "mainSubheading": "Find out in 30 seconds. Our AI simulates how ATS systems scan your resume and shows exactly what's costing you interviews.",
     "ctaButton": "Check My Resume Now",
     "freeBadge": "FREE",
     "noSignup": "No sign-up required",
@@ -31,14 +31,14 @@
     "trustedBy": "Trusted by professionals at",
     "freeScanReveals": "Your free scan reveals:",
     "reveal": {
-      "atsScore": "ATS Score",
+      "atsScore": "AI-ATS Score",
       "keywords": "Missing Keywords",
       "redFlags": "Red Flags",
       "quickFixes": "Quick Fixes"
     },
     "features": {
-      "atsBullets": "ATS-optimized bullets",
-      "atsBulletsDesc": "Beat the robots",
+      "atsBullets": "AI-ATS optimized bullets",
+      "atsBulletsDesc": "Beat the AI screeners",
       "actionVerbs": "Stronger action verbs",
       "actionVerbsDesc": "Stand out instantly",
       "keywords": "Keyword suggestions",
@@ -111,7 +111,7 @@
       "processing": "Processing...",
       "getFullAnalysis": "Get Full Analysis",
       "forOnly": "for only",
-      "includes": "Includes ATS optimization, bullet rewrites & action plan"
+      "includes": "Includes AI-ATS optimization, bullet rewrites & action plan"
     }
   },
   "faq": {
@@ -120,7 +120,7 @@
     "questions": {
       "whatDoIGet": {
         "question": "What do I get with Resume Booster?",
-        "answer": "You get a comprehensive analysis including ATS-optimized bullet point rewrites, stronger action verb suggestions, keyword recommendations for your industry, and red flags that recruiters might notice. Everything is written in direct, actionable language."
+        "answer": "You get a comprehensive analysis including AI-ATS optimized bullet point rewrites, stronger action verb suggestions, keyword recommendations for your industry, and red flags that AI screeners and recruiters might notice. Everything is written in direct, actionable language."
       },
       "howLong": {
         "question": "How long does the analysis take?",
@@ -148,7 +148,7 @@
       },
       "vsChatGPT": {
         "question": "Why is this better than ChatGPT or resume templates?",
-        "answer": "Resume Booster is purpose-built for ATS optimization with a 5-category weighted scoring system, 14 industry-specific templates, and recruiter-calibrated feedback. Unlike ChatGPT, you get consistent 10-section structured output without prompt engineering. Unlike templates, we provide personalized rewrites, LinkedIn analysis, and job description alignment. Your data is immediately discarded—never used for training."
+        "answer": "Resume Booster uses AI to simulate how modern AI-powered ATS systems scan resumes, with a 5-category weighted scoring system, 14 industry-specific templates, and recruiter-calibrated feedback. Unlike ChatGPT, you get consistent 10-section structured output without prompt engineering. Unlike templates, we provide personalized rewrites, LinkedIn analysis, and job description alignment. Your data is immediately discarded—never used for training."
       }
     }
   },
@@ -161,7 +161,7 @@
     "cta": "Try It Now — $25",
     "ctaText": "Try It Now",
     "features": {
-      "atsScoring": "5-Category ATS Scoring",
+      "atsScoring": "5-Category AI-ATS Scoring",
       "industryTemplates": "14 Industry-Specific Templates",
       "consistentOutput": "Consistent Structured Output",
       "linkedinAnalysis": "LinkedIn Profile Analysis",
@@ -197,7 +197,7 @@
     "badge": "Sample Analysis",
     "title": "See What You'll Get",
     "subtitle": "Here's a preview of the detailed, actionable feedback in every analysis",
-    "atsScore": "ATS Compatibility Score",
+    "atsScore": "AI-ATS Compatibility Score",
     "jdMatch": "Job Description Match",
     "addJd": "Add a JD for this",
     "match": "match",
@@ -207,7 +207,7 @@
     "formattingIssues": "Formatting Issues",
     "detected": "Detected",
     "fixes": "Fixes",
-    "atsBullets": "ATS-Optimized Bullets",
+    "atsBullets": "AI-ATS Optimized Bullets",
     "before": "Before",
     "after": "After",
     "resumeLength": "Resume Length",
@@ -226,7 +226,7 @@
     "complete": "17-Point Free Scan Complete",
     "preview": "Here's your comprehensive preview",
     "detected": "Detected",
-    "atsScore": "ATS Score",
+    "atsScore": "AI-ATS Score",
     "breakdownLocked": "Breakdown locked",
     "format": "Format",
     "metrics": "Metrics",
@@ -263,7 +263,7 @@
     },
     "cta": {
       "title": "Unlock Your Full Analysis",
-      "description": "Get comprehensive feedback with detailed bullet rewrites, ATS optimization strategies, and a prioritized action plan.",
+      "description": "Get comprehensive feedback with detailed bullet rewrites, AI-ATS optimization strategies, and a prioritized action plan.",
       "button": "Get Full Analysis",
       "price": "$25",
       "processing": "Processing..."
@@ -350,7 +350,7 @@
     "heading": "Don't Let Another Opportunity Slip Away",
     "subheading": "Get the exact fixes recruiters want to see. One analysis could change everything.",
     "benefits": {
-      "ats": "ATS score with 5-point breakdown",
+      "ats": "AI-ATS score with 5-point breakdown",
       "keywords": "Industry-specific keyword gaps",
       "redFlags": "Red flags recruiters notice",
       "linkedin": "LinkedIn profile optimization"
