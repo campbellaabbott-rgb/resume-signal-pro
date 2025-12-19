@@ -5,6 +5,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// HTML escape function to prevent XSS attacks
+function escapeHtml(text: string | number | undefined | null): string {
+  if (text === undefined || text === null) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 interface AnalysisEmailRequest {
   email: string;
   analysisData: {
@@ -38,20 +49,23 @@ function generateEmailHtml(data: AnalysisEmailRequest): string {
   const atsScore = analysisData.atsScore?.score || 0;
   const scoreColor = atsScore >= 80 ? '#22c55e' : atsScore >= 60 ? '#eab308' : '#ef4444';
   
+  // Escape all user-provided content to prevent XSS
   const actionPlanHtml = analysisData.actionPlan?.slice(0, 5).map((item, i) => 
-    `<li style="margin-bottom: 8px; color: #374151;">${i + 1}. ${item}</li>`
+    `<li style="margin-bottom: 8px; color: #374151;">${i + 1}. ${escapeHtml(item)}</li>`
   ).join('') || '';
 
   const redFlagsHtml = analysisData.redFlags?.slice(0, 3).map(flag => 
-    `<li style="margin-bottom: 4px; color: #dc2626;">⚠️ ${flag}</li>`
+    `<li style="margin-bottom: 4px; color: #dc2626;">⚠️ ${escapeHtml(flag)}</li>`
   ).join('') || '';
 
   const keywordsHtml = analysisData.keywords?.slice(0, 8).map(kw => 
-    `<span style="display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 16px; margin: 4px; font-size: 14px;">${kw}</span>`
+    `<span style="display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 16px; margin: 4px; font-size: 14px;">${escapeHtml(kw)}</span>`
   ).join('') || '';
 
-  const viewResultsUrl = shareId 
-    ? `https://resumebooster.lovable.app/success?share=${shareId}`
+  // Validate shareId format before using in URL
+  const safeShareId = shareId && /^[a-f0-9]{24,32}$/.test(shareId) ? shareId : null;
+  const viewResultsUrl = safeShareId 
+    ? `https://resumebooster.lovable.app/success?share=${safeShareId}`
     : 'https://resumebooster.lovable.app';
 
   return `
@@ -98,16 +112,16 @@ function generateEmailHtml(data: AnalysisEmailRequest): string {
               <!-- Industry & Level -->
               <div style="background: #f9fafb; padding: 16px; border-radius: 12px; margin-bottom: 24px; text-align: center;">
                 <span style="color: #6b7280;">Industry:</span>
-                <strong style="color: #111827; margin-left: 4px;">${analysisData.industry || 'General'}</strong>
+                <strong style="color: #111827; margin-left: 4px;">${escapeHtml(analysisData.industry || 'General')}</strong>
                 <span style="color: #d1d5db; margin: 0 12px;">|</span>
                 <span style="color: #6b7280;">Level:</span>
-                <strong style="color: #111827; margin-left: 4px; text-transform: capitalize;">${analysisData.experienceLevel || 'Mid'}</strong>
+                <strong style="color: #111827; margin-left: 4px; text-transform: capitalize;">${escapeHtml(analysisData.experienceLevel || 'Mid')}</strong>
               </div>
 
               ${analysisData.hasJobDescription && analysisData.jobMatch ? `
               <!-- Job Match Score -->
               <div style="background: #fef3c7; padding: 16px; border-radius: 12px; margin-bottom: 24px; border-left: 4px solid #f59e0b;">
-                <p style="margin: 0 0 8px; font-weight: 600; color: #92400e;">📋 Job Match Score: ${analysisData.jobMatch.score || 0}%</p>
+                <p style="margin: 0 0 8px; font-weight: 600; color: #92400e;">📋 Job Match Score: ${escapeHtml(analysisData.jobMatch.score || 0)}%</p>
                 <p style="margin: 0; color: #78350f; font-size: 14px;">
                   Your resume ${(analysisData.jobMatch.score || 0) >= 70 ? 'aligns well' : 'needs optimization'} for the target job description.
                 </p>
@@ -151,7 +165,7 @@ function generateEmailHtml(data: AnalysisEmailRequest): string {
               <div style="background: #f0fdf4; padding: 16px; border-radius: 12px; margin-bottom: 24px; border-left: 4px solid #22c55e;">
                 <h3 style="margin: 0 0 8px; color: #166534; font-size: 16px;">✍️ Optimized Summary</h3>
                 <p style="margin: 0; color: #166534; font-size: 14px; line-height: 1.6;">
-                  "${analysisData.summaryRewrite.professionalSummary}"
+                  "${escapeHtml(analysisData.summaryRewrite.professionalSummary)}"
                 </p>
               </div>
               ` : ''}
@@ -232,10 +246,13 @@ Deno.serve(async (req) => {
     const resend = new Resend(RESEND_API_KEY);
     const html = generateEmailHtml(requestData);
 
+    // Sanitize ATS score for subject line (ensure it's a valid number)
+    const safeAtsScore = Math.min(100, Math.max(0, Math.round(requestData.analysisData.atsScore?.score || 0)));
+    
     const { data, error } = await resend.emails.send({
       from: "Resume Booster <onboarding@resend.dev>",
       to: [requestData.email],
-      subject: `Your Resume Analysis is Ready! (ATS Score: ${requestData.analysisData.atsScore?.score || 0}/100)`,
+      subject: `Your Resume Analysis is Ready! (ATS Score: ${safeAtsScore}/100)`,
       html,
     });
 
