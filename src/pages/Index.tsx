@@ -13,7 +13,7 @@ import { StickyBottomCTA } from "@/components/StickyBottomCTA";
 import { FinalCTA } from "@/components/FinalCTA";
 import { RateLimitUpsell } from "@/components/RateLimitUpsell";
 import { TailoredResumeModal } from "@/components/TailoredResumeModal";
-import { PreCheckoutModal } from "@/components/PreCheckoutModal";
+
 import { type JobEntry } from "@/components/JobSelector";
 
 import { HowItWorks } from "@/components/HowItWorks";
@@ -104,7 +104,7 @@ const Index = () => {
   const [uploadedJobs, setUploadedJobs] = useState<JobEntry[]>([]);
   const [showRateLimitUpsell, setShowRateLimitUpsell] = useState(false);
   const [showTailoredResumeModal, setShowTailoredResumeModal] = useState(false);
-  const [showPreCheckoutModal, setShowPreCheckoutModal] = useState(false);
+  
   const [tailoredResumeContent, setTailoredResumeContent] = useState<any>(null);
   const [isGeneratingTailored, setIsGeneratingTailored] = useState(false);
   const [currentJobForTailoring, setCurrentJobForTailoring] = useState<{ title: string; company?: string; description?: string } | null>(null);
@@ -854,23 +854,6 @@ const Index = () => {
     setCheckoutUrl(undefined);
   };
 
-  // Show pre-checkout confirmation modal before redirecting to Stripe
-  const handlePreCheckout = () => {
-    if (!resumeText || resumeText.trim().length < 50) {
-      toast({
-        title: "Resume required",
-        description: "Please upload or paste your resume first.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setShowPreCheckoutModal(true);
-  };
-
-  const handleConfirmCheckout = () => {
-    setShowPreCheckoutModal(false);
-    handleCheckout(resumeText, linkedInText, jobDescriptionText);
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -957,7 +940,7 @@ const Index = () => {
                 applicationRecommendation={freeKeywordResult.applicationRecommendation}
                 skillGapActions={freeKeywordResult.skillGapActions}
                 competitiveAssessment={freeKeywordResult.competitiveAssessment}
-                onGetFullAnalysis={handlePreCheckout}
+                onGetFullAnalysis={() => handleCheckout(resumeText, linkedInText, jobDescriptionText)}
                 onGetJobAnalysis={handleJobAnalysis}
                 onGenerateTailoredResume={handleGenerateTailoredResume}
                 isGeneratingTailored={isGeneratingTailored}
@@ -1008,14 +991,6 @@ const Index = () => {
         isLoading={isGeneratingTailored}
       />
       
-      {/* Pre-Checkout Confirmation Modal */}
-      <PreCheckoutModal
-        open={showPreCheckoutModal}
-        onOpenChange={setShowPreCheckoutModal}
-        onConfirm={handleConfirmCheckout}
-        isLoading={isCheckoutLoading}
-        atsScore={freeKeywordResult?.atsScoreEstimate}
-      />
     </div>
   );
 };
