@@ -13,6 +13,7 @@ import { StickyBottomCTA } from "@/components/StickyBottomCTA";
 import { FinalCTA } from "@/components/FinalCTA";
 import { RateLimitUpsell } from "@/components/RateLimitUpsell";
 import { TailoredResumeModal } from "@/components/TailoredResumeModal";
+import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 
 import { type JobEntry } from "@/components/JobSelector";
 
@@ -104,6 +105,7 @@ const Index = () => {
   const [uploadedJobs, setUploadedJobs] = useState<JobEntry[]>([]);
   const [showRateLimitUpsell, setShowRateLimitUpsell] = useState(false);
   const [showTailoredResumeModal, setShowTailoredResumeModal] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
   
   const [tailoredResumeContent, setTailoredResumeContent] = useState<any>(null);
   const [isGeneratingTailored, setIsGeneratingTailored] = useState(false);
@@ -989,6 +991,13 @@ const Index = () => {
         }}
         content={tailoredResumeContent}
         isLoading={isGeneratingTailored}
+      />
+      
+      {/* Product Selection Modal */}
+      <ProductSelectionModal
+        open={showProductModal}
+        onOpenChange={setShowProductModal}
+        sessionId={preStoredSessionId || undefined}
       />
       
     </div>
