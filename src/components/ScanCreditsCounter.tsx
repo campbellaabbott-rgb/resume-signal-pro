@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Coins, Check, ChevronDown } from "lucide-react";
+import { Coins, Check, ChevronDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -8,11 +8,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useScanCredits } from "@/hooks/use-scan-credits";
+import { ScanPackPurchase } from "@/components/ScanPackPurchase";
 
 export function ScanCreditsCounter() {
   const [email, setEmail] = useState("");
   const [checkedEmail, setCheckedEmail] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [showPurchase, setShowPurchase] = useState(false);
   const { credits, checkCredits, isLoading, creditsPerPack, packPrice } = useScanCredits();
 
   // Try to load email from localStorage on mount
@@ -70,8 +72,20 @@ export function ScanCreditsCounter() {
             </div>
             
             <p className="text-xs text-muted-foreground text-center">
-              Credits never expire. Need more? Buy 30 scans for ${packPrice}.
+              Credits never expire.
             </p>
+            
+            <Button
+              onClick={() => {
+                setShowPurchase(true);
+                setIsOpen(false);
+              }}
+              size="sm"
+              className="w-full gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Buy {creditsPerPack} More — ${packPrice}
+            </Button>
             
             <Button
               variant="ghost"
@@ -86,6 +100,11 @@ export function ScanCreditsCounter() {
               Use different email
             </Button>
           </div>
+          
+          <ScanPackPurchase 
+            open={showPurchase} 
+            onOpenChange={setShowPurchase} 
+          />
         </PopoverContent>
       </Popover>
     );
@@ -143,15 +162,29 @@ export function ScanCreditsCounter() {
             </div>
           )}
           
-          <div className="pt-2 border-t border-border">
+          <div className="pt-2 border-t border-border space-y-2">
             <p className="text-xs text-muted-foreground">
               <strong>Free tier:</strong> Up to 7 scans per day, free forever.
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              <strong>Need more?</strong> ${packPrice} for {creditsPerPack} additional scans that never expire.
-            </p>
+            <Button
+              onClick={() => {
+                setShowPurchase(true);
+                setIsOpen(false);
+              }}
+              variant="outline"
+              size="sm"
+              className="w-full gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Get {creditsPerPack} Scans — ${packPrice}
+            </Button>
           </div>
         </div>
+        
+        <ScanPackPurchase 
+          open={showPurchase} 
+          onOpenChange={setShowPurchase} 
+        />
       </PopoverContent>
     </Popover>
   );
