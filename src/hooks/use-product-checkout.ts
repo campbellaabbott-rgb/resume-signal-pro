@@ -26,7 +26,7 @@ export function useProductCheckout() {
       const { data, error } = await supabase.functions.invoke('create-product-checkout', {
         body: { 
           email: email.toLowerCase().trim(),
-          productId: product.id,
+          productId: productId, // Use the key (e.g., 'basicKeywordFix') not product.id
           sessionId
         }
       });
