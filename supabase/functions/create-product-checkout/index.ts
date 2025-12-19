@@ -7,24 +7,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Product configuration with price IDs
+// Product configuration with price IDs (keys match frontend ProductId keys)
 const PRODUCTS: Record<string, { priceId: string; name: string; productType: string; credits?: number }> = {
-  basic_keyword_fix: {
+  basicKeywordFix: {
     priceId: "price_1SgD9THBplUUV1CgSf9yWydz",
     name: "Basic Keyword Fix",
     productType: "basic_keyword_fix"
   },
-  cover_letter: {
+  coverLetter: {
     priceId: "price_1SgD8oHBplUUV1Cgpbhi1ujj",
     name: "Cover Letter Generator",
     productType: "cover_letter"
   },
-  premium_package: {
+  premiumPackage: {
     priceId: "price_1SgD7FHBplUUV1CgMvN7VSxb",
     name: "Premium Resume Package",
     productType: "premium_package"
   },
-  career_bundle: {
+  careerBundle: {
     priceId: "price_1SgD9rHBplUUV1CgtvpDTTEv",
     name: "Career Bundle (10 Analyses)",
     productType: "career_bundle",
