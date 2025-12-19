@@ -21,11 +21,16 @@ export function Header() {
     }
   };
 
-  return (
-    <header 
-      className="fixed top-0 left-0 right-0 z-50 bg-background/60 backdrop-blur-xl border-b border-border/50"
-      role="banner"
-    >
+    return (
+    <>
+      {/* Beta Banner */}
+      <div className="fixed top-0 left-0 right-0 z-[51] bg-primary text-primary-foreground text-center py-1.5 text-xs font-medium tracking-wide">
+        🚀 Currently in Beta — We'd love your feedback!
+      </div>
+      <header 
+        className="fixed top-10 left-0 right-0 z-50 bg-background/60 backdrop-blur-xl border-b border-border/50"
+        role="banner"
+      >
       <div className="container">
         <nav className="flex items-center justify-between h-16" aria-label="Main navigation">
           <Link 
@@ -74,6 +79,7 @@ export function Header() {
         open={showScanPackModal} 
         onOpenChange={setShowScanPackModal} 
       />
-    </header>
+      </header>
+    </>
   );
 }
