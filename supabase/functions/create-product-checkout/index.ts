@@ -26,9 +26,9 @@ const PRODUCTS: Record<string, { priceId: string; name: string; productType: str
   },
   careerBundle: {
     priceId: "price_1SgD9rHBplUUV1CgtvpDTTEv",
-    name: "Career Bundle (10 Analyses)",
+    name: "Career Bundle (75 Analyses)",
     productType: "career_bundle",
-    credits: 10
+    credits: 75
   }
 };
 

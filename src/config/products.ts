@@ -76,19 +76,19 @@ export const PRODUCTS = {
   },
   careerBundle: {
     id: 'career_bundle',
-    name: 'Career Bundle (10 Analyses)',
-    description: '10 full resume analyses - Save $100',
+    name: 'Career Bundle (75 Analyses)',
+    description: '75 full resume analyses - Best value for job seekers',
     priceUsd: 150,
     priceId: 'price_1SgD9rHBplUUV1CgtvpDTTEv',
-    credits: 10,
+    credits: 75,
     features: [
-      '10 full resume analyses',
+      '75 full resume analyses',
       'Use for multiple jobs',
       'Share with friends',
       'Never expires'
     ],
     badge: 'Bulk Discount',
-    savings: 'Save $100'
+    savings: 'Save $1,725'
   }
 } as const;
 
