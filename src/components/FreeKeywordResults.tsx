@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { 
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
-  Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase
+  Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -302,6 +302,8 @@ interface FreeKeywordResultsProps {
   applicationRecommendation?: ApplicationRecommendation;
   skillGapActions?: SkillGapAction[];
   competitiveAssessment?: CompetitiveAssessment;
+  onGenerateTailoredResume?: () => void;
+  isGeneratingTailored?: boolean;
 }
 
 export function FreeKeywordResults({
@@ -344,7 +346,9 @@ export function FreeKeywordResults({
   jobMatchSummary,
   applicationRecommendation,
   skillGapActions = [],
-  competitiveAssessment
+  competitiveAssessment,
+  onGenerateTailoredResume,
+  isGeneratingTailored
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -909,6 +913,42 @@ export function FreeKeywordResults({
             <div className="rounded-xl bg-muted/50 p-3">
               <p className="text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">💡 Summary:</span> {jobMatchSummary}
+              </p>
+            </div>
+          )}
+
+          {/* Generate Tailored Resume CTA */}
+          {onGenerateTailoredResume && (
+            <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-success/10 via-success/5 to-primary/10 border-2 border-success/30">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 rounded-full bg-success/20">
+                  <Download className="w-5 h-5 text-success" />
+                </div>
+                <div>
+                  <h5 className="font-bold text-foreground">Ready to Apply?</h5>
+                  <p className="text-xs text-muted-foreground">Generate a resume tailored specifically for this role</p>
+                </div>
+              </div>
+              <Button
+                onClick={onGenerateTailoredResume}
+                disabled={isGeneratingTailored}
+                className="w-full gap-2 bg-success hover:bg-success/90 text-success-foreground"
+              >
+                {isGeneratingTailored ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Generating Tailored Resume...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Generate Tailored Resume & PDF
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </Button>
+              <p className="text-[10px] text-success/70 mt-2 text-center">
+                ✨ AI rewrites your resume for this specific job + downloadable PDF
               </p>
             </div>
           )}
