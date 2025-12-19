@@ -164,7 +164,7 @@ export function ScanCreditsCounter() {
           
           <div className="pt-2 border-t border-border space-y-2">
             <p className="text-xs text-muted-foreground">
-              <strong>Free tier:</strong> 75 scans included, no account needed.
+              <strong>Free tier:</strong> Up to 7 scans per day, free forever.
             </p>
             <Button
               onClick={() => {
