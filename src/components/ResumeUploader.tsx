@@ -16,9 +16,10 @@ interface StepIndicatorProps {
   label: string;
   isComplete: boolean;
   isOptional?: boolean;
+  isFree?: boolean;
 }
 
-function StepIndicator({ number, label, isComplete, isOptional }: StepIndicatorProps) {
+function StepIndicator({ number, label, isComplete, isOptional, isFree }: StepIndicatorProps) {
   return (
     <div className="flex items-center gap-3 mb-4">
       <div className={cn(
@@ -31,6 +32,9 @@ function StepIndicator({ number, label, isComplete, isOptional }: StepIndicatorP
       </div>
       <div className="flex items-center gap-2">
         <span className="font-semibold text-foreground">{label}</span>
+        {isFree && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">Free</span>
+        )}
         {isOptional && (
           <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Optional</span>
         )}
@@ -388,6 +392,7 @@ export function ResumeUploader({
               number={1} 
               label={t('uploader.resume.title')} 
               isComplete={canProceed}
+              isFree
             />
 
             <div className="flex justify-start mb-4" role="tablist" aria-label="Resume input method">
