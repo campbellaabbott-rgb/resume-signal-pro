@@ -6,6 +6,7 @@ import Index from "./pages/Index";
 import Success from "./pages/Success";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
 import { FloatingHelpButton } from "./components/FloatingHelpButton";
 
@@ -21,6 +22,7 @@ const App = () => (
         <Route path="/success" element={<Success />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/pricing" element={<Pricing />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
