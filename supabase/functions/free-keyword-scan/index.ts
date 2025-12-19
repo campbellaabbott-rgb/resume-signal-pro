@@ -729,7 +729,53 @@ ${resumeText.substring(0, 15000)}
       })()
     );
 
-    // Note: Email notification is now sent by save-lead function which has customer email
+    // Send admin notification email for every free scan
+    EdgeRuntime.waitUntil(
+      (async () => {
+        try {
+          const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+          if (!RESEND_API_KEY) {
+            console.log("[FREE-KEYWORD-SCAN] No RESEND_API_KEY, skipping admin notification");
+            return;
+          }
+          
+          const atsScore = analysis.atsScoreEstimate || 0;
+          const scoreEmoji = atsScore >= 80 ? '🟢' : atsScore >= 60 ? '🟡' : '🔴';
+          
+          const response = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${RESEND_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: "Resume Booster <onboarding@resend.dev>",
+              to: [ADMIN_EMAIL],
+              subject: `🔍 New Free Scan: ${analysis.industry || 'Unknown'} (ATS ${atsScore}) - ${country}`,
+              html: `
+                <h2>New Free Resume Scan</h2>
+                <ul>
+                  <li><strong>Country:</strong> ${country}</li>
+                  <li><strong>Industry:</strong> ${analysis.industry || 'Unknown'}</li>
+                  <li><strong>ATS Score:</strong> ${atsScore}/100</li>
+                  <li><strong>Experience Level:</strong> ${analysis.experienceLevel?.level || 'Unknown'}</li>
+                  <li><strong>IP Address:</strong> ${clientIp}</li>
+                  <li><strong>Time:</strong> ${new Date().toISOString()}</li>
+                </ul>
+              `,
+            }),
+          });
+          
+          if (!response.ok) {
+            console.error("[FREE-KEYWORD-SCAN] Admin notification failed:", await response.text());
+          } else {
+            console.log("[FREE-KEYWORD-SCAN] Admin notification sent");
+          }
+        } catch (err) {
+          console.error("[FREE-KEYWORD-SCAN] Admin notification error:", err);
+        }
+      })()
+    );
 
     // Build response with analysis data (use actual values, slice arrays)
     trackPerformance(requestStartTime, 'free-keyword-scan', true, { atsScore: analysis.atsScoreEstimate, industry: analysis.industry }, clientIp);
