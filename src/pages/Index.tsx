@@ -867,7 +867,7 @@ const Index = () => {
       />
       <Header />
 
-      <main id="main-content" className="pt-16" role="main">
+      <main id="main-content" className="pt-[104px]" role="main">
         <Hero />
         
         <HowItWorks />
