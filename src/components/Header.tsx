@@ -54,6 +54,15 @@ export function Header() {
             <LanguageSwitcher variant="compact" />
             <ScanCreditsCounter />
             <Button 
+              variant="ghost" 
+              size="sm" 
+              asChild
+              className="gap-2 min-h-[44px] min-w-[44px] touch-manipulation hidden md:flex"
+              aria-label="View pricing page"
+            >
+              <Link to="/pricing">Pricing</Link>
+            </Button>
+            <Button 
               variant="outline" 
               size="sm" 
               onClick={() => setShowProductModal(true)}

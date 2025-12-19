@@ -6,6 +6,7 @@ import {
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple
 } from "lucide-react";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
+import { TieredPricingSection } from "./TieredPricingSection";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -1970,6 +1971,9 @@ export function FreeKeywordResults({
         )}
         <p className="text-xs text-muted-foreground mt-2">No spam. Unsubscribe anytime.</p>
       </div>
+
+      {/* Tiered Pricing Options */}
+      <TieredPricingSection onFullAnalysisCheckout={onGetFullAnalysis} />
 
       {/* What's Locked */}
       <div className="rounded-2xl bg-muted/30 border border-border/50 p-5 mb-6">
