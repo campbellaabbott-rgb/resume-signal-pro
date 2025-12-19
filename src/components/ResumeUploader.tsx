@@ -981,7 +981,7 @@ export function ResumeUploader({
                       className="w-full sm:w-auto sm:min-w-[320px] h-16 sm:h-14 text-lg sm:text-base gap-3 border-2 border-success bg-success/10 hover:bg-success/20 hover:border-success text-success font-bold shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_30px_rgba(34,197,94,0.5)] transition-all touch-manipulation disabled:shadow-none disabled:border-success/40 disabled:text-success/70 disabled:bg-success/5 active:scale-[0.98]"
                     >
                       <Zap className="w-6 h-6 sm:w-5 sm:h-5 text-success fill-success/30" />
-                      <span>Get Free Score</span>
+                      <span>Get Free Resume-Job Match Score</span>
                       <span className="px-3 py-1 rounded-full bg-success text-success-foreground text-xs font-bold uppercase tracking-wide animate-pulse">FREE</span>
                     </Button>
                     <div className="grid grid-cols-3 sm:flex sm:flex-wrap items-center justify-center gap-2 sm:gap-x-3 sm:gap-y-1 text-[11px] sm:text-xs text-muted-foreground max-w-lg mx-auto">
