@@ -1727,6 +1727,67 @@ export function FreeKeywordResults({
         </div>
       </div>
 
+      {/* Generate Tailored Resume CTA - Prominent placement */}
+      {onGenerateTailoredResume && (
+        <div className="rounded-2xl bg-gradient-to-br from-success/20 via-success/10 to-primary/10 border-2 border-success/40 p-6 mb-5 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-success/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-2 rounded-full bg-success/20">
+                <Download className="w-5 h-5 text-success" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-success">New Feature</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-success/20 text-success font-medium animate-pulse">Free</span>
+              </div>
+            </div>
+            <h4 className="text-xl font-bold text-foreground mb-2">
+              🎯 Generate a Tailored Resume for Any Job
+            </h4>
+            <p className="text-sm text-muted-foreground mb-4">
+              Our AI rewrites your resume to perfectly match your target role — download as PDF and send directly to employers.
+            </p>
+            <div className="grid sm:grid-cols-3 gap-3 mb-4">
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50 border border-success/20">
+                <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                <span className="text-xs text-foreground">Tailored summary</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50 border border-success/20">
+                <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                <span className="text-xs text-foreground">Rewritten bullets</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50 border border-success/20">
+                <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                <span className="text-xs text-foreground">Cover letter opener</span>
+              </div>
+            </div>
+            <Button
+              onClick={onGenerateTailoredResume}
+              disabled={isGeneratingTailored}
+              size="lg"
+              className="w-full sm:w-auto gap-2 bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 hover:shadow-xl hover:shadow-success/30 transition-all text-base font-bold"
+            >
+              {isGeneratingTailored ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Generating Your Resume...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  Generate Tailored Resume & PDF
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              )}
+            </Button>
+            <p className="text-xs text-success/80 mt-3">
+              ✨ Works best with a job description — add one above for personalized results
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Red Flags Details */}
       {redFlags.length > 0 && (
         <div className="rounded-2xl bg-destructive/5 border border-destructive/20 p-5 mb-5">

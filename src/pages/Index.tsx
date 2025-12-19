@@ -542,21 +542,24 @@ const Index = () => {
     }
   };
 
-  // Generate tailored resume for the current job match
+  // Generate tailored resume for any target role
   const handleGenerateTailoredResume = async () => {
-    if (!resumeText || !freeKeywordResult?.jobMatchScore) {
+    if (!resumeText) {
       toast({
-        title: "No job analysis found",
-        description: "Please run a job analysis first before generating a tailored resume.",
+        title: "No resume found",
+        description: "Please upload your resume first.",
         variant: "destructive",
       });
       return;
     }
 
-    // Find the current job from uploaded jobs or use job description
-    const currentJob = uploadedJobs.find(j => 
-      freeKeywordResult.matchingSkills?.length || freeKeywordResult.missingSkills?.length
-    ) || uploadedJobs[0];
+    // Find job context from various sources
+    const currentJob = uploadedJobs[0];
+    const hasJobContext = currentJob || jobDescriptionText;
+    
+    // Use industry from scan results as fallback for job title
+    const targetTitle = currentJob?.title || 
+      (jobDescriptionText ? "Target Role" : `${freeKeywordResult?.industry || "Professional"} Position`);
 
     setIsGeneratingTailored(true);
     setShowTailoredResumeModal(true);
@@ -566,11 +569,11 @@ const Index = () => {
       const { data, error } = await supabase.functions.invoke("generate-tailored-resume", {
         body: {
           resumeText,
-          jobTitle: currentJob?.title || "Target Role",
+          jobTitle: targetTitle,
           jobCompany: currentJob?.company,
-          jobDescription: currentJob?.description || jobDescriptionText,
-          matchingSkills: freeKeywordResult.matchingSkills,
-          missingSkills: freeKeywordResult.missingSkills,
+          jobDescription: currentJob?.description || jobDescriptionText || `A ${freeKeywordResult?.industry || "professional"} role requiring strong skills and experience.`,
+          matchingSkills: freeKeywordResult?.matchingSkills,
+          missingSkills: freeKeywordResult?.missingSkills,
         },
       });
 
@@ -936,7 +939,7 @@ const Index = () => {
                 competitiveAssessment={freeKeywordResult.competitiveAssessment}
                 onGetFullAnalysis={() => handleCheckout(resumeText, linkedInText, jobDescriptionText)}
                 onGetJobAnalysis={handleJobAnalysis}
-                onGenerateTailoredResume={freeKeywordResult.jobMatchScore !== undefined ? handleGenerateTailoredResume : undefined}
+                onGenerateTailoredResume={handleGenerateTailoredResume}
                 isGeneratingTailored={isGeneratingTailored}
                 isLoading={isLoading || isFreeScanLoading}
               />
