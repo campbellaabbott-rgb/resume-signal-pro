@@ -690,6 +690,47 @@ export function FreeKeywordResults({
         </p>
       </div>
 
+      {/* Action Required CTA Banner */}
+      <div className="rounded-2xl bg-gradient-to-r from-destructive/15 via-destructive/10 to-destructive/5 border border-destructive/30 p-5 mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="p-1.5 rounded-lg bg-destructive/20">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+          </div>
+          <span className="text-xs font-semibold uppercase tracking-wider text-destructive">
+            Action Required
+          </span>
+        </div>
+        
+        <h4 className="text-lg font-bold mb-2">
+          {redFlags.length > 0 
+            ? `${redFlags.length}+ Issues Holding Your Resume Back`
+            : `${atsScoreEstimate < 70 ? 'Critical' : 'Key'} Issues Found in Your Resume`
+          }
+        </h4>
+        <p className="text-sm text-muted-foreground mb-4">
+          Get specific fixes, rewritten bullet points, and AI-ATS-optimized suggestions tailored to your industry.
+        </p>
+        
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <Button 
+            onClick={() => handleUpgradeClick('action_required_banner')}
+            disabled={isLoading}
+            className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-lg"
+          >
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            {getFirstCtaText()}
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            Takes 2 minutes • Instant results
+          </span>
+        </div>
+      </div>
+
       {/* Job Match Section - Show when job description was provided */}
       {jobMatchScore !== undefined && jobMatchGrade && (
         <div className="rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-success/10 border-2 border-primary/30 p-5 mb-6">
