@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.verify-scan-pack-purchase]
 verify_jwt = false
+
+[functions.generate-tailored-resume]
+verify_jwt = false

@@ -12,6 +12,7 @@ import { FreeKeywordResults } from "@/components/FreeKeywordResults";
 import { StickyBottomCTA } from "@/components/StickyBottomCTA";
 import { FinalCTA } from "@/components/FinalCTA";
 import { RateLimitUpsell } from "@/components/RateLimitUpsell";
+import { TailoredResumeModal } from "@/components/TailoredResumeModal";
 import { type JobEntry } from "@/components/JobSelector";
 
 import { HowItWorks } from "@/components/HowItWorks";
@@ -101,6 +102,10 @@ const Index = () => {
   const [preStoredSessionId, setPreStoredSessionId] = useState<string | null>(null);
   const [uploadedJobs, setUploadedJobs] = useState<JobEntry[]>([]);
   const [showRateLimitUpsell, setShowRateLimitUpsell] = useState(false);
+  const [showTailoredResumeModal, setShowTailoredResumeModal] = useState(false);
+  const [tailoredResumeContent, setTailoredResumeContent] = useState<any>(null);
+  const [isGeneratingTailored, setIsGeneratingTailored] = useState(false);
+  const [currentJobForTailoring, setCurrentJobForTailoring] = useState<{ title: string; company?: string; description?: string } | null>(null);
   const { toast } = useToast();
   const { currency } = useCurrency();
   const [searchParams] = useSearchParams();
@@ -537,6 +542,62 @@ const Index = () => {
     }
   };
 
+  // Generate tailored resume for the current job match
+  const handleGenerateTailoredResume = async () => {
+    if (!resumeText || !freeKeywordResult?.jobMatchScore) {
+      toast({
+        title: "No job analysis found",
+        description: "Please run a job analysis first before generating a tailored resume.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Find the current job from uploaded jobs or use job description
+    const currentJob = uploadedJobs.find(j => 
+      freeKeywordResult.matchingSkills?.length || freeKeywordResult.missingSkills?.length
+    ) || uploadedJobs[0];
+
+    setIsGeneratingTailored(true);
+    setShowTailoredResumeModal(true);
+    setTailoredResumeContent(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-tailored-resume", {
+        body: {
+          resumeText,
+          jobTitle: currentJob?.title || "Target Role",
+          jobCompany: currentJob?.company,
+          jobDescription: currentJob?.description || jobDescriptionText,
+          matchingSkills: freeKeywordResult.matchingSkills,
+          missingSkills: freeKeywordResult.missingSkills,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        setTailoredResumeContent(data);
+        toast({
+          title: "Tailored Resume Generated!",
+          description: "Your resume has been customized for this role. Download the PDF to apply!",
+        });
+      } else {
+        throw new Error(data?.error || "Failed to generate tailored resume");
+      }
+    } catch (error: any) {
+      console.error("Tailored resume error:", error);
+      setShowTailoredResumeModal(false);
+      toast({
+        title: "Generation failed",
+        description: error?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingTailored(false);
+    }
+  };
+
   const handleTextSubmit = (text: string, linkedIn?: string, jobDescription?: string) => {
     setResumeText(text);
     setFreeKeywordResult(null);
@@ -875,6 +936,8 @@ const Index = () => {
                 competitiveAssessment={freeKeywordResult.competitiveAssessment}
                 onGetFullAnalysis={() => handleCheckout(resumeText, linkedInText, jobDescriptionText)}
                 onGetJobAnalysis={handleJobAnalysis}
+                onGenerateTailoredResume={freeKeywordResult.jobMatchScore !== undefined ? handleGenerateTailoredResume : undefined}
+                isGeneratingTailored={isGeneratingTailored}
                 isLoading={isLoading || isFreeScanLoading}
               />
             </div>
@@ -910,6 +973,17 @@ const Index = () => {
       {showRateLimitUpsell && (
         <RateLimitUpsell onClose={() => setShowRateLimitUpsell(false)} />
       )}
+      
+      {/* Tailored Resume Modal */}
+      <TailoredResumeModal
+        isOpen={showTailoredResumeModal}
+        onClose={() => {
+          setShowTailoredResumeModal(false);
+          setTailoredResumeContent(null);
+        }}
+        content={tailoredResumeContent}
+        isLoading={isGeneratingTailored}
+      />
     </div>
   );
 };
