@@ -24,7 +24,7 @@ export function Header() {
     return (
     <>
       {/* Beta Banner */}
-      <div className="fixed top-0 left-0 right-0 z-[51] bg-primary text-primary-foreground text-center py-1.5 text-xs font-medium tracking-wide">
+      <div className="fixed top-0 left-0 right-0 z-[51] bg-[hsl(217,91%,60%)] text-[hsl(222,47%,6%)] text-center py-1.5 text-xs font-medium tracking-wide">
         🚀 Currently in Beta — We'd love your feedback!
       </div>
       <header 
