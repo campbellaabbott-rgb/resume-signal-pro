@@ -384,16 +384,21 @@ export function ResumeUploader({
             <p className="text-muted-foreground">
               {t('uploader.subtitle')} <span className="text-primary font-medium">{t('uploader.linkedinBonus')}</span>
             </p>
+            {/* Quick instruction for mobile */}
+            <p className="mt-3 text-sm text-muted-foreground/80 bg-muted/50 rounded-lg px-4 py-2 inline-block">
+              <span className="font-medium text-foreground">Only your resume is needed</span> — job description & LinkedIn are optional extras
+            </p>
           </div>
 
           {/* STEP 1: Resume Section - FIRST (Required) */}
-          <div className="mb-6">
+          <div className="mb-6 p-4 -mx-4 sm:mx-0 sm:p-0 bg-primary/5 sm:bg-transparent rounded-xl border border-primary/20 sm:border-0">
             <StepIndicator 
               number={1} 
               label={t('uploader.resume.title')} 
               isComplete={canProceed}
               isFree
             />
+            <p className="text-xs text-muted-foreground ml-11 -mt-2 mb-3">Required</p>
 
             <div className="flex justify-start mb-4" role="tablist" aria-label="Resume input method">
               <div className="inline-flex rounded-xl bg-card border border-border p-1 shadow-sm">
@@ -449,7 +454,7 @@ export function ResumeUploader({
                 )}
               >
                 {selectedFile ? (
-                  <div className="space-y-3 animate-scale-in">
+                  <div className="space-y-4 animate-scale-in">
                     <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-success/10">
                       <CheckCircle2 className="w-7 h-7 text-success" />
                     </div>
@@ -467,6 +472,14 @@ export function ResumeUploader({
                       >
                         <X className="w-5 h-5 text-muted-foreground" />
                       </button>
+                    </div>
+                    
+                    {/* Clear next step indicator */}
+                    <div className="mt-4 p-4 rounded-xl bg-primary/10 border border-primary/30 animate-fade-in">
+                      <p className="text-sm font-semibold text-primary flex items-center justify-center gap-2">
+                        <Zap className="w-4 h-4" />
+                        Ready! Scroll down and tap "Get Free Resume Analysis"
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -509,7 +522,7 @@ export function ResumeUploader({
           </div>
 
           {/* STEP 2: Job Description Section (Optional, collapsible) */}
-          <div className="mb-6">
+          <div className="mb-6 opacity-70 hover:opacity-100 transition-opacity">
             <button
               onClick={() => setShowJobDescription(!showJobDescription)}
               className="w-full flex items-center justify-between group"
@@ -863,7 +876,7 @@ export function ResumeUploader({
           </div>
 
           {/* STEP 3: LinkedIn Section (Optional, collapsible) */}
-          <div className="mb-6">
+          <div className="mb-6 opacity-70 hover:opacity-100 transition-opacity">
             <button
               onClick={() => setShowLinkedIn(!showLinkedIn)}
               className="w-full flex items-center justify-between group"
