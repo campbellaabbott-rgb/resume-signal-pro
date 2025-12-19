@@ -179,7 +179,7 @@ Please provide a tailored version optimized for this specific role.`;
   } catch (error) {
     console.error("[TAILORED-RESUME] Error:", error);
     return new Response(
-      JSON.stringify({ error: error.message || 'An unexpected error occurred' }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'An unexpected error occurred' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

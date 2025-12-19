@@ -1,4 +1,3 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 
 const corsHeaders = {
