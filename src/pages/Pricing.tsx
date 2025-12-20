@@ -18,9 +18,9 @@ const productIcons: Record<string, React.ElementType> = {
 };
 
 const productOrder: ProductId[] = [
+  'premiumPackage',
   'basicKeywordFix',
   'fullAnalysis', 
-  'premiumPackage',
   'coverLetter',
   'careerBundle',
 ];
