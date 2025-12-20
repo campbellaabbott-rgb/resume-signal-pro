@@ -58,17 +58,11 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
             {/* Mobile: Compact */}
             <div className="sm:hidden text-white flex-1">
               <p className="font-semibold text-sm">Get rewritten content, not just scores</p>
-              <p className="text-xs text-white/70">Full analysis • $25 {isLocalCurrency && `≈ ${formatPrice(25)}`}</p>
+              <p className="text-xs text-white/70">Full rewrites + LinkedIn optimization</p>
             </div>
             
             {/* Right: CTA */}
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="text-right text-white hidden md:block">
-                <p className="text-2xl font-bold">$25</p>
-                {isLocalCurrency && (
-                  <p className="text-xs text-white/70">≈ {formatPrice(25)}</p>
-                )}
-              </div>
               
               <button
                 onClick={handleGetStarted}

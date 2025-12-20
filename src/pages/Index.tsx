@@ -19,7 +19,7 @@ import { type JobEntry } from "@/components/JobSelector";
 
 import { HowItWorks } from "@/components/HowItWorks";
 import { MiniPricingCards } from "@/components/MiniPricingCards";
-import { StickyPricingBanner } from "@/components/StickyPricingBanner";
+
 import { ScoreBasedPackageRecommendation } from "@/components/ScoreBasedPackageRecommendation";
 import { FloatingUploadButton } from "@/components/FloatingUploadButton";
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
@@ -989,7 +989,7 @@ const Index = () => {
         isLoading={isLoading}
       />
       
-      <StickyPricingBanner />
+      
       
       <FloatingUploadButton />
 
