@@ -73,8 +73,10 @@ serve(async (req) => {
       );
     }
 
-    // Verify this is a scan credits purchase
-    if (session.metadata?.product_type !== 'scan_credits' && session.metadata?.product_type !== 'scan_pack') {
+    // Verify this is a scan credits purchase (accept both old and new product_type values)
+    const productType = session.metadata?.product_type;
+    if (productType !== 'scan_credits' && productType !== 'scan_pack') {
+      logStep("Invalid product type", { productType });
       return new Response(
         JSON.stringify({ error: "Invalid session type", verified: false }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

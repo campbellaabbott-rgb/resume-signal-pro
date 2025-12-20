@@ -2,10 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Check, Loader2, AlertTriangle, CreditCard } from "lucide-react";
+import { Check, Loader2, AlertTriangle, CreditCard, CheckCircle2, XCircle } from "lucide-react";
 import { PRODUCTS, ProductId } from "@/config/products";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 function describeStripeMode(sessionId?: string) {
   if (!sessionId) return "unknown";
@@ -16,8 +17,13 @@ function describeStripeMode(sessionId?: string) {
 
 export default function DevCheckoutTest() {
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<ProductId | null>(null);
+
+  const isSuccess = searchParams.get("success") === "true";
+  const isCanceled = searchParams.get("canceled") === "true";
+  const testedProduct = searchParams.get("product");
 
   useEffect(() => {
     document.title = "Dev Checkout Test | Resume Booster";
@@ -96,6 +102,34 @@ export default function DevCheckoutTest() {
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-4xl mx-auto">
+        {/* Success Banner */}
+        {isSuccess && (
+          <div className="mb-8 p-4 bg-success/10 border border-success/30 rounded-lg flex items-start gap-3">
+            <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
+            <div>
+              <h2 className="font-semibold text-success">Test Checkout Successful!</h2>
+              <p className="text-sm text-muted-foreground">
+                {testedProduct 
+                  ? `The ${testedProduct} test checkout completed successfully in Stripe test mode.` 
+                  : "Test checkout completed successfully in Stripe test mode."}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Canceled Banner */}
+        {isCanceled && (
+          <div className="mb-8 p-4 bg-destructive/10 border border-destructive/30 rounded-lg flex items-start gap-3">
+            <XCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+            <div>
+              <h2 className="font-semibold text-destructive">Checkout Canceled</h2>
+              <p className="text-sm text-muted-foreground">
+                The checkout was canceled. No payment was processed.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Warning Banner */}
         <div className="mb-8 p-4 bg-warning/10 border border-warning/30 rounded-lg flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />

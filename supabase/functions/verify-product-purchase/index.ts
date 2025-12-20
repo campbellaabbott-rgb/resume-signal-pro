@@ -88,19 +88,24 @@ serve(async (req) => {
     let generatedContent = null;
     
     if (generateContent && resumeSessionId) {
-      logStep("Fetching resume data", { resumeSessionId });
+      logStep("Content generation requested", { productType, resumeSessionId });
       
       // Get stored resume data
-      const { data: resumeData } = await supabase
+      const { data: resumeData, error: resumeError } = await supabase
         .rpc('get_temp_resume', { p_session_id: resumeSessionId });
 
-      if (resumeData && resumeData.length > 0) {
+      if (resumeError) {
+        logStep("Error fetching resume data", { error: resumeError.message });
+      } else if (resumeData && resumeData.length > 0) {
         const { resume_text, job_description_text } = resumeData[0];
-        
-        logStep("Resume data found, generating content", { productType });
+        logStep("Resume data found", { 
+          resumeLength: resume_text?.length, 
+          hasJobDescription: !!job_description_text 
+        });
 
         // Generate content based on product type
         if (productType === 'basic_keyword_fix' && resume_text) {
+          logStep("Calling generate-keyword-fix");
           // Call keyword fix function
           const keywordResponse = await fetch(`${supabaseUrl}/functions/v1/generate-keyword-fix`, {
             method: 'POST',
@@ -117,9 +122,13 @@ serve(async (req) => {
           if (keywordResponse.ok) {
             const keywordResult = await keywordResponse.json();
             generatedContent = keywordResult.data;
-            logStep("Keyword analysis generated");
+            logStep("Keyword analysis generated successfully");
+          } else {
+            const errorText = await keywordResponse.text();
+            logStep("Keyword generation failed", { status: keywordResponse.status, error: errorText });
           }
         } else if (productType === 'cover_letter' && resume_text) {
+          logStep("Calling generate-cover-letter");
           // Call cover letter function
           const coverLetterResponse = await fetch(`${supabaseUrl}/functions/v1/generate-cover-letter`, {
             method: 'POST',
@@ -137,9 +146,13 @@ serve(async (req) => {
           if (coverLetterResponse.ok) {
             const coverLetterResult = await coverLetterResponse.json();
             generatedContent = coverLetterResult.data;
-            logStep("Cover letter generated");
+            logStep("Cover letter generated successfully");
+          } else {
+            const errorText = await coverLetterResponse.text();
+            logStep("Cover letter generation failed", { status: coverLetterResponse.status, error: errorText });
           }
         } else if (productType === 'premium_package' && resume_text) {
+          logStep("Calling generate-premium-package");
           // Call premium package function
           const premiumResponse = await fetch(`${supabaseUrl}/functions/v1/generate-premium-package`, {
             method: 'POST',
@@ -156,17 +169,36 @@ serve(async (req) => {
           if (premiumResponse.ok) {
             const premiumResult = await premiumResponse.json();
             generatedContent = premiumResult.data;
-            logStep("Premium package generated");
+            logStep("Premium package generated successfully");
+          } else {
+            const errorText = await premiumResponse.text();
+            logStep("Premium package generation failed", { status: premiumResponse.status, error: errorText });
           }
+        } else {
+          logStep("No matching content generator", { productType, hasResumeText: !!resume_text });
         }
       } else {
-        logStep("No resume data found for session");
+        logStep("No resume data found for session", { resumeSessionId });
       }
+    } else if (generateContent && !resumeSessionId) {
+      logStep("Content generation requested but no resume session ID available");
     }
 
-    // Handle credits for scan pack
-    if (productType === 'scan_pack' && isFirstUse && customerEmail) {
-      const credits = parseInt(session.metadata?.credits || "30");
+    // Handle credits for scan pack (used by both create-product-checkout and create-scan-pack-checkout)
+    if ((productType === 'scan_pack' || productType === 'scan_credits') && isFirstUse && customerEmail) {
+      // Get credits from metadata first, fallback to line_items quantity
+      let credits = parseInt(session.metadata?.credits || "0");
+      
+      // If no credits in metadata, check line_items quantity (for create-scan-pack-checkout)
+      if (credits === 0 && session.line_items?.data?.length) {
+        credits = session.line_items.data[0].quantity || 30;
+      }
+      
+      // Default to 30 if still no credits found
+      if (credits === 0) credits = 30;
+      
+      logStep("Adding scan pack credits", { credits, email: customerEmail, productType });
+      
       const { error: creditError } = await supabase.rpc('add_scan_credits', {
         p_email: customerEmail,
         p_credits: Math.min(credits, 100) // Cap at 100 per call for safety
@@ -175,7 +207,7 @@ serve(async (req) => {
       if (creditError) {
         logStep("Error adding scan pack credits", { error: creditError.message });
       } else {
-        logStep("Scan pack credits added", { credits, email: customerEmail });
+        logStep("Scan pack credits added successfully", { credits, email: customerEmail });
         generatedContent = { credits, message: `${credits} scan credits added to your account` };
       }
     }
@@ -183,6 +215,8 @@ serve(async (req) => {
     // Handle credits for career bundle
     if (productType === 'career_bundle' && isFirstUse && customerEmail) {
       const credits = parseInt(session.metadata?.credits || "75");
+      logStep("Adding career bundle credits", { credits, email: customerEmail });
+      
       const { error: creditError } = await supabase.rpc('add_scan_credits', {
         p_email: customerEmail,
         p_credits: Math.min(credits, 100) // Cap at 100 per call for safety
@@ -191,7 +225,7 @@ serve(async (req) => {
       if (creditError) {
         logStep("Error adding career bundle credits", { error: creditError.message });
       } else {
-        logStep("Career bundle credits added", { credits, email: customerEmail });
+        logStep("Career bundle credits added successfully", { credits, email: customerEmail });
         generatedContent = { credits, message: `${credits} scan credits added to your account` };
       }
     }
