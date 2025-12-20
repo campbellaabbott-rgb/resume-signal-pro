@@ -20,13 +20,13 @@ export const PRODUCTS = {
   },
   scanPack: {
     id: 'scan_pack',
-    name: 'Scan Pack (30 Credits)',
-    description: '30 additional resume scans with unlimited job comparisons',
-    priceUsd: 29,
+    name: 'Scan Pack (10 Credits)',
+    description: '10 additional resume scans at $1 each',
+    priceUsd: 10,
     priceId: 'price_1SfqT8HBplUUV1Cg3McLmgI7',
-    credits: 30,
+    credits: 10,
     features: [
-      '30 resume scans',
+      '10 resume scans',
       'Unlimited job comparisons',
       'Never expires'
     ]
