@@ -3,12 +3,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PRODUCTS, ProductId } from '@/config/products';
 
+export interface CheckoutOptions {
+  sessionId?: string;
+  jobTitle?: string;
+  jobCompany?: string;
+}
+
 export function useProductCheckout() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<ProductId | null>(null);
   const { toast } = useToast();
 
-  const purchaseProduct = async (productId: ProductId, sessionId?: string): Promise<string | null> => {
+  const purchaseProduct = async (productId: ProductId, options?: CheckoutOptions | string): Promise<string | null> => {
+    // Handle backwards compatibility - if options is a string, treat it as sessionId
+    const opts: CheckoutOptions = typeof options === 'string' 
+      ? { sessionId: options } 
+      : options || {};
+
     const product = PRODUCTS[productId];
     if (!product) {
       toast({
@@ -25,8 +36,10 @@ export function useProductCheckout() {
     try {
       const { data, error } = await supabase.functions.invoke('create-product-checkout', {
         body: { 
-          productId: productId, // Use the key (e.g., 'basicKeywordFix') not product.id
-          sessionId
+          productId: productId,
+          sessionId: opts.sessionId,
+          jobTitle: opts.jobTitle,
+          jobCompany: opts.jobCompany
         }
       });
 
@@ -41,7 +54,6 @@ export function useProductCheckout() {
       }
 
       if (data?.url) {
-        // Redirect checkout in the same tab
         toast({
           title: "Redirecting to Checkout",
           description: "Taking you to Stripe checkout…",

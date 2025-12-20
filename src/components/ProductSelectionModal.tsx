@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, Sparkles, FileText, Crown, Package, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Check, Sparkles, FileText, Crown, Package, Loader2, Briefcase, Building2 } from 'lucide-react';
 import { PRODUCTS, ProductId } from '@/config/products';
 import { useProductCheckout } from '@/hooks/use-product-checkout';
 import { cn } from '@/lib/utils';
@@ -12,7 +14,7 @@ interface ProductSelectionModalProps {
   onOpenChange: (open: boolean) => void;
   sessionId?: string;
   preSelectedProduct?: ProductId;
-  onFullAnalysisCheckout?: () => void; // Callback for full analysis (uses existing checkout)
+  onFullAnalysisCheckout?: () => void;
 }
 
 const productIcons: Record<string, React.ElementType> = {
@@ -23,6 +25,9 @@ const productIcons: Record<string, React.ElementType> = {
   fullAnalysis: Sparkles,
 };
 
+// Products that generate content and benefit from job details
+const contentGeneratingProducts: ProductId[] = ['basicKeywordFix', 'coverLetter', 'premiumPackage'];
+
 export function ProductSelectionModal({ 
   open, 
   onOpenChange, 
@@ -31,7 +36,19 @@ export function ProductSelectionModal({
   onFullAnalysisCheckout
 }: ProductSelectionModalProps) {
   const [selectedProduct, setSelectedProduct] = useState<ProductId | null>(preSelectedProduct || null);
+  const [jobTitle, setJobTitle] = useState('');
+  const [jobCompany, setJobCompany] = useState('');
   const { purchaseProduct, isLoading } = useProductCheckout();
+
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (!open) {
+      setJobTitle('');
+      setJobCompany('');
+    }
+  }, [open]);
+
+  const needsJobDetails = selectedProduct && contentGeneratingProducts.includes(selectedProduct);
 
   const handlePurchase = async () => {
     if (!selectedProduct) return;
@@ -45,8 +62,12 @@ export function ProductSelectionModal({
       return;
     }
     
-    // Go directly to Stripe - email will be collected there
-    const url = await purchaseProduct(selectedProduct, sessionId);
+    // Pass job details for content-generating products
+    const url = await purchaseProduct(selectedProduct, {
+      sessionId,
+      jobTitle: jobTitle.trim(),
+      jobCompany: jobCompany.trim()
+    });
     if (url) {
       onOpenChange(false);
     }
@@ -150,6 +171,48 @@ export function ProductSelectionModal({
             );
           })}
         </div>
+
+        {/* Job Details Section - Only show for content-generating products */}
+        {needsJobDetails && (
+          <div className="space-y-4 p-4 rounded-lg bg-accent/50 border border-border">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Briefcase className="w-4 h-4 text-primary" />
+              <span>Target Job Details</span>
+              <Badge variant="secondary" className="text-xs">Optional but recommended</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Adding job details helps us personalize your content for better results.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="jobTitle" className="text-xs flex items-center gap-1.5">
+                  <Briefcase className="w-3 h-3" />
+                  Job Title
+                </Label>
+                <Input
+                  id="jobTitle"
+                  placeholder="e.g., Software Engineer"
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="jobCompany" className="text-xs flex items-center gap-1.5">
+                  <Building2 className="w-3 h-3" />
+                  Company
+                </Label>
+                <Input
+                  id="jobCompany"
+                  placeholder="e.g., Google"
+                  value={jobCompany}
+                  onChange={(e) => setJobCompany(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Purchase button */}
         <Button 
