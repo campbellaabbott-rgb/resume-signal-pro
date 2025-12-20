@@ -55,32 +55,13 @@ export default function DevCheckoutTest() {
     setCurrentProduct(productId);
 
     try {
-      // Full analysis uses the main checkout flow
-      if ("useMainCheckout" in product && product.useMainCheckout) {
-        const { data, error } = await supabase.functions.invoke("create-checkout", {
-          body: { currency: "usd" },
-        });
-
-        if (error) throw error;
-        if (!data?.url) throw new Error("No checkout URL returned");
-
-        const mode = describeStripeMode(data.sessionId);
-        toast({
-          title: mode === "test" ? "Opening test checkout" : "Opening checkout",
-          description:
-            mode === "live"
-              ? "This looks like LIVE mode. Don’t complete payment unless you intend to charge a real card."
-              : "Opening Stripe checkout in a new tab…",
-          variant: mode === "live" ? "destructive" : "default",
-        });
-
-        await openCheckoutUrl(data.url);
-        return;
-      }
-
-      // All other products use create-product-checkout
-      const { data, error } = await supabase.functions.invoke("create-product-checkout", {
-        body: { productId },
+      // Use the test-mode checkout function for all products on this dev page
+      const { data, error } = await supabase.functions.invoke("create-test-checkout", {
+        body: { 
+          productId,
+          productName: product.name,
+          priceUsd: product.priceUsd
+        },
       });
 
       if (error) throw error;
@@ -88,11 +69,11 @@ export default function DevCheckoutTest() {
 
       const mode = describeStripeMode(data.sessionId);
       toast({
-        title: mode === "test" ? "Opening test checkout" : "Opening checkout",
+        title: mode === "test" ? "✓ Test mode checkout" : "⚠️ Live mode detected",
         description:
           mode === "live"
-            ? "This looks like LIVE mode. Don’t complete payment unless you intend to charge a real card."
-            : "Opening Stripe checkout in a new tab…",
+            ? "WARNING: This is LIVE mode. Check your STRIPE_TEST_SECRET_KEY."
+            : "Opening Stripe test checkout...",
         variant: mode === "live" ? "destructive" : "default",
       });
 
