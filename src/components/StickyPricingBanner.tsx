@@ -8,12 +8,15 @@ export function StickyPricingBanner() {
 
   useEffect(() => {
     const handleScroll = () => {
-      // Show after scrolling 200px but hide after 800px (when upload section is passed)
-      // This prevents conflict with the StickyBottomCTA
+      // Show after scrolling 150px, hide after 2000px (before reaching the comparison table area)
+      // This gives users plenty of time to see it without conflicting with StickyBottomCTA
       const scrollY = window.scrollY;
-      const shouldShow = scrollY > 200 && scrollY < 800 && !isDismissed;
+      const shouldShow = scrollY > 150 && scrollY < 2000 && !isDismissed;
       setIsVisible(shouldShow);
     };
+
+    // Check initial scroll position
+    handleScroll();
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
