@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -7,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Sparkles, FileText, Crown, Package, Loader2, ArrowRight, Star, Shield, Zap } from "lucide-react";
 import { PRODUCTS, ProductId } from "@/config/products";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
-import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 import { cn } from "@/lib/utils";
 
 const productIcons: Record<string, React.ElementType> = {
@@ -28,26 +26,17 @@ const productOrder: ProductId[] = [
 ];
 
 export default function Pricing() {
-  const [email, setEmail] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState<ProductId | null>(null);
-  const [showModal, setShowModal] = useState(false);
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
 
   const handlePurchase = async (productId: ProductId) => {
-    if (!email || !email.includes('@')) {
-      setSelectedProduct(productId);
-      setShowModal(true);
-      return;
-    }
-    
     const product = PRODUCTS[productId];
     if ('useMainCheckout' in product && product.useMainCheckout) {
-      // Redirect to home for full analysis checkout
+      // Full analysis is performed from the main flow
       window.location.href = '/#upload';
       return;
     }
-    
-    await purchaseProduct(productId, email);
+
+    await purchaseProduct(productId);
   };
 
   return (
@@ -196,11 +185,6 @@ export default function Pricing() {
 
       <Footer />
       
-      <ProductSelectionModal 
-        open={showModal} 
-        onOpenChange={setShowModal}
-        preSelectedProduct={selectedProduct || undefined}
-      />
     </div>
   );
 }

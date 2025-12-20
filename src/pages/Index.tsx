@@ -780,22 +780,10 @@ const Index = () => {
         return;
       }
       
-      // Desktop in iframe: try popup, fallback to overlay with options
+      // Desktop in iframe: direct redirect (avoid opening a new window)
       if (inIframe) {
-        const win = window.open(checkoutData.url, "_blank", "noopener,noreferrer");
-        if (!win) {
-          // Popup blocked - show overlay with fallback options instead of toast
-          console.log("[Checkout] Popup blocked, showing fallback options");
-          setCheckoutError("Your browser blocked the checkout popup.");
-          // Keep overlay visible with URL - user can use fallback buttons
-          return;
-        }
-        // Popup opened successfully
-        setIsCheckoutLoading(false);
-        toast({
-          title: "Checkout opened",
-          description: "Complete your payment in the new tab.",
-        });
+        setCheckoutRedirect(true);
+        window.location.assign(checkoutData.url);
         return;
       }
       // Desktop: navigate in same tab
