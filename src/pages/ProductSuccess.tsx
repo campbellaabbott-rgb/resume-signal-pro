@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { 
   CheckCircle2, 
@@ -20,17 +20,21 @@ import {
   AlertCircle,
   Target,
   TrendingUp,
-  Lightbulb
+  Lightbulb,
+  RefreshCw
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { PRODUCTS, ProductId } from "@/config/products";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
+import { getResumeFromSession, hasResumeInSession } from "@/hooks/use-session-resume";
 
 // Map product keys to icons
 const productIcons: Record<string, React.ElementType> = {
@@ -175,6 +179,14 @@ export default function ProductSuccess() {
   const { toast } = useToast();
   const { trackPurchaseCompleted } = useConversionTracking();
   
+  // Resume recovery state
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [recoveryResumeText, setRecoveryResumeText] = useState("");
+  const [recoveryFile, setRecoveryFile] = useState<File | null>(null);
+  const [isParsingFile, setIsParsingFile] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const sessionId = searchParams.get("session_id");
   const productKey = searchParams.get("product") as ProductId | null;
   
@@ -182,6 +194,146 @@ export default function ProductSuccess() {
   const product = productKey && PRODUCTS[productKey] ? PRODUCTS[productKey] : null;
   const Icon = productKey ? productIcons[productKey] || Sparkles : Sparkles;
   const info = productKey ? productInfo[productKey] : null;
+
+  // Try to recover resume from session storage
+  const attemptSessionRecovery = useCallback(async () => {
+    if (hasResumeInSession()) {
+      const sessionData = getResumeFromSession();
+      if (sessionData.resumeText) {
+        console.log('[ProductSuccess] Found resume in session storage, attempting regeneration');
+        setRecoveryResumeText(sessionData.resumeText);
+        return sessionData.resumeText;
+      }
+    }
+    return null;
+  }, []);
+
+  // Regenerate content with provided resume text
+  const regenerateContent = useCallback(async (resumeText: string) => {
+    if (!resumeText || resumeText.length < 50) {
+      toast({
+        title: "Resume too short",
+        description: "Please provide a complete resume with at least 50 characters.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    setIsRegenerating(true);
+    
+    try {
+      let endpoint = '';
+      let body: Record<string, unknown> = { resumeText };
+      
+      if (productKey === 'basicKeywordFix') {
+        endpoint = 'generate-keyword-fix';
+      } else if (productKey === 'coverLetter') {
+        endpoint = 'generate-cover-letter';
+        body.jobTitle = 'Target Position';
+        body.tone = 'professional';
+      } else if (productKey === 'premiumPackage') {
+        endpoint = 'generate-premium-package';
+        body.jobTitle = 'Target Position';
+      }
+
+      if (!endpoint) {
+        toast({
+          title: "Unsupported product",
+          description: "Content generation is not available for this product.",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      console.log(`[ProductSuccess] Regenerating content via ${endpoint}`);
+      
+      const { data, error } = await supabase.functions.invoke(endpoint, { body });
+
+      if (error) {
+        console.error('Regeneration error:', error);
+        toast({
+          title: "Generation failed",
+          description: error.message || "Failed to generate content. Please try again.",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      if (data?.data || data?.success) {
+        setGeneratedContent(data.data || data);
+        setIsRecoveryMode(false);
+        toast({
+          title: "Content Generated!",
+          description: "Your analysis is ready below.",
+        });
+        return true;
+      }
+
+      return false;
+    } catch (err) {
+      console.error('Regeneration failed:', err);
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive"
+      });
+      return false;
+    } finally {
+      setIsRegenerating(false);
+    }
+  }, [productKey, toast]);
+
+  // Handle file upload for recovery
+  const handleRecoveryFileUpload = useCallback(async (file: File) => {
+    setRecoveryFile(file);
+    setIsParsingFile(true);
+
+    try {
+      if (file.type === "text/plain") {
+        const text = await file.text();
+        setRecoveryResumeText(text);
+        setIsParsingFile(false);
+        return;
+      }
+
+      if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+        const formData = new FormData();
+        formData.append("file", file);
+        
+        const { data, error } = await supabase.functions.invoke("parse-pdf", { body: formData });
+        
+        if (error) throw error;
+        if (data?.success && data?.text) {
+          setRecoveryResumeText(data.text);
+        } else {
+          throw new Error("Failed to parse PDF");
+        }
+      } else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
+                 file.name.toLowerCase().endsWith(".docx")) {
+        const formData = new FormData();
+        formData.append("file", file);
+        
+        const { data, error } = await supabase.functions.invoke("parse-docx", { body: formData });
+        
+        if (error) throw error;
+        if (data?.success && data?.text) {
+          setRecoveryResumeText(data.text);
+        } else {
+          throw new Error("Failed to parse document");
+        }
+      }
+    } catch (error) {
+      console.error('File parsing error:', error);
+      toast({
+        title: "Parsing failed",
+        description: "Could not read the file. Please try pasting your resume text instead.",
+        variant: "destructive"
+      });
+      setRecoveryFile(null);
+    } finally {
+      setIsParsingFile(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
     async function verifyAndGenerate() {
@@ -203,6 +355,19 @@ export default function ProductSuccess() {
           setVerificationError(error.message);
         } else if (data?.generatedContent) {
           setGeneratedContent(data.generatedContent);
+        } else if (!data?.generatedContent && (productKey === 'basicKeywordFix' || productKey === 'coverLetter' || productKey === 'premiumPackage')) {
+          // No content generated - try session storage recovery
+          console.log('[ProductSuccess] No content generated, attempting session recovery');
+          const recoveredText = await attemptSessionRecovery();
+          if (recoveredText) {
+            // Auto-regenerate with recovered text
+            const success = await regenerateContent(recoveredText);
+            if (!success) {
+              setIsRecoveryMode(true);
+            }
+          } else {
+            setIsRecoveryMode(true);
+          }
         }
         
         // Track successful purchase completion
@@ -218,7 +383,7 @@ export default function ProductSuccess() {
     }
 
     verifyAndGenerate();
-  }, [sessionId, productKey, product, trackPurchaseCompleted]);
+  }, [sessionId, productKey, product, trackPurchaseCompleted, attemptSessionRecovery, regenerateContent]);
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -686,23 +851,117 @@ export default function ProductSuccess() {
           </section>
         )}
 
-        {/* No Generated Content - Show Upload Prompt */}
-        {(isKeywordFix || isCoverLetter || isPremiumPackage) && !generatedContent && !verificationError && (
+        {/* No Generated Content - Show Inline Upload Recovery */}
+        {(isKeywordFix || isCoverLetter || isPremiumPackage) && !generatedContent && !verificationError && !isVerifying && (
           <section className="py-12 border-t border-border/50">
-            <div className="container max-w-2xl text-center">
+            <div className="container max-w-2xl">
               <div className="p-8 rounded-2xl bg-muted/50 border border-border">
-                <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Resume Data Not Found</h3>
-                <p className="text-muted-foreground mb-6">
-                  We couldn't find your resume data from the checkout session. 
-                  Please upload your resume on the home page to generate your {isKeywordFix ? 'keyword analysis' : isPremiumPackage ? 'premium package' : 'cover letter'}.
-                </p>
-                <Button asChild size="lg" className="gap-2">
-                  <Link to="/">
-                    <Upload className="w-4 h-4" />
-                    Upload Resume
-                  </Link>
-                </Button>
+                {isRegenerating ? (
+                  <div className="text-center space-y-4">
+                    <div className="relative inline-flex items-center justify-center">
+                      <div className="absolute w-16 h-16 rounded-full border-2 border-primary/20" />
+                      <div className="absolute w-16 h-16 rounded-full border-2 border-transparent border-t-primary animate-spin" />
+                      <RefreshCw className="w-6 h-6 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold">Generating Your Content...</h3>
+                    <p className="text-muted-foreground">
+                      {isKeywordFix ? 'Analyzing keywords and optimizations...' : 
+                       isPremiumPackage ? 'Creating your optimized resume and cover letter...' : 
+                       'Crafting your personalized cover letter...'}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-center mb-6">
+                      <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-xl font-semibold mb-2">Resume Data Not Found</h3>
+                      <p className="text-muted-foreground">
+                        We couldn't find your resume data from the checkout session. 
+                        Upload or paste your resume below to generate your {isKeywordFix ? 'keyword analysis' : isPremiumPackage ? 'premium package' : 'cover letter'}.
+                      </p>
+                    </div>
+
+                    {/* File Upload */}
+                    <div className="space-y-4">
+                      <div 
+                        className={cn(
+                          "relative rounded-xl border-2 border-dashed p-6 text-center transition-colors cursor-pointer",
+                          recoveryFile ? "border-success bg-success/5" : "border-border hover:border-primary/50 hover:bg-primary/5"
+                        )}
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept=".pdf,.docx,.txt"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleRecoveryFileUpload(file);
+                          }}
+                        />
+                        {isParsingFile ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                            <span>Parsing file...</span>
+                          </div>
+                        ) : recoveryFile ? (
+                          <div className="flex items-center justify-center gap-2 text-success">
+                            <CheckCircle2 className="w-5 h-5" />
+                            <span>{recoveryFile.name}</span>
+                          </div>
+                        ) : (
+                          <div>
+                            <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                            <p className="font-medium">Drop your resume or click to upload</p>
+                            <p className="text-sm text-muted-foreground">PDF, DOCX, or TXT</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-border" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-muted/50 px-2 text-muted-foreground">or paste text</span>
+                        </div>
+                      </div>
+
+                      <Textarea
+                        placeholder="Paste your resume text here..."
+                        value={recoveryResumeText}
+                        onChange={(e) => setRecoveryResumeText(e.target.value)}
+                        className="min-h-[150px] resize-none"
+                      />
+
+                      <Button 
+                        size="lg" 
+                        className="w-full gap-2"
+                        disabled={!recoveryResumeText || recoveryResumeText.length < 50 || isRegenerating}
+                        onClick={() => regenerateContent(recoveryResumeText)}
+                      >
+                        {isRegenerating ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4" />
+                            Generate {isKeywordFix ? 'Keyword Analysis' : isPremiumPackage ? 'Premium Package' : 'Cover Letter'}
+                          </>
+                        )}
+                      </Button>
+
+                      {recoveryResumeText && recoveryResumeText.length < 50 && (
+                        <p className="text-sm text-destructive text-center">
+                          Resume text is too short. Please provide more content.
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </section>
