@@ -8,7 +8,7 @@ export function useProductCheckout() {
   const [currentProduct, setCurrentProduct] = useState<ProductId | null>(null);
   const { toast } = useToast();
 
-  const purchaseProduct = async (productId: ProductId, email: string, sessionId?: string): Promise<string | null> => {
+  const purchaseProduct = async (productId: ProductId, sessionId?: string): Promise<string | null> => {
     const product = PRODUCTS[productId];
     if (!product) {
       toast({
@@ -25,7 +25,6 @@ export function useProductCheckout() {
     try {
       const { data, error } = await supabase.functions.invoke('create-product-checkout', {
         body: { 
-          email: email.toLowerCase().trim(),
           productId: productId, // Use the key (e.g., 'basicKeywordFix') not product.id
           sessionId
         }
