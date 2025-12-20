@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { 
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
-  Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple
+  Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X
 } from "lucide-react";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { TieredPricingSection } from "./TieredPricingSection";
@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useABTest } from "@/hooks/use-ab-test";
 import { useCurrency } from "@/hooks/use-currency";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Tooltip,
   TooltipContent,
@@ -99,9 +100,40 @@ const metricTooltips = {
   }
 };
 
-// Reusable tooltip component for metrics
+// Reusable tooltip component for metrics - works on mobile with tap
 const MetricTooltip = ({ metricKey }: { metricKey: keyof typeof metricTooltips }) => {
+  const [showMobileTooltip, setShowMobileTooltip] = useState(false);
+  const isMobile = useIsMobile();
   const tooltip = metricTooltips[metricKey];
+  
+  if (isMobile) {
+    return (
+      <div className="relative inline-block">
+        <button
+          onClick={() => setShowMobileTooltip(!showMobileTooltip)}
+          className="p-1 -m-1 touch-manipulation"
+          aria-label={`Learn about ${tooltip.title}`}
+        >
+          <HelpCircle className="w-3 h-3 text-muted-foreground/50" />
+        </button>
+        {showMobileTooltip && (
+          <div className="absolute z-50 left-0 top-6 w-64 p-3 rounded-xl bg-card border border-border shadow-lg animate-fade-in">
+            <button 
+              onClick={() => setShowMobileTooltip(false)}
+              className="absolute top-2 right-2 p-1 text-muted-foreground"
+              aria-label="Close"
+            >
+              <X className="w-3 h-3" />
+            </button>
+            <p className="font-semibold text-foreground mb-1 pr-4">{tooltip.title}</p>
+            <p className="text-xs text-muted-foreground mb-2">{tooltip.description}</p>
+            <p className="text-xs text-primary font-medium">💡 {tooltip.whyMatters}</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+  
   return (
     <Tooltip>
       <TooltipTrigger asChild>
