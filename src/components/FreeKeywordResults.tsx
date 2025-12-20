@@ -126,7 +126,15 @@ const getProductCtaCopy = (variant: 'control' | 'benefit_focused' | 'scarcity') 
 });
 
 // Cover Letter Button component
-const CoverLetterButton = ({ hasJobDescription, variant }: { hasJobDescription: boolean; variant: 'control' | 'benefit_focused' | 'scarcity' }) => {
+const CoverLetterButton = ({ 
+  hasJobDescription, 
+  variant,
+  section = 'default'
+}: { 
+  hasJobDescription: boolean; 
+  variant: 'control' | 'benefit_focused' | 'scarcity';
+  section?: string;
+}) => {
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
   const isPurchasing = isLoading && currentProduct === 'coverLetter';
   const copy = getProductCtaCopy(variant).coverLetter;
@@ -142,7 +150,7 @@ const CoverLetterButton = ({ hasJobDescription, variant }: { hasJobDescription: 
   
   return (
     <Button
-      onClick={() => purchaseProduct('coverLetter')}
+      onClick={() => purchaseProduct('coverLetter', { ctaSection: section })}
       disabled={isPurchasing}
       size="sm"
       className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -163,14 +171,20 @@ const CoverLetterButton = ({ hasJobDescription, variant }: { hasJobDescription: 
 };
 
 // Keyword Fix Button component
-const KeywordFixButton = ({ variant }: { variant: 'control' | 'benefit_focused' | 'scarcity' }) => {
+const KeywordFixButton = ({ 
+  variant,
+  section = 'default'
+}: { 
+  variant: 'control' | 'benefit_focused' | 'scarcity';
+  section?: string;
+}) => {
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
   const isPurchasing = isLoading && currentProduct === 'basicKeywordFix';
   const copy = getProductCtaCopy(variant).keywordFix;
   
   return (
     <Button
-      onClick={() => purchaseProduct('basicKeywordFix')}
+      onClick={() => purchaseProduct('basicKeywordFix', { ctaSection: section })}
       disabled={isPurchasing}
       size="sm"
       className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -2132,7 +2146,7 @@ export function FreeKeywordResults({
               <p className="text-sm text-muted-foreground mb-3">
                 Get a complete keyword optimization report with exact phrases recruiters search for in your industry.
               </p>
-              <KeywordFixButton variant={productCtaTest.variant} />
+              <KeywordFixButton variant={productCtaTest.variant} section="keyword_suggestions" />
             </div>
           </div>
         </div>
@@ -2254,7 +2268,7 @@ export function FreeKeywordResults({
               <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Skills highlighted</span>
               <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Instant download</span>
             </div>
-            <CoverLetterButton hasJobDescription={uploadedJobs.length > 0} variant={productCtaTest.variant} />
+            <CoverLetterButton hasJobDescription={uploadedJobs.length > 0} variant={productCtaTest.variant} section="cover_letter_cta" />
           </div>
         </div>
       </div>
