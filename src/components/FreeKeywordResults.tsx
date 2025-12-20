@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { useTranslation } from "react-i18next";
 import { 
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
@@ -98,6 +99,34 @@ const metricTooltips = {
     description: "Shows how well your resume parses across major AI-powered Applicant Tracking Systems like Workday, Greenhouse, and Taleo.",
     whyMatters: "Different companies use different AI-ATS systems—know which ones will read your resume correctly."
   }
+};
+
+// Premium Package Button component
+const PremiumPackageButton = () => {
+  const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
+  const isPurchasing = isLoading && currentProduct === 'premiumPackage';
+  
+  return (
+    <Button
+      onClick={() => purchaseProduct('premiumPackage')}
+      disabled={isPurchasing}
+      size="lg"
+      variant="outline"
+      className="flex-1 sm:flex-none gap-2 border-primary/30 hover:bg-primary/10 text-primary font-bold"
+    >
+      {isPurchasing ? (
+        <>
+          <Loader2 className="w-5 h-5 animate-spin" />
+          Processing...
+        </>
+      ) : (
+        <>
+          <ArrowRight className="w-5 h-5" />
+          Buy Premium Package — $59
+        </>
+      )}
+    </Button>
+  );
 };
 
 // Reusable tooltip component for metrics - works on mobile with tap
@@ -1837,27 +1866,29 @@ export function FreeKeywordResults({
                 <span className="text-xs text-foreground">Cover letter opener</span>
               </div>
             </div>
-            <Button
-              onClick={onGenerateTailoredResume}
-              disabled={isGeneratingTailored}
-              size="lg"
-              className="w-full sm:w-auto gap-2 bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 hover:shadow-xl hover:shadow-success/30 transition-all text-base font-bold"
-            >
-              {isGeneratingTailored ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Generating Your Resume...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5" />
-                  Generate Tailored Resume & PDF
-                  <ArrowRight className="w-5 h-5" />
-                </>
-              )}
-            </Button>
-            <p className="text-xs text-success/80 mt-3">
-              ✨ Works best with a job description — add one above for personalized results
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                onClick={onGenerateTailoredResume}
+                disabled={isGeneratingTailored}
+                size="lg"
+                className="flex-1 sm:flex-none gap-2 bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 hover:shadow-xl hover:shadow-success/30 transition-all text-base font-bold"
+              >
+                {isGeneratingTailored ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    Preview Tailored Resume
+                  </>
+                )}
+              </Button>
+              <PremiumPackageButton />
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Preview for free, then unlock the full Premium Package with tailored resume + cover letter
             </p>
           </div>
         </div>
