@@ -17,9 +17,9 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
   // CTA button text variants
   const getCtaText = () => {
     switch (heroCta.variant) {
-      case 'urgent': return 'Get Analysis Now';
-      case 'benefit': return 'Start Landing Interviews';
-      default: return t('finalCta.button');
+      case 'urgent': return 'See All Packages';
+      case 'benefit': return 'See All Packages';
+      default: return 'See All Packages';
     }
   };
 
