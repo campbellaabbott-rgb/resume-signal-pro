@@ -146,12 +146,20 @@ export function Hero() {
               </span>
             </div>
 
-            {/* Anonymous testimonial */}
-            <div className="mt-6 px-4 py-3 rounded-xl bg-card/40 border border-border/30 max-w-md mx-auto">
-              <p className="text-sm text-muted-foreground italic">
-                {t('hero.testimonial', '"This is a very wonderful product. I have just gone through the freemium features & I can confidently say it\'s going to be a big success."')}
-              </p>
-              <p className="text-xs text-muted-foreground/60 mt-2">— {t('hero.testimonialAuthor', 'Recent user')}</p>
+            {/* Anonymous testimonials */}
+            <div className="mt-6 grid sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+              <div className="px-4 py-3 rounded-xl bg-card/40 border border-border/30">
+                <p className="text-sm text-muted-foreground italic">
+                  {t('hero.testimonial', '"This is a very wonderful product. I have just gone through the freemium features & I can confidently say it\'s going to be a big success."')}
+                </p>
+                <p className="text-xs text-muted-foreground/60 mt-2">— {t('hero.testimonialAuthorReddit', 'Recent Reddit user')}</p>
+              </div>
+              <div className="px-4 py-3 rounded-xl bg-card/40 border border-border/30">
+                <p className="text-sm text-muted-foreground italic">
+                  "{t('hero.testimonial2', 'Service is super helpful and useful.')}"
+                </p>
+                <p className="text-xs text-muted-foreground/60 mt-2">— {t('hero.testimonialAuthorReddit', 'Recent Reddit user')}</p>
+              </div>
             </div>
           </div>
 
