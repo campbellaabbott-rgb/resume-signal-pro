@@ -2003,7 +2003,7 @@ export function FreeKeywordResults({
         </div>
       </div>
 
-      {/* Generate Tailored Resume CTA - Prominent placement */}
+      {/* Premium Resume Package CTA - Clear single action */}
       {onGenerateTailoredResume && (
         <div className="rounded-2xl bg-gradient-to-br from-success/20 via-success/10 to-primary/10 border-2 border-success/40 p-6 mb-5 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-40 h-40 bg-success/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -2014,53 +2014,35 @@ export function FreeKeywordResults({
                 <Download className="w-5 h-5 text-success" />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-primary">Premium Feature</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-primary">Premium Package</span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">$59</span>
               </div>
             </div>
             <h4 className="text-xl font-bold text-foreground mb-2">
-              🎯 Generate a Tailored Resume for Any Job
+              🎯 Get Your ATS-Optimized Resume + Cover Letter
             </h4>
             <p className="text-sm text-muted-foreground mb-4">
-              Our AI rewrites your resume to perfectly match your target role — download as PDF and send directly to employers.
+              Our AI rewrites your entire resume to match your target role, plus generates a tailored cover letter — download both as PDFs.
             </p>
             <div className="grid sm:grid-cols-3 gap-3 mb-4">
               <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50 border border-success/20">
                 <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                <span className="text-xs text-foreground">Tailored summary</span>
+                <span className="text-xs text-foreground">AI-rewritten resume</span>
               </div>
               <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50 border border-success/20">
                 <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                <span className="text-xs text-foreground">Rewritten bullets</span>
+                <span className="text-xs text-foreground">Custom cover letter</span>
               </div>
               <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50 border border-success/20">
                 <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                <span className="text-xs text-foreground">Cover letter opener</span>
+                <span className="text-xs text-foreground">PDF download</span>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                onClick={onGenerateTailoredResume}
-                disabled={isGeneratingTailored}
-                size="lg"
-                className="flex-1 sm:flex-none gap-2 bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 hover:shadow-xl hover:shadow-success/30 transition-all text-base font-bold"
-              >
-                {isGeneratingTailored ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-5 h-5" />
-                    {getProductCtaCopy(productCtaTest.variant).tailoredResume.button}
-                  </>
-                )}
-              </Button>
-              <PremiumPackageButton variant={productCtaTest.variant} section="tailored_resume" />
+              <PremiumPackageButton variant={productCtaTest.variant} isPrimary section="tailored_resume" />
             </div>
             <p className="text-xs text-muted-foreground mt-3">
-              {getProductCtaCopy(productCtaTest.variant).tailoredResume.description}
+              Complete package: ATS-optimized resume + personalized cover letter ready to send to employers
             </p>
           </div>
         </div>
