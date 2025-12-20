@@ -18,6 +18,7 @@ import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 import { type JobEntry } from "@/components/JobSelector";
 
 import { HowItWorks } from "@/components/HowItWorks";
+import { MiniPricingCards } from "@/components/MiniPricingCards";
 import { FloatingUploadButton } from "@/components/FloatingUploadButton";
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
 import { useToast } from "@/hooks/use-toast";
@@ -905,6 +906,9 @@ const Index = () => {
         <div className="sm:hidden">
           <HowItWorks />
         </div>
+        
+        {/* Mini Pricing Cards - Featured packages */}
+        <MiniPricingCards />
 
         {/* Free Keyword Results */}
         {freeKeywordResult && (
