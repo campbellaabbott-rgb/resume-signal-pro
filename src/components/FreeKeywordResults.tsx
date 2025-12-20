@@ -1859,6 +1859,21 @@ export function FreeKeywordResults({
               </div>
             ))}
           </div>
+
+          {/* Premium Package CTA */}
+          <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/30">
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="flex-1 text-center sm:text-left">
+                <p className="font-semibold text-foreground text-sm">
+                  Want all your quick wins done for you?
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Our Premium Package includes an AI-rewritten resume with all fixes applied
+                </p>
+              </div>
+              <PremiumPackageButton variant={productCtaTest.variant as 'control' | 'benefit_focused' | 'scarcity'} isPrimary />
+            </div>
+          </div>
         </div>
       )}
 
@@ -2046,6 +2061,21 @@ export function FreeKeywordResults({
           <div className="flex items-center gap-1 mt-3 text-muted-foreground">
             <Lock className="w-3 h-3" />
             <span className="text-xs">More red flags + how to fix them in full analysis</span>
+          </div>
+
+          {/* Premium Package CTA */}
+          <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-destructive/10 to-destructive/5 border border-destructive/20">
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="flex-1 text-center sm:text-left">
+                <p className="font-semibold text-foreground text-sm">
+                  Fix all red flags automatically
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Get an AI-rewritten resume that eliminates these issues
+                </p>
+              </div>
+              <PremiumPackageButton variant={productCtaTest.variant as 'control' | 'benefit_focused' | 'scarcity'} isPrimary />
+            </div>
           </div>
         </div>
       )}
