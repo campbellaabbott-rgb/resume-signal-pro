@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.send-product-email]
 verify_jwt = false
+
+[functions.create-test-checkout]
+verify_jwt = false
