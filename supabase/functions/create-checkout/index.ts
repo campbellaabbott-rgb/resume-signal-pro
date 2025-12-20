@@ -121,7 +121,8 @@ const CURRENCY_RATES: Record<string, { rate: number; minUnit: number }> = {
   twd: { rate: 32.50, minUnit: 100 },
   czk: { rate: 23.50, minUnit: 100 },
   huf: { rate: 390, minUnit: 100 },
-  ron: { rate: 4.60, minUnit: 100 },
+  ron: { rate: 4.70, minUnit: 100 },
+  uyu: { rate: 44.50, minUnit: 100 },
 };
 
 // Blocked country codes (ISO 3166-1 alpha-2)
