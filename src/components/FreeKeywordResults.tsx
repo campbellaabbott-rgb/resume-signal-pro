@@ -101,6 +101,33 @@ const metricTooltips = {
   }
 };
 
+// Keyword Fix Button component
+const KeywordFixButton = () => {
+  const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
+  const isPurchasing = isLoading && currentProduct === 'basicKeywordFix';
+  
+  return (
+    <Button
+      onClick={() => purchaseProduct('basicKeywordFix')}
+      disabled={isPurchasing}
+      size="sm"
+      className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+    >
+      {isPurchasing ? (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Processing...
+        </>
+      ) : (
+        <>
+          <Zap className="w-4 h-4" />
+          Get Full Keyword Report
+        </>
+      )}
+    </Button>
+  );
+};
+
 // Premium Package Button component
 const PremiumPackageButton = () => {
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
@@ -1926,7 +1953,7 @@ export function FreeKeywordResults({
           <h4 className="font-semibold">{t('freeScan.missingKeywords')}</h4>
         </div>
         <div className="space-y-3">
-          {keywords.map((item, index) => (
+          {keywords.slice(0, 3).map((item, index) => (
             <div key={index} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30 border border-border/50">
               <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
               <div>
@@ -1935,6 +1962,33 @@ export function FreeKeywordResults({
               </div>
             </div>
           ))}
+          {keywords.length > 3 && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/20 border border-dashed border-muted-foreground/30">
+              <Lock className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                +{keywords.length - 3} more keywords hidden...
+              </span>
+            </div>
+          )}
+        </div>
+        
+        {/* Keyword Fix Upsell */}
+        <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-primary/20 shrink-0">
+              <Target className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h5 className="font-semibold text-foreground">Want 50+ Industry Keywords?</h5>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">$10</span>
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">
+                Get a complete keyword optimization report with exact phrases recruiters search for in your industry.
+              </p>
+              <KeywordFixButton />
+            </div>
+          </div>
         </div>
       </div>
 
