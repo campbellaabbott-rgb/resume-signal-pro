@@ -154,6 +154,11 @@ export default function Pricing() {
                         <Loader2 className="w-4 h-4 animate-spin" />
                         Processing...
                       </>
+                    ) : 'useMainCheckout' in product && product.useMainCheckout ? (
+                      <>
+                        Upload Resume First
+                        <ArrowRight className="w-4 h-4" />
+                      </>
                     ) : (
                       <>
                         Get {product.name.split(' ')[0]}
