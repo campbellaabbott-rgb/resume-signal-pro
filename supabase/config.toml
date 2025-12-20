@@ -41,3 +41,12 @@ verify_jwt = false
 
 [functions.create-product-checkout]
 verify_jwt = false
+
+[functions.generate-keyword-fix]
+verify_jwt = false
+
+[functions.generate-cover-letter]
+verify_jwt = false
+
+[functions.verify-product-purchase]
+verify_jwt = false

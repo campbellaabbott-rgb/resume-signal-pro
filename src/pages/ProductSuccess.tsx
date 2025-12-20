@@ -14,7 +14,13 @@ import {
   Download,
   Zap,
   Home,
-  HelpCircle
+  HelpCircle,
+  Copy,
+  Check,
+  AlertCircle,
+  Target,
+  TrendingUp,
+  Lightbulb
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -22,6 +28,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PRODUCTS, ProductId } from "@/config/products";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 // Map product keys to icons
 const productIcons: Record<string, React.ElementType> = {
@@ -42,33 +50,33 @@ const productInfo: Record<string, {
 }> = {
   basicKeywordFix: {
     howItWorks: [
-      "Upload your resume on our home page",
-      "Our AI analyzes your resume against ATS requirements",
-      "You'll receive a list of missing keywords and optimization suggestions",
-      "Add the recommended keywords to improve your ATS score"
+      "Our AI analyzed your resume against ATS requirements",
+      "We identified missing keywords that could boost your score",
+      "Review the suggestions below and add them to your resume",
+      "Re-upload to check your improved ATS score"
     ],
     nextSteps: [
-      { icon: Upload, title: "Upload Your Resume", description: "Go to the home page and upload your resume to start the analysis" },
-      { icon: Mail, title: "Check Your Email", description: "Your keyword report will be sent to the email you provided at checkout" },
-      { icon: FileText, title: "Apply Suggestions", description: "Update your resume with the recommended keywords" }
+      { icon: Target, title: "Review Keywords", description: "Check the missing keywords analysis below" },
+      { icon: FileText, title: "Update Resume", description: "Add the suggested keywords to your resume" },
+      { icon: TrendingUp, title: "Verify Improvement", description: "Re-scan to see your new ATS score" }
     ],
-    deliveryTime: "Within 5 minutes",
-    deliveryMethod: "Email + Dashboard"
+    deliveryTime: "Instant",
+    deliveryMethod: "On This Page"
   },
   coverLetter: {
     howItWorks: [
-      "Upload your resume on our home page",
-      "Paste the job description you're applying for",
-      "Our AI generates a personalized cover letter matching your experience to the role",
-      "Download your cover letter in multiple formats"
+      "Our AI analyzed your resume and the job requirements",
+      "We crafted a personalized cover letter matching your experience",
+      "Copy the letter below or download as a document",
+      "Customize the greeting and company-specific details"
     ],
     nextSteps: [
-      { icon: Upload, title: "Upload Your Resume", description: "Provide your resume so we can match your experience" },
-      { icon: FileText, title: "Add Job Description", description: "Paste the job posting to personalize your cover letter" },
-      { icon: Download, title: "Download & Send", description: "Get your tailored cover letter ready to submit" }
+      { icon: FileText, title: "Review Letter", description: "Read through your generated cover letter below" },
+      { icon: Copy, title: "Copy or Download", description: "Get your letter in the format you need" },
+      { icon: Mail, title: "Submit Application", description: "Send with your resume to apply" }
     ],
-    deliveryTime: "Within 2 minutes",
-    deliveryMethod: "Instant Download"
+    deliveryTime: "Instant",
+    deliveryMethod: "On This Page"
   },
   premiumPackage: {
     howItWorks: [
@@ -119,9 +127,31 @@ const productInfo: Record<string, {
   }
 };
 
+interface KeywordData {
+  missingKeywords: Array<{ keyword: string; importance: string; category: string; suggestion: string }>;
+  industryKeywords: Array<{ keyword: string; relevance: string }>;
+  actionVerbs: Array<{ current: string | null; suggested: string; context: string }>;
+  skillGaps: Array<{ skill: string; reason: string; howToAdd: string }>;
+  overallScore: number;
+  summary: string;
+}
+
+interface CoverLetterData {
+  coverLetter: string;
+  openingLine: string;
+  keySkillsHighlighted: string[];
+  personalizedElements: string[];
+  suggestedSubjectLine: string;
+  alternateOpenings: string[];
+}
+
 export default function ProductSuccess() {
   const [searchParams] = useSearchParams();
   const [isVerifying, setIsVerifying] = useState(true);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [generatedContent, setGeneratedContent] = useState<KeywordData | CoverLetterData | null>(null);
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
   
   const sessionId = searchParams.get("session_id");
   const productKey = searchParams.get("product") as ProductId | null;
@@ -132,12 +162,47 @@ export default function ProductSuccess() {
   const info = productKey ? productInfo[productKey] : null;
 
   useEffect(() => {
-    // Simulate verification (in reality, this could verify with Stripe)
-    const timer = setTimeout(() => {
-      setIsVerifying(false);
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [sessionId]);
+    async function verifyAndGenerate() {
+      if (!sessionId) {
+        setIsVerifying(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.functions.invoke('verify-product-purchase', {
+          body: { 
+            sessionId, 
+            generateContent: productKey === 'basicKeywordFix' || productKey === 'coverLetter'
+          }
+        });
+
+        if (error) {
+          console.error('Verification error:', error);
+          setVerificationError(error.message);
+        } else if (data?.generatedContent) {
+          setGeneratedContent(data.generatedContent);
+        }
+      } catch (err) {
+        console.error('Verification failed:', err);
+        setVerificationError('Failed to verify purchase');
+      } finally {
+        setIsVerifying(false);
+      }
+    }
+
+    verifyAndGenerate();
+  }, [sessionId, productKey]);
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast({ title: "Copied!", description: "Content copied to clipboard" });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast({ title: "Failed to copy", variant: "destructive" });
+    }
+  };
 
   if (isVerifying) {
     return (
@@ -151,8 +216,18 @@ export default function ProductSuccess() {
                 <div className="absolute w-20 h-20 rounded-full border-2 border-transparent border-t-primary animate-spin" />
                 <CheckCircle2 className="w-8 h-8 text-primary" />
               </div>
-              <h1 className="text-2xl font-bold">Verifying your purchase...</h1>
-              <p className="text-muted-foreground">Just a moment while we confirm your payment</p>
+              <h1 className="text-2xl font-bold">
+                {productKey === 'basicKeywordFix' || productKey === 'coverLetter' 
+                  ? 'Generating your content...' 
+                  : 'Verifying your purchase...'}
+              </h1>
+              <p className="text-muted-foreground">
+                {productKey === 'basicKeywordFix' 
+                  ? 'Analyzing your resume for missing keywords' 
+                  : productKey === 'coverLetter'
+                  ? 'Crafting your personalized cover letter'
+                  : 'Just a moment while we confirm your payment'}
+              </p>
             </div>
           </div>
         </main>
@@ -189,6 +264,11 @@ export default function ProductSuccess() {
       </div>
     );
   }
+
+  const isKeywordFix = productKey === 'basicKeywordFix';
+  const isCoverLetter = productKey === 'coverLetter';
+  const keywordData = isKeywordFix ? generatedContent as KeywordData : null;
+  const coverLetterData = isCoverLetter ? generatedContent as CoverLetterData : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -246,6 +326,190 @@ export default function ProductSuccess() {
             </div>
           </div>
         </section>
+
+        {/* Generated Content Section - Keyword Fix */}
+        {isKeywordFix && keywordData && (
+          <section className="py-12 border-t border-border/50">
+            <div className="container max-w-4xl">
+              <div className="text-center mb-8">
+                <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  Your Results Are Ready
+                </Badge>
+                <h2 className="text-2xl font-bold mb-2">Keyword Analysis Results</h2>
+                <p className="text-muted-foreground">{keywordData.summary}</p>
+              </div>
+
+              {/* Score */}
+              <div className="max-w-sm mx-auto mb-8 p-6 rounded-2xl bg-card border border-border text-center">
+                <div className="text-5xl font-bold text-primary mb-2">{keywordData.overallScore}%</div>
+                <div className="text-sm text-muted-foreground">Current Keyword Optimization Score</div>
+              </div>
+
+              {/* Missing Keywords */}
+              {keywordData.missingKeywords?.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Target className="w-5 h-5 text-destructive" />
+                    Missing Keywords to Add
+                  </h3>
+                  <div className="grid gap-3">
+                    {keywordData.missingKeywords.slice(0, 10).map((kw, i) => (
+                      <div key={i} className="p-4 rounded-xl bg-card border border-border">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold">{kw.keyword}</span>
+                              <Badge variant={kw.importance === 'critical' ? 'destructive' : kw.importance === 'high' ? 'default' : 'secondary'} className="text-xs">
+                                {kw.importance}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">{kw.category}</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{kw.suggestion}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Verbs */}
+              {keywordData.actionVerbs?.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-primary" />
+                    Stronger Action Verbs
+                  </h3>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {keywordData.actionVerbs.slice(0, 6).map((verb, i) => (
+                      <div key={i} className="p-4 rounded-xl bg-card border border-border">
+                        <div className="flex items-center gap-2 mb-2">
+                          {verb.current && (
+                            <>
+                              <span className="text-muted-foreground line-through">{verb.current}</span>
+                              <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                            </>
+                          )}
+                          <span className="font-semibold text-success">{verb.suggested}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{verb.context}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Skill Gaps */}
+              {keywordData.skillGaps?.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Lightbulb className="w-5 h-5 text-warning" />
+                    Skill Gaps to Address
+                  </h3>
+                  <div className="grid gap-3">
+                    {keywordData.skillGaps.slice(0, 5).map((gap, i) => (
+                      <div key={i} className="p-4 rounded-xl bg-card border border-border">
+                        <div className="font-semibold mb-1">{gap.skill}</div>
+                        <p className="text-sm text-muted-foreground mb-2">{gap.reason}</p>
+                        <p className="text-sm text-success">{gap.howToAdd}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Generated Content Section - Cover Letter */}
+        {isCoverLetter && coverLetterData && (
+          <section className="py-12 border-t border-border/50">
+            <div className="container max-w-3xl">
+              <div className="text-center mb-8">
+                <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  Your Cover Letter Is Ready
+                </Badge>
+                <h2 className="text-2xl font-bold mb-2">Your Personalized Cover Letter</h2>
+                {coverLetterData.suggestedSubjectLine && (
+                  <p className="text-muted-foreground">
+                    Suggested subject: <span className="text-foreground">{coverLetterData.suggestedSubjectLine}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Cover Letter Content */}
+              <div className="relative">
+                <div className="absolute top-4 right-4 z-10">
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
+                    onClick={() => copyToClipboard(coverLetterData.coverLetter)}
+                    className="gap-2"
+                  >
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {copied ? 'Copied!' : 'Copy'}
+                  </Button>
+                </div>
+                <div className="p-6 md:p-8 rounded-2xl bg-card border border-border">
+                  <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap">
+                    {coverLetterData.coverLetter}
+                  </div>
+                </div>
+              </div>
+
+              {/* Key Skills Highlighted */}
+              {coverLetterData.keySkillsHighlighted?.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-3">Key Skills Highlighted</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {coverLetterData.keySkillsHighlighted.map((skill, i) => (
+                      <Badge key={i} variant="secondary">{skill}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Alternate Openings */}
+              {coverLetterData.alternateOpenings?.length > 0 && (
+                <div className="mt-6 p-4 rounded-xl bg-muted/50 border border-border">
+                  <h3 className="text-sm font-semibold mb-3">Alternative Opening Lines</h3>
+                  <ul className="space-y-2">
+                    {coverLetterData.alternateOpenings.map((opening, i) => (
+                      <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                        <span className="text-primary font-bold">{i + 1}.</span>
+                        <span>"{opening}"</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* No Generated Content - Show Upload Prompt */}
+        {(isKeywordFix || isCoverLetter) && !generatedContent && !verificationError && (
+          <section className="py-12 border-t border-border/50">
+            <div className="container max-w-2xl text-center">
+              <div className="p-8 rounded-2xl bg-muted/50 border border-border">
+                <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Resume Data Not Found</h3>
+                <p className="text-muted-foreground mb-6">
+                  We couldn't find your resume data from the checkout session. 
+                  Please upload your resume on the home page to generate your {isKeywordFix ? 'keyword analysis' : 'cover letter'}.
+                </p>
+                <Button asChild size="lg" className="gap-2">
+                  <Link to="/">
+                    <Upload className="w-4 h-4" />
+                    Upload Resume
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* How It Works */}
         <section className="py-12 border-t border-border/50">
@@ -318,7 +582,7 @@ export default function ProductSuccess() {
               <Button asChild size="lg" className="gap-2 shadow-lg shadow-primary/20">
                 <Link to="/">
                   <Sparkles className="w-4 h-4" />
-                  Get Started Now
+                  {(isKeywordFix || isCoverLetter) && generatedContent ? 'Scan Another Resume' : 'Get Started Now'}
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </Button>
