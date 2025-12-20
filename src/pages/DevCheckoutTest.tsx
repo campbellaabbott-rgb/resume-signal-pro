@@ -237,43 +237,4 @@ export default function DevCheckoutTest() {
       </div>
     </div>
   );
-                    {isLoadingThis ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Creating checkout...
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="w-4 h-4 mr-2" />
-                        Test Checkout
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Test Card Info */}
-        <div className="mt-8 p-4 bg-muted/50 rounded-lg">
-          <h3 className="font-semibold mb-2">Stripe Test Cards</h3>
-          <div className="grid gap-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Success:</span>
-              <code className="bg-background px-2 rounded">4242 4242 4242 4242</code>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Decline:</span>
-              <code className="bg-background px-2 rounded">4000 0000 0000 0002</code>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">3D Secure:</span>
-              <code className="bg-background px-2 rounded">4000 0027 6000 3184</code>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
