@@ -18,6 +18,7 @@ import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 import { type JobEntry } from "@/components/JobSelector";
 
 import { HowItWorks } from "@/components/HowItWorks";
+import { FloatingUploadButton } from "@/components/FloatingUploadButton";
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
@@ -978,6 +979,8 @@ const Index = () => {
         }}
         isLoading={isLoading}
       />
+      
+      <FloatingUploadButton />
       
       <Footer />
       
