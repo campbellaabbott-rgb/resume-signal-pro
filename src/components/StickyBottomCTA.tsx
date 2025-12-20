@@ -18,11 +18,7 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
 
   // CTA button text variants
   const getCtaText = () => {
-    switch (heroCta.variant) {
-      case 'urgent': return 'Analyze Now';
-      case 'benefit': return 'Get Hired Faster';
-      default: return t('stickyCta.button');
-    }
+    return 'See All Packages';
   };
 
   const handleGetStarted = () => {
