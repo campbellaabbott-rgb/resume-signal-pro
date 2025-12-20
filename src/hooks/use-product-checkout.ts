@@ -8,6 +8,7 @@ export interface CheckoutOptions {
   sessionId?: string;
   jobTitle?: string;
   jobCompany?: string;
+  ctaSection?: string; // Track which section the CTA was clicked from
 }
 
 export function useProductCheckout() {
@@ -35,8 +36,8 @@ export function useProductCheckout() {
     setIsLoading(true);
     setCurrentProduct(productId);
     
-    // Track button click for conversion analytics
-    trackButtonClick(productId, 'product_checkout');
+    // Track button click for conversion analytics with section metadata
+    trackButtonClick(productId, opts.ctaSection || 'product_checkout');
 
     try {
       const { data, error } = await supabase.functions.invoke('create-product-checkout', {
