@@ -55,6 +55,8 @@ const CURRENCY_MAP: Record<string, CurrencyInfo> = {
   BD: { code: "BDT", symbol: "৳", rate: 121 },
   NG: { code: "NGN", symbol: "₦", rate: 1580 },
   EG: { code: "EGP", symbol: "E£", rate: 50.50 },
+  UY: { code: "UYU", symbol: "$U", rate: 44.50 },
+  RO: { code: "RON", symbol: "lei", rate: 4.70 },
 };
 
 // Map timezone to country code (approximate)
@@ -113,6 +115,8 @@ function getCountryFromTimezone(): string {
       "Africa/Lagos": "NG",
       "Africa/Cairo": "EG",
       "Europe/Moscow": "RU",
+      "America/Montevideo": "UY",
+      "Europe/Bucharest": "RO",
     };
     return tzToCountry[timezone] || "US";
   } catch {
