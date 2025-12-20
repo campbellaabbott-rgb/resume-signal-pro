@@ -139,6 +139,25 @@ serve(async (req) => {
             generatedContent = coverLetterResult.data;
             logStep("Cover letter generated");
           }
+        } else if (productType === 'premium_package' && resume_text) {
+          // Call premium package function
+          const premiumResponse = await fetch(`${supabaseUrl}/functions/v1/generate-premium-package`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+            },
+            body: JSON.stringify({
+              resumeText: resume_text,
+              jobDescription: job_description_text
+            })
+          });
+
+          if (premiumResponse.ok) {
+            const premiumResult = await premiumResponse.json();
+            generatedContent = premiumResult.data;
+            logStep("Premium package generated");
+          }
         }
       } else {
         logStep("No resume data found for session");

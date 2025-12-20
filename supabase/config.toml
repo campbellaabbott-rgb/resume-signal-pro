@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.verify-product-purchase]
 verify_jwt = false
+
+[functions.generate-premium-package]
+verify_jwt = false
