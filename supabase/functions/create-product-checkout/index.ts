@@ -74,18 +74,12 @@ serve(async (req) => {
       );
     }
 
-    // Validate email
-    if (!email || typeof email !== 'string' || !email.includes('@')) {
-      logStep("Invalid email provided");
-      return new Response(
-        JSON.stringify({ error: "Valid email address is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const normalizedEmail = email.toLowerCase().trim();
+    // Email is optional - Stripe will collect it during checkout if not provided
+    const normalizedEmail = email && typeof email === 'string' && email.includes('@') 
+      ? email.toLowerCase().trim() 
+      : null;
     const product = PRODUCTS[productId];
-    logStep("Request validated", { email: normalizedEmail, productId, productName: product.name });
+    logStep("Request validated", { email: normalizedEmail || 'will be collected by Stripe', productId, productName: product.name });
 
     // Initialize Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -123,18 +117,20 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const origin = req.headers.get("origin") || "https://lovable.dev";
 
-    // Check if customer exists
-    const customers = await stripe.customers.list({ email: normalizedEmail, limit: 1 });
+    // Check if customer exists (only if email provided)
     let customerId: string | undefined;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
-      logStep("Found existing customer", { customerId });
+    if (normalizedEmail) {
+      const customers = await stripe.customers.list({ email: normalizedEmail, limit: 1 });
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
+        logStep("Found existing customer", { customerId });
+      }
     }
 
-    // Create checkout session
+    // Create checkout session - Stripe will collect email if not provided
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      customer_email: customerId ? undefined : normalizedEmail,
+      customer_email: customerId ? undefined : (normalizedEmail || undefined),
       line_items: [
         {
           price: product.priceId,
@@ -148,7 +144,7 @@ serve(async (req) => {
       metadata: {
         product_type: product.productType,
         product_name: product.name,
-        customer_email: normalizedEmail,
+        customer_email: normalizedEmail || "",
         session_id: sessionId || "",
         credits: product.credits?.toString() || "",
       },

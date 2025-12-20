@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Check, Sparkles, FileText, Crown, Package, Loader2 } from 'lucide-react';
 import { PRODUCTS, ProductId } from '@/config/products';
@@ -33,11 +31,10 @@ export function ProductSelectionModal({
   onFullAnalysisCheckout
 }: ProductSelectionModalProps) {
   const [selectedProduct, setSelectedProduct] = useState<ProductId | null>(preSelectedProduct || null);
-  const [email, setEmail] = useState('');
   const { purchaseProduct, isLoading } = useProductCheckout();
 
   const handlePurchase = async () => {
-    if (!selectedProduct || !email || !email.includes('@')) return;
+    if (!selectedProduct) return;
     
     const product = PRODUCTS[selectedProduct];
     
@@ -48,13 +45,12 @@ export function ProductSelectionModal({
       return;
     }
     
-    const url = await purchaseProduct(selectedProduct, email, sessionId);
+    // Go directly to Stripe - email will be collected there
+    const url = await purchaseProduct(selectedProduct, sessionId);
     if (url) {
       onOpenChange(false);
     }
   };
-
-  const isValidEmail = email.includes('@') && email.includes('.');
 
   // Products to show (excluding scan pack which has its own flow)
   const displayProducts = [
@@ -155,32 +151,17 @@ export function ProductSelectionModal({
           })}
         </div>
 
-        {/* Email input - not needed for fullAnalysis (uses existing checkout) */}
-        {selectedProduct !== 'fullAnalysis' && (
-          <div className="space-y-2 pt-2 border-t">
-            <Label htmlFor="checkout-email">Email for receipt</Label>
-            <Input
-              id="checkout-email"
-              type="email"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full"
-            />
-          </div>
-        )}
-
         {/* Purchase button */}
         <Button 
           onClick={handlePurchase}
-          disabled={!selectedProduct || (selectedProduct !== 'fullAnalysis' && !isValidEmail) || isLoading}
+          disabled={!selectedProduct || isLoading}
           className="w-full mt-4"
           size="lg"
         >
           {isLoading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Processing...
+              Redirecting to checkout...
             </>
           ) : (
             getSelectedProductName()
