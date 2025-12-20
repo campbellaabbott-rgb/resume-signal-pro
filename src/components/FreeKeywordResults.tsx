@@ -191,15 +191,27 @@ const KeywordFixButton = ({ variant }: { variant: 'control' | 'benefit_focused' 
 };
 
 // Premium Package Button component
-const PremiumPackageButton = ({ variant, isPrimary = false }: { variant: 'control' | 'benefit_focused' | 'scarcity'; isPrimary?: boolean }) => {
+const PremiumPackageButton = ({ 
+  variant, 
+  isPrimary = false, 
+  section = 'default' 
+}: { 
+  variant: 'control' | 'benefit_focused' | 'scarcity'; 
+  isPrimary?: boolean;
+  section?: string;
+}) => {
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
   const isPurchasing = isLoading && currentProduct === 'premiumPackage';
   const copy = getProductCtaCopy(variant).premiumPackage;
   
+  const handleClick = () => {
+    purchaseProduct('premiumPackage', { ctaSection: section });
+  };
+  
   if (isPrimary) {
     return (
       <Button
-        onClick={() => purchaseProduct('premiumPackage')}
+        onClick={handleClick}
         disabled={isPurchasing}
         size="lg"
         className="gap-2 bg-white hover:bg-white/90 text-primary font-bold shadow-lg"
@@ -221,7 +233,7 @@ const PremiumPackageButton = ({ variant, isPrimary = false }: { variant: 'contro
   
   return (
     <Button
-      onClick={() => purchaseProduct('premiumPackage')}
+      onClick={handleClick}
       disabled={isPurchasing}
       size="lg"
       variant="outline"
@@ -1782,7 +1794,7 @@ export function FreeKeywordResults({
                 Get an AI-rewritten resume that's optimized for ALL major ATS systems
               </p>
             </div>
-            <PremiumPackageButton variant={productCtaTest.variant as 'control' | 'benefit_focused' | 'scarcity'} isPrimary />
+            <PremiumPackageButton variant={productCtaTest.variant as 'control' | 'benefit_focused' | 'scarcity'} isPrimary section="ats_compatibility" />
           </div>
         </div>
       </div>
@@ -1871,7 +1883,7 @@ export function FreeKeywordResults({
                   Our Premium Package includes an AI-rewritten resume with all fixes applied
                 </p>
               </div>
-              <PremiumPackageButton variant={productCtaTest.variant as 'control' | 'benefit_focused' | 'scarcity'} isPrimary />
+              <PremiumPackageButton variant={productCtaTest.variant as 'control' | 'benefit_focused' | 'scarcity'} isPrimary section="quick_wins" />
             </div>
           </div>
         </div>
@@ -2031,7 +2043,7 @@ export function FreeKeywordResults({
                   </>
                 )}
               </Button>
-              <PremiumPackageButton variant={productCtaTest.variant} />
+              <PremiumPackageButton variant={productCtaTest.variant} section="tailored_resume" />
             </div>
             <p className="text-xs text-muted-foreground mt-3">
               {getProductCtaCopy(productCtaTest.variant).tailoredResume.description}
@@ -2074,7 +2086,7 @@ export function FreeKeywordResults({
                   Get an AI-rewritten resume that eliminates these issues
                 </p>
               </div>
-              <PremiumPackageButton variant={productCtaTest.variant as 'control' | 'benefit_focused' | 'scarcity'} isPrimary />
+              <PremiumPackageButton variant={productCtaTest.variant as 'control' | 'benefit_focused' | 'scarcity'} isPrimary section="red_flags" />
             </div>
           </div>
         </div>
@@ -2278,7 +2290,7 @@ export function FreeKeywordResults({
             ))}
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <PremiumPackageButton variant={productCtaTest.variant} isPrimary />
+            <PremiumPackageButton variant={productCtaTest.variant} isPrimary section="bottom_cta" />
             <div className="text-primary-foreground">
               <span className="text-2xl font-bold">$59</span>
               <span className="text-sm text-primary-foreground/70 ml-1 line-through">$87</span>
