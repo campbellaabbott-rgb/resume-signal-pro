@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Package, ArrowRight, X } from "lucide-react";
+import { useABTest } from "@/hooks/use-ab-test";
 
 export function StickyPricingBanner() {
   const [isDismissed, setIsDismissed] = useState(false);
   const [uploadInView, setUploadInView] = useState(false);
+  const { variant, trackConversion } = useABTest('sticky_pricing_banner');
 
   useEffect(() => {
     const uploadEl = document.getElementById("upload");
@@ -22,8 +24,15 @@ export function StickyPricingBanner() {
     return () => observer.disconnect();
   }, []);
 
-  // Visible until user reaches the upload section, so it won't compete with the bottom CTA.
+  // A/B test: hide variant shows nothing
+  if (variant === 'hide') return null;
+
+  // Visible until user reaches the upload section or dismisses
   if (isDismissed || uploadInView) return null;
+
+  const handleClick = () => {
+    trackConversion({ action: 'pricing_click', source: 'sticky_banner' });
+  };
 
   return (
     <>
@@ -32,7 +41,11 @@ export function StickyPricingBanner() {
         <div className="bg-accent/95 backdrop-blur-lg border-b border-border shadow-lg">
           <div className="container py-2.5">
             <div className="flex items-center justify-between gap-2">
-              <Link to="/pricing" className="flex items-center gap-2 flex-1">
+              <Link 
+                to="/pricing" 
+                onClick={handleClick}
+                className="flex items-center gap-2 flex-1"
+              >
                 <Package className="w-4 h-4 text-primary" />
                 <span className="text-sm font-medium">
                   Resume packages from <span className="text-primary font-bold">$10</span>
@@ -56,6 +69,7 @@ export function StickyPricingBanner() {
         <div className="relative">
           <Link
             to="/pricing"
+            onClick={handleClick}
             className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-card border border-border shadow-lg hover:shadow-xl hover:border-primary/50 transition-all group"
           >
             <Package className="w-4 h-4 text-primary" />
