@@ -31,7 +31,7 @@ export function Header() {
         🚀 Currently in Beta — We'd love your feedback!
       </div>
       <header 
-        className="fixed top-10 left-0 right-0 z-50 bg-background border-b border-border/50"
+        className="fixed top-10 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/50"
         role="banner"
       >
       <div className="container">
