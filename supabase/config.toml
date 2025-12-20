@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.generate-premium-package]
 verify_jwt = false
+
+[functions.send-product-email]
+verify_jwt = false

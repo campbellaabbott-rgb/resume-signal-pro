@@ -1,0 +1,326 @@
+import { Resend } from "https://esm.sh/resend@2.0.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+function escapeHtml(text: string | number | undefined | null): string {
+  if (text === undefined || text === null) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+interface ProductEmailRequest {
+  email: string;
+  productType: string;
+  productName: string;
+  generatedContent?: any;
+}
+
+// Product-specific info
+const productInfo: Record<string, {
+  emoji: string;
+  tagline: string;
+  howItWorks: string[];
+  nextSteps: string[];
+}> = {
+  basic_keyword_fix: {
+    emoji: "🎯",
+    tagline: "Boost your ATS score with optimized keywords",
+    howItWorks: [
+      "Our AI analyzed your resume against ATS requirements",
+      "We identified missing keywords that could boost your score",
+      "Review the suggestions and add them to your resume",
+      "Re-upload to check your improved ATS score"
+    ],
+    nextSteps: [
+      "Review the keyword analysis on the success page",
+      "Update your resume with the suggested keywords",
+      "Focus on critical and high-importance keywords first",
+      "Re-scan to verify your improved score"
+    ]
+  },
+  cover_letter: {
+    emoji: "✉️",
+    tagline: "A personalized cover letter tailored to your target role",
+    howItWorks: [
+      "Our AI analyzed your resume and the job requirements",
+      "We crafted a personalized cover letter matching your experience",
+      "Copy the letter or download it as a document",
+      "Customize the greeting and company-specific details"
+    ],
+    nextSteps: [
+      "Review your cover letter on the success page",
+      "Copy or download the letter",
+      "Personalize the greeting if needed",
+      "Submit with your resume application"
+    ]
+  },
+  premium_package: {
+    emoji: "👑",
+    tagline: "Complete resume rewrite + personalized cover letter",
+    howItWorks: [
+      "Our AI completely rewrote your resume for ATS optimization",
+      "We added missing keywords and stronger action verbs",
+      "Your cover letter is personalized to the target role",
+      "Review the before/after comparison to see improvements"
+    ],
+    nextSteps: [
+      "Review your optimized resume on the success page",
+      "Check the cover letter in the second tab",
+      "Copy or download both documents",
+      "Submit your application with confidence"
+    ]
+  },
+  career_bundle: {
+    emoji: "📦",
+    tagline: "75 full resume analyses to power your job search",
+    howItWorks: [
+      "75 full resume analyses have been added to your account",
+      "Each analysis includes complete ATS scoring and optimization",
+      "Use them across multiple job applications",
+      "Credits never expire - use at your own pace"
+    ],
+    nextSteps: [
+      "Go to the home page to start using your credits",
+      "Upload your resume for each job application",
+      "Track your remaining credits in the header",
+      "Share with friends or family if you'd like"
+    ]
+  },
+  scan_pack: {
+    emoji: "⚡",
+    tagline: "30 resume scans to optimize every application",
+    howItWorks: [
+      "30 scan credits have been added to your account",
+      "Each scan analyzes your resume against a specific job",
+      "Compare unlimited job descriptions with your credits",
+      "Credits never expire"
+    ],
+    nextSteps: [
+      "Go to the home page to start scanning",
+      "Each scan uses one credit from your balance",
+      "View remaining credits in the header",
+      "Optimize for each job you apply to"
+    ]
+  }
+};
+
+function generateProductEmailHtml(data: ProductEmailRequest): string {
+  const { productName, productType, generatedContent } = data;
+  const info = productInfo[productType] || productInfo.basic_keyword_fix;
+  
+  const howItWorksHtml = info.howItWorks.map((step, i) => 
+    `<tr>
+      <td style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6;">
+        <div style="display: flex; align-items: flex-start;">
+          <span style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-block; text-align: center; line-height: 24px; font-size: 12px; font-weight: bold; margin-right: 12px; flex-shrink: 0;">${i + 1}</span>
+          <span style="color: #374151; font-size: 14px;">${escapeHtml(step)}</span>
+        </div>
+      </td>
+    </tr>`
+  ).join('');
+
+  const nextStepsHtml = info.nextSteps.map(step => 
+    `<li style="margin-bottom: 8px; color: #374151; font-size: 14px;">✓ ${escapeHtml(step)}</li>`
+  ).join('');
+
+  // Extract key highlights from generated content if available
+  let highlightsHtml = '';
+  if (generatedContent) {
+    if (productType === 'basic_keyword_fix' && generatedContent.overallScore) {
+      highlightsHtml = `
+        <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
+          <div style="font-size: 36px; font-weight: bold; color: #22c55e;">${generatedContent.overallScore}%</div>
+          <div style="color: #166534; font-size: 14px;">Keyword Optimization Score</div>
+          ${generatedContent.missingKeywords?.length ? `<div style="color: #4b5563; font-size: 13px; margin-top: 8px;">${generatedContent.missingKeywords.length} keywords to add</div>` : ''}
+        </div>
+      `;
+    } else if (productType === 'premium_package' && generatedContent.resume?.atsScore) {
+      highlightsHtml = `
+        <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
+          <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
+            <div>
+              <div style="font-size: 24px; font-weight: bold; color: #9ca3af;">${generatedContent.resume.atsScore.before}%</div>
+              <div style="color: #6b7280; font-size: 12px;">Before</div>
+            </div>
+            <div style="font-size: 24px; color: #22c55e;">→</div>
+            <div>
+              <div style="font-size: 36px; font-weight: bold; color: #22c55e;">${generatedContent.resume.atsScore.after}%</div>
+              <div style="color: #166534; font-size: 12px;">After</div>
+            </div>
+          </div>
+          <div style="color: #166534; font-size: 14px; margin-top: 12px;">ATS Score Improvement</div>
+        </div>
+      `;
+    }
+  }
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your ${escapeHtml(productName)} is Ready!</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 32px; border-radius: 16px 16px 0 0; text-align: center;">
+              <div style="font-size: 48px; margin-bottom: 12px;">${info.emoji}</div>
+              <h1 style="margin: 0; color: white; font-size: 24px; font-weight: 700;">
+                Thank You for Your Purchase!
+              </h1>
+              <p style="margin: 12px 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">
+                ${escapeHtml(productName)}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="background: white; padding: 32px;">
+              
+              <!-- Tagline -->
+              <p style="color: #6b7280; font-size: 16px; text-align: center; margin: 0 0 24px;">
+                ${escapeHtml(info.tagline)}
+              </p>
+
+              ${highlightsHtml}
+
+              <!-- How It Works -->
+              <div style="margin-bottom: 32px;">
+                <h2 style="color: #1f2937; font-size: 18px; font-weight: 600; margin: 0 0 16px; padding-bottom: 12px; border-bottom: 2px solid #e5e7eb;">
+                  📋 How It Works
+                </h2>
+                <table role="presentation" style="width: 100%; border-collapse: collapse; background: #f9fafb; border-radius: 12px; overflow: hidden;">
+                  ${howItWorksHtml}
+                </table>
+              </div>
+
+              <!-- Next Steps -->
+              <div style="margin-bottom: 32px;">
+                <h2 style="color: #1f2937; font-size: 18px; font-weight: 600; margin: 0 0 16px; padding-bottom: 12px; border-bottom: 2px solid #e5e7eb;">
+                  🚀 Your Next Steps
+                </h2>
+                <ul style="margin: 0; padding-left: 0; list-style: none;">
+                  ${nextStepsHtml}
+                </ul>
+              </div>
+
+              <!-- CTA Button -->
+              <div style="text-align: center; margin-top: 32px;">
+                <a href="https://resumebooster.lovable.app" 
+                   style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                  View Your Results →
+                </a>
+              </div>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background: #f9fafb; padding: 24px; border-radius: 0 0 16px 16px; text-align: center;">
+              <p style="margin: 0 0 8px; color: #6b7280; font-size: 14px;">
+                Questions? Reply to this email or contact support.
+              </p>
+              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                Resume Booster - Land your dream job with an ATS-optimized resume
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendApiKey) {
+      console.error("[SEND-PRODUCT-EMAIL] RESEND_API_KEY not configured");
+      return new Response(
+        JSON.stringify({ error: "Email service not configured" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const requestData: ProductEmailRequest = await req.json();
+    const { email, productType, productName, generatedContent } = requestData;
+
+    // Validate email
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return new Response(
+        JSON.stringify({ error: "Valid email is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!productType || !productName) {
+      return new Response(
+        JSON.stringify({ error: "Product type and name are required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`[SEND-PRODUCT-EMAIL] Sending ${productType} email to ${email}`);
+
+    const resend = new Resend(resendApiKey);
+    const html = generateProductEmailHtml(requestData);
+
+    const info = productInfo[productType];
+    const emoji = info?.emoji || "✨";
+
+    const { data, error } = await resend.emails.send({
+      from: "Resume Booster <onboarding@resend.dev>",
+      to: [email],
+      subject: `${emoji} Your ${productName} is Ready!`,
+      html,
+    });
+
+    if (error) {
+      console.error("[SEND-PRODUCT-EMAIL] Resend error:", error);
+      return new Response(
+        JSON.stringify({ error: "Failed to send email", details: error.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`[SEND-PRODUCT-EMAIL] Email sent successfully: ${data?.id}`);
+
+    return new Response(
+      JSON.stringify({ success: true, messageId: data?.id }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("[SEND-PRODUCT-EMAIL] Error:", errorMessage);
+    
+    return new Response(
+      JSON.stringify({ error: "Failed to send email", details: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
