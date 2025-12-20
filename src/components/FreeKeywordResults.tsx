@@ -1770,6 +1770,21 @@ export function FreeKeywordResults({
             </p>
           </div>
         )}
+
+        {/* Premium Package CTA */}
+        <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border border-primary/20">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="flex-1 text-center sm:text-left">
+              <p className="font-semibold text-foreground">
+                {getProductCtaCopy(productCtaTest.variant as 'control' | 'benefit_focused' | 'scarcity').premiumPackage.headline}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Get an AI-rewritten resume that's optimized for ALL major ATS systems
+              </p>
+            </div>
+            <PremiumPackageButton variant={productCtaTest.variant as 'control' | 'benefit_focused' | 'scarcity'} isPrimary />
+          </div>
+        </div>
       </div>
 
       {/* Power Words & Weak Phrases */}
