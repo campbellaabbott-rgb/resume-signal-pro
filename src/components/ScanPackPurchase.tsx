@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Package, Zap, CheckCircle2, Mail } from "lucide-react";
+import { Coins, CheckCircle2, Mail, Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,56 +17,108 @@ export interface ScanPackPurchaseProps {
   onOpenChange?: (open: boolean) => void;
 }
 
+const PRESET_AMOUNTS = [5, 10, 20, 50];
+
 export function ScanPackPurchase({ onClose, className, open, onOpenChange }: ScanPackPurchaseProps) {
   const [email, setEmail] = useState("");
-  const { purchaseScanPack, isLoading, creditsPerPack, packPrice } = useScanCredits();
+  const [creditAmount, setCreditAmount] = useState(10);
+  const { purchaseCredits, isLoading, pricePerCredit } = useScanCredits();
 
   const handlePurchase = async () => {
     if (!email || !email.includes('@')) return;
-    await purchaseScanPack(email);
+    await purchaseCredits(email, creditAmount);
+  };
+
+  const adjustAmount = (delta: number) => {
+    setCreditAmount(prev => Math.max(1, Math.min(100, prev + delta)));
   };
 
   const isValidEmail = email.includes('@') && email.includes('.');
+  const totalPrice = creditAmount * pricePerCredit;
 
   const content = (
     <div className={`bg-card border border-border rounded-2xl p-6 ${className || ''}`}>
       <div className="flex items-center gap-3 mb-4">
         <div className="p-2 rounded-full bg-primary/10">
-          <Package className="w-5 h-5 text-primary" />
+          <Coins className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="font-semibold text-lg">$10 for 30 Scans</h3>
-          <p className="text-sm text-muted-foreground">Up to 7 scans free daily • Need more? Buy a pack!</p>
+          <h3 className="font-semibold text-lg">Top Up Credits</h3>
+          <p className="text-sm text-muted-foreground">$1 per credit • Use anytime</p>
         </div>
       </div>
 
       <div className="space-y-4">
-        {/* What you get */}
+        {/* Credit amount selector */}
         <div className="bg-secondary/30 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-2xl font-bold">${packPrice}</span>
-            <span className="text-sm text-muted-foreground">one-time</span>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm font-medium">Credits to buy</span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => adjustAmount(-1)}
+                disabled={creditAmount <= 1}
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                value={creditAmount}
+                onChange={(e) => setCreditAmount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                className="w-16 h-8 text-center"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => adjustAmount(1)}
+                disabled={creditAmount >= 100}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Preset amounts */}
+          <div className="flex gap-2 mb-4">
+            {PRESET_AMOUNTS.map((amount) => (
+              <Button
+                key={amount}
+                variant={creditAmount === amount ? "default" : "outline"}
+                size="sm"
+                className="flex-1"
+                onClick={() => setCreditAmount(amount)}
+              >
+                {amount}
+              </Button>
+            ))}
           </div>
           
-          <ul className="space-y-2">
-            <li className="flex items-center gap-2 text-sm">
-              <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-              <span><strong>{creditsPerPack} resume scans</strong></span>
-            </li>
-            <li className="flex items-center gap-2 text-sm">
-              <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-              <span>Unlimited job description comparisons</span>
-            </li>
-            <li className="flex items-center gap-2 text-sm">
-              <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-              <span>No daily limits on purchased scans</span>
-            </li>
-            <li className="flex items-center gap-2 text-sm">
-              <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-              <span>Credits never expire</span>
-            </li>
-          </ul>
+          <div className="flex items-center justify-between pt-3 border-t border-border/50">
+            <span className="text-sm text-muted-foreground">Total</span>
+            <span className="text-2xl font-bold">${totalPrice}</span>
+          </div>
         </div>
+
+        {/* What you get */}
+        <ul className="space-y-2">
+          <li className="flex items-center gap-2 text-sm">
+            <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+            <span><strong>{creditAmount} resume scan{creditAmount !== 1 ? 's' : ''}</strong></span>
+          </li>
+          <li className="flex items-center gap-2 text-sm">
+            <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+            <span>Unlimited job description comparisons</span>
+          </li>
+          <li className="flex items-center gap-2 text-sm">
+            <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+            <span>Credits never expire</span>
+          </li>
+        </ul>
 
         {/* Email input */}
         <div className="space-y-2">
@@ -97,8 +149,8 @@ export function ScanPackPurchase({ onClose, className, open, onOpenChange }: Sca
             "Processing..."
           ) : (
             <>
-              <Zap className="w-4 h-4 mr-2" />
-              Get {creditsPerPack} Scans for ${packPrice}
+              <Coins className="w-4 h-4 mr-2" />
+              Buy {creditAmount} Credit{creditAmount !== 1 ? 's' : ''} for ${totalPrice}
             </>
           )}
         </Button>

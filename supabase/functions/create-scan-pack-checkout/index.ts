@@ -7,8 +7,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SCAN_PACK_PRICE_ID = "price_1SfqT8HBplUUV1Cg3McLmgI7";
-const CREDITS_PER_PACK = 30;
+// Price per credit: $1 each
+const CREDIT_PRICE_ID = "price_1SgEvtHBplUUV1CgLtMVyhkZ";
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MINUTES = 60;
 
@@ -40,7 +40,7 @@ serve(async (req) => {
       );
     }
 
-    const { email } = requestBody;
+    const { email, creditAmount } = requestBody;
 
     // Validate email
     if (!email || typeof email !== 'string' || !email.includes('@')) {
@@ -51,8 +51,18 @@ serve(async (req) => {
       );
     }
 
+    // Validate credit amount (1-100)
+    const credits = parseInt(creditAmount) || 10;
+    if (credits < 1 || credits > 100) {
+      logStep("Invalid credit amount", { creditAmount });
+      return new Response(
+        JSON.stringify({ error: "Credit amount must be between 1 and 100" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const normalizedEmail = email.toLowerCase().trim();
-    logStep("Email validated", { email: normalizedEmail });
+    logStep("Request validated", { email: normalizedEmail, credits });
 
     // Initialize Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -98,28 +108,28 @@ serve(async (req) => {
       logStep("Found existing customer", { customerId });
     }
 
-    // Create checkout session
+    // Create checkout session with quantity = number of credits
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : normalizedEmail,
       line_items: [
         {
-          price: SCAN_PACK_PRICE_ID,
-          quantity: 1,
+          price: CREDIT_PRICE_ID,
+          quantity: credits,
         },
       ],
       mode: "payment",
-      allow_promotion_codes: true, // Enable promo codes like TEST100
+      allow_promotion_codes: true,
       success_url: `${origin}/?scan_pack_success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/?scan_pack_canceled=true`,
       metadata: {
-        product_type: "scan_pack",
-        credits: CREDITS_PER_PACK.toString(),
+        product_type: "scan_credits",
+        credits: credits.toString(),
         customer_email: normalizedEmail,
       },
     });
 
-    logStep("Checkout session created", { sessionId: session.id, email: normalizedEmail });
+    logStep("Checkout session created", { sessionId: session.id, email: normalizedEmail, credits });
 
     return new Response(
       JSON.stringify({ url: session.url, sessionId: session.id }),

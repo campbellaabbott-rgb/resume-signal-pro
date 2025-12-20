@@ -2,8 +2,8 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
-const CREDITS_PER_PACK = 30;
-const PACK_PRICE_USD = 10;
+// 1 credit = $1, users can buy any amount
+const PRICE_PER_CREDIT_USD = 1;
 
 interface ScanCreditsState {
   email: string | null;
@@ -74,8 +74,8 @@ export function useScanCredits() {
     }
   }, []);
 
-  // Purchase scan pack (redirects to Stripe checkout)
-  const purchaseScanPack = useCallback(async (email: string) => {
+  // Purchase credits (redirects to Stripe checkout)
+  const purchaseCredits = useCallback(async (email: string, creditAmount: number) => {
     if (!email || !email.includes('@')) {
       toast({
         title: "Email required",
@@ -85,11 +85,23 @@ export function useScanCredits() {
       return null;
     }
 
+    if (creditAmount < 1 || creditAmount > 100) {
+      toast({
+        title: "Invalid amount",
+        description: "Please select between 1 and 100 credits.",
+        variant: "destructive"
+      });
+      return null;
+    }
+
     setState(prev => ({ ...prev, isLoading: true }));
     
     try {
       const { data, error } = await supabase.functions.invoke('create-scan-pack-checkout', {
-        body: { email: email.toLowerCase().trim() }
+        body: { 
+          email: email.toLowerCase().trim(),
+          creditAmount: creditAmount
+        }
       });
 
       if (error) throw error;
@@ -114,6 +126,11 @@ export function useScanCredits() {
     }
   }, []);
 
+  // Legacy function for backwards compatibility
+  const purchaseScanPack = useCallback(async (email: string) => {
+    return purchaseCredits(email, 10); // Default to 10 credits
+  }, [purchaseCredits]);
+
   // Verify purchase after returning from Stripe
   const verifyPurchase = useCallback(async (sessionId: string) => {
     if (!sessionId) return null;
@@ -136,7 +153,7 @@ export function useScanCredits() {
         
         toast({
           title: "Purchase successful!",
-          description: `${data.creditsAdded || CREDITS_PER_PACK} scan credits added to your account.`,
+          description: `${data.creditsAdded} credit${data.creditsAdded !== 1 ? 's' : ''} added to your account.`,
         });
         
         return data;
@@ -162,9 +179,9 @@ export function useScanCredits() {
     isLoading: state.isLoading,
     checkCredits,
     useCredit,
-    purchaseScanPack,
+    purchaseCredits,
+    purchaseScanPack, // Keep for backwards compatibility
     verifyPurchase,
-    creditsPerPack: CREDITS_PER_PACK,
-    packPrice: PACK_PRICE_USD
+    pricePerCredit: PRICE_PER_CREDIT_USD
   };
 }
