@@ -273,8 +273,8 @@ export function Hero() {
             </Link>
           </div>
 
-          {/* Mobile: Direct scroll hint */}
-          <div className="mt-6 sm:hidden animate-fade-in" style={{ animationDelay: "0.2s" }}>
+          {/* Mobile: Direct scroll hint + Pricing teaser */}
+          <div className="mt-6 sm:hidden animate-fade-in space-y-4" style={{ animationDelay: "0.2s" }}>
             <button
               onClick={handleFreeScanClick}
               className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mx-auto"
@@ -284,6 +284,18 @@ export function Hero() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
               </svg>
             </button>
+            
+            {/* Mobile Pricing Teaser */}
+            <Link 
+              to="/pricing"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/20 active:bg-primary/20 transition-colors mx-auto"
+            >
+              <Package className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">
+                View All Packages
+              </span>
+              <ArrowRight className="w-4 h-4 text-primary" />
+            </Link>
           </div>
         </div>
       </div>
