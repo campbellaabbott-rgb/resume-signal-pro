@@ -3,38 +3,36 @@ import { Link } from "react-router-dom";
 import { Package, ArrowRight, X } from "lucide-react";
 
 export function StickyPricingBanner() {
-  const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
+  const [uploadInView, setUploadInView] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      // Show after scrolling 150px, hide after 2000px (before reaching the comparison table area)
-      // This gives users plenty of time to see it without conflicting with StickyBottomCTA
-      const scrollY = window.scrollY;
-      const shouldShow = scrollY > 150 && scrollY < 2000 && !isDismissed;
-      setIsVisible(shouldShow);
-    };
+    const uploadEl = document.getElementById("upload");
+    if (!uploadEl) return;
 
-    // Check initial scroll position
-    handleScroll();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        setUploadInView(Boolean(entry?.isIntersecting));
+      },
+      { threshold: 0.2 }
+    );
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isDismissed]);
+    observer.observe(uploadEl);
+    return () => observer.disconnect();
+  }, []);
 
-  if (!isVisible) return null;
+  // Visible until user reaches the upload section, so it won't compete with the bottom CTA.
+  if (isDismissed || uploadInView) return null;
 
   return (
     <>
-      {/* Mobile: Top banner */}
-      <div className="sm:hidden fixed top-0 left-0 right-0 z-50 animate-fade-in">
+      {/* Mobile: banner below fixed beta+header */}
+      <div className="sm:hidden fixed top-[6.5rem] left-0 right-0 z-40 animate-fade-in">
         <div className="bg-accent/95 backdrop-blur-lg border-b border-border shadow-lg">
           <div className="container py-2.5">
             <div className="flex items-center justify-between gap-2">
-              <Link 
-                to="/pricing"
-                className="flex items-center gap-2 flex-1"
-              >
+              <Link to="/pricing" className="flex items-center gap-2 flex-1">
                 <Package className="w-4 h-4 text-primary" />
                 <span className="text-sm font-medium">
                   Resume packages from <span className="text-primary font-bold">$10</span>
@@ -44,7 +42,7 @@ export function StickyPricingBanner() {
               <button
                 onClick={() => setIsDismissed(true)}
                 className="p-1.5 text-muted-foreground hover:text-foreground rounded-full transition-colors"
-                aria-label="Dismiss"
+                aria-label="Dismiss pricing banner"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -69,7 +67,7 @@ export function StickyPricingBanner() {
           <button
             onClick={() => setIsDismissed(true)}
             className="absolute -top-2 -right-2 p-1 bg-muted rounded-full border border-border text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Dismiss"
+            aria-label="Dismiss pricing banner"
           >
             <X className="w-3 h-3" />
           </button>
