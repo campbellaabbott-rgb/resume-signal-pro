@@ -142,6 +142,12 @@ export function Hero() {
               </div>
             )}
             
+            {/* Urgent hook for mobile - immediate value proposition */}
+            <div className="sm:hidden mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 border border-success/20 text-success text-sm font-semibold">
+              <Sparkles className="w-4 h-4" />
+              <span>Free ATS Score in 30 Seconds</span>
+            </div>
+            
             <p className="text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto mb-6 leading-relaxed">
               {t('hero.mainSubheading', "Find out in 30 seconds. Get your ATS score and see exactly what's costing you interviews.")}
             </p>

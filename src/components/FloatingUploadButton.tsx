@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Upload } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
@@ -15,13 +15,16 @@ export function FloatingUploadButton() {
       if (!uploadSection) return;
 
       const rect = uploadSection.getBoundingClientRect();
-      // Show button when upload section is scrolled out of view (above viewport)
-      const shouldShow = rect.bottom < 100;
-      setIsVisible(shouldShow);
+      const viewportHeight = window.innerHeight;
+      
+      // Show button when upload section is not fully visible
+      // Either scrolled past it OR not yet scrolled to it (below fold)
+      const isUploadVisible = rect.top < viewportHeight - 100 && rect.bottom > 100;
+      setIsVisible(!isUploadVisible && window.scrollY > 200);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll(); // Check initial state
+    handleScroll();
 
     return () => window.removeEventListener('scroll', handleScroll);
   }, [isMobile]);
@@ -39,18 +42,19 @@ export function FloatingUploadButton() {
     <button
       onClick={handleClick}
       className={cn(
-        "fixed bottom-[76px] right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-full",
-        "bg-success text-success-foreground font-semibold text-sm",
-        "shadow-lg shadow-success/30 hover:shadow-xl hover:shadow-success/40",
+        "fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-6 py-4 rounded-full",
+        "bg-gradient-to-r from-success via-success to-emerald-500 text-success-foreground font-bold text-base",
+        "shadow-xl shadow-success/40 hover:shadow-2xl hover:shadow-success/50",
         "transition-all duration-300 touch-manipulation",
+        "animate-pulse-subtle",
         isVisible 
           ? "translate-y-0 opacity-100" 
-          : "translate-y-16 opacity-0 pointer-events-none"
+          : "translate-y-24 opacity-0 pointer-events-none"
       )}
-      aria-label="Upload your resume"
+      aria-label="Scan your resume now"
     >
-      <Upload className="w-4 h-4" />
-      <span>Upload Resume</span>
+      <Sparkles className="w-5 h-5" />
+      <span>Scan My Resume FREE</span>
     </button>
   );
 }
