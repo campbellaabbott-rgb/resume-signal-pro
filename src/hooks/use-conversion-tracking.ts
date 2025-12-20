@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ProductId } from '@/config/products';
+import { AB_TESTS } from '@/hooks/use-ab-test';
 
 // Get or create visitor ID for tracking
 const getVisitorId = (): string => {
@@ -13,6 +14,35 @@ const getVisitorId = (): string => {
   }
   
   return visitorId;
+};
+
+// Track A/B test conversion for all active tests
+const trackABTestConversions = async (metadata?: Record<string, unknown>) => {
+  const visitorId = localStorage.getItem('ab_visitor_id');
+  if (!visitorId) return;
+  
+  // Track conversion for all active A/B tests
+  const testNames = Object.keys(AB_TESTS) as (keyof typeof AB_TESTS)[];
+  
+  for (const testName of testNames) {
+    const variant = localStorage.getItem(`ab_${testName}`);
+    if (variant) {
+      try {
+        await supabase.functions.invoke('track-ab-event', {
+          body: {
+            testName,
+            variant,
+            eventType: 'conversion',
+            visitorId,
+            metadata
+          }
+        });
+        console.log(`[A/B Conversion] Tracked conversion for ${testName}:${variant}`);
+      } catch (error) {
+        console.error(`Failed to track A/B conversion for ${testName}:`, error);
+      }
+    }
+  }
 };
 
 // Track conversion event
@@ -43,6 +73,11 @@ const trackConversionEvent = async (
     });
     
     console.log(`[Conversion] Tracked ${eventType} for ${productId}`);
+    
+    // Also track A/B test conversions on purchase completed
+    if (eventType === 'purchase_completed') {
+      await trackABTestConversions({ productId, ...metadata });
+    }
   } catch (error) {
     console.error('Failed to track conversion event:', error);
   }
