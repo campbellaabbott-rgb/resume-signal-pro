@@ -21,6 +21,7 @@
     "problemBadge": "85% des CV n'atteignent jamais un humain",
     "mainHeading": "Votre CV est-il",
     "mainHeadingHighlight": "Rejeté par les Bots ATS ?",
+    "atsTooltip": "Les ATS (Applicant Tracking Systems) sont des bots IA qui analysent et filtrent les CV avant qu'un humain ne les voie. Plus de 98% des entreprises Fortune 500 les utilisent.",
     "mainSubheading": "Découvrez-le en 30 secondes. Obtenez votre score ATS et voyez exactement ce qui vous coûte des entretiens.",
     "ctaButton": "Analyser mon CV maintenant",
     "freeBadge": "GRATUIT",

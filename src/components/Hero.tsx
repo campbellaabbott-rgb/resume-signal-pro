@@ -1,4 +1,5 @@
-import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye, Users, Sparkles, CheckCircle2 } from "lucide-react";
+import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye, Users, Sparkles, CheckCircle2, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { LiveActivityCounter } from "./LiveActivityCounter";
@@ -92,7 +93,21 @@ export function Hero() {
               className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 leading-tight"
             >
               {t('hero.mainHeading', 'Is Your Resume Being')}{" "}
-              <span className="text-destructive">{t('hero.mainHeadingHighlight', 'Rejected by ATS?')}</span>
+              <span className="text-destructive inline-flex items-center gap-1.5">
+                {t('hero.mainHeadingHighlight', 'Rejected by ATS Bots?')}
+                <TooltipProvider>
+                  <Tooltip delayDuration={100}>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex cursor-help">
+                        <Info className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground hover:text-foreground transition-colors" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs text-sm font-normal">
+                      <p>{t('hero.atsTooltip', 'ATS (Applicant Tracking Systems) are AI bots that scan and filter resumes before a human ever sees them. Over 98% of Fortune 500 companies use them.')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </span>
             </h1>
             
             <p className="text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto mb-8 leading-relaxed">
