@@ -125,8 +125,23 @@ serve(async (req) => {
       ip_address: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 'unknown'
     });
 
-    // Add credits to the email
-    const creditsToAdd = parseInt(session.metadata?.credits || String(CREDITS_PER_PACK));
+    // Validate and add credits - only accept hardcoded CREDITS_PER_PACK value
+    // Do not trust metadata values to prevent manipulation attacks
+    const metadataCredits = parseInt(session.metadata?.credits || String(CREDITS_PER_PACK));
+    
+    // Validate credits match expected product amount (defense-in-depth)
+    if (metadataCredits !== CREDITS_PER_PACK) {
+      console.error("[VERIFY-SCAN-PACK-PURCHASE] Invalid credit amount in metadata:", metadataCredits);
+      // Use the known-good constant instead of potentially manipulated metadata
+      logStep("Using hardcoded credits due to metadata mismatch", { 
+        metadataValue: metadataCredits, 
+        expectedValue: CREDITS_PER_PACK 
+      });
+    }
+    
+    // Always use the hardcoded constant for security
+    const creditsToAdd = CREDITS_PER_PACK;
+    
     const { data: creditSuccess, error: creditError } = await supabase.rpc('add_scan_credits', {
       p_email: customerEmail,
       p_credits: creditsToAdd
