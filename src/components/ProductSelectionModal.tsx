@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Check, Sparkles, FileText, Crown, Package, Loader2, Briefcase, Building2 } from 'lucide-react';
+import { Check, Sparkles, FileText, Crown, Package, Loader2, Briefcase, Building2, Info } from 'lucide-react';
 import { PRODUCTS, ProductId } from '@/config/products';
 import { useProductCheckout } from '@/hooks/use-product-checkout';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ProductSelectionModalProps {
   open: boolean;
@@ -174,15 +175,30 @@ export function ProductSelectionModal({
 
         {/* Job Details Section - Only show for content-generating products */}
         {needsJobDetails && (
-          <div className="space-y-4 p-4 rounded-lg bg-accent/50 border border-border">
-            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <Briefcase className="w-4 h-4 text-primary" />
-              <span>Target Job Details</span>
-              <Badge variant="secondary" className="text-xs">Optional but recommended</Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Adding job details helps us personalize your content for better results.
-            </p>
+          <TooltipProvider>
+            <div className="space-y-4 p-4 rounded-lg bg-accent/50 border border-border">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Briefcase className="w-4 h-4 text-primary" />
+                <span>Target Job Details</span>
+                <Badge variant="secondary" className="text-xs">Optional</Badge>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
+                      <Info className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-center">
+                    <p className="text-sm">
+                      Adding the job title and company helps our AI tailor keywords, 
+                      language, and focus areas specifically for this role—improving 
+                      ATS matching and hiring manager appeal.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Helps personalize your content for better ATS matching and relevance.
+              </p>
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="jobTitle" className="text-xs flex items-center gap-1.5">
@@ -211,7 +227,8 @@ export function ProductSelectionModal({
                 />
               </div>
             </div>
-          </div>
+            </div>
+          </TooltipProvider>
         )}
 
         {/* Purchase button */}
