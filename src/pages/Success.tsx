@@ -13,7 +13,9 @@ import {
   Home,
   Printer,
   Trash2,
-  Mail
+  Mail,
+  Monitor,
+  AlertTriangle
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -37,7 +39,8 @@ import { cn } from "@/lib/utils";
 import { 
   getResumeData, 
   removeResumeData, 
-  cleanupExpiredResumeData 
+  cleanupExpiredResumeData,
+  clearAllResumeData
 } from "@/hooks/use-resume-storage";
 import { useABConversion } from "@/hooks/use-ab-test";
 
@@ -65,6 +68,7 @@ const Success = () => {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [hasTrackedConversion, setHasTrackedConversion] = useState(false);
+  const [localDataCleared, setLocalDataCleared] = useState(false);
   const analysisRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -387,6 +391,17 @@ const Success = () => {
     }
   };
 
+  const handleClearLocalData = () => {
+    clearAllResumeData();
+    // Also clear sessionStorage
+    sessionStorage.clear();
+    setLocalDataCleared(true);
+    toast({
+      title: "Browser data cleared",
+      description: "All locally stored resume data has been removed from this device.",
+    });
+  };
+
   const isSharedView = !!shareIdParam;
 
   return (
@@ -546,9 +561,24 @@ const Success = () => {
                     </p>
                   </div>
                   
+                  {/* Public computer warning */}
+                  {shareId && !isSharedView && (
+                    <div className="max-w-2xl mx-auto">
+                      <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm">
+                        <Monitor className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <div className="text-left">
+                          <p className="font-medium text-amber-500">Using a public or shared computer?</p>
+                          <p className="text-muted-foreground mt-1">
+                            Clear your browser data when you're done to protect your privacy. Your data auto-expires in 1 hour.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Action cards */}
                   {shareId && !isSharedView && (
-                    <div className="grid md:grid-cols-3 gap-4 max-w-2xl mx-auto pt-4">
+                    <div className="grid md:grid-cols-4 gap-4 max-w-3xl mx-auto pt-4">
                       {/* Download PDF card */}
                       <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 space-y-3">
                         <div className="flex items-center gap-2 text-sm font-medium">
@@ -556,7 +586,7 @@ const Success = () => {
                           {t('success.actions.downloadPdf')}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {t('success.actions.downloadPdf')}
+                          Save your analysis as PDF
                         </p>
                         <Button
                           variant="outline"
@@ -581,7 +611,7 @@ const Success = () => {
                           Email Sent
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          A copy of your analysis was sent to your email
+                          A copy was sent to your email
                         </p>
                         <div className="flex items-center gap-2 text-success text-sm">
                           <CheckCircle2 className="w-4 h-4" />
@@ -589,14 +619,44 @@ const Success = () => {
                         </div>
                       </div>
 
-                      {/* Delete Data card - GDPR compliance */}
+                      {/* Clear Browser Data card */}
+                      <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-amber-500/20 space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Monitor className="w-4 h-4 text-amber-500" />
+                          Clear Browser Data
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Remove local session data
+                        </p>
+                        <Button
+                          variant="outline"
+                          onClick={handleClearLocalData}
+                          disabled={localDataCleared}
+                          className="w-full gap-2 border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+                          size="sm"
+                        >
+                          {localDataCleared ? (
+                            <>
+                              <CheckCircle2 className="w-4 h-4" />
+                              Cleared
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="w-4 h-4" />
+                              Clear Data
+                            </>
+                          )}
+                        </Button>
+                      </div>
+
+                      {/* Delete Server Data card - GDPR compliance */}
                       <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-destructive/20 space-y-3">
                         <div className="flex items-center gap-2 text-sm font-medium">
                           <Trash2 className="w-4 h-4 text-destructive" />
-                          Delete My Data
+                          Delete Server Data
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Permanently delete this analysis
+                          Delete analysis from servers
                         </p>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
