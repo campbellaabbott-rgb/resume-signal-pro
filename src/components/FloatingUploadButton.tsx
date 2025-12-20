@@ -39,7 +39,7 @@ export function FloatingUploadButton() {
     <button
       onClick={handleClick}
       className={cn(
-        "fixed bottom-36 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-full",
+        "fixed bottom-[76px] right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-full",
         "bg-success text-success-foreground font-semibold text-sm",
         "shadow-lg shadow-success/30 hover:shadow-xl hover:shadow-success/40",
         "transition-all duration-300 touch-manipulation",
