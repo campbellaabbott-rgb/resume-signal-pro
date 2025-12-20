@@ -36,17 +36,19 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { 
+import {
   getResumeData, 
   removeResumeData, 
   cleanupExpiredResumeData,
   clearAllResumeData
 } from "@/hooks/use-resume-storage";
 import { useABConversion } from "@/hooks/use-ab-test";
+import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 
 const Success = () => {
   const { t } = useTranslation();
   const { trackAllConversions } = useABConversion();
+  const { trackPurchaseCompleted } = useConversionTracking();
   
   // Analysis progress steps
   const analysisSteps: Array<{id: number; label: string; icon: typeof CheckCircle2}> = [
@@ -121,6 +123,7 @@ const Success = () => {
         // Track A/B test conversion (paid analysis completed)
         if (!hasTrackedConversion) {
           trackAllConversions({ type: 'paid_analysis', hasLinkedIn: data.hasLinkedIn });
+          trackPurchaseCompleted('fullAnalysis', 25, sessionId || undefined);
           setHasTrackedConversion(true);
         }
 

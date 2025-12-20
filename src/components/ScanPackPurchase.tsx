@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useScanCredits } from "@/hooks/use-scan-credits";
+import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 
 export interface ScanPackPurchaseProps {
   onClose?: () => void;
@@ -23,9 +24,15 @@ export function ScanPackPurchase({ onClose, className, open, onOpenChange }: Sca
   const [email, setEmail] = useState("");
   const [creditAmount, setCreditAmount] = useState(10);
   const { purchaseCredits, isLoading, pricePerCredit } = useScanCredits();
+  const { trackButtonClick, trackCheckoutInitiated } = useConversionTracking();
 
   const handlePurchase = async () => {
     if (!email || !email.includes('@')) return;
+    
+    // Track conversion events
+    trackButtonClick('scan_credits_variable', 'scan_pack_dialog');
+    trackCheckoutInitiated('scan_credits_variable', creditAmount * pricePerCredit);
+    
     await purchaseCredits(email, creditAmount);
   };
 
