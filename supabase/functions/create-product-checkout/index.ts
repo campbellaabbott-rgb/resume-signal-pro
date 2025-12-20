@@ -29,6 +29,12 @@ const PRODUCTS: Record<string, { priceId: string; name: string; productType: str
     name: "Career Bundle (75 Analyses)",
     productType: "career_bundle",
     credits: 75
+  },
+  scanPack: {
+    priceId: "price_1SfqT8HBplUUV1Cg3McLmgI7",
+    name: "Scan Pack (30 Credits)",
+    productType: "scan_pack",
+    credits: 30
   }
 };
 
