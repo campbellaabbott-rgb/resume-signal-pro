@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Check, Sparkles, FileText, Crown, Package, Loader2, Briefcase, Building2, Info } from 'lucide-react';
+import { Check, Sparkles, FileText, Crown, Package, Loader2, Briefcase, Building2, Info, X } from 'lucide-react';
 import { PRODUCTS, ProductId } from '@/config/products';
 import { useProductCheckout } from '@/hooks/use-product-checkout';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ProductSelectionModalProps {
   open: boolean;
@@ -39,7 +40,9 @@ export function ProductSelectionModal({
   const [selectedProduct, setSelectedProduct] = useState<ProductId | null>(preSelectedProduct || null);
   const [jobTitle, setJobTitle] = useState('');
   const [jobCompany, setJobCompany] = useState('');
+  const [showJobDetailsTip, setShowJobDetailsTip] = useState(false);
   const { purchaseProduct, isLoading } = useProductCheckout();
+  const isMobile = useIsMobile();
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -181,20 +184,49 @@ export function ProductSelectionModal({
                 <Briefcase className="w-4 h-4 text-primary" />
                 <span>Target Job Details</span>
                 <Badge variant="secondary" className="text-xs">Optional</Badge>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
+                {/* Mobile: Tap to show/hide tip */}
+                {isMobile ? (
+                  <div className="relative">
+                    <button 
+                      type="button" 
+                      onClick={() => setShowJobDetailsTip(!showJobDetailsTip)}
+                      className="text-muted-foreground hover:text-foreground transition-colors p-1 touch-manipulation"
+                    >
                       <Info className="w-4 h-4" />
                     </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs text-center">
-                    <p className="text-sm">
-                      Adding the job title and company helps our AI tailor keywords, 
-                      language, and focus areas specifically for this role—improving 
-                      ATS matching and hiring manager appeal.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
+                    {showJobDetailsTip && (
+                      <div className="absolute z-50 left-0 top-8 w-64 p-3 rounded-xl bg-card border border-border shadow-lg animate-fade-in">
+                        <button 
+                          onClick={() => setShowJobDetailsTip(false)}
+                          className="absolute top-2 right-2 p-1 text-muted-foreground"
+                          aria-label="Close"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        <p className="text-xs pr-4">
+                          Adding the job title and company helps our AI tailor keywords, 
+                          language, and focus areas specifically for this role—improving 
+                          ATS matching and hiring manager appeal.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
+                        <Info className="w-4 h-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs text-center">
+                      <p className="text-sm">
+                        Adding the job title and company helps our AI tailor keywords, 
+                        language, and focus areas specifically for this role—improving 
+                        ATS matching and hiring manager appeal.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">
                 Helps personalize your content for better ATS matching and relevance.
