@@ -113,7 +113,7 @@ const productInfo: Record<string, {
   },
   scanPack: {
     howItWorks: [
-      "30 scan credits have been added to your account",
+      "10 scan credits have been added to your account",
       "Each scan analyzes your resume against a specific job",
       "Compare unlimited job descriptions with your credits",
       "Credits never expire"
