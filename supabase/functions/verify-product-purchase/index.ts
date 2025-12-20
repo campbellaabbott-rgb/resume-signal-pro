@@ -164,8 +164,24 @@ serve(async (req) => {
       }
     }
 
+    // Handle credits for scan pack
+    if (productType === 'scan_pack' && isFirstUse && customerEmail) {
+      const credits = parseInt(session.metadata?.credits || "30");
+      const { error: creditError } = await supabase.rpc('add_scan_credits', {
+        p_email: customerEmail,
+        p_credits: Math.min(credits, 100) // Cap at 100 per call for safety
+      });
+
+      if (creditError) {
+        logStep("Error adding scan pack credits", { error: creditError.message });
+      } else {
+        logStep("Scan pack credits added", { credits, email: customerEmail });
+        generatedContent = { credits, message: `${credits} scan credits added to your account` };
+      }
+    }
+
     // Handle credits for career bundle
-    if (productType === 'career_bundle' && isFirstUse) {
+    if (productType === 'career_bundle' && isFirstUse && customerEmail) {
       const credits = parseInt(session.metadata?.credits || "75");
       const { error: creditError } = await supabase.rpc('add_scan_credits', {
         p_email: customerEmail,
@@ -173,9 +189,10 @@ serve(async (req) => {
       });
 
       if (creditError) {
-        logStep("Error adding credits", { error: creditError.message });
+        logStep("Error adding career bundle credits", { error: creditError.message });
       } else {
-        logStep("Credits added", { credits, email: customerEmail });
+        logStep("Career bundle credits added", { credits, email: customerEmail });
+        generatedContent = { credits, message: `${credits} scan credits added to your account` };
       }
     }
 
