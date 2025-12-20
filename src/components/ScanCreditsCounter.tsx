@@ -15,7 +15,7 @@ export function ScanCreditsCounter() {
   const [checkedEmail, setCheckedEmail] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [showPurchase, setShowPurchase] = useState(false);
-  const { credits, checkCredits, isLoading, creditsPerPack, packPrice } = useScanCredits();
+  const { credits, checkCredits, isLoading, pricePerCredit } = useScanCredits();
 
   // Try to load email from localStorage on mount
   useEffect(() => {
@@ -50,7 +50,7 @@ export function ScanCreditsCounter() {
           >
             <Coins className="w-4 h-4 text-success" />
             <span className="font-semibold text-success">{credits}</span>
-            <span className="text-muted-foreground hidden sm:inline">scans</span>
+            <span className="text-muted-foreground hidden sm:inline">credits</span>
             <ChevronDown className="w-3 h-3 text-muted-foreground" />
           </Button>
         </PopoverTrigger>
@@ -68,11 +68,11 @@ export function ScanCreditsCounter() {
             
             <div className="p-3 rounded-lg bg-secondary/50 text-center">
               <p className="text-3xl font-bold text-success">{credits}</p>
-              <p className="text-sm text-muted-foreground">scans remaining</p>
+              <p className="text-sm text-muted-foreground">credits remaining</p>
             </div>
             
             <p className="text-xs text-muted-foreground text-center">
-              Credits never expire.
+              Credits never expire • $1 per credit
             </p>
             
             <Button
@@ -84,7 +84,7 @@ export function ScanCreditsCounter() {
               className="w-full gap-2"
             >
               <Plus className="w-4 h-4" />
-              Buy {creditsPerPack} More — ${packPrice}
+              Top Up Credits
             </Button>
             
             <Button
@@ -157,7 +157,7 @@ export function ScanCreditsCounter() {
                 No credits found for this email.
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Get {creditsPerPack} scans for ${packPrice}
+                $1 per credit • Buy any amount
               </p>
             </div>
           )}
@@ -176,7 +176,7 @@ export function ScanCreditsCounter() {
               className="w-full gap-2"
             >
               <Plus className="w-4 h-4" />
-              Get {creditsPerPack} Scans — ${packPrice}
+              Buy Credits — $1 each
             </Button>
           </div>
         </div>

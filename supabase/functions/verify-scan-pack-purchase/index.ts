@@ -7,8 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const CREDITS_PER_PACK = 30;
-
 const logStep = (step: string, details?: Record<string, unknown>) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[VERIFY-SCAN-PACK-PURCHASE] ${step}${detailsStr}`);
@@ -56,8 +54,10 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    // Retrieve session
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    // Retrieve session with line items
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['line_items']
+    });
     
     logStep("Session retrieved", { 
       status: session.payment_status, 
@@ -73,8 +73,8 @@ serve(async (req) => {
       );
     }
 
-    // Verify this is a scan pack purchase
-    if (session.metadata?.product_type !== 'scan_pack') {
+    // Verify this is a scan credits purchase
+    if (session.metadata?.product_type !== 'scan_credits' && session.metadata?.product_type !== 'scan_pack') {
       return new Response(
         JSON.stringify({ error: "Invalid session type", verified: false }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -125,22 +125,24 @@ serve(async (req) => {
       ip_address: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 'unknown'
     });
 
-    // Validate and add credits - only accept hardcoded CREDITS_PER_PACK value
-    // Do not trust metadata values to prevent manipulation attacks
-    const metadataCredits = parseInt(session.metadata?.credits || String(CREDITS_PER_PACK));
+    // Get credits from line items quantity (more reliable than metadata)
+    let creditsToAdd = 1;
     
-    // Validate credits match expected product amount (defense-in-depth)
-    if (metadataCredits !== CREDITS_PER_PACK) {
-      console.error("[VERIFY-SCAN-PACK-PURCHASE] Invalid credit amount in metadata:", metadataCredits);
-      // Use the known-good constant instead of potentially manipulated metadata
-      logStep("Using hardcoded credits due to metadata mismatch", { 
-        metadataValue: metadataCredits, 
-        expectedValue: CREDITS_PER_PACK 
-      });
+    if (session.line_items?.data?.length) {
+      const quantity = session.line_items.data[0].quantity || 1;
+      creditsToAdd = quantity;
+      logStep("Credits from line items", { quantity: creditsToAdd });
+    } else if (session.metadata?.credits) {
+      // Fallback to metadata
+      creditsToAdd = parseInt(session.metadata.credits) || 1;
+      logStep("Credits from metadata", { credits: creditsToAdd });
     }
-    
-    // Always use the hardcoded constant for security
-    const creditsToAdd = CREDITS_PER_PACK;
+
+    // Validate credits amount (security check)
+    if (creditsToAdd < 1 || creditsToAdd > 100) {
+      console.error("[VERIFY-SCAN-PACK-PURCHASE] Invalid credit amount:", creditsToAdd);
+      creditsToAdd = 1; // Default to 1 if invalid
+    }
     
     const { data: creditSuccess, error: creditError } = await supabase.rpc('add_scan_credits', {
       p_email: customerEmail,
