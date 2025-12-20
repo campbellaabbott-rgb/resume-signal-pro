@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { TieredPricingSection } from "./TieredPricingSection";
+import { ResumeBeforeAfter } from "./ResumeBeforeAfter";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -2038,6 +2039,12 @@ export function FreeKeywordResults({
                 <span className="text-xs text-foreground">PDF download</span>
               </div>
             </div>
+            
+            {/* Before/After Comparison */}
+            <div className="mb-4">
+              <ResumeBeforeAfter />
+            </div>
+            
             <div className="flex flex-col sm:flex-row gap-3">
               <PremiumPackageButton variant={productCtaTest.variant} isPrimary section="tailored_resume" />
             </div>
