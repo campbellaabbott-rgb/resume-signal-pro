@@ -110,9 +110,28 @@ export function Hero() {
               </span>
             </h1>
             
-            <p className="text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto mb-8 leading-relaxed">
+            <p className="text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto mb-6 leading-relaxed">
               {t('hero.mainSubheading', "Find out in 30 seconds. Get your ATS score and see exactly what's costing you interviews.")}
             </p>
+
+            {/* Mobile-first: Clear step indicator */}
+            <div className="sm:hidden mb-6 p-4 rounded-xl bg-card/60 border border-border/50 text-left">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">How it works:</p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-success text-success-foreground text-xs font-bold flex items-center justify-center">1</span>
+                  <span className="text-sm">Upload your resume below</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-muted text-muted-foreground text-xs font-bold flex items-center justify-center">2</span>
+                  <span className="text-sm text-muted-foreground">Get instant AI analysis</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-muted text-muted-foreground text-xs font-bold flex items-center justify-center">3</span>
+                  <span className="text-sm text-muted-foreground">See what to fix</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Single Primary CTA */}
@@ -168,8 +187,8 @@ export function Hero() {
             <LiveActivityCounter />
           </div>
 
-          {/* Trusted by companies */}
-          <div className="mt-8 animate-fade-in" style={{ animationDelay: "0.18s" }}>
+          {/* Trusted by companies - hide on mobile to reduce clutter */}
+          <div className="mt-8 animate-fade-in hidden sm:block" style={{ animationDelay: "0.18s" }}>
             <p className="text-xs text-muted-foreground/60 mb-4">{t('hero.trustedBy', 'Trusted by professionals at')}</p>
             <div className="flex flex-wrap justify-center items-center gap-x-6 sm:gap-x-8 gap-y-3">
               <span className="text-sm sm:text-base font-semibold text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">Google</span>
@@ -181,8 +200,8 @@ export function Hero() {
             </div>
           </div>
 
-          {/* What you'll discover - brief preview */}
-          <div className="mt-10 pt-8 border-t border-border/30 animate-fade-in" style={{ animationDelay: "0.2s" }}>
+          {/* What you'll discover - hide on mobile to reduce clutter */}
+          <div className="mt-10 pt-8 border-t border-border/30 animate-fade-in hidden sm:block" style={{ animationDelay: "0.2s" }}>
             <p className="text-sm text-muted-foreground mb-4">{t('hero.freeScanReveals', 'Your free scan reveals:')}</p>
             <div className="flex flex-wrap justify-center gap-3">
               {[
@@ -199,6 +218,19 @@ export function Hero() {
                 </span>
               ))}
             </div>
+          </div>
+
+          {/* Mobile: Direct scroll hint */}
+          <div className="mt-6 sm:hidden animate-fade-in" style={{ animationDelay: "0.2s" }}>
+            <button
+              onClick={handleFreeScanClick}
+              className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mx-auto"
+            >
+              <span>Scroll to upload</span>
+              <svg className="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>

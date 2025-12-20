@@ -377,16 +377,23 @@ export function ResumeUploader({
       
       <div className="container relative">
         <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-10">
+          {/* Mobile: Simplified header with clear instruction */}
+          <div className="text-center mb-8 sm:mb-10">
+            <div className="sm:hidden mb-4">
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success text-sm font-medium">
+                <Sparkles className="w-4 h-4" />
+                Start here — it's free!
+              </span>
+            </div>
             <h2 id="upload-heading" className="text-2xl md:text-3xl font-bold mb-3">
               {t('uploader.title')}
             </h2>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground hidden sm:block">
               {t('uploader.subtitle')} <span className="text-primary font-medium">{t('uploader.linkedinBonus')}</span>
             </p>
-            {/* Quick instruction for mobile */}
+            {/* Quick instruction - more prominent on mobile */}
             <p className="mt-3 text-sm text-muted-foreground/80 bg-muted/50 rounded-lg px-4 py-2 inline-block">
-              <span className="font-medium text-foreground">Only your resume is needed</span> — job description & LinkedIn are optional extras
+              <span className="font-medium text-foreground">Only your resume is needed</span> — job description & LinkedIn are optional
             </p>
           </div>
 
