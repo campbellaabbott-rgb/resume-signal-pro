@@ -101,10 +101,35 @@ const metricTooltips = {
   }
 };
 
+// A/B Test copy variants for product CTAs
+const getProductCtaCopy = (variant: 'control' | 'benefit_focused' | 'scarcity') => ({
+  coverLetter: {
+    control: { button: 'Generate Cover Letter — $12', description: 'AI-generated cover letter tailored to your resume and target job. Ready to send in minutes.' },
+    benefit_focused: { button: 'Get Your Interview-Winning Letter', description: 'Stand out from 100+ applicants with a personalized cover letter that gets recruiters excited.' },
+    scarcity: { button: 'Create Cover Letter Now — $12', description: 'Most applicants skip cover letters. Get ahead of the competition with a custom letter in 2 minutes.' },
+  }[variant],
+  keywordFix: {
+    control: { button: 'Get Full Keyword Report', headline: 'Want 50+ Industry Keywords?' },
+    benefit_focused: { button: 'Unlock Hidden Keywords', headline: 'Get Past the ATS Filter' },
+    scarcity: { button: 'Get Keywords Before Others Do', headline: 'Beat 87% of Applicants' },
+  }[variant],
+  premiumPackage: {
+    control: { button: 'Buy Premium Package — $59', headline: 'Premium Resume Package', subtext: 'Everything you need to land interviews' },
+    benefit_focused: { button: 'Get Interview-Ready Now', headline: 'Land Your Dream Job Faster', subtext: '3x more interview callbacks with our complete package' },
+    scarcity: { button: 'Claim Your Package — Limited', headline: 'Premium Resume Package', subtext: 'Join 10,000+ who landed interviews this month' },
+  }[variant],
+  tailoredResume: {
+    control: { button: 'Preview Tailored Resume', description: 'Preview for free, then unlock the full Premium Package with tailored resume + cover letter' },
+    benefit_focused: { button: 'See Your Improved Resume', description: 'See exactly how your resume will look when optimized for your target role' },
+    scarcity: { button: 'Generate Before It Closes', description: 'Limited preview available — see your tailored resume before upgrading' },
+  }[variant],
+});
+
 // Cover Letter Button component
-const CoverLetterButton = ({ hasJobDescription }: { hasJobDescription: boolean }) => {
+const CoverLetterButton = ({ hasJobDescription, variant }: { hasJobDescription: boolean; variant: 'control' | 'benefit_focused' | 'scarcity' }) => {
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
   const isPurchasing = isLoading && currentProduct === 'coverLetter';
+  const copy = getProductCtaCopy(variant).coverLetter;
   
   if (!hasJobDescription) {
     return (
@@ -130,7 +155,7 @@ const CoverLetterButton = ({ hasJobDescription }: { hasJobDescription: boolean }
       ) : (
         <>
           <FileText className="w-4 h-4" />
-          Generate Cover Letter — $12
+          {copy.button}
         </>
       )}
     </Button>
@@ -138,9 +163,10 @@ const CoverLetterButton = ({ hasJobDescription }: { hasJobDescription: boolean }
 };
 
 // Keyword Fix Button component
-const KeywordFixButton = () => {
+const KeywordFixButton = ({ variant }: { variant: 'control' | 'benefit_focused' | 'scarcity' }) => {
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
   const isPurchasing = isLoading && currentProduct === 'basicKeywordFix';
+  const copy = getProductCtaCopy(variant).keywordFix;
   
   return (
     <Button
@@ -157,7 +183,7 @@ const KeywordFixButton = () => {
       ) : (
         <>
           <Zap className="w-4 h-4" />
-          Get Full Keyword Report
+          {copy.button}
         </>
       )}
     </Button>
@@ -165,9 +191,33 @@ const KeywordFixButton = () => {
 };
 
 // Premium Package Button component
-const PremiumPackageButton = () => {
+const PremiumPackageButton = ({ variant, isPrimary = false }: { variant: 'control' | 'benefit_focused' | 'scarcity'; isPrimary?: boolean }) => {
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
   const isPurchasing = isLoading && currentProduct === 'premiumPackage';
+  const copy = getProductCtaCopy(variant).premiumPackage;
+  
+  if (isPrimary) {
+    return (
+      <Button
+        onClick={() => purchaseProduct('premiumPackage')}
+        disabled={isPurchasing}
+        size="lg"
+        className="gap-2 bg-white hover:bg-white/90 text-primary font-bold shadow-lg"
+      >
+        {isPurchasing ? (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin" />
+            Processing...
+          </>
+        ) : (
+          <>
+            <Sparkles className="w-5 h-5" />
+            {copy.button}
+          </>
+        )}
+      </Button>
+    );
+  }
   
   return (
     <Button
@@ -185,7 +235,7 @@ const PremiumPackageButton = () => {
       ) : (
         <>
           <ArrowRight className="w-5 h-5" />
-          Buy Premium Package — $59
+          {copy.button}
         </>
       )}
     </Button>
@@ -485,6 +535,9 @@ export function FreeKeywordResults({
   
   // A/B Test for upgrade CTAs
   const upgradeTest = useABTest('free_scan_upgrade');
+  
+  // A/B Test for product CTAs
+  const productCtaTest = useABTest('product_ctas');
   
   const priceDisplay = isLocalCurrency ? `$25 ≈ ${formatPrice(25)}` : '$25';
   
@@ -1944,14 +1997,14 @@ export function FreeKeywordResults({
                 ) : (
                   <>
                     <Sparkles className="w-5 h-5" />
-                    Preview Tailored Resume
+                    {getProductCtaCopy(productCtaTest.variant).tailoredResume.button}
                   </>
                 )}
               </Button>
-              <PremiumPackageButton />
+              <PremiumPackageButton variant={productCtaTest.variant} />
             </div>
             <p className="text-xs text-muted-foreground mt-3">
-              Preview for free, then unlock the full Premium Package with tailored resume + cover letter
+              {getProductCtaCopy(productCtaTest.variant).tailoredResume.description}
             </p>
           </div>
         </div>
@@ -2016,13 +2069,13 @@ export function FreeKeywordResults({
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <h5 className="font-semibold text-foreground">Want 50+ Industry Keywords?</h5>
+                <h5 className="font-semibold text-foreground">{getProductCtaCopy(productCtaTest.variant).keywordFix.headline}</h5>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">$10</span>
               </div>
               <p className="text-sm text-muted-foreground mb-3">
                 Get a complete keyword optimization report with exact phrases recruiters search for in your industry.
               </p>
-              <KeywordFixButton />
+              <KeywordFixButton variant={productCtaTest.variant} />
             </div>
           </div>
         </div>
@@ -2137,14 +2190,14 @@ export function FreeKeywordResults({
               <span className="text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent-foreground font-medium">$12</span>
             </div>
             <p className="text-sm text-muted-foreground mb-3">
-              AI-generated cover letter tailored to your resume and target job. Ready to send in minutes.
+              {getProductCtaCopy(productCtaTest.variant).coverLetter.description}
             </p>
             <div className="flex flex-wrap gap-2 mb-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Personalized opening</span>
               <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Skills highlighted</span>
               <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Instant download</span>
             </div>
-            <CoverLetterButton hasJobDescription={uploadedJobs.length > 0} />
+            <CoverLetterButton hasJobDescription={uploadedJobs.length > 0} variant={productCtaTest.variant} />
           </div>
         </div>
       </div>
@@ -2159,10 +2212,10 @@ export function FreeKeywordResults({
             <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-primary-foreground font-bold">Save $28</span>
           </div>
           <h3 className="text-2xl font-bold text-primary-foreground mb-2">
-            Premium Resume Package
+            {getProductCtaCopy(productCtaTest.variant).premiumPackage.headline}
           </h3>
           <p className="text-sm text-primary-foreground/80 mb-4">
-            Everything you need to land interviews: full analysis + AI-rewritten resume + custom cover letter.
+            {getProductCtaCopy(productCtaTest.variant).premiumPackage.subtext}: full analysis + AI-rewritten resume + custom cover letter.
           </p>
           <div className="grid grid-cols-2 gap-2 mb-4">
             {[
@@ -2180,7 +2233,7 @@ export function FreeKeywordResults({
             ))}
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <PremiumPackageButton />
+            <PremiumPackageButton variant={productCtaTest.variant} isPrimary />
             <div className="text-primary-foreground">
               <span className="text-2xl font-bold">$59</span>
               <span className="text-sm text-primary-foreground/70 ml-1 line-through">$87</span>
