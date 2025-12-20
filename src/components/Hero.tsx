@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye, Users, Sparkles, CheckCircle2, Info, X } from "lucide-react";
+import { Link } from "react-router-dom";
+import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye, Users, Sparkles, CheckCircle2, Info, X, ArrowRight, Package } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
@@ -256,6 +257,20 @@ export function Hero() {
                 </span>
               ))}
             </div>
+          </div>
+
+          {/* Pricing Teaser Banner */}
+          <div className="mt-10 animate-fade-in hidden sm:block" style={{ animationDelay: "0.22s" }}>
+            <Link 
+              to="/pricing"
+              className="group inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 hover:border-primary/40 hover:bg-primary/15 transition-all"
+            >
+              <Package className="w-5 h-5 text-primary" />
+              <span className="text-sm font-medium text-foreground">
+                Need more than a scan? <span className="text-primary">Explore Resume Packages</span>
+              </span>
+              <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
+            </Link>
           </div>
 
           {/* Mobile: Direct scroll hint */}
