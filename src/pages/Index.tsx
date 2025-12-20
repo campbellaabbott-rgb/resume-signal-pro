@@ -19,6 +19,8 @@ import { type JobEntry } from "@/components/JobSelector";
 
 import { HowItWorks } from "@/components/HowItWorks";
 import { MiniPricingCards } from "@/components/MiniPricingCards";
+import { StickyPricingBanner } from "@/components/StickyPricingBanner";
+import { ScoreBasedPackageRecommendation } from "@/components/ScoreBasedPackageRecommendation";
 import { FloatingUploadButton } from "@/components/FloatingUploadButton";
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
 import { useToast } from "@/hooks/use-toast";
@@ -957,6 +959,9 @@ const Index = () => {
                 isGeneratingTailored={isGeneratingTailored}
                 isLoading={isLoading || isFreeScanLoading}
               />
+              
+              {/* Score-based package recommendation */}
+              <ScoreBasedPackageRecommendation atsScore={freeKeywordResult.atsScoreEstimate} />
             </div>
           </section>
         )}
@@ -984,7 +989,10 @@ const Index = () => {
         isLoading={isLoading}
       />
       
+      <StickyPricingBanner />
+      
       <FloatingUploadButton />
+
       
       <Footer />
       
