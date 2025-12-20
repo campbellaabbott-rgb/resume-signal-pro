@@ -1813,8 +1813,8 @@ export function FreeKeywordResults({
                 <Download className="w-5 h-5 text-success" />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-success">New Feature</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-success/20 text-success font-medium animate-pulse">Free</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-primary">Premium Feature</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">$59</span>
               </div>
             </div>
             <h4 className="text-xl font-bold text-foreground mb-2">
@@ -2057,8 +2057,8 @@ export function FreeKeywordResults({
               </Button>
             ))}
           </div>
-          <p className="text-xs text-success/80 mt-3 font-medium">
-            ✨ Free — See tailored insights for your target role
+          <p className="text-xs text-muted-foreground mt-3">
+            Get personalized insights for your target role
           </p>
         </div>
       )}
