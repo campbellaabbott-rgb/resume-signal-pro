@@ -101,6 +101,42 @@ const metricTooltips = {
   }
 };
 
+// Cover Letter Button component
+const CoverLetterButton = ({ hasJobDescription }: { hasJobDescription: boolean }) => {
+  const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
+  const isPurchasing = isLoading && currentProduct === 'coverLetter';
+  
+  if (!hasJobDescription) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Lock className="w-4 h-4" />
+        <span>Add a job description above to unlock</span>
+      </div>
+    );
+  }
+  
+  return (
+    <Button
+      onClick={() => purchaseProduct('coverLetter')}
+      disabled={isPurchasing}
+      size="sm"
+      className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+    >
+      {isPurchasing ? (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Processing...
+        </>
+      ) : (
+        <>
+          <FileText className="w-4 h-4" />
+          Generate Cover Letter — $12
+        </>
+      )}
+    </Button>
+  );
+};
+
 // Keyword Fix Button component
 const KeywordFixButton = () => {
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
@@ -2087,6 +2123,70 @@ export function FreeKeywordResults({
           </form>
         )}
         <p className="text-xs text-muted-foreground mt-2">No spam. Unsubscribe anytime.</p>
+      </div>
+
+      {/* Cover Letter CTA - requires job description */}
+      <div className="rounded-2xl bg-gradient-to-br from-accent/10 via-primary/5 to-accent/10 border border-accent/30 p-5 mb-5">
+        <div className="flex items-start gap-3">
+          <div className="p-2.5 rounded-xl bg-accent/20 shrink-0">
+            <FileText className="w-5 h-5 text-accent-foreground" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <h4 className="font-bold text-foreground">Custom Cover Letter</h4>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent-foreground font-medium">$12</span>
+            </div>
+            <p className="text-sm text-muted-foreground mb-3">
+              AI-generated cover letter tailored to your resume and target job. Ready to send in minutes.
+            </p>
+            <div className="flex flex-wrap gap-2 mb-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Personalized opening</span>
+              <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Skills highlighted</span>
+              <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Instant download</span>
+            </div>
+            <CoverLetterButton hasJobDescription={uploadedJobs.length > 0} />
+          </div>
+        </div>
+      </div>
+
+      {/* Premium Package Hero CTA */}
+      <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 border-2 border-primary p-6 mb-5 relative overflow-hidden shadow-xl shadow-primary/20">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-primary-foreground/80">Best Value</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-primary-foreground font-bold">Save $28</span>
+          </div>
+          <h3 className="text-2xl font-bold text-primary-foreground mb-2">
+            Premium Resume Package
+          </h3>
+          <p className="text-sm text-primary-foreground/80 mb-4">
+            Everything you need to land interviews: full analysis + AI-rewritten resume + custom cover letter.
+          </p>
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            {[
+              "Complete ATS analysis",
+              "AI-rewritten resume",
+              "Custom cover letter",
+              "Before/after comparison",
+              "Keyword optimization",
+              "Priority processing"
+            ].map((feature, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs text-primary-foreground/90">
+                <CheckCircle2 className="w-3 h-3 text-primary-foreground shrink-0" />
+                {feature}
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <PremiumPackageButton />
+            <div className="text-primary-foreground">
+              <span className="text-2xl font-bold">$59</span>
+              <span className="text-sm text-primary-foreground/70 ml-1 line-through">$87</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Tiered Pricing Options */}
