@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { useTranslation } from "react-i18next";
 import { 
@@ -2048,6 +2049,9 @@ export function FreeKeywordResults({
             <div className="flex flex-col sm:flex-row gap-3">
               <PremiumPackageButton variant={productCtaTest.variant} isPrimary section="tailored_resume" />
             </div>
+            <Link to="/pricing" className="inline-flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mt-3">
+              See all packages <ArrowRight className="w-3 h-3" />
+            </Link>
             <p className="text-xs text-muted-foreground mt-3">
               Complete package: ATS-optimized resume + personalized cover letter ready to send to employers
             </p>
