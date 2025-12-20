@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PRODUCTS, ProductId } from '@/config/products';
+import { useConversionTracking } from '@/hooks/use-conversion-tracking';
 
 export interface CheckoutOptions {
   sessionId?: string;
@@ -13,6 +14,7 @@ export function useProductCheckout() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<ProductId | null>(null);
   const { toast } = useToast();
+  const { trackButtonClick, trackCheckoutInitiated } = useConversionTracking();
 
   const purchaseProduct = async (productId: ProductId, options?: CheckoutOptions | string): Promise<string | null> => {
     // Handle backwards compatibility - if options is a string, treat it as sessionId
@@ -32,6 +34,9 @@ export function useProductCheckout() {
 
     setIsLoading(true);
     setCurrentProduct(productId);
+    
+    // Track button click for conversion analytics
+    trackButtonClick(productId, 'product_checkout');
 
     try {
       const { data, error } = await supabase.functions.invoke('create-product-checkout', {
@@ -54,6 +59,9 @@ export function useProductCheckout() {
       }
 
       if (data?.url) {
+        // Track checkout initiated
+        trackCheckoutInitiated(productId, product.priceUsd);
+        
         toast({
           title: "Redirecting to Checkout",
           description: "Taking you to Stripe checkout…",

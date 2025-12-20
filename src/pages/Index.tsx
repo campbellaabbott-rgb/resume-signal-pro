@@ -36,6 +36,7 @@ import {
   clearResumeSession,
   hasResumeInSession
 } from "@/hooks/use-session-resume";
+import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 
 interface FreeKeywordResult {
   industry: string;
@@ -114,6 +115,7 @@ const Index = () => {
   const { currency } = useCurrency();
   const [searchParams] = useSearchParams();
   const { verifyPurchase } = useScanCredits();
+  const { trackButtonClick, trackCheckoutInitiated } = useConversionTracking();
   
   // Track if we're pre-storing to avoid duplicate calls
   const isPreStoring = useRef(false);
@@ -646,6 +648,9 @@ const Index = () => {
       return;
     }
 
+    // Track button click for conversion analytics
+    trackButtonClick('fullAnalysis', 'main_checkout');
+
     // Show full-screen loading overlay
     setIsCheckoutLoading(true);
     setIsLoading(true);
@@ -758,6 +763,9 @@ const Index = () => {
       hasReceivedUrl = true;
       setCheckoutUrl(checkoutData.url);
       console.log("[Checkout] Checkout URL received and stored for fallback");
+      
+      // Track checkout initiated
+      trackCheckoutInitiated('fullAnalysis', 25);
 
       // Tie the temp session ID to this specific checkout session
       if (checkoutData?.sessionId) {

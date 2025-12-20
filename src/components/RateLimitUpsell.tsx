@@ -3,6 +3,7 @@ import { Coins, Zap, X, Mail, CheckCircle2, Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useScanCredits } from "@/hooks/use-scan-credits";
+import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 
 interface RateLimitUpselProps {
   onClose: () => void;
@@ -14,9 +15,15 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
   const [email, setEmail] = useState("");
   const [creditAmount, setCreditAmount] = useState(10);
   const { purchaseCredits, isLoading, pricePerCredit } = useScanCredits();
+  const { trackButtonClick, trackCheckoutInitiated } = useConversionTracking();
 
   const handlePurchase = async () => {
     if (!email || !email.includes('@')) return;
+    
+    // Track conversion events
+    trackButtonClick('scan_credits_variable', 'rate_limit_upsell');
+    trackCheckoutInitiated('scan_credits_variable', creditAmount * pricePerCredit);
+    
     await purchaseCredits(email, creditAmount);
   };
 

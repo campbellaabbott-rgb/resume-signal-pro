@@ -30,6 +30,7 @@ import { PRODUCTS, ProductId } from "@/config/products";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 
 // Map product keys to icons
 const productIcons: Record<string, React.ElementType> = {
@@ -172,6 +173,7 @@ export default function ProductSuccess() {
   const [activeTab, setActiveTab] = useState<'resume' | 'coverLetter'>('resume');
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+  const { trackPurchaseCompleted } = useConversionTracking();
   
   const sessionId = searchParams.get("session_id");
   const productKey = searchParams.get("product") as ProductId | null;
@@ -202,6 +204,11 @@ export default function ProductSuccess() {
         } else if (data?.generatedContent) {
           setGeneratedContent(data.generatedContent);
         }
+        
+        // Track successful purchase completion
+        if (!error && productKey && product) {
+          trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
+        }
       } catch (err) {
         console.error('Verification failed:', err);
         setVerificationError('Failed to verify purchase');
@@ -211,7 +218,7 @@ export default function ProductSuccess() {
     }
 
     verifyAndGenerate();
-  }, [sessionId, productKey]);
+  }, [sessionId, productKey, product, trackPurchaseCompleted]);
 
   const copyToClipboard = async (text: string) => {
     try {
