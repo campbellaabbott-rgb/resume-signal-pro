@@ -179,6 +179,34 @@ serve(async (req) => {
       }
     }
 
+    // Send confirmation email (only on first use to avoid duplicate emails)
+    if (isFirstUse && customerEmail) {
+      try {
+        const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+          },
+          body: JSON.stringify({
+            email: customerEmail,
+            productType,
+            productName,
+            generatedContent
+          })
+        });
+
+        if (emailResponse.ok) {
+          logStep("Confirmation email sent", { email: customerEmail });
+        } else {
+          logStep("Email send failed", { status: emailResponse.status });
+        }
+      } catch (emailError) {
+        logStep("Email error", { error: String(emailError) });
+        // Don't fail the request if email fails
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
