@@ -1,14 +1,17 @@
-import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye, Users, Sparkles, CheckCircle2, Info } from "lucide-react";
+import { useState } from "react";
+import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Eye, Users, Sparkles, CheckCircle2, Info, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { LiveActivityCounter } from "./LiveActivityCounter";
 import { useABTest } from "@/hooks/use-ab-test";
-
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export function Hero() {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
+  const isMobile = useIsMobile();
+  const [showAtsInfo, setShowAtsInfo] = useState(false);
   
   // A/B Tests
   const heroCta = useABTest('hero_cta');
@@ -93,22 +96,51 @@ export function Hero() {
               className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 leading-tight"
             >
               {t('hero.mainHeading', 'Is Your Resume Being')}{" "}
-              <span className="text-destructive inline-flex items-center gap-1.5">
+              <span className="text-destructive inline-flex items-center gap-1.5 flex-wrap">
                 {t('hero.mainHeadingHighlight', 'Rejected by ATS Bots?')}
-                <TooltipProvider>
-                  <Tooltip delayDuration={100}>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex cursor-help">
-                        <Info className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground hover:text-foreground transition-colors" />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs text-sm font-normal">
-                      <p>{t('hero.atsTooltip', 'ATS (Applicant Tracking Systems) are AI bots that scan and filter resumes before a human ever sees them. Over 98% of Fortune 500 companies use them.')}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                {/* Desktop: Hover tooltip */}
+                {!isMobile && (
+                  <TooltipProvider>
+                    <Tooltip delayDuration={100}>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex cursor-help">
+                          <Info className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground hover:text-foreground transition-colors" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs text-sm font-normal">
+                        <p>{t('hero.atsTooltip', 'ATS (Applicant Tracking Systems) are AI bots that scan and filter resumes before a human ever sees them. Over 98% of Fortune 500 companies use them.')}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                {/* Mobile: Tap to show/hide */}
+                {isMobile && (
+                  <button
+                    onClick={() => setShowAtsInfo(!showAtsInfo)}
+                    className="inline-flex cursor-pointer p-1 -m-1 touch-manipulation"
+                    aria-label="What is ATS?"
+                  >
+                    <Info className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                )}
               </span>
             </h1>
+            
+            {/* Mobile ATS info popup */}
+            {isMobile && showAtsInfo && (
+              <div className="mb-4 p-4 rounded-xl bg-card border border-border text-left relative animate-fade-in">
+                <button 
+                  onClick={() => setShowAtsInfo(false)}
+                  className="absolute top-2 right-2 p-1 text-muted-foreground hover:text-foreground"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <p className="text-sm text-foreground pr-6">
+                  <span className="font-semibold">ATS (Applicant Tracking Systems)</span> are AI bots that scan and filter resumes before a human ever sees them. Over 98% of Fortune 500 companies use them.
+                </p>
+              </div>
+            )}
             
             <p className="text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto mb-6 leading-relaxed">
               {t('hero.mainSubheading', "Find out in 30 seconds. Get your ATS score and see exactly what's costing you interviews.")}
