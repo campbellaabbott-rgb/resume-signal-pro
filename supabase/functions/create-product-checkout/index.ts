@@ -32,9 +32,9 @@ const PRODUCTS: Record<string, { priceId: string; name: string; productType: str
   },
   scanPack: {
     priceId: "price_1SfqT8HBplUUV1Cg3McLmgI7",
-    name: "Scan Pack (30 Credits)",
+    name: "Scan Pack (10 Credits)",
     productType: "scan_pack",
-    credits: 30
+    credits: 10
   }
 };
 

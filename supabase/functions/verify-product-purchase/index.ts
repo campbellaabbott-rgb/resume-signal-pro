@@ -200,11 +200,11 @@ serve(async (req) => {
       
       // If no credits in metadata, check line_items quantity (for create-scan-pack-checkout)
       if (credits === 0 && session.line_items?.data?.length) {
-        credits = session.line_items.data[0].quantity || 30;
+        credits = session.line_items.data[0].quantity || 10;
       }
       
-      // Default to 30 if still no credits found
-      if (credits === 0) credits = 30;
+      // Default to 10 if still no credits found
+      if (credits === 0) credits = 10;
       
       logStep("Adding scan pack credits", { credits, email: customerEmail, productType });
       
