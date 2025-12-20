@@ -45,6 +45,12 @@ export const AB_TESTS = {
     // benefit_focused: Outcome-focused copy emphasizing results
     // scarcity: Urgency and limited-time messaging
   },
+  sticky_pricing_banner: {
+    name: 'sticky_pricing_banner',
+    variants: ['show', 'hide'] as const,
+    // show: Display the sticky pricing banner
+    // hide: No sticky pricing banner (control)
+  },
 } as const;
 
 type TestName = keyof typeof AB_TESTS;
@@ -67,16 +73,16 @@ const getVisitorId = (): string => {
 const getVariant = <T extends TestName>(testName: T): VariantOf<T> => {
   const key = `ab_${testName}`;
   const stored = localStorage.getItem(key);
+  const variants = AB_TESTS[testName].variants as readonly string[];
   
-  if (stored && AB_TESTS[testName].variants.includes(stored as any)) {
+  if (stored && variants.includes(stored)) {
     return stored as VariantOf<T>;
   }
   
   // Randomly assign variant
-  const variants = AB_TESTS[testName].variants;
   const variant = variants[Math.floor(Math.random() * variants.length)];
   localStorage.setItem(key, variant);
-  
+
   return variant as VariantOf<T>;
 };
 
