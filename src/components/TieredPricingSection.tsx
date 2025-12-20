@@ -1,10 +1,8 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, Crown, Sparkles, FileText, ArrowRight, Loader2 } from "lucide-react";
 import { PRODUCTS, ProductId } from "@/config/products";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
-import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 import { cn } from "@/lib/utils";
 
 interface TieredPricingSectionProps {
@@ -25,22 +23,18 @@ const tierIcons: Record<string, React.ElementType> = {
 };
 
 export function TieredPricingSection({ onFullAnalysisCheckout, sessionId }: TieredPricingSectionProps) {
-  const [showModal, setShowModal] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<ProductId | null>(null);
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
 
   const handleSelect = async (productId: ProductId) => {
     const product = PRODUCTS[productId];
-    
+
     // Full analysis uses existing checkout flow
     if ('useMainCheckout' in product && product.useMainCheckout && onFullAnalysisCheckout) {
       onFullAnalysisCheckout();
       return;
     }
-    
-    // Other products open modal for email
-    setSelectedProduct(productId);
-    setShowModal(true);
+
+    await purchaseProduct(productId, sessionId);
   };
 
   return (
@@ -132,13 +126,6 @@ export function TieredPricingSection({ onFullAnalysisCheckout, sessionId }: Tier
         All options include instant access. Secure payment via Stripe.
       </p>
 
-      <ProductSelectionModal 
-        open={showModal} 
-        onOpenChange={setShowModal}
-        preSelectedProduct={selectedProduct || undefined}
-        sessionId={sessionId}
-        onFullAnalysisCheckout={onFullAnalysisCheckout}
-      />
     </div>
   );
 }

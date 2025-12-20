@@ -95,8 +95,8 @@ export function useScanCredits() {
       if (error) throw error;
       
       if (data?.url) {
-        // Open checkout in new tab
-        window.open(data.url, '_blank');
+        // Redirect checkout in the same tab
+        window.location.assign(data.url);
         return data.url;
       }
       

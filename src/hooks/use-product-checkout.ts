@@ -41,12 +41,12 @@ export function useProductCheckout() {
       }
 
       if (data?.url) {
-        // Open checkout in new tab
-        window.open(data.url, '_blank');
+        // Redirect checkout in the same tab
         toast({
-          title: "Checkout Opened",
-          description: "Complete your purchase in the new tab.",
+          title: "Redirecting to Checkout",
+          description: "Taking you to Stripe checkout…",
         });
+        window.location.assign(data.url);
         return data.url;
       }
 

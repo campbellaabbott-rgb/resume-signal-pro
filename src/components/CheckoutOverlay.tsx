@@ -55,7 +55,7 @@ export function CheckoutOverlay({
 
   const handleOpenLink = () => {
     if (!checkoutUrl) return;
-    window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
+    window.location.assign(checkoutUrl);
   };
 
   // Show fallback UI when we have a URL but there's an error (redirect failed)
@@ -86,14 +86,14 @@ export function CheckoutOverlay({
               <div className="space-y-3 pt-2">
                 <Button onClick={handleOpenLink} variant="default" className="w-full">
                   <ExternalLinkIcon className="h-4 w-4 mr-2" />
-                  Open Checkout in New Tab
+                  Open Checkout
                 </Button>
                 <Button onClick={handleCopyLink} variant="outline" className="w-full">
                   <Copy className="h-4 w-4 mr-2" />
                   {copied ? "Copied!" : "Copy Checkout Link"}
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Paste the link in a new browser tab to complete payment
+                  Paste the link in a browser tab to complete payment
                 </p>
               </div>
             )}
