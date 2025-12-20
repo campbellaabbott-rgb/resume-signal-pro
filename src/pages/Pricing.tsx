@@ -166,6 +166,13 @@ export default function Pricing() {
                       </>
                     )}
                   </Button>
+                  
+                  {/* Info text for products requiring resume upload */}
+                  {'useMainCheckout' in product && product.useMainCheckout && (
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      Requires uploading your resume to analyze
+                    </p>
+                  )}
                 </div>
               );
             })}
