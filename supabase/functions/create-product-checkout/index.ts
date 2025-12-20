@@ -69,7 +69,7 @@ serve(async (req) => {
       );
     }
 
-    const { email, productId, sessionId } = requestBody;
+    const { email, productId, sessionId, jobTitle, jobCompany } = requestBody;
 
     // Validate product ID
     if (!productId || !PRODUCTS[productId]) {
@@ -84,8 +84,23 @@ serve(async (req) => {
     const normalizedEmail = email && typeof email === 'string' && email.includes('@') 
       ? email.toLowerCase().trim() 
       : null;
+    
+    // Sanitize job details (limit length, remove dangerous chars)
+    const sanitizedJobTitle = jobTitle && typeof jobTitle === 'string' 
+      ? jobTitle.slice(0, 100).replace(/[<>]/g, '') 
+      : '';
+    const sanitizedJobCompany = jobCompany && typeof jobCompany === 'string' 
+      ? jobCompany.slice(0, 100).replace(/[<>]/g, '') 
+      : '';
+    
     const product = PRODUCTS[productId];
-    logStep("Request validated", { email: normalizedEmail || 'will be collected by Stripe', productId, productName: product.name });
+    logStep("Request validated", { 
+      email: normalizedEmail || 'will be collected by Stripe', 
+      productId, 
+      productName: product.name,
+      jobTitle: sanitizedJobTitle || 'not provided',
+      jobCompany: sanitizedJobCompany || 'not provided'
+    });
 
     // Initialize Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -153,6 +168,8 @@ serve(async (req) => {
         customer_email: normalizedEmail || "",
         session_id: sessionId || "",
         credits: product.credits?.toString() || "",
+        job_title: sanitizedJobTitle,
+        job_company: sanitizedJobCompany,
       },
     });
 
