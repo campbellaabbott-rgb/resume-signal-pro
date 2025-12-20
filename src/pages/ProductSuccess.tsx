@@ -80,19 +80,19 @@ const productInfo: Record<string, {
   },
   premiumPackage: {
     howItWorks: [
-      "Upload your resume and job description on our home page",
-      "Our AI performs a comprehensive ATS analysis",
-      "You receive a fully rewritten, ATS-optimized resume",
-      "Plus a tailored cover letter matched to the specific role",
-      "Compare before/after to see the improvements"
+      "Our AI completely rewrote your resume for ATS optimization",
+      "We added missing keywords and stronger action verbs",
+      "Your cover letter is personalized to the target role",
+      "Review the before/after comparison below",
+      "Copy or download your new documents"
     ],
     nextSteps: [
-      { icon: Upload, title: "Upload Your Resume", description: "Start by uploading your current resume" },
-      { icon: FileText, title: "Add Job Description", description: "Paste the target job posting for best results" },
-      { icon: Sparkles, title: "Get Your Package", description: "Receive your optimized resume + cover letter via email" }
+      { icon: FileText, title: "Review Documents", description: "Check your new resume and cover letter below" },
+      { icon: Copy, title: "Copy & Download", description: "Get your documents in the format you need" },
+      { icon: Mail, title: "Apply Now", description: "Submit your optimized application" }
     ],
-    deliveryTime: "Within 10 minutes",
-    deliveryMethod: "Email + Dashboard"
+    deliveryTime: "Instant",
+    deliveryMethod: "On This Page"
   },
   careerBundle: {
     howItWorks: [
@@ -145,11 +145,31 @@ interface CoverLetterData {
   alternateOpenings: string[];
 }
 
+interface PremiumPackageData {
+  resume: {
+    rewrittenResume: string;
+    professionalSummary: string;
+    keyChanges: Array<{ section: string; before: string; after: string; reason: string }>;
+    addedKeywords: string[];
+    atsScore: { before: number; after: number; improvement: string };
+    highlights: string[];
+  };
+  coverLetter: {
+    coverLetter: string;
+    openingLine: string;
+    keySkillsHighlighted: string[];
+    suggestedSubjectLine: string;
+  };
+  originalResume: string;
+  jobDetails: { title: string; company: string };
+}
+
 export default function ProductSuccess() {
   const [searchParams] = useSearchParams();
   const [isVerifying, setIsVerifying] = useState(true);
   const [verificationError, setVerificationError] = useState<string | null>(null);
-  const [generatedContent, setGeneratedContent] = useState<KeywordData | CoverLetterData | null>(null);
+  const [generatedContent, setGeneratedContent] = useState<KeywordData | CoverLetterData | PremiumPackageData | null>(null);
+  const [activeTab, setActiveTab] = useState<'resume' | 'coverLetter'>('resume');
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   
@@ -172,7 +192,7 @@ export default function ProductSuccess() {
         const { data, error } = await supabase.functions.invoke('verify-product-purchase', {
           body: { 
             sessionId, 
-            generateContent: productKey === 'basicKeywordFix' || productKey === 'coverLetter'
+            generateContent: productKey === 'basicKeywordFix' || productKey === 'coverLetter' || productKey === 'premiumPackage'
           }
         });
 
@@ -217,7 +237,7 @@ export default function ProductSuccess() {
                 <CheckCircle2 className="w-8 h-8 text-primary" />
               </div>
               <h1 className="text-2xl font-bold">
-                {productKey === 'basicKeywordFix' || productKey === 'coverLetter' 
+                {productKey === 'basicKeywordFix' || productKey === 'coverLetter' || productKey === 'premiumPackage'
                   ? 'Generating your content...' 
                   : 'Verifying your purchase...'}
               </h1>
@@ -226,6 +246,8 @@ export default function ProductSuccess() {
                   ? 'Analyzing your resume for missing keywords' 
                   : productKey === 'coverLetter'
                   ? 'Crafting your personalized cover letter'
+                  : productKey === 'premiumPackage'
+                  ? 'Creating your optimized resume and cover letter...'
                   : 'Just a moment while we confirm your payment'}
               </p>
             </div>
@@ -267,8 +289,10 @@ export default function ProductSuccess() {
 
   const isKeywordFix = productKey === 'basicKeywordFix';
   const isCoverLetter = productKey === 'coverLetter';
+  const isPremiumPackage = productKey === 'premiumPackage';
   const keywordData = isKeywordFix ? generatedContent as KeywordData : null;
   const coverLetterData = isCoverLetter ? generatedContent as CoverLetterData : null;
+  const premiumData = isPremiumPackage ? generatedContent as PremiumPackageData : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -489,8 +513,174 @@ export default function ProductSuccess() {
           </section>
         )}
 
+        {/* Generated Content Section - Premium Package */}
+        {isPremiumPackage && premiumData && (
+          <section className="py-12 border-t border-border/50">
+            <div className="container max-w-4xl">
+              <div className="text-center mb-8">
+                <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
+                  <Crown className="w-3 h-3 mr-1" />
+                  Premium Package Ready
+                </Badge>
+                <h2 className="text-2xl font-bold mb-2">Your Optimized Documents</h2>
+                <p className="text-muted-foreground">
+                  Tailored for {premiumData.jobDetails?.title || 'your target role'}
+                  {premiumData.jobDetails?.company ? ` at ${premiumData.jobDetails.company}` : ''}
+                </p>
+              </div>
+
+              {/* ATS Score Improvement */}
+              {premiumData.resume?.atsScore && (
+                <div className="max-w-md mx-auto mb-8 p-6 rounded-2xl bg-card border border-border">
+                  <div className="flex items-center justify-center gap-6">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-muted-foreground">{premiumData.resume.atsScore.before}%</div>
+                      <div className="text-xs text-muted-foreground">Before</div>
+                    </div>
+                    <ArrowRight className="w-6 h-6 text-primary" />
+                    <div className="text-center">
+                      <div className="text-5xl font-bold text-success">{premiumData.resume.atsScore.after}%</div>
+                      <div className="text-xs text-muted-foreground">After</div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-center text-muted-foreground mt-4">{premiumData.resume.atsScore.improvement}</p>
+                </div>
+              )}
+
+              {/* Tab Navigation */}
+              <div className="flex justify-center gap-2 mb-6">
+                <Button
+                  variant={activeTab === 'resume' ? 'default' : 'outline'}
+                  onClick={() => setActiveTab('resume')}
+                  className="gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Optimized Resume
+                </Button>
+                <Button
+                  variant={activeTab === 'coverLetter' ? 'default' : 'outline'}
+                  onClick={() => setActiveTab('coverLetter')}
+                  className="gap-2"
+                >
+                  <Mail className="w-4 h-4" />
+                  Cover Letter
+                </Button>
+              </div>
+
+              {/* Resume Tab */}
+              {activeTab === 'resume' && premiumData.resume && (
+                <div className="space-y-6">
+                  {/* Key Changes */}
+                  {premiumData.resume.keyChanges?.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5 text-success" />
+                        Key Improvements Made
+                      </h3>
+                      <div className="grid gap-3">
+                        {premiumData.resume.keyChanges.slice(0, 5).map((change, i) => (
+                          <div key={i} className="p-4 rounded-xl bg-card border border-border">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="outline">{change.section}</Badge>
+                            </div>
+                            <div className="grid md:grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="text-muted-foreground">Before: </span>
+                                <span className="line-through text-muted-foreground/70">{change.before}</span>
+                              </div>
+                              <div>
+                                <span className="text-success">After: </span>
+                                <span>{change.after}</span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">{change.reason}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Added Keywords */}
+                  {premiumData.resume.addedKeywords?.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-sm font-semibold text-muted-foreground mb-3">Keywords Added</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {premiumData.resume.addedKeywords.map((kw, i) => (
+                          <Badge key={i} variant="secondary" className="bg-success/10 text-success border-success/30">{kw}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Rewritten Resume */}
+                  <div className="relative">
+                    <div className="absolute top-4 right-4 z-10">
+                      <Button 
+                        variant="secondary" 
+                        size="sm"
+                        onClick={() => copyToClipboard(premiumData.resume.rewrittenResume)}
+                        className="gap-2"
+                      >
+                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {copied ? 'Copied!' : 'Copy Resume'}
+                      </Button>
+                    </div>
+                    <div className="p-6 md:p-8 rounded-2xl bg-card border border-border">
+                      <h3 className="font-semibold mb-4 text-primary">Your Optimized Resume</h3>
+                      <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap font-mono text-sm">
+                        {premiumData.resume.rewrittenResume}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Cover Letter Tab */}
+              {activeTab === 'coverLetter' && premiumData.coverLetter && (
+                <div className="space-y-6">
+                  {premiumData.coverLetter.suggestedSubjectLine && (
+                    <p className="text-center text-muted-foreground">
+                      Suggested subject: <span className="text-foreground">{premiumData.coverLetter.suggestedSubjectLine}</span>
+                    </p>
+                  )}
+
+                  <div className="relative">
+                    <div className="absolute top-4 right-4 z-10">
+                      <Button 
+                        variant="secondary" 
+                        size="sm"
+                        onClick={() => copyToClipboard(premiumData.coverLetter.coverLetter)}
+                        className="gap-2"
+                      >
+                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {copied ? 'Copied!' : 'Copy Letter'}
+                      </Button>
+                    </div>
+                    <div className="p-6 md:p-8 rounded-2xl bg-card border border-border">
+                      <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap">
+                        {premiumData.coverLetter.coverLetter}
+                      </div>
+                    </div>
+                  </div>
+
+                  {premiumData.coverLetter.keySkillsHighlighted?.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground mb-3">Key Skills Highlighted</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {premiumData.coverLetter.keySkillsHighlighted.map((skill, i) => (
+                          <Badge key={i} variant="secondary">{skill}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* No Generated Content - Show Upload Prompt */}
-        {(isKeywordFix || isCoverLetter) && !generatedContent && !verificationError && (
+        {(isKeywordFix || isCoverLetter || isPremiumPackage) && !generatedContent && !verificationError && (
           <section className="py-12 border-t border-border/50">
             <div className="container max-w-2xl text-center">
               <div className="p-8 rounded-2xl bg-muted/50 border border-border">
@@ -498,7 +688,7 @@ export default function ProductSuccess() {
                 <h3 className="text-xl font-semibold mb-2">Resume Data Not Found</h3>
                 <p className="text-muted-foreground mb-6">
                   We couldn't find your resume data from the checkout session. 
-                  Please upload your resume on the home page to generate your {isKeywordFix ? 'keyword analysis' : 'cover letter'}.
+                  Please upload your resume on the home page to generate your {isKeywordFix ? 'keyword analysis' : isPremiumPackage ? 'premium package' : 'cover letter'}.
                 </p>
                 <Button asChild size="lg" className="gap-2">
                   <Link to="/">
@@ -582,7 +772,7 @@ export default function ProductSuccess() {
               <Button asChild size="lg" className="gap-2 shadow-lg shadow-primary/20">
                 <Link to="/">
                   <Sparkles className="w-4 h-4" />
-                  {(isKeywordFix || isCoverLetter) && generatedContent ? 'Scan Another Resume' : 'Get Started Now'}
+                  {(isKeywordFix || isCoverLetter || isPremiumPackage) && generatedContent ? 'Scan Another Resume' : 'Get Started Now'}
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </Button>
