@@ -38,6 +38,13 @@ export const AB_TESTS = {
     // paste_first: paste option more prominent
     // simplified: minimal UI
   },
+  product_ctas: {
+    name: 'product_ctas',
+    variants: ['control', 'benefit_focused', 'scarcity'] as const,
+    // control: Standard pricing-focused copy
+    // benefit_focused: Outcome-focused copy emphasizing results
+    // scarcity: Urgency and limited-time messaging
+  },
 } as const;
 
 type TestName = keyof typeof AB_TESTS;
