@@ -868,7 +868,10 @@ const Index = () => {
       <main id="main-content" className="pt-[104px]" role="main">
         <Hero />
         
-        <HowItWorks />
+        {/* How It Works - Show after uploader on mobile for cleaner flow */}
+        <div className="hidden sm:block">
+          <HowItWorks />
+        </div>
         
         {/* Hidden honeypot field for bot detection */}
         <input
@@ -896,6 +899,11 @@ const Index = () => {
           onJobDescriptionTextChange={setJobDescriptionText}
           onJobsChange={setUploadedJobs}
         />
+        
+        {/* How It Works - Show after uploader on mobile */}
+        <div className="sm:hidden">
+          <HowItWorks />
+        </div>
 
         {/* Free Keyword Results */}
         {freeKeywordResult && (
