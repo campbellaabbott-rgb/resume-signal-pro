@@ -103,10 +103,14 @@ serve(async (req) => {
           hasJobDescription: !!job_description_text 
         });
 
+        // Extract job details from job description if available
+        // This ensures content generators have proper context
+        const jobTitle = session.metadata?.job_title || 'Target Position';
+        const jobCompany = session.metadata?.job_company || '';
+
         // Generate content based on product type
         if (productType === 'basic_keyword_fix' && resume_text) {
           logStep("Calling generate-keyword-fix");
-          // Call keyword fix function
           const keywordResponse = await fetch(`${supabaseUrl}/functions/v1/generate-keyword-fix`, {
             method: 'POST',
             headers: {
@@ -115,7 +119,9 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               resumeText: resume_text,
-              jobDescription: job_description_text
+              jobDescription: job_description_text || '',
+              jobTitle,
+              jobCompany
             })
           });
 
@@ -129,7 +135,7 @@ serve(async (req) => {
           }
         } else if (productType === 'cover_letter' && resume_text) {
           logStep("Calling generate-cover-letter");
-          // Call cover letter function
+          // Cover letter needs jobDescription OR jobTitle - provide fallback
           const coverLetterResponse = await fetch(`${supabaseUrl}/functions/v1/generate-cover-letter`, {
             method: 'POST',
             headers: {
@@ -138,7 +144,9 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               resumeText: resume_text,
-              jobDescription: job_description_text,
+              jobDescription: job_description_text || '',
+              jobTitle: jobTitle || 'Professional Position',  // Fallback so it doesn't fail
+              jobCompany,
               tone: 'professional'
             })
           });
@@ -153,7 +161,6 @@ serve(async (req) => {
           }
         } else if (productType === 'premium_package' && resume_text) {
           logStep("Calling generate-premium-package");
-          // Call premium package function
           const premiumResponse = await fetch(`${supabaseUrl}/functions/v1/generate-premium-package`, {
             method: 'POST',
             headers: {
@@ -162,7 +169,9 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               resumeText: resume_text,
-              jobDescription: job_description_text
+              jobDescription: job_description_text || '',
+              jobTitle: jobTitle || 'Target Position',
+              jobCompany
             })
           });
 
