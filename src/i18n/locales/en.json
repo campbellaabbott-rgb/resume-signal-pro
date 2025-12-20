@@ -21,6 +21,7 @@
     "problemBadge": "85% of resumes never reach a human",
     "mainHeading": "Is Your Resume Being",
     "mainHeadingHighlight": "Rejected by ATS Bots?",
+    "atsTooltip": "ATS (Applicant Tracking Systems) are AI bots that scan and filter resumes before a human ever sees them. Over 98% of Fortune 500 companies use them.",
     "mainSubheading": "Find out in 30 seconds. Our AI simulates how ATS systems scan your resume and shows exactly what's costing you interviews.",
     "ctaButton": "Check My Resume Now",
     "freeBadge": "FREE",
