@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
-import { Quote, Briefcase, GraduationCap, Code } from "lucide-react";
+import { Quote, Briefcase, GraduationCap, Code, MessageCircle } from "lucide-react";
 
-const testimonialKeys = ["engineer", "pm", "graduate"];
-const testimonialIcons = [Code, Briefcase, GraduationCap];
+const testimonialKeys = ["engineer", "pm", "graduate", "reddit"];
+const testimonialIcons = [Code, Briefcase, GraduationCap, MessageCircle];
 
 export function SocialProof() {
   const { t } = useTranslation();
