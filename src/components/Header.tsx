@@ -26,16 +26,13 @@ export function Header() {
 
     return (
     <>
-      {/* Beta Banner */}
-      <div className="fixed top-0 left-0 right-0 z-[60] bg-[hsl(217,91%,60%)] text-[hsl(222,47%,6%)] text-center py-1.5 text-xs font-medium tracking-wide">
-        🚀 Currently in Beta — We'd love your feedback!
-      </div>
-      <header 
-        className="fixed top-10 left-0 right-0 z-[59] border-b border-border/50"
-        style={{ backgroundColor: 'hsl(222, 47%, 6%)' }}
-        role="banner"
-      >
-      <div className="container">
+      <div className="fixed top-0 left-0 right-0 z-[60]">
+        {/* Beta Banner */}
+        <div className="bg-primary text-primary-foreground text-center py-1.5 text-xs font-medium tracking-wide">
+          🚀 Currently in Beta — We'd love your feedback!
+        </div>
+        <header className="bg-background border-b border-border/50" role="banner">
+        <div className="container">
         <nav className="flex items-center justify-between h-16" aria-label="Main navigation">
           <Link 
             to="/" 
@@ -84,7 +81,8 @@ export function Header() {
         open={showProductModal} 
         onOpenChange={setShowProductModal} 
       />
-      </header>
+        </header>
+      </div>
     </>
   );
 }
