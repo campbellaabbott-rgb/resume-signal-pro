@@ -241,6 +241,34 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
     // Creative soft skills
     { pattern: /\b(creative thinking|visual storytelling|brand identity|creative concept|ideation|brainstorming|art direction|creative vision|aesthetic|portfolio)\b/gi, category: "soft_skill", importance: "nice_to_have" },
     
+    // ===== CONSTRUCTION, ARCHITECTURE & TRADES =====
+    // Construction management (critical)
+    { pattern: /\b(construction management|project management|general contractor|gc|subcontractor|site supervisor|site manager|superintendent|foreman|field engineer)\b/gi, category: "hard_skill", importance: "critical" },
+    // Safety & compliance (critical)
+    { pattern: /\b(osha|osha 10|osha 30|safety training|site safety|safety compliance|ppe|personal protective equipment|hazmat|fall protection|confined space|lockout tagout|loto)\b/gi, category: "certification", importance: "critical" },
+    // Blueprints & technical docs
+    { pattern: /\b(blueprints|blueprint reading|construction drawings|architectural drawings|shop drawings|as-builts|rfi|submittal|punch list|specifications|specs)\b/gi, category: "hard_skill", importance: "critical" },
+    // Estimating & bidding
+    { pattern: /\b(project estimating|cost estimating|quantity takeoff|bid preparation|bidding|proposal|change order|scope of work|sow|bill of quantities|boq)\b/gi, category: "hard_skill", importance: "critical" },
+    // Building codes & permits
+    { pattern: /\b(building codes|ibc|international building code|nec|national electrical code|fire code|ada compliance|zoning|permitting|building permit|inspection|code compliance)\b/gi, category: "hard_skill", importance: "critical" },
+    // Architecture & design
+    { pattern: /\b(architecture|architectural design|schematic design|design development|construction documents|cd|aia|revit|autocad|sketchup|rhino|grasshopper|bim|building information modeling)\b/gi, category: "hard_skill", importance: "critical" },
+    // Engineering disciplines
+    { pattern: /\b(structural engineering|mep|mechanical electrical plumbing|hvac|civil engineering|geotechnical|environmental engineering|landscape architecture)\b/gi, category: "industry_term", importance: "important" },
+    // Skilled trades
+    { pattern: /\b(electrician|plumber|plumbing|carpentry|carpenter|welding|welder|pipefitter|ironworker|mason|masonry|drywall|roofing|flooring|painting|glazing)\b/gi, category: "hard_skill", importance: "critical" },
+    // Construction software
+    { pattern: /\b(procore|plangrid|bluebeam|primavera|p6|ms project|buildertrend|coconstruct|sage 300|viewpoint|textura|prolog)\b/gi, category: "tool", importance: "important" },
+    // Construction certifications
+    { pattern: /\b(pmp|cpm|leed|leed ap|leed ga|ccm|cpc|osha certified|journeyman|master electrician|master plumber|contractor license)\b/gi, category: "certification", importance: "important" },
+    // Project delivery
+    { pattern: /\b(design-build|design-bid-build|cm at risk|cmar|ipd|integrated project delivery|fast-track|turnkey|phased construction|value engineering)\b/gi, category: "methodology", importance: "important" },
+    // Materials & equipment
+    { pattern: /\b(concrete|steel|lumber|framing|foundation|excavation|grading|heavy equipment|crane|forklift|bobcat|backhoe|bulldozer|equipment operator)\b/gi, category: "hard_skill", importance: "important" },
+    // Sustainability
+    { pattern: /\b(green building|sustainable construction|net zero|energy efficiency|solar|renewable energy|water conservation|recycled materials|environmental impact)\b/gi, category: "industry_term", importance: "nice_to_have" },
+    
     // ===== OPERATIONS & SUPPLY CHAIN =====
     { pattern: /\b(supply chain|logistics|procurement|inventory management|warehouse|distribution|erp|mrp|lean manufacturing|six sigma|kaizen|tps|just-in-time|jit)\b/gi, category: "hard_skill", importance: "critical" },
     { pattern: /\b(apics|cpim|cscp|cltd|pmp|capm|lean six sigma|green belt|black belt|master black belt)\b/gi, category: "certification", importance: "important" },
