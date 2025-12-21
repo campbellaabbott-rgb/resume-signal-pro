@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { ArrowRight, Sparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
@@ -15,6 +16,7 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const heroCta = useABTest('hero_cta');
+  const navigate = useNavigate();
 
   // CTA button text variants
   const getCtaText = () => {
@@ -23,13 +25,8 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
 
   const handleGetStarted = () => {
     heroCta.trackConversion({ source: 'sticky_cta' });
-    // Scroll to pricing section
-    const pricingSection = document.getElementById('pricing');
-    if (pricingSection) {
-      pricingSection.scrollIntoView({ behavior: 'smooth' });
-    } else {
-      onGetStarted();
-    }
+    // Navigate to pricing page
+    navigate('/pricing');
   };
 
   useEffect(() => {
