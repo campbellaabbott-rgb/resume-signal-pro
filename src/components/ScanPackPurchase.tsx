@@ -51,7 +51,7 @@ export function ScanPackPurchase({ onClose, className, open, onOpenChange }: Sca
         </div>
         <div>
           <h3 className="font-semibold text-lg">Top Up Credits</h3>
-          <p className="text-sm text-muted-foreground">$1 per credit • Use anytime</p>
+          <p className="text-sm text-muted-foreground">${pricePerCredit.toFixed(2)} per credit • Use anytime</p>
         </div>
       </div>
 

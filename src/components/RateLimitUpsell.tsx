@@ -106,8 +106,8 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
           </div>
 
           <div className="flex items-center justify-between pt-3 border-t border-border/50">
-            <span className="text-sm text-muted-foreground">Total ($1/credit)</span>
-            <span className="text-2xl font-bold">${totalPrice}</span>
+            <span className="text-sm text-muted-foreground">Total (${pricePerCredit.toFixed(2)}/credit)</span>
+            <span className="text-2xl font-bold">${totalPrice.toFixed(2)}</span>
           </div>
         </div>
 
