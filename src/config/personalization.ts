@@ -903,6 +903,70 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       metricsRate: 75
     }
   },
+  frontend_engineer: {
+    name: 'Frontend Engineer',
+    aliases: ['front end developer', 'ui developer', 'ui engineer', 'react developer', 'vue developer', 'angular developer', 'javascript developer', 'web developer', 'frontend developer'],
+    keySkills: ['React/Vue/Angular', 'TypeScript', 'CSS/Tailwind', 'Performance Optimization', 'Accessibility (a11y)', 'State Management', 'Testing (Jest/Cypress)', 'Responsive Design'],
+    mustHaveKeywords: ['React', 'JavaScript', 'TypeScript', 'CSS', 'UI', 'frontend', 'responsive', 'performance', 'accessibility', 'component'],
+    resumeTips: [
+      'Show performance metrics (Core Web Vitals, load time)',
+      'Highlight accessibility compliance (WCAG)',
+      'Include portfolio or live project links',
+      'Quantify user experience improvements'
+    ],
+    bulletExamples: [
+      { weak: 'Built React components', strong: 'Architected component library with 50+ reusable components, reducing development time by 40% across 5 product teams' },
+      { weak: 'Improved website performance', strong: 'Optimized React app achieving 95+ Lighthouse score, reducing LCP from 4.2s to 1.1s and improving conversion by 25%' }
+    ],
+    keyMetrics: ['Lighthouse/Core Web Vitals scores', 'Load time reduction', 'Bundle size reduction', 'Accessibility score', 'User engagement improvement', 'Component reuse rate'],
+    commonMistakes: [
+      'Not including portfolio or live project links',
+      'Missing performance optimization metrics',
+      'Vague "built UI" without showing impact',
+      'Not mentioning accessibility experience'
+    ],
+    interviewTopics: ['React/framework internals', 'State management patterns', 'Performance optimization', 'CSS architecture', 'Accessibility best practices', 'Testing strategies'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'Projects/Portfolio', 'Experience', 'Education', 'Certifications'],
+      differentiators: ['Portfolio with live demos', 'Performance optimization wins', 'Component library contributions', 'Accessibility expertise'],
+      avgBulletCount: 4,
+      certificationRate: 30,
+      portfolioRate: 92,
+      metricsRate: 78
+    }
+  },
+  backend_engineer: {
+    name: 'Backend Engineer',
+    aliases: ['back end developer', 'server side developer', 'api developer', 'backend developer', 'systems developer', 'platform developer', 'node developer', 'python developer', 'java developer', 'go developer'],
+    keySkills: ['API Design', 'Database Design', 'System Architecture', 'Microservices', 'Caching (Redis)', 'Message Queues', 'Security', 'Performance Optimization'],
+    mustHaveKeywords: ['API', 'database', 'backend', 'microservices', 'REST', 'GraphQL', 'scalability', 'performance', 'security', 'SQL'],
+    resumeTips: [
+      'Quantify API performance (requests/sec, latency)',
+      'Show system scale (users, data volume)',
+      'Highlight reliability metrics (uptime, error rates)',
+      'Include database optimization achievements'
+    ],
+    bulletExamples: [
+      { weak: 'Built REST APIs', strong: 'Designed RESTful API serving 100K+ requests/second with p99 latency <50ms, supporting 10M+ daily active users' },
+      { weak: 'Optimized database queries', strong: 'Reduced database query time by 85% through indexing and query optimization, handling 500M+ rows with sub-second response' }
+    ],
+    keyMetrics: ['Requests/second', 'API latency (p50/p99)', 'Uptime %', 'Error rate reduction', 'Database query optimization', 'Users/scale supported'],
+    commonMistakes: [
+      'Not quantifying API performance and scale',
+      'Missing reliability metrics (uptime, error rates)',
+      'Vague "built backend" without specifics',
+      'Not showing database optimization experience'
+    ],
+    interviewTopics: ['System design', 'API design best practices', 'Database optimization', 'Caching strategies', 'Security considerations', 'Scalability patterns'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'Experience', 'System Architecture', 'Projects', 'Education'],
+      differentiators: ['High-scale system experience', 'Performance optimization wins', 'Security expertise', 'Database design achievements'],
+      avgBulletCount: 4,
+      certificationRate: 40,
+      portfolioRate: 55,
+      metricsRate: 88
+    }
+  },
   data_engineer: {
     name: 'Data Engineer',
     aliases: ['etl developer', 'data pipeline engineer', 'analytics engineer', 'big data engineer', 'data platform engineer', 'data infrastructure engineer', 'spark engineer'],
