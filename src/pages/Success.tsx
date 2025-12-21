@@ -46,6 +46,7 @@ import {
 import { useABConversion } from "@/hooks/use-ab-test";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { usePersonalization } from "@/hooks/use-personalization";
+import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 
 const Success = () => {
   const { t } = useTranslation();
@@ -110,7 +111,8 @@ const Success = () => {
 
         if (fnError) {
           console.error("Function error:", fnError);
-          throw new Error(fnError.message || "Analysis failed");
+          const parsedError = await parseEdgeFunctionError(fnError);
+          throw new Error(parsedError.description);
         }
 
         if (data.error) {

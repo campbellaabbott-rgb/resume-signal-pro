@@ -42,6 +42,7 @@ import {
   hasResumeInSession
 } from "@/hooks/use-session-resume";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
+import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 
 interface FreeKeywordResult {
   industry: string;
@@ -565,11 +566,12 @@ const Index = () => {
       } else {
         throw new Error(data?.error || "Failed to analyze");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Job analysis error:", error);
+      const parsedError = await parseEdgeFunctionError(error);
       toast({
-        title: "Analysis failed",
-        description: error?.message || "Please try again.",
+        title: parsedError.title,
+        description: parsedError.description,
         variant: "destructive",
       });
     } finally {
@@ -623,12 +625,13 @@ const Index = () => {
       } else {
         throw new Error(data?.error || "Failed to generate tailored resume");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Tailored resume error:", error);
       setShowTailoredResumeModal(false);
+      const parsedError = await parseEdgeFunctionError(error);
       toast({
-        title: "Generation failed",
-        description: error?.message || "Please try again.",
+        title: parsedError.title,
+        description: parsedError.description,
         variant: "destructive",
       });
     } finally {

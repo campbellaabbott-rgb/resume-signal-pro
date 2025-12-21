@@ -37,6 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { getResumeFromSession, hasResumeInSession } from "@/hooks/use-session-resume";
 import { ATSDefenseResults, type ATSDefenseData } from "@/components/ATSDefenseResults";
+import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 
 // Map product keys to icons
 const productIcons: Record<string, React.ElementType> = {
@@ -284,9 +285,10 @@ export default function ProductSuccess() {
 
       if (error) {
         console.error('Regeneration error:', error);
+        const parsedError = await parseEdgeFunctionError(error);
         toast({
-          title: "Generation failed",
-          description: error.message || "Failed to generate content. Please try again.",
+          title: parsedError.title,
+          description: parsedError.description,
           variant: "destructive"
         });
         return false;
@@ -429,6 +431,12 @@ export default function ProductSuccess() {
             
             if (atsError) {
               console.error('ATS Defense generation error:', atsError);
+              const parsedError = await parseEdgeFunctionError(atsError);
+              toast({
+                title: parsedError.title,
+                description: parsedError.description,
+                variant: "destructive"
+              });
               setIsRecoveryMode(true);
             } else if (atsData?.report) {
               setAtsDefenseData(atsData.report);

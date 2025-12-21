@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { PRODUCTS } from '@/config/products';
+import { parseEdgeFunctionError } from '@/lib/edge-function-errors';
 
 // Calculate price per credit from scan pack
 const PRICE_PER_CREDIT_USD = PRODUCTS.scanPack.priceUsd / (PRODUCTS.scanPack.credits || 10);
@@ -116,9 +117,10 @@ export function useScanCredits() {
       throw new Error('No checkout URL received');
     } catch (err) {
       console.error('[useScanCredits] Purchase error:', err);
+      const parsedError = await parseEdgeFunctionError(err);
       toast({
-        title: "Purchase failed",
-        description: "Could not create checkout. Please try again.",
+        title: parsedError.title,
+        description: parsedError.description,
         variant: "destructive"
       });
       return null;
@@ -163,9 +165,10 @@ export function useScanCredits() {
       return null;
     } catch (err) {
       console.error('[useScanCredits] Verify error:', err);
+      const parsedError = await parseEdgeFunctionError(err);
       toast({
-        title: "Verification failed",
-        description: "Could not verify purchase. Please contact support.",
+        title: parsedError.title,
+        description: parsedError.description,
         variant: "destructive"
       });
       return null;

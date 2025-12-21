@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PRODUCTS, ProductId } from '@/config/products';
 import { useConversionTracking } from '@/hooks/use-conversion-tracking';
+import { parseEdgeFunctionError } from '@/lib/edge-function-errors';
 
 export interface CheckoutOptions {
   sessionId?: string;
@@ -51,9 +52,10 @@ export function useProductCheckout() {
 
       if (error) {
         console.error('Checkout error:', error);
+        const parsedError = await parseEdgeFunctionError(error);
         toast({
-          title: "Checkout Error",
-          description: error.message || "Failed to create checkout session. Please try again.",
+          title: parsedError.title,
+          description: parsedError.description,
           variant: "destructive"
         });
         return null;
