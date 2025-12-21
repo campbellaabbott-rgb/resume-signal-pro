@@ -111,6 +111,42 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
     { pattern: /\b(talent acquisition|recruiting|onboarding|employee relations|performance management|compensation|benefits|hris|workday|adp|bamboohr|greenhouse|lever)\b/gi, category: "hard_skill", importance: "important" },
     { pattern: /\b(phr|sphr|shrm-cp|shrm-scp|diversity|inclusion|dei|employee engagement|retention|succession planning|workforce planning)\b/gi, category: "certification", importance: "important" },
     
+    // ===== EDUCATION =====
+    // Teaching skills (critical)
+    { pattern: /\b(curriculum development|lesson planning|classroom management|student assessment|differentiated instruction|pedagogy|instructional design|learning objectives)\b/gi, category: "hard_skill", importance: "critical" },
+    // Education technology
+    { pattern: /\b(lms|learning management system|canvas|blackboard|moodle|google classroom|schoology|brightspace|d2l|zoom|edtech)\b/gi, category: "tool", importance: "important" },
+    // Teaching methods
+    { pattern: /\b(remote learning|hybrid learning|blended learning|flipped classroom|project-based learning|stem education|steam|montessori|iep|504 plan|special education|sped)\b/gi, category: "methodology", importance: "important" },
+    // Education certifications
+    { pattern: /\b(teaching certificate|teaching license|state certification|praxis|edtpa|tesol|tefl|celta|national board certified|nbct|ell|esl|esol)\b/gi, category: "certification", importance: "critical" },
+    // Education administration
+    { pattern: /\b(principal|superintendent|academic advisor|guidance counselor|school administration|title i|ferpa|accreditation|common core|state standards)\b/gi, category: "industry_term", importance: "important" },
+    // Higher education
+    { pattern: /\b(tenure|adjunct|professor|lecturer|research|publications|grants|phd|dissertation|peer review|academic writing|higher education|undergraduate|graduate)\b/gi, category: "industry_term", importance: "important" },
+    // Education soft skills
+    { pattern: /\b(student engagement|parent communication|behavior management|mentoring students|tutoring|academic support|college counseling)\b/gi, category: "soft_skill", importance: "important" },
+    
+    // ===== MANUFACTURING & ENGINEERING =====
+    // Engineering design (critical)
+    { pattern: /\b(cad|autocad|solidworks|catia|creo|nx|inventor|fusion 360|onshape|3d modeling|2d drafting|technical drawing|blueprint reading)\b/gi, category: "hard_skill", importance: "critical" },
+    // PLM & manufacturing systems
+    { pattern: /\b(plm|product lifecycle management|teamcenter|windchill|enovia|arena|pdm|product data management|bom|bill of materials|engineering change)\b/gi, category: "hard_skill", importance: "critical" },
+    // Quality control
+    { pattern: /\b(quality control|qc|quality assurance|qa|iso 9001|iso 14001|iso 13485|iatf 16949|as9100|inspection|metrology|spc|statistical process control|root cause analysis|8d|fmea|ppap)\b/gi, category: "hard_skill", importance: "critical" },
+    // Manufacturing processes
+    { pattern: /\b(cnc|machining|milling|turning|injection molding|die casting|stamping|welding|fabrication|assembly|additive manufacturing|3d printing)\b/gi, category: "hard_skill", importance: "critical" },
+    // Engineering disciplines
+    { pattern: /\b(mechanical engineering|electrical engineering|civil engineering|chemical engineering|industrial engineering|aerospace|automotive|manufacturing engineering)\b/gi, category: "industry_term", importance: "important" },
+    // Engineering software
+    { pattern: /\b(matlab|simulink|ansys|abaqus|comsol|labview|plc|scada|hmi|allen-bradley|siemens|rockwell|fanuc)\b/gi, category: "tool", importance: "important" },
+    // Engineering certifications
+    { pattern: /\b(pe|professional engineer|eit|engineer in training|fe exam|cqe|cqa|cmq\/oe|asq|aws cwi|api|osha|safety certified)\b/gi, category: "certification", importance: "important" },
+    // Lean & continuous improvement
+    { pattern: /\b(lean manufacturing|six sigma|kaizen|5s|tpm|value stream mapping|vsm|gemba|poka-yoke|kanban|continuous improvement|operational excellence)\b/gi, category: "methodology", importance: "important" },
+    // R&D and product development
+    { pattern: /\b(r&d|research and development|prototyping|testing|validation|verification|design review|dfm|dfa|dfmea|new product development|npd|stage-gate)\b/gi, category: "hard_skill", importance: "important" },
+    
     // ===== OPERATIONS & SUPPLY CHAIN =====
     { pattern: /\b(supply chain|logistics|procurement|inventory management|warehouse|distribution|erp|mrp|lean manufacturing|six sigma|kaizen|tps|just-in-time|jit)\b/gi, category: "hard_skill", importance: "critical" },
     { pattern: /\b(apics|cpim|cscp|cltd|pmp|capm|lean six sigma|green belt|black belt|master black belt)\b/gi, category: "certification", importance: "important" },
