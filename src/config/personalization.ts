@@ -1597,6 +1597,102 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Not highlighting safety record'
     ],
     interviewTopics: ['Code compliance scenarios', 'Troubleshooting approach', 'Safety protocols', 'Blueprint reading', 'Complex installation projects']
+  },
+  insurance_agent: {
+    name: 'Insurance Agent',
+    aliases: ['insurance sales agent', 'insurance broker', 'life insurance agent', 'property insurance agent', 'insurance producer', 'licensed agent', 'insurance advisor', 'captive agent'],
+    keySkills: ['Sales', 'Client Relations', 'Policy Analysis', 'Underwriting', 'Claims Processing', 'Lead Generation', 'CRM', 'Compliance'],
+    mustHaveKeywords: ['policies', 'premiums', 'sales', 'clients', 'underwriting', 'claims', 'retention', 'quotes'],
+    resumeTips: [
+      'Include license types and states',
+      'Quantify policies sold and premium volume',
+      'Show retention rates and client satisfaction',
+      'Highlight sales rankings and awards'
+    ],
+    bulletExamples: [
+      { weak: 'Sold insurance policies', strong: 'Generated $2M+ in annual premium volume selling 300+ policies, ranking in top 10% of agents nationwide' },
+      { weak: 'Managed client relationships', strong: 'Maintained 500+ client portfolio with 95% retention rate and 40% referral-based new business' }
+    ],
+    keyMetrics: ['Premium volume', 'Policies sold', 'Retention rate %', 'Client portfolio size', 'Sales ranking'],
+    commonMistakes: [
+      'Not including license types and states',
+      'Missing premium and policy volume',
+      'Vague "sold insurance" without numbers',
+      'Not showing retention and referral metrics'
+    ],
+    interviewTopics: ['Sales approach', 'Client needs assessment', 'Objection handling', 'Compliance knowledge', 'Cross-selling strategies']
+  },
+  physician: {
+    name: 'Physician',
+    aliases: ['doctor', 'md', 'medical doctor', 'attending physician', 'hospitalist', 'primary care physician', 'specialist', 'surgeon', 'resident physician'],
+    keySkills: ['Patient Care', 'Diagnosis', 'Treatment Planning', 'Clinical Documentation', 'Evidence-Based Medicine', 'Patient Education', 'Team Leadership', 'EMR/EHR'],
+    mustHaveKeywords: ['patient care', 'diagnosis', 'treatment', 'clinical', 'outcomes', 'evidence-based', 'documentation', 'quality'],
+    resumeTips: [
+      'Include medical license, board certifications, and DEA',
+      'Quantify patient volume and outcomes',
+      'Show quality metrics and patient satisfaction',
+      'Highlight research, publications, and leadership'
+    ],
+    bulletExamples: [
+      { weak: 'Provided patient care', strong: 'Managed panel of 2,500+ patients, achieving 95th percentile in quality metrics and 4.9/5 patient satisfaction' },
+      { weak: 'Treated patients in hospital', strong: 'Led hospitalist team caring for 20+ patients daily, reducing average length of stay by 15% while maintaining readmission rates below national average' }
+    ],
+    keyMetrics: ['Patient panel size', 'Quality metrics percentile', 'Patient satisfaction', 'Readmission rates', 'Publications'],
+    commonMistakes: [
+      'Not including licenses, board certifications, and DEA',
+      'Missing patient volume and panel size',
+      'Vague "treated patients" without outcomes',
+      'Not showing quality and satisfaction metrics'
+    ],
+    interviewTopics: ['Clinical scenarios', 'Quality improvement', 'Difficult patient situations', 'Evidence-based practice', 'Team leadership']
+  },
+  flight_attendant: {
+    name: 'Flight Attendant',
+    aliases: ['cabin crew', 'flight crew', 'cabin attendant', 'senior flight attendant', 'purser', 'inflight crew', 'airline crew'],
+    keySkills: ['Customer Service', 'Safety Procedures', 'Emergency Response', 'Conflict Resolution', 'First Aid/CPR', 'Communication', 'Cultural Sensitivity', 'Teamwork'],
+    mustHaveKeywords: ['safety', 'customer service', 'passengers', 'emergency procedures', 'inflight', 'FAA', 'service excellence', 'crew'],
+    resumeTips: [
+      'Include FAA certifications and safety training',
+      'Quantify flight hours and passengers served',
+      'Show customer satisfaction and commendations',
+      'Highlight language skills and international experience'
+    ],
+    bulletExamples: [
+      { weak: 'Served passengers on flights', strong: 'Delivered exceptional service to 200+ passengers per flight across 80+ monthly flight hours, earning 98% positive feedback' },
+      { weak: 'Ensured passenger safety', strong: 'Maintained 100% safety compliance across 1,000+ flights, trained 25+ new crew members on emergency procedures' }
+    ],
+    keyMetrics: ['Flight hours', 'Passengers served', 'Customer satisfaction %', 'Safety compliance', 'Languages spoken'],
+    commonMistakes: [
+      'Not including FAA certifications',
+      'Missing flight hours and experience level',
+      'Vague "served passengers" without scale',
+      'Not highlighting language skills'
+    ],
+    interviewTopics: ['Emergency scenarios', 'Difficult passenger situations', 'Teamwork examples', 'Customer service approach', 'Handling delays']
+  },
+  truck_driver: {
+    name: 'Truck Driver',
+    aliases: ['cdl driver', 'otr driver', 'commercial driver', 'long haul driver', 'delivery driver', 'freight driver', 'owner operator', 'fleet driver'],
+    keySkills: ['Commercial Driving', 'DOT Compliance', 'Route Planning', 'Vehicle Inspection', 'Load Securing', 'ELD/Logbook', 'Customer Service', 'Time Management'],
+    mustHaveKeywords: ['CDL', 'miles driven', 'safety record', 'on-time delivery', 'DOT compliance', 'freight', 'routes', 'endorsements'],
+    resumeTips: [
+      'Include CDL class and endorsements (Hazmat, Tanker, Doubles)',
+      'Quantify miles driven and safety record',
+      'Show on-time delivery performance',
+      'Highlight years of accident-free driving'
+    ],
+    bulletExamples: [
+      { weak: 'Drove trucks for deliveries', strong: 'Logged 100,000+ miles annually with 5+ years accident-free record, maintaining 99% on-time delivery rate' },
+      { weak: 'Delivered freight', strong: 'Transported $5M+ in freight monthly across 48 states, achieving 100% DOT compliance and zero cargo claims' }
+    ],
+    keyMetrics: ['Miles driven annually', 'Years accident-free', 'On-time delivery %', 'DOT compliance', 'Cargo claims'],
+    commonMistakes: [
+      'Not listing CDL class and endorsements',
+      'Missing mileage and safety record',
+      'Vague "drove trucks" without metrics',
+      'Not showing compliance record'
+    ],
+    interviewTopics: ['Safety record', 'Route planning approach', 'DOT regulations knowledge', 'Handling delays', 'Vehicle maintenance']
   }
 };
 
@@ -1654,6 +1750,10 @@ export function getRoleAdvice(role: string): RoleConfig | null {
   if (normalizedRole.includes('paralegal') || normalizedRole.includes('legal assistant') || normalizedRole.includes('law clerk')) return ROLE_CONFIGS.paralegal;
   if (normalizedRole.includes('event planner') || normalizedRole.includes('event coordinator') || normalizedRole.includes('wedding planner') || normalizedRole.includes('meeting planner')) return ROLE_CONFIGS.event_planner;
   if (normalizedRole.includes('electrician') || normalizedRole.includes('electrical technician')) return ROLE_CONFIGS.electrician;
+  if (normalizedRole.includes('insurance agent') || normalizedRole.includes('insurance broker') || normalizedRole.includes('insurance producer')) return ROLE_CONFIGS.insurance_agent;
+  if (normalizedRole.includes('physician') || normalizedRole.includes('doctor') || normalizedRole.includes('md') || normalizedRole.includes('hospitalist')) return ROLE_CONFIGS.physician;
+  if (normalizedRole.includes('flight attendant') || normalizedRole.includes('cabin crew') || normalizedRole.includes('inflight')) return ROLE_CONFIGS.flight_attendant;
+  if (normalizedRole.includes('truck driver') || normalizedRole.includes('cdl driver') || normalizedRole.includes('commercial driver') || normalizedRole.includes('otr driver')) return ROLE_CONFIGS.truck_driver;
   
   return null;
 }
