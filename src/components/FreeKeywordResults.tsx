@@ -11,6 +11,7 @@ import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { PersonalizedInsights } from "./PersonalizedInsights";
 import { TieredPricingSection } from "./TieredPricingSection";
 import { ResumeBeforeAfter } from "./ResumeBeforeAfter";
+import { JobKeywordMatcher } from "./JobKeywordMatcher";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -510,6 +511,11 @@ interface FreeKeywordResultsProps {
   competitiveAssessment?: CompetitiveAssessment;
   onGenerateTailoredResume?: () => void;
   isGeneratingTailored?: boolean;
+  // Deep job keyword matching props
+  resumeText?: string;
+  jobDescriptionText?: string;
+  jobTitle?: string;
+  jobCompany?: string;
 }
 
 export function FreeKeywordResults({
@@ -555,7 +561,11 @@ export function FreeKeywordResults({
   skillGapActions = [],
   competitiveAssessment,
   onGenerateTailoredResume,
-  isGeneratingTailored
+  isGeneratingTailored,
+  resumeText,
+  jobDescriptionText,
+  jobTitle,
+  jobCompany
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1205,6 +1215,22 @@ export function FreeKeywordResults({
           )}
         </div>
       )}
+      
+      {/* Deep Job Keyword Matching Analysis */}
+      {resumeText && jobDescriptionText && (
+        <div className="mb-6">
+          <JobKeywordMatcher
+            jobTitle={jobTitle}
+            jobCompany={jobCompany}
+            resumeText={resumeText}
+            jobDescription={jobDescriptionText}
+            extractedKeywords={matchingSkills}
+            missingKeywords={missingSkills}
+            matchScore={jobMatchScore}
+          />
+        </div>
+      )}
+      
       {/* Percentile Urgency Banner */}
       {atsScoreEstimate < 80 && (
         <div className="rounded-2xl bg-gradient-to-r from-destructive/20 via-destructive/10 to-warning/10 border-2 border-destructive/40 p-4 mb-4 animate-pulse-slow">

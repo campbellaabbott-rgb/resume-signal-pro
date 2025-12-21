@@ -958,6 +958,10 @@ const Index = () => {
                 onGenerateTailoredResume={handleGenerateTailoredResume}
                 isGeneratingTailored={isGeneratingTailored}
                 isLoading={isLoading || isFreeScanLoading}
+                resumeText={resumeText}
+                jobDescriptionText={jobDescriptionText}
+                jobTitle={uploadedJobs[0]?.title}
+                jobCompany={uploadedJobs[0]?.company}
               />
               
               {/* Score-based package recommendation */}
