@@ -2,6 +2,7 @@ import { ArrowRight, CheckCircle2, Zap, X, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { useABTest } from "@/hooks/use-ab-test";
+import { PRODUCTS } from "@/config/products";
 
 interface FinalCTAProps {
   onGetStarted: () => void;
@@ -105,12 +106,12 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
           {/* Price + CTA */}
           <div className="inline-flex flex-col items-center p-8 rounded-2xl bg-primary/10 border border-primary/30">
             <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-5xl md:text-6xl font-bold text-foreground">$25</span>
+              <span className="text-5xl md:text-6xl font-bold text-foreground">${PRODUCTS.fullAnalysis.priceUsd}</span>
               <span className="text-muted-foreground text-lg">{getPricingSubtext()}</span>
             </div>
             {isLocalCurrency && (
               <p className="text-sm text-primary font-medium mb-2">
-                ≈ {formatPrice(25)}
+                ≈ {formatPrice(PRODUCTS.fullAnalysis.priceUsd)}
               </p>
             )}
             <p className="text-sm text-muted-foreground mb-4">{t('finalCta.guarantee')}</p>

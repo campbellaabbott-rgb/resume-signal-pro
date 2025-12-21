@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
+import { PRODUCTS } from "@/config/products";
 import {
   Accordion,
   AccordionContent,
@@ -22,14 +23,19 @@ export function FAQ() {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
   
-  // Replace $25 with local currency in answers
+  // Replace $25 with local currency in answers (using actual product price)
+  const fullAnalysisPrice = PRODUCTS.fullAnalysis.priceUsd;
   const getLocalizedAnswer = (key: string) => {
     let answer = t(`faq.questions.${key}.answer`);
-    if (isLocalCurrency && answer.includes('$25')) {
-      answer = answer.replace('$25', `$25 (≈ ${formatPrice(25)})`);
+    // Replace any hardcoded $25 references with actual price
+    if (answer.includes('$25')) {
+      const priceDisplay = isLocalCurrency 
+        ? `$${fullAnalysisPrice} (≈ ${formatPrice(fullAnalysisPrice)})` 
+        : `$${fullAnalysisPrice}`;
+      answer = answer.replace(/\$25/g, priceDisplay);
     }
     if (isLocalCurrency && answer.includes('£20')) {
-      answer = answer.replace('£20', `£20 (≈ ${formatPrice(25)})`);
+      answer = answer.replace('£20', `£20 (≈ ${formatPrice(fullAnalysisPrice)})`);
     }
     return answer;
   };

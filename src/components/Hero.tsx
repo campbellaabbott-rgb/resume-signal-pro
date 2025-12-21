@@ -7,6 +7,7 @@ import { useCurrency } from "@/hooks/use-currency";
 import { LiveActivityCounter } from "./LiveActivityCounter";
 import { useABTest } from "@/hooks/use-ab-test";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { PRODUCTS } from "@/config/products";
 
 export function Hero() {
   const { t } = useTranslation();
@@ -19,12 +20,18 @@ export function Hero() {
   const pricingDisplay = useABTest('pricing_display');
   const freeScanCta = useABTest('free_scan_cta');
 
+  // Price display helper
+  const fullAnalysisPrice = PRODUCTS.fullAnalysis.priceUsd;
+  const priceDisplay = isLocalCurrency 
+    ? `$${fullAnalysisPrice} ≈ ${formatPrice(fullAnalysisPrice)}` 
+    : `$${fullAnalysisPrice}`;
+
   // CTA text variants
   const getCtaText = () => {
     switch (heroCta.variant) {
       case 'urgent': return 'Analyze Now - Limited Spots';
-      case 'benefit': return 'Land More Interviews - $25';
-      default: return 'Get Your Analysis - $25';
+      case 'benefit': return `Land More Interviews - ${priceDisplay}`;
+      default: return `Get Your Analysis - ${priceDisplay}`;
     }
   };
 
@@ -39,10 +46,13 @@ export function Hero() {
 
   // Pricing display variants
   const getPricingDisplay = () => {
+    const priceWithLocal = isLocalCurrency 
+      ? `$${fullAnalysisPrice} ≈ ${formatPrice(fullAnalysisPrice)}` 
+      : `$${fullAnalysisPrice}`;
     switch (pricingDisplay.variant) {
-      case 'starting_at': return { main: 'Starting at $25', sub: 'One-time' };
-      case 'roi_focused': return { main: '$25', sub: '= 1 Interview ROI' };
-      default: return { main: t('hero.price'), sub: t('hero.oneTime') };
+      case 'starting_at': return { main: `Starting at ${priceWithLocal}`, sub: 'One-time' };
+      case 'roi_focused': return { main: priceWithLocal, sub: '= 1 Interview ROI' };
+      default: return { main: isLocalCurrency ? `$${fullAnalysisPrice} (≈${formatPrice(fullAnalysisPrice)})` : t('hero.price'), sub: t('hero.oneTime') };
     }
   };
 

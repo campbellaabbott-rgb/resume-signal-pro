@@ -106,29 +106,42 @@ const metricTooltips = {
   }
 };
 
-// A/B Test copy variants for product CTAs
-const getProductCtaCopy = (variant: 'control' | 'benefit_focused' | 'scarcity') => ({
-  coverLetter: {
-    control: { button: `Generate Cover Letter — $${PRODUCTS.coverLetter.priceUsd}`, description: 'AI-generated cover letter tailored to your resume and target job. Ready to send in minutes.' },
-    benefit_focused: { button: 'Get Your Interview-Winning Letter', description: 'Stand out from 100+ applicants with a personalized cover letter that gets recruiters excited.' },
-    scarcity: { button: `Create Cover Letter Now — $${PRODUCTS.coverLetter.priceUsd}`, description: 'Most applicants skip cover letters. Get ahead of the competition with a custom letter in 2 minutes.' },
-  }[variant],
-  keywordFix: {
-    control: { button: 'Get Full Keyword Report', headline: 'Want 50+ Industry Keywords?' },
-    benefit_focused: { button: 'Unlock Hidden Keywords', headline: 'Get Past the ATS Filter' },
-    scarcity: { button: 'Get Keywords Before Others Do', headline: 'Beat 87% of Applicants' },
-  }[variant],
-  premiumPackage: {
-    control: { button: `Buy Premium Package — $${PRODUCTS.premiumPackage.priceUsd}`, headline: 'Premium Resume Package', subtext: 'Everything you need to land interviews' },
-    benefit_focused: { button: 'Get Interview-Ready Now', headline: 'Land Your Dream Job Faster', subtext: '3x more interview callbacks with our complete package' },
-    scarcity: { button: 'Claim Your Package — Limited', headline: 'Premium Resume Package', subtext: 'Join 10,000+ who landed interviews this month' },
-  }[variant],
-  tailoredResume: {
-    control: { button: 'Preview Tailored Resume', description: 'Preview for free, then unlock the full Premium Package with tailored resume + cover letter' },
-    benefit_focused: { button: 'See Your Improved Resume', description: 'See exactly how your resume will look when optimized for your target role' },
-    scarcity: { button: 'Generate Before It Closes', description: 'Limited preview available — see your tailored resume before upgrading' },
-  }[variant],
-});
+// A/B Test copy variants for product CTAs - now accepts formatLocalPrice function
+const getProductCtaCopy = (
+  variant: 'control' | 'benefit_focused' | 'scarcity',
+  formatLocalPrice: (usd: number) => string,
+  isLocal: boolean
+) => {
+  const coverLetterPrice = isLocal 
+    ? `$${PRODUCTS.coverLetter.priceUsd} ≈ ${formatLocalPrice(PRODUCTS.coverLetter.priceUsd)}`
+    : `$${PRODUCTS.coverLetter.priceUsd}`;
+  const premiumPrice = isLocal 
+    ? `$${PRODUCTS.premiumPackage.priceUsd} ≈ ${formatLocalPrice(PRODUCTS.premiumPackage.priceUsd)}`
+    : `$${PRODUCTS.premiumPackage.priceUsd}`;
+    
+  return {
+    coverLetter: {
+      control: { button: `Generate Cover Letter — ${coverLetterPrice}`, description: 'AI-generated cover letter tailored to your resume and target job. Ready to send in minutes.' },
+      benefit_focused: { button: 'Get Your Interview-Winning Letter', description: 'Stand out from 100+ applicants with a personalized cover letter that gets recruiters excited.' },
+      scarcity: { button: `Create Cover Letter Now — ${coverLetterPrice}`, description: 'Most applicants skip cover letters. Get ahead of the competition with a custom letter in 2 minutes.' },
+    }[variant],
+    keywordFix: {
+      control: { button: 'Get Full Keyword Report', headline: 'Want 50+ Industry Keywords?' },
+      benefit_focused: { button: 'Unlock Hidden Keywords', headline: 'Get Past the ATS Filter' },
+      scarcity: { button: 'Get Keywords Before Others Do', headline: 'Beat 87% of Applicants' },
+    }[variant],
+    premiumPackage: {
+      control: { button: `Buy Premium Package — ${premiumPrice}`, headline: 'Premium Resume Package', subtext: 'Everything you need to land interviews' },
+      benefit_focused: { button: 'Get Interview-Ready Now', headline: 'Land Your Dream Job Faster', subtext: '3x more interview callbacks with our complete package' },
+      scarcity: { button: 'Claim Your Package — Limited', headline: 'Premium Resume Package', subtext: 'Join 10,000+ who landed interviews this month' },
+    }[variant],
+    tailoredResume: {
+      control: { button: 'Preview Tailored Resume', description: 'Preview for free, then unlock the full Premium Package with tailored resume + cover letter' },
+      benefit_focused: { button: 'See Your Improved Resume', description: 'See exactly how your resume will look when optimized for your target role' },
+      scarcity: { button: 'Generate Before It Closes', description: 'Limited preview available — see your tailored resume before upgrading' },
+    }[variant],
+  };
+};
 
 // Cover Letter Button component
 const CoverLetterButton = ({ 
@@ -141,8 +154,9 @@ const CoverLetterButton = ({
   section?: string;
 }) => {
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
+  const { formatPrice, isLocalCurrency } = useCurrency();
   const isPurchasing = isLoading && currentProduct === 'coverLetter';
-  const copy = getProductCtaCopy(variant).coverLetter;
+  const copy = getProductCtaCopy(variant, formatPrice, isLocalCurrency).coverLetter;
   
   if (!hasJobDescription) {
     return (
@@ -184,8 +198,9 @@ const KeywordFixButton = ({
   section?: string;
 }) => {
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
+  const { formatPrice, isLocalCurrency } = useCurrency();
   const isPurchasing = isLoading && currentProduct === 'basicKeywordFix';
-  const copy = getProductCtaCopy(variant).keywordFix;
+  const copy = getProductCtaCopy(variant, formatPrice, isLocalCurrency).keywordFix;
   
   return (
     <Button
@@ -220,8 +235,9 @@ const PremiumPackageButton = ({
   section?: string;
 }) => {
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
+  const { formatPrice, isLocalCurrency } = useCurrency();
   const isPurchasing = isLoading && currentProduct === 'premiumPackage';
-  const copy = getProductCtaCopy(variant).premiumPackage;
+  const copy = getProductCtaCopy(variant, formatPrice, isLocalCurrency).premiumPackage;
   
   const handleClick = () => {
     purchaseProduct('premiumPackage', { ctaSection: section });
@@ -2091,7 +2107,7 @@ export function FreeKeywordResults({
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="flex-1 text-center sm:text-left">
               <p className="font-semibold text-foreground">
-                {getProductCtaCopy(productCtaTest.variant as 'control' | 'benefit_focused' | 'scarcity').premiumPackage.headline}
+                {getProductCtaCopy(productCtaTest.variant as 'control' | 'benefit_focused' | 'scarcity', formatPrice, isLocalCurrency).premiumPackage.headline}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Get an AI-rewritten resume that's optimized for ALL major ATS systems
@@ -2225,7 +2241,7 @@ export function FreeKeywordResults({
           
           <div className="flex items-center gap-2 mt-4 p-2 rounded-lg bg-primary/10 border border-primary/20">
             <Lock className="w-3 h-3 text-primary" />
-            <span className="text-xs text-primary">Get all your bullet points rewritten in the full ${PRODUCTS.fullAnalysis.priceUsd} analysis</span>
+            <span className="text-xs text-primary">Get all your bullet points rewritten in the full {priceDisplay} analysis</span>
           </div>
         </div>
       )}
@@ -2304,7 +2320,9 @@ export function FreeKeywordResults({
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-primary">Premium Package</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">${PRODUCTS.premiumPackage.priceUsd}</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
+                  {isLocalCurrency ? `$${PRODUCTS.premiumPackage.priceUsd} ≈ ${formatPrice(PRODUCTS.premiumPackage.priceUsd)}` : `$${PRODUCTS.premiumPackage.priceUsd}`}
+                </span>
               </div>
             </div>
             <h4 className="text-xl font-bold text-foreground mb-2">
@@ -2420,8 +2438,10 @@ export function FreeKeywordResults({
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <h5 className="font-semibold text-foreground">{getProductCtaCopy(productCtaTest.variant).keywordFix.headline}</h5>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">${PRODUCTS.basicKeywordFix.priceUsd}</span>
+                <h5 className="font-semibold text-foreground">{getProductCtaCopy(productCtaTest.variant, formatPrice, isLocalCurrency).keywordFix.headline}</h5>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
+                  {isLocalCurrency ? `$${PRODUCTS.basicKeywordFix.priceUsd} ≈ ${formatPrice(PRODUCTS.basicKeywordFix.priceUsd)}` : `$${PRODUCTS.basicKeywordFix.priceUsd}`}
+                </span>
               </div>
               <p className="text-sm text-muted-foreground mb-3">
                 Get a complete keyword optimization report with exact phrases recruiters search for in your industry.
@@ -2538,10 +2558,12 @@ export function FreeKeywordResults({
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <h4 className="font-bold text-foreground">Custom Cover Letter</h4>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent-foreground font-medium">${PRODUCTS.coverLetter.priceUsd}</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent-foreground font-medium">
+                {isLocalCurrency ? `$${PRODUCTS.coverLetter.priceUsd} ≈ ${formatPrice(PRODUCTS.coverLetter.priceUsd)}` : `$${PRODUCTS.coverLetter.priceUsd}`}
+              </span>
             </div>
             <p className="text-sm text-muted-foreground mb-3">
-              {getProductCtaCopy(productCtaTest.variant).coverLetter.description}
+              {getProductCtaCopy(productCtaTest.variant, formatPrice, isLocalCurrency).coverLetter.description}
             </p>
             <div className="flex flex-wrap gap-2 mb-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Personalized opening</span>
@@ -2563,10 +2585,10 @@ export function FreeKeywordResults({
             <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-primary-foreground font-bold">{PRODUCTS.premiumPackage.savings}</span>
           </div>
           <h3 className="text-2xl font-bold text-primary-foreground mb-2">
-            {getProductCtaCopy(productCtaTest.variant).premiumPackage.headline}
+            {getProductCtaCopy(productCtaTest.variant, formatPrice, isLocalCurrency).premiumPackage.headline}
           </h3>
           <p className="text-sm text-primary-foreground/80 mb-4">
-            {getProductCtaCopy(productCtaTest.variant).premiumPackage.subtext}: full analysis + AI-rewritten resume + custom cover letter.
+            {getProductCtaCopy(productCtaTest.variant, formatPrice, isLocalCurrency).premiumPackage.subtext}: full analysis + AI-rewritten resume + custom cover letter.
           </p>
           <div className="grid grid-cols-2 gap-2 mb-4">
             {[
@@ -2586,7 +2608,9 @@ export function FreeKeywordResults({
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <PremiumPackageButton variant={productCtaTest.variant} isPrimary section="bottom_cta" />
             <div className="text-primary-foreground">
-              <span className="text-2xl font-bold">${PRODUCTS.premiumPackage.priceUsd}</span>
+              <span className="text-2xl font-bold">
+                {isLocalCurrency ? `$${PRODUCTS.premiumPackage.priceUsd} ≈ ${formatPrice(PRODUCTS.premiumPackage.priceUsd)}` : `$${PRODUCTS.premiumPackage.priceUsd}`}
+              </span>
             </div>
           </div>
         </div>
