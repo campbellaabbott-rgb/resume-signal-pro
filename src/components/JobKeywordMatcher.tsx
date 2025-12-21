@@ -741,6 +741,28 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
     { pattern: /\b(financial acumen|business acumen|commercial acumen|budget ownership|cost optimization|revenue growth|ebitda|cash flow|working capital|roi|irr|npv)\b/gi, category: "hard_skill", importance: "critical" },
     // Stakeholder management
     { pattern: /\b(stakeholder management|executive stakeholder|c-level stakeholder|board relationship|investor relationship|key account|enterprise client|strategic account)\b/gi, category: "soft_skill", importance: "important" },
+    
+    // ===== ENTRY-LEVEL & INTERNSHIP =====
+    // Entry-level positions (critical)
+    { pattern: /\b(entry-level|entry level|junior|associate|assistant|coordinator|specialist|analyst|representative|administrator)\b/gi, category: "industry_term", importance: "critical" },
+    // Internship & co-op
+    { pattern: /\b(intern|internship|co-op|coop|cooperative education|summer intern|spring intern|fall intern|winter intern|paid internship|unpaid internship)\b/gi, category: "industry_term", importance: "critical" },
+    // Recent graduate
+    { pattern: /\b(recent graduate|new graduate|new grad|fresh graduate|graduating|graduation|class of|bachelor's|master's|degree required|degree preferred)\b/gi, category: "industry_term", importance: "critical" },
+    // Training programs
+    { pattern: /\b(trainee|training program|development program|rotational program|rotation|graduate program|management trainee|leadership development|ldp|early career)\b/gi, category: "industry_term", importance: "critical" },
+    // Experience level
+    { pattern: /\b(0-1 years|0-2 years|1-2 years|1-3 years|no experience required|experience not required|will train|on-the-job training|ojt)\b/gi, category: "industry_term", importance: "important" },
+    // Campus & university
+    { pattern: /\b(campus|university|college|student|undergraduate|postgraduate|gpa|academic|coursework|capstone|thesis|senior project)\b/gi, category: "industry_term", importance: "important" },
+    // Entry-level skills
+    { pattern: /\b(eager to learn|fast learner|quick learner|willingness to learn|growth mindset|coachable|adaptable|flexible|team player|strong work ethic)\b/gi, category: "soft_skill", importance: "important" },
+    // Apprenticeship
+    { pattern: /\b(apprentice|apprenticeship|journeyman|trades apprentice|registered apprentice|apprenticeship program|learn and earn)\b/gi, category: "industry_term", importance: "important" },
+    // Fellowship & residency
+    { pattern: /\b(fellow|fellowship|resident|residency|postdoctoral|postdoc|research assistant|teaching assistant|ra|ta|graduate assistant)\b/gi, category: "industry_term", importance: "important" },
+    // Entry activities
+    { pattern: /\b(extracurricular|club|organization|volunteer|volunteering|community service|leadership role|student organization|fraternity|sorority)\b/gi, category: "soft_skill", importance: "nice_to_have" },
   ];
   
   const extracted: Map<string, { keyword: string; context: string; importance: "critical" | "important" | "nice_to_have"; category: KeywordMatch["category"] }> = new Map();
