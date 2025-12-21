@@ -1319,6 +1319,70 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       metricsRate: 85
     }
   },
+  systems_administrator: {
+    name: 'Systems Administrator',
+    aliases: ['sysadmin', 'system administrator', 'linux administrator', 'windows administrator', 'it administrator', 'server administrator', 'infrastructure administrator', 'senior sysadmin'],
+    keySkills: ['Linux/Windows Server', 'Active Directory', 'Virtualization (VMware, Hyper-V)', 'Scripting (Bash, PowerShell)', 'Backup & Recovery', 'Monitoring', 'Security Hardening', 'Cloud Administration'],
+    mustHaveKeywords: ['server', 'Linux', 'Windows', 'administration', 'uptime', 'backup', 'security', 'monitoring', 'virtualization', 'Active Directory'],
+    resumeTips: [
+      'Quantify infrastructure scale (servers, users supported)',
+      'Show uptime and reliability achievements',
+      'Highlight automation and efficiency improvements',
+      'Include security and compliance experience'
+    ],
+    bulletExamples: [
+      { weak: 'Managed Linux servers', strong: 'Administered 200+ Linux/Windows servers supporting 5K users, achieving 99.99% uptime and reducing incident response time by 60%' },
+      { weak: 'Handled backups and security', strong: 'Implemented automated backup system with 100% recovery success rate, reducing RTO from 8 hours to 30 minutes' }
+    ],
+    keyMetrics: ['Servers/users supported', 'Uptime %', 'Incident response time', 'Recovery time (RTO/RPO)', 'Automation coverage', 'Ticket resolution time'],
+    commonMistakes: [
+      'Not quantifying infrastructure scale',
+      'Missing uptime and reliability metrics',
+      'Vague "managed servers" without outcomes',
+      'Not showing automation achievements'
+    ],
+    interviewTopics: ['Troubleshooting scenarios', 'Disaster recovery', 'Security hardening', 'Automation strategies', 'Monitoring and alerting', 'Capacity planning'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'Infrastructure Experience', 'Certifications', 'Projects', 'Education'],
+      differentiators: ['Large-scale infrastructure experience', 'High uptime achievements', 'Automation expertise', 'Security certifications (CISSP, CompTIA)'],
+      avgBulletCount: 4,
+      certificationRate: 75,
+      portfolioRate: 20,
+      metricsRate: 85
+    }
+  },
+  network_engineer: {
+    name: 'Network Engineer',
+    aliases: ['network administrator', 'network architect', 'senior network engineer', 'network specialist', 'infrastructure engineer', 'cisco engineer', 'wan engineer', 'network security engineer'],
+    keySkills: ['Cisco/Juniper', 'Routing & Switching', 'Firewalls', 'VPN', 'Network Security', 'SD-WAN', 'Load Balancing', 'Network Monitoring', 'Wireless (WiFi 6)'],
+    mustHaveKeywords: ['network', 'routing', 'switching', 'Cisco', 'firewall', 'VPN', 'bandwidth', 'latency', 'security', 'infrastructure'],
+    resumeTips: [
+      'Include network certifications prominently (CCNA, CCNP)',
+      'Quantify network scale (devices, bandwidth, sites)',
+      'Show uptime and performance improvements',
+      'Highlight security implementations'
+    ],
+    bulletExamples: [
+      { weak: 'Managed network infrastructure', strong: 'Designed and maintained enterprise network spanning 50 sites and 10K+ devices, achieving 99.99% uptime and reducing latency by 40%' },
+      { weak: 'Implemented network security', strong: 'Deployed zero-trust network architecture across 5K endpoints, blocking 99.9% of threats and reducing security incidents by 75%' }
+    ],
+    keyMetrics: ['Network uptime %', 'Devices/sites managed', 'Bandwidth capacity', 'Latency reduction', 'Incident reduction', 'Security threat prevention'],
+    commonMistakes: [
+      'Not listing network certifications',
+      'Missing scale of network managed',
+      'Vague "maintained network" without metrics',
+      'Not showing security implementation experience'
+    ],
+    interviewTopics: ['Network troubleshooting', 'Routing protocols', 'Network security', 'Capacity planning', 'Disaster recovery', 'Cloud networking'],
+    topResumeElements: {
+      sections: ['Certifications', 'Technical Skills', 'Network Experience', 'Projects', 'Education'],
+      differentiators: ['CCNP/CCIE certifications', 'Enterprise-scale experience', 'Security implementations', 'Cloud networking expertise'],
+      avgBulletCount: 4,
+      certificationRate: 85,
+      portfolioRate: 15,
+      metricsRate: 82
+    }
+  },
   developer_advocate: {
     name: 'Developer Advocate',
     aliases: ['developer relations', 'devrel', 'developer evangelist', 'technical evangelist', 'community manager', 'developer experience', 'dx advocate', 'api evangelist'],
@@ -2958,31 +3022,6 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
     ],
     interviewTopics: ['Cloud services knowledge', 'IaC best practices', 'Networking and security', 'Cost optimization', 'Troubleshooting scenarios'],
     topResumeElements: { sections: ['Summary', 'Experience', 'Certifications', 'Technical Skills', 'Education'], differentiators: ['Cloud certifications', 'Infrastructure scale', 'Automation achievements', 'Cost savings'], avgBulletCount: 4, certificationRate: 80, portfolioRate: 35, metricsRate: 88 }
-  },
-  network_engineer: {
-    name: 'Network Engineer',
-    aliases: ['network administrator', 'senior network engineer', 'network architect', 'network operations', 'cisco engineer', 'network specialist', 'infrastructure engineer'],
-    keySkills: ['Cisco/Juniper', 'Routing & Switching', 'Firewalls', 'VPN', 'Network Security', 'Load Balancing', 'Troubleshooting', 'Network Monitoring'],
-    mustHaveKeywords: ['network', 'routing', 'switching', 'firewall', 'vpn', 'cisco', 'infrastructure', 'uptime'],
-    resumeTips: [
-      'Include certifications (CCNA, CCNP, CCIE)',
-      'Quantify network scale and uptime achieved',
-      'Show cost savings from optimization',
-      'Highlight security improvements and incident response'
-    ],
-    bulletExamples: [
-      { weak: 'Managed company network', strong: 'Managed enterprise network spanning 50+ sites and 10,000+ endpoints, maintaining 99.99% uptime' },
-      { weak: 'Configured firewalls and VPNs', strong: 'Deployed SD-WAN across 30 locations, reducing WAN costs by 45% while improving bandwidth by 3x' }
-    ],
-    keyMetrics: ['Uptime %', 'Sites/endpoints managed', 'Cost savings %', 'Bandwidth improvement', 'Incident response time'],
-    commonMistakes: [
-      'Not including network certifications',
-      'Missing network scale and scope',
-      'Vague "managed network" without metrics',
-      'Not showing security and reliability achievements'
-    ],
-    interviewTopics: ['Networking fundamentals', 'Troubleshooting scenarios', 'Security best practices', 'Network design', 'Protocol deep-dives'],
-    topResumeElements: { sections: ['Summary', 'Experience', 'Certifications', 'Technical Skills', 'Education'], differentiators: ['CCNA/CCNP/CCIE certification', 'Network scale', 'Uptime achievements', 'Cost optimization'], avgBulletCount: 4, certificationRate: 85, portfolioRate: 10, metricsRate: 82 }
   },
   database_administrator: {
     name: 'Database Administrator',
