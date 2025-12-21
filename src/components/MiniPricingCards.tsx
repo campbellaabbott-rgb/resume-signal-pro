@@ -2,37 +2,24 @@ import { Link } from "react-router-dom";
 import { Crown, FileText, Package, ArrowRight, Sparkles, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { PRODUCTS, ProductId } from "@/config/products";
+import { useCurrency } from "@/hooks/use-currency";
 
-const featuredProducts = [
-  {
-    id: 'premiumPackage',
-    name: 'Premium Package',
-    price: 12,
-    description: 'Full analysis + AI rewrite',
-    icon: Crown,
-    highlight: false,
-  },
-  {
-    id: 'atsDefense',
-    name: 'ATS Defense',
-    price: 15,
-    description: 'Multi-role ATS optimization',
-    icon: ShieldCheck,
-    highlight: true,
-    badge: 'Most Comprehensive',
-  },
-  {
-    id: 'careerBundle',
-    name: 'Career Bundle',
-    price: 20,
-    description: '75 full analyses',
-    icon: Package,
-    highlight: false,
-    badge: 'Best Value',
-  },
+const featuredProductKeys: { key: ProductId; highlight?: boolean }[] = [
+  { key: 'premiumPackage', highlight: false },
+  { key: 'atsDefense', highlight: true },
+  { key: 'careerBundle', highlight: false },
 ];
 
+const productIcons: Record<string, React.ElementType> = {
+  premiumPackage: Crown,
+  atsDefense: ShieldCheck,
+  careerBundle: Package,
+};
+
 export function MiniPricingCards() {
+  const { formatPrice, isLocalCurrency } = useCurrency();
+
   return (
     <section className="py-16 border-t border-border/50">
       <div className="container">
@@ -50,38 +37,41 @@ export function MiniPricingCards() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-          {featuredProducts.map((product) => {
-            const Icon = product.icon;
+          {featuredProductKeys.map(({ key, highlight }) => {
+            const product = PRODUCTS[key];
+            const Icon = productIcons[key] || Sparkles;
+            const badge = 'badge' in product ? product.badge : undefined;
+            
             return (
               <Link
-                key={product.id}
+                key={key}
                 to="/pricing"
                 className={cn(
                   "group relative p-5 rounded-xl border-2 bg-card transition-all hover:shadow-lg hover:-translate-y-1",
-                  product.highlight
+                  highlight
                     ? "border-primary ring-2 ring-primary/20"
                     : "border-border hover:border-primary/50"
                 )}
               >
-                {product.badge && (
+                {badge && (
                   <span className={cn(
                     "absolute -top-2.5 left-1/2 -translate-x-1/2 text-xs font-medium px-2.5 py-0.5 rounded-full",
-                    product.highlight
+                    highlight
                       ? "bg-primary text-primary-foreground"
                       : "bg-accent text-accent-foreground"
                   )}>
-                    {product.badge}
+                    {badge}
                   </span>
                 )}
                 
                 <div className="flex items-center gap-3 mb-3">
                   <div className={cn(
                     "w-10 h-10 rounded-lg flex items-center justify-center",
-                    product.highlight ? "bg-primary/20" : "bg-accent"
+                    highlight ? "bg-primary/20" : "bg-accent"
                   )}>
                     <Icon className={cn(
                       "w-5 h-5",
-                      product.highlight ? "text-primary" : "text-muted-foreground"
+                      highlight ? "text-primary" : "text-muted-foreground"
                     )} />
                   </div>
                   <div>
@@ -91,7 +81,12 @@ export function MiniPricingCards() {
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold">${product.price}</span>
+                  <div>
+                    <span className="text-2xl font-bold">${product.priceUsd}</span>
+                    {isLocalCurrency && (
+                      <p className="text-xs text-muted-foreground">≈ {formatPrice(product.priceUsd)}</p>
+                    )}
+                  </div>
                   <span className="text-xs text-primary group-hover:translate-x-1 transition-transform flex items-center gap-1">
                     View details <ArrowRight className="w-3 h-3" />
                   </span>
