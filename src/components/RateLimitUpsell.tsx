@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useScanCredits } from "@/hooks/use-scan-credits";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
+import { useCurrency } from "@/hooks/use-currency";
 
 interface RateLimitUpselProps {
   onClose: () => void;
@@ -16,6 +17,14 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
   const [creditAmount, setCreditAmount] = useState(10);
   const { purchaseCredits, isLoading, pricePerCredit } = useScanCredits();
   const { trackButtonClick, trackCheckoutInitiated } = useConversionTracking();
+  const { formatPrice, isLocalCurrency } = useCurrency();
+  
+  const formatLocalPrice = (usd: number) => {
+    if (isLocalCurrency) {
+      return `$${usd.toFixed(2)} (${formatPrice(usd)})`;
+    }
+    return `$${usd.toFixed(2)}`;
+  };
 
   const handlePurchase = async () => {
     if (!email || !email.includes('@')) return;
@@ -106,8 +115,13 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
           </div>
 
           <div className="flex items-center justify-between pt-3 border-t border-border/50">
-            <span className="text-sm text-muted-foreground">Total (${pricePerCredit.toFixed(2)}/credit)</span>
-            <span className="text-2xl font-bold">${totalPrice.toFixed(2)}</span>
+            <span className="text-sm text-muted-foreground">Total ({formatLocalPrice(pricePerCredit)}/credit)</span>
+            <div className="text-right">
+              <span className="text-2xl font-bold">${totalPrice.toFixed(2)}</span>
+              {isLocalCurrency && (
+                <p className="text-xs text-muted-foreground">{formatPrice(totalPrice)}</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -149,7 +163,7 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
           ) : (
             <>
               <Zap className="w-4 h-4 mr-2" />
-              Buy {creditAmount} Credit{creditAmount !== 1 ? 's' : ''} for ${totalPrice}
+              Buy {creditAmount} Credit{creditAmount !== 1 ? 's' : ''} for {formatLocalPrice(totalPrice)}
             </>
           )}
         </Button>
