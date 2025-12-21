@@ -283,6 +283,141 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     keyMetrics: ['Client savings identified', 'Revenue impact', 'Projects delivered', 'Client satisfaction', 'Utilization rate'],
     industryBenchmarks: { avgScore: 71, topScore: 93 }
   },
+  legal: {
+    name: 'Legal',
+    keywords: ['Litigation', 'Compliance', 'Contract', 'Due Diligence', 'Legal Research', 'Discovery', 'Regulatory', 'Negotiations', 'Corporate Law', 'Intellectual Property'],
+    resumeTips: [
+      'List bar admissions and jurisdictions prominently',
+      'Highlight case outcomes and settlement values',
+      'Include specific practice areas and expertise',
+      'Mention notable clients or matters (if permitted)'
+    ],
+    preferredFormat: 'Reverse chronological with education prominent',
+    atsNotes: 'Law firms use varied ATS. Include exact practice area keywords.',
+    topSkills: ['Legal Research', 'Contract Drafting', 'Litigation', 'Negotiation', 'Regulatory Compliance'],
+    certifications: ['Bar Admission', 'JD', 'LLM', 'Certified Compliance Professional'],
+    commonMistakes: [
+      'Not listing bar admissions and jurisdictions',
+      'Missing case outcomes or deal values',
+      'Vague "handled legal matters" without specifics',
+      'Not mentioning billable hours or client load'
+    ],
+    strongActionVerbs: ['Litigated', 'Negotiated', 'Drafted', 'Counseled', 'Represented', 'Researched', 'Argued', 'Mediated'],
+    bulletExamples: [
+      { weak: 'Handled corporate legal matters', strong: 'Led M&A due diligence for $200M acquisition, identifying $5M in liability risks' },
+      { weak: 'Worked on litigation cases', strong: 'Successfully defended Fortune 500 client in $15M breach of contract suit, achieving dismissal with prejudice' }
+    ],
+    keyMetrics: ['Case outcomes', 'Settlement values', 'Billable hours', 'Matters handled', 'Client retention'],
+    industryBenchmarks: { avgScore: 70, topScore: 92 }
+  },
+  retail: {
+    name: 'Retail',
+    keywords: ['Sales', 'Customer Service', 'Inventory', 'Merchandising', 'POS', 'Loss Prevention', 'Visual Display', 'Upselling', 'Store Operations', 'KPIs'],
+    resumeTips: [
+      'Quantify sales performance and targets exceeded',
+      'Highlight customer satisfaction scores',
+      'Include specific POS and inventory systems',
+      'Show leadership and team management experience'
+    ],
+    preferredFormat: 'Achievement-focused with metrics prominent',
+    atsNotes: 'Retail uses Workday, iCIMS. Include sales numbers in every bullet.',
+    topSkills: ['Customer Service', 'Sales', 'Inventory Management', 'Team Leadership', 'Visual Merchandising'],
+    certifications: ['Retail Management Certificate', 'Customer Service Certification', 'Loss Prevention Certified'],
+    commonMistakes: [
+      'Not including sales numbers and percentages',
+      'Missing customer satisfaction metrics',
+      'Vague "provided customer service" without outcomes',
+      'Not mentioning specific retail systems used'
+    ],
+    strongActionVerbs: ['Sold', 'Exceeded', 'Merchandised', 'Trained', 'Managed', 'Increased', 'Reduced', 'Upsold'],
+    bulletExamples: [
+      { weak: 'Worked in retail sales', strong: 'Exceeded monthly sales targets by 25% average, ranking #1 of 15 associates for 6 consecutive months' },
+      { weak: 'Helped customers with purchases', strong: 'Achieved 98% customer satisfaction rating while processing 100+ transactions daily with $45 average upsell' }
+    ],
+    keyMetrics: ['Sales vs target %', 'Average transaction value', 'Customer satisfaction', 'Shrink reduction', 'Units per transaction'],
+    industryBenchmarks: { avgScore: 58, topScore: 82 }
+  },
+  hospitality: {
+    name: 'Hospitality',
+    keywords: ['Guest Services', 'Hotel Operations', 'F&B', 'Revenue Management', 'Housekeeping', 'Front Desk', 'Reservations', 'Concierge', 'Banquets', 'OPERA'],
+    resumeTips: [
+      'Highlight guest satisfaction scores and reviews',
+      'Include specific property management systems',
+      'Quantify revenue impact and occupancy rates',
+      'Show multilingual abilities prominently'
+    ],
+    preferredFormat: 'Reverse chronological with guest service focus',
+    atsNotes: 'Hospitality uses varied systems. Emphasize guest experience metrics.',
+    topSkills: ['Guest Relations', 'Revenue Management', 'F&B Operations', 'Team Leadership', 'Problem Resolution'],
+    certifications: ['CHA', 'CHIA', 'ServSafe', 'TIPS Certified', 'Revenue Management Certificate'],
+    commonMistakes: [
+      'Not including guest satisfaction scores',
+      'Missing property management system experience',
+      'Vague "provided excellent service" without metrics',
+      'Not mentioning languages spoken'
+    ],
+    strongActionVerbs: ['Hosted', 'Coordinated', 'Managed', 'Resolved', 'Exceeded', 'Trained', 'Improved', 'Curated'],
+    bulletExamples: [
+      { weak: 'Worked at front desk', strong: 'Managed front desk operations for 300-room property, achieving 95% guest satisfaction and 15% upsell rate' },
+      { weak: 'Helped with events', strong: 'Coordinated 50+ banquet events annually generating $2M revenue with 98% client satisfaction' }
+    ],
+    keyMetrics: ['Guest satisfaction score', 'RevPAR', 'Occupancy rate', 'Upsell revenue', 'TripAdvisor rating'],
+    industryBenchmarks: { avgScore: 56, topScore: 80 }
+  },
+  manufacturing: {
+    name: 'Manufacturing',
+    keywords: ['Lean', 'Six Sigma', 'Production', 'Quality Control', 'Supply Chain', 'ERP', 'Continuous Improvement', 'Safety', 'OEE', 'Kaizen'],
+    resumeTips: [
+      'Quantify production improvements and efficiency gains',
+      'Highlight safety records and compliance',
+      'Include specific machinery and ERP systems',
+      'Show cost reduction and quality improvements'
+    ],
+    preferredFormat: 'Reverse chronological with technical skills section',
+    atsNotes: 'Manufacturing uses SAP, Oracle, Workday. Include exact system names.',
+    topSkills: ['Lean Manufacturing', 'Quality Assurance', 'Production Planning', 'Process Improvement', 'Safety Compliance'],
+    certifications: ['Six Sigma Black Belt', 'Lean Certification', 'OSHA 30', 'PMP', 'APICS CPIM'],
+    commonMistakes: [
+      'Not quantifying production improvements',
+      'Missing safety record metrics',
+      'Vague "improved processes" without percentages',
+      'Not mentioning specific ERP/MES systems'
+    ],
+    strongActionVerbs: ['Optimized', 'Reduced', 'Implemented', 'Streamlined', 'Achieved', 'Eliminated', 'Improved', 'Standardized'],
+    bulletExamples: [
+      { weak: 'Worked in manufacturing operations', strong: 'Implemented Lean manufacturing principles, reducing waste by 30% and increasing OEE from 72% to 89%' },
+      { weak: 'Managed production line', strong: 'Led production team of 25, achieving 99.5% quality rate and 2M+ hours without lost-time injury' }
+    ],
+    keyMetrics: ['OEE improvement', 'Scrap/waste reduction', 'Safety record', 'Cost savings', 'Cycle time reduction'],
+    industryBenchmarks: { avgScore: 64, topScore: 88 }
+  },
+  government: {
+    name: 'Government / Public Sector',
+    keywords: ['Policy', 'Compliance', 'Regulations', 'Public Administration', 'Grant Management', 'Stakeholder Engagement', 'Budget', 'Procurement', 'FOIA', 'Federal'],
+    resumeTips: [
+      'Include GS level or equivalent for federal roles',
+      'Highlight security clearances prominently',
+      'Use USAJOBS format for federal applications',
+      'Quantify budget managed and constituents served'
+    ],
+    preferredFormat: 'Federal resume format (detailed, 4-6 pages) or standard for state/local',
+    atsNotes: 'Federal uses USAJOBS. State/local varies. Match exact job announcement language.',
+    topSkills: ['Policy Analysis', 'Budget Management', 'Regulatory Compliance', 'Stakeholder Engagement', 'Grant Writing'],
+    certifications: ['Security Clearance', 'PMP', 'CPA (for finance roles)', 'Certified Government Financial Manager'],
+    commonMistakes: [
+      'Using private sector resume format for federal jobs',
+      'Not including security clearance status',
+      'Missing hours worked per week (required for federal)',
+      'Not using keywords from job announcement'
+    ],
+    strongActionVerbs: ['Administered', 'Coordinated', 'Implemented', 'Managed', 'Developed', 'Analyzed', 'Oversaw', 'Facilitated'],
+    bulletExamples: [
+      { weak: 'Worked on government programs', strong: 'Administered $50M federal grant program serving 10,000+ beneficiaries with 100% compliance rate' },
+      { weak: 'Helped with policy development', strong: 'Developed regulatory framework adopted by 15 state agencies, impacting 2M+ citizens' }
+    ],
+    keyMetrics: ['Budget managed', 'Constituents served', 'Compliance rate', 'Program outcomes', 'Cost savings achieved'],
+    industryBenchmarks: { avgScore: 62, topScore: 86 }
+  },
   general: {
     name: 'General / Other',
     keywords: ['Leadership', 'Communication', 'Problem Solving', 'Team Collaboration', 'Project Management', 'Customer Service'],
@@ -415,6 +550,21 @@ export function getIndustryAdvice(industry: string): IndustryConfig {
   }
   if (normalizedIndustry.includes('consult')) {
     return INDUSTRY_CONFIGS.consulting;
+  }
+  if (normalizedIndustry.includes('legal') || normalizedIndustry.includes('law') || normalizedIndustry.includes('attorney') || normalizedIndustry.includes('paralegal')) {
+    return INDUSTRY_CONFIGS.legal;
+  }
+  if (normalizedIndustry.includes('retail') || normalizedIndustry.includes('store') || normalizedIndustry.includes('merchandis')) {
+    return INDUSTRY_CONFIGS.retail;
+  }
+  if (normalizedIndustry.includes('hospital') || normalizedIndustry.includes('hotel') || normalizedIndustry.includes('restaurant') || normalizedIndustry.includes('food service') || normalizedIndustry.includes('tourism')) {
+    return INDUSTRY_CONFIGS.hospitality;
+  }
+  if (normalizedIndustry.includes('manufactur') || normalizedIndustry.includes('production') || normalizedIndustry.includes('factory') || normalizedIndustry.includes('industrial')) {
+    return INDUSTRY_CONFIGS.manufacturing;
+  }
+  if (normalizedIndustry.includes('government') || normalizedIndustry.includes('public sector') || normalizedIndustry.includes('federal') || normalizedIndustry.includes('municipal') || normalizedIndustry.includes('civic')) {
+    return INDUSTRY_CONFIGS.government;
   }
   
   return INDUSTRY_CONFIGS.general;
