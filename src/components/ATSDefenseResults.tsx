@@ -15,11 +15,15 @@ import {
   BookOpen,
   ListChecks,
   AlertCircle,
-  Award
+  Award,
+  Download,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import jsPDF from "jspdf";
 
 export interface ATSDefenseData {
   beforeScore: {
@@ -174,10 +178,182 @@ function ScoreComparison({ before, after, label }: { before: number; after: numb
 }
 
 export function ATSDefenseResults({ data }: ATSDefenseResultsProps) {
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const scoreImprovement = data.afterScore.overall - data.beforeScore.overall;
+
+  const generatePDF = async () => {
+    setIsGeneratingPdf(true);
+    
+    try {
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 15;
+      const contentWidth = pageWidth - margin * 2;
+      let y = 20;
+
+      const addPageIfNeeded = (neededHeight: number = 20) => {
+        if (y + neededHeight > 280) {
+          pdf.addPage();
+          y = 20;
+        }
+      };
+
+      const addText = (text: string, x: number, yPos: number, options?: { fontSize?: number; fontStyle?: 'normal' | 'bold'; color?: [number, number, number]; maxWidth?: number }) => {
+        const { fontSize = 10, fontStyle = 'normal', color = [0, 0, 0], maxWidth = contentWidth } = options || {};
+        pdf.setFontSize(fontSize);
+        pdf.setFont('helvetica', fontStyle);
+        pdf.setTextColor(color[0], color[1], color[2]);
+        const lines = pdf.splitTextToSize(text, maxWidth);
+        pdf.text(lines, x, yPos);
+        return lines.length * (fontSize * 0.4);
+      };
+
+      // Header
+      pdf.setFillColor(59, 130, 246);
+      pdf.rect(0, 0, pageWidth, 35, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(22);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('ATS Defense Complete Report', margin, 18);
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Generated: ${new Date().toLocaleDateString()}`, margin, 28);
+      y = 45;
+
+      // Score Summary
+      pdf.setFillColor(240, 240, 240);
+      pdf.roundedRect(margin, y, contentWidth, 30, 3, 3, 'F');
+      addText('ATS Score Improvement', margin + 5, y + 8, { fontSize: 12, fontStyle: 'bold' });
+      addText(`Before: ${data.beforeScore.overall}/100`, margin + 5, y + 16, { fontSize: 11, color: [220, 38, 38] });
+      addText(`After: ${data.afterScore.overall}/100`, margin + 70, y + 16, { fontSize: 11, color: [34, 197, 94] });
+      addText(`+${scoreImprovement} points improvement`, margin + 130, y + 16, { fontSize: 11, fontStyle: 'bold', color: [34, 197, 94] });
+      y += 40;
+
+      // Action Plan
+      addPageIfNeeded(30);
+      addText('Priority Action Plan', margin, y, { fontSize: 14, fontStyle: 'bold' });
+      y += 8;
+      data.actionPlan.sort((a, b) => a.priority - b.priority).forEach((action) => {
+        addPageIfNeeded(15);
+        const impactColor: [number, number, number] = action.impact === 'critical' ? [220, 38, 38] : action.impact === 'high' ? [234, 179, 8] : [100, 100, 100];
+        addText(`${action.priority}. ${action.action}`, margin + 3, y, { fontSize: 10 });
+        y += 5;
+        addText(`   Time: ${action.timeEstimate} | Impact: ${action.impact}`, margin + 3, y, { fontSize: 9, color: impactColor });
+        y += 7;
+      });
+      y += 5;
+
+      // Keyword Optimization
+      addPageIfNeeded(30);
+      addText('Keyword Optimization', margin, y, { fontSize: 14, fontStyle: 'bold' });
+      y += 8;
+      addText(`Primary Role: ${data.keywordOptimization.primaryRole.roleName}`, margin, y, { fontSize: 11, fontStyle: 'bold' });
+      y += 6;
+      addText(`Current Match: ${data.keywordOptimization.primaryRole.currentKeywordMatch}% → Target: ${data.keywordOptimization.primaryRole.targetKeywordMatch}%`, margin, y, { fontSize: 10 });
+      y += 8;
+      addText('Missing Keywords:', margin, y, { fontSize: 10, fontStyle: 'bold' });
+      y += 5;
+      const missingKws = data.keywordOptimization.primaryRole.missingKeywords.join(', ');
+      y += addText(missingKws, margin, y, { fontSize: 9, color: [220, 38, 38] });
+      y += 8;
+
+      // Industry Keyword Bank
+      addPageIfNeeded(30);
+      addText(`Industry Keyword Bank (${data.industryKeywordBank.industry})`, margin, y, { fontSize: 14, fontStyle: 'bold' });
+      y += 8;
+      addText('Hard Skills:', margin, y, { fontSize: 10, fontStyle: 'bold' });
+      y += 5;
+      y += addText(data.industryKeywordBank.hardSkills.join(', '), margin, y, { fontSize: 9 });
+      y += 5;
+      addText('Soft Skills:', margin, y, { fontSize: 10, fontStyle: 'bold' });
+      y += 5;
+      y += addText(data.industryKeywordBank.softSkills.join(', '), margin, y, { fontSize: 9 });
+      y += 5;
+      addText('Tools:', margin, y, { fontSize: 10, fontStyle: 'bold' });
+      y += 5;
+      y += addText(data.industryKeywordBank.tools.join(', '), margin, y, { fontSize: 9 });
+      y += 8;
+
+      // Optimized Professional Summary
+      addPageIfNeeded(40);
+      addText('Optimized Professional Summary', margin, y, { fontSize: 14, fontStyle: 'bold' });
+      y += 8;
+      pdf.setFillColor(230, 255, 230);
+      const summaryHeight = pdf.splitTextToSize(data.optimizedResumeSections.professionalSummary, contentWidth - 10).length * 4 + 10;
+      pdf.roundedRect(margin, y - 3, contentWidth, summaryHeight, 2, 2, 'F');
+      y += addText(data.optimizedResumeSections.professionalSummary, margin + 5, y + 3, { fontSize: 9, maxWidth: contentWidth - 10 });
+      y += 15;
+
+      // Core Competencies
+      addPageIfNeeded(20);
+      addText('Core Competencies', margin, y, { fontSize: 14, fontStyle: 'bold' });
+      y += 8;
+      y += addText(data.optimizedResumeSections.coreCompetencies.join(' • '), margin, y, { fontSize: 9 });
+      y += 10;
+
+      // LinkedIn Tips
+      addPageIfNeeded(30);
+      addText('LinkedIn Alignment', margin, y, { fontSize: 14, fontStyle: 'bold' });
+      y += 8;
+      addText('Recommended Headline:', margin, y, { fontSize: 10, fontStyle: 'bold' });
+      y += 5;
+      y += addText(data.linkedInAlignment.headlineRecommendation, margin, y, { fontSize: 9, color: [10, 102, 194] });
+      y += 8;
+
+      // Red Flags
+      if (data.redFlagsSummary.length > 0) {
+        addPageIfNeeded(30);
+        addText('Red Flags to Fix', margin, y, { fontSize: 14, fontStyle: 'bold', color: [220, 38, 38] });
+        y += 8;
+        data.redFlagsSummary.forEach((flag) => {
+          addPageIfNeeded(20);
+          addText(`⚠ ${flag.flag}`, margin, y, { fontSize: 10, fontStyle: 'bold' });
+          y += 5;
+          addText(`Fix: ${flag.howToFix}`, margin + 5, y, { fontSize: 9, color: [34, 197, 94] });
+          y += 8;
+        });
+      }
+
+      // Footer on last page
+      const pageCount = pdf.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(8);
+        pdf.setTextColor(150, 150, 150);
+        pdf.text(`Page ${i} of ${pageCount} | ATS Defense Complete Report | resumebooster.com`, margin, 290);
+      }
+
+      pdf.save('ats-defense-report.pdf');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
   
   return (
     <div className="space-y-6">
+      {/* Download Button */}
+      <div className="flex justify-end">
+        <Button 
+          onClick={generatePDF} 
+          disabled={isGeneratingPdf}
+          className="gap-2"
+        >
+          {isGeneratingPdf ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Generating PDF...
+            </>
+          ) : (
+            <>
+              <Download className="w-4 h-4" />
+              Download PDF Report
+            </>
+          )}
+        </Button>
+      </div>
+
       {/* Score Overview */}
       <div className="grid md:grid-cols-2 gap-4">
         {/* Before Score */}
