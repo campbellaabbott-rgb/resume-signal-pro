@@ -22,9 +22,11 @@ import {
   getExperienceAdvice, 
   getPersonalizedPriorities,
   getGeographicAdvice,
+  getRoleAdvice,
   type IndustryConfig,
   type ExperienceLevelConfig,
-  type GeographicConfig
+  type GeographicConfig,
+  type RoleConfig
 } from "@/config/personalization";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +35,7 @@ interface PersonalizedInsightsProps {
   experienceLevel?: { level: string; yearsEstimate: string };
   atsScore: number;
   hasJobDescription: boolean;
+  currentRole?: string;
   className?: string;
 }
 
@@ -41,11 +44,13 @@ export function PersonalizedInsights({
   experienceLevel,
   atsScore,
   hasJobDescription,
+  currentRole,
   className
 }: PersonalizedInsightsProps) {
   const industryConfig = getIndustryAdvice(industry);
   const expConfig = getExperienceAdvice(experienceLevel?.level || 'mid');
   const geoConfig = getGeographicAdvice();
+  const roleConfig = getRoleAdvice(currentRole || '');
   const priorities = getPersonalizedPriorities(
     industry, 
     experienceLevel?.level || 'mid', 
@@ -80,14 +85,91 @@ export function PersonalizedInsights({
           <div>
             <h3 className="font-semibold text-foreground">Personalized for You</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Analysis tailored for <span className="font-medium text-primary">{industryConfig.name}</span> industry, 
-              <span className="font-medium text-primary"> {levelLabel}</span> professional
+              {roleConfig && <><span className="font-medium text-primary">{roleConfig.name}</span> in </>}
+              <span className="font-medium text-primary">{industryConfig.name}</span>
+              {' • '}<span className="font-medium text-primary">{levelLabel}</span>
               {experienceLevel?.yearsEstimate && ` (${experienceLevel.yearsEstimate})`}
               {' • '}<span className="font-medium text-primary">{geoConfig.name}</span> format
             </p>
           </div>
         </div>
       </div>
+
+      {/* Role-Specific Advice */}
+      {roleConfig && (
+        <div className="p-4 rounded-lg bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20">
+          <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
+            <Briefcase className="w-4 h-4 text-amber-500" />
+            {roleConfig.name} Resume Tips
+          </h4>
+          
+          <div className="space-y-4">
+            {/* Must-have keywords */}
+            <div>
+              <p className="text-xs font-medium text-foreground mb-2">Must-have keywords for {roleConfig.name}:</p>
+              <div className="flex flex-wrap gap-1">
+                {roleConfig.mustHaveKeywords.map((keyword, i) => (
+                  <span key={i} className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 text-xs font-medium">
+                    {keyword}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Role-specific tips */}
+            <div className="space-y-2">
+              {roleConfig.resumeTips.slice(0, 3).map((tip, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <Lightbulb className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <span>{tip}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Role-specific bullet examples */}
+            {roleConfig.bulletExamples.length > 0 && (
+              <div className="pt-2 border-t border-border">
+                <p className="text-xs font-medium text-foreground mb-2">{roleConfig.name} bullet example:</p>
+                <div className="p-3 rounded-lg bg-card border border-border space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs font-medium text-destructive bg-destructive/10 px-2 py-0.5 rounded">Weak</span>
+                    <p className="text-xs text-muted-foreground line-through">{roleConfig.bulletExamples[0].weak}</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs font-medium text-success bg-success/10 px-2 py-0.5 rounded">Strong</span>
+                    <p className="text-xs text-foreground">{roleConfig.bulletExamples[0].strong}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Key metrics for role */}
+            <div className="pt-2 border-t border-border">
+              <p className="text-xs font-medium text-foreground mb-2">Key metrics to include:</p>
+              <div className="flex flex-wrap gap-1">
+                {roleConfig.keyMetrics.map((metric, i) => (
+                  <span key={i} className="px-2 py-0.5 rounded bg-success/10 text-success text-xs">
+                    {metric}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Common mistakes for role */}
+            <div className="pt-2 border-t border-border">
+              <p className="text-xs font-medium text-destructive mb-2">Common {roleConfig.name} mistakes:</p>
+              <div className="space-y-1">
+                {roleConfig.commonMistakes.slice(0, 2).map((mistake, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <XCircle className="w-3 h-3 text-destructive mt-0.5 flex-shrink-0" />
+                    <span>{mistake}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Geographic/Regional Advice */}
       <div className="p-4 rounded-lg bg-card border border-border">

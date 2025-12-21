@@ -38,6 +38,18 @@ export interface ExperienceLevelConfig {
   quantificationTip: string;
 }
 
+export interface RoleConfig {
+  name: string;
+  aliases: string[]; // Alternative names for matching
+  keySkills: string[];
+  mustHaveKeywords: string[];
+  resumeTips: string[];
+  bulletExamples: { weak: string; strong: string }[];
+  keyMetrics: string[];
+  commonMistakes: string[];
+  interviewTopics: string[];
+}
+
 // Industry-specific configurations
 export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
   technology: {
@@ -624,7 +636,278 @@ export function getPersonalizedPriorities(
   return priorities.slice(0, 4);
 }
 
-// Geographic configurations for different regions
+// Role-specific configurations
+export const ROLE_CONFIGS: Record<string, RoleConfig> = {
+  product_manager: {
+    name: 'Product Manager',
+    aliases: ['pm', 'product owner', 'product lead', 'associate product manager', 'senior product manager', 'group product manager', 'director of product'],
+    keySkills: ['Roadmap Development', 'User Research', 'A/B Testing', 'Agile/Scrum', 'Stakeholder Management', 'Data Analysis', 'PRDs', 'Go-to-Market'],
+    mustHaveKeywords: ['roadmap', 'user stories', 'backlog', 'prioritization', 'metrics', 'OKRs', 'cross-functional', 'launch'],
+    resumeTips: [
+      'Lead with product outcomes, not features shipped',
+      'Show metrics: adoption rates, revenue impact, user growth',
+      'Highlight cross-functional leadership experience',
+      'Include specific methodologies (Agile, Lean, Design Thinking)'
+    ],
+    bulletExamples: [
+      { weak: 'Managed product roadmap for mobile app', strong: 'Defined and executed product roadmap driving 40% increase in DAU and $2M incremental revenue' },
+      { weak: 'Worked with engineering team on features', strong: 'Led cross-functional team of 12 to deliver 15 features, improving NPS from 32 to 58' }
+    ],
+    keyMetrics: ['Revenue impact', 'User adoption %', 'NPS improvement', 'Feature adoption rate', 'Time-to-market reduction'],
+    commonMistakes: [
+      'Listing features instead of outcomes',
+      'Not quantifying user or business impact',
+      'Missing stakeholder management examples',
+      'Not showing data-driven decision making'
+    ],
+    interviewTopics: ['Product sense', 'Metrics definition', 'Prioritization frameworks', 'Technical communication', 'User empathy']
+  },
+  software_engineer: {
+    name: 'Software Engineer',
+    aliases: ['developer', 'programmer', 'swe', 'software developer', 'full stack', 'backend engineer', 'frontend engineer', 'senior engineer', 'staff engineer', 'principal engineer'],
+    keySkills: ['System Design', 'Data Structures', 'Algorithms', 'Code Review', 'Testing', 'CI/CD', 'Debugging', 'Performance Optimization'],
+    mustHaveKeywords: ['developed', 'implemented', 'architected', 'optimized', 'deployed', 'scaled', 'API', 'database'],
+    resumeTips: [
+      'Lead with impact, not just technologies used',
+      'Quantify scale: users, requests/second, data volume',
+      'Include GitHub/portfolio links',
+      'Show both individual contribution and collaboration'
+    ],
+    bulletExamples: [
+      { weak: 'Built REST APIs using Node.js', strong: 'Architected RESTful microservices handling 50K requests/second with 99.99% uptime' },
+      { weak: 'Fixed bugs and improved code', strong: 'Reduced application latency by 60% through query optimization and caching, impacting 2M+ users' }
+    ],
+    keyMetrics: ['Requests/second', 'Latency reduction', 'Uptime %', 'Code coverage', 'Users impacted', 'Cost savings'],
+    commonMistakes: [
+      'Listing technologies without showing what you built',
+      'Missing scale and performance metrics',
+      'No mention of collaboration or code review',
+      'Not including links to work samples'
+    ],
+    interviewTopics: ['System design', 'Coding challenges', 'Behavioral questions', 'Technical deep-dives', 'Architecture decisions']
+  },
+  data_scientist: {
+    name: 'Data Scientist',
+    aliases: ['data analyst', 'ml engineer', 'machine learning engineer', 'ai engineer', 'research scientist', 'applied scientist', 'analytics engineer'],
+    keySkills: ['Machine Learning', 'Statistical Analysis', 'Python/R', 'SQL', 'Data Visualization', 'A/B Testing', 'Deep Learning', 'Feature Engineering'],
+    mustHaveKeywords: ['model', 'analysis', 'prediction', 'accuracy', 'dataset', 'algorithm', 'insights', 'experimentation'],
+    resumeTips: [
+      'Quantify model performance: accuracy, AUC, lift',
+      'Show business impact of your analyses',
+      'Include specific tools and frameworks',
+      'Mention scale of data worked with'
+    ],
+    bulletExamples: [
+      { weak: 'Built machine learning models', strong: 'Developed churn prediction model (AUC 0.92) reducing customer attrition by 25%, saving $3M annually' },
+      { weak: 'Analyzed data for insights', strong: 'Designed A/B testing framework adopted across 50+ experiments, increasing conversion by 18%' }
+    ],
+    keyMetrics: ['Model accuracy/AUC', 'Revenue impact', 'Cost savings', 'Experiments run', 'Data volume processed'],
+    commonMistakes: [
+      'Not showing business impact of models',
+      'Missing model performance metrics',
+      'Vague "analyzed data" without specifics',
+      'Not mentioning scale of datasets'
+    ],
+    interviewTopics: ['ML algorithms', 'Statistics', 'SQL queries', 'A/B testing', 'Case studies', 'Coding in Python/R']
+  },
+  nurse: {
+    name: 'Registered Nurse',
+    aliases: ['rn', 'lpn', 'nurse practitioner', 'np', 'clinical nurse', 'staff nurse', 'charge nurse', 'nurse manager', 'bsn', 'msn'],
+    keySkills: ['Patient Assessment', 'Medication Administration', 'Care Planning', 'EHR Documentation', 'Patient Education', 'Emergency Response', 'Team Coordination'],
+    mustHaveKeywords: ['patient care', 'assessment', 'HIPAA', 'documentation', 'clinical', 'safety', 'medication', 'outcomes'],
+    resumeTips: [
+      'Include license numbers and certifications prominently',
+      'Quantify patient load and outcomes',
+      'Highlight specialized training and unit experience',
+      'Show patient satisfaction metrics if available'
+    ],
+    bulletExamples: [
+      { weak: 'Provided patient care in ICU', strong: 'Managed complex care for 4-6 ICU patients per shift, maintaining 98% medication administration accuracy' },
+      { weak: 'Trained new nurses', strong: 'Precepted 12 new graduate nurses, with 100% passing NCLEX on first attempt' }
+    ],
+    keyMetrics: ['Patients per shift', 'Satisfaction scores', 'Medication accuracy', 'Readmission rates', 'Certifications held'],
+    commonMistakes: [
+      'Not listing license numbers and expirations',
+      'Missing specific unit and patient population experience',
+      'Vague care descriptions without outcomes',
+      'Not mentioning EHR systems used'
+    ],
+    interviewTopics: ['Clinical scenarios', 'Patient prioritization', 'Conflict resolution', 'HIPAA compliance', 'Emergency protocols']
+  },
+  marketing_manager: {
+    name: 'Marketing Manager',
+    aliases: ['marketing director', 'brand manager', 'digital marketing manager', 'growth marketing', 'demand generation', 'content marketing manager', 'marketing lead'],
+    keySkills: ['Campaign Management', 'Analytics', 'Brand Strategy', 'Content Marketing', 'SEO/SEM', 'Marketing Automation', 'Budget Management', 'Team Leadership'],
+    mustHaveKeywords: ['campaign', 'ROI', 'brand', 'conversion', 'analytics', 'strategy', 'growth', 'engagement'],
+    resumeTips: [
+      'Show ROI and revenue attribution for campaigns',
+      'Include specific tools and platforms managed',
+      'Quantify audience growth and engagement',
+      'Highlight budget responsibility'
+    ],
+    bulletExamples: [
+      { weak: 'Managed marketing campaigns', strong: 'Launched integrated campaigns generating $5M pipeline with 4:1 ROI on $1.2M budget' },
+      { weak: 'Grew social media presence', strong: 'Scaled Instagram from 10K to 250K followers, driving 35% increase in website traffic' }
+    ],
+    keyMetrics: ['ROAS/ROI', 'Pipeline generated', 'Conversion rates', 'CAC', 'Audience growth', 'Budget managed'],
+    commonMistakes: [
+      'Not showing ROI or revenue impact',
+      'Missing specific campaign metrics',
+      'Vague "increased brand awareness" claims',
+      'Not mentioning tools and platforms used'
+    ],
+    interviewTopics: ['Campaign strategy', 'Analytics interpretation', 'Budget allocation', 'Cross-functional collaboration', 'Brand positioning']
+  },
+  sales_representative: {
+    name: 'Sales Representative',
+    aliases: ['account executive', 'sales manager', 'business development', 'bdr', 'sdr', 'account manager', 'sales director', 'regional sales manager'],
+    keySkills: ['Prospecting', 'Negotiation', 'CRM Management', 'Pipeline Management', 'Closing', 'Relationship Building', 'Territory Management'],
+    mustHaveKeywords: ['quota', 'revenue', 'pipeline', 'closed', 'exceeded', 'accounts', 'deals', 'retention'],
+    resumeTips: [
+      'Lead every bullet with numbers',
+      'Show quota attainment percentages',
+      'Include deal sizes and customer counts',
+      'Highlight ranking among peers'
+    ],
+    bulletExamples: [
+      { weak: 'Sold software to enterprise clients', strong: 'Closed $4.2M in new business at 135% of quota, ranking #1 of 30 AEs' },
+      { weak: 'Managed customer accounts', strong: 'Grew book of business from $2M to $5M ARR, achieving 95% retention rate' }
+    ],
+    keyMetrics: ['Quota attainment %', 'Revenue closed', 'Average deal size', 'Win rate', 'Retention rate', 'Ranking vs peers'],
+    commonMistakes: [
+      'Not including specific revenue numbers',
+      'Missing quota attainment percentages',
+      'Vague "exceeded targets" without data',
+      'Not showing competitive ranking'
+    ],
+    interviewTopics: ['Sales methodology', 'Objection handling', 'Pipeline management', 'Deal qualification', 'Negotiation tactics']
+  },
+  project_manager: {
+    name: 'Project Manager',
+    aliases: ['program manager', 'technical project manager', 'tpm', 'senior project manager', 'delivery manager', 'scrum master', 'agile coach'],
+    keySkills: ['Project Planning', 'Risk Management', 'Stakeholder Management', 'Agile/Scrum', 'Budget Management', 'Resource Allocation', 'Timeline Management'],
+    mustHaveKeywords: ['delivered', 'on-time', 'budget', 'stakeholders', 'timeline', 'scope', 'risk', 'cross-functional'],
+    resumeTips: [
+      'Quantify project budgets and team sizes',
+      'Show on-time/on-budget delivery rates',
+      'Include specific methodologies used',
+      'Highlight stakeholder management scope'
+    ],
+    bulletExamples: [
+      { weak: 'Managed software development projects', strong: 'Delivered $8M ERP implementation 2 weeks early and 10% under budget across 5 business units' },
+      { weak: 'Led cross-functional teams', strong: 'Managed portfolio of 12 concurrent projects with 25+ stakeholders, achieving 95% on-time delivery' }
+    ],
+    keyMetrics: ['Budget managed', 'On-time delivery %', 'Team size', 'Projects delivered', 'Cost savings achieved'],
+    commonMistakes: [
+      'Not quantifying project budgets',
+      'Missing on-time/on-budget metrics',
+      'Vague "managed projects" without scope',
+      'Not showing stakeholder complexity'
+    ],
+    interviewTopics: ['Project methodology', 'Risk management', 'Conflict resolution', 'Stakeholder communication', 'Resource planning']
+  },
+  ux_designer: {
+    name: 'UX Designer',
+    aliases: ['ui designer', 'product designer', 'interaction designer', 'user researcher', 'ux/ui designer', 'senior designer', 'design lead'],
+    keySkills: ['User Research', 'Wireframing', 'Prototyping', 'Usability Testing', 'Design Systems', 'Figma/Sketch', 'Information Architecture', 'Accessibility'],
+    mustHaveKeywords: ['user research', 'prototype', 'usability', 'design system', 'wireframe', 'user experience', 'accessibility', 'conversion'],
+    resumeTips: [
+      'Include portfolio link prominently',
+      'Quantify impact on user metrics',
+      'Show research-to-design process',
+      'Highlight collaboration with product/engineering'
+    ],
+    bulletExamples: [
+      { weak: 'Designed mobile app interfaces', strong: 'Redesigned checkout flow increasing conversion by 35% based on 50+ user interviews' },
+      { weak: 'Created wireframes and prototypes', strong: 'Built design system adopted across 5 products, reducing design-to-development time by 40%' }
+    ],
+    keyMetrics: ['Conversion improvement', 'User satisfaction increase', 'Task completion rate', 'Design system adoption', 'Usability test participants'],
+    commonMistakes: [
+      'Missing portfolio link',
+      'Not showing impact on user metrics',
+      'Listing tools without showing outcomes',
+      'Not mentioning user research methods'
+    ],
+    interviewTopics: ['Design process', 'Portfolio walkthrough', 'User research methods', 'Design critique', 'Cross-functional collaboration']
+  },
+  accountant: {
+    name: 'Accountant',
+    aliases: ['cpa', 'senior accountant', 'staff accountant', 'controller', 'financial accountant', 'tax accountant', 'audit associate', 'finance manager'],
+    keySkills: ['Financial Reporting', 'GAAP', 'Tax Preparation', 'Auditing', 'Budgeting', 'Reconciliation', 'ERP Systems', 'Regulatory Compliance'],
+    mustHaveKeywords: ['reconciliation', 'financial statements', 'audit', 'compliance', 'GAAP', 'tax', 'budget', 'reporting'],
+    resumeTips: [
+      'Include CPA license and certifications',
+      'Quantify accounts/transactions managed',
+      'Show audit findings and process improvements',
+      'Mention specific ERP systems'
+    ],
+    bulletExamples: [
+      { weak: 'Prepared financial statements', strong: 'Prepared monthly financial statements for $50M revenue company, reducing close time from 10 to 5 days' },
+      { weak: 'Handled accounts payable', strong: 'Managed $20M AP portfolio, implementing automation that reduced processing time by 60%' }
+    ],
+    keyMetrics: ['Close time reduction', 'Transactions processed', 'Audit findings', 'Cost savings', 'Accounts managed'],
+    commonMistakes: [
+      'Not listing CPA or relevant certifications',
+      'Missing volume and scale of work',
+      'Vague "prepared reports" without impact',
+      'Not mentioning specific software/ERP'
+    ],
+    interviewTopics: ['Technical accounting', 'GAAP knowledge', 'Audit procedures', 'ERP experience', 'Problem-solving scenarios']
+  },
+  teacher: {
+    name: 'Teacher',
+    aliases: ['educator', 'instructor', 'professor', 'lecturer', 'tutor', 'special education teacher', 'curriculum specialist', 'department head'],
+    keySkills: ['Curriculum Development', 'Classroom Management', 'Differentiated Instruction', 'Assessment', 'Student Engagement', 'Parent Communication', 'EdTech Integration'],
+    mustHaveKeywords: ['curriculum', 'assessment', 'students', 'instruction', 'classroom', 'learning outcomes', 'differentiation', 'engagement'],
+    resumeTips: [
+      'Include teaching certifications and endorsements',
+      'Quantify student outcome improvements',
+      'Show specific grade levels and subjects',
+      'Highlight technology integration'
+    ],
+    bulletExamples: [
+      { weak: 'Taught high school English', strong: 'Raised AP English pass rate from 65% to 88% for 120+ students through differentiated instruction' },
+      { weak: 'Used technology in classroom', strong: 'Implemented blended learning program increasing student engagement by 40% measured by assignment completion' }
+    ],
+    keyMetrics: ['Test score improvement', 'Pass rates', 'Students taught', 'Attendance improvement', 'Parent satisfaction'],
+    commonMistakes: [
+      'Not including certification numbers',
+      'Missing student outcome data',
+      'Vague "taught students" without specifics',
+      'Not showing measurable improvements'
+    ],
+    interviewTopics: ['Classroom scenarios', 'Differentiation strategies', 'Assessment methods', 'Parent communication', 'Classroom management']
+  }
+};
+
+// Get role-specific advice
+export function getRoleAdvice(role: string): RoleConfig | null {
+  if (!role) return null;
+  const normalizedRole = role.toLowerCase().trim();
+  
+  // Direct match or alias match
+  for (const [key, config] of Object.entries(ROLE_CONFIGS)) {
+    if (normalizedRole.includes(config.name.toLowerCase()) || 
+        config.aliases.some(alias => normalizedRole.includes(alias.toLowerCase()))) {
+      return config;
+    }
+  }
+  
+  // Keyword-based matching
+  if (normalizedRole.includes('product') && normalizedRole.includes('manager')) return ROLE_CONFIGS.product_manager;
+  if (normalizedRole.includes('software') || normalizedRole.includes('developer') || normalizedRole.includes('engineer')) return ROLE_CONFIGS.software_engineer;
+  if (normalizedRole.includes('data') && (normalizedRole.includes('scientist') || normalizedRole.includes('analyst'))) return ROLE_CONFIGS.data_scientist;
+  if (normalizedRole.includes('nurse') || normalizedRole.includes('rn') || normalizedRole.includes('nursing')) return ROLE_CONFIGS.nurse;
+  if (normalizedRole.includes('marketing')) return ROLE_CONFIGS.marketing_manager;
+  if (normalizedRole.includes('sales') || normalizedRole.includes('account executive') || normalizedRole.includes('bdr') || normalizedRole.includes('sdr')) return ROLE_CONFIGS.sales_representative;
+  if (normalizedRole.includes('project') && normalizedRole.includes('manager')) return ROLE_CONFIGS.project_manager;
+  if (normalizedRole.includes('ux') || normalizedRole.includes('ui') || normalizedRole.includes('designer')) return ROLE_CONFIGS.ux_designer;
+  if (normalizedRole.includes('accountant') || normalizedRole.includes('cpa') || normalizedRole.includes('controller')) return ROLE_CONFIGS.accountant;
+  if (normalizedRole.includes('teacher') || normalizedRole.includes('educator') || normalizedRole.includes('professor')) return ROLE_CONFIGS.teacher;
+  
+  return null;
+}
+
 export const GEOGRAPHIC_CONFIGS: Record<string, GeographicConfig> = {
   us: {
     region: 'us',
