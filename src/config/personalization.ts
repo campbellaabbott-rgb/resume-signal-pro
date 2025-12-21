@@ -16,6 +16,19 @@ export interface IndustryConfig {
   industryBenchmarks: { avgScore: number; topScore: number };
 }
 
+export interface GeographicConfig {
+  region: string;
+  name: string;
+  documentName: string; // 'Resume' vs 'CV'
+  formatPreferences: string[];
+  includePhoto: boolean;
+  includePersonalInfo: string[];
+  excludeInfo: string[];
+  lengthGuidelines: string;
+  culturalTips: string[];
+  commonTerms: { us: string; local: string }[];
+}
+
 export interface ExperienceLevelConfig {
   level: 'entry' | 'mid' | 'senior' | 'executive';
   resumeLengthPages: number;
@@ -459,4 +472,224 @@ export function getPersonalizedPriorities(
   }
   
   return priorities.slice(0, 4);
+}
+
+// Geographic configurations for different regions
+export const GEOGRAPHIC_CONFIGS: Record<string, GeographicConfig> = {
+  us: {
+    region: 'us',
+    name: 'United States',
+    documentName: 'Resume',
+    formatPreferences: [
+      'One page strongly preferred for most roles',
+      'No photo required (and often discouraged)',
+      'Bullet points with action verbs and metrics',
+      'Skills section near top for tech roles'
+    ],
+    includePhoto: false,
+    includePersonalInfo: ['Email', 'Phone', 'LinkedIn', 'City/State (no full address)'],
+    excludeInfo: ['Photo', 'Date of birth', 'Marital status', 'Nationality', 'Full address'],
+    lengthGuidelines: '1 page for <10 years experience, 2 pages max for senior roles',
+    culturalTips: [
+      'Be direct and confident—"I led" not "I helped lead"',
+      'Quantify everything possible with specific numbers',
+      'Use action verbs at the start of each bullet',
+      'Focus on achievements over responsibilities'
+    ],
+    commonTerms: [
+      { us: 'Resume', local: 'Resume' },
+      { us: 'GPA', local: 'GPA' },
+      { us: 'Cell phone', local: 'Cell phone' }
+    ]
+  },
+  uk: {
+    region: 'uk',
+    name: 'United Kingdom',
+    documentName: 'CV',
+    formatPreferences: [
+      'Two pages is standard and acceptable',
+      'Personal statement/profile at the top',
+      'No photo typically required',
+      'Education section more prominent'
+    ],
+    includePhoto: false,
+    includePersonalInfo: ['Email', 'Phone', 'LinkedIn', 'Town/City'],
+    excludeInfo: ['Photo', 'Date of birth', 'Marital status', 'Nationality'],
+    lengthGuidelines: '2 pages is standard, can extend to 3 for very senior roles',
+    culturalTips: [
+      'Include a personal statement/profile summary',
+      'Be slightly more modest than US style',
+      'Include "References available upon request"',
+      'Spell out qualifications in full (e.g., "Bachelor of Arts")'
+    ],
+    commonTerms: [
+      { us: 'Resume', local: 'CV' },
+      { us: 'GPA', local: 'Degree classification (First, 2:1, etc.)' },
+      { us: 'Cell phone', local: 'Mobile' }
+    ]
+  },
+  eu: {
+    region: 'eu',
+    name: 'European Union',
+    documentName: 'CV',
+    formatPreferences: [
+      'Europass CV format widely recognized',
+      'Photo often expected (especially DE, FR, ES)',
+      'Two pages standard',
+      'Language skills section important'
+    ],
+    includePhoto: true,
+    includePersonalInfo: ['Email', 'Phone', 'LinkedIn', 'City', 'Nationality', 'Languages'],
+    excludeInfo: ['Marital status', 'Religion'],
+    lengthGuidelines: '2 pages standard, Europass format recommended for cross-border applications',
+    culturalTips: [
+      'Include professional photo (passport-style)',
+      'List language proficiencies with CEFR levels (A1-C2)',
+      'Mention visa/work authorization status if relevant',
+      'Consider Europass format for pan-European applications'
+    ],
+    commonTerms: [
+      { us: 'Resume', local: 'CV / Lebenslauf / Currículum' },
+      { us: 'GPA', local: 'Degree grade or ECTS credits' },
+      { us: 'Cell phone', local: 'Mobile / Handy / Móvil' }
+    ]
+  },
+  de: {
+    region: 'de',
+    name: 'Germany',
+    documentName: 'Lebenslauf',
+    formatPreferences: [
+      'Tabular format (tabellarischer Lebenslauf) preferred',
+      'Professional photo expected and important',
+      'Chronological order (newest first)',
+      'Detailed education and certification section'
+    ],
+    includePhoto: true,
+    includePersonalInfo: ['Email', 'Phone', 'Photo', 'City', 'Date of birth', 'Nationality'],
+    excludeInfo: ['Marital status', 'Religion', 'Parents\' occupations'],
+    lengthGuidelines: '2 pages standard, tabular format preferred',
+    culturalTips: [
+      'Include a professional Bewerbungsfoto (application photo)',
+      'List exact dates (day/month/year) for all positions',
+      'Include all education from university onwards',
+      'Sign and date your CV at the bottom'
+    ],
+    commonTerms: [
+      { us: 'Resume', local: 'Lebenslauf' },
+      { us: 'Cover letter', local: 'Anschreiben' },
+      { us: 'References', local: 'Referenzen / Arbeitszeugnisse' }
+    ]
+  },
+  au: {
+    region: 'au',
+    name: 'Australia',
+    documentName: 'Resume/CV',
+    formatPreferences: [
+      'Two to three pages acceptable',
+      'No photo required',
+      'Skills-based or chronological format',
+      'Include referees section'
+    ],
+    includePhoto: false,
+    includePersonalInfo: ['Email', 'Phone', 'LinkedIn', 'City/State', 'Visa status if applicable'],
+    excludeInfo: ['Photo', 'Date of birth', 'Marital status', 'Religion'],
+    lengthGuidelines: '2-3 pages acceptable, 4+ for academic CVs',
+    culturalTips: [
+      'Include 2-3 referees with contact details',
+      'Mention visa/work rights if not a citizen',
+      'Key Selection Criteria responses often required for government roles',
+      'Balance confidence with humility'
+    ],
+    commonTerms: [
+      { us: 'Resume', local: 'Resume or CV (interchangeable)' },
+      { us: 'GPA', local: 'WAM (Weighted Average Mark)' },
+      { us: 'Cell phone', local: 'Mobile' }
+    ]
+  },
+  in: {
+    region: 'in',
+    name: 'India',
+    documentName: 'Resume/CV',
+    formatPreferences: [
+      'Two to three pages common',
+      'Photo sometimes included',
+      'Detailed education section important',
+      'Declaration section at the end'
+    ],
+    includePhoto: true,
+    includePersonalInfo: ['Email', 'Phone', 'LinkedIn', 'City', 'Date of birth'],
+    excludeInfo: ['Marital status', 'Religion', 'Caste'],
+    lengthGuidelines: '2-3 pages common, detailed education section expected',
+    culturalTips: [
+      'Include percentage/CGPA scores for education',
+      'List all technical certifications',
+      'Add a declaration: "I hereby declare that the above information is true..."',
+      'Notice period/expected joining date often included'
+    ],
+    commonTerms: [
+      { us: 'Resume', local: 'Resume / Biodata' },
+      { us: 'GPA', local: 'CGPA / Percentage' },
+      { us: 'Internship', local: 'Industrial Training / Internship' }
+    ]
+  },
+  ca: {
+    region: 'ca',
+    name: 'Canada',
+    documentName: 'Resume',
+    formatPreferences: [
+      'Similar to US style, one to two pages',
+      'No photo required',
+      'Bilingual resumes valued in Quebec',
+      'Skills summary section common'
+    ],
+    includePhoto: false,
+    includePersonalInfo: ['Email', 'Phone', 'LinkedIn', 'City/Province'],
+    excludeInfo: ['Photo', 'Date of birth', 'Marital status', 'SIN number'],
+    lengthGuidelines: '1-2 pages, similar to US standards',
+    culturalTips: [
+      'Consider bilingual French/English for Quebec roles',
+      'Include Canadian work authorization if applicable',
+      'Government roles may require specific formats',
+      'List volunteer experience—highly valued in Canada'
+    ],
+    commonTerms: [
+      { us: 'Resume', local: 'Resume (CV in Quebec)' },
+      { us: 'GPA', local: 'GPA / CGPA' },
+      { us: 'Cell phone', local: 'Cell / Mobile' }
+    ]
+  }
+};
+
+// Detect user's geographic region from browser/locale
+export function detectUserRegion(): string {
+  if (typeof navigator === 'undefined') return 'us';
+  
+  const language = navigator.language || 'en-US';
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  
+  // Check timezone first for more accuracy
+  if (timezone.includes('Europe/London') || timezone.includes('Europe/Dublin')) return 'uk';
+  if (timezone.includes('Europe/Berlin') || timezone.includes('Europe/Vienna') || timezone.includes('Europe/Zurich')) return 'de';
+  if (timezone.includes('Europe/')) return 'eu';
+  if (timezone.includes('Australia/')) return 'au';
+  if (timezone.includes('Asia/Kolkata') || timezone.includes('Asia/Calcutta')) return 'in';
+  if (timezone.includes('America/Toronto') || timezone.includes('America/Vancouver') || timezone.includes('America/Montreal')) return 'ca';
+  if (timezone.includes('America/')) return 'us';
+  
+  // Fallback to language code
+  const langCode = language.split('-')[1]?.toUpperCase() || language.split('-')[0]?.toUpperCase();
+  if (langCode === 'GB' || langCode === 'UK') return 'uk';
+  if (langCode === 'DE' || langCode === 'AT' || langCode === 'CH') return 'de';
+  if (['FR', 'ES', 'IT', 'NL', 'BE', 'PT', 'PL'].includes(langCode)) return 'eu';
+  if (langCode === 'AU') return 'au';
+  if (langCode === 'IN') return 'in';
+  if (langCode === 'CA') return 'ca';
+  
+  return 'us'; // Default to US
+}
+
+// Get geographic advice based on region
+export function getGeographicAdvice(region?: string): GeographicConfig {
+  const detectedRegion = region || detectUserRegion();
+  return GEOGRAPHIC_CONFIGS[detectedRegion] || GEOGRAPHIC_CONFIGS.us;
 }
