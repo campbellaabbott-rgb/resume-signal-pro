@@ -87,6 +87,24 @@ export function Hero() {
         <div className="max-w-3xl mx-auto text-center">
           {/* Problem Statement - Bold and Alarming */}
           <div className="mb-6 animate-fade-in">
+            {/* 85% rejection stat with source */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-destructive/10 border border-destructive/20 mb-5">
+              <AlertTriangle className="w-4 h-4 text-destructive" />
+              <span className="text-sm font-semibold text-destructive">85% of resumes are rejected by ATS before a human sees them</span>
+              <TooltipProvider>
+                <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                    <span className="cursor-help text-destructive/60 hover:text-destructive transition-colors">
+                      <Info className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs text-sm font-normal">
+                    <p>Source: Jobscan ATS research, 2023. Based on analysis of Fortune 500 hiring practices.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            
             <h1
               id="hero-heading"
               className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 leading-tight"
