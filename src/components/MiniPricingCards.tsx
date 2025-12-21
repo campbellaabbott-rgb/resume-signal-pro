@@ -1,31 +1,31 @@
 import { Link } from "react-router-dom";
-import { Crown, FileText, Package, ArrowRight, Sparkles } from "lucide-react";
+import { Crown, FileText, Package, ArrowRight, Sparkles, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const featuredProducts = [
   {
-    id: 'basicKeywordFix',
-    name: 'Keyword Fix',
-    price: 10,
-    description: 'Quick ATS optimization',
-    icon: FileText,
+    id: 'premiumPackage',
+    name: 'Premium Package',
+    price: 59,
+    description: 'Full analysis + AI rewrite',
+    icon: Crown,
     highlight: false,
   },
   {
-    id: 'premiumPackage',
-    name: 'Premium Package',
-    price: 35,
-    description: 'Complete resume overhaul',
-    icon: Crown,
+    id: 'atsDefense',
+    name: 'ATS Defense',
+    price: 69,
+    description: 'Multi-role ATS optimization',
+    icon: ShieldCheck,
     highlight: true,
-    badge: 'Most Popular',
+    badge: 'Most Comprehensive',
   },
   {
     id: 'careerBundle',
     name: 'Career Bundle',
-    price: 55,
-    description: 'Everything you need',
+    price: 150,
+    description: '75 full analyses',
     icon: Package,
     highlight: false,
     badge: 'Best Value',
