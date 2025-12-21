@@ -9,6 +9,7 @@ import { useCurrency } from "@/hooks/use-currency";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { JobSelector, type JobEntry } from "@/components/JobSelector";
 import { JobComparisonCTA } from "@/components/JobComparisonCTA";
+import { PRODUCTS } from "@/config/products";
 
 // Step indicator component for better UX guidance
 interface StepIndicatorProps {
@@ -1083,7 +1084,7 @@ export function ResumeUploader({
                         Processing...
                       </span>
                     ) : (
-                      <>Or get the complete analysis for $25{isLocalCurrency && ` (≈${formatPrice(25)})`}</>
+                      <>Or get the complete analysis for ${PRODUCTS.fullAnalysis.priceUsd}{isLocalCurrency && ` (≈${formatPrice(PRODUCTS.fullAnalysis.priceUsd)})`}</>
                     )}
                   </button>
                 )}
@@ -1107,7 +1108,7 @@ export function ResumeUploader({
                       ) : (
                         <>
                           <Sparkles className="w-5 h-5" />
-                          <span>{t('uploader.actions.getFullAnalysis')} — $25{isLocalCurrency && ` ≈ ${formatPrice(25)}`}</span>
+                          <span>{t('uploader.actions.getFullAnalysis')} — ${PRODUCTS.fullAnalysis.priceUsd}{isLocalCurrency && ` ≈ ${formatPrice(PRODUCTS.fullAnalysis.priceUsd)}`}</span>
                         </>
                       )}
                     </Button>
