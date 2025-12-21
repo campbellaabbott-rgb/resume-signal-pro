@@ -999,6 +999,70 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       metricsRate: 82
     }
   },
+  platform_engineer: {
+    name: 'Platform Engineer',
+    aliases: ['platform developer', 'developer platform engineer', 'internal tools engineer', 'developer experience engineer', 'dx engineer', 'infrastructure platform engineer', 'platform team lead'],
+    keySkills: ['Internal Developer Platforms', 'CI/CD', 'Kubernetes', 'Infrastructure as Code', 'Developer Experience', 'Service Mesh', 'Observability', 'API Gateway'],
+    mustHaveKeywords: ['platform', 'developer experience', 'infrastructure', 'CI/CD', 'Kubernetes', 'automation', 'self-service', 'tooling', 'internal', 'productivity'],
+    resumeTips: [
+      'Quantify developer productivity improvements',
+      'Show reduction in deployment friction and time',
+      'Highlight adoption rates of platforms you built',
+      'Include self-service capabilities enabled'
+    ],
+    bulletExamples: [
+      { weak: 'Built internal developer tools', strong: 'Designed self-service platform adopted by 200+ engineers, reducing new service deployment time from 2 weeks to 30 minutes' },
+      { weak: 'Managed Kubernetes infrastructure', strong: 'Built multi-tenant Kubernetes platform supporting 500+ microservices with 99.99% availability, saving $1.5M annually in infrastructure costs' }
+    ],
+    keyMetrics: ['Developer adoption rate', 'Deployment time reduction', 'Engineer productivity gains', 'Platform uptime', 'Cost savings', 'Services/teams supported'],
+    commonMistakes: [
+      'Not quantifying developer productivity impact',
+      'Missing platform adoption metrics',
+      'Vague "built internal tools" without outcomes',
+      'Not showing scale of engineers/services supported'
+    ],
+    interviewTopics: ['Platform architecture', 'Developer experience design', 'Multi-tenancy', 'Self-service automation', 'Observability strategy', 'Cost optimization'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'Platform Projects', 'Experience', 'Certifications', 'Education'],
+      differentiators: ['Developer productivity metrics', 'Large-scale platform experience', 'Self-service automation wins', 'Cost optimization achievements'],
+      avgBulletCount: 4,
+      certificationRate: 65,
+      portfolioRate: 40,
+      metricsRate: 88
+    }
+  },
+  staff_engineer: {
+    name: 'Staff Engineer',
+    aliases: ['staff software engineer', 'principal engineer', 'distinguished engineer', 'senior staff engineer', 'tech lead', 'technical lead', 'architect', 'engineering fellow'],
+    keySkills: ['Technical Leadership', 'System Architecture', 'Cross-Team Collaboration', 'Technical Strategy', 'Mentorship', 'Code Review', 'Design Documents', 'Stakeholder Communication'],
+    mustHaveKeywords: ['architecture', 'technical leadership', 'cross-functional', 'mentorship', 'strategy', 'design', 'scale', 'influence', 'org-wide', 'senior'],
+    resumeTips: [
+      'Emphasize org-wide technical impact, not just individual contributions',
+      'Show leadership through influence, not just authority',
+      'Quantify business outcomes of technical decisions',
+      'Highlight mentorship and team growth achievements'
+    ],
+    bulletExamples: [
+      { weak: 'Led technical projects', strong: 'Defined 3-year technical roadmap adopted across 8 engineering teams, enabling 50% faster feature delivery and $5M infrastructure savings' },
+      { weak: 'Mentored junior engineers', strong: 'Established engineering mentorship program growing 12 engineers to senior level, improving team retention by 35%' }
+    ],
+    keyMetrics: ['Org-wide impact (teams influenced)', 'Business outcomes enabled', 'Engineers mentored/promoted', 'Technical debt reduction', 'System reliability improvements', 'Strategic initiatives led'],
+    commonMistakes: [
+      'Focusing only on individual code contributions',
+      'Not showing cross-team influence',
+      'Missing business impact of technical decisions',
+      'Not highlighting mentorship and leadership'
+    ],
+    interviewTopics: ['System design at scale', 'Technical leadership philosophy', 'Cross-team collaboration', 'Influencing without authority', 'Technical strategy', 'Handling ambiguity'],
+    topResumeElements: {
+      sections: ['Summary/Impact Statement', 'Technical Leadership', 'Experience', 'Architecture Projects', 'Education'],
+      differentiators: ['Org-wide technical initiatives', 'Mentorship track record', 'Business impact quantification', 'Cross-functional leadership'],
+      avgBulletCount: 5,
+      certificationRate: 40,
+      portfolioRate: 50,
+      metricsRate: 90
+    }
+  },
   data_engineer: {
     name: 'Data Engineer',
     aliases: ['etl developer', 'data pipeline engineer', 'analytics engineer', 'big data engineer', 'data platform engineer', 'data infrastructure engineer', 'spark engineer'],
