@@ -3239,6 +3239,70 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       portfolioRate: 60,
       metricsRate: 88
     }
+  },
+  research_scientist: {
+    name: 'Research Scientist',
+    aliases: ['researcher', 'scientist', 'research engineer', 'senior researcher', 'principal researcher', 'staff scientist', 'research associate', 'postdoc', 'postdoctoral researcher'],
+    keySkills: ['Research Methodology', 'Data Analysis', 'Statistical Analysis', 'Technical Writing', 'Experimental Design', 'Peer Review', 'Grant Writing', 'Publication', 'Presentation', 'Collaboration'],
+    mustHaveKeywords: ['research', 'publications', 'peer-reviewed', 'methodology', 'experiments', 'analysis', 'grants', 'findings', 'citations', 'conferences'],
+    resumeTips: [
+      'Lead with publication count and citation metrics',
+      'Highlight grant funding secured',
+      'Quantify research impact and real-world applications',
+      'Show collaboration across institutions'
+    ],
+    bulletExamples: [
+      { weak: 'Conducted research and published papers', strong: 'Led research program resulting in 15 peer-reviewed publications (h-index: 12), with findings adopted by 3 Fortune 500 companies' },
+      { weak: 'Worked on grant proposals', strong: 'Secured $2.5M in competitive research funding across 4 NIH/NSF grants as PI or co-PI, achieving 40% success rate vs. 15% average' }
+    ],
+    keyMetrics: ['Publications', 'Citations/h-index', 'Grant funding ($)', 'Patents filed', 'Conference presentations', 'Industry adoptions'],
+    commonMistakes: [
+      'Not quantifying publication impact',
+      'Missing grant funding amounts',
+      'Vague research descriptions without outcomes',
+      'Not showing real-world impact of research'
+    ],
+    interviewTopics: ['Research methodology', 'Publication record', 'Grant experience', 'Collaboration style', 'Future research directions', 'Technology transfer'],
+    topResumeElements: {
+      sections: ['Research Experience', 'Publications', 'Grants & Funding', 'Education', 'Skills', 'Presentations'],
+      differentiators: ['High-impact publications', 'Significant grant funding', 'Industry partnerships', 'Patent portfolio'],
+      avgBulletCount: 4,
+      certificationRate: 20,
+      portfolioRate: 30,
+      metricsRate: 85
+    }
+  },
+  ai_researcher: {
+    name: 'AI Researcher',
+    aliases: ['machine learning researcher', 'ml researcher', 'deep learning researcher', 'nlp researcher', 'computer vision researcher', 'ai scientist', 'ml scientist', 'research scientist ai', 'applied ai researcher'],
+    keySkills: ['Machine Learning', 'Deep Learning', 'PyTorch/TensorFlow', 'Python', 'Research Methodology', 'Publication', 'Neural Networks', 'NLP', 'Computer Vision', 'Statistical Analysis'],
+    mustHaveKeywords: ['AI', 'machine learning', 'deep learning', 'neural networks', 'publications', 'research', 'models', 'training', 'inference', 'benchmarks'],
+    resumeTips: [
+      'Lead with top-tier venue publications (NeurIPS, ICML, CVPR)',
+      'Quantify model performance improvements',
+      'Show real-world deployment impact',
+      'Highlight novel contributions to the field'
+    ],
+    bulletExamples: [
+      { weak: 'Developed machine learning models', strong: 'Published 8 papers at top-tier venues (NeurIPS, ICML, ICLR) with 500+ citations, introducing novel attention mechanism adopted by 10+ research groups' },
+      { weak: 'Improved model performance', strong: 'Developed transformer architecture achieving state-of-the-art on 3 NLP benchmarks, reducing inference latency 40% while improving accuracy 5.2%' }
+    ],
+    keyMetrics: ['Top-tier publications', 'Citations', 'Model performance (accuracy, F1)', 'Inference speed', 'Training efficiency', 'Benchmark rankings'],
+    commonMistakes: [
+      'Not highlighting publication venues',
+      'Missing quantified model improvements',
+      'Vague "worked on AI" without specifics',
+      'Not showing novelty of contributions'
+    ],
+    interviewTopics: ['Research contributions', 'Technical depth', 'Publication record', 'Latest AI trends', 'Model architecture decisions', 'Scaling challenges'],
+    topResumeElements: {
+      sections: ['Research Experience', 'Publications', 'Technical Skills', 'Education', 'Projects', 'Presentations'],
+      differentiators: ['Top-tier publications', 'Novel contributions', 'Industry impact', 'Open-source contributions'],
+      avgBulletCount: 4,
+      certificationRate: 15,
+      portfolioRate: 70,
+      metricsRate: 90
+    }
   }
 };
 
