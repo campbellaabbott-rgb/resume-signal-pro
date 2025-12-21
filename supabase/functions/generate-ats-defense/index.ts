@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const MAX_RESUME_LENGTH = 50000;
-const ATS_DEFENSE_PRICE_ID = "price_1SgujzHBplUUV1Cg8XRTr5Ks";
+const ATS_DEFENSE_PRICE_ID = "price_1Sgv3LHBplUUV1CgpCF5pDLO";
 
 const ERROR_MESSAGES = {
   INTERNAL: 'An error occurred while processing your request. Please try again.',
@@ -271,7 +271,7 @@ serve(async (req) => {
       );
     }
 
-    const { sessionId, resumeText, targetRoles } = requestBody;
+    const { sessionId, resumeText, targetRoles, allowRegeneration } = requestBody;
 
     // Validate session ID
     if (!sessionId || typeof sessionId !== 'string' || sessionId.length < 10) {
@@ -372,26 +372,30 @@ serve(async (req) => {
       );
     }
 
-    // Check if session already used
+    // Check if session already used (skip check if allowRegeneration is true for recovery scenarios)
     const { data: existingSession } = await supabase
       .from('used_stripe_sessions')
       .select('session_id')
       .eq('session_id', sessionId)
       .maybeSingle();
 
-    if (existingSession) {
-      console.log("[ATS-DEFENSE] Session already used");
+    if (existingSession && !allowRegeneration) {
+      console.log("[ATS-DEFENSE] Session already used and regeneration not allowed");
       return new Response(
         JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Mark session as used
-    await supabase.from('used_stripe_sessions').insert({
-      session_id: sessionId,
-      ip_address: clientIp
-    });
+    // Mark session as used (only if not already marked)
+    if (!existingSession) {
+      await supabase.from('used_stripe_sessions').insert({
+        session_id: sessionId,
+        ip_address: clientIp
+      });
+    } else {
+      console.log("[ATS-DEFENSE] Session already marked as used, proceeding with regeneration");
+    }
 
     // Call AI for analysis
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
