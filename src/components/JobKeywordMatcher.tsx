@@ -215,6 +215,32 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
     // Retail leadership
     { pattern: /\b(district manager|regional manager|area manager|store director|general manager|assistant manager|key holder|shift lead|team lead)\b/gi, category: "industry_term", importance: "nice_to_have" },
     
+    // ===== MEDIA, ENTERTAINMENT & CREATIVE =====
+    // Video production (critical)
+    { pattern: /\b(video production|film production|tv production|broadcast|broadcasting|post-production|pre-production|production coordinator|production assistant|line producer)\b/gi, category: "hard_skill", importance: "critical" },
+    // Content creation
+    { pattern: /\b(content creation|content creator|content strategy|social media content|video content|youtube|tiktok|instagram|podcast|podcasting|streaming|live streaming)\b/gi, category: "hard_skill", importance: "critical" },
+    // Creative software (critical)
+    { pattern: /\b(adobe creative suite|adobe creative cloud|photoshop|illustrator|indesign|premiere pro|after effects|final cut pro|davinci resolve|avid|pro tools|logic pro)\b/gi, category: "tool", importance: "critical" },
+    // Design skills
+    { pattern: /\b(graphic design|motion graphics|vfx|visual effects|animation|3d animation|2d animation|character design|storyboarding|concept art|ui design|ux design|brand design)\b/gi, category: "hard_skill", importance: "critical" },
+    // Photography & videography
+    { pattern: /\b(photography|videography|cinematography|camera operator|dslr|mirrorless|lighting|grip|gaffer|sound design|audio engineering|color grading|color correction)\b/gi, category: "hard_skill", importance: "important" },
+    // Publishing & journalism
+    { pattern: /\b(journalism|editorial|copywriting|copyeditor|copy editing|proofreading|fact-checking|news writing|feature writing|investigative reporting|press release)\b/gi, category: "hard_skill", importance: "important" },
+    // Entertainment industry
+    { pattern: /\b(talent management|casting|talent acquisition|entertainment law|royalties|licensing|syndication|distribution|box office|theatrical|network|cable|streaming platform)\b/gi, category: "industry_term", importance: "important" },
+    // Advertising & creative agencies
+    { pattern: /\b(advertising|ad agency|creative agency|creative director|art director|copywriter|account executive|media buyer|media planning|campaign management|creative brief)\b/gi, category: "hard_skill", importance: "important" },
+    // Music & audio
+    { pattern: /\b(music production|audio production|mixing|mastering|recording|studio|ableton|fl studio|cubase|sound engineer|music supervisor|composer|songwriter)\b/gi, category: "hard_skill", importance: "important" },
+    // Gaming & interactive
+    { pattern: /\b(game design|game development|unity|unreal engine|game artist|level design|narrative design|qa testing|esports|gaming|twitch|game producer)\b/gi, category: "hard_skill", importance: "important" },
+    // Creative certifications
+    { pattern: /\b(adobe certified|aca|ace|avid certified|apple certified|autodesk certified|ux certification|google ux)\b/gi, category: "certification", importance: "important" },
+    // Creative soft skills
+    { pattern: /\b(creative thinking|visual storytelling|brand identity|creative concept|ideation|brainstorming|art direction|creative vision|aesthetic|portfolio)\b/gi, category: "soft_skill", importance: "nice_to_have" },
+    
     // ===== OPERATIONS & SUPPLY CHAIN =====
     { pattern: /\b(supply chain|logistics|procurement|inventory management|warehouse|distribution|erp|mrp|lean manufacturing|six sigma|kaizen|tps|just-in-time|jit)\b/gi, category: "hard_skill", importance: "critical" },
     { pattern: /\b(apics|cpim|cscp|cltd|pmp|capm|lean six sigma|green belt|black belt|master black belt)\b/gi, category: "certification", importance: "important" },
