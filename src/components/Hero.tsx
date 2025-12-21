@@ -151,9 +151,31 @@ export function Hero() {
             <p className="text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto mb-2 leading-relaxed">
               {t('hero.mainSubheading', "Find out in 30 seconds. Our AI simulates how ATS systems scan your resume and shows exactly what's costing you interviews.")}
             </p>
-            <p className="text-xs sm:text-sm text-muted-foreground/60 max-w-lg mx-auto mb-6">
-              {t('hero.atsSystemsCredibility', 'Based on parsing rules from Workday, Greenhouse, Lever, Taleo, iCIMS & 50+ ATS platforms')}
-            </p>
+            <div className="max-w-lg mx-auto mb-6">
+              <TooltipProvider>
+                <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                    <p className="text-xs sm:text-sm text-muted-foreground/60 cursor-help inline-flex items-center gap-1.5 hover:text-muted-foreground transition-colors">
+                      <Info className="w-3.5 h-3.5" />
+                      {t('hero.atsSystemsCredibility', 'Based on parsing rules from Workday, Greenhouse, Lever, Taleo, iCIMS & 50+ ATS platforms')}
+                    </p>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-sm text-left p-4 bg-popover border border-border shadow-xl z-50">
+                    <p className="font-semibold text-foreground mb-2">How We Analyze Your Resume</p>
+                    <ul className="text-xs text-muted-foreground space-y-1.5">
+                      <li><span className="font-medium text-foreground">Workday:</span> Section headers, keyword extraction, date parsing</li>
+                      <li><span className="font-medium text-foreground">Greenhouse:</span> Skills matching, experience scoring</li>
+                      <li><span className="font-medium text-foreground">Lever:</span> Contact info validation, formatting rules</li>
+                      <li><span className="font-medium text-foreground">Taleo:</span> Keyword density, job title matching</li>
+                      <li><span className="font-medium text-foreground">iCIMS:</span> Education parsing, certification detection</li>
+                    </ul>
+                    <p className="text-xs text-muted-foreground/70 mt-2 pt-2 border-t border-border/50">
+                      + 50 more ATS platforms analyzed for common patterns
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
 
             {/* Mobile-first: Clear step indicator */}
             <div className="sm:hidden mb-6 p-4 rounded-xl bg-card/60 border border-border/50 text-left">
