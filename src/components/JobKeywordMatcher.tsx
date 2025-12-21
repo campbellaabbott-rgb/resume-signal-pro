@@ -1,0 +1,540 @@
+import { useState, useMemo } from "react";
+import { 
+  Target, CheckCircle2, XCircle, AlertTriangle, Lightbulb, 
+  ChevronDown, ChevronUp, Copy, Check, Sparkles, ArrowRight,
+  FileText, Briefcase, Star, Zap, TrendingUp
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+
+interface KeywordMatch {
+  keyword: string;
+  foundIn: "resume" | "both" | "job_only";
+  importance: "critical" | "important" | "nice_to_have";
+  category: "hard_skill" | "soft_skill" | "certification" | "tool" | "methodology" | "industry_term";
+  resumeContext?: string; // Where it appears in resume
+  jobContext?: string; // How it's mentioned in JD
+  fixSuggestion?: string; // How to add if missing
+}
+
+interface CategoryGroup {
+  category: string;
+  label: string;
+  icon: React.ElementType;
+  matches: KeywordMatch[];
+  matchRate: number;
+}
+
+interface JobKeywordMatcherProps {
+  jobTitle?: string;
+  jobCompany?: string;
+  resumeText: string;
+  jobDescription: string;
+  extractedKeywords?: string[];
+  missingKeywords?: string[];
+  matchScore?: number;
+  className?: string;
+}
+
+// Extract keywords from job description with context
+function extractKeywordsWithContext(jobDescription: string): { keyword: string; context: string; importance: "critical" | "important" | "nice_to_have"; category: KeywordMatch["category"] }[] {
+  const jdLower = jobDescription.toLowerCase();
+  
+  // Common keyword patterns with their categories
+  const patterns: { pattern: RegExp; category: KeywordMatch["category"]; importance: "critical" | "important" | "nice_to_have" }[] = [
+    // Technical skills (critical)
+    { pattern: /\b(python|java|javascript|typescript|react|node\.?js|sql|aws|azure|gcp|docker|kubernetes|git)\b/gi, category: "hard_skill", importance: "critical" },
+    { pattern: /\b(machine learning|deep learning|data science|artificial intelligence|ai|ml|nlp)\b/gi, category: "hard_skill", importance: "critical" },
+    { pattern: /\b(agile|scrum|kanban|devops|ci\/cd|jira|confluence)\b/gi, category: "methodology", importance: "important" },
+    
+    // Tools
+    { pattern: /\b(excel|powerpoint|tableau|power bi|salesforce|hubspot|figma|sketch|adobe)\b/gi, category: "tool", importance: "important" },
+    { pattern: /\b(sap|oracle|workday|servicenow|zendesk)\b/gi, category: "tool", importance: "important" },
+    
+    // Certifications
+    { pattern: /\b(pmp|cpa|cfa|aws certified|azure certified|cisco|ccna|ccnp|cissp|comptia|six sigma|lean)\b/gi, category: "certification", importance: "important" },
+    
+    // Soft skills
+    { pattern: /\b(leadership|communication|problem.?solving|analytical|strategic|collaborative|teamwork)\b/gi, category: "soft_skill", importance: "nice_to_have" },
+    { pattern: /\b(stakeholder management|cross.?functional|project management|time management)\b/gi, category: "soft_skill", importance: "important" },
+    
+    // Industry terms
+    { pattern: /\b(b2b|b2c|saas|e-commerce|fintech|healthtech|edtech|roi|kpi|okr)\b/gi, category: "industry_term", importance: "nice_to_have" },
+  ];
+  
+  const extracted: Map<string, { keyword: string; context: string; importance: "critical" | "important" | "nice_to_have"; category: KeywordMatch["category"] }> = new Map();
+  
+  // Extract words that appear multiple times or in key phrases
+  const sentences = jobDescription.split(/[.!?]/);
+  
+  for (const { pattern, category, importance } of patterns) {
+    let match;
+    while ((match = pattern.exec(jobDescription)) !== null) {
+      const keyword = match[0].toLowerCase();
+      if (!extracted.has(keyword)) {
+        // Find the sentence containing this keyword for context
+        const contextSentence = sentences.find(s => s.toLowerCase().includes(keyword))?.trim() || "";
+        extracted.set(keyword, {
+          keyword: match[0],
+          context: contextSentence.substring(0, 100) + (contextSentence.length > 100 ? "..." : ""),
+          importance: jdLower.includes("required") && jdLower.indexOf(keyword) < jdLower.indexOf("required") + 200 ? "critical" : importance,
+          category
+        });
+      }
+    }
+  }
+  
+  // Also extract capitalized proper nouns and technical terms
+  const technicalTerms = jobDescription.match(/\b[A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*\b/g) || [];
+  for (const term of technicalTerms) {
+    if (term.length > 2 && !extracted.has(term.toLowerCase()) && !["The", "This", "That", "We", "You", "Our", "Your"].includes(term)) {
+      const contextSentence = sentences.find(s => s.includes(term))?.trim() || "";
+      extracted.set(term.toLowerCase(), {
+        keyword: term,
+        context: contextSentence.substring(0, 100) + (contextSentence.length > 100 ? "..." : ""),
+        importance: "nice_to_have",
+        category: "industry_term"
+      });
+    }
+  }
+  
+  return Array.from(extracted.values());
+}
+
+// Check if keyword exists in resume and get context
+function findKeywordInResume(keyword: string, resumeText: string): { found: boolean; context: string } {
+  const resumeLower = resumeText.toLowerCase();
+  const keywordLower = keyword.toLowerCase();
+  
+  // Check for exact match or variations
+  const variations = [
+    keywordLower,
+    keywordLower.replace(/\s+/g, ""),
+    keywordLower.replace(/-/g, " "),
+    keywordLower.replace(/\./g, ""),
+  ];
+  
+  for (const variation of variations) {
+    const index = resumeLower.indexOf(variation);
+    if (index !== -1) {
+      // Extract surrounding context
+      const start = Math.max(0, index - 30);
+      const end = Math.min(resumeText.length, index + keyword.length + 50);
+      const context = resumeText.substring(start, end).trim();
+      return { found: true, context: "..." + context + "..." };
+    }
+  }
+  
+  return { found: false, context: "" };
+}
+
+// Generate fix suggestions for missing keywords
+function generateFixSuggestion(keyword: string, category: KeywordMatch["category"], jobContext?: string): string {
+  const suggestions: Record<KeywordMatch["category"], string[]> = {
+    hard_skill: [
+      `Add "${keyword}" to your Skills section`,
+      `Mention "${keyword}" in a bullet point describing a relevant project`,
+      `Include experience with ${keyword} in your summary/objective`,
+    ],
+    soft_skill: [
+      `Demonstrate "${keyword}" through a specific achievement`,
+      `Add a bullet showing how you used ${keyword} to achieve results`,
+      `Quantify an instance where ${keyword} led to measurable outcomes`,
+    ],
+    certification: [
+      `Add "${keyword}" to a Certifications section`,
+      `If you have ${keyword}, list it prominently near your name`,
+      `Consider pursuing ${keyword} certification if not yet obtained`,
+    ],
+    tool: [
+      `Add "${keyword}" to your Technical Skills or Tools section`,
+      `Mention using ${keyword} in a specific project bullet`,
+      `Include proficiency level with ${keyword}`,
+    ],
+    methodology: [
+      `Add "${keyword}" to your skills or methodology experience`,
+      `Describe a project where you applied ${keyword}`,
+      `Quantify results achieved using ${keyword}`,
+    ],
+    industry_term: [
+      `Incorporate "${keyword}" naturally in your experience descriptions`,
+      `Use "${keyword}" when describing relevant achievements`,
+      `Add "${keyword}" context to your professional summary`,
+    ],
+  };
+  
+  return suggestions[category][Math.floor(Math.random() * suggestions[category].length)];
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  
+  return (
+    <button
+      onClick={handleCopy}
+      className="p-1 rounded hover:bg-muted transition-colors"
+      title="Copy suggestion"
+    >
+      {copied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3 text-muted-foreground" />}
+    </button>
+  );
+}
+
+export function JobKeywordMatcher({
+  jobTitle,
+  jobCompany,
+  resumeText,
+  jobDescription,
+  extractedKeywords = [],
+  missingKeywords = [],
+  matchScore,
+  className
+}: JobKeywordMatcherProps) {
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(["critical"]));
+  const [showAllMissing, setShowAllMissing] = useState(false);
+  
+  // Analyze keywords
+  const analysis = useMemo(() => {
+    const jdKeywords = extractKeywordsWithContext(jobDescription);
+    
+    const matches: KeywordMatch[] = jdKeywords.map(jdKw => {
+      const resumeMatch = findKeywordInResume(jdKw.keyword, resumeText);
+      
+      return {
+        keyword: jdKw.keyword,
+        foundIn: resumeMatch.found ? "both" : "job_only",
+        importance: jdKw.importance,
+        category: jdKw.category,
+        resumeContext: resumeMatch.context || undefined,
+        jobContext: jdKw.context,
+        fixSuggestion: !resumeMatch.found ? generateFixSuggestion(jdKw.keyword, jdKw.category, jdKw.context) : undefined,
+      };
+    });
+    
+    // Add any additional keywords from props
+    for (const kw of extractedKeywords) {
+      if (!matches.find(m => m.keyword.toLowerCase() === kw.toLowerCase())) {
+        const resumeMatch = findKeywordInResume(kw, resumeText);
+        matches.push({
+          keyword: kw,
+          foundIn: resumeMatch.found ? "both" : "job_only",
+          importance: "important",
+          category: "hard_skill",
+          resumeContext: resumeMatch.context || undefined,
+          fixSuggestion: !resumeMatch.found ? generateFixSuggestion(kw, "hard_skill") : undefined,
+        });
+      }
+    }
+    
+    return matches;
+  }, [jobDescription, resumeText, extractedKeywords]);
+  
+  // Group by category
+  const categoryGroups = useMemo((): CategoryGroup[] => {
+    const groups: Record<string, CategoryGroup> = {
+      hard_skill: { category: "hard_skill", label: "Technical Skills", icon: Zap, matches: [], matchRate: 0 },
+      soft_skill: { category: "soft_skill", label: "Soft Skills", icon: Star, matches: [], matchRate: 0 },
+      certification: { category: "certification", label: "Certifications", icon: FileText, matches: [], matchRate: 0 },
+      tool: { category: "tool", label: "Tools & Software", icon: Briefcase, matches: [], matchRate: 0 },
+      methodology: { category: "methodology", label: "Methodologies", icon: TrendingUp, matches: [], matchRate: 0 },
+      industry_term: { category: "industry_term", label: "Industry Terms", icon: Target, matches: [], matchRate: 0 },
+    };
+    
+    for (const match of analysis) {
+      if (groups[match.category]) {
+        groups[match.category].matches.push(match);
+      }
+    }
+    
+    // Calculate match rates
+    for (const group of Object.values(groups)) {
+      const matched = group.matches.filter(m => m.foundIn === "both").length;
+      group.matchRate = group.matches.length > 0 ? Math.round((matched / group.matches.length) * 100) : 100;
+    }
+    
+    return Object.values(groups).filter(g => g.matches.length > 0).sort((a, b) => a.matchRate - b.matchRate);
+  }, [analysis]);
+  
+  // Critical missing keywords
+  const criticalMissing = analysis.filter(m => m.foundIn === "job_only" && m.importance === "critical");
+  const importantMissing = analysis.filter(m => m.foundIn === "job_only" && m.importance === "important");
+  const matched = analysis.filter(m => m.foundIn === "both");
+  
+  const overallMatchRate = analysis.length > 0 
+    ? Math.round((matched.length / analysis.length) * 100) 
+    : matchScore || 0;
+  
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
+  
+  return (
+    <div className={cn("space-y-6", className)}>
+      {/* Header with overall score */}
+      <div className="p-6 rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <Target className="w-5 h-5 text-primary" />
+              Job Keyword Match Analysis
+            </h3>
+            {jobTitle && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Matching against: <span className="font-medium text-foreground">{jobTitle}</span>
+                {jobCompany && <span className="text-muted-foreground"> at {jobCompany}</span>}
+              </p>
+            )}
+          </div>
+          <div className={cn(
+            "px-4 py-2 rounded-xl font-bold text-2xl",
+            overallMatchRate >= 70 ? "bg-success/10 text-success" :
+            overallMatchRate >= 50 ? "bg-warning/10 text-warning" :
+            "bg-destructive/10 text-destructive"
+          )}>
+            {overallMatchRate}%
+          </div>
+        </div>
+        
+        <Progress 
+          value={overallMatchRate} 
+          className={cn(
+            "h-3",
+            overallMatchRate >= 70 ? "[&>div]:bg-success" :
+            overallMatchRate >= 50 ? "[&>div]:bg-warning" :
+            "[&>div]:bg-destructive"
+          )}
+        />
+        
+        <div className="flex flex-wrap gap-4 mt-4 text-sm">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-success" />
+            <span><strong>{matched.length}</strong> matched</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <XCircle className="w-4 h-4 text-destructive" />
+            <span><strong>{criticalMissing.length}</strong> critical gaps</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-warning" />
+            <span><strong>{importantMissing.length}</strong> important gaps</span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Critical Missing Keywords Alert */}
+      {criticalMissing.length > 0 && (
+        <div className="p-5 rounded-xl bg-destructive/5 border border-destructive/20">
+          <h4 className="font-bold text-destructive flex items-center gap-2 mb-3">
+            <AlertTriangle className="w-4 h-4" />
+            Critical Keywords Missing ({criticalMissing.length})
+          </h4>
+          <p className="text-sm text-muted-foreground mb-4">
+            These keywords appear in the job requirements and are likely essential. Add them to significantly improve your match.
+          </p>
+          <div className="space-y-3">
+            {criticalMissing.slice(0, showAllMissing ? undefined : 5).map((kw, i) => (
+              <div key={i} className="p-3 rounded-lg bg-background border border-border">
+                <div className="flex items-start justify-between mb-2">
+                  <span className="font-semibold text-foreground">{kw.keyword}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">
+                    {kw.category.replace("_", " ")}
+                  </span>
+                </div>
+                {kw.jobContext && (
+                  <p className="text-xs text-muted-foreground mb-2 italic">
+                    "...{kw.jobContext}..."
+                  </p>
+                )}
+                {kw.fixSuggestion && (
+                  <div className="flex items-start gap-2 mt-2 p-2 rounded bg-success/5 border border-success/20">
+                    <Lightbulb className="w-3 h-3 text-success mt-0.5 shrink-0" />
+                    <span className="text-xs text-foreground flex-1">{kw.fixSuggestion}</span>
+                    <CopyButton text={kw.fixSuggestion} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          {criticalMissing.length > 5 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAllMissing(!showAllMissing)}
+              className="mt-3 w-full"
+            >
+              {showAllMissing ? (
+                <>Show Less <ChevronUp className="w-4 h-4 ml-1" /></>
+              ) : (
+                <>Show All {criticalMissing.length} Critical Keywords <ChevronDown className="w-4 h-4 ml-1" /></>
+              )}
+            </Button>
+          )}
+        </div>
+      )}
+      
+      {/* Matched Keywords */}
+      {matched.length > 0 && (
+        <div className="p-5 rounded-xl bg-success/5 border border-success/20">
+          <h4 className="font-bold text-success flex items-center gap-2 mb-3">
+            <CheckCircle2 className="w-4 h-4" />
+            Keywords You Already Have ({matched.length})
+          </h4>
+          <div className="flex flex-wrap gap-2">
+            {matched.map((kw, i) => (
+              <span 
+                key={i}
+                className="px-3 py-1.5 rounded-lg bg-success/10 text-success text-sm font-medium flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                {kw.keyword}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Category Breakdown */}
+      <div className="space-y-3">
+        <h4 className="font-bold text-foreground flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-primary" />
+          Keyword Analysis by Category
+        </h4>
+        
+        {categoryGroups.map((group) => {
+          const Icon = group.icon;
+          const isExpanded = expandedCategories.has(group.category);
+          const groupMatched = group.matches.filter(m => m.foundIn === "both").length;
+          const groupMissing = group.matches.filter(m => m.foundIn === "job_only").length;
+          
+          return (
+            <div key={group.category} className="rounded-xl border border-border overflow-hidden">
+              <button
+                onClick={() => toggleCategory(group.category)}
+                className="w-full p-4 flex items-center justify-between bg-card hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Icon className={cn(
+                    "w-4 h-4",
+                    group.matchRate >= 70 ? "text-success" :
+                    group.matchRate >= 50 ? "text-warning" :
+                    "text-destructive"
+                  )} />
+                  <span className="font-medium">{group.label}</span>
+                  <span className="text-xs text-muted-foreground">
+                    ({groupMatched}/{group.matches.length} matched)
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "text-sm font-bold",
+                    group.matchRate >= 70 ? "text-success" :
+                    group.matchRate >= 50 ? "text-warning" :
+                    "text-destructive"
+                  )}>
+                    {group.matchRate}%
+                  </div>
+                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </div>
+              </button>
+              
+              {isExpanded && (
+                <div className="p-4 pt-0 bg-card space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-border">
+                    {group.matches.map((match, i) => (
+                      <div 
+                        key={i}
+                        className={cn(
+                          "p-2 rounded-lg text-sm flex items-start gap-2",
+                          match.foundIn === "both" 
+                            ? "bg-success/5 border border-success/20" 
+                            : "bg-muted/50 border border-border"
+                        )}
+                      >
+                        {match.foundIn === "both" ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-success mt-0.5 shrink-0" />
+                        ) : (
+                          <XCircle className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <span className={cn(
+                            "font-medium",
+                            match.foundIn === "both" ? "text-success" : "text-foreground"
+                          )}>
+                            {match.keyword}
+                          </span>
+                          {match.foundIn === "job_only" && match.fixSuggestion && (
+                            <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                              <ArrowRight className="w-2.5 h-2.5 shrink-0" />
+                              {match.fixSuggestion}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      
+      {/* Quick Action Summary */}
+      <div className="p-5 rounded-xl bg-primary/5 border border-primary/20">
+        <h4 className="font-bold text-foreground flex items-center gap-2 mb-3">
+          <Lightbulb className="w-4 h-4 text-primary" />
+          Top 3 Actions to Improve Your Match
+        </h4>
+        <ol className="space-y-2">
+          {criticalMissing.slice(0, 3).map((kw, i) => (
+            <li key={i} className="flex items-start gap-3 text-sm">
+              <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground font-bold text-xs flex items-center justify-center shrink-0">
+                {i + 1}
+              </span>
+              <div>
+                <span className="font-medium">Add "{kw.keyword}"</span>
+                {kw.fixSuggestion && (
+                  <span className="text-muted-foreground"> — {kw.fixSuggestion}</span>
+                )}
+              </div>
+            </li>
+          ))}
+          {criticalMissing.length === 0 && importantMissing.slice(0, 3).map((kw, i) => (
+            <li key={i} className="flex items-start gap-3 text-sm">
+              <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground font-bold text-xs flex items-center justify-center shrink-0">
+                {i + 1}
+              </span>
+              <div>
+                <span className="font-medium">Add "{kw.keyword}"</span>
+                {kw.fixSuggestion && (
+                  <span className="text-muted-foreground"> — {kw.fixSuggestion}</span>
+                )}
+              </div>
+            </li>
+          ))}
+          {criticalMissing.length === 0 && importantMissing.length === 0 && (
+            <li className="text-success flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              Great job! Your resume covers the key requirements.
+            </li>
+          )}
+        </ol>
+      </div>
+    </div>
+  );
+}
