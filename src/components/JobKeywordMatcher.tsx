@@ -681,6 +681,38 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
     { pattern: /\b(self-motivated|self-starter|autonomous|independent|proactive|disciplined|time management|remote collaboration|virtual collaboration)\b/gi, category: "soft_skill", importance: "important" },
     // Digital nomad & location
     { pattern: /\b(digital nomad|location independent|anywhere|coworking|co-working|home office|remote setup|virtual office)\b/gi, category: "industry_term", importance: "nice_to_have" },
+    
+    // ===== AI & EMERGING TECHNOLOGY =====
+    // Machine Learning & AI (critical)
+    { pattern: /\b(machine learning|ml|artificial intelligence|ai|deep learning|neural network|neural net|supervised learning|unsupervised learning|reinforcement learning)\b/gi, category: "hard_skill", importance: "critical" },
+    // Generative AI & LLMs (critical)
+    { pattern: /\b(generative ai|gen ai|genai|large language model|llm|chatgpt|gpt|gpt-4|gpt-5|claude|gemini|llama|copilot|openai|anthropic)\b/gi, category: "hard_skill", importance: "critical" },
+    // Prompt engineering
+    { pattern: /\b(prompt engineering|prompt design|prompt optimization|few-shot|zero-shot|chain of thought|cot|rag|retrieval augmented|fine-tuning|fine tuning)\b/gi, category: "hard_skill", importance: "critical" },
+    // AI/ML frameworks
+    { pattern: /\b(tensorflow|pytorch|keras|scikit-learn|sklearn|hugging face|langchain|llamaindex|openai api|transformers|bert|stable diffusion|midjourney|dall-e)\b/gi, category: "tool", importance: "critical" },
+    // Data science
+    { pattern: /\b(data science|data scientist|pandas|numpy|jupyter|notebook|feature engineering|model training|model deployment|mlops|ml pipeline|data pipeline)\b/gi, category: "hard_skill", importance: "critical" },
+    // Computer vision
+    { pattern: /\b(computer vision|cv|image recognition|object detection|image classification|opencv|yolo|cnn|convolutional|image processing|ocr)\b/gi, category: "hard_skill", importance: "important" },
+    // NLP
+    { pattern: /\b(natural language processing|nlp|text mining|sentiment analysis|named entity|ner|text classification|tokenization|embedding|word2vec|vector database)\b/gi, category: "hard_skill", importance: "important" },
+    // Automation & RPA (critical)
+    { pattern: /\b(automation|automated|rpa|robotic process automation|uipath|automation anywhere|blue prism|power automate|zapier|make|integromat|workflow automation)\b/gi, category: "hard_skill", importance: "critical" },
+    // Low-code/No-code
+    { pattern: /\b(low-code|no-code|low code|no code|citizen developer|power platform|appian|outsystems|mendix|bubble|retool|airtable)\b/gi, category: "tool", importance: "important" },
+    // Blockchain & Web3
+    { pattern: /\b(blockchain|web3|cryptocurrency|crypto|bitcoin|ethereum|solidity|smart contract|defi|nft|token|dao|decentralized|dapp)\b/gi, category: "hard_skill", importance: "important" },
+    // IoT & Edge
+    { pattern: /\b(iot|internet of things|edge computing|edge ai|embedded ai|raspberry pi|arduino|sensor|connected device|smart device|industrial iot|iiot)\b/gi, category: "hard_skill", importance: "important" },
+    // AR/VR/XR
+    { pattern: /\b(augmented reality|ar|virtual reality|vr|mixed reality|mr|extended reality|xr|metaverse|spatial computing|3d|immersive|hololens|oculus|vision pro)\b/gi, category: "hard_skill", importance: "important" },
+    // Quantum computing
+    { pattern: /\b(quantum computing|quantum|qubit|qiskit|cirq|quantum algorithm|quantum machine learning|post-quantum|quantum cryptography)\b/gi, category: "hard_skill", importance: "nice_to_have" },
+    // AI ethics & governance
+    { pattern: /\b(ai ethics|responsible ai|explainable ai|xai|ai governance|ai safety|bias detection|fairness|model interpretability|ai regulation)\b/gi, category: "soft_skill", importance: "important" },
+    // AI certifications
+    { pattern: /\b(aws machine learning|azure ai|google cloud ai|tensorflow certified|databricks certified|ai certified|ml certified)\b/gi, category: "certification", importance: "important" },
   ];
   
   const extracted: Map<string, { keyword: string; context: string; importance: "critical" | "important" | "nice_to_have"; category: KeywordMatch["category"] }> = new Map();
