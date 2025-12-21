@@ -965,20 +965,78 @@ export default function ProductSuccess() {
                 ) : (
                   <>
                     <div className="text-center mb-6">
-                      <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-xl font-semibold mb-2">Resume Data Not Found</h3>
+                      <Upload className="w-12 h-12 text-primary mx-auto mb-4" />
+                      <h3 className="text-xl font-semibold mb-2">
+                        {isAtsDefense ? 'Complete Your ATS Defense Report' :
+                         isPremiumPackage ? 'Complete Your Premium Package' :
+                         isCoverLetter ? 'Complete Your Cover Letter' :
+                         'Complete Your Keyword Analysis'}
+                      </h3>
                       <p className="text-muted-foreground">
-                        We couldn't find your resume data from the checkout session. 
-                        Upload or paste your resume below to generate your{' '}
-                        {isKeywordFix ? 'keyword analysis' : 
-                         isPremiumPackage ? 'premium package' : 
-                         isAtsDefense ? 'ATS Defense Complete report' :
-                         'cover letter'}.
+                        {isAtsDefense ? 
+                          'Upload your resume and optionally add target roles and job description for personalized optimization.' :
+                         isPremiumPackage ?
+                          'Upload your resume and add a job description to get your optimized resume and cover letter.' :
+                         isCoverLetter ?
+                          'Upload your resume and add the job details to generate a tailored cover letter.' :
+                          'Upload your resume to get keyword optimization suggestions.'}
                       </p>
+                    </div>
+
+                    {/* Requirements checklist */}
+                    <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 mb-4">
+                      <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-primary" />
+                        What you'll need for this package:
+                      </h4>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <div className={cn(
+                            "w-5 h-5 rounded-full flex items-center justify-center text-xs",
+                            recoveryResumeText.length >= 50 ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"
+                          )}>
+                            {recoveryResumeText.length >= 50 ? <Check className="w-3 h-3" /> : '1'}
+                          </div>
+                          <span className={recoveryResumeText.length >= 50 ? "text-success" : ""}>
+                            Resume <Badge variant="destructive" className="text-[10px] ml-1">Required</Badge>
+                          </span>
+                        </div>
+                        {(isCoverLetter || isPremiumPackage || isAtsDefense) && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <div className={cn(
+                              "w-5 h-5 rounded-full flex items-center justify-center text-xs",
+                              recoveryJobDescription.length > 50 ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"
+                            )}>
+                              {recoveryJobDescription.length > 50 ? <Check className="w-3 h-3" /> : '2'}
+                            </div>
+                            <span className={recoveryJobDescription.length > 50 ? "text-success" : ""}>
+                              Job Description <Badge variant="secondary" className="text-[10px] ml-1">Recommended</Badge>
+                            </span>
+                          </div>
+                        )}
+                        {isAtsDefense && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <div className={cn(
+                              "w-5 h-5 rounded-full flex items-center justify-center text-xs",
+                              recoveryTargetRoles.some(r => r.trim().length > 0) ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"
+                            )}>
+                              {recoveryTargetRoles.some(r => r.trim().length > 0) ? <Check className="w-3 h-3" /> : '3'}
+                            </div>
+                            <span className={recoveryTargetRoles.some(r => r.trim().length > 0) ? "text-success" : ""}>
+                              Target Roles (1-3) <Badge variant="secondary" className="text-[10px] ml-1">Optional</Badge>
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* File Upload */}
                     <div className="space-y-4">
+                      <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Your Resume
+                        <Badge variant="destructive" className="text-[10px]">Required</Badge>
+                      </label>
                       <div 
                         className={cn(
                           "relative rounded-xl border-2 border-dashed p-6 text-center transition-colors cursor-pointer",
@@ -1091,15 +1149,13 @@ export default function ProductSuccess() {
                       {(isAtsDefense || isKeywordFix || isCoverLetter || isPremiumPackage) && (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <label className="text-sm font-medium text-foreground">
+                            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                              <Target className="w-4 h-4" />
                               Target Job Description
-                              <span className="text-muted-foreground font-normal ml-1">(optional)</span>
-                            </label>
-                            {isAtsDefense && (
-                              <Badge variant="secondary" className="text-xs">
-                                Recommended for better optimization
+                              <Badge variant="secondary" className="text-[10px]">
+                                {isCoverLetter || isPremiumPackage ? 'Recommended' : 'Optional'}
                               </Badge>
-                            )}
+                            </label>
                           </div>
                           <Textarea
                             placeholder="Paste the job description you're targeting to get keyword-optimized recommendations..."
