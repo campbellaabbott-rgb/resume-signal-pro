@@ -8,6 +8,7 @@ import { PRODUCTS, ProductId } from "@/config/products";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { cn } from "@/lib/utils";
 import { ValueComparison } from "@/components/ValueComparison";
+import { useCurrency } from "@/hooks/use-currency";
 
 const productIcons: Record<string, React.ElementType> = {
   basicKeywordFix: FileText,
@@ -30,6 +31,7 @@ const productOrder: ProductId[] = [
 
 export default function Pricing() {
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
+  const { formatPrice, isLocalCurrency } = useCurrency();
 
   const handlePurchase = async (productId: ProductId) => {
     const product = PRODUCTS[productId];
@@ -122,13 +124,20 @@ export default function Pricing() {
                   </div>
 
                   {/* Price */}
-                  <div className="flex items-baseline gap-2 mb-4">
-                    <span className="text-4xl font-bold">${product.priceUsd}</span>
-                    <span className="text-muted-foreground">one-time</span>
-                    {'savings' in product && product.savings && (
-                      <Badge variant="secondary" className="ml-auto">
-                        {product.savings}
-                      </Badge>
+                  <div className="mb-4">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-4xl font-bold">${product.priceUsd}</span>
+                      <span className="text-muted-foreground">one-time</span>
+                      {'savings' in product && product.savings && (
+                        <Badge variant="secondary" className="ml-auto">
+                          {product.savings}
+                        </Badge>
+                      )}
+                    </div>
+                    {isLocalCurrency && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        ≈ {formatPrice(product.priceUsd)}
+                      </p>
                     )}
                   </div>
 
