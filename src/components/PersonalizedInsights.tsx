@@ -11,14 +11,20 @@ import {
   BookOpen,
   XCircle,
   ArrowRight,
-  BarChart3
+  BarChart3,
+  Globe,
+  FileText,
+  Camera,
+  Info
 } from "lucide-react";
 import { 
   getIndustryAdvice, 
   getExperienceAdvice, 
   getPersonalizedPriorities,
+  getGeographicAdvice,
   type IndustryConfig,
-  type ExperienceLevelConfig 
+  type ExperienceLevelConfig,
+  type GeographicConfig
 } from "@/config/personalization";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +45,7 @@ export function PersonalizedInsights({
 }: PersonalizedInsightsProps) {
   const industryConfig = getIndustryAdvice(industry);
   const expConfig = getExperienceAdvice(experienceLevel?.level || 'mid');
+  const geoConfig = getGeographicAdvice();
   const priorities = getPersonalizedPriorities(
     industry, 
     experienceLevel?.level || 'mid', 
@@ -76,8 +83,109 @@ export function PersonalizedInsights({
               Analysis tailored for <span className="font-medium text-primary">{industryConfig.name}</span> industry, 
               <span className="font-medium text-primary"> {levelLabel}</span> professional
               {experienceLevel?.yearsEstimate && ` (${experienceLevel.yearsEstimate})`}
+              {' • '}<span className="font-medium text-primary">{geoConfig.name}</span> format
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Geographic/Regional Advice */}
+      <div className="p-4 rounded-lg bg-card border border-border">
+        <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
+          <Globe className="w-4 h-4 text-primary" />
+          {geoConfig.name} {geoConfig.documentName} Standards
+        </h4>
+        
+        <div className="space-y-4">
+          {/* Document naming */}
+          <div className="flex items-center gap-2 text-sm">
+            <FileText className="w-4 h-4 text-muted-foreground" />
+            <span className="text-muted-foreground">In {geoConfig.name}, this document is called a</span>
+            <span className="font-semibold text-foreground">{geoConfig.documentName}</span>
+          </div>
+
+          {/* Photo requirement */}
+          <div className="flex items-center gap-2 text-sm">
+            <Camera className="w-4 h-4 text-muted-foreground" />
+            <span className={cn(
+              "font-medium",
+              geoConfig.includePhoto ? "text-success" : "text-muted-foreground"
+            )}>
+              Photo {geoConfig.includePhoto ? 'recommended' : 'not required'} for {geoConfig.name} applications
+            </span>
+          </div>
+
+          {/* Length guidelines */}
+          <div className="flex items-start gap-2 text-sm">
+            <Info className="w-4 h-4 text-muted-foreground mt-0.5" />
+            <span className="text-muted-foreground">{geoConfig.lengthGuidelines}</span>
+          </div>
+
+          {/* Format preferences */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-foreground">Format preferences:</p>
+            <div className="grid gap-1">
+              {geoConfig.formatPreferences.slice(0, 3).map((pref, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="w-3 h-3 text-success mt-0.5 flex-shrink-0" />
+                  <span>{pref}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* What to include/exclude */}
+          <div className="grid sm:grid-cols-2 gap-3 pt-2 border-t border-border">
+            <div>
+              <p className="text-xs font-medium text-success mb-2">✓ Include</p>
+              <div className="flex flex-wrap gap-1">
+                {geoConfig.includePersonalInfo.slice(0, 4).map((item, i) => (
+                  <span key={i} className="px-2 py-0.5 rounded bg-success/10 text-success text-xs">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-destructive mb-2">✗ Exclude</p>
+              <div className="flex flex-wrap gap-1">
+                {geoConfig.excludeInfo.slice(0, 4).map((item, i) => (
+                  <span key={i} className="px-2 py-0.5 rounded bg-destructive/10 text-destructive text-xs">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Cultural tips */}
+          <div className="pt-2 border-t border-border">
+            <p className="text-xs font-medium text-foreground mb-2">Cultural tips for {geoConfig.name}:</p>
+            <div className="space-y-1">
+              {geoConfig.culturalTips.slice(0, 2).map((tip, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <Lightbulb className="w-3 h-3 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <span>{tip}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Terminology differences */}
+          {geoConfig.commonTerms && geoConfig.commonTerms.length > 0 && geoConfig.region !== 'us' && (
+            <div className="pt-2 border-t border-border">
+              <p className="text-xs font-medium text-foreground mb-2">Terminology to use:</p>
+              <div className="space-y-1">
+                {geoConfig.commonTerms.map((term, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground line-through">{term.us}</span>
+                    <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-foreground font-medium">{term.local}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
