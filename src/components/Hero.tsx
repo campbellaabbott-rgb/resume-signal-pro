@@ -87,12 +87,7 @@ export function Hero() {
         <div className="max-w-3xl mx-auto text-center">
           {/* Problem Statement - Bold and Alarming */}
           <div className="mb-6 animate-fade-in">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium mb-6">
-              <AlertTriangle className="w-4 h-4" />
-              <span>{t('hero.problemBadge', '85% of resumes never reach a human')}</span>
-            </div>
-            
-            <h1 
+            <h1
               id="hero-heading"
               className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 leading-tight"
             >
