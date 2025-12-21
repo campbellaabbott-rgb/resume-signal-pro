@@ -313,7 +313,7 @@ serve(async (req) => {
     const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
       p_ip: clientIp,
       p_function: 'generate-ats-defense',
-      p_max_requests: 5,
+      p_max_requests: 20,
       p_window_minutes: 60
     });
 
