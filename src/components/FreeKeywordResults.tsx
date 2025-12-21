@@ -8,6 +8,7 @@ import {
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X
 } from "lucide-react";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
+import { PersonalizedInsights } from "./PersonalizedInsights";
 import { TieredPricingSection } from "./TieredPricingSection";
 import { ResumeBeforeAfter } from "./ResumeBeforeAfter";
 import { Button } from "@/components/ui/button";
@@ -1228,6 +1229,16 @@ export function FreeKeywordResults({
           </div>
         </div>
       )}
+
+      {/* Personalized Insights Section */}
+      <div className="mb-6 p-4 rounded-2xl bg-card/50 border border-border/50">
+        <PersonalizedInsights
+          industry={industry}
+          experienceLevel={experienceLevel}
+          atsScore={atsScoreEstimate}
+          hasJobDescription={!!jobMatchScore}
+        />
+      </div>
 
       {/* Score Cards Grid - Row 1: Primary Scores */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
