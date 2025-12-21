@@ -1159,6 +1159,70 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       metricsRate: 90
     }
   },
+  ux_designer: {
+    name: 'UX Designer',
+    aliases: ['user experience designer', 'ux researcher', 'product designer', 'experience designer', 'interaction designer', 'ux/ui designer', 'senior ux designer', 'lead ux designer', 'ux design lead'],
+    keySkills: ['User Research', 'Wireframing', 'Prototyping', 'Usability Testing', 'Information Architecture', 'Journey Mapping', 'Design Thinking', 'Figma/Sketch', 'Accessibility'],
+    mustHaveKeywords: ['user research', 'usability', 'wireframes', 'prototypes', 'user testing', 'personas', 'journey map', 'information architecture', 'accessibility', 'design thinking'],
+    resumeTips: [
+      'Show user research impact on design decisions',
+      'Quantify usability improvements (task completion, error reduction)',
+      'Include portfolio link with case studies',
+      'Highlight accessibility compliance achievements'
+    ],
+    bulletExamples: [
+      { weak: 'Conducted user research', strong: 'Led user research program with 200+ interviews, uncovering insights that drove 45% improvement in task completion rate' },
+      { weak: 'Created wireframes and prototypes', strong: 'Designed end-to-end checkout flow reducing cart abandonment by 35% and increasing mobile conversion by 28%' }
+    ],
+    keyMetrics: ['Task completion rate', 'User satisfaction (SUS/NPS)', 'Error rate reduction', 'Conversion improvement', 'Time-on-task reduction', 'Accessibility score'],
+    commonMistakes: [
+      'Not linking to portfolio with case studies',
+      'Missing quantified usability improvements',
+      'Focusing on deliverables instead of outcomes',
+      'Not showing research-to-design connection'
+    ],
+    interviewTopics: ['Design process', 'User research methods', 'Usability testing', 'Stakeholder collaboration', 'Design critique', 'Accessibility best practices'],
+    topResumeElements: {
+      sections: ['Portfolio Link', 'UX Experience', 'Research Methods', 'Tools', 'Education'],
+      differentiators: ['Strong case study portfolio', 'Quantified usability wins', 'Research methodology expertise', 'Accessibility certifications'],
+      avgBulletCount: 4,
+      certificationRate: 35,
+      portfolioRate: 98,
+      metricsRate: 75
+    }
+  },
+  ui_designer: {
+    name: 'UI Designer',
+    aliases: ['visual designer', 'interface designer', 'graphic designer', 'web designer', 'digital designer', 'ui/ux designer', 'senior ui designer', 'brand designer', 'design systems designer'],
+    keySkills: ['Visual Design', 'Design Systems', 'Typography', 'Color Theory', 'Figma/Sketch', 'Responsive Design', 'Motion Design', 'Brand Identity', 'Component Libraries'],
+    mustHaveKeywords: ['visual design', 'design system', 'UI', 'interface', 'components', 'responsive', 'typography', 'Figma', 'brand', 'style guide'],
+    resumeTips: [
+      'Include portfolio link showcasing visual work',
+      'Highlight design system contributions',
+      'Show cross-platform design experience (web, mobile, tablet)',
+      'Quantify design efficiency improvements'
+    ],
+    bulletExamples: [
+      { weak: 'Designed UI for mobile app', strong: 'Created award-winning mobile UI adopted by 2M+ users, achieving 4.8★ App Store rating with specific praise for visual design' },
+      { weak: 'Built design system components', strong: 'Architected design system with 150+ components used across 8 product teams, reducing design-to-dev handoff time by 60%' }
+    ],
+    keyMetrics: ['Design system adoption', 'Component reuse rate', 'Design-to-dev efficiency', 'User ratings/feedback', 'Brand consistency score', 'Cross-platform coverage'],
+    commonMistakes: [
+      'Not including portfolio link',
+      'Missing design system experience',
+      'Focusing only on aesthetics without outcomes',
+      'Not showing collaboration with developers'
+    ],
+    interviewTopics: ['Visual design principles', 'Design system architecture', 'Developer handoff', 'Brand consistency', 'Responsive design', 'Animation and motion'],
+    topResumeElements: {
+      sections: ['Portfolio Link', 'Design Experience', 'Design Systems', 'Tools', 'Education'],
+      differentiators: ['Award-winning designs', 'Design system leadership', 'Cross-platform expertise', 'Motion design skills'],
+      avgBulletCount: 4,
+      certificationRate: 25,
+      portfolioRate: 99,
+      metricsRate: 70
+    }
+  },
   developer_advocate: {
     name: 'Developer Advocate',
     aliases: ['developer relations', 'devrel', 'developer evangelist', 'technical evangelist', 'community manager', 'developer experience', 'dx advocate', 'api evangelist'],
@@ -1445,38 +1509,6 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       certificationRate: 72,
       portfolioRate: 15,
       metricsRate: 88
-    }
-  },
-  ux_designer: {
-    name: 'UX Designer',
-    aliases: ['ui designer', 'product designer', 'interaction designer', 'user researcher', 'ux/ui designer', 'senior designer', 'design lead'],
-    keySkills: ['User Research', 'Wireframing', 'Prototyping', 'Usability Testing', 'Design Systems', 'Figma/Sketch', 'Information Architecture', 'Accessibility'],
-    mustHaveKeywords: ['user research', 'prototype', 'usability', 'design system', 'wireframe', 'user experience', 'accessibility', 'conversion'],
-    resumeTips: [
-      'Include portfolio link prominently',
-      'Quantify impact on user metrics',
-      'Show research-to-design process',
-      'Highlight collaboration with product/engineering'
-    ],
-    bulletExamples: [
-      { weak: 'Designed mobile app interfaces', strong: 'Redesigned checkout flow increasing conversion by 35% based on 50+ user interviews' },
-      { weak: 'Created wireframes and prototypes', strong: 'Built design system adopted across 5 products, reducing design-to-development time by 40%' }
-    ],
-    keyMetrics: ['Conversion improvement', 'User satisfaction increase', 'Task completion rate', 'Design system adoption', 'Usability test participants'],
-    commonMistakes: [
-      'Missing portfolio link',
-      'Not showing impact on user metrics',
-      'Listing tools without showing outcomes',
-      'Not mentioning user research methods'
-    ],
-    interviewTopics: ['Design process', 'Portfolio walkthrough', 'User research methods', 'Design critique', 'Cross-functional collaboration'],
-    topResumeElements: {
-      sections: ['Summary', 'Design Experience', 'Skills & Tools', 'Portfolio', 'Education'],
-      differentiators: ['Portfolio link (mandatory)', 'UX metrics (conversion, NPS)', 'Design system work', 'User research samples'],
-      avgBulletCount: 4,
-      certificationRate: 25,
-      portfolioRate: 95,
-      metricsRate: 78
     }
   },
   accountant: {
