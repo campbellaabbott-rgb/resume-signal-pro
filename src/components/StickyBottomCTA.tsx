@@ -4,6 +4,7 @@ import { ArrowRight, Sparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { useABTest } from "@/hooks/use-ab-test";
+import { PRODUCTS } from "@/config/products";
 
 interface StickyBottomCTAProps {
   onGetStarted: () => void;
@@ -53,14 +54,20 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div className="text-white">
-                <p className="font-semibold text-sm md:text-base">Get rewritten bullets, not just scores</p>
+                <p className="font-semibold text-sm md:text-base">
+                  Premium packages from ${PRODUCTS.basicKeywordFix.priceUsd}
+                  {isLocalCurrency && <span className="text-white/80 text-xs ml-1">({formatPrice(PRODUCTS.basicKeywordFix.priceUsd)})</span>}
+                </p>
                 <p className="text-xs md:text-sm text-white/80">Full rewrites + LinkedIn optimization + job-specific tailoring</p>
               </div>
             </div>
             
             {/* Mobile: Compact */}
             <div className="sm:hidden text-white flex-1">
-              <p className="font-semibold text-sm">Get rewritten content, not just scores</p>
+              <p className="font-semibold text-sm">
+                From ${PRODUCTS.basicKeywordFix.priceUsd}
+                {isLocalCurrency && <span className="text-white/70 text-xs ml-1">({formatPrice(PRODUCTS.basicKeywordFix.priceUsd)})</span>}
+              </p>
               <p className="text-xs text-white/70">Full rewrites + LinkedIn optimization</p>
             </div>
             
