@@ -242,8 +242,9 @@ serve(async (req) => {
     // Record affiliate conversion if there was a referral
     const referralCode = session.metadata?.referral_code;
     if (referralCode && isFirstUse && session.amount_total) {
-      // Commission rates: $1 for keyword fix, $5 for everything else
-      const commissionCents = productType === 'basic_keyword_fix' ? 100 : 500;
+      // Commission rates: $1 for basic products, $5 for premium products
+      const lowCommissionProducts = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits'];
+      const commissionCents = lowCommissionProducts.includes(productType || '') ? 100 : 500;
       logStep("Recording affiliate conversion", { 
         referralCode, 
         amount: session.amount_total,
