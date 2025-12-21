@@ -3,9 +3,11 @@ import { Footer } from "@/components/Footer";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { PRODUCTS } from "@/config/products";
 
 export default function Terms() {
   const { t, i18n } = useTranslation();
+  const fullAnalysisPrice = `$${PRODUCTS.fullAnalysis.priceUsd.toFixed(2)} USD`;
   const dateLocale = i18n.language === 'es' ? 'es-ES' : i18n.language === 'hi' ? 'hi-IN' : i18n.language === 'tl' ? 'fil-PH' : 'en-US';
   
   return (
@@ -49,7 +51,7 @@ export default function Terms() {
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-foreground">4. Payment Terms and Refund Policy</h2>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                The Service costs $25.00 USD per analysis. Payment is processed securely through Stripe, a third-party payment processor. By making a purchase, you authorize us to charge your payment method for the total amount.
+                The Service costs {fullAnalysisPrice} per analysis. Payment is processed securely through Stripe, a third-party payment processor. By making a purchase, you authorize us to charge your payment method for the total amount.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-4">
                 <strong className="text-foreground">No Refunds:</strong> All sales are final. Due to the immediate delivery of digital analysis results upon payment, refunds are not available except where required by applicable law. By completing a purchase, you acknowledge and agree that you are waiving any right to a refund.
@@ -94,7 +96,7 @@ export default function Terms() {
             <section>
               <h2 className="text-2xl font-semibold mb-4 text-foreground">8. Limitation of Liability</h2>
               <p className="text-muted-foreground leading-relaxed">
-                TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL RESUME BOOSTER, ITS OFFICERS, DIRECTORS, EMPLOYEES, AGENTS, AFFILIATES, OR LICENSORS BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, PUNITIVE, OR EXEMPLARY DAMAGES, INCLUDING BUT NOT LIMITED TO DAMAGES FOR LOSS OF PROFITS, GOODWILL, USE, DATA, OR OTHER INTANGIBLE LOSSES, ARISING OUT OF OR IN CONNECTION WITH YOUR USE OR INABILITY TO USE THE SERVICE, EVEN IF WE HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. OUR TOTAL LIABILITY FOR ALL CLAIMS ARISING FROM OR RELATED TO THE SERVICE SHALL NOT EXCEED THE AMOUNT YOU PAID FOR THE SERVICE IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM, OR $25.00 USD, WHICHEVER IS GREATER.
+                TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL RESUME BOOSTER, ITS OFFICERS, DIRECTORS, EMPLOYEES, AGENTS, AFFILIATES, OR LICENSORS BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, PUNITIVE, OR EXEMPLARY DAMAGES, INCLUDING BUT NOT LIMITED TO DAMAGES FOR LOSS OF PROFITS, GOODWILL, USE, DATA, OR OTHER INTANGIBLE LOSSES, ARISING OUT OF OR IN CONNECTION WITH YOUR USE OR INABILITY TO USE THE SERVICE, EVEN IF WE HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. OUR TOTAL LIABILITY FOR ALL CLAIMS ARISING FROM OR RELATED TO THE SERVICE SHALL NOT EXCEED THE AMOUNT YOU PAID FOR THE SERVICE IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM, OR {fullAnalysisPrice}, WHICHEVER IS GREATER.
               </p>
             </section>
 
