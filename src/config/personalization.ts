@@ -973,6 +973,102 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Not mentioning specific methodologies (Lean, Six Sigma, Kaizen)'
     ],
     interviewTopics: ['Process improvement examples', 'Team management challenges', 'Budget optimization', 'Crisis management', 'Cross-departmental coordination']
+  },
+  executive_assistant: {
+    name: 'Executive Assistant',
+    aliases: ['ea', 'executive admin', 'executive secretary', 'senior executive assistant', 'c-suite assistant', 'administrative assistant', 'chief of staff', 'office manager'],
+    keySkills: ['Calendar Management', 'Travel Coordination', 'Meeting Planning', 'Communication', 'Confidentiality', 'Project Coordination', 'Microsoft Office', 'Stakeholder Management'],
+    mustHaveKeywords: ['calendar management', 'travel coordination', 'executive support', 'communication', 'scheduling', 'confidential', 'meetings', 'stakeholders'],
+    resumeTips: [
+      'Highlight executive-level support experience (C-suite, VP, Director)',
+      'Quantify meetings coordinated, travel arranged, budgets managed',
+      'Show discretion and confidentiality handling',
+      'List specific tools (Outlook, Concur, Zoom, Slack)'
+    ],
+    bulletExamples: [
+      { weak: 'Managed executive calendars', strong: 'Managed complex calendars for 3 C-suite executives, coordinating 50+ meetings weekly across 5 time zones' },
+      { weak: 'Arranged travel', strong: 'Coordinated $200K+ annual travel budget for 10-person leadership team, reducing costs by 15% through vendor negotiations' }
+    ],
+    keyMetrics: ['Executives supported', 'Meetings coordinated weekly', 'Travel budget managed', 'Cost savings', 'Events organized'],
+    commonMistakes: [
+      'Not specifying executive level supported',
+      'Missing volume metrics (meetings, travel, events)',
+      'Vague "administrative support" without specifics',
+      'Not mentioning tools and software proficiency'
+    ],
+    interviewTopics: ['Prioritization scenarios', 'Confidentiality handling', 'Difficult scheduling situations', 'Stakeholder management', 'Crisis management']
+  },
+  business_analyst: {
+    name: 'Business Analyst',
+    aliases: ['ba', 'senior business analyst', 'it business analyst', 'systems analyst', 'requirements analyst', 'process analyst', 'product analyst', 'data analyst'],
+    keySkills: ['Requirements Gathering', 'Process Mapping', 'Stakeholder Management', 'SQL', 'Data Analysis', 'Agile/Scrum', 'JIRA', 'User Stories'],
+    mustHaveKeywords: ['requirements', 'stakeholders', 'process improvement', 'analysis', 'documentation', 'agile', 'user stories', 'data'],
+    resumeTips: [
+      'Quantify project scope and business impact',
+      'Show requirements-to-delivery success metrics',
+      'Highlight cross-functional collaboration',
+      'List specific methodologies and tools (Agile, JIRA, Confluence)'
+    ],
+    bulletExamples: [
+      { weak: 'Gathered requirements for projects', strong: 'Gathered and documented 200+ requirements for $5M ERP implementation, achieving 95% stakeholder approval on first review' },
+      { weak: 'Created process documentation', strong: 'Mapped 15 end-to-end business processes, identifying automation opportunities that saved 2,000+ hours annually' }
+    ],
+    keyMetrics: ['Requirements delivered', 'Project value', 'Process improvements', 'Stakeholder satisfaction', 'Time/cost savings'],
+    commonMistakes: [
+      'Not quantifying project scope or business value',
+      'Missing specific tools and methodologies',
+      'Vague "analyzed processes" without outcomes',
+      'Not showing stakeholder management skills'
+    ],
+    interviewTopics: ['Requirements gathering techniques', 'Stakeholder conflict resolution', 'Process mapping examples', 'Agile ceremonies', 'Documentation best practices']
+  },
+  devops_engineer: {
+    name: 'DevOps Engineer',
+    aliases: ['site reliability engineer', 'sre', 'platform engineer', 'infrastructure engineer', 'cloud engineer', 'release engineer', 'build engineer', 'systems engineer'],
+    keySkills: ['CI/CD', 'Kubernetes', 'Docker', 'AWS/Azure/GCP', 'Terraform', 'Jenkins', 'Monitoring', 'Linux', 'Scripting', 'Infrastructure as Code'],
+    mustHaveKeywords: ['CI/CD', 'kubernetes', 'docker', 'cloud', 'automation', 'infrastructure', 'deployment', 'monitoring', 'terraform'],
+    resumeTips: [
+      'Quantify reliability improvements (uptime, MTTR, deployment frequency)',
+      'List specific cloud platforms and tools with versions',
+      'Show infrastructure scale (servers, containers, requests)',
+      'Highlight automation and efficiency gains'
+    ],
+    bulletExamples: [
+      { weak: 'Managed CI/CD pipelines', strong: 'Built CI/CD pipelines reducing deployment time from 4 hours to 15 minutes, enabling 50+ daily deployments across 12 microservices' },
+      { weak: 'Worked with Kubernetes', strong: 'Migrated 20+ services to Kubernetes, achieving 99.99% uptime and reducing infrastructure costs by 35%' }
+    ],
+    keyMetrics: ['Uptime %', 'Deployment frequency', 'MTTR reduction', 'Infrastructure cost savings', 'Automation coverage %'],
+    commonMistakes: [
+      'Not quantifying reliability metrics (uptime, MTTR)',
+      'Listing tools without showing outcomes',
+      'Missing scale (servers, containers, requests/sec)',
+      'Not showing cost optimization achievements'
+    ],
+    interviewTopics: ['System design', 'Incident response', 'CI/CD architecture', 'Cloud cost optimization', 'Monitoring and alerting strategies']
+  },
+  qa_engineer: {
+    name: 'QA Engineer',
+    aliases: ['quality assurance engineer', 'test engineer', 'sdet', 'software test engineer', 'automation engineer', 'quality engineer', 'test analyst', 'qa analyst'],
+    keySkills: ['Test Automation', 'Selenium', 'API Testing', 'Performance Testing', 'Test Planning', 'Bug Tracking', 'Agile Testing', 'CI/CD Integration'],
+    mustHaveKeywords: ['test automation', 'quality assurance', 'testing', 'bugs', 'selenium', 'api testing', 'test cases', 'regression'],
+    resumeTips: [
+      'Quantify test coverage and bug detection rates',
+      'Show automation framework development',
+      'Highlight defect prevention metrics',
+      'List specific tools (Selenium, Cypress, Postman, JMeter)'
+    ],
+    bulletExamples: [
+      { weak: 'Wrote automated tests', strong: 'Built Selenium automation framework achieving 85% test coverage, reducing regression testing time from 3 days to 4 hours' },
+      { weak: 'Found bugs in software', strong: 'Identified 500+ defects pre-release with 98% accuracy, reducing production bugs by 60% YoY' }
+    ],
+    keyMetrics: ['Test coverage %', 'Bugs found pre-release', 'Regression time reduction', 'Automation ROI', 'Production bug reduction %'],
+    commonMistakes: [
+      'Not quantifying test coverage or bug detection',
+      'Missing automation framework details',
+      'Vague "tested software" without metrics',
+      'Not showing CI/CD integration experience'
+    ],
+    interviewTopics: ['Test strategy design', 'Automation framework architecture', 'Bug prioritization', 'Performance testing approach', 'Shift-left testing']
   }
 };
 
@@ -1004,6 +1100,10 @@ export function getRoleAdvice(role: string): RoleConfig | null {
   if (normalizedRole.includes('financial analyst') || normalizedRole.includes('fp&a') || normalizedRole.includes('finance analyst')) return ROLE_CONFIGS.financial_analyst;
   if (normalizedRole.includes('customer success') || normalizedRole.includes('csm') || normalizedRole.includes('client success')) return ROLE_CONFIGS.customer_success;
   if (normalizedRole.includes('operations') && normalizedRole.includes('manager')) return ROLE_CONFIGS.operations_manager;
+  if (normalizedRole.includes('executive assistant') || normalizedRole.includes('ea') || normalizedRole.includes('admin assistant')) return ROLE_CONFIGS.executive_assistant;
+  if (normalizedRole.includes('business analyst') || normalizedRole.includes('ba') || normalizedRole.includes('requirements analyst')) return ROLE_CONFIGS.business_analyst;
+  if (normalizedRole.includes('devops') || normalizedRole.includes('sre') || normalizedRole.includes('site reliability') || normalizedRole.includes('platform engineer')) return ROLE_CONFIGS.devops_engineer;
+  if (normalizedRole.includes('qa') || normalizedRole.includes('quality assurance') || normalizedRole.includes('test engineer') || normalizedRole.includes('sdet')) return ROLE_CONFIGS.qa_engineer;
   
   return null;
 }
