@@ -763,6 +763,39 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
     { pattern: /\b(fellow|fellowship|resident|residency|postdoctoral|postdoc|research assistant|teaching assistant|ra|ta|graduate assistant)\b/gi, category: "industry_term", importance: "important" },
     // Entry activities
     { pattern: /\b(extracurricular|club|organization|volunteer|volunteering|community service|leadership role|student organization|fraternity|sorority)\b/gi, category: "soft_skill", importance: "nice_to_have" },
+    
+    // ===== GEOGRAPHIC & REGIONAL VARIATIONS =====
+    // US vs UK spelling variations (maps common terms)
+    { pattern: /\b(organisation|organisation|organise|organised|organising|organisations)\b/gi, category: "industry_term", importance: "important" },
+    { pattern: /\b(behaviour|behavioural|favour|favourable|colour|honour|labour|neighbourhood)\b/gi, category: "soft_skill", importance: "nice_to_have" },
+    { pattern: /\b(analyse|analysed|analysing|optimise|optimised|optimising|recognise|recognised|specialise|specialised)\b/gi, category: "hard_skill", importance: "important" },
+    { pattern: /\b(centre|centred|programme|programmes|licence|licenced|practise|practised|defence|offence)\b/gi, category: "industry_term", importance: "important" },
+    // UK-specific terminology
+    { pattern: /\b(cv|curriculum vitae|gcse|a-levels|a levels|o-levels|btec|nvq|hnd|hnc|foundation degree|postgraduate|undergraduate)\b/gi, category: "industry_term", importance: "important" },
+    { pattern: /\b(nhs|national health service|gp surgery|locum|registrar|consultant|fte|wte|banding|agenda for change)\b/gi, category: "industry_term", importance: "critical" },
+    { pattern: /\b(ftse|plc|ltd|limited company|companies house|hmrc|vat|paye|national insurance|ni number)\b/gi, category: "industry_term", importance: "important" },
+    { pattern: /\b(redundancy|garden leave|notice period|statutory|tribunal|acas|disciplinary|grievance|tupe)\b/gi, category: "hard_skill", importance: "important" },
+    // UK certifications & qualifications
+    { pattern: /\b(chartered|cipd|cima|acca|aca|cii|cim|iosh|nebosh|citb|cscs|rics|riba|cie)\b/gi, category: "certification", importance: "critical" },
+    // Australia/NZ terminology
+    { pattern: /\b(abn|acn|pty ltd|superannuation|super|fair work|award wage|payg|bas|gst|worksafe|workcover)\b/gi, category: "industry_term", importance: "important" },
+    { pattern: /\b(tafe|rto|vet|cert iii|cert iv|diploma|advanced diploma|atar|uac|vtac|satac|qtac)\b/gi, category: "certification", importance: "important" },
+    // Canada terminology
+    { pattern: /\b(sin number|ei|employment insurance|cpp|canada pension|rrsp|tfsa|gst\/hst|cra|provincial|federal)\b/gi, category: "industry_term", importance: "important" },
+    { pattern: /\b(cpa canada|cga|cma canada|hrpa|chrp|chrl|peng|p\.eng|ospe|apega|engineers canada)\b/gi, category: "certification", importance: "important" },
+    // EU/European terminology
+    { pattern: /\b(eu|european union|gdpr|schengen|europass|ects|bologna|erasmus|eu citizen|right to work)\b/gi, category: "industry_term", importance: "important" },
+    { pattern: /\b(betriebsrat|works council|tarifvertrag|collective agreement|social partners|trade union|union rep)\b/gi, category: "industry_term", importance: "important" },
+    // India terminology
+    { pattern: /\b(pan card|aadhaar|pf|provident fund|epf|esic|gratuity|ltc|hra|da|basic salary|ctc|in-hand)\b/gi, category: "industry_term", importance: "important" },
+    { pattern: /\b(ca india|cs|icwa|icai|icsi|icmai|ugc|aicte|iit|iim|nit|bits|vit|manipal)\b/gi, category: "certification", importance: "important" },
+    // Middle East terminology
+    { pattern: /\b(gcc|uae|ksa|visa sponsorship|labour card|work permit|noc|no objection|iqama|kafala|gratuity|end of service)\b/gi, category: "industry_term", importance: "important" },
+    // APAC terminology
+    { pattern: /\b(cpf|central provident|ep|employment pass|s pass|work permit|pr|permanent resident|singlish|meritocracy)\b/gi, category: "industry_term", importance: "important" },
+    // International business
+    { pattern: /\b(multinational|mne|mnc|expatriate|expat|relocation|mobility|global mobility|assignment|secondment|rotation)\b/gi, category: "industry_term", importance: "important" },
+    { pattern: /\b(cross-cultural|multicultural|intercultural|cultural awareness|cultural sensitivity|diversity|inclusion|belonging)\b/gi, category: "soft_skill", importance: "important" },
   ];
   
   const extracted: Map<string, { keyword: string; context: string; importance: "critical" | "important" | "nice_to_have"; category: KeywordMatch["category"] }> = new Map();

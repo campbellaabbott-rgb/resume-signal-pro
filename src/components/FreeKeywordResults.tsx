@@ -480,6 +480,33 @@ interface CareerSituation {
   situationSummary: string;
 }
 
+interface LayoutAdvice {
+  columns: "one_column" | "two_column";
+  useColor: boolean;
+  visualElements: "minimal" | "moderate" | "rich";
+  rationale: string;
+}
+
+interface IndustryNorm {
+  norm: string;
+  importance: "must_have" | "recommended" | "optional";
+}
+
+interface CurrentFormatAssessment {
+  isAppropriate: boolean;
+  mainIssue: string;
+  quickFix: string;
+}
+
+interface FormatRecommendation {
+  recommendedStyle: "traditional" | "modern" | "creative" | "hybrid";
+  layoutAdvice: LayoutAdvice;
+  industryNorms: IndustryNorm[];
+  avoidList: string[];
+  currentFormatAssessment: CurrentFormatAssessment;
+  templateSuggestion: string;
+}
+
 interface FreeKeywordResultsProps {
   industry: string;
   currentRole?: string;
@@ -524,6 +551,7 @@ interface FreeKeywordResultsProps {
   skillGapActions?: SkillGapAction[];
   competitiveAssessment?: CompetitiveAssessment;
   careerSituation?: CareerSituation;
+  formatRecommendation?: FormatRecommendation;
   onGenerateTailoredResume?: () => void;
   isGeneratingTailored?: boolean;
   // Deep job keyword matching props
@@ -576,6 +604,7 @@ export function FreeKeywordResults({
   skillGapActions = [],
   competitiveAssessment,
   careerSituation,
+  formatRecommendation,
   onGenerateTailoredResume,
   isGeneratingTailored,
   resumeText,
@@ -1821,6 +1850,130 @@ export function FreeKeywordResults({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Format Recommendation - Industry-Specific */}
+      {formatRecommendation && (
+        <div className="rounded-2xl bg-card border border-border p-5 mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            <LayoutList className="w-4 h-4 text-primary" />
+            <h4 className="font-semibold flex-1">Resume Format Recommendation</h4>
+            <span className={cn(
+              "text-xs px-2 py-1 rounded-full font-medium capitalize",
+              formatRecommendation.recommendedStyle === "traditional" ? "bg-blue-500/20 text-blue-600 dark:text-blue-400" :
+              formatRecommendation.recommendedStyle === "modern" ? "bg-purple-500/20 text-purple-600 dark:text-purple-400" :
+              formatRecommendation.recommendedStyle === "creative" ? "bg-pink-500/20 text-pink-600 dark:text-pink-400" :
+              "bg-primary/20 text-primary"
+            )}>
+              {formatRecommendation.recommendedStyle} style
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Based on {industry} industry standards and your experience level
+          </p>
+
+          {/* Current Format Assessment */}
+          <div className={cn(
+            "p-4 rounded-xl mb-4 border",
+            formatRecommendation.currentFormatAssessment.isAppropriate 
+              ? "bg-success/10 border-success/20" 
+              : "bg-warning/10 border-warning/20"
+          )}>
+            <div className="flex items-start gap-3">
+              {formatRecommendation.currentFormatAssessment.isAppropriate ? (
+                <CheckCircle className="w-5 h-5 text-success shrink-0" />
+              ) : (
+                <AlertTriangle className="w-5 h-5 text-warning shrink-0" />
+              )}
+              <div>
+                <p className={cn(
+                  "font-medium",
+                  formatRecommendation.currentFormatAssessment.isAppropriate ? "text-success" : "text-warning"
+                )}>
+                  {formatRecommendation.currentFormatAssessment.isAppropriate 
+                    ? "Your format fits your industry!" 
+                    : "Format needs adjustment"}
+                </p>
+                {!formatRecommendation.currentFormatAssessment.isAppropriate && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {formatRecommendation.currentFormatAssessment.mainIssue}
+                  </p>
+                )}
+                <p className="text-sm font-medium text-primary mt-2">
+                  Quick fix: {formatRecommendation.currentFormatAssessment.quickFix}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Layout Advice */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="p-3 rounded-lg bg-muted/50 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Layout</p>
+              <p className="text-sm font-semibold capitalize">
+                {formatRecommendation.layoutAdvice.columns === "one_column" ? "Single Column" : "Two Column"}
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/50 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Color</p>
+              <p className="text-sm font-semibold">
+                {formatRecommendation.layoutAdvice.useColor ? "✓ Acceptable" : "✗ Avoid"}
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/50 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Visuals</p>
+              <p className="text-sm font-semibold capitalize">
+                {formatRecommendation.layoutAdvice.visualElements}
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/50 text-center col-span-2 md:col-span-1">
+              <p className="text-xs text-muted-foreground mb-1">Style</p>
+              <p className="text-sm font-semibold capitalize">
+                {formatRecommendation.recommendedStyle}
+              </p>
+            </div>
+          </div>
+
+          {/* Industry Norms */}
+          <div className="mb-4">
+            <p className="text-sm font-semibold mb-3">What top {industry} resumes do:</p>
+            <div className="space-y-2">
+              {formatRecommendation.industryNorms.map((norm, index) => (
+                <div key={index} className="flex items-start gap-2">
+                  <span className={cn(
+                    "text-xs px-2 py-0.5 rounded shrink-0 mt-0.5",
+                    norm.importance === "must_have" ? "bg-destructive/20 text-destructive" :
+                    norm.importance === "recommended" ? "bg-primary/20 text-primary" :
+                    "bg-muted text-muted-foreground"
+                  )}>
+                    {norm.importance === "must_have" ? "Must" : norm.importance === "recommended" ? "Rec" : "Opt"}
+                  </span>
+                  <p className="text-sm text-foreground">{norm.norm}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Things to Avoid */}
+          <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20 mb-4">
+            <p className="text-xs font-semibold text-destructive mb-2">Avoid for {industry}:</p>
+            <div className="flex flex-wrap gap-2">
+              {formatRecommendation.avoidList.map((item, index) => (
+                <span key={index} className="text-xs px-2 py-1 rounded-full bg-destructive/10 text-destructive">
+                  ✗ {item}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Template Suggestion */}
+          <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+            <p className="text-sm">
+              <span className="font-semibold text-primary">Ideal template: </span>
+              <span className="text-muted-foreground">{formatRecommendation.templateSuggestion}</span>
+            </p>
           </div>
         </div>
       )}

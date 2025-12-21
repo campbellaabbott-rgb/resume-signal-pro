@@ -372,6 +372,11 @@ ANALYSIS RULES:
     - "recent_grad": 0-2 years experience, recent graduation date, internships, entry-level focus
     - "standard": None of the above special situations apply
     Provide tailored advice specific to their situation.
+27. Resume Format Recommendation: Based on their detected industry and experience level, recommend the optimal resume format:
+    - Format style: "traditional" (finance, law, government, healthcare), "modern" (tech, startups, marketing), "creative" (design, media, advertising), or "hybrid" (most versatile)
+    - Layout: one-column vs two-column, visual elements, color usage
+    - Industry-specific tips for their field
+    - What top candidates in their industry are doing with their resume format
 ${hasJobDescription ? `
 JOB MATCHING ANALYSIS (REQUIRED when job description is provided):
 26. Job Match Score (0-100): How well the resume matches the specific job requirements
@@ -756,6 +761,54 @@ ${resumeText.substring(0, 15000)}
                   },
                   required: ["likelyPosition", "strengthVsField", "weaknessVsField"],
                   description: "Competitive assessment. Only provide if job description given."
+                },
+                formatRecommendation: {
+                  type: "object",
+                  properties: {
+                    recommendedStyle: { 
+                      type: "string", 
+                      enum: ["traditional", "modern", "creative", "hybrid"],
+                      description: "traditional=finance/law/healthcare/government, modern=tech/startups, creative=design/media/advertising, hybrid=versatile" 
+                    },
+                    layoutAdvice: {
+                      type: "object",
+                      properties: {
+                        columns: { type: "string", enum: ["one_column", "two_column"], description: "Recommended column layout" },
+                        useColor: { type: "boolean", description: "Whether color accents are appropriate for this industry" },
+                        visualElements: { type: "string", enum: ["minimal", "moderate", "rich"], description: "Level of visual elements (icons, graphics, charts)" },
+                        rationale: { type: "string", description: "Why this layout works for their industry (under 15 words)" }
+                      },
+                      required: ["columns", "useColor", "visualElements", "rationale"]
+                    },
+                    industryNorms: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          norm: { type: "string", description: "What top candidates in this industry do (under 15 words)" },
+                          importance: { type: "string", enum: ["must_have", "recommended", "optional"] }
+                        },
+                        required: ["norm", "importance"]
+                      },
+                      description: "3-4 industry-specific format norms"
+                    },
+                    avoidList: {
+                      type: "array",
+                      items: { type: "string" },
+                      description: "3 format elements to AVOID for this industry (e.g., 'photos', 'colorful headers', 'graphics')"
+                    },
+                    currentFormatAssessment: {
+                      type: "object",
+                      properties: {
+                        isAppropriate: { type: "boolean", description: "Is their current format appropriate for their target industry?" },
+                        mainIssue: { type: "string", description: "Main format issue if not appropriate (under 15 words)" },
+                        quickFix: { type: "string", description: "One quick fix for their format (under 15 words)" }
+                      },
+                      required: ["isAppropriate", "mainIssue", "quickFix"]
+                    },
+                    templateSuggestion: { type: "string", description: "Brief description of ideal template style for them (under 20 words)" }
+                  },
+                  required: ["recommendedStyle", "layoutAdvice", "industryNorms", "avoidList", "currentFormatAssessment", "templateSuggestion"]
                 }
               },
               required: [
@@ -765,7 +818,8 @@ ${resumeText.substring(0, 15000)}
                 "redFlags", "keywords", "readabilityScore", "bulletImpactScore", 
                 "keywordDensity", "improvementPotential", "topSkipReasons",
                 "powerWords", "weakPhrases", "timelineAnalysis", "industryBenchmark",
-                "quickWins", "sampleRewrite", "atsSystemCompatibility", "careerSituation"
+                "quickWins", "sampleRewrite", "atsSystemCompatibility", "careerSituation",
+                "formatRecommendation"
               ]
             }
           }
