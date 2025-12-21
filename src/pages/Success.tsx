@@ -21,6 +21,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { AnalysisResults, type AnalysisData } from "@/components/AnalysisResults";
 import { ResumeRecovery } from "@/components/ResumeRecovery";
+import { SmartProductRecommendations } from "@/components/SmartProductRecommendations";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -44,11 +45,13 @@ import {
 } from "@/hooks/use-resume-storage";
 import { useABConversion } from "@/hooks/use-ab-test";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
+import { usePersonalization } from "@/hooks/use-personalization";
 
 const Success = () => {
   const { t } = useTranslation();
   const { trackAllConversions } = useABConversion();
   const { trackPurchaseCompleted } = useConversionTracking();
+  const { updateFromAnalysis } = usePersonalization();
   
   // Analysis progress steps
   const analysisSteps: Array<{id: number; label: string; icon: typeof CheckCircle2}> = [
@@ -119,6 +122,9 @@ const Success = () => {
         setAnalysisData(analysisResult);
         setShareId(newShareId);
         setEmailSent(wasEmailSent || false);
+
+        // Save personalization profile for future content generation
+        updateFromAnalysis(analysisResult, resumeText, linkedInText, jobDescriptionText, stripeSessionId);
 
         // Track A/B test conversion (paid analysis completed)
         if (!hasTrackedConversion) {

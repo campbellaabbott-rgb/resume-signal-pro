@@ -16,7 +16,7 @@ serve(async (req) => {
   }
 
   try {
-    const { resumeText, jobDescription, jobTitle, jobCompany } = await req.json();
+    const { resumeText, jobDescription, jobTitle, jobCompany, personalizationContext } = await req.json();
 
     if (!resumeText) {
       return new Response(
@@ -27,6 +27,7 @@ serve(async (req) => {
 
     logStep("Starting keyword analysis", { 
       hasJobDescription: !!jobDescription,
+      hasPersonalization: !!personalizationContext,
       resumeLength: resumeText?.length 
     });
 
@@ -37,6 +38,11 @@ serve(async (req) => {
 
     const systemPrompt = `You are an expert ATS (Applicant Tracking System) keyword analyst. 
 Your job is to analyze resumes and identify missing keywords that would improve ATS matching scores.
+
+${personalizationContext ? `CANDIDATE CONTEXT (use this to personalize your analysis):
+${personalizationContext}
+
+Tailor your keyword suggestions specifically for this candidate's industry, experience level, and career stage.` : ''}
 
 You MUST respond with a valid JSON object containing:
 {
@@ -59,8 +65,8 @@ You MUST respond with a valid JSON object containing:
 Focus on:
 1. Keywords commonly used in ATS systems for the relevant industry
 2. Action verbs that demonstrate impact
-3. Technical skills and certifications
-4. Industry-specific terminology
+3. Technical skills and certifications relevant to their experience level
+4. Industry-specific terminology for their target role
 5. Soft skills keywords that ATS systems look for`;
 
     const userPrompt = `Analyze this resume for missing ATS keywords:
