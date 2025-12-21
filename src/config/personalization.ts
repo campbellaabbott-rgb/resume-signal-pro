@@ -1127,6 +1127,70 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       metricsRate: 88
     }
   },
+  solutions_engineer: {
+    name: 'Solutions Engineer',
+    aliases: ['solutions architect', 'sales engineer', 'presales engineer', 'technical solutions engineer', 'customer engineer', 'implementation engineer', 'se', 'field engineer'],
+    keySkills: ['Technical Demos', 'Customer Discovery', 'Solution Design', 'POC Development', 'Technical Presentations', 'API Integration', 'Stakeholder Management', 'Technical Writing'],
+    mustHaveKeywords: ['solutions', 'customer', 'technical', 'demo', 'POC', 'implementation', 'sales', 'integration', 'requirements', 'enterprise'],
+    resumeTips: [
+      'Quantify deal sizes influenced and win rates',
+      'Show POC success rates and implementation outcomes',
+      'Highlight customer-facing presentation experience',
+      'Include technical depth alongside sales metrics'
+    ],
+    bulletExamples: [
+      { weak: 'Supported sales team with demos', strong: 'Delivered 150+ technical demos annually, directly influencing $25M in closed deals with 78% win rate on engaged opportunities' },
+      { weak: 'Built POCs for customers', strong: 'Designed and delivered 40+ custom POCs for enterprise clients, achieving 85% conversion rate and reducing sales cycle by 30%' }
+    ],
+    keyMetrics: ['Deal value influenced', 'Win rate', 'POC success rate', 'Demos delivered', 'Customer satisfaction', 'Sales cycle reduction'],
+    commonMistakes: [
+      'Not quantifying revenue or deal influence',
+      'Missing POC/demo success metrics',
+      'Focusing only on technical skills, not sales impact',
+      'Not showing customer relationship outcomes'
+    ],
+    interviewTopics: ['Technical discovery process', 'Handling objections', 'Complex demo scenarios', 'Working with sales teams', 'Customer success stories', 'Technical deep-dives'],
+    topResumeElements: {
+      sections: ['Summary', 'Solutions Experience', 'Technical Skills', 'Sales Impact', 'Education'],
+      differentiators: ['Revenue influence metrics', 'POC success rates', 'Enterprise customer logos', 'Technical certifications'],
+      avgBulletCount: 5,
+      certificationRate: 60,
+      portfolioRate: 35,
+      metricsRate: 90
+    }
+  },
+  developer_advocate: {
+    name: 'Developer Advocate',
+    aliases: ['developer relations', 'devrel', 'developer evangelist', 'technical evangelist', 'community manager', 'developer experience', 'dx advocate', 'api evangelist'],
+    keySkills: ['Technical Content Creation', 'Public Speaking', 'Community Building', 'Documentation', 'Open Source', 'Social Media', 'Tutorial Development', 'Developer Experience'],
+    mustHaveKeywords: ['developer', 'community', 'content', 'advocacy', 'documentation', 'tutorials', 'speaking', 'open source', 'engagement', 'education'],
+    resumeTips: [
+      'Quantify community growth and engagement metrics',
+      'Show content reach (views, reads, shares)',
+      'Highlight speaking engagements and audience sizes',
+      'Include developer adoption or product usage impact'
+    ],
+    bulletExamples: [
+      { weak: 'Created developer content', strong: 'Produced 100+ technical tutorials and videos reaching 2M+ developers, driving 40% increase in API adoption' },
+      { weak: 'Spoke at conferences', strong: 'Delivered 25+ conference talks and workshops to 10K+ developers, generating 500+ qualified leads and 15% increase in signups' }
+    ],
+    keyMetrics: ['Content reach (views/reads)', 'Community growth', 'Conference talks delivered', 'Developer adoption increase', 'Engagement rates', 'Lead generation'],
+    commonMistakes: [
+      'Not quantifying content reach and impact',
+      'Missing community growth metrics',
+      'Focusing only on content creation, not business outcomes',
+      'Not showing developer adoption influence'
+    ],
+    interviewTopics: ['Content strategy', 'Community building', 'Measuring DevRel success', 'Developer feedback loops', 'Balancing advocacy and product', 'Public speaking experience'],
+    topResumeElements: {
+      sections: ['Summary', 'DevRel Experience', 'Content & Speaking', 'Technical Skills', 'Community Impact'],
+      differentiators: ['Content reach metrics', 'Speaking portfolio', 'Community growth achievements', 'Open source contributions'],
+      avgBulletCount: 5,
+      certificationRate: 25,
+      portfolioRate: 95,
+      metricsRate: 80
+    }
+  },
   data_engineer: {
     name: 'Data Engineer',
     aliases: ['etl developer', 'data pipeline engineer', 'analytics engineer', 'big data engineer', 'data platform engineer', 'data infrastructure engineer', 'spark engineer'],
