@@ -148,8 +148,11 @@ export function Hero() {
               <span>Free ATS Score in 30 Seconds</span>
             </div>
             
-            <p className="text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto mb-6 leading-relaxed">
-              {t('hero.mainSubheading', "Find out in 30 seconds. Get your ATS score and see exactly what's costing you interviews.")}
+            <p className="text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto mb-2 leading-relaxed">
+              {t('hero.mainSubheading', "Find out in 30 seconds. Our AI simulates how ATS systems scan your resume and shows exactly what's costing you interviews.")}
+            </p>
+            <p className="text-xs sm:text-sm text-muted-foreground/60 max-w-lg mx-auto mb-6">
+              {t('hero.atsSystemsCredibility', 'Based on parsing rules from Workday, Greenhouse, Lever, Taleo, iCIMS & 50+ ATS platforms')}
             </p>
 
             {/* Mobile-first: Clear step indicator */}
