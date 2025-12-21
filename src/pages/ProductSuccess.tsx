@@ -203,6 +203,7 @@ export default function ProductSuccess() {
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const [recoveryResumeText, setRecoveryResumeText] = useState("");
   const [recoveryJobDescription, setRecoveryJobDescription] = useState("");
+  const [recoveryTargetRoles, setRecoveryTargetRoles] = useState<string[]>(['']);
   const [recoveryFile, setRecoveryFile] = useState<File | null>(null);
   const [isParsingFile, setIsParsingFile] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -230,7 +231,7 @@ export default function ProductSuccess() {
   }, []);
 
   // Regenerate content with provided resume text
-  const regenerateContent = useCallback(async (resumeText: string, jobDescription?: string) => {
+  const regenerateContent = useCallback(async (resumeText: string, jobDescription?: string, targetRoles?: string[]) => {
     if (!resumeText || resumeText.length < 50) {
       toast({
         title: "Resume too short",
@@ -261,7 +262,9 @@ export default function ProductSuccess() {
       } else if (productKey === 'atsDefense') {
         endpoint = 'generate-ats-defense';
         body.sessionId = sessionId;
-        body.targetRoles = [];
+        // Filter out empty role strings
+        const validRoles = (targetRoles || []).filter(r => r.trim().length > 0);
+        body.targetRoles = validRoles;
         body.allowRegeneration = true; // Flag to bypass session-used check for recovery
         if (jobDescription) body.jobDescription = jobDescription;
       }
@@ -1028,6 +1031,62 @@ export default function ProductSuccess() {
                         className="min-h-[150px] resize-none"
                       />
 
+                      {/* Target Roles - ATS Defense specific */}
+                      {isAtsDefense && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-sm font-medium text-foreground">
+                              Target Job Titles
+                              <span className="text-muted-foreground font-normal ml-1">(up to 3)</span>
+                            </label>
+                            <Badge variant="secondary" className="text-xs">
+                              Multi-role optimization
+                            </Badge>
+                          </div>
+                          <div className="space-y-2">
+                            {recoveryTargetRoles.map((role, index) => (
+                              <div key={index} className="flex gap-2">
+                                <Input
+                                  placeholder={index === 0 ? "e.g., Software Engineer" : index === 1 ? "e.g., Full Stack Developer" : "e.g., Backend Engineer"}
+                                  value={role}
+                                  onChange={(e) => {
+                                    const newRoles = [...recoveryTargetRoles];
+                                    newRoles[index] = e.target.value;
+                                    setRecoveryTargetRoles(newRoles);
+                                  }}
+                                />
+                                {index > 0 && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      setRecoveryTargetRoles(recoveryTargetRoles.filter((_, i) => i !== index));
+                                    }}
+                                    className="shrink-0"
+                                  >
+                                    <span className="sr-only">Remove role</span>
+                                    ×
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                            {recoveryTargetRoles.length < 3 && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setRecoveryTargetRoles([...recoveryTargetRoles, ''])}
+                                className="w-full"
+                              >
+                                + Add Another Target Role
+                              </Button>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Add up to 3 job titles to optimize your resume for multiple roles simultaneously.
+                          </p>
+                        </div>
+                      )}
+
                       {/* Job Description - for ATS Defense and other products */}
                       {(isAtsDefense || isKeywordFix || isCoverLetter || isPremiumPackage) && (
                         <div className="space-y-2">
@@ -1058,7 +1117,11 @@ export default function ProductSuccess() {
                         size="lg" 
                         className="w-full gap-2"
                         disabled={!recoveryResumeText || recoveryResumeText.length < 50 || isRegenerating}
-                        onClick={() => regenerateContent(recoveryResumeText, recoveryJobDescription || undefined)}
+                        onClick={() => regenerateContent(
+                          recoveryResumeText, 
+                          recoveryJobDescription || undefined,
+                          isAtsDefense ? recoveryTargetRoles : undefined
+                        )}
                       >
                         {isRegenerating ? (
                           <>
