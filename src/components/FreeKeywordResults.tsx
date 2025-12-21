@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useABTest } from "@/hooks/use-ab-test";
 import { useCurrency } from "@/hooks/use-currency";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { PRODUCTS } from "@/config/products";
 import {
   Tooltip,
   TooltipContent,
@@ -108,9 +109,9 @@ const metricTooltips = {
 // A/B Test copy variants for product CTAs
 const getProductCtaCopy = (variant: 'control' | 'benefit_focused' | 'scarcity') => ({
   coverLetter: {
-    control: { button: 'Generate Cover Letter — $12', description: 'AI-generated cover letter tailored to your resume and target job. Ready to send in minutes.' },
+    control: { button: `Generate Cover Letter — $${PRODUCTS.coverLetter.priceUsd}`, description: 'AI-generated cover letter tailored to your resume and target job. Ready to send in minutes.' },
     benefit_focused: { button: 'Get Your Interview-Winning Letter', description: 'Stand out from 100+ applicants with a personalized cover letter that gets recruiters excited.' },
-    scarcity: { button: 'Create Cover Letter Now — $12', description: 'Most applicants skip cover letters. Get ahead of the competition with a custom letter in 2 minutes.' },
+    scarcity: { button: `Create Cover Letter Now — $${PRODUCTS.coverLetter.priceUsd}`, description: 'Most applicants skip cover letters. Get ahead of the competition with a custom letter in 2 minutes.' },
   }[variant],
   keywordFix: {
     control: { button: 'Get Full Keyword Report', headline: 'Want 50+ Industry Keywords?' },
@@ -118,7 +119,7 @@ const getProductCtaCopy = (variant: 'control' | 'benefit_focused' | 'scarcity') 
     scarcity: { button: 'Get Keywords Before Others Do', headline: 'Beat 87% of Applicants' },
   }[variant],
   premiumPackage: {
-    control: { button: 'Buy Premium Package — $59', headline: 'Premium Resume Package', subtext: 'Everything you need to land interviews' },
+    control: { button: `Buy Premium Package — $${PRODUCTS.premiumPackage.priceUsd}`, headline: 'Premium Resume Package', subtext: 'Everything you need to land interviews' },
     benefit_focused: { button: 'Get Interview-Ready Now', headline: 'Land Your Dream Job Faster', subtext: '3x more interview callbacks with our complete package' },
     scarcity: { button: 'Claim Your Package — Limited', headline: 'Premium Resume Package', subtext: 'Join 10,000+ who landed interviews this month' },
   }[variant],
@@ -625,7 +626,8 @@ export function FreeKeywordResults({
   // A/B Test for product CTAs
   const productCtaTest = useABTest('product_ctas');
   
-  const priceDisplay = isLocalCurrency ? `$25 ≈ ${formatPrice(25)}` : '$25';
+  const fullAnalysisPrice = PRODUCTS.fullAnalysis.priceUsd;
+  const priceDisplay = isLocalCurrency ? `$${fullAnalysisPrice} ≈ ${formatPrice(fullAnalysisPrice)}` : `$${fullAnalysisPrice}`;
   
   // CTA text variants for first upgrade box
   const getFirstCtaText = () => {
@@ -2223,7 +2225,7 @@ export function FreeKeywordResults({
           
           <div className="flex items-center gap-2 mt-4 p-2 rounded-lg bg-primary/10 border border-primary/20">
             <Lock className="w-3 h-3 text-primary" />
-            <span className="text-xs text-primary">Get all your bullet points rewritten in the full $25 analysis</span>
+            <span className="text-xs text-primary">Get all your bullet points rewritten in the full ${PRODUCTS.fullAnalysis.priceUsd} analysis</span>
           </div>
         </div>
       )}
@@ -2302,7 +2304,7 @@ export function FreeKeywordResults({
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-primary">Premium Package</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">$59</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">${PRODUCTS.premiumPackage.priceUsd}</span>
               </div>
             </div>
             <h4 className="text-xl font-bold text-foreground mb-2">
@@ -2419,7 +2421,7 @@ export function FreeKeywordResults({
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h5 className="font-semibold text-foreground">{getProductCtaCopy(productCtaTest.variant).keywordFix.headline}</h5>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">$10</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">${PRODUCTS.basicKeywordFix.priceUsd}</span>
               </div>
               <p className="text-sm text-muted-foreground mb-3">
                 Get a complete keyword optimization report with exact phrases recruiters search for in your industry.
@@ -2536,7 +2538,7 @@ export function FreeKeywordResults({
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <h4 className="font-bold text-foreground">Custom Cover Letter</h4>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent-foreground font-medium">$12</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent-foreground font-medium">${PRODUCTS.coverLetter.priceUsd}</span>
             </div>
             <p className="text-sm text-muted-foreground mb-3">
               {getProductCtaCopy(productCtaTest.variant).coverLetter.description}
@@ -2558,7 +2560,7 @@ export function FreeKeywordResults({
         <div className="relative">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider text-primary-foreground/80">Best Value</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-primary-foreground font-bold">Save $28</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-primary-foreground font-bold">{PRODUCTS.premiumPackage.savings}</span>
           </div>
           <h3 className="text-2xl font-bold text-primary-foreground mb-2">
             {getProductCtaCopy(productCtaTest.variant).premiumPackage.headline}
@@ -2584,8 +2586,7 @@ export function FreeKeywordResults({
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <PremiumPackageButton variant={productCtaTest.variant} isPrimary section="bottom_cta" />
             <div className="text-primary-foreground">
-              <span className="text-2xl font-bold">$59</span>
-              <span className="text-sm text-primary-foreground/70 ml-1 line-through">$87</span>
+              <span className="text-2xl font-bold">${PRODUCTS.premiumPackage.priceUsd}</span>
             </div>
           </div>
         </div>
