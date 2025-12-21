@@ -197,7 +197,7 @@ export default function Affiliates() {
               <div>
                 <h3 className="font-semibold mb-1">Your Referral Link</h3>
                 <p className="text-sm text-muted-foreground mb-2">
-                  Share this link to earn {formatCurrency(affiliate?.commission_amount || 500)} per sale
+                  Share this link to earn rewards
                 </p>
                 <code className="text-xs bg-background px-2 py-1 rounded border break-all">
                   {getReferralLink()}
