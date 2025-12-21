@@ -3079,6 +3079,70 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
     ],
     interviewTopics: ['SQL proficiency', 'Performance tuning techniques', 'Backup/recovery scenarios', 'High availability design', 'Troubleshooting'],
     topResumeElements: { sections: ['Summary', 'Experience', 'Certifications', 'Technical Skills', 'Education'], differentiators: ['Database certifications (Oracle, Microsoft)', 'Database scale', 'Performance improvements', 'Uptime achievements'], avgBulletCount: 4, certificationRate: 70, portfolioRate: 10, metricsRate: 85 }
+  },
+  technical_writer: {
+    name: 'Technical Writer',
+    aliases: ['tech writer', 'documentation specialist', 'content developer', 'information developer', 'api writer', 'senior technical writer', 'lead technical writer', 'technical author'],
+    keySkills: ['Technical Documentation', 'API Documentation', 'User Guides', 'DITA/Markdown', 'Content Management', 'Information Architecture', 'Developer Docs', 'Style Guides'],
+    mustHaveKeywords: ['documentation', 'technical writing', 'user guides', 'API', 'content', 'tutorials', 'knowledge base', 'style guide', 'DITA', 'markdown'],
+    resumeTips: [
+      'Include links to published documentation samples',
+      'Quantify documentation impact (support tickets, user adoption)',
+      'Show collaboration with engineering teams',
+      'Highlight tools and documentation systems used'
+    ],
+    bulletExamples: [
+      { weak: 'Wrote technical documentation', strong: 'Created API documentation for 200+ endpoints, reducing developer onboarding time by 50% and support tickets by 40%' },
+      { weak: 'Maintained user guides', strong: 'Authored 150+ knowledge base articles with 500K+ annual views, achieving 4.5/5 user helpfulness rating' }
+    ],
+    keyMetrics: ['Documentation coverage', 'Support ticket reduction', 'User satisfaction rating', 'Page views/engagement', 'Onboarding time reduction', 'Articles published'],
+    commonMistakes: [
+      'Not including writing samples or portfolio',
+      'Missing impact metrics on user experience',
+      'Vague "wrote documentation" without specifics',
+      'Not showing collaboration with SMEs'
+    ],
+    interviewTopics: ['Documentation process', 'Working with engineers', 'Handling complex technical concepts', 'Tools and workflows', 'Style guide development', 'User feedback incorporation'],
+    topResumeElements: {
+      sections: ['Writing Samples', 'Technical Writing Experience', 'Tools & Technologies', 'Skills', 'Education'],
+      differentiators: ['Published documentation portfolio', 'Measurable user impact', 'API documentation expertise', 'Developer docs experience'],
+      avgBulletCount: 4,
+      certificationRate: 30,
+      portfolioRate: 95,
+      metricsRate: 72
+    }
+  },
+  documentation_engineer: {
+    name: 'Documentation Engineer',
+    aliases: ['docs engineer', 'developer documentation engineer', 'docs as code engineer', 'documentation developer', 'technical documentation engineer', 'docs tooling engineer'],
+    keySkills: ['Docs-as-Code', 'Static Site Generators', 'Git/GitHub', 'CI/CD for Docs', 'API Reference Generation', 'Markdown/MDX', 'Documentation Platforms', 'Automation'],
+    mustHaveKeywords: ['documentation', 'docs-as-code', 'automation', 'API reference', 'static site', 'CI/CD', 'developer experience', 'tooling', 'Git'],
+    resumeTips: [
+      'Show docs tooling and automation achievements',
+      'Quantify developer experience improvements',
+      'Highlight docs platform architecture',
+      'Include open source docs contributions'
+    ],
+    bulletExamples: [
+      { weak: 'Built documentation system', strong: 'Architected docs-as-code platform processing 500+ pages with automated API reference generation, reducing docs deployment time from 2 hours to 5 minutes' },
+      { weak: 'Automated documentation workflows', strong: 'Built CI/CD pipeline for docs with automated link checking, versioning, and preview environments, eliminating 95% of broken link issues' }
+    ],
+    keyMetrics: ['Docs build/deploy time', 'Automation coverage', 'Developer adoption', 'Pages/endpoints documented', 'Error reduction', 'Contribution velocity'],
+    commonMistakes: [
+      'Focusing only on writing, not tooling',
+      'Not showing automation achievements',
+      'Missing docs platform architecture experience',
+      'Not quantifying developer experience improvements'
+    ],
+    interviewTopics: ['Docs-as-code workflows', 'Static site generators', 'API documentation tools', 'CI/CD for docs', 'Developer experience', 'Documentation architecture'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'Documentation Engineering Experience', 'Tools & Platforms', 'Projects', 'Education'],
+      differentiators: ['Docs platform architecture', 'Automation achievements', 'Open source contributions', 'Developer experience metrics'],
+      avgBulletCount: 4,
+      certificationRate: 25,
+      portfolioRate: 85,
+      metricsRate: 80
+    }
   }
 };
 
