@@ -65,6 +65,39 @@ export type Database = {
         }
         Relationships: []
       }
+      error_telemetry: {
+        Row: {
+          context: Json | null
+          created_at: string
+          error_code: string
+          error_message: string | null
+          error_type: string
+          function_name: string | null
+          http_status: number | null
+          id: string
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          error_code: string
+          error_message?: string | null
+          error_type: string
+          function_name?: string | null
+          http_status?: number | null
+          id?: string
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          error_code?: string
+          error_message?: string | null
+          error_type?: string
+          function_name?: string | null
+          http_status?: number | null
+          id?: string
+        }
+        Relationships: []
+      }
       free_scan_leads: {
         Row: {
           ats_score_estimate: number | null
@@ -271,6 +304,17 @@ export type Database = {
       }
       get_today_scan_count: { Args: never; Returns: number }
       increment_free_scan_count: { Args: never; Returns: undefined }
+      log_error_telemetry: {
+        Args: {
+          p_context?: Json
+          p_error_code: string
+          p_error_message?: string
+          p_error_type: string
+          p_function_name?: string
+          p_http_status?: number
+        }
+        Returns: boolean
+      }
       save_free_scan_lead: {
         Args: { p_ats_score?: number; p_email: string; p_industry?: string }
         Returns: boolean
