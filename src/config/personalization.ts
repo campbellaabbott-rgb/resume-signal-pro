@@ -807,6 +807,134 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       metricsRate: 80
     }
   },
+  cloud_architect: {
+    name: 'Cloud Architect',
+    aliases: ['solutions architect', 'cloud solutions architect', 'aws architect', 'azure architect', 'gcp architect', 'enterprise architect', 'infrastructure architect', 'cloud consultant'],
+    keySkills: ['AWS/Azure/GCP', 'Cloud Architecture', 'Infrastructure Design', 'Cost Optimization', 'Security Architecture', 'Migration Planning', 'Serverless', 'Multi-Cloud Strategy'],
+    mustHaveKeywords: ['architecture', 'cloud', 'AWS', 'Azure', 'GCP', 'migration', 'scalability', 'infrastructure', 'design', 'enterprise'],
+    resumeTips: [
+      'Highlight cloud certifications prominently (AWS SA, Azure Architect)',
+      'Quantify cost savings and performance improvements',
+      'Show migration scale (workloads, data volume, users)',
+      'Include multi-cloud or hybrid cloud experience'
+    ],
+    bulletExamples: [
+      { weak: 'Designed cloud solutions for clients', strong: 'Architected multi-region AWS infrastructure for Fortune 500 client, supporting 50M+ users with 99.99% availability and $2M annual cost savings' },
+      { weak: 'Led cloud migration projects', strong: 'Migrated 200+ on-premise applications to Azure, reducing infrastructure costs by 45% and improving deployment velocity by 10x' }
+    ],
+    keyMetrics: ['Cost savings $', 'Workloads migrated', 'Uptime achieved', 'Performance improvement %', 'Users supported', 'TCO reduction'],
+    commonMistakes: [
+      'Not including cloud certifications',
+      'Missing quantified cost and performance impact',
+      'Vague "designed cloud solutions" without scale',
+      'Not showing business outcomes of architecture decisions'
+    ],
+    interviewTopics: ['Well-Architected Framework', 'Cost optimization strategies', 'Security best practices', 'Disaster recovery', 'Migration methodologies'],
+    topResumeElements: {
+      sections: ['Cloud Certifications', 'Technical Skills', 'Architecture Experience', 'Projects', 'Education'],
+      differentiators: ['Multiple cloud certifications', 'Enterprise-scale projects', 'Cost optimization achievements', 'Migration success stories'],
+      avgBulletCount: 4,
+      certificationRate: 92,
+      portfolioRate: 30,
+      metricsRate: 85
+    }
+  },
+  machine_learning_engineer: {
+    name: 'Machine Learning Engineer',
+    aliases: ['ml engineer', 'ai engineer', 'deep learning engineer', 'mlops engineer', 'applied ml engineer', 'ml platform engineer', 'ai/ml engineer', 'nlp engineer', 'computer vision engineer'],
+    keySkills: ['PyTorch/TensorFlow', 'MLOps', 'Model Deployment', 'Feature Engineering', 'Model Optimization', 'Distributed Training', 'ML Pipelines', 'Production ML Systems'],
+    mustHaveKeywords: ['machine learning', 'model', 'training', 'inference', 'deployment', 'pipeline', 'production', 'accuracy', 'latency', 'scale'],
+    resumeTips: [
+      'Show models in production, not just experiments',
+      'Quantify inference latency and throughput',
+      'Include model accuracy improvements and business impact',
+      'Highlight MLOps and pipeline automation experience'
+    ],
+    bulletExamples: [
+      { weak: 'Built machine learning models', strong: 'Deployed recommendation system serving 100M+ daily predictions with <50ms latency, increasing engagement by 35%' },
+      { weak: 'Improved model performance', strong: 'Reduced model training time from 12 hours to 45 minutes through distributed training, while improving accuracy from 87% to 94%' }
+    ],
+    keyMetrics: ['Predictions/day', 'Inference latency', 'Model accuracy', 'Training time reduction', 'Business impact (revenue, engagement)', 'Cost per inference'],
+    commonMistakes: [
+      'Focusing on experiments without production deployment',
+      'Missing inference latency and throughput metrics',
+      'Not showing business impact of models',
+      'Vague ML experience without specific frameworks/tools'
+    ],
+    interviewTopics: ['ML system design', 'Model optimization', 'Feature stores', 'A/B testing ML models', 'MLOps practices', 'Handling model drift'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'ML Projects', 'Experience', 'Publications', 'Education'],
+      differentiators: ['Production ML systems at scale', 'Latency/throughput achievements', 'Business impact quantification', 'Open source ML contributions'],
+      avgBulletCount: 4,
+      certificationRate: 45,
+      portfolioRate: 70,
+      metricsRate: 88
+    }
+  },
+  blockchain_developer: {
+    name: 'Blockchain Developer',
+    aliases: ['web3 developer', 'smart contract developer', 'solidity developer', 'crypto developer', 'defi developer', 'blockchain engineer', 'ethereum developer', 'dapp developer'],
+    keySkills: ['Solidity', 'Web3.js/Ethers.js', 'Smart Contracts', 'DeFi Protocols', 'Security Auditing', 'EVM', 'Hardhat/Truffle', 'Token Standards (ERC-20, ERC-721)'],
+    mustHaveKeywords: ['blockchain', 'smart contract', 'Solidity', 'Web3', 'Ethereum', 'DeFi', 'NFT', 'security', 'audit', 'decentralized'],
+    resumeTips: [
+      'Highlight TVL (Total Value Locked) managed by your contracts',
+      'Show security audit results and bug bounty experience',
+      'Include gas optimization achievements',
+      'Mention mainnet deployments and transaction volumes'
+    ],
+    bulletExamples: [
+      { weak: 'Developed smart contracts', strong: 'Built DeFi protocol smart contracts securing $50M+ TVL with zero security incidents across 2M+ transactions' },
+      { weak: 'Worked on NFT projects', strong: 'Architected NFT marketplace handling 100K+ mints, optimizing gas costs by 60% through batched transactions' }
+    ],
+    keyMetrics: ['TVL secured', 'Transaction volume', 'Gas optimization %', 'Security audit score', 'Users/wallets served', 'Protocol uptime'],
+    commonMistakes: [
+      'Not mentioning TVL or transaction volumes',
+      'Missing security audit experience',
+      'Vague smart contract work without outcomes',
+      'Not showing gas optimization achievements'
+    ],
+    interviewTopics: ['Smart contract security', 'Gas optimization', 'DeFi mechanisms', 'Token economics', 'Consensus mechanisms', 'Cross-chain development'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'Blockchain Projects', 'Experience', 'Security Audits', 'Education'],
+      differentiators: ['High TVL protocols', 'Security audit experience', 'Gas optimization wins', 'Open source Web3 contributions'],
+      avgBulletCount: 4,
+      certificationRate: 25,
+      portfolioRate: 90,
+      metricsRate: 75
+    }
+  },
+  data_engineer: {
+    name: 'Data Engineer',
+    aliases: ['etl developer', 'data pipeline engineer', 'analytics engineer', 'big data engineer', 'data platform engineer', 'data infrastructure engineer', 'spark engineer'],
+    keySkills: ['SQL', 'Python', 'Spark/Databricks', 'Airflow', 'Data Warehousing', 'ETL/ELT', 'Kafka', 'dbt', 'Cloud Data Platforms'],
+    mustHaveKeywords: ['data pipeline', 'ETL', 'data warehouse', 'SQL', 'Spark', 'Airflow', 'data modeling', 'batch', 'streaming', 'data quality'],
+    resumeTips: [
+      'Quantify data volume processed (TB/PB, events/day)',
+      'Show pipeline reliability and latency improvements',
+      'Highlight cost optimization for data infrastructure',
+      'Include data quality improvements and SLAs met'
+    ],
+    bulletExamples: [
+      { weak: 'Built data pipelines', strong: 'Designed real-time data pipeline processing 5M+ events/day with 99.9% uptime and <5 minute latency SLA' },
+      { weak: 'Managed data warehouse', strong: 'Migrated legacy ETL to dbt + Snowflake, reducing query times by 80% and data freshness from 24 hours to 15 minutes' }
+    ],
+    keyMetrics: ['Data volume (TB/PB)', 'Events processed/day', 'Pipeline uptime', 'Latency SLA', 'Cost reduction', 'Query performance improvement'],
+    commonMistakes: [
+      'Not quantifying data volumes and throughput',
+      'Missing pipeline reliability metrics',
+      'Vague "worked with big data" claims',
+      'Not showing cost optimization achievements'
+    ],
+    interviewTopics: ['Data modeling', 'Pipeline architecture', 'Batch vs streaming', 'Data quality', 'Schema design', 'Performance optimization'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'Data Projects', 'Experience', 'Certifications', 'Education'],
+      differentiators: ['PB-scale data experience', 'Real-time pipeline achievements', 'Cost optimization wins', 'Data quality improvements'],
+      avgBulletCount: 4,
+      certificationRate: 55,
+      portfolioRate: 35,
+      metricsRate: 88
+    }
+  },
   security_engineer: {
     name: 'Security Engineer',
     aliases: ['cybersecurity engineer', 'infosec engineer', 'application security', 'appsec', 'security analyst', 'penetration tester', 'security architect', 'devsecops'],
@@ -1861,38 +1989,6 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       certificationRate: 70,
       portfolioRate: 15,
       metricsRate: 82
-    }
-  },
-  data_engineer: {
-    name: 'Data Engineer',
-    aliases: ['senior data engineer', 'analytics engineer', 'etl developer', 'data platform engineer', 'big data engineer', 'database engineer', 'data infrastructure engineer'],
-    keySkills: ['SQL', 'Python', 'ETL/ELT', 'Data Warehousing', 'Spark/Hadoop', 'Airflow', 'Cloud Platforms (AWS/GCP/Azure)', 'Data Modeling'],
-    mustHaveKeywords: ['data pipelines', 'ETL', 'data warehouse', 'SQL', 'data modeling', 'cloud', 'Spark', 'automation'],
-    resumeTips: [
-      'Quantify data volumes and pipeline performance',
-      'Show reduction in processing time/costs',
-      'List specific technologies and cloud platforms',
-      'Highlight data quality improvements'
-    ],
-    bulletExamples: [
-      { weak: 'Built data pipelines', strong: 'Designed ETL pipelines processing 5TB daily with 99.9% reliability, reducing data latency from 4 hours to 15 minutes' },
-      { weak: 'Worked with data warehouse', strong: 'Architected Snowflake data warehouse serving 200+ analysts, cutting query times by 70% and infrastructure costs by 40%' }
-    ],
-    keyMetrics: ['Data volume processed', 'Pipeline reliability %', 'Latency reduction', 'Cost savings', 'Query performance improvement'],
-    commonMistakes: [
-      'Not quantifying data volumes',
-      'Missing reliability and performance metrics',
-      'Vague "built pipelines" without scale',
-      'Not showing business impact of data work'
-    ],
-    interviewTopics: ['Data modeling approach', 'Pipeline architecture', 'Handling data quality', 'Cloud platform experience', 'Performance optimization'],
-    topResumeElements: {
-      sections: ['Summary', 'Experience', 'Technical Skills', 'Projects', 'Education'],
-      differentiators: ['Data volume metrics', 'Pipeline reliability achievements', 'Cloud platform expertise', 'Cost optimization results'],
-      avgBulletCount: 4,
-      certificationRate: 50,
-      portfolioRate: 45,
-      metricsRate: 88
     }
   },
   security_analyst: {
