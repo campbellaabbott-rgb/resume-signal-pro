@@ -45,26 +45,25 @@ export function Header() {
                 Resume <span className="text-primary">Booster</span>
               </span>
             </Link>
-            <Link 
-              to="/methodology" 
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:block"
-            >
-              How It Works
-            </Link>
+            <nav className="hidden sm:flex items-center gap-6">
+              <Link 
+                to="/methodology" 
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                How It Works
+              </Link>
+              <Link 
+                to="/pricing" 
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Pricing
+              </Link>
+            </nav>
           </div>
           
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             <LanguageSwitcher variant="compact" />
             <ScanCreditsCounter />
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              asChild
-              className="gap-2 min-h-[44px] min-w-[44px] touch-manipulation hidden sm:flex"
-              aria-label="View pricing page"
-            >
-              <Link to="/pricing">Pricing</Link>
-            </Button>
             <Button 
               variant="default" 
               size="sm" 
