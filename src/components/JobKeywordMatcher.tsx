@@ -592,6 +592,73 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
     // ===== INDUSTRY TERMS =====
     { pattern: /\b(b2b|b2c|saas|e-commerce|fintech|healthtech|edtech|insurtech|regtech|proptech|martech|adtech)\b/gi, category: "industry_term", importance: "nice_to_have" },
     { pattern: /\b(roi|kpi|okr|nps|csat|churn|arr|mrr|gross margin|ebitda|p&l|budget|forecast)\b/gi, category: "industry_term", importance: "important" },
+    
+    // ===== ACTION VERBS & POWER WORDS BY INDUSTRY =====
+    // Leadership & Management Action Verbs (critical)
+    { pattern: /\b(spearheaded|orchestrated|championed|pioneered|transformed|revitalized|restructured|overhauled|streamlined|optimized)\b/gi, category: "soft_skill", importance: "critical" },
+    { pattern: /\b(directed|supervised|mentored|coached|cultivated|empowered|delegated|mobilized|galvanized|unified)\b/gi, category: "soft_skill", importance: "important" },
+    
+    // Achievement & Results Action Verbs (critical)
+    { pattern: /\b(achieved|exceeded|surpassed|outperformed|delivered|generated|produced|yielded|maximized|accelerated)\b/gi, category: "soft_skill", importance: "critical" },
+    { pattern: /\b(boosted|increased|grew|expanded|amplified|elevated|enhanced|improved|strengthened|advanced)\b/gi, category: "soft_skill", importance: "critical" },
+    { pattern: /\b(reduced|decreased|minimized|eliminated|cut|saved|conserved|consolidated|downsized|trimmed)\b/gi, category: "soft_skill", importance: "important" },
+    
+    // Technical & Engineering Action Verbs
+    { pattern: /\b(engineered|architected|designed|developed|built|implemented|deployed|integrated|automated|programmed)\b/gi, category: "hard_skill", importance: "critical" },
+    { pattern: /\b(debugged|troubleshot|diagnosed|resolved|patched|refactored|optimized|scaled|migrated|configured)\b/gi, category: "hard_skill", importance: "important" },
+    { pattern: /\b(tested|validated|verified|benchmarked|prototyped|modeled|simulated|analyzed|evaluated|assessed)\b/gi, category: "hard_skill", importance: "important" },
+    
+    // Sales & Business Development Action Verbs
+    { pattern: /\b(closed|sold|negotiated|secured|won|acquired|captured|converted|landed|prospected)\b/gi, category: "hard_skill", importance: "critical" },
+    { pattern: /\b(upsold|cross-sold|pitched|presented|demonstrated|persuaded|influenced|cultivated|nurtured|retained)\b/gi, category: "soft_skill", importance: "important" },
+    
+    // Marketing & Creative Action Verbs
+    { pattern: /\b(launched|branded|positioned|promoted|marketed|publicized|campaigned|conceptualized|crafted|curated)\b/gi, category: "hard_skill", importance: "critical" },
+    { pattern: /\b(designed|illustrated|visualized|created|produced|directed|edited|composed|wrote|authored)\b/gi, category: "hard_skill", importance: "important" },
+    
+    // Finance & Analytics Action Verbs
+    { pattern: /\b(forecasted|budgeted|projected|modeled|calculated|quantified|measured|audited|reconciled|balanced)\b/gi, category: "hard_skill", importance: "critical" },
+    { pattern: /\b(analyzed|interpreted|evaluated|assessed|appraised|valued|estimated|computed|derived|extrapolated)\b/gi, category: "hard_skill", importance: "important" },
+    
+    // Operations & Process Action Verbs
+    { pattern: /\b(streamlined|standardized|systematized|centralized|consolidated|coordinated|synchronized|facilitated|expedited|accelerated)\b/gi, category: "hard_skill", importance: "critical" },
+    { pattern: /\b(implemented|executed|administered|managed|operated|maintained|monitored|tracked|controlled|regulated)\b/gi, category: "hard_skill", importance: "important" },
+    
+    // Healthcare & Clinical Action Verbs
+    { pattern: /\b(diagnosed|treated|administered|prescribed|monitored|assessed|evaluated|triaged|stabilized|resuscitated)\b/gi, category: "hard_skill", importance: "critical" },
+    { pattern: /\b(documented|charted|recorded|reported|communicated|educated|counseled|advocated|coordinated|collaborated)\b/gi, category: "soft_skill", importance: "important" },
+    
+    // Research & Academic Action Verbs
+    { pattern: /\b(researched|investigated|discovered|published|presented|hypothesized|theorized|experimented|synthesized|formulated)\b/gi, category: "hard_skill", importance: "critical" },
+    { pattern: /\b(authored|co-authored|peer-reviewed|lectured|taught|instructed|mentored|advised|supervised|guided)\b/gi, category: "soft_skill", importance: "important" },
+    
+    // Legal & Compliance Action Verbs
+    { pattern: /\b(litigated|negotiated|drafted|reviewed|advised|represented|advocated|arbitrated|mediated|adjudicated)\b/gi, category: "hard_skill", importance: "critical" },
+    { pattern: /\b(complied|enforced|regulated|audited|investigated|documented|filed|submitted|petitioned|appealed)\b/gi, category: "hard_skill", importance: "important" },
+    
+    // HR & People Action Verbs
+    { pattern: /\b(recruited|hired|onboarded|trained|developed|coached|mentored|evaluated|promoted|retained)\b/gi, category: "hard_skill", importance: "critical" },
+    { pattern: /\b(engaged|motivated|inspired|recognized|rewarded|counseled|mediated|resolved|facilitated|transitioned)\b/gi, category: "soft_skill", importance: "important" },
+    
+    // Project Management Action Verbs
+    { pattern: /\b(planned|scheduled|prioritized|allocated|resourced|scoped|phased|milestoned|delivered|completed)\b/gi, category: "hard_skill", importance: "critical" },
+    { pattern: /\b(initiated|chartered|kickstarted|launched|rolled out|piloted|scaled|transitioned|closed|retrospected)\b/gi, category: "methodology", importance: "important" },
+    
+    // Customer Service Action Verbs
+    { pattern: /\b(resolved|addressed|handled|assisted|supported|serviced|satisfied|exceeded|delighted|retained)\b/gi, category: "soft_skill", importance: "important" },
+    { pattern: /\b(responded|communicated|followed-up|escalated|de-escalated|empathized|listened|clarified|explained|educated)\b/gi, category: "soft_skill", importance: "nice_to_have" },
+    
+    // Construction & Trades Action Verbs
+    { pattern: /\b(constructed|built|fabricated|installed|assembled|erected|renovated|remodeled|repaired|restored)\b/gi, category: "hard_skill", importance: "critical" },
+    { pattern: /\b(measured|calculated|estimated|inspected|tested|certified|permitted|supervised|coordinated|scheduled)\b/gi, category: "hard_skill", importance: "important" },
+    
+    // Power Words & Impact Phrases
+    { pattern: /\b(first-ever|award-winning|industry-leading|best-in-class|world-class|cutting-edge|state-of-the-art|groundbreaking|innovative|revolutionary)\b/gi, category: "soft_skill", importance: "nice_to_have" },
+    { pattern: /\b(record-breaking|top-performing|high-impact|mission-critical|enterprise-wide|company-wide|cross-functional|multi-million|global|international)\b/gi, category: "soft_skill", importance: "important" },
+    
+    // Quantifiable Impact Words
+    { pattern: /\b(doubled|tripled|quadrupled|10x|100%|million|billion|thousands|hundreds|dozens)\b/gi, category: "industry_term", importance: "critical" },
+    { pattern: /\b(year-over-year|yoy|quarter-over-quarter|qoq|month-over-month|mom|consistently|repeatedly|continuously|sustainably)\b/gi, category: "industry_term", importance: "important" },
   ];
   
   const extracted: Map<string, { keyword: string; context: string; importance: "critical" | "important" | "nice_to_have"; category: KeywordMatch["category"] }> = new Map();
