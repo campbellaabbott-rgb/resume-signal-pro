@@ -467,6 +467,7 @@ interface CompetitiveAssessment {
 
 interface FreeKeywordResultsProps {
   industry: string;
+  currentRole?: string;
   atsScoreEstimate: number;
   formatGrade: string;
   formatIssue: string;
@@ -513,6 +514,7 @@ interface FreeKeywordResultsProps {
 
 export function FreeKeywordResults({
   industry,
+  currentRole,
   atsScoreEstimate,
   formatGrade,
   formatIssue,
@@ -1237,6 +1239,7 @@ export function FreeKeywordResults({
           experienceLevel={experienceLevel}
           atsScore={atsScoreEstimate}
           hasJobDescription={!!jobMatchScore}
+          currentRole={currentRole}
         />
       </div>
 

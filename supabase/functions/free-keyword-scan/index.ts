@@ -352,6 +352,7 @@ ANALYSIS RULES:
 11. Red Flags: 3 specific issues recruiters would notice immediately
 12. Keywords: 6 missing high-impact keywords for their industry
 13. Industry: Detect the industry/field
+14. Current Role: Detect the person's current or most recent job title/role (e.g., "Product Manager", "Software Engineer", "Registered Nurse", "Marketing Director")
 14. Readability Score (0-100): How easy is the resume to scan quickly
 15. Bullet Impact Score (0-100): % of bullets that show achievements vs responsibilities
 16. Keyword Density: Rate keyword presence as sparse/moderate/dense
@@ -420,6 +421,7 @@ ${resumeText.substring(0, 15000)}
               type: "object",
               properties: {
                 industry: { type: "string", description: "Detected industry/field" },
+                currentRole: { type: "string", description: "Detected current or most recent job title/role (e.g., 'Product Manager', 'Software Engineer', 'Registered Nurse')" },
                 atsScoreEstimate: { type: "number", description: "Estimated ATS score (0-100)" },
                 formatGrade: { 
                   type: "string", 
