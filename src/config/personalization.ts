@@ -657,6 +657,84 @@ export const GEOGRAPHIC_CONFIGS: Record<string, GeographicConfig> = {
       { us: 'GPA', local: 'GPA / CGPA' },
       { us: 'Cell phone', local: 'Cell / Mobile' }
     ]
+  },
+  latam: {
+    region: 'latam',
+    name: 'Latin America',
+    documentName: 'Currículum Vitae / Currículo',
+    formatPreferences: [
+      'Two to three pages is standard',
+      'Photo often expected (especially AR, MX, BR)',
+      'Personal information section common',
+      'Chronological format preferred'
+    ],
+    includePhoto: true,
+    includePersonalInfo: ['Email', 'Phone', 'LinkedIn', 'City', 'Nationality', 'Date of birth'],
+    excludeInfo: ['Marital status', 'Religion', 'Political affiliation'],
+    lengthGuidelines: '2-3 pages standard, more detailed than US resumes',
+    culturalTips: [
+      'Include a professional photo (formal attire)',
+      'Personal connections and referrals are highly valued',
+      'Mention language proficiencies prominently (English is a major asset)',
+      'Include nationality and work authorization status'
+    ],
+    commonTerms: [
+      { us: 'Resume', local: 'Currículum Vitae (CV) / Currículo (BR)' },
+      { us: 'Cover letter', local: 'Carta de presentación / Carta de apresentação' },
+      { us: 'References', local: 'Referencias / Referências' }
+    ]
+  },
+  br: {
+    region: 'br',
+    name: 'Brazil',
+    documentName: 'Currículo',
+    formatPreferences: [
+      'Two pages is ideal',
+      'Photo commonly included',
+      'Objective statement at the top',
+      'Personal data section standard'
+    ],
+    includePhoto: true,
+    includePersonalInfo: ['Email', 'Phone', 'LinkedIn', 'City/State', 'CPF (optional)', 'Nationality'],
+    excludeInfo: ['Marital status', 'Religion', 'Salary history'],
+    lengthGuidelines: '2 pages ideal, focus on recent 10 years of experience',
+    culturalTips: [
+      'Include "Objetivo Profissional" (professional objective) at the top',
+      'English proficiency is a major differentiator—always mention it',
+      'List courses and certifications prominently',
+      'Personal data section (dados pessoais) is expected'
+    ],
+    commonTerms: [
+      { us: 'Resume', local: 'Currículo' },
+      { us: 'Work experience', local: 'Experiência Profissional' },
+      { us: 'Education', local: 'Formação Acadêmica' }
+    ]
+  },
+  mx: {
+    region: 'mx',
+    name: 'Mexico',
+    documentName: 'Currículum Vitae',
+    formatPreferences: [
+      'Two to three pages common',
+      'Photo usually expected',
+      'Personal information section standard',
+      'Chronological format preferred'
+    ],
+    includePhoto: true,
+    includePersonalInfo: ['Email', 'Phone', 'LinkedIn', 'City', 'CURP (optional)', 'Nationality'],
+    excludeInfo: ['Marital status', 'Religion'],
+    lengthGuidelines: '2-3 pages standard, detailed education section',
+    culturalTips: [
+      'Include a professional, formal photo',
+      'English proficiency is highly valued—always list it',
+      'Certifications and courses are important differentiators',
+      'Networking and personal referrals are culturally significant'
+    ],
+    commonTerms: [
+      { us: 'Resume', local: 'Currículum Vitae (CV)' },
+      { us: 'Work experience', local: 'Experiencia Laboral' },
+      { us: 'Skills', local: 'Habilidades / Competencias' }
+    ]
   }
 };
 
@@ -674,16 +752,27 @@ export function detectUserRegion(): string {
   if (timezone.includes('Australia/')) return 'au';
   if (timezone.includes('Asia/Kolkata') || timezone.includes('Asia/Calcutta')) return 'in';
   if (timezone.includes('America/Toronto') || timezone.includes('America/Vancouver') || timezone.includes('America/Montreal')) return 'ca';
+  // South America / Latin America
+  if (timezone.includes('America/Sao_Paulo') || timezone.includes('America/Brasilia') || timezone.includes('America/Fortaleza')) return 'br';
+  if (timezone.includes('America/Mexico_City') || timezone.includes('America/Monterrey') || timezone.includes('America/Cancun')) return 'mx';
+  if (timezone.includes('America/Buenos_Aires') || timezone.includes('America/Argentina') || 
+      timezone.includes('America/Bogota') || timezone.includes('America/Lima') || 
+      timezone.includes('America/Santiago') || timezone.includes('America/Montevideo') ||
+      timezone.includes('America/Caracas')) return 'latam';
   if (timezone.includes('America/')) return 'us';
   
   // Fallback to language code
   const langCode = language.split('-')[1]?.toUpperCase() || language.split('-')[0]?.toUpperCase();
   if (langCode === 'GB' || langCode === 'UK') return 'uk';
   if (langCode === 'DE' || langCode === 'AT' || langCode === 'CH') return 'de';
-  if (['FR', 'ES', 'IT', 'NL', 'BE', 'PT', 'PL'].includes(langCode)) return 'eu';
+  if (['FR', 'IT', 'NL', 'BE', 'PL'].includes(langCode)) return 'eu';
   if (langCode === 'AU') return 'au';
   if (langCode === 'IN') return 'in';
   if (langCode === 'CA') return 'ca';
+  if (langCode === 'BR' || langCode === 'PT') return 'br';
+  if (langCode === 'MX') return 'mx';
+  if (['AR', 'CL', 'CO', 'PE', 'VE', 'UY', 'EC', 'PY', 'BO'].includes(langCode)) return 'latam';
+  if (langCode === 'ES') return 'latam'; // Spanish speakers likely LATAM context
   
   return 'us'; // Default to US
 }
