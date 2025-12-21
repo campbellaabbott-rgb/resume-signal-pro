@@ -395,6 +395,184 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
     // Cryptography
     { pattern: /\b(cryptography|encryption|pki|public key|certificate|ssl\/tls|hashing|key management|hsm|hardware security module|tokenization)\b/gi, category: "hard_skill", importance: "important" },
     
+    // ===== AGRICULTURE, FOOD & ENVIRONMENTAL =====
+    // Farm operations (critical)
+    { pattern: /\b(farm management|agriculture|farming|crop production|livestock|dairy|poultry|horticulture|agronomy|irrigation|harvesting|planting|seeding)\b/gi, category: "hard_skill", importance: "critical" },
+    // Agricultural technology
+    { pattern: /\b(precision agriculture|agtech|farm equipment|tractor|combine|gps guidance|drone|uav|soil sampling|yield mapping|variable rate|irrigation system)\b/gi, category: "hard_skill", importance: "important" },
+    // Food safety & compliance (critical)
+    { pattern: /\b(usda|fda food|food safety|haccp|fsma|sqf|brc|gfsi|food handling|sanitation|food inspection|quality control|gmp|good manufacturing)\b/gi, category: "certification", importance: "critical" },
+    // Food science & processing
+    { pattern: /\b(food science|food technology|food processing|food production|r&d food|formulation|shelf life|packaging|labeling|nutrition|ingredient sourcing)\b/gi, category: "hard_skill", importance: "critical" },
+    // Environmental science
+    { pattern: /\b(environmental science|ecology|conservation|wildlife|natural resources|forestry|fisheries|marine biology|wetlands|habitat restoration|biodiversity)\b/gi, category: "hard_skill", importance: "important" },
+    // Environmental compliance
+    { pattern: /\b(environmental compliance|epa|nepa|eia|environmental impact|permitting|remediation|contamination|brownfield|superfund|environmental audit)\b/gi, category: "hard_skill", importance: "critical" },
+    // Sustainability
+    { pattern: /\b(sustainability|sustainable|carbon footprint|greenhouse gas|ghg|climate change|renewable|recycling|waste management|circular economy|esg)\b/gi, category: "industry_term", importance: "important" },
+    // Ag certifications
+    { pattern: /\b(certified crop advisor|cca|organic certified|usda organic|gap certified|animal welfare certified|sustainable agriculture)\b/gi, category: "certification", importance: "important" },
+    
+    // ===== PHARMACEUTICAL & LIFE SCIENCES =====
+    // Drug development (critical)
+    { pattern: /\b(drug development|pharmaceutical|pharma|drug discovery|formulation|api|active pharmaceutical ingredient|dosage form|clinical development|preclinical)\b/gi, category: "hard_skill", importance: "critical" },
+    // Clinical trials (critical)
+    { pattern: /\b(clinical trials|clinical research|phase 1|phase 2|phase 3|phase 4|cro|clinical operations|patient recruitment|site management|clinical data)\b/gi, category: "hard_skill", importance: "critical" },
+    // Regulatory affairs (critical)
+    { pattern: /\b(regulatory affairs|fda submission|nda|anda|bla|ind|510k|pma|ema|regulatory strategy|regulatory compliance|labeling|drug approval)\b/gi, category: "hard_skill", importance: "critical" },
+    // Quality & compliance
+    { pattern: /\b(gmp|good manufacturing practice|gcp|good clinical practice|glp|good laboratory practice|quality assurance|quality control|batch record|deviation|capa)\b/gi, category: "certification", importance: "critical" },
+    // Biotechnology
+    { pattern: /\b(biotechnology|biotech|biologics|biosimilars|cell therapy|gene therapy|monoclonal antibody|mab|recombinant|protein expression|cell culture)\b/gi, category: "hard_skill", importance: "critical" },
+    // Laboratory skills
+    { pattern: /\b(laboratory|lab|hplc|gc|mass spectrometry|pcr|elisa|western blot|flow cytometry|microscopy|spectroscopy|chromatography|assay development)\b/gi, category: "hard_skill", importance: "critical" },
+    // Pharma manufacturing
+    { pattern: /\b(pharmaceutical manufacturing|sterile manufacturing|aseptic|fill finish|lyophilization|tableting|encapsulation|coating|packaging|serialization)\b/gi, category: "hard_skill", importance: "important" },
+    // Pharmacovigilance
+    { pattern: /\b(pharmacovigilance|drug safety|adverse event|ae|serious adverse event|sae|safety reporting|signal detection|risk management|rems)\b/gi, category: "hard_skill", importance: "important" },
+    
+    // ===== AEROSPACE & DEFENSE =====
+    // Aerospace engineering (critical)
+    { pattern: /\b(aerospace|aviation|aircraft|spacecraft|satellite|rocket|propulsion|aerodynamics|avionics|flight systems|uav|unmanned aerial)\b/gi, category: "hard_skill", importance: "critical" },
+    // Defense & military
+    { pattern: /\b(defense|military|dod|department of defense|army|navy|air force|marines|coast guard|veteran|mil-spec|mil-std|defense contractor)\b/gi, category: "industry_term", importance: "important" },
+    // Security clearances (critical)
+    { pattern: /\b(security clearance|top secret|ts\/sci|secret|confidential|clearance|polygraph|ssbi|public trust|interim clearance)\b/gi, category: "certification", importance: "critical" },
+    // Aerospace systems
+    { pattern: /\b(flight control|navigation|guidance|radar|lidar|sensor|payload|ground control|mission control|telemetry|flight test|certification)\b/gi, category: "hard_skill", importance: "important" },
+    // Defense software
+    { pattern: /\b(embedded systems|real-time|rtos|do-178|do-254|as9100|nadcap|itar|ear|export control|cmmi|model-based|mbse)\b/gi, category: "hard_skill", importance: "important" },
+    
+    // ===== CONSULTING & PROFESSIONAL SERVICES =====
+    // Management consulting (critical)
+    { pattern: /\b(management consulting|strategy consulting|business consulting|advisory|transformation|change management|process improvement|operational excellence)\b/gi, category: "hard_skill", importance: "critical" },
+    // Client engagement
+    { pattern: /\b(client engagement|client relationship|account management|business development|proposal|pitch|rfp|rfq|statement of work|sow|deliverable)\b/gi, category: "hard_skill", importance: "critical" },
+    // Consulting frameworks
+    { pattern: /\b(case study|hypothesis|workstream|sprint|workshop|facilitation|stakeholder|executive presentation|c-suite|board presentation)\b/gi, category: "methodology", importance: "important" },
+    // Big 4 & consulting firms
+    { pattern: /\b(big 4|deloitte|pwc|ey|kpmg|mckinsey|bain|bcg|accenture|booz allen|boutique firm|consulting firm)\b/gi, category: "industry_term", importance: "nice_to_have" },
+    
+    // ===== INSURANCE =====
+    // Underwriting (critical)
+    { pattern: /\b(underwriting|underwriter|risk assessment|policy|premium|coverage|liability|property casualty|p&c|life insurance|health insurance)\b/gi, category: "hard_skill", importance: "critical" },
+    // Claims
+    { pattern: /\b(claims|claims adjuster|claims examiner|loss adjuster|investigation|settlement|subrogation|litigation|reserve|indemnity)\b/gi, category: "hard_skill", importance: "critical" },
+    // Actuarial
+    { pattern: /\b(actuarial|actuary|asa|fsa|fcas|acas|loss ratio|combined ratio|reserving|pricing|rate filing|catastrophe modeling)\b/gi, category: "hard_skill", importance: "critical" },
+    // Insurance operations
+    { pattern: /\b(policy administration|billing|renewal|endorsement|binder|certificate of insurance|reinsurance|treaty|facultative|surplus lines)\b/gi, category: "hard_skill", importance: "important" },
+    
+    // ===== SPORTS, FITNESS & RECREATION =====
+    // Fitness & training
+    { pattern: /\b(personal training|fitness|strength conditioning|exercise|workout|nutrition|weight loss|athletic training|sports performance|coaching)\b/gi, category: "hard_skill", importance: "critical" },
+    // Sports management
+    { pattern: /\b(sports management|athletics|team management|player development|scouting|recruiting|sports marketing|sponsorship|ticket sales|fan engagement)\b/gi, category: "hard_skill", importance: "important" },
+    // Fitness certifications
+    { pattern: /\b(nasm|ace certified|acsm|nsca|cscs|cpt|certified personal trainer|group fitness|yoga certified|pilates certified|crossfit)\b/gi, category: "certification", importance: "critical" },
+    // Recreation & parks
+    { pattern: /\b(recreation|parks|leisure|community center|aquatics|lifeguard|camp|outdoor recreation|adventure|golf|tennis|ski|resort)\b/gi, category: "industry_term", importance: "important" },
+    
+    // ===== FASHION, BEAUTY & APPAREL =====
+    // Fashion design & production
+    { pattern: /\b(fashion|apparel|clothing|garment|textile|fabric|pattern making|sewing|draping|fashion design|collection|lookbook|runway)\b/gi, category: "hard_skill", importance: "critical" },
+    // Retail buying & merchandising
+    { pattern: /\b(buyer|buying|merchandiser|assortment|sourcing|vendor|wholesale|private label|brand management|trend forecasting|fashion week)\b/gi, category: "hard_skill", importance: "important" },
+    // Beauty & cosmetics
+    { pattern: /\b(beauty|cosmetics|skincare|makeup|haircare|fragrance|salon|spa|esthetician|cosmetology|nail technician|beauty advisor)\b/gi, category: "hard_skill", importance: "critical" },
+    // Beauty certifications
+    { pattern: /\b(cosmetology license|esthetician license|nail technician license|barber license|makeup artist|mua|beauty school)\b/gi, category: "certification", importance: "critical" },
+    
+    // ===== MINING & NATURAL RESOURCES =====
+    // Mining operations (critical)
+    { pattern: /\b(mining|mine|quarry|extraction|ore|mineral|coal|gold|copper|iron ore|lithium|underground|surface mining|open pit)\b/gi, category: "hard_skill", importance: "critical" },
+    // Mining equipment
+    { pattern: /\b(drilling|blasting|excavation|haul truck|loader|crusher|conveyor|processing|beneficiation|flotation|leaching|smelting)\b/gi, category: "hard_skill", importance: "important" },
+    // Mining safety
+    { pattern: /\b(msha|mine safety|ventilation|ground control|rock mechanics|tailings|reclamation|environmental mining|dust control)\b/gi, category: "certification", importance: "critical" },
+    // Geology & exploration
+    { pattern: /\b(geology|geologist|exploration|prospecting|drilling program|core sampling|assay|resource estimation|reserve|feasibility study)\b/gi, category: "hard_skill", importance: "important" },
+    
+    // ===== MARITIME & SHIPPING =====
+    // Maritime operations (critical)
+    { pattern: /\b(maritime|shipping|vessel|ship|port|harbor|marine|seafarer|merchant marine|cargo ship|tanker|container ship|bulk carrier)\b/gi, category: "hard_skill", importance: "critical" },
+    // Maritime certifications
+    { pattern: /\b(uscg|coast guard|stcw|merchant mariner|mmc|captain|master|mate|engineer|able seaman|oiler|wiper|twic)\b/gi, category: "certification", importance: "critical" },
+    // Port operations
+    { pattern: /\b(port operations|terminal|stevedoring|longshoreman|crane operator|container handling|vessel operations|berth|dock|pier|wharf)\b/gi, category: "hard_skill", importance: "important" },
+    // Maritime regulations
+    { pattern: /\b(imo|solas|marpol|isc code|classification society|lloyd's|dnv|abs|flag state|port state control|maritime law|jones act)\b/gi, category: "hard_skill", importance: "important" },
+    
+    // ===== VETERINARY & ANIMAL CARE =====
+    // Veterinary medicine (critical)
+    { pattern: /\b(veterinary|veterinarian|vet|animal hospital|animal clinic|dvm|veterinary technician|vet tech|animal care|animal health)\b/gi, category: "hard_skill", importance: "critical" },
+    // Animal specialties
+    { pattern: /\b(small animal|large animal|equine|exotic|wildlife|zoo|aquarium|livestock|companion animal|surgery|radiology|dentistry|emergency)\b/gi, category: "industry_term", importance: "important" },
+    // Animal care services
+    { pattern: /\b(grooming|boarding|kennel|daycare|pet sitting|dog walking|training|behavior|obedience|animal shelter|rescue|adoption)\b/gi, category: "hard_skill", importance: "important" },
+    // Vet certifications
+    { pattern: /\b(dvm|vmd|lvt|rvt|cvt|veterinary license|avma|specialty board|diplomate|fear free certified)\b/gi, category: "certification", importance: "critical" },
+    
+    // ===== GAMING & GAMBLING =====
+    // Casino operations (critical)
+    { pattern: /\b(casino|gaming|gambling|table games|slots|poker|blackjack|dealer|pit boss|cage|count room|surveillance|gaming floor)\b/gi, category: "hard_skill", importance: "critical" },
+    // Gaming compliance
+    { pattern: /\b(gaming license|gaming commission|gaming control|title 31|aml gaming|responsible gaming|self-exclusion|age verification)\b/gi, category: "certification", importance: "critical" },
+    // Gaming technology
+    { pattern: /\b(gaming system|slot machine|electronic gaming|sports betting|igaming|online casino|mobile gaming|lottery|keno|bingo)\b/gi, category: "industry_term", importance: "important" },
+    // Video game industry
+    { pattern: /\b(video game|game developer|game designer|game artist|qa tester|esports|streaming|twitch|game engine|unity|unreal)\b/gi, category: "hard_skill", importance: "important" },
+    
+    // ===== SECURITY & PROTECTIVE SERVICES =====
+    // Security operations (critical)
+    { pattern: /\b(security officer|security guard|protection|patrol|access control|cctv|surveillance|alarm|intrusion|executive protection|bodyguard)\b/gi, category: "hard_skill", importance: "critical" },
+    // Security management
+    { pattern: /\b(security manager|security director|loss prevention|asset protection|investigations|security assessment|threat assessment|risk mitigation)\b/gi, category: "hard_skill", importance: "critical" },
+    // Security certifications
+    { pattern: /\b(cpp|psp|pci|asis|security license|guard card|armed guard|unarmed|firearms|baton|pepper spray|handcuff)\b/gi, category: "certification", importance: "important" },
+    // Specialized security
+    { pattern: /\b(cybersecurity|physical security|maritime security|aviation security|event security|crowd management|vip protection|dignitary)\b/gi, category: "industry_term", importance: "important" },
+    
+    // ===== NONPROFIT & SOCIAL SERVICES =====
+    // Nonprofit management (critical)
+    { pattern: /\b(nonprofit|non-profit|ngo|foundation|charity|501c3|mission-driven|social impact|philanthropy|grantmaking|endowment)\b/gi, category: "industry_term", importance: "critical" },
+    // Fundraising
+    { pattern: /\b(fundraising|development|donor relations|major gifts|annual fund|capital campaign|planned giving|grant writing|crowdfunding|stewardship)\b/gi, category: "hard_skill", importance: "critical" },
+    // Social services
+    { pattern: /\b(social work|case management|counseling|crisis intervention|advocacy|community outreach|homeless services|food bank|youth services)\b/gi, category: "hard_skill", importance: "critical" },
+    // Social work certifications
+    { pattern: /\b(lcsw|lmsw|msw|bsw|licensed clinical|licensed professional|counselor|therapist|case manager certification)\b/gi, category: "certification", importance: "critical" },
+    // Program management
+    { pattern: /\b(program management|program evaluation|impact measurement|outcomes|logic model|theory of change|beneficiary|stakeholder engagement)\b/gi, category: "hard_skill", importance: "important" },
+    
+    // ===== RESEARCH & ACADEMIA =====
+    // Academic research (critical)
+    { pattern: /\b(research|researcher|principal investigator|pi|postdoc|postdoctoral|phd|doctoral|dissertation|thesis|peer review|publication)\b/gi, category: "hard_skill", importance: "critical" },
+    // Academic positions
+    { pattern: /\b(professor|associate professor|assistant professor|lecturer|adjunct|tenure|faculty|department chair|dean|provost|academic)\b/gi, category: "industry_term", importance: "important" },
+    // Research funding
+    { pattern: /\b(grant|nih|nsf|funding|proposal|r01|r21|foundation grant|corporate sponsor|irb|institutional review|ethics)\b/gi, category: "hard_skill", importance: "important" },
+    // Research skills
+    { pattern: /\b(statistical analysis|spss|stata|r programming|sas|qualitative|quantitative|mixed methods|survey|interview|focus group|literature review)\b/gi, category: "hard_skill", importance: "important" },
+    
+    // ===== CHILDCARE & EARLY EDUCATION =====
+    // Childcare (critical)
+    { pattern: /\b(childcare|child care|daycare|day care|preschool|pre-k|kindergarten|early childhood|infant|toddler|nanny|au pair)\b/gi, category: "hard_skill", importance: "critical" },
+    // Early childhood education
+    { pattern: /\b(early childhood education|ece|child development|developmentally appropriate|play-based|montessori|reggio|waldorf|head start)\b/gi, category: "hard_skill", importance: "critical" },
+    // Childcare certifications
+    { pattern: /\b(cda|child development associate|cpr|first aid|pediatric first aid|mandated reporter|background check|fingerprinting)\b/gi, category: "certification", importance: "critical" },
+    // Youth development
+    { pattern: /\b(youth development|after school|youth program|mentoring|tutoring|summer camp|recreation|enrichment|stem education)\b/gi, category: "hard_skill", importance: "important" },
+    
+    // ===== CLEANING & JANITORIAL =====
+    // Cleaning services (critical)
+    { pattern: /\b(cleaning|janitorial|custodian|housekeeping|sanitation|disinfection|floor care|carpet cleaning|window cleaning|pressure washing)\b/gi, category: "hard_skill", importance: "critical" },
+    // Commercial cleaning
+    { pattern: /\b(commercial cleaning|industrial cleaning|office cleaning|medical cleaning|construction cleanup|post-construction|deep cleaning)\b/gi, category: "industry_term", importance: "important" },
+    // Cleaning equipment
+    { pattern: /\b(floor buffer|scrubber|vacuum|extractor|steam cleaner|chemical handling|msds|sds|green cleaning|eco-friendly)\b/gi, category: "hard_skill", importance: "important" },
+    
     // ===== OPERATIONS & SUPPLY CHAIN =====
     { pattern: /\b(supply chain|logistics|procurement|inventory management|warehouse|distribution|erp|mrp|lean manufacturing|six sigma|kaizen|tps|just-in-time|jit)\b/gi, category: "hard_skill", importance: "critical" },
     { pattern: /\b(apics|cpim|cscp|cltd|pmp|capm|lean six sigma|green belt|black belt|master black belt)\b/gi, category: "certification", importance: "important" },
