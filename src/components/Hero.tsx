@@ -160,7 +160,7 @@ export function Hero() {
                       {t('hero.atsSystemsCredibility', 'Based on parsing rules from Workday, Greenhouse, Lever, Taleo, iCIMS & 50+ ATS platforms')}
                     </p>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-sm text-left p-4 bg-popover border border-border shadow-xl z-50">
+                  <TooltipContent side="bottom" className="max-w-sm text-left p-4 bg-popover border border-border shadow-xl">
                     <p className="font-semibold text-foreground mb-2">How We Analyze Your Resume</p>
                     <ul className="text-xs text-muted-foreground space-y-1.5">
                       <li><span className="font-medium text-foreground">Workday:</span> Section headers, keyword extraction, date parsing</li>
@@ -169,9 +169,15 @@ export function Hero() {
                       <li><span className="font-medium text-foreground">Taleo:</span> Keyword density, job title matching</li>
                       <li><span className="font-medium text-foreground">iCIMS:</span> Education parsing, certification detection</li>
                     </ul>
-                    <p className="text-xs text-muted-foreground/70 mt-2 pt-2 border-t border-border/50">
-                      + 50 more ATS platforms analyzed for common patterns
-                    </p>
+                    <div className="mt-3 pt-2 border-t border-border/50">
+                      <Link 
+                        to="/methodology" 
+                        className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        See full methodology
+                        <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    </div>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

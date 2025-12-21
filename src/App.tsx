@@ -8,6 +8,7 @@ import ProductSuccess from "./pages/ProductSuccess";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Pricing from "./pages/Pricing";
+import Methodology from "./pages/Methodology";
 import DevCheckoutTest from "./pages/DevCheckoutTest";
 import NotFound from "./pages/NotFound";
 import { FloatingHelpButton } from "./components/FloatingHelpButton";
@@ -26,6 +27,7 @@ const App = () => (
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/pricing" element={<Pricing />} />
+        <Route path="/methodology" element={<Methodology />} />
         <Route path="/dev/checkout-test" element={<DevCheckoutTest />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
