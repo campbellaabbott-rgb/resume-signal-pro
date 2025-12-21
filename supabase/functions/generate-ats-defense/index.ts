@@ -455,7 +455,7 @@ Analyze this resume for ATS compatibility and provide a complete ATS Defense rep
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        response = await fetch("https://api.lovable.ai/v1/chat/completions", {
+        response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${LOVABLE_API_KEY}`,
