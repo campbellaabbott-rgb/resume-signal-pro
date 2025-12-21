@@ -27,12 +27,12 @@ export function Header() {
     return (
     <>
       {/* Beta Banner */}
-      <div className="fixed top-0 left-0 right-0 z-[51] bg-[hsl(217,91%,60%)] text-[hsl(222,47%,6%)] text-center py-1.5 text-xs font-medium tracking-wide">
+      <div className="fixed top-0 left-0 right-0 z-[60] bg-[hsl(217,91%,60%)] text-[hsl(222,47%,6%)] text-center py-1.5 text-xs font-medium tracking-wide">
         🚀 Currently in Beta — We'd love your feedback!
       </div>
       <header 
-        className="fixed top-10 left-0 right-0 z-50 bg-background/100 backdrop-blur-none border-b border-border/50"
-        style={{ backgroundColor: 'hsl(var(--background))' }}
+        className="fixed top-10 left-0 right-0 z-[59] border-b border-border/50"
+        style={{ backgroundColor: 'hsl(222, 47%, 6%)' }}
         role="banner"
       >
       <div className="container">
