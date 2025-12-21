@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { PRODUCTS } from '@/config/products';
 
-// 1 credit = $1, users can buy any amount
-const PRICE_PER_CREDIT_USD = 1;
+// Calculate price per credit from scan pack
+const PRICE_PER_CREDIT_USD = PRODUCTS.scanPack.priceUsd / (PRODUCTS.scanPack.credits || 10);
 
 interface ScanCreditsState {
   email: string | null;

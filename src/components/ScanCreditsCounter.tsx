@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/popover";
 import { useScanCredits } from "@/hooks/use-scan-credits";
 import { ScanPackPurchase } from "@/components/ScanPackPurchase";
+import { PRODUCTS } from "@/config/products";
 
 export function ScanCreditsCounter() {
   const [email, setEmail] = useState("");
@@ -72,7 +73,7 @@ export function ScanCreditsCounter() {
             </div>
             
             <p className="text-xs text-muted-foreground text-center">
-              Credits never expire • $1 per credit
+              Credits never expire • ${pricePerCredit.toFixed(2)} per credit
             </p>
             
             <Button
@@ -157,7 +158,7 @@ export function ScanCreditsCounter() {
                 No credits found for this email.
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                $1 per credit • Buy any amount
+                ${pricePerCredit.toFixed(2)} per credit • Buy any amount
               </p>
             </div>
           )}
@@ -176,7 +177,7 @@ export function ScanCreditsCounter() {
               className="w-full gap-2"
             >
               <Plus className="w-4 h-4" />
-              Buy Credits — $1 each
+              Buy Credits — ${pricePerCredit.toFixed(2)} each
             </Button>
           </div>
         </div>
