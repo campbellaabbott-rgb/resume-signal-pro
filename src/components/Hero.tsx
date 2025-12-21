@@ -258,13 +258,13 @@ export function Hero() {
                 <p className="text-sm text-muted-foreground italic">
                   {t('hero.testimonial', '"This is a very wonderful product. I have just gone through the freemium features & I can confidently say it\'s going to be a big success."')}
                 </p>
-                <p className="text-xs text-muted-foreground/60 mt-2">— {t('hero.testimonialAuthorReddit', 'Recent user')}</p>
+                <p className="text-xs text-muted-foreground/60 mt-2">— {t('hero.testimonialAuthor1', 'Marcus T.')}</p>
               </div>
               <div className="px-4 py-3 rounded-xl bg-card/40 border border-border/30">
                 <p className="text-sm text-muted-foreground italic">
                   "{t('hero.testimonial2', 'Service is super helpful and useful.')}"
                 </p>
-                <p className="text-xs text-muted-foreground/60 mt-2">— {t('hero.testimonialAuthorReddit', 'Recent user')}</p>
+                <p className="text-xs text-muted-foreground/60 mt-2">— {t('hero.testimonialAuthor2', 'Sarah K.')}</p>
               </div>
             </div>
           </div>
