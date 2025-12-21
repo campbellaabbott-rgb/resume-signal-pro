@@ -169,6 +169,52 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
     // Nonprofit & NGO
     { pattern: /\b(nonprofit|non-profit|501c3|foundation|philanthropy|fundraising|donor relations|grant proposal|program management|community outreach|advocacy)\b/gi, category: "industry_term", importance: "important" },
     
+    // ===== REAL ESTATE =====
+    // Real estate skills (critical)
+    { pattern: /\b(real estate|property management|leasing|tenant relations|lease administration|rent collection|property maintenance|occupancy|vacancy)\b/gi, category: "hard_skill", importance: "critical" },
+    // Real estate transactions
+    { pattern: /\b(buying|selling|listings|mls|multiple listing service|closing|escrow|title|appraisal|home inspection|mortgage|financing)\b/gi, category: "hard_skill", importance: "important" },
+    // Commercial real estate
+    { pattern: /\b(commercial real estate|cre|industrial|retail space|office space|cap rate|noi|net operating income|reit|investment property|asset management)\b/gi, category: "industry_term", importance: "important" },
+    // Real estate certifications
+    { pattern: /\b(real estate license|broker license|realtor|nar|ccim|cpm|rpa|sior|crrp|leed|leed ap|green building)\b/gi, category: "certification", importance: "critical" },
+    // Real estate tools
+    { pattern: /\b(yardi|appfolio|buildium|rentmanager|costar|loopnet|zillow|realtor\.com|mls system|property management software)\b/gi, category: "tool", importance: "important" },
+    // Construction & development
+    { pattern: /\b(construction management|development|entitlements|zoning|permitting|site selection|due diligence|feasibility study|proforma|ground-up)\b/gi, category: "hard_skill", importance: "important" },
+    
+    // ===== HOSPITALITY & TOURISM =====
+    // Hotel operations (critical)
+    { pattern: /\b(hotel management|front desk|guest services|concierge|housekeeping|room service|bellhop|valet|hospitality|guest experience)\b/gi, category: "hard_skill", importance: "critical" },
+    // Revenue & reservations
+    { pattern: /\b(revenue management|revpar|adr|occupancy rate|yield management|reservations|booking|ota|online travel agency|gds|central reservations)\b/gi, category: "hard_skill", importance: "critical" },
+    // Food & beverage
+    { pattern: /\b(food and beverage|f&b|restaurant management|banquet|catering|culinary|chef|kitchen management|menu planning|food cost|beverage cost)\b/gi, category: "hard_skill", importance: "important" },
+    // Hospitality systems
+    { pattern: /\b(opera|pms|property management system|micros|aloha|toast|opentable|resy|tripleseat|eventbrite|cvent)\b/gi, category: "tool", importance: "important" },
+    // Hospitality certifications
+    { pattern: /\b(cha|chae|cfbe|cht|crme|servsafe|tips certified|food handler|alcohol server|cmp|meeting planner)\b/gi, category: "certification", importance: "important" },
+    // Events & tourism
+    { pattern: /\b(event planning|event management|conference|meeting planning|destination|tourism|travel agent|tour operator|group sales|corporate events)\b/gi, category: "industry_term", importance: "important" },
+    // Hospitality soft skills
+    { pattern: /\b(guest satisfaction|service excellence|complaint resolution|upselling|vip|loyalty program|customer experience|hospitality minded)\b/gi, category: "soft_skill", importance: "important" },
+    
+    // ===== RETAIL =====
+    // Retail operations (critical)
+    { pattern: /\b(retail management|store management|store operations|visual merchandising|planogram|inventory control|shrinkage|loss prevention|lp)\b/gi, category: "hard_skill", importance: "critical" },
+    // Sales & customer service
+    { pattern: /\b(retail sales|sales associate|cashier|customer service|clienteling|personal shopping|fitting room|register|pos|point of sale)\b/gi, category: "hard_skill", importance: "important" },
+    // E-commerce retail
+    { pattern: /\b(e-commerce|ecommerce|omnichannel|multichannel|buy online pick up|bopis|ship from store|marketplace|amazon|shopify|magento|bigcommerce)\b/gi, category: "hard_skill", importance: "critical" },
+    // Retail metrics
+    { pattern: /\b(same store sales|comp sales|conversion rate|basket size|aov|average order value|traffic|footfall|units per transaction|upt)\b/gi, category: "industry_term", importance: "important" },
+    // Retail systems
+    { pattern: /\b(retail pro|lightspeed|square|clover|netsuite retail|oracle retail|sap retail|jda|manhattan associates|blue yonder)\b/gi, category: "tool", importance: "important" },
+    // Category & merchandising
+    { pattern: /\b(category management|buying|merchandising|assortment planning|allocation|replenishment|markdown|pricing strategy|promotional planning)\b/gi, category: "hard_skill", importance: "important" },
+    // Retail leadership
+    { pattern: /\b(district manager|regional manager|area manager|store director|general manager|assistant manager|key holder|shift lead|team lead)\b/gi, category: "industry_term", importance: "nice_to_have" },
+    
     // ===== OPERATIONS & SUPPLY CHAIN =====
     { pattern: /\b(supply chain|logistics|procurement|inventory management|warehouse|distribution|erp|mrp|lean manufacturing|six sigma|kaizen|tps|just-in-time|jit)\b/gi, category: "hard_skill", importance: "critical" },
     { pattern: /\b(apics|cpim|cscp|cltd|pmp|capm|lean six sigma|green belt|black belt|master black belt)\b/gi, category: "certification", importance: "important" },
