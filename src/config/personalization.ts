@@ -1223,6 +1223,38 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       metricsRate: 70
     }
   },
+  product_designer: {
+    name: 'Product Designer',
+    aliases: ['senior product designer', 'lead product designer', 'staff product designer', 'principal designer', 'design lead', 'end-to-end designer', 'full stack designer', 'digital product designer'],
+    keySkills: ['End-to-End Design', 'User Research', 'Visual Design', 'Prototyping', 'Design Systems', 'Usability Testing', 'Figma', 'Cross-Functional Collaboration', 'Design Strategy'],
+    mustHaveKeywords: ['product design', 'end-to-end', 'user research', 'visual design', 'prototype', 'design system', 'user experience', 'interface', 'collaboration', 'strategy'],
+    resumeTips: [
+      'Show end-to-end ownership from research to final UI',
+      'Quantify both usability AND business metrics',
+      'Include portfolio with comprehensive case studies',
+      'Highlight strategic design thinking and product impact'
+    ],
+    bulletExamples: [
+      { weak: 'Designed product features', strong: 'Owned end-to-end design for subscription flow: conducted 30+ user interviews, designed UI, and delivered 50% increase in conversion and 4.7★ user ratings' },
+      { weak: 'Created design system', strong: 'Built and scaled design system across 6 products, reducing design debt by 70% and accelerating feature delivery by 3x' }
+    ],
+    keyMetrics: ['Conversion/engagement improvement', 'User satisfaction (NPS/SUS)', 'Design system adoption', 'Feature adoption rate', 'Task success rate', 'Time-to-market reduction'],
+    commonMistakes: [
+      'Not showing full design process (research to UI)',
+      'Missing portfolio with case studies',
+      'Separating UX and UI instead of showing integration',
+      'Not quantifying business and user impact together'
+    ],
+    interviewTopics: ['End-to-end design process', 'Portfolio deep-dive', 'Research methods', 'Visual design decisions', 'Design systems', 'Stakeholder collaboration', 'Design strategy'],
+    topResumeElements: {
+      sections: ['Portfolio Link', 'Product Design Experience', 'Impact Metrics', 'Skills & Tools', 'Education'],
+      differentiators: ['End-to-end case studies', 'Combined UX+UI metrics', 'Design system leadership', 'Strategic product thinking'],
+      avgBulletCount: 4,
+      certificationRate: 30,
+      portfolioRate: 99,
+      metricsRate: 82
+    }
+  },
   developer_advocate: {
     name: 'Developer Advocate',
     aliases: ['developer relations', 'devrel', 'developer evangelist', 'technical evangelist', 'community manager', 'developer experience', 'dx advocate', 'api evangelist'],
