@@ -97,6 +97,25 @@ const CURRENCY_MAP: Record<string, CurrencyInfo> = {
   NA: { code: "NAD", symbol: "N$", rate: 18.20 },    // Namibia
   LY: { code: "LYD", symbol: "ل.د", rate: 4.90 },    // Libya
   SD: { code: "SDG", symbol: "ج.س.", rate: 600 },    // Sudan
+  // Latin American currencies
+  PE: { code: "PEN", symbol: "S/", rate: 3.70 },      // Peru
+  EC: { code: "USD", symbol: "$", rate: 1 },          // Ecuador (uses USD)
+  BO: { code: "BOB", symbol: "Bs", rate: 6.91 },      // Bolivia
+  PY: { code: "PYG", symbol: "₲", rate: 7850 },       // Paraguay
+  VE: { code: "VES", symbol: "Bs.S", rate: 52.50 },   // Venezuela
+  CR: { code: "CRC", symbol: "₡", rate: 510 },        // Costa Rica
+  PA: { code: "PAB", symbol: "B/.", rate: 1 },        // Panama (pegged to USD)
+  GT: { code: "GTQ", symbol: "Q", rate: 7.75 },       // Guatemala
+  HN: { code: "HNL", symbol: "L", rate: 25.20 },      // Honduras
+  NI: { code: "NIO", symbol: "C$", rate: 36.80 },     // Nicaragua
+  SV: { code: "USD", symbol: "$", rate: 1 },          // El Salvador (uses USD)
+  DO: { code: "DOP", symbol: "RD$", rate: 60.50 },    // Dominican Republic
+  CU: { code: "CUP", symbol: "₱", rate: 24 },         // Cuba
+  PR: { code: "USD", symbol: "$", rate: 1 },          // Puerto Rico (uses USD)
+  HT: { code: "HTG", symbol: "G", rate: 131 },        // Haiti
+  BZ: { code: "BZD", symbol: "BZ$", rate: 2.02 },     // Belize
+  GY: { code: "GYD", symbol: "G$", rate: 209 },       // Guyana
+  SR: { code: "SRD", symbol: "SRD", rate: 36.50 },    // Suriname
 };
 
 // Map timezone to country code (approximate)
@@ -168,6 +187,24 @@ function getCountryFromTimezone(): string {
       "America/Argentina/Buenos_Aires": "AR",
       "America/Santiago": "CL",
       "America/Bogota": "CO",
+      "America/Lima": "PE",
+      "America/Guayaquil": "EC",
+      "America/La_Paz": "BO",
+      "America/Asuncion": "PY",
+      "America/Caracas": "VE",
+      "America/Costa_Rica": "CR",
+      "America/Panama": "PA",
+      "America/Guatemala": "GT",
+      "America/Tegucigalpa": "HN",
+      "America/Managua": "NI",
+      "America/El_Salvador": "SV",
+      "America/Santo_Domingo": "DO",
+      "America/Havana": "CU",
+      "America/Puerto_Rico": "PR",
+      "America/Port-au-Prince": "HT",
+      "America/Belize": "BZ",
+      "America/Guyana": "GY",
+      "America/Paramaribo": "SR",
       "Africa/Johannesburg": "ZA",
       "Africa/Lagos": "NG",
       "Africa/Cairo": "EG",
