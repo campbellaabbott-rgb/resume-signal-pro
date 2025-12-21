@@ -869,7 +869,7 @@ const Index = () => {
       />
       <Header />
 
-      <main id="main-content" className="pt-[104px]" role="main">
+      <main id="main-content" className="pt-[88px]" role="main">
         <Hero />
         
         {/* How It Works - Show after uploader on mobile for cleaner flow */}
