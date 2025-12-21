@@ -1909,6 +1909,102 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Not showing regulatory expertise'
     ],
     interviewTopics: ['Regulatory knowledge', 'Remediation approaches', 'Sustainability strategies', 'Permitting process', 'Stakeholder management']
+  },
+  solutions_architect: {
+    name: 'Solutions Architect',
+    aliases: ['enterprise architect', 'technical architect', 'aws solutions architect', 'azure solutions architect', 'cloud architect', 'senior architect', 'principal architect'],
+    keySkills: ['Cloud Architecture', 'System Design', 'AWS/Azure/GCP', 'Technical Leadership', 'Stakeholder Management', 'Integration Patterns', 'Security Architecture', 'Cost Optimization'],
+    mustHaveKeywords: ['architecture', 'cloud', 'design', 'scalability', 'integration', 'enterprise', 'solutions', 'technical leadership'],
+    resumeTips: [
+      'Include cloud certifications prominently (AWS SAA/SAP, Azure)',
+      'Quantify system scale and business impact',
+      'Show cross-functional collaboration and leadership',
+      'Highlight cost optimization and efficiency gains'
+    ],
+    bulletExamples: [
+      { weak: 'Designed cloud solutions', strong: 'Architected multi-region AWS infrastructure supporting 10M+ users with 99.99% availability and 40% cost reduction' },
+      { weak: 'Worked with stakeholders on technical requirements', strong: 'Led technical discovery for $50M digital transformation, defining architecture for 15 microservices adopted across 3 business units' }
+    ],
+    keyMetrics: ['System scale (users/transactions)', 'Cost savings %', 'Availability %', 'Projects delivered', 'Teams influenced'],
+    commonMistakes: [
+      'Not including cloud certifications',
+      'Missing scale and performance metrics',
+      'Vague "designed architecture" without outcomes',
+      'Not showing stakeholder influence'
+    ],
+    interviewTopics: ['System design', 'Cloud services deep-dive', 'Trade-off analysis', 'Cost optimization', 'Technical leadership scenarios']
+  },
+  cloud_engineer: {
+    name: 'Cloud Engineer',
+    aliases: ['cloud infrastructure engineer', 'cloud operations engineer', 'aws engineer', 'azure engineer', 'gcp engineer', 'cloud administrator', 'cloud specialist'],
+    keySkills: ['AWS/Azure/GCP', 'Terraform/IaC', 'Kubernetes', 'CI/CD', 'Networking', 'Security', 'Monitoring', 'Cost Management'],
+    mustHaveKeywords: ['cloud', 'infrastructure', 'terraform', 'kubernetes', 'aws', 'azure', 'automation', 'deployment'],
+    resumeTips: [
+      'Include cloud certifications (AWS, Azure, GCP)',
+      'Quantify infrastructure scale and cost savings',
+      'Show automation and IaC achievements',
+      'Highlight uptime and reliability metrics'
+    ],
+    bulletExamples: [
+      { weak: 'Managed cloud infrastructure', strong: 'Managed AWS infrastructure with 500+ EC2 instances, achieving 99.99% uptime and reducing monthly costs by $100K through optimization' },
+      { weak: 'Used Terraform for infrastructure', strong: 'Implemented Terraform-based IaC for 20+ environments, reducing provisioning time from 2 weeks to 2 hours' }
+    ],
+    keyMetrics: ['Uptime %', 'Cost savings ($)', 'Infrastructure scale', 'Deployment frequency', 'Provisioning time reduction'],
+    commonMistakes: [
+      'Not including cloud certifications',
+      'Missing infrastructure scale metrics',
+      'Vague "managed cloud" without specifics',
+      'Not showing automation achievements'
+    ],
+    interviewTopics: ['Cloud services knowledge', 'IaC best practices', 'Networking and security', 'Cost optimization', 'Troubleshooting scenarios']
+  },
+  network_engineer: {
+    name: 'Network Engineer',
+    aliases: ['network administrator', 'senior network engineer', 'network architect', 'network operations', 'cisco engineer', 'network specialist', 'infrastructure engineer'],
+    keySkills: ['Cisco/Juniper', 'Routing & Switching', 'Firewalls', 'VPN', 'Network Security', 'Load Balancing', 'Troubleshooting', 'Network Monitoring'],
+    mustHaveKeywords: ['network', 'routing', 'switching', 'firewall', 'vpn', 'cisco', 'infrastructure', 'uptime'],
+    resumeTips: [
+      'Include certifications (CCNA, CCNP, CCIE)',
+      'Quantify network scale and uptime achieved',
+      'Show cost savings from optimization',
+      'Highlight security improvements and incident response'
+    ],
+    bulletExamples: [
+      { weak: 'Managed company network', strong: 'Managed enterprise network spanning 50+ sites and 10,000+ endpoints, maintaining 99.99% uptime' },
+      { weak: 'Configured firewalls and VPNs', strong: 'Deployed SD-WAN across 30 locations, reducing WAN costs by 45% while improving bandwidth by 3x' }
+    ],
+    keyMetrics: ['Uptime %', 'Sites/endpoints managed', 'Cost savings %', 'Bandwidth improvement', 'Incident response time'],
+    commonMistakes: [
+      'Not including network certifications',
+      'Missing network scale and scope',
+      'Vague "managed network" without metrics',
+      'Not showing security and reliability achievements'
+    ],
+    interviewTopics: ['Networking fundamentals', 'Troubleshooting scenarios', 'Security best practices', 'Network design', 'Protocol deep-dives']
+  },
+  database_administrator: {
+    name: 'Database Administrator',
+    aliases: ['dba', 'senior dba', 'database engineer', 'data platform engineer', 'oracle dba', 'sql server dba', 'mysql dba', 'postgres dba'],
+    keySkills: ['SQL', 'Database Design', 'Performance Tuning', 'Backup & Recovery', 'High Availability', 'Security', 'Replication', 'Cloud Databases'],
+    mustHaveKeywords: ['database', 'sql', 'performance tuning', 'backup', 'recovery', 'replication', 'high availability', 'optimization'],
+    resumeTips: [
+      'Include database certifications (Oracle, Microsoft, AWS)',
+      'Quantify database sizes and performance improvements',
+      'Show uptime and disaster recovery achievements',
+      'Highlight automation and cost optimization'
+    ],
+    bulletExamples: [
+      { weak: 'Managed company databases', strong: 'Administered 50+ production databases (20TB+) with 99.99% uptime, supporting 5,000+ concurrent users' },
+      { weak: 'Optimized database performance', strong: 'Reduced query response times by 80% through index optimization and query tuning, improving application performance for 1M+ users' }
+    ],
+    keyMetrics: ['Database size (TB)', 'Uptime %', 'Query performance improvement', 'Recovery time (RTO/RPO)', 'Concurrent users supported'],
+    commonMistakes: [
+      'Not including database certifications',
+      'Missing database scale and size metrics',
+      'Vague "managed databases" without specifics',
+      'Not showing performance tuning results'
+    ],
+    interviewTopics: ['SQL proficiency', 'Performance tuning techniques', 'Backup/recovery scenarios', 'High availability design', 'Troubleshooting']
   }
 };
 
@@ -1979,6 +2075,10 @@ export function getRoleAdvice(role: string): RoleConfig | null {
   if (normalizedRole.includes('biomedical') || normalizedRole.includes('medical device') || normalizedRole.includes('clinical engineer')) return ROLE_CONFIGS.biomedical_engineer;
   if (normalizedRole.includes('industrial engineer') || normalizedRole.includes('lean engineer') || normalizedRole.includes('continuous improvement')) return ROLE_CONFIGS.industrial_engineer;
   if (normalizedRole.includes('environmental engineer') || normalizedRole.includes('sustainability engineer') || normalizedRole.includes('remediation')) return ROLE_CONFIGS.environmental_engineer;
+  if (normalizedRole.includes('solutions architect') || normalizedRole.includes('enterprise architect') || normalizedRole.includes('technical architect')) return ROLE_CONFIGS.solutions_architect;
+  if (normalizedRole.includes('cloud engineer') || normalizedRole.includes('cloud infrastructure') || normalizedRole.includes('cloud operations')) return ROLE_CONFIGS.cloud_engineer;
+  if (normalizedRole.includes('network engineer') || normalizedRole.includes('network admin') || normalizedRole.includes('network architect')) return ROLE_CONFIGS.network_engineer;
+  if (normalizedRole.includes('dba') || normalizedRole.includes('database admin') || normalizedRole.includes('database engineer')) return ROLE_CONFIGS.database_administrator;
   
   return null;
 }
