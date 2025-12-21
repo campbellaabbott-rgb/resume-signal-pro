@@ -925,7 +925,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "prepared reports" without impact',
       'Not mentioning specific software/ERP'
     ],
-    interviewTopics: ['Technical accounting', 'GAAP knowledge', 'Audit procedures', 'ERP experience', 'Problem-solving scenarios']
+    interviewTopics: ['Technical accounting', 'GAAP knowledge', 'Audit procedures', 'ERP experience', 'Problem-solving scenarios'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Skills', 'Education', 'Certifications'],
+      differentiators: ['CPA license', 'Big 4 experience', 'ERP system expertise', 'Process automation achievements'],
+      avgBulletCount: 4,
+      certificationRate: 85,
+      portfolioRate: 5,
+      metricsRate: 82
+    }
   },
   teacher: {
     name: 'Teacher',
@@ -949,7 +957,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "taught students" without specifics',
       'Not showing measurable improvements'
     ],
-    interviewTopics: ['Classroom scenarios', 'Differentiation strategies', 'Assessment methods', 'Parent communication', 'Classroom management']
+    interviewTopics: ['Classroom scenarios', 'Differentiation strategies', 'Assessment methods', 'Parent communication', 'Classroom management'],
+    topResumeElements: {
+      sections: ['Certifications', 'Teaching Experience', 'Education', 'Professional Development', 'Skills'],
+      differentiators: ['Student outcome improvements', 'Specific certifications/endorsements', 'Technology integration', 'Extracurricular leadership'],
+      avgBulletCount: 4,
+      certificationRate: 98,
+      portfolioRate: 20,
+      metricsRate: 65
+    }
   },
   hr_manager: {
     name: 'HR Manager',
@@ -973,7 +989,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "improved culture" without measurable outcomes',
       'Not mentioning compliance certifications (SHRM, PHR)'
     ],
-    interviewTopics: ['Conflict resolution scenarios', 'DEI initiatives', 'Change management', 'Employment law', 'Performance management systems']
+    interviewTopics: ['Conflict resolution scenarios', 'DEI initiatives', 'Change management', 'Employment law', 'Performance management systems'],
+    topResumeElements: {
+      sections: ['Summary', 'HR Experience', 'Certifications', 'Skills', 'Education'],
+      differentiators: ['SHRM/PHR certification', 'Turnover reduction metrics', 'DEI program results', 'HRIS implementation experience'],
+      avgBulletCount: 5,
+      certificationRate: 70,
+      portfolioRate: 5,
+      metricsRate: 80
+    }
   },
   financial_analyst: {
     name: 'Financial Analyst',
@@ -997,7 +1021,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "analyzed financials" without impact',
       'Not listing specific tools (Excel, SQL, Tableau)'
     ],
-    interviewTopics: ['Financial modeling tests', 'Excel proficiency', 'Variance analysis scenarios', 'Business case development', 'Stakeholder communication']
+    interviewTopics: ['Financial modeling tests', 'Excel proficiency', 'Variance analysis scenarios', 'Business case development', 'Stakeholder communication'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Technical Skills', 'Education', 'Certifications'],
+      differentiators: ['Advanced Excel/VBA skills', 'Specific modeling experience (DCF, LBO)', 'FP&A certifications', 'Forecast accuracy metrics'],
+      avgBulletCount: 4,
+      certificationRate: 50,
+      portfolioRate: 10,
+      metricsRate: 90
+    }
   },
   customer_success: {
     name: 'Customer Success Manager',
@@ -1021,7 +1053,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "built relationships" without outcomes',
       'Not showing impact on expansion revenue'
     ],
-    interviewTopics: ['Churn prevention strategies', 'Difficult customer scenarios', 'Upselling techniques', 'QBR preparation', 'Cross-functional collaboration']
+    interviewTopics: ['Churn prevention strategies', 'Difficult customer scenarios', 'Upselling techniques', 'QBR preparation', 'Cross-functional collaboration'],
+    topResumeElements: {
+      sections: ['Summary', 'Customer Success Experience', 'Key Achievements', 'Skills', 'Education'],
+      differentiators: ['Net revenue retention metrics', 'Churn reduction achievements', 'ARR portfolio size', 'Customer health scoring experience'],
+      avgBulletCount: 5,
+      certificationRate: 35,
+      portfolioRate: 10,
+      metricsRate: 92
+    }
   },
   operations_manager: {
     name: 'Operations Manager',
@@ -1045,7 +1085,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "improved operations" without metrics',
       'Not mentioning specific methodologies (Lean, Six Sigma, Kaizen)'
     ],
-    interviewTopics: ['Process improvement examples', 'Team management challenges', 'Budget optimization', 'Crisis management', 'Cross-departmental coordination']
+    interviewTopics: ['Process improvement examples', 'Team management challenges', 'Budget optimization', 'Crisis management', 'Cross-departmental coordination'],
+    topResumeElements: {
+      sections: ['Summary', 'Operations Experience', 'Key Achievements', 'Skills', 'Certifications'],
+      differentiators: ['Lean/Six Sigma certification', 'P&L responsibility', 'Cost savings achievements', 'Team size managed'],
+      avgBulletCount: 5,
+      certificationRate: 55,
+      portfolioRate: 5,
+      metricsRate: 88
+    }
   },
   executive_assistant: {
     name: 'Executive Assistant',
@@ -1069,7 +1117,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "administrative support" without specifics',
       'Not mentioning tools and software proficiency'
     ],
-    interviewTopics: ['Prioritization scenarios', 'Confidentiality handling', 'Difficult scheduling situations', 'Stakeholder management', 'Crisis management']
+    interviewTopics: ['Prioritization scenarios', 'Confidentiality handling', 'Difficult scheduling situations', 'Stakeholder management', 'Crisis management'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Skills', 'Education'],
+      differentiators: ['C-suite support experience', 'Complex calendar management', 'Travel/budget management', 'Event coordination'],
+      avgBulletCount: 4,
+      certificationRate: 20,
+      portfolioRate: 5,
+      metricsRate: 70
+    }
   },
   business_analyst: {
     name: 'Business Analyst',
@@ -1093,7 +1149,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "analyzed processes" without outcomes',
       'Not showing stakeholder management skills'
     ],
-    interviewTopics: ['Requirements gathering techniques', 'Stakeholder conflict resolution', 'Process mapping examples', 'Agile ceremonies', 'Documentation best practices']
+    interviewTopics: ['Requirements gathering techniques', 'Stakeholder conflict resolution', 'Process mapping examples', 'Agile ceremonies', 'Documentation best practices'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Skills', 'Certifications', 'Education'],
+      differentiators: ['CBAP/CCBA certification', 'Large project experience', 'Agile/Scrum expertise', 'SQL/data analysis skills'],
+      avgBulletCount: 4,
+      certificationRate: 45,
+      portfolioRate: 15,
+      metricsRate: 75
+    }
   },
   devops_engineer: {
     name: 'DevOps Engineer',
@@ -1117,7 +1181,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Missing scale (servers, containers, requests/sec)',
       'Not showing cost optimization achievements'
     ],
-    interviewTopics: ['System design', 'Incident response', 'CI/CD architecture', 'Cloud cost optimization', 'Monitoring and alerting strategies']
+    interviewTopics: ['System design', 'Incident response', 'CI/CD architecture', 'Cloud cost optimization', 'Monitoring and alerting strategies'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'Experience', 'Certifications', 'Projects', 'Education'],
+      differentiators: ['Cloud certifications (AWS/GCP/Azure)', 'Uptime achievements', 'Automation metrics', 'Cost optimization results'],
+      avgBulletCount: 4,
+      certificationRate: 75,
+      portfolioRate: 45,
+      metricsRate: 90
+    }
   },
   qa_engineer: {
     name: 'QA Engineer',
@@ -1141,7 +1213,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "tested software" without metrics',
       'Not showing CI/CD integration experience'
     ],
-    interviewTopics: ['Test strategy design', 'Automation framework architecture', 'Bug prioritization', 'Performance testing approach', 'Shift-left testing']
+    interviewTopics: ['Test strategy design', 'Automation framework architecture', 'Bug prioritization', 'Performance testing approach', 'Shift-left testing'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Technical Skills', 'Certifications', 'Education'],
+      differentiators: ['Test automation coverage metrics', 'Framework development', 'ISTQB certification', 'Bug prevention achievements'],
+      avgBulletCount: 4,
+      certificationRate: 50,
+      portfolioRate: 30,
+      metricsRate: 82
+    }
   },
   recruiter: {
     name: 'Recruiter',
@@ -1165,7 +1245,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "filled positions" without numbers',
       'Not showing sourcing strategy results'
     ],
-    interviewTopics: ['Sourcing strategies', 'Candidate experience', 'Difficult searches', 'Diversity recruiting', 'Stakeholder management']
+    interviewTopics: ['Sourcing strategies', 'Candidate experience', 'Difficult searches', 'Diversity recruiting', 'Stakeholder management'],
+    topResumeElements: {
+      sections: ['Summary', 'Recruiting Experience', 'Key Metrics', 'Skills', 'Education'],
+      differentiators: ['Time-to-fill metrics', 'Offer acceptance rates', 'Diversity hiring achievements', 'ATS expertise'],
+      avgBulletCount: 5,
+      certificationRate: 35,
+      portfolioRate: 5,
+      metricsRate: 95
+    }
   },
   content_writer: {
     name: 'Content Writer',
@@ -1189,7 +1277,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "created content" without results',
       'Not mentioning SEO or analytics experience'
     ],
-    interviewTopics: ['Writing process', 'SEO strategy', 'Brand voice development', 'Content performance analysis', 'Deadline management']
+    interviewTopics: ['Writing process', 'SEO strategy', 'Brand voice development', 'Content performance analysis', 'Deadline management'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Portfolio', 'Skills', 'Education'],
+      differentiators: ['Portfolio with writing samples', 'Traffic/engagement metrics', 'SEO results', 'Content variety'],
+      avgBulletCount: 4,
+      certificationRate: 25,
+      portfolioRate: 90,
+      metricsRate: 75
+    }
   },
   graphic_designer: {
     name: 'Graphic Designer',
@@ -1213,7 +1309,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Listing software without showing creative outcomes',
       'Not mentioning collaboration with stakeholders'
     ],
-    interviewTopics: ['Portfolio walkthrough', 'Design process', 'Feedback handling', 'Brand consistency', 'Cross-functional collaboration']
+    interviewTopics: ['Portfolio walkthrough', 'Design process', 'Feedback handling', 'Brand consistency', 'Cross-functional collaboration'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Portfolio', 'Skills & Tools', 'Education'],
+      differentiators: ['Portfolio link (mandatory)', 'Brand work examples', 'Campaign performance metrics', 'Adobe/Figma proficiency'],
+      avgBulletCount: 4,
+      certificationRate: 20,
+      portfolioRate: 98,
+      metricsRate: 65
+    }
   },
   pharmacist: {
     name: 'Pharmacist',
@@ -1237,7 +1341,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "filled prescriptions" without scale',
       'Not highlighting patient safety achievements'
     ],
-    interviewTopics: ['Drug interaction scenarios', 'Patient counseling approach', 'Error prevention', 'Regulatory compliance', 'Team management']
+    interviewTopics: ['Drug interaction scenarios', 'Patient counseling approach', 'Error prevention', 'Regulatory compliance', 'Team management'],
+    topResumeElements: {
+      sections: ['Licenses', 'Experience', 'Certifications', 'Clinical Skills', 'Education'],
+      differentiators: ['License and state(s)', 'Prescription volume', 'Error prevention metrics', 'Specialty certifications'],
+      avgBulletCount: 4,
+      certificationRate: 95,
+      portfolioRate: 5,
+      metricsRate: 75
+    }
   },
   social_media_manager: {
     name: 'Social Media Manager',
@@ -1261,7 +1373,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "managed social media" without results',
       'Not mentioning specific platforms and tools'
     ],
-    interviewTopics: ['Content strategy', 'Crisis management', 'Analytics interpretation', 'Platform-specific tactics', 'Influencer partnerships']
+    interviewTopics: ['Content strategy', 'Crisis management', 'Analytics interpretation', 'Platform-specific tactics', 'Influencer partnerships'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Key Achievements', 'Skills', 'Education'],
+      differentiators: ['Follower growth metrics', 'Engagement rate achievements', 'Viral content examples', 'Platform-specific expertise'],
+      avgBulletCount: 5,
+      certificationRate: 30,
+      portfolioRate: 70,
+      metricsRate: 92
+    }
   },
   architect: {
     name: 'Architect',
@@ -1285,7 +1405,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "designed buildings" without specifics',
       'Not mentioning software proficiency'
     ],
-    interviewTopics: ['Portfolio walkthrough', 'Design process', 'Code compliance', 'Client management', 'Sustainable design approach']
+    interviewTopics: ['Portfolio walkthrough', 'Design process', 'Code compliance', 'Client management', 'Sustainable design approach'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Portfolio', 'Licenses', 'Education'],
+      differentiators: ['Licensed architect status', 'Project budget scale', 'LEED certifications', 'Notable projects'],
+      avgBulletCount: 4,
+      certificationRate: 90,
+      portfolioRate: 95,
+      metricsRate: 70
+    }
   },
   physical_therapist: {
     name: 'Physical Therapist',
@@ -1309,7 +1437,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "provided physical therapy" without results',
       'Not showing specialization areas'
     ],
-    interviewTopics: ['Clinical scenarios', 'Treatment approach', 'Outcome measurement', 'Patient communication', 'Evidence-based practice']
+    interviewTopics: ['Clinical scenarios', 'Treatment approach', 'Outcome measurement', 'Patient communication', 'Evidence-based practice'],
+    topResumeElements: {
+      sections: ['Licenses', 'Experience', 'Certifications', 'Specializations', 'Education'],
+      differentiators: ['DPT/specialty certifications', 'Patient outcome metrics', 'Caseload volume', 'Evidence-based practice'],
+      avgBulletCount: 4,
+      certificationRate: 92,
+      portfolioRate: 5,
+      metricsRate: 78
+    }
   },
   supply_chain_manager: {
     name: 'Supply Chain Manager',
@@ -1333,7 +1469,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "managed supply chain" without scale',
       'Not mentioning specific ERP systems'
     ],
-    interviewTopics: ['Supply chain disruption handling', 'Vendor negotiation', 'Demand forecasting', 'Cost optimization strategies', 'ERP implementation']
+    interviewTopics: ['Supply chain disruption handling', 'Vendor negotiation', 'Demand forecasting', 'Cost optimization strategies', 'ERP implementation'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Key Achievements', 'Skills', 'Certifications'],
+      differentiators: ['APICS/CSCP certification', 'Cost savings achievements', 'ERP implementation', 'Vendor negotiation results'],
+      avgBulletCount: 5,
+      certificationRate: 60,
+      portfolioRate: 5,
+      metricsRate: 90
+    }
   },
   attorney: {
     name: 'Attorney',
@@ -1357,7 +1501,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "handled legal matters" without specifics',
       'Not showing practice area expertise'
     ],
-    interviewTopics: ['Case strategy scenarios', 'Ethics and confidentiality', 'Client management', 'Legal research approach', 'Negotiation tactics']
+    interviewTopics: ['Case strategy scenarios', 'Ethics and confidentiality', 'Client management', 'Legal research approach', 'Negotiation tactics'],
+    topResumeElements: {
+      sections: ['Education', 'Bar Admissions', 'Experience', 'Notable Matters', 'Skills'],
+      differentiators: ['Bar admissions', 'Deal values/case outcomes', 'Practice area expertise', 'Notable matters'],
+      avgBulletCount: 4,
+      certificationRate: 100,
+      portfolioRate: 5,
+      metricsRate: 75
+    }
   },
   chef: {
     name: 'Chef',
@@ -1381,7 +1533,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "cooked food" without culinary achievements',
       'Not mentioning certifications (ServSafe, culinary degrees)'
     ],
-    interviewTopics: ['Menu development process', 'Kitchen management scenarios', 'Food cost control', 'Team leadership', 'Handling high-volume service']
+    interviewTopics: ['Menu development process', 'Kitchen management scenarios', 'Food cost control', 'Team leadership', 'Handling high-volume service'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Culinary Skills', 'Education/Training', 'Awards'],
+      differentiators: ['Notable restaurant experience', 'Food cost achievements', 'Team size managed', 'Awards/recognition'],
+      avgBulletCount: 4,
+      certificationRate: 50,
+      portfolioRate: 15,
+      metricsRate: 75
+    }
   },
   real_estate_agent: {
     name: 'Real Estate Agent',
@@ -1405,7 +1565,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "sold homes" without numbers',
       'Not showing market performance vs. averages'
     ],
-    interviewTopics: ['Sales approach', 'Market knowledge', 'Difficult negotiation scenarios', 'Lead generation strategies', 'Client communication']
+    interviewTopics: ['Sales approach', 'Market knowledge', 'Difficult negotiation scenarios', 'Lead generation strategies', 'Client communication'],
+    topResumeElements: {
+      sections: ['Summary', 'Sales Experience', 'Key Metrics', 'Licenses', 'Education'],
+      differentiators: ['Sales volume metrics', 'Transaction count', 'License and designations', 'Market rankings'],
+      avgBulletCount: 5,
+      certificationRate: 85,
+      portfolioRate: 10,
+      metricsRate: 95
+    }
   },
   mechanical_engineer: {
     name: 'Mechanical Engineer',
@@ -1429,7 +1597,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "designed parts" without outcomes',
       'Not listing specific software and tools'
     ],
-    interviewTopics: ['Design process', 'FEA/analysis approach', 'Manufacturing considerations', 'Problem-solving examples', 'Cross-functional collaboration']
+    interviewTopics: ['Design process', 'FEA/analysis approach', 'Manufacturing considerations', 'Problem-solving examples', 'Cross-functional collaboration'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Technical Skills', 'Education', 'Certifications'],
+      differentiators: ['PE license', 'CAD proficiency (SolidWorks, AutoCAD)', 'Cost savings achievements', 'Patents'],
+      avgBulletCount: 4,
+      certificationRate: 45,
+      portfolioRate: 20,
+      metricsRate: 80
+    }
   },
   robotics_engineer: {
     name: 'Robotics Engineer',
@@ -1453,7 +1629,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "worked on robots" without technical depth',
       'Not showing end-to-end system contributions'
     ],
-    interviewTopics: ['Motion planning algorithms', 'Sensor fusion', 'Real-time systems', 'Safety considerations', 'System integration challenges']
+    interviewTopics: ['Motion planning algorithms', 'Sensor fusion', 'Real-time systems', 'Safety considerations', 'System integration challenges'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Technical Skills', 'Projects', 'Education'],
+      differentiators: ['ROS/ROS2 experience', 'Demo videos/links', 'Production deployment metrics', 'Publications'],
+      avgBulletCount: 4,
+      certificationRate: 35,
+      portfolioRate: 70,
+      metricsRate: 82
+    }
   },
   ai_ml_engineer: {
     name: 'AI/ML Engineer',
@@ -1477,7 +1661,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "built ML models" without business impact',
       'Not showing end-to-end pipeline work'
     ],
-    interviewTopics: ['ML system design', 'Model selection rationale', 'Handling data quality issues', 'MLOps practices', 'Scaling ML systems']
+    interviewTopics: ['ML system design', 'Model selection rationale', 'Handling data quality issues', 'MLOps practices', 'Scaling ML systems'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Technical Skills', 'Projects', 'Publications'],
+      differentiators: ['Model performance metrics', 'Production deployment scale', 'Publications/patents', 'Open source contributions'],
+      avgBulletCount: 4,
+      certificationRate: 40,
+      portfolioRate: 75,
+      metricsRate: 88
+    }
   },
   dentist: {
     name: 'Dentist',
@@ -1501,7 +1693,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "treated patients" without specifics',
       'Not showing technology proficiency'
     ],
-    interviewTopics: ['Clinical scenarios', 'Patient communication', 'Treatment planning approach', 'Practice management', 'Continuing education']
+    interviewTopics: ['Clinical scenarios', 'Patient communication', 'Treatment planning approach', 'Practice management', 'Continuing education'],
+    topResumeElements: {
+      sections: ['Licenses', 'Experience', 'Specializations', 'Education', 'Continuing Education'],
+      differentiators: ['License and specialties', 'Patient volume metrics', 'Practice growth achievements', 'Advanced certifications'],
+      avgBulletCount: 4,
+      certificationRate: 98,
+      portfolioRate: 5,
+      metricsRate: 70
+    }
   },
   veterinarian: {
     name: 'Veterinarian',
@@ -1525,7 +1725,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "treated animals" without volume',
       'Not showing species or specialty focus'
     ],
-    interviewTopics: ['Clinical case discussions', 'Difficult client scenarios', 'Emergency protocols', 'Ethical dilemmas', 'Practice management']
+    interviewTopics: ['Clinical case discussions', 'Difficult client scenarios', 'Emergency protocols', 'Ethical dilemmas', 'Practice management'],
+    topResumeElements: {
+      sections: ['Licenses', 'Experience', 'Specializations', 'Education', 'Professional Development'],
+      differentiators: ['DVM license and states', 'Caseload metrics', 'Surgical volume', 'Species specializations'],
+      avgBulletCount: 4,
+      certificationRate: 98,
+      portfolioRate: 5,
+      metricsRate: 72
+    }
   },
   civil_engineer: {
     name: 'Civil Engineer',
@@ -1549,7 +1757,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "designed infrastructure" without specifics',
       'Not mentioning software and tools'
     ],
-    interviewTopics: ['Technical design challenges', 'Project management approach', 'Regulatory compliance', 'Stakeholder coordination', 'Site problem-solving']
+    interviewTopics: ['Technical design challenges', 'Project management approach', 'Regulatory compliance', 'Stakeholder coordination', 'Site problem-solving'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Technical Skills', 'Licenses', 'Education'],
+      differentiators: ['PE license', 'Project budget scale', 'Infrastructure scope', 'On-time/on-budget delivery'],
+      avgBulletCount: 4,
+      certificationRate: 70,
+      portfolioRate: 15,
+      metricsRate: 82
+    }
   },
   data_engineer: {
     name: 'Data Engineer',
@@ -1573,7 +1789,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "built pipelines" without scale',
       'Not showing business impact of data work'
     ],
-    interviewTopics: ['Data modeling approach', 'Pipeline architecture', 'Handling data quality', 'Cloud platform experience', 'Performance optimization']
+    interviewTopics: ['Data modeling approach', 'Pipeline architecture', 'Handling data quality', 'Cloud platform experience', 'Performance optimization'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Technical Skills', 'Projects', 'Education'],
+      differentiators: ['Data volume metrics', 'Pipeline reliability achievements', 'Cloud platform expertise', 'Cost optimization results'],
+      avgBulletCount: 4,
+      certificationRate: 50,
+      portfolioRate: 45,
+      metricsRate: 88
+    }
   },
   security_analyst: {
     name: 'Security Analyst',
@@ -1597,7 +1821,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "monitored security" without outcomes',
       'Not mentioning specific tools and frameworks'
     ],
-    interviewTopics: ['Incident response scenarios', 'Threat analysis approach', 'Security architecture', 'Compliance requirements', 'Emerging threats']
+    interviewTopics: ['Incident response scenarios', 'Threat analysis approach', 'Security architecture', 'Compliance requirements', 'Emerging threats'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Certifications', 'Technical Skills', 'Education'],
+      differentiators: ['Security certifications (CISSP, CEH)', 'Threat detection metrics', 'Compliance frameworks experience', 'Incident response achievements'],
+      avgBulletCount: 4,
+      certificationRate: 85,
+      portfolioRate: 15,
+      metricsRate: 80
+    }
   },
   paralegal: {
     name: 'Paralegal',
@@ -1621,7 +1853,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "assisted attorneys" without specifics',
       'Not listing legal research tools'
     ],
-    interviewTopics: ['Legal research approach', 'Case management systems', 'Deadline management', 'Confidentiality handling', 'Practice area knowledge']
+    interviewTopics: ['Legal research approach', 'Case management systems', 'Deadline management', 'Confidentiality handling', 'Practice area knowledge'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Skills', 'Certifications', 'Education'],
+      differentiators: ['Paralegal certification', 'Case volume metrics', 'Practice area expertise', 'Legal software proficiency'],
+      avgBulletCount: 4,
+      certificationRate: 65,
+      portfolioRate: 5,
+      metricsRate: 72
+    }
   },
   event_planner: {
     name: 'Event Planner',
@@ -1645,7 +1885,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "planned events" without specifics',
       'Not showing vendor management results'
     ],
-    interviewTopics: ['Event logistics scenarios', 'Budget management', 'Crisis handling', 'Vendor negotiation', 'Client communication']
+    interviewTopics: ['Event logistics scenarios', 'Budget management', 'Crisis handling', 'Vendor negotiation', 'Client communication'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Key Achievements', 'Skills', 'Certifications'],
+      differentiators: ['Event scale/budget metrics', 'Attendee numbers', 'Cost savings', 'Client satisfaction rates'],
+      avgBulletCount: 5,
+      certificationRate: 40,
+      portfolioRate: 30,
+      metricsRate: 85
+    }
   },
   electrician: {
     name: 'Electrician',
@@ -1669,7 +1917,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "electrical work" without specifics',
       'Not highlighting safety record'
     ],
-    interviewTopics: ['Code compliance scenarios', 'Troubleshooting approach', 'Safety protocols', 'Blueprint reading', 'Complex installation projects']
+    interviewTopics: ['Code compliance scenarios', 'Troubleshooting approach', 'Safety protocols', 'Blueprint reading', 'Complex installation projects'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Licenses', 'Skills', 'Safety Training'],
+      differentiators: ['Journeyman/Master license', 'Safety record', 'Project volume', 'Specialization areas'],
+      avgBulletCount: 4,
+      certificationRate: 95,
+      portfolioRate: 5,
+      metricsRate: 70
+    }
   },
   insurance_agent: {
     name: 'Insurance Agent',
@@ -1693,7 +1949,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "sold insurance" without numbers',
       'Not showing retention and referral metrics'
     ],
-    interviewTopics: ['Sales approach', 'Client needs assessment', 'Objection handling', 'Compliance knowledge', 'Cross-selling strategies']
+    interviewTopics: ['Sales approach', 'Client needs assessment', 'Objection handling', 'Compliance knowledge', 'Cross-selling strategies'],
+    topResumeElements: {
+      sections: ['Summary', 'Sales Experience', 'Licenses', 'Key Metrics', 'Education'],
+      differentiators: ['License types and states', 'Premium volume metrics', 'Retention rates', 'Sales rankings/awards'],
+      avgBulletCount: 5,
+      certificationRate: 90,
+      portfolioRate: 5,
+      metricsRate: 92
+    }
   },
   physician: {
     name: 'Physician',
@@ -1717,7 +1981,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "treated patients" without outcomes',
       'Not showing quality and satisfaction metrics'
     ],
-    interviewTopics: ['Clinical scenarios', 'Quality improvement', 'Difficult patient situations', 'Evidence-based practice', 'Team leadership']
+    interviewTopics: ['Clinical scenarios', 'Quality improvement', 'Difficult patient situations', 'Evidence-based practice', 'Team leadership'],
+    topResumeElements: {
+      sections: ['Licenses', 'Education', 'Experience', 'Research/Publications', 'Board Certifications'],
+      differentiators: ['Board certifications', 'Quality metrics percentile', 'Patient satisfaction', 'Research publications'],
+      avgBulletCount: 4,
+      certificationRate: 100,
+      portfolioRate: 5,
+      metricsRate: 78
+    }
   },
   flight_attendant: {
     name: 'Flight Attendant',
@@ -1741,7 +2013,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "served passengers" without scale',
       'Not highlighting language skills'
     ],
-    interviewTopics: ['Emergency scenarios', 'Difficult passenger situations', 'Teamwork examples', 'Customer service approach', 'Handling delays']
+    interviewTopics: ['Emergency scenarios', 'Difficult passenger situations', 'Teamwork examples', 'Customer service approach', 'Handling delays'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Certifications', 'Languages', 'Education'],
+      differentiators: ['FAA certifications', 'Flight hours', 'Language skills', 'Customer satisfaction metrics'],
+      avgBulletCount: 4,
+      certificationRate: 95,
+      portfolioRate: 5,
+      metricsRate: 70
+    }
   },
   truck_driver: {
     name: 'Truck Driver',
@@ -1765,7 +2045,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "drove trucks" without metrics',
       'Not showing compliance record'
     ],
-    interviewTopics: ['Safety record', 'Route planning approach', 'DOT regulations knowledge', 'Handling delays', 'Vehicle maintenance']
+    interviewTopics: ['Safety record', 'Route planning approach', 'DOT regulations knowledge', 'Handling delays', 'Vehicle maintenance'],
+    topResumeElements: {
+      sections: ['Summary', 'CDL Information', 'Experience', 'Safety Record', 'Endorsements'],
+      differentiators: ['CDL class and endorsements', 'Miles driven', 'Years accident-free', 'On-time delivery rate'],
+      avgBulletCount: 4,
+      certificationRate: 98,
+      portfolioRate: 5,
+      metricsRate: 85
+    }
   },
   data_analyst: {
     name: 'Data Analyst',
@@ -1789,7 +2077,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "analyzed data" without outcomes',
       'Not showing stakeholder influence'
     ],
-    interviewTopics: ['SQL proficiency tests', 'Case study analysis', 'Stakeholder communication', 'Tool expertise', 'Problem-solving approach']
+    interviewTopics: ['SQL proficiency tests', 'Case study analysis', 'Stakeholder communication', 'Tool expertise', 'Problem-solving approach'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Technical Skills', 'Tools', 'Education'],
+      differentiators: ['Business impact metrics', 'Dashboard/report examples', 'SQL proficiency', 'Visualization tool expertise'],
+      avgBulletCount: 4,
+      certificationRate: 40,
+      portfolioRate: 50,
+      metricsRate: 85
+    }
   },
   bi_analyst: {
     name: 'Business Intelligence Analyst',
@@ -1813,7 +2109,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "built reports" without scale',
       'Not demonstrating stakeholder impact'
     ],
-    interviewTopics: ['Data modeling approach', 'Dashboard design principles', 'Stakeholder requirements gathering', 'Performance optimization', 'BI tool expertise']
+    interviewTopics: ['Data modeling approach', 'Dashboard design principles', 'Stakeholder requirements gathering', 'Performance optimization', 'BI tool expertise'],
+    topResumeElements: {
+      sections: ['Summary', 'Experience', 'Technical Skills', 'Tools', 'Education'],
+      differentiators: ['Dashboard adoption metrics', 'Data warehouse experience', 'BI platform expertise', 'Self-service analytics enablement'],
+      avgBulletCount: 4,
+      certificationRate: 45,
+      portfolioRate: 40,
+      metricsRate: 82
+    }
   },
   quantitative_analyst: {
     name: 'Quantitative Analyst',
@@ -1837,7 +2141,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "built models" without results',
       'Not showing production deployment'
     ],
-    interviewTopics: ['Probability and statistics', 'Coding tests', 'Model validation', 'Risk management', 'Market microstructure']
+    interviewTopics: ['Probability and statistics', 'Coding tests', 'Model validation', 'Risk management', 'Market microstructure'],
+    topResumeElements: {
+      sections: ['Education', 'Experience', 'Technical Skills', 'Publications', 'Projects'],
+      differentiators: ['Strategy performance metrics (alpha, Sharpe)', 'Programming languages', 'Academic credentials', 'Production deployment'],
+      avgBulletCount: 4,
+      certificationRate: 30,
+      portfolioRate: 40,
+      metricsRate: 95
+    }
   },
   electrical_engineer: {
     name: 'Electrical Engineer',
@@ -1861,7 +2173,8 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "designed circuits" without outcomes',
       'Not listing specific EDA tools'
     ],
-    interviewTopics: ['Circuit analysis', 'Design trade-offs', 'EMC/EMI considerations', 'Debugging approach', 'Tool proficiency']
+    interviewTopics: ['Circuit analysis', 'Design trade-offs', 'EMC/EMI considerations', 'Debugging approach', 'Tool proficiency'],
+    topResumeElements: { sections: ['Summary', 'Experience', 'Technical Skills', 'Education', 'Certifications'], differentiators: ['PE license', 'Products launched', 'EDA tool proficiency', 'Patents'], avgBulletCount: 4, certificationRate: 50, portfolioRate: 25, metricsRate: 78 }
   },
   chemical_engineer: {
     name: 'Chemical Engineer',
@@ -1885,7 +2198,8 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "optimized processes" without numbers',
       'Not highlighting safety achievements'
     ],
-    interviewTopics: ['Process troubleshooting', 'Safety and HAZOP', 'Scale-up challenges', 'Simulation tools', 'Regulatory compliance']
+    interviewTopics: ['Process troubleshooting', 'Safety and HAZOP', 'Scale-up challenges', 'Simulation tools', 'Regulatory compliance'],
+    topResumeElements: { sections: ['Summary', 'Experience', 'Technical Skills', 'Licenses', 'Education'], differentiators: ['PE license', 'Safety record', 'Yield improvements', 'Scale-up experience'], avgBulletCount: 4, certificationRate: 55, portfolioRate: 10, metricsRate: 85 }
   },
   aerospace_engineer: {
     name: 'Aerospace Engineer',
@@ -1909,7 +2223,8 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "aerospace design" without specifics',
       'Not showing certification/testing outcomes'
     ],
-    interviewTopics: ['Technical design challenges', 'Systems integration', 'Certification process', 'Trade studies', 'Failure analysis']
+    interviewTopics: ['Technical design challenges', 'Systems integration', 'Certification process', 'Trade studies', 'Failure analysis'],
+    topResumeElements: { sections: ['Summary', 'Experience', 'Technical Skills', 'Clearance', 'Education'], differentiators: ['Security clearance', 'Program budget scale', 'Certification achievements', 'Notable programs'], avgBulletCount: 4, certificationRate: 45, portfolioRate: 15, metricsRate: 80 }
   },
   biomedical_engineer: {
     name: 'Biomedical Engineer',
@@ -1933,7 +2248,8 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "medical device experience" without outcomes',
       'Not showing regulatory and quality expertise'
     ],
-    interviewTopics: ['Design controls', 'Regulatory strategy', 'Risk management', 'Clinical requirements', 'Quality system compliance']
+    interviewTopics: ['Design controls', 'Regulatory strategy', 'Risk management', 'Clinical requirements', 'Quality system compliance'],
+    topResumeElements: { sections: ['Summary', 'Experience', 'Regulatory Experience', 'Technical Skills', 'Education'], differentiators: ['FDA clearances', 'Device class experience', 'Quality system expertise', 'Clinical trial support'], avgBulletCount: 4, certificationRate: 50, portfolioRate: 15, metricsRate: 82 }
   },
   industrial_engineer: {
     name: 'Industrial Engineer',
@@ -1957,7 +2273,8 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "improved efficiency" without numbers',
       'Not showing methodology used (Lean, Six Sigma)'
     ],
-    interviewTopics: ['Lean/Six Sigma methodology', 'Process improvement examples', 'Time studies', 'Facility layout', 'Change management']
+    interviewTopics: ['Lean/Six Sigma methodology', 'Process improvement examples', 'Time studies', 'Facility layout', 'Change management'],
+    topResumeElements: { sections: ['Summary', 'Experience', 'Certifications', 'Technical Skills', 'Education'], differentiators: ['Six Sigma belt level', 'Cost savings achievements', 'Efficiency improvements', 'Lean implementation'], avgBulletCount: 4, certificationRate: 70, portfolioRate: 10, metricsRate: 92 }
   },
   environmental_engineer: {
     name: 'Environmental Engineer',
@@ -1981,7 +2298,8 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "environmental compliance" without specifics',
       'Not showing regulatory expertise'
     ],
-    interviewTopics: ['Regulatory knowledge', 'Remediation approaches', 'Sustainability strategies', 'Permitting process', 'Stakeholder management']
+    interviewTopics: ['Regulatory knowledge', 'Remediation approaches', 'Sustainability strategies', 'Permitting process', 'Stakeholder management'],
+    topResumeElements: { sections: ['Summary', 'Experience', 'Licenses', 'Technical Skills', 'Education'], differentiators: ['PE license', 'Environmental impact metrics', 'Regulatory compliance', 'Sustainability achievements'], avgBulletCount: 4, certificationRate: 65, portfolioRate: 10, metricsRate: 80 }
   },
   solutions_architect: {
     name: 'Solutions Architect',
@@ -2005,7 +2323,8 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "designed architecture" without outcomes',
       'Not showing stakeholder influence'
     ],
-    interviewTopics: ['System design', 'Cloud services deep-dive', 'Trade-off analysis', 'Cost optimization', 'Technical leadership scenarios']
+    interviewTopics: ['System design', 'Cloud services deep-dive', 'Trade-off analysis', 'Cost optimization', 'Technical leadership scenarios'],
+    topResumeElements: { sections: ['Summary', 'Experience', 'Certifications', 'Technical Skills', 'Education'], differentiators: ['AWS/Azure/GCP certifications', 'System scale metrics', 'Cost optimization results', 'Architecture diagrams'], avgBulletCount: 4, certificationRate: 85, portfolioRate: 30, metricsRate: 88 }
   },
   cloud_engineer: {
     name: 'Cloud Engineer',
@@ -2029,7 +2348,8 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "managed cloud" without specifics',
       'Not showing automation achievements'
     ],
-    interviewTopics: ['Cloud services knowledge', 'IaC best practices', 'Networking and security', 'Cost optimization', 'Troubleshooting scenarios']
+    interviewTopics: ['Cloud services knowledge', 'IaC best practices', 'Networking and security', 'Cost optimization', 'Troubleshooting scenarios'],
+    topResumeElements: { sections: ['Summary', 'Experience', 'Certifications', 'Technical Skills', 'Education'], differentiators: ['Cloud certifications', 'Infrastructure scale', 'Automation achievements', 'Cost savings'], avgBulletCount: 4, certificationRate: 80, portfolioRate: 35, metricsRate: 88 }
   },
   network_engineer: {
     name: 'Network Engineer',
@@ -2053,7 +2373,8 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "managed network" without metrics',
       'Not showing security and reliability achievements'
     ],
-    interviewTopics: ['Networking fundamentals', 'Troubleshooting scenarios', 'Security best practices', 'Network design', 'Protocol deep-dives']
+    interviewTopics: ['Networking fundamentals', 'Troubleshooting scenarios', 'Security best practices', 'Network design', 'Protocol deep-dives'],
+    topResumeElements: { sections: ['Summary', 'Experience', 'Certifications', 'Technical Skills', 'Education'], differentiators: ['CCNA/CCNP/CCIE certification', 'Network scale', 'Uptime achievements', 'Cost optimization'], avgBulletCount: 4, certificationRate: 85, portfolioRate: 10, metricsRate: 82 }
   },
   database_administrator: {
     name: 'Database Administrator',
@@ -2077,7 +2398,8 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "managed databases" without specifics',
       'Not showing performance tuning results'
     ],
-    interviewTopics: ['SQL proficiency', 'Performance tuning techniques', 'Backup/recovery scenarios', 'High availability design', 'Troubleshooting']
+    interviewTopics: ['SQL proficiency', 'Performance tuning techniques', 'Backup/recovery scenarios', 'High availability design', 'Troubleshooting'],
+    topResumeElements: { sections: ['Summary', 'Experience', 'Certifications', 'Technical Skills', 'Education'], differentiators: ['Database certifications (Oracle, Microsoft)', 'Database scale', 'Performance improvements', 'Uptime achievements'], avgBulletCount: 4, certificationRate: 70, portfolioRate: 10, metricsRate: 85 }
   }
 };
 
