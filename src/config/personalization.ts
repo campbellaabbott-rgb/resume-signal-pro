@@ -1261,6 +1261,150 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Not mentioning specific ERP systems'
     ],
     interviewTopics: ['Supply chain disruption handling', 'Vendor negotiation', 'Demand forecasting', 'Cost optimization strategies', 'ERP implementation']
+  },
+  attorney: {
+    name: 'Attorney',
+    aliases: ['lawyer', 'associate attorney', 'senior associate', 'counsel', 'legal counsel', 'corporate attorney', 'litigator', 'partner', 'jd', 'esquire'],
+    keySkills: ['Legal Research', 'Contract Drafting', 'Litigation', 'Negotiation', 'Client Counseling', 'Legal Writing', 'Due Diligence', 'Regulatory Compliance'],
+    mustHaveKeywords: ['litigation', 'contracts', 'legal research', 'client counseling', 'negotiations', 'compliance', 'due diligence', 'court'],
+    resumeTips: [
+      'List bar admissions and jurisdictions prominently',
+      'Quantify case outcomes, deal values, and billable hours',
+      'Show practice area specializations',
+      'Include notable matters (if permitted by confidentiality)'
+    ],
+    bulletExamples: [
+      { weak: 'Handled litigation matters', strong: 'Successfully defended 25+ employment litigation cases with 90% favorable outcomes, saving clients $10M+ in potential liability' },
+      { weak: 'Drafted contracts', strong: 'Negotiated and drafted 100+ commercial contracts annually totaling $50M+ in transaction value' }
+    ],
+    keyMetrics: ['Case outcomes', 'Deal/transaction value', 'Billable hours', 'Matters handled', 'Client retention'],
+    commonMistakes: [
+      'Not listing bar admissions and jurisdictions',
+      'Missing case outcomes or deal values',
+      'Vague "handled legal matters" without specifics',
+      'Not showing practice area expertise'
+    ],
+    interviewTopics: ['Case strategy scenarios', 'Ethics and confidentiality', 'Client management', 'Legal research approach', 'Negotiation tactics']
+  },
+  chef: {
+    name: 'Chef',
+    aliases: ['executive chef', 'head chef', 'sous chef', 'pastry chef', 'culinary director', 'line cook', 'chef de cuisine', 'kitchen manager'],
+    keySkills: ['Menu Development', 'Kitchen Management', 'Food Safety', 'Cost Control', 'Team Leadership', 'Inventory Management', 'Culinary Techniques', 'Vendor Relations'],
+    mustHaveKeywords: ['menu development', 'kitchen operations', 'food cost', 'team management', 'culinary', 'food safety', 'inventory', 'HACCP'],
+    resumeTips: [
+      'Quantify kitchen size, team managed, and covers served',
+      'Show food cost control achievements',
+      'Highlight cuisine specializations and certifications',
+      'Include notable restaurants or awards'
+    ],
+    bulletExamples: [
+      { weak: 'Managed restaurant kitchen', strong: 'Led kitchen team of 15 serving 500+ covers daily, reducing food costs from 32% to 26% while maintaining quality' },
+      { weak: 'Created new menu items', strong: 'Developed seasonal menu increasing average check by 18% and earning "Best New Restaurant" recognition' }
+    ],
+    keyMetrics: ['Covers served daily', 'Food cost %', 'Team size', 'Revenue growth', 'Customer satisfaction'],
+    commonMistakes: [
+      'Not quantifying kitchen operations scale',
+      'Missing food cost and efficiency metrics',
+      'Vague "cooked food" without culinary achievements',
+      'Not mentioning certifications (ServSafe, culinary degrees)'
+    ],
+    interviewTopics: ['Menu development process', 'Kitchen management scenarios', 'Food cost control', 'Team leadership', 'Handling high-volume service']
+  },
+  real_estate_agent: {
+    name: 'Real Estate Agent',
+    aliases: ['realtor', 'real estate broker', 'listing agent', 'buyer agent', 'real estate sales', 'property agent', 'real estate associate', 'commercial real estate'],
+    keySkills: ['Sales', 'Negotiation', 'Market Analysis', 'Client Relations', 'Property Marketing', 'Contract Management', 'CRM', 'Networking'],
+    mustHaveKeywords: ['sales volume', 'transactions', 'listings', 'clients', 'negotiations', 'closings', 'market analysis', 'contracts'],
+    resumeTips: [
+      'Include license number and certifications (CRS, ABR, GRI)',
+      'Quantify sales volume and transaction count',
+      'Show average days on market vs. area average',
+      'Highlight client satisfaction and referral rate'
+    ],
+    bulletExamples: [
+      { weak: 'Sold residential properties', strong: 'Closed $15M in residential sales (45 transactions) in 2023, ranking in top 5% of agents in metro area' },
+      { weak: 'Helped buyers find homes', strong: 'Guided 30+ buyer clients to successful closings with 98% satisfaction rate and 40% referral business' }
+    ],
+    keyMetrics: ['Sales volume', 'Transactions closed', 'Days on market', 'List-to-sale ratio', 'Client satisfaction', 'Referral rate'],
+    commonMistakes: [
+      'Not including license and certifications',
+      'Missing sales volume and transaction metrics',
+      'Vague "sold homes" without numbers',
+      'Not showing market performance vs. averages'
+    ],
+    interviewTopics: ['Sales approach', 'Market knowledge', 'Difficult negotiation scenarios', 'Lead generation strategies', 'Client communication']
+  },
+  mechanical_engineer: {
+    name: 'Mechanical Engineer',
+    aliases: ['senior mechanical engineer', 'design engineer', 'manufacturing engineer', 'hvac engineer', 'product engineer', 'mechanical designer', 'pe mechanical'],
+    keySkills: ['CAD (SolidWorks, AutoCAD)', 'FEA/CFD Analysis', 'Product Design', 'Manufacturing Processes', 'Project Management', 'Prototyping', 'GD&T', 'Technical Documentation'],
+    mustHaveKeywords: ['design', 'CAD', 'analysis', 'manufacturing', 'prototyping', 'specifications', 'testing', 'project management'],
+    resumeTips: [
+      'Include PE license if applicable',
+      'Quantify project budgets, cost savings, and improvements',
+      'List specific CAD and analysis software',
+      'Show products or systems designed and their impact'
+    ],
+    bulletExamples: [
+      { weak: 'Designed mechanical components', strong: 'Designed $2M automated assembly system reducing production time by 40% and labor costs by $500K annually' },
+      { weak: 'Used SolidWorks for CAD', strong: 'Created 500+ detailed CAD models and drawings for medical device, achieving FDA 510(k) clearance on first submission' }
+    ],
+    keyMetrics: ['Project budget', 'Cost savings', 'Efficiency improvement %', 'Products launched', 'Patents filed'],
+    commonMistakes: [
+      'Not mentioning PE license or EIT status',
+      'Missing project scale and budget details',
+      'Vague "designed parts" without outcomes',
+      'Not listing specific software and tools'
+    ],
+    interviewTopics: ['Design process', 'FEA/analysis approach', 'Manufacturing considerations', 'Problem-solving examples', 'Cross-functional collaboration']
+  },
+  robotics_engineer: {
+    name: 'Robotics Engineer',
+    aliases: ['robotics software engineer', 'automation engineer', 'controls engineer', 'mechatronics engineer', 'robotics developer', 'robot programmer', 'motion control engineer'],
+    keySkills: ['ROS/ROS2', 'Python/C++', 'Motion Planning', 'Computer Vision', 'Sensor Integration', 'PLC Programming', 'Embedded Systems', 'Simulation (Gazebo, MATLAB)'],
+    mustHaveKeywords: ['robotics', 'ROS', 'automation', 'motion planning', 'sensors', 'controls', 'computer vision', 'embedded'],
+    resumeTips: [
+      'Highlight specific robot platforms and systems worked on',
+      'Quantify automation improvements and cycle times',
+      'Show sensor integration and perception work',
+      'Include links to demos, videos, or publications'
+    ],
+    bulletExamples: [
+      { weak: 'Programmed industrial robots', strong: 'Developed ROS2-based pick-and-place system achieving 99.5% accuracy at 60 picks/minute, reducing manual labor by 80%' },
+      { weak: 'Worked on autonomous navigation', strong: 'Built SLAM-based navigation stack for warehouse AMR, enabling autonomous operation across 100K sq ft facility' }
+    ],
+    keyMetrics: ['Cycle time improvement', 'Accuracy %', 'Automation ROI', 'Robots deployed', 'Uptime achieved'],
+    commonMistakes: [
+      'Not specifying robot platforms and frameworks',
+      'Missing quantified automation outcomes',
+      'Vague "worked on robots" without technical depth',
+      'Not showing end-to-end system contributions'
+    ],
+    interviewTopics: ['Motion planning algorithms', 'Sensor fusion', 'Real-time systems', 'Safety considerations', 'System integration challenges']
+  },
+  ai_ml_engineer: {
+    name: 'AI/ML Engineer',
+    aliases: ['machine learning engineer', 'deep learning engineer', 'ai engineer', 'ml engineer', 'applied scientist', 'research engineer', 'nlp engineer', 'computer vision engineer'],
+    keySkills: ['Python', 'TensorFlow/PyTorch', 'Deep Learning', 'NLP', 'Computer Vision', 'MLOps', 'Data Engineering', 'Model Deployment'],
+    mustHaveKeywords: ['machine learning', 'deep learning', 'neural networks', 'model training', 'deployment', 'NLP', 'computer vision', 'MLOps'],
+    resumeTips: [
+      'Quantify model performance improvements (accuracy, latency, etc.)',
+      'Show end-to-end ML pipeline experience',
+      'Include publications, patents, or competition rankings',
+      'Highlight production deployment scale'
+    ],
+    bulletExamples: [
+      { weak: 'Built machine learning models', strong: 'Developed transformer-based NLP model improving classification accuracy from 78% to 94%, deployed to production serving 10M+ requests/day' },
+      { weak: 'Worked on computer vision', strong: 'Built real-time object detection system achieving 95% mAP at 30fps, enabling automated quality inspection saving $2M annually' }
+    ],
+    keyMetrics: ['Model accuracy/F1', 'Latency reduction', 'Inference scale (requests/day)', 'Cost savings', 'Publications/patents'],
+    commonMistakes: [
+      'Not quantifying model performance metrics',
+      'Missing production deployment experience',
+      'Vague "built ML models" without business impact',
+      'Not showing end-to-end pipeline work'
+    ],
+    interviewTopics: ['ML system design', 'Model selection rationale', 'Handling data quality issues', 'MLOps practices', 'Scaling ML systems']
   }
 };
 
@@ -1304,6 +1448,12 @@ export function getRoleAdvice(role: string): RoleConfig | null {
   if (normalizedRole.includes('architect') && !normalizedRole.includes('software') && !normalizedRole.includes('solutions')) return ROLE_CONFIGS.architect;
   if (normalizedRole.includes('physical therapist') || normalizedRole.includes('physiotherapist') || normalizedRole.includes('pt') || normalizedRole.includes('dpt')) return ROLE_CONFIGS.physical_therapist;
   if (normalizedRole.includes('supply chain') || normalizedRole.includes('logistics') || normalizedRole.includes('procurement')) return ROLE_CONFIGS.supply_chain_manager;
+  if (normalizedRole.includes('attorney') || normalizedRole.includes('lawyer') || normalizedRole.includes('legal counsel') || normalizedRole.includes('litigator')) return ROLE_CONFIGS.attorney;
+  if (normalizedRole.includes('chef') || normalizedRole.includes('culinary') || normalizedRole.includes('kitchen')) return ROLE_CONFIGS.chef;
+  if (normalizedRole.includes('real estate') || normalizedRole.includes('realtor') || normalizedRole.includes('property agent')) return ROLE_CONFIGS.real_estate_agent;
+  if (normalizedRole.includes('mechanical engineer') || normalizedRole.includes('hvac engineer') || normalizedRole.includes('manufacturing engineer')) return ROLE_CONFIGS.mechanical_engineer;
+  if (normalizedRole.includes('robotics') || normalizedRole.includes('automation engineer') || normalizedRole.includes('controls engineer') || normalizedRole.includes('mechatronics')) return ROLE_CONFIGS.robotics_engineer;
+  if (normalizedRole.includes('machine learning') || normalizedRole.includes('ml engineer') || normalizedRole.includes('ai engineer') || normalizedRole.includes('deep learning') || normalizedRole.includes('nlp engineer')) return ROLE_CONFIGS.ai_ml_engineer;
   
   return null;
 }
