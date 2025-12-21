@@ -8,6 +8,12 @@ export interface IndustryConfig {
   atsNotes: string;
   topSkills: string[];
   certifications: string[];
+  // Industry-specific insights based on resume data
+  commonMistakes: string[];
+  strongActionVerbs: string[];
+  bulletExamples: { weak: string; strong: string }[];
+  keyMetrics: string[];
+  industryBenchmarks: { avgScore: number; topScore: number };
 }
 
 export interface ExperienceLevelConfig {
@@ -33,7 +39,20 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     preferredFormat: 'Skills-first or hybrid format works best',
     atsNotes: 'Tech companies often use Greenhouse, Lever, or Workday. Ensure clean formatting.',
     topSkills: ['Python', 'JavaScript', 'Cloud Architecture', 'System Design', 'Data Structures'],
-    certifications: ['AWS Solutions Architect', 'Google Cloud Professional', 'Kubernetes Administrator']
+    certifications: ['AWS Solutions Architect', 'Google Cloud Professional', 'Kubernetes Administrator'],
+    commonMistakes: [
+      'Listing technologies without showing what you built with them',
+      'Missing GitHub/portfolio links when applicable',
+      'Using "familiar with" instead of showing hands-on experience',
+      'Not quantifying scale: users, requests/second, data volume'
+    ],
+    strongActionVerbs: ['Architected', 'Deployed', 'Optimized', 'Automated', 'Scaled', 'Integrated', 'Refactored', 'Debugged'],
+    bulletExamples: [
+      { weak: 'Worked on backend services', strong: 'Architected microservices handling 10M+ daily requests with 99.9% uptime' },
+      { weak: 'Used AWS for cloud infrastructure', strong: 'Migrated legacy infrastructure to AWS, reducing costs by 40% and deployment time from 2 hours to 15 minutes' }
+    ],
+    keyMetrics: ['Users served', 'Latency reduction %', 'Uptime %', 'Cost savings', 'Deployment frequency', 'Code coverage'],
+    industryBenchmarks: { avgScore: 68, topScore: 92 }
   },
   healthcare: {
     name: 'Healthcare',
@@ -47,7 +66,20 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     preferredFormat: 'Reverse chronological with certifications section',
     atsNotes: 'Healthcare uses iCIMS, Taleo heavily. Include exact certification names.',
     topSkills: ['Patient Assessment', 'Care Planning', 'Medical Terminology', 'EHR Systems'],
-    certifications: ['RN', 'BSN', 'MSN', 'ACLS', 'BLS', 'CNA', 'LPN']
+    certifications: ['RN', 'BSN', 'MSN', 'ACLS', 'BLS', 'CNA', 'LPN'],
+    commonMistakes: [
+      'Not including license numbers and expiration dates',
+      'Missing HIPAA compliance mentions',
+      'Vague patient care descriptions without outcomes',
+      'Forgetting to list specific EHR/EMR systems used'
+    ],
+    strongActionVerbs: ['Administered', 'Assessed', 'Coordinated', 'Monitored', 'Educated', 'Implemented', 'Documented', 'Triaged'],
+    bulletExamples: [
+      { weak: 'Provided patient care on medical unit', strong: 'Managed care for 6-8 high-acuity patients per shift, achieving 95% patient satisfaction scores' },
+      { weak: 'Used Epic for documentation', strong: 'Documented 40+ patient encounters daily in Epic EHR with 100% compliance on chart completion' }
+    ],
+    keyMetrics: ['Patient satisfaction %', 'Patients per shift', 'Compliance rate', 'Readmission reduction', 'Error reduction %'],
+    industryBenchmarks: { avgScore: 65, topScore: 88 }
   },
   finance: {
     name: 'Finance & Banking',
@@ -61,7 +93,20 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     preferredFormat: 'Traditional reverse chronological, conservative formatting',
     atsNotes: 'Finance firms use Workday, Taleo. Avoid creative formatting.',
     topSkills: ['Financial Modeling', 'Risk Analysis', 'Regulatory Compliance', 'Data Analysis'],
-    certifications: ['CFA', 'CPA', 'FRM', 'Series 7', 'Series 63']
+    certifications: ['CFA', 'CPA', 'FRM', 'Series 7', 'Series 63'],
+    commonMistakes: [
+      'Not mentioning specific deal sizes or AUM',
+      'Missing regulatory certifications (Series 7, 63, etc.)',
+      'Vague descriptions of financial analysis without methodology',
+      'Not showing progression in responsibility'
+    ],
+    strongActionVerbs: ['Analyzed', 'Forecasted', 'Structured', 'Executed', 'Negotiated', 'Valued', 'Modeled', 'Advised'],
+    bulletExamples: [
+      { weak: 'Performed financial analysis for clients', strong: 'Built DCF and LBO models for $500M+ M&A transactions, supporting 3 successful deal closures' },
+      { weak: 'Managed client portfolios', strong: 'Managed $150M AUM across 45 HNW clients, achieving 12% average annual returns vs. 8% benchmark' }
+    ],
+    keyMetrics: ['AUM managed', 'Deal size', 'Returns vs. benchmark', 'Revenue generated', 'Cost savings identified'],
+    industryBenchmarks: { avgScore: 72, topScore: 94 }
   },
   marketing: {
     name: 'Marketing & Advertising',
@@ -75,7 +120,20 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     preferredFormat: 'Hybrid format with achievements front and center',
     atsNotes: 'Marketing companies vary widely. Test with Greenhouse and Lever formats.',
     topSkills: ['Google Analytics', 'Marketing Automation', 'Content Marketing', 'Paid Media'],
-    certifications: ['Google Ads', 'HubSpot', 'Facebook Blueprint', 'Google Analytics']
+    certifications: ['Google Ads', 'HubSpot', 'Facebook Blueprint', 'Google Analytics'],
+    commonMistakes: [
+      'Not including campaign performance metrics',
+      'Missing links to portfolio or campaign examples',
+      'Vague "brand awareness" claims without data',
+      'Not showing ROI or revenue impact'
+    ],
+    strongActionVerbs: ['Launched', 'Optimized', 'Increased', 'Generated', 'Drove', 'Created', 'Managed', 'Analyzed'],
+    bulletExamples: [
+      { weak: 'Managed social media accounts', strong: 'Grew Instagram following from 5K to 50K in 8 months, driving 25% increase in web traffic' },
+      { weak: 'Created content for marketing campaigns', strong: 'Produced 60+ pieces of content generating 500K+ impressions and 15% conversion rate' }
+    ],
+    keyMetrics: ['ROAS', 'CTR', 'Conversion rate', 'CAC', 'Follower growth', 'Engagement rate', 'Revenue attributed'],
+    industryBenchmarks: { avgScore: 64, topScore: 89 }
   },
   sales: {
     name: 'Sales',
@@ -89,7 +147,20 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     preferredFormat: 'Achievement-focused with prominent metrics',
     atsNotes: 'Sales teams love numbers. Include them in every bullet.',
     topSkills: ['Negotiation', 'Relationship Building', 'Pipeline Management', 'Closing'],
-    certifications: ['Salesforce Admin', 'HubSpot Sales', 'Challenger Sales']
+    certifications: ['Salesforce Admin', 'HubSpot Sales', 'Challenger Sales'],
+    commonMistakes: [
+      'Not including quota attainment percentages',
+      'Missing specific revenue numbers',
+      'Vague "exceeded targets" without specifics',
+      'Not mentioning CRM systems used'
+    ],
+    strongActionVerbs: ['Closed', 'Exceeded', 'Negotiated', 'Generated', 'Prospected', 'Upsold', 'Retained', 'Expanded'],
+    bulletExamples: [
+      { weak: 'Responsible for sales in territory', strong: 'Closed $2.1M in new business, achieving 145% of quota and ranking #2 of 25 reps' },
+      { weak: 'Managed key accounts', strong: 'Grew strategic accounts by 35% YoY, expanding from $500K to $1.2M in annual revenue' }
+    ],
+    keyMetrics: ['Quota attainment %', 'Revenue closed', 'Deal size', 'Win rate', 'Customer retention', 'Pipeline value'],
+    industryBenchmarks: { avgScore: 66, topScore: 90 }
   },
   engineering: {
     name: 'Engineering (Non-Software)',
@@ -103,7 +174,20 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     preferredFormat: 'Reverse chronological with technical skills section',
     atsNotes: 'Engineering firms use Taleo, Workday. Include exact software names.',
     topSkills: ['CAD Software', 'Project Management', 'Technical Documentation', 'Problem Solving'],
-    certifications: ['PE', 'PMP', 'Six Sigma', 'LEED']
+    certifications: ['PE', 'PMP', 'Six Sigma', 'LEED'],
+    commonMistakes: [
+      'Not mentioning PE license or EIT status',
+      'Missing project budget and timeline details',
+      'Vague technical descriptions without specifications',
+      'Not highlighting safety and compliance achievements'
+    ],
+    strongActionVerbs: ['Designed', 'Engineered', 'Tested', 'Analyzed', 'Calculated', 'Specified', 'Inspected', 'Commissioned'],
+    bulletExamples: [
+      { weak: 'Worked on construction projects', strong: 'Led design of $15M commercial building, delivering 2 weeks ahead of schedule with zero safety incidents' },
+      { weak: 'Used AutoCAD for drawings', strong: 'Created 200+ detailed CAD drawings for municipal infrastructure project, reducing RFIs by 40%' }
+    ],
+    keyMetrics: ['Project budget', 'Schedule variance', 'Safety record', 'Cost savings', 'Efficiency improvements %'],
+    industryBenchmarks: { avgScore: 70, topScore: 91 }
   },
   education: {
     name: 'Education',
@@ -117,7 +201,20 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     preferredFormat: 'Reverse chronological with certifications prominent',
     atsNotes: 'School districts use varied systems. Keep format simple.',
     topSkills: ['Classroom Management', 'Curriculum Development', 'Assessment', 'Technology Integration'],
-    certifications: ['State Teaching License', 'TESOL', 'Special Education Endorsement']
+    certifications: ['State Teaching License', 'TESOL', 'Special Education Endorsement'],
+    commonMistakes: [
+      'Not including state certification numbers',
+      'Missing student outcome data',
+      'Vague classroom descriptions without methodologies',
+      'Not mentioning specific curricula or programs used'
+    ],
+    strongActionVerbs: ['Taught', 'Developed', 'Implemented', 'Assessed', 'Differentiated', 'Mentored', 'Collaborated', 'Facilitated'],
+    bulletExamples: [
+      { weak: 'Taught math to middle school students', strong: 'Increased 7th grade math proficiency by 22% through differentiated instruction for 120+ students' },
+      { weak: 'Created lesson plans', strong: 'Developed standards-aligned curriculum for AP Chemistry, resulting in 85% pass rate vs. 60% national average' }
+    ],
+    keyMetrics: ['Test score improvement %', 'Pass rates', 'Students taught', 'Attendance improvement', 'Parent satisfaction'],
+    industryBenchmarks: { avgScore: 62, topScore: 86 }
   },
   hr: {
     name: 'Human Resources',
@@ -131,7 +228,20 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     preferredFormat: 'Achievement-focused hybrid format',
     atsNotes: 'HR professionals are ATS experts—format flawlessly!',
     topSkills: ['Talent Acquisition', 'Employee Relations', 'HRIS', 'Compensation & Benefits'],
-    certifications: ['SHRM-CP', 'SHRM-SCP', 'PHR', 'SPHR']
+    certifications: ['SHRM-CP', 'SHRM-SCP', 'PHR', 'SPHR'],
+    commonMistakes: [
+      'Not quantifying hiring metrics',
+      'Missing HRIS system names and versions',
+      'Vague "improved culture" claims without data',
+      'Not mentioning compliance training or certifications'
+    ],
+    strongActionVerbs: ['Recruited', 'Onboarded', 'Administered', 'Negotiated', 'Implemented', 'Resolved', 'Streamlined', 'Trained'],
+    bulletExamples: [
+      { weak: 'Handled recruiting for the company', strong: 'Filled 75+ positions annually, reducing time-to-hire from 45 to 28 days while maintaining 90% 1-year retention' },
+      { weak: 'Managed employee benefits', strong: 'Redesigned benefits package for 500+ employees, improving satisfaction by 25% while reducing costs by $200K annually' }
+    ],
+    keyMetrics: ['Time-to-fill', 'Cost-per-hire', 'Retention rate', 'Employee satisfaction', 'Hires per year'],
+    industryBenchmarks: { avgScore: 69, topScore: 90 }
   },
   consulting: {
     name: 'Consulting',
@@ -145,7 +255,20 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     preferredFormat: 'Achievement-focused with client impact stories',
     atsNotes: 'Consulting firms use varied systems. Focus on impact stories.',
     topSkills: ['Strategic Planning', 'Client Management', 'Data Analysis', 'Presentation'],
-    certifications: ['PMP', 'Six Sigma', 'Industry-specific certifications']
+    certifications: ['PMP', 'Six Sigma', 'Industry-specific certifications'],
+    commonMistakes: [
+      'Not using situation-action-result format',
+      'Missing client industry and project scope details',
+      'Vague "advised clients" without measurable outcomes',
+      'Not showing progression across engagements'
+    ],
+    strongActionVerbs: ['Advised', 'Consulted', 'Recommended', 'Presented', 'Facilitated', 'Transformed', 'Delivered', 'Led'],
+    bulletExamples: [
+      { weak: 'Consulted with Fortune 500 clients', strong: 'Led 12-week operational transformation for F500 retailer, identifying $15M in annual savings' },
+      { weak: 'Analyzed business processes', strong: 'Developed go-to-market strategy for fintech startup, supporting successful $25M Series B raise' }
+    ],
+    keyMetrics: ['Client savings identified', 'Revenue impact', 'Projects delivered', 'Client satisfaction', 'Utilization rate'],
+    industryBenchmarks: { avgScore: 71, topScore: 93 }
   },
   general: {
     name: 'General / Other',
@@ -159,7 +282,20 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     preferredFormat: 'Reverse chronological for most roles',
     atsNotes: 'Match keywords from the job description closely.',
     topSkills: ['Communication', 'Problem Solving', 'Leadership', 'Teamwork'],
-    certifications: ['Varies by field']
+    certifications: ['Varies by field'],
+    commonMistakes: [
+      'Not tailoring to the specific job posting',
+      'Missing quantifiable achievements',
+      'Using generic descriptions without impact',
+      'Not highlighting transferable skills'
+    ],
+    strongActionVerbs: ['Achieved', 'Improved', 'Managed', 'Created', 'Developed', 'Led', 'Implemented', 'Increased'],
+    bulletExamples: [
+      { weak: 'Responsible for team tasks', strong: 'Managed cross-functional team of 8, delivering projects 20% under budget' },
+      { weak: 'Helped with customer service', strong: 'Resolved 50+ customer inquiries daily, maintaining 98% satisfaction rating' }
+    ],
+    keyMetrics: ['Team size managed', 'Budget responsibility', 'Customer satisfaction', 'Process improvements', 'Time/cost savings'],
+    industryBenchmarks: { avgScore: 60, topScore: 85 }
   }
 };
 
