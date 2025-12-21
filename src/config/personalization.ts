@@ -649,34 +649,34 @@ export function getPersonalizedPriorities(
 export const ROLE_CONFIGS: Record<string, RoleConfig> = {
   product_manager: {
     name: 'Product Manager',
-    aliases: ['pm', 'product owner', 'product lead', 'associate product manager', 'senior product manager', 'group product manager', 'director of product'],
-    keySkills: ['Roadmap Development', 'User Research', 'A/B Testing', 'Agile/Scrum', 'Stakeholder Management', 'Data Analysis', 'PRDs', 'Go-to-Market'],
-    mustHaveKeywords: ['roadmap', 'user stories', 'backlog', 'prioritization', 'metrics', 'OKRs', 'cross-functional', 'launch'],
+    aliases: ['pm', 'technical product manager', 'senior product manager', 'group product manager', 'principal pm', 'product owner', 'associate pm', 'apm', 'director of product', 'product lead', 'technical pm'],
+    keySkills: ['Product Strategy', 'Roadmap Planning', 'User Research', 'Data Analysis', 'A/B Testing', 'Stakeholder Management', 'Agile/Scrum', 'Go-to-Market', 'Prioritization Frameworks', 'Technical Understanding'],
+    mustHaveKeywords: ['product', 'roadmap', 'strategy', 'users', 'features', 'launch', 'metrics', 'stakeholders', 'prioritization', 'growth', 'OKRs', 'cross-functional'],
     resumeTips: [
-      'Lead with product outcomes, not features shipped',
-      'Show metrics: adoption rates, revenue impact, user growth',
-      'Highlight cross-functional leadership experience',
-      'Include specific methodologies (Agile, Lean, Design Thinking)'
+      'Lead with product outcomes, not just features shipped',
+      'Quantify business impact (revenue, users, engagement)',
+      'Show data-driven decision making with A/B tests',
+      'Highlight cross-functional leadership and technical credibility'
     ],
     bulletExamples: [
-      { weak: 'Managed product roadmap for mobile app', strong: 'Defined and executed product roadmap driving 40% increase in DAU and $2M incremental revenue' },
-      { weak: 'Worked with engineering team on features', strong: 'Led cross-functional team of 12 to deliver 15 features, improving NPS from 32 to 58' }
+      { weak: 'Managed product roadmap', strong: 'Owned product roadmap for $50M revenue line, launching 12 features that drove 35% increase in user engagement and $8M ARR growth' },
+      { weak: 'Worked with engineering team on features', strong: 'Led cross-functional team of 15 engineers and designers, shipping checkout redesign that improved conversion by 22% and reduced cart abandonment by 40%' }
     ],
-    keyMetrics: ['Revenue impact', 'User adoption %', 'NPS improvement', 'Feature adoption rate', 'Time-to-market reduction'],
+    keyMetrics: ['Revenue/ARR impact', 'User growth', 'Engagement improvements', 'Conversion rate changes', 'NPS/satisfaction scores', 'Features launched', 'OKR achievement'],
     commonMistakes: [
-      'Listing features instead of outcomes',
-      'Not quantifying user or business impact',
-      'Missing stakeholder management examples',
-      'Not showing data-driven decision making'
+      'Listing features shipped without business outcomes',
+      'Not quantifying user or revenue impact',
+      'Missing data-driven decision examples',
+      'Focusing on process instead of results'
     ],
-    interviewTopics: ['Product sense', 'Metrics definition', 'Prioritization frameworks', 'Technical communication', 'User empathy'],
+    interviewTopics: ['Product sense', 'Prioritization frameworks', 'Metrics and analytics', 'Cross-functional leadership', 'Technical trade-offs', 'Customer empathy', 'Go-to-market strategy'],
     topResumeElements: {
-      sections: ['Professional Summary', 'Product Experience', 'Key Achievements', 'Skills', 'Education'],
-      differentiators: ['Product launch case studies', 'Metrics-driven achievements', 'Cross-functional leadership examples', 'User research methodology'],
+      sections: ['Summary', 'Product Experience', 'Key Achievements', 'Skills', 'Education'],
+      differentiators: ['Revenue/growth impact', 'High-profile launches', 'Data-driven results', 'Cross-functional leadership', 'Technical credibility'],
       avgBulletCount: 5,
-      certificationRate: 45,
-      portfolioRate: 60,
-      metricsRate: 92
+      certificationRate: 30,
+      portfolioRate: 45,
+      metricsRate: 95
     }
   },
   software_engineer: {
