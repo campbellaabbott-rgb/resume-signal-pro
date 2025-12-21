@@ -3207,6 +3207,38 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       portfolioRate: 5,
       metricsRate: 90
     }
+  },
+  business_intelligence_analyst: {
+    name: 'Business Intelligence Analyst',
+    aliases: ['bi analyst', 'bi developer', 'business analyst', 'data analyst', 'reporting analyst', 'analytics analyst', 'tableau developer', 'power bi developer', 'insights analyst'],
+    keySkills: ['SQL', 'Tableau/Power BI', 'Data Visualization', 'ETL', 'Data Modeling', 'Dashboard Development', 'Statistical Analysis', 'Stakeholder Communication', 'Excel'],
+    mustHaveKeywords: ['BI', 'dashboard', 'reporting', 'SQL', 'Tableau', 'Power BI', 'analytics', 'insights', 'data visualization', 'KPIs'],
+    resumeTips: [
+      'Quantify business impact of insights delivered',
+      'Show dashboard adoption and usage metrics',
+      'Include specific BI tools and data volumes',
+      'Highlight stakeholder collaboration and influence'
+    ],
+    bulletExamples: [
+      { weak: 'Created dashboards for stakeholders', strong: 'Built executive dashboard suite used by 150+ stakeholders daily, surfacing insights that drove $5M in cost savings decisions' },
+      { weak: 'Analyzed data and created reports', strong: 'Developed automated reporting pipeline processing 10M+ rows, reducing manual reporting time from 40 hours/week to 2 hours' }
+    ],
+    keyMetrics: ['Business impact ($)', 'Dashboard adoption', 'Reporting time saved', 'Data volume processed', 'Stakeholders served', 'Decision influence'],
+    commonMistakes: [
+      'Not quantifying business impact of insights',
+      'Missing dashboard adoption metrics',
+      'Vague "created reports" without outcomes',
+      'Not showing stakeholder influence'
+    ],
+    interviewTopics: ['SQL proficiency', 'Dashboard design principles', 'Data storytelling', 'Stakeholder management', 'ETL processes', 'KPI definition'],
+    topResumeElements: {
+      sections: ['BI Experience', 'Technical Skills', 'Business Impact', 'Tools', 'Education'],
+      differentiators: ['Business impact quantification', 'Dashboard portfolio', 'Stakeholder influence', 'Advanced SQL/data modeling'],
+      avgBulletCount: 4,
+      certificationRate: 45,
+      portfolioRate: 60,
+      metricsRate: 88
+    }
   }
 };
 
