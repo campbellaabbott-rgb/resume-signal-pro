@@ -271,7 +271,7 @@ serve(async (req) => {
       );
     }
 
-    const { sessionId, resumeText, targetRoles, allowRegeneration } = requestBody;
+    const { sessionId, resumeText, targetRoles, allowRegeneration, jobDescription } = requestBody;
 
     // Validate session ID
     if (!sessionId || typeof sessionId !== 'string' || sessionId.length < 10) {
@@ -293,6 +293,7 @@ serve(async (req) => {
 
     const cleanedResume = resumeText.slice(0, MAX_RESUME_LENGTH);
     const roles = Array.isArray(targetRoles) ? targetRoles.slice(0, 3) : [];
+    const cleanedJobDescription = typeof jobDescription === 'string' ? jobDescription.slice(0, 10000) : '';
 
     // Initialize Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -408,8 +409,12 @@ serve(async (req) => {
     }
 
     const escapedResume = escapeXml(cleanedResume);
+    const escapedJobDescription = escapeXml(cleanedJobDescription);
     const rolesContext = roles.length > 0 
       ? `\n\nTARGET ROLES (optimize for these):\n${roles.map((r: string, i: number) => `${i + 1}. ${escapeXml(r)}`).join('\n')}`
+      : '';
+    const jobDescContext = escapedJobDescription 
+      ? `\n\nTARGET JOB DESCRIPTION:\n<job_description>\n${escapedJobDescription}\n</job_description>\n\nUse the keywords and requirements from this job description to provide highly targeted optimization recommendations.`
       : '';
 
     const systemPrompt = `You are an expert ATS (Applicant Tracking System) specialist with deep knowledge of how automated resume screening works across all major platforms including Workday, Greenhouse, Lever, iCIMS, Taleo, and BambooHR.
@@ -421,7 +426,7 @@ KEY ANALYSIS AREAS:
 
 2. **Before/After Score**: Provide realistic scores showing current ATS compatibility and projected score after implementing all fixes
 
-3. **Keyword Optimization**: Deep keyword analysis for primary role plus up to 2 secondary roles. Include SPECIFIC keywords missing and exactly where to add them
+3. **Keyword Optimization**: Deep keyword analysis for primary role plus up to 2 secondary roles. Include SPECIFIC keywords missing and exactly where to add them${escapedJobDescription ? ' - PRIORITIZE keywords from the provided job description' : ''}
 
 4. **Format Restructuring**: Specific format changes needed - section order, fonts, margins, elements to remove
 
@@ -437,9 +442,9 @@ BE SPECIFIC AND ACTIONABLE. Every recommendation should be something the candida
 
     const userMessage = `<resume>
 ${escapedResume}
-</resume>${rolesContext}
+</resume>${rolesContext}${jobDescContext}
 
-Analyze this resume for ATS compatibility and provide a complete ATS Defense report. Be thorough and specific - this is a premium product and the user expects comprehensive, actionable insights.`;
+Analyze this resume for ATS compatibility and provide a complete ATS Defense report. Be thorough and specific - this is a premium product and the user expects comprehensive, actionable insights.${escapedJobDescription ? ' Pay special attention to matching keywords from the target job description.' : ''}`;
 
     console.log("[ATS-DEFENSE] Calling AI gateway");
 
