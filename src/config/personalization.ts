@@ -1693,6 +1693,222 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Not showing compliance record'
     ],
     interviewTopics: ['Safety record', 'Route planning approach', 'DOT regulations knowledge', 'Handling delays', 'Vehicle maintenance']
+  },
+  data_analyst: {
+    name: 'Data Analyst',
+    aliases: ['senior data analyst', 'junior data analyst', 'reporting analyst', 'insights analyst', 'marketing analyst', 'operations analyst', 'product analyst'],
+    keySkills: ['SQL', 'Excel', 'Python/R', 'Data Visualization', 'Tableau/Power BI', 'Statistical Analysis', 'Reporting', 'Business Intelligence'],
+    mustHaveKeywords: ['data analysis', 'SQL', 'reporting', 'insights', 'dashboards', 'metrics', 'visualization', 'Excel'],
+    resumeTips: [
+      'Quantify business impact of your analyses',
+      'Show proficiency in SQL and visualization tools',
+      'Highlight stakeholder presentations and influence',
+      'Include specific tools (Tableau, Power BI, Looker)'
+    ],
+    bulletExamples: [
+      { weak: 'Analyzed data for reports', strong: 'Built automated dashboards serving 50+ stakeholders, reducing report generation time by 80% and enabling $2M in cost savings' },
+      { weak: 'Created Excel reports', strong: 'Developed predictive churn model identifying at-risk customers, enabling retention campaigns that saved $1.5M annually' }
+    ],
+    keyMetrics: ['Business impact ($)', 'Stakeholders served', 'Reports automated', 'Time savings', 'Decision influence'],
+    commonMistakes: [
+      'Not quantifying business impact',
+      'Missing specific tools and technologies',
+      'Vague "analyzed data" without outcomes',
+      'Not showing stakeholder influence'
+    ],
+    interviewTopics: ['SQL proficiency tests', 'Case study analysis', 'Stakeholder communication', 'Tool expertise', 'Problem-solving approach']
+  },
+  bi_analyst: {
+    name: 'Business Intelligence Analyst',
+    aliases: ['bi developer', 'bi engineer', 'business intelligence developer', 'bi specialist', 'reporting developer', 'analytics developer'],
+    keySkills: ['SQL', 'ETL', 'Data Warehousing', 'Tableau/Power BI', 'Data Modeling', 'Dashboard Development', 'Business Analysis', 'Stakeholder Management'],
+    mustHaveKeywords: ['business intelligence', 'dashboards', 'data warehouse', 'ETL', 'reporting', 'KPIs', 'visualization', 'data modeling'],
+    resumeTips: [
+      'Quantify dashboard adoption and user engagement',
+      'Show data warehouse and ETL experience',
+      'Highlight self-service analytics enablement',
+      'Include specific BI platforms and scale'
+    ],
+    bulletExamples: [
+      { weak: 'Created BI dashboards', strong: 'Developed executive dashboard suite used by 200+ users, driving 40% increase in data-driven decisions' },
+      { weak: 'Worked on data warehouse', strong: 'Designed dimensional data model supporting $50M revenue tracking, reducing query time by 90%' }
+    ],
+    keyMetrics: ['Dashboard users', 'Report adoption %', 'Query performance improvement', 'Self-service enablement', 'Business decisions influenced'],
+    commonMistakes: [
+      'Not showing dashboard adoption metrics',
+      'Missing data modeling experience',
+      'Vague "built reports" without scale',
+      'Not demonstrating stakeholder impact'
+    ],
+    interviewTopics: ['Data modeling approach', 'Dashboard design principles', 'Stakeholder requirements gathering', 'Performance optimization', 'BI tool expertise']
+  },
+  quantitative_analyst: {
+    name: 'Quantitative Analyst',
+    aliases: ['quant', 'quant developer', 'quantitative researcher', 'quant trader', 'quantitative strategist', 'algorithmic trader', 'risk quant'],
+    keySkills: ['Python/R/C++', 'Statistical Modeling', 'Machine Learning', 'Financial Mathematics', 'Time Series Analysis', 'Risk Modeling', 'Algorithm Development', 'Backtesting'],
+    mustHaveKeywords: ['quantitative', 'modeling', 'algorithms', 'backtesting', 'risk', 'trading', 'statistical', 'financial'],
+    resumeTips: [
+      'Highlight model performance and alpha generation',
+      'Show programming proficiency (Python, C++, R)',
+      'Quantify trading strategy returns or risk reduction',
+      'Include academic credentials and publications'
+    ],
+    bulletExamples: [
+      { weak: 'Developed trading models', strong: 'Built equity momentum strategy generating 15% annual alpha with Sharpe ratio of 2.1, deployed with $50M AUM' },
+      { weak: 'Analyzed financial data', strong: 'Developed VaR model reducing risk capital requirements by 20% while maintaining 99% confidence coverage' }
+    ],
+    keyMetrics: ['Alpha generated', 'Sharpe ratio', 'AUM managed', 'Model accuracy', 'Risk reduction %'],
+    commonMistakes: [
+      'Not quantifying strategy performance',
+      'Missing programming languages and tools',
+      'Vague "built models" without results',
+      'Not showing production deployment'
+    ],
+    interviewTopics: ['Probability and statistics', 'Coding tests', 'Model validation', 'Risk management', 'Market microstructure']
+  },
+  electrical_engineer: {
+    name: 'Electrical Engineer',
+    aliases: ['ee', 'electronics engineer', 'power engineer', 'hardware engineer', 'embedded systems engineer', 'pcb designer', 'rf engineer', 'signal processing engineer'],
+    keySkills: ['Circuit Design', 'PCB Layout', 'Embedded Systems', 'Power Electronics', 'Signal Processing', 'MATLAB/Simulink', 'CAD Tools', 'Testing & Validation'],
+    mustHaveKeywords: ['circuit design', 'PCB', 'embedded', 'power systems', 'schematic', 'testing', 'validation', 'firmware'],
+    resumeTips: [
+      'Include PE license if applicable',
+      'Quantify products designed and production volumes',
+      'Show testing and validation achievements',
+      'List specific tools (Altium, Cadence, SPICE)'
+    ],
+    bulletExamples: [
+      { weak: 'Designed electronic circuits', strong: 'Designed power management system for IoT device, reducing power consumption by 40% and enabling 2-year battery life' },
+      { weak: 'Tested electronic products', strong: 'Led EMC/EMI testing and certification for 15+ products, achieving 100% first-pass FCC compliance' }
+    ],
+    keyMetrics: ['Products designed', 'Production volume', 'Power/efficiency improvement', 'First-pass yield', 'Certification success rate'],
+    commonMistakes: [
+      'Not mentioning PE license or certifications',
+      'Missing production volume and scale',
+      'Vague "designed circuits" without outcomes',
+      'Not listing specific EDA tools'
+    ],
+    interviewTopics: ['Circuit analysis', 'Design trade-offs', 'EMC/EMI considerations', 'Debugging approach', 'Tool proficiency']
+  },
+  chemical_engineer: {
+    name: 'Chemical Engineer',
+    aliases: ['process engineer', 'chemical process engineer', 'senior chemical engineer', 'petrochemical engineer', 'pharmaceutical engineer', 'pe chemical'],
+    keySkills: ['Process Design', 'Process Simulation', 'Plant Operations', 'Safety/HAZOP', 'Quality Control', 'Aspen/HYSYS', 'P&ID', 'Scale-up'],
+    mustHaveKeywords: ['process design', 'plant operations', 'scale-up', 'safety', 'quality', 'simulation', 'optimization', 'yield'],
+    resumeTips: [
+      'Include PE license prominently',
+      'Quantify yield improvements and cost savings',
+      'Show safety record and HAZOP experience',
+      'Highlight scale-up from lab to production'
+    ],
+    bulletExamples: [
+      { weak: 'Worked on chemical processes', strong: 'Optimized distillation process increasing yield by 12% and reducing energy costs by $500K annually' },
+      { weak: 'Managed plant operations', strong: 'Led scale-up of pharmaceutical API from 1kg to 100kg batches, achieving 98% yield and zero safety incidents' }
+    ],
+    keyMetrics: ['Yield improvement %', 'Cost savings', 'Production volume', 'Safety record', 'Scale-up success'],
+    commonMistakes: [
+      'Not including PE license',
+      'Missing yield and efficiency metrics',
+      'Vague "optimized processes" without numbers',
+      'Not highlighting safety achievements'
+    ],
+    interviewTopics: ['Process troubleshooting', 'Safety and HAZOP', 'Scale-up challenges', 'Simulation tools', 'Regulatory compliance']
+  },
+  aerospace_engineer: {
+    name: 'Aerospace Engineer',
+    aliases: ['aeronautical engineer', 'aircraft engineer', 'propulsion engineer', 'flight systems engineer', 'spacecraft engineer', 'avionics engineer', 'structures engineer'],
+    keySkills: ['Aerodynamics', 'Structural Analysis', 'Propulsion', 'Flight Systems', 'CAD/CAE', 'MATLAB', 'FEA/CFD', 'Requirements Management'],
+    mustHaveKeywords: ['aerospace', 'flight', 'propulsion', 'structures', 'avionics', 'systems', 'testing', 'certification'],
+    resumeTips: [
+      'Include PE license and security clearance if applicable',
+      'Quantify program budgets and aircraft/spacecraft worked on',
+      'Show certification and testing achievements',
+      'Highlight specific subsystems and contributions'
+    ],
+    bulletExamples: [
+      { weak: 'Designed aerospace components', strong: 'Led structural design of $200M aircraft wing, achieving 15% weight reduction while exceeding FAA certification requirements' },
+      { weak: 'Worked on propulsion systems', strong: 'Developed propulsion system for satellite constellation, improving fuel efficiency by 20% and extending mission life by 3 years' }
+    ],
+    keyMetrics: ['Program budget', 'Weight reduction %', 'Performance improvement', 'Certification success', 'Mission success rate'],
+    commonMistakes: [
+      'Not mentioning security clearance if applicable',
+      'Missing program scale and budget',
+      'Vague "aerospace design" without specifics',
+      'Not showing certification/testing outcomes'
+    ],
+    interviewTopics: ['Technical design challenges', 'Systems integration', 'Certification process', 'Trade studies', 'Failure analysis']
+  },
+  biomedical_engineer: {
+    name: 'Biomedical Engineer',
+    aliases: ['medical device engineer', 'bme', 'clinical engineer', 'regulatory engineer', 'r&d engineer biomedical', 'biomechanical engineer'],
+    keySkills: ['Medical Device Design', 'FDA Regulations', 'Quality Systems', 'Clinical Trials', 'Biocompatibility', 'CAD/CAE', 'Risk Analysis', 'V&V Testing'],
+    mustHaveKeywords: ['medical device', 'FDA', 'regulatory', 'clinical', 'quality', 'design controls', 'validation', 'biocompatibility'],
+    resumeTips: [
+      'Highlight FDA clearances (510(k), PMA) achieved',
+      'Show design control and quality system experience',
+      'Quantify devices launched and patient impact',
+      'Include specific device classes and therapeutic areas'
+    ],
+    bulletExamples: [
+      { weak: 'Designed medical devices', strong: 'Led R&D for Class II cardiac monitoring device, achieving FDA 510(k) clearance in 8 months and $10M first-year revenue' },
+      { weak: 'Conducted device testing', strong: 'Developed V&V protocol for implantable device, ensuring 100% compliance with ISO 13485 and zero audit findings' }
+    ],
+    keyMetrics: ['FDA clearances', 'Devices launched', 'Patient lives impacted', 'Audit findings', 'Time to market'],
+    commonMistakes: [
+      'Not mentioning FDA clearances achieved',
+      'Missing device class and therapeutic area',
+      'Vague "medical device experience" without outcomes',
+      'Not showing regulatory and quality expertise'
+    ],
+    interviewTopics: ['Design controls', 'Regulatory strategy', 'Risk management', 'Clinical requirements', 'Quality system compliance']
+  },
+  industrial_engineer: {
+    name: 'Industrial Engineer',
+    aliases: ['manufacturing engineer', 'process improvement engineer', 'lean engineer', 'continuous improvement engineer', 'ie', 'operations engineer'],
+    keySkills: ['Lean Manufacturing', 'Six Sigma', 'Process Optimization', 'Time Studies', 'Facility Layout', 'Capacity Planning', 'Quality Engineering', 'Automation'],
+    mustHaveKeywords: ['lean', 'six sigma', 'process improvement', 'efficiency', 'capacity', 'quality', 'automation', 'manufacturing'],
+    resumeTips: [
+      'Include Six Sigma certification (Green/Black Belt)',
+      'Quantify efficiency gains and cost savings',
+      'Show before/after metrics for improvements',
+      'Highlight team leadership on kaizen events'
+    ],
+    bulletExamples: [
+      { weak: 'Improved manufacturing processes', strong: 'Led kaizen event reducing assembly time by 35% and eliminating $800K in annual labor costs' },
+      { weak: 'Analyzed production efficiency', strong: 'Implemented lean cell design increasing throughput by 50% while reducing floor space by 2,000 sq ft' }
+    ],
+    keyMetrics: ['Efficiency improvement %', 'Cost savings', 'Cycle time reduction', 'Quality improvement', 'Capacity increase'],
+    commonMistakes: [
+      'Not listing Six Sigma certification level',
+      'Missing quantified improvement metrics',
+      'Vague "improved efficiency" without numbers',
+      'Not showing methodology used (Lean, Six Sigma)'
+    ],
+    interviewTopics: ['Lean/Six Sigma methodology', 'Process improvement examples', 'Time studies', 'Facility layout', 'Change management']
+  },
+  environmental_engineer: {
+    name: 'Environmental Engineer',
+    aliases: ['sustainability engineer', 'water resources engineer', 'remediation engineer', 'air quality engineer', 'waste management engineer', 'pe environmental'],
+    keySkills: ['Environmental Compliance', 'Remediation', 'Water/Wastewater', 'Air Quality', 'Sustainability', 'Permitting', 'GIS', 'Environmental Impact Assessment'],
+    mustHaveKeywords: ['environmental', 'compliance', 'remediation', 'sustainability', 'permitting', 'water quality', 'air quality', 'regulations'],
+    resumeTips: [
+      'Include PE license prominently',
+      'Quantify environmental impact (emissions reduced, sites remediated)',
+      'Show regulatory compliance achievements',
+      'Highlight sustainability initiatives and metrics'
+    ],
+    bulletExamples: [
+      { weak: 'Worked on environmental projects', strong: 'Designed stormwater management system for 500-acre development, achieving zero discharge violations over 5 years' },
+      { weak: 'Conducted site assessments', strong: 'Led $5M brownfield remediation project, achieving regulatory closure 6 months ahead of schedule' }
+    ],
+    keyMetrics: ['Sites remediated', 'Emissions reduction %', 'Compliance rate', 'Project budget', 'Permit approvals'],
+    commonMistakes: [
+      'Not including PE license',
+      'Missing quantified environmental impact',
+      'Vague "environmental compliance" without specifics',
+      'Not showing regulatory expertise'
+    ],
+    interviewTopics: ['Regulatory knowledge', 'Remediation approaches', 'Sustainability strategies', 'Permitting process', 'Stakeholder management']
   }
 };
 
@@ -1754,6 +1970,15 @@ export function getRoleAdvice(role: string): RoleConfig | null {
   if (normalizedRole.includes('physician') || normalizedRole.includes('doctor') || normalizedRole.includes('md') || normalizedRole.includes('hospitalist')) return ROLE_CONFIGS.physician;
   if (normalizedRole.includes('flight attendant') || normalizedRole.includes('cabin crew') || normalizedRole.includes('inflight')) return ROLE_CONFIGS.flight_attendant;
   if (normalizedRole.includes('truck driver') || normalizedRole.includes('cdl driver') || normalizedRole.includes('commercial driver') || normalizedRole.includes('otr driver')) return ROLE_CONFIGS.truck_driver;
+  if (normalizedRole.includes('data analyst') || normalizedRole.includes('reporting analyst') || normalizedRole.includes('insights analyst')) return ROLE_CONFIGS.data_analyst;
+  if (normalizedRole.includes('business intelligence') || normalizedRole.includes('bi analyst') || normalizedRole.includes('bi developer')) return ROLE_CONFIGS.bi_analyst;
+  if (normalizedRole.includes('quant') || normalizedRole.includes('quantitative analyst') || normalizedRole.includes('algorithmic trader')) return ROLE_CONFIGS.quantitative_analyst;
+  if (normalizedRole.includes('electrical engineer') || normalizedRole.includes('electronics engineer') || normalizedRole.includes('hardware engineer') || normalizedRole.includes('pcb')) return ROLE_CONFIGS.electrical_engineer;
+  if (normalizedRole.includes('chemical engineer') || normalizedRole.includes('process engineer') || normalizedRole.includes('petrochemical')) return ROLE_CONFIGS.chemical_engineer;
+  if (normalizedRole.includes('aerospace') || normalizedRole.includes('aeronautical') || normalizedRole.includes('aircraft engineer') || normalizedRole.includes('avionics')) return ROLE_CONFIGS.aerospace_engineer;
+  if (normalizedRole.includes('biomedical') || normalizedRole.includes('medical device') || normalizedRole.includes('clinical engineer')) return ROLE_CONFIGS.biomedical_engineer;
+  if (normalizedRole.includes('industrial engineer') || normalizedRole.includes('lean engineer') || normalizedRole.includes('continuous improvement')) return ROLE_CONFIGS.industrial_engineer;
+  if (normalizedRole.includes('environmental engineer') || normalizedRole.includes('sustainability engineer') || normalizedRole.includes('remediation')) return ROLE_CONFIGS.environmental_engineer;
   
   return null;
 }
