@@ -877,6 +877,102 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Not showing measurable improvements'
     ],
     interviewTopics: ['Classroom scenarios', 'Differentiation strategies', 'Assessment methods', 'Parent communication', 'Classroom management']
+  },
+  hr_manager: {
+    name: 'HR Manager',
+    aliases: ['human resources manager', 'people manager', 'hr director', 'head of hr', 'hr business partner', 'hrbp', 'people operations', 'talent manager', 'hr lead'],
+    keySkills: ['Talent Acquisition', 'Employee Relations', 'Performance Management', 'HRIS', 'Compensation & Benefits', 'Compliance', 'Organizational Development', 'Change Management'],
+    mustHaveKeywords: ['talent acquisition', 'employee relations', 'performance management', 'HRIS', 'compliance', 'onboarding', 'retention', 'workforce planning'],
+    resumeTips: [
+      'Quantify hiring metrics: hires, time-to-fill, cost-per-hire',
+      'Show retention improvements and employee satisfaction scores',
+      'List specific HRIS systems (Workday, SAP, BambooHR)',
+      'Highlight DEI initiatives and measurable outcomes'
+    ],
+    bulletExamples: [
+      { weak: 'Managed HR department', strong: 'Led HR team of 8 supporting 500+ employees, reducing turnover from 25% to 15% through improved onboarding and engagement programs' },
+      { weak: 'Handled employee relations', strong: 'Resolved 50+ employee relations cases annually with 95% resolution rate, reducing escalations to legal by 60%' }
+    ],
+    keyMetrics: ['Turnover reduction %', 'Time-to-fill', 'Cost-per-hire', 'Employee satisfaction score', 'Retention rate', 'Training completion %'],
+    commonMistakes: [
+      'Not quantifying hiring and retention metrics',
+      'Missing specific HRIS systems and tools',
+      'Vague "improved culture" without measurable outcomes',
+      'Not mentioning compliance certifications (SHRM, PHR)'
+    ],
+    interviewTopics: ['Conflict resolution scenarios', 'DEI initiatives', 'Change management', 'Employment law', 'Performance management systems']
+  },
+  financial_analyst: {
+    name: 'Financial Analyst',
+    aliases: ['finance analyst', 'fp&a analyst', 'senior financial analyst', 'investment analyst', 'budget analyst', 'business analyst finance', 'corporate finance analyst', 'financial planning analyst'],
+    keySkills: ['Financial Modeling', 'Budgeting & Forecasting', 'Data Analysis', 'Excel/VBA', 'SQL', 'ERP Systems', 'Variance Analysis', 'Financial Reporting'],
+    mustHaveKeywords: ['financial modeling', 'forecasting', 'variance analysis', 'budgeting', 'P&L', 'Excel', 'reporting', 'ROI'],
+    resumeTips: [
+      'Highlight advanced Excel skills (VBA, macros, pivot tables)',
+      'Quantify budget sizes and forecast accuracy',
+      'Show cost savings identified through analysis',
+      'List specific ERP and BI tools (SAP, Oracle, Tableau)'
+    ],
+    bulletExamples: [
+      { weak: 'Prepared financial reports', strong: 'Built 3-statement financial model for $50M division, improving forecast accuracy from 85% to 97%' },
+      { weak: 'Analyzed budgets', strong: 'Identified $2.5M in cost savings through variance analysis across 12 departments, presented recommendations to C-suite' }
+    ],
+    keyMetrics: ['Forecast accuracy %', 'Budget managed', 'Cost savings identified', 'Reports delivered', 'Process improvement %'],
+    commonMistakes: [
+      'Not mentioning specific modeling skills (DCF, LBO, scenario analysis)',
+      'Missing budget sizes or scale of analysis',
+      'Vague "analyzed financials" without impact',
+      'Not listing specific tools (Excel, SQL, Tableau)'
+    ],
+    interviewTopics: ['Financial modeling tests', 'Excel proficiency', 'Variance analysis scenarios', 'Business case development', 'Stakeholder communication']
+  },
+  customer_success: {
+    name: 'Customer Success Manager',
+    aliases: ['csm', 'customer success', 'client success manager', 'customer success specialist', 'account manager', 'client relationship manager', 'customer experience manager', 'cs manager'],
+    keySkills: ['Account Management', 'Relationship Building', 'Churn Prevention', 'Upselling', 'Product Adoption', 'Customer Onboarding', 'Data Analysis', 'CRM'],
+    mustHaveKeywords: ['retention', 'churn', 'NPS', 'upsell', 'onboarding', 'adoption', 'customer health', 'expansion revenue'],
+    resumeTips: [
+      'Quantify retention rates and churn reduction',
+      'Show expansion/upsell revenue generated',
+      'Highlight portfolio size (ARR, number of accounts)',
+      'Include NPS or CSAT improvements'
+    ],
+    bulletExamples: [
+      { weak: 'Managed customer accounts', strong: 'Managed $5M ARR portfolio of 50+ enterprise accounts, achieving 95% retention and 120% net revenue retention' },
+      { weak: 'Helped customers succeed', strong: 'Reduced churn by 30% through proactive health score monitoring and quarterly business reviews with key stakeholders' }
+    ],
+    keyMetrics: ['Retention rate %', 'Net revenue retention', 'Churn reduction %', 'NPS improvement', 'Upsell revenue', 'Accounts managed'],
+    commonMistakes: [
+      'Not including retention or churn metrics',
+      'Missing ARR/revenue managed',
+      'Vague "built relationships" without outcomes',
+      'Not showing impact on expansion revenue'
+    ],
+    interviewTopics: ['Churn prevention strategies', 'Difficult customer scenarios', 'Upselling techniques', 'QBR preparation', 'Cross-functional collaboration']
+  },
+  operations_manager: {
+    name: 'Operations Manager',
+    aliases: ['ops manager', 'director of operations', 'operations director', 'business operations manager', 'general manager', 'plant manager', 'facility manager', 'supply chain manager'],
+    keySkills: ['Process Optimization', 'Team Leadership', 'Budget Management', 'Supply Chain', 'Lean/Six Sigma', 'Vendor Management', 'KPI Tracking', 'Strategic Planning'],
+    mustHaveKeywords: ['process improvement', 'efficiency', 'cost reduction', 'team management', 'KPIs', 'operations', 'lean', 'supply chain'],
+    resumeTips: [
+      'Quantify efficiency improvements and cost savings',
+      'Show team sizes managed and budget responsibility',
+      'Highlight process improvements with measurable outcomes',
+      'Include Lean/Six Sigma certifications if applicable'
+    ],
+    bulletExamples: [
+      { weak: 'Managed operations team', strong: 'Led operations team of 25 across 3 locations, reducing operational costs by 18% while improving on-time delivery from 88% to 97%' },
+      { weak: 'Improved processes', strong: 'Implemented Lean methodology reducing production cycle time by 35% and eliminating $500K in annual waste' }
+    ],
+    keyMetrics: ['Cost reduction %', 'Efficiency improvement %', 'Team size', 'Budget managed', 'On-time delivery %', 'Throughput increase'],
+    commonMistakes: [
+      'Not quantifying cost savings or efficiency gains',
+      'Missing team size and budget scope',
+      'Vague "improved operations" without metrics',
+      'Not mentioning specific methodologies (Lean, Six Sigma, Kaizen)'
+    ],
+    interviewTopics: ['Process improvement examples', 'Team management challenges', 'Budget optimization', 'Crisis management', 'Cross-departmental coordination']
   }
 };
 
@@ -904,6 +1000,10 @@ export function getRoleAdvice(role: string): RoleConfig | null {
   if (normalizedRole.includes('ux') || normalizedRole.includes('ui') || normalizedRole.includes('designer')) return ROLE_CONFIGS.ux_designer;
   if (normalizedRole.includes('accountant') || normalizedRole.includes('cpa') || normalizedRole.includes('controller')) return ROLE_CONFIGS.accountant;
   if (normalizedRole.includes('teacher') || normalizedRole.includes('educator') || normalizedRole.includes('professor')) return ROLE_CONFIGS.teacher;
+  if (normalizedRole.includes('hr') || normalizedRole.includes('human resources') || normalizedRole.includes('people operations') || normalizedRole.includes('hrbp')) return ROLE_CONFIGS.hr_manager;
+  if (normalizedRole.includes('financial analyst') || normalizedRole.includes('fp&a') || normalizedRole.includes('finance analyst')) return ROLE_CONFIGS.financial_analyst;
+  if (normalizedRole.includes('customer success') || normalizedRole.includes('csm') || normalizedRole.includes('client success')) return ROLE_CONFIGS.customer_success;
+  if (normalizedRole.includes('operations') && normalizedRole.includes('manager')) return ROLE_CONFIGS.operations_manager;
   
   return null;
 }
