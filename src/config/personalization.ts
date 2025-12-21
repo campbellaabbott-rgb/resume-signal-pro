@@ -1501,6 +1501,102 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Not showing business impact of data work'
     ],
     interviewTopics: ['Data modeling approach', 'Pipeline architecture', 'Handling data quality', 'Cloud platform experience', 'Performance optimization']
+  },
+  security_analyst: {
+    name: 'Security Analyst',
+    aliases: ['cybersecurity analyst', 'information security analyst', 'soc analyst', 'security engineer', 'penetration tester', 'security consultant', 'threat analyst', 'security operations'],
+    keySkills: ['Threat Detection', 'SIEM', 'Incident Response', 'Vulnerability Assessment', 'Network Security', 'Penetration Testing', 'Compliance', 'Security Frameworks'],
+    mustHaveKeywords: ['security', 'threat detection', 'incident response', 'vulnerabilities', 'SIEM', 'compliance', 'penetration testing', 'risk assessment'],
+    resumeTips: [
+      'Include security certifications (CISSP, CEH, CompTIA Security+)',
+      'Quantify threats detected and incidents resolved',
+      'Show compliance frameworks experience (SOC 2, ISO 27001, NIST)',
+      'Highlight tools and technologies used'
+    ],
+    bulletExamples: [
+      { weak: 'Monitored security systems', strong: 'Analyzed 10K+ daily security alerts using Splunk SIEM, identifying and remediating 150+ critical threats with 0 breaches' },
+      { weak: 'Performed security assessments', strong: 'Conducted 50+ penetration tests annually, identifying 200+ vulnerabilities and reducing attack surface by 60%' }
+    ],
+    keyMetrics: ['Threats detected', 'Incidents resolved', 'Mean time to detect/respond', 'Vulnerabilities remediated', 'Compliance audit results'],
+    commonMistakes: [
+      'Not including security certifications',
+      'Missing quantified threat detection metrics',
+      'Vague "monitored security" without outcomes',
+      'Not mentioning specific tools and frameworks'
+    ],
+    interviewTopics: ['Incident response scenarios', 'Threat analysis approach', 'Security architecture', 'Compliance requirements', 'Emerging threats']
+  },
+  paralegal: {
+    name: 'Paralegal',
+    aliases: ['legal assistant', 'litigation paralegal', 'corporate paralegal', 'senior paralegal', 'legal secretary', 'legal coordinator', 'law clerk'],
+    keySkills: ['Legal Research', 'Document Preparation', 'Case Management', 'E-Discovery', 'Filing', 'Client Communication', 'Legal Databases', 'Compliance'],
+    mustHaveKeywords: ['legal research', 'document preparation', 'case management', 'discovery', 'filing', 'litigation support', 'contracts', 'compliance'],
+    resumeTips: [
+      'Include paralegal certification if applicable',
+      'Quantify cases supported and documents prepared',
+      'Show practice area specializations',
+      'List legal software proficiency (Westlaw, LexisNexis)'
+    ],
+    bulletExamples: [
+      { weak: 'Assisted attorneys with cases', strong: 'Supported 5 attorneys managing 75+ active cases, preparing 500+ legal documents annually with 99% accuracy' },
+      { weak: 'Conducted legal research', strong: 'Performed legal research and drafted motions for complex litigation, contributing to 85% favorable case outcomes' }
+    ],
+    keyMetrics: ['Cases supported', 'Documents prepared', 'Attorneys supported', 'Accuracy rate', 'Filing deadlines met'],
+    commonMistakes: [
+      'Not including paralegal certification',
+      'Missing volume of work handled',
+      'Vague "assisted attorneys" without specifics',
+      'Not listing legal research tools'
+    ],
+    interviewTopics: ['Legal research approach', 'Case management systems', 'Deadline management', 'Confidentiality handling', 'Practice area knowledge']
+  },
+  event_planner: {
+    name: 'Event Planner',
+    aliases: ['event coordinator', 'event manager', 'wedding planner', 'conference planner', 'meeting planner', 'special events coordinator', 'corporate events manager'],
+    keySkills: ['Event Planning', 'Vendor Management', 'Budget Management', 'Logistics', 'Client Relations', 'Negotiation', 'Marketing', 'Crisis Management'],
+    mustHaveKeywords: ['events', 'planning', 'budget', 'vendors', 'logistics', 'coordination', 'client relations', 'execution'],
+    resumeTips: [
+      'Quantify events planned and attendees served',
+      'Show budget management and cost savings',
+      'Highlight variety of event types',
+      'Include client satisfaction metrics'
+    ],
+    bulletExamples: [
+      { weak: 'Planned corporate events', strong: 'Planned and executed 50+ corporate events annually for up to 2,000 attendees, managing $1M+ budget with 15% average cost savings' },
+      { weak: 'Coordinated with vendors', strong: 'Negotiated contracts with 100+ vendors, reducing costs by 20% while maintaining 98% client satisfaction' }
+    ],
+    keyMetrics: ['Events planned annually', 'Attendees served', 'Budget managed', 'Cost savings %', 'Client satisfaction'],
+    commonMistakes: [
+      'Not quantifying event scale and budget',
+      'Missing attendee numbers',
+      'Vague "planned events" without specifics',
+      'Not showing vendor management results'
+    ],
+    interviewTopics: ['Event logistics scenarios', 'Budget management', 'Crisis handling', 'Vendor negotiation', 'Client communication']
+  },
+  electrician: {
+    name: 'Electrician',
+    aliases: ['journeyman electrician', 'master electrician', 'electrical technician', 'industrial electrician', 'commercial electrician', 'residential electrician', 'apprentice electrician'],
+    keySkills: ['Electrical Installation', 'Troubleshooting', 'Code Compliance', 'Blueprint Reading', 'Safety Protocols', 'PLC Programming', 'Conduit Bending', 'Panel Wiring'],
+    mustHaveKeywords: ['electrical', 'installation', 'troubleshooting', 'code compliance', 'safety', 'wiring', 'NEC', 'maintenance'],
+    resumeTips: [
+      'Include license type and number (Journeyman, Master)',
+      'Quantify projects completed and scale',
+      'Show safety record and compliance',
+      'Highlight specializations (commercial, industrial, residential)'
+    ],
+    bulletExamples: [
+      { weak: 'Performed electrical work', strong: 'Completed 200+ electrical installations in commercial buildings, maintaining 100% code compliance and zero safety incidents' },
+      { weak: 'Troubleshot electrical issues', strong: 'Diagnosed and repaired electrical faults reducing downtime by 40% for manufacturing facility with 50+ production lines' }
+    ],
+    keyMetrics: ['Projects completed', 'Safety record', 'Code compliance %', 'Downtime reduction', 'Customer satisfaction'],
+    commonMistakes: [
+      'Not including license type and certifications',
+      'Missing project volume and scale',
+      'Vague "electrical work" without specifics',
+      'Not highlighting safety record'
+    ],
+    interviewTopics: ['Code compliance scenarios', 'Troubleshooting approach', 'Safety protocols', 'Blueprint reading', 'Complex installation projects']
   }
 };
 
@@ -1554,6 +1650,10 @@ export function getRoleAdvice(role: string): RoleConfig | null {
   if (normalizedRole.includes('veterinarian') || normalizedRole.includes('vet') || normalizedRole.includes('dvm')) return ROLE_CONFIGS.veterinarian;
   if (normalizedRole.includes('civil engineer') || normalizedRole.includes('structural engineer') || normalizedRole.includes('transportation engineer')) return ROLE_CONFIGS.civil_engineer;
   if (normalizedRole.includes('data engineer') || normalizedRole.includes('etl') || normalizedRole.includes('analytics engineer') || normalizedRole.includes('data platform')) return ROLE_CONFIGS.data_engineer;
+  if (normalizedRole.includes('security analyst') || normalizedRole.includes('cybersecurity') || normalizedRole.includes('soc analyst') || normalizedRole.includes('penetration tester')) return ROLE_CONFIGS.security_analyst;
+  if (normalizedRole.includes('paralegal') || normalizedRole.includes('legal assistant') || normalizedRole.includes('law clerk')) return ROLE_CONFIGS.paralegal;
+  if (normalizedRole.includes('event planner') || normalizedRole.includes('event coordinator') || normalizedRole.includes('wedding planner') || normalizedRole.includes('meeting planner')) return ROLE_CONFIGS.event_planner;
+  if (normalizedRole.includes('electrician') || normalizedRole.includes('electrical technician')) return ROLE_CONFIGS.electrician;
   
   return null;
 }
