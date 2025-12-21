@@ -34,36 +34,41 @@ export function Header() {
         <header className="bg-background border-b border-border/50" role="banner">
         <div className="container">
         <nav className="flex items-center justify-between h-16" aria-label="Main navigation">
-          {/* Left: Logo */}
-          <Link 
-            to="/" 
-            className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
-            aria-label="Resume Booster - Home"
-          >
-            <Logo className="w-8 h-8" />
-            <span className="font-bold text-lg tracking-tight">
-              Resume <span className="text-primary">Booster</span>
-            </span>
-          </Link>
-
-          {/* Center: Nav Links */}
-          <div className="hidden sm:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
+          {/* Left: Logo + Nav Links */}
+          <div className="flex items-center gap-1 sm:gap-2">
             <Link 
-              to="/methodology" 
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              to="/" 
+              className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
+              aria-label="Resume Booster - Home"
             >
-              How It Works
+              <Logo className="w-8 h-8" />
+              <span className="font-bold text-lg tracking-tight">
+                Resume <span className="text-primary">Booster</span>
+              </span>
             </Link>
-            <Link 
-              to="/pricing" 
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Pricing
-            </Link>
+            
+            <div className="hidden sm:flex items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="gap-2 text-muted-foreground hover:text-foreground"
+              >
+                <Link to="/methodology">How It Works</Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="gap-2 text-muted-foreground hover:text-foreground"
+              >
+                <Link to="/pricing">Pricing</Link>
+              </Button>
+            </div>
           </div>
           
           {/* Right: Actions */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1 sm:gap-2">
             <LanguageSwitcher variant="compact" />
             <ScanCreditsCounter />
             <Button 
