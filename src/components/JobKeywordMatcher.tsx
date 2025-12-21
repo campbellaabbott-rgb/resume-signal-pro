@@ -363,6 +363,38 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
     // Telecom software & tools
     { pattern: /\b(solarwinds|nagios|zabbix|prtg|splunk|netbrain|infoblox|bluecat|what's up gold|cacti|grafana|prometheus)\b/gi, category: "tool", importance: "important" },
     
+    // ===== CYBERSECURITY & INFORMATION SECURITY =====
+    // Penetration testing (critical)
+    { pattern: /\b(penetration testing|pen testing|pentest|ethical hacking|red team|blue team|purple team|offensive security|vulnerability assessment|security testing)\b/gi, category: "hard_skill", importance: "critical" },
+    // SOC & security operations (critical)
+    { pattern: /\b(soc|security operations center|soc analyst|security analyst|threat detection|threat hunting|security monitoring|incident detection|alert triage|tier 1|tier 2|tier 3)\b/gi, category: "hard_skill", importance: "critical" },
+    // SIEM & security tools (critical)
+    { pattern: /\b(siem|security information|splunk|qradar|sentinel|arcsight|logrhythm|sumo logic|elastic security|chronicle|exabeam|securonix)\b/gi, category: "tool", importance: "critical" },
+    // Incident response (critical)
+    { pattern: /\b(incident response|ir|incident handling|forensics|digital forensics|malware analysis|threat intelligence|ioc|indicators of compromise|containment|eradication|recovery)\b/gi, category: "hard_skill", importance: "critical" },
+    // Compliance frameworks (critical)
+    { pattern: /\b(nist|iso 27001|soc 2|soc2|pci dss|pci-dss|hipaa|gdpr|ccpa|fedramp|fisma|cis controls|cobit|hitrust|cmmc)\b/gi, category: "certification", importance: "critical" },
+    // Vulnerability management
+    { pattern: /\b(vulnerability management|vulnerability scanning|nessus|qualys|rapid7|tenable|nexpose|patch management|remediation|cvss|cve|zero day)\b/gi, category: "hard_skill", importance: "critical" },
+    // Identity & access management
+    { pattern: /\b(iam|identity access management|sso|single sign-on|mfa|multi-factor|okta|azure ad|ping identity|sailpoint|cyberark|privileged access|pam)\b/gi, category: "hard_skill", importance: "important" },
+    // Endpoint security
+    { pattern: /\b(edr|endpoint detection|xdr|extended detection|antivirus|endpoint protection|crowdstrike|carbon black|sentinelone|defender|cylance|tanium)\b/gi, category: "tool", importance: "important" },
+    // Network security
+    { pattern: /\b(firewall|ids|intrusion detection|ips|intrusion prevention|waf|web application firewall|dlp|data loss prevention|proxy|zscaler|netskope)\b/gi, category: "hard_skill", importance: "important" },
+    // Cloud security
+    { pattern: /\b(cloud security|cspm|cwpp|casb|cloud access security|aws security|azure security|gcp security|container security|kubernetes security|devsecops)\b/gi, category: "hard_skill", importance: "important" },
+    // Application security
+    { pattern: /\b(application security|appsec|sast|dast|iast|rasp|secure coding|owasp|code review|security architecture|threat modeling|sdlc)\b/gi, category: "hard_skill", importance: "important" },
+    // Security certifications
+    { pattern: /\b(cissp|cism|cisa|ceh|oscp|gpen|gcih|gsec|gcia|comptia security\+|cysa\+|casp\+|ccsp|sscp|crisc)\b/gi, category: "certification", importance: "critical" },
+    // GRC & risk management
+    { pattern: /\b(grc|governance risk compliance|risk management|risk assessment|security audit|compliance audit|policy development|security policy|control framework|third-party risk)\b/gi, category: "hard_skill", importance: "important" },
+    // Security awareness
+    { pattern: /\b(security awareness|phishing simulation|social engineering|user training|security culture|insider threat|data classification|security governance)\b/gi, category: "soft_skill", importance: "nice_to_have" },
+    // Cryptography
+    { pattern: /\b(cryptography|encryption|pki|public key|certificate|ssl\/tls|hashing|key management|hsm|hardware security module|tokenization)\b/gi, category: "hard_skill", importance: "important" },
+    
     // ===== OPERATIONS & SUPPLY CHAIN =====
     { pattern: /\b(supply chain|logistics|procurement|inventory management|warehouse|distribution|erp|mrp|lean manufacturing|six sigma|kaizen|tps|just-in-time|jit)\b/gi, category: "hard_skill", importance: "critical" },
     { pattern: /\b(apics|cpim|cscp|cltd|pmp|capm|lean six sigma|green belt|black belt|master black belt)\b/gi, category: "certification", importance: "important" },
