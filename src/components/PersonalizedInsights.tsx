@@ -90,6 +90,9 @@ export function PersonalizedInsights({
               {' • '}<span className="font-medium text-primary">{levelLabel}</span>
               {experienceLevel?.yearsEstimate && ` (${experienceLevel.yearsEstimate})`}
               {' • '}<span className="font-medium text-primary">{geoConfig.name}</span> format
+              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground">
+                Auto-detected
+              </span>
             </p>
           </div>
         </div>
