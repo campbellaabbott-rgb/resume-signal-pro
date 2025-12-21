@@ -1405,6 +1405,102 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Not showing end-to-end pipeline work'
     ],
     interviewTopics: ['ML system design', 'Model selection rationale', 'Handling data quality issues', 'MLOps practices', 'Scaling ML systems']
+  },
+  dentist: {
+    name: 'Dentist',
+    aliases: ['dental surgeon', 'dds', 'dmd', 'general dentist', 'orthodontist', 'periodontist', 'endodontist', 'oral surgeon', 'pediatric dentist'],
+    keySkills: ['Patient Care', 'Diagnosis', 'Restorative Procedures', 'Oral Surgery', 'Patient Education', 'Treatment Planning', 'Dental Technology', 'Practice Management'],
+    mustHaveKeywords: ['patient care', 'diagnosis', 'treatment planning', 'procedures', 'dental', 'oral health', 'restorative', 'preventive'],
+    resumeTips: [
+      'Include license number and specializations',
+      'Quantify patient volume and treatment outcomes',
+      'Show range of procedures performed',
+      'Highlight technology adoption (digital X-rays, CAD/CAM)'
+    ],
+    bulletExamples: [
+      { weak: 'Provided dental care to patients', strong: 'Treated 25+ patients daily across restorative, preventive, and cosmetic procedures, achieving 98% patient satisfaction' },
+      { weak: 'Performed dental procedures', strong: 'Completed 500+ implant placements with 97% success rate, growing practice revenue by 35%' }
+    ],
+    keyMetrics: ['Patients treated daily', 'Procedure success rate', 'Patient satisfaction', 'Revenue growth', 'Case acceptance rate'],
+    commonMistakes: [
+      'Not including license and certifications',
+      'Missing patient volume and outcome metrics',
+      'Vague "treated patients" without specifics',
+      'Not showing technology proficiency'
+    ],
+    interviewTopics: ['Clinical scenarios', 'Patient communication', 'Treatment planning approach', 'Practice management', 'Continuing education']
+  },
+  veterinarian: {
+    name: 'Veterinarian',
+    aliases: ['vet', 'dvm', 'veterinary surgeon', 'animal doctor', 'veterinary physician', 'emergency vet', 'specialty veterinarian'],
+    keySkills: ['Animal Care', 'Diagnosis', 'Surgery', 'Client Communication', 'Pharmacology', 'Radiology', 'Emergency Medicine', 'Preventive Care'],
+    mustHaveKeywords: ['patient care', 'diagnosis', 'surgery', 'treatment', 'animal health', 'client education', 'preventive care', 'emergency'],
+    resumeTips: [
+      'Include DVM license and state(s)',
+      'Quantify caseload and surgical volume',
+      'Show species specializations',
+      'Highlight emergency and specialty experience'
+    ],
+    bulletExamples: [
+      { weak: 'Treated animals at veterinary clinic', strong: 'Managed caseload of 30+ patients daily across companion animals, performing 200+ surgeries annually with 99% success rate' },
+      { weak: 'Performed veterinary surgeries', strong: 'Led emergency department handling 50+ critical cases monthly, achieving 92% survival rate for trauma patients' }
+    ],
+    keyMetrics: ['Daily caseload', 'Surgeries performed', 'Success/survival rate', 'Client satisfaction', 'Revenue generated'],
+    commonMistakes: [
+      'Not including DVM license and states',
+      'Missing caseload and surgical metrics',
+      'Vague "treated animals" without volume',
+      'Not showing species or specialty focus'
+    ],
+    interviewTopics: ['Clinical case discussions', 'Difficult client scenarios', 'Emergency protocols', 'Ethical dilemmas', 'Practice management']
+  },
+  civil_engineer: {
+    name: 'Civil Engineer',
+    aliases: ['structural engineer', 'transportation engineer', 'geotechnical engineer', 'environmental engineer', 'construction engineer', 'pe civil', 'project engineer'],
+    keySkills: ['AutoCAD/Civil 3D', 'Structural Analysis', 'Project Management', 'Site Design', 'Surveying', 'Code Compliance', 'Cost Estimation', 'Construction Management'],
+    mustHaveKeywords: ['design', 'construction', 'infrastructure', 'project management', 'CAD', 'specifications', 'compliance', 'site'],
+    resumeTips: [
+      'Include PE license prominently',
+      'Quantify project budgets and scale (miles, square footage)',
+      'Show variety of project types',
+      'Highlight on-time/on-budget delivery'
+    ],
+    bulletExamples: [
+      { weak: 'Designed civil engineering projects', strong: 'Led design of $25M highway interchange project, delivering 3 weeks ahead of schedule with zero change orders' },
+      { weak: 'Managed construction projects', strong: 'Managed construction of 50-mile water pipeline ($40M), coordinating 5 contractors and achieving 100% regulatory compliance' }
+    ],
+    keyMetrics: ['Project budget', 'Schedule performance', 'Infrastructure scale', 'Change order reduction', 'Compliance rate'],
+    commonMistakes: [
+      'Not including PE license',
+      'Missing project scale and budget details',
+      'Vague "designed infrastructure" without specifics',
+      'Not mentioning software and tools'
+    ],
+    interviewTopics: ['Technical design challenges', 'Project management approach', 'Regulatory compliance', 'Stakeholder coordination', 'Site problem-solving']
+  },
+  data_engineer: {
+    name: 'Data Engineer',
+    aliases: ['senior data engineer', 'analytics engineer', 'etl developer', 'data platform engineer', 'big data engineer', 'database engineer', 'data infrastructure engineer'],
+    keySkills: ['SQL', 'Python', 'ETL/ELT', 'Data Warehousing', 'Spark/Hadoop', 'Airflow', 'Cloud Platforms (AWS/GCP/Azure)', 'Data Modeling'],
+    mustHaveKeywords: ['data pipelines', 'ETL', 'data warehouse', 'SQL', 'data modeling', 'cloud', 'Spark', 'automation'],
+    resumeTips: [
+      'Quantify data volumes and pipeline performance',
+      'Show reduction in processing time/costs',
+      'List specific technologies and cloud platforms',
+      'Highlight data quality improvements'
+    ],
+    bulletExamples: [
+      { weak: 'Built data pipelines', strong: 'Designed ETL pipelines processing 5TB daily with 99.9% reliability, reducing data latency from 4 hours to 15 minutes' },
+      { weak: 'Worked with data warehouse', strong: 'Architected Snowflake data warehouse serving 200+ analysts, cutting query times by 70% and infrastructure costs by 40%' }
+    ],
+    keyMetrics: ['Data volume processed', 'Pipeline reliability %', 'Latency reduction', 'Cost savings', 'Query performance improvement'],
+    commonMistakes: [
+      'Not quantifying data volumes',
+      'Missing reliability and performance metrics',
+      'Vague "built pipelines" without scale',
+      'Not showing business impact of data work'
+    ],
+    interviewTopics: ['Data modeling approach', 'Pipeline architecture', 'Handling data quality', 'Cloud platform experience', 'Performance optimization']
   }
 };
 
@@ -1454,6 +1550,10 @@ export function getRoleAdvice(role: string): RoleConfig | null {
   if (normalizedRole.includes('mechanical engineer') || normalizedRole.includes('hvac engineer') || normalizedRole.includes('manufacturing engineer')) return ROLE_CONFIGS.mechanical_engineer;
   if (normalizedRole.includes('robotics') || normalizedRole.includes('automation engineer') || normalizedRole.includes('controls engineer') || normalizedRole.includes('mechatronics')) return ROLE_CONFIGS.robotics_engineer;
   if (normalizedRole.includes('machine learning') || normalizedRole.includes('ml engineer') || normalizedRole.includes('ai engineer') || normalizedRole.includes('deep learning') || normalizedRole.includes('nlp engineer')) return ROLE_CONFIGS.ai_ml_engineer;
+  if (normalizedRole.includes('dentist') || normalizedRole.includes('dds') || normalizedRole.includes('dmd') || normalizedRole.includes('orthodontist')) return ROLE_CONFIGS.dentist;
+  if (normalizedRole.includes('veterinarian') || normalizedRole.includes('vet') || normalizedRole.includes('dvm')) return ROLE_CONFIGS.veterinarian;
+  if (normalizedRole.includes('civil engineer') || normalizedRole.includes('structural engineer') || normalizedRole.includes('transportation engineer')) return ROLE_CONFIGS.civil_engineer;
+  if (normalizedRole.includes('data engineer') || normalizedRole.includes('etl') || normalizedRole.includes('analytics engineer') || normalizedRole.includes('data platform')) return ROLE_CONFIGS.data_engineer;
   
   return null;
 }
