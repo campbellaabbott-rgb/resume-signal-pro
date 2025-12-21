@@ -242,13 +242,21 @@ serve(async (req) => {
     // Record affiliate conversion if there was a referral
     const referralCode = session.metadata?.referral_code;
     if (referralCode && isFirstUse && session.amount_total) {
-      logStep("Recording affiliate conversion", { referralCode, amount: session.amount_total });
+      // Commission rates: $1 for keyword fix, $5 for everything else
+      const commissionCents = productType === 'basic_keyword_fix' ? 100 : 500;
+      logStep("Recording affiliate conversion", { 
+        referralCode, 
+        amount: session.amount_total,
+        commission: commissionCents,
+        productType 
+      });
       
       const { error: affiliateError } = await supabase.rpc('record_affiliate_conversion', {
         p_referral_code: referralCode,
         p_stripe_session_id: sessionId,
         p_product_name: productName || productType || 'Product',
-        p_sale_amount: session.amount_total
+        p_sale_amount: session.amount_total,
+        p_commission_override: commissionCents
       });
 
       if (affiliateError) {
