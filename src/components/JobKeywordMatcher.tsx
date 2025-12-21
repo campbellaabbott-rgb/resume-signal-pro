@@ -147,6 +147,28 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
     // R&D and product development
     { pattern: /\b(r&d|research and development|prototyping|testing|validation|verification|design review|dfm|dfa|dfmea|new product development|npd|stage-gate)\b/gi, category: "hard_skill", importance: "important" },
     
+    // ===== GOVERNMENT & PUBLIC SECTOR =====
+    // Security & clearances (critical)
+    { pattern: /\b(security clearance|top secret|ts\/sci|secret clearance|confidential clearance|public trust|naci|bi|ssbi|polygraph|clearance holder)\b/gi, category: "certification", importance: "critical" },
+    // Government contracting
+    { pattern: /\b(government contracting|federal contracting|gsa|far|dfar|sam\.gov|sbir|sttr|idiq|bpa|gwac|8a|hubzone|sdvosb|wosb)\b/gi, category: "hard_skill", importance: "critical" },
+    // Federal agencies & systems
+    { pattern: /\b(dod|department of defense|dhs|fbi|cia|nsa|nasa|fema|hhs|va|usda|epa|doe|dot|hud|state department|federal agency)\b/gi, category: "industry_term", importance: "important" },
+    // Public administration
+    { pattern: /\b(public administration|public policy|civil service|government operations|public sector|municipal|county|state government|local government|city government)\b/gi, category: "industry_term", importance: "important" },
+    // Government skills
+    { pattern: /\b(grant writing|grant management|budget management|appropriations|fiscal year|government accounting|gasb|foia|public records|constituent services)\b/gi, category: "hard_skill", importance: "important" },
+    // Government compliance & regulations
+    { pattern: /\b(fedramp|fisma|nist|fips|itar|ear|export control|section 508|ada compliance|508 compliance|government audit|gao|ig|inspector general)\b/gi, category: "hard_skill", importance: "important" },
+    // Law enforcement & public safety
+    { pattern: /\b(law enforcement|police|sheriff|corrections|probation|parole|emergency management|first responder|emt|firefighter|public safety)\b/gi, category: "industry_term", importance: "important" },
+    // Military transition
+    { pattern: /\b(military experience|veteran|armed forces|army|navy|air force|marines|coast guard|national guard|reserve|military transition|dd-214)\b/gi, category: "industry_term", importance: "nice_to_have" },
+    // Government certifications
+    { pattern: /\b(dawia|fac-c|fac-p\/pm|fac-cor|cap|cgfm|cdfm|cgap|ccep|capm|pmp|comptia security\+)\b/gi, category: "certification", importance: "important" },
+    // Nonprofit & NGO
+    { pattern: /\b(nonprofit|non-profit|501c3|foundation|philanthropy|fundraising|donor relations|grant proposal|program management|community outreach|advocacy)\b/gi, category: "industry_term", importance: "important" },
+    
     // ===== OPERATIONS & SUPPLY CHAIN =====
     { pattern: /\b(supply chain|logistics|procurement|inventory management|warehouse|distribution|erp|mrp|lean manufacturing|six sigma|kaizen|tps|just-in-time|jit)\b/gi, category: "hard_skill", importance: "critical" },
     { pattern: /\b(apics|cpim|cscp|cltd|pmp|capm|lean six sigma|green belt|black belt|master black belt)\b/gi, category: "certification", importance: "important" },
