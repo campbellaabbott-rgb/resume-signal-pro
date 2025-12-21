@@ -74,6 +74,23 @@ export const PRODUCTS = {
     badge: 'Best Value',
     savings: 'Save $28'
   },
+  atsDefense: {
+    id: 'ats_defense',
+    name: 'ATS Defense Complete',
+    description: 'Full ATS optimization with multi-role targeting & 30-day guarantee',
+    priceUsd: 69,
+    priceId: 'price_1SgujzHBplUUV1Cg8XRTr5Ks',
+    features: [
+      'ATS compatibility audit (before/after score)',
+      'Keyword gap analysis & optimization',
+      'Format restructuring for ATS parsing',
+      'Multi-role targeting (up to 3 roles)',
+      'LinkedIn profile alignment tips',
+      'Industry keyword bank',
+      '30-day re-optimize guarantee'
+    ],
+    badge: 'Most Comprehensive'
+  },
   careerBundle: {
     id: 'career_bundle',
     name: 'Career Bundle (75 Analyses)',

@@ -3,7 +3,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Sparkles, FileText, Crown, Package, Loader2, ArrowRight, Star, Shield, Zap } from "lucide-react";
+import { Check, Sparkles, FileText, Crown, Package, Loader2, ArrowRight, Star, Shield, Zap, ShieldCheck } from "lucide-react";
 import { PRODUCTS, ProductId } from "@/config/products";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { cn } from "@/lib/utils";
@@ -16,9 +16,11 @@ const productIcons: Record<string, React.ElementType> = {
   careerBundle: Package,
   fullAnalysis: Sparkles,
   scanPack: Zap,
+  atsDefense: ShieldCheck,
 };
 
 const productOrder: ProductId[] = [
+  'atsDefense',
   'premiumPackage',
   'basicKeywordFix',
   'fullAnalysis', 
