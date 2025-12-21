@@ -23,7 +23,13 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
 
   const handleGetStarted = () => {
     heroCta.trackConversion({ source: 'sticky_cta' });
-    onGetStarted();
+    // Scroll to pricing section
+    const pricingSection = document.getElementById('pricing');
+    if (pricingSection) {
+      pricingSection.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      onGetStarted();
+    }
   };
 
   useEffect(() => {
