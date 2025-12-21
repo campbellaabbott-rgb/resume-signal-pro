@@ -74,7 +74,7 @@ serve(async (req) => {
       );
     }
 
-    const { email, productId, sessionId, jobTitle, jobCompany } = requestBody;
+    const { email, productId, sessionId, jobTitle, jobCompany, referralCode } = requestBody;
 
     // Validate product ID
     if (!productId || !PRODUCTS[productId]) {
@@ -98,13 +98,19 @@ serve(async (req) => {
       ? jobCompany.slice(0, 100).replace(/[<>]/g, '') 
       : '';
     
+    // Sanitize referral code
+    const sanitizedReferralCode = referralCode && typeof referralCode === 'string'
+      ? referralCode.slice(0, 20).replace(/[^a-f0-9]/gi, '')
+      : '';
+    
     const product = PRODUCTS[productId];
     logStep("Request validated", { 
       email: normalizedEmail || 'will be collected by Stripe', 
       productId, 
       productName: product.name,
       jobTitle: sanitizedJobTitle || 'not provided',
-      jobCompany: sanitizedJobCompany || 'not provided'
+      jobCompany: sanitizedJobCompany || 'not provided',
+      referralCode: sanitizedReferralCode || 'none'
     });
 
     // Initialize Supabase
@@ -175,13 +181,15 @@ serve(async (req) => {
         credits: product.credits?.toString() || "",
         job_title: sanitizedJobTitle,
         job_company: sanitizedJobCompany,
+        referral_code: sanitizedReferralCode,
       },
     });
 
     logStep("Checkout session created", { 
       sessionId: session.id, 
       email: normalizedEmail, 
-      product: product.name 
+      product: product.name,
+      hasReferral: !!sanitizedReferralCode
     });
 
     return new Response(

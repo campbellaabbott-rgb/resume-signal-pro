@@ -43,6 +43,7 @@ import {
 } from "@/hooks/use-session-resume";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
+import { useAffiliateTracking, getStoredReferralCode } from "@/hooks/use-affiliate-auth";
 
 interface FreeKeywordResult {
   industry: string;
@@ -146,6 +147,9 @@ const Index = () => {
   const [searchParams] = useSearchParams();
   const { verifyPurchase } = useScanCredits();
   const { trackButtonClick, trackCheckoutInitiated } = useConversionTracking();
+  
+  // Track affiliate referrals
+  useAffiliateTracking();
   
   // Track if we're pre-storing to avoid duplicate calls
   const isPreStoring = useRef(false);

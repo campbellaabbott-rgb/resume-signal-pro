@@ -44,6 +44,159 @@ export type Database = {
         }
         Relationships: []
       }
+      affiliate_clicks: {
+        Row: {
+          affiliate_id: string
+          created_at: string
+          id: string
+          ip_hash: string | null
+          referrer: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          affiliate_id: string
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          referrer?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          affiliate_id?: string
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          referrer?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_clicks_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_conversions: {
+        Row: {
+          affiliate_id: string
+          commission_amount: number
+          created_at: string
+          id: string
+          paid_at: string | null
+          product_name: string | null
+          sale_amount: number
+          status: string
+          stripe_session_id: string
+        }
+        Insert: {
+          affiliate_id: string
+          commission_amount: number
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          product_name?: string | null
+          sale_amount: number
+          status?: string
+          stripe_session_id: string
+        }
+        Update: {
+          affiliate_id?: string
+          commission_amount?: number
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          product_name?: string | null
+          sale_amount?: number
+          status?: string
+          stripe_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_conversions_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_sessions: {
+        Row: {
+          affiliate_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          session_token: string
+        }
+        Insert: {
+          affiliate_id: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          session_token?: string
+        }
+        Update: {
+          affiliate_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          session_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_sessions_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliates: {
+        Row: {
+          commission_amount: number
+          created_at: string
+          email: string
+          id: string
+          paid_out: number
+          password_hash: string
+          pending_payout: number
+          referral_code: string
+          status: string
+          total_earnings: number
+          updated_at: string
+        }
+        Insert: {
+          commission_amount?: number
+          created_at?: string
+          email: string
+          id?: string
+          paid_out?: number
+          password_hash: string
+          pending_payout?: number
+          referral_code?: string
+          status?: string
+          total_earnings?: number
+          updated_at?: string
+        }
+        Update: {
+          commission_amount?: number
+          created_at?: string
+          email?: string
+          id?: string
+          paid_out?: number
+          password_hash?: string
+          pending_payout?: number
+          referral_code?: string
+          status?: string
+          total_earnings?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       daily_scan_stats: {
         Row: {
           date: string
@@ -284,6 +437,10 @@ export type Database = {
           views: number
         }[]
       }
+      get_affiliate_dashboard: {
+        Args: { p_session_token: string }
+        Returns: Json
+      }
       get_analysis_by_share_id: {
         Args: { share_id_param: string }
         Returns: {
@@ -315,6 +472,24 @@ export type Database = {
         }
         Returns: boolean
       }
+      login_affiliate: {
+        Args: { p_email: string; p_password: string }
+        Returns: Json
+      }
+      logout_affiliate: { Args: { p_session_token: string }; Returns: boolean }
+      record_affiliate_conversion: {
+        Args: {
+          p_product_name: string
+          p_referral_code: string
+          p_sale_amount: number
+          p_stripe_session_id: string
+        }
+        Returns: boolean
+      }
+      register_affiliate: {
+        Args: { p_email: string; p_password: string }
+        Returns: Json
+      }
       save_free_scan_lead: {
         Args: { p_ats_score?: number; p_email: string; p_industry?: string }
         Returns: boolean
@@ -336,6 +511,15 @@ export type Database = {
           p_test_name: string
           p_variant: string
           p_visitor_id: string
+        }
+        Returns: boolean
+      }
+      track_affiliate_click: {
+        Args: {
+          p_ip_hash?: string
+          p_referral_code: string
+          p_referrer?: string
+          p_user_agent?: string
         }
         Returns: boolean
       }
