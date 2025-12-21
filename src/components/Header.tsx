@@ -34,16 +34,24 @@ export function Header() {
         <header className="bg-background border-b border-border/50" role="banner">
         <div className="container">
         <nav className="flex items-center justify-between h-16" aria-label="Main navigation">
-          <Link 
-            to="/" 
-            className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
-            aria-label="Resume Booster - Home"
-          >
-            <Logo className="w-8 h-8" />
-            <span className="font-bold text-lg tracking-tight">
-              Resume <span className="text-primary">Booster</span>
-            </span>
-          </Link>
+          <div className="flex items-center gap-4 sm:gap-6">
+            <Link 
+              to="/" 
+              className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
+              aria-label="Resume Booster - Home"
+            >
+              <Logo className="w-8 h-8" />
+              <span className="font-bold text-lg tracking-tight">
+                Resume <span className="text-primary">Booster</span>
+              </span>
+            </Link>
+            <Link 
+              to="/methodology" 
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:block"
+            >
+              How It Works
+            </Link>
+          </div>
           
           <div className="flex items-center gap-2 sm:gap-4">
             <LanguageSwitcher variant="compact" />
