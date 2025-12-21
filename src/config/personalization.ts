@@ -3023,6 +3023,38 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
     interviewTopics: ['Cloud services knowledge', 'IaC best practices', 'Networking and security', 'Cost optimization', 'Troubleshooting scenarios'],
     topResumeElements: { sections: ['Summary', 'Experience', 'Certifications', 'Technical Skills', 'Education'], differentiators: ['Cloud certifications', 'Infrastructure scale', 'Automation achievements', 'Cost savings'], avgBulletCount: 4, certificationRate: 80, portfolioRate: 35, metricsRate: 88 }
   },
+  cloud_administrator: {
+    name: 'Cloud Administrator',
+    aliases: ['cloud admin', 'cloud operations engineer', 'cloud ops', 'aws administrator', 'azure administrator', 'gcp administrator', 'cloud infrastructure admin', 'cloud support engineer'],
+    keySkills: ['AWS/Azure/GCP', 'Cloud Security', 'Cost Management', 'IAM', 'Monitoring & Logging', 'Automation', 'Networking', 'Compliance', 'Disaster Recovery'],
+    mustHaveKeywords: ['cloud', 'AWS', 'Azure', 'GCP', 'administration', 'security', 'cost', 'IAM', 'monitoring', 'infrastructure'],
+    resumeTips: [
+      'Include cloud certifications prominently',
+      'Quantify cost savings and optimization results',
+      'Show security and compliance achievements',
+      'Highlight automation and operational efficiency'
+    ],
+    bulletExamples: [
+      { weak: 'Managed cloud infrastructure', strong: 'Administered AWS environment with 500+ EC2 instances across 3 regions, achieving 99.99% uptime and reducing monthly costs by $150K through rightsizing' },
+      { weak: 'Handled cloud security', strong: 'Implemented IAM policies and security controls for 200+ users, achieving SOC 2 compliance with zero audit findings' }
+    ],
+    keyMetrics: ['Cloud spend optimization', 'Uptime %', 'Resources managed', 'Compliance achievements', 'Incident response time', 'Automation coverage'],
+    commonMistakes: [
+      'Not including cloud certifications',
+      'Missing cost optimization metrics',
+      'Vague "managed cloud" without scale',
+      'Not showing security and compliance experience'
+    ],
+    interviewTopics: ['Cloud architecture', 'Cost optimization strategies', 'Security best practices', 'IAM design', 'Disaster recovery', 'Monitoring and alerting'],
+    topResumeElements: {
+      sections: ['Certifications', 'Technical Skills', 'Cloud Experience', 'Projects', 'Education'],
+      differentiators: ['Cloud certifications (AWS SAA, Azure Admin)', 'Cost savings achievements', 'Security/compliance expertise', 'Multi-cloud experience'],
+      avgBulletCount: 4,
+      certificationRate: 85,
+      portfolioRate: 25,
+      metricsRate: 88
+    }
+  },
   database_administrator: {
     name: 'Database Administrator',
     aliases: ['dba', 'senior dba', 'database engineer', 'data platform engineer', 'oracle dba', 'sql server dba', 'mysql dba', 'postgres dba'],
