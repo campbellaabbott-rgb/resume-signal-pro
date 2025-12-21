@@ -257,6 +257,8 @@ export default function ProductSuccess() {
       } else if (productKey === 'atsDefense') {
         endpoint = 'generate-ats-defense';
         body.sessionId = sessionId;
+        body.targetRoles = [];
+        body.allowRegeneration = true; // Flag to bypass session-used check for recovery
       }
 
       if (!endpoint) {
@@ -282,6 +284,17 @@ export default function ProductSuccess() {
         return false;
       }
 
+      // Handle ATS Defense response (has .report)
+      if (productKey === 'atsDefense' && data?.report) {
+        setAtsDefenseData(data.report);
+        setIsRecoveryMode(false);
+        toast({
+          title: "ATS Defense Report Generated!",
+          description: "Your comprehensive analysis is ready below.",
+        });
+        return true;
+      }
+
       if (data?.data || data?.success) {
         setGeneratedContent(data.data || data);
         setIsRecoveryMode(false);
@@ -304,7 +317,7 @@ export default function ProductSuccess() {
     } finally {
       setIsRegenerating(false);
     }
-  }, [productKey, toast]);
+  }, [productKey, sessionId, toast]);
 
   // Handle file upload for recovery
   const handleRecoveryFileUpload = useCallback(async (file: File) => {
@@ -937,6 +950,7 @@ export default function ProductSuccess() {
                     <p className="text-muted-foreground">
                       {isKeywordFix ? 'Analyzing keywords and optimizations...' : 
                        isPremiumPackage ? 'Creating your optimized resume and cover letter...' : 
+                       isAtsDefense ? 'Running comprehensive ATS compatibility analysis...' :
                        'Crafting your personalized cover letter...'}
                     </p>
                   </div>
@@ -947,7 +961,11 @@ export default function ProductSuccess() {
                       <h3 className="text-xl font-semibold mb-2">Resume Data Not Found</h3>
                       <p className="text-muted-foreground">
                         We couldn't find your resume data from the checkout session. 
-                        Upload or paste your resume below to generate your {isKeywordFix ? 'keyword analysis' : isPremiumPackage ? 'premium package' : 'cover letter'}.
+                        Upload or paste your resume below to generate your{' '}
+                        {isKeywordFix ? 'keyword analysis' : 
+                         isPremiumPackage ? 'premium package' : 
+                         isAtsDefense ? 'ATS Defense Complete report' :
+                         'cover letter'}.
                       </p>
                     </div>
 
@@ -1019,7 +1037,10 @@ export default function ProductSuccess() {
                         ) : (
                           <>
                             <Sparkles className="w-4 h-4" />
-                            Generate {isKeywordFix ? 'Keyword Analysis' : isPremiumPackage ? 'Premium Package' : 'Cover Letter'}
+                            Generate {isKeywordFix ? 'Keyword Analysis' : 
+                                      isPremiumPackage ? 'Premium Package' : 
+                                      isAtsDefense ? 'ATS Defense Report' :
+                                      'Cover Letter'}
                           </>
                         )}
                       </Button>
