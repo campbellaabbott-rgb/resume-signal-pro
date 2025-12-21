@@ -238,10 +238,10 @@ export function Hero() {
             </div>
           </div>
 
-          {/* What you'll discover - hide on mobile to reduce clutter */}
-          <div className="mt-10 pt-8 border-t border-border/30 animate-fade-in hidden sm:block" style={{ animationDelay: "0.2s" }}>
+          {/* What you'll discover */}
+          <div className="mt-8 sm:mt-10 pt-6 sm:pt-8 border-t border-border/30 animate-fade-in" style={{ animationDelay: "0.2s" }}>
             <p className="text-sm text-muted-foreground mb-4">{t('hero.freeScanReveals', 'Your free scan reveals:')}</p>
-            <div className="flex flex-wrap justify-center gap-3">
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
               {[
                 t('hero.reveal.atsScore', 'ATS Score'),
                 t('hero.reveal.keywords', 'Missing Keywords'), 
