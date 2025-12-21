@@ -110,6 +110,7 @@ export function Hero() {
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="max-w-xs text-sm font-normal">
                         <p>{t('hero.atsTooltip', 'ATS (Applicant Tracking Systems) are AI bots that scan and filter resumes before a human ever sees them. Over 98% of Fortune 500 companies use them.')}</p>
+                        <p className="mt-2 text-xs text-muted-foreground">{t('hero.atsSystemsList', 'We analyze against Workday, Greenhouse, Lever, Taleo, iCIMS & more.')}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -139,6 +140,9 @@ export function Hero() {
                 </button>
                 <p className="text-sm text-foreground pr-6">
                   <span className="font-semibold">ATS (Applicant Tracking Systems)</span> are AI bots that scan and filter resumes before a human ever sees them. Over 98% of Fortune 500 companies use them.
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  We analyze against Workday, Greenhouse, Lever, Taleo, iCIMS & more.
                 </p>
               </div>
             )}
@@ -257,6 +261,10 @@ export function Hero() {
                 </span>
               ))}
             </div>
+            {/* ATS systems credibility */}
+            <p className="mt-4 text-xs text-muted-foreground/70">
+              {t('hero.atsSystemsCredibility', 'Based on parsing rules from Workday, Greenhouse, Lever, Taleo, iCIMS & 50+ ATS platforms')}
+            </p>
           </div>
 
           {/* Pricing Teaser Banner */}
