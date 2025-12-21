@@ -34,33 +34,35 @@ export function Header() {
         <header className="bg-background border-b border-border/50" role="banner">
         <div className="container">
         <nav className="flex items-center justify-between h-16" aria-label="Main navigation">
-          <div className="flex items-center gap-4 sm:gap-6">
+          {/* Left: Logo */}
+          <Link 
+            to="/" 
+            className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
+            aria-label="Resume Booster - Home"
+          >
+            <Logo className="w-8 h-8" />
+            <span className="font-bold text-lg tracking-tight">
+              Resume <span className="text-primary">Booster</span>
+            </span>
+          </Link>
+
+          {/* Center: Nav Links */}
+          <div className="hidden sm:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
             <Link 
-              to="/" 
-              className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
-              aria-label="Resume Booster - Home"
+              to="/methodology" 
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              <Logo className="w-8 h-8" />
-              <span className="font-bold text-lg tracking-tight">
-                Resume <span className="text-primary">Booster</span>
-              </span>
+              How It Works
             </Link>
-            <nav className="hidden sm:flex items-center gap-6">
-              <Link 
-                to="/methodology" 
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                How It Works
-              </Link>
-              <Link 
-                to="/pricing" 
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Pricing
-              </Link>
-            </nav>
+            <Link 
+              to="/pricing" 
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Pricing
+            </Link>
           </div>
           
+          {/* Right: Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
             <LanguageSwitcher variant="compact" />
             <ScanCreditsCounter />
