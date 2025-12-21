@@ -1063,6 +1063,70 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       metricsRate: 90
     }
   },
+  technical_program_manager: {
+    name: 'Technical Program Manager',
+    aliases: ['tpm', 'program manager', 'technical project manager', 'senior tpm', 'staff tpm', 'principal tpm', 'program management', 'tech pm'],
+    keySkills: ['Program Management', 'Cross-Functional Leadership', 'Risk Management', 'Stakeholder Communication', 'Roadmap Planning', 'Dependency Management', 'Technical Understanding', 'Process Improvement'],
+    mustHaveKeywords: ['program', 'cross-functional', 'stakeholders', 'roadmap', 'delivery', 'dependencies', 'risk', 'milestones', 'launch', 'coordination'],
+    resumeTips: [
+      'Quantify program scale (teams, engineers, budget)',
+      'Show on-time delivery rates and launch success',
+      'Highlight cross-functional coordination scope',
+      'Include risk mitigation and process improvement wins'
+    ],
+    bulletExamples: [
+      { weak: 'Managed technical programs', strong: 'Led $15M platform migration program across 8 teams and 60+ engineers, delivering 2 weeks early with zero production incidents' },
+      { weak: 'Coordinated with stakeholders', strong: 'Orchestrated launch of 3 major product features quarterly, coordinating 12 cross-functional teams and achieving 95% on-time delivery rate' }
+    ],
+    keyMetrics: ['Programs delivered', 'On-time delivery rate', 'Teams/engineers coordinated', 'Budget managed', 'Risk mitigation success', 'Process efficiency gains'],
+    commonMistakes: [
+      'Not quantifying program scale and complexity',
+      'Missing delivery success rates',
+      'Vague "managed programs" without outcomes',
+      'Not showing technical depth alongside PM skills'
+    ],
+    interviewTopics: ['Program scoping and planning', 'Risk identification and mitigation', 'Stakeholder management', 'Handling competing priorities', 'Technical trade-off decisions', 'Launch coordination'],
+    topResumeElements: {
+      sections: ['Summary', 'Program Experience', 'Technical Skills', 'Certifications', 'Education'],
+      differentiators: ['Large-scale program delivery', 'On-time launch track record', 'Cross-org coordination', 'Technical credibility'],
+      avgBulletCount: 5,
+      certificationRate: 55,
+      portfolioRate: 15,
+      metricsRate: 92
+    }
+  },
+  engineering_manager: {
+    name: 'Engineering Manager',
+    aliases: ['em', 'software engineering manager', 'dev manager', 'development manager', 'engineering lead', 'team lead', 'director of engineering', 'vp engineering', 'head of engineering'],
+    keySkills: ['Team Leadership', 'Hiring & Retention', 'Performance Management', 'Technical Strategy', 'Agile/Scrum', 'Stakeholder Management', 'Career Development', 'Budget Management'],
+    mustHaveKeywords: ['team', 'leadership', 'hiring', 'performance', 'delivery', 'engineers', 'roadmap', 'stakeholders', 'culture', 'growth'],
+    resumeTips: [
+      'Quantify team size and growth under your leadership',
+      'Show delivery outcomes and team velocity improvements',
+      'Highlight hiring success and retention rates',
+      'Include career development and promotion stats'
+    ],
+    bulletExamples: [
+      { weak: 'Managed engineering team', strong: 'Led team of 12 engineers delivering 40+ features annually, improving sprint velocity by 35% while maintaining 95% retention rate' },
+      { weak: 'Hired engineers for the team', strong: 'Scaled team from 5 to 18 engineers in 12 months, building diverse hiring pipeline with 85% offer acceptance and 90% 1-year retention' }
+    ],
+    keyMetrics: ['Team size/growth', 'Retention rate', 'Engineers promoted', 'Delivery velocity', 'Hiring metrics (time-to-fill, acceptance rate)', 'Team satisfaction scores'],
+    commonMistakes: [
+      'Focusing only on technical achievements, not leadership',
+      'Not quantifying team growth and retention',
+      'Missing delivery and velocity metrics',
+      'Not showing people development outcomes'
+    ],
+    interviewTopics: ['Leadership philosophy', 'Handling underperformance', 'Building team culture', 'Balancing tech debt vs features', 'Hiring and interviewing', 'Conflict resolution'],
+    topResumeElements: {
+      sections: ['Leadership Summary', 'Management Experience', 'Technical Background', 'Education', 'Certifications'],
+      differentiators: ['Team growth and retention stats', 'Delivery track record', 'Hiring success metrics', 'Engineer promotion/development'],
+      avgBulletCount: 5,
+      certificationRate: 35,
+      portfolioRate: 20,
+      metricsRate: 88
+    }
+  },
   data_engineer: {
     name: 'Data Engineer',
     aliases: ['etl developer', 'data pipeline engineer', 'analytics engineer', 'big data engineer', 'data platform engineer', 'data infrastructure engineer', 'spark engineer'],
