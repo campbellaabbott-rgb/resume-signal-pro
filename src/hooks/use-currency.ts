@@ -75,6 +75,28 @@ const CURRENCY_MAP: Record<string, CurrencyInfo> = {
   UZ: { code: "UZS", symbol: "so'm", rate: 12900 },  // Uzbekistan
   AZ: { code: "AZN", symbol: "₼", rate: 1.70 },      // Azerbaijan
   GE: { code: "GEL", symbol: "₾", rate: 2.75 },      // Georgia
+  // African currencies
+  KE: { code: "KES", symbol: "KSh", rate: 129 },     // Kenya
+  GH: { code: "GHS", symbol: "₵", rate: 15.80 },     // Ghana
+  TZ: { code: "TZS", symbol: "TSh", rate: 2650 },    // Tanzania
+  UG: { code: "UGX", symbol: "USh", rate: 3680 },    // Uganda
+  ET: { code: "ETB", symbol: "Br", rate: 127 },      // Ethiopia
+  MA: { code: "MAD", symbol: "د.م.", rate: 10.05 },  // Morocco
+  TN: { code: "TND", symbol: "د.ت", rate: 3.15 },    // Tunisia
+  DZ: { code: "DZD", symbol: "د.ج", rate: 135 },     // Algeria
+  RW: { code: "RWF", symbol: "FRw", rate: 1380 },    // Rwanda
+  ZM: { code: "ZMW", symbol: "ZK", rate: 27.50 },    // Zambia
+  ZW: { code: "ZWL", symbol: "Z$", rate: 322 },      // Zimbabwe
+  BW: { code: "BWP", symbol: "P", rate: 13.60 },     // Botswana
+  MU: { code: "MUR", symbol: "₨", rate: 46.50 },     // Mauritius
+  SN: { code: "XOF", symbol: "CFA", rate: 605 },     // Senegal (West African CFA)
+  CI: { code: "XOF", symbol: "CFA", rate: 605 },     // Ivory Coast
+  CM: { code: "XAF", symbol: "FCFA", rate: 605 },    // Cameroon (Central African CFA)
+  AO: { code: "AOA", symbol: "Kz", rate: 920 },      // Angola
+  MZ: { code: "MZN", symbol: "MT", rate: 64 },       // Mozambique
+  NA: { code: "NAD", symbol: "N$", rate: 18.20 },    // Namibia
+  LY: { code: "LYD", symbol: "ل.د", rate: 4.90 },    // Libya
+  SD: { code: "SDG", symbol: "ج.س.", rate: 600 },    // Sudan
 };
 
 // Map timezone to country code (approximate)
@@ -149,6 +171,27 @@ function getCountryFromTimezone(): string {
       "Africa/Johannesburg": "ZA",
       "Africa/Lagos": "NG",
       "Africa/Cairo": "EG",
+      "Africa/Nairobi": "KE",
+      "Africa/Accra": "GH",
+      "Africa/Dar_es_Salaam": "TZ",
+      "Africa/Kampala": "UG",
+      "Africa/Addis_Ababa": "ET",
+      "Africa/Casablanca": "MA",
+      "Africa/Tunis": "TN",
+      "Africa/Algiers": "DZ",
+      "Africa/Kigali": "RW",
+      "Africa/Lusaka": "ZM",
+      "Africa/Harare": "ZW",
+      "Africa/Gaborone": "BW",
+      "Indian/Mauritius": "MU",
+      "Africa/Dakar": "SN",
+      "Africa/Abidjan": "CI",
+      "Africa/Douala": "CM",
+      "Africa/Luanda": "AO",
+      "Africa/Maputo": "MZ",
+      "Africa/Windhoek": "NA",
+      "Africa/Tripoli": "LY",
+      "Africa/Khartoum": "SD",
       "Europe/Moscow": "RU",
       "America/Montevideo": "UY",
       "Europe/Bucharest": "RO",
