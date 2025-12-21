@@ -3143,6 +3143,70 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       portfolioRate: 85,
       metricsRate: 80
     }
+  },
+  it_support_specialist: {
+    name: 'IT Support Specialist',
+    aliases: ['it support', 'it technician', 'desktop support', 'it specialist', 'technical support specialist', 'it support analyst', 'it support engineer', 'end user support'],
+    keySkills: ['Troubleshooting', 'Windows/Mac/Linux', 'Active Directory', 'Ticketing Systems', 'Hardware Support', 'Software Installation', 'Remote Support', 'Customer Service'],
+    mustHaveKeywords: ['support', 'troubleshooting', 'tickets', 'resolution', 'hardware', 'software', 'users', 'helpdesk', 'Active Directory', 'technical'],
+    resumeTips: [
+      'Quantify ticket volume and resolution rates',
+      'Show first-call resolution improvements',
+      'Include certifications (CompTIA A+, ITIL)',
+      'Highlight customer satisfaction scores'
+    ],
+    bulletExamples: [
+      { weak: 'Provided IT support to employees', strong: 'Resolved 50+ tickets daily for 1,500+ users, achieving 95% first-call resolution rate and 4.8/5 satisfaction score' },
+      { weak: 'Fixed hardware and software issues', strong: 'Reduced average ticket resolution time from 4 hours to 45 minutes through knowledge base development and process automation' }
+    ],
+    keyMetrics: ['Tickets resolved/day', 'First-call resolution %', 'Customer satisfaction', 'Average resolution time', 'Users supported', 'SLA compliance'],
+    commonMistakes: [
+      'Not quantifying ticket volume and resolution',
+      'Missing customer satisfaction metrics',
+      'Vague "provided support" without specifics',
+      'Not including IT certifications'
+    ],
+    interviewTopics: ['Troubleshooting scenarios', 'Customer service approach', 'Prioritization', 'Technical knowledge', 'Handling difficult users', 'Process improvement'],
+    topResumeElements: {
+      sections: ['Certifications', 'IT Support Experience', 'Technical Skills', 'Education', 'Achievements'],
+      differentiators: ['CompTIA A+/Network+', 'High resolution rates', 'Customer satisfaction scores', 'Process improvements'],
+      avgBulletCount: 4,
+      certificationRate: 70,
+      portfolioRate: 10,
+      metricsRate: 85
+    }
+  },
+  help_desk_analyst: {
+    name: 'Help Desk Analyst',
+    aliases: ['help desk technician', 'help desk specialist', 'service desk analyst', 'tier 1 support', 'tier 2 support', 'help desk support', 'service desk technician', 'it help desk'],
+    keySkills: ['Ticket Management', 'Phone Support', 'Remote Troubleshooting', 'ServiceNow/Zendesk', 'Knowledge Base', 'Escalation Procedures', 'SLA Management', 'User Training'],
+    mustHaveKeywords: ['help desk', 'service desk', 'tickets', 'support', 'SLA', 'escalation', 'troubleshooting', 'users', 'resolution', 'customer service'],
+    resumeTips: [
+      'Show ticket metrics and SLA compliance',
+      'Quantify call volume and handle time',
+      'Highlight knowledge base contributions',
+      'Include ITIL or service desk certifications'
+    ],
+    bulletExamples: [
+      { weak: 'Answered help desk calls', strong: 'Handled 80+ calls daily with 3-minute average handle time, maintaining 98% SLA compliance and 92% customer satisfaction' },
+      { weak: 'Created documentation', strong: 'Authored 50+ knowledge base articles reducing repeat tickets by 30% and enabling self-service resolution for common issues' }
+    ],
+    keyMetrics: ['Calls/tickets per day', 'Average handle time', 'SLA compliance %', 'Customer satisfaction', 'First-contact resolution', 'Knowledge articles created'],
+    commonMistakes: [
+      'Not including SLA and ticket metrics',
+      'Missing call volume and handle time',
+      'Vague "answered calls" without outcomes',
+      'Not showing process improvements'
+    ],
+    interviewTopics: ['Customer service scenarios', 'Troubleshooting methodology', 'Handling escalations', 'SLA management', 'Prioritization', 'Stress management'],
+    topResumeElements: {
+      sections: ['IT Experience', 'Technical Skills', 'Certifications', 'Metrics/Achievements', 'Education'],
+      differentiators: ['ITIL certification', 'High SLA compliance', 'Call metrics', 'Knowledge base contributions'],
+      avgBulletCount: 4,
+      certificationRate: 55,
+      portfolioRate: 5,
+      metricsRate: 90
+    }
   }
 };
 
