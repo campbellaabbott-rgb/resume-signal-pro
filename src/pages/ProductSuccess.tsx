@@ -202,6 +202,7 @@ export default function ProductSuccess() {
   // Resume recovery state
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const [recoveryResumeText, setRecoveryResumeText] = useState("");
+  const [recoveryJobDescription, setRecoveryJobDescription] = useState("");
   const [recoveryFile, setRecoveryFile] = useState<File | null>(null);
   const [isParsingFile, setIsParsingFile] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -229,7 +230,7 @@ export default function ProductSuccess() {
   }, []);
 
   // Regenerate content with provided resume text
-  const regenerateContent = useCallback(async (resumeText: string) => {
+  const regenerateContent = useCallback(async (resumeText: string, jobDescription?: string) => {
     if (!resumeText || resumeText.length < 50) {
       toast({
         title: "Resume too short",
@@ -247,18 +248,22 @@ export default function ProductSuccess() {
       
       if (productKey === 'basicKeywordFix') {
         endpoint = 'generate-keyword-fix';
+        if (jobDescription) body.jobDescription = jobDescription;
       } else if (productKey === 'coverLetter') {
         endpoint = 'generate-cover-letter';
         body.jobTitle = 'Target Position';
         body.tone = 'professional';
+        if (jobDescription) body.jobDescription = jobDescription;
       } else if (productKey === 'premiumPackage') {
         endpoint = 'generate-premium-package';
         body.jobTitle = 'Target Position';
+        if (jobDescription) body.jobDescription = jobDescription;
       } else if (productKey === 'atsDefense') {
         endpoint = 'generate-ats-defense';
         body.sessionId = sessionId;
         body.targetRoles = [];
         body.allowRegeneration = true; // Flag to bypass session-used check for recovery
+        if (jobDescription) body.jobDescription = jobDescription;
       }
 
       if (!endpoint) {
@@ -1023,11 +1028,37 @@ export default function ProductSuccess() {
                         className="min-h-[150px] resize-none"
                       />
 
+                      {/* Job Description - for ATS Defense and other products */}
+                      {(isAtsDefense || isKeywordFix || isCoverLetter || isPremiumPackage) && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-sm font-medium text-foreground">
+                              Target Job Description
+                              <span className="text-muted-foreground font-normal ml-1">(optional)</span>
+                            </label>
+                            {isAtsDefense && (
+                              <Badge variant="secondary" className="text-xs">
+                                Recommended for better optimization
+                              </Badge>
+                            )}
+                          </div>
+                          <Textarea
+                            placeholder="Paste the job description you're targeting to get keyword-optimized recommendations..."
+                            value={recoveryJobDescription}
+                            onChange={(e) => setRecoveryJobDescription(e.target.value)}
+                            className="min-h-[100px] resize-none"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Adding a job description helps us optimize your resume for specific keywords and requirements.
+                          </p>
+                        </div>
+                      )}
+
                       <Button 
                         size="lg" 
                         className="w-full gap-2"
                         disabled={!recoveryResumeText || recoveryResumeText.length < 50 || isRegenerating}
-                        onClick={() => regenerateContent(recoveryResumeText)}
+                        onClick={() => regenerateContent(recoveryResumeText, recoveryJobDescription || undefined)}
                       >
                         {isRegenerating ? (
                           <>
