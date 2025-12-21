@@ -259,10 +259,6 @@ export function Hero() {
                 </span>
               ))}
             </div>
-            {/* ATS systems credibility */}
-            <p className="mt-4 text-xs text-muted-foreground/70">
-              {t('hero.atsSystemsCredibility', 'Based on parsing rules from Workday, Greenhouse, Lever, Taleo, iCIMS & 50+ ATS platforms')}
-            </p>
           </div>
 
           {/* Pricing Teaser Banner */}
