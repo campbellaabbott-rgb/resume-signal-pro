@@ -31,7 +31,8 @@ export function Header() {
         🚀 Currently in Beta — We'd love your feedback!
       </div>
       <header 
-        className="fixed top-10 left-0 right-0 z-50 bg-background border-b border-border/50"
+        className="fixed top-10 left-0 right-0 z-50 bg-background/100 backdrop-blur-none border-b border-border/50"
+        style={{ backgroundColor: 'hsl(var(--background))' }}
         role="banner"
       >
       <div className="container">
