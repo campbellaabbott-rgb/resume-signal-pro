@@ -57,6 +57,24 @@ const CURRENCY_MAP: Record<string, CurrencyInfo> = {
   EG: { code: "EGP", symbol: "E£", rate: 50.50 },
   UY: { code: "UYU", symbol: "$U", rate: 44.50 },
   RO: { code: "RON", symbol: "lei", rate: 4.70 },
+  // Additional Asian currencies
+  LK: { code: "LKR", symbol: "Rs", rate: 295 },      // Sri Lanka
+  MM: { code: "MMK", symbol: "K", rate: 2100 },      // Myanmar
+  KH: { code: "KHR", symbol: "៛", rate: 4050 },     // Cambodia
+  NP: { code: "NPR", symbol: "रू", rate: 134 },      // Nepal
+  MN: { code: "MNT", symbol: "₮", rate: 3420 },      // Mongolia
+  LA: { code: "LAK", symbol: "₭", rate: 21800 },     // Laos
+  BN: { code: "BND", symbol: "B$", rate: 1.35 },     // Brunei
+  MO: { code: "MOP", symbol: "MOP$", rate: 8.05 },   // Macau
+  KW: { code: "KWD", symbol: "د.ك", rate: 0.31 },    // Kuwait
+  QA: { code: "QAR", symbol: "ر.ق", rate: 3.64 },    // Qatar
+  BH: { code: "BHR", symbol: "د.ب", rate: 0.38 },    // Bahrain
+  OM: { code: "OMR", symbol: "ر.ع.", rate: 0.38 },   // Oman
+  JO: { code: "JOD", symbol: "د.ا", rate: 0.71 },    // Jordan
+  KZ: { code: "KZT", symbol: "₸", rate: 520 },       // Kazakhstan
+  UZ: { code: "UZS", symbol: "so'm", rate: 12900 },  // Uzbekistan
+  AZ: { code: "AZN", symbol: "₼", rate: 1.70 },      // Azerbaijan
+  GE: { code: "GEL", symbol: "₾", rate: 2.75 },      // Georgia
 };
 
 // Map timezone to country code (approximate)
@@ -103,6 +121,23 @@ function getCountryFromTimezone(): string {
       "Asia/Riyadh": "SA",
       "Asia/Karachi": "PK",
       "Asia/Dhaka": "BD",
+      "Asia/Colombo": "LK",
+      "Asia/Yangon": "MM",
+      "Asia/Phnom_Penh": "KH",
+      "Asia/Kathmandu": "NP",
+      "Asia/Ulaanbaatar": "MN",
+      "Asia/Vientiane": "LA",
+      "Asia/Brunei": "BN",
+      "Asia/Macau": "MO",
+      "Asia/Kuwait": "KW",
+      "Asia/Qatar": "QA",
+      "Asia/Bahrain": "BH",
+      "Asia/Muscat": "OM",
+      "Asia/Amman": "JO",
+      "Asia/Almaty": "KZ",
+      "Asia/Tashkent": "UZ",
+      "Asia/Baku": "AZ",
+      "Asia/Tbilisi": "GE",
       "Australia/Sydney": "AU",
       "Australia/Melbourne": "AU",
       "Pacific/Auckland": "NZ",
