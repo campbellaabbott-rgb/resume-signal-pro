@@ -7,6 +7,7 @@ import { Check, Sparkles, FileText, Crown, Package, Loader2, ArrowRight, Star, S
 import { PRODUCTS, ProductId } from "@/config/products";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { cn } from "@/lib/utils";
+import { ValueComparison } from "@/components/ValueComparison";
 
 const productIcons: Record<string, React.ElementType> = {
   basicKeywordFix: FileText,
@@ -176,6 +177,14 @@ export default function Pricing() {
                 </div>
               );
             })}
+          </div>
+
+          {/* Value Comparison */}
+          <div className="max-w-2xl mx-auto mb-16">
+            <h2 className="text-2xl font-bold text-center mb-6">
+              Why Resume Booster?
+            </h2>
+            <ValueComparison />
           </div>
 
           {/* FAQ Section */}

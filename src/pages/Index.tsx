@@ -8,6 +8,7 @@ import { SocialProof } from "@/components/SocialProof";
 import { Footer } from "@/components/Footer";
 import { FAQ } from "@/components/FAQ";
 import { ComparisonTable } from "@/components/ComparisonTable";
+import { ValueComparison } from "@/components/ValueComparison";
 import { FreeKeywordResults } from "@/components/FreeKeywordResults";
 import { StickyBottomCTA } from "@/components/StickyBottomCTA";
 import { FinalCTA } from "@/components/FinalCTA";
@@ -1003,6 +1004,16 @@ const Index = () => {
         <SocialProof />
         
         <FAQ />
+        
+        {/* Value Comparison - before final CTA */}
+        <section className="py-12 border-t border-border">
+          <div className="container max-w-2xl">
+            <h2 className="text-2xl font-bold text-center mb-6">
+              Why Choose Resume Booster?
+            </h2>
+            <ValueComparison />
+          </div>
+        </section>
         
         <FinalCTA 
           onGetStarted={() => {
