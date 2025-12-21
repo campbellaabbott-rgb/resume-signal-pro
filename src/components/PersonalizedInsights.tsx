@@ -29,6 +29,8 @@ import {
   type RoleConfig
 } from "@/config/personalization";
 import { cn } from "@/lib/utils";
+import { SkillsGapAnalysis } from "./SkillsGapAnalysis";
+import { CompetitorBenchmark } from "./CompetitorBenchmark";
 
 interface PersonalizedInsightsProps {
   industry: string;
@@ -37,6 +39,12 @@ interface PersonalizedInsightsProps {
   hasJobDescription: boolean;
   currentRole?: string;
   className?: string;
+  // New props for enhanced personalization
+  detectedSkills?: string[];
+  userHasPortfolio?: boolean;
+  userHasCertifications?: boolean;
+  userHasMetrics?: boolean;
+  userBulletCount?: number;
 }
 
 export function PersonalizedInsights({
@@ -45,7 +53,12 @@ export function PersonalizedInsights({
   atsScore,
   hasJobDescription,
   currentRole,
-  className
+  className,
+  detectedSkills = [],
+  userHasPortfolio = false,
+  userHasCertifications = false,
+  userHasMetrics = false,
+  userBulletCount = 3
 }: PersonalizedInsightsProps) {
   const industryConfig = getIndustryAdvice(industry);
   const expConfig = getExperienceAdvice(experienceLevel?.level || 'mid');
@@ -172,6 +185,25 @@ export function PersonalizedInsights({
             </div>
           </div>
         </div>
+      )}
+
+      {/* NEW: Skills Gap Analysis */}
+      {roleConfig && detectedSkills.length > 0 && (
+        <SkillsGapAnalysis 
+          roleConfig={roleConfig}
+          detectedSkills={detectedSkills}
+        />
+      )}
+
+      {/* NEW: Competitor Benchmark */}
+      {roleConfig && roleConfig.topResumeElements && (
+        <CompetitorBenchmark 
+          roleConfig={roleConfig}
+          userHasPortfolio={userHasPortfolio}
+          userHasCertifications={userHasCertifications}
+          userHasMetrics={userHasMetrics}
+          userBulletCount={userBulletCount}
+        />
       )}
 
       {/* Geographic/Regional Advice */}

@@ -48,6 +48,15 @@ export interface RoleConfig {
   keyMetrics: string[];
   commonMistakes: string[];
   interviewTopics: string[];
+  // Competitor benchmarking - what top resumes include
+  topResumeElements?: {
+    sections: string[]; // Sections top candidates always include
+    differentiators: string[]; // What makes top resumes stand out
+    avgBulletCount: number; // Average bullet points per role
+    certificationRate: number; // % of top resumes that include certs
+    portfolioRate: number; // % that include portfolio/GitHub links
+    metricsRate: number; // % that quantify achievements
+  };
 }
 
 // Industry-specific configurations
@@ -660,7 +669,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Missing stakeholder management examples',
       'Not showing data-driven decision making'
     ],
-    interviewTopics: ['Product sense', 'Metrics definition', 'Prioritization frameworks', 'Technical communication', 'User empathy']
+    interviewTopics: ['Product sense', 'Metrics definition', 'Prioritization frameworks', 'Technical communication', 'User empathy'],
+    topResumeElements: {
+      sections: ['Professional Summary', 'Product Experience', 'Key Achievements', 'Skills', 'Education'],
+      differentiators: ['Product launch case studies', 'Metrics-driven achievements', 'Cross-functional leadership examples', 'User research methodology'],
+      avgBulletCount: 5,
+      certificationRate: 45,
+      portfolioRate: 60,
+      metricsRate: 92
+    }
   },
   software_engineer: {
     name: 'Software Engineer',
@@ -684,7 +701,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'No mention of collaboration or code review',
       'Not including links to work samples'
     ],
-    interviewTopics: ['System design', 'Coding challenges', 'Behavioral questions', 'Technical deep-dives', 'Architecture decisions']
+    interviewTopics: ['System design', 'Coding challenges', 'Behavioral questions', 'Technical deep-dives', 'Architecture decisions'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'Professional Experience', 'Projects', 'Education', 'Certifications'],
+      differentiators: ['GitHub/portfolio links', 'Open source contributions', 'System scale metrics', 'Tech stack depth'],
+      avgBulletCount: 4,
+      certificationRate: 55,
+      portfolioRate: 78,
+      metricsRate: 85
+    }
   },
   data_scientist: {
     name: 'Data Scientist',
@@ -708,7 +733,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "analyzed data" without specifics',
       'Not mentioning scale of datasets'
     ],
-    interviewTopics: ['ML algorithms', 'Statistics', 'SQL queries', 'A/B testing', 'Case studies', 'Coding in Python/R']
+    interviewTopics: ['ML algorithms', 'Statistics', 'SQL queries', 'A/B testing', 'Case studies', 'Coding in Python/R'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'Experience', 'Projects', 'Publications', 'Education'],
+      differentiators: ['Kaggle/competition rankings', 'Published research', 'Production ML systems', 'Business impact quantification'],
+      avgBulletCount: 4,
+      certificationRate: 40,
+      portfolioRate: 65,
+      metricsRate: 88
+    }
   },
   nurse: {
     name: 'Registered Nurse',
@@ -732,7 +765,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague care descriptions without outcomes',
       'Not mentioning EHR systems used'
     ],
-    interviewTopics: ['Clinical scenarios', 'Patient prioritization', 'Conflict resolution', 'HIPAA compliance', 'Emergency protocols']
+    interviewTopics: ['Clinical scenarios', 'Patient prioritization', 'Conflict resolution', 'HIPAA compliance', 'Emergency protocols'],
+    topResumeElements: {
+      sections: ['Licenses & Certifications', 'Clinical Experience', 'Education', 'Skills', 'Continuing Education'],
+      differentiators: ['Unit specializations', 'Patient outcome metrics', 'Leadership roles', 'Specialty certifications (CCRN, CEN)'],
+      avgBulletCount: 4,
+      certificationRate: 95,
+      portfolioRate: 5,
+      metricsRate: 75
+    }
   },
   marketing_manager: {
     name: 'Marketing Manager',
@@ -756,7 +797,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "increased brand awareness" claims',
       'Not mentioning tools and platforms used'
     ],
-    interviewTopics: ['Campaign strategy', 'Analytics interpretation', 'Budget allocation', 'Cross-functional collaboration', 'Brand positioning']
+    interviewTopics: ['Campaign strategy', 'Analytics interpretation', 'Budget allocation', 'Cross-functional collaboration', 'Brand positioning'],
+    topResumeElements: {
+      sections: ['Professional Summary', 'Marketing Experience', 'Skills & Tools', 'Education', 'Certifications'],
+      differentiators: ['Campaign portfolio links', 'Specific ROI/ROAS numbers', 'Budget managed', 'Before/after metrics'],
+      avgBulletCount: 5,
+      certificationRate: 60,
+      portfolioRate: 55,
+      metricsRate: 90
+    }
   },
   sales_representative: {
     name: 'Sales Representative',
@@ -780,7 +829,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "exceeded targets" without data',
       'Not showing competitive ranking'
     ],
-    interviewTopics: ['Sales methodology', 'Objection handling', 'Pipeline management', 'Deal qualification', 'Negotiation tactics']
+    interviewTopics: ['Sales methodology', 'Objection handling', 'Pipeline management', 'Deal qualification', 'Negotiation tactics'],
+    topResumeElements: {
+      sections: ['Sales Summary', 'Sales Experience', 'Key Achievements', 'Skills', 'Education'],
+      differentiators: ['Quota attainment %', 'Revenue numbers', 'Ranking vs peers', 'Presidents Club/awards'],
+      avgBulletCount: 5,
+      certificationRate: 30,
+      portfolioRate: 10,
+      metricsRate: 98
+    }
   },
   project_manager: {
     name: 'Project Manager',
@@ -804,7 +861,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Vague "managed projects" without scope',
       'Not showing stakeholder complexity'
     ],
-    interviewTopics: ['Project methodology', 'Risk management', 'Conflict resolution', 'Stakeholder communication', 'Resource planning']
+    interviewTopics: ['Project methodology', 'Risk management', 'Conflict resolution', 'Stakeholder communication', 'Resource planning'],
+    topResumeElements: {
+      sections: ['Summary', 'Project Experience', 'Skills & Certifications', 'Education'],
+      differentiators: ['PMP/Agile certifications', 'Budget size managed', 'On-time delivery rate', 'Team size led'],
+      avgBulletCount: 5,
+      certificationRate: 72,
+      portfolioRate: 15,
+      metricsRate: 88
+    }
   },
   ux_designer: {
     name: 'UX Designer',
@@ -828,7 +893,15 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Listing tools without showing outcomes',
       'Not mentioning user research methods'
     ],
-    interviewTopics: ['Design process', 'Portfolio walkthrough', 'User research methods', 'Design critique', 'Cross-functional collaboration']
+    interviewTopics: ['Design process', 'Portfolio walkthrough', 'User research methods', 'Design critique', 'Cross-functional collaboration'],
+    topResumeElements: {
+      sections: ['Summary', 'Design Experience', 'Skills & Tools', 'Portfolio', 'Education'],
+      differentiators: ['Portfolio link (mandatory)', 'UX metrics (conversion, NPS)', 'Design system work', 'User research samples'],
+      avgBulletCount: 4,
+      certificationRate: 25,
+      portfolioRate: 95,
+      metricsRate: 78
+    }
   },
   accountant: {
     name: 'Accountant',
