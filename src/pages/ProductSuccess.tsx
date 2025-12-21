@@ -21,7 +21,8 @@ import {
   Target,
   TrendingUp,
   Lightbulb,
-  RefreshCw
+  RefreshCw,
+  ShieldCheck
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -35,6 +36,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { getResumeFromSession, hasResumeInSession } from "@/hooks/use-session-resume";
+import { ATSDefenseResults, type ATSDefenseData } from "@/components/ATSDefenseResults";
 
 // Map product keys to icons
 const productIcons: Record<string, React.ElementType> = {
@@ -44,6 +46,7 @@ const productIcons: Record<string, React.ElementType> = {
   careerBundle: Package,
   fullAnalysis: Sparkles,
   scanPack: Zap,
+  atsDefense: ShieldCheck,
 };
 
 // Product-specific next steps and how-it-works info
@@ -95,6 +98,22 @@ const productInfo: Record<string, {
       { icon: FileText, title: "Review Documents", description: "Check your new resume and cover letter below" },
       { icon: Copy, title: "Copy & Download", description: "Get your documents in the format you need" },
       { icon: Mail, title: "Apply Now", description: "Submit your optimized application" }
+    ],
+    deliveryTime: "Instant",
+    deliveryMethod: "On This Page"
+  },
+  atsDefense: {
+    howItWorks: [
+      "Our AI performed a comprehensive ATS compatibility audit",
+      "We analyzed your resume against 50+ ATS platforms",
+      "Keywords optimized for up to 3 target roles",
+      "Format restructured for maximum parseability",
+      "LinkedIn alignment tips included"
+    ],
+    nextSteps: [
+      { icon: ShieldCheck, title: "Review Audit", description: "Check your before/after ATS scores" },
+      { icon: Target, title: "Apply Keywords", description: "Use the keyword bank for your industry" },
+      { icon: FileText, title: "Copy Sections", description: "Use the optimized resume sections" }
     ],
     deliveryTime: "Instant",
     deliveryMethod: "On This Page"
@@ -173,7 +192,8 @@ export default function ProductSuccess() {
   const [searchParams] = useSearchParams();
   const [isVerifying, setIsVerifying] = useState(true);
   const [verificationError, setVerificationError] = useState<string | null>(null);
-  const [generatedContent, setGeneratedContent] = useState<KeywordData | CoverLetterData | PremiumPackageData | null>(null);
+  const [generatedContent, setGeneratedContent] = useState<KeywordData | CoverLetterData | PremiumPackageData | ATSDefenseData | null>(null);
+  const [atsDefenseData, setAtsDefenseData] = useState<ATSDefenseData | null>(null);
   const [activeTab, setActiveTab] = useState<'resume' | 'coverLetter'>('resume');
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
@@ -234,6 +254,9 @@ export default function ProductSuccess() {
       } else if (productKey === 'premiumPackage') {
         endpoint = 'generate-premium-package';
         body.jobTitle = 'Target Position';
+      } else if (productKey === 'atsDefense') {
+        endpoint = 'generate-ats-defense';
+        body.sessionId = sessionId;
       }
 
       if (!endpoint) {
@@ -370,6 +393,32 @@ export default function ProductSuccess() {
           }
         }
         
+        // Handle ATS Defense - generate content with session ID
+        if (productKey === 'atsDefense' && !error) {
+          console.log('[ProductSuccess] Generating ATS Defense report');
+          const sessionData = getResumeFromSession();
+          if (sessionData.resumeText) {
+            const { data: atsData, error: atsError } = await supabase.functions.invoke('generate-ats-defense', {
+              body: { 
+                sessionId,
+                resumeText: sessionData.resumeText,
+                targetRoles: []
+              }
+            });
+            
+            if (atsError) {
+              console.error('ATS Defense generation error:', atsError);
+              setIsRecoveryMode(true);
+            } else if (atsData?.report) {
+              setAtsDefenseData(atsData.report);
+            } else {
+              setIsRecoveryMode(true);
+            }
+          } else {
+            setIsRecoveryMode(true);
+          }
+        }
+        
         // Track successful purchase completion
         if (!error && productKey && product) {
           trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
@@ -462,6 +511,7 @@ export default function ProductSuccess() {
   const isKeywordFix = productKey === 'basicKeywordFix';
   const isCoverLetter = productKey === 'coverLetter';
   const isPremiumPackage = productKey === 'premiumPackage';
+  const isAtsDefense = productKey === 'atsDefense';
   const keywordData = isKeywordFix ? generatedContent as KeywordData : null;
   const coverLetterData = isCoverLetter ? generatedContent as CoverLetterData : null;
   const premiumData = isPremiumPackage ? generatedContent as PremiumPackageData : null;
@@ -851,8 +901,28 @@ export default function ProductSuccess() {
           </section>
         )}
 
+        {/* Generated Content Section - ATS Defense */}
+        {isAtsDefense && atsDefenseData && (
+          <section className="py-12 border-t border-border/50">
+            <div className="container max-w-4xl">
+              <div className="text-center mb-8">
+                <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
+                  <ShieldCheck className="w-3 h-3 mr-1" />
+                  ATS Defense Report Ready
+                </Badge>
+                <h2 className="text-2xl font-bold mb-2">Your ATS Defense Complete Report</h2>
+                <p className="text-muted-foreground">
+                  Comprehensive ATS optimization with before/after analysis
+                </p>
+              </div>
+
+              <ATSDefenseResults data={atsDefenseData} />
+            </div>
+          </section>
+        )}
+
         {/* No Generated Content - Show Inline Upload Recovery */}
-        {(isKeywordFix || isCoverLetter || isPremiumPackage) && !generatedContent && !verificationError && !isVerifying && (
+        {(isKeywordFix || isCoverLetter || isPremiumPackage || isAtsDefense) && !generatedContent && !atsDefenseData && !verificationError && !isVerifying && (
           <section className="py-12 border-t border-border/50">
             <div className="container max-w-2xl">
               <div className="p-8 rounded-2xl bg-muted/50 border border-border">
