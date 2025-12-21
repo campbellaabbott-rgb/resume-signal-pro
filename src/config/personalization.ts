@@ -1165,6 +1165,102 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Not highlighting patient safety achievements'
     ],
     interviewTopics: ['Drug interaction scenarios', 'Patient counseling approach', 'Error prevention', 'Regulatory compliance', 'Team management']
+  },
+  social_media_manager: {
+    name: 'Social Media Manager',
+    aliases: ['social media specialist', 'social media coordinator', 'community manager', 'social strategist', 'digital marketing manager', 'social media lead', 'content manager'],
+    keySkills: ['Content Creation', 'Analytics', 'Community Management', 'Paid Social', 'Influencer Marketing', 'Brand Voice', 'Social Scheduling Tools', 'Crisis Management'],
+    mustHaveKeywords: ['social media', 'engagement', 'followers', 'content', 'community', 'analytics', 'campaigns', 'brand'],
+    resumeTips: [
+      'Quantify follower growth and engagement rates',
+      'Show revenue or lead generation from social',
+      'List platforms managed and tools used',
+      'Include examples of viral or high-performing content'
+    ],
+    bulletExamples: [
+      { weak: 'Managed company social media accounts', strong: 'Grew Instagram from 10K to 150K followers in 12 months, achieving 8% engagement rate (4x industry average)' },
+      { weak: 'Created social media content', strong: 'Developed viral TikTok campaign generating 5M+ views and 25% increase in website traffic' }
+    ],
+    keyMetrics: ['Follower growth %', 'Engagement rate', 'Reach/impressions', 'Social-driven revenue', 'Content performance'],
+    commonMistakes: [
+      'Not quantifying follower growth or engagement',
+      'Missing revenue or business impact metrics',
+      'Vague "managed social media" without results',
+      'Not mentioning specific platforms and tools'
+    ],
+    interviewTopics: ['Content strategy', 'Crisis management', 'Analytics interpretation', 'Platform-specific tactics', 'Influencer partnerships']
+  },
+  architect: {
+    name: 'Architect',
+    aliases: ['licensed architect', 'project architect', 'design architect', 'senior architect', 'architectural designer', 'principal architect', 'aia'],
+    keySkills: ['AutoCAD', 'Revit', 'SketchUp', 'Building Codes', 'Project Management', 'Client Relations', 'Sustainable Design', 'Construction Documents'],
+    mustHaveKeywords: ['design', 'AutoCAD', 'Revit', 'construction documents', 'building codes', 'LEED', 'project management', 'client'],
+    resumeTips: [
+      'Include license number and AIA membership',
+      'Quantify project budgets and square footage',
+      'Show variety of project types (residential, commercial, institutional)',
+      'Highlight sustainability certifications (LEED AP)'
+    ],
+    bulletExamples: [
+      { weak: 'Designed commercial buildings', strong: 'Led design of $50M mixed-use development (200K SF), achieving LEED Gold certification and 15% under budget' },
+      { weak: 'Created construction documents', strong: 'Produced construction documents for 25+ residential projects totaling $30M, with zero major RFIs during construction' }
+    ],
+    keyMetrics: ['Project budget', 'Square footage', 'LEED certifications', 'Projects completed', 'Client satisfaction'],
+    commonMistakes: [
+      'Not including license number or AIA status',
+      'Missing project budgets and scale',
+      'Vague "designed buildings" without specifics',
+      'Not mentioning software proficiency'
+    ],
+    interviewTopics: ['Portfolio walkthrough', 'Design process', 'Code compliance', 'Client management', 'Sustainable design approach']
+  },
+  physical_therapist: {
+    name: 'Physical Therapist',
+    aliases: ['pt', 'physiotherapist', 'dpt', 'physical therapy assistant', 'pta', 'rehab therapist', 'outpatient therapist', 'sports physical therapist'],
+    keySkills: ['Patient Assessment', 'Treatment Planning', 'Manual Therapy', 'Therapeutic Exercise', 'Documentation', 'Patient Education', 'Outcome Measurement', 'Rehabilitation'],
+    mustHaveKeywords: ['patient care', 'rehabilitation', 'treatment plans', 'outcomes', 'manual therapy', 'exercise prescription', 'documentation', 'functional improvement'],
+    resumeTips: [
+      'Include license number and certifications (DPT, OCS, SCS)',
+      'Quantify patient outcomes and caseload',
+      'Show specializations and continuing education',
+      'Highlight patient satisfaction scores'
+    ],
+    bulletExamples: [
+      { weak: 'Treated patients with injuries', strong: 'Managed caseload of 50+ patients weekly, achieving 92% functional improvement rate and 4.9/5 patient satisfaction' },
+      { weak: 'Developed treatment plans', strong: 'Created individualized treatment plans reducing average recovery time by 25% for post-surgical orthopedic patients' }
+    ],
+    keyMetrics: ['Patient caseload', 'Functional improvement %', 'Patient satisfaction', 'Recovery time reduction', 'Discharge rate'],
+    commonMistakes: [
+      'Not including license and certifications',
+      'Missing patient outcome metrics',
+      'Vague "provided physical therapy" without results',
+      'Not showing specialization areas'
+    ],
+    interviewTopics: ['Clinical scenarios', 'Treatment approach', 'Outcome measurement', 'Patient communication', 'Evidence-based practice']
+  },
+  supply_chain_manager: {
+    name: 'Supply Chain Manager',
+    aliases: ['logistics manager', 'procurement manager', 'supply chain analyst', 'inventory manager', 'distribution manager', 'sourcing manager', 'materials manager', 'scm'],
+    keySkills: ['Inventory Management', 'Procurement', 'Logistics', 'Vendor Management', 'ERP Systems', 'Demand Planning', 'Cost Optimization', 'Supply Chain Analytics'],
+    mustHaveKeywords: ['supply chain', 'inventory', 'procurement', 'logistics', 'vendors', 'cost reduction', 'forecasting', 'ERP'],
+    resumeTips: [
+      'Quantify cost savings and efficiency improvements',
+      'Show inventory optimization results',
+      'List specific ERP systems (SAP, Oracle)',
+      'Highlight vendor negotiation outcomes'
+    ],
+    bulletExamples: [
+      { weak: 'Managed supply chain operations', strong: 'Optimized supply chain for $100M product line, reducing costs by 18% and improving on-time delivery from 85% to 98%' },
+      { weak: 'Negotiated with vendors', strong: 'Renegotiated contracts with 50+ vendors, achieving $2.5M annual savings while maintaining quality standards' }
+    ],
+    keyMetrics: ['Cost reduction %', 'Inventory turnover', 'On-time delivery %', 'Vendor savings', 'Lead time reduction'],
+    commonMistakes: [
+      'Not quantifying cost savings',
+      'Missing inventory and delivery metrics',
+      'Vague "managed supply chain" without scale',
+      'Not mentioning specific ERP systems'
+    ],
+    interviewTopics: ['Supply chain disruption handling', 'Vendor negotiation', 'Demand forecasting', 'Cost optimization strategies', 'ERP implementation']
   }
 };
 
@@ -1204,6 +1300,10 @@ export function getRoleAdvice(role: string): RoleConfig | null {
   if (normalizedRole.includes('content writer') || normalizedRole.includes('copywriter') || normalizedRole.includes('content creator') || normalizedRole.includes('technical writer')) return ROLE_CONFIGS.content_writer;
   if (normalizedRole.includes('graphic designer') || normalizedRole.includes('visual designer') || normalizedRole.includes('brand designer')) return ROLE_CONFIGS.graphic_designer;
   if (normalizedRole.includes('pharmacist') || normalizedRole.includes('pharm.d') || normalizedRole.includes('pharmacy')) return ROLE_CONFIGS.pharmacist;
+  if (normalizedRole.includes('social media') || normalizedRole.includes('community manager')) return ROLE_CONFIGS.social_media_manager;
+  if (normalizedRole.includes('architect') && !normalizedRole.includes('software') && !normalizedRole.includes('solutions')) return ROLE_CONFIGS.architect;
+  if (normalizedRole.includes('physical therapist') || normalizedRole.includes('physiotherapist') || normalizedRole.includes('pt') || normalizedRole.includes('dpt')) return ROLE_CONFIGS.physical_therapist;
+  if (normalizedRole.includes('supply chain') || normalizedRole.includes('logistics') || normalizedRole.includes('procurement')) return ROLE_CONFIGS.supply_chain_manager;
   
   return null;
 }
