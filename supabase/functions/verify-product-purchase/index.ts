@@ -239,7 +239,24 @@ serve(async (req) => {
       }
     }
 
-    // Send confirmation email (only on first use to avoid duplicate emails)
+    // Record affiliate conversion if there was a referral
+    const referralCode = session.metadata?.referral_code;
+    if (referralCode && isFirstUse && session.amount_total) {
+      logStep("Recording affiliate conversion", { referralCode, amount: session.amount_total });
+      
+      const { error: affiliateError } = await supabase.rpc('record_affiliate_conversion', {
+        p_referral_code: referralCode,
+        p_stripe_session_id: sessionId,
+        p_product_name: productName || productType || 'Product',
+        p_sale_amount: session.amount_total
+      });
+
+      if (affiliateError) {
+        logStep("Affiliate conversion recording failed", { error: affiliateError.message });
+      } else {
+        logStep("Affiliate conversion recorded successfully");
+      }
+    }
     if (isFirstUse && customerEmail) {
       try {
         const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {

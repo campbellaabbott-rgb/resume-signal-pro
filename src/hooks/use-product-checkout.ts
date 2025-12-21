@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PRODUCTS, ProductId } from '@/config/products';
 import { useConversionTracking } from '@/hooks/use-conversion-tracking';
 import { parseEdgeFunctionError } from '@/lib/edge-function-errors';
+import { getStoredReferralCode } from '@/hooks/use-affiliate-auth';
 
 export interface CheckoutOptions {
   sessionId?: string;
@@ -46,7 +47,8 @@ export function useProductCheckout() {
           productId: productId,
           sessionId: opts.sessionId,
           jobTitle: opts.jobTitle,
-          jobCompany: opts.jobCompany
+          jobCompany: opts.jobCompany,
+          referralCode: getStoredReferralCode()
         }
       });
 
