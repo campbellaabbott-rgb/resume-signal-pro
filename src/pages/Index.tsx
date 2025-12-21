@@ -98,6 +98,23 @@ interface FreeKeywordResult {
     strengthVsField: string;
     weaknessVsField: string;
   };
+  formatRecommendation?: {
+    recommendedStyle: "traditional" | "modern" | "creative" | "hybrid";
+    layoutAdvice: {
+      columns: "one_column" | "two_column";
+      useColor: boolean;
+      visualElements: "minimal" | "moderate" | "rich";
+      rationale: string;
+    };
+    industryNorms: { norm: string; importance: "must_have" | "recommended" | "optional" }[];
+    avoidList: string[];
+    currentFormatAssessment: {
+      isAppropriate: boolean;
+      mainIssue: string;
+      quickFix: string;
+    };
+    templateSuggestion: string;
+  };
 }
 
 const Index = () => {
@@ -961,6 +978,7 @@ const Index = () => {
                 skillGapActions={freeKeywordResult.skillGapActions}
                 competitiveAssessment={freeKeywordResult.competitiveAssessment}
                 careerSituation={freeKeywordResult.careerSituation}
+                formatRecommendation={freeKeywordResult.formatRecommendation}
                 onGetFullAnalysis={() => handleCheckout(resumeText, linkedInText, jobDescriptionText)}
                 onGetJobAnalysis={handleJobAnalysis}
                 onGenerateTailoredResume={handleGenerateTailoredResume}
