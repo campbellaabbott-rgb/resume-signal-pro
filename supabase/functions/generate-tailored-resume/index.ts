@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { resumeText, jobTitle, jobCompany, jobDescription, matchingSkills, missingSkills } = await req.json();
+    const { resumeText, jobTitle, jobCompany, jobDescription, matchingSkills, missingSkills, personalizationContext } = await req.json();
 
     if (!resumeText || !jobTitle) {
       return new Response(
@@ -32,6 +32,11 @@ serve(async (req) => {
 
     const systemPrompt = `You are an expert resume writer and career coach. Your task is to rewrite and tailor a resume to perfectly match a specific job opportunity.
 
+${personalizationContext ? `CANDIDATE CONTEXT (use this to deeply personalize the tailoring):
+${personalizationContext}
+
+Tailor the resume based on their career stage - entry-level should focus on potential and transferable skills, mid-level on growing responsibilities, senior on leadership and impact.` : ''}
+
 IMPORTANT GUIDELINES:
 1. Maintain the person's actual experience and qualifications - do NOT fabricate experience
 2. Reframe existing experiences to highlight relevance to the target role
@@ -40,6 +45,7 @@ IMPORTANT GUIDELINES:
 5. Use strong action verbs and quantify achievements where possible
 6. Keep the resume ATS-friendly with clean formatting
 7. Ensure the professional summary is tailored to the specific role
+8. Match the tone to their experience level - hungry and eager for entry-level, confident and accomplished for senior
 
 OUTPUT FORMAT:
 Return a structured JSON object with these sections:

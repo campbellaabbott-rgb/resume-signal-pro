@@ -15,7 +15,7 @@ serve(async (req) => {
   }
 
   try {
-    const { resumeText, jobDescription, jobTitle, jobCompany, tone = "professional" } = await req.json();
+    const { resumeText, jobDescription, jobTitle, jobCompany, tone = "professional", personalizationContext } = await req.json();
 
     if (!resumeText) {
       return new Response(
@@ -35,6 +35,7 @@ serve(async (req) => {
       jobTitle,
       jobCompany,
       tone,
+      hasPersonalization: !!personalizationContext,
       resumeLength: resumeText?.length 
     });
 
@@ -54,6 +55,11 @@ serve(async (req) => {
 
     const systemPrompt = `You are an expert cover letter writer who creates compelling, personalized cover letters that get interviews.
 
+${personalizationContext ? `CANDIDATE CONTEXT (use this to deeply personalize the cover letter):
+${personalizationContext}
+
+Use this context to tailor the language, achievements to highlight, and overall positioning to match their career stage and industry.` : ''}
+
 Your cover letters should:
 1. Open with a strong, attention-grabbing hook (not "I am writing to apply...")
 2. Connect the candidate's experience directly to the job requirements
@@ -62,6 +68,7 @@ Your cover letters should:
 5. Close with a confident call to action
 6. Be ${toneDesc}
 7. Be 250-350 words (3-4 paragraphs)
+8. Match the candidate's experience level - entry-level should sound eager to learn, senior should emphasize leadership
 
 You MUST respond with a valid JSON object:
 {
