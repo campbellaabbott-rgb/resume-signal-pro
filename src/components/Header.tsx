@@ -1,4 +1,4 @@
-import { Sparkles, CreditCard, Package, Twitter } from "lucide-react";
+import { Sparkles, CreditCard, Package } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
@@ -48,16 +48,6 @@ export function Header() {
           </Link>
           
           <div className="flex items-center gap-2 sm:gap-4">
-            <a 
-              href="https://x.com/resumeboost3r" 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
-              aria-label="Follow us on X (Twitter)"
-            >
-              <Twitter className="w-4 h-4" />
-              <span className="hidden sm:inline">Follow us</span>
-            </a>
             <LanguageSwitcher variant="compact" />
             <ScanCreditsCounter />
             <Button 
