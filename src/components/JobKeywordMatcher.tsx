@@ -713,6 +713,34 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
     { pattern: /\b(ai ethics|responsible ai|explainable ai|xai|ai governance|ai safety|bias detection|fairness|model interpretability|ai regulation)\b/gi, category: "soft_skill", importance: "important" },
     // AI certifications
     { pattern: /\b(aws machine learning|azure ai|google cloud ai|tensorflow certified|databricks certified|ai certified|ml certified)\b/gi, category: "certification", importance: "important" },
+    
+    // ===== EXECUTIVE & C-SUITE =====
+    // C-level titles (critical)
+    { pattern: /\b(ceo|chief executive officer|cfo|chief financial officer|coo|chief operating officer|cto|chief technology officer|cmo|chief marketing officer|cio|chief information officer|chro|chief human resources officer|cpo|chief product officer|cro|chief revenue officer)\b/gi, category: "industry_term", importance: "critical" },
+    // Board & governance (critical)
+    { pattern: /\b(board of directors|board member|board seat|corporate governance|fiduciary|shareholder|stockholder|board presentation|board reporting|audit committee|compensation committee)\b/gi, category: "hard_skill", importance: "critical" },
+    // Investor relations
+    { pattern: /\b(investor relations|ir|earnings call|quarterly report|annual report|10-k|10-q|sec filing|shareholder communication|analyst relations|investor presentation|roadshow)\b/gi, category: "hard_skill", importance: "critical" },
+    // M&A & corporate development (critical)
+    { pattern: /\b(m&a|mergers and acquisitions|merger|acquisition|divestiture|spin-off|carve-out|due diligence|integration|post-merger|deal sourcing|corporate development)\b/gi, category: "hard_skill", importance: "critical" },
+    // Strategic planning (critical)
+    { pattern: /\b(strategic planning|corporate strategy|business strategy|long-term planning|strategic vision|strategic roadmap|strategic initiative|transformation|turnaround|restructuring)\b/gi, category: "hard_skill", importance: "critical" },
+    // P&L ownership (critical)
+    { pattern: /\b(p&l|profit and loss|p&l ownership|p&l responsibility|full p&l|revenue responsibility|bottom line|top line|margin|profitability|cost center|profit center)\b/gi, category: "hard_skill", importance: "critical" },
+    // Capital & funding
+    { pattern: /\b(capital allocation|capital markets|fundraising|series a|series b|series c|ipo|initial public offering|private equity|pe|venture capital|vc|angel investor|seed funding)\b/gi, category: "hard_skill", importance: "important" },
+    // Executive leadership
+    { pattern: /\b(executive leadership|senior leadership|leadership team|executive team|c-suite|executive committee|exco|senior management|general manager|gm|president|vice president|vp|svp|evp)\b/gi, category: "industry_term", importance: "critical" },
+    // Enterprise scale
+    { pattern: /\b(enterprise|fortune 500|fortune 100|global|multinational|multi-billion|billion-dollar|large-scale|enterprise-wide|organization-wide|company-wide)\b/gi, category: "industry_term", importance: "important" },
+    // Business development
+    { pattern: /\b(business development|strategic partnership|alliance|joint venture|jv|partnership|channel|go-to-market|gtm|market entry|market expansion|new market)\b/gi, category: "hard_skill", importance: "important" },
+    // Organizational leadership
+    { pattern: /\b(organizational design|org design|operating model|organizational transformation|change leadership|culture change|talent strategy|succession planning|executive coaching)\b/gi, category: "soft_skill", importance: "important" },
+    // Financial acumen
+    { pattern: /\b(financial acumen|business acumen|commercial acumen|budget ownership|cost optimization|revenue growth|ebitda|cash flow|working capital|roi|irr|npv)\b/gi, category: "hard_skill", importance: "critical" },
+    // Stakeholder management
+    { pattern: /\b(stakeholder management|executive stakeholder|c-level stakeholder|board relationship|investor relationship|key account|enterprise client|strategic account)\b/gi, category: "soft_skill", importance: "important" },
   ];
   
   const extracted: Map<string, { keyword: string; context: string; importance: "critical" | "important" | "nice_to_have"; category: KeywordMatch["category"] }> = new Map();
