@@ -659,6 +659,28 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
     // Quantifiable Impact Words
     { pattern: /\b(doubled|tripled|quadrupled|10x|100%|million|billion|thousands|hundreds|dozens)\b/gi, category: "industry_term", importance: "critical" },
     { pattern: /\b(year-over-year|yoy|quarter-over-quarter|qoq|month-over-month|mom|consistently|repeatedly|continuously|sustainably)\b/gi, category: "industry_term", importance: "important" },
+    
+    // ===== REMOTE WORK, HYBRID & GIG ECONOMY =====
+    // Remote work arrangements (critical)
+    { pattern: /\b(remote|remote work|work from home|wfh|fully remote|remote-first|remote-friendly|telecommute|telecommuting|virtual|work from anywhere)\b/gi, category: "industry_term", importance: "critical" },
+    // Hybrid work
+    { pattern: /\b(hybrid|hybrid work|flexible work|flex work|in-office|on-site|office-based|co-located|return to office|rto)\b/gi, category: "industry_term", importance: "important" },
+    // Distributed teams
+    { pattern: /\b(distributed team|distributed workforce|global team|virtual team|remote team|dispersed team|geographically distributed|multi-location|multi-site)\b/gi, category: "soft_skill", importance: "important" },
+    // Asynchronous work
+    { pattern: /\b(asynchronous|async|async communication|asynchronous communication|async-first|timezone|time zone|flexible hours|flexible schedule|self-directed)\b/gi, category: "soft_skill", importance: "important" },
+    // Remote collaboration tools
+    { pattern: /\b(zoom|teams|slack|google meet|webex|discord|miro|figma|notion|confluence|loom|calendly|hubspot)\b/gi, category: "tool", importance: "important" },
+    // Gig economy & freelance
+    { pattern: /\b(freelance|freelancer|independent contractor|1099|contract work|gig economy|gig work|self-employed|solopreneur|consultant)\b/gi, category: "industry_term", importance: "critical" },
+    // Contract types
+    { pattern: /\b(contractor|subcontractor|temp|temporary|contract-to-hire|c2h|w2|corp-to-corp|c2c|per diem|prn|seasonal|part-time|full-time)\b/gi, category: "industry_term", importance: "important" },
+    // Freelance platforms
+    { pattern: /\b(upwork|fiverr|toptal|freelancer\.com|99designs|guru|peopleperhour|flexjobs|we work remotely|remote\.co)\b/gi, category: "tool", importance: "nice_to_have" },
+    // Remote work skills
+    { pattern: /\b(self-motivated|self-starter|autonomous|independent|proactive|disciplined|time management|remote collaboration|virtual collaboration)\b/gi, category: "soft_skill", importance: "important" },
+    // Digital nomad & location
+    { pattern: /\b(digital nomad|location independent|anywhere|coworking|co-working|home office|remote setup|virtual office)\b/gi, category: "industry_term", importance: "nice_to_have" },
   ];
   
   const extracted: Map<string, { keyword: string; context: string; importance: "critical" | "important" | "nice_to_have"; category: KeywordMatch["category"] }> = new Map();
