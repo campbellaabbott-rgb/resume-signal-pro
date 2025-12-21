@@ -8,7 +8,10 @@ import {
   CheckCircle2,
   AlertTriangle,
   Sparkles,
-  BookOpen
+  BookOpen,
+  XCircle,
+  ArrowRight,
+  BarChart3
 } from "lucide-react";
 import { 
   getIndustryAdvice, 
@@ -50,6 +53,15 @@ export function PersonalizedInsights({
     executive: 'Executive'
   }[expConfig.level] || 'Professional';
 
+  // Calculate where user stands vs industry benchmarks
+  const benchmarkComparison = industryConfig.industryBenchmarks 
+    ? atsScore >= industryConfig.industryBenchmarks.topScore 
+      ? 'top' 
+      : atsScore >= industryConfig.industryBenchmarks.avgScore 
+        ? 'average' 
+        : 'below'
+    : 'unknown';
+
   return (
     <div className={cn("space-y-6", className)}>
       {/* Personalization Header */}
@@ -68,6 +80,43 @@ export function PersonalizedInsights({
           </div>
         </div>
       </div>
+
+      {/* Industry Benchmark Comparison */}
+      {industryConfig.industryBenchmarks && (
+        <div className="p-4 rounded-lg bg-card border border-border">
+          <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
+            <BarChart3 className="w-4 h-4 text-primary" />
+            How You Compare in {industryConfig.name}
+          </h4>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Your Score</span>
+              <span className={cn(
+                "font-bold",
+                atsScore >= 70 ? "text-success" : atsScore >= 50 ? "text-amber-500" : "text-destructive"
+              )}>{atsScore}%</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">{industryConfig.name} Average</span>
+              <span className="font-medium text-foreground">{industryConfig.industryBenchmarks.avgScore}%</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Top Performers</span>
+              <span className="font-medium text-success">{industryConfig.industryBenchmarks.topScore}%</span>
+            </div>
+            <div className={cn(
+              "mt-3 p-2 rounded text-xs",
+              benchmarkComparison === 'top' ? "bg-success/10 text-success" :
+              benchmarkComparison === 'average' ? "bg-amber-500/10 text-amber-600" :
+              "bg-destructive/10 text-destructive"
+            )}>
+              {benchmarkComparison === 'top' && "🏆 You're in the top tier for your industry!"}
+              {benchmarkComparison === 'average' && "📊 You're at the industry average—room to stand out."}
+              {benchmarkComparison === 'below' && "⚠️ You're below average for your industry—optimization critical."}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Priority Actions */}
       <div className="space-y-3">
@@ -99,6 +148,48 @@ export function PersonalizedInsights({
         </div>
       </div>
 
+      {/* Industry-Specific Common Mistakes */}
+      {industryConfig.commonMistakes && industryConfig.commonMistakes.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="font-semibold text-foreground flex items-center gap-2">
+            <XCircle className="w-4 h-4 text-destructive" />
+            Common {industryConfig.name} Resume Mistakes
+          </h4>
+          <div className="grid gap-2">
+            {industryConfig.commonMistakes.slice(0, 3).map((mistake, i) => (
+              <div key={i} className="flex items-start gap-2 text-sm text-muted-foreground p-2 rounded bg-destructive/5 border border-destructive/10">
+                <span className="text-destructive font-medium">✗</span>
+                <span>{mistake}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Industry-Specific Bullet Examples */}
+      {industryConfig.bulletExamples && industryConfig.bulletExamples.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="font-semibold text-foreground flex items-center gap-2">
+            <ArrowRight className="w-4 h-4 text-primary" />
+            {industryConfig.name} Bullet Examples
+          </h4>
+          <div className="space-y-3">
+            {industryConfig.bulletExamples.slice(0, 2).map((example, i) => (
+              <div key={i} className="p-3 rounded-lg bg-card border border-border space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-xs font-medium text-destructive bg-destructive/10 px-2 py-0.5 rounded">Weak</span>
+                  <p className="text-sm text-muted-foreground line-through">{example.weak}</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-xs font-medium text-success bg-success/10 px-2 py-0.5 rounded">Strong</span>
+                  <p className="text-sm text-foreground">{example.strong}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Industry-Specific Tips */}
       <div className="space-y-3">
         <h4 className="font-semibold text-foreground flex items-center gap-2">
@@ -117,6 +208,47 @@ export function PersonalizedInsights({
           {industryConfig.atsNotes}
         </p>
       </div>
+
+      {/* Key Metrics to Include */}
+      {industryConfig.keyMetrics && industryConfig.keyMetrics.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="font-semibold text-foreground flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            Key Metrics for {industryConfig.name}
+          </h4>
+          <p className="text-xs text-muted-foreground">Include these numbers in your bullets:</p>
+          <div className="flex flex-wrap gap-2">
+            {industryConfig.keyMetrics.map((metric, i) => (
+              <span 
+                key={i}
+                className="px-2 py-1 rounded-full bg-success/10 text-success text-xs font-medium"
+              >
+                {metric}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Strong Action Verbs */}
+      {industryConfig.strongActionVerbs && industryConfig.strongActionVerbs.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="font-semibold text-foreground flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            Power Verbs for {industryConfig.name}
+          </h4>
+          <div className="flex flex-wrap gap-2">
+            {industryConfig.strongActionVerbs.map((verb, i) => (
+              <span 
+                key={i}
+                className="px-2 py-1 rounded bg-primary/10 text-primary text-xs font-medium"
+              >
+                {verb}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Experience-Level Guidance */}
       <div className="space-y-3">
