@@ -295,6 +295,44 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
     // Rail & aviation
     { pattern: /\b(railroad|rail transport|locomotive|conductor|aviation|airline|aircraft|pilot|flight operations|ground handling|airport operations|tsa)\b/gi, category: "industry_term", importance: "nice_to_have" },
     
+    // ===== ENERGY, UTILITIES & RENEWABLE =====
+    // Power generation (critical)
+    { pattern: /\b(power generation|power plant|generating station|baseload|peaking|combined cycle|simple cycle|cogeneration|chp|combined heat and power|capacity factor)\b/gi, category: "hard_skill", importance: "critical" },
+    // Grid operations (critical)
+    { pattern: /\b(grid operations|transmission|distribution|substation|switchgear|transformer|voltage|load management|peak demand|demand response|grid stability|blackout|outage management)\b/gi, category: "hard_skill", importance: "critical" },
+    // NERC & compliance (critical)
+    { pattern: /\b(nerc|nerc compliance|nerc cip|ferc|reliability standards|bulk electric system|bes|critical infrastructure protection|cip|mandatory reliability standards)\b/gi, category: "certification", importance: "critical" },
+    // Solar energy
+    { pattern: /\b(solar|photovoltaic|pv|solar panel|solar array|solar farm|utility-scale solar|distributed solar|rooftop solar|inverter|net metering|solar installation)\b/gi, category: "hard_skill", importance: "critical" },
+    // Wind energy
+    { pattern: /\b(wind|wind turbine|wind farm|onshore wind|offshore wind|wind energy|nacelle|rotor|blade|wind resource assessment|capacity factor|curtailment)\b/gi, category: "hard_skill", importance: "critical" },
+    // Energy storage
+    { pattern: /\b(energy storage|battery storage|lithium-ion|bess|battery energy storage system|pumped hydro|flywheel|grid-scale storage|behind-the-meter|peak shaving)\b/gi, category: "hard_skill", importance: "important" },
+    // Traditional generation
+    { pattern: /\b(natural gas|coal|nuclear|hydro|hydroelectric|steam turbine|gas turbine|boiler|combustion|emissions|flue gas|scrubber|cooling tower)\b/gi, category: "industry_term", importance: "important" },
+    // Utilities operations
+    { pattern: /\b(utility|electric utility|gas utility|water utility|wastewater|public utility|iou|investor-owned utility|municipal utility|cooperative|coop|rate case|tariff)\b/gi, category: "industry_term", importance: "important" },
+    // Energy markets & trading
+    { pattern: /\b(energy trading|power trading|wholesale market|iso|rto|pjm|ercot|caiso|nyiso|miso|spp|day-ahead|real-time market|locational marginal pricing|lmp)\b/gi, category: "hard_skill", importance: "important" },
+    // Smart grid & metering
+    { pattern: /\b(smart grid|smart meter|ami|advanced metering infrastructure|scada|ems|energy management system|dms|distribution management|outage management system|oms)\b/gi, category: "tool", importance: "important" },
+    // Energy efficiency
+    { pattern: /\b(energy efficiency|demand side management|dsm|weatherization|energy audit|building performance|energy star|leed|retro-commissioning|measurement and verification|m&v)\b/gi, category: "hard_skill", importance: "important" },
+    // Renewable development
+    { pattern: /\b(renewable energy|clean energy|green energy|sustainability|decarbonization|carbon neutral|net zero|ppa|power purchase agreement|renewable portfolio standard|rps|rec|renewable energy credit)\b/gi, category: "industry_term", importance: "important" },
+    // Electric vehicles & charging
+    { pattern: /\b(electric vehicle|ev|evse|charging station|charging infrastructure|dc fast charging|level 2 charging|vehicle to grid|v2g|fleet electrification|ev charging network)\b/gi, category: "hard_skill", importance: "important" },
+    // Energy certifications
+    { pattern: /\b(pe|professional engineer|eit|nerc certified|system operator certification|nabcep|certified energy manager|cem|cep|certified energy professional|leed ap)\b/gi, category: "certification", importance: "important" },
+    // Energy software & tools
+    { pattern: /\b(oasis|pi historian|osisoft|powerworld|psse|pscad|etap|easypower|homer|pvsyst|helioscope|aurora solar|energy plus|retscreen)\b/gi, category: "tool", importance: "important" },
+    // Oil & gas
+    { pattern: /\b(oil and gas|upstream|midstream|downstream|drilling|exploration|production|refinery|refining|pipeline|lng|natural gas liquids|ngl|petrochemical)\b/gi, category: "industry_term", importance: "important" },
+    // Utility field work
+    { pattern: /\b(lineman|line worker|substation technician|relay technician|meter reader|meter technician|gas technician|water operator|wastewater operator|field service)\b/gi, category: "hard_skill", importance: "critical" },
+    // Environmental & safety
+    { pattern: /\b(epa|environmental compliance|air quality|water quality|emissions reporting|environmental permit|spcc|hazardous waste|neshap|rcra|cercla)\b/gi, category: "hard_skill", importance: "important" },
+    
     // ===== OPERATIONS & SUPPLY CHAIN =====
     { pattern: /\b(supply chain|logistics|procurement|inventory management|warehouse|distribution|erp|mrp|lean manufacturing|six sigma|kaizen|tps|just-in-time|jit)\b/gi, category: "hard_skill", importance: "critical" },
     { pattern: /\b(apics|cpim|cscp|cltd|pmp|capm|lean six sigma|green belt|black belt|master black belt)\b/gi, category: "certification", importance: "important" },
