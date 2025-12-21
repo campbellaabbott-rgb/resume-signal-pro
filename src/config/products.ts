@@ -23,7 +23,7 @@ export const PRODUCTS = {
     name: 'Scan Pack (10 Credits)',
     description: '10 additional resume scans at $0.20 each',
     priceUsd: 2,
-    priceId: 'price_1SfqT8HBplUUV1Cg3McLmgI7',
+    priceId: 'price_1Sgv2THBplUUV1CgntHsXlDK',
     credits: 10,
     features: [
       '10 resume scans',
@@ -38,7 +38,7 @@ export const PRODUCTS = {
     name: 'Basic Keyword Fix',
     description: 'Quick keyword optimization suggestions',
     priceUsd: 3,
-    priceId: 'price_1SgD9THBplUUV1CgSf9yWydz',
+    priceId: 'price_1Sgv2hHBplUUV1Cgjdqw9kHi',
     features: [
       'Missing keyword list',
       'Top 10 keywords to add',
@@ -50,7 +50,7 @@ export const PRODUCTS = {
     name: 'Cover Letter Generator',
     description: 'AI-generated cover letter tailored to your resume and job',
     priceUsd: 4,
-    priceId: 'price_1SgD8oHBplUUV1Cgpbhi1ujj',
+    priceId: 'price_1Sgv2tHBplUUV1CgoXHF6GjD',
     features: [
       'Personalized to job description',
       'Matches your resume style',
@@ -63,7 +63,7 @@ export const PRODUCTS = {
     name: 'Premium Resume Package',
     description: 'Full analysis + AI-rewritten resume + tailored cover letter',
     priceUsd: 12,
-    priceId: 'price_1SgD7FHBplUUV1CgMvN7VSxb',
+    priceId: 'price_1Sgv32HBplUUV1CgAdw6PnV3',
     features: [
       'Everything in Full Analysis',
       'AI-rewritten resume (ATS-optimized)',
@@ -79,7 +79,7 @@ export const PRODUCTS = {
     name: 'ATS Defense Complete',
     description: 'Full ATS optimization with multi-role targeting & 30-day guarantee',
     priceUsd: 15,
-    priceId: 'price_1SgujzHBplUUV1Cg8XRTr5Ks',
+    priceId: 'price_1Sgv3LHBplUUV1CgpCF5pDLO',
     features: [
       'ATS compatibility audit (before/after score)',
       'Keyword gap analysis & optimization',
@@ -96,7 +96,7 @@ export const PRODUCTS = {
     name: 'Career Bundle (75 Analyses)',
     description: '75 full resume analyses - Best value for job seekers',
     priceUsd: 20,
-    priceId: 'price_1SgD9rHBplUUV1CgtvpDTTEv',
+    priceId: 'price_1Sgv3rHBplUUV1CgC3N97S71',
     credits: 75,
     features: [
       '75 full resume analyses',

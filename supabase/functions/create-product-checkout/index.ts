@@ -10,33 +10,33 @@ const corsHeaders = {
 // Product configuration with price IDs (keys match frontend ProductId keys)
 const PRODUCTS: Record<string, { priceId: string; name: string; productType: string; credits?: number }> = {
   basicKeywordFix: {
-    priceId: "price_1SgD9THBplUUV1CgSf9yWydz",
+    priceId: "price_1Sgv2hHBplUUV1Cgjdqw9kHi",
     name: "Basic Keyword Fix",
     productType: "basic_keyword_fix"
   },
   coverLetter: {
-    priceId: "price_1SgD8oHBplUUV1Cgpbhi1ujj",
+    priceId: "price_1Sgv2tHBplUUV1CgoXHF6GjD",
     name: "Cover Letter Generator",
     productType: "cover_letter"
   },
   premiumPackage: {
-    priceId: "price_1SgD7FHBplUUV1CgMvN7VSxb",
+    priceId: "price_1Sgv32HBplUUV1CgAdw6PnV3",
     name: "Premium Resume Package",
     productType: "premium_package"
   },
   atsDefense: {
-    priceId: "price_1SgujzHBplUUV1Cg8XRTr5Ks",
+    priceId: "price_1Sgv3LHBplUUV1CgpCF5pDLO",
     name: "ATS Defense Complete",
     productType: "ats_defense"
   },
   careerBundle: {
-    priceId: "price_1SgD9rHBplUUV1CgtvpDTTEv",
+    priceId: "price_1Sgv3rHBplUUV1CgC3N97S71",
     name: "Career Bundle (75 Analyses)",
     productType: "career_bundle",
     credits: 75
   },
   scanPack: {
-    priceId: "price_1SfqT8HBplUUV1Cg3McLmgI7",
+    priceId: "price_1Sgv2THBplUUV1CgntHsXlDK",
     name: "Scan Pack (10 Credits)",
     productType: "scan_pack",
     credits: 10
