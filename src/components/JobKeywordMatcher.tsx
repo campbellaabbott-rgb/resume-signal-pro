@@ -43,24 +43,93 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
   
   // Common keyword patterns with their categories
   const patterns: { pattern: RegExp; category: KeywordMatch["category"]; importance: "critical" | "important" | "nice_to_have" }[] = [
-    // Technical skills (critical)
-    { pattern: /\b(python|java|javascript|typescript|react|node\.?js|sql|aws|azure|gcp|docker|kubernetes|git)\b/gi, category: "hard_skill", importance: "critical" },
-    { pattern: /\b(machine learning|deep learning|data science|artificial intelligence|ai|ml|nlp)\b/gi, category: "hard_skill", importance: "critical" },
-    { pattern: /\b(agile|scrum|kanban|devops|ci\/cd|jira|confluence)\b/gi, category: "methodology", importance: "important" },
+    // ===== TECHNOLOGY & SOFTWARE =====
+    // Programming languages & frameworks (critical)
+    { pattern: /\b(python|java|javascript|typescript|react|angular|vue|node\.?js|go|golang|rust|scala|kotlin|swift|ruby|php|c\+\+|c#|\.net)\b/gi, category: "hard_skill", importance: "critical" },
+    // Data & AI
+    { pattern: /\b(machine learning|deep learning|data science|artificial intelligence|ai|ml|nlp|computer vision|tensorflow|pytorch|keras|scikit-learn)\b/gi, category: "hard_skill", importance: "critical" },
+    // Cloud & Infrastructure
+    { pattern: /\b(aws|azure|gcp|google cloud|docker|kubernetes|k8s|terraform|ansible|jenkins|ci\/cd|devops|microservices|serverless|lambda)\b/gi, category: "hard_skill", importance: "critical" },
+    // Databases
+    { pattern: /\b(sql|mysql|postgresql|mongodb|redis|elasticsearch|dynamodb|cassandra|oracle database|sql server|nosql|graphql)\b/gi, category: "hard_skill", importance: "important" },
+    // Tech methodologies
+    { pattern: /\b(agile|scrum|kanban|devops|ci\/cd|jira|confluence|git|github|gitlab|bitbucket)\b/gi, category: "methodology", importance: "important" },
     
-    // Tools
-    { pattern: /\b(excel|powerpoint|tableau|power bi|salesforce|hubspot|figma|sketch|adobe)\b/gi, category: "tool", importance: "important" },
-    { pattern: /\b(sap|oracle|workday|servicenow|zendesk)\b/gi, category: "tool", importance: "important" },
+    // ===== HEALTHCARE & MEDICAL =====
+    // Clinical skills (critical)
+    { pattern: /\b(patient care|clinical assessment|medical records|vital signs|medication administration|wound care|infection control|patient safety)\b/gi, category: "hard_skill", importance: "critical" },
+    // Healthcare systems & compliance
+    { pattern: /\b(hipaa|ehr|emr|epic|cerner|meditech|athenahealth|allscripts|icd-10|cpt codes|medical coding|medical billing)\b/gi, category: "hard_skill", importance: "critical" },
+    // Medical specialties
+    { pattern: /\b(cardiology|oncology|pediatrics|geriatrics|orthopedics|neurology|radiology|emergency medicine|icu|or|operating room|nicu|picu)\b/gi, category: "industry_term", importance: "important" },
+    // Healthcare certifications
+    { pattern: /\b(rn|lpn|cna|np|pa-c|md|do|pharmd|bls|acls|pals|tncc|ccrn|cnor|cen|cms|jcaho|joint commission)\b/gi, category: "certification", importance: "critical" },
+    // Healthcare soft skills
+    { pattern: /\b(bedside manner|patient education|care coordination|discharge planning|case management|interdisciplinary|multidisciplinary)\b/gi, category: "soft_skill", importance: "important" },
+    // Pharma & biotech
+    { pattern: /\b(clinical trials|fda|gcp|gmp|regulatory affairs|pharmacovigilance|drug safety|clinical research|cro|irb|protocol development)\b/gi, category: "hard_skill", importance: "critical" },
     
-    // Certifications
-    { pattern: /\b(pmp|cpa|cfa|aws certified|azure certified|cisco|ccna|ccnp|cissp|comptia|six sigma|lean)\b/gi, category: "certification", importance: "important" },
+    // ===== FINANCE & BANKING =====
+    // Financial skills (critical)
+    { pattern: /\b(financial analysis|financial modeling|valuation|dcf|lbo|m&a|mergers and acquisitions|due diligence|investment banking|equity research)\b/gi, category: "hard_skill", importance: "critical" },
+    // Accounting
+    { pattern: /\b(gaap|ifrs|financial reporting|accounts payable|accounts receivable|general ledger|reconciliation|month-end close|year-end close|audit)\b/gi, category: "hard_skill", importance: "critical" },
+    // Banking & trading
+    { pattern: /\b(credit analysis|risk assessment|underwriting|portfolio management|asset management|wealth management|private equity|hedge fund|trading|derivatives|fixed income|equities)\b/gi, category: "hard_skill", importance: "critical" },
+    // Financial tools
+    { pattern: /\b(bloomberg|reuters|factset|capital iq|pitchbook|morningstar|quickbooks|xero|netsuite|sap|hyperion)\b/gi, category: "tool", importance: "important" },
+    // Finance certifications
+    { pattern: /\b(cpa|cfa|cma|cfp|caia|frm|series 7|series 63|series 65|series 66|finra|chartered accountant)\b/gi, category: "certification", importance: "critical" },
+    // Compliance & regulation
+    { pattern: /\b(sox|sarbanes-oxley|aml|anti-money laundering|kyc|know your customer|basel|dodd-frank|sec|occ|fdic|finra compliance)\b/gi, category: "hard_skill", importance: "important" },
+    // Insurance
+    { pattern: /\b(underwriting|claims|actuarial|reinsurance|policy administration|loss ratio|combined ratio|premium|deductible|liability|workers comp)\b/gi, category: "industry_term", importance: "important" },
     
-    // Soft skills
-    { pattern: /\b(leadership|communication|problem.?solving|analytical|strategic|collaborative|teamwork)\b/gi, category: "soft_skill", importance: "nice_to_have" },
-    { pattern: /\b(stakeholder management|cross.?functional|project management|time management)\b/gi, category: "soft_skill", importance: "important" },
+    // ===== LEGAL =====
+    // Legal skills (critical)
+    { pattern: /\b(legal research|legal writing|contract drafting|contract review|due diligence|litigation|discovery|depositions|trial preparation|motions)\b/gi, category: "hard_skill", importance: "critical" },
+    // Practice areas
+    { pattern: /\b(corporate law|securities|intellectual property|ip|patent|trademark|copyright|employment law|labor law|real estate law|tax law|bankruptcy|m&a|mergers)\b/gi, category: "industry_term", importance: "important" },
+    // Legal tech & tools
+    { pattern: /\b(westlaw|lexisnexis|lexis nexis|bloomberg law|clio|relativity|concordance|document review|e-discovery|ediscovery)\b/gi, category: "tool", importance: "important" },
+    // Legal certifications & credentials
+    { pattern: /\b(jd|juris doctor|bar admission|bar certified|paralegal certified|cp|rp|aba|state bar|law license)\b/gi, category: "certification", importance: "critical" },
+    // Compliance & regulatory
+    { pattern: /\b(compliance|regulatory|gdpr|ccpa|privacy law|data protection|corporate governance|risk management|internal controls|ethics)\b/gi, category: "hard_skill", importance: "important" },
+    // Legal soft skills
+    { pattern: /\b(client counseling|negotiation|mediation|arbitration|oral advocacy|legal analysis|case management|matter management)\b/gi, category: "soft_skill", importance: "important" },
     
-    // Industry terms
-    { pattern: /\b(b2b|b2c|saas|e-commerce|fintech|healthtech|edtech|roi|kpi|okr)\b/gi, category: "industry_term", importance: "nice_to_have" },
+    // ===== MARKETING & SALES =====
+    // Digital marketing
+    { pattern: /\b(seo|sem|ppc|google ads|facebook ads|social media marketing|content marketing|email marketing|marketing automation|hubspot|marketo|mailchimp)\b/gi, category: "hard_skill", importance: "critical" },
+    // Analytics
+    { pattern: /\b(google analytics|adobe analytics|mixpanel|amplitude|a\/b testing|conversion optimization|attribution|funnel analysis|cohort analysis)\b/gi, category: "hard_skill", importance: "important" },
+    // Sales
+    { pattern: /\b(salesforce|crm|pipeline management|lead generation|cold calling|prospecting|closing|negotiation|quota|revenue|arpu|ltv|cac)\b/gi, category: "hard_skill", importance: "critical" },
+    
+    // ===== HUMAN RESOURCES =====
+    { pattern: /\b(talent acquisition|recruiting|onboarding|employee relations|performance management|compensation|benefits|hris|workday|adp|bamboohr|greenhouse|lever)\b/gi, category: "hard_skill", importance: "important" },
+    { pattern: /\b(phr|sphr|shrm-cp|shrm-scp|diversity|inclusion|dei|employee engagement|retention|succession planning|workforce planning)\b/gi, category: "certification", importance: "important" },
+    
+    // ===== OPERATIONS & SUPPLY CHAIN =====
+    { pattern: /\b(supply chain|logistics|procurement|inventory management|warehouse|distribution|erp|mrp|lean manufacturing|six sigma|kaizen|tps|just-in-time|jit)\b/gi, category: "hard_skill", importance: "critical" },
+    { pattern: /\b(apics|cpim|cscp|cltd|pmp|capm|lean six sigma|green belt|black belt|master black belt)\b/gi, category: "certification", importance: "important" },
+    
+    // ===== GENERAL TOOLS =====
+    { pattern: /\b(excel|powerpoint|tableau|power bi|looker|figma|sketch|adobe|photoshop|illustrator|indesign|after effects)\b/gi, category: "tool", importance: "important" },
+    { pattern: /\b(sap|oracle|workday|servicenow|zendesk|slack|teams|asana|monday|trello|notion)\b/gi, category: "tool", importance: "important" },
+    
+    // ===== GENERAL CERTIFICATIONS =====
+    { pattern: /\b(pmp|prince2|aws certified|azure certified|google certified|cisco|ccna|ccnp|cissp|comptia|itil)\b/gi, category: "certification", importance: "important" },
+    
+    // ===== SOFT SKILLS =====
+    { pattern: /\b(leadership|communication|problem.?solving|analytical|strategic|collaborative|teamwork|mentoring|coaching)\b/gi, category: "soft_skill", importance: "nice_to_have" },
+    { pattern: /\b(stakeholder management|cross.?functional|project management|time management|prioritization|decision.?making|critical thinking)\b/gi, category: "soft_skill", importance: "important" },
+    { pattern: /\b(presentation skills|public speaking|interpersonal|relationship building|client.?facing|customer service)\b/gi, category: "soft_skill", importance: "nice_to_have" },
+    
+    // ===== INDUSTRY TERMS =====
+    { pattern: /\b(b2b|b2c|saas|e-commerce|fintech|healthtech|edtech|insurtech|regtech|proptech|martech|adtech)\b/gi, category: "industry_term", importance: "nice_to_have" },
+    { pattern: /\b(roi|kpi|okr|nps|csat|churn|arr|mrr|gross margin|ebitda|p&l|budget|forecast)\b/gi, category: "industry_term", importance: "important" },
   ];
   
   const extracted: Map<string, { keyword: string; context: string; importance: "critical" | "important" | "nice_to_have"; category: KeywordMatch["category"] }> = new Map();
