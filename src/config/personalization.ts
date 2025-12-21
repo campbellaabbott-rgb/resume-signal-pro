@@ -711,6 +711,166 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       metricsRate: 85
     }
   },
+  devops_engineer: {
+    name: 'DevOps Engineer',
+    aliases: ['devops', 'platform engineer', 'infrastructure engineer', 'build engineer', 'release engineer', 'cloud engineer', 'devops specialist', 'ci/cd engineer'],
+    keySkills: ['CI/CD Pipelines', 'Infrastructure as Code', 'Kubernetes', 'Docker', 'Terraform', 'AWS/GCP/Azure', 'Monitoring & Observability', 'Scripting (Bash/Python)'],
+    mustHaveKeywords: ['CI/CD', 'Kubernetes', 'Docker', 'Terraform', 'AWS', 'automation', 'infrastructure', 'deployment', 'pipeline', 'containerization'],
+    resumeTips: [
+      'Quantify deployment frequency improvements',
+      'Show infrastructure cost optimization results',
+      'Include uptime and reliability metrics',
+      'Highlight automation impact on team velocity'
+    ],
+    bulletExamples: [
+      { weak: 'Set up CI/CD pipelines', strong: 'Built end-to-end CI/CD pipelines reducing deployment time from 4 hours to 15 minutes, enabling 50+ daily deployments' },
+      { weak: 'Managed cloud infrastructure', strong: 'Architected multi-region AWS infrastructure handling 10M+ requests/day with 99.99% uptime and 35% cost reduction' }
+    ],
+    keyMetrics: ['Deployment frequency', 'Lead time for changes', 'MTTR', 'Uptime %', 'Cost savings', 'Infrastructure scale'],
+    commonMistakes: [
+      'Not quantifying automation impact',
+      'Missing specific tool versions and configurations',
+      'Vague "managed infrastructure" without scale',
+      'Not showing business impact of reliability improvements'
+    ],
+    interviewTopics: ['System design for reliability', 'Kubernetes architecture', 'CI/CD best practices', 'Incident management', 'Infrastructure as Code'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'Experience', 'Certifications', 'Projects', 'Education'],
+      differentiators: ['Cloud certifications (AWS/GCP)', 'Open source contributions', 'Cost optimization results', 'Uptime achievements'],
+      avgBulletCount: 4,
+      certificationRate: 72,
+      portfolioRate: 45,
+      metricsRate: 82
+    }
+  },
+  site_reliability_engineer: {
+    name: 'Site Reliability Engineer',
+    aliases: ['sre', 'reliability engineer', 'production engineer', 'systems engineer', 'platform reliability', 'infrastructure sre', 'senior sre'],
+    keySkills: ['Incident Management', 'SLOs/SLIs/SLAs', 'Monitoring & Alerting', 'Capacity Planning', 'Automation', 'Distributed Systems', 'Performance Tuning', 'Chaos Engineering'],
+    mustHaveKeywords: ['reliability', 'SLO', 'incident', 'on-call', 'monitoring', 'automation', 'scalability', 'observability', 'toil reduction'],
+    resumeTips: [
+      'Lead with reliability metrics: uptime, MTTR, SLO achievement',
+      'Quantify toil reduction and automation wins',
+      'Show incident management and postmortem experience',
+      'Highlight scalability achievements'
+    ],
+    bulletExamples: [
+      { weak: 'Handled production incidents', strong: 'Reduced MTTR from 45 minutes to 8 minutes through automated runbooks and improved observability, handling 200+ incidents/year' },
+      { weak: 'Improved system reliability', strong: 'Achieved 99.99% uptime (up from 99.5%) for payment processing system serving 5M daily transactions' }
+    ],
+    keyMetrics: ['Uptime/availability %', 'MTTR/MTTD', 'SLO achievement', 'Toil reduction %', 'Incident count reduction', 'On-call burden'],
+    commonMistakes: [
+      'Not including SLO/SLA metrics',
+      'Missing incident volume and resolution stats',
+      'Vague reliability improvements without numbers',
+      'Not showing proactive vs reactive work balance'
+    ],
+    interviewTopics: ['Distributed systems', 'Incident response', 'SLO design', 'Capacity planning', 'Automation strategies', 'On-call best practices'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'Experience', 'Certifications', 'On-Call Experience', 'Education'],
+      differentiators: ['SLO achievement records', 'Chaos engineering experience', 'Toil automation projects', 'Post-incident improvement initiatives'],
+      avgBulletCount: 4,
+      certificationRate: 60,
+      portfolioRate: 35,
+      metricsRate: 90
+    }
+  },
+  mobile_developer: {
+    name: 'Mobile Developer',
+    aliases: ['ios developer', 'android developer', 'mobile engineer', 'react native developer', 'flutter developer', 'mobile app developer', 'swift developer', 'kotlin developer'],
+    keySkills: ['iOS/Swift', 'Android/Kotlin', 'React Native', 'Flutter', 'Mobile UI/UX', 'App Store Optimization', 'Mobile Testing', 'Performance Optimization'],
+    mustHaveKeywords: ['iOS', 'Android', 'Swift', 'Kotlin', 'mobile', 'app', 'UI', 'performance', 'user experience', 'App Store'],
+    resumeTips: [
+      'Include app download counts and ratings',
+      'Show performance optimization results (app size, load time)',
+      'Highlight App Store/Play Store achievements',
+      'Mention cross-platform experience if applicable'
+    ],
+    bulletExamples: [
+      { weak: 'Developed mobile applications', strong: 'Built iOS app with 500K+ downloads and 4.8★ rating, reducing crash rate from 2% to 0.1%' },
+      { weak: 'Worked on Android features', strong: 'Led Android rewrite reducing app size by 40% and cold start time from 4s to 1.2s, improving retention by 25%' }
+    ],
+    keyMetrics: ['Downloads/installs', 'App Store rating', 'Crash-free rate', 'App size reduction', 'Load time improvement', 'User retention'],
+    commonMistakes: [
+      'Not including download numbers or ratings',
+      'Missing performance metrics (crash rate, load time)',
+      'Vague feature descriptions without user impact',
+      'Not showing App Store optimization experience'
+    ],
+    interviewTopics: ['Mobile architecture patterns (MVVM, MVI)', 'Platform-specific APIs', 'Performance optimization', 'App lifecycle', 'Testing strategies'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'Apps Shipped', 'Experience', 'Education', 'Certifications'],
+      differentiators: ['Published apps with high ratings', 'Performance optimization wins', 'Cross-platform experience', 'App Store featured achievements'],
+      avgBulletCount: 4,
+      certificationRate: 35,
+      portfolioRate: 85,
+      metricsRate: 80
+    }
+  },
+  security_engineer: {
+    name: 'Security Engineer',
+    aliases: ['cybersecurity engineer', 'infosec engineer', 'application security', 'appsec', 'security analyst', 'penetration tester', 'security architect', 'devsecops'],
+    keySkills: ['Vulnerability Assessment', 'Penetration Testing', 'SIEM', 'Incident Response', 'Secure Code Review', 'Threat Modeling', 'Compliance (SOC2, ISO)', 'Cloud Security'],
+    mustHaveKeywords: ['security', 'vulnerability', 'penetration', 'compliance', 'threat', 'incident', 'SIEM', 'encryption', 'authentication'],
+    resumeTips: [
+      'Quantify vulnerabilities found and remediated',
+      'Show compliance achievements (SOC2, PCI, HIPAA)',
+      'Highlight incident response experience',
+      'Include security certifications prominently'
+    ],
+    bulletExamples: [
+      { weak: 'Performed security assessments', strong: 'Identified and remediated 150+ vulnerabilities across 20 applications, achieving zero critical findings in SOC2 audit' },
+      { weak: 'Managed security incidents', strong: 'Led incident response team handling 50+ security events, reducing mean time to containment from 4 hours to 30 minutes' }
+    ],
+    keyMetrics: ['Vulnerabilities found/fixed', 'Time to remediation', 'Compliance audit results', 'Incident response time', 'False positive reduction'],
+    commonMistakes: [
+      'Not quantifying security improvements',
+      'Missing specific tools and methodologies used',
+      'Vague "improved security" claims',
+      'Not highlighting compliance and audit experience'
+    ],
+    interviewTopics: ['Threat modeling', 'Common vulnerabilities (OWASP)', 'Incident response', 'Security architecture', 'Compliance frameworks'],
+    topResumeElements: {
+      sections: ['Certifications', 'Technical Skills', 'Experience', 'Security Projects', 'Education'],
+      differentiators: ['CISSP/CEH/OSCP certifications', 'Bug bounty achievements', 'Compliance audit leadership', 'Incident response metrics'],
+      avgBulletCount: 4,
+      certificationRate: 85,
+      portfolioRate: 25,
+      metricsRate: 78
+    }
+  },
+  qa_engineer: {
+    name: 'QA Engineer',
+    aliases: ['quality assurance', 'test engineer', 'sdet', 'automation engineer', 'qa analyst', 'quality engineer', 'test automation engineer', 'software tester'],
+    keySkills: ['Test Automation', 'Selenium/Cypress', 'API Testing', 'Performance Testing', 'Test Planning', 'CI/CD Integration', 'Bug Tracking', 'Manual Testing'],
+    mustHaveKeywords: ['testing', 'automation', 'quality', 'bugs', 'test cases', 'regression', 'CI/CD', 'Selenium', 'coverage'],
+    resumeTips: [
+      'Quantify test coverage and automation rates',
+      'Show bug detection improvements',
+      'Highlight CI/CD integration experience',
+      'Include specific testing frameworks and tools'
+    ],
+    bulletExamples: [
+      { weak: 'Wrote automated tests', strong: 'Built test automation framework achieving 85% code coverage, reducing regression testing time from 2 days to 4 hours' },
+      { weak: 'Found and reported bugs', strong: 'Identified 200+ critical bugs pre-release, reducing production incidents by 60% and customer-reported issues by 45%' }
+    ],
+    keyMetrics: ['Test coverage %', 'Automation rate', 'Bugs found pre-release', 'Regression time reduction', 'Production incident reduction'],
+    commonMistakes: [
+      'Not quantifying test coverage improvements',
+      'Missing automation framework experience',
+      'Vague "tested features" without metrics',
+      'Not showing CI/CD integration experience'
+    ],
+    interviewTopics: ['Test strategy design', 'Automation frameworks', 'API testing', 'Performance testing', 'Bug prioritization'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'Experience', 'Certifications', 'Tools & Frameworks', 'Education'],
+      differentiators: ['High automation coverage achievements', 'Custom framework development', 'Performance testing expertise', 'Shift-left testing initiatives'],
+      avgBulletCount: 4,
+      certificationRate: 50,
+      portfolioRate: 40,
+      metricsRate: 82
+    }
+  },
   data_scientist: {
     name: 'Data Scientist',
     aliases: ['data analyst', 'ml engineer', 'machine learning engineer', 'ai engineer', 'research scientist', 'applied scientist', 'analytics engineer'],
@@ -1157,70 +1317,6 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       certificationRate: 45,
       portfolioRate: 15,
       metricsRate: 75
-    }
-  },
-  devops_engineer: {
-    name: 'DevOps Engineer',
-    aliases: ['site reliability engineer', 'sre', 'platform engineer', 'infrastructure engineer', 'cloud engineer', 'release engineer', 'build engineer', 'systems engineer'],
-    keySkills: ['CI/CD', 'Kubernetes', 'Docker', 'AWS/Azure/GCP', 'Terraform', 'Jenkins', 'Monitoring', 'Linux', 'Scripting', 'Infrastructure as Code'],
-    mustHaveKeywords: ['CI/CD', 'kubernetes', 'docker', 'cloud', 'automation', 'infrastructure', 'deployment', 'monitoring', 'terraform'],
-    resumeTips: [
-      'Quantify reliability improvements (uptime, MTTR, deployment frequency)',
-      'List specific cloud platforms and tools with versions',
-      'Show infrastructure scale (servers, containers, requests)',
-      'Highlight automation and efficiency gains'
-    ],
-    bulletExamples: [
-      { weak: 'Managed CI/CD pipelines', strong: 'Built CI/CD pipelines reducing deployment time from 4 hours to 15 minutes, enabling 50+ daily deployments across 12 microservices' },
-      { weak: 'Worked with Kubernetes', strong: 'Migrated 20+ services to Kubernetes, achieving 99.99% uptime and reducing infrastructure costs by 35%' }
-    ],
-    keyMetrics: ['Uptime %', 'Deployment frequency', 'MTTR reduction', 'Infrastructure cost savings', 'Automation coverage %'],
-    commonMistakes: [
-      'Not quantifying reliability metrics (uptime, MTTR)',
-      'Listing tools without showing outcomes',
-      'Missing scale (servers, containers, requests/sec)',
-      'Not showing cost optimization achievements'
-    ],
-    interviewTopics: ['System design', 'Incident response', 'CI/CD architecture', 'Cloud cost optimization', 'Monitoring and alerting strategies'],
-    topResumeElements: {
-      sections: ['Technical Skills', 'Experience', 'Certifications', 'Projects', 'Education'],
-      differentiators: ['Cloud certifications (AWS/GCP/Azure)', 'Uptime achievements', 'Automation metrics', 'Cost optimization results'],
-      avgBulletCount: 4,
-      certificationRate: 75,
-      portfolioRate: 45,
-      metricsRate: 90
-    }
-  },
-  qa_engineer: {
-    name: 'QA Engineer',
-    aliases: ['quality assurance engineer', 'test engineer', 'sdet', 'software test engineer', 'automation engineer', 'quality engineer', 'test analyst', 'qa analyst'],
-    keySkills: ['Test Automation', 'Selenium', 'API Testing', 'Performance Testing', 'Test Planning', 'Bug Tracking', 'Agile Testing', 'CI/CD Integration'],
-    mustHaveKeywords: ['test automation', 'quality assurance', 'testing', 'bugs', 'selenium', 'api testing', 'test cases', 'regression'],
-    resumeTips: [
-      'Quantify test coverage and bug detection rates',
-      'Show automation framework development',
-      'Highlight defect prevention metrics',
-      'List specific tools (Selenium, Cypress, Postman, JMeter)'
-    ],
-    bulletExamples: [
-      { weak: 'Wrote automated tests', strong: 'Built Selenium automation framework achieving 85% test coverage, reducing regression testing time from 3 days to 4 hours' },
-      { weak: 'Found bugs in software', strong: 'Identified 500+ defects pre-release with 98% accuracy, reducing production bugs by 60% YoY' }
-    ],
-    keyMetrics: ['Test coverage %', 'Bugs found pre-release', 'Regression time reduction', 'Automation ROI', 'Production bug reduction %'],
-    commonMistakes: [
-      'Not quantifying test coverage or bug detection',
-      'Missing automation framework details',
-      'Vague "tested software" without metrics',
-      'Not showing CI/CD integration experience'
-    ],
-    interviewTopics: ['Test strategy design', 'Automation framework architecture', 'Bug prioritization', 'Performance testing approach', 'Shift-left testing'],
-    topResumeElements: {
-      sections: ['Summary', 'Experience', 'Technical Skills', 'Certifications', 'Education'],
-      differentiators: ['Test automation coverage metrics', 'Framework development', 'ISTQB certification', 'Bug prevention achievements'],
-      avgBulletCount: 4,
-      certificationRate: 50,
-      portfolioRate: 30,
-      metricsRate: 82
     }
   },
   recruiter: {
