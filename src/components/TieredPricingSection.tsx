@@ -4,6 +4,7 @@ import { Check, Crown, Sparkles, FileText, ArrowRight, Loader2 } from "lucide-re
 import { PRODUCTS, ProductId } from "@/config/products";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/hooks/use-currency";
 
 interface TieredPricingSectionProps {
   onFullAnalysisCheckout?: () => void;
@@ -24,6 +25,7 @@ const tierIcons: Record<string, React.ElementType> = {
 
 export function TieredPricingSection({ onFullAnalysisCheckout, sessionId }: TieredPricingSectionProps) {
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
+  const { formatPrice, isLocalCurrency } = useCurrency();
 
   const handleSelect = async (productId: ProductId) => {
     const product = PRODUCTS[productId];
@@ -82,9 +84,14 @@ export function TieredPricingSection({ onFullAnalysisCheckout, sessionId }: Tier
               </div>
 
               {/* Price */}
-              <div className="flex items-baseline gap-1 mb-3">
-                <span className="text-2xl font-bold">${product.priceUsd}</span>
-                <span className="text-xs text-muted-foreground">one-time</span>
+              <div className="mb-3">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold">${product.priceUsd}</span>
+                  <span className="text-xs text-muted-foreground">one-time</span>
+                </div>
+                {isLocalCurrency && (
+                  <p className="text-xs text-muted-foreground">≈ {formatPrice(product.priceUsd)}</p>
+                )}
               </div>
 
               {/* Features (first 3) */}
