@@ -116,6 +116,25 @@ const CURRENCY_MAP: Record<string, CurrencyInfo> = {
   BZ: { code: "BZD", symbol: "BZ$", rate: 2.02 },     // Belize
   GY: { code: "GYD", symbol: "G$", rate: 209 },       // Guyana
   SR: { code: "SRD", symbol: "SRD", rate: 36.50 },    // Suriname
+  // Eastern European currencies
+  UA: { code: "UAH", symbol: "₴", rate: 41.50 },      // Ukraine
+  CZ: { code: "CZK", symbol: "Kč", rate: 23.50 },     // Czech Republic
+  HU: { code: "HUF", symbol: "Ft", rate: 390 },       // Hungary
+  BG: { code: "BGN", symbol: "лв", rate: 1.80 },      // Bulgaria
+  HR: { code: "EUR", symbol: "€", rate: 0.92 },       // Croatia (joined Eurozone 2023)
+  RS: { code: "RSD", symbol: "дин.", rate: 108 },     // Serbia
+  BY: { code: "BYN", symbol: "Br", rate: 3.27 },      // Belarus
+  MD: { code: "MDL", symbol: "L", rate: 17.80 },      // Moldova
+  MK: { code: "MKD", symbol: "ден", rate: 57 },       // North Macedonia
+  AL: { code: "ALL", symbol: "L", rate: 93 },         // Albania
+  BA: { code: "BAM", symbol: "KM", rate: 1.80 },      // Bosnia and Herzegovina
+  ME: { code: "EUR", symbol: "€", rate: 0.92 },       // Montenegro (uses EUR)
+  XK: { code: "EUR", symbol: "€", rate: 0.92 },       // Kosovo (uses EUR)
+  SI: { code: "EUR", symbol: "€", rate: 0.92 },       // Slovenia
+  SK: { code: "EUR", symbol: "€", rate: 0.92 },       // Slovakia
+  EE: { code: "EUR", symbol: "€", rate: 0.92 },       // Estonia
+  LV: { code: "EUR", symbol: "€", rate: 0.92 },       // Latvia
+  LT: { code: "EUR", symbol: "€", rate: 0.92 },       // Lithuania
 };
 
 // Map timezone to country code (approximate)
@@ -232,6 +251,24 @@ function getCountryFromTimezone(): string {
       "Europe/Moscow": "RU",
       "America/Montevideo": "UY",
       "Europe/Bucharest": "RO",
+      "Europe/Kiev": "UA",
+      "Europe/Kyiv": "UA",
+      "Europe/Prague": "CZ",
+      "Europe/Budapest": "HU",
+      "Europe/Sofia": "BG",
+      "Europe/Zagreb": "HR",
+      "Europe/Belgrade": "RS",
+      "Europe/Minsk": "BY",
+      "Europe/Chisinau": "MD",
+      "Europe/Skopje": "MK",
+      "Europe/Tirane": "AL",
+      "Europe/Sarajevo": "BA",
+      "Europe/Podgorica": "ME",
+      "Europe/Ljubljana": "SI",
+      "Europe/Bratislava": "SK",
+      "Europe/Tallinn": "EE",
+      "Europe/Riga": "LV",
+      "Europe/Vilnius": "LT",
     };
     return tzToCountry[timezone] || "US";
   } catch {
