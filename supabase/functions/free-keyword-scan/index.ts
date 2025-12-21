@@ -365,6 +365,13 @@ ANALYSIS RULES:
 23. Quick Wins: 3 specific, actionable fixes they can make in under 5 minutes each
 24. Sample Rewrite: Take their WEAKEST bullet point and rewrite it with metrics/impact
 25. ATS System Compatibility: Analyze compatibility with major ATS platforms (Workday, Greenhouse, Lever, Taleo, iCIMS, BambooHR). Rate which systems will parse it best/worst.
+26. Career Situation: Detect if the person is in a special career situation that requires tailored advice:
+    - "career_changer": Switching industries or roles (look for education in different field, recent certifications, transferable skills emphasis)
+    - "returning_to_workforce": Gap of 2+ years recently, may mention family, sabbatical, health, or caregiving
+    - "military_transition": Military experience, veteran status, military terminology, transitioning from armed forces
+    - "recent_grad": 0-2 years experience, recent graduation date, internships, entry-level focus
+    - "standard": None of the above special situations apply
+    Provide tailored advice specific to their situation.
 ${hasJobDescription ? `
 JOB MATCHING ANALYSIS (REQUIRED when job description is provided):
 26. Job Match Score (0-100): How well the resume matches the specific job requirements
@@ -663,6 +670,44 @@ ${resumeText.substring(0, 15000)}
                   },
                   required: ["bestSystems", "worstSystems", "overallRating", "topIssue"]
                 },
+                careerSituation: {
+                  type: "object",
+                  properties: {
+                    situation: { 
+                      type: "string", 
+                      enum: ["career_changer", "returning_to_workforce", "military_transition", "recent_grad", "standard"],
+                      description: "Detected career situation" 
+                    },
+                    confidence: { 
+                      type: "string", 
+                      enum: ["high", "medium", "low"],
+                      description: "How confident the detection is" 
+                    },
+                    indicators: {
+                      type: "array",
+                      items: { type: "string" },
+                      description: "2-3 specific indicators found in the resume that led to this detection"
+                    },
+                    tailoredAdvice: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          tip: { type: "string", description: "Specific actionable advice for their situation (under 20 words)" },
+                          priority: { type: "string", enum: ["critical", "important", "helpful"] },
+                          example: { type: "string", description: "Brief example or template if applicable (under 25 words)" }
+                        },
+                        required: ["tip", "priority"]
+                      },
+                      description: "3-4 tailored tips specific to their career situation"
+                    },
+                    situationSummary: { 
+                      type: "string", 
+                      description: "One sentence explaining their detected situation and main challenge (under 25 words)" 
+                    }
+                  },
+                  required: ["situation", "confidence", "indicators", "tailoredAdvice", "situationSummary"]
+                },
                 // Job matching fields (only returned when job description is provided)
                 jobMatchScore: { type: "number", description: "How well the resume matches the job (0-100). Only provide if job description given." },
                 jobMatchGrade: { type: "string", enum: ["A", "B", "C", "D"], description: "Job match grade. Only provide if job description given." },
@@ -720,7 +765,7 @@ ${resumeText.substring(0, 15000)}
                 "redFlags", "keywords", "readabilityScore", "bulletImpactScore", 
                 "keywordDensity", "improvementPotential", "topSkipReasons",
                 "powerWords", "weakPhrases", "timelineAnalysis", "industryBenchmark",
-                "quickWins", "sampleRewrite", "atsSystemCompatibility"
+                "quickWins", "sampleRewrite", "atsSystemCompatibility", "careerSituation"
               ]
             }
           }

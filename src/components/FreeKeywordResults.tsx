@@ -466,6 +466,20 @@ interface CompetitiveAssessment {
   weaknessVsField: string;
 }
 
+interface CareerSituationAdvice {
+  tip: string;
+  priority: "critical" | "important" | "helpful";
+  example?: string;
+}
+
+interface CareerSituation {
+  situation: "career_changer" | "returning_to_workforce" | "military_transition" | "recent_grad" | "standard";
+  confidence: "high" | "medium" | "low";
+  indicators: string[];
+  tailoredAdvice: CareerSituationAdvice[];
+  situationSummary: string;
+}
+
 interface FreeKeywordResultsProps {
   industry: string;
   currentRole?: string;
@@ -509,6 +523,7 @@ interface FreeKeywordResultsProps {
   applicationRecommendation?: ApplicationRecommendation;
   skillGapActions?: SkillGapAction[];
   competitiveAssessment?: CompetitiveAssessment;
+  careerSituation?: CareerSituation;
   onGenerateTailoredResume?: () => void;
   isGeneratingTailored?: boolean;
   // Deep job keyword matching props
@@ -560,6 +575,7 @@ export function FreeKeywordResults({
   applicationRecommendation,
   skillGapActions = [],
   competitiveAssessment,
+  careerSituation,
   onGenerateTailoredResume,
   isGeneratingTailored,
   resumeText,
@@ -1732,6 +1748,82 @@ export function FreeKeywordResults({
           </div>
         </div>
       </div>
+
+      {/* Career Situation Detection */}
+      {careerSituation && careerSituation.situation !== "standard" && (
+        <div className="rounded-2xl bg-card border border-border p-5 mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            {careerSituation.situation === "career_changer" && <Briefcase className="w-4 h-4 text-primary" />}
+            {careerSituation.situation === "returning_to_workforce" && <User className="w-4 h-4 text-primary" />}
+            {careerSituation.situation === "military_transition" && <Target className="w-4 h-4 text-primary" />}
+            {careerSituation.situation === "recent_grad" && <Trophy className="w-4 h-4 text-primary" />}
+            <h4 className="font-semibold flex-1">
+              {careerSituation.situation === "career_changer" && "Career Changer Detected"}
+              {careerSituation.situation === "returning_to_workforce" && "Returning to Workforce"}
+              {careerSituation.situation === "military_transition" && "Military Transition"}
+              {careerSituation.situation === "recent_grad" && "Recent Graduate"}
+            </h4>
+            <span className={cn(
+              "text-xs px-2 py-0.5 rounded-full",
+              careerSituation.confidence === "high" ? "bg-success/20 text-success" :
+              careerSituation.confidence === "medium" ? "bg-warning/20 text-warning" : "bg-muted text-muted-foreground"
+            )}>
+              {careerSituation.confidence} confidence
+            </span>
+          </div>
+          
+          <p className="text-sm text-muted-foreground mb-4">
+            {careerSituation.situationSummary}
+          </p>
+
+          {/* Indicators */}
+          {careerSituation.indicators.length > 0 && (
+            <div className="mb-4">
+              <p className="text-xs font-medium text-muted-foreground mb-2">What we detected:</p>
+              <div className="flex flex-wrap gap-2">
+                {careerSituation.indicators.map((indicator, index) => (
+                  <span key={index} className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                    {indicator}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tailored Advice */}
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-foreground">Tailored advice for your situation:</p>
+            {careerSituation.tailoredAdvice.map((advice, index) => (
+              <div 
+                key={index}
+                className={cn(
+                  "p-3 rounded-lg border",
+                  advice.priority === "critical" ? "bg-destructive/5 border-destructive/20" :
+                  advice.priority === "important" ? "bg-warning/5 border-warning/20" : "bg-muted/50 border-border"
+                )}
+              >
+                <div className="flex items-start gap-2">
+                  <span className={cn(
+                    "text-xs px-2 py-0.5 rounded-full shrink-0 mt-0.5",
+                    advice.priority === "critical" ? "bg-destructive/20 text-destructive" :
+                    advice.priority === "important" ? "bg-warning/20 text-warning" : "bg-muted text-muted-foreground"
+                  )}>
+                    {advice.priority}
+                  </span>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground">{advice.tip}</p>
+                    {advice.example && (
+                      <p className="text-xs text-muted-foreground mt-1 italic">
+                        Example: "{advice.example}"
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ATS System Compatibility */}
       <div className="rounded-2xl bg-card border border-border p-5 mb-5">

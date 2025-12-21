@@ -68,6 +68,13 @@ interface FreeKeywordResult {
   industryBenchmark?: { industryAvg: number; comparison: "below" | "at" | "above"; percentile: string };
   quickWins?: { fix: string; timeEstimate: string; impact: "low" | "medium" | "high" }[];
   sampleRewrite?: { before: string; after: string; improvement: string };
+  careerSituation?: {
+    situation: "career_changer" | "returning_to_workforce" | "military_transition" | "recent_grad" | "standard";
+    confidence: "high" | "medium" | "low";
+    indicators: string[];
+    tailoredAdvice: { tip: string; priority: "critical" | "important" | "helpful"; example?: string }[];
+    situationSummary: string;
+  };
   // Job matching fields (when job description is provided)
   jobMatchScore?: number;
   jobMatchGrade?: "A" | "B" | "C" | "D";
@@ -953,6 +960,7 @@ const Index = () => {
                 applicationRecommendation={freeKeywordResult.applicationRecommendation}
                 skillGapActions={freeKeywordResult.skillGapActions}
                 competitiveAssessment={freeKeywordResult.competitiveAssessment}
+                careerSituation={freeKeywordResult.careerSituation}
                 onGetFullAnalysis={() => handleCheckout(resumeText, linkedInText, jobDescriptionText)}
                 onGetJobAnalysis={handleJobAnalysis}
                 onGenerateTailoredResume={handleGenerateTailoredResume}
