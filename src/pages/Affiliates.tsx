@@ -118,7 +118,7 @@ export default function Affiliates() {
             <CardDescription>
               {isLoginMode 
                 ? 'Sign in to access your affiliate dashboard' 
-                : 'Earn $5 for every sale you refer!'}
+                : 'Earn rewards for every sale you refer!'}
             </CardDescription>
           </CardHeader>
           <CardContent>
