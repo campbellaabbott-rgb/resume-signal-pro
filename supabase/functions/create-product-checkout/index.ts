@@ -24,6 +24,11 @@ const PRODUCTS: Record<string, { priceId: string; name: string; productType: str
     name: "Premium Resume Package",
     productType: "premium_package"
   },
+  atsDefense: {
+    priceId: "price_1SgujzHBplUUV1Cg8XRTr5Ks",
+    name: "ATS Defense Complete",
+    productType: "ats_defense"
+  },
   careerBundle: {
     priceId: "price_1SgD9rHBplUUV1CgtvpDTTEv",
     name: "Career Bundle (75 Analyses)",
