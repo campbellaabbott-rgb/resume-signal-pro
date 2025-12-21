@@ -448,22 +448,52 @@ Analyze this resume for ATS compatibility and provide a complete ATS Defense rep
 
     console.log("[ATS-DEFENSE] Calling AI gateway");
 
-    const response = await fetch("https://api.lovable.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage }
-        ],
-        tools: getATSDefenseTools(),
-        tool_choice: { type: "function", function: { name: "submit_ats_defense_report" } }
-      }),
-    });
+    // Retry logic for transient network errors
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+    let response: Response | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        response = await fetch("https://api.lovable.ai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-pro",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userMessage }
+            ],
+            tools: getATSDefenseTools(),
+            tool_choice: { type: "function", function: { name: "submit_ats_defense_report" } }
+          }),
+        });
+        
+        // If we got a response, break out of retry loop
+        break;
+      } catch (fetchError) {
+        lastError = fetchError as Error;
+        console.error(`[ATS-DEFENSE] Fetch attempt ${attempt}/${maxRetries} failed:`, fetchError);
+        
+        if (attempt < maxRetries) {
+          // Wait before retrying (exponential backoff: 1s, 2s, 4s)
+          const delay = Math.pow(2, attempt - 1) * 1000;
+          console.log(`[ATS-DEFENSE] Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    if (!response) {
+      console.error("[ATS-DEFENSE] All retry attempts failed:", lastError?.message);
+      return new Response(
+        JSON.stringify({ error: "AI service temporarily unavailable. Please try again in a few moments." }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
