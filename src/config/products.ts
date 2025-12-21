@@ -7,7 +7,7 @@ export const PRODUCTS = {
     id: 'full_analysis',
     name: 'Full Resume Analysis',
     description: 'Comprehensive AI-powered resume analysis with ATS optimization',
-    priceUsd: 25,
+    priceUsd: 5,
     priceId: null, // Uses dynamic pricing in create-checkout (main checkout flow)
     useMainCheckout: true, // Flag to use existing create-checkout function
     features: [
@@ -21,8 +21,8 @@ export const PRODUCTS = {
   scanPack: {
     id: 'scan_pack',
     name: 'Scan Pack (10 Credits)',
-    description: '10 additional resume scans at $1 each',
-    priceUsd: 10,
+    description: '10 additional resume scans at $0.20 each',
+    priceUsd: 2,
     priceId: 'price_1SfqT8HBplUUV1Cg3McLmgI7',
     credits: 10,
     features: [
@@ -37,7 +37,7 @@ export const PRODUCTS = {
     id: 'basic_keyword_fix',
     name: 'Basic Keyword Fix',
     description: 'Quick keyword optimization suggestions',
-    priceUsd: 10,
+    priceUsd: 3,
     priceId: 'price_1SgD9THBplUUV1CgSf9yWydz',
     features: [
       'Missing keyword list',
@@ -49,7 +49,7 @@ export const PRODUCTS = {
     id: 'cover_letter',
     name: 'Cover Letter Generator',
     description: 'AI-generated cover letter tailored to your resume and job',
-    priceUsd: 12,
+    priceUsd: 4,
     priceId: 'price_1SgD8oHBplUUV1Cgpbhi1ujj',
     features: [
       'Personalized to job description',
@@ -62,7 +62,7 @@ export const PRODUCTS = {
     id: 'premium_package',
     name: 'Premium Resume Package',
     description: 'Full analysis + AI-rewritten resume + tailored cover letter',
-    priceUsd: 59,
+    priceUsd: 12,
     priceId: 'price_1SgD7FHBplUUV1CgMvN7VSxb',
     features: [
       'Everything in Full Analysis',
@@ -72,13 +72,13 @@ export const PRODUCTS = {
       'Priority processing'
     ],
     badge: 'Best Value',
-    savings: 'Save $28'
+    savings: 'Save $6'
   },
   atsDefense: {
     id: 'ats_defense',
     name: 'ATS Defense Complete',
     description: 'Full ATS optimization with multi-role targeting & 30-day guarantee',
-    priceUsd: 69,
+    priceUsd: 15,
     priceId: 'price_1SgujzHBplUUV1Cg8XRTr5Ks',
     features: [
       'ATS compatibility audit (before/after score)',
@@ -95,7 +95,7 @@ export const PRODUCTS = {
     id: 'career_bundle',
     name: 'Career Bundle (75 Analyses)',
     description: '75 full resume analyses - Best value for job seekers',
-    priceUsd: 150,
+    priceUsd: 20,
     priceId: 'price_1SgD9rHBplUUV1CgtvpDTTEv',
     credits: 75,
     features: [
@@ -105,7 +105,7 @@ export const PRODUCTS = {
       'Never expires'
     ],
     badge: 'Bulk Discount',
-    savings: 'Save $1,725'
+    savings: 'Save $355'
   }
 } as const;
 

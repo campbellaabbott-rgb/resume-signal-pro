@@ -7,7 +7,7 @@ const featuredProducts = [
   {
     id: 'premiumPackage',
     name: 'Premium Package',
-    price: 59,
+    price: 12,
     description: 'Full analysis + AI rewrite',
     icon: Crown,
     highlight: false,
@@ -15,7 +15,7 @@ const featuredProducts = [
   {
     id: 'atsDefense',
     name: 'ATS Defense',
-    price: 69,
+    price: 15,
     description: 'Multi-role ATS optimization',
     icon: ShieldCheck,
     highlight: true,
@@ -24,7 +24,7 @@ const featuredProducts = [
   {
     id: 'careerBundle',
     name: 'Career Bundle',
-    price: 150,
+    price: 20,
     description: '75 full analyses',
     icon: Package,
     highlight: false,
