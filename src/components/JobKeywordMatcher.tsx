@@ -269,6 +269,32 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
     // Sustainability
     { pattern: /\b(green building|sustainable construction|net zero|energy efficiency|solar|renewable energy|water conservation|recycled materials|environmental impact)\b/gi, category: "industry_term", importance: "nice_to_have" },
     
+    // ===== TRANSPORTATION, LOGISTICS & AUTOMOTIVE =====
+    // Fleet management (critical)
+    { pattern: /\b(fleet management|fleet operations|vehicle maintenance|fleet maintenance|dispatch|dispatching|route optimization|routing|driver management|fuel management)\b/gi, category: "hard_skill", importance: "critical" },
+    // CDL & licensing
+    { pattern: /\b(cdl|commercial driver license|class a|class b|hazmat endorsement|tanker endorsement|passenger endorsement|twic|transportation worker identification)\b/gi, category: "certification", importance: "critical" },
+    // DOT & regulations
+    { pattern: /\b(dot|department of transportation|dot compliance|fmcsa|eld|electronic logging device|hos|hours of service|csa|driver qualification|drug testing|dot physical)\b/gi, category: "hard_skill", importance: "critical" },
+    // Telematics & technology
+    { pattern: /\b(telematics|gps tracking|fleet tracking|onboard diagnostics|obd|dash cam|driver behavior|fuel efficiency|idle time|geofencing|route planning software)\b/gi, category: "tool", importance: "important" },
+    // Trucking & freight
+    { pattern: /\b(trucking|freight|ltl|ftl|truckload|less than truckload|intermodal|drayage|cross-docking|freight broker|freight forwarding|carrier relations)\b/gi, category: "industry_term", importance: "important" },
+    // Warehousing & distribution
+    { pattern: /\b(warehouse management|wms|distribution center|dc|fulfillment|pick and pack|inventory control|receiving|shipping|loading dock|material handling|forklift operator)\b/gi, category: "hard_skill", importance: "critical" },
+    // Automotive manufacturing
+    { pattern: /\b(automotive|oem|tier 1|tier 2|automotive supplier|assembly line|production line|quality control|iatf 16949|apqp|ppap|spc|msa)\b/gi, category: "industry_term", importance: "important" },
+    // Automotive service
+    { pattern: /\b(automotive technician|mechanic|ase certified|ase|diagnostics|brake repair|engine repair|transmission|alignment|tire|oil change|service advisor|service writer)\b/gi, category: "hard_skill", importance: "critical" },
+    // Transportation software
+    { pattern: /\b(tms|transportation management system|samsara|omnitracs|keeptruckin|motive|geotab|verizon connect|trimble|jj keller|mcleod|tmw)\b/gi, category: "tool", importance: "important" },
+    // Shipping & cargo
+    { pattern: /\b(shipping|cargo|bill of lading|bol|freight bill|pallet|skid|container|ocean freight|air freight|customs|import|export|incoterms)\b/gi, category: "hard_skill", importance: "important" },
+    // Last mile & delivery
+    { pattern: /\b(last mile|last-mile delivery|delivery driver|courier|package delivery|route driver|delivery management|proof of delivery|pod|delivery optimization)\b/gi, category: "industry_term", importance: "important" },
+    // Rail & aviation
+    { pattern: /\b(railroad|rail transport|locomotive|conductor|aviation|airline|aircraft|pilot|flight operations|ground handling|airport operations|tsa)\b/gi, category: "industry_term", importance: "nice_to_have" },
+    
     // ===== OPERATIONS & SUPPLY CHAIN =====
     { pattern: /\b(supply chain|logistics|procurement|inventory management|warehouse|distribution|erp|mrp|lean manufacturing|six sigma|kaizen|tps|just-in-time|jit)\b/gi, category: "hard_skill", importance: "critical" },
     { pattern: /\b(apics|cpim|cscp|cltd|pmp|capm|lean six sigma|green belt|black belt|master black belt)\b/gi, category: "certification", importance: "important" },
