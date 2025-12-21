@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/popover";
 import { useScanCredits } from "@/hooks/use-scan-credits";
 import { ScanPackPurchase } from "@/components/ScanPackPurchase";
-import { PRODUCTS } from "@/config/products";
+import { useCurrency } from "@/hooks/use-currency";
 
 export function ScanCreditsCounter() {
   const [email, setEmail] = useState("");
@@ -17,6 +17,14 @@ export function ScanCreditsCounter() {
   const [isOpen, setIsOpen] = useState(false);
   const [showPurchase, setShowPurchase] = useState(false);
   const { credits, checkCredits, isLoading, pricePerCredit } = useScanCredits();
+  const { formatPrice, isLocalCurrency } = useCurrency();
+  
+  const formatLocalPrice = (usd: number) => {
+    if (isLocalCurrency) {
+      return `$${usd.toFixed(2)} (${formatPrice(usd)})`;
+    }
+    return `$${usd.toFixed(2)}`;
+  };
 
   // Try to load email from localStorage on mount
   useEffect(() => {
@@ -73,7 +81,7 @@ export function ScanCreditsCounter() {
             </div>
             
             <p className="text-xs text-muted-foreground text-center">
-              Credits never expire • ${pricePerCredit.toFixed(2)} per credit
+              Credits never expire • {formatLocalPrice(pricePerCredit)} per credit
             </p>
             
             <Button
@@ -158,7 +166,7 @@ export function ScanCreditsCounter() {
                 No credits found for this email.
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                ${pricePerCredit.toFixed(2)} per credit • Buy any amount
+                {formatLocalPrice(pricePerCredit)} per credit • Buy any amount
               </p>
             </div>
           )}
@@ -177,7 +185,7 @@ export function ScanCreditsCounter() {
               className="w-full gap-2"
             >
               <Plus className="w-4 h-4" />
-              Buy Credits — ${pricePerCredit.toFixed(2)} each
+              Buy Credits — {formatLocalPrice(pricePerCredit)} each
             </Button>
           </div>
         </div>
