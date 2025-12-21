@@ -967,6 +967,38 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       metricsRate: 88
     }
   },
+  fullstack_engineer: {
+    name: 'Full Stack Engineer',
+    aliases: ['full stack developer', 'fullstack developer', 'full-stack engineer', 'generalist engineer', 'product engineer', 'web developer', 'software engineer fullstack'],
+    keySkills: ['React/Vue/Angular', 'Node.js/Python/Go', 'Database Design', 'API Development', 'DevOps Basics', 'System Design', 'Cloud Services', 'End-to-End Development'],
+    mustHaveKeywords: ['full stack', 'frontend', 'backend', 'API', 'database', 'React', 'Node', 'end-to-end', 'full lifecycle', 'deployment'],
+    resumeTips: [
+      'Show end-to-end ownership of features or products',
+      'Balance frontend and backend achievements equally',
+      'Highlight ability to work across the entire stack',
+      'Include both user-facing and system-level metrics'
+    ],
+    bulletExamples: [
+      { weak: 'Built full stack applications', strong: 'Owned end-to-end development of customer portal serving 50K+ users: React frontend with 95+ Lighthouse score, Node.js API handling 10K req/s' },
+      { weak: 'Worked on both frontend and backend', strong: 'Shipped 15+ features from design to production, reducing time-to-market by 40% through full stack ownership and automated CI/CD' }
+    ],
+    keyMetrics: ['Features shipped end-to-end', 'User-facing performance (load time, Lighthouse)', 'API performance (latency, throughput)', 'Development velocity', 'Code coverage'],
+    commonMistakes: [
+      'Heavily skewing to only frontend or backend experience',
+      'Not showing end-to-end ownership',
+      'Missing metrics from both sides of the stack',
+      'Not demonstrating breadth across technologies'
+    ],
+    interviewTopics: ['System design (full stack)', 'Frontend framework deep-dive', 'Backend architecture', 'Database design', 'Deployment and DevOps', 'Trade-off decisions'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'Full Stack Projects', 'Experience', 'Education', 'Certifications'],
+      differentiators: ['End-to-end feature ownership', 'Both frontend and backend metrics', 'Startup or small team experience', 'Rapid prototyping ability'],
+      avgBulletCount: 4,
+      certificationRate: 35,
+      portfolioRate: 80,
+      metricsRate: 82
+    }
+  },
   data_engineer: {
     name: 'Data Engineer',
     aliases: ['etl developer', 'data pipeline engineer', 'analytics engineer', 'big data engineer', 'data platform engineer', 'data infrastructure engineer', 'spark engineer'],
