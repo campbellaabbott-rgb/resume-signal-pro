@@ -1069,6 +1069,102 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       'Not showing CI/CD integration experience'
     ],
     interviewTopics: ['Test strategy design', 'Automation framework architecture', 'Bug prioritization', 'Performance testing approach', 'Shift-left testing']
+  },
+  recruiter: {
+    name: 'Recruiter',
+    aliases: ['talent acquisition', 'technical recruiter', 'corporate recruiter', 'sourcer', 'recruiting coordinator', 'talent partner', 'headhunter', 'staffing specialist'],
+    keySkills: ['Sourcing', 'Candidate Assessment', 'ATS', 'Interviewing', 'Offer Negotiation', 'Employer Branding', 'LinkedIn Recruiter', 'Relationship Building'],
+    mustHaveKeywords: ['sourcing', 'talent acquisition', 'candidates', 'hiring', 'interviews', 'ATS', 'pipeline', 'offer'],
+    resumeTips: [
+      'Quantify hires made and time-to-fill metrics',
+      'Show offer acceptance rates and quality of hire',
+      'List specific ATS and sourcing tools',
+      'Highlight diversity hiring initiatives'
+    ],
+    bulletExamples: [
+      { weak: 'Recruited for engineering roles', strong: 'Filled 45+ engineering roles annually with 28-day average time-to-fill and 92% offer acceptance rate' },
+      { weak: 'Sourced candidates on LinkedIn', strong: 'Built pipeline of 500+ qualified candidates through LinkedIn sourcing, reducing agency spend by $200K' }
+    ],
+    keyMetrics: ['Hires per year', 'Time-to-fill', 'Offer acceptance rate', 'Cost-per-hire', 'Quality of hire', 'Diversity hiring %'],
+    commonMistakes: [
+      'Not quantifying hiring metrics',
+      'Missing specific ATS and tools used',
+      'Vague "filled positions" without numbers',
+      'Not showing sourcing strategy results'
+    ],
+    interviewTopics: ['Sourcing strategies', 'Candidate experience', 'Difficult searches', 'Diversity recruiting', 'Stakeholder management']
+  },
+  content_writer: {
+    name: 'Content Writer',
+    aliases: ['copywriter', 'content creator', 'content strategist', 'blogger', 'technical writer', 'content marketing manager', 'editor', 'seo writer'],
+    keySkills: ['SEO Writing', 'Copywriting', 'Content Strategy', 'Research', 'Editing', 'CMS', 'Analytics', 'Brand Voice'],
+    mustHaveKeywords: ['content', 'SEO', 'writing', 'copywriting', 'editorial', 'engagement', 'traffic', 'brand voice'],
+    resumeTips: [
+      'Include portfolio link with writing samples',
+      'Quantify traffic, engagement, and conversion metrics',
+      'Show variety of content types (blogs, whitepapers, emails)',
+      'Highlight SEO results and rankings achieved'
+    ],
+    bulletExamples: [
+      { weak: 'Wrote blog posts for company website', strong: 'Published 100+ SEO-optimized articles driving 500K monthly organic visits and 25% increase in lead generation' },
+      { weak: 'Created marketing content', strong: 'Developed email nurture sequence achieving 35% open rate and 12% CTR, 2x industry average' }
+    ],
+    keyMetrics: ['Traffic generated', 'Engagement rate', 'Conversion rate', 'SEO rankings', 'Content pieces published', 'Email open/CTR'],
+    commonMistakes: [
+      'Missing portfolio link',
+      'Not showing traffic or engagement metrics',
+      'Vague "created content" without results',
+      'Not mentioning SEO or analytics experience'
+    ],
+    interviewTopics: ['Writing process', 'SEO strategy', 'Brand voice development', 'Content performance analysis', 'Deadline management']
+  },
+  graphic_designer: {
+    name: 'Graphic Designer',
+    aliases: ['visual designer', 'brand designer', 'creative designer', 'art director', 'digital designer', 'marketing designer', 'junior designer', 'senior designer'],
+    keySkills: ['Adobe Creative Suite', 'Figma', 'Brand Identity', 'Typography', 'Layout Design', 'Print Design', 'Digital Design', 'Motion Graphics'],
+    mustHaveKeywords: ['design', 'Adobe', 'Figma', 'brand', 'visual', 'creative', 'typography', 'layout'],
+    resumeTips: [
+      'Include portfolio link prominently',
+      'Show variety of work (digital, print, branding)',
+      'Quantify project scope and business impact',
+      'List specific software proficiency'
+    ],
+    bulletExamples: [
+      { weak: 'Designed marketing materials', strong: 'Designed 200+ marketing assets for product launch driving 40% increase in campaign engagement' },
+      { weak: 'Created brand identity', strong: 'Led complete rebrand for $10M company, developing logo, guidelines, and 50+ templates adopted across 5 departments' }
+    ],
+    keyMetrics: ['Projects completed', 'Campaign performance lift', 'Brand assets created', 'Client satisfaction', 'Turnaround time'],
+    commonMistakes: [
+      'Missing portfolio link',
+      'Not showing business impact of designs',
+      'Listing software without showing creative outcomes',
+      'Not mentioning collaboration with stakeholders'
+    ],
+    interviewTopics: ['Portfolio walkthrough', 'Design process', 'Feedback handling', 'Brand consistency', 'Cross-functional collaboration']
+  },
+  pharmacist: {
+    name: 'Pharmacist',
+    aliases: ['clinical pharmacist', 'retail pharmacist', 'hospital pharmacist', 'pharmacy manager', 'staff pharmacist', 'ambulatory care pharmacist', 'pharm.d'],
+    keySkills: ['Medication Dispensing', 'Patient Counseling', 'Drug Interactions', 'Pharmacy Operations', 'Inventory Management', 'Regulatory Compliance', 'Clinical Consultations', 'Immunizations'],
+    mustHaveKeywords: ['prescriptions', 'patient counseling', 'medication', 'compliance', 'clinical', 'pharmacy operations', 'drug interactions', 'immunizations'],
+    resumeTips: [
+      'Include license number and state(s) prominently',
+      'Quantify prescriptions filled and patient interactions',
+      'Show error prevention and quality metrics',
+      'Highlight specializations and certifications'
+    ],
+    bulletExamples: [
+      { weak: 'Dispensed medications to patients', strong: 'Dispensed 300+ prescriptions daily with 99.98% accuracy rate, counseling 100+ patients on medication management' },
+      { weak: 'Managed pharmacy operations', strong: 'Led pharmacy team of 8, reducing medication errors by 45% through improved verification protocols and staff training' }
+    ],
+    keyMetrics: ['Prescriptions filled daily', 'Accuracy rate %', 'Patient counseling volume', 'Error reduction %', 'Immunizations administered'],
+    commonMistakes: [
+      'Not including license numbers and states',
+      'Missing prescription volume and accuracy metrics',
+      'Vague "filled prescriptions" without scale',
+      'Not highlighting patient safety achievements'
+    ],
+    interviewTopics: ['Drug interaction scenarios', 'Patient counseling approach', 'Error prevention', 'Regulatory compliance', 'Team management']
   }
 };
 
@@ -1104,6 +1200,10 @@ export function getRoleAdvice(role: string): RoleConfig | null {
   if (normalizedRole.includes('business analyst') || normalizedRole.includes('ba') || normalizedRole.includes('requirements analyst')) return ROLE_CONFIGS.business_analyst;
   if (normalizedRole.includes('devops') || normalizedRole.includes('sre') || normalizedRole.includes('site reliability') || normalizedRole.includes('platform engineer')) return ROLE_CONFIGS.devops_engineer;
   if (normalizedRole.includes('qa') || normalizedRole.includes('quality assurance') || normalizedRole.includes('test engineer') || normalizedRole.includes('sdet')) return ROLE_CONFIGS.qa_engineer;
+  if (normalizedRole.includes('recruiter') || normalizedRole.includes('talent acquisition') || normalizedRole.includes('sourcer')) return ROLE_CONFIGS.recruiter;
+  if (normalizedRole.includes('content writer') || normalizedRole.includes('copywriter') || normalizedRole.includes('content creator') || normalizedRole.includes('technical writer')) return ROLE_CONFIGS.content_writer;
+  if (normalizedRole.includes('graphic designer') || normalizedRole.includes('visual designer') || normalizedRole.includes('brand designer')) return ROLE_CONFIGS.graphic_designer;
+  if (normalizedRole.includes('pharmacist') || normalizedRole.includes('pharm.d') || normalizedRole.includes('pharmacy')) return ROLE_CONFIGS.pharmacist;
   
   return null;
 }
