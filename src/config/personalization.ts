@@ -1255,6 +1255,70 @@ export const ROLE_CONFIGS: Record<string, RoleConfig> = {
       metricsRate: 82
     }
   },
+  game_developer: {
+    name: 'Game Developer',
+    aliases: ['game programmer', 'game engineer', 'unity developer', 'unreal developer', 'gameplay programmer', 'graphics programmer', 'engine programmer', 'game designer', 'technical game designer'],
+    keySkills: ['Unity/Unreal Engine', 'C++/C#', 'Graphics Programming', 'Physics Systems', 'AI/Pathfinding', 'Shader Programming', 'Performance Optimization', 'Multiplayer/Networking'],
+    mustHaveKeywords: ['game', 'Unity', 'Unreal', 'gameplay', 'graphics', 'engine', 'performance', 'optimization', 'shader', 'multiplayer'],
+    resumeTips: [
+      'Include shipped titles and platforms',
+      'Show performance optimization achievements (FPS, load times)',
+      'Highlight player engagement or download metrics',
+      'Link to playable demos or portfolio'
+    ],
+    bulletExamples: [
+      { weak: 'Developed game features', strong: 'Led gameplay systems development for AAA title with 5M+ downloads, achieving 60 FPS on target hardware through custom LOD and culling systems' },
+      { weak: 'Worked on Unity projects', strong: 'Built procedural generation system creating 10K+ unique levels, increasing player retention by 40% and session length by 25%' }
+    ],
+    keyMetrics: ['Downloads/sales', 'Player retention', 'FPS/performance targets', 'Load time reduction', 'Memory optimization', 'Metacritic/review scores'],
+    commonMistakes: [
+      'Not listing shipped titles and platforms',
+      'Missing performance optimization metrics',
+      'Vague "worked on game" without specific systems',
+      'Not including portfolio or playable demos'
+    ],
+    interviewTopics: ['Game engine architecture', 'Performance optimization', 'Graphics pipeline', 'Multiplayer networking', 'Gameplay systems design', 'Platform-specific challenges'],
+    topResumeElements: {
+      sections: ['Shipped Titles', 'Technical Skills', 'Experience', 'Portfolio/Demos', 'Education'],
+      differentiators: ['AAA or successful indie titles', 'Performance optimization wins', 'Specialized systems (AI, graphics, networking)', 'Playable portfolio'],
+      avgBulletCount: 4,
+      certificationRate: 20,
+      portfolioRate: 92,
+      metricsRate: 75
+    }
+  },
+  embedded_systems_engineer: {
+    name: 'Embedded Systems Engineer',
+    aliases: ['embedded software engineer', 'firmware engineer', 'embedded developer', 'hardware engineer', 'iot engineer', 'embedded linux engineer', 'rtos developer', 'microcontroller programmer'],
+    keySkills: ['C/C++', 'RTOS', 'Microcontrollers (ARM, AVR)', 'Hardware Interfaces (SPI, I2C, UART)', 'Debugging (JTAG, oscilloscope)', 'Linux Kernel', 'Power Management', 'Embedded Linux'],
+    mustHaveKeywords: ['embedded', 'firmware', 'microcontroller', 'RTOS', 'hardware', 'driver', 'low-level', 'power', 'real-time', 'IoT'],
+    resumeTips: [
+      'Specify microcontrollers and processors worked with',
+      'Quantify power consumption and performance improvements',
+      'Highlight real-time constraints met',
+      'Include hardware/software integration experience'
+    ],
+    bulletExamples: [
+      { weak: 'Developed embedded firmware', strong: 'Designed firmware for IoT sensor platform processing 10K samples/second with 50% power reduction, extending battery life from 6 to 18 months' },
+      { weak: 'Worked on microcontroller projects', strong: 'Built RTOS-based motor control system achieving 10μs response time and 99.99% uptime across 50K deployed units' }
+    ],
+    keyMetrics: ['Power consumption reduction', 'Response time/latency', 'Units deployed', 'Uptime/reliability', 'Memory/flash optimization', 'Real-time deadlines met'],
+    commonMistakes: [
+      'Not specifying MCU/processor families',
+      'Missing power and performance metrics',
+      'Vague "embedded development" without constraints',
+      'Not showing hardware debugging experience'
+    ],
+    interviewTopics: ['Memory management', 'RTOS concepts', 'Hardware debugging', 'Power optimization', 'Communication protocols', 'Real-time constraints'],
+    topResumeElements: {
+      sections: ['Technical Skills', 'Embedded Experience', 'Hardware Platforms', 'Projects', 'Education'],
+      differentiators: ['Specific MCU/processor expertise', 'Power optimization achievements', 'Production deployment scale', 'Safety-critical experience'],
+      avgBulletCount: 4,
+      certificationRate: 35,
+      portfolioRate: 45,
+      metricsRate: 85
+    }
+  },
   developer_advocate: {
     name: 'Developer Advocate',
     aliases: ['developer relations', 'devrel', 'developer evangelist', 'technical evangelist', 'community manager', 'developer experience', 'dx advocate', 'api evangelist'],
