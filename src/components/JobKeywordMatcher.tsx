@@ -333,6 +333,36 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
     // Environmental & safety
     { pattern: /\b(epa|environmental compliance|air quality|water quality|emissions reporting|environmental permit|spcc|hazardous waste|neshap|rcra|cercla)\b/gi, category: "hard_skill", importance: "important" },
     
+    // ===== TELECOMMUNICATIONS & NETWORKING =====
+    // 5G & wireless (critical)
+    { pattern: /\b(5g|4g|lte|wireless|cellular|mobile network|ran|radio access network|small cell|macro cell|mmwave|millimeter wave|spectrum|frequency band)\b/gi, category: "hard_skill", importance: "critical" },
+    // Fiber optics (critical)
+    { pattern: /\b(fiber optic|fiber optics|ftth|fiber to the home|fttp|fiber to the premises|optical fiber|single mode|multi-mode|fiber splicing|otdr|fiber testing|dark fiber)\b/gi, category: "hard_skill", importance: "critical" },
+    // Network engineering (critical)
+    { pattern: /\b(network engineering|network design|network architecture|lan|wan|sd-wan|mpls|bgp|ospf|eigrp|routing|switching|network security|firewall)\b/gi, category: "hard_skill", importance: "critical" },
+    // VoIP & unified communications
+    { pattern: /\b(voip|voice over ip|sip|pbx|ip telephony|unified communications|uc|ucaas|webex|zoom|teams|video conferencing|collaboration|contact center)\b/gi, category: "hard_skill", importance: "critical" },
+    // RF engineering
+    { pattern: /\b(rf engineering|radio frequency|rf design|antenna|propagation|rf optimization|drive testing|rf planning|interference|coverage|capacity planning)\b/gi, category: "hard_skill", importance: "critical" },
+    // Network infrastructure
+    { pattern: /\b(data center|colo|colocation|rack|cabinet|cable management|structured cabling|cat6|cat6a|patch panel|mdf|idf|network closet)\b/gi, category: "hard_skill", importance: "important" },
+    // Telecom equipment
+    { pattern: /\b(cisco|juniper|arista|nokia|ericsson|huawei|ciena|adtran|calix|commscope|corning|palo alto|fortinet|checkpoint)\b/gi, category: "tool", importance: "important" },
+    // ISP & carrier services
+    { pattern: /\b(isp|internet service provider|carrier|telco|telecommunications|broadband|dsl|cable modem|docsis|pon|gpon|epon|fixed wireless)\b/gi, category: "industry_term", importance: "important" },
+    // Network protocols & standards
+    { pattern: /\b(tcp\/ip|ethernet|vlan|qos|quality of service|dns|dhcp|vpn|ipsec|ssl|tls|snmp|netflow|sflow|ipv4|ipv6)\b/gi, category: "hard_skill", importance: "important" },
+    // Telecom certifications
+    { pattern: /\b(ccna|ccnp|ccie|jncia|jncis|jncip|comptia network\+|cwna|cwsp|wireshark certified|fiber optic certified|bicsi|rcdd)\b/gi, category: "certification", importance: "important" },
+    // Network operations
+    { pattern: /\b(noc|network operations center|soc|security operations|monitoring|troubleshooting|incident management|change management|capacity management|performance management)\b/gi, category: "hard_skill", importance: "important" },
+    // Cloud networking
+    { pattern: /\b(cloud networking|aws networking|azure networking|gcp networking|vpc|virtual private cloud|transit gateway|direct connect|expressroute|cloud interconnect)\b/gi, category: "hard_skill", importance: "important" },
+    // Satellite & microwave
+    { pattern: /\b(satellite|vsat|microwave|point-to-point|backhaul|fronthaul|wireless backhaul|satellite communications|satcom|leo|geo|meo)\b/gi, category: "industry_term", importance: "nice_to_have" },
+    // Telecom software & tools
+    { pattern: /\b(solarwinds|nagios|zabbix|prtg|splunk|netbrain|infoblox|bluecat|what's up gold|cacti|grafana|prometheus)\b/gi, category: "tool", importance: "important" },
+    
     // ===== OPERATIONS & SUPPLY CHAIN =====
     { pattern: /\b(supply chain|logistics|procurement|inventory management|warehouse|distribution|erp|mrp|lean manufacturing|six sigma|kaizen|tps|just-in-time|jit)\b/gi, category: "hard_skill", importance: "critical" },
     { pattern: /\b(apics|cpim|cscp|cltd|pmp|capm|lean six sigma|green belt|black belt|master black belt)\b/gi, category: "certification", importance: "important" },
