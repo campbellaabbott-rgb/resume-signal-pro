@@ -1,11 +1,88 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
 };
+
+// Send email alert for payment failures
+async function sendFailureAlert(details: {
+  type: string;
+  amount: number;
+  currency: string;
+  failureCode?: string | null;
+  failureMessage?: string | null;
+  customerEmail?: string | null;
+  paymentIntentId: string;
+}) {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  const adminEmail = Deno.env.get("ADMIN_EMAIL");
+  
+  if (!resendKey || !adminEmail) {
+    logStep("Email alert skipped - missing RESEND_API_KEY or ADMIN_EMAIL");
+    return;
+  }
+
+  const resend = new Resend(resendKey);
+  const formattedAmount = (details.amount / 100).toFixed(2);
+  
+  try {
+    await resend.emails.send({
+      from: "Resume Booster <alerts@resend.dev>",
+      to: [adminEmail],
+      subject: `⚠️ Payment Failed - $${formattedAmount} ${details.currency.toUpperCase()}`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #dc2626; margin-bottom: 20px;">Payment Failure Alert</h2>
+          
+          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+            <p style="margin: 0; font-weight: 600; color: #991b1b;">${details.type}</p>
+          </div>
+          
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280;">Amount</td>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; font-weight: 600;">$${formattedAmount} ${details.currency.toUpperCase()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280;">Customer Email</td>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">${details.customerEmail || 'Not provided'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280;">Failure Code</td>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; color: #dc2626;">${details.failureCode || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280;">Failure Message</td>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">${details.failureMessage || 'No details available'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #6b7280;">Payment Intent</td>
+              <td style="padding: 8px 0; font-family: monospace; font-size: 12px;">${details.paymentIntentId}</td>
+            </tr>
+          </table>
+          
+          <div style="margin-top: 24px;">
+            <a href="https://dashboard.stripe.com/payments/${details.paymentIntentId}" 
+               style="display: inline-block; background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px;">
+              View in Stripe Dashboard
+            </a>
+          </div>
+          
+          <p style="margin-top: 24px; color: #9ca3af; font-size: 12px;">
+            This is an automated alert from Resume Booster.
+          </p>
+        </div>
+      `,
+    });
+    logStep("Email alert sent successfully");
+  } catch (error) {
+    logStep("Failed to send email alert", { error: String(error) });
+  }
+}
 
 serve(async (req) => {
   // Stripe webhooks must be POST
@@ -99,6 +176,17 @@ serve(async (req) => {
         } else {
           logStep("Payment failure logged to database");
         }
+
+        // Send email alert
+        await sendFailureAlert({
+          type: "Payment Intent Failed",
+          amount: paymentIntent.amount,
+          currency: paymentIntent.currency,
+          failureCode: paymentIntent.last_payment_error?.code,
+          failureMessage: paymentIntent.last_payment_error?.message,
+          customerEmail: customerEmail,
+          paymentIntentId: paymentIntent.id
+        });
         break;
       }
 
@@ -133,6 +221,17 @@ serve(async (req) => {
         } else {
           logStep("Charge failure logged to database");
         }
+
+        // Send email alert
+        await sendFailureAlert({
+          type: "Charge Failed",
+          amount: charge.amount,
+          currency: charge.currency,
+          failureCode: charge.failure_code,
+          failureMessage: charge.failure_message,
+          customerEmail: charge.billing_details?.email,
+          paymentIntentId: charge.payment_intent as string || charge.id
+        });
         break;
       }
 
@@ -165,6 +264,17 @@ serve(async (req) => {
         } else {
           logStep("Expired checkout logged to database");
         }
+
+        // Send email alert for abandoned checkout
+        await sendFailureAlert({
+          type: "Checkout Abandoned",
+          amount: session.amount_total || 0,
+          currency: session.currency || 'usd',
+          failureCode: 'checkout_expired',
+          failureMessage: 'Customer abandoned checkout before completing payment',
+          customerEmail: session.customer_email,
+          paymentIntentId: session.payment_intent as string || session.id
+        });
         break;
       }
 
