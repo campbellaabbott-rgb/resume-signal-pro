@@ -208,22 +208,7 @@ export function Hero() {
               </div>
               <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
                 <Check className="w-4 h-4 text-success flex-shrink-0" />
-                <span>Works on all ATS systems</span>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-muted text-muted-foreground hover:bg-muted/80 transition-colors">
-                        <Info className="w-3 h-3" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs p-3">
-                      <p className="font-medium mb-2">50+ ATS Systems Supported:</p>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        Workday, Greenhouse, Lever, Taleo, iCIMS, BambooHR, JazzHR, Jobvite, SmartRecruiters, Bullhorn, ADP, SAP SuccessFactors, Oracle HCM, Cornerstone, Ceridian, Paylocity, UKG, Zoho Recruit, Recruitee, Breezy HR, Ashby, and many more.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <span>Works on all ATS systems (Workday, Greenhouse, Lever & 50+ more)</span>
               </div>
               <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
                 <Check className="w-4 h-4 text-success flex-shrink-0" />
