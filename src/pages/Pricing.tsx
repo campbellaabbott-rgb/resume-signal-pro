@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { ValueComparison } from "@/components/ValueComparison";
 import { useCurrency } from "@/hooks/use-currency";
 import { useScrollDepth } from "@/hooks/use-scroll-depth";
+import { useTimeOnPage } from "@/hooks/use-time-on-page";
 
 const productIcons: Record<string, React.ElementType> = {
   basicKeywordFix: FileText,
@@ -36,6 +37,9 @@ export default function Pricing() {
   
   // Track scroll depth for drop-off analysis
   useScrollDepth('pricing');
+  
+  // Track time on page for engagement analysis
+  useTimeOnPage('pricing');
 
   const handlePurchase = async (productId: ProductId) => {
     const product = PRODUCTS[productId];

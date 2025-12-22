@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useScrollDepth } from "@/hooks/use-scroll-depth";
+import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { ResumeUploader } from "@/components/ResumeUploader";
@@ -161,6 +162,9 @@ const Index = () => {
   
   // Track scroll depth for drop-off analysis
   useScrollDepth('home');
+  
+  // Track time on page for engagement analysis
+  useTimeOnPage('home');
   
   // Track if we're pre-storing to avoid duplicate calls
   const isPreStoring = useRef(false);
