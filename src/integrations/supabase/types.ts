@@ -275,6 +275,42 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_failures: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          customer_email: string | null
+          failure_code: string | null
+          failure_message: string | null
+          id: string
+          metadata: Json | null
+          payment_intent_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          failure_code?: string | null
+          failure_message?: string | null
+          id?: string
+          metadata?: Json | null
+          payment_intent_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          failure_code?: string | null
+          failure_message?: string | null
+          id?: string
+          metadata?: Json | null
+          payment_intent_id?: string
+        }
+        Relationships: []
+      }
       rate_limits: {
         Row: {
           function_name: string
