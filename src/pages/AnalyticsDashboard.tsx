@@ -1,0 +1,427 @@
+import { useState, useEffect } from "react";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Loader2, TrendingUp, TrendingDown, Clock, ScrollText, ShoppingCart, BarChart3 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface MetricData {
+  variant: string;
+  views: number;
+  conversions: number;
+  conversionRate: number;
+}
+
+interface EngagementData {
+  scrollDepth: MetricData[];
+  timeOnPage: MetricData[];
+  conversions: MetricData[];
+  abTests: Record<string, MetricData[]>;
+}
+
+export default function AnalyticsDashboard() {
+  const [data, setData] = useState<EngagementData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
+
+  const fetchAnalytics = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Query all ab_test_events from last 7 days
+      const { data: events, error: queryError } = await supabase
+        .from('ab_test_events')
+        .select('test_name, variant, event_type, metadata, created_at')
+        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+
+      if (queryError) throw queryError;
+
+      // Process events into metrics
+      const metrics: Record<string, Record<string, { views: number; conversions: number }>> = {};
+      
+      events?.forEach(event => {
+        if (!metrics[event.test_name]) {
+          metrics[event.test_name] = {};
+        }
+        if (!metrics[event.test_name][event.variant]) {
+          metrics[event.test_name][event.variant] = { views: 0, conversions: 0 };
+        }
+        if (event.event_type === 'view') {
+          metrics[event.test_name][event.variant].views++;
+        } else if (event.event_type === 'conversion') {
+          metrics[event.test_name][event.variant].conversions++;
+        }
+      });
+
+      // Transform to MetricData arrays
+      const transformMetrics = (testName: string): MetricData[] => {
+        const testMetrics = metrics[testName] || {};
+        return Object.entries(testMetrics)
+          .map(([variant, counts]) => ({
+            variant,
+            views: counts.views,
+            conversions: counts.conversions,
+            conversionRate: counts.views > 0 ? (counts.conversions / counts.views) * 100 : 0,
+          }))
+          .sort((a, b) => {
+            // Sort by milestone for scroll/time metrics
+            const aNum = parseFloat(a.variant.replace(/[^0-9.]/g, '')) || 0;
+            const bNum = parseFloat(b.variant.replace(/[^0-9.]/g, '')) || 0;
+            return aNum - bNum;
+          });
+      };
+
+      // Get A/B test names (excluding scroll_depth, time_on_page, product_conversion)
+      const abTestNames = Object.keys(metrics).filter(
+        name => !['scroll_depth', 'time_on_page', 'product_conversion'].includes(name)
+      );
+
+      const abTests: Record<string, MetricData[]> = {};
+      abTestNames.forEach(name => {
+        abTests[name] = transformMetrics(name);
+      });
+
+      setData({
+        scrollDepth: transformMetrics('scroll_depth'),
+        timeOnPage: transformMetrics('time_on_page'),
+        conversions: transformMetrics('product_conversion'),
+        abTests,
+      });
+    } catch (err) {
+      console.error('Failed to fetch analytics:', err);
+      setError('Failed to load analytics data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getDropOffRate = (metrics: MetricData[], index: number): number => {
+    if (index === 0 || metrics.length < 2) return 0;
+    const current = metrics[index]?.views || 0;
+    const previous = metrics[index - 1]?.views || 0;
+    if (previous === 0) return 0;
+    return ((previous - current) / previous) * 100;
+  };
+
+  const getTotalVisitors = (metrics: MetricData[]): number => {
+    return metrics[0]?.views || 0;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-12">
+          <div className="text-center text-destructive">{error || 'No data available'}</div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Engagement Analytics</h1>
+          <p className="text-muted-foreground">Last 7 days of user engagement data</p>
+        </div>
+
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 max-w-xl">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="scroll">Scroll Depth</TabsTrigger>
+            <TabsTrigger value="time">Time on Page</TabsTrigger>
+            <TabsTrigger value="ab">A/B Tests</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Visitors</CardTitle>
+                  <ScrollText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{getTotalVisitors(data.scrollDepth)}</div>
+                  <p className="text-xs text-muted-foreground">reached 25% scroll</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Engaged Users</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {data.timeOnPage.find(m => m.variant === '1m')?.views || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">stayed 1+ minute</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Deep Scrollers</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {data.scrollDepth.find(m => m.variant === '75%')?.views || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">scrolled 75%+</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Purchases</CardTitle>
+                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {data.conversions.reduce((sum, m) => sum + m.conversions, 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">completed checkouts</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Scroll Funnel */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ScrollText className="h-5 w-5" />
+                  Scroll Depth Funnel
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {data.scrollDepth.map((metric, index) => {
+                    const maxViews = getTotalVisitors(data.scrollDepth);
+                    const percentage = maxViews > 0 ? (metric.views / maxViews) * 100 : 0;
+                    const dropOff = getDropOffRate(data.scrollDepth, index);
+                    
+                    return (
+                      <div key={metric.variant} className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">{metric.variant}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">{metric.views} users</span>
+                            {dropOff > 0 && (
+                              <Badge variant="outline" className="text-destructive">
+                                <TrendingDown className="h-3 w-3 mr-1" />
+                                {dropOff.toFixed(1)}% drop
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <Progress value={percentage} className="h-2" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Time Engagement */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Time on Page
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {data.timeOnPage.map((metric, index) => {
+                    const maxViews = getTotalVisitors(data.timeOnPage);
+                    const percentage = maxViews > 0 ? (metric.views / maxViews) * 100 : 0;
+                    const dropOff = getDropOffRate(data.timeOnPage, index);
+                    
+                    return (
+                      <div key={metric.variant} className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">{metric.variant}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">{metric.views} users</span>
+                            {dropOff > 0 && (
+                              <Badge variant="outline" className="text-destructive">
+                                <TrendingDown className="h-3 w-3 mr-1" />
+                                {dropOff.toFixed(1)}% drop
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <Progress value={percentage} className="h-2" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="scroll">
+            <Card>
+              <CardHeader>
+                <CardTitle>Scroll Depth Analysis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4">Milestone</th>
+                        <th className="text-right py-3 px-4">Users</th>
+                        <th className="text-right py-3 px-4">% of Total</th>
+                        <th className="text-right py-3 px-4">Drop-off</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.scrollDepth.map((metric, index) => {
+                        const maxViews = getTotalVisitors(data.scrollDepth);
+                        const percentage = maxViews > 0 ? (metric.views / maxViews) * 100 : 0;
+                        const dropOff = getDropOffRate(data.scrollDepth, index);
+                        
+                        return (
+                          <tr key={metric.variant} className="border-b">
+                            <td className="py-3 px-4 font-medium">{metric.variant}</td>
+                            <td className="py-3 px-4 text-right">{metric.views}</td>
+                            <td className="py-3 px-4 text-right">{percentage.toFixed(1)}%</td>
+                            <td className="py-3 px-4 text-right">
+                              {dropOff > 0 ? (
+                                <span className="text-destructive">-{dropOff.toFixed(1)}%</span>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="time">
+            <Card>
+              <CardHeader>
+                <CardTitle>Time on Page Analysis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-4">Duration</th>
+                        <th className="text-right py-3 px-4">Users</th>
+                        <th className="text-right py-3 px-4">% of Total</th>
+                        <th className="text-right py-3 px-4">Drop-off</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.timeOnPage.map((metric, index) => {
+                        const maxViews = getTotalVisitors(data.timeOnPage);
+                        const percentage = maxViews > 0 ? (metric.views / maxViews) * 100 : 0;
+                        const dropOff = getDropOffRate(data.timeOnPage, index);
+                        
+                        return (
+                          <tr key={metric.variant} className="border-b">
+                            <td className="py-3 px-4 font-medium">{metric.variant}</td>
+                            <td className="py-3 px-4 text-right">{metric.views}</td>
+                            <td className="py-3 px-4 text-right">{percentage.toFixed(1)}%</td>
+                            <td className="py-3 px-4 text-right">
+                              {dropOff > 0 ? (
+                                <span className="text-destructive">-{dropOff.toFixed(1)}%</span>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="ab" className="space-y-6">
+            {Object.entries(data.abTests).map(([testName, metrics]) => (
+              <Card key={testName}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5" />
+                    {testName.replace(/_/g, ' ')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-4">Variant</th>
+                          <th className="text-right py-3 px-4">Views</th>
+                          <th className="text-right py-3 px-4">Conversions</th>
+                          <th className="text-right py-3 px-4">Conv. Rate</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {metrics.map((metric) => {
+                          const isWinner = metrics.length > 1 && 
+                            metric.conversionRate === Math.max(...metrics.map(m => m.conversionRate)) &&
+                            metric.conversionRate > 0;
+                          
+                          return (
+                            <tr key={metric.variant} className="border-b">
+                              <td className="py-3 px-4 font-medium">
+                                {metric.variant}
+                                {isWinner && (
+                                  <Badge className="ml-2 bg-green-500">Winner</Badge>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-right">{metric.views}</td>
+                              <td className="py-3 px-4 text-right">{metric.conversions}</td>
+                              <td className="py-3 px-4 text-right">
+                                <span className={isWinner ? 'text-green-500 font-medium' : ''}>
+                                  {metric.conversionRate.toFixed(2)}%
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </TabsContent>
+        </Tabs>
+      </main>
+      <Footer />
+    </div>
+  );
+}
