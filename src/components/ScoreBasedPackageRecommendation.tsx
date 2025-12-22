@@ -1,13 +1,14 @@
 import { Link } from "react-router-dom";
 import { Crown, FileText, Sparkles, ArrowRight, TrendingUp, AlertTriangle, Clock, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PRODUCTS } from "@/config/products";
 
 interface ScoreBasedPackageRecommendationProps {
   atsScore: number;
 }
 
 export function ScoreBasedPackageRecommendation({ atsScore }: ScoreBasedPackageRecommendationProps) {
-  // Determine recommendation based on score
+  // Determine recommendation based on score - use prices from products config
   const getRecommendation = () => {
     if (atsScore < 50) {
       return {
@@ -18,16 +19,16 @@ export function ScoreBasedPackageRecommendation({ atsScore }: ScoreBasedPackageR
         urgencyMessage: "75% of resumes with scores below 50 never reach a human recruiter",
         recommended: {
           id: "premiumPackage",
-          name: "Premium Package",
-          price: 35,
+          name: PRODUCTS.premiumPackage.name,
+          price: PRODUCTS.premiumPackage.priceUsd,
           icon: Crown,
-          reason: "Complete rewrite + ATS optimization + LinkedIn profile",
+          reason: "Complete rewrite + ATS optimization + cover letter",
           estimatedGain: "30-40 points",
         },
         alternative: {
           id: "basicKeywordFix",
-          name: "Keyword Fix",
-          price: 10,
+          name: PRODUCTS.basicKeywordFix.name,
+          price: PRODUCTS.basicKeywordFix.priceUsd,
           reason: "Quick ATS keyword optimization",
         },
       };
@@ -40,16 +41,16 @@ export function ScoreBasedPackageRecommendation({ atsScore }: ScoreBasedPackageR
         urgencyMessage: null,
         recommended: {
           id: "basicKeywordFix",
-          name: "Keyword Fix",
-          price: 10,
+          name: PRODUCTS.basicKeywordFix.name,
+          price: PRODUCTS.basicKeywordFix.priceUsd,
           icon: FileText,
           reason: "Add missing keywords + improve bullet points",
           estimatedGain: "15-25 points",
         },
         alternative: {
           id: "premiumPackage",
-          name: "Premium Package",
-          price: 35,
+          name: PRODUCTS.premiumPackage.name,
+          price: PRODUCTS.premiumPackage.priceUsd,
           reason: "For a complete professional overhaul",
         },
       };
@@ -62,16 +63,16 @@ export function ScoreBasedPackageRecommendation({ atsScore }: ScoreBasedPackageR
         urgencyMessage: null,
         recommended: {
           id: "fullAnalysis",
-          name: "Full Analysis",
-          price: 25,
+          name: PRODUCTS.fullAnalysis.name,
+          price: PRODUCTS.fullAnalysis.priceUsd,
           icon: Sparkles,
           reason: "Get detailed rewrites + job-specific tailoring",
           estimatedGain: "5-15 points",
         },
         alternative: {
           id: "coverLetter",
-          name: "Cover Letter",
-          price: 15,
+          name: PRODUCTS.coverLetter.name,
+          price: PRODUCTS.coverLetter.priceUsd,
           reason: "Complete your application package",
         },
       };
