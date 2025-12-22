@@ -263,6 +263,38 @@ const getAnalysisTools = (hasLinkedIn: boolean, hasJobDescription: boolean) => [
           },
           description: "3-4 quantification opportunities"
         },
+        achievementMetrics: {
+          type: "object",
+          properties: {
+            roleType: { type: "string", description: "The detected role type (e.g., 'Software Engineer', 'Sales Manager', 'Product Manager')" },
+            typicalMetrics: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  category: { type: "string", description: "Metric category (e.g., 'Revenue Impact', 'Efficiency', 'Scale')" },
+                  metricName: { type: "string", description: "Specific metric name (e.g., 'Revenue Generated', 'Time Saved', 'Users Impacted')" },
+                  howToMeasure: { type: "string", description: "How candidate can calculate/find this number" },
+                  exampleRange: { type: "string", description: "Typical range for this role (e.g., '$50K-$500K', '20-50%', '1K-100K users')" },
+                  bulletExample: { type: "string", description: "Complete bullet point example using this metric" }
+                },
+                required: ["category", "metricName", "howToMeasure", "exampleRange", "bulletExample"]
+              },
+              description: "5-7 metrics this role should quantify"
+            },
+            missingFromResume: {
+              type: "array",
+              items: { type: "string" },
+              description: "Specific metric types missing from their current resume"
+            },
+            quickWins: {
+              type: "array",
+              items: { type: "string" },
+              description: "3 easy metrics they could add right now based on their experience"
+            }
+          },
+          required: ["roleType", "typicalMetrics", "missingFromResume", "quickWins"]
+        },
         skillsGap: {
           type: "object",
           properties: {
@@ -431,16 +463,75 @@ const getAnalysisTools = (hasLinkedIn: boolean, hasJobDescription: boolean) => [
                 description: "3-5 specific resume edits to better match the job description"
               },
               roleMatchAnalysis: { type: "string", description: "2-3 sentences analyzing how well the candidate's experience aligns with the target role" },
-              gapAnalysis: { type: "string", description: "2-3 sentences on skill/experience gaps vs the JD requirements" }
+              gapAnalysis: { type: "string", description: "2-3 sentences on skill/experience gaps vs the JD requirements" },
+              toneAnalysis: {
+                type: "object",
+                properties: {
+                  jdTone: { type: "string", enum: ["formal", "casual", "technical", "creative", "corporate", "startup"], description: "The dominant tone/voice of the job description" },
+                  resumeTone: { type: "string", enum: ["formal", "casual", "technical", "creative", "corporate", "startup"], description: "The current tone/voice of the resume" },
+                  toneMatch: { type: "boolean", description: "Whether the tones match well" },
+                  toneGuidance: { type: "string", description: "Specific advice on adjusting resume tone to match the JD" },
+                  phraseSwaps: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        current: { type: "string", description: "Current phrase from resume" },
+                        suggested: { type: "string", description: "Phrase rewritten to match JD tone" },
+                        reason: { type: "string", description: "Why this change matches the company's voice" }
+                      },
+                      required: ["current", "suggested", "reason"]
+                    },
+                    description: "3-5 specific phrase changes to match the JD tone"
+                  }
+                },
+                required: ["jdTone", "resumeTone", "toneMatch", "toneGuidance", "phraseSwaps"]
+              },
+              companyInsights: {
+                type: "object",
+                properties: {
+                  companyName: { type: "string", description: "Company name extracted from JD (or 'Unknown' if not found)" },
+                  companyType: { type: "string", enum: ["startup", "scaleup", "enterprise", "agency", "nonprofit", "government", "unknown"], description: "Type of company based on JD signals" },
+                  cultureSignals: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "3-5 company culture traits detected from JD (e.g., 'fast-paced', 'collaborative', 'data-driven', 'innovative')"
+                  },
+                  valueKeywords: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Specific company values or buzzwords from JD to mirror (e.g., 'customer-obsessed', 'ownership', 'bias for action')"
+                  },
+                  languageToUse: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        value: { type: "string", description: "Company value/trait detected" },
+                        resumeLanguage: { type: "string", description: "How to express this value in resume bullets" },
+                        bulletExample: { type: "string", description: "Example bullet demonstrating this value" }
+                      },
+                      required: ["value", "resumeLanguage", "bulletExample"]
+                    },
+                    description: "3-4 ways to incorporate company values into resume"
+                  },
+                  redFlagsForThisCompany: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Things in the resume that might not resonate with this specific company culture"
+                  }
+                },
+                required: ["companyName", "companyType", "cultureSignals", "valueKeywords", "languageToUse", "redFlagsForThisCompany"]
+              }
             },
-            required: ["matchScore", "extractedKeywords", "missingKeywords", "suggestedEdits", "roleMatchAnalysis", "gapAnalysis"]
+            required: ["matchScore", "extractedKeywords", "missingKeywords", "suggestedEdits", "roleMatchAnalysis", "gapAnalysis", "toneAnalysis", "companyInsights"]
           }
         } : {})
       },
       required: [
         "industry", "experienceLevel", "atsScore", "readabilityMetrics", "formatRecommendations",
         "atsParsingIssues", "summaryRewrite", "optimizedBullets", "quantificationOpportunities", 
-        "skillsGap", "industryInsights", "actionVerbs", "keywords", "redFlags", "resumeLength", "actionPlan"
+        "skillsGap", "industryInsights", "actionVerbs", "keywords", "redFlags", "resumeLength", "actionPlan", "achievementMetrics"
       ]
     }
   }
@@ -827,10 +918,30 @@ ${hasLinkedIn ? `LINKEDIN OPTIMIZATION:
 - About: First-person narrative, 3-4 paragraphs, front-load with achievements
 - Skills: Add in-demand skills recruiters search for, remove outdated technologies` : ''}
 
-${hasJobDescription ? `JOB ALIGNMENT (compare resume SPECIFICALLY to this JD):
-- Match Score: Realistic 40-70% for most candidates. 80%+ means near-perfect fit.
+${hasJobDescription ? `JOB ALIGNMENT & COMPANY CULTURE MATCHING:
+**Match Score:** Realistic 40-70% for most candidates. 80%+ means near-perfect fit.
 - Extract exact requirements from JD and check resume for each
-- Prioritize missing "must-have" keywords over "nice-to-have"` : ''}
+- Prioritize missing "must-have" keywords over "nice-to-have"
+
+**Tone Analysis (CRITICAL for cultural fit):**
+- Detect the JD's voice: Is it formal/corporate ("leverage synergies"), casual/startup ("we're a scrappy team"), technical ("deep expertise in distributed systems"), or creative ("we believe in bold ideas")?
+- Compare to the resume's current tone and identify mismatches
+- Provide specific phrase swaps to align the resume's voice with the company's culture
+- Example: JD says "move fast and break things" but resume says "ensured compliance with established protocols" - suggest: "rapidly iterated on solutions while maintaining quality standards"
+
+**Company Culture Insights:**
+- Extract company name if mentioned, infer company type from signals (startup vs enterprise, tech-forward vs traditional)
+- Identify cultural signals: "fast-paced environment" = values speed, "collaborative team" = wants team players, "data-driven decisions" = quantify everything
+- Look for company values/buzzwords to mirror: "customer-obsessed", "ownership mentality", "bias for action", "think big"
+- Flag resume content that might clash with detected culture (e.g., slow/methodical language for a startup that values speed)
+- Suggest specific language adjustments to demonstrate cultural alignment` : ''}
+
+ACHIEVEMENT QUANTIFICATION (always include):
+- Identify the candidate's role type and provide role-specific metrics they should quantify
+- For each role type, suggest 5-7 metrics with: how to measure, typical ranges, and bullet examples
+- Look at their current resume and identify which metric types are missing
+- Provide 3 "quick wins" - specific metrics they could add immediately based on their experience
+- Example for Software Engineer: "API latency reduction" - How to measure: before/after response times - Range: 20-80% improvement - Example: "Reduced API latency 65% (800ms→280ms) by implementing caching layer, improving user experience for 50K daily active users"
 
 Use their actual resume content in examples. Prioritize highest-impact fixes first.`;
 

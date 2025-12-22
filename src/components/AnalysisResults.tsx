@@ -81,6 +81,29 @@ export interface AnalysisData {
     }[];
     roleMatchAnalysis: string;
     gapAnalysis: string;
+    toneAnalysis?: {
+      jdTone: string;
+      resumeTone: string;
+      toneMatch: boolean;
+      toneGuidance: string;
+      phraseSwaps: {
+        current: string;
+        suggested: string;
+        reason: string;
+      }[];
+    };
+    companyInsights?: {
+      companyName: string;
+      companyType: string;
+      cultureSignals: string[];
+      valueKeywords: string[];
+      languageToUse: {
+        value: string;
+        resumeLanguage: string;
+        bulletExample: string;
+      }[];
+      redFlagsForThisCompany: string[];
+    };
   };
   atsScore?: {
     score: number;
@@ -123,6 +146,18 @@ export interface AnalysisData {
     suggestion: string;
     example: string;
   }[];
+  achievementMetrics?: {
+    roleType: string;
+    typicalMetrics: {
+      category: string;
+      metricName: string;
+      howToMeasure: string;
+      exampleRange: string;
+      bulletExample: string;
+    }[];
+    missingFromResume: string[];
+    quickWins: string[];
+  };
   skillsGap?: {
     missingTechnical: string[];
     missingSoft: string[];
@@ -346,6 +381,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
     ...(data.summaryRewrite?.professionalSummary ? [{ id: "summary", label: "Summary", icon: User }] : []),
     ...(data.industryInsights?.whatRecruitersLookFor ? [{ id: "industry", label: "Industry", icon: Target }] : []),
     ...(data.skillsGap && (safeArray(data.skillsGap.missingTechnical).length > 0 || safeArray(data.skillsGap.missingSoft).length > 0) ? [{ id: "skills", label: "Skills Gap", icon: Brain }] : []),
+    ...(data.achievementMetrics ? [{ id: "metrics", label: "Metrics Guide", icon: TrendingUp }] : []),
     ...(optimizedBullets.length > 0 ? [{ id: "bullets", label: "Bullets", icon: CheckCircle2 }] : []),
     ...(actionVerbs.length > 0 ? [{ id: "verbs", label: "Verbs", icon: Zap }] : []),
     ...(keywords.length > 0 ? [{ id: "keywords", label: "Keywords", icon: Lightbulb }] : []),
@@ -653,6 +689,135 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     <div className="mt-4 p-3 rounded-xl bg-warning/5 border border-warning/20">
                       <span className="text-xs font-medium text-warning">Gap Analysis</span>
                       <p className="text-sm text-muted-foreground mt-1">{data.jobDescriptionAlignment.gapAnalysis}</p>
+                    </div>
+                  )}
+                  
+                  {/* Tone Analysis Section */}
+                  {data.jobDescriptionAlignment.toneAnalysis && (
+                    <div className="mt-6 p-4 rounded-xl bg-primary/5 border border-primary/20">
+                      <div className="flex items-center gap-2 mb-3">
+                        <MessageSquare className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-semibold text-foreground">Voice & Tone Match</span>
+                        {data.jobDescriptionAlignment.toneAnalysis.toneMatch ? (
+                          <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-bold bg-success/20 text-success">
+                            ✓ Good Match
+                          </span>
+                        ) : (
+                          <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-bold bg-warning/20 text-warning">
+                            Needs Adjustment
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div className="p-2 rounded-lg bg-muted/30 text-center">
+                          <span className="text-xs text-muted-foreground block">JD Tone</span>
+                          <span className="text-sm font-semibold capitalize">{data.jobDescriptionAlignment.toneAnalysis.jdTone}</span>
+                        </div>
+                        <div className="p-2 rounded-lg bg-muted/30 text-center">
+                          <span className="text-xs text-muted-foreground block">Resume Tone</span>
+                          <span className="text-sm font-semibold capitalize">{data.jobDescriptionAlignment.toneAnalysis.resumeTone}</span>
+                        </div>
+                      </div>
+                      
+                      <p className="text-sm text-muted-foreground mb-4">{data.jobDescriptionAlignment.toneAnalysis.toneGuidance}</p>
+                      
+                      {/* Phrase Swaps */}
+                      {safeArray(data.jobDescriptionAlignment.toneAnalysis.phraseSwaps).length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Phrase Adjustments</span>
+                          {safeArray(data.jobDescriptionAlignment.toneAnalysis.phraseSwaps).map((swap, i) => (
+                            <div key={i} className="p-2 rounded-lg bg-muted/20 space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-destructive line-through">{swap.current}</span>
+                                <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
+                                <span className="text-xs text-success font-medium">{swap.suggested}</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground italic">{swap.reason}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Company Insights Section */}
+                  {data.jobDescriptionAlignment.companyInsights && (
+                    <div className="mt-4 p-4 rounded-xl bg-accent/10 border border-accent/20">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Briefcase className="w-4 h-4 text-accent-foreground" />
+                        <span className="text-sm font-semibold text-foreground">
+                          {data.jobDescriptionAlignment.companyInsights.companyName !== 'Unknown' 
+                            ? `${data.jobDescriptionAlignment.companyInsights.companyName} Culture Fit`
+                            : 'Company Culture Fit'}
+                        </span>
+                        <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium bg-muted capitalize">
+                          {data.jobDescriptionAlignment.companyInsights.companyType}
+                        </span>
+                      </div>
+                      
+                      {/* Culture Signals */}
+                      {safeArray(data.jobDescriptionAlignment.companyInsights.cultureSignals).length > 0 && (
+                        <div className="mb-3">
+                          <span className="text-xs text-muted-foreground">Culture Signals Detected:</span>
+                          <div className="flex flex-wrap gap-1.5 mt-1">
+                            {safeArray(data.jobDescriptionAlignment.companyInsights.cultureSignals).map((signal, i) => (
+                              <span key={i} className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs">
+                                {signal}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Value Keywords to Mirror */}
+                      {safeArray(data.jobDescriptionAlignment.companyInsights.valueKeywords).length > 0 && (
+                        <div className="mb-3">
+                          <span className="text-xs text-muted-foreground">Keywords to Mirror:</span>
+                          <div className="flex flex-wrap gap-1.5 mt-1">
+                            {safeArray(data.jobDescriptionAlignment.companyInsights.valueKeywords).map((kw, i) => (
+                              <span key={i} className="px-2 py-0.5 rounded-full bg-success/10 text-success text-xs font-medium">
+                                "{kw}"
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* How to Show Company Values */}
+                      {safeArray(data.jobDescriptionAlignment.companyInsights.languageToUse).length > 0 && (
+                        <div className="space-y-2 mb-3">
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Show These Values in Your Resume</span>
+                          {safeArray(data.jobDescriptionAlignment.companyInsights.languageToUse).map((item, i) => (
+                            <div key={i} className="p-2 rounded-lg bg-success/5 border border-success/10">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs font-bold text-primary">{item.value}</span>
+                                <span className="text-xs text-muted-foreground">→ {item.resumeLanguage}</span>
+                              </div>
+                              <p className="text-xs text-success italic">"{item.bulletExample}"</p>
+                              <CopyButton text={item.bulletExample} label="Copy" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Culture Red Flags */}
+                      {safeArray(data.jobDescriptionAlignment.companyInsights.redFlagsForThisCompany).length > 0 && (
+                        <div className="p-2 rounded-lg bg-destructive/5 border border-destructive/10">
+                          <span className="text-xs font-medium text-destructive flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            May Not Resonate With This Company
+                          </span>
+                          <ul className="mt-1 space-y-0.5">
+                            {safeArray(data.jobDescriptionAlignment.companyInsights.redFlagsForThisCompany).map((flag, i) => (
+                              <li key={i} className="text-xs text-muted-foreground flex items-start gap-1">
+                                <span className="text-destructive">•</span>
+                                {flag}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1549,6 +1714,88 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 ))}
               </div>
             </ResultCard>
+          )}
+
+          {/* Achievement Metrics - Role-Specific Quantification Guide */}
+          {data.achievementMetrics && (
+            <div id="metrics">
+              <ResultCard
+                icon={TrendingUp}
+                title={`Metrics for ${data.achievementMetrics.roleType}`}
+                subtitle="Role-specific numbers that make your resume stand out"
+                iconColor="text-violet-500"
+                bgColor="bg-violet-500/10"
+                borderColor="border-violet-500/20"
+              >
+                <div className="space-y-4">
+                  {/* Quick Wins */}
+                  {safeArray(data.achievementMetrics.quickWins).length > 0 && (
+                    <div className="p-4 rounded-xl bg-success/10 border border-success/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Zap className="w-4 h-4 text-success" />
+                        <span className="text-sm font-semibold text-success">Quick Wins - Add These Today</span>
+                      </div>
+                      <ul className="space-y-1.5">
+                        {safeArray(data.achievementMetrics.quickWins).map((win, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-success mt-0.5 shrink-0" />
+                            {win}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {/* Missing Metrics */}
+                  {safeArray(data.achievementMetrics.missingFromResume).length > 0 && (
+                    <div className="p-4 rounded-xl bg-warning/10 border border-warning/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertCircle className="w-4 h-4 text-warning" />
+                        <span className="text-sm font-semibold text-warning">Missing From Your Resume</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {safeArray(data.achievementMetrics.missingFromResume).map((metric, i) => (
+                          <span key={i} className="px-2 py-1 rounded-lg bg-warning/20 text-warning text-xs font-medium">
+                            {metric}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Typical Metrics for Role */}
+                  {safeArray(data.achievementMetrics.typicalMetrics).length > 0 && (
+                    <div className="space-y-3">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Key Metrics for {data.achievementMetrics.roleType}s
+                      </span>
+                      {safeArray(data.achievementMetrics.typicalMetrics).map((metric, i) => (
+                        <div key={i} className="p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 rounded text-xs font-medium bg-violet-500/20 text-violet-600 dark:text-violet-400">
+                                {metric.category}
+                              </span>
+                              <span className="text-sm font-semibold text-foreground">{metric.metricName}</span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">{metric.exampleRange}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            <span className="font-medium">How to measure:</span> {metric.howToMeasure}
+                          </p>
+                          <div className="p-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                            <p className="text-sm text-foreground">{metric.bulletExample}</p>
+                            <div className="mt-2">
+                              <CopyButton text={metric.bulletExample} label="Copy Example" />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </ResultCard>
+            </div>
           )}
 
           {/* ATS-Optimized Bullets */}
