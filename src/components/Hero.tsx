@@ -208,6 +208,10 @@ export function Hero() {
               </div>
               <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
                 <Check className="w-4 h-4 text-success flex-shrink-0" />
+                <span>Works on all ATS systems (Workday, Greenhouse, Lever & 50+ more)</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
+                <Check className="w-4 h-4 text-success flex-shrink-0" />
                 <span>One-time payment (no subscription)</span>
               </div>
               <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
