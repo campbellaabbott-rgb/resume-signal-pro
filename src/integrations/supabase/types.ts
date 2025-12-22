@@ -555,9 +555,32 @@ export type Database = {
           views: number
         }[]
       }
+      get_affiliate_clicks: {
+        Args: { p_days_back?: number; p_session_token: string }
+        Returns: {
+          click_count: number
+          click_date: string
+          unique_referrers: number
+        }[]
+      }
       get_affiliate_dashboard: {
         Args: { p_session_token: string }
         Returns: Json
+      }
+      get_affiliate_stats_by_date: {
+        Args: {
+          p_end_date?: string
+          p_session_token: string
+          p_start_date?: string
+        }
+        Returns: {
+          conversion_rate: number
+          paid_out: number
+          pending_payout: number
+          total_clicks: number
+          total_conversions: number
+          total_revenue: number
+        }[]
       }
       get_analysis_by_share_id: {
         Args: { share_id_param: string }

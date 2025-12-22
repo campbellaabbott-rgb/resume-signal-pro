@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAffiliateAuth } from '@/hooks/use-affiliate-auth';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { 
   Copy, 
@@ -14,8 +16,16 @@ import {
   Clock,
   CheckCircle,
   RefreshCw,
-  Users
+  Users,
+  Calendar,
+  BarChart3
 } from 'lucide-react';
+
+interface ClickData {
+  click_date: string;
+  click_count: number;
+  unique_referrers: number;
+}
 
 export default function Affiliates() {
   const { 
@@ -35,6 +45,9 @@ export default function Affiliates() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dateRange, setDateRange] = useState('30');
+  const [clickHistory, setClickHistory] = useState<ClickData[]>([]);
+  const [isLoadingClicks, setIsLoadingClicks] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -43,6 +56,30 @@ export default function Affiliates() {
       });
     }
   }, [isAuthenticated, fetchDashboard]);
+
+  // Fetch click history when date range changes
+  useEffect(() => {
+    async function fetchClickHistory() {
+      if (!isAuthenticated || !session?.sessionToken) return;
+      
+      setIsLoadingClicks(true);
+      try {
+        const { data, error } = await supabase.rpc('get_affiliate_clicks', {
+          p_session_token: session.sessionToken,
+          p_days_back: parseInt(dateRange)
+        });
+        
+        if (error) throw error;
+        setClickHistory(data || []);
+      } catch (err) {
+        console.error('Failed to fetch click history:', err);
+      } finally {
+        setIsLoadingClicks(false);
+      }
+    }
+    
+    fetchClickHistory();
+  }, [isAuthenticated, session?.sessionToken, dateRange]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,7 +234,7 @@ export default function Affiliates() {
               <div>
                 <h3 className="font-semibold mb-1">Your Referral Link</h3>
                 <p className="text-sm text-muted-foreground mb-2">
-                  Share this link to earn rewards
+                  Share this link to earn rewards (30-day attribution window)
                 </p>
                 <code className="text-xs bg-background px-2 py-1 rounded border break-all">
                   {getReferralLink()}
@@ -210,6 +247,25 @@ export default function Affiliates() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Date Range Filter */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Time Period:</span>
+          </div>
+          <Select value={dateRange} onValueChange={setDateRange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">Last 7 days</SelectItem>
+              <SelectItem value="30">Last 30 days</SelectItem>
+              <SelectItem value="90">Last 90 days</SelectItem>
+              <SelectItem value="365">Last year</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -285,6 +341,54 @@ export default function Affiliates() {
           </CardContent>
         </Card>
 
+        {/* Click History */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Click History
+            </CardTitle>
+            <CardDescription>
+              Daily click breakdown for the last {dateRange} days
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingClicks ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              </div>
+            ) : clickHistory.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                No clicks recorded in this period. Share your referral link to start tracking!
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {clickHistory.map((day) => (
+                  <div
+                    key={day.click_date}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{formatDate(day.click_date)}</span>
+                    </div>
+                    <div className="flex items-center gap-6 text-sm">
+                      <div className="text-right">
+                        <span className="text-muted-foreground">Clicks: </span>
+                        <span className="font-semibold">{day.click_count}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-muted-foreground">Sources: </span>
+                        <span className="font-semibold">{day.unique_referrers}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Recent Conversions */}
         <Card>
           <CardHeader>
@@ -355,7 +459,7 @@ export default function Affiliates() {
               <div>
                 <p className="font-medium">Track Conversions</p>
                 <p className="text-sm text-muted-foreground">
-                  When someone clicks your link and makes a purchase, you earn {formatCurrency(affiliate?.commission_amount || 500)}
+                  When someone clicks your link and makes a purchase within 30 days, you earn {formatCurrency(affiliate?.commission_amount || 500)}
                 </p>
               </div>
             </div>
@@ -366,7 +470,7 @@ export default function Affiliates() {
               <div>
                 <p className="font-medium">Get Paid</p>
                 <p className="text-sm text-muted-foreground">
-                  Payouts are processed monthly for approved conversions
+                  Payouts are processed monthly for approved conversions. You'll receive an email notification for each commission earned.
                 </p>
               </div>
             </div>
