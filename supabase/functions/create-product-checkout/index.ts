@@ -174,7 +174,7 @@ serve(async (req) => {
       mode: "payment",
       allow_promotion_codes: true,
       success_url: `${origin}/product-success?session_id={CHECKOUT_SESSION_ID}&product=${productId}`,
-      cancel_url: `${origin}/?canceled=true`,
+      cancel_url: `${origin}/payment-failed?product=${productId}`,
       metadata: {
         product_type: product.productType,
         product_name: product.name,

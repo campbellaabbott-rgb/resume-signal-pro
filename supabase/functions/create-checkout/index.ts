@@ -387,7 +387,7 @@ serve(async (req) => {
       ],
       mode: "payment",
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/?canceled=true`,
+      cancel_url: `${origin}/payment-failed`,
       allow_promotion_codes: true, // Enable coupon/promo code input field
       metadata: {
         resumeData: resumeData ? JSON.stringify(resumeData).slice(0, 500) : "",
