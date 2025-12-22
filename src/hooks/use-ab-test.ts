@@ -1,55 +1,42 @@
 import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-// Define all A/B tests in one place
+// =============================================================================
+// A/B TESTING CONFIGURATION
+// =============================================================================
+// 
+// HOW TO USE:
+// 1. Add new tests to ACTIVE_AB_TESTS below
+// 2. Use useABTest('test_name') hook in components
+// 3. Check results at /analytics
+// 4. When a winner is found, move the test to CONCLUDED_TESTS and update components
+//
+// =============================================================================
+
+// CONCLUDED TESTS - Winners declared, kept for reference
+// These are no longer active but documented for historical tracking
+export const CONCLUDED_TESTS = {
+  hero_cta: { winner: 'control', concludedAt: '2025-12-22' },
+  pricing_display: { winner: 'control', concludedAt: '2025-12-22' },
+  free_scan_cta: { winner: 'control', concludedAt: '2025-12-22' },
+  free_scan_upgrade: { winner: 'control', concludedAt: '2025-12-22' },
+  product_ctas: { winner: 'control', concludedAt: '2025-12-22' },
+} as const;
+
+// ACTIVE A/B TESTS - Add new tests here
+// When you want to run a new test, add it here with variants
 export const AB_TESTS = {
-  hero_cta: {
-    name: 'hero_cta',
-    variants: ['control', 'urgent', 'benefit'] as const,
-    // control: "Get Your Analysis - $25"
-    // urgent: "Analyze Now - Limited Time"
-    // benefit: "Land More Interviews - $25"
-  },
-  pricing_display: {
-    name: 'pricing_display',
-    variants: ['control', 'starting_at', 'roi_focused'] as const,
-    // control: "$25"
-    // starting_at: "Starting at $25"
-    // roi_focused: "1 Interview = ROI"
-  },
-  free_scan_cta: {
-    name: 'free_scan_cta',
-    variants: ['control', 'instant', 'free_badge'] as const,
-    // control: "Try Free Scan"
-    // instant: "Get Instant Results"
-    // free_badge: "FREE Scan Available"
-  },
-  free_scan_upgrade: {
-    name: 'free_scan_upgrade',
-    variants: ['control', 'urgency', 'value'] as const,
-    // control: "Fix These Issues - $25" / "Get Full Analysis - $25"
-    // urgency: "Fix Now Before It's Too Late" / "Don't Miss Out - $25"
-    // value: "Get Recruiter-Ready - $25" / "Unlock All Fixes - $25"
-  },
-  upload_flow: {
-    name: 'upload_flow',
-    variants: ['control', 'paste_first', 'simplified'] as const,
-    // control: current design
-    // paste_first: paste option more prominent
-    // simplified: minimal UI
-  },
-  product_ctas: {
-    name: 'product_ctas',
-    variants: ['control', 'benefit_focused', 'scarcity'] as const,
-    // control: Standard pricing-focused copy
-    // benefit_focused: Outcome-focused copy emphasizing results
-    // scarcity: Urgency and limited-time messaging
-  },
-  sticky_pricing_banner: {
-    name: 'sticky_pricing_banner',
-    variants: ['show', 'hide'] as const,
-    // show: Display the sticky pricing banner
-    // hide: No sticky pricing banner (control)
+  // Example of how to add a new test:
+  // new_feature_test: {
+  //   name: 'new_feature_test',
+  //   variants: ['control', 'variant_a', 'variant_b'] as const,
+  // },
+  
+  // Keep one placeholder test for infrastructure validation
+  // Remove this when adding real tests
+  _placeholder: {
+    name: '_placeholder',
+    variants: ['control'] as const,
   },
 } as const;
 

@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useABTest } from "@/hooks/use-ab-test";
+
 import { useCurrency } from "@/hooks/use-currency";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PRODUCTS } from "@/config/products";
@@ -654,45 +654,16 @@ export function FreeKeywordResults({
   const [isSubscribed, setIsSubscribed] = useState(false);
   const { toast } = useToast();
   
-  // A/B Test for upgrade CTAs
-  const upgradeTest = useABTest('free_scan_upgrade');
-  
-  // A/B Test for product CTAs
-  const productCtaTest = useABTest('product_ctas');
-  
   const fullAnalysisPrice = PRODUCTS.fullAnalysis.priceUsd;
   const priceDisplay = isLocalCurrency ? `$${fullAnalysisPrice} ≈ ${formatPrice(fullAnalysisPrice)}` : `$${fullAnalysisPrice}`;
   
-  // CTA text variants for first upgrade box
-  const getFirstCtaText = () => {
-    switch (upgradeTest.variant) {
-      case 'urgency': return 'Fix Now Before It\'s Too Late';
-      case 'value': return `Get Recruiter-Ready - ${priceDisplay}`;
-      default: return `Fix These Issues - ${priceDisplay}`;
-    }
-  };
-  
-  // CTA text variants for second upgrade box
-  const getSecondCtaText = () => {
-    switch (upgradeTest.variant) {
-      case 'urgency': return `Don't Miss Out - ${priceDisplay}`;
-      case 'value': return `Unlock All Fixes - ${priceDisplay}`;
-      default: return `Get Full Analysis - ${priceDisplay}`;
-    }
-  };
-  
-  // CTA text variants for final button
-  const getFinalCtaText = () => {
-    switch (upgradeTest.variant) {
-      case 'urgency': return 'Get It Now';
-      case 'value': return 'Unlock Full Report';
-      default: return t('freeScan.cta.button');
-    }
-  };
+  // Winners declared - using control variants
+  const getFirstCtaText = () => `Fix These Issues - ${priceDisplay}`;
+  const getSecondCtaText = () => `Get Full Analysis - ${priceDisplay}`;
+  const getFinalCtaText = () => t('freeScan.cta.button');
   
   // Wrap onGetFullAnalysis with conversion tracking
   const handleUpgradeClick = (source: string) => {
-    upgradeTest.trackConversion({ source });
     onGetFullAnalysis();
   };
 
@@ -2203,13 +2174,13 @@ export function FreeKeywordResults({
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="flex-1 text-center sm:text-left">
               <p className="font-semibold text-foreground">
-                {getProductCtaCopy(productCtaTest.variant as 'control' | 'benefit_focused' | 'scarcity', formatPrice, isLocalCurrency).premiumPackage.headline}
+                {getProductCtaCopy('control', formatPrice, isLocalCurrency).premiumPackage.headline}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Get an AI-rewritten resume that's optimized for ALL major ATS systems
               </p>
             </div>
-            <PremiumPackageButton variant={productCtaTest.variant as 'control' | 'benefit_focused' | 'scarcity'} isPrimary section="ats_compatibility" />
+            <PremiumPackageButton variant="control" isPrimary section="ats_compatibility" />
           </div>
         </div>
       </div>
@@ -2298,7 +2269,7 @@ export function FreeKeywordResults({
                   Our Premium Package includes an AI-rewritten resume with all fixes applied
                 </p>
               </div>
-              <PremiumPackageButton variant={productCtaTest.variant as 'control' | 'benefit_focused' | 'scarcity'} isPrimary section="quick_wins" />
+              <PremiumPackageButton variant="control" isPrimary section="quick_wins" />
             </div>
           </div>
         </div>
@@ -2448,7 +2419,7 @@ export function FreeKeywordResults({
             </div>
             
             <div className="flex flex-col sm:flex-row gap-3">
-              <PremiumPackageButton variant={productCtaTest.variant} isPrimary section="tailored_resume" />
+              <PremiumPackageButton variant="control" isPrimary section="tailored_resume" />
             </div>
             <Link to="/pricing" className="inline-flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mt-3">
               See all packages <ArrowRight className="w-3 h-3" />
@@ -2494,7 +2465,7 @@ export function FreeKeywordResults({
                   Get an AI-rewritten resume that eliminates these issues
                 </p>
               </div>
-              <PremiumPackageButton variant={productCtaTest.variant as 'control' | 'benefit_focused' | 'scarcity'} isPrimary section="red_flags" />
+              <PremiumPackageButton variant="control" isPrimary section="red_flags" />
             </div>
           </div>
         </div>
@@ -2569,7 +2540,7 @@ export function FreeKeywordResults({
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <h5 className="font-semibold text-foreground">{getProductCtaCopy(productCtaTest.variant, formatPrice, isLocalCurrency).keywordFix.headline}</h5>
+                <h5 className="font-semibold text-foreground">{getProductCtaCopy('control', formatPrice, isLocalCurrency).keywordFix.headline}</h5>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
                   {isLocalCurrency ? `$${PRODUCTS.basicKeywordFix.priceUsd} ≈ ${formatPrice(PRODUCTS.basicKeywordFix.priceUsd)}` : `$${PRODUCTS.basicKeywordFix.priceUsd}`}
                 </span>
@@ -2577,7 +2548,7 @@ export function FreeKeywordResults({
               <p className="text-sm text-muted-foreground mb-3">
                 Get a complete keyword optimization report with exact phrases recruiters search for in your industry.
               </p>
-              <KeywordFixButton variant={productCtaTest.variant} section="keyword_suggestions" />
+              <KeywordFixButton variant="control" section="keyword_suggestions" />
             </div>
           </div>
         </div>
@@ -2694,14 +2665,14 @@ export function FreeKeywordResults({
               </span>
             </div>
             <p className="text-sm text-muted-foreground mb-3">
-              {getProductCtaCopy(productCtaTest.variant, formatPrice, isLocalCurrency).coverLetter.description}
+              {getProductCtaCopy('control', formatPrice, isLocalCurrency).coverLetter.description}
             </p>
             <div className="flex flex-wrap gap-2 mb-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Personalized opening</span>
               <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Skills highlighted</span>
               <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Instant download</span>
             </div>
-            <CoverLetterButton hasJobDescription={uploadedJobs.length > 0} variant={productCtaTest.variant} section="cover_letter_cta" />
+            <CoverLetterButton hasJobDescription={uploadedJobs.length > 0} variant="control" section="cover_letter_cta" />
           </div>
         </div>
       </div>
@@ -2716,10 +2687,10 @@ export function FreeKeywordResults({
             <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-primary-foreground font-bold">{PRODUCTS.premiumPackage.savings}</span>
           </div>
           <h3 className="text-2xl font-bold text-primary-foreground mb-2">
-            {getProductCtaCopy(productCtaTest.variant, formatPrice, isLocalCurrency).premiumPackage.headline}
+            {getProductCtaCopy('control', formatPrice, isLocalCurrency).premiumPackage.headline}
           </h3>
           <p className="text-sm text-primary-foreground/80 mb-4">
-            {getProductCtaCopy(productCtaTest.variant, formatPrice, isLocalCurrency).premiumPackage.subtext}: full analysis + AI-rewritten resume + custom cover letter.
+            {getProductCtaCopy('control', formatPrice, isLocalCurrency).premiumPackage.subtext}: full analysis + AI-rewritten resume + custom cover letter.
           </p>
           <div className="grid grid-cols-2 gap-2 mb-4">
             {[
@@ -2737,7 +2708,7 @@ export function FreeKeywordResults({
             ))}
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <PremiumPackageButton variant={productCtaTest.variant} isPrimary section="bottom_cta" />
+            <PremiumPackageButton variant="control" isPrimary section="bottom_cta" />
             <div className="text-primary-foreground">
               <span className="text-2xl font-bold">
                 {isLocalCurrency ? `$${PRODUCTS.premiumPackage.priceUsd} ≈ ${formatPrice(PRODUCTS.premiumPackage.priceUsd)}` : `$${PRODUCTS.premiumPackage.priceUsd}`}
