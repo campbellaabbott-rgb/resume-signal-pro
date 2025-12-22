@@ -1,0 +1,117 @@
+import { useState, useEffect, useCallback } from 'react';
+import { X, Zap, CheckCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useABTest } from '@/hooks/use-ab-test';
+
+export const ExitIntentPopup = () => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [hasShown, setHasShown] = useState(false);
+  const { trackConversion } = useABTest('social_proof_placement');
+
+  const handleMouseLeave = useCallback((e: MouseEvent) => {
+    // Only trigger when mouse leaves from the top of the viewport
+    if (e.clientY <= 0 && !hasShown) {
+      setIsVisible(true);
+      setHasShown(true);
+      // Store in session so we don't show again
+      sessionStorage.setItem('exitIntentShown', 'true');
+    }
+  }, [hasShown]);
+
+  useEffect(() => {
+    // Check if already shown this session
+    if (sessionStorage.getItem('exitIntentShown')) {
+      setHasShown(true);
+      return;
+    }
+
+    // Wait a bit before enabling exit intent
+    const timeout = setTimeout(() => {
+      document.addEventListener('mouseleave', handleMouseLeave);
+    }, 5000);
+
+    return () => {
+      clearTimeout(timeout);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [handleMouseLeave]);
+
+  const handleClose = () => {
+    setIsVisible(false);
+  };
+
+  const handleGetFreeScan = () => {
+    trackConversion({ action: 'exit_intent_cta_click' });
+    setIsVisible(false);
+    
+    const uploadSection = document.getElementById('upload');
+    if (uploadSection) {
+      uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300">
+        {/* Close button */}
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Close popup"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+        <div className="p-8 text-center">
+          {/* Icon */}
+          <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+            <Zap className="h-8 w-8 text-primary" />
+          </div>
+
+          {/* Headline */}
+          <h2 className="text-2xl font-bold text-foreground mb-3">
+            Wait! Don't Leave Empty-Handed
+          </h2>
+
+          {/* Subheadline */}
+          <p className="text-muted-foreground mb-6">
+            Get your <span className="text-primary font-semibold">free ATS scan</span> and see how your resume scores against real hiring systems.
+          </p>
+
+          {/* Benefits */}
+          <div className="space-y-3 mb-6 text-left">
+            {[
+              'Instant ATS compatibility score',
+              'Keyword optimization tips',
+              'Formatting issue detection'
+            ].map((benefit, index) => (
+              <div key={index} className="flex items-center gap-3">
+                <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
+                <span className="text-sm text-foreground">{benefit}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA Button */}
+          <Button
+            onClick={handleGetFreeScan}
+            size="lg"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 text-lg"
+          >
+            Get My Free Scan Now
+          </Button>
+
+          {/* Dismissal text */}
+          <button
+            onClick={handleClose}
+            className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            No thanks, I'll risk it
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
