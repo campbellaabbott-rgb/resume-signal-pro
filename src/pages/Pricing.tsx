@@ -9,6 +9,7 @@ import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { cn } from "@/lib/utils";
 import { ValueComparison } from "@/components/ValueComparison";
 import { useCurrency } from "@/hooks/use-currency";
+import { useScrollDepth } from "@/hooks/use-scroll-depth";
 
 const productIcons: Record<string, React.ElementType> = {
   basicKeywordFix: FileText,
@@ -32,6 +33,9 @@ const productOrder: ProductId[] = [
 export default function Pricing() {
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
   const { formatPrice, isLocalCurrency } = useCurrency();
+  
+  // Track scroll depth for drop-off analysis
+  useScrollDepth('pricing');
 
   const handlePurchase = async (productId: ProductId) => {
     const product = PRODUCTS[productId];
