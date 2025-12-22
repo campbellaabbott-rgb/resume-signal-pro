@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-
+import { getCohortData, initCohortTracking } from './use-cohort-tracking';
 // Funnel stages in order
 export const FUNNEL_STAGES = [
   'landing_view',
@@ -60,7 +60,7 @@ const getTimeSinceLanding = (): number => {
   return Math.round((Date.now() - parseInt(landingTime)) / 1000);
 };
 
-// Track funnel event
+// Track funnel event with cohort context
 const trackFunnelEvent = async (
   stage: FunnelStage,
   metadata?: Record<string, unknown>
@@ -70,13 +70,14 @@ const trackFunnelEvent = async (
     const sessionId = getSessionId();
     const progress = getFunnelProgress();
     const stageIndex = FUNNEL_STAGES.indexOf(stage);
+    const cohortData = getCohortData();
     
     // Calculate drop-off info
     const previousStages = progress.length;
     const expectedPrevious = stageIndex;
     const skippedStages = expectedPrevious - previousStages;
     
-    // Track the event
+    // Track the event with cohort context
     await supabase.functions.invoke('track-ab-event', {
       body: {
         testName: 'conversion_funnel',
@@ -94,6 +95,17 @@ const trackFunnelEvent = async (
           deviceType: getDeviceType(),
           referrer: document.referrer || 'direct',
           page: window.location.pathname,
+          // Cohort dimensions for segmentation
+          trafficSource: cohortData.trafficSource,
+          utmSource: cohortData.utmSource,
+          utmMedium: cohortData.utmMedium,
+          utmCampaign: cohortData.utmCampaign,
+          browser: cohortData.browser,
+          os: cohortData.os,
+          dayOfWeek: cohortData.dayOfWeek,
+          hourOfDay: cohortData.hourOfDay,
+          isReturningUser: cohortData.isReturningUser,
+          cohortSegment: `${cohortData.trafficSource}_${cohortData.deviceType}_${cohortData.isReturningUser ? 'returning' : 'new'}`,
         }
       }
     });
@@ -104,7 +116,7 @@ const trackFunnelEvent = async (
       saveFunnelProgress(progress);
     }
     
-    console.log(`[Funnel] Stage: ${stage}`, { stageIndex, timeSinceLanding: getTimeSinceLanding() });
+    console.log(`[Funnel] Stage: ${stage}`, { stageIndex, cohort: cohortData.trafficSource });
   } catch (error) {
     console.debug('Funnel tracking failed:', error);
   }
