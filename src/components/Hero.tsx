@@ -81,6 +81,9 @@ export function Hero() {
   const pricing = getPricingDisplay();
 
   const handleFreeScanClick = () => {
+    // Track conversion for A/B test
+    trackConversion({ action: 'free_scan_cta_click' });
+    
     const uploadSection = document.getElementById('upload');
     if (uploadSection) {
       uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
