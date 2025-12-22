@@ -21,7 +21,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useScanHistory } from "@/hooks/use-scan-history";
+import { useScanHistory, generateChecklist } from "@/hooks/use-scan-history";
+import { InteractiveChecklist } from "./InteractiveChecklist";
 
 import { useCurrency } from "@/hooks/use-currency";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -545,8 +546,9 @@ interface IndustryScoreInsight {
 }
 
 interface FreeKeywordResultsProps {
-  industry: string;
+  candidateName?: string | null;
   currentRole?: string;
+  industry: string;
   atsScoreEstimate: number;
   industryScoreInsight?: IndustryScoreInsight;
   formatGrade: string;
@@ -603,8 +605,9 @@ interface FreeKeywordResultsProps {
 }
 
 export function FreeKeywordResults({
-  industry,
+  candidateName,
   currentRole,
+  industry,
   atsScoreEstimate,
   industryScoreInsight,
   formatGrade,
@@ -662,13 +665,24 @@ export function FreeKeywordResults({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const { toast } = useToast();
-  const { addScanEntry, setUserEmail, isReturningUser } = useScanHistory();
+  const { addScanEntry, setUserEmail, isReturningUser, getLatestScan } = useScanHistory();
   const [hasRecordedScan, setHasRecordedScan] = useState(false);
+  const [currentScanId, setCurrentScanId] = useState<string | null>(null);
   
   // Record this scan in history (only once per render)
   useEffect(() => {
     if (!hasRecordedScan && atsScoreEstimate) {
-      addScanEntry({
+      const checklist = generateChecklist({
+        quickWins: quickWinsProp,
+        formatGrade,
+        formatIssue,
+        keywords,
+        redFlags: redFlagsProp,
+      });
+      
+      const entry = addScanEntry({
+        candidateName: candidateName || null,
+        currentRole: currentRole || null,
         atsScore: atsScoreEstimate,
         industry: industry || null,
         experienceLevel: experienceLevelProp?.level || null,
@@ -678,10 +692,18 @@ export function FreeKeywordResults({
         quantificationScore: quantificationScoreProp?.score,
         bulletImpactScore: bulletImpactScoreProp?.score,
         readabilityScore: readabilityScoreProp?.score,
-      });
+        checklist,
+      }, resumeText);
+      
+      if (entry) {
+        setCurrentScanId(entry.id);
+      }
       setHasRecordedScan(true);
     }
   }, [atsScoreEstimate, hasRecordedScan]);
+  
+  // Get current scan with checklist
+  const currentScan = getLatestScan();
   
   const fullAnalysisPrice = PRODUCTS.fullAnalysis.priceUsd;
   const priceDisplay = isLocalCurrency ? `$${fullAnalysisPrice} ≈ ${formatPrice(fullAnalysisPrice)}` : `$${fullAnalysisPrice}`;
