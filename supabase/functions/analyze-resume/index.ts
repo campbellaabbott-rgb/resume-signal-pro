@@ -963,7 +963,9 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro", // Upgraded from flash to pro for better analysis
+        // Keep gemini-2.5-pro for paid analysis - quality matters here
+        // Free tier uses flash for volume, paid tier uses pro for accuracy
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage }
