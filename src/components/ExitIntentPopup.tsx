@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { X, Gift, Clock, Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useOptimizationTracking } from "@/hooks/use-optimization-tracking";
 
 interface ExitIntentPopupProps {
   onClose: () => void;
@@ -10,19 +11,24 @@ interface ExitIntentPopupProps {
 
 export function ExitIntentPopup({ onClose, onGetStarted }: ExitIntentPopupProps) {
   const [isVisible, setIsVisible] = useState(false);
+  const { trackExitIntentShown, trackExitIntentDismissed, trackExitIntentConverted } = useOptimizationTracking();
 
   useEffect(() => {
+    // Track that popup was shown
+    trackExitIntentShown();
     // Animate in after mount
     const timer = setTimeout(() => setIsVisible(true), 50);
     return () => clearTimeout(timer);
-  }, []);
+  }, [trackExitIntentShown]);
 
   const handleClose = () => {
+    trackExitIntentDismissed();
     setIsVisible(false);
     setTimeout(onClose, 200);
   };
 
   const handleGetStarted = () => {
+    trackExitIntentConverted();
     setIsVisible(false);
     setTimeout(onGetStarted, 200);
   };

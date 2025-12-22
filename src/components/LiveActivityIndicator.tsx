@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Users, Sparkles } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useOptimizationTracking } from "@/hooks/use-optimization-tracking";
 
 interface LiveActivityIndicatorProps {
   className?: string;
@@ -12,6 +12,8 @@ export function LiveActivityIndicator({ className, variant = "badge" }: LiveActi
   const [activeUsers, setActiveUsers] = useState<number>(0);
   const [lastActivity, setLastActivity] = useState<string>("");
   const [isVisible, setIsVisible] = useState(false);
+  const { trackLiveActivityViewed } = useOptimizationTracking();
+  const hasTracked = useRef(false);
 
   useEffect(() => {
     // Simulate realistic activity based on time of day
@@ -40,8 +42,14 @@ export function LiveActivityIndicator({ className, variant = "badge" }: LiveActi
     // Initial update
     updateActivity();
     
-    // Show after a short delay
-    const showTimer = setTimeout(() => setIsVisible(true), 2000);
+    // Show after a short delay and track
+    const showTimer = setTimeout(() => {
+      setIsVisible(true);
+      if (!hasTracked.current) {
+        trackLiveActivityViewed();
+        hasTracked.current = true;
+      }
+    }, 2000);
 
     // Update periodically
     const updateInterval = setInterval(updateActivity, 30000);
