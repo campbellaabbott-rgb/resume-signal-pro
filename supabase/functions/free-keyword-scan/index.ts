@@ -339,7 +339,39 @@ LANGUAGE HANDLING:
 - Understand international resume formats and conventions
 
 ANALYSIS RULES:
-1. ATS Score (0-100): Estimate based on keyword density, formatting, and ATS compatibility
+1. ATS Score (0-100): Calculate using INDUSTRY-SPECIFIC WEIGHTS below. First detect industry, then apply appropriate weights.
+
+INDUSTRY-SPECIFIC SCORING WEIGHTS:
+- TECHNOLOGY/SOFTWARE: Keywords (30%), Technical Skills Section (25%), Quantification (20%), Format (15%), Experience Relevance (10%)
+  * Must-haves: Programming languages, frameworks, tools, GitHub/portfolio links
+  * Bonus: Open source contributions, certifications (AWS, Azure, Google Cloud)
+  
+- HEALTHCARE/MEDICAL: Licenses & Certifications (35%), Compliance Keywords (25%), Experience (20%), Education (15%), Format (5%)
+  * Must-haves: License numbers, certifications (RN, MD, CNA), HIPAA compliance, EMR systems
+  * Critical: State licenses, DEA numbers for applicable roles
+  
+- FINANCE/BANKING: Quantification (35%), Certifications (25%), Keywords (20%), Education (15%), Format (5%)
+  * Must-haves: CFA, CPA, Series licenses, regulatory knowledge (SOX, Basel, Dodd-Frank)
+  * Critical: Revenue/AUM numbers, percentage improvements
+  
+- LEGAL: Education/Bar (35%), Keywords (25%), Experience (20%), Writing Quality (15%), Format (5%)
+  * Must-haves: Bar admissions, law school, practice areas, case outcomes
+  
+- SALES/MARKETING: Quantification (40%), Keywords (25%), Experience (20%), Format (10%), Skills (5%)
+  * Must-haves: Revenue generated, quota attainment %, deals closed, campaign ROI
+  
+- EDUCATION: Certifications (30%), Experience (25%), Keywords (20%), Education (20%), Format (5%)
+  * Must-haves: Teaching licenses, grade levels, subjects, student outcomes
+  
+- ENGINEERING (Non-Software): Technical Skills (30%), Certifications (25%), Experience (20%), Education (20%), Format (5%)
+  * Must-haves: PE license, industry certifications, CAD/tools, project scale
+  
+- CREATIVE/DESIGN: Portfolio (35%), Skills (25%), Experience (20%), Keywords (15%), Format (5%)
+  * Must-haves: Portfolio link, software proficiency, project outcomes
+  
+- GENERAL/OTHER: Keywords (25%), Experience (25%), Quantification (20%), Format (15%), Education (10%), Skills (5%)
+
+Apply the appropriate weights when calculating the ATS score. Mention in industryScoreInsight which weights were applied.
 2. Format Grade (A-D): A=Excellent ATS-friendly, B=Good with minor issues, C=Fair with problems, D=Poor
 3. Resume Length: Estimate pages and compare to recommendation (1 page <5yrs, 2 pages 5-15yrs, 3 pages 15+yrs)
 4. Word Count: Count words and compare to ideal range (400-600 for 1 page, 600-800 for 2 pages)
@@ -440,9 +472,29 @@ ${resumeText.substring(0, 15000)}
             parameters: {
               type: "object",
               properties: {
-                industry: { type: "string", description: "Detected industry/field" },
+                industry: { type: "string", description: "Detected industry/field (technology, healthcare, finance, legal, sales, education, engineering, creative, or general)" },
                 currentRole: { type: "string", description: "Detected current or most recent job title/role (e.g., 'Product Manager', 'Software Engineer', 'Registered Nurse')" },
-                atsScoreEstimate: { type: "number", description: "Estimated ATS score (0-100)" },
+                atsScoreEstimate: { type: "number", description: "Estimated ATS score (0-100) using industry-specific weights" },
+                industryScoreInsight: {
+                  type: "object",
+                  properties: {
+                    weightsApplied: { type: "string", description: "Which industry weights were used (e.g., 'Technology: Keywords 30%, Skills 25%, Quantification 20%')" },
+                    strongestArea: { type: "string", description: "Where resume scores highest for this industry" },
+                    weakestArea: { type: "string", description: "Where resume needs most improvement for this industry" },
+                    industryMustHaves: { 
+                      type: "array", 
+                      items: { 
+                        type: "object",
+                        properties: {
+                          item: { type: "string" },
+                          present: { type: "boolean" }
+                        }
+                      },
+                      description: "3-5 must-have elements for this industry and whether they're present"
+                    }
+                  },
+                  required: ["weightsApplied", "strongestArea", "weakestArea", "industryMustHaves"]
+                },
                 formatGrade: { 
                   type: "string", 
                   enum: ["A", "B", "C", "D"],
