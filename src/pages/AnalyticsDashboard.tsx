@@ -34,6 +34,12 @@ const DATE_PRESETS = [
   { label: "Last 30 days", days: 30 },
 ];
 
+const PAGE_FILTERS = [
+  { label: "All Pages", value: "all" },
+  { label: "Home", value: "home" },
+  { label: "Pricing", value: "pricing" },
+];
+
 export default function AnalyticsDashboard() {
   const [data, setData] = useState<EngagementData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,10 +47,11 @@ export default function AnalyticsDashboard() {
   const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 7));
   const [endDate, setEndDate] = useState<Date>(new Date());
   const [activePreset, setActivePreset] = useState<number>(7);
+  const [pageFilter, setPageFilter] = useState<string>("all");
 
   useEffect(() => {
     fetchAnalytics();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, pageFilter]);
 
   const handlePresetClick = (days: number) => {
     setActivePreset(days);
@@ -69,10 +76,16 @@ export default function AnalyticsDashboard() {
 
       if (queryError) throw queryError;
 
-      // Process events into metrics
+      // Process events into metrics (with page filtering for scroll/time metrics)
       const metrics: Record<string, Record<string, { views: number; conversions: number }>> = {};
       
       events?.forEach(event => {
+        // For scroll_depth and time_on_page, filter by page if not "all"
+        if (pageFilter !== "all" && (event.test_name === 'scroll_depth' || event.test_name === 'time_on_page')) {
+          const eventPage = (event.metadata as { page?: string })?.page;
+          if (eventPage !== pageFilter) return;
+        }
+        
         if (!metrics[event.test_name]) {
           metrics[event.test_name] = {};
         }
@@ -244,6 +257,21 @@ export default function AnalyticsDashboard() {
               </Button>
             </div>
           </div>
+        </div>
+
+        {/* Page Filter */}
+        <div className="flex items-center gap-2 mb-6">
+          <span className="text-sm text-muted-foreground">Filter by page:</span>
+          {PAGE_FILTERS.map((filter) => (
+            <Button
+              key={filter.value}
+              variant={pageFilter === filter.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => setPageFilter(filter.value)}
+            >
+              {filter.label}
+            </Button>
+          ))}
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
