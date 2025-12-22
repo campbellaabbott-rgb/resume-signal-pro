@@ -6,7 +6,7 @@ import {
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
-  TrendingUp
+  TrendingUp, RefreshCw
 } from "lucide-react";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { PersonalizedInsights } from "./PersonalizedInsights";
@@ -593,6 +593,9 @@ interface FreeKeywordResultsProps {
   jobDescriptionText?: string;
   jobTitle?: string;
   jobCompany?: string;
+  // Cache control props
+  isCached?: boolean;
+  onForceReanalyze?: () => void;
 }
 
 export function FreeKeywordResults({
@@ -645,7 +648,9 @@ export function FreeKeywordResults({
   resumeText,
   jobDescriptionText,
   jobTitle,
-  jobCompany
+  jobCompany,
+  isCached,
+  onForceReanalyze
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -951,9 +956,28 @@ export function FreeKeywordResults({
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
       {/* Header */}
       <div className="text-center mb-6">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success text-sm font-medium mb-3">
-          <Sparkles className="w-4 h-4" />
-          {t('freeScan.complete')}
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success text-sm font-medium">
+            <Sparkles className="w-4 h-4" />
+            {t('freeScan.complete')}
+          </div>
+          
+          {/* Cached indicator with re-analyze button */}
+          {isCached && onForceReanalyze && (
+            <button
+              onClick={onForceReanalyze}
+              disabled={isLoading}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground text-sm font-medium transition-colors border border-border/50"
+              title="Get fresh AI analysis"
+            >
+              {isLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5" />
+              )}
+              <span className="hidden sm:inline">Re-analyze</span>
+            </button>
+          )}
         </div>
         <h3 className="text-xl font-bold mb-1">{t('freeScan.preview')}</h3>
         <p className="text-sm text-muted-foreground">
