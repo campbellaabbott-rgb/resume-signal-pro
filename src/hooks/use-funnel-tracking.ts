@@ -118,22 +118,28 @@ const getDeviceType = (): 'mobile' | 'tablet' | 'desktop' => {
   return 'desktop';
 };
 
-// Initialize landing tracking
+// Initialize landing tracking with cohort data
 export const initFunnelTracking = () => {
   if (typeof window === 'undefined') return;
   
   // Only initialize once per session
   if (sessionStorage.getItem('funnel_initialized')) return;
   
+  // Initialize cohort tracking first
+  initCohortTracking();
+  
   sessionStorage.setItem('funnel_initialized', 'true');
   sessionStorage.setItem('funnel_landing_time', Date.now().toString());
   
-  // Track landing immediately
+  const cohortData = getCohortData();
+  
+  // Track landing immediately with cohort context
   trackFunnelEvent('landing_view', {
     landingPage: window.location.pathname,
-    utmSource: new URLSearchParams(window.location.search).get('utm_source'),
-    utmMedium: new URLSearchParams(window.location.search).get('utm_medium'),
-    utmCampaign: new URLSearchParams(window.location.search).get('utm_campaign'),
+    utmSource: cohortData.utmSource,
+    utmMedium: cohortData.utmMedium,
+    utmCampaign: cohortData.utmCampaign,
+    trafficSource: cohortData.trafficSource,
   });
 };
 
