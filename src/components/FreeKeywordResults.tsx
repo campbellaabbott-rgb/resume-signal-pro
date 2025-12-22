@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { useTranslation } from "react-i18next";
@@ -14,10 +14,12 @@ import { TieredPricingSection } from "./TieredPricingSection";
 import { ResumeBeforeAfter } from "./ResumeBeforeAfter";
 import { JobKeywordMatcher } from "./JobKeywordMatcher";
 import { PeerBenchmark } from "./PeerBenchmark";
+import { ReturningUserInsights } from "./ReturningUserInsights";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useScanHistory } from "@/hooks/use-scan-history";
 
 import { useCurrency } from "@/hooks/use-currency";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -658,6 +660,26 @@ export function FreeKeywordResults({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const { toast } = useToast();
+  const { addScanEntry, setUserEmail, isReturningUser } = useScanHistory();
+  const [hasRecordedScan, setHasRecordedScan] = useState(false);
+  
+  // Record this scan in history (only once per render)
+  useEffect(() => {
+    if (!hasRecordedScan && atsScoreEstimate) {
+      addScanEntry({
+        atsScore: atsScoreEstimate,
+        industry: industry || null,
+        experienceLevel: experienceLevelProp?.level || null,
+        formatGrade: formatGrade,
+        keywordCount: keywords?.length || 0,
+        redFlagCount: redFlagsProp?.length || 0,
+        quantificationScore: quantificationScoreProp?.score,
+        bulletImpactScore: bulletImpactScoreProp?.score,
+        readabilityScore: readabilityScoreProp?.score,
+      });
+      setHasRecordedScan(true);
+    }
+  }, [atsScoreEstimate, hasRecordedScan]);
   
   const fullAnalysisPrice = PRODUCTS.fullAnalysis.priceUsd;
   const priceDisplay = isLocalCurrency ? `$${fullAnalysisPrice} ≈ ${formatPrice(fullAnalysisPrice)}` : `$${fullAnalysisPrice}`;
@@ -887,6 +909,8 @@ export function FreeKeywordResults({
       }
 
       setIsSubscribed(true);
+      // Also save email to scan history for returning user tracking
+      setUserEmail(email);
       toast({
         title: "You're on the list!",
         description: "We'll send you resume tips to help you land more interviews.",
@@ -996,6 +1020,12 @@ export function FreeKeywordResults({
           {t('freeScan.detected')}: <span className="text-foreground font-medium">{industry}</span> • <span className="text-foreground font-medium">{getExperienceLevelLabel(experienceLevel.level)}</span> ({experienceLevel.yearsEstimate})
         </p>
       </div>
+
+      {/* Returning User Insights - shown for users who have scanned before */}
+      <ReturningUserInsights 
+        currentScore={atsScoreEstimate} 
+        currentIndustry={industry}
+      />
 
       {/* Action Required CTA Banner */}
       <div className="rounded-2xl bg-gradient-to-r from-destructive/15 via-destructive/10 to-destructive/5 border border-destructive/30 p-5 mb-6">
