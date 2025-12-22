@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Download, Linkedin, Check, Loader2, ImageIcon, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import html2canvas from "html2canvas";
 
 interface ShareableScoreCardProps {
@@ -14,6 +15,37 @@ interface ShareableScoreCardProps {
   topStrength: string;
   improvementPotential: number;
 }
+
+// Track share/download events
+const trackShareEvent = async (
+  action: 'download' | 'copy' | 'linkedin_share',
+  atsScore: number,
+  industry: string
+) => {
+  try {
+    const visitorId = localStorage.getItem('funnel_visitor_id') || crypto.randomUUID();
+    
+    await supabase.functions.invoke('track-ab-event', {
+      body: {
+        testName: 'share_scorecard',
+        variant: action,
+        eventType: 'conversion',
+        visitorId,
+        metadata: {
+          action,
+          atsScore,
+          industry,
+          timestamp: new Date().toISOString(),
+          page: window.location.pathname,
+        }
+      }
+    });
+    
+    console.log(`[Share] Tracked ${action} event`);
+  } catch (error) {
+    console.debug('Share tracking failed:', error);
+  }
+};
 
 export function ShareableScoreCard({
   candidateName,
@@ -27,6 +59,7 @@ export function ShareableScoreCard({
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -57,7 +90,7 @@ export function ShareableScoreCard({
     
     try {
       // Wait for any pending renders
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise(r => setTimeout(r, 100));
       
       const canvas = await html2canvas(cardRef.current, {
         backgroundColor: "#0f172a",
@@ -87,6 +120,7 @@ export function ShareableScoreCard({
     const dataUrl = await generateImage();
     if (!dataUrl) return;
     
+    // Create and trigger download
     const link = document.createElement("a");
     link.download = `resume-score-${atsScore}.png`;
     link.href = dataUrl;
@@ -94,9 +128,16 @@ export function ShareableScoreCard({
     link.click();
     document.body.removeChild(link);
     
+    // Track the download
+    trackShareEvent('download', atsScore, industry);
+    
+    // Show success state
+    setDownloaded(true);
+    setTimeout(() => setDownloaded(false), 2000);
+    
     toast({
-      title: "Image downloaded!",
-      description: "Share it on LinkedIn to stand out"
+      title: "Score card downloaded!",
+      description: "Share it on LinkedIn to stand out to recruiters"
     });
   };
 
@@ -109,20 +150,33 @@ export function ShareableScoreCard({
       const res = await fetch(dataUrl);
       const blob = await res.blob();
       
-      await navigator.clipboard.write([
-        new ClipboardItem({ "image/png": blob })
-      ]);
-      
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      
-      toast({
-        title: "Image copied!",
-        description: "Paste it anywhere"
-      });
+      // Try clipboard API
+      if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": blob })
+        ]);
+        
+        // Track the copy
+        trackShareEvent('copy', atsScore, industry);
+        
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        
+        toast({
+          title: "Image copied!",
+          description: "Paste it anywhere (Ctrl+V or Cmd+V)"
+        });
+      } else {
+        // Fallback for browsers without ClipboardItem support
+        throw new Error("Clipboard API not supported");
+      }
     } catch (error) {
       console.error("Copy failed, downloading instead:", error);
       // Fallback: download instead
+      toast({
+        title: "Copy not supported",
+        description: "Downloading image instead...",
+      });
       handleDownload();
     }
   };
@@ -131,16 +185,28 @@ export function ShareableScoreCard({
     // Download image first for user
     await handleDownload();
     
-    // Open LinkedIn share
+    // Track the share
+    trackShareEvent('linkedin_share', atsScore, industry);
+    
+    // Open LinkedIn share dialog
+    const shareUrl = encodeURIComponent(window.location.origin);
+    const shareText = encodeURIComponent(
+      `Just scored ${atsScore}/100 on my resume ATS scan! 📊\n\n` +
+      `Industry: ${industry}\n` +
+      `Top Strength: ${topStrength}\n\n` +
+      `Get your free resume score → resumescanner.ai\n\n` +
+      `#resume #jobsearch #career #ATS`
+    );
+    
     window.open(
-      `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.origin)}`,
+      `https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl}`,
       "_blank",
-      "width=600,height=600"
+      "width=600,height=600,menubar=no,toolbar=no"
     );
     
     toast({
       title: "Image downloaded!",
-      description: "Upload it to your LinkedIn post"
+      description: "Upload it to your LinkedIn post to stand out"
     });
   };
 
@@ -278,10 +344,12 @@ export function ShareableScoreCard({
         >
           {isGenerating ? (
             <Loader2 className="w-4 h-4 animate-spin" />
+          ) : downloaded ? (
+            <Check className="w-4 h-4 text-success" />
           ) : (
             <Download className="w-4 h-4" />
           )}
-          <span className="hidden sm:inline">Download</span> Score Card
+          {downloaded ? "Downloaded!" : "Download"}
         </Button>
         
         <Button
@@ -306,16 +374,16 @@ export function ShareableScoreCard({
           className="gap-2 bg-[#0077b5] hover:bg-[#0077b5]/90 text-white text-xs sm:text-sm"
         >
           <Linkedin className="w-4 h-4" />
-          <span className="hidden sm:inline">Share on</span> LinkedIn
+          LinkedIn
         </Button>
         
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setShowPreview(!showPreview)}
-          className="gap-2 text-xs text-muted-foreground"
+          className="gap-1.5 text-xs text-muted-foreground ml-auto"
         >
-          {showPreview ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+          {showPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
           {showPreview ? "Hide" : "Preview"}
         </Button>
       </div>
@@ -327,7 +395,8 @@ export function ShareableScoreCard({
           left: "-9999px",
           top: "0",
           opacity: 1,
-          pointerEvents: "none"
+          pointerEvents: "none",
+          zIndex: -1
         }}
         aria-hidden="true"
       >
@@ -338,14 +407,21 @@ export function ShareableScoreCard({
 
       {/* Visible preview */}
       {showPreview && (
-        <div className="rounded-xl overflow-hidden border border-border shadow-lg">
-          <div className="overflow-x-auto">
-            <div className="min-w-[600px] transform scale-[0.5] sm:scale-75 origin-top-left" style={{ height: "auto" }}>
+        <div className="rounded-xl overflow-hidden border border-border shadow-lg animate-fade-in">
+          <div className="overflow-x-auto bg-slate-900">
+            <div 
+              className="transform origin-top-left"
+              style={{ 
+                transform: "scale(0.5)",
+                width: "200%",
+                height: "auto"
+              }}
+            >
               <CardContent />
             </div>
           </div>
           <div className="bg-muted/30 px-3 py-2 text-xs text-muted-foreground text-center border-t">
-            This is how your score card will look when downloaded
+            Preview of your downloadable score card
           </div>
         </div>
       )}
