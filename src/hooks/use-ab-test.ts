@@ -26,17 +26,10 @@ export const CONCLUDED_TESTS = {
 // ACTIVE A/B TESTS - Add new tests here
 // When you want to run a new test, add it here with variants
 export const AB_TESTS = {
-  // Example of how to add a new test:
-  // new_feature_test: {
-  //   name: 'new_feature_test',
-  //   variants: ['control', 'variant_a', 'variant_b'] as const,
-  // },
-  
-  // Keep one placeholder test for infrastructure validation
-  // Remove this when adding real tests
-  _placeholder: {
-    name: '_placeholder',
-    variants: ['control'] as const,
+  // Test social proof placement: above fold vs below fold
+  social_proof_placement: {
+    name: 'social_proof_placement',
+    variants: ['control', 'above_fold', 'inline_hero'] as const,
   },
 } as const;
 
