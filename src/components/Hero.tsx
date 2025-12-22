@@ -8,6 +8,7 @@ import { LiveActivityCounter } from "./LiveActivityCounter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PRODUCTS } from "@/config/products";
 import { useABTest } from "@/hooks/use-ab-test";
+import { SampleReportPreview } from "./SampleReportPreview";
 
 // Social proof component for A/B testing placement
 function SocialProofBlock({ variant }: { variant: 'compact' | 'full' }) {
@@ -341,24 +342,9 @@ export function Hero() {
             </div>
           </div>
 
-          {/* What you'll discover */}
-          <div className="mt-8 sm:mt-10 pt-6 sm:pt-8 border-t border-border/30 animate-fade-in" style={{ animationDelay: "0.2s" }}>
-            <p className="text-sm text-muted-foreground mb-4">{t('hero.freeScanReveals', 'Your free scan reveals:')}</p>
-            <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
-              {[
-                t('hero.reveal.atsScore', 'ATS Score'),
-                t('hero.reveal.keywords', 'Missing Keywords'), 
-                t('hero.reveal.redFlags', 'Red Flags'),
-                t('hero.reveal.quickFixes', 'Quick Fixes')
-              ].map((item) => (
-                <span 
-                  key={item}
-                  className="px-3 py-1.5 rounded-full bg-card/60 border border-border/50 text-xs sm:text-sm text-foreground"
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
+          {/* Sample Report Preview - Shows exactly what users will get */}
+          <div className="mt-10 sm:mt-12 pt-8 border-t border-border/30 animate-fade-in" style={{ animationDelay: "0.2s" }}>
+            <SampleReportPreview />
           </div>
 
           {/* Pricing Teaser Banner */}
