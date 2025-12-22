@@ -1,12 +1,17 @@
 import { useState, useEffect } from "react";
+import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, TrendingUp, TrendingDown, Clock, ScrollText, ShoppingCart, BarChart3 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Loader2, TrendingUp, TrendingDown, Clock, ScrollText, ShoppingCart, BarChart3, CalendarIcon, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 interface MetricData {
   variant: string;
@@ -22,24 +27,45 @@ interface EngagementData {
   abTests: Record<string, MetricData[]>;
 }
 
+const DATE_PRESETS = [
+  { label: "Today", days: 0 },
+  { label: "Last 7 days", days: 7 },
+  { label: "Last 14 days", days: 14 },
+  { label: "Last 30 days", days: 30 },
+];
+
 export default function AnalyticsDashboard() {
   const [data, setData] = useState<EngagementData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 7));
+  const [endDate, setEndDate] = useState<Date>(new Date());
+  const [activePreset, setActivePreset] = useState<number>(7);
 
   useEffect(() => {
     fetchAnalytics();
-  }, []);
+  }, [startDate, endDate]);
+
+  const handlePresetClick = (days: number) => {
+    setActivePreset(days);
+    if (days === 0) {
+      setStartDate(startOfDay(new Date()));
+      setEndDate(endOfDay(new Date()));
+    } else {
+      setStartDate(subDays(new Date(), days));
+      setEndDate(new Date());
+    }
+  };
 
   const fetchAnalytics = async () => {
     try {
       setIsLoading(true);
       
-      // Query all ab_test_events from last 7 days
       const { data: events, error: queryError } = await supabase
         .from('ab_test_events')
         .select('test_name, variant, event_type, metadata, created_at')
-        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+        .gte('created_at', startOfDay(startDate).toISOString())
+        .lte('created_at', endOfDay(endDate).toISOString());
 
       if (queryError) throw queryError;
 
@@ -139,8 +165,85 @@ export default function AnalyticsDashboard() {
       <Header />
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Engagement Analytics</h1>
-          <p className="text-muted-foreground">Last 7 days of user engagement data</p>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">Engagement Analytics</h1>
+              <p className="text-muted-foreground">
+                {format(startDate, "MMM d, yyyy")} - {format(endDate, "MMM d, yyyy")}
+              </p>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Preset buttons */}
+              {DATE_PRESETS.map((preset) => (
+                <Button
+                  key={preset.days}
+                  variant={activePreset === preset.days ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handlePresetClick(preset.days)}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+              
+              {/* Custom date pickers */}
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {format(startDate, "MMM d")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={(date) => {
+                        if (date) {
+                          setStartDate(date);
+                          setActivePreset(-1);
+                        }
+                      }}
+                      disabled={(date) => date > new Date() || date > endDate}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                <span className="text-muted-foreground">to</span>
+                
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {format(endDate, "MMM d")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={(date) => {
+                        if (date) {
+                          setEndDate(date);
+                          setActivePreset(-1);
+                        }
+                      }}
+                      disabled={(date) => date > new Date() || date < startDate}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              
+              <Button variant="ghost" size="sm" onClick={() => fetchAnalytics()} disabled={isLoading}>
+                <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+              </Button>
+            </div>
+          </div>
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
