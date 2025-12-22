@@ -965,7 +965,19 @@ export function FreeKeywordResults({
           {/* Cached indicator with re-analyze button */}
           {isCached && onForceReanalyze && (
             <button
-              onClick={onForceReanalyze}
+              onClick={() => {
+                // Track re-analyze button click
+                supabase.functions.invoke('track-ab-event', {
+                  body: {
+                    testName: 'cache_reanalyze',
+                    variant: 'button_click',
+                    eventType: 'conversion',
+                    visitorId: localStorage.getItem('ab_visitor_id') || crypto.randomUUID(),
+                    metadata: { source: 'free_keyword_results' }
+                  }
+                }).catch(console.error);
+                onForceReanalyze();
+              }}
               disabled={isLoading}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground text-sm font-medium transition-colors border border-border/50"
               title="Get fresh AI analysis"
