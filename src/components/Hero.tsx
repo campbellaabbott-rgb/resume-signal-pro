@@ -182,25 +182,42 @@ export function Hero() {
             <HeroStatsBar />
           </div>
 
-          {/* VALUE-FIRST HEADLINE - What they get, not what they fear */}
-          <div className="mb-6 animate-fade-in" style={{ animationDelay: "0.05s" }}>
+          {/* VALUE-FIRST HEADLINE - Recruiter-Grade messaging */}
+          <div className="mb-8 animate-fade-in" style={{ animationDelay: "0.05s" }}>
             <h1
               id="hero-heading"
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 leading-tight"
+              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-5 leading-tight"
             >
-              Get Your{" "}
+              Get{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
-                ATS Score
+                Recruiter-Grade
               </span>{" "}
-              in 30 Seconds
+              Resume Feedback in 60 Seconds
             </h1>
             
-            <p className="text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto mb-4 leading-relaxed">
-              Upload your resume. See exactly what's blocking you from interviews—and how to fix it.
+            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto mb-6 leading-relaxed">
+              Upload your resume and get ATS-optimized rewrites, red-flag warnings,
+              and keyword improvements — written the way hiring managers actually review resumes.
             </p>
 
+            {/* Key selling points with checkmarks */}
+            <div className="flex flex-col items-center gap-2.5 mb-6">
+              <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
+                <Check className="w-4 h-4 text-success flex-shrink-0" />
+                <span>Built for senior ICs, managers, and competitive roles</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
+                <Check className="w-4 h-4 text-success flex-shrink-0" />
+                <span>One-time payment (no subscription)</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
+                <Check className="w-4 h-4 text-success flex-shrink-0" />
+                <span>Resumes are never stored or shared</span>
+              </div>
+            </div>
+
             {/* Animated preview of results */}
-            <div className="flex justify-center mb-4">
+            <div className="flex justify-center">
               <AnimatedResultPreview />
             </div>
           </div>
