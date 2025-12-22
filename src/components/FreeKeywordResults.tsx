@@ -12,6 +12,7 @@ import { PersonalizedInsights } from "./PersonalizedInsights";
 import { TieredPricingSection } from "./TieredPricingSection";
 import { ResumeBeforeAfter } from "./ResumeBeforeAfter";
 import { JobKeywordMatcher } from "./JobKeywordMatcher";
+import { PeerBenchmark } from "./PeerBenchmark";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -576,6 +577,10 @@ interface FreeKeywordResultsProps {
   jobDescriptionText?: string;
   jobTitle?: string;
   jobCompany?: string;
+  // User profile props for personalization
+  userIndustry?: string;
+  userExperienceLevel?: string;
+  userTargetRole?: string;
 }
 
 export function FreeKeywordResults({
@@ -627,7 +632,10 @@ export function FreeKeywordResults({
   resumeText,
   jobDescriptionText,
   jobTitle,
-  jobCompany
+  jobCompany,
+  userIndustry,
+  userExperienceLevel,
+  userTargetRole
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1534,6 +1542,18 @@ export function FreeKeywordResults({
           </p>
         </div>
       </div>
+
+      {/* Peer Benchmark - Show how user compares */}
+      {(userIndustry || industry) && (
+        <div className="mb-6">
+          <PeerBenchmark 
+            score={atsScoreEstimate}
+            industry={userIndustry || industry?.toLowerCase().replace(/[^a-z]/g, '') || 'technology'}
+            experienceLevel={userExperienceLevel || experienceLevel?.level}
+            targetRole={userTargetRole}
+          />
+        </div>
+      )}
 
       {/* Row 4: Special Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
