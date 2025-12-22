@@ -20,11 +20,17 @@ interface MetricData {
   conversionRate: number;
 }
 
+interface PageMetrics {
+  scrollDepth: MetricData[];
+  timeOnPage: MetricData[];
+}
+
 interface EngagementData {
   scrollDepth: MetricData[];
   timeOnPage: MetricData[];
   conversions: MetricData[];
   abTests: Record<string, MetricData[]>;
+  pageMetrics: Record<string, PageMetrics>;
 }
 
 const DATE_PRESETS = [
@@ -78,11 +84,34 @@ export default function AnalyticsDashboard() {
 
       // Process events into metrics (with page filtering for scroll/time metrics)
       const metrics: Record<string, Record<string, { views: number; conversions: number }>> = {};
+      // Also track per-page metrics for comparison view
+      const pageSpecificMetrics: Record<string, Record<string, Record<string, { views: number; conversions: number }>>> = {
+        home: {},
+        pricing: {},
+      };
       
       events?.forEach(event => {
+        const eventPage = (event.metadata as { page?: string })?.page;
+        
+        // Track per-page metrics for scroll_depth and time_on_page
+        if ((event.test_name === 'scroll_depth' || event.test_name === 'time_on_page') && eventPage) {
+          if (pageSpecificMetrics[eventPage]) {
+            if (!pageSpecificMetrics[eventPage][event.test_name]) {
+              pageSpecificMetrics[eventPage][event.test_name] = {};
+            }
+            if (!pageSpecificMetrics[eventPage][event.test_name][event.variant]) {
+              pageSpecificMetrics[eventPage][event.test_name][event.variant] = { views: 0, conversions: 0 };
+            }
+            if (event.event_type === 'view') {
+              pageSpecificMetrics[eventPage][event.test_name][event.variant].views++;
+            } else if (event.event_type === 'conversion') {
+              pageSpecificMetrics[eventPage][event.test_name][event.variant].conversions++;
+            }
+          }
+        }
+        
         // For scroll_depth and time_on_page, filter by page if not "all"
         if (pageFilter !== "all" && (event.test_name === 'scroll_depth' || event.test_name === 'time_on_page')) {
-          const eventPage = (event.metadata as { page?: string })?.page;
           if (eventPage !== pageFilter) return;
         }
         
@@ -100,8 +129,8 @@ export default function AnalyticsDashboard() {
       });
 
       // Transform to MetricData arrays
-      const transformMetrics = (testName: string): MetricData[] => {
-        const testMetrics = metrics[testName] || {};
+      const transformMetrics = (testName: string, source?: Record<string, { views: number; conversions: number }>): MetricData[] => {
+        const testMetrics = source || metrics[testName] || {};
         return Object.entries(testMetrics)
           .map(([variant, counts]) => ({
             variant,
@@ -127,11 +156,21 @@ export default function AnalyticsDashboard() {
         abTests[name] = transformMetrics(name);
       });
 
+      // Build page metrics for comparison
+      const pageMetrics: Record<string, PageMetrics> = {};
+      Object.keys(pageSpecificMetrics).forEach(page => {
+        pageMetrics[page] = {
+          scrollDepth: transformMetrics('scroll_depth', pageSpecificMetrics[page]['scroll_depth']),
+          timeOnPage: transformMetrics('time_on_page', pageSpecificMetrics[page]['time_on_page']),
+        };
+      });
+
       setData({
         scrollDepth: transformMetrics('scroll_depth'),
         timeOnPage: transformMetrics('time_on_page'),
         conversions: transformMetrics('product_conversion'),
         abTests,
+        pageMetrics,
       });
     } catch (err) {
       console.error('Failed to fetch analytics:', err);
@@ -275,8 +314,9 @@ export default function AnalyticsDashboard() {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 max-w-xl">
+          <TabsList className="grid w-full grid-cols-5 max-w-2xl">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="compare">Compare</TabsTrigger>
             <TabsTrigger value="scroll">Scroll Depth</TabsTrigger>
             <TabsTrigger value="time">Time on Page</TabsTrigger>
             <TabsTrigger value="ab">A/B Tests</TabsTrigger>
@@ -403,6 +443,142 @@ export default function AnalyticsDashboard() {
                           </div>
                         </div>
                         <Progress value={percentage} className="h-2" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="compare" className="space-y-6">
+            {/* Page Comparison */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Scroll Depth Comparison */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ScrollText className="h-5 w-5" />
+                    Scroll Depth Comparison
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2 px-2">Milestone</th>
+                          <th className="text-right py-2 px-2">Home</th>
+                          <th className="text-right py-2 px-2">Pricing</th>
+                          <th className="text-right py-2 px-2">Diff</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {['25%', '50%', '75%', '90%', '100%'].map((milestone) => {
+                          const homeMetric = data.pageMetrics?.home?.scrollDepth?.find(m => m.variant === milestone);
+                          const pricingMetric = data.pageMetrics?.pricing?.scrollDepth?.find(m => m.variant === milestone);
+                          const homeViews = homeMetric?.views || 0;
+                          const pricingViews = pricingMetric?.views || 0;
+                          const diff = pricingViews - homeViews;
+                          
+                          return (
+                            <tr key={milestone} className="border-b">
+                              <td className="py-2 px-2 font-medium">{milestone}</td>
+                              <td className="py-2 px-2 text-right">{homeViews}</td>
+                              <td className="py-2 px-2 text-right">{pricingViews}</td>
+                              <td className="py-2 px-2 text-right">
+                                {diff !== 0 && (
+                                  <span className={diff > 0 ? 'text-green-500' : 'text-destructive'}>
+                                    {diff > 0 ? '+' : ''}{diff}
+                                  </span>
+                                )}
+                                {diff === 0 && <span className="text-muted-foreground">-</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Time on Page Comparison */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Time on Page Comparison
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2 px-2">Duration</th>
+                          <th className="text-right py-2 px-2">Home</th>
+                          <th className="text-right py-2 px-2">Pricing</th>
+                          <th className="text-right py-2 px-2">Diff</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {['30s', '1m', '2m', '5m', '10m'].map((duration) => {
+                          const homeMetric = data.pageMetrics?.home?.timeOnPage?.find(m => m.variant === duration);
+                          const pricingMetric = data.pageMetrics?.pricing?.timeOnPage?.find(m => m.variant === duration);
+                          const homeViews = homeMetric?.views || 0;
+                          const pricingViews = pricingMetric?.views || 0;
+                          const diff = pricingViews - homeViews;
+                          
+                          return (
+                            <tr key={duration} className="border-b">
+                              <td className="py-2 px-2 font-medium">{duration}</td>
+                              <td className="py-2 px-2 text-right">{homeViews}</td>
+                              <td className="py-2 px-2 text-right">{pricingViews}</td>
+                              <td className="py-2 px-2 text-right">
+                                {diff !== 0 && (
+                                  <span className={diff > 0 ? 'text-green-500' : 'text-destructive'}>
+                                    {diff > 0 ? '+' : ''}{diff}
+                                  </span>
+                                )}
+                                {diff === 0 && <span className="text-muted-foreground">-</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Retention Rate Comparison */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Retention Rate by Page</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {['home', 'pricing'].map((page) => {
+                    const pageData = data.pageMetrics?.[page];
+                    const scrollData = pageData?.scrollDepth || [];
+                    const first = scrollData[0]?.views || 0;
+                    const last = scrollData[scrollData.length - 1]?.views || 0;
+                    const retentionRate = first > 0 ? (last / first) * 100 : 0;
+                    
+                    return (
+                      <div key={page} className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium capitalize">{page}</span>
+                          <Badge variant={retentionRate > 30 ? "default" : "destructive"}>
+                            {retentionRate.toFixed(1)}% retention
+                          </Badge>
+                        </div>
+                        <Progress value={retentionRate} className="h-3" />
+                        <p className="text-xs text-muted-foreground">
+                          {first} started → {last} completed (100% scroll)
+                        </p>
                       </div>
                     );
                   })}
