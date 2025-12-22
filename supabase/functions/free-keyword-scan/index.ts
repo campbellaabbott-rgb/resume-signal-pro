@@ -580,6 +580,7 @@ ${resumeText.substring(0, 15000)}
             parameters: {
               type: "object",
               properties: {
+                candidateName: { type: "string", description: "The candidate's full name extracted from the resume header/contact section (e.g., 'John Smith', 'Maria Garcia'). Look for the name at the top of the resume. If not found, return null." },
                 industry: { type: "string", description: "Detected industry/field (technology, healthcare, finance, legal, sales, education, engineering, creative, or general)" },
                 currentRole: { type: "string", description: "Detected current or most recent job title/role (e.g., 'Product Manager', 'Software Engineer', 'Registered Nurse')" },
                 atsScoreEstimate: { type: "number", description: "Estimated ATS score (0-100) using industry-specific weights" },

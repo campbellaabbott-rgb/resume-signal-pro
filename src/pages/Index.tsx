@@ -53,6 +53,8 @@ import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { useAffiliateTracking, getStoredReferralCode } from "@/hooks/use-affiliate-auth";
 
 interface FreeKeywordResult {
+  candidateName?: string | null;
+  currentRole?: string;
   industry: string;
   atsScoreEstimate: number;
   industryScoreInsight?: {
@@ -1003,6 +1005,8 @@ const Index = () => {
           <section id="free-results" className="py-12 scroll-mt-20">
             <div className="container">
               <FreeKeywordResults
+                candidateName={freeKeywordResult.candidateName}
+                currentRole={freeKeywordResult.currentRole}
                 industry={freeKeywordResult.industry}
                 atsScoreEstimate={freeKeywordResult.atsScoreEstimate}
                 industryScoreInsight={freeKeywordResult.industryScoreInsight}
