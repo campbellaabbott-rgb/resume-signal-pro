@@ -1,22 +1,87 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Zap, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useABTest } from '@/hooks/use-ab-test';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export const ExitIntentPopup = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [hasShown, setHasShown] = useState(false);
   const { trackConversion } = useABTest('social_proof_placement');
+  const isMobile = useIsMobile();
+  
+  // Mobile scroll tracking refs
+  const lastScrollY = useRef(0);
+  const scrollVelocity = useRef(0);
+  const lastScrollTime = useRef(Date.now());
+  const scrollUpCount = useRef(0);
 
-  const handleMouseLeave = useCallback((e: MouseEvent) => {
-    // Only trigger when mouse leaves from the top of the viewport
-    if (e.clientY <= 0 && !hasShown) {
-      setIsVisible(true);
-      setHasShown(true);
-      // Store in session so we don't show again
-      sessionStorage.setItem('exitIntentShown', 'true');
-    }
+  const showPopup = useCallback(() => {
+    if (hasShown) return;
+    setIsVisible(true);
+    setHasShown(true);
+    sessionStorage.setItem('exitIntentShown', 'true');
   }, [hasShown]);
+
+  // Desktop: Mouse leave detection
+  const handleMouseLeave = useCallback((e: MouseEvent) => {
+    if (e.clientY <= 0) {
+      showPopup();
+    }
+  }, [showPopup]);
+
+  // Mobile: Rapid scroll up detection (user scrolling back to top quickly)
+  const handleScroll = useCallback(() => {
+    if (hasShown) return;
+    
+    const currentScrollY = window.scrollY;
+    const currentTime = Date.now();
+    const timeDelta = currentTime - lastScrollTime.current;
+    
+    if (timeDelta > 0) {
+      const distance = lastScrollY.current - currentScrollY;
+      scrollVelocity.current = distance / timeDelta;
+      
+      // Detect rapid upward scroll (velocity > 2px/ms) when near top
+      if (scrollVelocity.current > 2 && currentScrollY < 200) {
+        scrollUpCount.current += 1;
+        
+        // Trigger after 2 rapid scroll-ups near top
+        if (scrollUpCount.current >= 2) {
+          showPopup();
+        }
+      } else if (distance < 0) {
+        // Reset count on scroll down
+        scrollUpCount.current = 0;
+      }
+    }
+    
+    lastScrollY.current = currentScrollY;
+    lastScrollTime.current = currentTime;
+  }, [hasShown, showPopup]);
+
+  // Mobile: Visibility change detection (switching tabs/apps)
+  const handleVisibilityChange = useCallback(() => {
+    if (document.visibilityState === 'hidden' && !hasShown) {
+      // Mark as shown but don't display yet - show when they come back
+      sessionStorage.setItem('exitIntentPending', 'true');
+    } else if (document.visibilityState === 'visible') {
+      // Show popup when they return if it was pending
+      if (sessionStorage.getItem('exitIntentPending') && !hasShown) {
+        sessionStorage.removeItem('exitIntentPending');
+        showPopup();
+      }
+    }
+  }, [hasShown, showPopup]);
+
+  // Mobile: Back button / history popstate
+  const handlePopState = useCallback(() => {
+    if (!hasShown) {
+      // Push state back to prevent actual navigation and show popup
+      window.history.pushState(null, '', window.location.href);
+      showPopup();
+    }
+  }, [hasShown, showPopup]);
 
   useEffect(() => {
     // Check if already shown this session
@@ -25,16 +90,33 @@ export const ExitIntentPopup = () => {
       return;
     }
 
-    // Wait a bit before enabling exit intent
+    // Wait before enabling exit intent detection
     const timeout = setTimeout(() => {
-      document.addEventListener('mouseleave', handleMouseLeave);
+      if (isMobile) {
+        // Mobile-specific detection
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        
+        // Push initial state for back button detection
+        window.history.pushState(null, '', window.location.href);
+        window.addEventListener('popstate', handlePopState);
+      } else {
+        // Desktop: mouse leave
+        document.addEventListener('mouseleave', handleMouseLeave);
+      }
     }, 5000);
 
     return () => {
       clearTimeout(timeout);
-      document.removeEventListener('mouseleave', handleMouseLeave);
+      if (isMobile) {
+        window.removeEventListener('scroll', handleScroll);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('popstate', handlePopState);
+      } else {
+        document.removeEventListener('mouseleave', handleMouseLeave);
+      }
     };
-  }, [handleMouseLeave]);
+  }, [isMobile, handleMouseLeave, handleScroll, handleVisibilityChange, handlePopState]);
 
   const handleClose = () => {
     setIsVisible(false);
