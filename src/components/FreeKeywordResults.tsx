@@ -6,7 +6,7 @@ import {
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
-  TrendingUp, RefreshCw
+  TrendingUp, RefreshCw, Share2
 } from "lucide-react";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { PersonalizedInsights } from "./PersonalizedInsights";
@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useScanHistory, generateChecklist } from "@/hooks/use-scan-history";
 import { InteractiveChecklist } from "./InteractiveChecklist";
 import { AISummary } from "./AISummary";
+import { ShareableScoreCard } from "./ShareableScoreCard";
 
 import { useCurrency } from "@/hooks/use-currency";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -1756,6 +1757,29 @@ export function FreeKeywordResults({
             <p className="text-sm text-muted-foreground">{redFlags[0].issue}</p>
           )}
         </div>
+      </div>
+
+      {/* Shareable Score Card */}
+      <div className="rounded-2xl bg-card border border-border p-5 mb-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Share2 className="w-4 h-4 text-primary" />
+          <h4 className="font-semibold">Share Your Results</h4>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success/10 text-success font-medium">
+            Free
+          </span>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Download your score card or share it on LinkedIn to stand out to recruiters
+        </p>
+        <ShareableScoreCard
+          candidateName={candidateName}
+          atsScore={atsScoreEstimate}
+          formatGrade={formatGrade}
+          industry={industry}
+          experienceLevel={getExperienceLevelLabel(experienceLevel.level)}
+          topStrength={topStrength.title}
+          improvementPotential={improvementPotential.estimatedScoreIncrease}
+        />
       </div>
 
       {/* Top 5 Reasons Your Resume Is Being Skipped */}
