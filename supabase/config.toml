@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.generate-cohort-report]
+verify_jwt = false

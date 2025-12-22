@@ -227,6 +227,42 @@ export type Database = {
         }
         Relationships: []
       }
+      cohort_weekly_reports: {
+        Row: {
+          created_at: string
+          id: string
+          insights: string[] | null
+          report_data: Json
+          report_date: string
+          top_segments: Json
+          top_traffic_sources: Json
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          insights?: string[] | null
+          report_data: Json
+          report_date?: string
+          top_segments?: Json
+          top_traffic_sources?: Json
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          insights?: string[] | null
+          report_data?: Json
+          report_date?: string
+          top_segments?: Json
+          top_traffic_sources?: Json
+          week_end?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       daily_scan_stats: {
         Row: {
           date: string
