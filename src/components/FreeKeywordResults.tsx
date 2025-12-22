@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useScanHistory, generateChecklist } from "@/hooks/use-scan-history";
 import { InteractiveChecklist } from "./InteractiveChecklist";
+import { AISummary } from "./AISummary";
 
 import { useCurrency } from "@/hooks/use-currency";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -1044,6 +1045,20 @@ export function FreeKeywordResults({
           {t('freeScan.detected')}: <span className="text-foreground font-medium">{industry}</span> • <span className="text-foreground font-medium">{getExperienceLevelLabel(experienceLevel.level)}</span> ({experienceLevel.yearsEstimate})
         </p>
       </div>
+
+      {/* AI-Generated Summary */}
+      <AISummary
+        candidateName={candidateName}
+        atsScore={atsScoreEstimate}
+        formatGrade={formatGrade}
+        industry={industry}
+        experienceLevel={getExperienceLevelLabel(experienceLevel.level)}
+        topStrength={topStrength.title}
+        redFlagsCount={redFlags.length}
+        quickWins={quickWins}
+        improvementPotential={improvementPotential}
+        resumeHash={currentScan?.resumeHash}
+      />
 
       {/* Returning User Insights - shown for users who have scanned before */}
       <ReturningUserInsights 
