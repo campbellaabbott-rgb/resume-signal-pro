@@ -1001,13 +1001,32 @@ ${resumeText.substring(0, 15000)}
     });
 
     if (!aiResponse.ok) {
+      // Log detailed error for debugging
+      let errorBody = '';
+      try {
+        errorBody = await aiResponse.text();
+      } catch (e) {
+        errorBody = 'Could not read error body';
+      }
+      console.error("[FREE-KEYWORD-SCAN] AI Gateway error:", aiResponse.status, "Body:", errorBody);
+      
       if (aiResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "Service busy. Please try again in a moment." }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      console.error("[FREE-KEYWORD-SCAN] AI Gateway error:", aiResponse.status);
+      
+      // 400 errors often indicate request issues - log and return appropriate error
+      if (aiResponse.status === 400) {
+        console.error("[FREE-KEYWORD-SCAN] Bad request to AI - possible payload too large or invalid schema");
+        // Try with a smaller payload on retry
+        return new Response(
+          JSON.stringify({ error: "Analysis request failed. Please try with a shorter resume." }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
