@@ -16,6 +16,7 @@ import { JobKeywordMatcher } from "./JobKeywordMatcher";
 import { PeerBenchmark } from "./PeerBenchmark";
 import { ReturningUserInsights } from "./ReturningUserInsights";
 import { IndustryKeywordSuggestions } from "./IndustryKeywordSuggestions";
+import { RoleKeywordSuggestions } from "./RoleKeywordSuggestions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -1031,6 +1032,14 @@ export function FreeKeywordResults({
       {/* Industry-Specific Keyword Suggestions */}
       <IndustryKeywordSuggestions 
         industry={industry} 
+        resumeText={resumeText}
+        className="mb-4"
+      />
+
+      {/* Role-Specific Keyword Suggestions */}
+      <RoleKeywordSuggestions 
+        currentRole={currentRole}
+        targetRole={jobTitle}
         resumeText={resumeText}
         className="mb-6"
       />
