@@ -305,7 +305,7 @@ serve(async (req) => {
   }
   
   try {
-    const { resumeText, jobDescriptionText, honeypot } = await req.json();
+    const { resumeText, jobDescriptionText, honeypot, skipCache } = await req.json();
 
     // Honeypot check - if filled, it's a bot
     if (honeypot && honeypot.trim() !== '') {
@@ -524,33 +524,38 @@ ${truncatedJobDescription}
 ${resumeText.substring(0, 15000)}
 </resume>`;
 
-    // Check cache before calling AI
+    // Check cache before calling AI (unless skipCache is true)
     const cacheKey = await generateCacheKey(resumeText, truncatedJobDescription || undefined);
-    const cachedResponse = await getCachedResponse(supabase, cacheKey);
     
-    if (cachedResponse) {
-      console.log("[FREE-KEYWORD-SCAN] Returning cached response");
-      trackPerformance(requestStartTime, 'free-keyword-scan-cached', true, { cached: true }, clientIp);
+    if (!skipCache) {
+      const cachedResponse = await getCachedResponse(supabase, cacheKey);
       
-      // Still increment counter for cached responses
-      EdgeRuntime.waitUntil(
-        (async () => {
-          try {
-            await supabase.rpc('increment_free_scan_count');
-          } catch (err) {
-            console.error("[FREE-KEYWORD-SCAN] Failed to increment counter:", err);
-          }
-        })()
-      );
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          cached: true,
-          ...cachedResponse,
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (cachedResponse) {
+        console.log("[FREE-KEYWORD-SCAN] Returning cached response");
+        trackPerformance(requestStartTime, 'free-keyword-scan-cached', true, { cached: true }, clientIp);
+        
+        // Still increment counter for cached responses
+        EdgeRuntime.waitUntil(
+          (async () => {
+            try {
+              await supabase.rpc('increment_free_scan_count');
+            } catch (err) {
+              console.error("[FREE-KEYWORD-SCAN] Failed to increment counter:", err);
+            }
+          })()
+        );
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            cached: true,
+            ...cachedResponse,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      console.log("[FREE-KEYWORD-SCAN] Skipping cache (force re-analyze)");
     }
 
     console.log("[FREE-KEYWORD-SCAN] Calling Lovable AI Gateway...");

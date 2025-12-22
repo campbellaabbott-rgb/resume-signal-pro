@@ -141,6 +141,7 @@ const Index = () => {
   const [jobDescriptionText, setJobDescriptionText] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [freeKeywordResult, setFreeKeywordResult] = useState<FreeKeywordResult | null>(null);
+  const [isCachedResult, setIsCachedResult] = useState(false);
   const [honeypot, setHoneypot] = useState<string>(""); // Honeypot field for bot detection
   const [preStoredSessionId, setPreStoredSessionId] = useState<string | null>(null);
   const [uploadedJobs, setUploadedJobs] = useState<JobEntry[]>([]);
@@ -397,7 +398,7 @@ const Index = () => {
     }
   };
 
-  const handleFreeScan = async () => {
+  const handleFreeScan = async (skipCache = false) => {
     const contentToAnalyze = resumeText;
     
     if (!contentToAnalyze && !selectedFile) {
@@ -412,10 +413,11 @@ const Index = () => {
     // Experience level and role are now extracted from the scan itself
 
     setIsFreeScanLoading(true);
+    setIsCachedResult(false); // Reset cached state
 
     try {
       const { data, error } = await supabase.functions.invoke("free-keyword-scan", {
-        body: { resumeText: contentToAnalyze, jobDescriptionText: jobDescriptionText || undefined, honeypot },
+        body: { resumeText: contentToAnalyze, jobDescriptionText: jobDescriptionText || undefined, honeypot, skipCache },
       });
 
       // Check for rate limit in error response or data
@@ -444,6 +446,9 @@ const Index = () => {
       }
 
       if (data?.success) {
+        // Track if this was a cached result
+        setIsCachedResult(!!data.cached);
+        
         setFreeKeywordResult({
           industry: data.industry,
           atsScoreEstimate: data.atsScoreEstimate,
@@ -1013,6 +1018,8 @@ const Index = () => {
                 onGenerateTailoredResume={handleGenerateTailoredResume}
                 isGeneratingTailored={isGeneratingTailored}
                 isLoading={isLoading || isFreeScanLoading}
+                isCached={isCachedResult}
+                onForceReanalyze={() => handleFreeScan(true)}
                 resumeText={resumeText}
                 jobDescriptionText={jobDescriptionText}
                 jobTitle={uploadedJobs[0]?.title}
