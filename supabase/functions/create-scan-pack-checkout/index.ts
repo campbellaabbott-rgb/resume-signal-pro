@@ -123,7 +123,7 @@ serve(async (req) => {
       mode: "payment",
       allow_promotion_codes: true,
       success_url: `${origin}/product-success?session_id={CHECKOUT_SESSION_ID}&product=scanPack`,
-      cancel_url: `${origin}/?canceled=true`,
+      cancel_url: `${origin}/payment-failed?product=scanPack`,
       metadata: {
         product_type: "scan_pack",
         credits: credits.toString(),
