@@ -190,8 +190,10 @@ const DISPOSABLE_EMAIL_DOMAINS = new Set([
   'quickmail.nl', 'tempsky.com'
 ]);
 
+// Helper to get client IP from request (prioritize Cloudflare's trusted header)
 const getClientIp = (req: Request): string => {
-  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+  return req.headers.get('cf-connecting-ip') ||
+         req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
          req.headers.get('x-real-ip') || 
          'unknown';
 };
