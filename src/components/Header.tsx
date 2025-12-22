@@ -44,6 +44,12 @@ export function Header() {
           <div className="flex items-center gap-1 sm:gap-2">
             <Link 
               to="/" 
+              onClick={(e) => {
+                if (window.location.pathname === '/') {
+                  e.preventDefault();
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
               className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
               aria-label="Resume Booster - Home"
             >
