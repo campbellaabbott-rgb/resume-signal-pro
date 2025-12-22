@@ -101,11 +101,12 @@ const ERROR_MESSAGES = {
   SESSION_USED: 'This session has already been used for analysis.',
 };
 
-// Helper to get client IP from request
+// Helper to get client IP from request (prioritize Cloudflare's trusted header)
 const getClientIp = (req: Request): string => {
-  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+  return req.headers.get('cf-connecting-ip') ||
+         req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
          req.headers.get('x-real-ip') || 
-         'unknown'
+         'unknown';
 };
 
 // Escape XML special characters to prevent prompt injection attacks

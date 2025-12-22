@@ -67,8 +67,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Get client IP for rate limiting
-  const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
+  // Get client IP for rate limiting (prioritize Cloudflare's trusted header)
+  const clientIp = req.headers.get('cf-connecting-ip') ||
+                   req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
                    req.headers.get('x-real-ip') || 
                    'unknown';
 
