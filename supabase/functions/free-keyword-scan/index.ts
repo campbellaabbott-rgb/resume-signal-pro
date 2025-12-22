@@ -343,7 +343,15 @@ ANALYSIS RULES:
 2. Format Grade (A-D): A=Excellent ATS-friendly, B=Good with minor issues, C=Fair with problems, D=Poor
 3. Resume Length: Estimate pages and compare to recommendation (1 page <5yrs, 2 pages 5-15yrs, 3 pages 15+yrs)
 4. Word Count: Count words and compare to ideal range (400-600 for 1 page, 600-800 for 2 pages)
-5. Experience Level: Detect Entry (0-2yrs), Mid (3-7yrs), Senior (8-15yrs), or Executive (15+yrs)
+5. Experience Level Detection (BE PRECISE):
+   - Calculate total years by: (a) counting years between earliest and latest job dates, (b) looking for explicit mentions like "10+ years", "5 years experience"
+   - Analyze job title seniority signals:
+     * Entry (0-2yrs): Intern, Associate, Assistant, Junior, Coordinator, Analyst I, Entry-level titles, recent grad indicators
+     * Mid (3-7yrs): No prefix (e.g., "Software Engineer"), Analyst II/III, Specialist, individual contributor roles
+     * Senior (8-15yrs): Senior, Lead, Principal, Staff, Architect, Manager (non-director), Team Lead
+     * Executive (15+yrs): Director, VP, Vice President, Head of, Chief, C-suite, Partner, EVP, SVP
+   - Cross-reference: title seniority should roughly match years. If mismatch, trust years over titles.
+   - Return: level (entry/mid/senior/executive), yearsEstimate (e.g., "5-7 years"), and confidence (high/medium/low)
 6. Section Check: Identify which essential sections are present (Contact, Summary, Experience, Education, Skills)
 7. Contact Info: Check for email, phone, and LinkedIn presence
 8. Top Strength: Identify the single best thing about this resume
@@ -466,10 +474,12 @@ ${resumeText.substring(0, 15000)}
                 experienceLevel: {
                   type: "object",
                   properties: {
-                    level: { type: "string", enum: ["entry", "mid", "senior", "executive"], description: "Detected experience level" },
-                    yearsEstimate: { type: "string", description: "Estimated years of experience (e.g., '3-5 years')" }
+                    level: { type: "string", enum: ["entry", "mid", "senior", "executive"], description: "Detected experience level based on years and title seniority" },
+                    yearsEstimate: { type: "string", description: "Estimated years of experience range (e.g., '5-7 years', '10+ years')" },
+                    confidence: { type: "string", enum: ["high", "medium", "low"], description: "Confidence in detection: high=clear dates/titles, medium=some ambiguity, low=limited info" },
+                    titleProgression: { type: "string", description: "Brief note on career trajectory (e.g., 'Steady growth from Analyst to Senior Manager')" }
                   },
-                  required: ["level", "yearsEstimate"]
+                  required: ["level", "yearsEstimate", "confidence"]
                 },
                 sectionCheck: {
                   type: "object",
