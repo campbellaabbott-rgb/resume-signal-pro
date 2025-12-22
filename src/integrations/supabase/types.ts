@@ -491,6 +491,21 @@ export type Database = {
       cleanup_expired_cache: { Args: never; Returns: number }
       cleanup_expired_stripe_sessions: { Args: never; Returns: number }
       cleanup_old_rate_limits: { Args: never; Returns: number }
+      compare_cohorts: {
+        Args: {
+          p_cohort_a: string
+          p_cohort_b: string
+          p_days_back?: number
+          p_dimension?: string
+        }
+        Returns: {
+          cohort_a_value: number
+          cohort_b_value: number
+          difference: number
+          lift_percent: number
+          metric: string
+        }[]
+      }
       delete_analysis_by_share_id: {
         Args: { p_share_id: string }
         Returns: boolean
@@ -520,6 +535,26 @@ export type Database = {
       get_cached_response: {
         Args: { p_cache_key: string; p_function_name: string }
         Returns: Json
+      }
+      get_funnel_cohort_stats: {
+        Args: { p_cohort_dimension?: string; p_days_back?: number }
+        Returns: {
+          checkout_rate: number
+          checkout_started: number
+          cohort_value: string
+          conversion_rate: number
+          landing_view: number
+          product_clicked: number
+          purchase_completed: number
+          results_viewed: number
+          scan_completed: number
+          scan_rate: number
+          scan_started: number
+          upload_completed: number
+          upload_rate: number
+          upload_started: number
+          view_rate: number
+        }[]
       }
       get_scan_credits: { Args: { p_email: string }; Returns: number }
       get_temp_resume: {
