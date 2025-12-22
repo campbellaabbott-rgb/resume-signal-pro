@@ -647,6 +647,7 @@ export type Database = {
         Args: { p_ats_score?: number; p_email: string; p_industry?: string }
         Returns: boolean
       }
+      should_generate_weekly_report: { Args: never; Returns: boolean }
       store_cached_response: {
         Args: {
           p_cache_key: string
