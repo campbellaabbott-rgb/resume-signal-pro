@@ -922,6 +922,9 @@ const Index = () => {
       <main id="main-content" className="pt-[88px]" role="main">
         <Hero />
         
+        {/* Trust Indicators - Right after hero for credibility */}
+        <TrustIndicators />
+        
         {/* How It Works - Show after uploader on mobile for cleaner flow */}
         <div className="hidden sm:block">
           <HowItWorks />
@@ -1028,8 +1031,6 @@ const Index = () => {
         <ComparisonTable />
         
         <SocialProof />
-        
-        <TrustIndicators />
         
         <FAQ />
         
