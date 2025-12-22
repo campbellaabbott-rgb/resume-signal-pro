@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.get-analytics]
 verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
