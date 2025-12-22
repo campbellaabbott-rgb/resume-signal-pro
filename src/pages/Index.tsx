@@ -15,7 +15,7 @@ import { FinalCTA } from "@/components/FinalCTA";
 import { RateLimitUpsell } from "@/components/RateLimitUpsell";
 import { TailoredResumeModal } from "@/components/TailoredResumeModal";
 import { ProductSelectionModal } from "@/components/ProductSelectionModal";
-import { ProfileQuizModal, type ProfileQuizData } from "@/components/ProfileQuizModal";
+
 
 import { type JobEntry } from "@/components/JobSelector";
 
@@ -139,8 +139,6 @@ const Index = () => {
   const [showRateLimitUpsell, setShowRateLimitUpsell] = useState(false);
   const [showTailoredResumeModal, setShowTailoredResumeModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
-  const [showProfileQuiz, setShowProfileQuiz] = useState(false);
-  const [userProfile, setUserProfile] = useState<ProfileQuizData | null>(null);
   
   const [tailoredResumeContent, setTailoredResumeContent] = useState<any>(null);
   const [isGeneratingTailored, setIsGeneratingTailored] = useState(false);
@@ -385,7 +383,7 @@ const Index = () => {
     }
   };
 
-  const handleFreeScan = async (profileData?: ProfileQuizData) => {
+  const handleFreeScan = async () => {
     const contentToAnalyze = resumeText;
     
     if (!contentToAnalyze && !selectedFile) {
@@ -397,12 +395,7 @@ const Index = () => {
       return;
     }
 
-    // Show profile quiz if user hasn't completed it yet
-    const currentProfile = profileData || userProfile;
-    if (!currentProfile) {
-      setShowProfileQuiz(true);
-      return;
-    }
+    // Experience level and role are now extracted from the scan itself
 
     setIsFreeScanLoading(true);
 
@@ -1006,9 +999,6 @@ const Index = () => {
                 jobDescriptionText={jobDescriptionText}
                 jobTitle={uploadedJobs[0]?.title}
                 jobCompany={uploadedJobs[0]?.company}
-                userIndustry={userProfile?.industry}
-                userExperienceLevel={userProfile?.experienceLevel}
-                userTargetRole={userProfile?.targetRole}
               />
               
               {/* Score-based package recommendation */}
@@ -1080,17 +1070,6 @@ const Index = () => {
         sessionId={preStoredSessionId || undefined}
       />
       
-      {/* Profile Quiz Modal */}
-      <ProfileQuizModal
-        open={showProfileQuiz}
-        onClose={() => setShowProfileQuiz(false)}
-        onComplete={(data) => {
-          setUserProfile(data);
-          setShowProfileQuiz(false);
-          // Trigger the scan with the new profile data
-          handleFreeScan(data);
-        }}
-      />
       
     </div>
   );

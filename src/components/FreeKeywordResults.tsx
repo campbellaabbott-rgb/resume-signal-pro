@@ -577,10 +577,6 @@ interface FreeKeywordResultsProps {
   jobDescriptionText?: string;
   jobTitle?: string;
   jobCompany?: string;
-  // User profile props for personalization
-  userIndustry?: string;
-  userExperienceLevel?: string;
-  userTargetRole?: string;
 }
 
 export function FreeKeywordResults({
@@ -632,10 +628,7 @@ export function FreeKeywordResults({
   resumeText,
   jobDescriptionText,
   jobTitle,
-  jobCompany,
-  userIndustry,
-  userExperienceLevel,
-  userTargetRole
+  jobCompany
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1543,17 +1536,15 @@ export function FreeKeywordResults({
         </div>
       </div>
 
-      {/* Peer Benchmark - Show how user compares */}
-      {(userIndustry || industry) && (
-        <div className="mb-6">
-          <PeerBenchmark 
-            score={atsScoreEstimate}
-            industry={userIndustry || industry?.toLowerCase().replace(/[^a-z]/g, '') || 'technology'}
-            experienceLevel={userExperienceLevel || experienceLevel?.level}
-            targetRole={userTargetRole}
-          />
-        </div>
-      )}
+      {/* Peer Benchmark - Show how user compares (uses data extracted from scan) */}
+      <div className="mb-6">
+        <PeerBenchmark 
+          score={atsScoreEstimate}
+          industry={industry?.toLowerCase().replace(/[^a-z]/g, '') || 'technology'}
+          experienceLevel={experienceLevel?.level}
+          targetRole={currentRole}
+        />
+      </div>
 
       {/* Row 4: Special Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
