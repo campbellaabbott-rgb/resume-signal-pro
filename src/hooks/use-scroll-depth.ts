@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-const SCROLL_MILESTONES = [25, 50, 75, 90, 100] as const;
+const SCROLL_MILESTONES = [0, 25, 50, 75, 90, 100] as const;
 
 type ScrollMilestone = typeof SCROLL_MILESTONES[number];
 
@@ -79,6 +79,9 @@ export function useScrollDepth(pageName: string = 'home') {
         ticking = true;
       }
     };
+
+    // Always record a baseline "0%" view so the funnel has a starting point
+    void trackMilestone(0);
 
     window.addEventListener('scroll', debouncedScroll, { passive: true });
     
