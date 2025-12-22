@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
+import { PRODUCTS } from "@/config/products";
 
 interface ComparisonRow {
   label: string;
@@ -10,11 +11,14 @@ interface ComparisonRow {
 export function ValueComparison() {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
+  
+  // Use the actual premium package price for comparison (most valuable product)
+  const comparisonPrice = PRODUCTS.atsDefense.priceUsd;
 
   const comparisons: ComparisonRow[] = [
     {
       label: t("valueComparison.price", "Price"),
-      us: `$25${isLocalCurrency ? ` ≈ ${formatPrice(25)}` : ""}`,
+      us: `$${comparisonPrice}${isLocalCurrency ? ` ≈ ${formatPrice(comparisonPrice)}` : ""}`,
       them: "$150–$500",
     },
     {

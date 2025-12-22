@@ -2,49 +2,57 @@ import { usePersonalization } from '@/hooks/use-personalization';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, ArrowRight, Target, FileText, Briefcase, Star } from 'lucide-react';
+import { Sparkles, ArrowRight, Target, FileText, Briefcase, Star, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PRODUCTS } from '@/config/products';
 
 interface SmartProductRecommendationsProps {
   onSelectProduct?: (productId: string) => void;
   className?: string;
 }
 
+// Map personalization product IDs to actual product config
 const productDetails: Record<string, {
   name: string;
   icon: React.ReactNode;
   description: string;
   price: string;
+  productKey?: string;
 }> = {
   'keyword-optimizer': {
-    name: 'Keyword Optimizer',
+    name: PRODUCTS.basicKeywordFix.name,
     icon: <Target className="h-5 w-5" />,
-    description: 'Boost your ATS score with targeted keyword optimization',
-    price: '$12',
+    description: PRODUCTS.basicKeywordFix.description,
+    price: `$${PRODUCTS.basicKeywordFix.priceUsd}`,
+    productKey: 'basicKeywordFix',
   },
   'tailored-resume': {
-    name: 'Tailored Resume',
-    icon: <FileText className="h-5 w-5" />,
-    description: 'Get a resume customized for your target job',
-    price: '$19',
+    name: PRODUCTS.premiumPackage.name,
+    icon: <Crown className="h-5 w-5" />,
+    description: PRODUCTS.premiumPackage.description,
+    price: `$${PRODUCTS.premiumPackage.priceUsd}`,
+    productKey: 'premiumPackage',
   },
   'cover-letter': {
-    name: 'Cover Letter',
+    name: PRODUCTS.coverLetter.name,
     icon: <Briefcase className="h-5 w-5" />,
-    description: 'Professional cover letter that complements your resume',
-    price: '$15',
+    description: PRODUCTS.coverLetter.description,
+    price: `$${PRODUCTS.coverLetter.priceUsd}`,
+    productKey: 'coverLetter',
   },
   'premium-package': {
-    name: 'Premium Package',
+    name: PRODUCTS.atsDefense.name,
     icon: <Star className="h-5 w-5" />,
-    description: 'Complete resume overhaul + cover letter + optimization',
-    price: '$49',
+    description: PRODUCTS.atsDefense.description,
+    price: `$${PRODUCTS.atsDefense.priceUsd}`,
+    productKey: 'atsDefense',
   },
   'linkedin-optimizer': {
-    name: 'LinkedIn Optimizer',
+    name: PRODUCTS.fullAnalysis.name,
     icon: <Sparkles className="h-5 w-5" />,
-    description: 'Optimize your LinkedIn profile to match your resume',
-    price: '$18',
+    description: PRODUCTS.fullAnalysis.description,
+    price: `$${PRODUCTS.fullAnalysis.priceUsd}`,
+    productKey: 'fullAnalysis',
   },
 };
 
