@@ -464,7 +464,7 @@ Analyze this resume for ATS compatibility and provide a complete ATS Defense rep
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash", // Optimized: Use flash for better throughput (pro only marginally better here)
+            model: "google/gemini-2.5-pro", // Use pro for premium ATS defense quality
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: userMessage }
