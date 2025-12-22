@@ -39,8 +39,36 @@ function AnimatedResultPreview() {
   );
 }
 
-// Hero stats bar - immediate social proof
+// Hero stats bar - immediate social proof with live updating count
 function HeroStatsBar() {
+  const [scanCount, setScanCount] = useState<number>(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    // Calculate count based on time of day - same logic as LiveActivityCounter
+    const calculateCount = () => {
+      const now = new Date();
+      const hoursSinceMidnight = now.getHours() + now.getMinutes() / 60;
+      return 107 + Math.floor(hoursSinceMidnight * 30);
+    };
+
+    setScanCount(calculateCount());
+
+    // Update every minute
+    const interval = setInterval(() => {
+      const newCount = calculateCount();
+      setScanCount(prev => {
+        if (newCount !== prev) {
+          setIsAnimating(true);
+          setTimeout(() => setIsAnimating(false), 500);
+        }
+        return newCount;
+      });
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 py-3 px-4 rounded-2xl bg-gradient-to-r from-card/80 via-card/60 to-card/80 border border-border/40 backdrop-blur-sm">
       <div className="flex items-center gap-2">
@@ -48,7 +76,9 @@ function HeroStatsBar() {
           <TrendingUp className="w-4 h-4 text-success" />
         </div>
         <div className="text-left">
-          <p className="text-lg sm:text-xl font-bold text-foreground">2,847+</p>
+          <p className={`text-lg sm:text-xl font-bold text-foreground transition-all duration-300 ${isAnimating ? 'scale-110 text-success' : ''}`}>
+            {scanCount.toLocaleString()}+
+          </p>
           <p className="text-xs text-muted-foreground">Scanned today</p>
         </div>
       </div>
