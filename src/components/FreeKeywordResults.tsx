@@ -1426,6 +1426,17 @@ export function FreeKeywordResults({
         />
       </div>
 
+      {/* Interactive Checklist - Track fixes for this scan */}
+      {currentScan && currentScan.checklist && currentScan.checklist.length > 0 && (
+        <div className="mb-6">
+          <InteractiveChecklist 
+            entryId={currentScan.id}
+            items={currentScan.checklist}
+            candidateName={candidateName}
+          />
+        </div>
+      )}
+
       {/* Score Cards Grid - Row 1: Primary Scores */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
         {/* ATS Score */}
