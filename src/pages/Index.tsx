@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { ResumeUploader } from "@/components/ResumeUploader";
@@ -157,6 +158,9 @@ const Index = () => {
   
   // Track affiliate referrals
   useAffiliateTracking();
+  
+  // Track scroll depth for drop-off analysis
+  useScrollDepth('home');
   
   // Track if we're pre-storing to avoid duplicate calls
   const isPreStoring = useRef(false);
