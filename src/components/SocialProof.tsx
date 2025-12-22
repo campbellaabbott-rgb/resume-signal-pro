@@ -1,8 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { Quote, Briefcase, GraduationCap, Code, MessageCircle } from "lucide-react";
 
-const testimonialKeys = ["engineer", "pm", "graduate", "reddit"];
-const testimonialIcons = [Code, Briefcase, GraduationCap, MessageCircle];
+const testimonials = [
+  { key: "engineer", icon: Code, name: "David K.", location: "San Francisco" },
+  { key: "pm", icon: Briefcase, name: "Sarah M.", location: "New York" },
+  { key: "graduate", icon: GraduationCap, name: "Alex T.", location: "Austin" },
+  { key: "reddit", icon: MessageCircle, name: "Michael R.", location: "Chicago" },
+];
 
 export function SocialProof() {
   const { t } = useTranslation();
@@ -30,23 +34,26 @@ export function SocialProof() {
         </div>
 
         {/* Testimonials */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {testimonialKeys.map((key, index) => {
-            const Icon = testimonialIcons[index];
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+          {testimonials.map((testimonial) => {
+            const Icon = testimonial.icon;
             return (
               <div
-                key={key}
+                key={testimonial.key}
                 className="relative p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/20 transition-colors group"
               >
                 <Quote className="w-8 h-8 text-primary/20 mb-4 group-hover:text-primary/30 transition-colors" />
-                <p className="text-foreground/90 mb-6 leading-relaxed">
-                  "{t(`socialProof.testimonials.${key}.quote`)}"
+                <p className="text-foreground/90 mb-6 leading-relaxed text-sm">
+                  "{t(`socialProof.testimonials.${testimonial.key}.quote`)}"
                 </p>
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-primary/10">
                     <Icon className="w-4 h-4 text-primary" />
                   </div>
-                  <span className="text-sm text-muted-foreground">{t(`socialProof.testimonials.${key}.role`)}</span>
+                  <div>
+                    <div className="text-sm font-medium text-foreground">{testimonial.name}</div>
+                    <div className="text-xs text-muted-foreground">{t(`socialProof.testimonials.${testimonial.key}.role`)} · {testimonial.location}</div>
+                  </div>
                 </div>
               </div>
             );
