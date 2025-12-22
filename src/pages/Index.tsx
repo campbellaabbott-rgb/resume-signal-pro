@@ -49,6 +49,12 @@ import { useAffiliateTracking, getStoredReferralCode } from "@/hooks/use-affilia
 interface FreeKeywordResult {
   industry: string;
   atsScoreEstimate: number;
+  industryScoreInsight?: {
+    weightsApplied: string;
+    strongestArea: string;
+    weakestArea: string;
+    industryMustHaves: { item: string; present: boolean }[];
+  };
   formatGrade: string;
   formatIssue: string;
   resumeLength: { currentPages: number; recommendedPages: number; verdict: "too_short" | "just_right" | "too_long" };
@@ -954,6 +960,7 @@ const Index = () => {
               <FreeKeywordResults
                 industry={freeKeywordResult.industry}
                 atsScoreEstimate={freeKeywordResult.atsScoreEstimate}
+                industryScoreInsight={freeKeywordResult.industryScoreInsight}
                 formatGrade={freeKeywordResult.formatGrade}
                 formatIssue={freeKeywordResult.formatIssue}
                 resumeLength={freeKeywordResult.resumeLength}

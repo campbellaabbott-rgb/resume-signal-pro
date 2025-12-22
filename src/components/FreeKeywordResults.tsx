@@ -5,7 +5,8 @@ import { useTranslation } from "react-i18next";
 import { 
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
-  Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X
+  Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
+  TrendingUp
 } from "lucide-react";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { PersonalizedInsights } from "./PersonalizedInsights";
@@ -525,10 +526,23 @@ interface FormatRecommendation {
   templateSuggestion: string;
 }
 
+interface IndustryMustHave {
+  item: string;
+  present: boolean;
+}
+
+interface IndustryScoreInsight {
+  weightsApplied: string;
+  strongestArea: string;
+  weakestArea: string;
+  industryMustHaves: IndustryMustHave[];
+}
+
 interface FreeKeywordResultsProps {
   industry: string;
   currentRole?: string;
   atsScoreEstimate: number;
+  industryScoreInsight?: IndustryScoreInsight;
   formatGrade: string;
   formatIssue: string;
   resumeLength: ResumeLength;
@@ -583,6 +597,7 @@ export function FreeKeywordResults({
   industry,
   currentRole,
   atsScoreEstimate,
+  industryScoreInsight,
   formatGrade,
   formatIssue,
   resumeLength: resumeLengthProp,
@@ -1545,6 +1560,74 @@ export function FreeKeywordResults({
           targetRole={currentRole}
         />
       </div>
+
+      {/* Industry Score Insight */}
+      {industryScoreInsight && (
+        <div className="mb-6 p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 space-y-4">
+          <div className="flex items-center gap-2">
+            <Briefcase className="w-5 h-5 text-primary" />
+            <h3 className="font-semibold text-lg">Industry-Specific Scoring</h3>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary capitalize">
+              {industry}
+            </span>
+          </div>
+          
+          {/* Weights Applied */}
+          <p className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Scoring weights: </span>
+            {industryScoreInsight.weightsApplied}
+          </p>
+          
+          {/* Strongest/Weakest Areas */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="p-3 rounded-xl bg-success/5 border border-success/20">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="w-4 h-4 text-success" />
+                <span className="text-xs font-semibold text-success">Strongest Area</span>
+              </div>
+              <p className="text-sm text-foreground">{industryScoreInsight.strongestArea}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-warning/5 border border-warning/20">
+              <div className="flex items-center gap-2 mb-1">
+                <AlertTriangle className="w-4 h-4 text-warning" />
+                <span className="text-xs font-semibold text-warning">Needs Improvement</span>
+              </div>
+              <p className="text-sm text-foreground">{industryScoreInsight.weakestArea}</p>
+            </div>
+          </div>
+          
+          {/* Industry Must-Haves Checklist */}
+          {industryScoreInsight.industryMustHaves && industryScoreInsight.industryMustHaves.length > 0 && (
+            <div className="pt-3 border-t border-border/50">
+              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+                Industry Must-Haves
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {industryScoreInsight.industryMustHaves.map((mustHave, idx) => (
+                  <div 
+                    key={idx}
+                    className={cn(
+                      "flex items-center gap-2 p-2 rounded-lg text-sm",
+                      mustHave.present 
+                        ? "bg-success/5 text-success" 
+                        : "bg-destructive/5 text-destructive"
+                    )}
+                  >
+                    {mustHave.present ? (
+                      <CheckCircle className="w-4 h-4 shrink-0" />
+                    ) : (
+                      <XCircle className="w-4 h-4 shrink-0" />
+                    )}
+                    <span className={mustHave.present ? "text-foreground" : "text-foreground"}>
+                      {mustHave.item}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Row 4: Special Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
