@@ -36,7 +36,7 @@ export function TrustIndicators() {
   ];
 
   return (
-    <section className="py-6 border-b border-border/30 bg-muted/10">
+    <section id="trust-indicators" className="py-6 border-b border-border/30 bg-muted/10 scroll-mt-24">
       <div className="container">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
           {/* Security Badges */}
