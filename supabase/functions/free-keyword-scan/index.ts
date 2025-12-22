@@ -390,8 +390,17 @@ Apply the appropriate weights when calculating the ATS score. Mention in industr
 9. Quantification Score (0-100): % of bullet points that include numbers/metrics
 10. Action Verb Grade (A-D): Quality and variety of action verbs used
 11. Red Flags: 3 specific issues recruiters would notice immediately
-12. Keywords: 6 missing high-impact keywords for their industry
-13. Industry: Detect the industry/field
+12. Industry-Specific Keywords: Generate 6 missing keywords TAILORED to the detected industry:
+    - For TECHNOLOGY: Focus on programming languages, frameworks, cloud platforms, methodologies (Agile, Scrum), tools (Git, Docker, Kubernetes)
+    - For HEALTHCARE: Focus on certifications (BLS, ACLS), EMR systems (Epic, Cerner), compliance (HIPAA, JCAHO), clinical skills
+    - For FINANCE: Focus on regulations (SOX, Basel III), software (Bloomberg, SAP), certifications (CFA, CPA, Series 7), financial modeling
+    - For LEGAL: Focus on practice areas, legal research tools (Westlaw, LexisNexis), bar admissions, case management systems
+    - For SALES/MARKETING: Focus on CRM tools (Salesforce, HubSpot), analytics (Google Analytics, Tableau), campaign types, revenue metrics
+    - For EDUCATION: Focus on curriculum standards, LMS platforms, assessment methods, classroom management, certifications
+    - For ENGINEERING: Focus on CAD software, industry standards (ISO, ASME), project management, technical certifications (PE, PMP)
+    - For CREATIVE: Focus on design tools (Adobe Suite, Figma), portfolio platforms, project types, creative methodologies
+    Each keyword should have a category (tool, skill, certification, methodology, metric) and impact level (critical, high, medium).
+13. Industry: Detect the industry/field (technology, healthcare, finance, legal, sales, education, engineering, creative, or general)
 14. Current Role: Detect the person's current or most recent job title/role (e.g., "Product Manager", "Software Engineer", "Registered Nurse", "Marketing Director")
 14. Readability Score (0-100): How easy is the resume to scan quickly
 15. Bullet Impact Score (0-100): % of bullets that show achievements vs responsibilities
@@ -597,12 +606,14 @@ ${resumeText.substring(0, 15000)}
                   items: {
                     type: "object",
                     properties: {
-                      keyword: { type: "string" },
-                      reason: { type: "string", description: "Brief reason (under 10 words)" }
+                      keyword: { type: "string", description: "The missing keyword tailored to their industry" },
+                      reason: { type: "string", description: "Why this keyword matters for their industry (under 12 words)" },
+                      category: { type: "string", enum: ["tool", "skill", "certification", "methodology", "metric", "regulation"], description: "Type of keyword" },
+                      impact: { type: "string", enum: ["critical", "high", "medium"], description: "How important this keyword is for ATS matching" }
                     },
-                    required: ["keyword", "reason"]
+                    required: ["keyword", "reason", "category", "impact"]
                   },
-                  description: "Exactly 6 keyword suggestions"
+                  description: "Exactly 6 industry-specific keyword suggestions"
                 },
                 readabilityScore: {
                   type: "object",
