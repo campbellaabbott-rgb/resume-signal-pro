@@ -567,7 +567,7 @@ ${resumeText.substring(0, 15000)}
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash", // Optimized: Use flash for free tier (faster, cheaper, handles volume better)
+        model: "google/gemini-2.5-pro", // Using Pro for better personalization and nuanced analysis
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
