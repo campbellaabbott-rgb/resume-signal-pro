@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.generate-ats-defense]
 verify_jwt = false
+
+[functions.get-analytics]
+verify_jwt = false
