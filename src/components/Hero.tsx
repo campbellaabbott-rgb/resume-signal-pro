@@ -7,12 +7,62 @@ import { useCurrency } from "@/hooks/use-currency";
 import { LiveActivityCounter } from "./LiveActivityCounter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PRODUCTS } from "@/config/products";
+import { useABTest } from "@/hooks/use-ab-test";
+
+// Social proof component for A/B testing placement
+function SocialProofBlock({ variant }: { variant: 'compact' | 'full' }) {
+  const { t } = useTranslation();
+  
+  if (variant === 'compact') {
+    return (
+      <div className="flex flex-wrap items-center justify-center gap-3 text-sm text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <Users className="w-4 h-4 text-success" />
+          <span className="font-medium">2,847+</span> resumes scanned today
+        </span>
+        <span className="hidden sm:block w-1 h-1 rounded-full bg-muted-foreground/30" />
+        <span className="flex items-center gap-1.5">
+          <Star className="w-4 h-4 text-warning" />
+          <span className="font-medium">4.9/5</span> from job seekers
+        </span>
+      </div>
+    );
+  }
+  
+  return (
+    <>
+      {/* Testimonials */}
+      <div className="grid sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+        <div className="px-4 py-3 rounded-xl bg-card/40 border border-border/30">
+          <p className="text-sm text-muted-foreground italic">
+            {t('hero.testimonial', '"This is a very wonderful product. I have just gone through the freemium features & I can confidently say it\'s going to be a big success."')}
+          </p>
+          <p className="text-xs text-muted-foreground/60 mt-2">— {t('hero.testimonialAuthor1', 'Sarah K.')}</p>
+        </div>
+        <div className="px-4 py-3 rounded-xl bg-card/40 border border-border/30">
+          <p className="text-sm text-muted-foreground italic">
+            "{t('hero.testimonial2', 'Service is super helpful and useful.')}"
+          </p>
+          <p className="text-xs text-muted-foreground/60 mt-2">— {t('hero.testimonialAuthor2', 'Marcus T.')}</p>
+        </div>
+      </div>
+      
+      {/* Live counter */}
+      <div className="mt-4">
+        <LiveActivityCounter />
+      </div>
+    </>
+  );
+}
 
 export function Hero() {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const isMobile = useIsMobile();
   const [showAtsInfo, setShowAtsInfo] = useState(false);
+  
+  // A/B test for social proof placement
+  const { variant: socialProofVariant, trackConversion } = useABTest('social_proof_placement');
 
   // Price display helper
   const fullAnalysisPrice = PRODUCTS.fullAnalysis.priceUsd;
@@ -201,6 +251,20 @@ export function Hero() {
             </div>
           </div>
 
+          {/* A/B Test: Social proof ABOVE CTA for 'above_fold' variant */}
+          {socialProofVariant === 'above_fold' && (
+            <div className="mb-6 animate-fade-in" style={{ animationDelay: "0.08s" }}>
+              <SocialProofBlock variant="full" />
+            </div>
+          )}
+          
+          {/* A/B Test: Compact social proof INLINE for 'inline_hero' variant */}
+          {socialProofVariant === 'inline_hero' && (
+            <div className="mb-6 animate-fade-in" style={{ animationDelay: "0.08s" }}>
+              <SocialProofBlock variant="compact" />
+            </div>
+          )}
+
           {/* Single Primary CTA */}
           <div className="mb-8 animate-fade-in" style={{ animationDelay: "0.1s" }}>
             <button
@@ -232,27 +296,34 @@ export function Hero() {
               </span>
             </div>
 
-            {/* Anonymous testimonials */}
-            <div className="mt-6 grid sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
-              <div className="px-4 py-3 rounded-xl bg-card/40 border border-border/30">
-                <p className="text-sm text-muted-foreground italic">
-                  {t('hero.testimonial', '"This is a very wonderful product. I have just gone through the freemium features & I can confidently say it\'s going to be a big success."')}
-                </p>
-                <p className="text-xs text-muted-foreground/60 mt-2">— {t('hero.testimonialAuthor1', 'Sarah K.')}</p>
-              </div>
-              <div className="px-4 py-3 rounded-xl bg-card/40 border border-border/30">
-                <p className="text-sm text-muted-foreground italic">
-                  "{t('hero.testimonial2', 'Service is super helpful and useful.')}"
-                </p>
-                <p className="text-xs text-muted-foreground/60 mt-2">— {t('hero.testimonialAuthor2', 'Marcus T.')}</p>
-              </div>
-            </div>
+            {/* A/B Test: Social proof AFTER CTA for 'control' variant only */}
+            {socialProofVariant === 'control' && (
+              <>
+                {/* Anonymous testimonials */}
+                <div className="mt-6 grid sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                  <div className="px-4 py-3 rounded-xl bg-card/40 border border-border/30">
+                    <p className="text-sm text-muted-foreground italic">
+                      {t('hero.testimonial', '"This is a very wonderful product. I have just gone through the freemium features & I can confidently say it\'s going to be a big success."')}
+                    </p>
+                    <p className="text-xs text-muted-foreground/60 mt-2">— {t('hero.testimonialAuthor1', 'Sarah K.')}</p>
+                  </div>
+                  <div className="px-4 py-3 rounded-xl bg-card/40 border border-border/30">
+                    <p className="text-sm text-muted-foreground italic">
+                      "{t('hero.testimonial2', 'Service is super helpful and useful.')}"
+                    </p>
+                    <p className="text-xs text-muted-foreground/60 mt-2">— {t('hero.testimonialAuthor2', 'Marcus T.')}</p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Live counter as social proof */}
-          <div className="animate-fade-in" style={{ animationDelay: "0.15s" }}>
-            <LiveActivityCounter />
-          </div>
+          {/* Live counter - always show for control, but already shown above for other variants */}
+          {socialProofVariant === 'control' && (
+            <div className="animate-fade-in" style={{ animationDelay: "0.15s" }}>
+              <LiveActivityCounter />
+            </div>
+          )}
 
           {/* Trusted by companies - hide on mobile to reduce clutter */}
           <div className="mt-8 animate-fade-in hidden sm:block" style={{ animationDelay: "0.18s" }}>
