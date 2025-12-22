@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PRODUCTS, ProductId } from '@/config/products';
 import { useConversionTracking } from '@/hooks/use-conversion-tracking';
+import { useFunnelTracking } from '@/hooks/use-funnel-tracking';
 import { parseEdgeFunctionError } from '@/lib/edge-function-errors';
 import { getStoredReferralCode } from '@/hooks/use-affiliate-auth';
 
@@ -18,6 +19,7 @@ export function useProductCheckout() {
   const [currentProduct, setCurrentProduct] = useState<ProductId | null>(null);
   const { toast } = useToast();
   const { trackButtonClick, trackCheckoutInitiated } = useConversionTracking();
+  const { trackProductClicked, trackCheckoutStarted } = useFunnelTracking();
 
   const purchaseProduct = async (productId: ProductId, options?: CheckoutOptions | string): Promise<string | null> => {
     // Handle backwards compatibility - if options is a string, treat it as sessionId
@@ -40,6 +42,9 @@ export function useProductCheckout() {
     
     // Track button click for conversion analytics with section metadata
     trackButtonClick(productId, opts.ctaSection || 'product_checkout');
+    
+    // Track in funnel
+    trackProductClicked(productId, product.name, product.priceUsd);
 
     try {
       const { data, error } = await supabase.functions.invoke('create-product-checkout', {
@@ -66,6 +71,9 @@ export function useProductCheckout() {
       if (data?.url) {
         // Track checkout initiated
         trackCheckoutInitiated(productId, product.priceUsd);
+        
+        // Track in funnel
+        trackCheckoutStarted(productId, product.priceUsd);
         
         toast({
           title: "Redirecting to Checkout",
