@@ -4,9 +4,12 @@ import { Button } from '@/components/ui/button';
 import { useABTest } from '@/hooks/use-ab-test';
 import { useIsMobile } from '@/hooks/use-mobile';
 
+type TriggerMethod = 'mouse_leave' | 'rapid_scroll' | 'tab_switch' | 'back_button';
+
 export const ExitIntentPopup = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [hasShown, setHasShown] = useState(false);
+  const [triggerMethod, setTriggerMethod] = useState<TriggerMethod | null>(null);
   const { trackConversion } = useABTest('social_proof_placement');
   const isMobile = useIsMobile();
   
@@ -16,17 +19,26 @@ export const ExitIntentPopup = () => {
   const lastScrollTime = useRef(Date.now());
   const scrollUpCount = useRef(0);
 
-  const showPopup = useCallback(() => {
+  const showPopup = useCallback((method: TriggerMethod) => {
     if (hasShown) return;
+    setTriggerMethod(method);
     setIsVisible(true);
     setHasShown(true);
     sessionStorage.setItem('exitIntentShown', 'true');
-  }, [hasShown]);
+    sessionStorage.setItem('exitIntentTrigger', method);
+    
+    // Track popup view with trigger method
+    trackConversion({ 
+      action: 'exit_intent_shown', 
+      trigger_method: method,
+      device_type: isMobile ? 'mobile' : 'desktop'
+    });
+  }, [hasShown, trackConversion, isMobile]);
 
   // Desktop: Mouse leave detection
   const handleMouseLeave = useCallback((e: MouseEvent) => {
     if (e.clientY <= 0) {
-      showPopup();
+      showPopup('mouse_leave');
     }
   }, [showPopup]);
 
@@ -48,7 +60,7 @@ export const ExitIntentPopup = () => {
         
         // Trigger after 2 rapid scroll-ups near top
         if (scrollUpCount.current >= 2) {
-          showPopup();
+          showPopup('rapid_scroll');
         }
       } else if (distance < 0) {
         // Reset count on scroll down
@@ -65,11 +77,14 @@ export const ExitIntentPopup = () => {
     if (document.visibilityState === 'hidden' && !hasShown) {
       // Mark as shown but don't display yet - show when they come back
       sessionStorage.setItem('exitIntentPending', 'true');
+      sessionStorage.setItem('exitIntentPendingTrigger', 'tab_switch');
     } else if (document.visibilityState === 'visible') {
       // Show popup when they return if it was pending
       if (sessionStorage.getItem('exitIntentPending') && !hasShown) {
+        const pendingTrigger = sessionStorage.getItem('exitIntentPendingTrigger') as TriggerMethod || 'tab_switch';
         sessionStorage.removeItem('exitIntentPending');
-        showPopup();
+        sessionStorage.removeItem('exitIntentPendingTrigger');
+        showPopup(pendingTrigger);
       }
     }
   }, [hasShown, showPopup]);
@@ -79,7 +94,7 @@ export const ExitIntentPopup = () => {
     if (!hasShown) {
       // Push state back to prevent actual navigation and show popup
       window.history.pushState(null, '', window.location.href);
-      showPopup();
+      showPopup('back_button');
     }
   }, [hasShown, showPopup]);
 
@@ -119,11 +134,23 @@ export const ExitIntentPopup = () => {
   }, [isMobile, handleMouseLeave, handleScroll, handleVisibilityChange, handlePopState]);
 
   const handleClose = () => {
+    // Track dismissal with trigger method
+    if (triggerMethod) {
+      trackConversion({ 
+        action: 'exit_intent_dismissed', 
+        trigger_method: triggerMethod,
+        device_type: isMobile ? 'mobile' : 'desktop'
+      });
+    }
     setIsVisible(false);
   };
 
   const handleGetFreeScan = () => {
-    trackConversion({ action: 'exit_intent_cta_click' });
+    trackConversion({ 
+      action: 'exit_intent_cta_click',
+      trigger_method: triggerMethod || 'unknown',
+      device_type: isMobile ? 'mobile' : 'desktop'
+    });
     setIsVisible(false);
     
     const uploadSection = document.getElementById('upload');
