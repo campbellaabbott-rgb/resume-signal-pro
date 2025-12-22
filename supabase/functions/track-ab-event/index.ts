@@ -102,8 +102,9 @@ serve(async (req) => {
       );
     }
 
-    // Allow lowercase with underscores for A/B variants, or camelCase for product IDs
-    if (!/^[a-zA-Z_]{1,30}$/.test(variant)) {
+    // Allow lowercase with underscores for A/B variants, camelCase for product IDs,
+    // and formats like "25%", "30s", "2m" for scroll depth / time on page tracking
+    if (!/^[a-zA-Z0-9_%]{1,30}$/.test(variant)) {
       return new Response(
         JSON.stringify({ error: 'Invalid variant format' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
