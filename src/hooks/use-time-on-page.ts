@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-const TIME_MILESTONES = [30, 60, 120, 300, 600] as const; // seconds: 30s, 1m, 2m, 5m, 10m
+const TIME_MILESTONES = [0, 30, 60, 120, 300, 600] as const; // seconds: 0s, 30s, 1m, 2m, 5m, 10m
 
 type TimeMilestone = typeof TIME_MILESTONES[number];
 
@@ -63,6 +63,9 @@ export function useTimeOnPage(pageName: string = 'home') {
         console.error('Failed to track time on page:', error);
       }
     };
+
+    // Always record a baseline "0s" view so the funnel has a starting point
+    void trackMilestone(0);
 
     const checkMilestones = () => {
       const elapsedSeconds = Math.floor((Date.now() - startTime.current) / 1000);

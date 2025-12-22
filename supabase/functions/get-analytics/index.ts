@@ -31,18 +31,53 @@ serve(async (req) => {
     );
 
     // Query ab_test_events with service role (bypasses RLS)
-    const { data: events, error: queryError } = await supabase
-      .from('ab_test_events')
-      .select('test_name, variant, event_type, metadata, created_at')
-      .gte('created_at', startDate)
-      .lte('created_at', endDate);
+    // Note: PostgREST has a default max of 1000 rows per request, so we paginate.
+    // We use keyset pagination (created_at + id) to avoid relying on large offsets.
+    const batchSize = 1000;
+    const maxRows = 50000; // safety cap
 
-    if (queryError) {
-      console.error('[Analytics] Query error:', queryError);
-      throw queryError;
+    const events: any[] = [];
+    let lastCreatedAt: string | null = null;
+    let lastId: string | null = null;
+
+    while (events.length < maxRows) {
+      let query = supabase
+        .from('ab_test_events')
+        .select('id, test_name, variant, event_type, metadata, created_at')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate)
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .limit(batchSize);
+
+      if (lastCreatedAt && lastId) {
+        query = query.or(
+          `created_at.gt.${lastCreatedAt},and(created_at.eq.${lastCreatedAt},id.gt.${lastId})`
+        );
+      }
+
+      const { data: batch, error: batchError } = await query;
+
+      if (batchError) {
+        console.error('[Analytics] Query error:', batchError);
+        throw batchError;
+      }
+
+      if (batch?.length) {
+        events.push(...batch);
+        const last = batch[batch.length - 1] as any;
+        lastCreatedAt = last.created_at;
+        lastId = last.id;
+      }
+
+      if (!batch || batch.length < batchSize) break;
     }
 
-    console.log(`[Analytics] Found ${events?.length || 0} events`);
+    if (events.length >= maxRows) {
+      console.warn(`[Analytics] Reached maxRows cap (${maxRows}). Some events may be omitted.`);
+    }
+
+    console.log(`[Analytics] Found ${events.length} events`);
 
     // Process events into metrics
     const metrics: Record<string, Record<string, { views: number; conversions: number }>> = {};
