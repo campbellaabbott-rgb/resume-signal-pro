@@ -23,6 +23,7 @@ import { type JobEntry } from "@/components/JobSelector";
 
 import { HowItWorks } from "@/components/HowItWorks";
 import { MiniPricingCards } from "@/components/MiniPricingCards";
+import { TrustIndicators } from "@/components/TrustIndicators";
 
 import { ScoreBasedPackageRecommendation } from "@/components/ScoreBasedPackageRecommendation";
 import { FloatingUploadButton } from "@/components/FloatingUploadButton";
@@ -1027,6 +1028,8 @@ const Index = () => {
         <ComparisonTable />
         
         <SocialProof />
+        
+        <TrustIndicators />
         
         <FAQ />
         
