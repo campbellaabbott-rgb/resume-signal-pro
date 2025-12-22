@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
+import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { ResumeUploader } from "@/components/ResumeUploader";
@@ -160,6 +161,15 @@ const Index = () => {
   const [searchParams] = useSearchParams();
   const { verifyPurchase } = useScanCredits();
   const { trackButtonClick, trackCheckoutInitiated } = useConversionTracking();
+  const { 
+    trackUploadStarted, 
+    trackUploadCompleted, 
+    trackScanStarted, 
+    trackScanCompleted, 
+    trackResultsViewed,
+    trackProductClicked,
+    trackCheckoutStarted 
+  } = useFunnelTracking();
   
   // Track affiliate referrals
   useAffiliateTracking();
@@ -318,12 +328,16 @@ const Index = () => {
   const handleFileSelect = async (file: File) => {
     setSelectedFile(file);
     setFreeKeywordResult(null); // Clear previous results
+    
+    // Track upload started in funnel
+    trackUploadStarted(file.type);
 
     if (file.type === "text/plain") {
       const text = await file.text();
       setResumeText(text);
       saveResumeToSession(text); // Persist to session storage
       preStoreResume(text); // Pre-store server-side for faster checkout
+      trackUploadCompleted(file.size);
       return;
     }
 
@@ -343,6 +357,7 @@ const Index = () => {
           setResumeText(data.text);
           saveResumeToSession(data.text); // Persist to session storage
           preStoreResume(data.text); // Pre-store server-side for faster checkout
+          trackUploadCompleted(file.size, Date.now());
           toast({
             title: "PDF parsed successfully",
             description: `Extracted text from ${data.pages} page(s).`,
@@ -383,6 +398,7 @@ const Index = () => {
           setResumeText(data.text);
           saveResumeToSession(data.text); // Persist to session storage
           preStoreResume(data.text); // Pre-store server-side for faster checkout
+          trackUploadCompleted(file.size, Date.now());
           toast({
             title: "Document parsed successfully",
             description: "Text extracted from your Word document.",
@@ -420,6 +436,9 @@ const Index = () => {
 
     setIsFreeScanLoading(true);
     setIsCachedResult(false); // Reset cached state
+    
+    // Track scan started in funnel
+    trackScanStarted();
 
     try {
       const { data, error } = await supabase.functions.invoke("free-keyword-scan", {
@@ -484,9 +503,13 @@ const Index = () => {
           jobMatchSummary: data.jobMatchSummary,
         });
         
-        // Scroll to results
+        // Track scan completed in funnel
+        trackScanCompleted(data.atsScoreEstimate, data.industry);
+        
+        // Scroll to results and track results viewed
         setTimeout(() => {
           document.getElementById("free-results")?.scrollIntoView({ behavior: "smooth" });
+          trackResultsViewed(data.atsScoreEstimate);
         }, 100);
       } else {
         throw new Error(data?.error || "Failed to analyze resume");

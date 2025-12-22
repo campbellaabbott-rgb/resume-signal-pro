@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
+import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { getResumeFromSession, hasResumeInSession } from "@/hooks/use-session-resume";
 import { ATSDefenseResults, type ATSDefenseData } from "@/components/ATSDefenseResults";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
@@ -199,6 +200,7 @@ export default function ProductSuccess() {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const { trackPurchaseCompleted } = useConversionTracking();
+  const { trackPurchaseCompleted: trackFunnelPurchase } = useFunnelTracking();
   
   // Resume recovery state
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
@@ -451,6 +453,7 @@ export default function ProductSuccess() {
         // Track successful purchase completion
         if (!error && productKey && product) {
           trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
+          trackFunnelPurchase(productKey, product.priceUsd, sessionId || undefined);
         }
       } catch (err) {
         console.error('Verification failed:', err);
