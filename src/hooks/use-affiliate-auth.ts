@@ -69,18 +69,35 @@ function deleteCookie(name: string): void {
 
 // Simple hash function for IP anonymization (client-side fingerprint)
 async function generateVisitorHash(): Promise<string> {
-  const data = [
-    navigator.userAgent,
-    navigator.language,
-    screen.width + 'x' + screen.height,
-    new Date().getTimezoneOffset().toString(),
-  ].join('|');
-  
-  const encoder = new TextEncoder();
-  const dataBuffer = encoder.encode(data);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
+  try {
+    const data = [
+      navigator.userAgent || '',
+      navigator.language || '',
+      (screen.width || 0) + 'x' + (screen.height || 0),
+      new Date().getTimezoneOffset().toString(),
+    ].join('|');
+    
+    // Check if crypto.subtle is available (requires HTTPS or localhost)
+    if (typeof crypto !== 'undefined' && crypto.subtle) {
+      const encoder = new TextEncoder();
+      const dataBuffer = encoder.encode(data);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    
+    // Fallback: simple hash for non-HTTPS environments
+    let hash = 0;
+    for (let i = 0; i < data.length; i++) {
+      const char = data.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(16).padStart(8, '0').slice(0, 16);
+  } catch (error) {
+    console.debug('Visitor hash generation failed:', error);
+    return 'unknown_' + Date.now().toString(36);
+  }
 }
 
 export function useAffiliateAuth() {
