@@ -342,6 +342,8 @@ const MetricTooltip = ({ metricKey }: { metricKey: keyof typeof metricTooltips }
 interface KeywordSuggestion {
   keyword: string;
   reason: string;
+  category?: "tool" | "skill" | "certification" | "methodology" | "metric" | "regulation";
+  impact?: "critical" | "high" | "medium";
 }
 
 interface ResumeLength {
@@ -2498,19 +2500,54 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* Keyword Suggestions */}
+      {/* Industry-Specific Keyword Suggestions */}
       <div className="rounded-2xl bg-card border border-border p-5 mb-5">
         <div className="flex items-center gap-2 mb-4">
           <Zap className="w-4 h-4 text-primary" />
           <h4 className="font-semibold">{t('freeScan.missingKeywords')}</h4>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary capitalize">
+            {industry} keywords
+          </span>
         </div>
         <div className="space-y-3">
           {keywords.slice(0, 3).map((item, index) => (
             <div key={index} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30 border border-border/50">
-              <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
-              <div>
-                <span className="font-medium text-foreground">{item.keyword}</span>
-                <p className="text-sm text-muted-foreground">{item.reason}</p>
+              <div className={cn(
+                "shrink-0 mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold",
+                item.impact === "critical" ? "bg-destructive/20 text-destructive" :
+                item.impact === "high" ? "bg-warning/20 text-warning" :
+                "bg-muted text-muted-foreground"
+              )}>
+                {item.impact === "critical" ? "!" : item.impact === "high" ? "↑" : "•"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-foreground">{item.keyword}</span>
+                  {item.category && (
+                    <span className={cn(
+                      "text-[10px] px-1.5 py-0.5 rounded-full capitalize",
+                      item.category === "certification" ? "bg-success/10 text-success" :
+                      item.category === "tool" ? "bg-primary/10 text-primary" :
+                      item.category === "skill" ? "bg-warning/10 text-warning" :
+                      item.category === "methodology" ? "bg-blue-500/10 text-blue-500" :
+                      item.category === "metric" ? "bg-purple-500/10 text-purple-500" :
+                      "bg-muted text-muted-foreground"
+                    )}>
+                      {item.category}
+                    </span>
+                  )}
+                  {item.impact && (
+                    <span className={cn(
+                      "text-[10px] font-medium",
+                      item.impact === "critical" ? "text-destructive" :
+                      item.impact === "high" ? "text-warning" :
+                      "text-muted-foreground"
+                    )}>
+                      {item.impact === "critical" ? "Must have" : item.impact === "high" ? "High impact" : "Helpful"}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground mt-0.5">{item.reason}</p>
               </div>
             </div>
           ))}
@@ -2518,7 +2555,7 @@ export function FreeKeywordResults({
             <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/20 border border-dashed border-muted-foreground/30">
               <Lock className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
-                +{keywords.length - 3} more keywords hidden...
+                +{keywords.length - 3} more {industry} keywords hidden...
               </span>
             </div>
           )}
