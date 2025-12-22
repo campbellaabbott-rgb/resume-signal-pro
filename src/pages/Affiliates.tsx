@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAffiliateAuth } from '@/hooks/use-affiliate-auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { 
   Copy, 
@@ -18,8 +19,25 @@ import {
   RefreshCw,
   Users,
   Calendar,
-  BarChart3
+  BarChart3,
+  LineChart as LineChartIcon,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend
+} from 'recharts';
 
 interface ClickData {
   click_date: string;
@@ -362,32 +380,176 @@ export default function Affiliates() {
                 No clicks recorded in this period. Share your referral link to start tracking!
               </p>
             ) : (
-              <div className="space-y-2">
-                {clickHistory.map((day) => (
-                  <div
-                    key={day.click_date}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{formatDate(day.click_date)}</span>
+              <Tabs defaultValue="chart" className="w-full">
+                <TabsList className="mb-4">
+                  <TabsTrigger value="chart" className="flex items-center gap-2">
+                    <LineChartIcon className="h-4 w-4" />
+                    Chart View
+                  </TabsTrigger>
+                  <TabsTrigger value="table" className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    Table View
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="chart">
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={[...clickHistory].reverse()}
+                        margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                      >
+                        <defs>
+                          <linearGradient id="colorClicks" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis
+                          dataKey="click_date"
+                          tickFormatter={(value) => {
+                            const date = new Date(value);
+                            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                          }}
+                          className="text-xs fill-muted-foreground"
+                        />
+                        <YAxis className="text-xs fill-muted-foreground" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                          }}
+                          labelFormatter={(value) => {
+                            const date = new Date(value);
+                            return date.toLocaleDateString('en-US', { 
+                              weekday: 'short', 
+                              month: 'short', 
+                              day: 'numeric' 
+                            });
+                          }}
+                        />
+                        <Legend />
+                        <Area
+                          type="monotone"
+                          dataKey="click_count"
+                          name="Clicks"
+                          stroke="hsl(var(--primary))"
+                          fillOpacity={1}
+                          fill="url(#colorClicks)"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Summary stats below chart */}
+                  <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold">
+                        {clickHistory.reduce((sum, d) => sum + d.click_count, 0)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Total Clicks</p>
                     </div>
-                    <div className="flex items-center gap-6 text-sm">
-                      <div className="text-right">
-                        <span className="text-muted-foreground">Clicks: </span>
-                        <span className="font-semibold">{day.click_count}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-muted-foreground">Sources: </span>
-                        <span className="font-semibold">{day.unique_referrers}</span>
-                      </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold">
+                        {Math.round(clickHistory.reduce((sum, d) => sum + d.click_count, 0) / Math.max(clickHistory.length, 1))}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Avg/Day</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold">
+                        {Math.max(...clickHistory.map(d => d.click_count), 0)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Best Day</p>
                     </div>
                   </div>
-                ))}
-              </div>
+                </TabsContent>
+                
+                <TabsContent value="table">
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                    {clickHistory.map((day) => (
+                      <div
+                        key={day.click_date}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{formatDate(day.click_date)}</span>
+                        </div>
+                        <div className="flex items-center gap-6 text-sm">
+                          <div className="text-right">
+                            <span className="text-muted-foreground">Clicks: </span>
+                            <span className="font-semibold">{day.click_count}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-muted-foreground">Sources: </span>
+                            <span className="font-semibold">{day.unique_referrers}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+              </Tabs>
             )}
           </CardContent>
         </Card>
+
+        {/* Conversion Rate Chart */}
+        {(stats?.total_clicks || 0) > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Conversion Funnel
+              </CardTitle>
+              <CardDescription>
+                From clicks to conversions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[200px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={[
+                      { stage: 'Clicks', value: stats?.total_clicks || 0, fill: 'hsl(var(--primary))' },
+                      { stage: 'Conversions', value: stats?.total_conversions || 0, fill: 'hsl(142 76% 36%)' },
+                    ]}
+                    layout="vertical"
+                    margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis type="number" className="text-xs fill-muted-foreground" />
+                    <YAxis type="category" dataKey="stage" className="text-sm fill-muted-foreground" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex items-center justify-center gap-2 mt-4 p-3 bg-muted/50 rounded-lg">
+                <span className="text-muted-foreground">Conversion Rate:</span>
+                <span className="text-2xl font-bold text-primary">{stats?.conversion_rate || 0}%</span>
+                {(stats?.conversion_rate || 0) >= 5 ? (
+                  <Badge variant="default" className="bg-green-500">
+                    <ArrowUpRight className="h-3 w-3 mr-1" />
+                    Great
+                  </Badge>
+                ) : (stats?.conversion_rate || 0) > 0 ? (
+                  <Badge variant="secondary">
+                    Room to grow
+                  </Badge>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Recent Conversions */}
         <Card>
