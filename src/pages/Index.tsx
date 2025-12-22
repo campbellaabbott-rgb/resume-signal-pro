@@ -17,6 +17,9 @@ import { FinalCTA } from "@/components/FinalCTA";
 import { RateLimitUpsell } from "@/components/RateLimitUpsell";
 import { TailoredResumeModal } from "@/components/TailoredResumeModal";
 import { ProductSelectionModal } from "@/components/ProductSelectionModal";
+import { ExitIntentPopup, useExitIntent } from "@/components/ExitIntentPopup";
+import { LiveActivityIndicator } from "@/components/LiveActivityIndicator";
+import { LazySection } from "@/components/LazySection";
 
 import { type JobEntry } from "@/components/JobSelector";
 
@@ -166,6 +169,9 @@ const Index = () => {
   
   // Track time on page for engagement analysis
   useTimeOnPage('home');
+  
+  // Exit intent popup for bounce rate reduction
+  const { showPopup: showExitIntent, closePopup: closeExitIntent } = useExitIntent(!freeKeywordResult);
   
   // Track if we're pre-storing to avoid duplicate calls
   const isPreStoring = useRef(false);
@@ -1094,6 +1100,20 @@ const Index = () => {
         onOpenChange={setShowProductModal}
         sessionId={preStoredSessionId || undefined}
       />
+      
+      {/* Exit Intent Popup for bounce rate reduction */}
+      {showExitIntent && (
+        <ExitIntentPopup 
+          onClose={closeExitIntent}
+          onGetStarted={() => {
+            closeExitIntent();
+            document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
+          }}
+        />
+      )}
+      
+      {/* Live Activity Indicator */}
+      <LiveActivityIndicator variant="toast" />
       
     </div>
   );
