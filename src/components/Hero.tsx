@@ -4,6 +4,7 @@ import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Users, Spark
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
+import { supabase } from "@/integrations/supabase/client";
 import { LiveActivityCounter } from "./LiveActivityCounter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PRODUCTS } from "@/config/products";
@@ -39,32 +40,34 @@ function AnimatedResultPreview() {
   );
 }
 
-// Hero stats bar - immediate social proof with live updating count
+// Hero stats bar - immediate social proof with live database count
 function HeroStatsBar() {
-  const [scanCount, setScanCount] = useState<number>(0);
+  const [scanCount, setScanCount] = useState<number | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
-    // Calculate count based on time of day - same logic as LiveActivityCounter
-    const calculateCount = () => {
-      const now = new Date();
-      const hoursSinceMidnight = now.getHours() + now.getMinutes() / 60;
-      return 107 + Math.floor(hoursSinceMidnight * 30);
+    // Fetch the actual count from database
+    const fetchCount = async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_today_scan_count');
+        if (!error && data !== null) {
+          setScanCount(prev => {
+            if (prev !== null && data !== prev) {
+              setIsAnimating(true);
+              setTimeout(() => setIsAnimating(false), 500);
+            }
+            return data;
+          });
+        }
+      } catch (e) {
+        console.error('Failed to fetch scan count:', e);
+      }
     };
 
-    setScanCount(calculateCount());
+    fetchCount();
 
-    // Update every minute
-    const interval = setInterval(() => {
-      const newCount = calculateCount();
-      setScanCount(prev => {
-        if (newCount !== prev) {
-          setIsAnimating(true);
-          setTimeout(() => setIsAnimating(false), 500);
-        }
-        return newCount;
-      });
-    }, 60000);
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchCount, 30000);
 
     return () => clearInterval(interval);
   }, []);
@@ -77,7 +80,7 @@ function HeroStatsBar() {
         </div>
         <div className="text-left">
           <p className={`text-lg sm:text-xl font-bold text-foreground transition-all duration-300 ${isAnimating ? 'scale-110 text-success' : ''}`}>
-            {scanCount.toLocaleString()}+
+            {scanCount !== null ? `${scanCount.toLocaleString()}+` : '...'}
           </p>
           <p className="text-xs text-muted-foreground">Scanned today</p>
         </div>
