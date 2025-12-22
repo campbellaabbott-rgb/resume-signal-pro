@@ -1,10 +1,7 @@
-import { useTranslation } from "react-i18next";
-import { Shield, Lock, Clock, FileCheck, ExternalLink } from "lucide-react";
+import { Shield, Lock, Clock, CloudOff, BookOpen, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export function TrustIndicators() {
-  const { t } = useTranslation();
-
   const securityBadges = [
     {
       icon: Lock,
@@ -22,7 +19,7 @@ export function TrustIndicators() {
       description: "Privacy first"
     },
     {
-      icon: FileCheck,
+      icon: CloudOff,
       label: "No storage",
       description: "Processed & discarded"
     }
@@ -53,7 +50,7 @@ export function TrustIndicators() {
             to="/methodology"
             className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary/5 border border-primary/20 hover:bg-primary/10 hover:border-primary/30 transition-colors group"
           >
-            <FileCheck className="w-4 h-4 text-primary" />
+            <BookOpen className="w-4 h-4 text-primary" />
             <div className="text-left">
               <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
                 See Our Methodology
