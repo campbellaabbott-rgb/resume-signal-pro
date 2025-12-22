@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, Sparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
-import { useABTest } from "@/hooks/use-ab-test";
 import { PRODUCTS } from "@/config/products";
 
 interface StickyBottomCTAProps {
@@ -16,17 +15,12 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
   const [isDismissed, setIsDismissed] = useState(false);
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
-  const heroCta = useABTest('hero_cta');
   const navigate = useNavigate();
 
-  // CTA button text variants
-  const getCtaText = () => {
-    return 'See All Packages';
-  };
+  // Winner declared - using control variant
+  const getCtaText = () => 'See All Packages';
 
   const handleGetStarted = () => {
-    heroCta.trackConversion({ source: 'sticky_cta' });
-    // Navigate to pricing page
     navigate('/pricing');
   };
 

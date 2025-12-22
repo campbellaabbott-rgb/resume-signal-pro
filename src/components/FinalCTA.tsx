@@ -1,7 +1,6 @@
 import { ArrowRight, CheckCircle2, Zap, X, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
-import { useABTest } from "@/hooks/use-ab-test";
 import { PRODUCTS } from "@/config/products";
 
 interface FinalCTAProps {
@@ -12,28 +11,12 @@ interface FinalCTAProps {
 export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
-  const heroCta = useABTest('hero_cta');
-  const pricingDisplay = useABTest('pricing_display');
 
-  // CTA button text variants
-  const getCtaText = () => {
-    switch (heroCta.variant) {
-      case 'urgent': return 'See All Packages';
-      case 'benefit': return 'See All Packages';
-      default: return 'See All Packages';
-    }
-  };
-
-  // Pricing display variants
-  const getPricingSubtext = () => {
-    switch (pricingDisplay.variant) {
-      case 'roi_focused': return '= Your Next Interview';
-      default: return t('finalCta.oneTime');
-    }
-  };
+  // Winners declared - using control variants
+  const getCtaText = () => 'See All Packages';
+  const getPricingSubtext = () => t('finalCta.oneTime');
 
   const handleGetStarted = () => {
-    heroCta.trackConversion({ source: 'final_cta' });
     onGetStarted();
   };
 

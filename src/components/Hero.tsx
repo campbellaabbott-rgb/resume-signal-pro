@@ -5,7 +5,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { LiveActivityCounter } from "./LiveActivityCounter";
-import { useABTest } from "@/hooks/use-ab-test";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PRODUCTS } from "@/config/products";
 
@@ -14,11 +13,6 @@ export function Hero() {
   const { formatPrice, isLocalCurrency } = useCurrency();
   const isMobile = useIsMobile();
   const [showAtsInfo, setShowAtsInfo] = useState(false);
-  
-  // A/B Tests
-  const heroCta = useABTest('hero_cta');
-  const pricingDisplay = useABTest('pricing_display');
-  const freeScanCta = useABTest('free_scan_cta');
 
   // Price display helper
   const fullAnalysisPrice = PRODUCTS.fullAnalysis.priceUsd;
@@ -26,45 +20,21 @@ export function Hero() {
     ? `$${fullAnalysisPrice} ≈ ${formatPrice(fullAnalysisPrice)}` 
     : `$${fullAnalysisPrice}`;
 
-  // CTA text variants
-  const getCtaText = () => {
-    switch (heroCta.variant) {
-      case 'urgent': return 'Analyze Now - Limited Spots';
-      case 'benefit': return `Land More Interviews - ${priceDisplay}`;
-      default: return `Get Your Analysis - ${priceDisplay}`;
-    }
-  };
-
-  // Free scan button text variants
-  const getFreeScanText = () => {
-    switch (freeScanCta.variant) {
-      case 'instant': return 'Get Instant Results';
-      case 'free_badge': return '✨ FREE Scan Available';
-      default: return 'Get Free Resume Score';
-    }
-  };
-
-  // Pricing display variants
-  const getPricingDisplay = () => {
-    const priceWithLocal = isLocalCurrency 
-      ? `$${fullAnalysisPrice} ≈ ${formatPrice(fullAnalysisPrice)}` 
-      : `$${fullAnalysisPrice}`;
-    switch (pricingDisplay.variant) {
-      case 'starting_at': return { main: `Starting at ${priceWithLocal}`, sub: 'One-time' };
-      case 'roi_focused': return { main: priceWithLocal, sub: '= 1 Interview ROI' };
-      default: return { main: isLocalCurrency ? `$${fullAnalysisPrice} (≈${formatPrice(fullAnalysisPrice)})` : t('hero.price'), sub: t('hero.oneTime') };
-    }
-  };
+  // Winners declared - using control variants
+  const getCtaText = () => `Get Your Analysis - ${priceDisplay}`;
+  const getFreeScanText = () => 'Get Free Resume Score';
+  const getPricingDisplay = () => ({
+    main: isLocalCurrency ? `$${fullAnalysisPrice} (≈${formatPrice(fullAnalysisPrice)})` : t('hero.price'),
+    sub: t('hero.oneTime')
+  });
 
   const pricing = getPricingDisplay();
 
   const handleFreeScanClick = () => {
-    freeScanCta.trackConversion({ source: 'hero_free_scan' });
     const uploadSection = document.getElementById('upload');
     if (uploadSection) {
       uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
-      // Fallback: scroll to bottom of hero if upload not found
       window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
     }
   };
