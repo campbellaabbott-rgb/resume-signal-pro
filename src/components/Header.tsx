@@ -57,15 +57,6 @@ export function Header() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={scrollToTrust}
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
-              >
-                <Shield className="w-3.5 h-3.5" />
-                Trust
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
                 asChild
                 className="gap-2 text-muted-foreground hover:text-foreground"
               >
@@ -78,6 +69,15 @@ export function Header() {
                 className="gap-2 text-muted-foreground hover:text-foreground"
               >
                 <Link to="/pricing">Pricing</Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={scrollToTrust}
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                Trust
               </Button>
             </div>
           </div>
