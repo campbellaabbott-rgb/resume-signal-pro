@@ -87,18 +87,18 @@ export function SampleReportPreview() {
         )}
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        {/* Sample badge */}
-        <div className="absolute -top-3 left-4 px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-medium">
-          Sample Report
+        {/* Badges row - inside card at top */}
+        <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-border/30">
+          <div className="px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-medium">
+            Sample Report
+          </div>
+          <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center gap-1">
+            {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            {isExpanded ? "Collapse" : "Click to explore"}
+          </div>
         </div>
 
-        {/* Click hint */}
-        <div className="absolute -top-3 right-4 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center gap-1">
-          {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          {isExpanded ? "Collapse" : "Click to explore"}
-        </div>
-
-        <div className="p-4 pt-6">
+        <div className="p-4">
           {/* Score Circle */}
           <div className="flex items-center gap-4 mb-4">
             <div className="relative w-16 h-16 flex-shrink-0">
