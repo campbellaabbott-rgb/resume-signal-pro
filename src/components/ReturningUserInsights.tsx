@@ -1,8 +1,10 @@
 // Returning user insights component
 // Shows progress tracking and personalized insights for returning users
 
-import { TrendingUp, TrendingDown, Trophy, History, Target, Sparkles, ArrowUp, Minus } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { TrendingUp, TrendingDown, Trophy, History, Target, Sparkles, Minus } from "lucide-react";
 import { useScanHistory } from "@/hooks/use-scan-history";
+import { useOptimizationTracking } from "@/hooks/use-optimization-tracking";
 import { cn } from "@/lib/utils";
 
 interface ReturningUserInsightsProps {
@@ -24,6 +26,17 @@ export function ReturningUserInsights({
     totalScans,
     history
   } = useScanHistory();
+  const { trackReturningUserDetected } = useOptimizationTracking();
+  const hasTracked = useRef(false);
+
+  // Track returning user detection
+  useEffect(() => {
+    if (isReturningUser && totalScans >= 2 && !hasTracked.current) {
+      const latestScore = history.entries[0]?.atsScore;
+      trackReturningUserDetected(totalScans, latestScore);
+      hasTracked.current = true;
+    }
+  }, [isReturningUser, totalScans, history.entries, trackReturningUserDetected]);
 
   // Don't show anything for first-time users
   if (!isReturningUser || totalScans < 2) {
