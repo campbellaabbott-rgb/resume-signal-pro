@@ -15,6 +15,7 @@ import { ResumeBeforeAfter } from "./ResumeBeforeAfter";
 import { JobKeywordMatcher } from "./JobKeywordMatcher";
 import { PeerBenchmark } from "./PeerBenchmark";
 import { ReturningUserInsights } from "./ReturningUserInsights";
+import { IndustryKeywordSuggestions } from "./IndustryKeywordSuggestions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -1025,6 +1026,13 @@ export function FreeKeywordResults({
       <ReturningUserInsights 
         currentScore={atsScoreEstimate} 
         currentIndustry={industry}
+      />
+
+      {/* Industry-Specific Keyword Suggestions */}
+      <IndustryKeywordSuggestions 
+        industry={industry} 
+        resumeText={resumeText}
+        className="mb-6"
       />
 
       {/* Action Required CTA Banner */}
