@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useAffiliateAuth } from '@/hooks/use-affiliate-auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -22,11 +22,9 @@ import {
   BarChart3,
   LineChart as LineChartIcon,
   ArrowUpRight,
-  ArrowDownRight
+  Palette
 } from 'lucide-react';
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
   BarChart,
@@ -38,6 +36,7 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
+import { MarketingKit } from '@/components/affiliate/MarketingKit';
 
 interface ClickData {
   click_date: string;
@@ -265,6 +264,21 @@ export default function Affiliates() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Main Dashboard Tabs */}
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="marketing" className="flex items-center gap-2">
+              <Palette className="h-4 w-4" />
+              Marketing Kit
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-8">
 
         {/* Date Range Filter */}
         <div className="flex items-center gap-4">
@@ -638,6 +652,15 @@ export default function Affiliates() {
             </div>
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="marketing">
+            <MarketingKit 
+              referralLink={getReferralLink() || ''} 
+              referralCode={session?.referralCode || ''} 
+            />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
