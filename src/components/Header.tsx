@@ -1,4 +1,4 @@
-import { Sparkles, CreditCard, Package } from "lucide-react";
+import { Sparkles, CreditCard, Package, Shield } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
@@ -19,8 +19,14 @@ export function Header() {
     if (uploadSection) {
       uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
-      // Fallback: scroll to bottom of hero if upload not found
       window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
+    }
+  };
+
+  const scrollToTrust = () => {
+    const trustSection = document.getElementById('trust-indicators');
+    if (trustSection) {
+      trustSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -48,6 +54,15 @@ export function Header() {
             </Link>
             
             <div className="hidden sm:flex items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={scrollToTrust}
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                Trust
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
