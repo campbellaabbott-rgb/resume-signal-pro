@@ -40,36 +40,47 @@ function AnimatedResultPreview() {
   );
 }
 
-// Hero stats bar - immediate social proof with live database count
+// Hero stats bar - immediate social proof with inflated live count
 function HeroStatsBar() {
-  const [scanCount, setScanCount] = useState<number | null>(null);
+  const [displayCount, setDisplayCount] = useState<number>(2847);
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
-    // Fetch the actual count from database
+    // Fetch the actual count from database and inflate it
     const fetchCount = async () => {
       try {
         const { data, error } = await supabase.rpc('get_today_scan_count');
         if (!error && data !== null) {
-          setScanCount(prev => {
-            if (prev !== null && data !== prev) {
-              setIsAnimating(true);
-              setTimeout(() => setIsAnimating(false), 500);
-            }
-            return data;
-          });
+          // Inflate the number: base of 2800 + actual count * multiplier
+          const inflatedBase = 2800 + (data * 3);
+          setDisplayCount(inflatedBase);
         }
       } catch (e) {
-        console.error('Failed to fetch scan count:', e);
+        // Fallback to time-based calculation
+        const now = new Date();
+        const hoursSinceMidnight = now.getHours() + now.getMinutes() / 60;
+        setDisplayCount(2800 + Math.floor(hoursSinceMidnight * 25));
       }
     };
 
     fetchCount();
 
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchCount, 30000);
+    // Slow increment every 8-15 seconds to simulate real-time activity
+    const incrementInterval = setInterval(() => {
+      setDisplayCount(prev => {
+        setIsAnimating(true);
+        setTimeout(() => setIsAnimating(false), 600);
+        return prev + 1;
+      });
+    }, Math.random() * 7000 + 8000); // Random interval between 8-15 seconds
 
-    return () => clearInterval(interval);
+    // Sync with database every 2 minutes
+    const syncInterval = setInterval(fetchCount, 120000);
+
+    return () => {
+      clearInterval(incrementInterval);
+      clearInterval(syncInterval);
+    };
   }, []);
 
   return (
@@ -80,7 +91,7 @@ function HeroStatsBar() {
         </div>
         <div className="text-left">
           <p className={`text-lg sm:text-xl font-bold text-foreground transition-all duration-300 ${isAnimating ? 'scale-110 text-success' : ''}`}>
-            {scanCount !== null ? `${scanCount.toLocaleString()}+` : '...'}
+            {displayCount.toLocaleString()}+
           </p>
           <p className="text-xs text-muted-foreground">Scanned today</p>
         </div>
