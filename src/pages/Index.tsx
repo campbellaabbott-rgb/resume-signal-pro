@@ -17,7 +17,6 @@ import { FinalCTA } from "@/components/FinalCTA";
 import { RateLimitUpsell } from "@/components/RateLimitUpsell";
 import { TailoredResumeModal } from "@/components/TailoredResumeModal";
 import { ProductSelectionModal } from "@/components/ProductSelectionModal";
-import { ExitIntentPopup } from "@/components/ExitIntentPopup";
 
 import { type JobEntry } from "@/components/JobSelector";
 
@@ -1088,9 +1087,6 @@ const Index = () => {
         onOpenChange={setShowProductModal}
         sessionId={preStoredSessionId || undefined}
       />
-      
-      {/* Exit Intent Popup */}
-      <ExitIntentPopup />
       
     </div>
   );
