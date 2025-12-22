@@ -197,6 +197,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_response_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          expires_at: string
+          function_name: string
+          hit_count: number
+          id: string
+          response: Json
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          expires_at: string
+          function_name: string
+          hit_count?: number
+          id?: string
+          response: Json
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          expires_at?: string
+          function_name?: string
+          hit_count?: number
+          id?: string
+          response?: Json
+        }
+        Relationships: []
+      }
       daily_scan_stats: {
         Row: {
           date: string
@@ -458,6 +488,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_analyses: { Args: never; Returns: number }
+      cleanup_expired_cache: { Args: never; Returns: number }
       cleanup_expired_stripe_sessions: { Args: never; Returns: number }
       cleanup_old_rate_limits: { Args: never; Returns: number }
       delete_analysis_by_share_id: {
@@ -485,6 +516,10 @@ export type Database = {
           id: string
           share_id: string
         }[]
+      }
+      get_cached_response: {
+        Args: { p_cache_key: string; p_function_name: string }
+        Returns: Json
       }
       get_scan_credits: { Args: { p_email: string }; Returns: number }
       get_temp_resume: {
@@ -539,6 +574,15 @@ export type Database = {
       }
       save_free_scan_lead: {
         Args: { p_ats_score?: number; p_email: string; p_industry?: string }
+        Returns: boolean
+      }
+      store_cached_response: {
+        Args: {
+          p_cache_key: string
+          p_function_name: string
+          p_response: Json
+          p_ttl_hours?: number
+        }
         Returns: boolean
       }
       store_temp_resume:

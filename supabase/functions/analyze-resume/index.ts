@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -8,6 +9,69 @@ declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
 // Performance monitoring thresholds (ms)
 const SLOW_REQUEST_THRESHOLD = 30000; // 30s for AI analysis is expected to be slow
 const VERY_SLOW_THRESHOLD = 60000;
+
+// Cache configuration
+const CACHE_TTL_HOURS = 48; // Cache paid analysis for 48 hours (longer than free)
+const FUNCTION_NAME = 'analyze-resume';
+
+// Generate a hash for cache key from resume + linkedin + job description
+async function generateCacheKey(resumeText: string, linkedInText?: string, jobDescriptionText?: string): Promise<string> {
+  // Normalize text: lowercase, remove extra whitespace, take first portion
+  const normalizedResume = resumeText.toLowerCase().replace(/\s+/g, ' ').trim().substring(0, 15000);
+  const normalizedLinkedIn = linkedInText ? linkedInText.toLowerCase().replace(/\s+/g, ' ').trim().substring(0, 10000) : '';
+  const normalizedJob = jobDescriptionText ? jobDescriptionText.toLowerCase().replace(/\s+/g, ' ').trim().substring(0, 5000) : '';
+  const combined = `${normalizedResume}|||${normalizedLinkedIn}|||${normalizedJob}`;
+  
+  const encoder = new TextEncoder();
+  const data = encoder.encode(combined);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Check cache for existing response
+async function getCachedResponse(supabase: any, cacheKey: string): Promise<any | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_cached_response', {
+      p_cache_key: cacheKey,
+      p_function_name: FUNCTION_NAME
+    });
+    
+    if (error) {
+      console.log(`[ANALYZE-RESUME] Cache lookup error:`, error.message);
+      return null;
+    }
+    
+    if (data) {
+      console.log(`[ANALYZE-RESUME] Cache HIT for key: ${cacheKey.substring(0, 16)}...`);
+      return data;
+    }
+    
+    console.log(`[ANALYZE-RESUME] Cache MISS for key: ${cacheKey.substring(0, 16)}...`);
+    return null;
+  } catch (e) {
+    console.error(`[ANALYZE-RESUME] Cache error:`, e);
+    return null;
+  }
+}
+
+// Store response in cache (non-blocking)
+function storeCachedResponse(supabase: any, cacheKey: string, response: any): void {
+  EdgeRuntime.waitUntil(
+    supabase.rpc('store_cached_response', {
+      p_cache_key: cacheKey,
+      p_function_name: FUNCTION_NAME,
+      p_response: response,
+      p_ttl_hours: CACHE_TTL_HOURS
+    }).then(({ error }: any) => {
+      if (error) {
+        console.error(`[ANALYZE-RESUME] Cache store error:`, error.message);
+      } else {
+        console.log(`[ANALYZE-RESUME] Cached response for key: ${cacheKey.substring(0, 16)}...`);
+      }
+    })
+  );
+}
 
 const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "admin@resumebooster.com";
 const ALERT_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour between alerts per type
@@ -945,6 +1009,57 @@ ACHIEVEMENT QUANTIFICATION (always include):
 
 Use their actual resume content in examples. Prioritize highest-impact fixes first.`;
 
+    // Check cache before calling AI (paid analysis can also benefit from caching)
+    const cacheKey = await generateCacheKey(resumeText, linkedInText, jobDescriptionText);
+    const cachedAnalysis = await getCachedResponse(supabase, cacheKey);
+    
+    if (cachedAnalysis) {
+      console.log("[ANALYZE-RESUME] Cache HIT - returning cached analysis");
+      
+      // Still save to database with new share_id for this user
+      const { data: savedAnalysis, error: dbError } = await supabase
+        .from("resume_analyses")
+        .insert({
+          resume_text: '[REDACTED - Cached analysis]',
+          analysis_result: cachedAnalysis,
+        })
+        .select("share_id")
+        .single();
+      
+      if (dbError) {
+        console.error("[ANALYZE-RESUME] Database error for cached result:", dbError);
+        return new Response(
+          JSON.stringify({ ...cachedAnalysis, shareId: null, cached: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Send email for cached result too
+      if (customerEmail) {
+        EdgeRuntime.waitUntil(
+          fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-analysis-email`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: customerEmail,
+              analysisData: cachedAnalysis,
+              shareId: savedAnalysis.share_id,
+            }),
+          }).catch((err) => console.error("[ANALYZE-RESUME] Cached email error:", err))
+        );
+      }
+      
+      trackPerformance(requestStartTime, 'analyze-resume-cached', true, { cached: true }, clientIp);
+      
+      return new Response(
+        JSON.stringify({ ...cachedAnalysis, shareId: savedAnalysis.share_id, emailSent: !!customerEmail, cached: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log(`[ANALYZE-RESUME] Calling AI with enhanced model for analysis... (hasLinkedIn: ${hasLinkedIn}, hasJobDescription: ${hasJobDescription})`);
     
     // Escape XML special characters to prevent prompt injection attacks
@@ -1116,6 +1231,9 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     } else {
       console.log("[ANALYZE-RESUME] No customer email available, skipping email send");
     }
+
+    // Cache the successful analysis (non-blocking) - cache the full analysis object
+    storeCachedResponse(supabase, cacheKey, analysis);
 
     trackPerformance(requestStartTime, 'analyze-resume', true, { hasLinkedIn: !!linkedInText, hasJobDesc: !!jobDescriptionText, emailSent: !!customerEmail }, clientIp);
     console.log("[ANALYZE-RESUME] Analysis saved successfully with enhanced metrics");
