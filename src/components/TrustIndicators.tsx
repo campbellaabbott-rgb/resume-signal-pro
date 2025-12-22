@@ -1,4 +1,4 @@
-import { Shield, Lock, Clock, CloudOff, BookOpen, ExternalLink, Users, BadgeCheck } from "lucide-react";
+import { Shield, Lock, Clock, CloudOff, BookOpen, ExternalLink, Users, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export function TrustIndicators() {
@@ -29,9 +29,9 @@ export function TrustIndicators() {
       description: "Processed & discarded"
     },
     {
-      icon: BadgeCheck,
-      label: "Money-back",
-      description: "100% satisfaction"
+      icon: Zap,
+      label: "Instant Delivery",
+      description: "Results in 30 seconds"
     }
   ];
 
