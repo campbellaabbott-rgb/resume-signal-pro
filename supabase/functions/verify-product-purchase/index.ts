@@ -264,6 +264,37 @@ serve(async (req) => {
         logStep("Affiliate conversion recording failed", { error: affiliateError.message });
       } else {
         logStep("Affiliate conversion recorded successfully");
+        
+        // Send email notification to affiliate
+        try {
+          const { data: affiliateData } = await supabase
+            .from('affiliates')
+            .select('email')
+            .eq('referral_code', referralCode)
+            .single();
+          
+          if (affiliateData?.email) {
+            const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+            await fetch(`${supabaseUrl}/functions/v1/send-affiliate-commission-email`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+              },
+              body: JSON.stringify({
+                affiliateEmail: affiliateData.email,
+                productName: productName || productType,
+                saleAmount: session.amount_total,
+                commissionAmount: commissionCents,
+                referralCode
+              })
+            });
+            logStep("Affiliate commission email sent", { email: affiliateData.email });
+          }
+        } catch (emailErr) {
+          logStep("Affiliate email notification failed", { error: String(emailErr) });
+          // Don't fail the whole request for email errors
+        }
       }
     }
     if (isFirstUse && customerEmail) {

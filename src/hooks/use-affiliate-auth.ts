@@ -42,6 +42,46 @@ interface DashboardData {
 }
 
 const SESSION_KEY = 'affiliate_session';
+const REFERRAL_STORAGE_KEY = 'affiliate_ref';
+const REFERRAL_EXPIRY_DAYS = 30;
+
+// Cookie utilities for fallback storage
+function setCookie(name: string, value: string, days: number): void {
+  const expires = new Date();
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+}
+
+function getCookie(name: string): string | null {
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+  }
+  return null;
+}
+
+function deleteCookie(name: string): void {
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+}
+
+// Simple hash function for IP anonymization (client-side fingerprint)
+async function generateVisitorHash(): Promise<string> {
+  const data = [
+    navigator.userAgent,
+    navigator.language,
+    screen.width + 'x' + screen.height,
+    new Date().getTimezoneOffset().toString(),
+  ].join('|');
+  
+  const encoder = new TextEncoder();
+  const dataBuffer = encoder.encode(data);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 export function useAffiliateAuth() {
   const [session, setSession] = useState<AffiliateSession | null>(null);
@@ -188,18 +228,24 @@ export function useAffiliateTracking() {
     const refCode = urlParams.get('ref');
     
     if (refCode) {
-      // Store referral code in localStorage for later use during checkout
-      localStorage.setItem('affiliate_ref', refCode);
+      // Store referral code in both localStorage and cookie for redundancy
+      const expiryTimestamp = Date.now() + (REFERRAL_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+      const storageData = JSON.stringify({ code: refCode, expires: expiryTimestamp });
       
-      // Track the click (async, fire-and-forget)
+      localStorage.setItem(REFERRAL_STORAGE_KEY, storageData);
+      setCookie(REFERRAL_STORAGE_KEY, storageData, REFERRAL_EXPIRY_DAYS);
+      
+      // Track the click with visitor hash (async, fire-and-forget)
       (async () => {
         try {
+          const visitorHash = await generateVisitorHash();
           await supabase.rpc('track_affiliate_click', {
             p_referral_code: refCode,
-            p_user_agent: navigator.userAgent,
-            p_referrer: document.referrer || null,
+            p_ip_hash: visitorHash,
+            p_user_agent: navigator.userAgent.slice(0, 200), // Limit length
+            p_referrer: document.referrer?.slice(0, 500) || null,
           });
-          console.debug('Affiliate click tracked');
+          console.debug('Affiliate click tracked with hash:', visitorHash.slice(0, 4) + '...');
         } catch {
           // Silently fail - don't affect user experience
           console.debug('Affiliate click tracking failed');
@@ -209,12 +255,44 @@ export function useAffiliateTracking() {
   }, []);
 }
 
-// Get stored referral code for checkout
+// Get stored referral code for checkout (checks both storage with expiry)
 export function getStoredReferralCode(): string | null {
-  return localStorage.getItem('affiliate_ref');
+  // Try localStorage first
+  try {
+    const stored = localStorage.getItem(REFERRAL_STORAGE_KEY);
+    if (stored) {
+      const data = JSON.parse(stored);
+      if (data.expires && data.expires > Date.now()) {
+        return data.code;
+      }
+      // Expired - clean up
+      localStorage.removeItem(REFERRAL_STORAGE_KEY);
+    }
+  } catch {
+    // Invalid data, clear it
+    localStorage.removeItem(REFERRAL_STORAGE_KEY);
+  }
+  
+  // Fallback to cookie
+  try {
+    const cookieData = getCookie(REFERRAL_STORAGE_KEY);
+    if (cookieData) {
+      const data = JSON.parse(cookieData);
+      if (data.expires && data.expires > Date.now()) {
+        return data.code;
+      }
+      // Expired - clean up
+      deleteCookie(REFERRAL_STORAGE_KEY);
+    }
+  } catch {
+    deleteCookie(REFERRAL_STORAGE_KEY);
+  }
+  
+  return null;
 }
 
 // Clear referral code after successful purchase
 export function clearReferralCode(): void {
-  localStorage.removeItem('affiliate_ref');
+  localStorage.removeItem(REFERRAL_STORAGE_KEY);
+  deleteCookie(REFERRAL_STORAGE_KEY);
 }

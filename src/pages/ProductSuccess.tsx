@@ -36,6 +36,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
+import { clearReferralCode } from "@/hooks/use-affiliate-auth";
 import { getResumeFromSession, hasResumeInSession } from "@/hooks/use-session-resume";
 import { ATSDefenseResults, type ATSDefenseData } from "@/components/ATSDefenseResults";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
@@ -454,6 +455,8 @@ export default function ProductSuccess() {
         if (!error && productKey && product) {
           trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
           trackFunnelPurchase(productKey, product.priceUsd, sessionId || undefined);
+          // Clear affiliate referral code after successful purchase
+          clearReferralCode();
         }
       } catch (err) {
         console.error('Verification failed:', err);
