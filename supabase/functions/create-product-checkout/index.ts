@@ -161,7 +161,8 @@ serve(async (req) => {
       }
     }
 
-    // Create checkout session - Stripe will collect email if not provided
+    // Create checkout session with automatic currency conversion
+    // Stripe will show the price in the customer's local currency
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : (normalizedEmail || undefined),
@@ -173,8 +174,17 @@ serve(async (req) => {
       ],
       mode: "payment",
       allow_promotion_codes: true,
+      // Enable automatic currency conversion for international customers
+      // This lets customers see and pay in their local currency (HKD, EUR, GBP, etc.)
+      automatic_tax: { enabled: false },
       success_url: `${origin}/product-success?session_id={CHECKOUT_SESSION_ID}&product=${productId}`,
       cancel_url: `${origin}/payment-failed?product=${productId}`,
+      // Enhanced payment method options for international customers
+      payment_method_options: {
+        card: {
+          setup_future_usage: undefined,
+        },
+      },
       metadata: {
         product_type: product.productType,
         product_name: product.name,

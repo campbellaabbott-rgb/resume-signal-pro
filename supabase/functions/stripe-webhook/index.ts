@@ -154,7 +154,7 @@ serve(async (req) => {
           }
         }
 
-        // Log to database
+        // Log to database with enhanced currency-specific details
         const { error: insertError } = await supabase
           .from('payment_failures')
           .insert({
@@ -167,7 +167,15 @@ serve(async (req) => {
             metadata: {
               decline_code: paymentIntent.last_payment_error?.decline_code,
               payment_method_type: paymentIntent.last_payment_error?.payment_method?.type,
-              description: paymentIntent.description
+              description: paymentIntent.description,
+              // Enhanced currency and card details for debugging international payments
+              card_brand: (paymentIntent.last_payment_error?.payment_method as any)?.card?.brand,
+              card_country: (paymentIntent.last_payment_error?.payment_method as any)?.card?.country,
+              card_funding: (paymentIntent.last_payment_error?.payment_method as any)?.card?.funding,
+              card_last4: (paymentIntent.last_payment_error?.payment_method as any)?.card?.last4,
+              original_currency: paymentIntent.currency,
+              error_type: paymentIntent.last_payment_error?.type,
+              error_doc_url: paymentIntent.last_payment_error?.doc_url
             }
           });
 

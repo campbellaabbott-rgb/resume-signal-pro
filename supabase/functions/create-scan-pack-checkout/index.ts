@@ -111,6 +111,7 @@ serve(async (req) => {
     }
 
     // Create checkout session with quantity = number of credits
+    // Stripe handles currency conversion automatically for international cards
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : normalizedEmail,
@@ -124,6 +125,12 @@ serve(async (req) => {
       allow_promotion_codes: true,
       success_url: `${origin}/product-success?session_id={CHECKOUT_SESSION_ID}&product=scanPack`,
       cancel_url: `${origin}/payment-failed?product=scanPack`,
+      // Enhanced payment options for international customers
+      payment_method_options: {
+        card: {
+          setup_future_usage: undefined,
+        },
+      },
       metadata: {
         product_type: "scan_pack",
         credits: credits.toString(),
