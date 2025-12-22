@@ -5,7 +5,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { supabase } from "@/integrations/supabase/client";
-import { LiveActivityCounter } from "./LiveActivityCounter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PRODUCTS } from "@/config/products";
 import { useABTest } from "@/hooks/use-ab-test";
@@ -243,10 +242,6 @@ export function Hero() {
             </div>
           </div>
 
-          {/* LIVE ACTIVITY - Real-time social proof */}
-          <div className="mb-8 animate-fade-in" style={{ animationDelay: "0.2s" }}>
-            <LiveActivityCounter />
-          </div>
 
           {/* TESTIMONIAL - Single powerful quote */}
           <div className="mb-8 animate-fade-in" style={{ animationDelay: "0.25s" }}>
