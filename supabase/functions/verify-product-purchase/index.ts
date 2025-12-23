@@ -153,6 +153,16 @@ serve(async (req) => {
             generatedContent = keywordResult.data;
             logStep("Keyword analysis generated successfully");
             
+            // Save content permanently for customer recovery
+            await supabase.rpc('save_purchased_content', {
+              p_stripe_session_id: sessionId,
+              p_customer_email: customerEmail || '',
+              p_product_type: productType,
+              p_product_name: productName,
+              p_generated_content: generatedContent
+            });
+            logStep("Content saved for recovery");
+            
             // Log generation completed successfully
             await supabase.rpc('log_delivery_step', {
               p_stripe_session_id: sessionId,
@@ -198,6 +208,16 @@ serve(async (req) => {
             generatedContent = coverLetterResult.data;
             logStep("Cover letter generated successfully");
             
+            // Save content permanently for customer recovery
+            await supabase.rpc('save_purchased_content', {
+              p_stripe_session_id: sessionId,
+              p_customer_email: customerEmail || '',
+              p_product_type: productType,
+              p_product_name: productName,
+              p_generated_content: generatedContent
+            });
+            logStep("Content saved for recovery");
+            
             await supabase.rpc('log_delivery_step', {
               p_stripe_session_id: sessionId,
               p_step: 'generation_completed',
@@ -238,6 +258,16 @@ serve(async (req) => {
             const premiumResult = await premiumResponse.json();
             generatedContent = premiumResult.data;
             logStep("Premium package generated successfully");
+            
+            // Save content permanently for customer recovery
+            await supabase.rpc('save_purchased_content', {
+              p_stripe_session_id: sessionId,
+              p_customer_email: customerEmail || '',
+              p_product_type: productType,
+              p_product_name: productName,
+              p_generated_content: generatedContent
+            });
+            logStep("Content saved for recovery");
             
             await supabase.rpc('log_delivery_step', {
               p_stripe_session_id: sessionId,
