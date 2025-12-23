@@ -189,6 +189,22 @@ serve(async (req) => {
     trackPerformance(requestStartTime, 'parse-pdf', false, { error: error instanceof Error ? error.message : 'Unknown' }, clientIp);
     console.error("[PARSE-PDF] Error:", error);
     
+    // Log parse failure to database
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    EdgeRuntime.waitUntil(
+      (async () => {
+        await supabase.rpc('log_parse_failure', {
+          p_file_type: 'pdf',
+          p_error_code: 'parse_error',
+          p_error_message: error instanceof Error ? error.message : 'Unknown error',
+          p_visitor_id: clientIp
+        });
+      })()
+    );
+    
     return new Response(
       JSON.stringify({
         error: "Failed to parse PDF. Please ensure the file is a valid PDF document.",

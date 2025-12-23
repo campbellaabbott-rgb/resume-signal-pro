@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Activity, Database, Zap, CreditCard, ArrowLeft, BarChart3, Clock, FileSearch, AlertOctagon, Mail, ShieldAlert, Ban, DollarSign } from 'lucide-react';
+import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Activity, Database, Zap, CreditCard, ArrowLeft, BarChart3, Clock, FileSearch, AlertOctagon, Mail, ShieldAlert, Ban, DollarSign, Webhook, FileWarning, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -128,6 +128,33 @@ interface CheckoutFunnel {
   end_to_end_rate: number;
 }
 
+interface WebhookHealth {
+  total_received: number;
+  processed_successfully: number;
+  processing_failed: number;
+  success_rate: number;
+  avg_processing_time_ms: number;
+  events_by_type: Record<string, number>;
+  recent_failures: Array<{
+    event_type: string;
+    error: string;
+    created_at: string;
+  }>;
+}
+
+interface ParseFailureStats {
+  total_failures: number;
+  pdf_failures: number;
+  docx_failures: number;
+  spreadsheet_failures: number;
+  common_errors: Array<{ error: string; count: number }>;
+  recent_failures: Array<{
+    file_type: string;
+    error: string;
+    created_at: string;
+  }>;
+}
+
 const statusConfig = {
   healthy: { color: 'bg-green-500', icon: CheckCircle, label: 'Healthy' },
   degraded: { color: 'bg-yellow-500', icon: AlertTriangle, label: 'Degraded' },
@@ -171,6 +198,10 @@ export default function HealthCheck() {
   const [deliveryHealth, setDeliveryHealth] = useState<DeliveryHealth | null>(null);
   const [aiQuality, setAIQuality] = useState<AIQualityStats | null>(null);
   const [checkoutFunnel, setCheckoutFunnel] = useState<CheckoutFunnel | null>(null);
+  
+  // New monitoring states
+  const [webhookHealth, setWebhookHealth] = useState<WebhookHealth | null>(null);
+  const [parseFailures, setParseFailures] = useState<ParseFailureStats | null>(null);
 
   const fetchProductMetrics = async () => {
     try {
@@ -301,6 +332,36 @@ export default function HealthCheck() {
     }
   };
 
+  const fetchWebhookHealth = async () => {
+    try {
+      const { data } = await supabase.rpc('get_webhook_health', { p_hours_back: 24 });
+      if (data && data[0]) {
+        setWebhookHealth({
+          ...data[0],
+          events_by_type: data[0].events_by_type as Record<string, number>,
+          recent_failures: data[0].recent_failures as WebhookHealth['recent_failures'],
+        });
+      }
+    } catch (e) {
+      console.error('Failed to fetch webhook health:', e);
+    }
+  };
+
+  const fetchParseFailures = async () => {
+    try {
+      const { data } = await supabase.rpc('get_parse_failure_stats', { p_hours_back: 24 });
+      if (data && data[0]) {
+        setParseFailures({
+          ...data[0],
+          common_errors: data[0].common_errors as ParseFailureStats['common_errors'],
+          recent_failures: data[0].recent_failures as ParseFailureStats['recent_failures'],
+        });
+      }
+    } catch (e) {
+      console.error('Failed to fetch parse failures:', e);
+    }
+  };
+
   const fetchHealthCheck = async (retries = 3) => {
     setLoading(true);
     setError(null);
@@ -344,6 +405,8 @@ export default function HealthCheck() {
     fetchDeliveryHealth();
     fetchAIQuality();
     fetchCheckoutFunnel();
+    fetchWebhookHealth();
+    fetchParseFailures();
   };
 
   useEffect(() => {
@@ -903,6 +966,122 @@ export default function HealthCheck() {
                     />
                   </div>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* NEW: Webhook Health & Parse Failures */}
+        <div className="grid md:grid-cols-2 gap-6 mb-6">
+          
+          {/* Stripe Webhook Health */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Webhook className="h-5 w-5 text-indigo-500" />
+                  Webhook Health (24h)
+                </div>
+                {webhookHealth && webhookHealth.total_received > 0 && (
+                  <Badge variant={webhookHealth.success_rate >= 95 ? 'default' : 'destructive'}>
+                    {webhookHealth.success_rate?.toFixed(0) || 0}% success
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!webhookHealth || webhookHealth.total_received === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No webhooks received in last 24h</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+                    <div className="p-2 rounded bg-muted/50">
+                      <p className="text-lg font-bold">{webhookHealth.total_received}</p>
+                      <p className="text-xs text-muted-foreground">Received</p>
+                    </div>
+                    <div className="p-2 rounded bg-green-500/10">
+                      <p className="text-lg font-bold text-green-500">{webhookHealth.processed_successfully}</p>
+                      <p className="text-xs text-muted-foreground">Processed</p>
+                    </div>
+                    <div className="p-2 rounded bg-red-500/10">
+                      <p className="text-lg font-bold text-red-500">{webhookHealth.processing_failed}</p>
+                      <p className="text-xs text-muted-foreground">Failed</p>
+                    </div>
+                  </div>
+                  {webhookHealth.events_by_type && Object.keys(webhookHealth.events_by_type).length > 0 && (
+                    <div className="space-y-1 mb-2">
+                      <p className="text-xs font-medium text-muted-foreground">By Type:</p>
+                      {Object.entries(webhookHealth.events_by_type).slice(0, 4).map(([type, count]) => (
+                        <div key={type} className="flex items-center justify-between text-xs p-1 rounded bg-muted/30">
+                          <span className="truncate max-w-[150px]">{type}</span>
+                          <Badge variant="outline" className="text-xs">{count}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {webhookHealth.avg_processing_time_ms > 0 && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      Avg processing: {Math.round(webhookHealth.avg_processing_time_ms)}ms
+                    </p>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Parse Failures */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileWarning className="h-5 w-5 text-orange-500" />
+                  Parse Failures (24h)
+                </div>
+                <Badge variant={!parseFailures || parseFailures.total_failures === 0 ? 'default' : 'destructive'}>
+                  {parseFailures?.total_failures || 0} failures
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!parseFailures || parseFailures.total_failures === 0 ? (
+                <div className="text-center py-4">
+                  <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No parse failures</p>
+                  <p className="text-xs text-green-500">All documents parsing successfully</p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+                    <div className="p-2 rounded bg-red-500/10">
+                      <p className="text-lg font-bold text-red-500">{parseFailures.pdf_failures}</p>
+                      <p className="text-xs text-muted-foreground">PDF</p>
+                    </div>
+                    <div className="p-2 rounded bg-red-500/10">
+                      <p className="text-lg font-bold text-red-500">{parseFailures.docx_failures}</p>
+                      <p className="text-xs text-muted-foreground">DOCX</p>
+                    </div>
+                    <div className="p-2 rounded bg-red-500/10">
+                      <p className="text-lg font-bold text-red-500">{parseFailures.spreadsheet_failures}</p>
+                      <p className="text-xs text-muted-foreground">Other</p>
+                    </div>
+                  </div>
+                  {parseFailures.recent_failures && parseFailures.recent_failures.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Recent:</p>
+                      {parseFailures.recent_failures.slice(0, 3).map((failure, i) => (
+                        <div key={i} className="p-2 rounded bg-red-500/10 border border-red-500/20 text-xs">
+                          <div className="flex justify-between mb-1">
+                            <Badge variant="outline" className="text-xs">{failure.file_type}</Badge>
+                            <span className="text-muted-foreground">
+                              {new Date(failure.created_at).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <p className="text-muted-foreground truncate">{failure.error || 'Unknown error'}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

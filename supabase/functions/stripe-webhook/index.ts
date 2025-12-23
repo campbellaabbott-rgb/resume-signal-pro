@@ -128,6 +128,17 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const processingStart = Date.now();
+    let processingError: string | null = null;
+
+    // Log webhook received
+    await supabase.rpc('log_webhook_event', {
+      p_event_type: event.type,
+      p_event_id: event.id,
+      p_payload: event.data.object,
+      p_processed: false
+    });
 
     // Handle different event types
     switch (event.type) {
@@ -289,6 +300,16 @@ serve(async (req) => {
       default:
         logStep("Unhandled event type", { type: event.type });
     }
+
+    // Log successful processing
+    const processingTime = Date.now() - processingStart;
+    await supabase.rpc('log_webhook_event', {
+      p_event_type: event.type,
+      p_event_id: event.id,
+      p_processed: true,
+      p_error: processingError,
+      p_time_ms: processingTime
+    });
 
     return new Response(JSON.stringify({ received: true }), {
       headers: { "Content-Type": "application/json" },
