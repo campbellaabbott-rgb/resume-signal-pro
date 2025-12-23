@@ -526,6 +526,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_user_health: {
+        Args: { p_visitor_id: string }
+        Returns: {
+          error_trend: string
+          primary_issue: string
+          recent_errors: number
+          recommendation: string
+          status: string
+        }[]
+      }
       cleanup_expired_analyses: { Args: never; Returns: number }
       cleanup_expired_cache: { Args: never; Returns: number }
       cleanup_expired_stripe_sessions: { Args: never; Returns: number }
@@ -548,6 +558,22 @@ export type Database = {
       delete_analysis_by_share_id: {
         Args: { p_share_id: string }
         Returns: boolean
+      }
+      detect_user_error_spikes: {
+        Args: {
+          p_baseline_hours?: number
+          p_recent_minutes?: number
+          p_spike_threshold?: number
+        }
+        Returns: {
+          baseline_hourly_rate: number
+          is_spike: boolean
+          last_error_at: string
+          recent_error_count: number
+          recent_error_types: string[]
+          spike_multiplier: number
+          visitor_id: string
+        }[]
       }
       get_ab_test_stats: {
         Args: { p_test_name: string }
@@ -597,6 +623,19 @@ export type Database = {
       get_cached_response: {
         Args: { p_cache_key: string; p_function_name: string }
         Returns: Json
+      }
+      get_error_diagnostics: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          affected_functions: string[]
+          avg_per_user: number
+          error_code: string
+          error_count: number
+          error_type: string
+          most_recent: string
+          sample_message: string
+          unique_users: number
+        }[]
       }
       get_funnel_cohort_stats: {
         Args: { p_cohort_dimension?: string; p_days_back?: number }
