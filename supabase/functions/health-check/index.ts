@@ -24,9 +24,9 @@ interface CheckResult {
   message?: string;
 }
 
-// Thresholds in ms
+// Thresholds in ms (adjusted for cold connection overhead)
 const THRESHOLDS = {
-  database: { ok: 200, slow: 800 },
+  database: { ok: 500, slow: 1500 }, // Cold connections take 150-400ms typically
   ai_gateway: { ok: 4000, slow: 8000 }, // AI requests take longer
   stripe: { ok: 500, slow: 1500 },
 };
