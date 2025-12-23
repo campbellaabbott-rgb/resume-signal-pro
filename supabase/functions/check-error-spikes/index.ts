@@ -32,6 +32,18 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Verify admin API key
+    const adminApiKey = Deno.env.get('ADMIN_API_KEY');
+    const authHeader = req.headers.get('x-admin-key') || req.headers.get('authorization')?.replace('Bearer ', '');
+    
+    if (!adminApiKey || authHeader !== adminApiKey) {
+      console.log('[ErrorCheck] Unauthorized access attempt');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const adminEmail = Deno.env.get('ADMIN_EMAIL');

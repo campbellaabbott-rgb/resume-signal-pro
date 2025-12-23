@@ -13,6 +13,18 @@ serve(async (req) => {
   }
 
   try {
+    // Verify admin API key
+    const adminApiKey = Deno.env.get('ADMIN_API_KEY');
+    const authHeader = req.headers.get('x-admin-key') || req.headers.get('authorization')?.replace('Bearer ', '');
+    
+    if (!adminApiKey || authHeader !== adminApiKey) {
+      console.log('[Analytics] Unauthorized access attempt');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { startDate, endDate, pageFilter } = await req.json();
 
     console.log('[Analytics] Fetching data:', { startDate, endDate, pageFilter });

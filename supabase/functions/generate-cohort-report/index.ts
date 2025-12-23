@@ -47,6 +47,18 @@ serve(async (req) => {
   }
 
   try {
+    // Verify admin API key
+    const adminApiKey = Deno.env.get('ADMIN_API_KEY');
+    const authHeader = req.headers.get('x-admin-key') || req.headers.get('authorization')?.replace('Bearer ', '');
+    
+    if (!adminApiKey || authHeader !== adminApiKey) {
+      console.log('[CohortReport] Unauthorized access attempt');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log('Starting weekly cohort report generation...');
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
