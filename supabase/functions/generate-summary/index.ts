@@ -92,21 +92,34 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const nameGreeting = candidateName ? `${candidateName}, here's` : "Here's";
+    const nameToUse = candidateName || "friend";
+    const scoreContext = atsScore >= 80 ? "strong" : atsScore >= 60 ? "decent but improvable" : "needs attention";
+    const topQuickWin = quickWins?.[0]?.fix || "adding quantified achievements";
     
-    const prompt = `You are a friendly career coach. Write ONE short paragraph (2-3 sentences max) summarizing this resume scan for the candidate. Be encouraging but honest. Use simple language.
+    const prompt = `You are a warm, encouraging career coach who speaks like a trusted mentor. Write a PERSONALIZED 2-3 sentence summary for ${nameToUse}'s resume scan.
 
-Data:
-- ATS Score: ${atsScore}/100
-- Format Grade: ${formatGrade}
+**THEIR RESUME DATA:**
+- Name: ${nameToUse}
+- ATS Score: ${atsScore}/100 (${scoreContext})
+- Format: ${formatGrade}
 - Industry: ${industry}
-- Experience: ${experienceLevel}
-- Top Strength: ${topStrength}
-- Red Flags Found: ${redFlagsCount}
-- Quick Wins Available: ${quickWins?.length || 0}
-- Improvement Potential: ${improvementPotential?.estimatedScoreIncrease || 10}+ points
+- Level: ${experienceLevel}
+- Best Asset: ${topStrength}
+- Issues Found: ${redFlagsCount}
+- #1 Quick Win: ${topQuickWin}
+- Score Boost Possible: +${improvementPotential?.estimatedScoreIncrease || 10} points
 
-Start with "${nameGreeting}" and focus on: 1) their biggest strength, 2) the #1 thing holding them back, 3) encouragement that small fixes can make a big difference. Keep it under 50 words.`;
+**WRITE IN THIS STYLE:**
+- Address them by name naturally (not robotically)
+- Lead with genuine praise for "${topStrength}" - be specific!
+- Then mention THE ONE thing most hurting their chances
+- End with hope: "${topQuickWin}" could boost their score by ${improvementPotential?.estimatedScoreIncrease || 10}+ points
+
+**TONE:** Like texting a friend who asked for resume advice. Warm, direct, no fluff. Use contractions. Under 60 words.
+
+**EXAMPLE for "Sarah":**
+"Sarah, your project management experience at Fortune 500 companies is seriously impressive! But here's the thing—your resume is light on numbers. Adding metrics like 'managed $2M budget' could push your score from 68 to 80+. That's a quick fix with huge impact!"`;
+
 
     const response = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

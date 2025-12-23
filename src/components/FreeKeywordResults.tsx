@@ -1004,7 +1004,7 @@ export function FreeKeywordResults({
   return (
     <TooltipProvider delayDuration={200}>
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
-      {/* Header */}
+      {/* Personalized Header */}
       <div className="text-center mb-6">
         <div className="flex items-center justify-center gap-2 mb-3">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success text-sm font-medium">
@@ -1041,9 +1041,24 @@ export function FreeKeywordResults({
             </button>
           )}
         </div>
-        <h3 className="text-xl font-bold mb-1">{t('freeScan.preview')}</h3>
+        
+        {/* Personalized greeting */}
+        <h3 className="text-xl font-bold mb-1">
+          {candidateName 
+            ? `${candidateName.split(' ')[0]}, here's your resume analysis`
+            : t('freeScan.preview')
+          }
+        </h3>
         <p className="text-sm text-muted-foreground">
-          {t('freeScan.detected')}: <span className="text-foreground font-medium">{industry}</span> • <span className="text-foreground font-medium">{getExperienceLevelLabel(experienceLevel.level)}</span> ({experienceLevel.yearsEstimate})
+          {currentRole ? (
+            <>
+              <span className="text-foreground font-medium">{currentRole}</span> in <span className="text-foreground font-medium">{industry}</span> • <span className="text-foreground font-medium">{getExperienceLevelLabel(experienceLevel.level)}</span> ({experienceLevel.yearsEstimate})
+            </>
+          ) : (
+            <>
+              {t('freeScan.detected')}: <span className="text-foreground font-medium">{industry}</span> • <span className="text-foreground font-medium">{getExperienceLevelLabel(experienceLevel.level)}</span> ({experienceLevel.yearsEstimate})
+            </>
+          )}
         </p>
       </div>
 
@@ -1082,25 +1097,30 @@ export function FreeKeywordResults({
         className="mb-6"
       />
 
-      {/* Action Required CTA Banner */}
+      {/* Personalized Action Required CTA Banner */}
       <div className="rounded-2xl bg-gradient-to-r from-destructive/15 via-destructive/10 to-destructive/5 border border-destructive/30 p-5 mb-6">
         <div className="flex items-center gap-2 mb-3">
           <div className="p-1.5 rounded-lg bg-destructive/20">
             <AlertTriangle className="w-4 h-4 text-destructive" />
           </div>
           <span className="text-xs font-semibold uppercase tracking-wider text-destructive">
-            Action Required
+            {candidateName ? `${candidateName.split(' ')[0]}, action needed` : 'Action Required'}
           </span>
         </div>
         
         <h4 className="text-lg font-bold mb-2">
           {redFlags.length > 0 
-            ? `${redFlags.length}+ Issues Holding Your Resume Back`
+            ? candidateName 
+              ? `${candidateName.split(' ')[0]}, ${redFlags.length} issues are blocking your applications`
+              : `${redFlags.length}+ Issues Holding Your Resume Back`
             : `${atsScoreEstimate < 70 ? 'Critical' : 'Key'} Issues Found in Your Resume`
           }
         </h4>
         <p className="text-sm text-muted-foreground mb-4">
-          Get specific fixes, rewritten bullet points, and AI-ATS-optimized suggestions tailored to your industry.
+          {currentRole 
+            ? `Get ${industry}-specific fixes for your ${currentRole} resume, with rewritten bullet points and optimized keywords.`
+            : `Get specific fixes, rewritten bullet points, and AI-ATS-optimized suggestions tailored to ${industry}.`
+          }
         </p>
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
