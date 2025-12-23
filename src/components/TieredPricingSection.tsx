@@ -5,6 +5,7 @@ import { PRODUCTS, ProductId } from "@/config/products";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/use-currency";
+import { useTranslation } from "react-i18next";
 
 interface TieredPricingSectionProps {
   onFullAnalysisCheckout?: () => void;
@@ -26,6 +27,7 @@ const tierIcons: Record<string, React.ElementType> = {
 export function TieredPricingSection({ onFullAnalysisCheckout, sessionId }: TieredPricingSectionProps) {
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
   const { formatPrice, isLocalCurrency } = useCurrency();
+  const { t } = useTranslation();
 
   const handleSelect = async (productId: ProductId) => {
     const product = PRODUCTS[productId];
@@ -42,8 +44,8 @@ export function TieredPricingSection({ onFullAnalysisCheckout, sessionId }: Tier
   return (
     <div className="my-8">
       <div className="text-center mb-6">
-        <h3 className="text-xl font-bold mb-2">Ready to Fix Your Resume?</h3>
-        <p className="text-muted-foreground text-sm">Choose the option that fits your needs</p>
+        <h3 className="text-xl font-bold mb-2">{t("tieredPricing.title")}</h3>
+        <p className="text-muted-foreground text-sm">{t("tieredPricing.subtitle")}</p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">
@@ -65,7 +67,7 @@ export function TieredPricingSection({ onFullAnalysisCheckout, sessionId }: Tier
               {/* Popular badge */}
               {highlight && (
                 <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs">
-                  Most Popular
+                  {t("tieredPricing.mostPopular")}
                 </Badge>
               )}
               
@@ -78,8 +80,8 @@ export function TieredPricingSection({ onFullAnalysisCheckout, sessionId }: Tier
                   <Icon className={cn("w-5 h-5", highlight ? "text-primary" : "text-muted-foreground")} />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-sm">{product.name}</h4>
-                  <p className="text-xs text-muted-foreground">{product.description}</p>
+                  <h4 className="font-semibold text-sm">{t(`tieredPricing.products.${key}.name`, product.name)}</h4>
+                  <p className="text-xs text-muted-foreground">{t(`tieredPricing.products.${key}.description`, product.description)}</p>
                 </div>
               </div>
 
@@ -87,7 +89,7 @@ export function TieredPricingSection({ onFullAnalysisCheckout, sessionId }: Tier
               <div className="mb-3">
                 <div className="flex items-baseline gap-1">
                   <span className="text-2xl font-bold">${product.priceUsd}</span>
-                  <span className="text-xs text-muted-foreground">one-time</span>
+                  <span className="text-xs text-muted-foreground">{t("tieredPricing.oneTime")}</span>
                 </div>
                 {isLocalCurrency && (
                   <p className="text-xs text-muted-foreground">≈ {formatPrice(product.priceUsd)}</p>
@@ -119,7 +121,7 @@ export function TieredPricingSection({ onFullAnalysisCheckout, sessionId }: Tier
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
                   <>
-                    Select
+                    {t("tieredPricing.select")}
                     <ArrowRight className="w-3.5 h-3.5" />
                   </>
                 )}
@@ -130,7 +132,7 @@ export function TieredPricingSection({ onFullAnalysisCheckout, sessionId }: Tier
       </div>
 
       <p className="text-center text-xs text-muted-foreground mt-4">
-        All options include instant access. Secure payment via Stripe.
+        {t("tieredPricing.footer")}
       </p>
 
     </div>

@@ -89,6 +89,80 @@
     "questions": "Questions ou commentaires ?",
     "pricing": "Tarifs"
   },
+  "howItWorks": {
+    "badge": "Analyse par IA",
+    "title": "Scan Approfondi en 24 Points",
+    "subtitle": "Notre IA simule comment les systèmes ATS modernes analysent votre CV, vérifiant chaque mot selon les standards des recruteurs.",
+    "whatWeAnalyze": "Ce Que Nous Analysons",
+    "dataNotStored": "Vos données ne sont jamais stockées",
+    "steps": {
+      "upload": {
+        "title": "1. Téléchargez votre CV",
+        "description": "Collez du texte ou téléchargez PDF/DOCX. Nous extrayons chaque mot."
+      },
+      "analysis": {
+        "title": "2. Analyse IA",
+        "description": "Notre IA effectue 24 vérifications distinctes en ~10 secondes."
+      },
+      "results": {
+        "title": "3. Obtenez les Résultats",
+        "description": "Scores instantanés, alertes et améliorations concrètes."
+      }
+    },
+    "points": {
+      "atsScore": "Score ATS",
+      "formatGrade": "Note de Format",
+      "resumeLength": "Longueur du CV",
+      "wordCount": "Nombre de Mots",
+      "experienceLevel": "Niveau d'Expérience",
+      "sectionCheck": "Vérification des Sections",
+      "contactInfo": "Coordonnées",
+      "topStrength": "Force Principale",
+      "quantification": "Quantification",
+      "actionVerbs": "Verbes d'Action",
+      "redFlags": "Signaux d'Alerte",
+      "keywords": "Mots-clés",
+      "readability": "Lisibilité",
+      "bulletImpact": "Impact des Puces",
+      "keywordDensity": "Densité de Mots-clés",
+      "improvementPotential": "Potentiel d'Amélioration",
+      "skipReasons": "Raisons de Rejet",
+      "powerWords": "Mots Puissants",
+      "weakPhrases": "Phrases Faibles",
+      "timelineAnalysis": "Analyse Chronologique",
+      "industryBenchmark": "Benchmark Industrie",
+      "quickWins": "Victoires Rapides",
+      "sampleRewrite": "Exemple de Réécriture",
+      "careerTrajectory": "Trajectoire de Carrière"
+    },
+    "footer": {
+      "realAi": "Vraie analyse IA",
+      "results": "Résultats en ~10 sec",
+      "private": "100% privé"
+    }
+  },
+  "tieredPricing": {
+    "title": "Prêt à Améliorer Votre CV ?",
+    "subtitle": "Choisissez l'option qui correspond à vos besoins",
+    "mostPopular": "Le Plus Populaire",
+    "oneTime": "paiement unique",
+    "select": "Sélectionner",
+    "footer": "Toutes les options incluent un accès instantané. Paiement sécurisé via Stripe.",
+    "products": {
+      "basicKeywordFix": {
+        "name": "Correction Basique de Mots-clés",
+        "description": "Optimisation rapide des mots-clés"
+      },
+      "fullAnalysis": {
+        "name": "Analyse Complète",
+        "description": "Revue complète du CV"
+      },
+      "premiumPackage": {
+        "name": "Pack Premium",
+        "description": "Tout inclus"
+      }
+    }
+  },
   "language": {
     "select": "Choisir la langue"
   },

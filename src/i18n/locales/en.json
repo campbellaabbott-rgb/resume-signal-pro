@@ -91,6 +91,80 @@
     "questions": "Questions or feedback?",
     "pricing": "Pricing"
   },
+  "howItWorks": {
+    "badge": "AI-Powered Analysis",
+    "title": "24-Point Deep Resume Scan",
+    "subtitle": "Our AI simulates how modern AI-powered ATS systems scan your resume, analyzing every word against real recruiter standards.",
+    "whatWeAnalyze": "What We Analyze",
+    "dataNotStored": "Your data is never stored",
+    "steps": {
+      "upload": {
+        "title": "1. Upload Resume",
+        "description": "Paste text or upload PDF/DOCX. We extract every word."
+      },
+      "analysis": {
+        "title": "2. AI Analysis",
+        "description": "Our AI performs 24 distinct checks in ~10 seconds."
+      },
+      "results": {
+        "title": "3. Get Results",
+        "description": "Instant scores, red flags, and actionable improvements."
+      }
+    },
+    "points": {
+      "atsScore": "AI-ATS Score",
+      "formatGrade": "Format Grade",
+      "resumeLength": "Resume Length",
+      "wordCount": "Word Count",
+      "experienceLevel": "Experience Level",
+      "sectionCheck": "Section Check",
+      "contactInfo": "Contact Info",
+      "topStrength": "Top Strength",
+      "quantification": "Quantification",
+      "actionVerbs": "Action Verbs",
+      "redFlags": "Red Flags",
+      "keywords": "Keywords",
+      "readability": "Readability",
+      "bulletImpact": "Bullet Impact",
+      "keywordDensity": "Keyword Density",
+      "improvementPotential": "Improvement Potential",
+      "skipReasons": "Skip Reasons",
+      "powerWords": "Power Words",
+      "weakPhrases": "Weak Phrases",
+      "timelineAnalysis": "Timeline Analysis",
+      "industryBenchmark": "Industry Benchmark",
+      "quickWins": "Quick Wins",
+      "sampleRewrite": "Sample Rewrite",
+      "careerTrajectory": "Career Trajectory"
+    },
+    "footer": {
+      "realAi": "Real AI analysis",
+      "results": "Results in ~10 sec",
+      "private": "100% private"
+    }
+  },
+  "tieredPricing": {
+    "title": "Ready to Fix Your Resume?",
+    "subtitle": "Choose the option that fits your needs",
+    "mostPopular": "Most Popular",
+    "oneTime": "one-time",
+    "select": "Select",
+    "footer": "All options include instant access. Secure payment via Stripe.",
+    "products": {
+      "basicKeywordFix": {
+        "name": "Basic Keyword Fix",
+        "description": "Quick keyword optimization"
+      },
+      "fullAnalysis": {
+        "name": "Full Analysis",
+        "description": "Complete resume review"
+      },
+      "premiumPackage": {
+        "name": "Premium Package",
+        "description": "Everything included"
+      }
+    }
+  },
   "language": {
     "select": "Select Language"
   },
