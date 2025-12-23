@@ -96,67 +96,8 @@ declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
 const SLOW_REQUEST_THRESHOLD = 20000; // 20s - AI analysis takes time
 const VERY_SLOW_THRESHOLD = 70000; // 70s - Gemini Pro model takes 40-60s typically
 
-// Cache configuration
-const CACHE_TTL_HOURS = 24; // Cache responses for 24 hours
 const FUNCTION_NAME = 'free-keyword-scan';
 
-// Generate a hash for cache key from resume + job description
-async function generateCacheKey(resumeText: string, jobDescriptionText?: string): Promise<string> {
-  // Normalize text: lowercase, remove extra whitespace, take first 10k chars
-  const normalizedResume = resumeText.toLowerCase().replace(/\s+/g, ' ').trim().substring(0, 10000);
-  const normalizedJob = jobDescriptionText ? jobDescriptionText.toLowerCase().replace(/\s+/g, ' ').trim().substring(0, 5000) : '';
-  const combined = `${normalizedResume}|||${normalizedJob}`;
-  
-  const encoder = new TextEncoder();
-  const data = encoder.encode(combined);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Check cache for existing response
-async function getCachedResponse(supabase: any, cacheKey: string): Promise<any | null> {
-  try {
-    const { data, error } = await supabase.rpc('get_cached_response', {
-      p_cache_key: cacheKey,
-      p_function_name: FUNCTION_NAME
-    });
-    
-    if (error) {
-      console.log(`[FREE-KEYWORD-SCAN] Cache lookup error:`, error.message);
-      return null;
-    }
-    
-    if (data) {
-      console.log(`[FREE-KEYWORD-SCAN] Cache HIT for key: ${cacheKey.substring(0, 16)}...`);
-      return data;
-    }
-    
-    console.log(`[FREE-KEYWORD-SCAN] Cache MISS for key: ${cacheKey.substring(0, 16)}...`);
-    return null;
-  } catch (e) {
-    console.error(`[FREE-KEYWORD-SCAN] Cache error:`, e);
-    return null;
-  }
-}
-
-// Store response in cache (non-blocking)
-function storeCachedResponse(supabase: any, cacheKey: string, response: any): void {
-  EdgeRuntime.waitUntil(
-    supabase.rpc('store_cached_response', {
-      p_cache_key: cacheKey,
-      p_function_name: FUNCTION_NAME,
-      p_response: response,
-      p_ttl_hours: CACHE_TTL_HOURS
-    }).then(({ error }: any) => {
-      if (error) {
-        console.error(`[FREE-KEYWORD-SCAN] Cache store error:`, error.message);
-      } else {
-        console.log(`[FREE-KEYWORD-SCAN] Cached response for key: ${cacheKey.substring(0, 16)}...`);
-      }
-    })
-  );
-}
 
 const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "admin@resumebooster.com";
 const ALERT_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour between alerts per type
@@ -392,7 +333,7 @@ serve(async (req) => {
   }
   
   try {
-    const { resumeText, jobDescriptionText, honeypot, skipCache } = await req.json();
+    const { resumeText, jobDescriptionText, honeypot } = await req.json();
 
     // Honeypot check - if filled, it's a bot
     if (honeypot && honeypot.trim() !== '') {
@@ -445,20 +386,6 @@ serve(async (req) => {
       aiModel: 'google/gemini-2.5-flash'
     };
 
-    // For re-analyze requests (skipCache=true), check if user has an existing cached result first
-    // If they do, allow re-analysis without rate limiting (they're refreshing their own data)
-    let bypassRateLimitForReanalyze = false;
-    if (skipCache === true) {
-      const hasJobDescription = jobDescriptionText && typeof jobDescriptionText === 'string' && jobDescriptionText.trim().length > 50;
-      const truncatedJobDescForCheck = hasJobDescription ? jobDescriptionText.substring(0, MAX_JOB_DESCRIPTION_LENGTH) : null;
-      const cacheKeyForCheck = await generateCacheKey(resumeText, truncatedJobDescForCheck || undefined);
-      const existingCache = await getCachedResponse(supabase, cacheKeyForCheck);
-      
-      if (existingCache) {
-        console.log(`[FREE-KEYWORD-SCAN] Re-analyze request with existing cache - bypassing rate limit`);
-        bypassRateLimitForReanalyze = true;
-      }
-    }
 
     // Global rate limit: max 100 requests per hour across all functions
     const { data: globalAllowed, error: globalRlError } = await supabase.rpc('check_global_rate_limit', {
@@ -478,9 +405,7 @@ serve(async (req) => {
     }
 
     // Function-specific rate limit: 7 free scans per day per IP
-    // Skip if user is re-analyzing existing cached content
-    if (!bypassRateLimitForReanalyze) {
-      const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
+    const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
         p_function: 'free-keyword-scan',
         p_ip: clientIp,
         p_max_requests: FREE_SCANS_PER_DAY,
@@ -515,10 +440,7 @@ serve(async (req) => {
             resetTime: resetTime.toISOString()
           }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    } else {
-      console.log(`[FREE-KEYWORD-SCAN] Skipping rate limit check for re-analyze`);
+      );
     }
 
     // Call Lovable AI Gateway
@@ -682,48 +604,6 @@ ${truncatedJobDescription}
 ${resumeText.substring(0, 15000)}
 </resume>`;
 
-    // Check cache before calling AI (unless skipCache is true)
-    const cacheKey = await generateCacheKey(resumeText, truncatedJobDescription || undefined);
-    
-    if (!skipCache) {
-      const cachedResponse = await getCachedResponse(supabase, cacheKey);
-      
-      if (cachedResponse) {
-        console.log("[FREE-KEYWORD-SCAN] Returning cached response");
-        metricCtx.cacheHit = true;
-        
-        // Log cache hit metric
-        logScanMetric(metricCtx, 'completed', {
-          outputValid: true,
-          responseScore: cachedResponse.atsScoreEstimate,
-          metadata: { cached: true, industry: cachedResponse.industry }
-        });
-        
-        trackPerformance(requestStartTime, 'free-keyword-scan-cached', true, { cached: true }, clientIp);
-        
-        // Still increment counter for cached responses
-        EdgeRuntime.waitUntil(
-          (async () => {
-            try {
-              await supabase.rpc('increment_free_scan_count');
-            } catch (err) {
-              console.error("[FREE-KEYWORD-SCAN] Failed to increment counter:", err);
-            }
-          })()
-        );
-        
-        return new Response(
-          JSON.stringify({
-            success: true,
-            cached: true,
-            ...cachedResponse,
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    } else {
-      console.log("[FREE-KEYWORD-SCAN] Skipping cache (force re-analyze)");
-    }
 
     console.log("[FREE-KEYWORD-SCAN] Calling Lovable AI Gateway...");
 
@@ -1333,8 +1213,6 @@ ${resumeText.substring(0, 15000)}
       quickWins: (analysis.quickWins || []).slice(0, 3),
     };
     
-    // Cache the successful response (non-blocking)
-    storeCachedResponse(supabase, cacheKey, responseData);
     
     // Log successful completion metric
     logScanMetric(metricCtx, 'completed', {
