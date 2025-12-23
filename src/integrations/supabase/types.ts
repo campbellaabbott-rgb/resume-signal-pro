@@ -284,6 +284,39 @@ export type Database = {
         }
         Relationships: []
       }
+      email_logs: {
+        Row: {
+          created_at: string
+          email_type: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          recipient: string
+          status: string
+          subject: string | null
+        }
+        Insert: {
+          created_at?: string
+          email_type: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient: string
+          status?: string
+          subject?: string | null
+        }
+        Update: {
+          created_at?: string
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient?: string
+          status?: string
+          subject?: string | null
+        }
+        Relationships: []
+      }
       error_telemetry: {
         Row: {
           context: Json | null
@@ -714,6 +747,16 @@ export type Database = {
         Args: { p_cache_key: string; p_function_name: string }
         Returns: Json
       }
+      get_email_health: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          failed_emails: number
+          recent_emails: Json
+          success_rate: number
+          successful_emails: number
+          total_emails: number
+        }[]
+      }
       get_error_diagnostics: {
         Args: { p_hours_back?: number }
         Returns: {
@@ -725,6 +768,16 @@ export type Database = {
           most_recent: string
           sample_message: string
           unique_users: number
+        }[]
+      }
+      get_function_error_rates: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          error_types: string[]
+          function_name: string
+          last_error_at: string
+          sample_message: string
+          total_errors: number
         }[]
       }
       get_funnel_cohort_stats: {
@@ -745,6 +798,25 @@ export type Database = {
           upload_rate: number
           upload_started: number
           view_rate: number
+        }[]
+      }
+      get_payment_health: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          failed: number
+          recent_failures: Json
+          success_rate: number
+          successful: number
+          total_attempts: number
+        }[]
+      }
+      get_rate_limit_stats: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          by_function: Json
+          recent_limits: Json
+          total_limited: number
+          unique_ips: number
         }[]
       }
       get_scan_credits: { Args: { p_email: string }; Returns: number }
@@ -814,6 +886,17 @@ export type Database = {
         }[]
       }
       increment_free_scan_count: { Args: never; Returns: undefined }
+      log_email_send: {
+        Args: {
+          p_email_type: string
+          p_error_message?: string
+          p_metadata?: Json
+          p_recipient: string
+          p_status?: string
+          p_subject?: string
+        }
+        Returns: string
+      }
       log_error_telemetry: {
         Args: {
           p_context?: Json

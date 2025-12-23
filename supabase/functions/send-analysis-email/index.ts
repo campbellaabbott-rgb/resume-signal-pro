@@ -1,4 +1,5 @@
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -256,8 +257,23 @@ Deno.serve(async (req) => {
       html,
     });
 
+    // Log email send to database
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     if (error) {
       console.error("[SEND-ANALYSIS-EMAIL] Resend error:", error);
+      
+      // Log failed email
+      await supabase.rpc('log_email_send', {
+        p_email_type: 'analysis_results',
+        p_recipient: requestData.email,
+        p_subject: `Resume Analysis (ATS Score: ${safeAtsScore}/100)`,
+        p_status: 'failed',
+        p_error_message: error.message,
+      });
+
       return new Response(
         JSON.stringify({ success: false, error: error.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -265,6 +281,15 @@ Deno.serve(async (req) => {
     }
 
     console.log("[SEND-ANALYSIS-EMAIL] Email sent successfully:", data?.id);
+
+    // Log successful email
+    await supabase.rpc('log_email_send', {
+      p_email_type: 'analysis_results',
+      p_recipient: requestData.email,
+      p_subject: `Resume Analysis (ATS Score: ${safeAtsScore}/100)`,
+      p_status: 'sent',
+      p_metadata: { resend_id: data?.id },
+    });
 
     return new Response(
       JSON.stringify({ success: true, messageId: data?.id }),
