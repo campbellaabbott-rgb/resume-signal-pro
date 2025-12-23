@@ -26,7 +26,31 @@
     "ctaButton": "I-check ang Aking Resume Ngayon",
     "freeBadge": "LIBRE",
     "noSignup": "Walang kailangang mag-sign-up",
+    "worksWithAny": "Gumagana sa kahit anong resume",
+    "actionableFixes": "May kasamang praktikal na ayos",
     "private": "100% private",
+    "headline": {
+      "get": "Kumuha ng",
+      "recruiterGrade": "Recruiter-grade",
+      "feedback": "na resume feedback sa 60 segundo"
+    },
+    "description": "I-upload ang iyong resume at makakuha ng ATS-optimized rewrites, red-flag warnings, at keyword improvements — gaya ng tunay na pag-review ng hiring managers.",
+    "benefits": {
+      "seniorRoles": "Para sa senior roles, managers, at competitive positions",
+      "atsCompatible": "Gumagana sa lahat ng ATS (Workday, Greenhouse, Lever at 50+ pa)",
+      "oneTime": "Isang beses na bayad (walang subscription)",
+      "private": "Hindi namin ini-store o sini-share ang resume"
+    },
+    "stats": {
+      "scannedToday": "Na-scan ngayon",
+      "userRating": "Rating ng users",
+      "gotInterviews": "Nakakuha ng interviews"
+    },
+    "chips": {
+      "scan": "30-second scan",
+      "private": "100% private",
+      "fixes": "Instant fixes"
+    },
     "testimonial": "\"Ito ay isang napakagandang produkto. Sinubukan ko ang mga libreng feature at masasabi kong magiging malaking tagumpay ito.\"",
     "testimonialAuthor": "Kamakailang user",
     "trustedBy": "Pinagkakatiwalaan ng mga propesyonal sa",

@@ -26,7 +26,31 @@
     "ctaButton": "Verificar o Meu Currículo Agora",
     "freeBadge": "GRÁTIS",
     "noSignup": "Sem registo necessário",
+    "worksWithAny": "Funciona com qualquer currículo",
+    "actionableFixes": "Correções práticas incluídas",
     "private": "100% privado",
+    "headline": {
+      "get": "Receba",
+      "recruiterGrade": "nível recrutador",
+      "feedback": "feedback de currículo em 60 segundos"
+    },
+    "description": "Carregue o seu currículo e receba reescritas otimizadas para ATS, alertas de red flags e melhorias de palavras‑chave — como recrutadores realmente avaliam currículos.",
+    "benefits": {
+      "seniorRoles": "Criado para perfis sénior, gestores e cargos competitivos",
+      "atsCompatible": "Funciona em todos os ATS (Workday, Greenhouse, Lever e 50+ mais)",
+      "oneTime": "Pagamento único (sem subscrição)",
+      "private": "Currículos nunca são guardados nem partilhados"
+    },
+    "stats": {
+      "scannedToday": "Analisados hoje",
+      "userRating": "Avaliação dos utilizadores",
+      "gotInterviews": "Conseguiram entrevistas"
+    },
+    "chips": {
+      "scan": "Análise em 30 segundos",
+      "private": "100% privado",
+      "fixes": "Correções instantâneas"
+    },
     "testimonial": "\"Este é um produto maravilhoso. Acabei de experimentar as funcionalidades gratuitas e posso dizer com confiança que vai ser um grande sucesso.\"",
     "testimonialAuthor": "Utilizador recente",
     "trustedBy": "Confiado por profissionais da",

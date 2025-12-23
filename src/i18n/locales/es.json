@@ -26,7 +26,31 @@
     "ctaButton": "Analizar Mi CV Ahora",
     "freeBadge": "GRATIS",
     "noSignup": "Sin registro requerido",
+    "worksWithAny": "Funciona con cualquier CV",
+    "actionableFixes": "Correcciones prácticas incluidas",
     "private": "100% privado",
+    "headline": {
+      "get": "Obtén",
+      "recruiterGrade": "nivel reclutador",
+      "feedback": "feedback de CV en 60 segundos"
+    },
+    "description": "Sube tu CV y obtén reescrituras optimizadas para ATS, alertas de red flags y mejoras de palabras clave — como lo revisan los reclutadores.",
+    "benefits": {
+      "seniorRoles": "Hecho para perfiles senior, managers y roles competitivos",
+      "atsCompatible": "Funciona en todos los ATS (Workday, Greenhouse, Lever y 50+ más)",
+      "oneTime": "Pago único (sin suscripción)",
+      "private": "Nunca guardamos ni compartimos tu CV"
+    },
+    "stats": {
+      "scannedToday": "Escaneados hoy",
+      "userRating": "Valoración de usuarios",
+      "gotInterviews": "Consiguieron entrevistas"
+    },
+    "chips": {
+      "scan": "Escaneo de 30 segundos",
+      "private": "100% privado",
+      "fixes": "Correcciones instantáneas"
+    },
     "testimonial": "\"Este es un producto maravilloso. Acabo de probar las funciones gratuitas y puedo decir con confianza que será un gran éxito.\"",
     "testimonialAuthor": "Usuario reciente",
     "trustedBy": "Confiado por profesionales en",

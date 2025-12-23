@@ -26,7 +26,31 @@
     "ctaButton": "Check mijn CV nu",
     "freeBadge": "GRATIS",
     "noSignup": "Geen aanmelding nodig",
+    "worksWithAny": "Werkt met elk cv",
+    "actionableFixes": "Concrete verbeteringen inbegrepen",
     "private": "100% privé",
+    "headline": {
+      "get": "Krijg",
+      "recruiterGrade": "recruiter-niveau",
+      "feedback": "cv-feedback in 60 seconden"
+    },
+    "description": "Upload je cv en krijg ATS-geoptimaliseerde herschrijvingen, red-flag waarschuwingen en keyword-verbeteringen — zoals hiring managers cv’s echt beoordelen.",
+    "benefits": {
+      "seniorRoles": "Gemaakt voor senior profielen, managers en competitieve rollen",
+      "atsCompatible": "Werkt op alle ATS-systemen (Workday, Greenhouse, Lever & 50+ meer)",
+      "oneTime": "Eenmalige betaling (geen abonnement)",
+      "private": "Cv’s worden nooit opgeslagen of gedeeld"
+    },
+    "stats": {
+      "scannedToday": "Vandaag gescand",
+      "userRating": "Gebruikersbeoordeling",
+      "gotInterviews": "Kreeg interviews"
+    },
+    "chips": {
+      "scan": "Scan in 30 seconden",
+      "private": "100% privé",
+      "fixes": "Directe fixes"
+    },
     "testimonial": "\"Dit is een geweldig product. Ik heb de gratis functies getest en kan vol vertrouwen zeggen dat het een groot succes wordt.\"",
     "testimonialAuthor": "Recente gebruiker",
     "trustedBy": "Vertrouwd door professionals bij",
