@@ -294,6 +294,7 @@ export type Database = {
           function_name: string | null
           http_status: number | null
           id: string
+          visitor_id: string | null
         }
         Insert: {
           context?: Json | null
@@ -304,6 +305,7 @@ export type Database = {
           function_name?: string | null
           http_status?: number | null
           id?: string
+          visitor_id?: string | null
         }
         Update: {
           context?: Json | null
@@ -314,6 +316,7 @@ export type Database = {
           function_name?: string | null
           http_status?: number | null
           id?: string
+          visitor_id?: string | null
         }
         Relationships: []
       }
@@ -625,6 +628,15 @@ export type Database = {
         }[]
       }
       get_today_scan_count: { Args: never; Returns: number }
+      get_visitor_error_history: {
+        Args: { p_visitor_id: string }
+        Returns: {
+          error_types: string[]
+          last_error_at: string
+          recent_errors: number
+          total_errors: number
+        }[]
+      }
       increment_free_scan_count: { Args: never; Returns: undefined }
       log_error_telemetry: {
         Args: {
