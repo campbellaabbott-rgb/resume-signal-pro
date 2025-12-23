@@ -606,8 +606,22 @@ Apply the appropriate weights when calculating the ATS score. Mention in industr
     - For ENGINEERING: Focus on CAD software, industry standards (ISO, ASME), project management, technical certifications (PE, PMP)
     - For CREATIVE: Focus on design tools (Adobe Suite, Figma), portfolio platforms, project types, creative methodologies
     Each keyword should have a category (tool, skill, certification, methodology, metric) and impact level (critical, high, medium).
-13. Industry: Detect the industry/field (technology, healthcare, finance, legal, sales, education, engineering, creative, or general)
-14. Current Role: Detect the person's current or most recent job title/role (e.g., "Product Manager", "Software Engineer", "Registered Nurse", "Marketing Director")
+13. Industry Detection (CRITICAL - BE ACCURATE):
+    Detect the PRIMARY industry/field based on job titles and responsibilities, NOT just skills mentioned.
+    PRIORITY ORDER for detection:
+    a) Look at job titles first: "Account Executive", "Sales Rep", "BDR" = SALES, not tech even if they sell tech products
+    b) Look at responsibilities: closing deals, managing accounts, quota attainment = SALES
+    c) Only use "technology" if they are BUILDING software/systems (developers, engineers, IT admins)
+    
+    IMPORTANT DISTINCTIONS:
+    - Sales/Account roles at tech companies = "sales" (NOT technology)
+    - Marketing roles = "marketing" (NOT technology even if digital marketing)
+    - Recruiters/HR at tech companies = "hr" (NOT technology)
+    - Product Managers = "technology" (they build products)
+    - Project Managers at non-tech = "general" or their actual industry
+    
+    Valid industries: technology, healthcare, finance, legal, sales, marketing, education, engineering, creative, hr, consulting, retail, hospitality, manufacturing, government, general
+14. Current Role: Detect the person's current or most recent job title/role (e.g., "Account Executive", "Software Engineer", "Registered Nurse", "Marketing Director")
 14. Readability Score (0-100): How easy is the resume to scan quickly
 15. Bullet Impact Score (0-100): % of bullets that show achievements vs responsibilities
 16. Keyword Density: Rate keyword presence as sparse/moderate/dense
