@@ -298,6 +298,38 @@
     },
     "trustMessage": "Sluit je aan bij duizenden werkzoekenden die hun CV hebben verbeterd met eerlijke recruiter-feedback."
   },
+  "trustIndicators": {
+    "badges": {
+      "resumes": {
+        "label": "10.000+ CV's",
+        "description": "Geanalyseerd & verbeterd"
+      },
+      "ssl": {
+        "label": "256-bit SSL",
+        "description": "Bankniveau-encryptie"
+      },
+      "autoDelete": {
+        "label": "Auto-verwijderd 24u",
+        "description": "Jouw data, jouw controle"
+      },
+      "gdpr": {
+        "label": "AVG Conform",
+        "description": "Privacy eerst"
+      },
+      "zeroStorage": {
+        "label": "Geen Opslag",
+        "description": "Verwerkt & verwijderd"
+      },
+      "instant": {
+        "label": "Directe Levering",
+        "description": "Resultaten in 30 seconden"
+      }
+    },
+    "methodology": {
+      "title": "Bekijk Onze Methodologie",
+      "subtitle": "Transparante AI-scoring"
+    }
+  },
   "preview": {
     "badge": "Voorbeeldanalyse",
     "title": "Dit krijg je",

@@ -1,37 +1,40 @@
 import { Shield, Lock, Clock, CloudOff, BookOpen, ExternalLink, Users, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useSafeTranslation } from "@/hooks/use-safe-translation";
 
 export function TrustIndicators() {
+  const { t } = useSafeTranslation();
+
   const securityBadges = [
     {
       icon: Users,
-      label: "10,000+ Resumes",
-      description: "Analyzed & improved"
+      labelKey: "trustIndicators.badges.resumes.label",
+      descriptionKey: "trustIndicators.badges.resumes.description"
     },
     {
       icon: Lock,
-      label: "256-bit SSL",
-      description: "Bank-level encryption"
+      labelKey: "trustIndicators.badges.ssl.label",
+      descriptionKey: "trustIndicators.badges.ssl.description"
     },
     {
       icon: Clock,
-      label: "Auto-deleted 24h",
-      description: "Your data, your control"
+      labelKey: "trustIndicators.badges.autoDelete.label",
+      descriptionKey: "trustIndicators.badges.autoDelete.description"
     },
     {
       icon: Shield,
-      label: "GDPR Compliant",
-      description: "Privacy first"
+      labelKey: "trustIndicators.badges.gdpr.label",
+      descriptionKey: "trustIndicators.badges.gdpr.description"
     },
     {
       icon: CloudOff,
-      label: "Zero Storage",
-      description: "Processed & discarded"
+      labelKey: "trustIndicators.badges.zeroStorage.label",
+      descriptionKey: "trustIndicators.badges.zeroStorage.description"
     },
     {
       icon: Zap,
-      label: "Instant Delivery",
-      description: "Results in 30 seconds"
+      labelKey: "trustIndicators.badges.instant.label",
+      descriptionKey: "trustIndicators.badges.instant.description"
     }
   ];
 
@@ -45,13 +48,13 @@ export function TrustIndicators() {
               const IconComponent = badge.icon;
               return (
                 <div
-                  key={badge.label}
+                  key={badge.labelKey}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-card/30 border border-border/30"
                 >
                   <IconComponent className="w-4 h-4 text-primary flex-shrink-0" />
                   <div className="text-left">
-                    <div className="text-[11px] font-medium text-foreground leading-tight">{badge.label}</div>
-                    <div className="text-[9px] text-muted-foreground leading-tight">{badge.description}</div>
+                    <div className="text-[11px] font-medium text-foreground leading-tight">{t(badge.labelKey)}</div>
+                    <div className="text-[9px] text-muted-foreground leading-tight">{t(badge.descriptionKey)}</div>
                   </div>
                 </div>
               );
@@ -66,10 +69,10 @@ export function TrustIndicators() {
             <BookOpen className="w-4 h-4 text-primary" />
             <div className="text-left">
               <div className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
-                See Our Methodology
+                {t('trustIndicators.methodology.title')}
               </div>
               <div className="text-[10px] text-muted-foreground">
-                Transparent AI scoring
+                {t('trustIndicators.methodology.subtitle')}
               </div>
             </div>
             <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-primary transition-colors" />
