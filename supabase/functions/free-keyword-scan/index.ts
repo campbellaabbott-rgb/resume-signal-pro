@@ -531,19 +531,32 @@ Apply the appropriate weights when calculating the ATS score. Mention in industr
     - For ENGINEERING: Focus on CAD software, industry standards (ISO, ASME), project management, technical certifications (PE, PMP)
     - For CREATIVE: Focus on design tools (Adobe Suite, Figma), portfolio platforms, project types, creative methodologies
     Each keyword should have a category (tool, skill, certification, methodology, metric) and impact level (critical, high, medium).
-13. Industry Detection (CRITICAL - BE ACCURATE):
-    Detect the PRIMARY industry/field based on job titles and responsibilities, NOT just skills mentioned.
-    PRIORITY ORDER for detection:
-    a) Look at job titles first: "Account Executive", "Sales Rep", "BDR" = SALES, not tech even if they sell tech products
-    b) Look at responsibilities: closing deals, managing accounts, quota attainment = SALES
-    c) Only use "technology" if they are BUILDING software/systems (developers, engineers, IT admins)
+13. Industry Detection (CRITICAL - BE EXTREMELY ACCURATE):
+    Detect the PRIMARY industry/field based on job titles, responsibilities, and skills. Read the resume carefully.
     
-    IMPORTANT DISTINCTIONS:
-    - Sales/Account roles at tech companies = "sales" (NOT technology)
+    TECHNOLOGY/SOFTWARE DETECTION (HIGHEST PRIORITY CHECK FIRST):
+    - If job titles include ANY of these → ALWAYS return "technology":
+      * Software Engineer, Software Developer, Full Stack Developer, Frontend/Backend Developer
+      * DevOps Engineer, SRE, Platform Engineer, Cloud Engineer, Data Engineer
+      * Machine Learning Engineer, AI Engineer, Data Scientist
+      * iOS Developer, Android Developer, Mobile Developer
+      * Web Developer, JavaScript Developer, Python Developer, Java Developer
+      * Systems Administrator, IT Administrator, Network Engineer
+      * QA Engineer, Test Engineer, Automation Engineer
+    - If responsibilities include: writing code, building software, deploying applications, managing infrastructure, developing APIs → return "technology"
+    - If skills prominently include: Python, JavaScript, React, Node.js, AWS, Docker, Kubernetes, Git, SQL databases, cloud platforms → likely "technology"
+    
+    SALES DETECTION (only if NOT technology):
+    - Job titles: Account Executive, Sales Rep, BDR, SDR, Sales Manager, Business Development
+    - Responsibilities: closing deals, managing accounts, quota attainment, pipeline management
+    - Keywords: CRM, Salesforce, revenue targets, cold calling, negotiations
+    
+    OTHER DISTINCTIONS:
+    - Sales/Account roles at tech companies = "sales" (NOT technology) - but verify they're not developers
     - Marketing roles = "marketing" (NOT technology even if digital marketing)
     - Recruiters/HR at tech companies = "hr" (NOT technology)
     - Product Managers = "technology" (they build products)
-    - Project Managers at non-tech = "general" or their actual industry
+    - Project Managers: check the industry they work in
     
     Valid industries: technology, healthcare, finance, legal, sales, marketing, education, engineering, creative, hr, consulting, retail, hospitality, manufacturing, government, general
 14. Current Role: Detect the person's current or most recent job title/role (e.g., "Account Executive", "Software Engineer", "Registered Nurse", "Marketing Director")
