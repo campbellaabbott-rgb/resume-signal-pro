@@ -195,6 +195,15 @@ serve(async (req) => {
       // Build prompts (simplified version of the main function's prompts)
       const systemPrompt = `You are an expert ATS resume analyzer. Analyze the resume and return structured JSON data.
 Focus on: ATS score (0-100), industry detection, format grade (A-D), experience level, keywords, and red flags.
+
+CRITICAL - INDUSTRY DETECTION:
+Detect industry based on JOB TITLES and RESPONSIBILITIES, not just skills mentioned.
+- Sales/Account roles (Account Executive, Sales Rep, BDR, Account Manager) = "sales" even at tech companies
+- Marketing roles = "marketing" (not technology)
+- Recruiters/HR = "hr"
+- Only use "technology" for people who BUILD software (developers, engineers, IT admins)
+- Valid industries: technology, healthcare, finance, legal, sales, marketing, education, engineering, creative, hr, consulting, retail, hospitality, manufacturing, government, general
+
 Be specific and actionable.`;
 
       const userPrompt = hasJobDescription 
