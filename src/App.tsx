@@ -13,6 +13,7 @@ import Methodology from "./pages/Methodology";
 import DevCheckoutTest from "./pages/DevCheckoutTest";
 import Affiliates from "./pages/Affiliates";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
+import ErrorDashboard from "./pages/ErrorDashboard";
 
 import NotFound from "./pages/NotFound";
 import { FloatingHelpButton } from "./components/FloatingHelpButton";
@@ -36,6 +37,7 @@ const App = () => (
         <Route path="/affiliates" element={<Affiliates />} />
         <Route path="/dev/checkout-test" element={<DevCheckoutTest />} />
         <Route path="/analytics" element={<AnalyticsDashboard />} />
+        <Route path="/errors" element={<ErrorDashboard />} />
         
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
