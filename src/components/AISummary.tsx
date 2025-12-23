@@ -99,6 +99,8 @@ export function AISummary({
 
   if (!summary && !isLoading) return null;
 
+  const displayName = candidateName?.split(' ')[0] || null;
+  
   return (
     <div className={cn(
       "rounded-2xl p-5 mb-6 border-2 transition-all duration-500",
@@ -119,9 +121,11 @@ export function AISummary({
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
-            <h4 className="font-semibold text-foreground">AI Summary</h4>
+            <h4 className="font-semibold text-foreground">
+              {displayName ? `${displayName}'s Resume Insights` : 'Your Resume Insights'}
+            </h4>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-              Personalized
+              AI Coach
             </span>
           </div>
           
@@ -129,6 +133,7 @@ export function AISummary({
             <div className="space-y-2">
               <div className="h-4 bg-muted/50 rounded animate-pulse w-full" />
               <div className="h-4 bg-muted/50 rounded animate-pulse w-3/4" />
+              <p className="text-xs text-muted-foreground/60 mt-1">Crafting personalized feedback...</p>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground leading-relaxed">
