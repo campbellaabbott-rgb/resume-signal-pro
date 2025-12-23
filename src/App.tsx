@@ -15,7 +15,7 @@ import Affiliates from "./pages/Affiliates";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import ErrorDashboard from "./pages/ErrorDashboard";
 import HealthCheck from "./pages/HealthCheck";
-
+import ScanMetrics from "./pages/ScanMetrics";
 import NotFound from "./pages/NotFound";
 import { FloatingHelpButton } from "./components/FloatingHelpButton";
 
@@ -40,6 +40,7 @@ const App = () => (
         <Route path="/analytics" element={<AnalyticsDashboard />} />
         <Route path="/errors" element={<ErrorDashboard />} />
         <Route path="/health-check" element={<HealthCheck />} />
+        <Route path="/scan-metrics" element={<ScanMetrics />} />
         
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />

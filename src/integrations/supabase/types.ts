@@ -344,6 +344,42 @@ export type Database = {
         }
         Relationships: []
       }
+      heartbeat_results: {
+        Row: {
+          checks_passed: Json | null
+          created_at: string
+          error_message: string | null
+          function_name: string
+          id: string
+          metadata: Json | null
+          response_time_ms: number | null
+          status: string
+          test_passed: boolean
+        }
+        Insert: {
+          checks_passed?: Json | null
+          created_at?: string
+          error_message?: string | null
+          function_name: string
+          id?: string
+          metadata?: Json | null
+          response_time_ms?: number | null
+          status: string
+          test_passed: boolean
+        }
+        Update: {
+          checks_passed?: Json | null
+          created_at?: string
+          error_message?: string | null
+          function_name?: string
+          id?: string
+          metadata?: Json | null
+          response_time_ms?: number | null
+          status?: string
+          test_passed?: boolean
+        }
+        Relationships: []
+      }
       payment_failures: {
         Row: {
           amount: number
@@ -425,6 +461,60 @@ export type Database = {
           id?: string
           resume_text?: string | null
           share_id?: string
+        }
+        Relationships: []
+      }
+      scan_metrics: {
+        Row: {
+          ai_model: string | null
+          cache_hit: boolean | null
+          created_at: string
+          duration_ms: number | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          input_length: number | null
+          ip_country: string | null
+          metadata: Json | null
+          output_valid: boolean | null
+          response_score: number | null
+          scan_type: string
+          status: string
+          visitor_id: string | null
+        }
+        Insert: {
+          ai_model?: string | null
+          cache_hit?: boolean | null
+          created_at?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          input_length?: number | null
+          ip_country?: string | null
+          metadata?: Json | null
+          output_valid?: boolean | null
+          response_score?: number | null
+          scan_type?: string
+          status: string
+          visitor_id?: string | null
+        }
+        Update: {
+          ai_model?: string | null
+          cache_hit?: boolean | null
+          created_at?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          input_length?: number | null
+          ip_country?: string | null
+          metadata?: Json | null
+          output_valid?: boolean | null
+          response_score?: number | null
+          scan_type?: string
+          status?: string
+          visitor_id?: string | null
         }
         Relationships: []
       }
@@ -658,6 +748,53 @@ export type Database = {
         }[]
       }
       get_scan_credits: { Args: { p_email: string }; Returns: number }
+      get_scan_geo_stats: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          country: string
+          failed_scans: number
+          failure_rate: number
+          total_scans: number
+        }[]
+      }
+      get_scan_health_status: {
+        Args: never
+        Returns: {
+          avg_latency_last_hour: number
+          issues: string[]
+          last_heartbeat_status: string
+          last_heartbeat_time: string
+          last_successful_scan: string
+          scans_last_hour: number
+          status: string
+          success_rate_last_hour: number
+        }[]
+      }
+      get_scan_metrics_hourly: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          avg_duration_ms: number
+          cache_hit_rate: number
+          completed_scans: number
+          failed_scans: number
+          hour_bucket: string
+          total_scans: number
+        }[]
+      }
+      get_scan_success_rate: {
+        Args: { p_hours_back?: number; p_scan_type?: string }
+        Returns: {
+          avg_duration_ms: number
+          cache_hit_rate: number
+          completed_scans: number
+          failed_scans: number
+          p50_duration_ms: number
+          p95_duration_ms: number
+          success_rate: number
+          total_scans: number
+          validation_errors: number
+        }[]
+      }
       get_temp_resume: {
         Args: { p_session_id: string }
         Returns: {
@@ -687,6 +824,36 @@ export type Database = {
           p_http_status?: number
         }
         Returns: boolean
+      }
+      log_heartbeat_result: {
+        Args: {
+          p_checks_passed?: Json
+          p_error_message?: string
+          p_function_name: string
+          p_metadata?: Json
+          p_response_time_ms: number
+          p_status: string
+          p_test_passed: boolean
+        }
+        Returns: string
+      }
+      log_scan_metric: {
+        Args: {
+          p_ai_model?: string
+          p_cache_hit?: boolean
+          p_duration_ms?: number
+          p_error_code?: string
+          p_error_message?: string
+          p_input_length?: number
+          p_ip_country?: string
+          p_metadata?: Json
+          p_output_valid?: boolean
+          p_response_score?: number
+          p_scan_type?: string
+          p_status?: string
+          p_visitor_id?: string
+        }
+        Returns: string
       }
       login_affiliate: {
         Args: { p_email: string; p_password: string }
