@@ -422,7 +422,9 @@ const Index = () => {
     }
   };
 
-  const handleFreeScan = async (skipCache = false) => {
+  const handleFreeScan = async (skipCacheArg?: unknown) => {
+    // NOTE: onClick handlers pass a MouseEvent as the first arg; only treat explicit `true` as skipCache.
+    const skipCache = skipCacheArg === true;
     const contentToAnalyze = resumeText;
     
     if (!contentToAnalyze && !selectedFile) {
@@ -444,7 +446,12 @@ const Index = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke("free-keyword-scan", {
-        body: { resumeText: contentToAnalyze, jobDescriptionText: jobDescriptionText || undefined, honeypot, skipCache },
+        body: {
+          resumeText: contentToAnalyze,
+          jobDescriptionText: jobDescriptionText || undefined,
+          honeypot,
+          skipCache,
+        },
       });
 
       // Check for rate limit in error response or data
