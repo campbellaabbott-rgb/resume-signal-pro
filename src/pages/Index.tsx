@@ -464,6 +464,11 @@ const Index = () => {
               ? JSON.parse(errorContext.body) 
               : errorContext.body;
             if (errorBody?.rateLimited) {
+              toast({
+                title: "Daily Scan Limit Reached",
+                description: errorBody.error || `You've used all ${errorBody.scansLimit || 7} free scans. Resets in ~${errorBody.hoursUntilReset || 24} hours.`,
+                variant: "destructive",
+              });
               setShowRateLimitUpsell(true);
               return;
             }
@@ -475,6 +480,11 @@ const Index = () => {
       }
 
       if (data?.rateLimited) {
+        toast({
+          title: "Daily Scan Limit Reached",
+          description: data.error || `You've used all ${data.scansLimit || 7} free scans. Resets in ~${data.hoursUntilReset || 24} hours.`,
+          variant: "destructive",
+        });
         setShowRateLimitUpsell(true);
         return;
       }
@@ -575,6 +585,11 @@ const Index = () => {
               ? JSON.parse(errorContext.body) 
               : errorContext.body;
             if (errorBody?.rateLimited) {
+              toast({
+                title: "Daily Scan Limit Reached",
+                description: errorBody.error || `You've used all ${errorBody.scansLimit || 7} free scans. Resets in ~${errorBody.hoursUntilReset || 24} hours.`,
+                variant: "destructive",
+              });
               setShowRateLimitUpsell(true);
               return;
             }
@@ -586,6 +601,11 @@ const Index = () => {
       }
 
       if (data?.rateLimited) {
+        toast({
+          title: "Daily Scan Limit Reached",
+          description: data.error || `You've used all ${data.scansLimit || 7} free scans. Resets in ~${data.hoursUntilReset || 24} hours.`,
+          variant: "destructive",
+        });
         setShowRateLimitUpsell(true);
         return;
       }

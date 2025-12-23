@@ -390,9 +390,30 @@ serve(async (req) => {
       if (rlError) {
         console.error("[FREE-KEYWORD-SCAN] Rate limit check error:", rlError);
       } else if (!allowed) {
-        console.log(`[FREE-KEYWORD-SCAN] Rate limit exceeded for IP: ${clientIp}`);
+        // Get current usage for helpful error message
+        const { data: usageData } = await supabase
+          .from('rate_limits')
+          .select('request_count, window_start')
+          .eq('function_name', 'free-keyword-scan')
+          .eq('ip_address', clientIp)
+          .maybeSingle();
+        
+        const scansUsed = usageData?.request_count || FREE_SCANS_PER_DAY;
+        const windowStart = usageData?.window_start ? new Date(usageData.window_start) : new Date();
+        const resetTime = new Date(windowStart.getTime() + 24 * 60 * 60 * 1000);
+        const hoursUntilReset = Math.max(1, Math.ceil((resetTime.getTime() - Date.now()) / (1000 * 60 * 60)));
+        
+        console.log(`[FREE-KEYWORD-SCAN] Rate limit exceeded for IP: ${clientIp} (${scansUsed}/${FREE_SCANS_PER_DAY} used)`);
+        
         return new Response(
-          JSON.stringify({ error: ERROR_MESSAGES.RATE_LIMITED, rateLimited: true }),
+          JSON.stringify({ 
+            error: `You've used all ${FREE_SCANS_PER_DAY} free scans for today. Your limit resets in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`,
+            rateLimited: true,
+            scansUsed,
+            scansLimit: FREE_SCANS_PER_DAY,
+            hoursUntilReset,
+            resetTime: resetTime.toISOString()
+          }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
