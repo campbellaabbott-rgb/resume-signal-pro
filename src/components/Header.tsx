@@ -39,7 +39,7 @@ export function Header() {
       <div className="fixed top-0 left-0 right-0 z-[60]">
         {/* Beta Banner */}
         <div className="bg-primary text-primary-foreground text-center py-1.5 text-xs font-medium tracking-wide">
-          🚀 Currently in Beta — We'd love your feedback!
+          🚀 {t('header.betaBanner')}
         </div>
         <header className="bg-background border-b border-border/50" role="banner">
         <div className="container">
@@ -70,7 +70,7 @@ export function Header() {
                 asChild
                 className="gap-2 text-muted-foreground hover:text-foreground"
               >
-                <Link to="/methodology">How It Works</Link>
+                <Link to="/methodology">{t('header.howItWorks')}</Link>
               </Button>
               <Button
                 variant="ghost"
@@ -78,7 +78,7 @@ export function Header() {
                 asChild
                 className="gap-2 text-muted-foreground hover:text-foreground"
               >
-                <Link to="/pricing">Pricing</Link>
+                <Link to="/pricing">{t('header.pricing')}</Link>
               </Button>
               <Button
                 variant="ghost"
@@ -88,7 +88,7 @@ export function Header() {
               >
                 <Link to="/trust">
                   <Shield className="w-3.5 h-3.5" />
-                  Trust
+                  {t('header.trust')}
                 </Link>
               </Button>
             </div>

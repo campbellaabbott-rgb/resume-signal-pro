@@ -2,7 +2,11 @@
   "header": {
     "tagline": "Recruiter-KI-Feedback",
     "getStarted": "Jetzt starten",
-    "start": "Start"
+    "start": "Start",
+    "betaBanner": "Derzeit in der Beta — Wir freuen uns über Ihr Feedback!",
+    "howItWorks": "So funktioniert's",
+    "pricing": "Preise",
+    "trust": "Vertrauen"
   },
   "hero": {
     "badge": "KI-gestützte Lebenslauf-Analyse",
@@ -81,7 +85,9 @@
     "copyright": "© {{year}} Resume Booster. Alle Rechte vorbehalten.",
     "privacy": "Datenschutz",
     "terms": "Nutzungsbedingungen",
-    "contact": "Kontakt"
+    "contact": "Kontakt",
+    "questions": "Fragen oder Feedback?",
+    "pricing": "Preise"
   },
   "language": {
     "select": "Sprache wählen"
