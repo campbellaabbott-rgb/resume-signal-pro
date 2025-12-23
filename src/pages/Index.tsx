@@ -52,6 +52,7 @@ import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useErrorTracking } from "@/hooks/use-error-tracking";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { useAffiliateTracking, getStoredReferralCode } from "@/hooks/use-affiliate-auth";
+import { useStreamingScan, type StreamProgress } from "@/hooks/use-streaming-scan";
 
 interface FreeKeywordResult {
   candidateName?: string | null;
@@ -186,6 +187,9 @@ const Index = () => {
   
   // Exit intent popup for bounce rate reduction
   const { showPopup: showExitIntent, closePopup: closeExitIntent } = useExitIntent(!freeKeywordResult);
+  
+  // Streaming scan for real-time progress updates
+  const { isStreaming, progress: streamingProgress, startStreamingScan, cancelScan } = useStreamingScan();
   
   // Track if we're pre-storing to avoid duplicate calls
   const isPreStoring = useRef(false);
@@ -447,99 +451,77 @@ const Index = () => {
     trackScanStarted();
 
     try {
-      const { data, error } = await supabase.functions.invoke("free-keyword-scan", {
-        body: {
-          resumeText: contentToAnalyze,
-          jobDescriptionText: jobDescriptionText || undefined,
-          honeypot,
-          skipCache,
+      // Use streaming scan for real-time progress updates
+      const result = await startStreamingScan(contentToAnalyze, {
+        jobDescriptionText: jobDescriptionText || undefined,
+        honeypot,
+        skipCache,
+        onProgress: (progress) => {
+          console.log('[StreamingScan] Progress:', progress.stage, progress.progress + '%');
+        },
+        onComplete: (data) => {
+          console.log('[StreamingScan] Complete:', data.atsScoreEstimate);
+        },
+        onError: (error) => {
+          console.error('[StreamingScan] Error:', error);
         },
       });
 
-      // Check for rate limit in error response or data
-      if (error) {
-        // Parse error context for rate limit info
-        const errorContext = error?.context;
-        if (errorContext?.body) {
-          try {
-            const errorBody = typeof errorContext.body === 'string' 
-              ? JSON.parse(errorContext.body) 
-              : errorContext.body;
-            if (errorBody?.rateLimited) {
-              // Track the rate limit error
-              trackRateLimitError('free-keyword-scan', errorBody.scansUsed, errorBody.scansLimit);
-              toast({
-                title: "Daily Scan Limit Reached",
-                description: errorBody.error || `You've used all ${errorBody.scansLimit || 7} free scans. Resets in ~${errorBody.hoursUntilReset || 24} hours.`,
-                variant: "destructive",
-              });
-              setShowRateLimitUpsell(true);
-              return;
-            }
-          } catch {
-            // Not JSON, continue with regular error handling
-          }
-        }
-        // Track other API errors
-        trackApiError('free-keyword-scan', error?.context?.status || 500, error?.message || 'Unknown error');
-        throw error;
-      }
-
-      if (data?.rateLimited) {
-        // Track the rate limit error
-        trackRateLimitError('free-keyword-scan', data.scansUsed, data.scansLimit);
+      // Handle rate limiting
+      if (result?.rateLimited) {
+        trackRateLimitError('free-keyword-scan', (result as any).scansUsed, (result as any).scansLimit);
         toast({
           title: "Daily Scan Limit Reached",
-          description: data.error || `You've used all ${data.scansLimit || 7} free scans. Resets in ~${data.hoursUntilReset || 24} hours.`,
+          description: result.error || `You've used all your free scans. Resets in ~24 hours.`,
           variant: "destructive",
         });
         setShowRateLimitUpsell(true);
         return;
       }
 
-      if (data?.success) {
+      if (result?.success) {
         // Track if this was a cached result
-        setIsCachedResult(!!data.cached);
+        setIsCachedResult(!!result.cached);
         
         setFreeKeywordResult({
-          industry: data.industry,
-          atsScoreEstimate: data.atsScoreEstimate,
-          formatGrade: data.formatGrade,
-          formatIssue: data.formatIssue,
-          resumeLength: data.resumeLength,
-          wordCount: data.wordCount,
-          experienceLevel: data.experienceLevel,
-          sectionCheck: data.sectionCheck,
-          contactInfo: data.contactInfo,
-          topStrength: data.topStrength,
-          quantificationScore: data.quantificationScore,
-          actionVerbGrade: data.actionVerbGrade,
-          readabilityScore: data.readabilityScore,
-          bulletImpactScore: data.bulletImpactScore,
-          keywordDensity: data.keywordDensity,
-          improvementPotential: data.improvementPotential,
-          redFlags: data.redFlags,
-          keywords: data.keywords,
+          industry: result.industry || 'General',
+          atsScoreEstimate: result.atsScoreEstimate || 0,
+          formatGrade: result.formatGrade || 'C',
+          formatIssue: result.formatIssue || '',
+          resumeLength: (result as any).resumeLength,
+          wordCount: (result as any).wordCount,
+          experienceLevel: result.experienceLevel,
+          sectionCheck: result.sectionCheck,
+          contactInfo: (result as any).contactInfo,
+          topStrength: result.topStrength,
+          quantificationScore: (result as any).quantificationScore,
+          actionVerbGrade: (result as any).actionVerbGrade,
+          readabilityScore: (result as any).readabilityScore,
+          bulletImpactScore: (result as any).bulletImpactScore,
+          keywordDensity: (result as any).keywordDensity,
+          improvementPotential: result.improvementPotential,
+          redFlags: result.redFlags || [],
+          keywords: result.keywords || [],
           // Job matching fields
-          jobMatchScore: data.jobMatchScore,
-          jobMatchGrade: data.jobMatchGrade,
-          matchingSkills: data.matchingSkills,
-          missingSkills: data.missingSkills,
-          experienceFit: data.experienceFit,
-          titleAlignment: data.titleAlignment,
-          jobMatchSummary: data.jobMatchSummary,
+          jobMatchScore: (result as any).jobMatchScore,
+          jobMatchGrade: (result as any).jobMatchGrade,
+          matchingSkills: (result as any).matchingSkills,
+          missingSkills: (result as any).missingSkills,
+          experienceFit: (result as any).experienceFit,
+          titleAlignment: (result as any).titleAlignment,
+          jobMatchSummary: (result as any).jobMatchSummary,
         });
         
         // Track scan completed in funnel
-        trackScanCompleted(data.atsScoreEstimate, data.industry);
+        trackScanCompleted(result.atsScoreEstimate || 0, result.industry || 'General');
         
         // Scroll to results and track results viewed
         setTimeout(() => {
           document.getElementById("free-results")?.scrollIntoView({ behavior: "smooth" });
-          trackResultsViewed(data.atsScoreEstimate);
+          trackResultsViewed(result.atsScoreEstimate || 0);
         }, 100);
-      } else {
-        throw new Error(data?.error || "Failed to analyze resume");
+      } else if (result) {
+        throw new Error(result.error || "Failed to analyze resume");
       }
     } catch (error: any) {
       console.error("Free scan error:", error);
@@ -1021,13 +1003,14 @@ const Index = () => {
           onCheckout={(linkedIn, jobDescription) => handleCheckout(undefined, linkedIn, jobDescription)}
           onFreeScan={handleFreeScan}
           isLoading={isLoading}
-          isFreeScanLoading={isFreeScanLoading}
+          isFreeScanLoading={isFreeScanLoading || isStreaming}
           hasContent={!!resumeText || !!selectedFile}
           linkedInText={linkedInText}
           onLinkedInTextChange={setLinkedInText}
           jobDescriptionText={jobDescriptionText}
           onJobDescriptionTextChange={setJobDescriptionText}
           onJobsChange={setUploadedJobs}
+          streamingProgress={streamingProgress}
         />
         
         {/* How It Works - Show after uploader on mobile */}
