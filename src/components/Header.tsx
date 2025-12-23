@@ -1,7 +1,7 @@
 import { Sparkles, CreditCard, Package, Shield } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -11,14 +11,24 @@ import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 
 export function Header() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [showScanPackModal, setShowScanPackModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   
   const scrollToUpload = () => {
+    // If not on home page, navigate there first with hash
+    if (location.pathname !== '/') {
+      navigate('/#upload');
+      return;
+    }
+    
+    // On home page, scroll to upload section
     const uploadSection = document.getElementById('upload');
     if (uploadSection) {
       uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
+      // Fallback: scroll past hero
       window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
     }
   };

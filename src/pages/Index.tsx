@@ -277,6 +277,18 @@ const Index = () => {
       setJobDescriptionText(sessionData.jobDescriptionText);
     }
     
+    // Handle hash navigation (e.g., /#upload from other pages)
+    if (window.location.hash === '#upload') {
+      setTimeout(() => {
+        const uploadSection = document.getElementById('upload');
+        if (uploadSection) {
+          uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        // Clear the hash after scrolling
+        window.history.replaceState(null, '', window.location.pathname);
+      }, 100);
+    }
+    
     return cleanup;
   }, []);
 
