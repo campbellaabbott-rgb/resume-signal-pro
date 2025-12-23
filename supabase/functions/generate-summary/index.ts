@@ -115,7 +115,7 @@ Start with "${nameGreeting}" and focus on: 1) their biggest strength, 2) the #1 
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-flash-lite", // Using lite for faster response on simple summaries
         messages: [
           { role: "user", content: prompt }
         ],

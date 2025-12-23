@@ -1,0 +1,427 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
+
+// Declare EdgeRuntime for background tasks
+declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const MAX_RESUME_LENGTH = 50000;
+const MAX_JOB_DESCRIPTION_LENGTH = 15000;
+const FREE_SCANS_PER_DAY = 7;
+const FUNCTION_NAME = 'free-keyword-scan';
+const CACHE_TTL_HOURS = 24;
+
+// Helper to get client IP
+const getClientIp = (req: Request): string => {
+  return req.headers.get('cf-connecting-ip') ||
+         req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+         req.headers.get('x-real-ip') || 
+         'unknown';
+};
+
+// Generate cache key
+async function generateCacheKey(resumeText: string, jobDescriptionText?: string): Promise<string> {
+  const normalizedResume = resumeText.toLowerCase().replace(/\s+/g, ' ').trim().substring(0, 10000);
+  const normalizedJob = jobDescriptionText ? jobDescriptionText.toLowerCase().replace(/\s+/g, ' ').trim().substring(0, 5000) : '';
+  const combined = `${normalizedResume}|||${normalizedJob}`;
+  
+  const encoder = new TextEncoder();
+  const data = encoder.encode(combined);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// SSE helper to send events
+function createSSEStream() {
+  const encoder = new TextEncoder();
+  let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+  
+  const stream = new ReadableStream<Uint8Array>({
+    start(c) {
+      controller = c;
+    },
+  });
+
+  const send = (event: string, data: any) => {
+    if (controller) {
+      const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+      controller.enqueue(encoder.encode(message));
+    }
+  };
+
+  const close = () => {
+    if (controller) {
+      controller.close();
+    }
+  };
+
+  return { stream, send, close };
+}
+
+// Progress stages for UI feedback
+const PROGRESS_STAGES = [
+  { stage: 'parsing', message: 'Parsing resume content...', progress: 10 },
+  { stage: 'detecting', message: 'Detecting industry & experience...', progress: 20 },
+  { stage: 'analyzing', message: 'Running AI analysis...', progress: 40 },
+  { stage: 'scoring', message: 'Calculating ATS score...', progress: 70 },
+  { stage: 'generating', message: 'Generating insights...', progress: 85 },
+  { stage: 'finalizing', message: 'Finalizing report...', progress: 95 },
+];
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const clientIp = getClientIp(req);
+  const requestStartTime = Date.now();
+
+  // Create SSE stream
+  const { stream, send, close } = createSSEStream();
+
+  // Start response immediately with SSE headers
+  const response = new Response(stream, {
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
+
+  // Process in background while streaming progress
+  EdgeRuntime.waitUntil((async () => {
+    try {
+      const { resumeText, jobDescriptionText, honeypot, skipCache } = await req.json();
+
+      // Honeypot check
+      if (honeypot && honeypot.trim() !== '') {
+        send('complete', { success: true, atsScoreEstimate: 65, industry: "General" });
+        close();
+        return;
+      }
+
+      // Validation
+      if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length === 0) {
+        send('error', { error: 'Resume text is required' });
+        close();
+        return;
+      }
+
+      if (resumeText.length > MAX_RESUME_LENGTH) {
+        send('error', { error: 'Resume text is too long. Please limit to 50,000 characters.' });
+        close();
+        return;
+      }
+
+      // Send initial progress
+      send('progress', PROGRESS_STAGES[0]);
+
+      // Initialize Supabase
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      
+      if (!supabaseUrl || !supabaseServiceKey) {
+        send('error', { error: 'Service temporarily unavailable.' });
+        close();
+        return;
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+      // Rate limiting
+      const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
+        p_function: FUNCTION_NAME,
+        p_ip: clientIp,
+        p_max_requests: FREE_SCANS_PER_DAY,
+        p_window_minutes: 24 * 60
+      });
+
+      if (rlError || !allowed) {
+        send('error', { 
+          error: 'Daily scan limit reached. Upgrade for unlimited access!',
+          rateLimited: true,
+          scansLimit: FREE_SCANS_PER_DAY
+        });
+        close();
+        return;
+      }
+
+      send('progress', PROGRESS_STAGES[1]);
+
+      // Check cache
+      const hasJobDescription = jobDescriptionText && typeof jobDescriptionText === 'string' && jobDescriptionText.trim().length > 50;
+      const truncatedJobDescription = hasJobDescription ? jobDescriptionText.substring(0, MAX_JOB_DESCRIPTION_LENGTH) : null;
+      const cacheKey = await generateCacheKey(resumeText, truncatedJobDescription || undefined);
+      
+      if (!skipCache) {
+        const { data: cachedData } = await supabase.rpc('get_cached_response', {
+          p_cache_key: cacheKey,
+          p_function_name: FUNCTION_NAME
+        });
+        
+        if (cachedData) {
+          console.log("[FREE-KEYWORD-SCAN-STREAM] Cache hit");
+          send('progress', { stage: 'complete', message: 'Retrieved from cache!', progress: 100 });
+          send('complete', { success: true, cached: true, ...cachedData });
+          close();
+          
+          // Increment counter in background
+          EdgeRuntime.waitUntil(
+            (async () => {
+              await supabase.rpc('increment_free_scan_count');
+            })()
+          );
+          return;
+        }
+      }
+
+      send('progress', PROGRESS_STAGES[2]);
+
+      // Get API key
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (!LOVABLE_API_KEY) {
+        send('error', { error: 'Service temporarily unavailable.' });
+        close();
+        return;
+      }
+
+      // Build prompts (simplified version of the main function's prompts)
+      const systemPrompt = `You are an expert ATS resume analyzer. Analyze the resume and return structured JSON data.
+Focus on: ATS score (0-100), industry detection, format grade (A-D), experience level, keywords, and red flags.
+Be specific and actionable.`;
+
+      const userPrompt = hasJobDescription 
+        ? `Analyze this resume for the target job:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>\n\n<job_description>\n${truncatedJobDescription}\n</job_description>`
+        : `Analyze this resume:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>`;
+
+      // Call AI with streaming enabled
+      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash", // Using flash for speed in streaming version
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          stream: true,
+          tools: [{
+            type: "function",
+            function: {
+              name: "submit_analysis",
+              description: "Submit resume analysis results",
+              parameters: {
+                type: "object",
+                properties: {
+                  candidateName: { type: "string" },
+                  industry: { type: "string" },
+                  currentRole: { type: "string" },
+                  atsScoreEstimate: { type: "number" },
+                  formatGrade: { type: "string", enum: ["A", "B", "C", "D"] },
+                  formatIssue: { type: "string" },
+                  experienceLevel: {
+                    type: "object",
+                    properties: {
+                      level: { type: "string", enum: ["entry", "mid", "senior", "executive"] },
+                      yearsEstimate: { type: "string" }
+                    }
+                  },
+                  sectionCheck: {
+                    type: "object",
+                    properties: {
+                      hasContact: { type: "boolean" },
+                      hasSummary: { type: "boolean" },
+                      hasExperience: { type: "boolean" },
+                      hasEducation: { type: "boolean" },
+                      hasSkills: { type: "boolean" },
+                      missingSections: { type: "array", items: { type: "string" } }
+                    }
+                  },
+                  topStrength: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string" },
+                      description: { type: "string" }
+                    }
+                  },
+                  redFlags: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        issue: { type: "string" },
+                        impact: { type: "string" }
+                      }
+                    }
+                  },
+                  keywords: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        keyword: { type: "string" },
+                        reason: { type: "string" }
+                      }
+                    }
+                  },
+                  quickWins: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        fix: { type: "string" },
+                        timeEstimate: { type: "string" },
+                        impact: { type: "string", enum: ["low", "medium", "high"] }
+                      }
+                    }
+                  },
+                  improvementPotential: {
+                    type: "object",
+                    properties: {
+                      level: { type: "string", enum: ["low", "medium", "high"] },
+                      estimatedScoreIncrease: { type: "number" },
+                      topPriority: { type: "string" }
+                    }
+                  }
+                },
+                required: ["industry", "atsScoreEstimate", "formatGrade", "experienceLevel", "keywords", "redFlags"]
+              }
+            }
+          }],
+          tool_choice: { type: "function", function: { name: "submit_analysis" } }
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        console.error("[FREE-KEYWORD-SCAN-STREAM] AI error:", aiResponse.status, errorText);
+        send('error', { error: 'Analysis failed. Please try again.' });
+        close();
+        return;
+      }
+
+      send('progress', PROGRESS_STAGES[3]);
+
+      // Process streaming response
+      const reader = aiResponse.body?.getReader();
+      if (!reader) {
+        send('error', { error: 'Failed to read AI response.' });
+        close();
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let toolCallArgs = '';
+      let progressSent = 3; // Track which progress stages we've sent
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        
+        // Process complete SSE lines
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
+          
+          try {
+            const parsed = JSON.parse(line.slice(6));
+            const delta = parsed.choices?.[0]?.delta;
+            
+            // Accumulate tool call arguments
+            if (delta?.tool_calls?.[0]?.function?.arguments) {
+              toolCallArgs += delta.tool_calls[0].function.arguments;
+              
+              // Send progress updates based on content received
+              const argLength = toolCallArgs.length;
+              if (argLength > 500 && progressSent < 4) {
+                send('progress', PROGRESS_STAGES[4]);
+                progressSent = 4;
+              } else if (argLength > 1500 && progressSent < 5) {
+                send('progress', PROGRESS_STAGES[5]);
+                progressSent = 5;
+              }
+            }
+          } catch (e) {
+            // Ignore parse errors for incomplete chunks
+          }
+        }
+      }
+
+      // Parse final result
+      let analysis = null;
+      try {
+        analysis = JSON.parse(toolCallArgs);
+      } catch (e) {
+        console.error("[FREE-KEYWORD-SCAN-STREAM] Failed to parse tool args:", e);
+        send('error', { error: 'Failed to parse analysis results.' });
+        close();
+        return;
+      }
+
+      if (!analysis) {
+        send('error', { error: 'No analysis returned.' });
+        close();
+        return;
+      }
+
+      // Build response
+      const responseData = {
+        success: true,
+        ...analysis,
+        redFlags: (analysis.redFlags || []).slice(0, 3),
+        keywords: (analysis.keywords || []).slice(0, 6),
+        quickWins: (analysis.quickWins || []).slice(0, 3),
+      };
+
+      // Cache response
+      EdgeRuntime.waitUntil(
+        (async () => {
+          await supabase.rpc('store_cached_response', {
+            p_cache_key: cacheKey,
+            p_function_name: FUNCTION_NAME,
+            p_response: responseData,
+            p_ttl_hours: CACHE_TTL_HOURS
+          });
+        })()
+      );
+
+      // Increment counter
+      EdgeRuntime.waitUntil(
+        (async () => {
+          await supabase.rpc('increment_free_scan_count');
+        })()
+      );
+
+      // Log performance
+      const duration = Date.now() - requestStartTime;
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Complete in ${duration}ms, ATS: ${analysis.atsScoreEstimate}`);
+
+      // Send final result
+      send('progress', { stage: 'complete', message: 'Analysis complete!', progress: 100 });
+      send('complete', responseData);
+      close();
+
+    } catch (error) {
+      console.error("[FREE-KEYWORD-SCAN-STREAM] Error:", error);
+      send('error', { error: 'An error occurred. Please try again.' });
+      close();
+    }
+  })());
+
+  return response;
+});
