@@ -182,9 +182,10 @@ const escapeXml = (str: string): string => {
     .replace(/>/g, '&gt;');
 };
 
-// Retry helper for AI API calls with exponential backoff
-const MAX_AI_RETRIES = 2;
-const AI_RETRY_DELAY_MS = 2000;
+// Retry helper for API calls with exponential backoff
+const MAX_AI_RETRIES = 3;
+const INITIAL_RETRY_DELAY_MS = 1000;
+const REQUEST_TIMEOUT_MS = 60000; // 60 second timeout for AI calls
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -196,9 +197,18 @@ async function fetchWithRetry(
   let lastError: Error | null = null;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    
     try {
+      console.log(`[ANALYZE-RESUME] AI API attempt ${attempt}/${maxRetries}`);
       
-      const response = await fetch(url, options);
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
       
       // Don't retry client errors (4xx) except rate limits
       if (response.ok || (response.status >= 400 && response.status < 500 && response.status !== 429)) {
@@ -207,24 +217,65 @@ async function fetchWithRetry(
       
       // Retry on server errors (5xx) and rate limits (429)
       if (attempt < maxRetries) {
-        const delay = AI_RETRY_DELAY_MS * attempt;
+        const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1); // Exponential backoff
         console.log(`[ANALYZE-RESUME] AI API error ${response.status}, retrying in ${delay}ms`);
         await sleep(delay);
       } else {
         return response; // Return last response on final attempt
       }
     } catch (error) {
+      clearTimeout(timeoutId);
       lastError = error instanceof Error ? error : new Error(String(error));
       
+      const isTimeout = lastError.name === 'AbortError' || lastError.message.includes('timeout');
+      const errorType = isTimeout ? 'timeout' : 'network';
+      
       if (attempt < maxRetries) {
-        const delay = AI_RETRY_DELAY_MS * attempt;
-        console.log(`[ANALYZE-RESUME] AI API network error, retrying in ${delay}ms: ${lastError.message}`);
+        const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+        console.log(`[ANALYZE-RESUME] ${errorType} error, retrying in ${delay}ms: ${lastError.message}`);
         await sleep(delay);
+      } else {
+        console.error(`[ANALYZE-RESUME] All ${maxRetries} attempts failed: ${lastError.message}`);
       }
     }
   }
   
   throw lastError || new Error('AI API request failed after retries');
+}
+
+// Retry helper for Supabase RPC calls
+async function rpcWithRetry<T>(
+  supabase: any,
+  fnName: string,
+  params: Record<string, unknown>,
+  maxRetries: number = 2
+): Promise<{ data: T | null; error: any }> {
+  let lastError: any = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const { data, error } = await supabase.rpc(fnName, params);
+    
+    if (!error) {
+      return { data, error: null };
+    }
+    
+    lastError = error;
+    
+    // Only retry on connection/timeout errors, not validation errors
+    const isRetryable = error.message?.includes('timeout') || 
+                        error.message?.includes('connection') ||
+                        error.code === 'PGRST503';
+    
+    if (!isRetryable || attempt >= maxRetries) {
+      return { data: null, error };
+    }
+    
+    const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+    console.log(`[ANALYZE-RESUME] RPC ${fnName} error, retrying in ${delay}ms: ${error.message}`);
+    await sleep(delay);
+  }
+  
+  return { data: null, error: lastError };
 }
 
 // Tool definition for structured resume analysis output
