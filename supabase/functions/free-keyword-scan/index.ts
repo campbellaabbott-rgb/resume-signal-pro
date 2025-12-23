@@ -432,6 +432,19 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Initialize metric context for tracking
+    const ipCountry = await getCountryCode(req, clientIp) || null;
+    const metricCtx: ScanMetricContext = {
+      supabase,
+      startTime: requestStartTime,
+      scanType: 'free',
+      cacheHit: false,
+      ipCountry,
+      visitorId: clientIp, // Using IP as visitor ID for now
+      inputLength: resumeText.length,
+      aiModel: 'google/gemini-2.5-flash'
+    };
+
     // For re-analyze requests (skipCache=true), check if user has an existing cached result first
     // If they do, allow re-analysis without rate limiting (they're refreshing their own data)
     let bypassRateLimitForReanalyze = false;
@@ -660,6 +673,15 @@ ${resumeText.substring(0, 15000)}
       
       if (cachedResponse) {
         console.log("[FREE-KEYWORD-SCAN] Returning cached response");
+        metricCtx.cacheHit = true;
+        
+        // Log cache hit metric
+        logScanMetric(metricCtx, 'completed', {
+          outputValid: true,
+          responseScore: cachedResponse.atsScoreEstimate,
+          metadata: { cached: true, industry: cachedResponse.industry }
+        });
+        
         trackPerformance(requestStartTime, 'free-keyword-scan-cached', true, { cached: true }, clientIp);
         
         // Still increment counter for cached responses
@@ -1179,10 +1201,27 @@ ${resumeText.substring(0, 15000)}
 
     if (!analysis) {
       console.error("[FREE-KEYWORD-SCAN] No analysis returned from AI");
+      logScanMetric(metricCtx, 'validation_error', {
+        errorCode: 'NO_ANALYSIS',
+        errorMessage: 'No analysis returned from AI',
+        outputValid: false
+      });
       return new Response(
         JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Validate AI response structure
+    const validation = validateAIResponse(analysis);
+    if (!validation.valid) {
+      console.error("[FREE-KEYWORD-SCAN] AI response validation failed:", validation.issues);
+      logScanMetric(metricCtx, 'validation_error', {
+        errorCode: 'INVALID_RESPONSE',
+        errorMessage: validation.issues.join(', '),
+        outputValid: false,
+        metadata: { issues: validation.issues }
+      });
     }
 
     // Ensure limits
@@ -1270,6 +1309,17 @@ ${resumeText.substring(0, 15000)}
     // Cache the successful response (non-blocking)
     storeCachedResponse(supabase, cacheKey, responseData);
     
+    // Log successful completion metric
+    logScanMetric(metricCtx, 'completed', {
+      outputValid: true,
+      responseScore: analysis.atsScoreEstimate,
+      metadata: { 
+        industry: analysis.industry, 
+        experienceLevel: analysis.experienceLevel?.level,
+        formatGrade: analysis.formatGrade
+      }
+    });
+    
     trackPerformance(requestStartTime, 'free-keyword-scan', true, { atsScore: analysis.atsScoreEstimate, industry: analysis.industry }, clientIp);
     
     return new Response(
@@ -1278,6 +1328,36 @@ ${resumeText.substring(0, 15000)}
     );
 
   } catch (error) {
+    // Log error metric - need to create a basic context since we may have failed before metricCtx was created
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (supabaseUrl && supabaseServiceKey) {
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      EdgeRuntime.waitUntil(
+        (async () => {
+          try {
+            await supabase.rpc('log_scan_metric', {
+              p_scan_type: 'free',
+              p_status: 'failed',
+              p_duration_ms: Date.now() - requestStartTime,
+              p_cache_hit: false,
+              p_ai_model: 'google/gemini-2.5-flash',
+              p_error_code: 'UNCAUGHT_ERROR',
+              p_error_message: error instanceof Error ? error.message : 'Unknown error',
+              p_ip_country: null,
+              p_visitor_id: clientIp,
+              p_input_length: null,
+              p_output_valid: false,
+              p_response_score: null,
+              p_metadata: {}
+            });
+          } catch (e) {
+            console.error('[FREE-KEYWORD-SCAN] Failed to log error metric:', e);
+          }
+        })()
+      );
+    }
+    
     trackPerformance(requestStartTime, 'free-keyword-scan', false, { error: error instanceof Error ? error.message : 'Unknown' }, clientIp);
     console.error("[FREE-KEYWORD-SCAN] Error:", error);
     return new Response(
