@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Coins, Zap, X, Mail, CheckCircle2, Plus, Minus } from "lucide-react";
+import { Coins, Zap, X, Mail, CheckCircle2, Plus, Minus, Clock, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useScanCredits } from "@/hooks/use-scan-credits";
@@ -43,135 +43,171 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
   const isValidEmail = email.includes('@') && email.includes('.');
   const totalPrice = creditAmount * pricePerCredit;
 
+  // Calculate time until reset (midnight local time)
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  const hoursUntilReset = Math.ceil((midnight.getTime() - now.getTime()) / (1000 * 60 * 60));
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl animate-slide-up">
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-secondary/50 transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center p-3 rounded-full bg-primary/10 mb-4">
-            <Coins className="w-8 h-8 text-primary" />
+      <div className="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl animate-slide-up overflow-hidden">
+        {/* Error Banner - Prominent and clear */}
+        <div className="bg-gradient-to-r from-amber-500/90 to-orange-500/90 px-6 py-4 text-white">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-white/20 rounded-full shrink-0">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="font-bold text-lg">Daily Scan Limit Reached</h2>
+              <p className="text-white/90 text-sm mt-1">
+                You've used all 7 free scans for today. Don't worry – you can continue scanning right now!
+              </p>
+            </div>
           </div>
-          <h2 className="text-xl font-bold mb-2">Daily Free Scans Used</h2>
-          <p className="text-muted-foreground">
-            You've used all 7 free scans today. Top up credits instantly!
-          </p>
         </div>
+        
+        <div className="p-6">
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
 
-        {/* Credit amount selector */}
-        <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl p-4 mb-6 border border-primary/20">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium">Credits to buy</span>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => adjustAmount(-1)}
-                disabled={creditAmount <= 1}
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
+          {/* Reset timer info */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6 bg-secondary/50 rounded-lg px-4 py-3">
+            <Clock className="w-4 h-4 shrink-0" />
+            <span>
+              Free scans reset in approximately <strong className="text-foreground">{hoursUntilReset} hour{hoursUntilReset !== 1 ? 's' : ''}</strong>
+            </span>
+          </div>
+
+          {/* Credit amount selector */}
+          <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl p-4 mb-6 border border-primary/20">
+            <div className="flex items-center gap-2 mb-3">
+              <Coins className="w-5 h-5 text-primary" />
+              <span className="font-semibold">Get More Scans Instantly</span>
+            </div>
+            
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm text-muted-foreground">How many credits?</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => adjustAmount(-1)}
+                  disabled={creditAmount <= 1}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <Input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={creditAmount}
+                  onChange={(e) => setCreditAmount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                  className="w-16 h-8 text-center"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => adjustAmount(1)}
+                  disabled={creditAmount >= 100}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Preset amounts */}
+            <div className="flex gap-2 mb-3">
+              {PRESET_AMOUNTS.map((amount) => (
+                <Button
+                  key={amount}
+                  variant={creditAmount === amount ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setCreditAmount(amount)}
+                >
+                  {amount}
+                </Button>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-border/50">
+              <span className="text-sm text-muted-foreground">Total ({formatLocalPrice(pricePerCredit)}/credit)</span>
+              <div className="text-right">
+                <span className="text-2xl font-bold">${totalPrice.toFixed(2)}</span>
+                {isLocalCurrency && (
+                  <p className="text-xs text-muted-foreground">{formatPrice(totalPrice)}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Benefits */}
+          <ul className="space-y-2 mb-4">
+            <li className="flex items-center gap-2 text-sm">
+              <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+              <span><strong>{creditAmount} resume scan{creditAmount !== 1 ? 's' : ''}</strong> – use anytime</span>
+            </li>
+            <li className="flex items-center gap-2 text-sm">
+              <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+              <span>Credits <strong>never expire</strong></span>
+            </li>
+            <li className="flex items-center gap-2 text-sm">
+              <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+              <span>Full ATS analysis with each scan</span>
+            </li>
+          </ul>
+
+          {/* Email input */}
+          <div className="space-y-3 mb-4">
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                type="number"
-                min={1}
-                max={100}
-                value={creditAmount}
-                onChange={(e) => setCreditAmount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
-                className="w-16 h-8 text-center"
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="pl-10 h-12"
               />
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => adjustAmount(1)}
-                disabled={creditAmount >= 100}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
             </div>
+            <p className="text-xs text-muted-foreground">Credits will be linked to this email</p>
           </div>
 
-          {/* Preset amounts */}
-          <div className="flex gap-2 mb-3">
-            {PRESET_AMOUNTS.map((amount) => (
-              <Button
-                key={amount}
-                variant={creditAmount === amount ? "default" : "outline"}
-                size="sm"
-                className="flex-1"
-                onClick={() => setCreditAmount(amount)}
-              >
-                {amount}
-              </Button>
-            ))}
-          </div>
+          {/* Purchase button */}
+          <Button
+            onClick={handlePurchase}
+            disabled={!isValidEmail || isLoading}
+            className="w-full h-12 text-base font-semibold"
+            size="lg"
+          >
+            {isLoading ? (
+              "Processing..."
+            ) : (
+              <>
+                <Zap className="w-4 h-4 mr-2" />
+                Get {creditAmount} Credit{creditAmount !== 1 ? 's' : ''} for {formatLocalPrice(totalPrice)}
+              </>
+            )}
+          </Button>
 
-          <div className="flex items-center justify-between pt-3 border-t border-border/50">
-            <span className="text-sm text-muted-foreground">Total ({formatLocalPrice(pricePerCredit)}/credit)</span>
-            <div className="text-right">
-              <span className="text-2xl font-bold">${totalPrice.toFixed(2)}</span>
-              {isLocalCurrency && (
-                <p className="text-xs text-muted-foreground">{formatPrice(totalPrice)}</p>
-              )}
-            </div>
+          {/* Alternative */}
+          <div className="text-center mt-4 pt-4 border-t border-border/50">
+            <button 
+              onClick={onClose}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              No thanks, I'll wait for my free scans to reset
+            </button>
           </div>
         </div>
-
-        {/* Benefits */}
-        <ul className="space-y-2 mb-4">
-          <li className="flex items-center gap-2 text-sm">
-            <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-            <span><strong>{creditAmount} resume scan{creditAmount !== 1 ? 's' : ''}</strong></span>
-          </li>
-          <li className="flex items-center gap-2 text-sm">
-            <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-            <span>Credits never expire</span>
-          </li>
-        </ul>
-
-        {/* Email input */}
-        <div className="space-y-3 mb-4">
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              type="email"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="pl-10 h-12"
-            />
-          </div>
-        </div>
-
-        {/* Purchase button */}
-        <Button
-          onClick={handlePurchase}
-          disabled={!isValidEmail || isLoading}
-          className="w-full h-12 text-base"
-          size="lg"
-        >
-          {isLoading ? (
-            "Processing..."
-          ) : (
-            <>
-              <Zap className="w-4 h-4 mr-2" />
-              Buy {creditAmount} Credit{creditAmount !== 1 ? 's' : ''} for {formatLocalPrice(totalPrice)}
-            </>
-          )}
-        </Button>
-
-        {/* Alternative */}
-        <p className="text-center text-xs text-muted-foreground mt-4">
-          Or wait until tomorrow for 7 more free scans
-        </p>
       </div>
     </div>
   );
