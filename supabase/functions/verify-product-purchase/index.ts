@@ -82,6 +82,19 @@ serve(async (req) => {
         .insert({ session_id: sessionId });
       
       logStep("Session marked as used");
+      
+      // Log delivery step: payment received
+      await supabase.rpc('log_delivery_step', {
+        p_stripe_session_id: sessionId,
+        p_step: 'payment_received',
+        p_metadata: {
+          email: customerEmail,
+          product_type: productType,
+          product_name: productName,
+          amount_cents: session.amount_total
+        }
+      });
+      logStep("Delivery tracking started");
     }
 
     // If content generation is requested and we have resume data
@@ -89,6 +102,14 @@ serve(async (req) => {
     
     if (generateContent && resumeSessionId) {
       logStep("Content generation requested", { productType, resumeSessionId });
+      
+      // Log generation started
+      await supabase.rpc('log_delivery_step', {
+        p_stripe_session_id: sessionId,
+        p_step: 'generation_started'
+      });
+      
+      const generationStartTime = Date.now();
       
       // Get stored resume data
       const { data: resumeData, error: resumeError } = await supabase
@@ -125,13 +146,32 @@ serve(async (req) => {
             })
           });
 
+          const generationDuration = Date.now() - generationStartTime;
+          
           if (keywordResponse.ok) {
             const keywordResult = await keywordResponse.json();
             generatedContent = keywordResult.data;
             logStep("Keyword analysis generated successfully");
+            
+            // Log generation completed successfully
+            await supabase.rpc('log_delivery_step', {
+              p_stripe_session_id: sessionId,
+              p_step: 'generation_completed',
+              p_success: true,
+              p_duration_ms: generationDuration
+            });
           } else {
             const errorText = await keywordResponse.text();
             logStep("Keyword generation failed", { status: keywordResponse.status, error: errorText });
+            
+            // Log generation failed
+            await supabase.rpc('log_delivery_step', {
+              p_stripe_session_id: sessionId,
+              p_step: 'generation_completed',
+              p_success: false,
+              p_error: errorText.substring(0, 500),
+              p_duration_ms: generationDuration
+            });
           }
         } else if (productType === 'cover_letter' && resume_text) {
           logStep("Calling generate-cover-letter");
@@ -151,13 +191,30 @@ serve(async (req) => {
             })
           });
 
+          const coverGenDuration = Date.now() - generationStartTime;
+          
           if (coverLetterResponse.ok) {
             const coverLetterResult = await coverLetterResponse.json();
             generatedContent = coverLetterResult.data;
             logStep("Cover letter generated successfully");
+            
+            await supabase.rpc('log_delivery_step', {
+              p_stripe_session_id: sessionId,
+              p_step: 'generation_completed',
+              p_success: true,
+              p_duration_ms: coverGenDuration
+            });
           } else {
             const errorText = await coverLetterResponse.text();
             logStep("Cover letter generation failed", { status: coverLetterResponse.status, error: errorText });
+            
+            await supabase.rpc('log_delivery_step', {
+              p_stripe_session_id: sessionId,
+              p_step: 'generation_completed',
+              p_success: false,
+              p_error: errorText.substring(0, 500),
+              p_duration_ms: coverGenDuration
+            });
           }
         } else if (productType === 'premium_package' && resume_text) {
           logStep("Calling generate-premium-package");
@@ -175,13 +232,30 @@ serve(async (req) => {
             })
           });
 
+          const premiumGenDuration = Date.now() - generationStartTime;
+          
           if (premiumResponse.ok) {
             const premiumResult = await premiumResponse.json();
             generatedContent = premiumResult.data;
             logStep("Premium package generated successfully");
+            
+            await supabase.rpc('log_delivery_step', {
+              p_stripe_session_id: sessionId,
+              p_step: 'generation_completed',
+              p_success: true,
+              p_duration_ms: premiumGenDuration
+            });
           } else {
             const errorText = await premiumResponse.text();
             logStep("Premium package generation failed", { status: premiumResponse.status, error: errorText });
+            
+            await supabase.rpc('log_delivery_step', {
+              p_stripe_session_id: sessionId,
+              p_step: 'generation_completed',
+              p_success: false,
+              p_error: errorText.substring(0, 500),
+              p_duration_ms: premiumGenDuration
+            });
           }
         } else {
           logStep("No matching content generator", { productType, hasResumeText: !!resume_text });
@@ -315,11 +389,34 @@ serve(async (req) => {
 
         if (emailResponse.ok) {
           logStep("Confirmation email sent", { email: customerEmail });
+          
+          // Log email sent successfully
+          await supabase.rpc('log_delivery_step', {
+            p_stripe_session_id: sessionId,
+            p_step: 'email_sent',
+            p_success: true
+          });
         } else {
           logStep("Email send failed", { status: emailResponse.status });
+          
+          // Log email failed
+          await supabase.rpc('log_delivery_step', {
+            p_stripe_session_id: sessionId,
+            p_step: 'email_sent',
+            p_success: false,
+            p_error: `Email send failed with status ${emailResponse.status}`
+          });
         }
       } catch (emailError) {
         logStep("Email error", { error: String(emailError) });
+        
+        // Log email error
+        await supabase.rpc('log_delivery_step', {
+          p_stripe_session_id: sessionId,
+          p_step: 'email_sent',
+          p_success: false,
+          p_error: String(emailError).substring(0, 500)
+        });
         // Don't fail the request if email fails
       }
     }

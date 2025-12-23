@@ -85,6 +85,49 @@ interface PaymentHealth {
   }>;
 }
 
+interface DeliveryHealth {
+  total_orders: number;
+  fully_delivered: number;
+  generation_failed: number;
+  email_failed: number;
+  pending: number;
+  delivery_rate: number;
+  avg_generation_time_ms: number;
+  recent_failures: Array<{
+    session_id: string;
+    email: string;
+    product: string;
+    status: string;
+    error: string;
+    created_at: string;
+  }>;
+}
+
+interface AIQualityStats {
+  total_generations: number;
+  successful: number;
+  parse_failures: number;
+  success_rate: number;
+  avg_duration_ms: number;
+  p95_duration_ms: number;
+  recent_errors: Array<{
+    product: string;
+    error: string;
+    duration_ms: number;
+    created_at: string;
+  }>;
+}
+
+interface CheckoutFunnel {
+  checkouts_started: number;
+  payments_completed: number;
+  content_generated: number;
+  fully_delivered: number;
+  checkout_to_payment_rate: number;
+  payment_to_delivery_rate: number;
+  end_to_end_rate: number;
+}
+
 const statusConfig = {
   healthy: { color: 'bg-green-500', icon: CheckCircle, label: 'Healthy' },
   degraded: { color: 'bg-yellow-500', icon: AlertTriangle, label: 'Degraded' },
@@ -123,6 +166,11 @@ export default function HealthCheck() {
   const [functionErrors, setFunctionErrors] = useState<FunctionError[]>([]);
   const [rateLimitStats, setRateLimitStats] = useState<RateLimitStats | null>(null);
   const [paymentHealth, setPaymentHealth] = useState<PaymentHealth | null>(null);
+  
+  // Delivery & AI quality states
+  const [deliveryHealth, setDeliveryHealth] = useState<DeliveryHealth | null>(null);
+  const [aiQuality, setAIQuality] = useState<AIQualityStats | null>(null);
+  const [checkoutFunnel, setCheckoutFunnel] = useState<CheckoutFunnel | null>(null);
 
   const fetchProductMetrics = async () => {
     try {
@@ -214,6 +262,45 @@ export default function HealthCheck() {
     }
   };
 
+  const fetchDeliveryHealth = async () => {
+    try {
+      const { data } = await supabase.rpc('get_delivery_health', { p_hours_back: 24 });
+      if (data && data[0]) {
+        setDeliveryHealth({
+          ...data[0],
+          recent_failures: data[0].recent_failures as DeliveryHealth['recent_failures'],
+        });
+      }
+    } catch (e) {
+      console.error('Failed to fetch delivery health:', e);
+    }
+  };
+
+  const fetchAIQuality = async () => {
+    try {
+      const { data } = await supabase.rpc('get_ai_quality_stats', { p_hours_back: 24 });
+      if (data && data[0]) {
+        setAIQuality({
+          ...data[0],
+          recent_errors: data[0].recent_errors as AIQualityStats['recent_errors'],
+        });
+      }
+    } catch (e) {
+      console.error('Failed to fetch AI quality:', e);
+    }
+  };
+
+  const fetchCheckoutFunnel = async () => {
+    try {
+      const { data } = await supabase.rpc('get_checkout_funnel', { p_hours_back: 24 });
+      if (data && data[0]) {
+        setCheckoutFunnel(data[0] as CheckoutFunnel);
+      }
+    } catch (e) {
+      console.error('Failed to fetch checkout funnel:', e);
+    }
+  };
+
   const fetchHealthCheck = async (retries = 3) => {
     setLoading(true);
     setError(null);
@@ -254,6 +341,9 @@ export default function HealthCheck() {
     fetchFunctionErrors();
     fetchRateLimitStats();
     fetchPaymentHealth();
+    fetchDeliveryHealth();
+    fetchAIQuality();
+    fetchCheckoutFunnel();
   };
 
   useEffect(() => {
@@ -643,7 +733,181 @@ export default function HealthCheck() {
           </Card>
         </div>
 
-        {/* Two Column Layout: Uptime History + Recent Incidents */}
+        {/* NEW: Delivery Tracking, AI Quality, Checkout Funnel */}
+        <div className="grid md:grid-cols-3 gap-6 mb-6">
+          
+          {/* Product Delivery Tracking */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-purple-500" />
+                  Delivery (24h)
+                </div>
+                {deliveryHealth && deliveryHealth.total_orders > 0 && (
+                  <Badge variant={deliveryHealth.delivery_rate >= 90 ? 'default' : 'destructive'}>
+                    {deliveryHealth.delivery_rate?.toFixed(0) || 0}% delivered
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!deliveryHealth || deliveryHealth.total_orders === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No orders in last 24h</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-2 mb-3 text-center">
+                    <div className="p-2 rounded bg-muted/50">
+                      <p className="text-lg font-bold">{deliveryHealth.total_orders}</p>
+                      <p className="text-xs text-muted-foreground">Total Orders</p>
+                    </div>
+                    <div className="p-2 rounded bg-green-500/10">
+                      <p className="text-lg font-bold text-green-500">{deliveryHealth.fully_delivered}</p>
+                      <p className="text-xs text-muted-foreground">Delivered</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="p-1.5 rounded bg-yellow-500/10">
+                      <p className="font-bold text-yellow-500">{deliveryHealth.pending}</p>
+                      <p className="text-muted-foreground">Pending</p>
+                    </div>
+                    <div className="p-1.5 rounded bg-red-500/10">
+                      <p className="font-bold text-red-500">{deliveryHealth.generation_failed}</p>
+                      <p className="text-muted-foreground">Gen Failed</p>
+                    </div>
+                    <div className="p-1.5 rounded bg-red-500/10">
+                      <p className="font-bold text-red-500">{deliveryHealth.email_failed}</p>
+                      <p className="text-muted-foreground">Email Failed</p>
+                    </div>
+                  </div>
+                  {deliveryHealth.avg_generation_time_ms > 0 && (
+                    <p className="text-xs text-muted-foreground mt-2 text-center">
+                      Avg gen time: {Math.round(deliveryHealth.avg_generation_time_ms)}ms
+                    </p>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* AI Quality Monitoring */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-blue-500" />
+                  AI Quality (24h)
+                </div>
+                {aiQuality && aiQuality.total_generations > 0 && (
+                  <Badge variant={aiQuality.success_rate >= 95 ? 'default' : 'destructive'}>
+                    {aiQuality.success_rate?.toFixed(0) || 0}% valid
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!aiQuality || aiQuality.total_generations === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No AI generations in last 24h</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+                    <div className="p-2 rounded bg-muted/50">
+                      <p className="text-lg font-bold">{aiQuality.total_generations}</p>
+                      <p className="text-xs text-muted-foreground">Total</p>
+                    </div>
+                    <div className="p-2 rounded bg-green-500/10">
+                      <p className="text-lg font-bold text-green-500">{aiQuality.successful}</p>
+                      <p className="text-xs text-muted-foreground">Valid</p>
+                    </div>
+                    <div className="p-2 rounded bg-red-500/10">
+                      <p className="text-lg font-bold text-red-500">{aiQuality.parse_failures}</p>
+                      <p className="text-xs text-muted-foreground">Parse Fail</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                    <div className="p-1.5 rounded bg-muted/50">
+                      <p className="font-bold">{aiQuality.avg_duration_ms || 0}ms</p>
+                      <p className="text-muted-foreground">Avg Time</p>
+                    </div>
+                    <div className="p-1.5 rounded bg-muted/50">
+                      <p className="font-bold">{aiQuality.p95_duration_ms || 0}ms</p>
+                      <p className="text-muted-foreground">P95 Time</p>
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Checkout Funnel */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-cyan-500" />
+                  Funnel (24h)
+                </div>
+                {checkoutFunnel && checkoutFunnel.checkouts_started > 0 && (
+                  <Badge variant={checkoutFunnel.end_to_end_rate >= 80 ? 'default' : 'secondary'}>
+                    {checkoutFunnel.end_to_end_rate?.toFixed(0) || 0}% e2e
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!checkoutFunnel || checkoutFunnel.checkouts_started === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No checkouts in last 24h</p>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Checkout Started</span>
+                    <span className="font-bold">{checkoutFunnel.checkouts_started}</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div 
+                      className="bg-blue-500 h-2 rounded-full transition-all"
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Payment Complete</span>
+                    <span className="font-bold">{checkoutFunnel.payments_completed}</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div 
+                      className="bg-green-500 h-2 rounded-full transition-all"
+                      style={{ width: `${checkoutFunnel.checkout_to_payment_rate}%` }}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Content Generated</span>
+                    <span className="font-bold">{checkoutFunnel.content_generated}</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div 
+                      className="bg-purple-500 h-2 rounded-full transition-all"
+                      style={{ width: `${checkoutFunnel.payments_completed > 0 ? (checkoutFunnel.content_generated / checkoutFunnel.payments_completed) * 100 : 0}%` }}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Fully Delivered</span>
+                    <span className="font-bold text-green-500">{checkoutFunnel.fully_delivered}</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div 
+                      className="bg-emerald-500 h-2 rounded-full transition-all"
+                      style={{ width: `${checkoutFunnel.end_to_end_rate}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="grid md:grid-cols-2 gap-6 mb-6">
           {/* Uptime History */}
           <Card>
