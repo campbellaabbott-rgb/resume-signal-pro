@@ -535,14 +535,17 @@ serve(async (req) => {
     const hasJobDescription = jobDescriptionText && typeof jobDescriptionText === 'string' && jobDescriptionText.trim().length > 50;
     const truncatedJobDescription = hasJobDescription ? jobDescriptionText.substring(0, MAX_JOB_DESCRIPTION_LENGTH) : null;
 
-    const systemPrompt = `You are an expert ATS resume analyzer with MULTILINGUAL capabilities. You can analyze resumes in ANY language including English, Spanish, Portuguese, German, French, Dutch, Hindi, Tagalog, Vietnamese, Croatian, and many more.
+    const systemPrompt = `You are an expert ATS resume analyzer with FULL MULTILINGUAL capabilities. You can analyze resumes in ANY language.
 
-LANGUAGE HANDLING:
-- Detect the language of the resume automatically
-- Analyze content in its original language - do NOT require English
-- Provide your analysis output in English (for consistency)
-- Recognize industry-specific keywords in ALL languages
-- Understand international resume formats and conventions
+CRITICAL LANGUAGE HANDLING:
+1. DETECT the language of the resume (e.g., "en", "es", "pt", "de", "fr", "nl", "hi", "tl", "vi", "hr", "zh", etc.)
+2. RESPOND in the SAME LANGUAGE as the resume - all text fields (tips, suggestions, descriptions, red flags, etc.) must be in the resume's language
+3. Provide LOCALIZED keyword suggestions appropriate for that language's job market:
+   - German resume → German keywords relevant to DACH job market
+   - Portuguese resume → Portuguese keywords for Brazilian/Portuguese job market  
+   - Spanish resume → Spanish keywords for LATAM/Spain job market
+   - English resume → English keywords for US/UK/global job market
+4. Understand international resume formats, certifications, and job title conventions
 
 ANALYSIS RULES:
 1. ATS Score (0-100): Calculate using INDUSTRY-SPECIFIC WEIGHTS below. First detect industry, then apply appropriate weights.
@@ -744,6 +747,16 @@ ${resumeText.substring(0, 15000)}
             parameters: {
               type: "object",
               properties: {
+                detectedLanguage: { 
+                  type: "object",
+                  properties: {
+                    code: { type: "string", description: "ISO 639-1 language code (e.g., 'en', 'es', 'de', 'pt', 'fr', 'nl', 'hi', 'tl', 'zh')" },
+                    name: { type: "string", description: "Full language name in English (e.g., 'English', 'Spanish', 'German')" },
+                    region: { type: "string", description: "Detected region/job market if identifiable (e.g., 'US', 'UK', 'Brazil', 'Germany', 'India', 'Global')" }
+                  },
+                  required: ["code", "name"],
+                  description: "Detected language of the resume - ALL feedback should be in this language"
+                },
                 candidateName: { type: "string", description: "The candidate's full name extracted from the resume header/contact section (e.g., 'John Smith', 'Maria Garcia'). Look for the name at the top of the resume. If not found, return null." },
                 industry: { type: "string", description: "Detected industry/field (technology, healthcare, finance, legal, sales, education, engineering, creative, or general)" },
                 currentRole: { type: "string", description: "Detected current or most recent job title/role (e.g., 'Product Manager', 'Software Engineer', 'Registered Nurse')" },
@@ -870,14 +883,14 @@ ${resumeText.substring(0, 15000)}
                   items: {
                     type: "object",
                     properties: {
-                      keyword: { type: "string", description: "The missing keyword tailored to their industry" },
-                      reason: { type: "string", description: "Why this keyword matters for their industry (under 12 words)" },
+                      keyword: { type: "string", description: "Missing keyword IN THE RESUME'S LANGUAGE, tailored to their industry AND regional job market" },
+                      reason: { type: "string", description: "Why this keyword matters (in resume's language, under 12 words)" },
                       category: { type: "string", enum: ["tool", "skill", "certification", "methodology", "metric", "regulation"], description: "Type of keyword" },
                       impact: { type: "string", enum: ["critical", "high", "medium"], description: "How important this keyword is for ATS matching" }
                     },
                     required: ["keyword", "reason", "category", "impact"]
                   },
-                  description: "Exactly 6 industry-specific keyword suggestions"
+                  description: "Exactly 6 industry-specific keyword suggestions IN THE RESUME'S LANGUAGE for their regional job market"
                 },
                 readabilityScore: {
                   type: "object",
@@ -1149,7 +1162,7 @@ ${resumeText.substring(0, 15000)}
                 }
               },
               required: [
-                "industry", "atsScoreEstimate", "formatGrade", "formatIssue",
+                "detectedLanguage", "industry", "atsScoreEstimate", "formatGrade", "formatIssue",
                 "resumeLength", "wordCount", "experienceLevel", "sectionCheck",
                 "contactInfo", "topStrength", "quantificationScore", "actionVerbGrade",
                 "redFlags", "keywords", "readabilityScore", "bulletImpactScore", 
