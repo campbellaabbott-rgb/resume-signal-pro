@@ -26,11 +26,35 @@
     "ctaButton": "Lebenslauf jetzt prüfen",
     "freeBadge": "GRATIS",
     "noSignup": "Keine Anmeldung erforderlich",
+    "worksWithAny": "Funktioniert mit jedem Lebenslauf",
+    "actionableFixes": "Umsetzbare Korrekturen inklusive",
     "private": "100% privat",
     "testimonial": "\"Das ist ein wunderbares Produkt. Ich habe die kostenlosen Funktionen getestet und kann zuversichtlich sagen, dass es ein großer Erfolg wird.\"",
     "testimonialAuthor": "Kürzlicher Nutzer",
     "trustedBy": "Vertraut von Fachleuten bei",
     "freeScanReveals": "Ihr kostenloser Scan zeigt:",
+    "headline": {
+      "get": "Erhalten Sie",
+      "recruiterGrade": "Recruiter-Level",
+      "feedback": "Lebenslauf-Feedback in 60 Sekunden"
+    },
+    "description": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie ATS-optimierte Umschreibungen, Red-Flag-Warnungen und Keyword-Verbesserungen — so wie Personalverantwortliche Lebensläufe wirklich prüfen.",
+    "benefits": {
+      "seniorRoles": "Entwickelt für Senior-Positionen, Manager und kompetitive Rollen",
+      "atsCompatible": "Funktioniert mit allen ATS-Systemen (Workday, Greenhouse, Lever & 50+ mehr)",
+      "oneTime": "Einmalige Zahlung (kein Abo)",
+      "private": "Lebensläufe werden nie gespeichert oder geteilt"
+    },
+    "stats": {
+      "scannedToday": "Heute gescannt",
+      "userRating": "Nutzerbewertung",
+      "gotInterviews": "Bekamen Vorstellungsgespräche"
+    },
+    "chips": {
+      "scan": "30-Sekunden-Scan",
+      "private": "100% privat",
+      "fixes": "Sofortige Korrekturen"
+    },
     "reveal": {
       "atsScore": "ATS-Score",
       "keywords": "Fehlende Keywords",

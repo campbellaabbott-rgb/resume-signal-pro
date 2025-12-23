@@ -82,6 +82,8 @@ function HeroStatsBar() {
     };
   }, []);
 
+  const { t } = useTranslation();
+  
   return (
     <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 py-3 px-4 rounded-2xl bg-gradient-to-r from-card/80 via-card/60 to-card/80 border border-border/40 backdrop-blur-sm">
       <div className="flex items-center gap-2">
@@ -92,7 +94,7 @@ function HeroStatsBar() {
           <p className={`text-lg sm:text-xl font-bold text-foreground transition-all duration-300 ${isAnimating ? 'scale-110 text-success' : ''}`}>
             {displayCount.toLocaleString()}+
           </p>
-          <p className="text-xs text-muted-foreground">Scanned today</p>
+          <p className="text-xs text-muted-foreground">{t('hero.stats.scannedToday', 'Scanned today')}</p>
         </div>
       </div>
       <div className="w-px h-10 bg-border/50 hidden sm:block" />
@@ -102,7 +104,7 @@ function HeroStatsBar() {
         </div>
         <div className="text-left">
           <p className="text-lg sm:text-xl font-bold text-foreground">4.9/5</p>
-          <p className="text-xs text-muted-foreground">User rating</p>
+          <p className="text-xs text-muted-foreground">{t('hero.stats.userRating', 'User rating')}</p>
         </div>
       </div>
       <div className="w-px h-10 bg-border/50 hidden sm:block" />
@@ -112,7 +114,7 @@ function HeroStatsBar() {
         </div>
         <div className="text-left">
           <p className="text-lg sm:text-xl font-bold text-foreground">89%</p>
-          <p className="text-xs text-muted-foreground">Got interviews</p>
+          <p className="text-xs text-muted-foreground">{t('hero.stats.gotInterviews', 'Got interviews')}</p>
         </div>
       </div>
     </div>
@@ -121,10 +123,11 @@ function HeroStatsBar() {
 
 // Quick benefit chips
 function BenefitChips() {
+  const { t } = useTranslation();
   const benefits = [
-    { icon: Clock, text: "30-second scan" },
-    { icon: Shield, text: "100% private" },
-    { icon: Zap, text: "Instant fixes" },
+    { icon: Clock, text: t('hero.chips.scan', '30-second scan') },
+    { icon: Shield, text: t('hero.chips.private', '100% private') },
+    { icon: Zap, text: t('hero.chips.fixes', 'Instant fixes') },
   ];
 
   return (
@@ -188,35 +191,34 @@ export function Hero() {
               id="hero-heading"
               className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-5 leading-tight"
             >
-              Get{" "}
+              {t('hero.headline.get', 'Get')}{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
-                Recruiter-Grade
+                {t('hero.headline.recruiterGrade', 'Recruiter-Grade')}
               </span>{" "}
-              Resume Feedback in 60 Seconds
+              {t('hero.headline.feedback', 'Resume Feedback in 60 Seconds')}
             </h1>
             
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto mb-6 leading-relaxed">
-              Upload your resume and get ATS-optimized rewrites, red-flag warnings,
-              and keyword improvements — written the way hiring managers actually review resumes.
+              {t('hero.description', 'Upload your resume and get ATS-optimized rewrites, red-flag warnings, and keyword improvements — written the way hiring managers actually review resumes.')}
             </p>
 
             {/* Key selling points with checkmarks */}
             <div className="flex flex-col items-center gap-2.5 mb-6">
               <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
                 <Check className="w-4 h-4 text-success flex-shrink-0" />
-                <span>Built for senior ICs, managers, and competitive roles</span>
+                <span>{t('hero.benefits.seniorRoles', 'Built for senior ICs, managers, and competitive roles')}</span>
               </div>
               <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
                 <Check className="w-4 h-4 text-success flex-shrink-0" />
-                <span>Works on all ATS systems (Workday, Greenhouse, Lever & 50+ more)</span>
+                <span>{t('hero.benefits.atsCompatible', 'Works on all ATS systems (Workday, Greenhouse, Lever & 50+ more)')}</span>
               </div>
               <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
                 <Check className="w-4 h-4 text-success flex-shrink-0" />
-                <span>One-time payment (no subscription)</span>
+                <span>{t('hero.benefits.oneTime', 'One-time payment (no subscription)')}</span>
               </div>
               <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
                 <Check className="w-4 h-4 text-success flex-shrink-0" />
-                <span>Resumes are never stored or shared</span>
+                <span>{t('hero.benefits.private', 'Resumes are never stored or shared')}</span>
               </div>
             </div>
 
@@ -240,7 +242,7 @@ export function Hero() {
               <Sparkles className="w-6 h-6 sm:w-7 sm:h-7" />
               <span>{t('hero.ctaButton', 'Check My Resume Now')}</span>
               <div className="absolute -top-3 -right-2 sm:-right-3 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-bold shadow-lg animate-pulse">
-                FREE
+                {t('hero.freeBadge', 'FREE')}
               </div>
             </button>
             
@@ -248,17 +250,17 @@ export function Hero() {
             <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-3 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <Check className="w-4 h-4 text-success" />
-                No sign-up required
+                {t('hero.noSignup', 'No sign-up required')}
               </span>
               <span className="hidden sm:block w-1 h-1 rounded-full bg-muted-foreground/30" />
               <span className="flex items-center gap-1.5">
                 <Check className="w-4 h-4 text-success" />
-                Works with any resume
+                {t('hero.worksWithAny', 'Works with any resume')}
               </span>
               <span className="hidden sm:block w-1 h-1 rounded-full bg-muted-foreground/30" />
               <span className="flex items-center gap-1.5">
                 <Check className="w-4 h-4 text-success" />
-                Actionable fixes included
+                {t('hero.actionableFixes', 'Actionable fixes included')}
               </span>
             </div>
           </div>
