@@ -587,6 +587,39 @@ export type Database = {
         }
         Relationships: []
       }
+      purchased_content: {
+        Row: {
+          created_at: string
+          customer_email: string
+          expires_at: string | null
+          generated_content: Json | null
+          id: string
+          product_name: string | null
+          product_type: string
+          stripe_session_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_email: string
+          expires_at?: string | null
+          generated_content?: Json | null
+          id?: string
+          product_name?: string | null
+          product_type: string
+          stripe_session_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_email?: string
+          expires_at?: string | null
+          generated_content?: Json | null
+          id?: string
+          product_name?: string | null
+          product_type?: string
+          stripe_session_id?: string
+        }
+        Relationships: []
+      }
       rate_limits: {
         Row: {
           function_name: string
@@ -1029,6 +1062,28 @@ export type Database = {
           total_attempts: number
         }[]
       }
+      get_purchased_content_by_email: {
+        Args: { p_email: string }
+        Returns: {
+          created_at: string
+          generated_content: Json
+          id: string
+          product_name: string
+          product_type: string
+          stripe_session_id: string
+        }[]
+      }
+      get_purchased_content_by_session: {
+        Args: { p_session_id: string }
+        Returns: {
+          created_at: string
+          customer_email: string
+          generated_content: Json
+          id: string
+          product_name: string
+          product_type: string
+        }[]
+      }
       get_rate_limit_stats: {
         Args: { p_hours_back?: number }
         Returns: {
@@ -1245,6 +1300,16 @@ export type Database = {
       save_free_scan_lead: {
         Args: { p_ats_score?: number; p_email: string; p_industry?: string }
         Returns: boolean
+      }
+      save_purchased_content: {
+        Args: {
+          p_customer_email: string
+          p_generated_content: Json
+          p_product_name: string
+          p_product_type: string
+          p_stripe_session_id: string
+        }
+        Returns: string
       }
       should_generate_weekly_report: { Args: never; Returns: boolean }
       should_send_alert: {

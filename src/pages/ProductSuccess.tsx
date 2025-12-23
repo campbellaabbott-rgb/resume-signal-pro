@@ -213,6 +213,11 @@ export default function ProductSuccess() {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Email recovery state
+  const [recoveryEmail, setRecoveryEmail] = useState("");
+  const [isRecoveringByEmail, setIsRecoveringByEmail] = useState(false);
+  const [showEmailRecovery, setShowEmailRecovery] = useState(false);
+  
   const sessionId = searchParams.get("session_id");
   const productKey = searchParams.get("product") as ProductId | null;
   
@@ -996,6 +1001,120 @@ export default function ProductSuccess() {
                           'Upload your resume to get keyword optimization suggestions.'}
                       </p>
                     </div>
+
+                    {/* Email Recovery Option */}
+                    {!showEmailRecovery ? (
+                      <div className="text-center mb-6 p-4 rounded-xl bg-primary/5 border border-primary/20">
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Already purchased and closed the tab? 
+                        </p>
+                        <Button 
+                          variant="link" 
+                          className="text-primary p-0 h-auto"
+                          onClick={() => setShowEmailRecovery(true)}
+                        >
+                          Recover your results by email →
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="mb-6 p-4 rounded-xl bg-card border border-border">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="font-medium flex items-center gap-2">
+                            <Mail className="w-4 h-4" />
+                            Recover Previous Purchase
+                          </h4>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setShowEmailRecovery(false)}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                        <div className="space-y-3">
+                          <Input
+                            type="email"
+                            placeholder="Enter the email used during checkout"
+                            value={recoveryEmail}
+                            onChange={(e) => setRecoveryEmail(e.target.value)}
+                          />
+                          <Button 
+                            className="w-full gap-2"
+                            disabled={!recoveryEmail || isRecoveringByEmail}
+                            onClick={async () => {
+                              setIsRecoveringByEmail(true);
+                              try {
+                                const { data, error } = await supabase.functions.invoke('recover-purchase', {
+                                  body: { email: recoveryEmail }
+                                });
+                                
+                                if (error) throw error;
+                                
+                                if (data?.found && data?.purchases?.length > 0) {
+                                  // Find most recent purchase matching this product type
+                                  const productTypeMap: Record<string, string> = {
+                                    basicKeywordFix: 'basic_keyword_fix',
+                                    coverLetter: 'cover_letter',
+                                    premiumPackage: 'premium_package',
+                                    atsDefense: 'ats_defense'
+                                  };
+                                  const targetType = productTypeMap[productKey || ''];
+                                  const matchingPurchase = data.purchases.find(
+                                    (p: any) => p.productType === targetType
+                                  );
+                                  
+                                  if (matchingPurchase?.generatedContent) {
+                                    if (productKey === 'atsDefense') {
+                                      setAtsDefenseData(matchingPurchase.generatedContent);
+                                    } else {
+                                      setGeneratedContent(matchingPurchase.generatedContent);
+                                    }
+                                    setShowEmailRecovery(false);
+                                    toast({
+                                      title: "Content Recovered!",
+                                      description: "Your previously generated content has been restored.",
+                                    });
+                                  } else {
+                                    toast({
+                                      title: "No matching content found",
+                                      description: "We found purchases but no content for this product type.",
+                                      variant: "destructive"
+                                    });
+                                  }
+                                } else {
+                                  toast({
+                                    title: "No purchases found",
+                                    description: "No purchases found for this email. Please check the email address.",
+                                    variant: "destructive"
+                                  });
+                                }
+                              } catch (err) {
+                                console.error('Recovery error:', err);
+                                toast({
+                                  title: "Recovery failed",
+                                  description: "Could not recover your purchase. Please try again.",
+                                  variant: "destructive"
+                                });
+                              } finally {
+                                setIsRecoveringByEmail(false);
+                              }
+                            }}
+                          >
+                            {isRecoveringByEmail ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Looking up...
+                              </>
+                            ) : (
+                              <>
+                                <Mail className="w-4 h-4" />
+                                Recover My Results
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Requirements checklist */}
                     <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 mb-4">

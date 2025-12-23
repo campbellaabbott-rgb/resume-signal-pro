@@ -133,6 +133,8 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
 
   // Extract key highlights from generated content if available
   let highlightsHtml = '';
+  let contentSummaryHtml = '';
+  
   if (generatedContent) {
     if (productType === 'basic_keyword_fix' && generatedContent.overallScore) {
       highlightsHtml = `
@@ -140,6 +142,35 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
           <div style="font-size: 36px; font-weight: bold; color: #22c55e;">${generatedContent.overallScore}%</div>
           <div style="color: #166534; font-size: 14px;">Keyword Optimization Score</div>
           ${generatedContent.missingKeywords?.length ? `<div style="color: #4b5563; font-size: 13px; margin-top: 8px;">${generatedContent.missingKeywords.length} keywords to add</div>` : ''}
+        </div>
+      `;
+      
+      // Add keyword list to email
+      if (generatedContent.missingKeywords?.length > 0) {
+        const topKeywords = generatedContent.missingKeywords.slice(0, 10);
+        contentSummaryHtml = `
+          <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <h3 style="color: #1f2937; font-size: 16px; margin: 0 0 12px;">🎯 Top Keywords to Add:</h3>
+            <ul style="margin: 0; padding-left: 20px;">
+              ${topKeywords.map((k: any) => `<li style="color: #374151; margin-bottom: 6px;"><strong>${escapeHtml(k.keyword)}</strong> - ${escapeHtml(k.suggestion)}</li>`).join('')}
+            </ul>
+            ${generatedContent.missingKeywords.length > 10 ? `<p style="color: #6b7280; font-size: 13px; margin-top: 12px; font-style: italic;">+ ${generatedContent.missingKeywords.length - 10} more keywords on the website</p>` : ''}
+          </div>
+        `;
+      }
+    } else if (productType === 'cover_letter' && generatedContent.coverLetter) {
+      highlightsHtml = `
+        <div style="background: #eff6ff; border: 1px solid #93c5fd; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
+          <div style="font-size: 36px; margin-bottom: 8px;">✉️</div>
+          <div style="color: #1e40af; font-size: 16px; font-weight: 600;">Cover Letter Generated!</div>
+        </div>
+      `;
+      
+      // Include the actual cover letter in the email
+      contentSummaryHtml = `
+        <div style="background: #ffffff; border: 2px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+          <h3 style="color: #1f2937; font-size: 16px; margin: 0 0 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px;">📄 Your Cover Letter:</h3>
+          <div style="color: #374151; font-size: 14px; line-height: 1.7; white-space: pre-wrap; font-family: Georgia, serif;">${escapeHtml(generatedContent.coverLetter)}</div>
         </div>
       `;
     } else if (productType === 'premium_package' && generatedContent.resume?.atsScore) {
@@ -159,6 +190,22 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
           <div style="color: #166534; font-size: 14px; margin-top: 12px;">ATS Score Improvement</div>
         </div>
       `;
+      
+      // Include key changes and the rewritten resume
+      if (generatedContent.resume.keyChanges?.length > 0) {
+        contentSummaryHtml = `
+          <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+            <h3 style="color: #1f2937; font-size: 16px; margin: 0 0 12px;">✨ Key Improvements Made:</h3>
+            <ul style="margin: 0; padding-left: 20px;">
+              ${generatedContent.resume.keyChanges.slice(0, 5).map((c: any) => `<li style="color: #374151; margin-bottom: 6px;"><strong>${escapeHtml(c.section)}:</strong> ${escapeHtml(c.reason)}</li>`).join('')}
+            </ul>
+          </div>
+          <div style="background: #ffffff; border: 2px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+            <h3 style="color: #1f2937; font-size: 16px; margin: 0 0 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px;">📄 Your Optimized Resume:</h3>
+            <div style="color: #374151; font-size: 13px; line-height: 1.6; white-space: pre-wrap; font-family: 'Courier New', monospace; max-height: 400px; overflow-y: auto;">${escapeHtml(generatedContent.resume.rewrittenResume?.substring(0, 3000) || '')}${(generatedContent.resume.rewrittenResume?.length || 0) > 3000 ? '\n\n[Content truncated - view full version on website]' : ''}</div>
+          </div>
+        `;
+      }
     }
   }
 
@@ -199,6 +246,9 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
               </p>
 
               ${highlightsHtml}
+
+              <!-- Generated Content Summary -->
+              ${contentSummaryHtml}
 
               <!-- How It Works -->
               <div style="margin-bottom: 32px;">
