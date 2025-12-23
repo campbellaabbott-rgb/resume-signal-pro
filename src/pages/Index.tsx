@@ -148,6 +148,7 @@ const Index = () => {
   const [linkedInText, setLinkedInText] = useState<string>("");
   const [jobDescriptionText, setJobDescriptionText] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showFloatingScan, setShowFloatingScan] = useState(false); // Only true after fresh upload
   const [freeKeywordResult, setFreeKeywordResult] = useState<FreeKeywordResult | null>(null);
   const [isCachedResult, setIsCachedResult] = useState(false);
   const [honeypot, setHoneypot] = useState<string>(""); // Honeypot field for bot detection
@@ -345,6 +346,7 @@ const Index = () => {
 
   const handleFileSelect = async (file: File) => {
     setSelectedFile(file);
+    setShowFloatingScan(true); // Show floating button on fresh upload
     setFreeKeywordResult(null); // Clear previous results
     
     // Track upload started in funnel
@@ -1201,7 +1203,7 @@ const Index = () => {
       
       
       
-      <FloatingUploadButton hasContent={!!resumeText || !!selectedFile} />
+      <FloatingUploadButton hasContent={showFloatingScan} />
 
       
       <Footer />
