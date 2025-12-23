@@ -1092,7 +1092,7 @@ export function ResumeUploader({
                     </div>
                     
                     <p className="text-xs text-muted-foreground/70">
-                      Results in ~90 seconds • 4 free scans per day
+                      Results in ~90 seconds • 7 free scans per day
                     </p>
                   </div>
                 )}
