@@ -1,60 +1,70 @@
 import { useState, useEffect } from "react";
-import { Sparkles } from "lucide-react";
+import { Zap } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
-export function FloatingUploadButton() {
+interface FloatingUploadButtonProps {
+  hasContent?: boolean;
+}
+
+export function FloatingUploadButton({ hasContent = false }: FloatingUploadButtonProps) {
   const isMobile = useIsMobile();
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    if (!isMobile) return;
+    if (!hasContent) {
+      setIsVisible(false);
+      return;
+    }
 
     const handleScroll = () => {
-      const uploadSection = document.getElementById('upload');
-      if (!uploadSection) return;
+      // Find the free scan button container
+      const scanButton = document.querySelector('[data-scan-button="true"]');
+      if (!scanButton) return;
 
-      const rect = uploadSection.getBoundingClientRect();
+      const rect = scanButton.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       
-      // Show button when upload section is not fully visible
-      // Either scrolled past it OR not yet scrolled to it (below fold)
-      const isUploadVisible = rect.top < viewportHeight - 100 && rect.bottom > 100;
-      setIsVisible(!isUploadVisible && window.scrollY > 200);
+      // Show floating button when scan button is not visible
+      const isScanButtonVisible = rect.top < viewportHeight - 50 && rect.bottom > 50;
+      setIsVisible(!isScanButtonVisible);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
 
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [isMobile]);
+  }, [hasContent]);
 
   const handleClick = () => {
-    const uploadSection = document.getElementById('upload');
-    if (uploadSection) {
-      uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const scanButton = document.querySelector('[data-scan-button="true"]');
+    if (scanButton) {
+      scanButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   };
 
-  if (!isMobile) return null;
+  if (!hasContent) return null;
 
   return (
     <button
       onClick={handleClick}
       className={cn(
-        "fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-6 py-4 rounded-full",
-        "bg-gradient-to-r from-success via-success to-emerald-500 text-success-foreground font-bold text-base",
+        "fixed z-50 flex items-center gap-2 px-5 py-3 rounded-full",
+        "bg-gradient-to-r from-success via-success to-emerald-500 text-success-foreground font-bold text-sm",
         "shadow-xl shadow-success/40 hover:shadow-2xl hover:shadow-success/50",
         "transition-all duration-300 touch-manipulation",
         "animate-pulse-subtle",
+        isMobile 
+          ? "bottom-20 left-1/2 -translate-x-1/2" 
+          : "bottom-6 right-6",
         isVisible 
           ? "translate-y-0 opacity-100" 
           : "translate-y-24 opacity-0 pointer-events-none"
       )}
-      aria-label="Scan your resume now"
+      aria-label="Scroll to free scan button"
     >
-      <Sparkles className="w-5 h-5" />
-      <span>Scan My Resume FREE</span>
+      <Zap className="w-4 h-4 fill-current" />
+      <span>Scan Now – FREE</span>
     </button>
   );
 }
