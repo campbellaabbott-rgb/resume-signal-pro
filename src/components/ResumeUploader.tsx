@@ -1072,7 +1072,7 @@ export function ResumeUploader({
               <>
                 {/* Primary CTA: Free Scan */}
                 {onFreeScan && (
-                  <div className="space-y-3">
+                  <div className="space-y-3" data-scan-button="true">
                     <Button
                       size="xl"
                       disabled={!canProceed}

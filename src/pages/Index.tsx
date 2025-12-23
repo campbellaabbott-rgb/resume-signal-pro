@@ -1201,7 +1201,7 @@ const Index = () => {
       
       
       
-      <FloatingUploadButton />
+      <FloatingUploadButton hasContent={!!resumeText} />
 
       
       <Footer />
