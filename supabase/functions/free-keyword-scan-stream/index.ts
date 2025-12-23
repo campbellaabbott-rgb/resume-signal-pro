@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -14,7 +13,6 @@ const MAX_RESUME_LENGTH = 50000;
 const MAX_JOB_DESCRIPTION_LENGTH = 15000;
 const FREE_SCANS_PER_DAY = 7;
 const FUNCTION_NAME = 'free-keyword-scan';
-const CACHE_TTL_HOURS = 24;
 
 // Helper to get client IP
 const getClientIp = (req: Request): string => {
@@ -23,19 +21,6 @@ const getClientIp = (req: Request): string => {
          req.headers.get('x-real-ip') || 
          'unknown';
 };
-
-// Generate cache key
-async function generateCacheKey(resumeText: string, jobDescriptionText?: string): Promise<string> {
-  const normalizedResume = resumeText.toLowerCase().replace(/\s+/g, ' ').trim().substring(0, 10000);
-  const normalizedJob = jobDescriptionText ? jobDescriptionText.toLowerCase().replace(/\s+/g, ' ').trim().substring(0, 5000) : '';
-  const combined = `${normalizedResume}|||${normalizedJob}`;
-  
-  const encoder = new TextEncoder();
-  const data = encoder.encode(combined);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
 // SSE helper to send events
 function createSSEStream() {
@@ -98,7 +83,7 @@ serve(async (req) => {
   // Process in background while streaming progress
   EdgeRuntime.waitUntil((async () => {
     try {
-      const { resumeText, jobDescriptionText, honeypot, skipCache } = await req.json();
+      const { resumeText, jobDescriptionText, honeypot } = await req.json();
 
       // Honeypot check
       if (honeypot && honeypot.trim() !== '') {
@@ -155,32 +140,9 @@ serve(async (req) => {
 
       send('progress', PROGRESS_STAGES[1]);
 
-      // Check cache
+      // Check if job description provided
       const hasJobDescription = jobDescriptionText && typeof jobDescriptionText === 'string' && jobDescriptionText.trim().length > 50;
       const truncatedJobDescription = hasJobDescription ? jobDescriptionText.substring(0, MAX_JOB_DESCRIPTION_LENGTH) : null;
-      const cacheKey = await generateCacheKey(resumeText, truncatedJobDescription || undefined);
-      
-      if (!skipCache) {
-        const { data: cachedData } = await supabase.rpc('get_cached_response', {
-          p_cache_key: cacheKey,
-          p_function_name: FUNCTION_NAME
-        });
-        
-        if (cachedData) {
-          console.log("[FREE-KEYWORD-SCAN-STREAM] Cache hit");
-          send('progress', { stage: 'complete', message: 'Retrieved from cache!', progress: 100 });
-          send('complete', { success: true, cached: true, ...cachedData });
-          close();
-          
-          // Increment counter in background
-          EdgeRuntime.waitUntil(
-            (async () => {
-              await supabase.rpc('increment_free_scan_count');
-            })()
-          );
-          return;
-        }
-      }
 
       send('progress', PROGRESS_STAGES[2]);
 
@@ -397,17 +359,6 @@ Be specific and actionable.`;
         quickWins: (analysis.quickWins || []).slice(0, 3),
       };
 
-      // Cache response
-      EdgeRuntime.waitUntil(
-        (async () => {
-          await supabase.rpc('store_cached_response', {
-            p_cache_key: cacheKey,
-            p_function_name: FUNCTION_NAME,
-            p_response: responseData,
-            p_ttl_hours: CACHE_TTL_HOURS
-          });
-        })()
-      );
 
       // Increment counter
       EdgeRuntime.waitUntil(
