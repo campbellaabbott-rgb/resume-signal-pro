@@ -452,7 +452,7 @@ const Index = () => {
 
     try {
       // Use streaming scan for real-time progress updates
-      const result = await startStreamingScan(contentToAnalyze, {
+      let result = await startStreamingScan(contentToAnalyze, {
         jobDescriptionText: jobDescriptionText || undefined,
         honeypot,
         skipCache,
@@ -466,6 +466,76 @@ const Index = () => {
           console.error('[StreamingScan] Error:', error);
         },
       });
+
+      // Fallback to non-streaming endpoint if streaming failed
+      if (!result) {
+        console.log('[FreeScan] Streaming failed, falling back to non-streaming endpoint');
+        const { data, error } = await supabase.functions.invoke("free-keyword-scan", {
+          body: {
+            resumeText: contentToAnalyze,
+            jobDescriptionText: jobDescriptionText || undefined,
+            honeypot,
+            skipCache,
+          },
+        });
+
+        if (error) {
+          // Parse error context for rate limit info
+          const errorContext = error?.context;
+          if (errorContext?.body) {
+            try {
+              const errorBody = typeof errorContext.body === 'string' 
+                ? JSON.parse(errorContext.body) 
+                : errorContext.body;
+              if (errorBody?.rateLimited) {
+                trackRateLimitError('free-keyword-scan', errorBody.scansUsed, errorBody.scansLimit);
+                toast({
+                  title: "Daily Scan Limit Reached",
+                  description: errorBody.error || `You've used all ${errorBody.scansLimit || 7} free scans.`,
+                  variant: "destructive",
+                });
+                setShowRateLimitUpsell(true);
+                return;
+              }
+            } catch {
+              // Not JSON, continue with regular error handling
+            }
+          }
+          trackApiError('free-keyword-scan', error?.context?.status || 500, error?.message || 'Unknown error');
+          throw error;
+        }
+
+        // Convert fallback response to streaming result format
+        if (data?.success) {
+          result = {
+            success: true,
+            cached: data.cached,
+            industry: data.industry,
+            atsScoreEstimate: data.atsScoreEstimate,
+            formatGrade: data.formatGrade,
+            formatIssue: data.formatIssue,
+            experienceLevel: data.experienceLevel,
+            sectionCheck: data.sectionCheck,
+            topStrength: data.topStrength,
+            redFlags: data.redFlags,
+            keywords: data.keywords,
+            quickWins: data.quickWins,
+            improvementPotential: data.improvementPotential,
+            ...data, // Include all other fields
+          };
+        } else if (data?.rateLimited) {
+          trackRateLimitError('free-keyword-scan', data.scansUsed, data.scansLimit);
+          toast({
+            title: "Daily Scan Limit Reached",
+            description: data.error || `You've used all ${data.scansLimit || 7} free scans.`,
+            variant: "destructive",
+          });
+          setShowRateLimitUpsell(true);
+          return;
+        } else {
+          throw new Error(data?.error || "Failed to analyze resume");
+        }
+      }
 
       // Handle rate limiting
       if (result?.rateLimited) {
