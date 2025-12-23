@@ -59,24 +59,29 @@ export function FloatingUploadButton({ hasContent = false }: FloatingUploadButto
   if (!hasContent) return null;
 
   return (
-    <button
-      onClick={handleClick}
+    <div 
       className={cn(
-        "fixed z-50 flex items-center gap-2 px-6 py-4 rounded-full",
-        "bg-gradient-to-r from-success via-success to-emerald-500 text-success-foreground font-bold text-base",
-        "shadow-xl shadow-success/40 hover:shadow-2xl hover:shadow-success/50",
-        "transition-all duration-300 touch-manipulation",
-        justUploaded && "animate-bounce",
-        // Center on all devices for better visibility
-        "bottom-24 left-1/2 -translate-x-1/2",
+        "fixed z-50 bottom-24 left-0 right-0 flex justify-center pointer-events-none",
+        "transition-all duration-300",
         isVisible 
           ? "translate-y-0 opacity-100" 
-          : "translate-y-24 opacity-0 pointer-events-none"
+          : "translate-y-24 opacity-0"
       )}
-      aria-label="Scroll to free scan button"
     >
-      <Zap className="w-5 h-5 fill-current" />
-      <span>Scan Now – FREE</span>
-    </button>
+      <button
+        onClick={handleClick}
+        className={cn(
+          "pointer-events-auto flex items-center gap-2 px-6 py-4 rounded-full",
+          "bg-gradient-to-r from-success via-success to-emerald-500 text-success-foreground font-bold text-base",
+          "shadow-xl shadow-success/40 hover:shadow-2xl hover:shadow-success/50",
+          "touch-manipulation",
+          justUploaded && "animate-bounce"
+        )}
+        aria-label="Scroll to free scan button"
+      >
+        <Zap className="w-5 h-5 fill-current" />
+        <span>Scan Now – FREE</span>
+      </button>
+    </div>
   );
 }
