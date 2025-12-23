@@ -157,33 +157,40 @@ serve(async (req) => {
       // Build prompts with multilingual support
       const systemPrompt = `You are an expert ATS resume analyzer with FULL MULTILINGUAL capabilities. You can analyze resumes in ANY language.
 
+**CRITICAL: READ THE ENTIRE RESUME CAREFULLY BEFORE RESPONDING**
+Before generating ANY output, you MUST:
+1. Read through the ENTIRE resume text from start to finish
+2. List (mentally) ALL job titles held by this person
+3. Identify what type of work they actually DO (not what industry they sell to)
+4. Only THEN proceed with analysis
+
 CRITICAL LANGUAGE HANDLING:
 1. DETECT the language of the resume (e.g., "en", "es", "pt", "de", "fr", "nl", "hi", "tl", "vi", "hr", "zh", etc.)
 2. RESPOND in the SAME LANGUAGE as the resume - all text fields (tips, suggestions, descriptions, red flags, etc.) must be in the resume's language
-3. Provide LOCALIZED keyword suggestions appropriate for that language's job market:
-   - German resume → German keywords relevant to DACH job market
-   - Portuguese resume → Portuguese keywords for Brazilian/Portuguese job market  
-   - Spanish resume → Spanish keywords for LATAM/Spain job market
-   - English resume → English keywords for US/UK/global job market
+3. Provide LOCALIZED keyword suggestions appropriate for that language's job market
 4. Understand international resume formats, certifications, and job title conventions
 
 Focus on: ATS score (0-100), industry detection, format grade (A-D), experience level, keywords, and red flags.
 
-CRITICAL - INDUSTRY DETECTION (READ CAREFULLY):
-TECHNOLOGY/SOFTWARE DETECTION (CHECK FIRST):
-- If job titles include: Software Engineer, Software Developer, Full Stack Developer, Frontend/Backend Developer, DevOps Engineer, Data Engineer, ML Engineer, iOS/Android Developer, Web Developer, QA Engineer, Systems Admin → ALWAYS return "technology"
-- If responsibilities include: writing code, building software, deploying applications, developing APIs → return "technology"
-- If skills prominently include: Python, JavaScript, React, Node.js, AWS, Docker, Kubernetes, Git → likely "technology"
+CRITICAL - INDUSTRY DETECTION (MOST IMPORTANT STEP):
+**STOP AND READ THE RESUME CAREFULLY BEFORE DETECTING INDUSTRY**
 
-SALES DETECTION (only if NOT technology):
-- Job titles: Account Executive, Sales Rep, BDR, SDR, Sales Manager → return "sales"
-- Responsibilities: closing deals, quota attainment, pipeline management → return "sales"
+STEP 1: Extract ALL job titles from the resume
+STEP 2: Determine what the person ACTUALLY DOES day-to-day
+STEP 3: Apply detection rules:
 
-OTHER RULES:
-- Marketing roles = "marketing" (not technology)
-- Recruiters/HR = "hr"
-- Product Managers = "technology" (they build products)
-- Valid industries: technology, healthcare, finance, legal, sales, marketing, education, engineering, creative, hr, consulting, retail, hospitality, manufacturing, government, general
+TECHNOLOGY/SOFTWARE (CHECK FIRST):
+If ANY job title contains: "Software", "Developer", "Engineer" (DevOps/SRE/Platform/Cloud/Data/ML/QA), "Programmer", "Data Scientist", "Systems Admin", "IT Admin", "Tech Lead" → return "technology"
+If responsibilities include: writing code, building software, deploying applications, APIs, infrastructure → return "technology"
+If skills prominently include: Python, JavaScript, React, Node.js, AWS, Docker, Kubernetes, Git → likely "technology"
+
+SALES (only if NOT technology):
+Job titles: Account Executive, Sales Rep, BDR, SDR, Sales Manager → return "sales"
+They SELL products, they don't BUILD them
+
+CRITICAL: A person who writes code is TECHNOLOGY. A person who sells software is SALES.
+
+Valid industries: technology, healthcare, finance, legal, sales, marketing, education, engineering, creative, hr, consulting, retail, hospitality, manufacturing, government, general
 
 Be specific and actionable. All text output should be in the resume's detected language.`;
 
