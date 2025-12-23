@@ -21,6 +21,7 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
   const getCtaText = () => 'See All Packages';
 
   const handleGetStarted = () => {
+    window.scrollTo(0, 0);
     navigate('/pricing');
   };
 

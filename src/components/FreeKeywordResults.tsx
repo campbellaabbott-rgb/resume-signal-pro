@@ -2576,7 +2576,7 @@ export function FreeKeywordResults({
             <div className="flex flex-col sm:flex-row gap-3">
               <PremiumPackageButton variant="control" isPrimary section="tailored_resume" />
             </div>
-            <Link to="/pricing" className="inline-flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mt-3">
+            <Link to="/pricing" onClick={() => window.scrollTo(0, 0)} className="inline-flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mt-3">
               See all packages <ArrowRight className="w-3 h-3" />
             </Link>
             <p className="text-xs text-muted-foreground mt-3">
