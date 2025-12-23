@@ -37,6 +37,7 @@ i18n
       tl: { translation: tl },
       de: { translation: de },
       fr: { translation: fr },
+      'fr-CA': { translation: fr },
       nl: { translation: nl },
       pt: { translation: pt },
     },

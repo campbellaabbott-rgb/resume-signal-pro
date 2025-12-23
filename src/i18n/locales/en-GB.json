@@ -26,7 +26,31 @@
     "ctaButton": "Check My CV Now",
     "freeBadge": "FREE",
     "noSignup": "No sign-up required",
+    "worksWithAny": "Works with any CV",
+    "actionableFixes": "Actionable fixes included",
     "private": "100% private",
+    "headline": {
+      "get": "Get",
+      "recruiterGrade": "Recruiter-Grade",
+      "feedback": "CV Feedback in 60 Seconds"
+    },
+    "description": "Upload your CV and get ATS-optimised rewrites, red-flag warnings, and keyword improvements — written the way hiring managers actually review CVs.",
+    "benefits": {
+      "seniorRoles": "Built for senior ICs, managers, and competitive roles",
+      "atsCompatible": "Works on all ATS systems (Workday, Greenhouse, Lever & 50+ more)",
+      "oneTime": "One-time payment (no subscription)",
+      "private": "CVs are never stored or shared"
+    },
+    "stats": {
+      "scannedToday": "Scanned today",
+      "userRating": "User rating",
+      "gotInterviews": "Got interviews"
+    },
+    "chips": {
+      "scan": "30-second scan",
+      "private": "100% private",
+      "fixes": "Instant fixes"
+    },
     "testimonial": "\"This is a very wonderful product. I have just gone through the freemium features & I can confidently say it's going to be a big success.\"",
     "testimonialAuthor": "Recent user",
     "trustedBy": "Trusted by professionals at",
