@@ -154,8 +154,19 @@ serve(async (req) => {
         return;
       }
 
-      // Build prompts (simplified version of the main function's prompts)
-      const systemPrompt = `You are an expert ATS resume analyzer. Analyze the resume and return structured JSON data.
+      // Build prompts with multilingual support
+      const systemPrompt = `You are an expert ATS resume analyzer with FULL MULTILINGUAL capabilities. You can analyze resumes in ANY language.
+
+CRITICAL LANGUAGE HANDLING:
+1. DETECT the language of the resume (e.g., "en", "es", "pt", "de", "fr", "nl", "hi", "tl", "vi", "hr", "zh", etc.)
+2. RESPOND in the SAME LANGUAGE as the resume - all text fields (tips, suggestions, descriptions, red flags, etc.) must be in the resume's language
+3. Provide LOCALIZED keyword suggestions appropriate for that language's job market:
+   - German resume → German keywords relevant to DACH job market
+   - Portuguese resume → Portuguese keywords for Brazilian/Portuguese job market  
+   - Spanish resume → Spanish keywords for LATAM/Spain job market
+   - English resume → English keywords for US/UK/global job market
+4. Understand international resume formats, certifications, and job title conventions
+
 Focus on: ATS score (0-100), industry detection, format grade (A-D), experience level, keywords, and red flags.
 
 CRITICAL - INDUSTRY DETECTION:
@@ -166,7 +177,7 @@ Detect industry based on JOB TITLES and RESPONSIBILITIES, not just skills mentio
 - Only use "technology" for people who BUILD software (developers, engineers, IT admins)
 - Valid industries: technology, healthcare, finance, legal, sales, marketing, education, engineering, creative, hr, consulting, retail, hospitality, manufacturing, government, general
 
-Be specific and actionable.`;
+Be specific and actionable. All text output should be in the resume's detected language.`;
 
       const userPrompt = hasJobDescription 
         ? `Analyze this resume for the target job:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>\n\n<job_description>\n${truncatedJobDescription}\n</job_description>`
@@ -194,12 +205,21 @@ Be specific and actionable.`;
               parameters: {
                 type: "object",
                 properties: {
+                  detectedLanguage: {
+                    type: "object",
+                    description: "The detected language of the resume",
+                    properties: {
+                      code: { type: "string", description: "ISO 639-1 language code (e.g., 'en', 'es', 'de', 'pt', 'fr')" },
+                      name: { type: "string", description: "Language name in English (e.g., 'English', 'Spanish', 'German')" },
+                      region: { type: "string", description: "Target job market region (e.g., 'US/UK', 'LATAM/Spain', 'DACH', 'Brazil/Portugal')" }
+                    }
+                  },
                   candidateName: { type: "string" },
                   industry: { type: "string" },
                   currentRole: { type: "string" },
                   atsScoreEstimate: { type: "number" },
                   formatGrade: { type: "string", enum: ["A", "B", "C", "D"] },
-                  formatIssue: { type: "string" },
+                  formatIssue: { type: "string", description: "Description in the resume's language" },
                   experienceLevel: {
                     type: "object",
                     properties: {
@@ -215,14 +235,14 @@ Be specific and actionable.`;
                       hasExperience: { type: "boolean" },
                       hasEducation: { type: "boolean" },
                       hasSkills: { type: "boolean" },
-                      missingSections: { type: "array", items: { type: "string" } }
+                      missingSections: { type: "array", items: { type: "string" }, description: "Section names in the resume's language" }
                     }
                   },
                   topStrength: {
                     type: "object",
                     properties: {
-                      title: { type: "string" },
-                      description: { type: "string" }
+                      title: { type: "string", description: "In the resume's language" },
+                      description: { type: "string", description: "In the resume's language" }
                     }
                   },
                   redFlags: {
@@ -230,18 +250,19 @@ Be specific and actionable.`;
                     items: {
                       type: "object",
                       properties: {
-                        issue: { type: "string" },
-                        impact: { type: "string" }
+                        issue: { type: "string", description: "In the resume's language" },
+                        impact: { type: "string", description: "In the resume's language" }
                       }
                     }
                   },
                   keywords: {
                     type: "array",
+                    description: "Keywords in the resume's language, appropriate for that region's job market",
                     items: {
                       type: "object",
                       properties: {
-                        keyword: { type: "string" },
-                        reason: { type: "string" }
+                        keyword: { type: "string", description: "Keyword in the resume's language" },
+                        reason: { type: "string", description: "Explanation in the resume's language" }
                       }
                     }
                   },
@@ -250,7 +271,7 @@ Be specific and actionable.`;
                     items: {
                       type: "object",
                       properties: {
-                        fix: { type: "string" },
+                        fix: { type: "string", description: "In the resume's language" },
                         timeEstimate: { type: "string" },
                         impact: { type: "string", enum: ["low", "medium", "high"] }
                       }
@@ -261,11 +282,11 @@ Be specific and actionable.`;
                     properties: {
                       level: { type: "string", enum: ["low", "medium", "high"] },
                       estimatedScoreIncrease: { type: "number" },
-                      topPriority: { type: "string" }
+                      topPriority: { type: "string", description: "In the resume's language" }
                     }
                   }
                 },
-                required: ["industry", "atsScoreEstimate", "formatGrade", "experienceLevel", "keywords", "redFlags"]
+                required: ["detectedLanguage", "industry", "atsScoreEstimate", "formatGrade", "experienceLevel", "keywords", "redFlags"]
               }
             }
           }],
