@@ -86,7 +86,7 @@ const corsHeaders = {
 
 const RATE_LIMIT = 30; // 30 requests per hour (increased for checkout - revenue critical)
 const RATE_WINDOW_MINUTES = 60;
-const BASE_PRICE_USD = 25;
+const BASE_PRICE_USD = 5;
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1000;
 
