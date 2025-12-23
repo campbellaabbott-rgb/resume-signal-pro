@@ -25,6 +25,42 @@ export const languages = [
   { code: 'pt', name: 'Português', flag: '🇵🇹' },
 ];
 
+// Get supported language codes
+const supportedLanguages = languages.map(l => l.code);
+
+// Normalize language code to supported variant
+// e.g., fr-CA uses fr translations, es-MX uses es, etc.
+export function normalizeLanguageCode(code: string): string {
+  // If exact match, use it
+  if (supportedLanguages.includes(code)) {
+    return code;
+  }
+  
+  // Try base language (e.g., fr-CA → fr)
+  const baseCode = code.split('-')[0];
+  if (supportedLanguages.includes(baseCode)) {
+    return baseCode;
+  }
+  
+  // Fallback to English
+  return 'en';
+}
+
+// Custom language detector that normalizes codes
+const customLanguageDetector = {
+  name: 'customLocalStorage',
+  lookup() {
+    const stored = localStorage.getItem('i18nextLng');
+    if (stored) {
+      return normalizeLanguageCode(stored);
+    }
+    return undefined;
+  },
+  cacheUserLanguage(lng: string) {
+    localStorage.setItem('i18nextLng', lng);
+  }
+};
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -37,18 +73,34 @@ i18n
       tl: { translation: tl },
       de: { translation: de },
       fr: { translation: fr },
-      'fr-CA': { translation: fr },
+      'fr-CA': { translation: fr }, // fr-CA uses French translations
       nl: { translation: nl },
       pt: { translation: pt },
     },
     fallbackLng: 'en',
+    supportedLngs: supportedLanguages,
+    load: 'currentOnly', // Don't load region variants automatically
     interpolation: {
       escapeValue: false,
     },
     detection: {
       order: ['localStorage', 'navigator'],
       caches: ['localStorage'],
+      lookupLocalStorage: 'i18nextLng',
     },
   });
+
+// Debug: Log current language on init
+if (import.meta.env.DEV) {
+  console.log('[i18n] Initialized with language:', i18n.language);
+}
+
+// Listen for language changes and persist
+i18n.on('languageChanged', (lng) => {
+  localStorage.setItem('i18nextLng', lng);
+  if (import.meta.env.DEV) {
+    console.log('[i18n] Language changed to:', lng);
+  }
+});
 
 export default i18n;
