@@ -89,6 +89,80 @@
     "questions": "¿Preguntas o comentarios?",
     "pricing": "Precios"
   },
+  "howItWorks": {
+    "badge": "Análisis con IA",
+    "title": "Escaneo Profundo de 24 Puntos",
+    "subtitle": "Nuestra IA simula cómo los sistemas ATS modernos escanean tu CV, analizando cada palabra contra estándares reales de reclutadores.",
+    "whatWeAnalyze": "Qué Analizamos",
+    "dataNotStored": "Tus datos nunca se almacenan",
+    "steps": {
+      "upload": {
+        "title": "1. Sube tu CV",
+        "description": "Pega texto o sube PDF/DOCX. Extraemos cada palabra."
+      },
+      "analysis": {
+        "title": "2. Análisis IA",
+        "description": "Nuestra IA realiza 24 verificaciones distintas en ~10 segundos."
+      },
+      "results": {
+        "title": "3. Obtén Resultados",
+        "description": "Puntuaciones instantáneas, alertas y mejoras accionables."
+      }
+    },
+    "points": {
+      "atsScore": "Puntuación ATS",
+      "formatGrade": "Nota de Formato",
+      "resumeLength": "Longitud del CV",
+      "wordCount": "Conteo de Palabras",
+      "experienceLevel": "Nivel de Experiencia",
+      "sectionCheck": "Verificación de Secciones",
+      "contactInfo": "Info de Contacto",
+      "topStrength": "Fortaleza Principal",
+      "quantification": "Cuantificación",
+      "actionVerbs": "Verbos de Acción",
+      "redFlags": "Señales de Alerta",
+      "keywords": "Palabras Clave",
+      "readability": "Legibilidad",
+      "bulletImpact": "Impacto de Viñetas",
+      "keywordDensity": "Densidad de Keywords",
+      "improvementPotential": "Potencial de Mejora",
+      "skipReasons": "Razones de Rechazo",
+      "powerWords": "Palabras de Poder",
+      "weakPhrases": "Frases Débiles",
+      "timelineAnalysis": "Análisis de Línea de Tiempo",
+      "industryBenchmark": "Benchmark de Industria",
+      "quickWins": "Victorias Rápidas",
+      "sampleRewrite": "Ejemplo de Reescritura",
+      "careerTrajectory": "Trayectoria Profesional"
+    },
+    "footer": {
+      "realAi": "Análisis IA real",
+      "results": "Resultados en ~10 seg",
+      "private": "100% privado"
+    }
+  },
+  "tieredPricing": {
+    "title": "¿Listo para Arreglar tu CV?",
+    "subtitle": "Elige la opción que se ajuste a tus necesidades",
+    "mostPopular": "Más Popular",
+    "oneTime": "único pago",
+    "select": "Seleccionar",
+    "footer": "Todas las opciones incluyen acceso instantáneo. Pago seguro vía Stripe.",
+    "products": {
+      "basicKeywordFix": {
+        "name": "Corrección Básica de Keywords",
+        "description": "Optimización rápida de palabras clave"
+      },
+      "fullAnalysis": {
+        "name": "Análisis Completo",
+        "description": "Revisión completa del CV"
+      },
+      "premiumPackage": {
+        "name": "Paquete Premium",
+        "description": "Todo incluido"
+      }
+    }
+  },
   "language": {
     "select": "Seleccionar Idioma"
   },

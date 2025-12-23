@@ -89,6 +89,80 @@
     "questions": "प्रश्न या प्रतिक्रिया?",
     "pricing": "मूल्य"
   },
+  "howItWorks": {
+    "badge": "AI-संचालित विश्लेषण",
+    "title": "24-पॉइंट गहन स्कैन",
+    "subtitle": "हमारी AI सिमुलेट करती है कि आधुनिक ATS सिस्टम आपके रिज़्यूमे को कैसे स्कैन करते हैं, वास्तविक रिक्रूटर मानकों के विरुद्ध हर शब्द का विश्लेषण करते हैं।",
+    "whatWeAnalyze": "हम क्या विश्लेषण करते हैं",
+    "dataNotStored": "आपका डेटा कभी संग्रहीत नहीं होता",
+    "steps": {
+      "upload": {
+        "title": "1. रिज़्यूमे अपलोड करें",
+        "description": "टेक्स्ट पेस्ट करें या PDF/DOCX अपलोड करें। हम हर शब्द निकालते हैं।"
+      },
+      "analysis": {
+        "title": "2. AI विश्लेषण",
+        "description": "हमारी AI ~10 सेकंड में 24 अलग-अलग जांच करती है।"
+      },
+      "results": {
+        "title": "3. परिणाम प्राप्त करें",
+        "description": "तत्काल स्कोर, रेड फ्लैग और कार्रवाई योग्य सुधार।"
+      }
+    },
+    "points": {
+      "atsScore": "ATS स्कोर",
+      "formatGrade": "फॉर्मेट ग्रेड",
+      "resumeLength": "रिज़्यूमे लंबाई",
+      "wordCount": "शब्द गणना",
+      "experienceLevel": "अनुभव स्तर",
+      "sectionCheck": "सेक्शन जांच",
+      "contactInfo": "संपर्क जानकारी",
+      "topStrength": "शीर्ष ताकत",
+      "quantification": "मात्रा निर्धारण",
+      "actionVerbs": "क्रिया शब्द",
+      "redFlags": "रेड फ्लैग्स",
+      "keywords": "कीवर्ड्स",
+      "readability": "पठनीयता",
+      "bulletImpact": "बुलेट प्रभाव",
+      "keywordDensity": "कीवर्ड घनत्व",
+      "improvementPotential": "सुधार क्षमता",
+      "skipReasons": "छोड़ने के कारण",
+      "powerWords": "पावर वर्ड्स",
+      "weakPhrases": "कमजोर वाक्यांश",
+      "timelineAnalysis": "टाइमलाइन विश्लेषण",
+      "industryBenchmark": "उद्योग बेंचमार्क",
+      "quickWins": "त्वरित जीत",
+      "sampleRewrite": "नमूना पुनर्लेखन",
+      "careerTrajectory": "करियर ट्रैजेक्टरी"
+    },
+    "footer": {
+      "realAi": "वास्तविक AI विश्लेषण",
+      "results": "~10 सेकंड में परिणाम",
+      "private": "100% निजी"
+    }
+  },
+  "tieredPricing": {
+    "title": "अपना रिज़्यूमे ठीक करने के लिए तैयार?",
+    "subtitle": "वह विकल्प चुनें जो आपकी आवश्यकताओं के अनुरूप हो",
+    "mostPopular": "सबसे लोकप्रिय",
+    "oneTime": "एकमुश्त",
+    "select": "चुनें",
+    "footer": "सभी विकल्पों में तत्काल पहुंच शामिल है। Stripe के माध्यम से सुरक्षित भुगतान।",
+    "products": {
+      "basicKeywordFix": {
+        "name": "बेसिक कीवर्ड फिक्स",
+        "description": "त्वरित कीवर्ड अनुकूलन"
+      },
+      "fullAnalysis": {
+        "name": "पूर्ण विश्लेषण",
+        "description": "संपूर्ण रिज़्यूमे समीक्षा"
+      },
+      "premiumPackage": {
+        "name": "प्रीमियम पैकेज",
+        "description": "सब कुछ शामिल"
+      }
+    }
+  },
   "language": {
     "select": "भाषा चुनें"
   },

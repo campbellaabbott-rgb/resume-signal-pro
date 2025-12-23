@@ -89,6 +89,80 @@
     "questions": "Fragen oder Feedback?",
     "pricing": "Preise"
   },
+  "howItWorks": {
+    "badge": "KI-gestützte Analyse",
+    "title": "24-Punkte-Tiefenscan",
+    "subtitle": "Unsere KI simuliert, wie moderne ATS-Systeme Ihren Lebenslauf scannen und jedes Wort gegen echte Recruiter-Standards analysieren.",
+    "whatWeAnalyze": "Was wir analysieren",
+    "dataNotStored": "Ihre Daten werden nie gespeichert",
+    "steps": {
+      "upload": {
+        "title": "1. Lebenslauf hochladen",
+        "description": "Text einfügen oder PDF/DOCX hochladen. Wir extrahieren jedes Wort."
+      },
+      "analysis": {
+        "title": "2. KI-Analyse",
+        "description": "Unsere KI führt 24 verschiedene Prüfungen in ~10 Sekunden durch."
+      },
+      "results": {
+        "title": "3. Ergebnisse erhalten",
+        "description": "Sofortige Bewertungen, Red Flags und umsetzbare Verbesserungen."
+      }
+    },
+    "points": {
+      "atsScore": "ATS-Score",
+      "formatGrade": "Format-Note",
+      "resumeLength": "Lebenslauf-Länge",
+      "wordCount": "Wortanzahl",
+      "experienceLevel": "Erfahrungsstufe",
+      "sectionCheck": "Abschnittsprüfung",
+      "contactInfo": "Kontaktdaten",
+      "topStrength": "Top-Stärke",
+      "quantification": "Quantifizierung",
+      "actionVerbs": "Aktionsverben",
+      "redFlags": "Red Flags",
+      "keywords": "Keywords",
+      "readability": "Lesbarkeit",
+      "bulletImpact": "Bullet-Wirkung",
+      "keywordDensity": "Keyword-Dichte",
+      "improvementPotential": "Verbesserungspotenzial",
+      "skipReasons": "Ablehnungsgründe",
+      "powerWords": "Power-Wörter",
+      "weakPhrases": "Schwache Phrasen",
+      "timelineAnalysis": "Zeitachsen-Analyse",
+      "industryBenchmark": "Branchen-Benchmark",
+      "quickWins": "Schnelle Erfolge",
+      "sampleRewrite": "Beispiel-Umschreibung",
+      "careerTrajectory": "Karriereverlauf"
+    },
+    "footer": {
+      "realAi": "Echte KI-Analyse",
+      "results": "Ergebnisse in ~10 Sek.",
+      "private": "100% privat"
+    }
+  },
+  "tieredPricing": {
+    "title": "Bereit, Ihren Lebenslauf zu verbessern?",
+    "subtitle": "Wählen Sie die Option, die zu Ihren Bedürfnissen passt",
+    "mostPopular": "Am beliebtesten",
+    "oneTime": "einmalig",
+    "select": "Auswählen",
+    "footer": "Alle Optionen beinhalten sofortigen Zugang. Sichere Zahlung über Stripe.",
+    "products": {
+      "basicKeywordFix": {
+        "name": "Basis Keyword-Fix",
+        "description": "Schnelle Keyword-Optimierung"
+      },
+      "fullAnalysis": {
+        "name": "Vollständige Analyse",
+        "description": "Komplette Lebenslauf-Prüfung"
+      },
+      "premiumPackage": {
+        "name": "Premium-Paket",
+        "description": "Alles inklusive"
+      }
+    }
+  },
   "language": {
     "select": "Sprache wählen"
   },

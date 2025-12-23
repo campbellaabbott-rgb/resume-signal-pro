@@ -89,6 +89,80 @@
     "questions": "Perguntas ou feedback?",
     "pricing": "Preços"
   },
+  "howItWorks": {
+    "badge": "Análise com IA",
+    "title": "Scan Profundo de 24 Pontos",
+    "subtitle": "A nossa IA simula como os sistemas ATS modernos analisam o seu currículo, verificando cada palavra segundo padrões reais de recrutadores.",
+    "whatWeAnalyze": "O Que Analisamos",
+    "dataNotStored": "Os seus dados nunca são armazenados",
+    "steps": {
+      "upload": {
+        "title": "1. Carregue o Currículo",
+        "description": "Cole texto ou carregue PDF/DOCX. Extraímos cada palavra."
+      },
+      "analysis": {
+        "title": "2. Análise IA",
+        "description": "A nossa IA realiza 24 verificações distintas em ~10 segundos."
+      },
+      "results": {
+        "title": "3. Obtenha Resultados",
+        "description": "Pontuações instantâneas, alertas e melhorias práticas."
+      }
+    },
+    "points": {
+      "atsScore": "Pontuação ATS",
+      "formatGrade": "Nota de Formato",
+      "resumeLength": "Comprimento do CV",
+      "wordCount": "Contagem de Palavras",
+      "experienceLevel": "Nível de Experiência",
+      "sectionCheck": "Verificação de Secções",
+      "contactInfo": "Dados de Contacto",
+      "topStrength": "Principal Força",
+      "quantification": "Quantificação",
+      "actionVerbs": "Verbos de Ação",
+      "redFlags": "Sinais de Alerta",
+      "keywords": "Palavras-chave",
+      "readability": "Legibilidade",
+      "bulletImpact": "Impacto das Balas",
+      "keywordDensity": "Densidade de Keywords",
+      "improvementPotential": "Potencial de Melhoria",
+      "skipReasons": "Razões de Rejeição",
+      "powerWords": "Palavras de Poder",
+      "weakPhrases": "Frases Fracas",
+      "timelineAnalysis": "Análise Cronológica",
+      "industryBenchmark": "Benchmark da Indústria",
+      "quickWins": "Vitórias Rápidas",
+      "sampleRewrite": "Exemplo de Reescrita",
+      "careerTrajectory": "Trajetória de Carreira"
+    },
+    "footer": {
+      "realAi": "Análise IA real",
+      "results": "Resultados em ~10 seg",
+      "private": "100% privado"
+    }
+  },
+  "tieredPricing": {
+    "title": "Pronto para Melhorar o Seu Currículo?",
+    "subtitle": "Escolha a opção que se adapta às suas necessidades",
+    "mostPopular": "Mais Popular",
+    "oneTime": "pagamento único",
+    "select": "Selecionar",
+    "footer": "Todas as opções incluem acesso instantâneo. Pagamento seguro via Stripe.",
+    "products": {
+      "basicKeywordFix": {
+        "name": "Correção Básica de Keywords",
+        "description": "Otimização rápida de palavras-chave"
+      },
+      "fullAnalysis": {
+        "name": "Análise Completa",
+        "description": "Revisão completa do currículo"
+      },
+      "premiumPackage": {
+        "name": "Pacote Premium",
+        "description": "Tudo incluído"
+      }
+    }
+  },
   "language": {
     "select": "Selecionar Idioma"
   },

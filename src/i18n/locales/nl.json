@@ -89,6 +89,80 @@
     "questions": "Vragen of feedback?",
     "pricing": "Prijzen"
   },
+  "howItWorks": {
+    "badge": "AI-gestuurde Analyse",
+    "title": "24-Punten Dieptescan",
+    "subtitle": "Onze AI simuleert hoe moderne ATS-systemen je cv scannen en elk woord analyseren tegen echte recruiter-standaarden.",
+    "whatWeAnalyze": "Wat We Analyseren",
+    "dataNotStored": "Je gegevens worden nooit opgeslagen",
+    "steps": {
+      "upload": {
+        "title": "1. Upload CV",
+        "description": "Plak tekst of upload PDF/DOCX. We extraheren elk woord."
+      },
+      "analysis": {
+        "title": "2. AI Analyse",
+        "description": "Onze AI voert 24 verschillende controles uit in ~10 seconden."
+      },
+      "results": {
+        "title": "3. Krijg Resultaten",
+        "description": "Directe scores, rode vlaggen en praktische verbeteringen."
+      }
+    },
+    "points": {
+      "atsScore": "ATS-Score",
+      "formatGrade": "Opmaakcijfer",
+      "resumeLength": "CV-Lengte",
+      "wordCount": "Woordtelling",
+      "experienceLevel": "Ervaringsniveau",
+      "sectionCheck": "Sectiecontrole",
+      "contactInfo": "Contactgegevens",
+      "topStrength": "Belangrijkste Kracht",
+      "quantification": "Kwantificering",
+      "actionVerbs": "Actiewerkwoorden",
+      "redFlags": "Rode Vlaggen",
+      "keywords": "Trefwoorden",
+      "readability": "Leesbaarheid",
+      "bulletImpact": "Bullet-Impact",
+      "keywordDensity": "Keyworddichtheid",
+      "improvementPotential": "Verbeterpotentieel",
+      "skipReasons": "Afwijzingsredenen",
+      "powerWords": "Krachtwoorden",
+      "weakPhrases": "Zwakke Zinnen",
+      "timelineAnalysis": "Tijdlijnanalyse",
+      "industryBenchmark": "Branchebenchmark",
+      "quickWins": "Snelle Winsten",
+      "sampleRewrite": "Voorbeeldherschrijving",
+      "careerTrajectory": "Loopbaantraject"
+    },
+    "footer": {
+      "realAi": "Echte AI-analyse",
+      "results": "Resultaten in ~10 sec",
+      "private": "100% privé"
+    }
+  },
+  "tieredPricing": {
+    "title": "Klaar om je CV te Verbeteren?",
+    "subtitle": "Kies de optie die bij jouw behoeften past",
+    "mostPopular": "Meest Populair",
+    "oneTime": "eenmalig",
+    "select": "Selecteer",
+    "footer": "Alle opties bevatten directe toegang. Veilige betaling via Stripe.",
+    "products": {
+      "basicKeywordFix": {
+        "name": "Basis Keyword-Fix",
+        "description": "Snelle keyword-optimalisatie"
+      },
+      "fullAnalysis": {
+        "name": "Volledige Analyse",
+        "description": "Complete cv-beoordeling"
+      },
+      "premiumPackage": {
+        "name": "Premium Pakket",
+        "description": "Alles inbegrepen"
+      }
+    }
+  },
   "language": {
     "select": "Selecteer taal"
   },

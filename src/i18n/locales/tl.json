@@ -89,6 +89,80 @@
     "questions": "May tanong o feedback?",
     "pricing": "Presyo"
   },
+  "howItWorks": {
+    "badge": "AI-Powered Analysis",
+    "title": "24-Point Deep Resume Scan",
+    "subtitle": "Ang aming AI ay nagsi-simulate kung paano ini-scan ng mga modernong ATS system ang iyong resume, na sinusuri ang bawat salita laban sa tunay na mga pamantayan ng recruiter.",
+    "whatWeAnalyze": "Ano ang Aming Sinusuri",
+    "dataNotStored": "Ang iyong data ay hindi naka-store",
+    "steps": {
+      "upload": {
+        "title": "1. I-upload ang Resume",
+        "description": "I-paste ang text o mag-upload ng PDF/DOCX. Kinukuha namin ang bawat salita."
+      },
+      "analysis": {
+        "title": "2. AI Analysis",
+        "description": "Nagsasagawa ang aming AI ng 24 na iba't ibang pagsusuri sa ~10 segundo."
+      },
+      "results": {
+        "title": "3. Kumuha ng Resulta",
+        "description": "Instant na mga score, red flags, at actionable improvements."
+      }
+    },
+    "points": {
+      "atsScore": "ATS Score",
+      "formatGrade": "Format Grade",
+      "resumeLength": "Haba ng Resume",
+      "wordCount": "Bilang ng Salita",
+      "experienceLevel": "Antas ng Karanasan",
+      "sectionCheck": "Section Check",
+      "contactInfo": "Contact Info",
+      "topStrength": "Top Strength",
+      "quantification": "Quantification",
+      "actionVerbs": "Action Verbs",
+      "redFlags": "Red Flags",
+      "keywords": "Keywords",
+      "readability": "Readability",
+      "bulletImpact": "Bullet Impact",
+      "keywordDensity": "Keyword Density",
+      "improvementPotential": "Improvement Potential",
+      "skipReasons": "Skip Reasons",
+      "powerWords": "Power Words",
+      "weakPhrases": "Weak Phrases",
+      "timelineAnalysis": "Timeline Analysis",
+      "industryBenchmark": "Industry Benchmark",
+      "quickWins": "Quick Wins",
+      "sampleRewrite": "Sample Rewrite",
+      "careerTrajectory": "Career Trajectory"
+    },
+    "footer": {
+      "realAi": "Tunay na AI analysis",
+      "results": "Resulta sa ~10 seg",
+      "private": "100% private"
+    }
+  },
+  "tieredPricing": {
+    "title": "Handa Nang Ayusin ang Iyong Resume?",
+    "subtitle": "Piliin ang opsyon na angkop sa iyong mga pangangailangan",
+    "mostPopular": "Pinakapopular",
+    "oneTime": "isang beses lang",
+    "select": "Piliin",
+    "footer": "Lahat ng opsyon ay may instant access. Secure na pagbabayad sa pamamagitan ng Stripe.",
+    "products": {
+      "basicKeywordFix": {
+        "name": "Basic Keyword Fix",
+        "description": "Mabilis na keyword optimization"
+      },
+      "fullAnalysis": {
+        "name": "Buong Pagsusuri",
+        "description": "Kumpletong resume review"
+      },
+      "premiumPackage": {
+        "name": "Premium Package",
+        "description": "Lahat ay kasama"
+      }
+    }
+  },
   "language": {
     "select": "Pumili ng Wika"
   },
