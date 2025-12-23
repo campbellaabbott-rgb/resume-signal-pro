@@ -74,3 +74,9 @@ verify_jwt = false
 
 [functions.check-error-spikes]
 verify_jwt = false
+
+[functions.health-check]
+verify_jwt = false
+
+[functions.generate-summary]
+verify_jwt = false
