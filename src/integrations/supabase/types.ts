@@ -878,6 +878,7 @@ export type Database = {
       cleanup_expired_analyses: { Args: never; Returns: number }
       cleanup_expired_cache: { Args: never; Returns: number }
       cleanup_expired_stripe_sessions: { Args: never; Returns: number }
+      cleanup_expired_temp_resumes: { Args: never; Returns: number }
       cleanup_old_rate_limits: { Args: never; Returns: number }
       compare_cohorts: {
         Args: {
@@ -1166,14 +1167,19 @@ export type Database = {
           validation_errors: number
         }[]
       }
-      get_temp_resume: {
-        Args: { p_session_id: string }
-        Returns: {
-          job_description_text: string
-          linkedin_text: string
-          resume_text: string
-        }[]
-      }
+      get_temp_resume:
+        | {
+            Args: { p_session_id: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.get_temp_resume(p_session_id => text), public.get_temp_resume(p_session_id => uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"[]
+          }
+        | {
+            Args: { p_session_id: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.get_temp_resume(p_session_id => text), public.get_temp_resume(p_session_id => uuid). Try renaming the parameters or the function itself in the database so function overloading can be resolved"[]
+          }
       get_today_scan_count: { Args: never; Returns: number }
       get_visitor_error_history: {
         Args: { p_visitor_id: string }
