@@ -210,7 +210,7 @@ Be specific and actionable. All text output should be in the resume's detected l
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash", // Using flash for speed in streaming version
+          model: "google/gemini-2.5-pro", // Using Pro for better analysis quality
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt }
