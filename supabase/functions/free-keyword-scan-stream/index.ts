@@ -14,6 +14,18 @@ const MAX_JOB_DESCRIPTION_LENGTH = 15000;
 const FREE_SCANS_PER_DAY = 7;
 const FUNCTION_NAME = 'free-keyword-scan';
 
+const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') || 'admin@resumebooster.com';
+
+const getCountryFromHeaders = (req: Request): string | null => {
+  return (
+    req.headers.get('cf-ipcountry') ||
+    req.headers.get('x-vercel-ip-country') ||
+    req.headers.get('x-country-code') ||
+    null
+  );
+};
+
+
 // Helper to get client IP
 const getClientIp = (req: Request): string => {
   return req.headers.get('cf-connecting-ip') ||
@@ -412,6 +424,53 @@ Focus on: ATS score (0-100), industry detection, format grade (A-D), experience 
         quickWins: (analysis.quickWins || []).slice(0, 3),
       };
 
+      const country = getCountryFromHeaders(req) || 'Unknown';
+
+      // Send admin notification email for every free scan
+      EdgeRuntime.waitUntil(
+        (async () => {
+          try {
+            const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+            if (!RESEND_API_KEY) {
+              console.log('[FREE-KEYWORD-SCAN-STREAM] No RESEND_API_KEY, skipping admin notification');
+              return;
+            }
+
+            const atsScore = analysis.atsScoreEstimate || 0;
+            const response = await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${RESEND_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                from: 'Resume Booster <onboarding@resend.dev>',
+                to: [ADMIN_EMAIL],
+                subject: `🔍 New Free Scan: ${analysis.industry || 'Unknown'} (ATS ${atsScore}) - ${country}`,
+                html: `
+                  <h2>New Free Resume Scan</h2>
+                  <ul>
+                    <li><strong>Country:</strong> ${country}</li>
+                    <li><strong>Industry:</strong> ${analysis.industry || 'Unknown'}</li>
+                    <li><strong>ATS Score:</strong> ${atsScore}/100</li>
+                    <li><strong>Experience Level:</strong> ${analysis.experienceLevel?.level || 'Unknown'}</li>
+                    <li><strong>IP Address:</strong> ${clientIp}</li>
+                    <li><strong>Time:</strong> ${new Date().toISOString()}</li>
+                  </ul>
+                `,
+              }),
+            });
+
+            if (!response.ok) {
+              console.error('[FREE-KEYWORD-SCAN-STREAM] Admin notification failed:', await response.text());
+            } else {
+              console.log('[FREE-KEYWORD-SCAN-STREAM] Admin notification sent');
+            }
+          } catch (err) {
+            console.error('[FREE-KEYWORD-SCAN-STREAM] Admin notification error:', err);
+          }
+        })()
+      );
 
       // Increment counter
       EdgeRuntime.waitUntil(
@@ -419,6 +478,7 @@ Focus on: ATS score (0-100), industry detection, format grade (A-D), experience 
           await supabase.rpc('increment_free_scan_count');
         })()
       );
+
 
       // Log performance
       const duration = Date.now() - requestStartTime;
