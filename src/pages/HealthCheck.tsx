@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Activity, Database, Zap, CreditCard, ArrowLeft } from 'lucide-react';
+import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Activity, Database, Zap, CreditCard, ArrowLeft, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -117,6 +117,12 @@ export default function HealthCheck() {
           </div>
           
           <div className="flex items-center gap-3">
+            <Link to="/scan-metrics">
+              <Button variant="outline" size="sm">
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Scan Metrics
+              </Button>
+            </Link>
             {lastRefresh && (
               <span className="text-xs text-muted-foreground">
                 Updated {lastRefresh.toLocaleTimeString()}

@@ -2,6 +2,93 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
+// Metric tracking - logs to scan_metrics table for dashboard visibility
+interface ScanMetricContext {
+  supabase: any;
+  startTime: number;
+  scanType: string;
+  cacheHit: boolean;
+  ipCountry: string | null;
+  visitorId: string | null;
+  inputLength: number;
+  aiModel: string;
+}
+
+// Log scan metric to database (non-blocking)
+function logScanMetric(
+  ctx: ScanMetricContext,
+  status: 'started' | 'completed' | 'failed' | 'validation_error',
+  options?: {
+    errorCode?: string;
+    errorMessage?: string;
+    outputValid?: boolean;
+    responseScore?: number;
+    metadata?: Record<string, unknown>;
+  }
+): void {
+  const durationMs = Date.now() - ctx.startTime;
+  
+  EdgeRuntime.waitUntil(
+    ctx.supabase.rpc('log_scan_metric', {
+      p_scan_type: ctx.scanType,
+      p_status: status,
+      p_duration_ms: durationMs,
+      p_cache_hit: ctx.cacheHit,
+      p_ai_model: ctx.aiModel,
+      p_error_code: options?.errorCode || null,
+      p_error_message: options?.errorMessage || null,
+      p_ip_country: ctx.ipCountry,
+      p_visitor_id: ctx.visitorId,
+      p_input_length: ctx.inputLength,
+      p_output_valid: options?.outputValid ?? null,
+      p_response_score: options?.responseScore ?? null,
+      p_metadata: options?.metadata || {}
+    }).then(({ error }: any) => {
+      if (error) {
+        console.error(`[FREE-KEYWORD-SCAN] Failed to log metric:`, error.message);
+      } else {
+        console.log(`[FREE-KEYWORD-SCAN] Logged metric: ${status} (${durationMs}ms)`);
+      }
+    })
+  );
+}
+
+// Validate AI response structure
+function validateAIResponse(analysis: any): { valid: boolean; issues: string[] } {
+  const issues: string[] = [];
+  
+  // Required top-level fields
+  const requiredFields = [
+    'industry', 'atsScoreEstimate', 'formatGrade', 'sectionCheck', 
+    'keywords', 'redFlags', 'experienceLevel'
+  ];
+  
+  for (const field of requiredFields) {
+    if (analysis[field] === undefined || analysis[field] === null) {
+      issues.push(`Missing field: ${field}`);
+    }
+  }
+  
+  // Type validations
+  if (typeof analysis.atsScoreEstimate !== 'number' || analysis.atsScoreEstimate < 0 || analysis.atsScoreEstimate > 100) {
+    issues.push(`Invalid atsScoreEstimate: ${analysis.atsScoreEstimate}`);
+  }
+  
+  if (!Array.isArray(analysis.keywords)) {
+    issues.push(`keywords is not an array`);
+  }
+  
+  if (!Array.isArray(analysis.redFlags)) {
+    issues.push(`redFlags is not an array`);
+  }
+  
+  if (analysis.experienceLevel && typeof analysis.experienceLevel !== 'object') {
+    issues.push(`experienceLevel is not an object`);
+  }
+  
+  return { valid: issues.length === 0, issues };
+}
+
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
 
