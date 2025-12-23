@@ -345,6 +345,21 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // For re-analyze requests (skipCache=true), check if user has an existing cached result first
+    // If they do, allow re-analysis without rate limiting (they're refreshing their own data)
+    let bypassRateLimitForReanalyze = false;
+    if (skipCache === true) {
+      const hasJobDescription = jobDescriptionText && typeof jobDescriptionText === 'string' && jobDescriptionText.trim().length > 50;
+      const truncatedJobDescForCheck = hasJobDescription ? jobDescriptionText.substring(0, MAX_JOB_DESCRIPTION_LENGTH) : null;
+      const cacheKeyForCheck = await generateCacheKey(resumeText, truncatedJobDescForCheck || undefined);
+      const existingCache = await getCachedResponse(supabase, cacheKeyForCheck);
+      
+      if (existingCache) {
+        console.log(`[FREE-KEYWORD-SCAN] Re-analyze request with existing cache - bypassing rate limit`);
+        bypassRateLimitForReanalyze = true;
+      }
+    }
+
     // Global rate limit: max 100 requests per hour across all functions
     const { data: globalAllowed, error: globalRlError } = await supabase.rpc('check_global_rate_limit', {
       p_ip: clientIp,
@@ -362,22 +377,27 @@ serve(async (req) => {
       );
     }
 
-    // Function-specific rate limit: 4 free scans per day per IP
-    const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
-      p_function: 'free-keyword-scan',
-      p_ip: clientIp,
-      p_max_requests: FREE_SCANS_PER_DAY,
-      p_window_minutes: 1440 // 24 hours
-    });
+    // Function-specific rate limit: 7 free scans per day per IP
+    // Skip if user is re-analyzing existing cached content
+    if (!bypassRateLimitForReanalyze) {
+      const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
+        p_function: 'free-keyword-scan',
+        p_ip: clientIp,
+        p_max_requests: FREE_SCANS_PER_DAY,
+        p_window_minutes: 1440 // 24 hours
+      });
 
-    if (rlError) {
-      console.error("[FREE-KEYWORD-SCAN] Rate limit check error:", rlError);
-    } else if (!allowed) {
-      console.log(`[FREE-KEYWORD-SCAN] Rate limit exceeded for IP: ${clientIp}`);
-      return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.RATE_LIMITED, rateLimited: true }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (rlError) {
+        console.error("[FREE-KEYWORD-SCAN] Rate limit check error:", rlError);
+      } else if (!allowed) {
+        console.log(`[FREE-KEYWORD-SCAN] Rate limit exceeded for IP: ${clientIp}`);
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.RATE_LIMITED, rateLimited: true }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      console.log(`[FREE-KEYWORD-SCAN] Skipping rate limit check for re-analyze`);
     }
 
     // Call Lovable AI Gateway
