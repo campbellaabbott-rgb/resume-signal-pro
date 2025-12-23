@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.generate-cohort-report]
 verify_jwt = false
+
+[functions.check-error-spikes]
+verify_jwt = false
