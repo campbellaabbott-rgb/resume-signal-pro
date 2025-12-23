@@ -29,7 +29,7 @@ import { MiniPricingCards } from "@/components/MiniPricingCards";
 import { TrustIndicators } from "@/components/TrustIndicators";
 
 import { ScoreBasedPackageRecommendation } from "@/components/ScoreBasedPackageRecommendation";
-import { FloatingUploadButton } from "@/components/FloatingUploadButton";
+import { FloatingUploadButton, FloatingSeeReportButton } from "@/components/FloatingUploadButton";
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
@@ -1105,7 +1105,7 @@ const Index = () => {
 
         {/* Free Keyword Results */}
         {freeKeywordResult && (
-          <section id="free-results" className="py-12 scroll-mt-20">
+          <section id="free-results" className="py-12 scroll-mt-20" data-results-section="true">
             <div className="container">
               <FreeKeywordResults
                 candidateName={freeKeywordResult.candidateName}
@@ -1203,7 +1203,8 @@ const Index = () => {
       
       
       
-      <FloatingUploadButton hasContent={showFloatingScan} />
+      <FloatingUploadButton hasContent={showFloatingScan} scanComplete={!!freeKeywordResult} />
+      <FloatingSeeReportButton isVisible={!!freeKeywordResult} />
 
       
       <Footer />
