@@ -49,6 +49,7 @@ import {
   hasResumeInSession
 } from "@/hooks/use-session-resume";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
+import { useErrorTracking } from "@/hooks/use-error-tracking";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { useAffiliateTracking, getStoredReferralCode } from "@/hooks/use-affiliate-auth";
 
@@ -163,6 +164,7 @@ const Index = () => {
   const [searchParams] = useSearchParams();
   const { verifyPurchase } = useScanCredits();
   const { trackButtonClick, trackCheckoutInitiated } = useConversionTracking();
+  const { trackRateLimitError, trackApiError } = useErrorTracking();
   const { 
     trackUploadStarted, 
     trackUploadCompleted, 
@@ -464,6 +466,8 @@ const Index = () => {
               ? JSON.parse(errorContext.body) 
               : errorContext.body;
             if (errorBody?.rateLimited) {
+              // Track the rate limit error
+              trackRateLimitError('free-keyword-scan', errorBody.scansUsed, errorBody.scansLimit);
               toast({
                 title: "Daily Scan Limit Reached",
                 description: errorBody.error || `You've used all ${errorBody.scansLimit || 7} free scans. Resets in ~${errorBody.hoursUntilReset || 24} hours.`,
@@ -476,10 +480,14 @@ const Index = () => {
             // Not JSON, continue with regular error handling
           }
         }
+        // Track other API errors
+        trackApiError('free-keyword-scan', error?.context?.status || 500, error?.message || 'Unknown error');
         throw error;
       }
 
       if (data?.rateLimited) {
+        // Track the rate limit error
+        trackRateLimitError('free-keyword-scan', data.scansUsed, data.scansLimit);
         toast({
           title: "Daily Scan Limit Reached",
           description: data.error || `You've used all ${data.scansLimit || 7} free scans. Resets in ~${data.hoursUntilReset || 24} hours.`,
@@ -585,6 +593,7 @@ const Index = () => {
               ? JSON.parse(errorContext.body) 
               : errorContext.body;
             if (errorBody?.rateLimited) {
+              trackRateLimitError('free-keyword-scan', errorBody.scansUsed, errorBody.scansLimit);
               toast({
                 title: "Daily Scan Limit Reached",
                 description: errorBody.error || `You've used all ${errorBody.scansLimit || 7} free scans. Resets in ~${errorBody.hoursUntilReset || 24} hours.`,
@@ -597,10 +606,12 @@ const Index = () => {
             // Not JSON, continue
           }
         }
+        trackApiError('free-keyword-scan', error?.context?.status || 500, error?.message || 'Unknown error');
         throw error;
       }
 
       if (data?.rateLimited) {
+        trackRateLimitError('free-keyword-scan', data.scansUsed, data.scansLimit);
         toast({
           title: "Daily Scan Limit Reached",
           description: data.error || `You've used all ${data.scansLimit || 7} free scans. Resets in ~${data.hoursUntilReset || 24} hours.`,
