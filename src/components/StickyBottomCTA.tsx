@@ -18,7 +18,7 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
   const navigate = useNavigate();
 
   // Winner declared - using control variant
-  const getCtaText = () => 'See All Packages';
+  const getCtaText = () => t('stickyCta.ctaButton');
 
   const handleGetStarted = () => {
     window.scrollTo(0, 0);
@@ -50,20 +50,20 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
               </div>
               <div className="text-white">
                 <p className="font-semibold text-sm md:text-base">
-                  Premium packages from ${PRODUCTS.basicKeywordFix.priceUsd}
+                  {t('stickyCta.premiumFrom')} ${PRODUCTS.basicKeywordFix.priceUsd}
                   {isLocalCurrency && <span className="text-white/80 text-xs ml-1">({formatPrice(PRODUCTS.basicKeywordFix.priceUsd)})</span>}
                 </p>
-                <p className="text-xs md:text-sm text-white/80">Full rewrites + LinkedIn optimization + job-specific tailoring</p>
+                <p className="text-xs md:text-sm text-white/80">{t('stickyCta.features')}</p>
               </div>
             </div>
             
             {/* Mobile: Compact */}
             <div className="sm:hidden text-white flex-1">
               <p className="font-semibold text-sm">
-                From ${PRODUCTS.basicKeywordFix.priceUsd}
+                {t('stickyCta.from')} ${PRODUCTS.basicKeywordFix.priceUsd}
                 {isLocalCurrency && <span className="text-white/70 text-xs ml-1">({formatPrice(PRODUCTS.basicKeywordFix.priceUsd)})</span>}
               </p>
-              <p className="text-xs text-white/70">Full rewrites + LinkedIn optimization</p>
+              <p className="text-xs text-white/70">{t('stickyCta.featuresMobile')}</p>
             </div>
             
             {/* Right: CTA */}

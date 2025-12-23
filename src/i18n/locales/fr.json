@@ -448,12 +448,32 @@
     "title": "Prêt à décrocher plus d'entretiens ?",
     "subtitle": "Feedback recruteur en 30 secondes",
     "mobileTitle": "Analysez votre CV →",
-    "button": "Analyser mon CV"
+    "button": "Analyser mon CV",
+    "ctaButton": "Voir Tous les Forfaits",
+    "premiumFrom": "Forfaits premium à partir de",
+    "from": "À partir de",
+    "features": "Réécritures complètes + optimisation LinkedIn + personnalisation par poste",
+    "featuresMobile": "Réécritures + optimisation LinkedIn"
   },
   "finalCta": {
     "urgency": "Votre CV vous fait peut-être perdre des entretiens en ce moment",
+    "title": "Vous avez vu les problèmes. Maintenant obtenez les solutions.",
+    "subtitle": "Le scan gratuit montre ce qui ne va pas. L'analyse complète vous donne du contenu réécrit à copier-coller.",
     "heading": "Ne laissez plus passer d'opportunités",
     "subheading": "Obtenez les corrections exactes que les recruteurs veulent voir.",
+    "freeScan": "Scan Gratuit",
+    "fullAnalysis": "Analyse Complète",
+    "ctaButton": "Voir Tous les Forfaits",
+    "comparison": {
+      "atsScore": "Score ATS & 17 Diagnostics",
+      "redFlags": "Signaux d'Alerte & Mots-clés Manquants",
+      "sampleBullet": "1 Puce Exemple Réécrite",
+      "allBullets": "TOUTES les Puces Réécrites avec Métriques",
+      "linkedin": "Optimisation du Profil LinkedIn",
+      "jobKeywords": "Personnalisation des Mots-clés par Poste",
+      "industryTemplates": "Templates Spécifiques au Secteur",
+      "fullReport": "Rapport Complet en 10 Sections"
+    },
     "benefits": {
       "ats": "Score ATS avec analyse en 5 points",
       "keywords": "Lacunes de mots-clés sectoriels",
@@ -463,6 +483,6 @@
     "oneTime": "paiement unique",
     "guarantee": "Résultats instantanés • Sans abonnement",
     "button": "Obtenir mon analyse",
-    "roi": "💡 Un entretien = 25 $ rentabilisés"
+    "roi": "Un entretien = 25 $ rentabilisés"
   }
 }

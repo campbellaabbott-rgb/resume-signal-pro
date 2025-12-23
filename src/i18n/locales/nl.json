@@ -448,12 +448,32 @@
     "title": "Klaar voor meer sollicitatiegesprekken?",
     "subtitle": "Recruiter-feedback in 30 seconden",
     "mobileTitle": "Analyseer je CV →",
-    "button": "Analyseer mijn CV"
+    "button": "Analyseer mijn CV",
+    "ctaButton": "Bekijk Alle Pakketten",
+    "premiumFrom": "Premium pakketten vanaf",
+    "from": "Vanaf",
+    "features": "Volledige herschrijvingen + LinkedIn-optimalisatie + job-specifieke aanpassing",
+    "featuresMobile": "Herschrijvingen + LinkedIn-optimalisatie"
   },
   "finalCta": {
     "urgency": "Je CV kost je misschien nu al gesprekken",
+    "title": "Je hebt de problemen gezien. Nu de oplossingen.",
+    "subtitle": "De gratis scan toont wat er mis is. De volledige analyse geeft je herschreven content om te kopiëren.",
     "heading": "Laat geen kans meer voorbijgaan",
     "subheading": "Krijg de exacte fixes die recruiters willen zien.",
+    "freeScan": "Gratis Scan",
+    "fullAnalysis": "Volledige Analyse",
+    "ctaButton": "Bekijk Alle Pakketten",
+    "comparison": {
+      "atsScore": "ATS-Score & 17 Diagnoses",
+      "redFlags": "Red Flags & Ontbrekende Keywords",
+      "sampleBullet": "1 Voorbeeld Bullet Herschrijving",
+      "allBullets": "ALLE Bullets Herschreven met Metrics",
+      "linkedin": "LinkedIn Profiel Optimalisatie",
+      "jobKeywords": "Job-Specifieke Keyword Aanpassing",
+      "industryTemplates": "Branche-Specifieke Templates Toegepast",
+      "fullReport": "Compleet 10-Secties Rapport"
+    },
     "benefits": {
       "ats": "ATS-score met 5-punts uitsplitsing",
       "keywords": "Branchespecifieke keyword-gaps",
@@ -463,6 +483,6 @@
     "oneTime": "eenmalig",
     "guarantee": "Directe resultaten • Geen abonnement",
     "button": "Mijn analyse nu",
-    "roi": "💡 Eén gesprek = $ 25 terugverdiend"
+    "roi": "Eén gesprek = $ 25 terugverdiend"
   }
 }
