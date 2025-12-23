@@ -56,12 +56,27 @@ const ANALYSIS_STEPS = [
 
 const ESTIMATED_TIME_SECONDS = 90; // 1.5 minutes
 
-function FreeScanProgress() {
-  const [progress, setProgress] = useState(0);
+interface FreeScanProgressProps {
+  streamingProgress?: {
+    stage: string;
+    message: string;
+    progress: number;
+  } | null;
+}
+
+function FreeScanProgress({ streamingProgress }: FreeScanProgressProps) {
+  const [fallbackProgress, setFallbackProgress] = useState(0);
   const [stepIndex, setStepIndex] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
+  // Use streaming progress if available, otherwise use fallback timer-based progress
+  const progress = streamingProgress?.progress ?? fallbackProgress;
+  const currentMessage = streamingProgress?.message ?? ANALYSIS_STEPS[stepIndex];
+
   useEffect(() => {
+    // Only run fallback timer if no streaming progress
+    if (streamingProgress) return;
+    
     const startTime = Date.now();
     
     const interval = setInterval(() => {
@@ -70,7 +85,7 @@ function FreeScanProgress() {
       
       // Progress increases faster at first, then slows down (asymptotic approach to 95%)
       const newProgress = Math.min(95, (1 - Math.exp(-elapsed / 40)) * 100);
-      setProgress(newProgress);
+      setFallbackProgress(newProgress);
       
       // Cycle through steps based on progress
       const newStepIndex = Math.min(
@@ -81,7 +96,7 @@ function FreeScanProgress() {
     }, 500);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [streamingProgress]);
 
   const remainingSeconds = Math.max(0, ESTIMATED_TIME_SECONDS - elapsedSeconds);
   const remainingMinutes = Math.floor(remainingSeconds / 60);
@@ -104,16 +119,21 @@ function FreeScanProgress() {
         </div>
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>{Math.round(progress)}% complete</span>
-          <span>
-            ~{remainingMinutes > 0 ? `${remainingMinutes}m ` : ''}{remainingSecondsDisplay}s remaining
-          </span>
+          {!streamingProgress && (
+            <span>
+              ~{remainingMinutes > 0 ? `${remainingMinutes}m ` : ''}{remainingSecondsDisplay}s remaining
+            </span>
+          )}
+          {streamingProgress && (
+            <span className="text-success">Live updates</span>
+          )}
         </div>
       </div>
 
       {/* Current step */}
       <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
         <CheckCircle2 className="w-3.5 h-3.5 text-success" />
-        <span>{ANALYSIS_STEPS[stepIndex]}</span>
+        <span>{currentMessage}</span>
       </div>
     </div>
   );

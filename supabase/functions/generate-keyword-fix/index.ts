@@ -91,7 +91,7 @@ Provide a comprehensive keyword analysis with actionable suggestions.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-flash-lite", // Using lite for faster keyword analysis
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
