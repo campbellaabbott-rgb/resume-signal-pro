@@ -1,7 +1,7 @@
 import { Sparkles, CreditCard, Package, Shield } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -11,6 +11,8 @@ import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 
 export function Header() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [showScanPackModal, setShowScanPackModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   
@@ -24,9 +26,20 @@ export function Header() {
   };
 
   const scrollToTrust = () => {
-    const trustSection = document.getElementById('trust-indicators');
-    if (trustSection) {
-      trustSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (location.pathname !== '/') {
+      // Navigate to home with hash, then scroll after navigation
+      navigate('/#trust-indicators');
+      setTimeout(() => {
+        const trustSection = document.getElementById('trust-indicators');
+        if (trustSection) {
+          trustSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    } else {
+      const trustSection = document.getElementById('trust-indicators');
+      if (trustSection) {
+        trustSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
   };
 
