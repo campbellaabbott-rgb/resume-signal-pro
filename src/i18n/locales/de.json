@@ -448,12 +448,32 @@
     "title": "Bereit für mehr Vorstellungsgespräche?",
     "subtitle": "Recruiter-Feedback in 30 Sekunden",
     "mobileTitle": "Lebenslauf analysieren →",
-    "button": "Lebenslauf analysieren"
+    "button": "Lebenslauf analysieren",
+    "ctaButton": "Alle Pakete ansehen",
+    "premiumFrom": "Premium-Pakete ab",
+    "from": "Ab",
+    "features": "Komplette Umschreibungen + LinkedIn-Optimierung + Job-spezifisches Tailoring",
+    "featuresMobile": "Umschreibungen + LinkedIn-Optimierung"
   },
   "finalCta": {
     "urgency": "Ihr Lebenslauf könnte Sie gerade Vorstellungsgespräche kosten",
+    "title": "Sie haben die Probleme gesehen. Jetzt bekommen Sie die Lösungen.",
+    "subtitle": "Der kostenlose Scan zeigt, was falsch ist. Die vollständige Analyse liefert umgeschriebene Inhalte zum Kopieren.",
     "heading": "Verpassen Sie keine weitere Chance",
     "subheading": "Erhalten Sie die exakten Verbesserungen, die Recruiter sehen wollen.",
+    "freeScan": "Kostenloser Scan",
+    "fullAnalysis": "Vollständige Analyse",
+    "ctaButton": "Alle Pakete ansehen",
+    "comparison": {
+      "atsScore": "ATS-Score & 17 Diagnosen",
+      "redFlags": "Red Flags & fehlende Keywords",
+      "sampleBullet": "1 Beispiel-Bullet-Umschreibung",
+      "allBullets": "ALLE Bullets mit Metriken umgeschrieben",
+      "linkedin": "LinkedIn-Profil-Optimierung",
+      "jobKeywords": "Job-spezifisches Keyword-Tailoring",
+      "industryTemplates": "Branchenspezifische Templates angewendet",
+      "fullReport": "Vollständiger 10-Abschnitte-Bericht"
+    },
     "benefits": {
       "ats": "ATS-Score mit 5-Punkte-Aufschlüsselung",
       "keywords": "Branchenspezifische Keyword-Lücken",
@@ -463,6 +483,6 @@
     "oneTime": "einmalig",
     "guarantee": "Sofortige Ergebnisse • Kein Abo",
     "button": "Jetzt Analyse erhalten",
-    "roi": "💡 Ein Vorstellungsgespräch = 25 $ amortisiert"
+    "roi": "Ein Vorstellungsgespräch = 25 $ amortisiert"
   }
 }

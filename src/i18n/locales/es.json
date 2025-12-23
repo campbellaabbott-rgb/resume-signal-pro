@@ -448,12 +448,32 @@
     "title": "¿Listo para conseguir más entrevistas?",
     "subtitle": "Obtén retroalimentación de reclutador en 30 segundos",
     "mobileTitle": "Analiza tu currículum →",
-    "button": "Analizar Mi Currículum"
+    "button": "Analizar Mi Currículum",
+    "ctaButton": "Ver Todos los Paquetes",
+    "premiumFrom": "Paquetes premium desde",
+    "from": "Desde",
+    "features": "Reescrituras completas + optimización LinkedIn + personalización por trabajo",
+    "featuresMobile": "Reescrituras + optimización LinkedIn"
   },
   "finalCta": {
     "urgency": "Tu currículum podría estar costándote entrevistas ahora mismo",
+    "title": "Has visto los problemas. Ahora obtén las soluciones.",
+    "subtitle": "El escaneo gratuito muestra qué está mal. El análisis completo te da contenido reescrito para copiar y pegar.",
     "heading": "No Dejes Escapar Otra Oportunidad",
-    "subheading": "Obtén los cambios exactos que los reclutadores quieren ver. Un análisis podría cambiarlo todo.",
+    "subheading": "Obtén los cambios exactos que los reclutadores quieren ver.",
+    "freeScan": "Escaneo Gratis",
+    "fullAnalysis": "Análisis Completo",
+    "ctaButton": "Ver Todos los Paquetes",
+    "comparison": {
+      "atsScore": "Puntuación ATS y 17 Diagnósticos",
+      "redFlags": "Señales de Alerta y Keywords Faltantes",
+      "sampleBullet": "1 Viñeta de Ejemplo Reescrita",
+      "allBullets": "TODAS las Viñetas Reescritas con Métricas",
+      "linkedin": "Optimización del Perfil de LinkedIn",
+      "jobKeywords": "Personalización de Keywords por Trabajo",
+      "industryTemplates": "Plantillas Específicas de la Industria",
+      "fullReport": "Informe Completo de 10 Secciones"
+    },
     "benefits": {
       "ats": "Puntuación ATS con desglose de 5 puntos",
       "keywords": "Palabras clave específicas de la industria",
@@ -463,6 +483,6 @@
     "oneTime": "pago único",
     "guarantee": "Resultados instantáneos • Sin suscripción",
     "button": "Obtener Mi Análisis Ahora",
-    "roi": "💡 Una entrevista = $25 recuperados"
+    "roi": "Una entrevista = $25 recuperados"
   }
 }

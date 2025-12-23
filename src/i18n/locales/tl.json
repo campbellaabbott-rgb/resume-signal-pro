@@ -448,12 +448,32 @@
     "title": "Handa nang makakuha ng mas maraming interview?",
     "subtitle": "Makakuha ng recruiter-grade feedback sa 30 segundo",
     "mobileTitle": "I-analyze ang iyong resume →",
-    "button": "I-analyze ang Aking Resume"
+    "button": "I-analyze ang Aking Resume",
+    "ctaButton": "Tingnan Lahat ng Packages",
+    "premiumFrom": "Premium packages mula sa",
+    "from": "Mula sa",
+    "features": "Buong rewrites + LinkedIn optimization + job-specific tailoring",
+    "featuresMobile": "Rewrites + LinkedIn optimization"
   },
   "finalCta": {
     "urgency": "Maaaring nawawalan ka ng mga interview dahil sa iyong resume ngayon",
+    "title": "Nakita mo na ang mga problema. Ngayon kunin ang mga solusyon.",
+    "subtitle": "Ang libreng scan ay nagpapakita kung ano ang mali. Ang buong analysis ay nagbibigay ng rewritten content na pwedeng i-copy-paste.",
     "heading": "Huwag Hayaang Mawala ang Isa Pang Pagkakataon",
-    "subheading": "Makuha ang eksaktong mga ayos na gusto makita ng mga recruiter. Isang pagsusuri ay maaaring magbago ng lahat.",
+    "subheading": "Makuha ang eksaktong mga ayos na gusto makita ng mga recruiter.",
+    "freeScan": "Libreng Scan",
+    "fullAnalysis": "Buong Analysis",
+    "ctaButton": "Tingnan Lahat ng Packages",
+    "comparison": {
+      "atsScore": "ATS Score at 17 Diagnostics",
+      "redFlags": "Red Flags at Nawawalang Keywords",
+      "sampleBullet": "1 Sample Bullet Rewrite",
+      "allBullets": "LAHAT ng Bullets na Rewritten na may Metrics",
+      "linkedin": "LinkedIn Profile Optimization",
+      "jobKeywords": "Job-Specific Keyword Tailoring",
+      "industryTemplates": "Industry-Specific Templates na Inilapat",
+      "fullReport": "Kompletong 10-Section Report"
+    },
     "benefits": {
       "ats": "ATS score na may 5-point breakdown",
       "keywords": "Industry-specific na mga kulang na keyword",
@@ -463,6 +483,6 @@
     "oneTime": "isang beses lang",
     "guarantee": "Instant na resulta • Walang subscription",
     "button": "Kunin ang Aking Analysis Ngayon",
-    "roi": "💡 Isang interview = $25 na-recover"
+    "roi": "Isang interview = $25 na-recover"
   }
 }

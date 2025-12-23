@@ -447,14 +447,34 @@
   },
   "stickyCta": {
     "title": "Pronto para conseguir mais entrevistas?",
-    "subtitle": "Obtenha feedback de nível recrutador em 30 segundos",
+    "subtitle": "Obtenha feedback de recrutador em 30 segundos",
     "mobileTitle": "Analise o seu currículo →",
-    "button": "Analisar o Meu Currículo"
+    "button": "Analisar o Meu Currículo",
+    "ctaButton": "Ver Todos os Pacotes",
+    "premiumFrom": "Pacotes premium a partir de",
+    "from": "A partir de",
+    "features": "Reescritas completas + otimização LinkedIn + personalização por vaga",
+    "featuresMobile": "Reescritas + otimização LinkedIn"
   },
   "finalCta": {
     "urgency": "O seu currículo pode estar a perder-lhe entrevistas agora mesmo",
+    "title": "Viu os problemas. Agora obtenha as soluções.",
+    "subtitle": "O scan gratuito mostra o que está errado. A análise completa dá-lhe conteúdo reescrito para copiar e colar.",
     "heading": "Não Deixe Escapar Mais Uma Oportunidade",
-    "subheading": "Obtenha as correções exatas que os recrutadores querem ver. Uma análise pode mudar tudo.",
+    "subheading": "Obtenha as correções exatas que os recrutadores querem ver.",
+    "freeScan": "Scan Gratuito",
+    "fullAnalysis": "Análise Completa",
+    "ctaButton": "Ver Todos os Pacotes",
+    "comparison": {
+      "atsScore": "Pontuação ATS & 17 Diagnósticos",
+      "redFlags": "Sinais de Alerta & Palavras-chave em Falta",
+      "sampleBullet": "1 Tópico de Exemplo Reescrito",
+      "allBullets": "TODOS os Tópicos Reescritos com Métricas",
+      "linkedin": "Otimização do Perfil LinkedIn",
+      "jobKeywords": "Personalização de Palavras-chave por Vaga",
+      "industryTemplates": "Templates Específicos da Indústria",
+      "fullReport": "Relatório Completo de 10 Secções"
+    },
     "benefits": {
       "ats": "Pontuação ATS com detalhes de 5 pontos",
       "keywords": "Lacunas de palavras-chave específicas da indústria",
@@ -464,6 +484,6 @@
     "oneTime": "pagamento único",
     "guarantee": "Resultados instantâneos • Sem subscrição",
     "button": "Obter a Minha Análise Agora",
-    "roi": "💡 Uma entrevista = $25 que se paga sozinho"
+    "roi": "Uma entrevista = $25 que se paga sozinho"
   }
 }

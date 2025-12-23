@@ -13,7 +13,7 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
   const { formatPrice, isLocalCurrency } = useCurrency();
 
   // Winners declared - using control variants
-  const getCtaText = () => 'See All Packages';
+  const getCtaText = () => t('finalCta.ctaButton');
   const getPricingSubtext = () => t('finalCta.oneTime');
 
   const handleGetStarted = () => {
@@ -21,14 +21,14 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
   };
 
   const comparisonItems = [
-    { feature: "ATS Score & 17 Diagnostics", free: true, paid: true },
-    { feature: "Red Flags & Missing Keywords", free: true, paid: true },
-    { feature: "1 Sample Bullet Rewrite", free: true, paid: false },
-    { feature: "ALL Bullets Rewritten with Metrics", free: false, paid: true },
-    { feature: "LinkedIn Profile Optimization", free: false, paid: true },
-    { feature: "Job-Specific Keyword Tailoring", free: false, paid: true },
-    { feature: "Industry-Specific Templates Applied", free: false, paid: true },
-    { feature: "Complete 10-Section Report", free: false, paid: true },
+    { featureKey: "finalCta.comparison.atsScore", free: true, paid: true },
+    { featureKey: "finalCta.comparison.redFlags", free: true, paid: true },
+    { featureKey: "finalCta.comparison.sampleBullet", free: true, paid: false },
+    { featureKey: "finalCta.comparison.allBullets", free: false, paid: true },
+    { featureKey: "finalCta.comparison.linkedin", free: false, paid: true },
+    { featureKey: "finalCta.comparison.jobKeywords", free: false, paid: true },
+    { featureKey: "finalCta.comparison.industryTemplates", free: false, paid: true },
+    { featureKey: "finalCta.comparison.fullReport", free: false, paid: true },
   ];
 
   return (
@@ -48,18 +48,18 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
           </div>
           
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-            You've seen the problems. Now get the fixes.
+            {t('finalCta.title')}
           </h2>
           <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
-            The free scan shows what's wrong. The full analysis gives you rewritten content you can copy-paste.
+            {t('finalCta.subtitle')}
           </p>
           
           {/* Free vs Paid Comparison */}
           <div className="bg-card/80 border border-border/50 rounded-2xl p-6 md:p-8 mb-10 backdrop-blur-sm">
             <div className="grid grid-cols-3 gap-4 mb-4 text-sm font-semibold">
               <div className="text-left"></div>
-              <div className="text-center text-muted-foreground">Free Scan</div>
-              <div className="text-center text-primary">Full Analysis</div>
+              <div className="text-center text-muted-foreground">{t('finalCta.freeScan')}</div>
+              <div className="text-center text-primary">{t('finalCta.fullAnalysis')}</div>
             </div>
             
             <div className="space-y-3">
@@ -70,7 +70,7 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
                     index < comparisonItems.length - 1 ? 'border-b border-border/30' : ''
                   }`}
                 >
-                  <div className="text-left text-foreground">{item.feature}</div>
+                  <div className="text-left text-foreground">{t(item.featureKey)}</div>
                   <div className="flex justify-center">
                     {item.free ? (
                       <Check className="w-5 h-5 text-success" />

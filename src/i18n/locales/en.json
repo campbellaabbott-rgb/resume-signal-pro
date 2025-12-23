@@ -454,12 +454,32 @@
     "title": "Ready to land more interviews?",
     "subtitle": "Get recruiter-grade feedback in 30 seconds",
     "mobileTitle": "Get your resume analyzed →",
-    "button": "Analyze My Resume"
+    "button": "Analyze My Resume",
+    "ctaButton": "See All Packages",
+    "premiumFrom": "Premium packages from",
+    "from": "From",
+    "features": "Full rewrites + LinkedIn optimization + job-specific tailoring",
+    "featuresMobile": "Full rewrites + LinkedIn optimization"
   },
   "finalCta": {
     "urgency": "Your resume might be losing you interviews right now",
+    "title": "You've seen the problems. Now get the fixes.",
+    "subtitle": "The free scan shows what's wrong. The full analysis gives you rewritten content you can copy-paste.",
     "heading": "Don't Let Another Opportunity Slip Away",
     "subheading": "Get the exact fixes recruiters want to see. One analysis could change everything.",
+    "freeScan": "Free Scan",
+    "fullAnalysis": "Full Analysis",
+    "ctaButton": "See All Packages",
+    "comparison": {
+      "atsScore": "ATS Score & 17 Diagnostics",
+      "redFlags": "Red Flags & Missing Keywords",
+      "sampleBullet": "1 Sample Bullet Rewrite",
+      "allBullets": "ALL Bullets Rewritten with Metrics",
+      "linkedin": "LinkedIn Profile Optimization",
+      "jobKeywords": "Job-Specific Keyword Tailoring",
+      "industryTemplates": "Industry-Specific Templates Applied",
+      "fullReport": "Complete 10-Section Report"
+    },
     "benefits": {
       "ats": "AI-ATS score with 5-point breakdown",
       "keywords": "Industry-specific keyword gaps",
@@ -469,6 +489,6 @@
     "oneTime": "one-time",
     "guarantee": "Instant results • No subscription",
     "button": "Get My Analysis Now",
-    "roi": "💡 One interview = $25 paid for itself"
+    "roi": "One interview = $25 paid for itself"
   }
 }
