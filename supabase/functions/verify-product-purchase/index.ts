@@ -34,7 +34,7 @@ serve(async (req) => {
       throw new Error("STRIPE_SECRET_KEY not configured");
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
 
     // Retrieve checkout session
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
