@@ -20,6 +20,7 @@ import Trust from "./pages/Trust";
 import NotFound from "./pages/NotFound";
 import { FloatingHelpButton } from "./components/FloatingHelpButton";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { LanguageDebugBanner } from "./components/LanguageDebugBanner";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => (
         <Route path="*" element={<NotFound />} />
       </Routes>
       <FloatingHelpButton />
+      <LanguageDebugBanner />
     </BrowserRouter>
   </QueryClientProvider>
 );
