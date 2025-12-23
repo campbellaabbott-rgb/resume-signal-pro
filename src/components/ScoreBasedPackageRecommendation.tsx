@@ -191,6 +191,7 @@ export function ScoreBasedPackageRecommendation({ atsScore }: ScoreBasedPackageR
       <div className="mt-4 text-center">
         <Link
           to="/pricing"
+          onClick={() => window.scrollTo(0, 0)}
           className="text-sm text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
         >
           Compare all packages <ArrowRight className="w-3 h-3" />

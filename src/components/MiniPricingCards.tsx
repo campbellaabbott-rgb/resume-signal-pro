@@ -99,6 +99,7 @@ export function MiniPricingCards() {
         <div className="text-center mt-8">
           <Link
             to="/pricing"
+            onClick={() => window.scrollTo(0, 0)}
             className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
           >
             Compare all packages
