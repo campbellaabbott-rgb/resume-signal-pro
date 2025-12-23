@@ -54,24 +54,37 @@ export default function HealthCheck() {
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
-  const fetchHealthCheck = async () => {
+  const fetchHealthCheck = async (retries = 3) => {
     setLoading(true);
     setError(null);
     
-    try {
-      const { data: result, error: fnError } = await supabase.functions.invoke('health-check');
-      
-      if (fnError) {
-        throw fnError;
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const { data: result, error: fnError } = await supabase.functions.invoke('health-check');
+        
+        if (fnError) {
+          throw fnError;
+        }
+        
+        setData(result);
+        setLastRefresh(new Date());
+        setError(null);
+        return; // Success, exit
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : 'Failed to send a request to the Edge Function';
+        
+        if (attempt < retries) {
+          // Wait before retry (exponential backoff: 500ms, 1000ms, 2000ms)
+          await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt - 1)));
+          continue;
+        }
+        
+        // Final attempt failed
+        setError(`${errorMessage} (after ${retries} attempts)`);
       }
-      
-      setData(result);
-      setLastRefresh(new Date());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch health status');
-    } finally {
-      setLoading(false);
     }
+    
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -112,7 +125,7 @@ export default function HealthCheck() {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={fetchHealthCheck}
+              onClick={() => fetchHealthCheck()}
               disabled={loading}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
