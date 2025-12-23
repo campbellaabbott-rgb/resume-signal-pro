@@ -459,6 +459,13 @@ serve(async (req) => {
 
     const systemPrompt = `You are an expert ATS resume analyzer with FULL MULTILINGUAL capabilities. You can analyze resumes in ANY language.
 
+**CRITICAL: READ THE ENTIRE RESUME CAREFULLY BEFORE RESPONDING**
+Before generating ANY output, you MUST:
+1. Read through the ENTIRE resume text from start to finish
+2. List (mentally) ALL job titles held by this person
+3. Identify what type of work they actually DO (not what industry they sell to)
+4. Only THEN proceed with analysis
+
 CRITICAL LANGUAGE HANDLING:
 1. DETECT the language of the resume (e.g., "en", "es", "pt", "de", "fr", "nl", "hi", "tl", "vi", "hr", "zh", etc.)
 2. RESPOND in the SAME LANGUAGE as the resume - all text fields (tips, suggestions, descriptions, red flags, etc.) must be in the resume's language
@@ -531,32 +538,47 @@ Apply the appropriate weights when calculating the ATS score. Mention in industr
     - For ENGINEERING: Focus on CAD software, industry standards (ISO, ASME), project management, technical certifications (PE, PMP)
     - For CREATIVE: Focus on design tools (Adobe Suite, Figma), portfolio platforms, project types, creative methodologies
     Each keyword should have a category (tool, skill, certification, methodology, metric) and impact level (critical, high, medium).
-13. Industry Detection (CRITICAL - BE EXTREMELY ACCURATE):
-    Detect the PRIMARY industry/field based on job titles, responsibilities, and skills. Read the resume carefully.
+13. Industry Detection (CRITICAL - THIS IS THE MOST IMPORTANT STEP):
+    **STOP AND READ THE RESUME CAREFULLY BEFORE DETECTING INDUSTRY**
     
-    TECHNOLOGY/SOFTWARE DETECTION (HIGHEST PRIORITY CHECK FIRST):
-    - If job titles include ANY of these → ALWAYS return "technology":
-      * Software Engineer, Software Developer, Full Stack Developer, Frontend/Backend Developer
-      * DevOps Engineer, SRE, Platform Engineer, Cloud Engineer, Data Engineer
-      * Machine Learning Engineer, AI Engineer, Data Scientist
-      * iOS Developer, Android Developer, Mobile Developer
-      * Web Developer, JavaScript Developer, Python Developer, Java Developer
-      * Systems Administrator, IT Administrator, Network Engineer
-      * QA Engineer, Test Engineer, Automation Engineer
-    - If responsibilities include: writing code, building software, deploying applications, managing infrastructure, developing APIs → return "technology"
-    - If skills prominently include: Python, JavaScript, React, Node.js, AWS, Docker, Kubernetes, Git, SQL databases, cloud platforms → likely "technology"
+    STEP 1: Extract ALL job titles from the resume (list them mentally)
+    STEP 2: For EACH job title, determine what the person ACTUALLY DOES day-to-day
+    STEP 3: Apply the detection rules below based on the MAJORITY of their experience
     
-    SALES DETECTION (only if NOT technology):
-    - Job titles: Account Executive, Sales Rep, BDR, SDR, Sales Manager, Business Development
-    - Responsibilities: closing deals, managing accounts, quota attainment, pipeline management
-    - Keywords: CRM, Salesforce, revenue targets, cold calling, negotiations
+    TECHNOLOGY/SOFTWARE DETECTION (CHECK FIRST - HIGHEST PRIORITY):
+    If ANY job title contains these words → IMMEDIATELY return "technology":
+    - "Software" (Software Engineer, Software Developer, Software Architect)
+    - "Developer" (Full Stack Developer, Frontend Developer, Backend Developer, Web Developer, Mobile Developer)
+    - "Engineer" when combined with: DevOps, SRE, Platform, Cloud, Data, ML, AI, QA, Test, Automation, Site Reliability
+    - "Programmer", "Coder", "Engineering" (when technical)
+    - "Data Scientist", "Data Analyst" (technical), "ML Engineer", "AI Engineer"
+    - "Systems Administrator", "IT Administrator", "Network Engineer", "DBA", "Database Administrator"
+    - "Technical Lead", "Tech Lead", "Engineering Manager", "CTO", "VP of Engineering"
     
-    OTHER DISTINCTIONS:
-    - Sales/Account roles at tech companies = "sales" (NOT technology) - but verify they're not developers
-    - Marketing roles = "marketing" (NOT technology even if digital marketing)
-    - Recruiters/HR at tech companies = "hr" (NOT technology)
-    - Product Managers = "technology" (they build products)
-    - Project Managers: check the industry they work in
+    If responsibilities mention ANY of these → return "technology":
+    - Writing code, developing software, building applications, coding, programming
+    - Deploying applications, CI/CD, infrastructure, cloud architecture
+    - APIs, microservices, databases, system design, code reviews
+    
+    If the skills section prominently lists: Python, JavaScript, Java, C++, Go, Rust, React, Angular, Vue, Node.js, AWS, Azure, GCP, Docker, Kubernetes, Git, SQL, MongoDB, PostgreSQL → strongly indicates "technology"
+    
+    SALES DETECTION (ONLY if not technology - check AFTER technology):
+    - Job titles: Account Executive, Sales Representative, BDR, SDR, Sales Manager, Business Development Rep
+    - Key difference: They SELL products/services, they don't BUILD them
+    - Responsibilities: quota attainment, closing deals, cold calling, pipeline management, revenue targets
+    
+    OTHER INDUSTRIES (check after technology and sales):
+    - Healthcare: Nurse, Doctor, Medical, Clinical, Patient care
+    - Finance: Analyst (financial), Accountant, CFA, CPA, Banking
+    - Marketing: Marketing Manager, Content, Brand, SEO, Growth
+    - HR/Recruiting: Recruiter, HR Manager, Talent Acquisition
+    - Legal: Attorney, Lawyer, Paralegal, Legal
+    - Education: Teacher, Professor, Educator, Instructor
+    
+    CRITICAL RULES:
+    - A person who codes is TECHNOLOGY, even if they work at a sales company
+    - A person who sells software is SALES, not technology
+    - When in doubt, look at what they PRODUCE: code = technology, deals = sales, content = marketing
     
     Valid industries: technology, healthcare, finance, legal, sales, marketing, education, engineering, creative, hr, consulting, retail, hospitality, manufacturing, government, general
 14. Current Role: Detect the person's current or most recent job title/role (e.g., "Account Executive", "Software Engineer", "Registered Nurse", "Marketing Director")
