@@ -30,6 +30,35 @@ interface ErrorHistory {
   hasHadErrors: boolean;
 }
 
+interface UserHealthStatus {
+  status: 'healthy' | 'minor_issues' | 'degraded' | 'critical';
+  recentErrors: number;
+  errorTrend: 'improving' | 'stable' | 'worsening';
+  primaryIssue: string;
+  recommendation: string;
+}
+
+interface ErrorSpike {
+  visitorId: string;
+  recentErrorCount: number;
+  baselineHourlyRate: number;
+  spikeMultiplier: number;
+  recentErrorTypes: string[];
+  lastErrorAt: string;
+  isSpike: boolean;
+}
+
+interface ErrorDiagnostics {
+  errorType: string;
+  errorCode: string;
+  errorCount: number;
+  uniqueUsers: number;
+  avgPerUser: number;
+  mostRecent: string;
+  sampleMessage: string;
+  affectedFunctions: string[];
+}
+
 export function useErrorTracking() {
   const visitorId = useRef<string>(getVisitorId());
   const errorHistory = useRef<ErrorHistory | null>(null);
@@ -154,6 +183,104 @@ export function useErrorTracking() {
     }
   }, []);
 
+  // Check current user's health status with self-diagnosis
+  const checkUserHealth = useCallback(async (): Promise<UserHealthStatus> => {
+    try {
+      const { data, error } = await supabase.rpc('check_user_health', {
+        p_visitor_id: visitorId.current
+      });
+
+      if (error || !data || data.length === 0) {
+        return {
+          status: 'healthy',
+          recentErrors: 0,
+          errorTrend: 'stable',
+          primaryIssue: 'none',
+          recommendation: 'No action needed'
+        };
+      }
+
+      const result = data[0];
+      return {
+        status: result.status as UserHealthStatus['status'],
+        recentErrors: result.recent_errors || 0,
+        errorTrend: result.error_trend as UserHealthStatus['errorTrend'],
+        primaryIssue: result.primary_issue || 'none',
+        recommendation: result.recommendation || 'No action needed'
+      };
+    } catch (e) {
+      console.error('[ErrorTracking] Failed to check user health:', e);
+      return {
+        status: 'healthy',
+        recentErrors: 0,
+        errorTrend: 'stable',
+        primaryIssue: 'none',
+        recommendation: 'No action needed'
+      };
+    }
+  }, []);
+
+  // Detect error spikes across all users
+  const detectErrorSpikes = useCallback(async (
+    spikeThreshold = 5,
+    recentMinutes = 15,
+    baselineHours = 24
+  ): Promise<ErrorSpike[]> => {
+    try {
+      const { data, error } = await supabase.rpc('detect_user_error_spikes', {
+        p_spike_threshold: spikeThreshold,
+        p_recent_minutes: recentMinutes,
+        p_baseline_hours: baselineHours
+      });
+
+      if (error || !data) {
+        console.error('[ErrorTracking] Failed to detect spikes:', error);
+        return [];
+      }
+
+      return data.map((row: Record<string, unknown>) => ({
+        visitorId: row.visitor_id as string,
+        recentErrorCount: row.recent_error_count as number,
+        baselineHourlyRate: row.baseline_hourly_rate as number,
+        spikeMultiplier: row.spike_multiplier as number,
+        recentErrorTypes: row.recent_error_types as string[],
+        lastErrorAt: row.last_error_at as string,
+        isSpike: row.is_spike as boolean
+      }));
+    } catch (e) {
+      console.error('[ErrorTracking] Exception detecting spikes:', e);
+      return [];
+    }
+  }, []);
+
+  // Get error diagnostics summary
+  const getErrorDiagnostics = useCallback(async (hoursBack = 24): Promise<ErrorDiagnostics[]> => {
+    try {
+      const { data, error } = await supabase.rpc('get_error_diagnostics', {
+        p_hours_back: hoursBack
+      });
+
+      if (error || !data) {
+        console.error('[ErrorTracking] Failed to get diagnostics:', error);
+        return [];
+      }
+
+      return data.map((row: Record<string, unknown>) => ({
+        errorType: row.error_type as string,
+        errorCode: row.error_code as string,
+        errorCount: row.error_count as number,
+        uniqueUsers: row.unique_users as number,
+        avgPerUser: row.avg_per_user as number,
+        mostRecent: row.most_recent as string,
+        sampleMessage: row.sample_message as string,
+        affectedFunctions: row.affected_functions as string[] || []
+      }));
+    } catch (e) {
+      console.error('[ErrorTracking] Exception getting diagnostics:', e);
+      return [];
+    }
+  }, []);
+
   // Load error history on mount
   useEffect(() => {
     checkErrorHistory();
@@ -166,6 +293,9 @@ export function useErrorTracking() {
     trackApiError,
     trackClientError,
     checkErrorHistory,
+    checkUserHealth,
+    detectErrorSpikes,
+    getErrorDiagnostics,
     errorHistory: errorHistory.current
   };
 }
