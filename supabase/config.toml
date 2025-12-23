@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.scan-heartbeat]
 verify_jwt = false
+
+[functions.check-alerts]
+verify_jwt = false

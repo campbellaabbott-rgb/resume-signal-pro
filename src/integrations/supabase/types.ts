@@ -227,6 +227,39 @@ export type Database = {
         }
         Relationships: []
       }
+      alert_log: {
+        Row: {
+          actual_value: number | null
+          alert_type: string
+          created_at: string
+          id: string
+          metric_name: string
+          sent_successfully: boolean | null
+          sent_to: string | null
+          threshold_value: number | null
+        }
+        Insert: {
+          actual_value?: number | null
+          alert_type: string
+          created_at?: string
+          id?: string
+          metric_name: string
+          sent_successfully?: boolean | null
+          sent_to?: string | null
+          threshold_value?: number | null
+        }
+        Update: {
+          actual_value?: number | null
+          alert_type?: string
+          created_at?: string
+          id?: string
+          metric_name?: string
+          sent_successfully?: boolean | null
+          sent_to?: string | null
+          threshold_value?: number | null
+        }
+        Relationships: []
+      }
       cohort_weekly_reports: {
         Row: {
           created_at: string
@@ -410,6 +443,39 @@ export type Database = {
           response_time_ms?: number | null
           status?: string
           test_passed?: boolean
+        }
+        Relationships: []
+      }
+      parse_failures: {
+        Row: {
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          file_size_bytes: number | null
+          file_type: string
+          id: string
+          metadata: Json | null
+          visitor_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          file_size_bytes?: number | null
+          file_type: string
+          id?: string
+          metadata?: Json | null
+          visitor_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          file_size_bytes?: number | null
+          file_type?: string
+          id?: string
+          metadata?: Json | null
+          visitor_id?: string | null
         }
         Relationships: []
       }
@@ -695,6 +761,39 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_events: {
+        Row: {
+          created_at: string
+          event_id: string
+          event_type: string
+          id: string
+          payload: Json | null
+          processed: boolean | null
+          processing_error: string | null
+          processing_time_ms: number | null
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          event_type: string
+          id?: string
+          payload?: Json | null
+          processed?: boolean | null
+          processing_error?: string | null
+          processing_time_ms?: number | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          processed?: boolean | null
+          processing_error?: string | null
+          processing_time_ms?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -909,6 +1008,17 @@ export type Database = {
           view_rate: number
         }[]
       }
+      get_parse_failure_stats: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          common_errors: Json
+          docx_failures: number
+          pdf_failures: number
+          recent_failures: Json
+          spreadsheet_failures: number
+          total_failures: number
+        }[]
+      }
       get_payment_health: {
         Args: { p_hours_back?: number }
         Returns: {
@@ -994,7 +1104,30 @@ export type Database = {
           total_errors: number
         }[]
       }
+      get_webhook_health: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          avg_processing_time_ms: number
+          events_by_type: Json
+          processed_successfully: number
+          processing_failed: number
+          recent_failures: Json
+          success_rate: number
+          total_received: number
+        }[]
+      }
       increment_free_scan_count: { Args: never; Returns: undefined }
+      log_alert_sent: {
+        Args: {
+          p_actual: number
+          p_alert_type: string
+          p_metric_name: string
+          p_sent_to: string
+          p_success: boolean
+          p_threshold: number
+        }
+        Returns: string
+      }
       log_delivery_step: {
         Args: {
           p_duration_ms?: number
@@ -1040,6 +1173,17 @@ export type Database = {
         }
         Returns: string
       }
+      log_parse_failure: {
+        Args: {
+          p_error_code?: string
+          p_error_message?: string
+          p_file_size?: number
+          p_file_type: string
+          p_metadata?: Json
+          p_visitor_id?: string
+        }
+        Returns: string
+      }
       log_scan_metric: {
         Args: {
           p_ai_model?: string
@@ -1055,6 +1199,17 @@ export type Database = {
           p_scan_type?: string
           p_status?: string
           p_visitor_id?: string
+        }
+        Returns: string
+      }
+      log_webhook_event: {
+        Args: {
+          p_error?: string
+          p_event_id: string
+          p_event_type: string
+          p_payload?: Json
+          p_processed?: boolean
+          p_time_ms?: number
         }
         Returns: string
       }
@@ -1092,6 +1247,14 @@ export type Database = {
         Returns: boolean
       }
       should_generate_weekly_report: { Args: never; Returns: boolean }
+      should_send_alert: {
+        Args: {
+          p_alert_type: string
+          p_cooldown_minutes?: number
+          p_metric_name: string
+        }
+        Returns: boolean
+      }
       store_cached_response: {
         Args: {
           p_cache_key: string
