@@ -1,7 +1,7 @@
 import { Sparkles, CreditCard, Package, Shield } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -11,8 +11,6 @@ import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 
 export function Header() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const location = useLocation();
   const [showScanPackModal, setShowScanPackModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   
@@ -25,23 +23,6 @@ export function Header() {
     }
   };
 
-  const scrollToTrust = () => {
-    if (location.pathname !== '/') {
-      // Navigate to home with hash, then scroll after navigation
-      navigate('/#trust-indicators');
-      setTimeout(() => {
-        const trustSection = document.getElementById('trust-indicators');
-        if (trustSection) {
-          trustSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 100);
-    } else {
-      const trustSection = document.getElementById('trust-indicators');
-      if (trustSection) {
-        trustSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
-  };
 
     return (
     <>
@@ -92,11 +73,13 @@ export function Header() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={scrollToTrust}
+                asChild
                 className="gap-1.5 text-muted-foreground hover:text-foreground"
               >
-                <Shield className="w-3.5 h-3.5" />
-                Trust
+                <Link to="/trust">
+                  <Shield className="w-3.5 h-3.5" />
+                  Trust
+                </Link>
               </Button>
             </div>
           </div>
