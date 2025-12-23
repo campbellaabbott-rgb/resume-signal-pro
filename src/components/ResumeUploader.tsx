@@ -152,6 +152,11 @@ interface ResumeUploaderProps {
   jobDescriptionText?: string;
   onJobDescriptionTextChange?: (text: string) => void;
   onJobsChange?: (jobs: JobEntry[]) => void;
+  streamingProgress?: {
+    stage: string;
+    message: string;
+    progress: number;
+  } | null;
 }
 
 export function ResumeUploader({ 
@@ -166,7 +171,8 @@ export function ResumeUploader({
   onLinkedInTextChange,
   jobDescriptionText = "",
   onJobDescriptionTextChange,
-  onJobsChange
+  onJobsChange,
+  streamingProgress
 }: ResumeUploaderProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1061,7 +1067,7 @@ export function ResumeUploader({
           {/* CTAs - Free Scan as primary */}
           <div className="text-center space-y-4 mt-8">
             {isFreeScanLoading ? (
-              <FreeScanProgress />
+              <FreeScanProgress streamingProgress={streamingProgress} />
             ) : (
               <>
                 {/* Primary CTA: Free Scan */}
