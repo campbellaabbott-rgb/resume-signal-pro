@@ -532,10 +532,14 @@ export type Database = {
           generation_error: string | null
           generation_success: boolean | null
           id: string
+          last_retry_error: string | null
+          max_retries: number
           metadata: Json | null
+          next_retry_at: string | null
           payment_completed_at: string | null
           product_name: string | null
           product_type: string
+          retry_count: number
           status: string
           stripe_session_id: string
         }
@@ -555,10 +559,14 @@ export type Database = {
           generation_error?: string | null
           generation_success?: boolean | null
           id?: string
+          last_retry_error?: string | null
+          max_retries?: number
           metadata?: Json | null
+          next_retry_at?: string | null
           payment_completed_at?: string | null
           product_name?: string | null
           product_type: string
+          retry_count?: number
           status?: string
           stripe_session_id: string
         }
@@ -578,10 +586,14 @@ export type Database = {
           generation_error?: string | null
           generation_success?: boolean | null
           id?: string
+          last_retry_error?: string | null
+          max_retries?: number
           metadata?: Json | null
+          next_retry_at?: string | null
           payment_completed_at?: string | null
           product_name?: string | null
           product_type?: string
+          retry_count?: number
           status?: string
           stripe_session_id?: string
         }
@@ -1011,6 +1023,19 @@ export type Database = {
           unique_users: number
         }[]
       }
+      get_failed_deliveries_for_retry: {
+        Args: { p_limit?: number }
+        Returns: {
+          customer_email: string
+          id: string
+          metadata: Json
+          product_name: string
+          product_type: string
+          retry_count: number
+          status: string
+          stripe_session_id: string
+        }[]
+      }
       get_function_error_rates: {
         Args: { p_hours_back?: number }
         Returns: {
@@ -1355,6 +1380,15 @@ export type Database = {
           p_referral_code: string
           p_referrer?: string
           p_user_agent?: string
+        }
+        Returns: boolean
+      }
+      update_delivery_retry: {
+        Args: {
+          p_error?: string
+          p_id: string
+          p_increment_retry?: boolean
+          p_status: string
         }
         Returns: boolean
       }

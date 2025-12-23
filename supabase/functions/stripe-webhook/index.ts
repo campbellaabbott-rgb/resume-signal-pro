@@ -84,6 +84,268 @@ async function sendFailureAlert(details: {
   }
 }
 
+// Trigger product delivery for a completed checkout
+async function triggerProductDelivery(
+  session: Stripe.Checkout.Session,
+  supabase: any,
+  supabaseUrl: string
+) {
+  const sessionId = session.id;
+  const productType = session.metadata?.product_type;
+  const productName = session.metadata?.product_name;
+  const customerEmail = session.customer_email || session.metadata?.customer_email;
+  const resumeSessionId = session.metadata?.session_id;
+
+  logStep("Triggering product delivery", { sessionId, productType, customerEmail });
+
+  // Check if this session was already processed
+  const { data: existingSession } = await supabase
+    .from('used_stripe_sessions')
+    .select('session_id')
+    .eq('session_id', sessionId)
+    .single();
+
+  if (existingSession) {
+    logStep("Session already processed, skipping delivery", { sessionId });
+    return { alreadyProcessed: true };
+  }
+
+  // Mark session as used immediately to prevent duplicates
+  await supabase
+    .from('used_stripe_sessions')
+    .insert({ session_id: sessionId });
+
+  // Create delivery tracking record
+  const { data: deliveryRecord } = await supabase
+    .from('product_deliveries')
+    .insert({
+      stripe_session_id: sessionId,
+      product_type: productType || 'unknown',
+      product_name: productName,
+      customer_email: customerEmail,
+      status: 'payment_received',
+      amount_cents: session.amount_total,
+      payment_completed_at: new Date().toISOString(),
+      metadata: {
+        resume_session_id: resumeSessionId,
+        job_title: session.metadata?.job_title,
+        job_company: session.metadata?.job_company,
+        referral_code: session.metadata?.referral_code
+      }
+    })
+    .select()
+    .single();
+
+  logStep("Delivery record created", { deliveryId: deliveryRecord?.id });
+
+  // Skip content generation for scan packs - just add credits
+  if (productType === 'scan_pack' || productType === 'scan_credits' || productType === 'career_bundle') {
+    if (customerEmail) {
+      let credits = parseInt(session.metadata?.credits || "10");
+      if (productType === 'career_bundle') credits = parseInt(session.metadata?.credits || "75");
+      
+      const { error: creditError } = await supabase.rpc('add_scan_credits', {
+        p_email: customerEmail,
+        p_credits: Math.min(credits, 100)
+      });
+
+      if (creditError) {
+        logStep("Error adding credits", { error: creditError.message });
+        await supabase.rpc('update_delivery_retry', {
+          p_id: deliveryRecord?.id,
+          p_status: 'generation_failed',
+          p_error: creditError.message,
+          p_increment_retry: true
+        });
+      } else {
+        logStep("Credits added successfully", { credits, email: customerEmail });
+        
+        // Save to purchased_content
+        await supabase.rpc('save_purchased_content', {
+          p_stripe_session_id: sessionId,
+          p_customer_email: customerEmail,
+          p_product_type: productType,
+          p_product_name: productName || `${credits} Scan Credits`,
+          p_generated_content: { credits, message: `${credits} scan credits added` }
+        });
+
+        // Update delivery status to completed
+        await supabase
+          .from('product_deliveries')
+          .update({ status: 'delivered', generation_success: true })
+          .eq('id', deliveryRecord?.id);
+      }
+    }
+    return { success: true, productType };
+  }
+
+  // For content products, we need resume data
+  if (!resumeSessionId) {
+    logStep("No resume session ID, cannot generate content");
+    await supabase.rpc('update_delivery_retry', {
+      p_id: deliveryRecord?.id,
+      p_status: 'generation_failed',
+      p_error: 'No resume session ID available',
+      p_increment_retry: true
+    });
+    return { success: false, error: 'No resume session ID' };
+  }
+
+  // Get resume data
+  const { data: resumeData, error: resumeError } = await supabase
+    .rpc('get_temp_resume', { p_session_id: resumeSessionId });
+
+  if (resumeError || !resumeData || resumeData.length === 0) {
+    logStep("Resume data not found or expired", { error: resumeError?.message });
+    await supabase.rpc('update_delivery_retry', {
+      p_id: deliveryRecord?.id,
+      p_status: 'generation_failed',
+      p_error: 'Resume data expired or not found',
+      p_increment_retry: true
+    });
+    return { success: false, error: 'Resume data not found' };
+  }
+
+  const { resume_text, job_description_text } = resumeData[0];
+  const jobTitle = session.metadata?.job_title || 'Target Position';
+  const jobCompany = session.metadata?.job_company || '';
+
+  logStep("Generating content", { productType, resumeLength: resume_text?.length });
+
+  // Update status to generating
+  await supabase
+    .from('product_deliveries')
+    .update({ 
+      status: 'generating',
+      content_generation_started_at: new Date().toISOString()
+    })
+    .eq('id', deliveryRecord?.id);
+
+  const generationStart = Date.now();
+  let generatedContent = null;
+  let generationError = null;
+
+  try {
+    // Generate content based on product type
+    let endpoint = '';
+    let body: Record<string, unknown> = {
+      resumeText: resume_text,
+      jobDescription: job_description_text || '',
+      jobTitle,
+      jobCompany
+    };
+
+    if (productType === 'basic_keyword_fix') {
+      endpoint = 'generate-keyword-fix';
+    } else if (productType === 'cover_letter') {
+      endpoint = 'generate-cover-letter';
+      body.tone = 'professional';
+    } else if (productType === 'premium_package') {
+      endpoint = 'generate-premium-package';
+    } else {
+      throw new Error(`Unknown product type: ${productType}`);
+    }
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Generation failed: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    generatedContent = result.data;
+    logStep("Content generated successfully", { productType });
+
+  } catch (error) {
+    generationError = error instanceof Error ? error.message : String(error);
+    logStep("Content generation failed", { error: generationError });
+  }
+
+  const generationDuration = Date.now() - generationStart;
+
+  if (generatedContent) {
+    // Save content permanently
+    await supabase.rpc('save_purchased_content', {
+      p_stripe_session_id: sessionId,
+      p_customer_email: customerEmail || '',
+      p_product_type: productType,
+      p_product_name: productName,
+      p_generated_content: generatedContent
+    });
+
+    // Update delivery status
+    await supabase
+      .from('product_deliveries')
+      .update({
+        status: 'content_generated',
+        generation_success: true,
+        content_generation_completed_at: new Date().toISOString(),
+        generation_duration_ms: generationDuration
+      })
+      .eq('id', deliveryRecord?.id);
+
+    // Send email
+    if (customerEmail) {
+      try {
+        const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+          },
+          body: JSON.stringify({
+            email: customerEmail,
+            productType,
+            productName,
+            generatedContent
+          })
+        });
+
+        if (emailResponse.ok) {
+          logStep("Confirmation email sent", { email: customerEmail });
+          await supabase
+            .from('product_deliveries')
+            .update({
+              status: 'delivered',
+              email_success: true,
+              email_sent_at: new Date().toISOString()
+            })
+            .eq('id', deliveryRecord?.id);
+        } else {
+          throw new Error(`Email failed: ${emailResponse.status}`);
+        }
+      } catch (emailError) {
+        logStep("Email send failed", { error: String(emailError) });
+        await supabase.rpc('update_delivery_retry', {
+          p_id: deliveryRecord?.id,
+          p_status: 'email_failed',
+          p_error: String(emailError),
+          p_increment_retry: true
+        });
+      }
+    }
+
+    return { success: true, productType, generatedContent };
+  } else {
+    // Generation failed
+    await supabase.rpc('update_delivery_retry', {
+      p_id: deliveryRecord?.id,
+      p_status: 'generation_failed',
+      p_error: generationError,
+      p_increment_retry: true
+    });
+    return { success: false, error: generationError };
+  }
+}
+
 serve(async (req) => {
   // Stripe webhooks must be POST
   if (req.method !== "POST") {
@@ -142,6 +404,45 @@ serve(async (req) => {
 
     // Handle different event types
     switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        
+        logStep("Checkout completed - triggering delivery", {
+          sessionId: session.id,
+          productType: session.metadata?.product_type,
+          email: session.customer_email
+        });
+
+        // Only trigger delivery for paid sessions
+        if (session.payment_status === 'paid') {
+          try {
+            const result = await triggerProductDelivery(session, supabase, supabaseUrl);
+            logStep("Delivery result", result);
+            
+            // Handle affiliate conversion
+            const referralCode = session.metadata?.referral_code;
+            if (referralCode && session.amount_total) {
+              const productType = session.metadata?.product_type;
+              const lowCommissionProducts = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits'];
+              const commissionCents = lowCommissionProducts.includes(productType || '') ? 100 : 500;
+              
+              await supabase.rpc('record_affiliate_conversion', {
+                p_referral_code: referralCode,
+                p_stripe_session_id: session.id,
+                p_product_name: session.metadata?.product_name || productType || 'Product',
+                p_sale_amount: session.amount_total,
+                p_commission_override: commissionCents
+              });
+              logStep("Affiliate conversion recorded");
+            }
+          } catch (deliveryError) {
+            processingError = String(deliveryError);
+            logStep("Delivery failed", { error: processingError });
+          }
+        }
+        break;
+      }
+
       case "payment_intent.payment_failed": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         
@@ -179,7 +480,6 @@ serve(async (req) => {
               decline_code: paymentIntent.last_payment_error?.decline_code,
               payment_method_type: paymentIntent.last_payment_error?.payment_method?.type,
               description: paymentIntent.description,
-              // Enhanced currency and card details for debugging international payments
               card_brand: (paymentIntent.last_payment_error?.payment_method as any)?.card?.brand,
               card_country: (paymentIntent.last_payment_error?.payment_method as any)?.card?.country,
               card_funding: (paymentIntent.last_payment_error?.payment_method as any)?.card?.funding,
