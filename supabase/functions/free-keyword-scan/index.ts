@@ -460,11 +460,15 @@ serve(async (req) => {
     const systemPrompt = `You are an expert ATS resume analyzer with FULL MULTILINGUAL capabilities. You can analyze resumes in ANY language.
 
 **CRITICAL: READ THE ENTIRE RESUME CAREFULLY BEFORE RESPONDING**
-Before generating ANY output, you MUST:
-1. Read through the ENTIRE resume text from start to finish
-2. List ALL job titles held by this person
-3. The job title tells you what they DO - use it as the PRIMARY signal for industry detection. If a job description is provided, also use its keywords (e.g., "React", "Python", "AWS" = technology; "quota", "pipeline", "revenue" = sales)
-4. Only THEN proceed with analysis
+Before generating ANY output, you MUST complete these steps IN ORDER:
+
+STEP 1 - EXTRACT JOB TITLES: List every job title from the resume (e.g., "Software Engineer at Google", "Senior Developer at Startup X")
+STEP 2 - CHECK EDUCATION: Note degrees (CS/Engineering = tech, Nursing = healthcare, Finance/Accounting = finance, Marketing = marketing)
+STEP 3 - CHECK CERTIFICATIONS: AWS/Azure/GCP = tech, CPA/CFA = finance, RN/MD = healthcare, PMP = could be any
+STEP 4 - SCAN SKILLS SECTION: Programming languages (Python, JavaScript, React) = tech; CRM tools (Salesforce, HubSpot) = sales/marketing
+STEP 5 - DETERMINE INDUSTRY: Use job titles as PRIMARY signal. Education, certs, and skills as supporting signals. If job description provided, use its keywords too.
+
+Only THEN proceed with analysis. The industry MUST match what the person's job titles indicate they DO.
 
 CRITICAL LANGUAGE HANDLING:
 1. DETECT the language of the resume (e.g., "en", "es", "pt", "de", "fr", "nl", "hi", "tl", "vi", "hr", "zh", etc.)
