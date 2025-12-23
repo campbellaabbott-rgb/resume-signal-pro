@@ -449,6 +449,78 @@ export type Database = {
         }
         Relationships: []
       }
+      product_deliveries: {
+        Row: {
+          ai_parse_error: string | null
+          ai_response_valid: boolean | null
+          amount_cents: number | null
+          content_generation_completed_at: string | null
+          content_generation_started_at: string | null
+          created_at: string
+          customer_email: string | null
+          email_delivered_at: string | null
+          email_error: string | null
+          email_sent_at: string | null
+          email_success: boolean | null
+          generation_duration_ms: number | null
+          generation_error: string | null
+          generation_success: boolean | null
+          id: string
+          metadata: Json | null
+          payment_completed_at: string | null
+          product_name: string | null
+          product_type: string
+          status: string
+          stripe_session_id: string
+        }
+        Insert: {
+          ai_parse_error?: string | null
+          ai_response_valid?: boolean | null
+          amount_cents?: number | null
+          content_generation_completed_at?: string | null
+          content_generation_started_at?: string | null
+          created_at?: string
+          customer_email?: string | null
+          email_delivered_at?: string | null
+          email_error?: string | null
+          email_sent_at?: string | null
+          email_success?: boolean | null
+          generation_duration_ms?: number | null
+          generation_error?: string | null
+          generation_success?: boolean | null
+          id?: string
+          metadata?: Json | null
+          payment_completed_at?: string | null
+          product_name?: string | null
+          product_type: string
+          status?: string
+          stripe_session_id: string
+        }
+        Update: {
+          ai_parse_error?: string | null
+          ai_response_valid?: boolean | null
+          amount_cents?: number | null
+          content_generation_completed_at?: string | null
+          content_generation_started_at?: string | null
+          created_at?: string
+          customer_email?: string | null
+          email_delivered_at?: string | null
+          email_error?: string | null
+          email_sent_at?: string | null
+          email_success?: boolean | null
+          generation_duration_ms?: number | null
+          generation_error?: string | null
+          generation_success?: boolean | null
+          id?: string
+          metadata?: Json | null
+          payment_completed_at?: string | null
+          product_name?: string | null
+          product_type?: string
+          status?: string
+          stripe_session_id?: string
+        }
+        Relationships: []
+      }
       rate_limits: {
         Row: {
           function_name: string
@@ -734,6 +806,18 @@ export type Database = {
           total_revenue: number
         }[]
       }
+      get_ai_quality_stats: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          avg_duration_ms: number
+          p95_duration_ms: number
+          parse_failures: number
+          recent_errors: Json
+          success_rate: number
+          successful: number
+          total_generations: number
+        }[]
+      }
       get_analysis_by_share_id: {
         Args: { share_id_param: string }
         Returns: {
@@ -746,6 +830,31 @@ export type Database = {
       get_cached_response: {
         Args: { p_cache_key: string; p_function_name: string }
         Returns: Json
+      }
+      get_checkout_funnel: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          checkout_to_payment_rate: number
+          checkouts_started: number
+          content_generated: number
+          end_to_end_rate: number
+          fully_delivered: number
+          payment_to_delivery_rate: number
+          payments_completed: number
+        }[]
+      }
+      get_delivery_health: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          avg_generation_time_ms: number
+          delivery_rate: number
+          email_failed: number
+          fully_delivered: number
+          generation_failed: number
+          pending: number
+          recent_failures: Json
+          total_orders: number
+        }[]
       }
       get_email_health: {
         Args: { p_hours_back?: number }
@@ -886,6 +995,17 @@ export type Database = {
         }[]
       }
       increment_free_scan_count: { Args: never; Returns: undefined }
+      log_delivery_step: {
+        Args: {
+          p_duration_ms?: number
+          p_error?: string
+          p_metadata?: Json
+          p_step: string
+          p_stripe_session_id: string
+          p_success?: boolean
+        }
+        Returns: string
+      }
       log_email_send: {
         Args: {
           p_email_type: string
