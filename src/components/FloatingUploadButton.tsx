@@ -10,22 +10,37 @@ interface FloatingUploadButtonProps {
 export function FloatingUploadButton({ hasContent = false }: FloatingUploadButtonProps) {
   const isMobile = useIsMobile();
   const [isVisible, setIsVisible] = useState(false);
+  const [justUploaded, setJustUploaded] = useState(false);
 
   useEffect(() => {
     if (!hasContent) {
       setIsVisible(false);
+      setJustUploaded(false);
       return;
     }
 
+    // Show immediately when resume is uploaded
+    setIsVisible(true);
+    setJustUploaded(true);
+
+    // After 3 seconds, switch to scroll-based visibility
+    const timer = setTimeout(() => {
+      setJustUploaded(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [hasContent]);
+
+  useEffect(() => {
+    if (!hasContent || justUploaded) return;
+
     const handleScroll = () => {
-      // Find the free scan button container
       const scanButton = document.querySelector('[data-scan-button="true"]');
       if (!scanButton) return;
 
       const rect = scanButton.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       
-      // Show floating button when scan button is not visible
       const isScanButtonVisible = rect.top < viewportHeight - 50 && rect.bottom > 50;
       setIsVisible(!isScanButtonVisible);
     };
@@ -34,7 +49,7 @@ export function FloatingUploadButton({ hasContent = false }: FloatingUploadButto
     handleScroll();
 
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [hasContent]);
+  }, [hasContent, justUploaded]);
 
   const handleClick = () => {
     const scanButton = document.querySelector('[data-scan-button="true"]');
@@ -53,7 +68,7 @@ export function FloatingUploadButton({ hasContent = false }: FloatingUploadButto
         "bg-gradient-to-r from-success via-success to-emerald-500 text-success-foreground font-bold text-sm",
         "shadow-xl shadow-success/40 hover:shadow-2xl hover:shadow-success/50",
         "transition-all duration-300 touch-manipulation",
-        "animate-pulse-subtle",
+        justUploaded && "animate-bounce",
         isMobile 
           ? "bottom-20 left-1/2 -translate-x-1/2" 
           : "bottom-6 right-6",
