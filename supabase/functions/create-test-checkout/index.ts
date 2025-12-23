@@ -63,7 +63,7 @@ serve(async (req) => {
       );
     }
 
-    const stripe = new Stripe(stripeTestKey, { apiVersion: "2025-08-27.basil" });
+    const stripe = new Stripe(stripeTestKey, { apiVersion: "2025-12-15.clover" });
     const origin = req.headers.get("origin") || "https://lovable.dev";
 
     // Create checkout session with price_data (for testing without pre-created prices)

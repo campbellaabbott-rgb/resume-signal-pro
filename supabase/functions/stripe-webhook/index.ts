@@ -363,7 +363,7 @@ serve(async (req) => {
       return new Response("Configuration error", { status: 500 });
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
     
     // Get the raw body for signature verification
     const body = await req.text();
