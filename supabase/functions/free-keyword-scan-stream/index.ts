@@ -169,12 +169,20 @@ CRITICAL LANGUAGE HANDLING:
 
 Focus on: ATS score (0-100), industry detection, format grade (A-D), experience level, keywords, and red flags.
 
-CRITICAL - INDUSTRY DETECTION:
-Detect industry based on JOB TITLES and RESPONSIBILITIES, not just skills mentioned.
-- Sales/Account roles (Account Executive, Sales Rep, BDR, Account Manager) = "sales" even at tech companies
+CRITICAL - INDUSTRY DETECTION (READ CAREFULLY):
+TECHNOLOGY/SOFTWARE DETECTION (CHECK FIRST):
+- If job titles include: Software Engineer, Software Developer, Full Stack Developer, Frontend/Backend Developer, DevOps Engineer, Data Engineer, ML Engineer, iOS/Android Developer, Web Developer, QA Engineer, Systems Admin → ALWAYS return "technology"
+- If responsibilities include: writing code, building software, deploying applications, developing APIs → return "technology"
+- If skills prominently include: Python, JavaScript, React, Node.js, AWS, Docker, Kubernetes, Git → likely "technology"
+
+SALES DETECTION (only if NOT technology):
+- Job titles: Account Executive, Sales Rep, BDR, SDR, Sales Manager → return "sales"
+- Responsibilities: closing deals, quota attainment, pipeline management → return "sales"
+
+OTHER RULES:
 - Marketing roles = "marketing" (not technology)
 - Recruiters/HR = "hr"
-- Only use "technology" for people who BUILD software (developers, engineers, IT admins)
+- Product Managers = "technology" (they build products)
 - Valid industries: technology, healthcare, finance, legal, sales, marketing, education, engineering, creative, hr, consulting, retail, hospitality, manufacturing, government, general
 
 Be specific and actionable. All text output should be in the resume's detected language.`;
