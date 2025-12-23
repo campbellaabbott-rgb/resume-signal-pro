@@ -160,8 +160,8 @@ serve(async (req) => {
 **CRITICAL: READ THE ENTIRE RESUME CAREFULLY BEFORE RESPONDING**
 Before generating ANY output, you MUST:
 1. Read through the ENTIRE resume text from start to finish
-2. List (mentally) ALL job titles held by this person
-3. Identify what type of work they actually DO (not what industry they sell to)
+2. List ALL job titles held by this person
+3. The job title tells you what they DO - use it as the PRIMARY signal for industry detection
 4. Only THEN proceed with analysis
 
 CRITICAL LANGUAGE HANDLING:
