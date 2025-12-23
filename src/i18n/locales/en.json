@@ -2,7 +2,11 @@
   "header": {
     "tagline": "Recruiter-grade AI feedback",
     "getStarted": "Get Started",
-    "start": "Start"
+    "start": "Start",
+    "betaBanner": "Currently in Beta — We'd love your feedback!",
+    "howItWorks": "How It Works",
+    "pricing": "Pricing",
+    "trust": "Trust"
   },
   "hero": {
     "badge": "AI-Powered Resume Analysis",
@@ -83,7 +87,9 @@
     "copyright": "© {{year}} Resume Booster. All rights reserved.",
     "privacy": "Privacy Policy",
     "terms": "Terms of Service",
-    "contact": "Contact"
+    "contact": "Contact",
+    "questions": "Questions or feedback?",
+    "pricing": "Pricing"
   },
   "language": {
     "select": "Select Language"

@@ -2,7 +2,11 @@
   "header": {
     "tagline": "Recruiter-niveau AI-feedback",
     "getStarted": "Aan de slag",
-    "start": "Start"
+    "start": "Start",
+    "betaBanner": "Momenteel in Bèta — We horen graag je feedback!",
+    "howItWorks": "Hoe het werkt",
+    "pricing": "Prijzen",
+    "trust": "Vertrouwen"
   },
   "hero": {
     "badge": "AI-gestuurde CV-analyse",
@@ -81,7 +85,9 @@
     "copyright": "© {{year}} Resume Booster. Alle rechten voorbehouden.",
     "privacy": "Privacybeleid",
     "terms": "Servicevoorwaarden",
-    "contact": "Contact"
+    "contact": "Contact",
+    "questions": "Vragen of feedback?",
+    "pricing": "Prijzen"
   },
   "language": {
     "select": "Selecteer taal"

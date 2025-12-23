@@ -2,7 +2,11 @@
   "header": {
     "tagline": "Recruiter-grade AI feedback",
     "getStarted": "Magsimula",
-    "start": "Simula"
+    "start": "Simula",
+    "betaBanner": "Kasalukuyang nasa Beta — Gusto naming marinig ang iyong feedback!",
+    "howItWorks": "Paano Ito Gumagana",
+    "pricing": "Presyo",
+    "trust": "Tiwala"
   },
   "hero": {
     "badge": "AI-Powered Resume Analysis",
@@ -81,7 +85,9 @@
     "copyright": "© {{year}} Resume Booster. Lahat ng karapatan ay nakalaan.",
     "privacy": "Privacy Policy",
     "terms": "Terms of Service",
-    "contact": "Makipag-ugnayan"
+    "contact": "Makipag-ugnayan",
+    "questions": "May tanong o feedback?",
+    "pricing": "Presyo"
   },
   "language": {
     "select": "Pumili ng Wika"

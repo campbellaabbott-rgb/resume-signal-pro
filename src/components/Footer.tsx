@@ -11,7 +11,7 @@ export function Footer() {
       <div className="container">
         {/* Support & Social */}
         <div className="flex flex-col items-center gap-3 mb-8 pb-8 border-b border-border/50">
-          <p className="text-sm text-muted-foreground">Questions or feedback?</p>
+          <p className="text-sm text-muted-foreground">{t('footer.questions')}</p>
           <a 
             href="mailto:resumeboostersupp@gmail.com" 
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors font-medium"
@@ -28,7 +28,7 @@ export function Footer() {
               to="/pricing" 
               className="hover:text-foreground transition-colors focus-visible:outline-none focus-visible:text-primary min-h-[44px] flex items-center touch-manipulation font-medium"
             >
-              Pricing
+              {t('footer.pricing')}
             </Link>
             <Link 
               to="/privacy" 

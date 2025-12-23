@@ -2,7 +2,11 @@
   "header": {
     "tagline": "Feedback de IA nivel reclutador",
     "getStarted": "Comenzar",
-    "start": "Iniciar"
+    "start": "Iniciar",
+    "betaBanner": "Actualmente en Beta — ¡Nos encantaría tu feedback!",
+    "howItWorks": "Cómo Funciona",
+    "pricing": "Precios",
+    "trust": "Confianza"
   },
   "hero": {
     "badge": "Análisis de CV con IA",
@@ -81,7 +85,9 @@
     "copyright": "© {{year}} Resume Booster. Todos los derechos reservados.",
     "privacy": "Política de Privacidad",
     "terms": "Términos de Servicio",
-    "contact": "Contacto"
+    "contact": "Contacto",
+    "questions": "¿Preguntas o comentarios?",
+    "pricing": "Precios"
   },
   "language": {
     "select": "Seleccionar Idioma"
