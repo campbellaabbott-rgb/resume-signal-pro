@@ -254,7 +254,7 @@ export function ResumeUploader({
       const formData = new FormData();
       formData.append("file", file);
 
-      const result = await resilientCallers.parsePdf({ file: formData });
+      const result = await resilientCallers.parsePdf(formData);
 
       if (result.error) {
         toast({
@@ -302,7 +302,7 @@ export function ResumeUploader({
       const formData = new FormData();
       formData.append("file", file);
       
-      const result = await resilientCallers.parseSpreadsheet({ file: formData });
+      const result = await resilientCallers.parseSpreadsheet(formData);
       
       if (result.error) {
         toast({

@@ -378,7 +378,7 @@ const Index = () => {
         const formData = new FormData();
         formData.append("file", file);
 
-        const result = await resilientCallers.parsePdf({ file: formData });
+        const result = await resilientCallers.parsePdf(formData);
 
         if (result.error) {
           toast({
@@ -426,7 +426,7 @@ const Index = () => {
         const formData = new FormData();
         formData.append("file", file);
 
-        const result = await resilientCallers.parseDocx({ file: formData });
+        const result = await resilientCallers.parseDocx(formData);
 
         if (result.error) {
           toast({
