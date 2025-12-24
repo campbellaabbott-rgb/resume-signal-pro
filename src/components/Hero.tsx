@@ -173,17 +173,202 @@ export function Hero() {
   const isCompactLayout = layoutVariant === 'compact';
   const isUltraCompact = layoutVariant === 'ultra_compact';
   const isOriginalLayout = layoutVariant === 'original';
+  const isSocialFirst = layoutVariant === 'social_first';
+  const isBenefitLed = layoutVariant === 'benefit_led';
 
   // Determine padding based on variant
-  const sectionPadding = isUltraCompact 
-    ? 'py-4 sm:py-6 md:py-10' 
-    : isCompactLayout 
-      ? 'py-6 sm:py-10 md:py-16' 
-      : 'py-10 sm:py-16 md:py-24';
+  const getSectionPadding = () => {
+    if (isUltraCompact) return 'py-4 sm:py-6 md:py-10';
+    if (isSocialFirst) return 'py-4 sm:py-8 md:py-12';
+    if (isBenefitLed) return 'py-5 sm:py-8 md:py-14';
+    if (isCompactLayout) return 'py-6 sm:py-10 md:py-16';
+    return 'py-10 sm:py-16 md:py-24'; // original
+  };
 
+  // Render the CTA button (reused across variants)
+  const renderCTA = (size: 'sm' | 'md' | 'lg' = 'md') => {
+    const sizeClasses = {
+      sm: 'px-6 py-3 sm:px-8 sm:py-4 text-base sm:text-lg min-h-[48px] sm:min-h-[56px]',
+      md: 'px-8 py-4 sm:px-10 sm:py-5 text-base sm:text-lg md:text-xl min-h-[56px] sm:min-h-[64px]',
+      lg: 'px-10 py-5 sm:py-6 text-lg sm:text-xl min-h-[64px]',
+    };
+    const iconSize = {
+      sm: 'w-4 h-4 sm:w-5 sm:h-5',
+      md: 'w-5 h-5 sm:w-6 sm:h-6',
+      lg: 'w-6 h-6 sm:w-7 sm:h-7',
+    };
+    const badgeClasses = {
+      sm: '-top-1.5 -right-1 px-1.5 py-0.5 text-[9px] sm:text-[10px]',
+      md: '-top-2 -right-1 sm:-top-3 sm:-right-3 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs',
+      lg: '-top-3 -right-2 sm:-right-3 px-3 py-1 text-xs',
+    };
+
+    return (
+      <button
+        onClick={handleFreeScanClick}
+        className={`group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-success via-success to-emerald-500 text-success-foreground font-bold shadow-xl shadow-success/30 hover:shadow-2xl hover:shadow-success/40 active:scale-[0.98] transition-all duration-300 touch-manipulation ${sizeClasses[size]}`}
+      >
+        <Sparkles className={iconSize[size]} />
+        <span>{t('hero.ctaButton', 'Check My Resume Now')}</span>
+        <div className={`absolute rounded-full bg-primary text-primary-foreground font-bold shadow-lg animate-pulse ${badgeClasses[size]}`}>
+          {t('hero.freeBadge', 'FREE')}
+        </div>
+      </button>
+    );
+  };
+
+  // Render trust indicators
+  const renderTrustIndicators = (compact = false) => (
+    <div className={`flex flex-wrap items-center justify-center text-muted-foreground ${
+      compact ? 'mt-2 gap-x-2 gap-y-1 text-[10px] sm:text-xs' : 'mt-3 gap-x-3 gap-y-1 text-xs sm:text-sm'
+    }`}>
+      <span className="flex items-center gap-1">
+        <Check className={compact ? "w-2.5 h-2.5 text-success" : "w-3 h-3 sm:w-4 sm:h-4 text-success"} />
+        {t('hero.noSignup', 'No sign-up required')}
+      </span>
+      <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+      <span className="flex items-center gap-1">
+        <Check className={compact ? "w-2.5 h-2.5 text-success" : "w-3 h-3 sm:w-4 sm:h-4 text-success"} />
+        100% private
+      </span>
+    </div>
+  );
+
+  // ============================================
+  // VARIANT: SOCIAL_FIRST
+  // Lead with prominent social proof, then headline + CTA
+  // ============================================
+  if (isSocialFirst) {
+    return (
+      <section className={`relative overflow-hidden ${getSectionPadding()}`} aria-labelledby="hero-heading">
+        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-success/5 rounded-full blur-[150px]" />
+        </div>
+        
+        <div className="container relative">
+          <div className="max-w-3xl mx-auto text-center">
+            
+            {/* PROMINENT SOCIAL PROOF - Large and eye-catching */}
+            <div className="mb-5 animate-fade-in">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/30 mb-4">
+                <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+                <span className="text-sm font-medium text-success">Join thousands of job seekers who landed interviews</span>
+              </div>
+              <HeroStatsBar />
+            </div>
+
+            {/* Headline - slightly smaller to emphasize social proof */}
+            <div className="mb-4 animate-fade-in" style={{ animationDelay: "0.05s" }}>
+              <h1 id="hero-heading" className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-3 leading-tight">
+                {t('hero.headline.get', 'Get')}{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
+                  {t('hero.headline.recruiterGrade', 'Recruiter-Grade')}
+                </span>{" "}
+                {t('hero.headline.feedback', 'Resume Feedback in 60 Seconds')}
+              </h1>
+              <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
+                See why 89% of our users got interview callbacks after using our scanner.
+              </p>
+            </div>
+
+            {/* CTA */}
+            <div className="mb-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+              {renderCTA('md')}
+              {renderTrustIndicators()}
+            </div>
+
+            {/* Mini testimonial for extra social proof */}
+            <div className="animate-fade-in flex justify-center" style={{ animationDelay: "0.15s" }}>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-card/60 border border-border/40">
+                <div className="flex -space-x-2">
+                  {['JD', 'MK', 'AS'].map((initials, i) => (
+                    <div key={i} className="w-6 h-6 rounded-full bg-gradient-to-br from-primary/30 to-success/30 flex items-center justify-center border-2 border-background text-[8px] font-bold text-foreground">
+                      {initials}
+                    </div>
+                  ))}
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">142 people</span> scanned their resume in the last hour
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // ============================================
+  // VARIANT: BENEFIT_LED
+  // Lead with pain point, then solution + CTA
+  // ============================================
+  if (isBenefitLed) {
+    return (
+      <section className={`relative overflow-hidden ${getSectionPadding()}`} aria-labelledby="hero-heading">
+        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-destructive/5 rounded-full blur-[150px]" />
+          <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-success/5 rounded-full blur-[100px]" />
+        </div>
+        
+        <div className="container relative">
+          <div className="max-w-3xl mx-auto text-center">
+            
+            {/* PAIN POINT - Attention-grabbing problem statement */}
+            <div className="mb-4 animate-fade-in">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-destructive/10 border border-destructive/30 mb-3">
+                <AlertTriangle className="w-4 h-4 text-destructive" />
+                <span className="text-sm font-medium text-destructive">The #1 reason qualified candidates get rejected</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-2">
+                85% of resumes are <span className="text-destructive">rejected by ATS bots</span>
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                Before a human ever sees them. Is yours one of them?
+              </p>
+            </div>
+
+            {/* SOLUTION - The fix */}
+            <div className="mb-4 animate-fade-in" style={{ animationDelay: "0.05s" }}>
+              <div className="inline-flex items-center gap-2 mb-3">
+                <div className="w-8 h-[2px] bg-muted-foreground/30" />
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">The solution</span>
+                <div className="w-8 h-[2px] bg-muted-foreground/30" />
+              </div>
+              <h1 id="hero-heading" className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight mb-2 leading-tight">
+                Get{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
+                  instant ATS-proof fixes
+                </span>{" "}
+                in 60 seconds
+              </h1>
+              <p className="text-xs sm:text-sm text-muted-foreground max-w-lg mx-auto">
+                Our AI scanner finds exactly what's blocking your resume and shows you how to fix it.
+              </p>
+            </div>
+
+            {/* CTA */}
+            <div className="mb-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+              {renderCTA('md')}
+              {renderTrustIndicators()}
+            </div>
+
+            {/* Social proof as validation */}
+            <div className="animate-fade-in" style={{ animationDelay: "0.15s" }}>
+              <HeroStatsBar />
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // ============================================
+  // VARIANTS: COMPACT, ULTRA_COMPACT, ORIGINAL
+  // (Original implementation)
+  // ============================================
   return (
     <section 
-      className={`relative overflow-hidden ${sectionPadding}`}
+      className={`relative overflow-hidden ${getSectionPadding()}`}
       aria-labelledby="hero-heading"
     >
       {/* Background effects */}
@@ -320,56 +505,16 @@ export function Hero() {
 
           {/* PRIMARY CTA - Large and unmissable */}
           <div className={`animate-fade-in ${isUltraCompact ? 'mb-3' : isCompactLayout ? 'mb-4' : 'mb-6'}`} style={{ animationDelay: isUltraCompact ? "0.05s" : "0.15s" }}>
-            <button
-              onClick={handleFreeScanClick}
-              className={`group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-success via-success to-emerald-500 text-success-foreground font-bold shadow-xl shadow-success/30 hover:shadow-2xl hover:shadow-success/40 active:scale-[0.98] transition-all duration-300 touch-manipulation ${
-                isUltraCompact
-                  ? 'px-6 py-3 sm:px-8 sm:py-4 text-base sm:text-lg min-h-[48px] sm:min-h-[56px]'
-                  : isCompactLayout 
-                    ? 'px-8 py-4 sm:px-10 sm:py-5 text-base sm:text-lg md:text-xl min-h-[56px] sm:min-h-[64px]' 
-                    : 'px-10 py-5 sm:py-6 text-lg sm:text-xl min-h-[64px]'
-              }`}
-            >
-              <Sparkles className={isUltraCompact ? "w-4 h-4 sm:w-5 sm:h-5" : isCompactLayout ? "w-5 h-5 sm:w-6 sm:h-6" : "w-6 h-6 sm:w-7 sm:h-7"} />
-              <span>{t('hero.ctaButton', 'Check My Resume Now')}</span>
-              <div className={`absolute rounded-full bg-primary text-primary-foreground font-bold shadow-lg animate-pulse ${
-                isUltraCompact
-                  ? '-top-1.5 -right-1 px-1.5 py-0.5 text-[9px] sm:text-[10px]'
-                  : isCompactLayout 
-                    ? '-top-2 -right-1 sm:-top-3 sm:-right-3 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs' 
-                    : '-top-3 -right-2 sm:-right-3 px-3 py-1 text-xs'
-              }`}>
-                {t('hero.freeBadge', 'FREE')}
+            {renderCTA(isUltraCompact ? 'sm' : isCompactLayout ? 'md' : 'lg')}
+            {renderTrustIndicators(isUltraCompact)}
+            {!isUltraCompact && isOriginalLayout && (
+              <div className="mt-2 flex justify-center">
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Check className="w-4 h-4 text-success" />
+                  {t('hero.actionableFixes', 'Actionable fixes included')}
+                </span>
               </div>
-            </button>
-            
-            {/* Trust indicators below CTA - minimal for ultra-compact */}
-            <div className={`flex flex-wrap items-center justify-center text-muted-foreground ${
-              isUltraCompact
-                ? 'mt-2 gap-x-2 gap-y-1 text-[10px] sm:text-xs'
-                : isCompactLayout 
-                  ? 'mt-3 gap-x-3 gap-y-1 text-xs sm:text-sm' 
-                  : 'mt-4 flex-col sm:flex-row gap-3 text-sm'
-            }`}>
-              <span className="flex items-center gap-1">
-                <Check className={isUltraCompact ? "w-2.5 h-2.5 text-success" : isCompactLayout ? "w-3 h-3 sm:w-4 sm:h-4 text-success" : "w-4 h-4 text-success"} />
-                {t('hero.noSignup', 'No sign-up required')}
-              </span>
-              <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-              <span className="flex items-center gap-1">
-                <Check className={isUltraCompact ? "w-2.5 h-2.5 text-success" : isCompactLayout ? "w-3 h-3 sm:w-4 sm:h-4 text-success" : "w-4 h-4 text-success"} />
-                {isUltraCompact ? '100% private' : t('hero.worksWithAny', 'Works with any resume')}
-              </span>
-              {isOriginalLayout && (
-                <>
-                  <span className="hidden sm:block w-1 h-1 rounded-full bg-muted-foreground/30" />
-                  <span className="flex items-center gap-1.5">
-                    <Check className="w-4 h-4 text-success" />
-                    {t('hero.actionableFixes', 'Actionable fixes included')}
-                  </span>
-                </>
-              )}
-            </div>
+            )}
           </div>
 
           {/* Show social proof BELOW the CTA for ultra-compact */}

@@ -31,10 +31,15 @@ export const AB_TESTS = {
     name: 'social_proof_placement',
     variants: ['control', 'above_fold', 'inline_hero'] as const,
   },
-  // Test hero layout: compact (CTA visible immediately) vs original (more content above fold) vs ultra_compact (just headline + CTA)
+  // Test hero layout variants:
+  // - compact: CTA visible immediately with reduced content on mobile
+  // - original: Full layout with all benefits and content
+  // - ultra_compact: Just headline + CTA above fold, minimal content
+  // - social_first: Lead with prominent social proof stats, then headline + CTA
+  // - benefit_led: Lead with pain point, then solution headline + CTA
   hero_layout: {
     name: 'hero_layout',
-    variants: ['compact', 'original', 'ultra_compact'] as const,
+    variants: ['compact', 'original', 'ultra_compact', 'social_first', 'benefit_led'] as const,
   },
 } as const;
 
