@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAffiliateAuth } from '@/hooks/use-affiliate-auth';
+import { useAffiliateRealtime } from '@/hooks/use-affiliate-realtime';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +23,10 @@ import {
   BarChart3,
   LineChart as LineChartIcon,
   ArrowUpRight,
-  Palette
+  Palette,
+  Link2,
+  Wallet,
+  Bell
 } from 'lucide-react';
 import {
   AreaChart,
@@ -37,6 +41,8 @@ import {
   Legend
 } from 'recharts';
 import { MarketingKit } from '@/components/affiliate/MarketingKit';
+import { AdvancedLinkTools } from '@/components/affiliate/AdvancedLinkTools';
+import { PayoutRequest } from '@/components/affiliate/PayoutRequest';
 
 interface ClickData {
   click_date: string;
@@ -66,6 +72,19 @@ export default function Affiliates() {
   const [clickHistory, setClickHistory] = useState<ClickData[]>([]);
   const [isLoadingClicks, setIsLoadingClicks] = useState(false);
 
+  // Real-time notifications for clicks and conversions
+  useAffiliateRealtime({
+    affiliateId: dashboardData?.affiliate?.id || null,
+    enabled: isAuthenticated,
+    onNewClick: () => {
+      // Refresh dashboard when new click arrives
+      fetchDashboard().catch(console.error);
+    },
+    onNewConversion: () => {
+      // Refresh dashboard when new conversion arrives
+      fetchDashboard().catch(console.error);
+    },
+  });
   useEffect(() => {
     if (isAuthenticated) {
       fetchDashboard().catch((err) => {
@@ -267,14 +286,22 @@ export default function Affiliates() {
 
         {/* Main Dashboard Tabs */}
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Overview
             </TabsTrigger>
+            <TabsTrigger value="links" className="flex items-center gap-2">
+              <Link2 className="h-4 w-4" />
+              Link Tools
+            </TabsTrigger>
+            <TabsTrigger value="payouts" className="flex items-center gap-2">
+              <Wallet className="h-4 w-4" />
+              Payouts
+            </TabsTrigger>
             <TabsTrigger value="marketing" className="flex items-center gap-2">
               <Palette className="h-4 w-4" />
-              Marketing Kit
+              Marketing
             </TabsTrigger>
           </TabsList>
 
@@ -652,6 +679,78 @@ export default function Affiliates() {
             </div>
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="links" className="space-y-6">
+            <AdvancedLinkTools 
+              referralLink={getReferralLink() || ''} 
+              referralCode={session?.referralCode || ''} 
+            />
+          </TabsContent>
+
+          <TabsContent value="payouts" className="space-y-6">
+            <div className="grid gap-6 lg:grid-cols-2">
+              <PayoutRequest
+                pendingPayout={stats?.pending_payout || 0}
+                totalPaidOut={stats?.paid_out || 0}
+              />
+              
+              {/* Payout History */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Payout History
+                  </CardTitle>
+                  <CardDescription>
+                    Your previous payouts
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {(stats?.paid_out || 0) === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">
+                      No payouts yet. Keep promoting to earn commissions!
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                          <p className="font-medium">Initial Payout</p>
+                          <p className="text-sm text-muted-foreground">Completed</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium text-green-600">
+                            {formatCurrency(stats?.paid_out || 0)}
+                          </p>
+                          <Badge variant="default" className="text-xs">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Paid
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Real-time notification info */}
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-4">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Bell className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium">Real-time Notifications</h4>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      You'll receive instant toast notifications when someone clicks your link or makes a purchase.
+                      Keep this page open to see updates in real-time!
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="marketing">
