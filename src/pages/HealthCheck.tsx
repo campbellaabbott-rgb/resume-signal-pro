@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Activity, Database, Zap, CreditCard, ArrowLeft, BarChart3, Clock, FileSearch, AlertOctagon, Mail, ShieldAlert, Ban, DollarSign, Webhook, FileWarning, Bell, Shuffle, Shield, ShieldOff, Timer } from 'lucide-react';
+import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Activity, Database, Zap, CreditCard, ArrowLeft, BarChart3, Clock, FileSearch, AlertOctagon, Mail, ShieldAlert, Ban, DollarSign, Webhook, FileWarning, Bell, Shuffle, Shield, ShieldOff, Timer, Flame, Snowflake, Thermometer } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getAllCircuitStates, resetServiceCircuit } from '@/hooks/use-circuit-breaker';
@@ -191,6 +191,26 @@ interface CircuitBreakerStatus {
   timeUntilRetry: number | null;
 }
 
+interface WarmUpResult {
+  function: string;
+  status: 'warm' | 'cold' | 'error';
+  latency_ms: number;
+  error?: string;
+}
+
+interface WarmUpStatus {
+  success: boolean;
+  timestamp: string;
+  duration_ms: number;
+  summary: {
+    warm: number;
+    cold: number;
+    errors: number;
+    avg_latency_ms: number;
+  };
+  results: WarmUpResult[];
+}
+
 const statusConfig = {
   healthy: { color: 'bg-green-500', icon: CheckCircle, label: 'Healthy' },
   degraded: { color: 'bg-yellow-500', icon: AlertTriangle, label: 'Degraded' },
@@ -245,6 +265,10 @@ export default function HealthCheck() {
   
   // Circuit breaker monitoring
   const [circuitBreakers, setCircuitBreakers] = useState<Record<string, CircuitBreakerStatus>>({});
+  
+  // Warm-up monitoring
+  const [warmUpStatus, setWarmUpStatus] = useState<WarmUpStatus | null>(null);
+  const [warmUpLoading, setWarmUpLoading] = useState(false);
 
   const fetchCircuitBreakerStatus = () => {
     const states = getAllCircuitStates();
@@ -428,6 +452,20 @@ export default function HealthCheck() {
       });
     } finally {
       setAIFallbackLoading(false);
+    }
+  };
+
+  const fetchWarmUpStatus = async () => {
+    setWarmUpLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('warm-up');
+      if (error) throw error;
+      setWarmUpStatus(data as WarmUpStatus);
+    } catch (e) {
+      console.error('Failed to fetch warm-up status:', e);
+      setWarmUpStatus(null);
+    } finally {
+      setWarmUpLoading(false);
     }
   };
 
@@ -663,6 +701,115 @@ export default function HealthCheck() {
                 <p className="text-xs text-muted-foreground">Failed Scans</p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Warm-Up Status */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Thermometer className="h-5 w-5 text-orange-500" />
+                Edge Function Warm-Up
+              </div>
+              <div className="flex items-center gap-2">
+                {warmUpStatus && (
+                  <>
+                    {warmUpStatus.summary.warm === warmUpStatus.results.length ? (
+                      <Badge variant="default" className="bg-green-500/20 text-green-600">
+                        <Flame className="h-3 w-3 mr-1" />
+                        All Warm
+                      </Badge>
+                    ) : warmUpStatus.summary.cold > 0 ? (
+                      <Badge variant="secondary" className="bg-blue-500/20 text-blue-600">
+                        <Snowflake className="h-3 w-3 mr-1" />
+                        {warmUpStatus.summary.cold} Cold
+                      </Badge>
+                    ) : warmUpStatus.summary.errors > 0 ? (
+                      <Badge variant="destructive">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        {warmUpStatus.summary.errors} Errors
+                      </Badge>
+                    ) : null}
+                  </>
+                )}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={fetchWarmUpStatus}
+                  disabled={warmUpLoading}
+                >
+                  {warmUpLoading ? (
+                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <Flame className="h-3 w-3 mr-1" />
+                  )}
+                  Warm Up
+                </Button>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!warmUpStatus ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Click "Warm Up" to ping edge functions and reduce cold start latency.
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-4 gap-3 mb-4">
+                  <div className="text-center p-2 rounded-lg bg-green-500/10">
+                    <p className="text-xl font-bold text-green-600">{warmUpStatus.summary.warm}</p>
+                    <p className="text-xs text-muted-foreground">Warm</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-blue-500/10">
+                    <p className="text-xl font-bold text-blue-600">{warmUpStatus.summary.cold}</p>
+                    <p className="text-xs text-muted-foreground">Cold</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-red-500/10">
+                    <p className="text-xl font-bold text-red-600">{warmUpStatus.summary.errors}</p>
+                    <p className="text-xs text-muted-foreground">Errors</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-muted/50">
+                    <p className="text-xl font-bold">{warmUpStatus.summary.avg_latency_ms}ms</p>
+                    <p className="text-xs text-muted-foreground">Avg Latency</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  {warmUpStatus.results.map((result) => {
+                    const statusStyles = {
+                      warm: { bg: 'bg-green-500/10', text: 'text-green-600', icon: Flame },
+                      cold: { bg: 'bg-blue-500/10', text: 'text-blue-600', icon: Snowflake },
+                      error: { bg: 'bg-red-500/10', text: 'text-red-600', icon: XCircle },
+                    };
+                    const style = statusStyles[result.status];
+                    const StatusIcon = style.icon;
+                    
+                    return (
+                      <div 
+                        key={result.function}
+                        className={`p-2 rounded-lg ${style.bg} flex items-center justify-between`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <StatusIcon className={`h-4 w-4 ${style.text}`} />
+                          <span className="text-sm font-medium">{result.function}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground font-mono">{result.latency_ms}ms</span>
+                          <Badge variant="outline" className={`${style.text} text-xs`}>
+                            {result.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                <p className="text-xs text-muted-foreground text-center mt-3">
+                  Last warm-up: {new Date(warmUpStatus.timestamp).toLocaleTimeString()} ({warmUpStatus.duration_ms}ms total)
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
