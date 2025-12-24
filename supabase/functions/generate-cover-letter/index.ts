@@ -104,13 +104,13 @@ Generate a compelling cover letter that connects my experience to this role.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "openai/gpt-5",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        max_tokens: 3000,
-        temperature: 0.7,
+        max_tokens: 4000,
+        temperature: 0.6,
       }),
     });
 
