@@ -47,10 +47,13 @@ serve(async (req) => {
 These rules MUST be followed perfectly. Violations are unacceptable:
 
 ### NUMBERS & METRICS:
-- COPY ALL NUMBERS EXACTLY: "$20,000,000" stays "$20,000,000" (not "$20,,000" or "$,000")
-- Percentages: "100%" not "%+", "~1.5x" not "1.5"
-- Counts: "67 warehouses" with space (not "across67 warehouses")
-- Dollar amounts: "$400,000" not "$,000" or truncated values
+- COPY ALL NUMBERS EXACTLY, character-for-character (including punctuation)
+- Preserve decimal points: "3.5x" must stay "3.5x" (never "35x")
+- Preserve "x" multipliers: "1.5x" must stay "1.5x" (never "15x")
+- Preserve years fully: "2024" must stay "2024" (never "202" or "202.")
+- Dollar amounts: "$100M+" must stay "$100M+" (never "$M+")
+- Prefix symbols must remain: "$150,000" must include "$"; ">50%" must include the number
+- Proper spacing between words and numbers (e.g., "for 8" not "for8", "top 3" not "top3")
 
 ### COMPANY & PRODUCT NAMES:
 - "GitHub" NOT "Git"
@@ -58,32 +61,26 @@ These rules MUST be followed perfectly. Violations are unacceptable:
 - "Fortune 500" NOT "Fortune"
 - "GitHub Copilot" NOT "GitHub Cop" or "GitHub Cop (OpenAI)"
 - "GitHub Actions" NOT "Git Actions"
-- "GitHub Enterprise" NOT "GitHub ("
 - "Codespaces" NOT "Codes)"
 - "LinkedIn Sales Navigator" NOT "Linked Sales Navigator"
 - "CI/CD" NOT "/CD" or "including/CD"
 - "Carnegie Mellon" NOT "Carnegie Mellonator"
 
-### JOB TITLES:
-- "Senior Sales Development Rep" NOT "Senior Sales Development"
-- "Outreach Manager" NOT "Outreach"
-- "Full-Cycle Enterprise Sales" NOT "Full-C Enterprise Sales"
-- "Lead Generation" NOT orphaned "Generation"
-
 ### TEXT QUALITY:
-- NEVER truncate words or add random punctuation
-- NEVER drop letters, numbers, or spaces
-- Every bullet point must be grammatically complete
-- Proper spacing between ALL words and numbers
-- No broken phrases like "0-to- go-to-market" (should be "0-to-1 go-to-market")
-- No garbled text like "highpensity" (should be "high-propensity")
-- No missing verbs: "wrote a LinkedIn article" NOT "a LinkedIn article"
+- NEVER truncate words or drop letters/spaces
+- NEVER introduce random commas/punctuation at the start of lines
+- Section headers must be separated with clear newlines (no run-together headers)
+- Every bullet point must be a complete, grammatical sentence fragment
+
+### FACTS & CONTENT:
+- DO NOT invent new achievements, numbers, tools, locations, titles, or claims
+- Only enhance wording and add ATS-friendly keywords that fit the existing facts
 
 ## OUTPUT FORMAT
 You will output content in TWO sections, clearly marked:
 
 ===RESUME_START===
-[Write the complete enhanced resume here - include ALL original content, enhanced with better wording, keywords, and quantified achievements]
+[Write the complete enhanced resume here]
 ===RESUME_END===
 
 ===COVER_LETTER_START===
@@ -92,24 +89,12 @@ You will output content in TWO sections, clearly marked:
 
 ## RESUME RULES:
 - Include EVERY job, education, project from the original
-- Enhance wording, add keywords, quantify achievements
-- Add a professional summary if missing
 - Output must be AS LONG OR LONGER than input
 - PRESERVE ALL original data exactly - numbers, names, titles
 
 ## COVER LETTER RULES - CRITICAL:
 - Write COMPLETE, COHERENT sentences with proper grammar
-- NEVER use placeholder text, variables, or incomplete phrases
-- NEVER write things like "building -1" or "1-N" or mathematical notation
-- Spell out all company names correctly
-- Use SPECIFIC details from the resume - real job titles, real company names, real achievements
-- Every sentence must be grammatically complete and make logical sense
-- Sound like a real human professional, not AI
-- Open with a specific hook that mentions the target role or company
-- Reference 2-3 specific accomplishments from the resume with context
-- Show genuine enthusiasm without being over-the-top
-- Close with a confident call to action
-- Vary sentence structure and length for natural flow
+- Use SPECIFIC details from the resume (real titles, real companies, real achievements)
 - Proofread: no missing words, no garbled text, no incomplete thoughts`;
 
 
@@ -147,7 +132,7 @@ Provide the enhanced resume first, then the cover letter. Use the exact markers 
     if (!response.ok) {
       const errorText = await response.text();
       logStep("AI API error", { status: response.status, error: errorText });
-      
+
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "AI service is temporarily busy. Please try again.", retryable: true }),
@@ -160,16 +145,16 @@ Provide the enhanced resume first, then the cover letter. Use the exact markers 
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
+
       throw new Error(`AI API error: ${response.status}`);
     }
 
     logStep("Streaming response back to client");
 
-    // Stream the response directly to the client
+    // Stream the response directly to the client (SSE). IMPORTANT: buffer line-by-line to avoid token loss.
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
-    
+
     const stream = new ReadableStream({
       async start(controller) {
         const reader = response.body?.getReader();
@@ -178,42 +163,62 @@ Provide the enhanced resume first, then the cover letter. Use the exact markers 
           return;
         }
 
+        let textBuffer = "";
+
+        const enqueueEvent = (event: Record<string, unknown>) => {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        };
+
+        const processLine = (rawLine: string) => {
+          let line = rawLine;
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") return;
+          if (!line.startsWith("data: ")) return;
+
+          const data = line.slice(6).trim();
+          if (!data) return;
+
+          if (data === "[DONE]") {
+            enqueueEvent({ type: "done" });
+            return;
+          }
+
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) enqueueEvent({ type: "content", content });
+          } catch {
+            // Likely partial JSON (split across chunks). Put it back and wait for more data.
+            textBuffer = rawLine + "\n" + textBuffer;
+          }
+        };
+
         try {
-          // Send initial event
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "start", message: "Generation started" })}\n\n`));
+          enqueueEvent({ type: "start", message: "Generation started" });
 
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
+            textBuffer += decoder.decode(value, { stream: true });
 
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6);
-                if (data === '[DONE]') {
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`));
-                  continue;
-                }
-                
-                try {
-                  const parsed = JSON.parse(data);
-                  const content = parsed.choices?.[0]?.delta?.content;
-                  if (content) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "content", content })}\n\n`));
-                  }
-                } catch {
-                  // Ignore parse errors for partial chunks
-                }
-              }
+            let newlineIndex: number;
+            while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+              const line = textBuffer.slice(0, newlineIndex);
+              textBuffer = textBuffer.slice(newlineIndex + 1);
+              processLine(line);
             }
           }
 
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "complete" })}\n\n`));
+          // Flush any remaining buffered line
+          if (textBuffer.trim()) {
+            for (const line of textBuffer.split("\n")) processLine(line);
+          }
+
+          enqueueEvent({ type: "complete" });
         } catch (error) {
           logStep("Stream error", { error: String(error) });
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "error", message: String(error) })}\n\n`));
+          enqueueEvent({ type: "error", message: String(error) });
         } finally {
           controller.close();
         }
