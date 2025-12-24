@@ -39,37 +39,50 @@ serve(async (req) => {
     // Step 1: Generate the rewritten resume
     logStep("Generating rewritten resume");
     
-    const resumeSystemPrompt = `You are an expert ATS resume writer who creates highly optimized, professional resumes that pass Applicant Tracking Systems and impress hiring managers.
+    const resumeSystemPrompt = `You are an elite ATS resume optimization specialist. Your task is to enhance and optimize the provided resume while STRICTLY PRESERVING all content.
 
-Your task is to completely rewrite and optimize the provided resume for the target job. You must:
+## CRITICAL RULES - YOU MUST FOLLOW THESE:
+1. **PRESERVE ALL CONTENT**: Keep EVERY job, education entry, project, and experience from the original. DO NOT remove or omit anything.
+2. **MAINTAIN RESUME LENGTH**: The optimized resume should be SIMILAR in length to the original. If the original is 2 pages, output should be ~2 pages worth of content.
+3. **ENHANCE, DON'T DELETE**: Your job is to IMPROVE wording, not remove content. Every experience in the original MUST appear in the output.
 
-1. **ATS Optimization**: Include relevant keywords from the job description naturally throughout
-2. **Quantify Achievements**: Add metrics and numbers wherever possible (%, $, #)
-3. **Strong Action Verbs**: Start each bullet with powerful, varied action verbs
-4. **Tailored Content**: Reorganize and prioritize experience most relevant to the target role
-5. **Clean Format**: Use a clear, ATS-friendly structure with consistent formatting
-6. **Professional Summary**: Write a compelling 2-3 sentence summary tailored to the role
-7. **Skills Section**: Create a keyword-rich skills section matching job requirements
+## OPTIMIZATION GUIDELINES:
+1. **ATS Keywords**: Naturally integrate relevant keywords from the job description
+2. **Quantify Achievements**: Enhance bullets with metrics where possible (%, $, numbers) - but keep the original context
+3. **Strong Action Verbs**: Improve weak verbs with powerful, varied action verbs
+4. **Prioritize Order**: You may reorder sections to highlight most relevant experience FIRST, but include ALL sections
+5. **Professional Summary**: Write a compelling 3-4 sentence summary tailored to the role
+6. **Skills Section**: Create a comprehensive, keyword-rich skills section
+
+## OUTPUT FORMAT:
+The rewritten resume MUST include ALL of the following sections from the original:
+- Professional Summary/Objective
+- ALL Work Experience entries (every single job)
+- ALL Education entries
+- ALL Projects (if present)
+- ALL Certifications (if present)
+- Comprehensive Skills section
 
 You MUST respond with a valid JSON object:
 {
-  "rewrittenResume": "The complete rewritten resume in clean text format with sections clearly marked",
-  "professionalSummary": "The new professional summary (2-3 sentences)",
+  "rewrittenResume": "The COMPLETE rewritten resume with ALL original content preserved and enhanced. Include proper section headers and formatting.",
+  "professionalSummary": "The new professional summary (3-4 sentences)",
   "keyChanges": [
-    { "section": "string", "before": "brief description of original", "after": "brief description of improvement", "reason": "why this change matters" }
+    { "section": "string", "before": "original wording", "after": "improved wording", "reason": "why this improvement helps" }
   ],
   "addedKeywords": ["keyword1", "keyword2", ...],
   "atsScore": {
-    "before": number (0-100 estimate),
-    "after": number (0-100 estimate),
-    "improvement": "explanation of score improvement"
+    "before": number (0-100),
+    "after": number (0-100),
+    "improvement": "explanation"
   },
-  "highlights": ["key improvement 1", "key improvement 2", ...]
+  "highlights": ["improvement 1", "improvement 2", ...],
+  "preservedSections": ["list of all sections from original that were kept"]
 }`;
 
-    const resumeUserPrompt = `Rewrite and optimize this resume for the target position:
+    const resumeUserPrompt = `OPTIMIZE this resume for the target position. CRITICAL: Keep ALL experiences, jobs, and content - enhance wording but do not remove anything.
 
-ORIGINAL RESUME:
+ORIGINAL RESUME (PRESERVE ALL CONTENT):
 ${resumeText}
 
 TARGET JOB TITLE: ${jobTitle || 'Not specified'}
@@ -78,7 +91,7 @@ TARGET COMPANY: ${jobCompany || 'Not specified'}
 ${jobDescription ? `JOB DESCRIPTION:
 ${jobDescription}` : 'No job description provided - optimize for general professional excellence in this field.'}
 
-Create a complete, ATS-optimized rewrite of this resume.`;
+REMINDER: Your output MUST include every job, education entry, and experience from the original. Do not condense or remove content. Enhance and optimize the wording while preserving completeness.`;
 
     const resumeResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -87,13 +100,13 @@ Create a complete, ATS-optimized rewrite of this resume.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: resumeSystemPrompt },
           { role: "user", content: resumeUserPrompt }
         ],
-        max_tokens: 6000,
-        temperature: 0.4,
+        max_tokens: 12000,
+        temperature: 0.3,
       }),
     });
 
@@ -178,13 +191,13 @@ Generate a compelling cover letter that connects my optimized experience to this
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: coverLetterSystemPrompt },
           { role: "user", content: coverLetterUserPrompt }
         ],
-        max_tokens: 3000,
-        temperature: 0.7,
+        max_tokens: 4000,
+        temperature: 0.5,
       }),
     });
 
