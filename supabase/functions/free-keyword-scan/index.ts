@@ -383,7 +383,7 @@ serve(async (req) => {
       ipCountry,
       visitorId: clientIp, // Using IP as visitor ID for now
       inputLength: resumeText.length,
-      aiModel: 'google/gemini-2.5-flash'
+      aiModel: 'google/gemini-2.5-pro'
     };
 
 
@@ -1376,7 +1376,7 @@ ${resumeText.substring(0, 15000)}
               p_status: 'failed',
               p_duration_ms: Date.now() - requestStartTime,
               p_cache_hit: false,
-              p_ai_model: 'google/gemini-2.5-flash',
+              p_ai_model: 'google/gemini-2.5-pro',
               p_error_code: 'UNCAUGHT_ERROR',
               p_error_message: error instanceof Error ? error.message : 'Unknown error',
               p_ip_country: null,
