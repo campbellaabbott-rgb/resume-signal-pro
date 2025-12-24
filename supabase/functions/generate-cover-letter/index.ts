@@ -285,11 +285,12 @@ Write something that sounds like this specific person wrote it - confident, spec
 
     logStep("Cover letter generated", { 
       letterLength: result.coverLetter?.length,
-      skillsCount: result.keySkillsHighlighted?.length 
+      skillsCount: result.keySkillsHighlighted?.length,
+      modelUsed 
     });
 
     return new Response(
-      JSON.stringify({ success: true, data: result }),
+      JSON.stringify({ success: true, data: result, modelUsed }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 

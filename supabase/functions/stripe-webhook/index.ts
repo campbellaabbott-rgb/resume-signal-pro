@@ -272,6 +272,17 @@ async function triggerProductDelivery(
   const generationDuration = Date.now() - generationStart;
 
   if (generatedContent) {
+    // Extract AI model used for tracking
+    let aiModelUsed: string | null = null;
+    if (generatedContent.modelsUsed) {
+      // Premium package tracks both resume and cover letter models
+      aiModelUsed = generatedContent.modelsUsed.resume || generatedContent.modelsUsed.coverLetter || null;
+      logStep("AI models used", generatedContent.modelsUsed);
+    } else if (generatedContent.modelUsed) {
+      // Single product (cover letter, keyword fix) tracks one model
+      aiModelUsed = generatedContent.modelUsed;
+    }
+
     // Save content permanently
     await supabase.rpc('save_purchased_content', {
       p_stripe_session_id: sessionId,
@@ -281,14 +292,15 @@ async function triggerProductDelivery(
       p_generated_content: generatedContent
     });
 
-    // Update delivery status
+    // Update delivery status with AI model tracking
     await supabase
       .from('product_deliveries')
       .update({
         status: 'content_generated',
         generation_success: true,
         content_generation_completed_at: new Date().toISOString(),
-        generation_duration_ms: generationDuration
+        generation_duration_ms: generationDuration,
+        ai_model_used: aiModelUsed
       })
       .eq('id', deliveryRecord?.id);
 
