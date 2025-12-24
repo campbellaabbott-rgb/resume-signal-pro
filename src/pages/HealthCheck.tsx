@@ -12,6 +12,7 @@ import { WebhookTrendChart } from '@/components/dashboard/WebhookTrendChart';
 import { AIGenerationTrendChart } from '@/components/dashboard/AIGenerationTrendChart';
 import { UserHealthTable } from '@/components/dashboard/UserHealthTable';
 import { HealthHistoryChart } from '@/components/dashboard/HealthHistoryChart';
+import { GeoPerformanceChart } from '@/components/dashboard/GeoPerformanceChart';
 
 interface CheckResult {
   status: 'ok' | 'slow' | 'error';
@@ -722,6 +723,9 @@ export default function HealthCheck() {
           <WebhookTrendChart />
           <AIGenerationTrendChart />
         </div>
+
+        {/* Geographic Performance */}
+        <GeoPerformanceChart />
 
         {/* Warm-Up Status */}
         <Card className="mb-6">
