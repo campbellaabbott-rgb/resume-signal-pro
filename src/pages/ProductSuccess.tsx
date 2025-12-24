@@ -682,8 +682,8 @@ export default function ProductSuccess() {
     productKey === 'atsDefense'
   );
 
-  // Show streaming UI for real-time generation
-  if (isStreaming || (streamingContent && !streamingComplete && !generatedContent)) {
+  // Show streaming UI for real-time generation - keep showing even after complete
+  if (isStreaming || streamingContent) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -692,15 +692,20 @@ export default function ProductSuccess() {
             {/* Streaming Header */}
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 mb-6">
-                <Brain className="w-10 h-10 text-primary animate-pulse" />
+                <Brain className={cn("w-10 h-10 text-primary", isStreaming && "animate-pulse")} />
               </div>
               <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
                 <Sparkles className="w-3 h-3 mr-1" />
-                GPT-5 Generating Live
+                {streamingComplete ? 'GPT-5 Generation Complete' : 'GPT-5 Generating Live'}
               </Badge>
-              <h1 className="text-3xl font-bold mb-2">Watch Your Content Generate</h1>
+              <h1 className="text-3xl font-bold mb-2">
+                {streamingComplete ? 'Your Content Is Ready!' : 'Watch Your Content Generate'}
+              </h1>
               <p className="text-muted-foreground">
-                Your {product?.name || 'content'} is being created in real-time
+                {streamingComplete 
+                  ? `Your ${product?.name || 'content'} has been generated successfully`
+                  : `Your ${product?.name || 'content'} is being created in real-time`
+                }
               </p>
             </div>
 
@@ -710,8 +715,8 @@ export default function ProductSuccess() {
               isStreaming={isStreaming}
               isComplete={streamingComplete}
               error={streamingError}
-              title={`Generating ${product?.name || 'content'}...`}
-              subtitle="Watch your personalized content appear word by word"
+              title={streamingComplete ? `Your ${product?.name || 'content'}` : `Generating ${product?.name || 'content'}...`}
+              subtitle={streamingComplete ? "Copy or download your content below" : "Watch your personalized content appear word by word"}
             />
           </div>
         </main>
