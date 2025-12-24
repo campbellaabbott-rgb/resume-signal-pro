@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Activity, Database, Zap, CreditCard, ArrowLeft, BarChart3, Clock, FileSearch, AlertOctagon, Mail, ShieldAlert, Ban, DollarSign, Webhook, FileWarning, Bell } from 'lucide-react';
+import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Activity, Database, Zap, CreditCard, ArrowLeft, BarChart3, Clock, FileSearch, AlertOctagon, Mail, ShieldAlert, Ban, DollarSign, Webhook, FileWarning, Bell, Shuffle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -155,6 +155,32 @@ interface ParseFailureStats {
   }>;
 }
 
+interface AIFallbackStatus {
+  success: boolean;
+  mode: string;
+  fallbackConfig: string[];
+  fallbacksAttempted?: string[];
+  modelUsed?: string;
+  usedFallback?: boolean;
+  totalTime?: number;
+  response?: string;
+  error?: string;
+  results?: Array<{
+    model: string;
+    success: boolean;
+    responseTime: number;
+    statusCode?: number;
+    error?: string;
+  }>;
+  summary?: {
+    totalModels: number;
+    successfulModels: number;
+    failedModels: number;
+    fastestModel: string | null;
+    averageResponseTime: number | null;
+  };
+}
+
 const statusConfig = {
   healthy: { color: 'bg-green-500', icon: CheckCircle, label: 'Healthy' },
   degraded: { color: 'bg-yellow-500', icon: AlertTriangle, label: 'Degraded' },
@@ -202,6 +228,10 @@ export default function HealthCheck() {
   // New monitoring states
   const [webhookHealth, setWebhookHealth] = useState<WebhookHealth | null>(null);
   const [parseFailures, setParseFailures] = useState<ParseFailureStats | null>(null);
+  
+  // AI Fallback monitoring
+  const [aiFallbackStatus, setAIFallbackStatus] = useState<AIFallbackStatus | null>(null);
+  const [aiFallbackLoading, setAIFallbackLoading] = useState(false);
 
   const fetchProductMetrics = async () => {
     try {
@@ -362,6 +392,27 @@ export default function HealthCheck() {
     }
   };
 
+  const fetchAIFallbackStatus = async (mode: 'quick' | 'all' = 'quick') => {
+    setAIFallbackLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('test-ai-fallback', {
+        body: { mode }
+      });
+      if (error) throw error;
+      setAIFallbackStatus(data);
+    } catch (e) {
+      console.error('Failed to fetch AI fallback status:', e);
+      setAIFallbackStatus({
+        success: false,
+        mode,
+        fallbackConfig: [],
+        error: e instanceof Error ? e.message : 'Failed to test AI fallback'
+      });
+    } finally {
+      setAIFallbackLoading(false);
+    }
+  };
+
   const fetchHealthCheck = async (retries = 3) => {
     setLoading(true);
     setError(null);
@@ -407,6 +458,7 @@ export default function HealthCheck() {
     fetchCheckoutFunnel();
     fetchWebhookHealth();
     fetchParseFailures();
+    fetchAIFallbackStatus('quick');
   };
 
   useEffect(() => {
@@ -1086,6 +1138,163 @@ export default function HealthCheck() {
             </CardContent>
           </Card>
         </div>
+
+        {/* AI Model Fallback Status */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Shuffle className="h-5 w-5 text-violet-500" />
+                AI Model Fallback Chain
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => fetchAIFallbackStatus('all')}
+                  disabled={aiFallbackLoading}
+                >
+                  {aiFallbackLoading ? (
+                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                  )}
+                  Test All Models
+                </Button>
+                {aiFallbackStatus && (
+                  <Badge variant={aiFallbackStatus.success ? 'default' : 'destructive'}>
+                    {aiFallbackStatus.success ? 'Healthy' : 'Degraded'}
+                  </Badge>
+                )}
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!aiFallbackStatus ? (
+              <div className="text-center py-4">
+                <RefreshCw className="h-8 w-8 text-muted-foreground mx-auto mb-2 animate-spin" />
+                <p className="text-sm text-muted-foreground">Testing AI models...</p>
+              </div>
+            ) : aiFallbackStatus.error ? (
+              <div className="text-center py-4">
+                <XCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                <p className="text-sm text-red-500">{aiFallbackStatus.error}</p>
+              </div>
+            ) : (
+              <>
+                {/* Fallback chain display */}
+                <div className="mb-4">
+                  <p className="text-xs text-muted-foreground mb-2">Fallback Order:</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {aiFallbackStatus.fallbackConfig.map((model, i) => (
+                      <div key={model} className="flex items-center gap-1">
+                        <Badge 
+                          variant={
+                            aiFallbackStatus.modelUsed === model 
+                              ? 'default' 
+                              : aiFallbackStatus.results?.find(r => r.model === model)?.success 
+                                ? 'outline' 
+                                : 'secondary'
+                          }
+                          className={
+                            aiFallbackStatus.modelUsed === model 
+                              ? 'bg-green-500' 
+                              : ''
+                          }
+                        >
+                          {i + 1}. {model.replace('openai/', '').replace('google/', '')}
+                          {aiFallbackStatus.modelUsed === model && ' ✓'}
+                        </Badge>
+                        {i < aiFallbackStatus.fallbackConfig.length - 1 && (
+                          <span className="text-muted-foreground">→</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Quick test results */}
+                {aiFallbackStatus.mode === 'quick' && (
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="p-2 rounded bg-green-500/10">
+                      <p className="text-lg font-bold text-green-500">{aiFallbackStatus.modelUsed?.split('/')[1] || 'N/A'}</p>
+                      <p className="text-xs text-muted-foreground">Model Used</p>
+                    </div>
+                    <div className="p-2 rounded bg-muted/50">
+                      <p className="text-lg font-bold">{aiFallbackStatus.totalTime || 0}ms</p>
+                      <p className="text-xs text-muted-foreground">Response Time</p>
+                    </div>
+                    <div className="p-2 rounded bg-muted/50">
+                      <p className={`text-lg font-bold ${aiFallbackStatus.usedFallback ? 'text-yellow-500' : 'text-green-500'}`}>
+                        {aiFallbackStatus.usedFallback ? 'Yes' : 'No'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Used Fallback</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* All models test results */}
+                {aiFallbackStatus.mode === 'all' && aiFallbackStatus.results && (
+                  <>
+                    <div className="grid grid-cols-4 gap-2 mb-4 text-center">
+                      <div className="p-2 rounded bg-muted/50">
+                        <p className="text-lg font-bold">{aiFallbackStatus.summary?.totalModels || 0}</p>
+                        <p className="text-xs text-muted-foreground">Total</p>
+                      </div>
+                      <div className="p-2 rounded bg-green-500/10">
+                        <p className="text-lg font-bold text-green-500">{aiFallbackStatus.summary?.successfulModels || 0}</p>
+                        <p className="text-xs text-muted-foreground">Working</p>
+                      </div>
+                      <div className="p-2 rounded bg-red-500/10">
+                        <p className="text-lg font-bold text-red-500">{aiFallbackStatus.summary?.failedModels || 0}</p>
+                        <p className="text-xs text-muted-foreground">Failed</p>
+                      </div>
+                      <div className="p-2 rounded bg-blue-500/10">
+                        <p className="text-lg font-bold text-blue-500">{aiFallbackStatus.summary?.averageResponseTime || 0}ms</p>
+                        <p className="text-xs text-muted-foreground">Avg Time</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Individual Results:</p>
+                      {aiFallbackStatus.results.map((result, i) => (
+                        <div 
+                          key={result.model} 
+                          className={`p-2 rounded border ${
+                            result.success 
+                              ? 'bg-green-500/10 border-green-500/20' 
+                              : 'bg-red-500/10 border-red-500/20'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2">
+                              {result.success ? (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <XCircle className="h-4 w-4 text-red-500" />
+                              )}
+                              <span className="font-medium">{result.model}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">{result.responseTime}ms</span>
+                              {result.success && aiFallbackStatus.summary?.fastestModel === result.model && (
+                                <Badge variant="outline" className="text-xs text-blue-500 border-blue-500">
+                                  Fastest
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          {result.error && (
+                            <p className="text-xs text-red-400 mt-1 truncate">{result.error}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="grid md:grid-cols-2 gap-6 mb-6">
           {/* Uptime History */}
