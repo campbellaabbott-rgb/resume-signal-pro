@@ -40,6 +40,7 @@ import { clearReferralCode } from "@/hooks/use-affiliate-auth";
 import { getResumeFromSession, hasResumeInSession } from "@/hooks/use-session-resume";
 import { ATSDefenseResults, type ATSDefenseData } from "@/components/ATSDefenseResults";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
+import { AIGenerationProgress } from "@/components/AIGenerationProgress";
 
 // Map product keys to icons
 const productIcons: Record<string, React.ElementType> = {
@@ -485,7 +486,30 @@ export default function ProductSuccess() {
     }
   };
 
+  // Determine if we should show generation progress
+  const showGenerationProgress = isVerifying && (
+    productKey === 'basicKeywordFix' || 
+    productKey === 'coverLetter' || 
+    productKey === 'premiumPackage' ||
+    productKey === 'atsDefense'
+  );
+
   if (isVerifying) {
+    // Show AI generation progress for content products
+    if (showGenerationProgress) {
+      return (
+        <div className="min-h-screen bg-background">
+          <Header />
+          <AIGenerationProgress 
+            isVisible={true} 
+            productName={product?.name || "your content"}
+          />
+          <Footer />
+        </div>
+      );
+    }
+
+    // Standard verification for other products
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -497,19 +521,9 @@ export default function ProductSuccess() {
                 <div className="absolute w-20 h-20 rounded-full border-2 border-transparent border-t-primary animate-spin" />
                 <CheckCircle2 className="w-8 h-8 text-primary" />
               </div>
-              <h1 className="text-2xl font-bold">
-                {productKey === 'basicKeywordFix' || productKey === 'coverLetter' || productKey === 'premiumPackage'
-                  ? 'Generating your content...' 
-                  : 'Verifying your purchase...'}
-              </h1>
+              <h1 className="text-2xl font-bold">Verifying your purchase...</h1>
               <p className="text-muted-foreground">
-                {productKey === 'basicKeywordFix' 
-                  ? 'Analyzing your resume for missing keywords' 
-                  : productKey === 'coverLetter'
-                  ? 'Crafting your personalized cover letter'
-                  : productKey === 'premiumPackage'
-                  ? 'Creating your optimized resume and cover letter...'
-                  : 'Just a moment while we confirm your payment'}
+                Just a moment while we confirm your payment
               </p>
             </div>
           </div>
@@ -961,28 +975,17 @@ export default function ProductSuccess() {
           </section>
         )}
 
+        {/* AI Generation Progress Overlay for Recovery Mode */}
+        <AIGenerationProgress 
+          isVisible={isRegenerating} 
+          productName={product?.name || "your content"}
+        />
+
         {/* No Generated Content - Show Inline Upload Recovery */}
-        {(isKeywordFix || isCoverLetter || isPremiumPackage || isAtsDefense) && !generatedContent && !atsDefenseData && !verificationError && !isVerifying && (
+        {(isKeywordFix || isCoverLetter || isPremiumPackage || isAtsDefense) && !generatedContent && !atsDefenseData && !verificationError && !isVerifying && !isRegenerating && (
           <section className="py-12 border-t border-border/50">
             <div className="container max-w-2xl">
               <div className="p-8 rounded-2xl bg-muted/50 border border-border">
-                {isRegenerating ? (
-                  <div className="text-center space-y-4">
-                    <div className="relative inline-flex items-center justify-center">
-                      <div className="absolute w-16 h-16 rounded-full border-2 border-primary/20" />
-                      <div className="absolute w-16 h-16 rounded-full border-2 border-transparent border-t-primary animate-spin" />
-                      <RefreshCw className="w-6 h-6 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-semibold">Generating Your Content...</h3>
-                    <p className="text-muted-foreground">
-                      {isKeywordFix ? 'Analyzing keywords and optimizations...' : 
-                       isPremiumPackage ? 'Creating your optimized resume and cover letter...' : 
-                       isAtsDefense ? 'Running comprehensive ATS compatibility analysis...' :
-                       'Crafting your personalized cover letter...'}
-                    </p>
-                  </div>
-                ) : (
-                  <>
                     <div className="text-center mb-6">
                       <Upload className="w-12 h-12 text-primary mx-auto mb-4" />
                       <h3 className="text-xl font-semibold mb-2">
@@ -1334,8 +1337,6 @@ export default function ProductSuccess() {
                         </p>
                       )}
                     </div>
-                  </>
-                )}
               </div>
             </div>
           </section>
