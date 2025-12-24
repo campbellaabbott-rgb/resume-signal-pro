@@ -38,7 +38,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    const systemPrompt = `You are an elite ATS resume optimization specialist. Your task is to ENHANCE the provided resume while preserving 100% of the original content, then write a compelling cover letter.
+    const systemPrompt = `You are an elite ATS resume optimization specialist and professional cover letter writer. Your task is to ENHANCE the provided resume while preserving 100% of the original content, then write a compelling cover letter.
 
 ## OUTPUT FORMAT
 You will output content in TWO sections, clearly marked:
@@ -48,11 +48,7 @@ You will output content in TWO sections, clearly marked:
 ===RESUME_END===
 
 ===COVER_LETTER_START===
-[Write a compelling, human-sounding cover letter (300-400 words) that:
-- Opens with a specific hook (NOT "I am writing to apply...")
-- References specific experiences from the resume
-- Shows genuine enthusiasm for the company
-- Closes with confidence]
+[Write a compelling, professional cover letter (300-400 words)]
 ===COVER_LETTER_END===
 
 ## RESUME RULES:
@@ -61,11 +57,21 @@ You will output content in TWO sections, clearly marked:
 - Add a professional summary if missing
 - Output must be AS LONG OR LONGER than input
 
-## COVER LETTER RULES:
-- Sound like a real person, not AI
-- Use specific details from the resume
-- Vary sentence structure
-- Be confident without being arrogant`;
+## COVER LETTER RULES - CRITICAL:
+- Write COMPLETE, COHERENT sentences with proper grammar
+- NEVER use placeholder text, variables, or incomplete phrases
+- NEVER write things like "building -1" or "1-N" or mathematical notation
+- Spell out all company names correctly (e.g., "Carnegie Mellon" not "Carnegie Mellonator")
+- Use SPECIFIC details from the resume - real job titles, real company names, real achievements
+- Every sentence must be grammatically complete and make logical sense
+- Sound like a real human professional, not AI
+- Open with a specific hook that mentions the target role or company
+- Reference 2-3 specific accomplishments from the resume with context
+- Show genuine enthusiasm without being over-the-top
+- Close with a confident call to action
+- Vary sentence structure and length for natural flow
+- Proofread: no missing words, no garbled text, no incomplete thoughts`;
+
 
     const userPrompt = `ENHANCE this resume for the target position and write a matching cover letter.
 
