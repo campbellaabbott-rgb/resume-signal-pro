@@ -95,3 +95,6 @@ verify_jwt = false
 
 [functions.retry-failed-deliveries]
 verify_jwt = false
+
+[functions.admin-regenerate-delivery]
+verify_jwt = false
