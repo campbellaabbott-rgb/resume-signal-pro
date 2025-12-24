@@ -11,6 +11,7 @@ import { EmailTrendChart } from '@/components/dashboard/EmailTrendChart';
 import { WebhookTrendChart } from '@/components/dashboard/WebhookTrendChart';
 import { AIGenerationTrendChart } from '@/components/dashboard/AIGenerationTrendChart';
 import { UserHealthTable } from '@/components/dashboard/UserHealthTable';
+import { HealthHistoryChart } from '@/components/dashboard/HealthHistoryChart';
 
 interface CheckResult {
   status: 'ok' | 'slow' | 'error';
@@ -709,8 +710,11 @@ export default function HealthCheck() {
           </CardContent>
         </Card>
 
+        {/* Health History with Multiple Views */}
+        <HealthHistoryChart />
+
         {/* Scan Activity Trends */}
-        <HealthTrendChart className="mb-6" />
+        <HealthTrendChart className="mb-6 mt-6" />
 
         {/* Additional Trend Charts */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
