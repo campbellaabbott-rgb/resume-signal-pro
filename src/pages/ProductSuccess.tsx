@@ -526,33 +526,63 @@ export default function ProductSuccess() {
       }
 
       try {
+        // For premium package and cover letter, use streaming generation for real-time UX
+        const useStreaming = productKey === 'premiumPackage' || productKey === 'coverLetter';
+        
+        // Verify purchase first (don't generate content if we'll stream)
         const { data, error } = await supabase.functions.invoke('verify-product-purchase', {
           body: { 
             sessionId, 
-            generateContent: productKey === 'basicKeywordFix' || productKey === 'coverLetter' || productKey === 'premiumPackage'
+            generateContent: !useStreaming && (productKey === 'basicKeywordFix')
           }
         });
 
         if (error) {
           console.error('Verification error:', error);
           setVerificationError(error.message);
-        } else if (data?.generatedContent) {
+          setIsVerifying(false);
+          return;
+        }
+        
+        // If we already have generated content from the verification, use it
+        if (data?.generatedContent) {
           setGeneratedContent(data.generatedContent);
-        } else if (!data?.generatedContent && (productKey === 'basicKeywordFix' || productKey === 'coverLetter' || productKey === 'premiumPackage')) {
-          // No content generated - try session storage recovery with streaming
-          console.log('[ProductSuccess] No content generated, attempting session recovery with streaming');
+          
+          // Track purchase completion
+          if (productKey && product) {
+            trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
+            trackFunnelPurchase(productKey, product.priceUsd, sessionId || undefined);
+            clearReferralCode();
+          }
+          setIsVerifying(false);
+          return;
+        }
+        
+        // For streaming products, get resume from session and start streaming
+        if (useStreaming) {
+          console.log('[ProductSuccess] Starting streaming generation for', productKey);
+          const sessionData = getResumeFromSession();
+          
+          if (sessionData.resumeText) {
+            setIsVerifying(false); // Stop showing verifying, will show streaming UI
+            startStreamingGeneration(sessionData.resumeText, sessionData.jobDescriptionText);
+          } else {
+            // No resume in session, try recovery
+            console.log('[ProductSuccess] No resume in session, entering recovery mode');
+            setIsRecoveryMode(true);
+            setIsVerifying(false);
+          }
+          return;
+        }
+        
+        // For basicKeywordFix without generated content, try recovery
+        if (productKey === 'basicKeywordFix' && !data?.generatedContent) {
+          console.log('[ProductSuccess] No content generated for keyword fix, attempting recovery');
           const recoveredText = await attemptSessionRecovery();
           if (recoveredText) {
-            // Use streaming for premium package and cover letter
-            if (productKey === 'premiumPackage' || productKey === 'coverLetter') {
-              setIsVerifying(false); // Stop showing verifying, will show streaming UI
-              startStreamingGeneration(recoveredText);
-            } else {
-              // Fall back to regular generation for keyword fix
-              const success = await regenerateContent(recoveredText);
-              if (!success) {
-                setIsRecoveryMode(true);
-              }
+            const success = await regenerateContent(recoveredText);
+            if (!success) {
+              setIsRecoveryMode(true);
             }
           } else {
             setIsRecoveryMode(true);
@@ -560,7 +590,7 @@ export default function ProductSuccess() {
         }
         
         // Handle ATS Defense - generate content with session ID
-        if (productKey === 'atsDefense' && !error) {
+        if (productKey === 'atsDefense') {
           console.log('[ProductSuccess] Generating ATS Defense report');
           const sessionData = getResumeFromSession();
           if (sessionData.resumeText) {
@@ -591,11 +621,10 @@ export default function ProductSuccess() {
           }
         }
         
-        // Track successful purchase completion
-        if (!error && productKey && product) {
+        // Track successful purchase completion for non-streaming products
+        if (productKey && product && !useStreaming) {
           trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
           trackFunnelPurchase(productKey, product.priceUsd, sessionId || undefined);
-          // Clear affiliate referral code after successful purchase
           clearReferralCode();
         }
       } catch (err) {
@@ -607,7 +636,7 @@ export default function ProductSuccess() {
     }
 
     verifyAndGenerate();
-  }, [sessionId, productKey, product, trackPurchaseCompleted, attemptSessionRecovery, regenerateContent, startStreamingGeneration]);
+  }, [sessionId, productKey, product, trackPurchaseCompleted, attemptSessionRecovery, regenerateContent, startStreamingGeneration, trackFunnelPurchase, toast]);
 
   const copyToClipboard = async (text: string) => {
     try {
