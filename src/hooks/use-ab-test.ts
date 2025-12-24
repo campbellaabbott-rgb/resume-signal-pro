@@ -31,10 +31,10 @@ export const AB_TESTS = {
     name: 'social_proof_placement',
     variants: ['control', 'above_fold', 'inline_hero'] as const,
   },
-  // Test hero layout: compact (CTA visible immediately) vs original (more content above fold)
+  // Test hero layout: compact (CTA visible immediately) vs original (more content above fold) vs ultra_compact (just headline + CTA)
   hero_layout: {
     name: 'hero_layout',
-    variants: ['compact', 'original'] as const,
+    variants: ['compact', 'original', 'ultra_compact'] as const,
   },
 } as const;
 

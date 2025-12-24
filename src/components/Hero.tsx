@@ -169,12 +169,21 @@ export function Hero() {
     }
   };
 
-  // Compact layout: CTA visible immediately with minimal content above
+  // Layout variants
   const isCompactLayout = layoutVariant === 'compact';
+  const isUltraCompact = layoutVariant === 'ultra_compact';
+  const isOriginalLayout = layoutVariant === 'original';
+
+  // Determine padding based on variant
+  const sectionPadding = isUltraCompact 
+    ? 'py-4 sm:py-6 md:py-10' 
+    : isCompactLayout 
+      ? 'py-6 sm:py-10 md:py-16' 
+      : 'py-10 sm:py-16 md:py-24';
 
   return (
     <section 
-      className={`relative overflow-hidden ${isCompactLayout ? 'py-6 sm:py-10 md:py-16' : 'py-10 sm:py-16 md:py-24'}`}
+      className={`relative overflow-hidden ${sectionPadding}`}
       aria-labelledby="hero-heading"
     >
       {/* Background effects */}
@@ -186,16 +195,24 @@ export function Hero() {
       <div className="container relative">
         <div className="max-w-3xl mx-auto text-center">
           
-          {/* IMMEDIATE SOCIAL PROOF - First thing users see */}
-          <div className={`animate-fade-in ${isCompactLayout ? 'mb-4' : 'mb-6'}`}>
-            <HeroStatsBar />
-          </div>
+          {/* IMMEDIATE SOCIAL PROOF - Hide in ultra-compact above fold */}
+          {!isUltraCompact && (
+            <div className={`animate-fade-in ${isCompactLayout ? 'mb-4' : 'mb-6'}`}>
+              <HeroStatsBar />
+            </div>
+          )}
 
-          {/* VALUE-FIRST HEADLINE - Recruiter-Grade messaging */}
-          <div className={`animate-fade-in ${isCompactLayout ? 'mb-4 sm:mb-6' : 'mb-8'}`} style={{ animationDelay: "0.05s" }}>
+          {/* VALUE-FIRST HEADLINE - Always show */}
+          <div className={`animate-fade-in ${isUltraCompact ? 'mb-3' : isCompactLayout ? 'mb-4 sm:mb-6' : 'mb-8'}`} style={{ animationDelay: "0.05s" }}>
             <h1
               id="hero-heading"
-              className={`font-bold tracking-tight leading-tight ${isCompactLayout ? 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-3 sm:mb-4' : 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-5'}`}
+              className={`font-bold tracking-tight leading-tight ${
+                isUltraCompact 
+                  ? 'text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-2 sm:mb-3' 
+                  : isCompactLayout 
+                    ? 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-3 sm:mb-4' 
+                    : 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-5'
+              }`}
             >
               {t('hero.headline.get', 'Get')}{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
@@ -204,125 +221,146 @@ export function Hero() {
               {t('hero.headline.feedback', 'Resume Feedback in 60 Seconds')}
             </h1>
             
-            <p className={`text-muted-foreground max-w-2xl mx-auto leading-relaxed ${isCompactLayout ? 'text-sm sm:text-base md:text-lg mb-4' : 'text-base sm:text-lg mb-6'}`}>
-              {t('hero.description', 'Upload your resume and get ATS-optimized rewrites, red-flag warnings, and keyword improvements — written the way hiring managers actually review resumes.')}
-            </p>
-
-            {/* Key selling points - show all on desktop for both, compact on mobile for compact layout */}
-            {isCompactLayout ? (
-              <>
-                {/* Desktop: show all benefits */}
-                <div className="hidden sm:flex flex-col items-center gap-2 mb-4">
-                  <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
-                    <Check className="w-4 h-4 text-success flex-shrink-0" />
-                    <span>{t('hero.benefits.seniorRoles', 'Built for senior ICs, managers, and competitive roles')}</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
-                    <Check className="w-4 h-4 text-success flex-shrink-0" />
-                    <span>{t('hero.benefits.atsCompatible', 'Works on all ATS systems (Workday, Greenhouse, Lever & 50+ more)')}</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
-                    <Check className="w-4 h-4 text-success flex-shrink-0" />
-                    <span>{t('hero.benefits.oneTime', 'One-time payment (no subscription)')}</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
-                    <Check className="w-4 h-4 text-success flex-shrink-0" />
-                    <span>{t('hero.benefits.private', 'Resumes are never stored or shared')}</span>
-                  </div>
-                </div>
-                {/* Mobile: Show only 2 key benefits inline */}
-                <div className="flex sm:hidden flex-wrap justify-center gap-x-4 gap-y-1 mb-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Check className="w-3 h-3 text-success" />
-                    Works on all ATS
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Check className="w-3 h-3 text-success" />
-                    100% private
-                  </span>
-                </div>
-              </>
+            {/* Description - shorter for ultra-compact */}
+            {isUltraCompact ? (
+              <p className="text-xs sm:text-sm text-muted-foreground max-w-xl mx-auto">
+                ATS-optimized rewrites • Red-flag warnings • Keyword improvements
+              </p>
             ) : (
-              /* Original layout: show all benefits on all screen sizes */
-              <div className="flex flex-col items-center gap-2.5 mb-6">
-                <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
-                  <Check className="w-4 h-4 text-success flex-shrink-0" />
-                  <span>{t('hero.benefits.seniorRoles', 'Built for senior ICs, managers, and competitive roles')}</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
-                  <Check className="w-4 h-4 text-success flex-shrink-0" />
-                  <span>{t('hero.benefits.atsCompatible', 'Works on all ATS systems (Workday, Greenhouse, Lever & 50+ more)')}</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
-                  <Check className="w-4 h-4 text-success flex-shrink-0" />
-                  <span>{t('hero.benefits.oneTime', 'One-time payment (no subscription)')}</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
-                  <Check className="w-4 h-4 text-success flex-shrink-0" />
-                  <span>{t('hero.benefits.private', 'Resumes are never stored or shared')}</span>
-                </div>
-              </div>
+              <p className={`text-muted-foreground max-w-2xl mx-auto leading-relaxed ${isCompactLayout ? 'text-sm sm:text-base md:text-lg mb-4' : 'text-base sm:text-lg mb-6'}`}>
+                {t('hero.description', 'Upload your resume and get ATS-optimized rewrites, red-flag warnings, and keyword improvements — written the way hiring managers actually review resumes.')}
+              </p>
             )}
 
-            {/* Animated preview of results - only show separately in original layout */}
-            {!isCompactLayout && (
-              <div className="flex justify-center">
-                <AnimatedResultPreview />
-              </div>
+            {/* Key selling points - hide in ultra-compact */}
+            {!isUltraCompact && (
+              <>
+                {isCompactLayout ? (
+                  <>
+                    {/* Desktop: show all benefits */}
+                    <div className="hidden sm:flex flex-col items-center gap-2 mb-4">
+                      <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
+                        <Check className="w-4 h-4 text-success flex-shrink-0" />
+                        <span>{t('hero.benefits.seniorRoles', 'Built for senior ICs, managers, and competitive roles')}</span>
+                      </div>
+                      <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
+                        <Check className="w-4 h-4 text-success flex-shrink-0" />
+                        <span>{t('hero.benefits.atsCompatible', 'Works on all ATS systems (Workday, Greenhouse, Lever & 50+ more)')}</span>
+                      </div>
+                      <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
+                        <Check className="w-4 h-4 text-success flex-shrink-0" />
+                        <span>{t('hero.benefits.oneTime', 'One-time payment (no subscription)')}</span>
+                      </div>
+                      <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
+                        <Check className="w-4 h-4 text-success flex-shrink-0" />
+                        <span>{t('hero.benefits.private', 'Resumes are never stored or shared')}</span>
+                      </div>
+                    </div>
+                    {/* Mobile: Show only 2 key benefits inline */}
+                    <div className="flex sm:hidden flex-wrap justify-center gap-x-4 gap-y-1 mb-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Check className="w-3 h-3 text-success" />
+                        Works on all ATS
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Check className="w-3 h-3 text-success" />
+                        100% private
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  /* Original layout: show all benefits on all screen sizes */
+                  <div className="flex flex-col items-center gap-2.5 mb-6">
+                    <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
+                      <Check className="w-4 h-4 text-success flex-shrink-0" />
+                      <span>{t('hero.benefits.seniorRoles', 'Built for senior ICs, managers, and competitive roles')}</span>
+                    </div>
+                    <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
+                      <Check className="w-4 h-4 text-success flex-shrink-0" />
+                      <span>{t('hero.benefits.atsCompatible', 'Works on all ATS systems (Workday, Greenhouse, Lever & 50+ more)')}</span>
+                    </div>
+                    <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
+                      <Check className="w-4 h-4 text-success flex-shrink-0" />
+                      <span>{t('hero.benefits.oneTime', 'One-time payment (no subscription)')}</span>
+                    </div>
+                    <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
+                      <Check className="w-4 h-4 text-success flex-shrink-0" />
+                      <span>{t('hero.benefits.private', 'Resumes are never stored or shared')}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Animated preview of results - only show separately in original layout */}
+                {isOriginalLayout && (
+                  <div className="flex justify-center">
+                    <AnimatedResultPreview />
+                  </div>
+                )}
+              </>
             )}
           </div>
 
-          {/* Animated preview + Benefit chips - compact layout combines them */}
-          {isCompactLayout ? (
-            <div className="mb-4 animate-fade-in flex flex-col sm:flex-row items-center justify-center gap-3" style={{ animationDelay: "0.1s" }}>
-              <AnimatedResultPreview />
-              <div className="hidden sm:block">
-                <BenefitChips />
-              </div>
-            </div>
-          ) : (
-            <div className="mb-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-              <BenefitChips />
-            </div>
+          {/* Animated preview + Benefit chips - hide in ultra-compact */}
+          {!isUltraCompact && (
+            <>
+              {isCompactLayout ? (
+                <div className="mb-4 animate-fade-in flex flex-col sm:flex-row items-center justify-center gap-3" style={{ animationDelay: "0.1s" }}>
+                  <AnimatedResultPreview />
+                  <div className="hidden sm:block">
+                    <BenefitChips />
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+                  <BenefitChips />
+                </div>
+              )}
+            </>
           )}
 
           {/* PRIMARY CTA - Large and unmissable */}
-          <div className={`animate-fade-in ${isCompactLayout ? 'mb-4' : 'mb-6'}`} style={{ animationDelay: "0.15s" }}>
+          <div className={`animate-fade-in ${isUltraCompact ? 'mb-3' : isCompactLayout ? 'mb-4' : 'mb-6'}`} style={{ animationDelay: isUltraCompact ? "0.05s" : "0.15s" }}>
             <button
               onClick={handleFreeScanClick}
               className={`group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-success via-success to-emerald-500 text-success-foreground font-bold shadow-xl shadow-success/30 hover:shadow-2xl hover:shadow-success/40 active:scale-[0.98] transition-all duration-300 touch-manipulation ${
-                isCompactLayout 
-                  ? 'px-8 py-4 sm:px-10 sm:py-5 text-base sm:text-lg md:text-xl min-h-[56px] sm:min-h-[64px]' 
-                  : 'px-10 py-5 sm:py-6 text-lg sm:text-xl min-h-[64px]'
+                isUltraCompact
+                  ? 'px-6 py-3 sm:px-8 sm:py-4 text-base sm:text-lg min-h-[48px] sm:min-h-[56px]'
+                  : isCompactLayout 
+                    ? 'px-8 py-4 sm:px-10 sm:py-5 text-base sm:text-lg md:text-xl min-h-[56px] sm:min-h-[64px]' 
+                    : 'px-10 py-5 sm:py-6 text-lg sm:text-xl min-h-[64px]'
               }`}
             >
-              <Sparkles className={isCompactLayout ? "w-5 h-5 sm:w-6 sm:h-6" : "w-6 h-6 sm:w-7 sm:h-7"} />
+              <Sparkles className={isUltraCompact ? "w-4 h-4 sm:w-5 sm:h-5" : isCompactLayout ? "w-5 h-5 sm:w-6 sm:h-6" : "w-6 h-6 sm:w-7 sm:h-7"} />
               <span>{t('hero.ctaButton', 'Check My Resume Now')}</span>
               <div className={`absolute rounded-full bg-primary text-primary-foreground font-bold shadow-lg animate-pulse ${
-                isCompactLayout 
-                  ? '-top-2 -right-1 sm:-top-3 sm:-right-3 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs' 
-                  : '-top-3 -right-2 sm:-right-3 px-3 py-1 text-xs'
+                isUltraCompact
+                  ? '-top-1.5 -right-1 px-1.5 py-0.5 text-[9px] sm:text-[10px]'
+                  : isCompactLayout 
+                    ? '-top-2 -right-1 sm:-top-3 sm:-right-3 px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs' 
+                    : '-top-3 -right-2 sm:-right-3 px-3 py-1 text-xs'
               }`}>
                 {t('hero.freeBadge', 'FREE')}
               </div>
             </button>
             
-            {/* Trust indicators below CTA */}
+            {/* Trust indicators below CTA - minimal for ultra-compact */}
             <div className={`flex flex-wrap items-center justify-center text-muted-foreground ${
-              isCompactLayout 
-                ? 'mt-3 gap-x-3 gap-y-1 text-xs sm:text-sm' 
-                : 'mt-4 flex-col sm:flex-row gap-3 text-sm'
+              isUltraCompact
+                ? 'mt-2 gap-x-2 gap-y-1 text-[10px] sm:text-xs'
+                : isCompactLayout 
+                  ? 'mt-3 gap-x-3 gap-y-1 text-xs sm:text-sm' 
+                  : 'mt-4 flex-col sm:flex-row gap-3 text-sm'
             }`}>
               <span className="flex items-center gap-1">
-                <Check className={isCompactLayout ? "w-3 h-3 sm:w-4 sm:h-4 text-success" : "w-4 h-4 text-success"} />
+                <Check className={isUltraCompact ? "w-2.5 h-2.5 text-success" : isCompactLayout ? "w-3 h-3 sm:w-4 sm:h-4 text-success" : "w-4 h-4 text-success"} />
                 {t('hero.noSignup', 'No sign-up required')}
               </span>
-              <span className={isCompactLayout ? "w-1 h-1 rounded-full bg-muted-foreground/30" : "hidden sm:block w-1 h-1 rounded-full bg-muted-foreground/30"} />
+              <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
               <span className="flex items-center gap-1">
-                <Check className={isCompactLayout ? "w-3 h-3 sm:w-4 sm:h-4 text-success" : "w-4 h-4 text-success"} />
-                {t('hero.worksWithAny', 'Works with any resume')}
+                <Check className={isUltraCompact ? "w-2.5 h-2.5 text-success" : isCompactLayout ? "w-3 h-3 sm:w-4 sm:h-4 text-success" : "w-4 h-4 text-success"} />
+                {isUltraCompact ? '100% private' : t('hero.worksWithAny', 'Works with any resume')}
               </span>
-              {!isCompactLayout && (
+              {isOriginalLayout && (
                 <>
                   <span className="hidden sm:block w-1 h-1 rounded-full bg-muted-foreground/30" />
                   <span className="flex items-center gap-1.5">
@@ -333,6 +371,13 @@ export function Hero() {
               )}
             </div>
           </div>
+
+          {/* Show social proof BELOW the CTA for ultra-compact */}
+          {isUltraCompact && (
+            <div className="mb-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+              <HeroStatsBar />
+            </div>
+          )}
 
 
           {/* TESTIMONIAL - Single powerful quote */}
