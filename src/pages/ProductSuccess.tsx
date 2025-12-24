@@ -348,13 +348,24 @@ export default function ProductSuccess() {
   }, [productKey, sessionId, toast]);
 
   // Streaming generation for premium package and cover letter
+  // Ref to track if streaming has started to prevent double-execution
+  const streamingStartedRef = useRef(false);
+
   const startStreamingGeneration = useCallback(async (resumeText: string, jobDescription?: string) => {
+    // Prevent double-execution
+    if (streamingStartedRef.current) {
+      console.log('[ProductSuccess] Streaming already started, skipping');
+      return;
+    }
+    streamingStartedRef.current = true;
+
     if (!resumeText || resumeText.length < 50) {
       toast({
         title: "Resume too short",
         description: "Please provide a complete resume with at least 50 characters.",
         variant: "destructive"
       });
+      streamingStartedRef.current = false;
       return;
     }
 
@@ -380,6 +391,7 @@ export default function ProductSuccess() {
 
       if (!endpoint) {
         // Fall back to non-streaming for unsupported products
+        streamingStartedRef.current = false;
         await regenerateContent(resumeText, jobDescription);
         return;
       }
@@ -458,6 +470,7 @@ export default function ProductSuccess() {
       console.error('[ProductSuccess] Streaming error:', error);
       setStreamingError(error instanceof Error ? error.message : 'Unknown error');
       setIsStreaming(false);
+      streamingStartedRef.current = false; // Allow retry on error
       toast({
         title: "Generation Error",
         description: error instanceof Error ? error.message : 'Something went wrong',
@@ -518,12 +531,23 @@ export default function ProductSuccess() {
     }
   }, [toast]);
 
+  // Ref to track if verification has run to prevent double-execution
+  const verificationStartedRef = useRef(false);
+
   useEffect(() => {
     async function verifyAndGenerate() {
+      // Prevent double-execution
+      if (verificationStartedRef.current) {
+        console.log('[ProductSuccess] Verification already started, skipping');
+        return;
+      }
+      
       if (!sessionId) {
         setIsVerifying(false);
         return;
       }
+
+      verificationStartedRef.current = true;
 
       try {
         // For premium package and cover letter, use streaming generation for real-time UX
@@ -636,7 +660,8 @@ export default function ProductSuccess() {
     }
 
     verifyAndGenerate();
-  }, [sessionId, productKey, product, trackPurchaseCompleted, attemptSessionRecovery, regenerateContent, startStreamingGeneration, trackFunnelPurchase, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, productKey]);
 
   const copyToClipboard = async (text: string) => {
     try {
