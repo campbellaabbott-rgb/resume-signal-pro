@@ -194,6 +194,114 @@ export const autoFixContent = (content: string, originalResume?: string): AutoFi
     if (fixed !== before) corrections.push("Added missing 'and' between amounts");
   }
 
+  // === COVER LETTER GRAMMAR FIXES ===
+
+  // Fix "I deals" → "I closed deals" or "I secured deals"
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\bI deals\b/gi, "I closed deals");
+    if (fixed !== before) corrections.push("Fixed 'I deals' → 'I closed deals'");
+  }
+
+  // Fix "apply the Target Position" → "apply for the Target Position"
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\bapply the\b/gi, "apply for the");
+    if (fixed !== before) corrections.push("Fixed 'apply the' → 'apply for the'");
+  }
+
+  // Fix missing "At" before company names at sentence start (e.g., "GitHub, I managed" → "At GitHub, I managed")
+  {
+    const before = fixed;
+    fixed = fixed.replace(/^(GitHub|Stack|Microsoft|Google|Amazon|Meta|Apple|Netflix),\s+I\b/gm, "At $1, I");
+    fixed = fixed.replace(/\.\s+(GitHub|Stack|Microsoft|Google|Amazon|Meta|Apple|Netflix),\s+I\b/g, ". At $1, I");
+    if (fixed !== before) corrections.push("Added missing 'At' before company name");
+  }
+
+  // Fix "year over" at end (incomplete "year over year") 
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\byear over\b(?!\s*year)/gi, "year over year");
+    if (fixed !== before) corrections.push("Fixed incomplete 'year over' → 'year over year'");
+  }
+
+  // Fix "I was in by" → "I was brought in by"
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\bI was in by\b/gi, "I was brought in by");
+    if (fixed !== before) corrections.push("Fixed 'I was in by' → 'I was brought in by'");
+  }
+
+  // Fix "Foringent" → "For Ingent" or just remove if nonsense
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\bForingent\b/gi, "For Ingent");
+    if (fixed !== before) corrections.push("Fixed 'Foringent' → 'For Ingent'");
+  }
+
+  // Fix "Navigator I sourced" → "Navigator, I sourced" (missing comma)
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\bNavigator I sourced\b/gi, "Navigator, I sourced");
+    if (fixed !== before) corrections.push("Added missing comma before 'I sourced'");
+  }
+
+  // Fix "secured largest deal" → "secured the largest deal"
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\bsecured largest\b/gi, "secured the largest");
+    if (fixed !== before) corrections.push("Fixed 'secured largest' → 'secured the largest'");
+  }
+
+  // Fix "discuss I can help" → "discuss how I can help"
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\bdiscuss I can\b/gi, "discuss how I can");
+    if (fixed !== before) corrections.push("Fixed 'discuss I can' → 'discuss how I can'");
+  }
+
+  // Fix "I look to connecting" → "I look forward to connecting"
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\bI look to connecting\b/gi, "I look forward to connecting");
+    if (fixed !== before) corrections.push("Fixed 'I look to connecting' → 'I look forward to connecting'");
+  }
+
+  // Fix "finishing top 3 of" → "finishing top 3 on"
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\b(finished|finishing) top (\d+) of\b/gi, "$1 top $2 on");
+    if (fixed !== before) corrections.push("Fixed 'top X of' → 'top X on'");
+  }
+
+  // Fix "Earlier, at Stack," incomplete sentences - add context
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\bEarlier, at ([^,]+),\s*$/gm, "Earlier in my career, at $1,");
+    if (fixed !== before) corrections.push("Fixed incomplete 'Earlier, at' sentence");
+  }
+
+  // Fix broken "in2" "in3" patterns (missing space before quarter)
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\bin(\d)\s+and\s+Q/gi, "in Q$1 and Q");
+    if (fixed !== before) corrections.push("Fixed 'inX and Q' → 'in QX and Q'");
+  }
+
+  // Fix "leaderboard in2" → "leaderboard in Q2"
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\bleaderboard in(\d)\b/gi, "leaderboard in Q$1");
+    if (fixed !== before) corrections.push("Fixed 'leaderboard inX' → 'leaderboard in QX'");
+  }
+
+  // Fix run-together sentences missing period+space
+  {
+    const before = fixed;
+    fixed = fixed.replace(/([a-z])([A-Z][a-z])/g, "$1. $2");
+    if (fixed !== before) corrections.push("Added missing periods between run-together sentences");
+  }
+
   // === DUPLICATE SUMMARY REMOVAL ===
   // Remove duplicate opening summary if PROFESSIONAL SUMMARY section exists
   {
