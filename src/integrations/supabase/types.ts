@@ -1393,19 +1393,33 @@ export type Database = {
         }
         Returns: boolean
       }
-      track_ab_event_optimized: {
-        Args: {
-          p_client_ip?: string
-          p_event_type: string
-          p_max_requests?: number
-          p_metadata?: Json
-          p_test_name: string
-          p_variant: string
-          p_visitor_id: string
-          p_window_minutes?: number
-        }
-        Returns: Json
-      }
+      track_ab_event_optimized:
+        | {
+            Args: {
+              p_client_ip?: string
+              p_event_type: string
+              p_max_requests?: number
+              p_metadata?: Json
+              p_test_name: string
+              p_variant: string
+              p_visitor_id: string
+              p_window_minutes?: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_client_ip?: string
+              p_event_type: string
+              p_max_requests?: number
+              p_metadata?: Json
+              p_test_name: string
+              p_variant: string
+              p_visitor_id: string
+              p_window_minutes?: number
+            }
+            Returns: Json
+          }
       track_affiliate_click: {
         Args: {
           p_ip_hash?: string
