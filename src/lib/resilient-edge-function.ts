@@ -7,6 +7,13 @@
 import { supabase } from '@/integrations/supabase/client';
 import { FunctionsHttpError, FunctionsFetchError, FunctionsRelayError } from '@supabase/supabase-js';
 import { parseEdgeFunctionError, ParsedEdgeFunctionError } from './edge-function-errors';
+import { 
+  canAttemptService, 
+  recordServiceSuccess, 
+  recordServiceFailure,
+  CircuitOpenError,
+  getServiceCircuitState
+} from '@/hooks/use-circuit-breaker';
 
 export interface ResilientCallOptions {
   /** Maximum number of retry attempts (default: 3) */
@@ -27,6 +34,10 @@ export interface ResilientCallOptions {
   onStart?: () => void;
   /** Enable telemetry tracking (default: true) */
   enableTelemetry?: boolean;
+  /** Enable circuit breaker (default: true) */
+  enableCircuitBreaker?: boolean;
+  /** Callback when circuit is open */
+  onCircuitOpen?: (timeUntilRetry: number | null) => void;
 }
 
 export interface ResilientCallResult<T> {
@@ -34,12 +45,18 @@ export interface ResilientCallResult<T> {
   error: ParsedEdgeFunctionError | null;
   attempts: number;
   totalDuration: number;
+  circuitOpen?: boolean;
 }
 
 /**
  * Check if an error is retryable based on error type and status code
  */
 export function isNetworkRetryable(error: unknown): boolean {
+  // Circuit open errors should not be retried
+  if (error instanceof CircuitOpenError) {
+    return false;
+  }
+
   // Network/fetch errors are always retryable
   if (error instanceof FunctionsFetchError) {
     return true;
@@ -191,9 +208,36 @@ export async function callEdgeFunctionWithRetry<T = unknown>(
     onRetry,
     onStart,
     enableTelemetry = true,
+    enableCircuitBreaker = true,
+    onCircuitOpen,
   } = options;
 
   const startTime = Date.now();
+
+  // Check circuit breaker before attempting
+  if (enableCircuitBreaker && !canAttemptService(functionName)) {
+    const state = getServiceCircuitState(functionName);
+    const timeUntilRetry = state.lastFailureTime 
+      ? state.resetTimeout - (Date.now() - state.lastFailureTime)
+      : null;
+    
+    console.log(`[EdgeFunction] ${functionName} blocked by circuit breaker`);
+    onCircuitOpen?.(timeUntilRetry);
+    
+    return {
+      data: null,
+      error: {
+        title: 'Service temporarily unavailable',
+        description: 'Please try again in a moment.',
+        errorCode: 'CIRCUIT_OPEN',
+        isRetryable: false,
+      },
+      attempts: 0,
+      totalDuration: Date.now() - startTime,
+      circuitOpen: true,
+    };
+  }
+
   let attempts = 0;
   let lastError: unknown = null;
 
@@ -219,7 +263,11 @@ export async function callEdgeFunctionWithRetry<T = unknown>(
         throw error;
       }
 
-      // Success
+      // Success - record in circuit breaker
+      if (enableCircuitBreaker) {
+        recordServiceSuccess(functionName);
+      }
+
       const totalDuration = Date.now() - startTime;
       console.log(`[EdgeFunction] ${functionName} succeeded after ${attempts} attempt(s) in ${totalDuration}ms`);
 
@@ -239,8 +287,31 @@ export async function callEdgeFunctionWithRetry<T = unknown>(
       lastError = error;
       const totalDuration = Date.now() - startTime;
 
+      // Record failure in circuit breaker
+      if (enableCircuitBreaker) {
+        recordServiceFailure(functionName, error instanceof Error ? error.message : String(error));
+      }
+
       // Check if we should retry
       const canRetry = attempts <= maxRetries && shouldRetry(error, attempts);
+
+      // Check if circuit is now open after recording failure
+      if (enableCircuitBreaker && !canAttemptService(functionName)) {
+        console.log(`[EdgeFunction] ${functionName} circuit opened, stopping retries`);
+        
+        return {
+          data: null,
+          error: {
+            title: 'Service experiencing issues',
+            description: 'Please try again later.',
+            isRetryable: false,
+            errorCode: 'CIRCUIT_OPENED_DURING_RETRY',
+          },
+          attempts,
+          totalDuration,
+          circuitOpen: true,
+        };
+      }
 
       if (!canRetry) {
         // No more retries, parse and return the error
@@ -255,7 +326,6 @@ export async function callEdgeFunctionWithRetry<T = unknown>(
             error instanceof FunctionsRelayError ? 'relay' :
             error instanceof FunctionsHttpError ? 'http' : 'unknown';
           
-          // Log retry exhaustion
           logRetryTelemetry(
             functionName,
             'retry_exhausted',
