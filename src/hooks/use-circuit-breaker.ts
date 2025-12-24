@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 interface CircuitBreakerOptions {
   failureThreshold?: number;
   resetTimeout?: number;
@@ -169,16 +170,113 @@ const DEFAULT_CONFIG = {
 };
 
 // Service-specific configurations
-const SERVICE_CONFIGS: Record<string, Partial<typeof DEFAULT_CONFIG>> = {
-  'ai-gateway': { failureThreshold: 2, resetTimeout: 60000 },
-  'stripe': { failureThreshold: 3, resetTimeout: 45000 },
-  'database': { failureThreshold: 5, resetTimeout: 15000 },
-  'free-keyword-scan': { failureThreshold: 2, resetTimeout: 60000 },
-  'analyze-resume': { failureThreshold: 2, resetTimeout: 60000 },
-  'health-check': { failureThreshold: 5, resetTimeout: 10000 },
-  'parse-pdf': { failureThreshold: 3, resetTimeout: 30000 },
-  'parse-docx': { failureThreshold: 3, resetTimeout: 30000 },
+const SERVICE_CONFIGS: Record<string, Partial<typeof DEFAULT_CONFIG> & { critical?: boolean; friendlyName?: string }> = {
+  'ai-gateway': { failureThreshold: 2, resetTimeout: 60000, critical: true, friendlyName: 'AI Gateway' },
+  'stripe': { failureThreshold: 3, resetTimeout: 45000, critical: true, friendlyName: 'Payment System' },
+  'database': { failureThreshold: 5, resetTimeout: 15000, critical: true, friendlyName: 'Database' },
+  'free-keyword-scan': { failureThreshold: 2, resetTimeout: 60000, critical: true, friendlyName: 'Resume Scanner' },
+  'analyze-resume': { failureThreshold: 2, resetTimeout: 60000, critical: true, friendlyName: 'Resume Analyzer' },
+  'health-check': { failureThreshold: 5, resetTimeout: 10000, critical: false, friendlyName: 'Health Check' },
+  'parse-pdf': { failureThreshold: 3, resetTimeout: 30000, critical: true, friendlyName: 'PDF Parser' },
+  'parse-docx': { failureThreshold: 3, resetTimeout: 30000, critical: true, friendlyName: 'Document Parser' },
+  'generate-cover-letter': { failureThreshold: 2, resetTimeout: 60000, critical: true, friendlyName: 'Cover Letter Generator' },
+  'generate-tailored-resume': { failureThreshold: 2, resetTimeout: 60000, critical: true, friendlyName: 'Resume Tailoring' },
+  'create-checkout': { failureThreshold: 3, resetTimeout: 45000, critical: true, friendlyName: 'Checkout' },
+  'stripe-webhook': { failureThreshold: 3, resetTimeout: 30000, critical: true, friendlyName: 'Payment Webhook' },
 };
+
+// Track which circuits have already alerted to avoid spam
+const alertedCircuits: Set<string> = new Set();
+
+/**
+ * Send circuit breaker alert (UI toast + database log)
+ */
+async function sendCircuitBreakerAlert(
+  serviceName: string,
+  config: typeof SERVICE_CONFIGS[string],
+  lastError?: string
+): Promise<void> {
+  // Avoid duplicate alerts for the same circuit
+  if (alertedCircuits.has(serviceName)) {
+    return;
+  }
+  alertedCircuits.add(serviceName);
+
+  const friendlyName = config.friendlyName || serviceName;
+  const isCritical = config.critical !== false;
+
+  // Show toast notification for critical services
+  if (isCritical) {
+    toast({
+      title: `⚠️ ${friendlyName} Unavailable`,
+      description: `Service is experiencing issues. Auto-retry in ${Math.round((config.resetTimeout || 30000) / 1000)}s.`,
+      variant: "destructive",
+      duration: 8000,
+    });
+  }
+
+  // Log to database for persistent alerting
+  try {
+    await supabase.rpc('log_error_telemetry', {
+      p_error_code: 'CIRCUIT_BREAKER_OPEN',
+      p_error_type: 'circuit_breaker',
+      p_error_message: `Circuit breaker opened for ${serviceName}`,
+      p_function_name: serviceName,
+      p_context: JSON.stringify({
+        service_name: serviceName,
+        friendly_name: friendlyName,
+        is_critical: isCritical,
+        reset_timeout_ms: config.resetTimeout || 30000,
+        last_error: lastError,
+        opened_at: new Date().toISOString(),
+      }),
+    });
+  } catch (e) {
+    console.error('[CircuitBreaker] Failed to log alert:', e);
+  }
+
+  // Also log to dedicated alert table if should_send_alert returns true
+  try {
+    const { data: shouldAlert } = await supabase.rpc('should_send_alert', {
+      p_metric_name: `circuit_breaker_${serviceName}`,
+      p_alert_type: 'circuit_open',
+      p_cooldown_minutes: 15,
+    });
+
+    if (shouldAlert) {
+      await supabase.rpc('log_alert_sent', {
+        p_metric_name: `circuit_breaker_${serviceName}`,
+        p_alert_type: 'circuit_open',
+        p_threshold: config.failureThreshold || 3,
+        p_actual: config.failureThreshold || 3,
+        p_sent_to: 'system',
+        p_success: true,
+      });
+    }
+  } catch (e) {
+    // Non-critical, just log
+    console.debug('[CircuitBreaker] Alert logging skipped:', e);
+  }
+}
+
+/**
+ * Clear alert state when circuit recovers
+ */
+function clearCircuitAlert(serviceName: string): void {
+  alertedCircuits.delete(serviceName);
+  
+  const config = SERVICE_CONFIGS[serviceName] || {};
+  const friendlyName = config.friendlyName || serviceName;
+  
+  // Show recovery toast for critical services
+  if (config.critical !== false) {
+    toast({
+      title: `✅ ${friendlyName} Recovered`,
+      description: "Service is back online.",
+      duration: 5000,
+    });
+  }
+}
 
 function getServiceConfig(serviceName: string): typeof DEFAULT_CONFIG {
   const customConfig = SERVICE_CONFIGS[serviceName] || {};
@@ -203,6 +301,7 @@ export function getServiceCircuitState(serviceName: string): ServiceCircuitState
 
 export function recordServiceSuccess(serviceName: string): void {
   const state = getServiceCircuitState(serviceName);
+  const wasHalfOpen = state.state === "half-open";
   
   if (state.state === "half-open") {
     state.successesInHalfOpen++;
@@ -213,6 +312,9 @@ export function recordServiceSuccess(serviceName: string): void {
       state.failures = 0;
       state.lastFailureTime = null;
       state.successesInHalfOpen = 0;
+      
+      // Send recovery alert
+      clearCircuitAlert(serviceName);
     }
   } else {
     state.failures = Math.max(0, state.failures - 1);
@@ -222,14 +324,20 @@ export function recordServiceSuccess(serviceName: string): void {
 
 export function recordServiceFailure(serviceName: string, errorMessage?: string): void {
   const state = getServiceCircuitState(serviceName);
+  const wasOpen = state.state === "open";
+  
   state.failures++;
   state.totalFailures++;
   state.lastFailureTime = Date.now();
   state.lastError = errorMessage;
   
-  if (state.failures >= state.failureThreshold) {
+  if (state.failures >= state.failureThreshold && !wasOpen) {
     console.log(`[CircuitBreaker:${serviceName}] Circuit OPENED after ${state.failures} failures`);
     state.state = "open";
+    
+    // Send alert for circuit opening
+    const config = SERVICE_CONFIGS[serviceName] || {};
+    sendCircuitBreakerAlert(serviceName, config, errorMessage);
   }
 }
 
