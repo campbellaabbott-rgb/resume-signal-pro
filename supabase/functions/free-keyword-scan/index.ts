@@ -792,7 +792,7 @@ ${resumeText.substring(0, 15000)}
           type: "function",
           function: {
             name: "submit_analysis",
-            description: "Submit the comprehensive 13-point resume analysis",
+            description: "Submit resume analysis",
             parameters: {
               type: "object",
               properties: {
@@ -800,8 +800,7 @@ ${resumeText.substring(0, 15000)}
                   type: "object",
                   properties: {
                     code: { type: "string" },
-                    name: { type: "string" },
-                    region: { type: "string" }
+                    name: { type: "string" }
                   },
                   required: ["code", "name"]
                 },
@@ -814,28 +813,18 @@ ${resumeText.substring(0, 15000)}
                   properties: {
                     weightsApplied: { type: "string" },
                     strongestArea: { type: "string" },
-                    weakestArea: { type: "string" },
-                    industryMustHaves: { 
-                      type: "array", 
-                      items: { 
-                        type: "object",
-                        properties: {
-                          item: { type: "string" },
-                          present: { type: "boolean" }
-                        }
-                      }
-                    }
+                    weakestArea: { type: "string" }
                   },
                   required: ["weightsApplied", "strongestArea", "weakestArea"]
                 },
-                formatGrade: { type: "string", enum: ["A", "B", "C", "D"] },
+                formatGrade: { type: "string" },
                 formatIssue: { type: "string" },
                 resumeLength: {
                   type: "object",
                   properties: {
                     currentPages: { type: "number" },
                     recommendedPages: { type: "number" },
-                    verdict: { type: "string", enum: ["too_short", "just_right", "too_long"] }
+                    verdict: { type: "string" }
                   },
                   required: ["currentPages", "recommendedPages", "verdict"]
                 },
@@ -845,17 +834,16 @@ ${resumeText.substring(0, 15000)}
                     current: { type: "number" },
                     idealMin: { type: "number" },
                     idealMax: { type: "number" },
-                    verdict: { type: "string", enum: ["too_few", "ideal", "too_many"] }
+                    verdict: { type: "string" }
                   },
                   required: ["current", "idealMin", "idealMax", "verdict"]
                 },
                 experienceLevel: {
                   type: "object",
                   properties: {
-                    level: { type: "string", enum: ["entry", "mid", "senior", "executive"] },
+                    level: { type: "string" },
                     yearsEstimate: { type: "string" },
-                    confidence: { type: "string", enum: ["high", "medium", "low"] },
-                    titleProgression: { type: "string" }
+                    confidence: { type: "string" }
                   },
                   required: ["level", "yearsEstimate", "confidence"]
                 },
@@ -866,8 +854,7 @@ ${resumeText.substring(0, 15000)}
                     hasSummary: { type: "boolean" },
                     hasExperience: { type: "boolean" },
                     hasEducation: { type: "boolean" },
-                    hasSkills: { type: "boolean" },
-                    missingSections: { type: "array", items: { type: "string" } }
+                    hasSkills: { type: "boolean" }
                   },
                   required: ["hasContact", "hasSummary", "hasExperience", "hasEducation", "hasSkills"]
                 },
@@ -876,8 +863,7 @@ ${resumeText.substring(0, 15000)}
                   properties: {
                     hasEmail: { type: "boolean" },
                     hasPhone: { type: "boolean" },
-                    hasLinkedIn: { type: "boolean" },
-                    missingItems: { type: "array", items: { type: "string" } }
+                    hasLinkedIn: { type: "boolean" }
                   },
                   required: ["hasEmail", "hasPhone", "hasLinkedIn"]
                 },
@@ -893,7 +879,7 @@ ${resumeText.substring(0, 15000)}
                   type: "object",
                   properties: {
                     score: { type: "number" },
-                    verdict: { type: "string", enum: ["weak", "average", "strong"] },
+                    verdict: { type: "string" },
                     tip: { type: "string" }
                   },
                   required: ["score", "verdict", "tip"]
@@ -901,7 +887,7 @@ ${resumeText.substring(0, 15000)}
                 actionVerbGrade: {
                   type: "object",
                   properties: {
-                    grade: { type: "string", enum: ["A", "B", "C", "D"] },
+                    grade: { type: "string" },
                     issue: { type: "string" }
                   },
                   required: ["grade", "issue"]
@@ -924,8 +910,8 @@ ${resumeText.substring(0, 15000)}
                     properties: {
                       keyword: { type: "string" },
                       reason: { type: "string" },
-                      category: { type: "string", enum: ["tool", "skill", "cert", "method", "metric"] },
-                      impact: { type: "string", enum: ["high", "medium"] }
+                      category: { type: "string" },
+                      impact: { type: "string" }
                     },
                     required: ["keyword", "reason", "impact"]
                   }
@@ -934,7 +920,7 @@ ${resumeText.substring(0, 15000)}
                   type: "object",
                   properties: {
                     score: { type: "number" },
-                    verdict: { type: "string", enum: ["hard_to_read", "readable", "easy_to_scan"] },
+                    verdict: { type: "string" },
                     issue: { type: "string" }
                   },
                   required: ["score", "verdict", "issue"]
@@ -943,7 +929,7 @@ ${resumeText.substring(0, 15000)}
                   type: "object",
                   properties: {
                     score: { type: "number" },
-                    verdict: { type: "string", enum: ["responsibility_heavy", "balanced", "achievement_focused"] },
+                    verdict: { type: "string" },
                     tip: { type: "string" }
                   },
                   required: ["score", "verdict", "tip"]
@@ -951,7 +937,7 @@ ${resumeText.substring(0, 15000)}
                 keywordDensity: {
                   type: "object",
                   properties: {
-                    level: { type: "string", enum: ["sparse", "moderate", "dense"] },
+                    level: { type: "string" },
                     explanation: { type: "string" }
                   },
                   required: ["level", "explanation"]
@@ -959,7 +945,7 @@ ${resumeText.substring(0, 15000)}
                 improvementPotential: {
                   type: "object",
                   properties: {
-                    level: { type: "string", enum: ["low", "medium", "high"] },
+                    level: { type: "string" },
                     estimatedScoreIncrease: { type: "number" },
                     topPriority: { type: "string" }
                   },
@@ -982,7 +968,7 @@ ${resumeText.substring(0, 15000)}
                   type: "object",
                   properties: {
                     avgTenure: { type: "string" },
-                    progression: { type: "string", enum: ["stagnant", "steady", "rapid", "unclear"] },
+                    progression: { type: "string" },
                     hasGaps: { type: "boolean" },
                     gapNote: { type: "string" },
                     totalYears: { type: "string" }
@@ -993,8 +979,8 @@ ${resumeText.substring(0, 15000)}
                   type: "object",
                   properties: {
                     industryAvg: { type: "number" },
-                    comparison: { type: "string", enum: ["below", "at", "above"] },
-                    screeningRisk: { type: "string", enum: ["low", "moderate", "high"] },
+                    comparison: { type: "string" },
+                    screeningRisk: { type: "string" },
                     riskNote: { type: "string" }
                   },
                   required: ["industryAvg", "comparison", "screeningRisk", "riskNote"]
@@ -1006,7 +992,7 @@ ${resumeText.substring(0, 15000)}
                     properties: {
                       fix: { type: "string" },
                       timeEstimate: { type: "string" },
-                      impact: { type: "string", enum: ["low", "medium", "high"] }
+                      impact: { type: "string" }
                     },
                     required: ["fix", "timeEstimate", "impact"]
                   }
@@ -1020,220 +1006,59 @@ ${resumeText.substring(0, 15000)}
                   },
                   required: ["before", "after", "improvement"]
                 },
-                atsSystemCompatibility: {
+                atsCompatibility: {
                   type: "object",
                   properties: {
-                    bestSystems: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          name: { type: "string" },
-                          score: { type: "number" },
-                          reason: { type: "string" }
-                        },
-                        required: ["name", "score", "reason"]
-                      }
-                    },
-                    worstSystems: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          name: { type: "string" },
-                          score: { type: "number" },
-                          issue: { type: "string" }
-                        },
-                        required: ["name", "score", "issue"]
-                      }
-                    },
-                    overallRating: { type: "string", enum: ["poor", "fair", "good", "excellent"] },
-                    topIssue: { type: "string" }
+                    overallRating: { type: "string" },
+                    topIssue: { type: "string" },
+                    bestFor: { type: "string" },
+                    worstFor: { type: "string" }
                   },
-                  required: ["bestSystems", "worstSystems", "overallRating", "topIssue"]
+                  required: ["overallRating", "topIssue"]
                 },
                 careerSituation: {
                   type: "object",
                   properties: {
-                    situation: { type: "string", enum: ["career_changer", "returning_to_workforce", "military_transition", "recent_grad", "standard"] },
-                    confidence: { type: "string", enum: ["high", "medium", "low"] },
-                    indicators: { type: "array", items: { type: "string" } },
-                    tailoredAdvice: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          tip: { type: "string" },
-                          priority: { type: "string", enum: ["critical", "important", "helpful"] }
-                        },
-                        required: ["tip", "priority"]
-                      }
-                    },
-                    situationSummary: { type: "string" }
+                    situation: { type: "string" },
+                    confidence: { type: "string" },
+                    summary: { type: "string" },
+                    advice: { type: "string" }
                   },
-                  required: ["situation", "confidence", "indicators", "tailoredAdvice", "situationSummary"]
+                  required: ["situation", "confidence", "summary", "advice"]
                 },
                 jobMatchScore: { type: "number" },
-                jobMatchGrade: { type: "string", enum: ["A", "B", "C", "D"] },
+                jobMatchGrade: { type: "string" },
                 matchingSkills: { type: "array", items: { type: "string" } },
                 missingSkills: { type: "array", items: { type: "string" } },
-                experienceFit: { type: "string", enum: ["underqualified", "good_fit", "overqualified"] },
-                titleAlignment: { type: "string", enum: ["poor", "partial", "strong"] },
+                experienceFit: { type: "string" },
+                titleAlignment: { type: "string" },
                 jobMatchSummary: { type: "string" },
-                applicationRecommendation: {
-                  type: "object",
-                  properties: {
-                    recommendation: { type: "string", enum: ["strong_apply", "apply_with_changes", "apply_as_stretch", "do_not_apply"] },
-                    reasoning: { type: "string" },
-                    confidence: { type: "string", enum: ["high", "medium", "low"] }
-                  },
-                  required: ["recommendation", "reasoning", "confidence"]
-                },
-                skillGapActions: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      action: { type: "string" },
-                      priority: { type: "string", enum: ["must_have", "should_have", "nice_to_have"] },
-                      timeframe: { type: "string" }
-                    },
-                    required: ["action", "priority", "timeframe"]
-                  }
-                },
-                competitiveAssessment: {
-                  type: "object",
-                  properties: {
-                    likelyPosition: { type: "string", enum: ["top_candidate", "competitive", "middle_of_pack", "unlikely_to_advance"] },
-                    strengthVsField: { type: "string" },
-                    weaknessVsField: { type: "string" }
-                  },
-                  required: ["likelyPosition", "strengthVsField", "weaknessVsField"]
-                },
                 formatRecommendation: {
                   type: "object",
                   properties: {
-                    recommendedStyle: { 
-                      type: "string", 
-                      enum: ["traditional", "modern", "creative", "hybrid"],
-                      description: "traditional=finance/law/healthcare/government, modern=tech/startups, creative=design/media/advertising, hybrid=versatile" 
-                    },
-                    layoutAdvice: {
-                      type: "object",
-                      properties: {
-                        columns: { type: "string", enum: ["one_column", "two_column"], description: "Recommended column layout" },
-                        useColor: { type: "boolean", description: "Whether color accents are appropriate for this industry" },
-                        visualElements: { type: "string", enum: ["minimal", "moderate", "rich"], description: "Level of visual elements (icons, graphics, charts)" },
-                        rationale: { type: "string", description: "Why this layout works for their industry (under 15 words)" }
-                      },
-                      required: ["columns", "useColor", "visualElements", "rationale"]
-                    },
-                    industryNorms: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          norm: { type: "string", description: "What top candidates in this industry do (under 15 words)" },
-                          importance: { type: "string", enum: ["must_have", "recommended", "optional"] }
-                        },
-                        required: ["norm", "importance"]
-                      },
-                      description: "3-4 industry-specific format norms"
-                    },
-                    avoidList: {
-                      type: "array",
-                      items: { type: "string" },
-                      description: "3 format elements to AVOID for this industry (e.g., 'photos', 'colorful headers', 'graphics')"
-                    },
-                    currentFormatAssessment: {
-                      type: "object",
-                      properties: {
-                        isAppropriate: { type: "boolean", description: "Is their current format appropriate for their target industry?" },
-                        mainIssue: { type: "string", description: "Main format issue if not appropriate (under 15 words)" },
-                        quickFix: { type: "string", description: "One quick fix for their format (under 15 words)" }
-                      },
-                      required: ["isAppropriate", "mainIssue", "quickFix"]
-                    },
-                    templateSuggestion: { type: "string", description: "Brief description of ideal template style for them (under 20 words)" }
+                    style: { type: "string" },
+                    columns: { type: "string" },
+                    useColor: { type: "boolean" },
+                    mainAdvice: { type: "string" }
                   },
-                  required: ["recommendedStyle", "layoutAdvice", "industryNorms", "avoidList", "currentFormatAssessment", "templateSuggestion"]
+                  required: ["style", "mainAdvice"]
                 },
-                personalizedCareerInsights: {
+                careerInsights: {
                   type: "object",
                   properties: {
-                    suggestedHeadline: { 
-                      type: "string", 
-                      description: "A compelling professional headline for LinkedIn/resume header using their name and strongest positioning (e.g., 'Sarah Chen | Senior Product Manager | AI & Growth Expert')" 
-                    },
-                    nextRoleSuggestions: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          title: { type: "string", description: "Suggested next job title" },
-                          fit: { type: "string", enum: ["natural_progression", "lateral_move", "stretch_goal"], description: "How this fits their trajectory" },
-                          gapToClose: { type: "string", description: "One skill/experience gap to close for this role (under 15 words)" }
-                        },
-                        required: ["title", "fit", "gapToClose"]
-                      },
-                      description: "3 potential next roles based on their experience trajectory"
-                    },
-                    uniqueValue: { 
-                      type: "string", 
-                      description: "Their unique value proposition in one sentence - what makes THEM stand out (reference specific experience)" 
-                    },
-                    interviewTalkingPoints: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          achievement: { type: "string", description: "A specific achievement from their resume to highlight" },
-                          storyAngle: { type: "string", description: "How to frame this as a compelling interview story (under 20 words)" }
-                        },
-                        required: ["achievement", "storyAngle"]
-                      },
-                      description: "3 strongest achievements from their resume to prepare as interview stories"
-                    },
-                    hiddenStrengths: {
-                      type: "array",
-                      items: { type: "string" },
-                      description: "2-3 skills or experiences they're underselling on their resume"
-                    },
-                    personalBrand: {
-                      type: "object",
-                      properties: {
-                        currentBrand: { type: "string", description: "What their resume currently says about them (under 15 words)" },
-                        idealBrand: { type: "string", description: "What they should be known for based on their experience (under 15 words)" },
-                        brandGap: { type: "string", description: "What's missing to achieve ideal brand (under 15 words)" }
-                      },
-                      required: ["currentBrand", "idealBrand", "brandGap"]
-                    },
-                    salaryInsight: {
-                      type: "object",
-                      properties: {
-                        estimatedRange: { type: "string", description: "Estimated salary range for their level/industry (e.g., '$120K-$150K' or '€70K-€90K')" },
-                        marketPosition: { type: "string", enum: ["below_market", "at_market", "above_market"], description: "Where they likely fall based on resume strength" },
-                        leveragePoints: { type: "array", items: { type: "string" }, description: "2-3 specific things on their resume that justify higher compensation" }
-                      },
-                      required: ["estimatedRange", "marketPosition", "leveragePoints"]
-                    },
-                    personalizedEncouragement: { 
-                      type: "string", 
-                      description: "A warm, personalized message using their name that acknowledges their journey and motivates them (2-3 sentences)" 
-                    }
+                    headline: { type: "string" },
+                    uniqueValue: { type: "string" },
+                    nextRoles: { type: "array", items: { type: "string" } },
+                    salaryRange: { type: "string" },
+                    encouragement: { type: "string" }
                   },
-                  required: ["suggestedHeadline", "nextRoleSuggestions", "uniqueValue", "interviewTalkingPoints", "hiddenStrengths", "personalBrand", "salaryInsight", "personalizedEncouragement"]
+                  required: ["headline", "uniqueValue", "encouragement"]
                 }
               },
               required: [
-                "detectedLanguage", "industry", "atsScoreEstimate", "formatGrade", "formatIssue",
-                "resumeLength", "wordCount", "experienceLevel", "sectionCheck",
-                "contactInfo", "topStrength", "quantificationScore", "actionVerbGrade",
-                "redFlags", "keywords", "readabilityScore", "bulletImpactScore", 
-                "keywordDensity", "improvementPotential", "topSkipReasons",
-                "powerWords", "weakPhrases", "timelineAnalysis", "industryBenchmark",
-                "quickWins", "sampleRewrite", "atsSystemCompatibility", "careerSituation",
-                "formatRecommendation", "personalizedCareerInsights"
+                "detectedLanguage", "industry", "atsScoreEstimate", "formatGrade",
+                "experienceLevel", "sectionCheck", "contactInfo", "topStrength",
+                "redFlags", "keywords", "industryBenchmark", "quickWins", "sampleRewrite"
               ]
             }
           }
