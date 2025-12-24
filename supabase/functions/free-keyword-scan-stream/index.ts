@@ -443,25 +443,18 @@ Focus on: ATS score (0-100), industry detection, format grade (A-D), experience 
                     items: {
                       type: "object",
                       properties: {
-                        issue: { type: "string", description: "In the resume's language" },
-                        impact: { type: "string", description: "Evidence-backed explanation in the resume's language - answer 'Why would ATS/recruiter care?'" },
-                        feedbackSource: { type: "string", enum: ["ats", "recruiter"], description: "ats=parsing/keyword issue, recruiter=human interpretation issue" },
-                        confidence: { type: "string", enum: ["high", "medium", "low"], description: "Confidence level in this flag" }
+                        issue: { type: "string" },
+                        impact: { type: "string" }
                       }
                     }
                   },
                   keywords: {
                     type: "array",
-                    description: "Keywords with skill detection (absent vs implicit)",
                     items: {
                       type: "object",
                       properties: {
-                        keyword: { type: "string", description: "Keyword in the resume's language" },
-                        reason: { type: "string", description: "Explanation in the resume's language" },
-                        detectionType: { type: "string", enum: ["absent", "implicit"], description: "absent=not found, implicit=demonstrated through related experience" },
-                        feedbackSource: { type: "string", enum: ["ats", "recruiter"], description: "ats=ATS may miss, recruiter=human would infer" },
-                        confidence: { type: "string", enum: ["high", "medium", "low"] },
-                        impact: { type: "string", enum: ["critical", "high", "medium"], description: "NEVER use critical for implicit skills" }
+                        keyword: { type: "string" },
+                        reason: { type: "string" }
                       }
                     }
                   },

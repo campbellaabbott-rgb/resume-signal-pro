@@ -799,23 +799,22 @@ ${resumeText.substring(0, 15000)}
                 detectedLanguage: { 
                   type: "object",
                   properties: {
-                    code: { type: "string", description: "ISO 639-1 language code (e.g., 'en', 'es', 'de', 'pt', 'fr', 'nl', 'hi', 'tl', 'zh')" },
-                    name: { type: "string", description: "Full language name in English (e.g., 'English', 'Spanish', 'German')" },
-                    region: { type: "string", description: "Detected region/job market if identifiable (e.g., 'US', 'UK', 'Brazil', 'Germany', 'India', 'Global')" }
+                    code: { type: "string" },
+                    name: { type: "string" },
+                    region: { type: "string" }
                   },
-                  required: ["code", "name"],
-                  description: "Detected language of the resume - ALL feedback should be in this language"
+                  required: ["code", "name"]
                 },
-                candidateName: { type: "string", description: "The candidate's full name extracted from the resume header/contact section (e.g., 'John Smith', 'Maria Garcia'). Look for the name at the top of the resume. If not found, return null." },
-                industry: { type: "string", description: "Detected industry/field (technology, healthcare, finance, legal, sales, education, engineering, creative, or general)" },
-                currentRole: { type: "string", description: "Detected current or most recent job title/role (e.g., 'Product Manager', 'Software Engineer', 'Registered Nurse')" },
-                atsScoreEstimate: { type: "number", description: "Estimated ATS score (0-100) using industry-specific weights" },
+                candidateName: { type: "string" },
+                industry: { type: "string" },
+                currentRole: { type: "string" },
+                atsScoreEstimate: { type: "number" },
                 industryScoreInsight: {
                   type: "object",
                   properties: {
-                    weightsApplied: { type: "string", description: "Which industry weights were used (e.g., 'Technology: Keywords 30%, Skills 25%, Quantification 20%')" },
-                    strongestArea: { type: "string", description: "Where resume scores highest for this industry" },
-                    weakestArea: { type: "string", description: "Where resume needs most improvement for this industry" },
+                    weightsApplied: { type: "string" },
+                    strongestArea: { type: "string" },
+                    weakestArea: { type: "string" },
                     industryMustHaves: { 
                       type: "array", 
                       items: { 
@@ -824,26 +823,18 @@ ${resumeText.substring(0, 15000)}
                           item: { type: "string" },
                           present: { type: "boolean" }
                         }
-                      },
-                      description: "3-5 must-have elements for this industry and whether they're present"
+                      }
                     }
                   },
-                  required: ["weightsApplied", "strongestArea", "weakestArea", "industryMustHaves"]
+                  required: ["weightsApplied", "strongestArea", "weakestArea"]
                 },
-                formatGrade: { 
-                  type: "string", 
-                  enum: ["A", "B", "C", "D"],
-                  description: "ATS format compatibility grade" 
-                },
-                formatIssue: {
-                  type: "string",
-                  description: "One main formatting issue to fix (under 15 words). If grade is A, say 'Great job! Your format is ATS-friendly.'"
-                },
+                formatGrade: { type: "string", enum: ["A", "B", "C", "D"] },
+                formatIssue: { type: "string" },
                 resumeLength: {
                   type: "object",
                   properties: {
-                    currentPages: { type: "number", description: "Estimated current page count (1-5)" },
-                    recommendedPages: { type: "number", description: "Recommended page count based on experience" },
+                    currentPages: { type: "number" },
+                    recommendedPages: { type: "number" },
                     verdict: { type: "string", enum: ["too_short", "just_right", "too_long"] }
                   },
                   required: ["currentPages", "recommendedPages", "verdict"]
@@ -851,9 +842,9 @@ ${resumeText.substring(0, 15000)}
                 wordCount: {
                   type: "object",
                   properties: {
-                    current: { type: "number", description: "Estimated word count" },
-                    idealMin: { type: "number", description: "Minimum ideal word count" },
-                    idealMax: { type: "number", description: "Maximum ideal word count" },
+                    current: { type: "number" },
+                    idealMin: { type: "number" },
+                    idealMax: { type: "number" },
                     verdict: { type: "string", enum: ["too_few", "ideal", "too_many"] }
                   },
                   required: ["current", "idealMin", "idealMax", "verdict"]
@@ -861,10 +852,10 @@ ${resumeText.substring(0, 15000)}
                 experienceLevel: {
                   type: "object",
                   properties: {
-                    level: { type: "string", enum: ["entry", "mid", "senior", "executive"], description: "Detected experience level based on years and title seniority" },
-                    yearsEstimate: { type: "string", description: "Estimated years of experience range (e.g., '5-7 years', '10+ years')" },
-                    confidence: { type: "string", enum: ["high", "medium", "low"], description: "Confidence in detection: high=clear dates/titles, medium=some ambiguity, low=limited info" },
-                    titleProgression: { type: "string", description: "Brief note on career trajectory (e.g., 'Steady growth from Analyst to Senior Manager')" }
+                    level: { type: "string", enum: ["entry", "mid", "senior", "executive"] },
+                    yearsEstimate: { type: "string" },
+                    confidence: { type: "string", enum: ["high", "medium", "low"] },
+                    titleProgression: { type: "string" }
                   },
                   required: ["level", "yearsEstimate", "confidence"]
                 },
@@ -876,9 +867,9 @@ ${resumeText.substring(0, 15000)}
                     hasExperience: { type: "boolean" },
                     hasEducation: { type: "boolean" },
                     hasSkills: { type: "boolean" },
-                    missingSections: { type: "array", items: { type: "string" }, description: "List of missing essential sections" }
+                    missingSections: { type: "array", items: { type: "string" } }
                   },
-                  required: ["hasContact", "hasSummary", "hasExperience", "hasEducation", "hasSkills", "missingSections"]
+                  required: ["hasContact", "hasSummary", "hasExperience", "hasEducation", "hasSkills"]
                 },
                 contactInfo: {
                   type: "object",
@@ -886,24 +877,24 @@ ${resumeText.substring(0, 15000)}
                     hasEmail: { type: "boolean" },
                     hasPhone: { type: "boolean" },
                     hasLinkedIn: { type: "boolean" },
-                    missingItems: { type: "array", items: { type: "string" }, description: "List of missing contact items" }
+                    missingItems: { type: "array", items: { type: "string" } }
                   },
-                  required: ["hasEmail", "hasPhone", "hasLinkedIn", "missingItems"]
+                  required: ["hasEmail", "hasPhone", "hasLinkedIn"]
                 },
                 topStrength: {
                   type: "object",
                   properties: {
-                    title: { type: "string", description: "Short title for the strength (3-5 words)" },
-                    description: { type: "string", description: "Brief explanation (under 15 words)" }
+                    title: { type: "string" },
+                    description: { type: "string" }
                   },
                   required: ["title", "description"]
                 },
                 quantificationScore: {
                   type: "object",
                   properties: {
-                    score: { type: "number", description: "Percentage of bullets with metrics (0-100)" },
-                    verdict: { type: "string", enum: ["weak", "average", "strong"], description: "weak <30%, average 30-60%, strong >60%" },
-                    tip: { type: "string", description: "One tip to improve (under 12 words)" }
+                    score: { type: "number" },
+                    verdict: { type: "string", enum: ["weak", "average", "strong"] },
+                    tip: { type: "string" }
                   },
                   required: ["score", "verdict", "tip"]
                 },
@@ -911,7 +902,7 @@ ${resumeText.substring(0, 15000)}
                   type: "object",
                   properties: {
                     grade: { type: "string", enum: ["A", "B", "C", "D"] },
-                    issue: { type: "string", description: "Main issue or praise (under 12 words)" }
+                    issue: { type: "string" }
                   },
                   required: ["grade", "issue"]
                 },
@@ -920,132 +911,112 @@ ${resumeText.substring(0, 15000)}
                   items: {
                     type: "object",
                     properties: {
-                      issue: { type: "string", description: "The red flag (under 10 words)" },
-                      impact: { type: "string", description: "Evidence-backed explanation of why this matters - answer 'Why would a recruiter/ATS care?' (under 15 words)" },
-                      feedbackSource: { type: "string", enum: ["ats", "recruiter"], description: "ats=parsing/keyword issue, recruiter=human interpretation issue" },
-                      confidence: { type: "string", enum: ["high", "medium", "low"], description: "high=clear evidence, medium=generally applicable, low=context-dependent" },
-                      seniorityAdjusted: { type: "boolean", description: "true if this flag was adjusted based on candidate seniority level" }
+                      issue: { type: "string" },
+                      impact: { type: "string" }
                     },
-                    required: ["issue", "impact", "feedbackSource", "confidence"]
-                  },
-                  description: "Exactly 3 red flags with evidence-backed explanations and source labels"
+                    required: ["issue", "impact"]
+                  }
                 },
                 keywords: {
                   type: "array",
                   items: {
                     type: "object",
                     properties: {
-                      keyword: { type: "string", description: "Keyword IN THE RESUME'S LANGUAGE, tailored to their industry AND regional job market" },
-                      reason: { type: "string", description: "Why this keyword matters (in resume's language, under 15 words)" },
-                      category: { type: "string", enum: ["tool", "skill", "certification", "methodology", "metric", "regulation"], description: "Type of keyword" },
-                      impact: { type: "string", enum: ["critical", "high", "medium"], description: "Importance level - NEVER use 'critical' for implicitly demonstrated skills" },
-                      detectionType: { type: "string", enum: ["absent", "implicit"], description: "absent=skill not found at all, implicit=skill demonstrated through related experience but exact keyword missing" },
-                      feedbackSource: { type: "string", enum: ["ats", "recruiter"], description: "ats=ATS may miss this, recruiter=human would infer but ATS won't" },
-                      confidence: { type: "string", enum: ["high", "medium", "low"], description: "Confidence in this suggestion" },
-                      implicitEvidence: { type: "string", description: "If detectionType=implicit, explain what related experience demonstrates this skill (under 15 words)" }
+                      keyword: { type: "string" },
+                      reason: { type: "string" },
+                      category: { type: "string", enum: ["tool", "skill", "cert", "method", "metric"] },
+                      impact: { type: "string", enum: ["high", "medium"] }
                     },
-                    required: ["keyword", "reason", "category", "impact", "detectionType", "feedbackSource", "confidence"]
-                  },
-                  description: "Exactly 6 keyword suggestions with skill detection type (absent vs implicit)"
+                    required: ["keyword", "reason", "impact"]
+                  }
                 },
                 readabilityScore: {
                   type: "object",
                   properties: {
-                    score: { type: "number", description: "Readability/scannability score 0-100" },
-                    verdict: { type: "string", enum: ["hard_to_read", "readable", "easy_to_scan"], description: "hard_to_read <50, readable 50-75, easy_to_scan >75" },
-                    issue: { type: "string", description: "Main readability issue (under 12 words)" }
+                    score: { type: "number" },
+                    verdict: { type: "string", enum: ["hard_to_read", "readable", "easy_to_scan"] },
+                    issue: { type: "string" }
                   },
                   required: ["score", "verdict", "issue"]
                 },
                 bulletImpactScore: {
                   type: "object",
                   properties: {
-                    score: { type: "number", description: "Percentage of achievement-focused bullets vs responsibility-focused (0-100)" },
-                    verdict: { type: "string", enum: ["responsibility_heavy", "balanced", "achievement_focused"], description: "responsibility_heavy <40, balanced 40-65, achievement_focused >65" },
-                    tip: { type: "string", description: "One tip to improve (under 12 words)" }
+                    score: { type: "number" },
+                    verdict: { type: "string", enum: ["responsibility_heavy", "balanced", "achievement_focused"] },
+                    tip: { type: "string" }
                   },
                   required: ["score", "verdict", "tip"]
                 },
                 keywordDensity: {
                   type: "object",
                   properties: {
-                    level: { type: "string", enum: ["sparse", "moderate", "dense"], description: "Industry keyword density" },
-                    explanation: { type: "string", description: "Brief explanation (under 12 words)" }
+                    level: { type: "string", enum: ["sparse", "moderate", "dense"] },
+                    explanation: { type: "string" }
                   },
                   required: ["level", "explanation"]
                 },
                 improvementPotential: {
                   type: "object",
                   properties: {
-                    level: { type: "string", enum: ["low", "medium", "high"], description: "How much better this resume could be with optimization" },
-                    estimatedScoreIncrease: { type: "number", description: "Estimated ATS score increase possible (5-30 points)" },
-                    topPriority: { type: "string", description: "Single most impactful fix (under 12 words)" }
+                    level: { type: "string", enum: ["low", "medium", "high"] },
+                    estimatedScoreIncrease: { type: "number" },
+                    topPriority: { type: "string" }
                   },
                   required: ["level", "estimatedScoreIncrease", "topPriority"]
                 },
-                topSkipReasons: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "Exactly 5 specific, prioritized reasons why THIS resume is being skipped. Reference actual content."
-                },
-                powerWords: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "5 strong action verbs ALREADY used in this resume (quote exactly from resume)"
-                },
+                topSkipReasons: { type: "array", items: { type: "string" } },
+                powerWords: { type: "array", items: { type: "string" } },
                 weakPhrases: {
                   type: "array",
                   items: {
                     type: "object",
                     properties: {
-                      phrase: { type: "string", description: "The exact weak phrase from the resume" },
-                      suggestion: { type: "string", description: "Why it's weak (under 8 words)" }
+                      phrase: { type: "string" },
+                      suggestion: { type: "string" }
                     },
                     required: ["phrase", "suggestion"]
-                  },
-                  description: "4 generic/weak phrases to eliminate (quote exactly from resume)"
+                  }
                 },
                 timelineAnalysis: {
                   type: "object",
                   properties: {
-                    avgTenure: { type: "string", description: "Average job tenure (e.g., '2.5 years')" },
-                    progression: { type: "string", enum: ["stagnant", "steady", "rapid", "unclear"], description: "Career progression pattern" },
-                    hasGaps: { type: "boolean", description: "Whether there are notable employment gaps" },
-                    gapNote: { type: "string", description: "Brief note about gaps if present (under 15 words)" },
-                    totalYears: { type: "string", description: "Total years of experience (e.g., '8 years')" }
+                    avgTenure: { type: "string" },
+                    progression: { type: "string", enum: ["stagnant", "steady", "rapid", "unclear"] },
+                    hasGaps: { type: "boolean" },
+                    gapNote: { type: "string" },
+                    totalYears: { type: "string" }
                   },
                   required: ["avgTenure", "progression", "hasGaps", "totalYears"]
                 },
                 industryBenchmark: {
                   type: "object",
                   properties: {
-                    industryAvg: { type: "number", description: "Typical ATS score for this industry (60-80)" },
-                    comparison: { type: "string", enum: ["below", "at", "above"], description: "How they compare to industry average for ATS keyword alignment" },
-                    screeningRisk: { type: "string", enum: ["low", "moderate", "high"], description: "Risk of being deprioritized in ATS screening - NOT prediction of interview success" },
-                    riskExplanation: { type: "string", description: "Brief explanation scoped to ATS alignment only (under 20 words). Example: 'Based on ATS keyword alignment, this resume may be deprioritized despite strong experience.'" },
-                    caveat: { type: "string", description: "Important context (e.g., 'This assesses ATS keyword matching only, not overall candidacy quality')" }
+                    industryAvg: { type: "number" },
+                    comparison: { type: "string", enum: ["below", "at", "above"] },
+                    screeningRisk: { type: "string", enum: ["low", "moderate", "high"] },
+                    riskNote: { type: "string" }
                   },
-                  required: ["industryAvg", "comparison", "screeningRisk", "riskExplanation"]
+                  required: ["industryAvg", "comparison", "screeningRisk", "riskNote"]
                 },
                 quickWins: {
                   type: "array",
                   items: {
                     type: "object",
                     properties: {
-                      fix: { type: "string", description: "Specific fix they can make (under 15 words)" },
-                      timeEstimate: { type: "string", description: "Time to fix (e.g., '2 min', '5 min')" },
-                      impact: { type: "string", enum: ["low", "medium", "high"], description: "Impact level" }
+                      fix: { type: "string" },
+                      timeEstimate: { type: "string" },
+                      impact: { type: "string", enum: ["low", "medium", "high"] }
                     },
                     required: ["fix", "timeEstimate", "impact"]
-                  },
-                  description: "Exactly 3 quick fixes they can make in under 5 minutes"
+                  }
                 },
                 sampleRewrite: {
                   type: "object",
                   properties: {
-                    before: { type: "string", description: "The original weak bullet point (quote exactly from resume)" },
-                    after: { type: "string", description: "Improved version with metrics/impact" },
-                    improvement: { type: "string", description: "What makes the rewrite better (under 12 words)" }
+                    before: { type: "string" },
+                    after: { type: "string" },
+                    improvement: { type: "string" }
                   },
                   required: ["before", "after", "improvement"]
                 },
@@ -1057,118 +1028,87 @@ ${resumeText.substring(0, 15000)}
                       items: {
                         type: "object",
                         properties: {
-                          name: { type: "string", description: "ATS name (Workday, Greenhouse, Lever, Taleo, iCIMS, or BambooHR)" },
-                          score: { type: "number", description: "Compatibility score 0-100" },
-                          reason: { type: "string", description: "Why it parses well (under 10 words)" }
+                          name: { type: "string" },
+                          score: { type: "number" },
+                          reason: { type: "string" }
                         },
                         required: ["name", "score", "reason"]
-                      },
-                      description: "Top 3 ATS systems that will parse this resume best"
+                      }
                     },
                     worstSystems: {
                       type: "array",
                       items: {
                         type: "object",
                         properties: {
-                          name: { type: "string", description: "ATS name" },
-                          score: { type: "number", description: "Compatibility score 0-100" },
-                          issue: { type: "string", description: "Main parsing issue (under 10 words)" }
+                          name: { type: "string" },
+                          score: { type: "number" },
+                          issue: { type: "string" }
                         },
                         required: ["name", "score", "issue"]
-                      },
-                      description: "2 ATS systems that may have trouble parsing this resume"
+                      }
                     },
-                    overallRating: { type: "string", enum: ["poor", "fair", "good", "excellent"], description: "Overall ATS compatibility rating" },
-                    topIssue: { type: "string", description: "Single biggest ATS compatibility issue to fix (under 15 words)" }
+                    overallRating: { type: "string", enum: ["poor", "fair", "good", "excellent"] },
+                    topIssue: { type: "string" }
                   },
                   required: ["bestSystems", "worstSystems", "overallRating", "topIssue"]
                 },
                 careerSituation: {
                   type: "object",
                   properties: {
-                    situation: { 
-                      type: "string", 
-                      enum: ["career_changer", "returning_to_workforce", "military_transition", "recent_grad", "standard"],
-                      description: "Detected career situation" 
-                    },
-                    confidence: { 
-                      type: "string", 
-                      enum: ["high", "medium", "low"],
-                      description: "How confident the detection is" 
-                    },
-                    indicators: {
-                      type: "array",
-                      items: { type: "string" },
-                      description: "2-3 specific indicators found in the resume that led to this detection"
-                    },
+                    situation: { type: "string", enum: ["career_changer", "returning_to_workforce", "military_transition", "recent_grad", "standard"] },
+                    confidence: { type: "string", enum: ["high", "medium", "low"] },
+                    indicators: { type: "array", items: { type: "string" } },
                     tailoredAdvice: {
                       type: "array",
                       items: {
                         type: "object",
                         properties: {
-                          tip: { type: "string", description: "Specific actionable advice for their situation (under 20 words)" },
-                          priority: { type: "string", enum: ["critical", "important", "helpful"] },
-                          example: { type: "string", description: "Brief example or template if applicable (under 25 words)" }
+                          tip: { type: "string" },
+                          priority: { type: "string", enum: ["critical", "important", "helpful"] }
                         },
                         required: ["tip", "priority"]
-                      },
-                      description: "3-4 tailored tips specific to their career situation"
+                      }
                     },
-                    situationSummary: { 
-                      type: "string", 
-                      description: "One sentence explaining their detected situation and main challenge (under 25 words)" 
-                    }
+                    situationSummary: { type: "string" }
                   },
                   required: ["situation", "confidence", "indicators", "tailoredAdvice", "situationSummary"]
                 },
-                // Job matching fields (only returned when job description is provided)
-                jobMatchScore: { type: "number", description: "How well the resume matches the job (0-100). Only provide if job description given." },
-                jobMatchGrade: { type: "string", enum: ["A", "B", "C", "D"], description: "Job match grade. Only provide if job description given." },
-                matchingSkills: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "5 skills from job that ARE in the resume. Only provide if job description given."
-                },
-                missingSkills: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "5 critical skills from job MISSING from resume. Only provide if job description given."
-                },
-                experienceFit: { type: "string", enum: ["underqualified", "good_fit", "overqualified"], description: "How experience matches job. Only provide if job description given." },
-                titleAlignment: { type: "string", enum: ["poor", "partial", "strong"], description: "How well titles align with target job. Only provide if job description given." },
-                jobMatchSummary: { type: "string", description: "One sentence on match quality and top improvement priority. Only provide if job description given." },
+                jobMatchScore: { type: "number" },
+                jobMatchGrade: { type: "string", enum: ["A", "B", "C", "D"] },
+                matchingSkills: { type: "array", items: { type: "string" } },
+                missingSkills: { type: "array", items: { type: "string" } },
+                experienceFit: { type: "string", enum: ["underqualified", "good_fit", "overqualified"] },
+                titleAlignment: { type: "string", enum: ["poor", "partial", "strong"] },
+                jobMatchSummary: { type: "string" },
                 applicationRecommendation: {
                   type: "object",
                   properties: {
-                    recommendation: { type: "string", enum: ["strong_apply", "apply_with_changes", "apply_as_stretch", "do_not_apply"], description: "Clear recommendation for whether to apply" },
-                    reasoning: { type: "string", description: "Brief explanation of why this recommendation (under 20 words)" },
-                    confidence: { type: "string", enum: ["high", "medium", "low"], description: "Confidence level in this recommendation" }
+                    recommendation: { type: "string", enum: ["strong_apply", "apply_with_changes", "apply_as_stretch", "do_not_apply"] },
+                    reasoning: { type: "string" },
+                    confidence: { type: "string", enum: ["high", "medium", "low"] }
                   },
-                  required: ["recommendation", "reasoning", "confidence"],
-                  description: "Application recommendation. Only provide if job description given."
+                  required: ["recommendation", "reasoning", "confidence"]
                 },
                 skillGapActions: {
                   type: "array",
                   items: {
                     type: "object",
                     properties: {
-                      action: { type: "string", description: "Specific action to take (under 15 words)" },
+                      action: { type: "string" },
                       priority: { type: "string", enum: ["must_have", "should_have", "nice_to_have"] },
-                      timeframe: { type: "string", description: "How long this would take (e.g., '1 week', '2-3 months')" }
+                      timeframe: { type: "string" }
                     },
                     required: ["action", "priority", "timeframe"]
-                  },
-                  description: "3-5 specific actions to close the skill gap. Only provide if job description given."
+                  }
                 },
                 competitiveAssessment: {
                   type: "object",
                   properties: {
-                    likelyPosition: { type: "string", enum: ["top_candidate", "competitive", "middle_of_pack", "unlikely_to_advance"], description: "Where they likely rank among applicants" },
-                    strengthVsField: { type: "string", description: "Their biggest advantage over other applicants (under 15 words)" },
-                    weaknessVsField: { type: "string", description: "Their biggest disadvantage vs other applicants (under 15 words)" }
+                    likelyPosition: { type: "string", enum: ["top_candidate", "competitive", "middle_of_pack", "unlikely_to_advance"] },
+                    strengthVsField: { type: "string" },
+                    weaknessVsField: { type: "string" }
                   },
-                  required: ["likelyPosition", "strengthVsField", "weaknessVsField"],
-                  description: "Competitive assessment. Only provide if job description given."
+                  required: ["likelyPosition", "strengthVsField", "weaknessVsField"]
                 },
                 formatRecommendation: {
                   type: "object",
