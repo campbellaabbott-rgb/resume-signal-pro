@@ -193,6 +193,19 @@ export default function Affiliates() {
                 ? 'Sign in to access your affiliate dashboard' 
                 : 'Earn rewards for every sale you refer!'}
             </CardDescription>
+            {/* Commission disclosure */}
+            <div className="mt-4 p-4 rounded-lg bg-primary/10 border border-primary/20">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <DollarSign className="h-5 w-5 text-primary" />
+                <span className="font-bold text-lg text-primary">$5 per sale</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Earn <span className="font-semibold text-foreground">25-100% commission</span> on every referral
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                30-day cookie • No minimum payout threshold to start
+              </p>
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -263,6 +276,22 @@ export default function Affiliates() {
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-8">
+        {/* Commission Banner */}
+        <div className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+              <DollarSign className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold">Your Commission Rate</p>
+              <p className="text-sm text-muted-foreground">$5 per sale (25-100% depending on product)</p>
+            </div>
+          </div>
+          <Badge variant="secondary" className="text-primary border-primary/30">
+            30-day cookie
+          </Badge>
+        </div>
+
         {/* Referral Link Card */}
         <Card className="bg-primary/5 border-primary/20">
           <CardContent className="pt-6">
@@ -270,7 +299,7 @@ export default function Affiliates() {
               <div>
                 <h3 className="font-semibold mb-1">Your Referral Link</h3>
                 <p className="text-sm text-muted-foreground mb-2">
-                  Share this link to earn rewards (30-day attribution window)
+                  Share this link to earn <span className="font-semibold text-primary">$5</span> per sale (30-day attribution window)
                 </p>
                 <code className="text-xs bg-background px-2 py-1 rounded border break-all">
                   {getReferralLink()}
