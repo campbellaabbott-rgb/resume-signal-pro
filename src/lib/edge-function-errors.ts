@@ -52,6 +52,18 @@ const ERROR_MESSAGE_MAP: Record<string, { title: string; description: string; is
     isRetryable: false,
     code: 'INVALID_INPUT',
   },
+  'The AI took too long to respond. Please try again.': {
+    title: 'AI timeout',
+    description: 'The AI took longer than expected. This usually works on a retry—click the button below to try again.',
+    isRetryable: true,
+    code: 'AI_TIMEOUT',
+  },
+  'AI service is temporarily busy. Please try again in a few moments.': {
+    title: 'AI busy',
+    description: 'Our AI service is handling high demand. Please wait a moment and try again.',
+    isRetryable: true,
+    code: 'AI_BUSY',
+  },
 };
 
 // Status code based fallbacks
@@ -117,8 +129,8 @@ const STATUS_CODE_MAP: Record<number, { title: string; description: string; isRe
     code: 'SERVICE_UNAVAILABLE',
   },
   504: {
-    title: 'Request timeout',
-    description: 'The request took too long. Please try again.',
+    title: 'AI response timeout',
+    description: 'The AI took longer than expected to respond. This usually works on a retry—please try again.',
     isRetryable: true,
     code: 'GATEWAY_TIMEOUT',
   },
