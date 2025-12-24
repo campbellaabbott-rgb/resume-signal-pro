@@ -4,12 +4,13 @@ import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/hooks/use-currency";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { JobSelector, type JobEntry } from "@/components/JobSelector";
 import { JobComparisonCTA } from "@/components/JobComparisonCTA";
 import { PRODUCTS } from "@/config/products";
+import { resilientCallers } from "@/lib/resilient-edge-function";
+import { useToast } from "@/hooks/use-toast";
 
 // Step indicator component for better UX guidance
 interface StepIndicatorProps {
@@ -175,6 +176,7 @@ export function ResumeUploader({
   streamingProgress
 }: ResumeUploaderProps) {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const isMobile = useIsMobile();
   const [dragOver, setDragOver] = useState(false);
@@ -252,12 +254,18 @@ export function ResumeUploader({
       const formData = new FormData();
       formData.append("file", file);
 
-      const { data, error } = await supabase.functions.invoke("parse-pdf", {
-        body: formData,
-      });
+      const result = await resilientCallers.parsePdf({ file: formData });
 
-      if (error) throw error;
+      if (result.error) {
+        toast({
+          title: result.error.title,
+          description: result.error.description,
+          variant: "destructive",
+        });
+        throw new Error(result.error.description);
+      }
 
+      const data = result.data as { success?: boolean; text?: string; error?: string };
       if (data?.success && data?.text) {
         onLinkedInTextChange?.(data.text);
       } else {
@@ -294,12 +302,19 @@ export function ResumeUploader({
       const formData = new FormData();
       formData.append("file", file);
       
-      const { data, error } = await supabase.functions.invoke("parse-spreadsheet", {
-        body: formData,
-      });
+      const result = await resilientCallers.parseSpreadsheet({ file: formData });
       
-      if (error) throw error;
+      if (result.error) {
+        toast({
+          title: result.error.title,
+          description: result.error.description,
+          variant: "destructive",
+        });
+        setJobDescriptionFile(null);
+        return;
+      }
       
+      const data = result.data as { success?: boolean; jobs?: JobEntry[]; error?: string; suggestion?: string };
       if (data?.success && data?.jobs?.length > 0) {
         setParsedJobs(data.jobs);
         onJobsChange?.(data.jobs);
@@ -345,12 +360,19 @@ export function ResumeUploader({
     setSelectedJob(null);
     
     try {
-      const { data, error } = await supabase.functions.invoke("parse-spreadsheet", {
-        body: { googleSheetsUrl: googleSheetsUrl.trim() },
-      });
+      const result = await resilientCallers.parseSpreadsheet({ googleSheetsUrl: googleSheetsUrl.trim() });
       
-      if (error) throw error;
+      if (result.error) {
+        toast({
+          title: result.error.title,
+          description: result.error.description,
+          variant: "destructive",
+        });
+        setLocalJobDescriptionText("Failed to import from Google Sheets. Please try again.");
+        return;
+      }
       
+      const data = result.data as { success?: boolean; jobs?: JobEntry[]; error?: string; suggestion?: string };
       if (data?.success && data?.jobs?.length > 0) {
         setParsedJobs(data.jobs);
         onJobsChange?.(data.jobs);

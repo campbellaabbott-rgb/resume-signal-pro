@@ -316,4 +316,11 @@ export const resilientCallers = {
     timeout: 60000,
     initialDelay: 1000,
   }),
+
+  /** Parse Spreadsheet (Excel/CSV/Google Sheets) */
+  parseSpreadsheet: createResilientCaller('parse-spreadsheet', {
+    maxRetries: 2,
+    timeout: 60000,
+    initialDelay: 1000,
+  }),
 };
