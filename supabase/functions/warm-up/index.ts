@@ -12,13 +12,14 @@ const corsHeaders = {
 };
 
 // Functions to keep warm (ordered by priority)
+// EXCLUDED: parse-pdf, parse-docx, parse-spreadsheet - they require FormData uploads
 const FUNCTIONS_TO_WARM = [
   'health-check',
   'free-keyword-scan',
   'track-ab-event',
-  'parse-pdf',
-  'parse-docx',
   'analyze-resume',
+  'create-checkout',
+  'create-product-checkout',
 ];
 
 const WARM_TIMEOUT = 8000; // 8 seconds max per function
