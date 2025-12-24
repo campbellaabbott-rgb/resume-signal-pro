@@ -128,8 +128,7 @@ Write something that sounds like this specific person wrote it - confident, spec
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        max_tokens: 4000,
-        temperature: 0.6,
+        max_completion_tokens: 4000,
       }),
     });
 

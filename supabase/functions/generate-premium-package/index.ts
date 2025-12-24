@@ -127,8 +127,7 @@ BEFORE YOU RESPOND: Count all jobs, education entries, and major bullet points i
           { role: "system", content: resumeSystemPrompt },
           { role: "user", content: resumeUserPrompt }
         ],
-        max_tokens: 12000,
-        temperature: 0.3,
+        max_completion_tokens: 12000,
       }),
     });
 
@@ -236,8 +235,7 @@ Write a cover letter that sounds like it was written by this specific person - c
           { role: "system", content: coverLetterSystemPrompt },
           { role: "user", content: coverLetterUserPrompt }
         ],
-        max_tokens: 4000,
-        temperature: 0.5,
+        max_completion_tokens: 4000,
       }),
     });
 
