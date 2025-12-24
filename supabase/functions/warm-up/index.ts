@@ -14,12 +14,28 @@ const corsHeaders = {
 // Functions to keep warm (ordered by priority)
 // EXCLUDED: parse-pdf, parse-docx, parse-spreadsheet - they require FormData uploads
 const FUNCTIONS_TO_WARM = [
+  // Critical user-facing functions
   'health-check',
   'free-keyword-scan',
-  'track-ab-event',
+  'free-keyword-scan-stream',
   'analyze-resume',
+  'track-ab-event',
+  // Payment functions
   'create-checkout',
   'create-product-checkout',
+  'create-scan-pack-checkout',
+  'stripe-webhook',
+  // AI generation functions (high cold-start impact)
+  'generate-cover-letter',
+  'generate-cover-letter-stream',
+  'generate-tailored-resume',
+  'generate-tailored-resume-stream',
+  'generate-ats-defense',
+  'generate-summary',
+  'generate-keyword-fix',
+  // Verification functions
+  'verify-product-purchase',
+  'verify-scan-pack-purchase',
 ];
 
 const WARM_TIMEOUT = 8000; // 8 seconds max per function
