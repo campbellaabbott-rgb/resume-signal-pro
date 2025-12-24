@@ -12,6 +12,7 @@ import Pricing from "./pages/Pricing";
 import Methodology from "./pages/Methodology";
 import DevCheckoutTest from "./pages/DevCheckoutTest";
 import Affiliates from "./pages/Affiliates";
+import AffiliateRedirect from "./pages/AffiliateRedirect";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import ErrorDashboard from "./pages/ErrorDashboard";
 import HealthCheck from "./pages/HealthCheck";
@@ -40,6 +41,7 @@ const App = () => (
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/methodology" element={<Methodology />} />
         <Route path="/affiliates" element={<Affiliates />} />
+        <Route path="/r/:code" element={<AffiliateRedirect />} />
         <Route path="/dev/checkout-test" element={<DevCheckoutTest />} />
         <Route path="/analytics" element={<AnalyticsDashboard />} />
         <Route path="/errors" element={<ErrorDashboard />} />
