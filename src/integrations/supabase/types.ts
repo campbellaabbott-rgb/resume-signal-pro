@@ -954,6 +954,17 @@ export type Database = {
           total_revenue: number
         }[]
       }
+      get_ai_generation_metrics_hourly: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          avg_duration_ms: number
+          failed_generations: number
+          hour_bucket: string
+          success_rate: number
+          successful_generations: number
+          total_generations: number
+        }[]
+      }
       get_ai_quality_stats: {
         Args: { p_hours_back?: number }
         Returns: {
@@ -1009,6 +1020,16 @@ export type Database = {
         Returns: {
           failed_emails: number
           recent_emails: Json
+          success_rate: number
+          successful_emails: number
+          total_emails: number
+        }[]
+      }
+      get_email_metrics_hourly: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          failed_emails: number
+          hour_bucket: string
           success_rate: number
           successful_emails: number
           total_emails: number
@@ -1198,6 +1219,17 @@ export type Database = {
           recent_failures: Json
           success_rate: number
           total_received: number
+        }[]
+      }
+      get_webhook_metrics_hourly: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          avg_processing_time_ms: number
+          failed_webhooks: number
+          hour_bucket: string
+          success_rate: number
+          successful_webhooks: number
+          total_webhooks: number
         }[]
       }
       increment_free_scan_count: { Args: never; Returns: undefined }
