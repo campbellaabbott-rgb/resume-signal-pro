@@ -40,6 +40,17 @@ const FUNCTIONS_TO_WARM = [
 
 const WARM_TIMEOUT = 8000; // 8 seconds max per function
 
+const BATCH_SIZE = 5; // Process 5 functions at a time to avoid resource contention
+
+// Helper to chunk array into batches
+function chunkArray<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
+}
+
 interface WarmResult {
   function: string;
   status: 'warm' | 'cold' | 'error';
@@ -116,10 +127,19 @@ serve(async (req) => {
     // Use anon key for function invocation (same as client would)
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Warm functions in parallel for efficiency
-    const results = await Promise.all(
-      FUNCTIONS_TO_WARM.map(fn => warmFunction(supabase, fn))
-    );
+    // Warm functions in batches to avoid resource contention
+    const batches = chunkArray(FUNCTIONS_TO_WARM, BATCH_SIZE);
+    const results: WarmResult[] = [];
+    
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+      console.log(`[WARM-UP] Processing batch ${i + 1}/${batches.length}: ${batch.join(', ')}`);
+      
+      const batchResults = await Promise.all(
+        batch.map(fn => warmFunction(supabase, fn))
+      );
+      results.push(...batchResults);
+    }
 
     const duration = Date.now() - startTime;
     const warmCount = results.filter(r => r.status === 'warm').length;
