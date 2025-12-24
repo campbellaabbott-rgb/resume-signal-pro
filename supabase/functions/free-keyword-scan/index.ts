@@ -53,6 +53,55 @@ function logScanMetric(
   );
 }
 
+// Valid industries list
+const VALID_INDUSTRIES = [
+  'technology', 'healthcare', 'finance', 'legal', 'sales', 
+  'marketing', 'education', 'engineering', 'creative', 'hr', 
+  'consulting', 'retail', 'hospitality', 'manufacturing', 
+  'government', 'general'
+];
+
+// Industry aliases for normalization
+const INDUSTRY_ALIASES: Record<string, string> = {
+  'tech': 'technology', 'software': 'technology', 'it': 'technology',
+  'software development': 'technology', 'information technology': 'technology',
+  'medical': 'healthcare', 'health': 'healthcare', 'medicine': 'healthcare',
+  'nursing': 'healthcare', 'pharmaceutical': 'healthcare',
+  'law': 'legal', 'attorney': 'legal', 'lawyer': 'legal',
+  'banking': 'finance', 'accounting': 'finance', 'financial services': 'finance',
+  'advertising': 'marketing', 'pr': 'marketing', 'public relations': 'marketing',
+  'teaching': 'education', 'academia': 'education', 'academic': 'education',
+  'design': 'creative', 'art': 'creative', 'media': 'creative',
+  'human resources': 'hr', 'recruitment': 'hr', 'talent': 'hr',
+  'management consulting': 'consulting', 'strategy': 'consulting',
+  'ecommerce': 'retail', 'e-commerce': 'retail',
+  'hotel': 'hospitality', 'restaurant': 'hospitality', 'tourism': 'hospitality',
+  'production': 'manufacturing', 'factory': 'manufacturing',
+  'public sector': 'government', 'federal': 'government', 'state': 'government'
+};
+
+// Normalize industry to valid value
+function normalizeIndustry(raw: string | undefined | null): string {
+  if (!raw) return 'general';
+  const normalized = raw.toLowerCase().trim();
+  
+  // Direct match
+  if (VALID_INDUSTRIES.includes(normalized)) return normalized;
+  
+  // Check aliases
+  if (INDUSTRY_ALIASES[normalized]) return INDUSTRY_ALIASES[normalized];
+  
+  // Partial match check
+  for (const [alias, industry] of Object.entries(INDUSTRY_ALIASES)) {
+    if (normalized.includes(alias) || alias.includes(normalized)) {
+      return industry;
+    }
+  }
+  
+  // Fallback
+  return 'general';
+}
+
 // Validate AI response structure
 function validateAIResponse(analysis: any): { valid: boolean; issues: string[] } {
   const issues: string[] = [];
@@ -1259,6 +1308,13 @@ ${resumeText.substring(0, 15000)}
         outputValid: false,
         metadata: { issues: validation.issues }
       });
+    }
+
+    // Normalize industry to valid value
+    const rawIndustry = analysis.industry;
+    analysis.industry = normalizeIndustry(rawIndustry);
+    if (rawIndustry !== analysis.industry) {
+      console.log(`[FREE-KEYWORD-SCAN] Industry normalized: "${rawIndustry}" -> "${analysis.industry}"`);
     }
 
     // Ensure limits
