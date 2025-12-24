@@ -238,40 +238,42 @@ export function HealthTrendChart({ className }: HealthTrendChartProps) {
           <div className="space-y-4">
             {/* Scan volume chart */}
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2">Volume</p>
-              <ResponsiveContainer width="100%" height={120}>
-                <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <p className="text-sm font-medium text-foreground mb-3">Volume</p>
+              <ResponsiveContainer width="100%" height={140}>
+                <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
                   <defs>
                     <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.6}/>
+                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0.1}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
                   <XAxis 
                     dataKey="hour_bucket" 
                     tickFormatter={formatXAxis}
-                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                    axisLine={false}
-                    tickLine={false}
-                    interval={timeRange === '24h' ? 5 : 'preserveStartEnd'}
+                    tick={{ fontSize: 11, fill: '#a1a1aa' }}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                    tickLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                    interval={timeRange === '24h' ? 4 : 'preserveStartEnd'}
+                    dy={5}
                   />
                   <YAxis 
-                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                    axisLine={false}
+                    tick={{ fontSize: 11, fill: '#a1a1aa' }}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
                     tickLine={false}
-                    width={30}
+                    width={35}
+                    allowDecimals={false}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Area 
                     type="monotone"
                     dataKey="completed_scans" 
                     name="Completed" 
-                    stroke="hsl(var(--chart-1))"
-                    strokeWidth={2}
+                    stroke="#22c55e"
+                    strokeWidth={2.5}
                     fill="url(#colorCompleted)"
                     dot={false}
-                    activeDot={{ r: 4, strokeWidth: 0 }}
+                    activeDot={{ r: 5, strokeWidth: 2, stroke: '#22c55e', fill: '#1a1a1a' }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -279,29 +281,30 @@ export function HealthTrendChart({ className }: HealthTrendChartProps) {
 
             {/* Latency chart */}
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2">Response Time</p>
-              <ResponsiveContainer width="100%" height={80}>
-                <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <p className="text-sm font-medium text-foreground mb-3">Response Time</p>
+              <ResponsiveContainer width="100%" height={100}>
+                <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
                   <defs>
                     <linearGradient id="colorLatency" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.5}/>
+                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.1}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
                   <XAxis 
                     dataKey="hour_bucket" 
                     tickFormatter={formatXAxis}
-                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                    axisLine={false}
-                    tickLine={false}
-                    interval={timeRange === '24h' ? 5 : 'preserveStartEnd'}
+                    tick={{ fontSize: 11, fill: '#a1a1aa' }}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                    tickLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                    interval={timeRange === '24h' ? 4 : 'preserveStartEnd'}
+                    dy={5}
                   />
                   <YAxis 
-                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                    axisLine={false}
+                    tick={{ fontSize: 11, fill: '#a1a1aa' }}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
                     tickLine={false}
-                    width={30}
+                    width={40}
                     tickFormatter={(v) => `${(v/1000).toFixed(0)}s`}
                   />
                   <Tooltip content={<CustomTooltip />} />
@@ -309,11 +312,11 @@ export function HealthTrendChart({ className }: HealthTrendChartProps) {
                     type="monotone" 
                     dataKey="avg_duration_ms" 
                     name="Latency"
-                    stroke="hsl(var(--chart-2))" 
-                    strokeWidth={2}
+                    stroke="#f59e0b" 
+                    strokeWidth={2.5}
                     fill="url(#colorLatency)"
                     dot={false}
-                    activeDot={{ r: 4, strokeWidth: 0 }}
+                    activeDot={{ r: 5, strokeWidth: 2, stroke: '#f59e0b', fill: '#1a1a1a' }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
