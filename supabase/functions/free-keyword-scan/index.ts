@@ -652,26 +652,22 @@ Apply the appropriate weights when calculating the ATS score. Mention in industr
 9. Quantification Score (0-100): % of bullet points that include numbers/metrics
 10. Action Verb Grade (A-D): Quality and variety of action verbs used
 11. Red Flags: 3 specific issues with EVIDENCE-BACKED explanations:
-    - MUST include: feedbackSource ("ats" or "recruiter"), confidence ("high", "medium", "low")
-    - For "ats" issues: Focus on parsing, keyword matching, format compatibility
-    - For "recruiter" issues: Focus on human interpretation, experience gaps, story clarity
-    - Always explain WHY this matters (not just "best practice")
+    - In the "issue" field: Prefix with [ATS] or [Recruiter] to indicate feedback source, and include confidence hint
+    - Example issue: "[ATS - High confidence] Missing exact 'Python' keyword despite evident programming experience"
+    - Example issue: "[Recruiter - Medium confidence] Summary lacks quantified achievements that catch attention"
+    - Always explain WHY this matters in the "impact" field
     - Adjust severity based on seniority level (senior candidates get less penalty for assumed skills)
-12. Industry-Specific Keywords: Generate 6 keywords with SKILL DETECTION:
+12. Industry-Specific Keywords: Generate 6 keywords:
     - FIRST check if skill is IMPLICIT (demonstrated through related experience) or truly ABSENT
-    - For implicit skills: detectionType = "implicit", suggest adding explicit keyword
-    - For absent skills: detectionType = "absent", explain why it matters
-    - NEVER label implicitly demonstrated skills as "critical" - use "medium" instead
-    - Include: confidence level, feedbackSource ("ats" or "recruiter")
-    - For TECHNOLOGY: Programming languages, frameworks, cloud platforms, methodologies
-    - For HEALTHCARE: Certifications, EMR systems, compliance keywords
-    - For FINANCE: Regulations, software, certifications, financial modeling
-    - For LEGAL: Practice areas, research tools, bar admissions
-    - For SALES/MARKETING: CRM tools, analytics, campaign types
-    - For EDUCATION: Curriculum standards, LMS, certifications
-    - For ENGINEERING: CAD software, standards, technical certs
-    - For CREATIVE: Design tools, portfolio platforms
-    Each keyword should have: category, impact, detectionType, confidence, feedbackSource
+    - In "reason" field: Indicate if implicit vs absent, e.g., "Implicit from Salesforce experience - add explicit mention for ATS"
+    - NEVER suggest implicitly demonstrated skills as "critical" - they're "medium" impact
+    - In "reason" field: Include source hint, e.g., "(ATS note)" or "(Recruiter perspective)"
+    - Tailor keywords by industry:
+      * TECHNOLOGY: Programming languages, frameworks, cloud platforms
+      * HEALTHCARE: Certifications, EMR systems, compliance
+      * FINANCE: Regulations, software, certifications
+      * SALES/MARKETING: CRM tools, analytics, methodologies
+    Each keyword should have: keyword, reason, category (tool/skill/cert/method), impact (high/medium)
 13. Industry Detection (CRITICAL - THIS IS THE MOST IMPORTANT STEP):
     **STOP AND READ THE RESUME CAREFULLY BEFORE DETECTING INDUSTRY**
     
