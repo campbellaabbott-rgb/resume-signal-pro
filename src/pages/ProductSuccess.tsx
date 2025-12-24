@@ -44,6 +44,7 @@ import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { AIGenerationProgress } from "@/components/AIGenerationProgress";
 import { useStreamingGeneration } from "@/hooks/use-streaming-generation";
 import { StreamingContentDisplay } from "@/components/StreamingContentDisplay";
+import { autoFixContent } from "@/lib/content-autofix";
 
 // Map product keys to icons
 const productIcons: Record<string, React.ElementType> = {
@@ -453,6 +454,16 @@ export default function ProductSuccess() {
               // Ignore JSON parse errors
             }
           }
+        }
+      }
+
+      // Apply auto-fix to the complete content before marking as complete
+      if (fullContent) {
+        const originalResume = resumeText || undefined;
+        const { fixed, corrections } = autoFixContent(fullContent, originalResume);
+        if (corrections.length > 0) {
+          console.log(`[ProductSuccess] Applied ${corrections.length} auto-fixes to streamed content`);
+          setStreamingContent(fixed);
         }
       }
 
