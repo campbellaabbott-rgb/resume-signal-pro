@@ -10,6 +10,7 @@ import { HealthTrendChart } from '@/components/dashboard/HealthTrendChart';
 import { EmailTrendChart } from '@/components/dashboard/EmailTrendChart';
 import { WebhookTrendChart } from '@/components/dashboard/WebhookTrendChart';
 import { AIGenerationTrendChart } from '@/components/dashboard/AIGenerationTrendChart';
+import { UserHealthTable } from '@/components/dashboard/UserHealthTable';
 
 interface CheckResult {
   status: 'ok' | 'slow' | 'error';
@@ -1584,6 +1585,11 @@ export default function HealthCheck() {
             )}
           </CardContent>
         </Card>
+
+        {/* User Health Monitor */}
+        <div className="mb-6">
+          <UserHealthTable />
+        </div>
 
         <div className="grid md:grid-cols-2 gap-6 mb-6">
           {/* Uptime History */}
