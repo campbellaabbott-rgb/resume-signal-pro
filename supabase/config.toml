@@ -107,3 +107,6 @@ verify_jwt = false
 
 [functions.admin-regenerate-delivery]
 verify_jwt = false
+
+[functions.test-ai-fallback]
+verify_jwt = false
