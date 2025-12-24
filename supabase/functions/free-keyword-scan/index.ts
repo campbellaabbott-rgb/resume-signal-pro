@@ -497,6 +497,13 @@ CRITICAL LANGUAGE HANDLING:
 - sampleRewrite: Use an ACTUAL bullet from their resume and show the transformation
 - keywords: Suggest keywords that make sense for THEIR specific background and target roles
 - careerSituationAdvice: Speak directly to their situation with empathy and actionable steps
+- personalizedCareerInsights: This is where you REALLY shine:
+  * suggestedHeadline: Create a compelling headline USING THEIR NAME and their strongest positioning
+  * nextRoleSuggestions: Suggest realistic next roles based on THEIR specific trajectory - not generic advice
+  * uniqueValue: What makes THIS person unique? Reference their specific achievements
+  * interviewTalkingPoints: Pick their BEST stories from the resume and show how to frame them
+  * salaryInsight: Give realistic salary ranges based on their industry/level/location signals
+  * personalizedEncouragement: Write something heartfelt that shows you actually READ their resume
 
 ANALYSIS RULES:
 1. ATS Score (0-100): Calculate using INDUSTRY-SPECIFIC WEIGHTS below. First detect industry, then apply appropriate weights.
@@ -1096,6 +1103,72 @@ ${resumeText.substring(0, 15000)}
                     templateSuggestion: { type: "string", description: "Brief description of ideal template style for them (under 20 words)" }
                   },
                   required: ["recommendedStyle", "layoutAdvice", "industryNorms", "avoidList", "currentFormatAssessment", "templateSuggestion"]
+                },
+                personalizedCareerInsights: {
+                  type: "object",
+                  properties: {
+                    suggestedHeadline: { 
+                      type: "string", 
+                      description: "A compelling professional headline for LinkedIn/resume header using their name and strongest positioning (e.g., 'Sarah Chen | Senior Product Manager | AI & Growth Expert')" 
+                    },
+                    nextRoleSuggestions: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          title: { type: "string", description: "Suggested next job title" },
+                          fit: { type: "string", enum: ["natural_progression", "lateral_move", "stretch_goal"], description: "How this fits their trajectory" },
+                          gapToClose: { type: "string", description: "One skill/experience gap to close for this role (under 15 words)" }
+                        },
+                        required: ["title", "fit", "gapToClose"]
+                      },
+                      description: "3 potential next roles based on their experience trajectory"
+                    },
+                    uniqueValue: { 
+                      type: "string", 
+                      description: "Their unique value proposition in one sentence - what makes THEM stand out (reference specific experience)" 
+                    },
+                    interviewTalkingPoints: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          achievement: { type: "string", description: "A specific achievement from their resume to highlight" },
+                          storyAngle: { type: "string", description: "How to frame this as a compelling interview story (under 20 words)" }
+                        },
+                        required: ["achievement", "storyAngle"]
+                      },
+                      description: "3 strongest achievements from their resume to prepare as interview stories"
+                    },
+                    hiddenStrengths: {
+                      type: "array",
+                      items: { type: "string" },
+                      description: "2-3 skills or experiences they're underselling on their resume"
+                    },
+                    personalBrand: {
+                      type: "object",
+                      properties: {
+                        currentBrand: { type: "string", description: "What their resume currently says about them (under 15 words)" },
+                        idealBrand: { type: "string", description: "What they should be known for based on their experience (under 15 words)" },
+                        brandGap: { type: "string", description: "What's missing to achieve ideal brand (under 15 words)" }
+                      },
+                      required: ["currentBrand", "idealBrand", "brandGap"]
+                    },
+                    salaryInsight: {
+                      type: "object",
+                      properties: {
+                        estimatedRange: { type: "string", description: "Estimated salary range for their level/industry (e.g., '$120K-$150K' or '€70K-€90K')" },
+                        marketPosition: { type: "string", enum: ["below_market", "at_market", "above_market"], description: "Where they likely fall based on resume strength" },
+                        leveragePoints: { type: "array", items: { type: "string" }, description: "2-3 specific things on their resume that justify higher compensation" }
+                      },
+                      required: ["estimatedRange", "marketPosition", "leveragePoints"]
+                    },
+                    personalizedEncouragement: { 
+                      type: "string", 
+                      description: "A warm, personalized message using their name that acknowledges their journey and motivates them (2-3 sentences)" 
+                    }
+                  },
+                  required: ["suggestedHeadline", "nextRoleSuggestions", "uniqueValue", "interviewTalkingPoints", "hiddenStrengths", "personalBrand", "salaryInsight", "personalizedEncouragement"]
                 }
               },
               required: [
@@ -1106,7 +1179,7 @@ ${resumeText.substring(0, 15000)}
                 "keywordDensity", "improvementPotential", "topSkipReasons",
                 "powerWords", "weakPhrases", "timelineAnalysis", "industryBenchmark",
                 "quickWins", "sampleRewrite", "atsSystemCompatibility", "careerSituation",
-                "formatRecommendation"
+                "formatRecommendation", "personalizedCareerInsights"
               ]
             }
           }
