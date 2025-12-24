@@ -394,29 +394,27 @@ Focus on: ATS score (0-100), industry detection, format grade (A-D), experience 
             type: "function",
             function: {
               name: "submit_analysis",
-              description: "Submit resume analysis results",
+              description: "Submit resume analysis",
               parameters: {
                 type: "object",
                 properties: {
                   detectedLanguage: {
                     type: "object",
-                    description: "The detected language of the resume",
                     properties: {
-                      code: { type: "string", description: "ISO 639-1 language code (e.g., 'en', 'es', 'de', 'pt', 'fr')" },
-                      name: { type: "string", description: "Language name in English (e.g., 'English', 'Spanish', 'German')" },
-                      region: { type: "string", description: "Target job market region (e.g., 'US/UK', 'LATAM/Spain', 'DACH', 'Brazil/Portugal')" }
+                      code: { type: "string" },
+                      name: { type: "string" }
                     }
                   },
                   candidateName: { type: "string" },
                   industry: { type: "string" },
                   currentRole: { type: "string" },
                   atsScoreEstimate: { type: "number" },
-                  formatGrade: { type: "string", enum: ["A", "B", "C", "D"] },
-                  formatIssue: { type: "string", description: "Description in the resume's language" },
+                  formatGrade: { type: "string" },
+                  formatIssue: { type: "string" },
                   experienceLevel: {
                     type: "object",
                     properties: {
-                      level: { type: "string", enum: ["entry", "mid", "senior", "executive"] },
+                      level: { type: "string" },
                       yearsEstimate: { type: "string" }
                     }
                   },
@@ -427,15 +425,14 @@ Focus on: ATS score (0-100), industry detection, format grade (A-D), experience 
                       hasSummary: { type: "boolean" },
                       hasExperience: { type: "boolean" },
                       hasEducation: { type: "boolean" },
-                      hasSkills: { type: "boolean" },
-                      missingSections: { type: "array", items: { type: "string" }, description: "Section names in the resume's language" }
+                      hasSkills: { type: "boolean" }
                     }
                   },
                   topStrength: {
                     type: "object",
                     properties: {
-                      title: { type: "string", description: "In the resume's language" },
-                      description: { type: "string", description: "In the resume's language" }
+                      title: { type: "string" },
+                      description: { type: "string" }
                     }
                   },
                   redFlags: {
@@ -463,18 +460,18 @@ Focus on: ATS score (0-100), industry detection, format grade (A-D), experience 
                     items: {
                       type: "object",
                       properties: {
-                        fix: { type: "string", description: "In the resume's language" },
+                        fix: { type: "string" },
                         timeEstimate: { type: "string" },
-                        impact: { type: "string", enum: ["low", "medium", "high"] }
+                        impact: { type: "string" }
                       }
                     }
                   },
                   improvementPotential: {
                     type: "object",
                     properties: {
-                      level: { type: "string", enum: ["low", "medium", "high"] },
+                      level: { type: "string" },
                       estimatedScoreIncrease: { type: "number" },
-                      topPriority: { type: "string", description: "In the resume's language" }
+                      topPriority: { type: "string" }
                     }
                   }
                 },
