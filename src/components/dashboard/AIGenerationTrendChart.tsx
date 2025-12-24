@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Zap, RefreshCw } from 'lucide-react';
+import { Sparkles, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   ResponsiveContainer,
@@ -11,7 +11,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from 'recharts';
 
 interface HourlyMetric {
@@ -64,7 +63,7 @@ export function AIGenerationTrendChart({ className }: AIGenerationTrendChartProp
   const totalFailed = data.reduce((sum, d) => sum + d.failed_generations, 0);
   const avgSuccessRate = totalGenerations > 0 
     ? ((totalGenerations - totalFailed) / totalGenerations * 100).toFixed(1) 
-    : '0.0';
+    : '100.0';
   const avgDuration = data.length > 0
     ? Math.round(data.reduce((sum, d) => sum + (d.avg_duration_ms || 0), 0) / data.length)
     : 0;
@@ -72,25 +71,29 @@ export function AIGenerationTrendChart({ className }: AIGenerationTrendChartProp
   const formatXAxis = (value: string) => {
     const date = new Date(value);
     if (timeRange === '24h') {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleTimeString([], { hour: 'numeric' });
     }
-    return date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+    return date.toLocaleDateString([], { weekday: 'short' });
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload || !payload.length) return null;
     const date = new Date(label);
+    const timeStr = timeRange === '24h' 
+      ? date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+      : date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+    
     return (
-      <div className="bg-popover border border-border rounded-lg shadow-lg p-3 text-sm">
-        <p className="font-medium mb-2">{date.toLocaleString()}</p>
+      <div className="bg-background/95 backdrop-blur border border-border rounded-lg shadow-xl p-3 min-w-[120px]">
+        <p className="text-xs text-muted-foreground mb-2">{timeStr}</p>
         {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center justify-between gap-4">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-              {entry.name}
+          <div key={index} className="flex items-center justify-between gap-3 text-sm">
+            <span className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+              <span className="text-muted-foreground">{entry.name}</span>
             </span>
-            <span className="font-mono">
-              {entry.name.includes('Duration') ? `${Math.round(entry.value)}ms` : entry.value}
+            <span className="font-semibold tabular-nums">
+              {entry.name.includes('Duration') ? `${(entry.value/1000).toFixed(1)}s` : entry.value}
             </span>
           </div>
         ))}
@@ -100,19 +103,19 @@ export function AIGenerationTrendChart({ className }: AIGenerationTrendChartProp
 
   return (
     <Card className={className}>
-      <CardHeader>
+      <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5" />
-            AI Generation Trends
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <Sparkles className="h-4 w-4 text-amber-500" />
+            AI Generation
           </CardTitle>
           
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-lg border border-border overflow-hidden">
+          <div className="flex items-center gap-1">
+            <div className="flex rounded-md border border-border overflow-hidden">
               <Button
                 variant={timeRange === '24h' ? 'secondary' : 'ghost'}
                 size="sm"
-                className="h-7 px-3 rounded-none"
+                className="h-6 px-2 text-xs rounded-none"
                 onClick={() => setTimeRange('24h')}
               >
                 24h
@@ -120,75 +123,85 @@ export function AIGenerationTrendChart({ className }: AIGenerationTrendChartProp
               <Button
                 variant={timeRange === '7d' ? 'secondary' : 'ghost'}
                 size="sm"
-                className="h-7 px-3 rounded-none"
+                className="h-6 px-2 text-xs rounded-none"
                 onClick={() => setTimeRange('7d')}
               >
                 7d
               </Button>
             </div>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchData} disabled={loading}>
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={fetchData} disabled={loading}>
+              <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </div>
       </CardHeader>
       
-      <CardContent>
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          <div className="text-center p-3 rounded-lg bg-muted/50">
-            <p className="text-2xl font-bold">{totalGenerations}</p>
-            <p className="text-xs text-muted-foreground">Generations</p>
+      <CardContent className="pt-0">
+        {/* Stats row */}
+        <div className="flex items-center justify-between gap-2 mb-3 py-2 border-b border-border/50">
+          <div className="flex items-center gap-4">
+            <div>
+              <p className="text-xl font-bold tabular-nums">{totalGenerations}</p>
+              <p className="text-[10px] text-muted-foreground uppercase">Generated</p>
+            </div>
+            <div>
+              <p className={`text-xl font-bold tabular-nums ${parseFloat(avgSuccessRate) >= 95 ? 'text-green-500' : 'text-yellow-500'}`}>
+                {avgSuccessRate}%
+              </p>
+              <p className="text-[10px] text-muted-foreground uppercase">Success</p>
+            </div>
           </div>
-          <div className="text-center p-3 rounded-lg bg-muted/50">
-            <p className={`text-2xl font-bold ${parseFloat(avgSuccessRate) >= 95 ? 'text-green-500' : 'text-yellow-500'}`}>
-              {avgSuccessRate}%
-            </p>
-            <p className="text-xs text-muted-foreground">Success Rate</p>
-          </div>
-          <div className="text-center p-3 rounded-lg bg-muted/50">
-            <p className="text-2xl font-bold">{avgDuration}ms</p>
-            <p className="text-xs text-muted-foreground">Avg Duration</p>
-          </div>
-          <div className="text-center p-3 rounded-lg bg-muted/50">
-            <p className={`text-2xl font-bold ${totalFailed === 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {totalFailed}
-            </p>
-            <p className="text-xs text-muted-foreground">Failed</p>
+          <div className="text-right">
+            <p className="text-xl font-bold tabular-nums">{(avgDuration/1000).toFixed(1)}s</p>
+            <p className="text-[10px] text-muted-foreground uppercase">Avg Time</p>
           </div>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="flex items-center justify-center py-8">
+            <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
           </div>
         ) : data.length > 0 ? (
-          <div className="space-y-4">
-            <ResponsiveContainer width="100%" height={140}>
-              <AreaChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="hour_bucket" tickFormatter={formatXAxis} tick={{ fontSize: 11 }} interval={timeRange === '24h' ? 3 : 23} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-                <Area type="monotone" dataKey="successful_generations" name="Success" stroke="hsl(var(--chart-1))" fill="hsl(var(--chart-1))" fillOpacity={0.3} />
-                <Area type="monotone" dataKey="failed_generations" name="Failed" stroke="hsl(var(--destructive))" fill="hsl(var(--destructive))" fillOpacity={0.3} />
-              </AreaChart>
-            </ResponsiveContainer>
-            
-            <ResponsiveContainer width="100%" height={100}>
-              <AreaChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="hour_bucket" tickFormatter={formatXAxis} tick={{ fontSize: 11 }} interval={timeRange === '24h' ? 3 : 23} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="avg_duration_ms" name="Avg Duration" stroke="hsl(var(--chart-2))" fill="hsl(var(--chart-2))" fillOpacity={0.2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          <ResponsiveContainer width="100%" height={100}>
+            <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorAI" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+              <XAxis 
+                dataKey="hour_bucket" 
+                tickFormatter={formatXAxis} 
+                tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+                interval={timeRange === '24h' ? 5 : 'preserveStartEnd'}
+              />
+              <YAxis 
+                tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+                width={25}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Area 
+                type="monotone" 
+                dataKey="successful_generations" 
+                name="Success" 
+                stroke="hsl(var(--chart-4))" 
+                strokeWidth={2}
+                fill="url(#colorAI)"
+                dot={false}
+                activeDot={{ r: 3, strokeWidth: 0 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         ) : (
-          <div className="text-center py-12 text-muted-foreground">
-            <Zap className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>No AI generation data for this period</p>
+          <div className="text-center py-8 text-muted-foreground">
+            <Sparkles className="h-6 w-6 mx-auto mb-2 opacity-40" />
+            <p className="text-xs">No AI generations</p>
           </div>
         )}
       </CardContent>
