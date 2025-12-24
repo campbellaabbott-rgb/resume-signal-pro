@@ -7,6 +7,9 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getAllCircuitStates, resetServiceCircuit } from '@/hooks/use-circuit-breaker';
 import { HealthTrendChart } from '@/components/dashboard/HealthTrendChart';
+import { EmailTrendChart } from '@/components/dashboard/EmailTrendChart';
+import { WebhookTrendChart } from '@/components/dashboard/WebhookTrendChart';
+import { AIGenerationTrendChart } from '@/components/dashboard/AIGenerationTrendChart';
 
 interface CheckResult {
   status: 'ok' | 'slow' | 'error';
@@ -707,6 +710,13 @@ export default function HealthCheck() {
 
         {/* Scan Activity Trends */}
         <HealthTrendChart className="mb-6" />
+
+        {/* Additional Trend Charts */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
+          <EmailTrendChart />
+          <WebhookTrendChart />
+          <AIGenerationTrendChart />
+        </div>
 
         {/* Warm-Up Status */}
         <Card className="mb-6">
