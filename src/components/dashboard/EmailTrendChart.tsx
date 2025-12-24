@@ -158,39 +158,41 @@ export function EmailTrendChart({ className }: EmailTrendChartProps) {
             <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
           </div>
         ) : data.length > 0 ? (
-          <ResponsiveContainer width="100%" height={100}>
-            <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={120}>
+            <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
               <defs>
                 <linearGradient id="colorEmailSuccess" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.6}/>
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
               <XAxis 
                 dataKey="hour_bucket" 
                 tickFormatter={formatXAxis} 
-                tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} 
-                axisLine={false}
-                tickLine={false}
-                interval={timeRange === '24h' ? 5 : 'preserveStartEnd'}
+                tick={{ fontSize: 11, fill: '#a1a1aa' }} 
+                axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                tickLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                interval={timeRange === '24h' ? 4 : 'preserveStartEnd'}
+                dy={5}
               />
               <YAxis 
-                tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} 
-                axisLine={false}
+                tick={{ fontSize: 11, fill: '#a1a1aa' }} 
+                axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
                 tickLine={false}
-                width={25}
+                width={30}
+                allowDecimals={false}
               />
               <Tooltip content={<CustomTooltip />} />
               <Area 
                 type="monotone" 
                 dataKey="successful_emails" 
                 name="Sent" 
-                stroke="hsl(var(--chart-1))" 
-                strokeWidth={2}
+                stroke="#3b82f6" 
+                strokeWidth={2.5}
                 fill="url(#colorEmailSuccess)" 
                 dot={false}
-                activeDot={{ r: 3, strokeWidth: 0 }}
+                activeDot={{ r: 5, strokeWidth: 2, stroke: '#3b82f6', fill: '#1a1a1a' }}
               />
             </AreaChart>
           </ResponsiveContainer>
