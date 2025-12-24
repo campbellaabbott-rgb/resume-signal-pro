@@ -168,7 +168,7 @@ export function Hero() {
 
   return (
     <section 
-      className="relative py-10 sm:py-16 md:py-24 overflow-hidden" 
+      className="relative py-6 sm:py-10 md:py-16 overflow-hidden" 
       aria-labelledby="hero-heading"
     >
       {/* Background effects */}
@@ -181,15 +181,15 @@ export function Hero() {
         <div className="max-w-3xl mx-auto text-center">
           
           {/* IMMEDIATE SOCIAL PROOF - First thing users see */}
-          <div className="mb-6 animate-fade-in">
+          <div className="mb-4 animate-fade-in">
             <HeroStatsBar />
           </div>
 
           {/* VALUE-FIRST HEADLINE - Recruiter-Grade messaging */}
-          <div className="mb-8 animate-fade-in" style={{ animationDelay: "0.05s" }}>
+          <div className="mb-4 sm:mb-6 animate-fade-in" style={{ animationDelay: "0.05s" }}>
             <h1
               id="hero-heading"
-              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-5 leading-tight"
+              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-3 sm:mb-4 leading-tight"
             >
               {t('hero.headline.get', 'Get')}{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
@@ -198,12 +198,12 @@ export function Hero() {
               {t('hero.headline.feedback', 'Resume Feedback in 60 Seconds')}
             </h1>
             
-            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto mb-6 leading-relaxed">
+            <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl mx-auto mb-4 leading-relaxed">
               {t('hero.description', 'Upload your resume and get ATS-optimized rewrites, red-flag warnings, and keyword improvements — written the way hiring managers actually review resumes.')}
             </p>
 
-            {/* Key selling points with checkmarks */}
-            <div className="flex flex-col items-center gap-2.5 mb-6">
+            {/* Key selling points - compact on mobile */}
+            <div className="hidden sm:flex flex-col items-center gap-2 mb-4">
               <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
                 <Check className="w-4 h-4 text-success flex-shrink-0" />
                 <span>{t('hero.benefits.seniorRoles', 'Built for senior ICs, managers, and competitive roles')}</span>
@@ -222,45 +222,50 @@ export function Hero() {
               </div>
             </div>
 
-            {/* Animated preview of results */}
-            <div className="flex justify-center">
-              <AnimatedResultPreview />
+            {/* Mobile: Show only 2 key benefits inline */}
+            <div className="flex sm:hidden flex-wrap justify-center gap-x-4 gap-y-1 mb-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Check className="w-3 h-3 text-success" />
+                Works on all ATS
+              </span>
+              <span className="flex items-center gap-1">
+                <Check className="w-3 h-3 text-success" />
+                100% private
+              </span>
             </div>
           </div>
 
-          {/* BENEFIT CHIPS - Scannable value props */}
-          <div className="mb-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-            <BenefitChips />
+          {/* Animated preview + Benefit chips - compact */}
+          <div className="mb-4 animate-fade-in flex flex-col sm:flex-row items-center justify-center gap-3" style={{ animationDelay: "0.1s" }}>
+            <AnimatedResultPreview />
+            <div className="hidden sm:block">
+              <BenefitChips />
+            </div>
           </div>
 
-          {/* PRIMARY CTA - Large and unmissable */}
-          <div className="mb-6 animate-fade-in" style={{ animationDelay: "0.15s" }}>
+          {/* PRIMARY CTA - Large and unmissable - NOW HIGHER UP */}
+          <div className="mb-4 animate-fade-in" style={{ animationDelay: "0.15s" }}>
             <button
               onClick={handleFreeScanClick}
-              className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-10 py-5 sm:py-6 rounded-2xl bg-gradient-to-r from-success via-success to-emerald-500 text-success-foreground text-lg sm:text-xl font-bold shadow-xl shadow-success/30 hover:shadow-2xl hover:shadow-success/40 active:scale-[0.98] transition-all duration-300 min-h-[64px] touch-manipulation"
+              className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 sm:px-10 sm:py-5 rounded-2xl bg-gradient-to-r from-success via-success to-emerald-500 text-success-foreground text-base sm:text-lg md:text-xl font-bold shadow-xl shadow-success/30 hover:shadow-2xl hover:shadow-success/40 active:scale-[0.98] transition-all duration-300 min-h-[56px] sm:min-h-[64px] touch-manipulation"
             >
-              <Sparkles className="w-6 h-6 sm:w-7 sm:h-7" />
+              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
               <span>{t('hero.ctaButton', 'Check My Resume Now')}</span>
-              <div className="absolute -top-3 -right-2 sm:-right-3 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-bold shadow-lg animate-pulse">
+              <div className="absolute -top-2 -right-1 sm:-top-3 sm:-right-3 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-primary text-primary-foreground text-[10px] sm:text-xs font-bold shadow-lg animate-pulse">
                 {t('hero.freeBadge', 'FREE')}
               </div>
             </button>
             
-            {/* Trust indicators below CTA */}
-            <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-3 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <Check className="w-4 h-4 text-success" />
+            {/* Trust indicators below CTA - more compact */}
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Check className="w-3 h-3 sm:w-4 sm:h-4 text-success" />
                 {t('hero.noSignup', 'No sign-up required')}
               </span>
-              <span className="hidden sm:block w-1 h-1 rounded-full bg-muted-foreground/30" />
-              <span className="flex items-center gap-1.5">
-                <Check className="w-4 h-4 text-success" />
+              <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+              <span className="flex items-center gap-1">
+                <Check className="w-3 h-3 sm:w-4 sm:h-4 text-success" />
                 {t('hero.worksWithAny', 'Works with any resume')}
-              </span>
-              <span className="hidden sm:block w-1 h-1 rounded-full bg-muted-foreground/30" />
-              <span className="flex items-center gap-1.5">
-                <Check className="w-4 h-4 text-success" />
-                {t('hero.actionableFixes', 'Actionable fixes included')}
               </span>
             </div>
           </div>
