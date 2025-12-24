@@ -195,7 +195,7 @@ async function logRetryTelemetry(
  */
 export async function callEdgeFunctionWithRetry<T = unknown>(
   functionName: string,
-  payload: Record<string, unknown> = {},
+  payload: Record<string, unknown> | FormData = {},
   options: ResilientCallOptions = {}
 ): Promise<ResilientCallResult<T>> {
   const {
@@ -211,6 +211,9 @@ export async function callEdgeFunctionWithRetry<T = unknown>(
     enableCircuitBreaker = true,
     onCircuitOpen,
   } = options;
+
+  // Check if payload is FormData for file uploads
+  const isFormData = payload instanceof FormData;
 
   const startTime = Date.now();
 
@@ -254,7 +257,8 @@ export async function callEdgeFunctionWithRetry<T = unknown>(
       console.log(`[EdgeFunction] ${functionName} attempt ${attempts}/${maxRetries + 1}`);
 
       const { data, error } = await supabase.functions.invoke<T>(functionName, {
-        body: payload,
+        body: isFormData ? payload : payload,
+        // Don't set Content-Type for FormData - browser sets it with boundary
       });
 
       clearTimeout(timeoutId);
@@ -399,7 +403,7 @@ export function createResilientCaller<T = unknown>(
   defaultOptions: ResilientCallOptions = {}
 ) {
   return async (
-    payload: Record<string, unknown> = {},
+    payload: Record<string, unknown> | FormData = {},
     overrideOptions: ResilientCallOptions = {}
   ): Promise<ResilientCallResult<T>> => {
     return callEdgeFunctionWithRetry<T>(functionName, payload, {
