@@ -6,7 +6,7 @@ import {
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
-  TrendingUp, RefreshCw, Share2
+  TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket
 } from "lucide-react";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { PersonalizedInsights } from "./PersonalizedInsights";
@@ -547,6 +547,41 @@ interface IndustryScoreInsight {
   industryMustHaves: IndustryMustHave[];
 }
 
+// New personalized career insights interfaces
+interface NextRoleSuggestion {
+  title: string;
+  fit: "natural_progression" | "lateral_move" | "stretch_goal";
+  gapToClose: string;
+}
+
+interface InterviewTalkingPoint {
+  achievement: string;
+  storyAngle: string;
+}
+
+interface PersonalBrand {
+  currentBrand: string;
+  idealBrand: string;
+  brandGap: string;
+}
+
+interface SalaryInsight {
+  estimatedRange: string;
+  marketPosition: "below_market" | "at_market" | "above_market";
+  leveragePoints: string[];
+}
+
+interface PersonalizedCareerInsights {
+  suggestedHeadline: string;
+  nextRoleSuggestions: NextRoleSuggestion[];
+  uniqueValue: string;
+  interviewTalkingPoints: InterviewTalkingPoint[];
+  hiddenStrengths: string[];
+  personalBrand: PersonalBrand;
+  salaryInsight: SalaryInsight;
+  personalizedEncouragement: string;
+}
+
 interface FreeKeywordResultsProps {
   candidateName?: string | null;
   currentRole?: string;
@@ -594,6 +629,7 @@ interface FreeKeywordResultsProps {
   competitiveAssessment?: CompetitiveAssessment;
   careerSituation?: CareerSituation;
   formatRecommendation?: FormatRecommendation;
+  personalizedCareerInsights?: PersonalizedCareerInsights;
   onGenerateTailoredResume?: () => void;
   isGeneratingTailored?: boolean;
   // Deep job keyword matching props
@@ -652,6 +688,7 @@ export function FreeKeywordResults({
   competitiveAssessment,
   careerSituation,
   formatRecommendation,
+  personalizedCareerInsights,
   onGenerateTailoredResume,
   isGeneratingTailored,
   resumeText,
@@ -2110,6 +2147,191 @@ export function FreeKeywordResults({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Personalized Career Insights - NEW SECTION */}
+      {personalizedCareerInsights && (
+        <div className="rounded-2xl bg-gradient-to-br from-primary/5 via-card to-card border border-primary/20 p-5 mb-5 relative overflow-hidden">
+          {/* Decorative background */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.08),transparent_50%)] pointer-events-none" />
+          
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 rounded-xl bg-primary/10">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h4 className="font-bold text-lg">Your Personalized Career Insights</h4>
+                <p className="text-xs text-muted-foreground">Tailored just for {candidateName || 'you'}</p>
+              </div>
+            </div>
+
+            {/* Personalized Encouragement */}
+            {personalizedCareerInsights.personalizedEncouragement && (
+              <div className="p-4 rounded-xl bg-success/5 border border-success/20 mb-5">
+                <p className="text-sm text-foreground italic">
+                  "{personalizedCareerInsights.personalizedEncouragement}"
+                </p>
+              </div>
+            )}
+
+            {/* Suggested Headline */}
+            {personalizedCareerInsights.suggestedHeadline && (
+              <div className="mb-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Star className="w-4 h-4 text-primary" />
+                  <h5 className="font-semibold text-sm">Your Professional Headline</h5>
+                </div>
+                <div className="p-3 rounded-xl bg-muted/50 border border-border">
+                  <p className="font-medium text-foreground">{personalizedCareerInsights.suggestedHeadline}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Use this on LinkedIn and your resume header</p>
+                </div>
+              </div>
+            )}
+
+            {/* Unique Value Proposition */}
+            {personalizedCareerInsights.uniqueValue && (
+              <div className="mb-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-4 h-4 text-primary" />
+                  <h5 className="font-semibold text-sm">Your Unique Value</h5>
+                </div>
+                <p className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-xl">
+                  {personalizedCareerInsights.uniqueValue}
+                </p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Next Role Suggestions */}
+              {personalizedCareerInsights.nextRoleSuggestions?.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Rocket className="w-4 h-4 text-primary" />
+                    <h5 className="font-semibold text-sm">Your Next Career Moves</h5>
+                  </div>
+                  <div className="space-y-2">
+                    {personalizedCareerInsights.nextRoleSuggestions.map((role, index) => (
+                      <div key={index} className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-sm">{role.title}</span>
+                          <span className={cn(
+                            "text-xs px-2 py-0.5 rounded-full",
+                            role.fit === "natural_progression" ? "bg-success/20 text-success" :
+                            role.fit === "lateral_move" ? "bg-primary/20 text-primary" :
+                            "bg-warning/20 text-warning"
+                          )}>
+                            {role.fit === "natural_progression" ? "Natural next step" :
+                             role.fit === "lateral_move" ? "Lateral move" : "Stretch goal"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{role.gapToClose}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Interview Talking Points */}
+              {personalizedCareerInsights.interviewTalkingPoints?.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <MessageSquare className="w-4 h-4 text-primary" />
+                    <h5 className="font-semibold text-sm">Interview Story Ideas</h5>
+                  </div>
+                  <div className="space-y-2">
+                    {personalizedCareerInsights.interviewTalkingPoints.map((point, index) => (
+                      <div key={index} className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                        <p className="text-xs font-medium text-foreground mb-1">"{point.achievement}"</p>
+                        <p className="text-xs text-primary">💡 {point.storyAngle}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Salary Insight */}
+            {personalizedCareerInsights.salaryInsight && (
+              <div className="mt-5 p-4 rounded-xl bg-gradient-to-r from-success/5 to-primary/5 border border-success/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <DollarSign className="w-4 h-4 text-success" />
+                  <h5 className="font-semibold text-sm">Salary Insight</h5>
+                  <span className={cn(
+                    "text-xs px-2 py-0.5 rounded-full ml-auto",
+                    personalizedCareerInsights.salaryInsight.marketPosition === "above_market" ? "bg-success/20 text-success" :
+                    personalizedCareerInsights.salaryInsight.marketPosition === "at_market" ? "bg-primary/20 text-primary" :
+                    "bg-warning/20 text-warning"
+                  )}>
+                    {personalizedCareerInsights.salaryInsight.marketPosition === "above_market" ? "Above Market" :
+                     personalizedCareerInsights.salaryInsight.marketPosition === "at_market" ? "At Market" : "Below Market"}
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-2xl font-bold text-success">{personalizedCareerInsights.salaryInsight.estimatedRange}</span>
+                  <span className="text-xs text-muted-foreground">estimated range</span>
+                </div>
+                {personalizedCareerInsights.salaryInsight.leveragePoints?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Your negotiation leverage:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {personalizedCareerInsights.salaryInsight.leveragePoints.map((point, index) => (
+                        <span key={index} className="text-xs px-2 py-1 rounded-full bg-success/10 text-success">
+                          {point}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Hidden Strengths & Personal Brand */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+              {/* Hidden Strengths */}
+              {personalizedCareerInsights.hiddenStrengths?.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Lightbulb className="w-4 h-4 text-warning" />
+                    <h5 className="font-semibold text-sm">Hidden Strengths You're Underselling</h5>
+                  </div>
+                  <div className="space-y-1.5">
+                    {personalizedCareerInsights.hiddenStrengths.map((strength, index) => (
+                      <div key={index} className="flex items-center gap-2 text-sm">
+                        <span className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" />
+                        <span className="text-muted-foreground">{strength}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Personal Brand */}
+              {personalizedCareerInsights.personalBrand && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <User className="w-4 h-4 text-primary" />
+                    <h5 className="font-semibold text-sm">Your Personal Brand</h5>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs text-muted-foreground shrink-0 w-16">Current:</span>
+                      <span className="text-muted-foreground">{personalizedCareerInsights.personalBrand.currentBrand}</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs text-success shrink-0 w-16">Ideal:</span>
+                      <span className="text-success font-medium">{personalizedCareerInsights.personalBrand.idealBrand}</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs text-warning shrink-0 w-16">Gap:</span>
+                      <span className="text-warning">{personalizedCareerInsights.personalBrand.brandGap}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

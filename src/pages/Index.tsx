@@ -135,6 +135,16 @@ interface FreeKeywordResult {
     };
     templateSuggestion: string;
   };
+  personalizedCareerInsights?: {
+    suggestedHeadline: string;
+    nextRoleSuggestions: { title: string; fit: "natural_progression" | "lateral_move" | "stretch_goal"; gapToClose: string }[];
+    uniqueValue: string;
+    interviewTalkingPoints: { achievement: string; storyAngle: string }[];
+    hiddenStrengths: string[];
+    personalBrand: { currentBrand: string; idealBrand: string; brandGap: string };
+    salaryInsight: { estimatedRange: string; marketPosition: "below_market" | "at_market" | "above_market"; leveragePoints: string[] };
+    personalizedEncouragement: string;
+  };
 }
 
 const Index = () => {
@@ -1149,6 +1159,7 @@ const Index = () => {
                 competitiveAssessment={freeKeywordResult.competitiveAssessment}
                 careerSituation={freeKeywordResult.careerSituation}
                 formatRecommendation={freeKeywordResult.formatRecommendation}
+                personalizedCareerInsights={freeKeywordResult.personalizedCareerInsights}
                 onGetFullAnalysis={() => handleCheckout(resumeText, linkedInText, jobDescriptionText)}
                 onGetJobAnalysis={handleJobAnalysis}
                 onGenerateTailoredResume={handleGenerateTailoredResume}
