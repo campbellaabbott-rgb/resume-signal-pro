@@ -24,21 +24,34 @@ interface CheckResult {
   message?: string;
 }
 
-// Thresholds in ms (adjusted for cold connection overhead)
+// Thresholds in ms (relaxed for cold start scenarios)
 const THRESHOLDS = {
-  database: { ok: 500, slow: 1500 }, // Cold connections take 150-400ms typically
-  ai_gateway: { ok: 4000, slow: 8000 }, // AI requests take longer
-  stripe: { ok: 500, slow: 1500 },
+  database: { ok: 800, slow: 2000 },
+  ai_gateway: { ok: 3000, slow: 6000 },
+  stripe: { ok: 800, slow: 2000 },
 };
+
+// Cached Supabase client to avoid re-initialization
+let cachedSupabase: any = null;
+
+function getSupabaseClient() {
+  if (!cachedSupabase) {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (supabaseUrl && supabaseServiceKey) {
+      cachedSupabase = createClient(supabaseUrl, supabaseServiceKey);
+    }
+  }
+  return cachedSupabase;
+}
 
 async function checkDatabase(supabase: any): Promise<CheckResult> {
   const start = Date.now();
   try {
-    // Simple query to check DB connectivity
-    const { data, error } = await supabase
+    // Use count query which is faster than selecting data
+    const { count, error } = await supabase
       .from('daily_scan_stats')
-      .select('date')
-      .limit(1);
+      .select('*', { count: 'exact', head: true });
     
     const latency = Date.now() - start;
     
@@ -68,10 +81,10 @@ async function checkAIGateway(): Promise<CheckResult> {
   }
   
   try {
-    // Minimal chat completion request to verify gateway connectivity
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
     
+    // Use the fastest, cheapest model with minimal request
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -80,7 +93,7 @@ async function checkAIGateway(): Promise<CheckResult> {
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-lite",
-        messages: [{ role: "user", content: "ping" }],
+        messages: [{ role: "user", content: "1" }],
         max_tokens: 1,
       }),
       signal: controller.signal,
@@ -118,7 +131,7 @@ async function checkStripe(): Promise<CheckResult> {
   
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
     
     // Minimal Stripe API call to check connectivity
     const response = await fetch("https://api.stripe.com/v1/balance", {
@@ -132,14 +145,14 @@ async function checkStripe(): Promise<CheckResult> {
     clearTimeout(timeoutId);
     const latency = Date.now() - start;
     
-    if (!response.ok && response.status !== 401) {
-      return { status: 'error', latency_ms: latency, message: `HTTP ${response.status}` };
+    // Even 401 means Stripe is reachable
+    if (response.ok || response.status === 401) {
+      const status = latency <= THRESHOLDS.stripe.ok ? 'ok' : 
+                     latency <= THRESHOLDS.stripe.slow ? 'slow' : 'error';
+      return { status, latency_ms: latency };
     }
     
-    const status = latency <= THRESHOLDS.stripe.ok ? 'ok' : 
-                   latency <= THRESHOLDS.stripe.slow ? 'slow' : 'error';
-    
-    return { status, latency_ms: latency };
+    return { status: 'error', latency_ms: latency, message: `HTTP ${response.status}` };
   } catch (e) {
     const latency = Date.now() - start;
     const isTimeout = e instanceof Error && (e.name === 'AbortError' || e.message.includes('timeout'));
@@ -182,10 +195,9 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabase = getSupabaseClient();
     
-    if (!supabaseUrl || !supabaseServiceKey) {
+    if (!supabase) {
       return new Response(
         JSON.stringify({ 
           status: 'unhealthy', 
@@ -196,9 +208,7 @@ serve(async (req) => {
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Run all checks in parallel
+    // Run all checks in parallel - this is already optimal
     const [database, ai_gateway, stripe] = await Promise.all([
       checkDatabase(supabase),
       checkAIGateway(),
@@ -214,13 +224,12 @@ serve(async (req) => {
       timestamp: new Date().toISOString(),
       checks,
       response_time_ms: responseTime,
-      version: '1.0.0',
+      version: '1.1.0',
     };
 
     console.log(`[HEALTH-CHECK] ${overallStatus} | DB: ${database.latency_ms}ms | AI: ${ai_gateway.latency_ms}ms | Stripe: ${stripe.latency_ms}ms | Total: ${responseTime}ms`);
 
-    const httpStatus = overallStatus === 'unhealthy' ? 503 : 
-                       overallStatus === 'degraded' ? 200 : 200;
+    const httpStatus = overallStatus === 'unhealthy' ? 503 : 200;
 
     return new Response(JSON.stringify(result, null, 2), {
       status: httpStatus,
