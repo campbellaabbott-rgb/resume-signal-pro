@@ -22,7 +22,8 @@ import {
   TrendingUp,
   Lightbulb,
   RefreshCw,
-  ShieldCheck
+  ShieldCheck,
+  Brain
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -41,6 +42,8 @@ import { getResumeFromSession, hasResumeInSession } from "@/hooks/use-session-re
 import { ATSDefenseResults, type ATSDefenseData } from "@/components/ATSDefenseResults";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { AIGenerationProgress } from "@/components/AIGenerationProgress";
+import { useStreamingGeneration } from "@/hooks/use-streaming-generation";
+import { StreamingContentDisplay } from "@/components/StreamingContentDisplay";
 
 // Map product keys to icons
 const productIcons: Record<string, React.ElementType> = {
@@ -219,6 +222,12 @@ export default function ProductSuccess() {
   const [isRecoveringByEmail, setIsRecoveringByEmail] = useState(false);
   const [showEmailRecovery, setShowEmailRecovery] = useState(false);
   
+  // Streaming state for real-time content generation
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingContent, setStreamingContent] = useState("");
+  const [streamingError, setStreamingError] = useState<string | null>(null);
+  const [streamingComplete, setStreamingComplete] = useState(false);
+  
   const sessionId = searchParams.get("session_id");
   const productKey = searchParams.get("product") as ProductId | null;
   
@@ -338,6 +347,125 @@ export default function ProductSuccess() {
     }
   }, [productKey, sessionId, toast]);
 
+  // Streaming generation for premium package and cover letter
+  const startStreamingGeneration = useCallback(async (resumeText: string, jobDescription?: string) => {
+    if (!resumeText || resumeText.length < 50) {
+      toast({
+        title: "Resume too short",
+        description: "Please provide a complete resume with at least 50 characters.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsStreaming(true);
+    setStreamingContent("");
+    setStreamingError(null);
+    setStreamingComplete(false);
+
+    try {
+      let endpoint = '';
+      const body: Record<string, unknown> = { resumeText };
+      
+      if (productKey === 'coverLetter') {
+        endpoint = 'generate-cover-letter-stream';
+        body.jobTitle = 'Target Position';
+        body.tone = 'professional';
+        if (jobDescription) body.jobDescription = jobDescription;
+      } else if (productKey === 'premiumPackage') {
+        endpoint = 'generate-premium-package-stream';
+        body.jobTitle = 'Target Position';
+        if (jobDescription) body.jobDescription = jobDescription;
+      }
+
+      if (!endpoint) {
+        // Fall back to non-streaming for unsupported products
+        await regenerateContent(resumeText, jobDescription);
+        return;
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      
+      console.log(`[ProductSuccess] Starting streaming generation via ${endpoint}`);
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6).trim();
+            if (!jsonStr) continue;
+
+            try {
+              const event = JSON.parse(jsonStr);
+              
+              if (event.type === 'content' && event.content) {
+                fullContent += event.content;
+                setStreamingContent(fullContent);
+              } else if (event.type === 'complete' || event.type === 'done') {
+                setStreamingComplete(true);
+              } else if (event.type === 'error') {
+                throw new Error(event.message || 'Stream error');
+              }
+            } catch {
+              // Ignore JSON parse errors
+            }
+          }
+        }
+      }
+
+      setStreamingComplete(true);
+      setIsStreaming(false);
+      
+      // Track success
+      if (productKey && product) {
+        trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
+        trackFunnelPurchase(productKey, product.priceUsd, sessionId || undefined);
+        clearReferralCode();
+      }
+
+    } catch (error) {
+      console.error('[ProductSuccess] Streaming error:', error);
+      setStreamingError(error instanceof Error ? error.message : 'Unknown error');
+      setIsStreaming(false);
+      toast({
+        title: "Generation Error",
+        description: error instanceof Error ? error.message : 'Something went wrong',
+        variant: "destructive"
+      });
+    }
+  }, [productKey, product, sessionId, toast, regenerateContent, trackPurchaseCompleted, trackFunnelPurchase]);
+
   // Handle file upload for recovery
   const handleRecoveryFileUpload = useCallback(async (file: File) => {
     setRecoveryFile(file);
@@ -411,14 +539,20 @@ export default function ProductSuccess() {
         } else if (data?.generatedContent) {
           setGeneratedContent(data.generatedContent);
         } else if (!data?.generatedContent && (productKey === 'basicKeywordFix' || productKey === 'coverLetter' || productKey === 'premiumPackage')) {
-          // No content generated - try session storage recovery
-          console.log('[ProductSuccess] No content generated, attempting session recovery');
+          // No content generated - try session storage recovery with streaming
+          console.log('[ProductSuccess] No content generated, attempting session recovery with streaming');
           const recoveredText = await attemptSessionRecovery();
           if (recoveredText) {
-            // Auto-regenerate with recovered text
-            const success = await regenerateContent(recoveredText);
-            if (!success) {
-              setIsRecoveryMode(true);
+            // Use streaming for premium package and cover letter
+            if (productKey === 'premiumPackage' || productKey === 'coverLetter') {
+              setIsVerifying(false); // Stop showing verifying, will show streaming UI
+              startStreamingGeneration(recoveredText);
+            } else {
+              // Fall back to regular generation for keyword fix
+              const success = await regenerateContent(recoveredText);
+              if (!success) {
+                setIsRecoveryMode(true);
+              }
             }
           } else {
             setIsRecoveryMode(true);
@@ -473,7 +607,7 @@ export default function ProductSuccess() {
     }
 
     verifyAndGenerate();
-  }, [sessionId, productKey, product, trackPurchaseCompleted, attemptSessionRecovery, regenerateContent]);
+  }, [sessionId, productKey, product, trackPurchaseCompleted, attemptSessionRecovery, regenerateContent, startStreamingGeneration]);
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -493,6 +627,44 @@ export default function ProductSuccess() {
     productKey === 'premiumPackage' ||
     productKey === 'atsDefense'
   );
+
+  // Show streaming UI for real-time generation
+  if (isStreaming || (streamingContent && !streamingComplete && !generatedContent)) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="pt-24 pb-20">
+          <div className="container max-w-4xl">
+            {/* Streaming Header */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 mb-6">
+                <Brain className="w-10 h-10 text-primary animate-pulse" />
+              </div>
+              <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
+                <Sparkles className="w-3 h-3 mr-1" />
+                GPT-5 Generating Live
+              </Badge>
+              <h1 className="text-3xl font-bold mb-2">Watch Your Content Generate</h1>
+              <p className="text-muted-foreground">
+                Your {product?.name || 'content'} is being created in real-time
+              </p>
+            </div>
+
+            {/* Streaming Content Display */}
+            <StreamingContentDisplay
+              content={streamingContent}
+              isStreaming={isStreaming}
+              isComplete={streamingComplete}
+              error={streamingError}
+              title={`Generating ${product?.name || 'content'}...`}
+              subtitle="Watch your personalized content appear word by word"
+            />
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (isVerifying) {
     // Show AI generation progress for content products
@@ -1308,14 +1480,21 @@ export default function ProductSuccess() {
                       <Button 
                         size="lg" 
                         className="w-full gap-2"
-                        disabled={!recoveryResumeText || recoveryResumeText.length < 50 || isRegenerating}
-                        onClick={() => regenerateContent(
-                          recoveryResumeText, 
-                          recoveryJobDescription || undefined,
-                          isAtsDefense ? recoveryTargetRoles : undefined
-                        )}
+                        disabled={!recoveryResumeText || recoveryResumeText.length < 50 || isRegenerating || isStreaming}
+                        onClick={() => {
+                          // Use streaming for premium package and cover letter
+                          if (isPremiumPackage || isCoverLetter) {
+                            startStreamingGeneration(recoveryResumeText, recoveryJobDescription || undefined);
+                          } else {
+                            regenerateContent(
+                              recoveryResumeText, 
+                              recoveryJobDescription || undefined,
+                              isAtsDefense ? recoveryTargetRoles : undefined
+                            );
+                          }
+                        }}
                       >
-                        {isRegenerating ? (
+                        {isRegenerating || isStreaming ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
                             Generating...
