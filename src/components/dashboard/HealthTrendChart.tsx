@@ -12,10 +12,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
-  ComposedChart,
-  Bar,
-  Line,
 } from 'recharts';
 
 interface HourlyMetric {
@@ -51,7 +47,6 @@ export function HealthTrendChart({ className }: HealthTrendChartProps) {
       
       if (fetchError) throw fetchError;
       
-      // Sort by time ascending for chart display
       const sorted = (metrics || []).sort((a: HourlyMetric, b: HourlyMetric) => 
         new Date(a.hour_bucket).getTime() - new Date(b.hour_bucket).getTime()
       );
@@ -101,46 +96,38 @@ export function HealthTrendChart({ className }: HealthTrendChartProps) {
     ? Math.round(data.reduce((sum, d) => sum + d.avg_duration_ms, 0) / data.length)
     : 0;
 
-  // Format x-axis labels
+  // Format x-axis labels - simplified
   const formatXAxis = (value: string) => {
     const date = new Date(value);
     if (timeRange === '24h') {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleTimeString([], { hour: 'numeric' });
     }
-    return date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+    return date.toLocaleDateString([], { weekday: 'short' });
   };
 
-  // Custom tooltip
+  // Custom tooltip - simplified and cleaner
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload || !payload.length) return null;
     
     const date = new Date(label);
-    const timeStr = date.toLocaleString([], { 
-      weekday: 'short',
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    const timeStr = timeRange === '24h' 
+      ? date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+      : date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
     
     return (
-      <div className="bg-popover border border-border rounded-lg shadow-lg p-3 text-sm">
-        <p className="font-medium mb-2">{timeStr}</p>
+      <div className="bg-background/95 backdrop-blur border border-border rounded-lg shadow-xl p-3 min-w-[140px]">
+        <p className="text-xs text-muted-foreground mb-2">{timeStr}</p>
         {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center justify-between gap-4">
-            <span className="flex items-center gap-1.5">
+          <div key={index} className="flex items-center justify-between gap-3 text-sm">
+            <span className="flex items-center gap-2">
               <span 
-                className="w-2 h-2 rounded-full" 
+                className="w-2.5 h-2.5 rounded-full" 
                 style={{ backgroundColor: entry.color }}
               />
-              {entry.name}
+              <span className="text-muted-foreground">{entry.name}</span>
             </span>
-            <span className="font-mono">
-              {entry.name.includes('Rate') || entry.name.includes('%') 
-                ? `${entry.value.toFixed(1)}%`
-                : entry.name.includes('Latency')
-                  ? `${Math.round(entry.value)}ms`
-                  : entry.value}
+            <span className="font-semibold tabular-nums">
+              {entry.name.includes('Latency') ? `${Math.round(entry.value / 1000)}s` : entry.value}
             </span>
           </div>
         ))}
@@ -162,28 +149,24 @@ export function HealthTrendChart({ className }: HealthTrendChartProps) {
 
   return (
     <Card className={className}>
-      <CardHeader>
+      <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            Scan Activity Trends
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <Activity className="h-4 w-4 text-primary" />
+            Scan Activity
           </CardTitle>
           
           <div className="flex items-center gap-2">
-            {/* Trend indicator */}
-            <Badge variant="outline" className={`${trendColor} border-current`}>
+            <Badge variant="outline" className={`${trendColor} border-current text-xs`}>
               <TrendIcon className="h-3 w-3 mr-1" />
-              {trend.direction === 'flat' 
-                ? 'Stable' 
-                : `${trend.percentage}% ${trend.direction}`}
+              {trend.direction === 'flat' ? 'Stable' : `${trend.percentage}%`}
             </Badge>
             
-            {/* Time range selector */}
-            <div className="flex rounded-lg border border-border overflow-hidden">
+            <div className="flex rounded-md border border-border overflow-hidden">
               <Button
                 variant={timeRange === '24h' ? 'secondary' : 'ghost'}
                 size="sm"
-                className="h-7 px-3 rounded-none"
+                className="h-6 px-2 text-xs rounded-none"
                 onClick={() => setTimeRange('24h')}
               >
                 24h
@@ -191,7 +174,7 @@ export function HealthTrendChart({ className }: HealthTrendChartProps) {
               <Button
                 variant={timeRange === '7d' ? 'secondary' : 'ghost'}
                 size="sm"
-                className="h-7 px-3 rounded-none"
+                className="h-6 px-2 text-xs rounded-none"
                 onClick={() => setTimeRange('7d')}
               >
                 7d
@@ -201,44 +184,43 @@ export function HealthTrendChart({ className }: HealthTrendChartProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="h-6 w-6"
               onClick={fetchData}
               disabled={loading}
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </div>
       </CardHeader>
       
-      <CardContent>
-        {/* Summary stats */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          <div className="text-center p-3 rounded-lg bg-muted/50">
-            <p className="text-2xl font-bold">{totalScans}</p>
-            <p className="text-xs text-muted-foreground">Total Scans</p>
+      <CardContent className="pt-0">
+        {/* Summary stats - compact */}
+        <div className="grid grid-cols-4 gap-2 mb-4">
+          <div className="text-center p-2 rounded-md bg-muted/30">
+            <p className="text-lg font-bold tabular-nums">{totalScans}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Scans</p>
           </div>
-          <div className="text-center p-3 rounded-lg bg-muted/50">
-            <p className={`text-2xl font-bold ${parseFloat(avgSuccessRate) >= 95 ? 'text-green-500' : parseFloat(avgSuccessRate) >= 80 ? 'text-yellow-500' : 'text-red-500'}`}>
+          <div className="text-center p-2 rounded-md bg-muted/30">
+            <p className={`text-lg font-bold tabular-nums ${parseFloat(avgSuccessRate) >= 95 ? 'text-green-500' : parseFloat(avgSuccessRate) >= 80 ? 'text-yellow-500' : 'text-red-500'}`}>
               {avgSuccessRate}%
             </p>
-            <p className="text-xs text-muted-foreground">Success Rate</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Success</p>
           </div>
-          <div className="text-center p-3 rounded-lg bg-muted/50">
-            <p className="text-2xl font-bold">{avgLatency}ms</p>
-            <p className="text-xs text-muted-foreground">Avg Latency</p>
+          <div className="text-center p-2 rounded-md bg-muted/30">
+            <p className="text-lg font-bold tabular-nums">{(avgLatency / 1000).toFixed(1)}s</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Latency</p>
           </div>
-          <div className="text-center p-3 rounded-lg bg-muted/50">
-            <p className={`text-2xl font-bold ${totalFailed === 0 ? 'text-green-500' : 'text-red-500'}`}>
+          <div className="text-center p-2 rounded-md bg-muted/30">
+            <p className={`text-lg font-bold tabular-nums ${totalFailed === 0 ? 'text-green-500' : 'text-red-500'}`}>
               {totalFailed}
             </p>
-            <p className="text-xs text-muted-foreground">Failed Scans</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Failed</p>
           </div>
         </div>
 
-        {/* Error state */}
         {error && (
-          <div className="text-center py-8 text-destructive">
+          <div className="text-center py-6 text-destructive text-sm">
             <p>{error}</p>
             <Button variant="outline" size="sm" onClick={fetchData} className="mt-2">
               Retry
@@ -246,50 +228,50 @@ export function HealthTrendChart({ className }: HealthTrendChartProps) {
           </div>
         )}
 
-        {/* Loading state */}
         {loading && !error && (
-          <div className="flex items-center justify-center py-12">
-            <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="flex items-center justify-center py-10">
+            <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         )}
 
-        {/* Chart */}
         {!loading && !error && data.length > 0 && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Scan volume chart */}
             <div>
-              <p className="text-sm font-medium mb-2">Scan Volume</p>
-              <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <p className="text-xs font-medium text-muted-foreground mb-2">Volume</p>
+              <ResponsiveContainer width="100%" height={120}>
+                <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
                   <XAxis 
                     dataKey="hour_bucket" 
                     tickFormatter={formatXAxis}
-                    tick={{ fontSize: 11 }}
-                    interval={timeRange === '24h' ? 3 : 23}
-                    className="text-muted-foreground"
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={timeRange === '24h' ? 5 : 'preserveStartEnd'}
                   />
                   <YAxis 
-                    tick={{ fontSize: 11 }}
-                    className="text-muted-foreground"
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={30}
                   />
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend />
                   <Area 
                     type="monotone"
                     dataKey="completed_scans" 
                     name="Completed" 
                     stroke="hsl(var(--chart-1))"
-                    fill="hsl(var(--chart-1))" 
-                    fillOpacity={0.3}
-                  />
-                  <Area 
-                    type="monotone"
-                    dataKey="failed_scans" 
-                    name="Failed" 
-                    stroke="hsl(var(--destructive))"
-                    fill="hsl(var(--destructive))" 
-                    fillOpacity={0.3}
+                    strokeWidth={2}
+                    fill="url(#colorCompleted)"
+                    dot={false}
+                    activeDot={{ r: 4, strokeWidth: 0 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -297,60 +279,41 @@ export function HealthTrendChart({ className }: HealthTrendChartProps) {
 
             {/* Latency chart */}
             <div>
-              <p className="text-sm font-medium mb-2">Response Time (ms)</p>
-              <ResponsiveContainer width="100%" height={150}>
-                <AreaChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <p className="text-xs font-medium text-muted-foreground mb-2">Response Time</p>
+              <ResponsiveContainer width="100%" height={80}>
+                <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorLatency" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
                   <XAxis 
                     dataKey="hour_bucket" 
                     tickFormatter={formatXAxis}
-                    tick={{ fontSize: 11 }}
-                    interval={timeRange === '24h' ? 3 : 23}
-                    className="text-muted-foreground"
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={timeRange === '24h' ? 5 : 'preserveStartEnd'}
                   />
                   <YAxis 
-                    tick={{ fontSize: 11 }}
-                    className="text-muted-foreground"
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={30}
+                    tickFormatter={(v) => `${(v/1000).toFixed(0)}s`}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Area 
                     type="monotone" 
                     dataKey="avg_duration_ms" 
-                    name="Avg Latency"
+                    name="Latency"
                     stroke="hsl(var(--chart-2))" 
-                    fill="hsl(var(--chart-2))" 
-                    fillOpacity={0.2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Cache hit rate chart */}
-            <div>
-              <p className="text-sm font-medium mb-2">Cache Hit Rate (%)</p>
-              <ResponsiveContainer width="100%" height={120}>
-                <AreaChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis 
-                    dataKey="hour_bucket" 
-                    tickFormatter={formatXAxis}
-                    tick={{ fontSize: 11 }}
-                    interval={timeRange === '24h' ? 3 : 23}
-                    className="text-muted-foreground"
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 11 }}
-                    domain={[0, 100]}
-                    className="text-muted-foreground"
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area 
-                    type="monotone" 
-                    dataKey="cache_hit_rate" 
-                    name="Cache Hit Rate"
-                    stroke="hsl(var(--chart-3))" 
-                    fill="hsl(var(--chart-3))" 
-                    fillOpacity={0.2}
+                    strokeWidth={2}
+                    fill="url(#colorLatency)"
+                    dot={false}
+                    activeDot={{ r: 4, strokeWidth: 0 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -358,11 +321,10 @@ export function HealthTrendChart({ className }: HealthTrendChartProps) {
           </div>
         )}
 
-        {/* Empty state */}
         {!loading && !error && data.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            <Activity className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>No scan data available for this time period</p>
+          <div className="text-center py-10 text-muted-foreground">
+            <Activity className="h-8 w-8 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">No data available</p>
           </div>
         )}
       </CardContent>
