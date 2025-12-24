@@ -100,7 +100,7 @@ REMINDER: Your output MUST include every job, education entry, and experience fr
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "openai/gpt-5",
         messages: [
           { role: "system", content: resumeSystemPrompt },
           { role: "user", content: resumeUserPrompt }
@@ -191,7 +191,7 @@ Generate a compelling cover letter that connects my optimized experience to this
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "openai/gpt-5",
         messages: [
           { role: "system", content: coverLetterSystemPrompt },
           { role: "user", content: coverLetterUserPrompt }
