@@ -9,6 +9,78 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[GENERATE-PREMIUM-PACKAGE] ${step}`, details ? JSON.stringify(details) : '');
 };
 
+// Retry configuration
+const MAX_RETRIES = 2;
+const REQUEST_TIMEOUT_MS = 60000; // 60 seconds cap
+const RETRY_DELAY_MS = 2000;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function fetchWithRetry(
+  url: string, 
+  options: RequestInit, 
+  maxRetries = MAX_RETRIES
+): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      
+      const startTime = Date.now();
+      logStep(`API call attempt ${attempt + 1}/${maxRetries + 1}`, { url: url.substring(0, 50) });
+      
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      const duration = Date.now() - startTime;
+      
+      // If successful or client error (4xx), return immediately
+      if (response.ok || (response.status >= 400 && response.status < 500)) {
+        logStep(`API call succeeded`, { attempt: attempt + 1, duration, status: response.status });
+        return response;
+      }
+      
+      // Server errors (5xx) - retry
+      if (response.status >= 500) {
+        const errorText = await response.text();
+        logStep(`Server error, will retry`, { attempt: attempt + 1, status: response.status, error: errorText.substring(0, 200) });
+        lastError = new Error(`Server error: ${response.status}`);
+        
+        if (attempt < maxRetries) {
+          await sleep(RETRY_DELAY_MS * (attempt + 1));
+          continue;
+        }
+      }
+      
+      return response;
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Timeout or network error
+      if (errorMessage.includes('aborted') || errorMessage.includes('timeout')) {
+        logStep(`Request timed out after ${REQUEST_TIMEOUT_MS}ms`, { attempt: attempt + 1 });
+        lastError = new Error(`Request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
+      } else {
+        logStep(`Network error`, { attempt: attempt + 1, error: errorMessage });
+        lastError = error instanceof Error ? error : new Error(errorMessage);
+      }
+      
+      if (attempt < maxRetries) {
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+    }
+  }
+  
+  throw lastError || new Error('Max retries exceeded');
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -115,7 +187,7 @@ ${jobDescription}` : 'No job description provided - optimize for general profess
 
 BEFORE YOU RESPOND: Count all jobs, education entries, and major bullet points in the original. Your output MUST contain ALL of them, enhanced.`;
 
-    const resumeResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resumeResponse = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
@@ -134,6 +206,20 @@ BEFORE YOU RESPOND: Count all jobs, education entries, and major bullet points i
     if (!resumeResponse.ok) {
       const errorText = await resumeResponse.text();
       logStep("Resume AI API error", { status: resumeResponse.status, error: errorText });
+      
+      if (resumeResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "AI service is temporarily busy. Please try again in a few moments.", retryable: true }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (resumeResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "AI service credits depleted. Please contact support.", retryable: false }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       throw new Error(`Resume AI API error: ${resumeResponse.status}`);
     }
 
@@ -223,7 +309,7 @@ ${jobDescription}` : ''}
 
 Write a cover letter that sounds like it was written by this specific person - confident, articulate, and genuine. Reference specific experiences from their resume with concrete details.`;
 
-    const coverLetterResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const coverLetterResponse = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
@@ -242,6 +328,14 @@ Write a cover letter that sounds like it was written by this specific person - c
     if (!coverLetterResponse.ok) {
       const errorText = await coverLetterResponse.text();
       logStep("Cover letter AI API error", { status: coverLetterResponse.status, error: errorText });
+      
+      if (coverLetterResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "AI service is temporarily busy. Please try again in a few moments.", retryable: true }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       throw new Error(`Cover letter AI API error: ${coverLetterResponse.status}`);
     }
 
@@ -298,6 +392,18 @@ Write a cover letter that sounds like it was written by this specific person - c
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[GENERATE-PREMIUM-PACKAGE] Error:", errorMessage);
+    
+    // Check for timeout errors and return a more helpful message
+    if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
+      return new Response(
+        JSON.stringify({ 
+          error: "The AI took too long to respond. Please try again.", 
+          details: errorMessage,
+          retryable: true 
+        }),
+        { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
     return new Response(
       JSON.stringify({ error: "Failed to generate premium package", details: errorMessage }),
