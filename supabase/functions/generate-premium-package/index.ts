@@ -113,6 +113,42 @@ serve(async (req) => {
     
     const resumeSystemPrompt = `You are an elite ATS resume optimization specialist. Your ONLY task is to ENHANCE the provided resume while preserving 100% of the original content.
 
+## ⚠️ CRITICAL DATA ACCURACY RULES - ABSOLUTE REQUIREMENTS ⚠️
+These rules MUST be followed perfectly. Violations are unacceptable:
+
+### NUMBERS & METRICS:
+- COPY ALL NUMBERS EXACTLY: "$20,000,000" stays "$20,000,000" (not "$20,,000" or "$,000")
+- Percentages: "100%" not "%+", "~1.5x" not "1.5"
+- Counts: "67 warehouses" with space (not "across67 warehouses")
+- Dollar amounts: "$400,000" not "$,000" or truncated values
+
+### COMPANY & PRODUCT NAMES:
+- "GitHub" NOT "Git"
+- "LinkedIn" NOT "Linked"
+- "Fortune 500" NOT "Fortune"
+- "GitHub Copilot" NOT "GitHub Cop" or "GitHub Cop (OpenAI)"
+- "GitHub Actions" NOT "Git Actions"
+- "GitHub Enterprise" NOT "GitHub ("
+- "Codespaces" NOT "Codes)"
+- "LinkedIn Sales Navigator" NOT "Linked Sales Navigator"
+- "CI/CD" NOT "/CD" or "including/CD"
+- "Carnegie Mellon" NOT "Carnegie Mellonator"
+
+### JOB TITLES:
+- "Senior Sales Development Rep" NOT "Senior Sales Development"
+- "Outreach Manager" NOT "Outreach"
+- "Full-Cycle Enterprise Sales" NOT "Full-C Enterprise Sales"
+- "Lead Generation" NOT orphaned "Generation"
+
+### TEXT QUALITY:
+- NEVER truncate words or add random punctuation
+- NEVER drop letters, numbers, or spaces
+- Every bullet point must be grammatically complete
+- Proper spacing between ALL words and numbers
+- No broken phrases like "0-to- go-to-market" (should be "0-to-1 go-to-market")
+- No garbled text like "highpensity" (should be "high-propensity")
+- No missing verbs: "wrote a LinkedIn article" NOT "a LinkedIn article"
+
 ## ⚠️ ABSOLUTE NON-NEGOTIABLE RULES ⚠️
 
 ### RULE 1: ZERO CONTENT REMOVAL
