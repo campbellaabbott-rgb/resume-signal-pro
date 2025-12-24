@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { RefreshCw, Activity, ArrowLeft, Bell, BellOff, Download, HelpCircle, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ErrorTrendChart } from '@/components/dashboard/ErrorTrendChart';
-import { UserHealthTable } from '@/components/dashboard/UserHealthTable';
+import { LegacyUserHealthTable as UserHealthTable } from '@/components/dashboard/LegacyUserHealthTable';
 import { ErrorDiagnostics } from '@/components/dashboard/ErrorDiagnostics';
 import { ErrorStatsCards } from '@/components/dashboard/ErrorStatsCards';
 import { toast } from 'sonner';
