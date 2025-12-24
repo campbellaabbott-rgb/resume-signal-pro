@@ -110,3 +110,6 @@ verify_jwt = false
 
 [functions.test-ai-fallback]
 verify_jwt = false
+
+[functions.scheduled-health-probe]
+verify_jwt = false
