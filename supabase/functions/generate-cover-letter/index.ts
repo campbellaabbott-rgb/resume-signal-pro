@@ -9,6 +9,69 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[GENERATE-COVER-LETTER] ${step}`, details ? JSON.stringify(details) : '');
 };
 
+// Retry configuration
+const MAX_RETRIES = 2;
+const REQUEST_TIMEOUT_MS = 60000;
+const RETRY_DELAY_MS = 2000;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function fetchWithRetry(
+  url: string, 
+  options: RequestInit, 
+  maxRetries = MAX_RETRIES
+): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      
+      logStep(`API call attempt ${attempt + 1}/${maxRetries + 1}`);
+      
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok || (response.status >= 400 && response.status < 500)) {
+        return response;
+      }
+      
+      if (response.status >= 500 && attempt < maxRetries) {
+        const errorText = await response.text();
+        logStep(`Server error ${response.status}, retrying...`, { error: errorText.substring(0, 200) });
+        lastError = new Error(`Server error: ${response.status}`);
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+      
+      return response;
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes('aborted')) {
+        logStep(`Request timed out after ${REQUEST_TIMEOUT_MS}ms`);
+        lastError = new Error(`Request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
+      } else {
+        logStep(`Network error: ${errorMessage}`);
+        lastError = error instanceof Error ? error : new Error(errorMessage);
+      }
+      
+      if (attempt < maxRetries) {
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+    }
+  }
+  
+  throw lastError || new Error('Max retries exceeded');
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -116,7 +179,7 @@ Write something that sounds like this specific person wrote it - confident, spec
 
     logStep("Calling AI API");
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
@@ -135,6 +198,20 @@ Write something that sounds like this specific person wrote it - confident, spec
     if (!response.ok) {
       const errorText = await response.text();
       logStep("AI API error", { status: response.status, error: errorText });
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "AI service is temporarily busy. Please try again in a few moments.", retryable: true }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "AI service credits depleted. Please try again later.", retryable: false }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       throw new Error(`AI API error: ${response.status}`);
     }
 
@@ -146,7 +223,6 @@ Write something that sounds like this specific person wrote it - confident, spec
       throw new Error("No content in AI response");
     }
 
-    // Parse JSON from response
     let result;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -157,7 +233,6 @@ Write something that sounds like this specific person wrote it - confident, spec
       }
     } catch (parseError) {
       logStep("JSON parse error, extracting cover letter", { error: String(parseError) });
-      // If parsing fails, use the content as the cover letter
       result = {
         coverLetter: content,
         openingLine: content.split('\n')[0] || "",
@@ -181,6 +256,13 @@ Write something that sounds like this specific person wrote it - confident, spec
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[GENERATE-COVER-LETTER] Error:", errorMessage);
+    
+    if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
+      return new Response(
+        JSON.stringify({ error: "The AI took too long to respond. Please try again.", retryable: true }),
+        { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
     return new Response(
       JSON.stringify({ error: "Failed to generate cover letter", details: errorMessage }),

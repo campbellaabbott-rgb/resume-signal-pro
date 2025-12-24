@@ -5,8 +5,70 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Retry configuration
+const MAX_RETRIES = 2;
+const REQUEST_TIMEOUT_MS = 60000;
+const RETRY_DELAY_MS = 2000;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function fetchWithRetry(
+  url: string, 
+  options: RequestInit, 
+  maxRetries = MAX_RETRIES
+): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      
+      console.log(`[TAILORED-RESUME] API call attempt ${attempt + 1}/${maxRetries + 1}`);
+      
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok || (response.status >= 400 && response.status < 500)) {
+        return response;
+      }
+      
+      if (response.status >= 500 && attempt < maxRetries) {
+        const errorText = await response.text();
+        console.log(`[TAILORED-RESUME] Server error ${response.status}, retrying...`, errorText.substring(0, 200));
+        lastError = new Error(`Server error: ${response.status}`);
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+      
+      return response;
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes('aborted')) {
+        console.log(`[TAILORED-RESUME] Request timed out after ${REQUEST_TIMEOUT_MS}ms`);
+        lastError = new Error(`Request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
+      } else {
+        console.log(`[TAILORED-RESUME] Network error: ${errorMessage}`);
+        lastError = error instanceof Error ? error : new Error(errorMessage);
+      }
+      
+      if (attempt < maxRetries) {
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+    }
+  }
+  
+  throw lastError || new Error('Max retries exceeded');
+}
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -76,7 +138,7 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
 
     console.log("[TAILORED-RESUME] Generating tailored resume for:", jobTitle, "at", jobCompany);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -142,13 +204,13 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
     if (!response.ok) {
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Rate limits exceeded, please try again later." }),
+          JSON.stringify({ error: "AI service is temporarily busy. Please try again in a few moments.", retryable: true }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "AI service credits depleted. Please try again later." }),
+          JSON.stringify({ error: "AI service credits depleted. Please try again later.", retryable: false }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -162,13 +224,12 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
 
     const data = await response.json();
     
-    // Extract the tool call result
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== "submit_tailored_resume") {
       console.error("[TAILORED-RESUME] Unexpected response format:", JSON.stringify(data));
       return new Response(
         JSON.stringify({ error: "Invalid AI response format" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -187,9 +248,18 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
     );
 
   } catch (error) {
-    console.error("[TAILORED-RESUME] Error:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("[TAILORED-RESUME] Error:", errorMessage);
+    
+    if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
+      return new Response(
+        JSON.stringify({ error: "The AI took too long to respond. Please try again.", retryable: true }),
+        { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'An unexpected error occurred' }),
+      JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

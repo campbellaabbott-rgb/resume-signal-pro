@@ -16,6 +16,69 @@ declare const EdgeRuntime: {
   waitUntil: (promise: Promise<any>) => void;
 };
 
+// Retry configuration
+const MAX_RETRIES = 2;
+const REQUEST_TIMEOUT_MS = 60000;
+const RETRY_DELAY_MS = 2000;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function fetchWithRetry(
+  url: string, 
+  options: RequestInit, 
+  maxRetries = MAX_RETRIES
+): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      
+      logStep(`API call attempt ${attempt + 1}/${maxRetries + 1}`);
+      
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok || (response.status >= 400 && response.status < 500)) {
+        return response;
+      }
+      
+      if (response.status >= 500 && attempt < maxRetries) {
+        const errorText = await response.text();
+        logStep(`Server error ${response.status}, retrying...`, { error: errorText.substring(0, 200) });
+        lastError = new Error(`Server error: ${response.status}`);
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+      
+      return response;
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes('aborted')) {
+        logStep(`Request timed out after ${REQUEST_TIMEOUT_MS}ms`);
+        lastError = new Error(`Request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
+      } else {
+        logStep(`Network error: ${errorMessage}`);
+        lastError = error instanceof Error ? error : new Error(errorMessage);
+      }
+      
+      if (attempt < maxRetries) {
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+    }
+  }
+  
+  throw lastError || new Error('Max retries exceeded');
+}
+
 async function processRegeneration(email: string, resumeText: string, jobTitle: string, jobCompany: string, jobDescription?: string) {
   try {
     logStep("Background task started", { email, jobTitle, jobCompany });
@@ -86,7 +149,7 @@ TARGET COMPANY: ${jobCompany || 'Top Investment Bank'}
 
 ${jobDescription ? `JOB DESCRIPTION:\n${jobDescription}` : 'Target investment banking analyst roles at top-tier financial institutions.'}`;
 
-    const resumeResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resumeResponse = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
@@ -173,7 +236,7 @@ TARGET COMPANY: ${jobCompany || 'Top Investment Bank'}
 
 ${jobDescription ? `JOB REQUIREMENTS:\n${jobDescription}` : ''}`;
 
-    const coverLetterResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const coverLetterResponse = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
