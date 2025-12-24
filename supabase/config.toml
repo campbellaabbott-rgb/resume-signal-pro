@@ -113,3 +113,6 @@ verify_jwt = false
 
 [functions.scheduled-health-probe]
 verify_jwt = false
+
+[functions.warm-up]
+verify_jwt = false
