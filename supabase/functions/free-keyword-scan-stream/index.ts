@@ -4,6 +4,57 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
 
+// Metric context for tracking
+interface ScanMetricContext {
+  supabase: any;
+  startTime: number;
+  scanType: string;
+  cacheHit: boolean;
+  ipCountry: string | null;
+  visitorId: string | null;
+  inputLength: number;
+  aiModel: string;
+}
+
+// Log scan metric to database (non-blocking)
+function logScanMetric(
+  ctx: ScanMetricContext,
+  status: 'started' | 'completed' | 'failed' | 'validation_error',
+  options?: {
+    errorCode?: string;
+    errorMessage?: string;
+    outputValid?: boolean;
+    responseScore?: number;
+    metadata?: Record<string, unknown>;
+  }
+): void {
+  const durationMs = Date.now() - ctx.startTime;
+  
+  EdgeRuntime.waitUntil(
+    ctx.supabase.rpc('log_scan_metric', {
+      p_scan_type: ctx.scanType,
+      p_status: status,
+      p_duration_ms: durationMs,
+      p_cache_hit: ctx.cacheHit,
+      p_ai_model: ctx.aiModel,
+      p_error_code: options?.errorCode || null,
+      p_error_message: options?.errorMessage || null,
+      p_ip_country: ctx.ipCountry,
+      p_visitor_id: ctx.visitorId,
+      p_input_length: ctx.inputLength,
+      p_output_valid: options?.outputValid ?? null,
+      p_response_score: options?.responseScore ?? null,
+      p_metadata: options?.metadata || {}
+    }).then(({ error }: any) => {
+      if (error) {
+        console.error(`[FREE-KEYWORD-SCAN-STREAM] Failed to log metric:`, error.message);
+      } else {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Logged metric: ${status} (${durationMs}ms)`);
+      }
+    })
+  );
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -131,6 +182,19 @@ serve(async (req) => {
       }
 
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+      // Initialize metric context for tracking
+      const ipCountry = getCountryFromHeaders(req) || null;
+      const metricCtx: ScanMetricContext = {
+        supabase,
+        startTime: requestStartTime,
+        scanType: 'free-stream',
+        cacheHit: false,
+        ipCountry,
+        visitorId: clientIp,
+        inputLength: resumeText.length,
+        aiModel: 'google/gemini-2.5-pro'
+      };
 
       // Rate limiting
       const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
@@ -404,12 +468,22 @@ Focus on: ATS score (0-100), industry detection, format grade (A-D), experience 
         analysis = JSON.parse(toolCallArgs);
       } catch (e) {
         console.error("[FREE-KEYWORD-SCAN-STREAM] Failed to parse tool args:", e);
+        logScanMetric(metricCtx, 'failed', {
+          errorCode: 'PARSE_ERROR',
+          errorMessage: 'Failed to parse AI response',
+          outputValid: false
+        });
         send('error', { error: 'Failed to parse analysis results.' });
         close();
         return;
       }
 
       if (!analysis) {
+        logScanMetric(metricCtx, 'failed', {
+          errorCode: 'NO_ANALYSIS',
+          errorMessage: 'No analysis returned from AI',
+          outputValid: false
+        });
         send('error', { error: 'No analysis returned.' });
         close();
         return;
@@ -479,6 +553,16 @@ Focus on: ATS score (0-100), industry detection, format grade (A-D), experience 
         })()
       );
 
+      // Log scan metric to database
+      logScanMetric(metricCtx, 'completed', {
+        outputValid: true,
+        responseScore: analysis.atsScoreEstimate,
+        metadata: { 
+          industry: analysis.industry,
+          experienceLevel: analysis.experienceLevel?.level,
+          hasJobDescription: !!truncatedJobDescription
+        }
+      });
 
       // Log performance
       const duration = Date.now() - requestStartTime;
