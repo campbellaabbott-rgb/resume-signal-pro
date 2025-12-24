@@ -35,6 +35,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
 import { useScanCredits } from "@/hooks/use-scan-credits";
 import { supabase } from "@/integrations/supabase/client";
+import { resilientCallers, callEdgeFunctionWithRetry } from "@/lib/resilient-edge-function";
+import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { 
   cleanupExpiredResumeData, 
   setResumeData, 
@@ -50,7 +52,6 @@ import {
 } from "@/hooks/use-session-resume";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useErrorTracking } from "@/hooks/use-error-tracking";
-import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { useAffiliateTracking, getStoredReferralCode } from "@/hooks/use-affiliate-auth";
 import { useStreamingScan, type StreamProgress } from "@/hooks/use-streaming-scan";
 
@@ -377,12 +378,19 @@ const Index = () => {
         const formData = new FormData();
         formData.append("file", file);
 
-        const { data, error } = await supabase.functions.invoke("parse-pdf", {
-          body: formData,
-        });
+        const result = await resilientCallers.parsePdf({ file: formData });
 
-        if (error) throw error;
+        if (result.error) {
+          toast({
+            title: result.error.title,
+            description: result.error.description,
+            variant: "destructive",
+          });
+          setSelectedFile(null);
+          return;
+        }
 
+        const data = result.data as { success?: boolean; text?: string; pages?: number; error?: string };
         if (data?.success && data?.text) {
           setResumeText(data.text);
           saveResumeToSession(data.text); // Persist to session storage
@@ -418,12 +426,19 @@ const Index = () => {
         const formData = new FormData();
         formData.append("file", file);
 
-        const { data, error } = await supabase.functions.invoke("parse-docx", {
-          body: formData,
-        });
+        const result = await resilientCallers.parseDocx({ file: formData });
 
-        if (error) throw error;
+        if (result.error) {
+          toast({
+            title: result.error.title,
+            description: result.error.description,
+            variant: "destructive",
+          });
+          setSelectedFile(null);
+          return;
+        }
 
+        const data = result.data as { success?: boolean; text?: string; error?: string };
         if (data?.success && data?.text) {
           setResumeText(data.text);
           saveResumeToSession(data.text); // Persist to session storage
@@ -491,42 +506,36 @@ const Index = () => {
 
       // Fallback to non-streaming endpoint if streaming failed
       if (!result) {
-        console.log('[FreeScan] Streaming failed, falling back to non-streaming endpoint');
-        const { data, error } = await supabase.functions.invoke("free-keyword-scan", {
-          body: {
-            resumeText: contentToAnalyze,
-            jobDescriptionText: jobDescriptionText || undefined,
-            honeypot,
-            skipCache,
-          },
+        console.log('[FreeScan] Streaming failed, falling back to resilient non-streaming endpoint');
+        const scanResult = await resilientCallers.freeKeywordScan({
+          resumeText: contentToAnalyze,
+          jobDescriptionText: jobDescriptionText || undefined,
+          honeypot,
+          skipCache,
         });
 
-        if (error) {
-          // Parse error context for rate limit info
-          const errorContext = error?.context;
-          if (errorContext?.body) {
-            try {
-              const errorBody = typeof errorContext.body === 'string' 
-                ? JSON.parse(errorContext.body) 
-                : errorContext.body;
-              if (errorBody?.rateLimited) {
-                trackRateLimitError('free-keyword-scan', errorBody.scansUsed, errorBody.scansLimit);
-                toast({
-                  title: "Daily Scan Limit Reached",
-                  description: errorBody.error || `You've used all ${errorBody.scansLimit || 7} free scans.`,
-                  variant: "destructive",
-                });
-                setShowRateLimitUpsell(true);
-                return;
-              }
-            } catch {
-              // Not JSON, continue with regular error handling
-            }
+        if (scanResult.error) {
+          // Check if rate limited from error details
+          if (scanResult.error.errorCode === 'RATE_LIMITED') {
+            trackRateLimitError('free-keyword-scan', 0, 7);
+            toast({
+              title: "Daily Scan Limit Reached",
+              description: scanResult.error.description,
+              variant: "destructive",
+            });
+            setShowRateLimitUpsell(true);
+            return;
           }
-          trackApiError('free-keyword-scan', error?.context?.status || 500, error?.message || 'Unknown error');
-          throw error;
+          trackApiError('free-keyword-scan', 500, scanResult.error.description);
+          toast({
+            title: scanResult.error.title,
+            description: scanResult.error.description,
+            variant: "destructive",
+          });
+          return;
         }
 
+        const data = scanResult.data as any;
         // Convert fallback response to streaming result format
         if (data?.success) {
           result = {
@@ -655,35 +664,33 @@ const Index = () => {
     setIsFreeScanLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke("free-keyword-scan", {
-        body: { resumeText: contentToAnalyze, jobDescriptionText: jobDesc, honeypot },
+      const scanResult = await resilientCallers.freeKeywordScan({
+        resumeText: contentToAnalyze,
+        jobDescriptionText: jobDesc,
+        honeypot,
       });
 
-      if (error) {
-        const errorContext = error?.context;
-        if (errorContext?.body) {
-          try {
-            const errorBody = typeof errorContext.body === 'string' 
-              ? JSON.parse(errorContext.body) 
-              : errorContext.body;
-            if (errorBody?.rateLimited) {
-              trackRateLimitError('free-keyword-scan', errorBody.scansUsed, errorBody.scansLimit);
-              toast({
-                title: "Daily Scan Limit Reached",
-                description: errorBody.error || `You've used all ${errorBody.scansLimit || 7} free scans. Resets in ~${errorBody.hoursUntilReset || 24} hours.`,
-                variant: "destructive",
-              });
-              setShowRateLimitUpsell(true);
-              return;
-            }
-          } catch {
-            // Not JSON, continue
-          }
+      if (scanResult.error) {
+        if (scanResult.error.errorCode === 'RATE_LIMITED') {
+          trackRateLimitError('free-keyword-scan', 0, 7);
+          toast({
+            title: "Daily Scan Limit Reached",
+            description: scanResult.error.description,
+            variant: "destructive",
+          });
+          setShowRateLimitUpsell(true);
+          return;
         }
-        trackApiError('free-keyword-scan', error?.context?.status || 500, error?.message || 'Unknown error');
-        throw error;
+        trackApiError('free-keyword-scan', 500, scanResult.error.description);
+        toast({
+          title: scanResult.error.title,
+          description: scanResult.error.description,
+          variant: "destructive",
+        });
+        return;
       }
 
+      const data = scanResult.data as any;
       if (data?.rateLimited) {
         trackRateLimitError('free-keyword-scan', data.scansUsed, data.scansLimit);
         toast({
@@ -772,19 +779,30 @@ const Index = () => {
     setTailoredResumeContent(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke("generate-tailored-resume", {
-        body: {
-          resumeText,
-          jobTitle: targetTitle,
-          jobCompany: currentJob?.company,
-          jobDescription: currentJob?.description || jobDescriptionText || `A ${freeKeywordResult?.industry || "professional"} role requiring strong skills and experience.`,
-          matchingSkills: freeKeywordResult?.matchingSkills,
-          missingSkills: freeKeywordResult?.missingSkills,
-        },
+      const result = await callEdgeFunctionWithRetry('generate-tailored-resume', {
+        resumeText,
+        jobTitle: targetTitle,
+        jobCompany: currentJob?.company,
+        jobDescription: currentJob?.description || jobDescriptionText || `A ${freeKeywordResult?.industry || "professional"} role requiring strong skills and experience.`,
+        matchingSkills: freeKeywordResult?.matchingSkills,
+        missingSkills: freeKeywordResult?.missingSkills,
+      }, {
+        maxRetries: 2,
+        timeout: 120000, // 2 minutes for AI generation
+        initialDelay: 2000,
       });
 
-      if (error) throw error;
+      if (result.error) {
+        setShowTailoredResumeModal(false);
+        toast({
+          title: result.error.title,
+          description: result.error.description,
+          variant: "destructive",
+        });
+        return;
+      }
 
+      const data = result.data as { success?: boolean; error?: string };
       if (data?.success) {
         setTailoredResumeContent(data);
         toast({
@@ -918,46 +936,23 @@ const Index = () => {
       // Store only the temp session UUID locally (no PII)
       setResumeData('tempSessionId', tempSessionData);
 
-      // Retry logic for create-checkout (up to 3 attempts)
-      let lastError: Error | null = null;
-      let checkoutData: { url?: string; sessionId?: string } | null = null;
-      
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          console.log(`[Checkout] Attempt ${attempt}/3`);
-          
-          // Wrap the API call in a timeout (30 seconds per attempt)
-          const apiCall = supabase.functions.invoke("create-checkout", {
-            body: { 
-              resumeData: contentToAnalyze,
-              hasLinkedIn: !!linkedInContent,
-              tempSessionId: tempSessionData,
-              currency: currency.code,
-              promoCode,
-            },
-          });
-          
-          const { data, error } = await withTimeout(
-            apiCall,
-            30000,
-            "Request timed out. Please check your connection and try again."
-          );
+      // Use resilient checkout caller with built-in retry logic
+      console.log("[Checkout] Calling create-checkout with resilient caller");
+      const checkoutResult = await resilientCallers.createCheckout({
+        resumeData: contentToAnalyze,
+        hasLinkedIn: !!linkedInContent,
+        tempSessionId: tempSessionData,
+        currency: currency.code,
+        promoCode,
+      });
 
-          if (error) throw error;
-          checkoutData = data;
-          break; // Success, exit retry loop
-        } catch (err: any) {
-          lastError = err;
-          console.warn(`[Checkout] Attempt ${attempt} failed:`, err?.message);
-          if (attempt < 3) {
-            // Wait before retry (exponential backoff: 1s, 2s)
-            await new Promise(r => setTimeout(r, attempt * 1000));
-          }
-        }
+      if (checkoutResult.error) {
+        throw new Error(checkoutResult.error.description);
       }
 
+      const checkoutData = checkoutResult.data as { url?: string; sessionId?: string };
       if (!checkoutData?.url) {
-        throw lastError || new Error("No checkout URL received after retries");
+        throw new Error("No checkout URL received");
       }
 
       // Store the checkout URL immediately for fallback use
