@@ -12,11 +12,114 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[PREMIUM-PACKAGE-STREAM] ${step}`, details ? JSON.stringify(details) : '');
 };
 
+// Auto-fix common AI corruption patterns
+const autoFixContent = (content: string, originalResume: string): { fixed: string, corrections: string[] } => {
+  let fixed = content;
+  const corrections: string[] = [];
+
+  // Fix double commas
+  if (/,,+/.test(fixed)) {
+    fixed = fixed.replace(/,,+/g, ',');
+    corrections.push('Fixed double commas');
+  }
+
+  // Fix malformed dollar amounts like $20,,000 → $20,000
+  if (/\$\d+,,\d/.test(fixed)) {
+    fixed = fixed.replace(/(\$\d+),,(\d)/g, '$1,$2');
+    corrections.push('Fixed malformed dollar amounts');
+  }
+
+  // Fix truncated dollar amounts $,000 - try to find correct value from original
+  const truncatedDollar = fixed.match(/\$,(\d{3})/g);
+  if (truncatedDollar) {
+    const originalAmounts = originalResume.match(/\$[\d,]+/g) || [];
+    for (const truncated of truncatedDollar) {
+      const suffix = truncated.slice(2);
+      const match = originalAmounts.find(a => a.endsWith(suffix));
+      if (match) {
+        fixed = fixed.replace(truncated, match);
+        corrections.push(`Restored ${truncated} to ${match}`);
+      }
+    }
+  }
+
+  // Fix missing space before numbers
+  fixed = fixed.replace(/([a-zA-Z])(\d{2,})/g, (match, letter, num) => {
+    if (/^[a-z]$/.test(letter) && /^\d{1,2}$/.test(num)) return match;
+    corrections.push(`Added space: ${match} → ${letter} ${num}`);
+    return `${letter} ${num}`;
+  });
+
+  // Fix truncated CI/CD
+  if (/\/CD\b/i.test(fixed) && !/CI\/CD/i.test(fixed)) {
+    fixed = fixed.replace(/\b\/CD\b/gi, 'CI/CD');
+    corrections.push('Fixed truncated CI/CD');
+  }
+  fixed = fixed.replace(/including\s*\/CD/gi, 'including CI/CD');
+
+  // Fix truncated GitHub
+  fixed = fixed.replace(/\bGit\b(?!\s*(Hub|Lab|Actions|Flow|Kraken|ignore|config))/gi, 'GitHub');
+
+  // Fix truncated LinkedIn
+  fixed = fixed.replace(/\bLinked\b(?!\s*(In|Sales|List))/gi, 'LinkedIn');
+
+  // Fix Fortune without 500
+  if (originalResume.includes('Fortune 500') && /Fortune\b(?!\s*\d)/.test(fixed)) {
+    fixed = fixed.replace(/Fortune\b(?!\s*\d)/gi, 'Fortune 500');
+    corrections.push('Added missing Fortune 500');
+  }
+
+  // Fix broken percentage %+
+  if (/%\+/.test(fixed)) {
+    fixed = fixed.replace(/%\+/g, '%');
+    corrections.push('Fixed broken percentage');
+  }
+
+  // Fix empty/malformed parentheses
+  fixed = fixed.replace(/\(\s*,\s*\)/g, '');
+  fixed = fixed.replace(/\(\s*\)/g, '');
+
+  // Fix "building -1" or similar nonsense
+  fixed = fixed.replace(/building\s*-\s*\d+/gi, 'building');
+  
+  // Fix broken hyphenated phrases
+  fixed = fixed.replace(/(\d+)-to-\s+/g, '$1-to-');
+
+  // Fix Codes) → Codespaces
+  if (originalResume.includes('Codespaces') && /\bCodes\)/.test(fixed)) {
+    fixed = fixed.replace(/\bCodes\)/g, 'Codespaces');
+    corrections.push('Fixed truncated Codespaces');
+  }
+
+  // Fix GitHub Cop → GitHub Copilot
+  if (originalResume.includes('Copilot') && /GitHub\s+Cop\b/.test(fixed)) {
+    fixed = fixed.replace(/GitHub\s+Cop\b/g, 'GitHub Copilot');
+    corrections.push('Fixed truncated Copilot');
+  }
+
+  // Fix Git Actions → GitHub Actions
+  if (/\bGit\s+Actions\b/.test(fixed)) {
+    fixed = fixed.replace(/\bGit\s+Actions\b/g, 'GitHub Actions');
+    corrections.push('Fixed Git Actions → GitHub Actions');
+  }
+
+  // Fix Full-C → Full-Cycle
+  if (originalResume.includes('Full-Cycle') && /Full-C\b/.test(fixed)) {
+    fixed = fixed.replace(/Full-C\b/g, 'Full-Cycle');
+    corrections.push('Fixed truncated Full-Cycle');
+  }
+
+  if (corrections.length > 0) {
+    console.log(`[AUTO-FIX] Applied ${corrections.length} corrections:`, corrections);
+  }
+
+  return { fixed, corrections };
+};
+
 // Post-processing validation for common AI corruption patterns
 const validateContent = (content: string, originalResume: string): { issues: string[], score: number } => {
   const issues: string[] = [];
   
-  // Pattern checks
   const patterns = [
     { regex: /,,+/g, name: 'double_comma', desc: 'Double commas found' },
     { regex: /\$,\d/g, name: 'truncated_dollar', desc: 'Truncated dollar amount ($,XXX)' },
@@ -33,21 +136,16 @@ const validateContent = (content: string, originalResume: string): { issues: str
     { regex: /building\s*-?\d/gi, name: 'nonsense_building', desc: 'Nonsensical "building -1" pattern' },
     { regex: /\b[A-Z][a-z]+ator\b/g, name: 'garbled_name', desc: 'Possible garbled name (ending in -ator)' },
     { regex: /%\+/g, name: 'broken_percentage', desc: 'Broken percentage (%+)' },
-    { regex: /~?\d+\.?\d*(?!\s*[xX%]|\s*times|\s*percent)/g, name: 'orphan_metric', desc: 'Check: orphaned metric without unit' },
   ];
 
   for (const { regex, name, desc } of patterns) {
     const matches = content.match(regex);
     if (matches && matches.length > 0) {
-      // Filter out false positives for some patterns
       if (name === 'truncated_word' && matches.every(m => ['Actions)', 'Codespaces)'].includes(m))) continue;
-      if (name === 'orphan_metric') continue; // Too many false positives, just log
-      
       issues.push(`${desc}: ${matches.slice(0, 3).join(', ')}${matches.length > 3 ? '...' : ''}`);
     }
   }
 
-  // Check if key terms from original are preserved
   const keyTerms = ['GitHub', 'LinkedIn', 'CI/CD', 'Fortune 500', 'Copilot', 'Actions'];
   for (const term of keyTerms) {
     if (originalResume.includes(term) && !content.includes(term)) {
@@ -55,9 +153,7 @@ const validateContent = (content: string, originalResume: string): { issues: str
     }
   }
 
-  // Calculate quality score (100 = perfect, lower = more issues)
   const score = Math.max(0, 100 - (issues.length * 10));
-
   if (issues.length > 0) {
     console.log(`[VALIDATION] Found ${issues.length} potential issues:`, issues);
   }
