@@ -140,6 +140,40 @@ async function logToTelemetry(
 }
 
 /**
+ * Log retry telemetry for tracking success/failure rates
+ */
+async function logRetryTelemetry(
+  functionName: string,
+  eventType: 'retry_attempt' | 'retry_success' | 'retry_exhausted' | 'first_attempt_success',
+  attempt: number,
+  maxRetries: number,
+  durationMs: number,
+  errorType?: string,
+  errorMessage?: string
+): Promise<void> {
+  try {
+    await supabase.rpc('log_error_telemetry', {
+      p_error_code: eventType.toUpperCase(),
+      p_error_type: 'retry_telemetry',
+      p_error_message: errorMessage || `${eventType} for ${functionName}`,
+      p_http_status: null,
+      p_function_name: functionName,
+      p_context: JSON.parse(JSON.stringify({
+        event_type: eventType,
+        attempt_number: attempt,
+        max_retries: maxRetries,
+        duration_ms: durationMs,
+        original_error_type: errorType,
+        timestamp: new Date().toISOString(),
+      })),
+    });
+  } catch {
+    // Silently fail
+    console.debug('[Telemetry] Failed to log retry telemetry (non-critical)');
+  }
+}
+
+/**
  * Call a Supabase edge function with automatic retry and error handling
  */
 export async function callEdgeFunctionWithRetry<T = unknown>(
@@ -189,6 +223,12 @@ export async function callEdgeFunctionWithRetry<T = unknown>(
       const totalDuration = Date.now() - startTime;
       console.log(`[EdgeFunction] ${functionName} succeeded after ${attempts} attempt(s) in ${totalDuration}ms`);
 
+      // Log success telemetry
+      if (enableTelemetry) {
+        const eventType = attempts === 1 ? 'first_attempt_success' : 'retry_success';
+        logRetryTelemetry(functionName, eventType, attempts, maxRetries, totalDuration);
+      }
+
       return {
         data,
         error: null,
@@ -211,12 +251,25 @@ export async function callEdgeFunctionWithRetry<T = unknown>(
         // Log final failure to telemetry
         if (enableTelemetry) {
           const httpStatus = error instanceof FunctionsHttpError ? error.context?.status : undefined;
+          const errorType = error instanceof FunctionsFetchError ? 'network' :
+            error instanceof FunctionsRelayError ? 'relay' :
+            error instanceof FunctionsHttpError ? 'http' : 'unknown';
+          
+          // Log retry exhaustion
+          logRetryTelemetry(
+            functionName,
+            'retry_exhausted',
+            attempts,
+            maxRetries,
+            totalDuration,
+            errorType,
+            error instanceof Error ? error.message : String(error)
+          );
+          
           logToTelemetry(
             functionName,
             parsedError.errorCode || 'UNKNOWN',
-            error instanceof FunctionsFetchError ? 'network' :
-              error instanceof FunctionsRelayError ? 'relay' :
-              error instanceof FunctionsHttpError ? 'http' : 'unknown',
+            errorType,
             error instanceof Error ? error.message : String(error),
             httpStatus,
             { attempts, totalDuration, retriesExhausted: attempts > maxRetries }
@@ -235,6 +288,22 @@ export async function callEdgeFunctionWithRetry<T = unknown>(
       const delay = calculateDelay(attempts, initialDelay, maxDelay, backoffMultiplier);
 
       console.log(`[EdgeFunction] ${functionName} failed, retrying in ${Math.round(delay)}ms (attempt ${attempts}/${maxRetries + 1})`);
+
+      // Log retry attempt telemetry
+      if (enableTelemetry) {
+        const errorType = error instanceof FunctionsFetchError ? 'network' :
+          error instanceof FunctionsRelayError ? 'relay' :
+          error instanceof FunctionsHttpError ? 'http' : 'unknown';
+        logRetryTelemetry(
+          functionName,
+          'retry_attempt',
+          attempts,
+          maxRetries,
+          totalDuration,
+          errorType,
+          error instanceof Error ? error.message : String(error)
+        );
+      }
 
       onRetry?.(attempts, error, delay);
 
