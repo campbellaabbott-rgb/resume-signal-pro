@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Activity, Database, Zap, CreditCard, ArrowLeft, BarChart3, Clock, FileSearch, AlertOctagon, Mail, ShieldAlert, Ban, DollarSign, Webhook, FileWarning, Bell, Shuffle } from 'lucide-react';
+import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Activity, Database, Zap, CreditCard, ArrowLeft, BarChart3, Clock, FileSearch, AlertOctagon, Mail, ShieldAlert, Ban, DollarSign, Webhook, FileWarning, Bell, Shuffle, Shield, ShieldOff, Timer } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { getAllCircuitStates, resetServiceCircuit } from '@/hooks/use-circuit-breaker';
 
 interface CheckResult {
   status: 'ok' | 'slow' | 'error';
@@ -181,6 +182,15 @@ interface AIFallbackStatus {
   };
 }
 
+interface CircuitBreakerStatus {
+  state: 'closed' | 'open' | 'half-open';
+  failures: number;
+  totalFailures: number;
+  totalSuccesses: number;
+  lastError?: string;
+  timeUntilRetry: number | null;
+}
+
 const statusConfig = {
   healthy: { color: 'bg-green-500', icon: CheckCircle, label: 'Healthy' },
   degraded: { color: 'bg-yellow-500', icon: AlertTriangle, label: 'Degraded' },
@@ -232,6 +242,14 @@ export default function HealthCheck() {
   // AI Fallback monitoring
   const [aiFallbackStatus, setAIFallbackStatus] = useState<AIFallbackStatus | null>(null);
   const [aiFallbackLoading, setAIFallbackLoading] = useState(false);
+  
+  // Circuit breaker monitoring
+  const [circuitBreakers, setCircuitBreakers] = useState<Record<string, CircuitBreakerStatus>>({});
+
+  const fetchCircuitBreakerStatus = () => {
+    const states = getAllCircuitStates();
+    setCircuitBreakers(states);
+  };
 
   const fetchProductMetrics = async () => {
     try {
@@ -459,6 +477,7 @@ export default function HealthCheck() {
     fetchWebhookHealth();
     fetchParseFailures();
     fetchAIFallbackStatus('quick');
+    fetchCircuitBreakerStatus();
   };
 
   useEffect(() => {
@@ -644,6 +663,115 @@ export default function HealthCheck() {
                 <p className="text-xs text-muted-foreground">Failed Scans</p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Circuit Breaker Status */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-purple-500" />
+                Circuit Breaker Status
+              </div>
+              <div className="flex items-center gap-2">
+                {Object.values(circuitBreakers).some(cb => cb.state === 'open') ? (
+                  <Badge variant="destructive">
+                    <ShieldOff className="h-3 w-3 mr-1" />
+                    Circuits Open
+                  </Badge>
+                ) : Object.values(circuitBreakers).some(cb => cb.state === 'half-open') ? (
+                  <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600">
+                    <Timer className="h-3 w-3 mr-1" />
+                    Testing Recovery
+                  </Badge>
+                ) : Object.keys(circuitBreakers).length > 0 ? (
+                  <Badge variant="default" className="bg-green-500/20 text-green-600">
+                    <Shield className="h-3 w-3 mr-1" />
+                    All Circuits Closed
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">No activity</Badge>
+                )}
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {Object.keys(circuitBreakers).length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No circuit breaker activity yet. Make some edge function calls to see status.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {Object.entries(circuitBreakers).map(([serviceName, status]) => {
+                  const stateConfig = {
+                    closed: { color: 'bg-green-500/10 border-green-500/30', textColor: 'text-green-600', label: 'Closed', icon: Shield },
+                    open: { color: 'bg-red-500/10 border-red-500/30', textColor: 'text-red-600', label: 'Open', icon: ShieldOff },
+                    'half-open': { color: 'bg-yellow-500/10 border-yellow-500/30', textColor: 'text-yellow-600', label: 'Half-Open', icon: Timer },
+                  };
+                  const config = stateConfig[status.state];
+                  const StateIcon = config.icon;
+                  
+                  return (
+                    <div 
+                      key={serviceName} 
+                      className={`p-3 rounded-lg border ${config.color} flex items-center justify-between`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <StateIcon className={`h-4 w-4 ${config.textColor}`} />
+                        <div>
+                          <p className="font-medium text-sm">{serviceName}</p>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span>Failures: {status.failures}</span>
+                            <span>Total: {status.totalFailures} fail / {status.totalSuccesses} success</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {status.state === 'open' && status.timeUntilRetry && (
+                          <span className="text-xs text-muted-foreground">
+                            Retry in {Math.ceil(status.timeUntilRetry / 1000)}s
+                          </span>
+                        )}
+                        <Badge variant="outline" className={config.textColor}>
+                          {config.label}
+                        </Badge>
+                        {status.state !== 'closed' && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              resetServiceCircuit(serviceName);
+                              fetchCircuitBreakerStatus();
+                            }}
+                            className="h-6 px-2 text-xs"
+                          >
+                            Reset
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {Object.values(circuitBreakers).some(cb => cb.lastError) && (
+                  <div className="mt-4 p-3 rounded bg-muted/50">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Recent Errors</p>
+                    <div className="space-y-1">
+                      {Object.entries(circuitBreakers)
+                        .filter(([_, status]) => status.lastError)
+                        .slice(0, 3)
+                        .map(([serviceName, status]) => (
+                          <p key={serviceName} className="text-xs text-red-500 truncate">
+                            <span className="font-medium">{serviceName}:</span> {status.lastError}
+                          </p>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
