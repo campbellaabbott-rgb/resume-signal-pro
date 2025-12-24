@@ -31,6 +31,11 @@ export const AB_TESTS = {
     name: 'social_proof_placement',
     variants: ['control', 'above_fold', 'inline_hero'] as const,
   },
+  // Test hero layout: compact (CTA visible immediately) vs original (more content above fold)
+  hero_layout: {
+    name: 'hero_layout',
+    variants: ['compact', 'original'] as const,
+  },
 } as const;
 
 type TestName = keyof typeof AB_TESTS;
