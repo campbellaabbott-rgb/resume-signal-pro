@@ -1091,6 +1091,20 @@ export type Database = {
           view_rate: number
         }[]
       }
+      get_geo_latency_stats: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          avg_latency_ms: number
+          country: string
+          failed_scans: number
+          failure_rate: number
+          max_latency_ms: number
+          min_latency_ms: number
+          p50_latency_ms: number
+          p95_latency_ms: number
+          total_scans: number
+        }[]
+      }
       get_parse_failure_stats: {
         Args: { p_hours_back?: number }
         Returns: {
