@@ -450,13 +450,20 @@ Analyze this resume for ATS compatibility and provide a complete ATS Defense rep
 
     console.log("[ATS-DEFENSE] Calling AI gateway");
 
-    // Retry logic for transient network errors
-    const maxRetries = 3;
+    // Retry logic with timeout cap
+    const maxRetries = 2;
+    const REQUEST_TIMEOUT_MS = 90000; // 90 seconds for this complex analysis
+    const RETRY_DELAY_MS = 2000;
     let lastError: Error | null = null;
     let response: Response | null = null;
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+        
+        console.log(`[ATS-DEFENSE] API call attempt ${attempt + 1}/${maxRetries + 1}`);
+        
         response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -472,17 +479,41 @@ Analyze this resume for ATS compatibility and provide a complete ATS Defense rep
             tools: getATSDefenseTools(),
             tool_choice: { type: "function", function: { name: "submit_ats_defense_report" } }
           }),
+          signal: controller.signal,
         });
         
-        // If we got a response, break out of retry loop
+        clearTimeout(timeoutId);
+        
+        // If we got a response (success or client error), break out
+        if (response.ok || (response.status >= 400 && response.status < 500)) {
+          break;
+        }
+        
+        // Server errors - retry
+        if (response.status >= 500 && attempt < maxRetries) {
+          const errorText = await response.text();
+          console.log(`[ATS-DEFENSE] Server error ${response.status}, retrying...`, errorText.substring(0, 200));
+          lastError = new Error(`Server error: ${response.status}`);
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * (attempt + 1)));
+          response = null;
+          continue;
+        }
+        
         break;
+        
       } catch (fetchError) {
-        lastError = fetchError as Error;
-        console.error(`[ATS-DEFENSE] Fetch attempt ${attempt}/${maxRetries} failed:`, fetchError);
+        const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
+        
+        if (errorMessage.includes('aborted')) {
+          console.log(`[ATS-DEFENSE] Request timed out after ${REQUEST_TIMEOUT_MS}ms`);
+          lastError = new Error(`Request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
+        } else {
+          console.error(`[ATS-DEFENSE] Fetch attempt ${attempt + 1}/${maxRetries + 1} failed:`, errorMessage);
+          lastError = fetchError as Error;
+        }
         
         if (attempt < maxRetries) {
-          // Wait before retrying (exponential backoff: 1s, 2s, 4s)
-          const delay = Math.pow(2, attempt - 1) * 1000;
+          const delay = RETRY_DELAY_MS * (attempt + 1);
           console.log(`[ATS-DEFENSE] Retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
@@ -491,6 +522,14 @@ Analyze this resume for ATS compatibility and provide a complete ATS Defense rep
 
     if (!response) {
       console.error("[ATS-DEFENSE] All retry attempts failed:", lastError?.message);
+      
+      if (lastError?.message.includes('timed out') || lastError?.message.includes('timeout')) {
+        return new Response(
+          JSON.stringify({ error: "The AI took too long to respond. Please try again.", retryable: true }),
+          { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ error: "AI service temporarily unavailable. Please try again in a few moments." }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
