@@ -17,6 +17,7 @@ interface HealthRecord {
   test_passed: boolean;
   response_time_ms: number | null;
   checks_passed: Record<string, any> | null;
+  metadata: Record<string, any> | null;
   error_message: string | null;
   created_at: string;
 }
@@ -76,17 +77,30 @@ export function HealthHistoryChart() {
         const total = records.length;
         const latencies = records.filter(r => r.response_time_ms).map(r => r.response_time_ms!);
         
-        // Extract service-specific latencies from checks_passed
+        // Extract service-specific latencies (scheduled probe stores them in metadata.probes)
         let dbLatencies: number[] = [];
         let aiLatencies: number[] = [];
         let stripeLatencies: number[] = [];
-        
+
         records.forEach(r => {
-          if (r.checks_passed) {
-            const checks = r.checks_passed as any;
-            if (checks.database?.latency_ms) dbLatencies.push(checks.database.latency_ms);
-            if (checks.ai_gateway?.latency_ms) aiLatencies.push(checks.ai_gateway.latency_ms);
-            if (checks.stripe?.latency_ms) stripeLatencies.push(checks.stripe.latency_ms);
+          // Legacy/alternate format: checks_passed contains nested objects with latency
+          const checks = r.checks_passed as any;
+          if (checks?.database?.latency_ms) dbLatencies.push(Number(checks.database.latency_ms));
+          if (checks?.ai_gateway?.latency_ms) aiLatencies.push(Number(checks.ai_gateway.latency_ms));
+          if (checks?.stripe?.latency_ms) stripeLatencies.push(Number(checks.stripe.latency_ms));
+
+          // Current format: metadata.probes array
+          const probes = (r.metadata as any)?.probes;
+          if (Array.isArray(probes)) {
+            probes.forEach((p: any) => {
+              const service = String(p?.service ?? p?.name ?? '').toLowerCase();
+              const latency = Number(p?.latency_ms ?? p?.latencyMs ?? p?.latency);
+              if (!Number.isFinite(latency)) return;
+
+              if (service === 'database') dbLatencies.push(latency);
+              if (service === 'ai-gateway' || service === 'ai_gateway' || service === 'aigateway') aiLatencies.push(latency);
+              if (service === 'stripe') stripeLatencies.push(latency);
+            });
           }
         });
 
