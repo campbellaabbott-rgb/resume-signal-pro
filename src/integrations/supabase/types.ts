@@ -1324,6 +1324,16 @@ export type Database = {
             }
             Returns: boolean
           }
+        | {
+            Args: {
+              p_commission_override?: number
+              p_product_name: string
+              p_referral_code: string
+              p_sale_amount: number
+              p_stripe_session_id: string
+            }
+            Returns: boolean
+          }
       register_affiliate: {
         Args: { p_email: string; p_password: string }
         Returns: Json
