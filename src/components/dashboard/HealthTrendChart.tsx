@@ -260,7 +260,7 @@ export function HealthTrendChart({ className }: HealthTrendChartProps) {
             <div>
               <p className="text-sm font-medium mb-2">Scan Volume</p>
               <ResponsiveContainer width="100%" height={200}>
-                <ComposedChart data={data}>
+                <AreaChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis 
                     dataKey="hour_bucket" 
@@ -275,19 +275,23 @@ export function HealthTrendChart({ className }: HealthTrendChartProps) {
                   />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
-                  <Bar 
+                  <Area 
+                    type="monotone"
                     dataKey="completed_scans" 
                     name="Completed" 
+                    stroke="hsl(var(--chart-1))"
                     fill="hsl(var(--chart-1))" 
-                    stackId="scans"
+                    fillOpacity={0.3}
                   />
-                  <Bar 
+                  <Area 
+                    type="monotone"
                     dataKey="failed_scans" 
                     name="Failed" 
+                    stroke="hsl(var(--destructive))"
                     fill="hsl(var(--destructive))" 
-                    stackId="scans"
+                    fillOpacity={0.3}
                   />
-                </ComposedChart>
+                </AreaChart>
               </ResponsiveContainer>
             </div>
 
