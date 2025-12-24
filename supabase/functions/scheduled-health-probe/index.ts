@@ -82,18 +82,15 @@ async function probeAIGateway(): Promise<ProbeResult> {
   const probe = await probeWithTimeout(
     'ai-gateway',
     async () => {
-      // Minimal AI request to test connectivity
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      // Use Lovable AI gateway for testing
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+      const response = await fetch(`${supabaseUrl}/functions/v1/test-ai-fallback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY') || Deno.env.get('AI_GATEWAY_API_KEY') || ''}`,
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY') || ''}`,
         },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [{ role: 'user', content: 'ping' }],
-          max_tokens: 1,
-        }),
+        body: JSON.stringify({ mode: 'quick' }),
       });
       
       if (!response.ok) {
@@ -101,14 +98,19 @@ async function probeAIGateway(): Promise<ProbeResult> {
         throw new Error(`AI Gateway error: ${response.status} - ${text.slice(0, 100)}`);
       }
       
-      return await response.json();
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'AI test failed');
+      }
+      
+      return data;
     },
     PROBE_TIMEOUT
   );
 
   return {
     service: 'ai-gateway',
-    status: probe.success ? (probe.latency_ms < 3000 ? 'healthy' : 'degraded') : 'unhealthy',
+    status: probe.success ? (probe.latency_ms < 5000 ? 'healthy' : 'degraded') : 'unhealthy',
     latency_ms: probe.latency_ms,
     error: probe.error,
   };
