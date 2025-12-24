@@ -141,6 +141,89 @@ export const autoFixContent = (content: string, originalResume?: string): AutoFi
     corrections.push("Fixed truncated Full-Cycle");
   }
 
+  // === GRAMMAR & STYLE FIXES ===
+
+  // Fix "enterprise level" → "enterprise-level" (compound adjective)
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\benterprise level\b/gi, "enterprise-level");
+    if (fixed !== before) corrections.push("Fixed enterprise level → enterprise-level");
+  }
+
+  // Fix "Contingents" → "Contingent's" (possessive)
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\bContingents\b(?!\s+set)/g, "Contingent's");
+    fixed = fixed.replace(/\bContingents set\b/gi, "Contingent's set");
+    if (fixed !== before) corrections.push("Fixed Contingents → Contingent's");
+  }
+
+  // Fix "of Leaderboard" → "on the leaderboard"
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\bof Leaderboard\b/gi, "on the leaderboard");
+    fixed = fixed.replace(/\bof the Leaderboard\b/gi, "on the leaderboard");
+    if (fixed !== before) corrections.push("Fixed of Leaderboard → on the leaderboard");
+  }
+
+  // Fix "with the C-level going from" → "with C-level executives to take organizations from"
+  {
+    const before = fixed;
+    fixed = fixed.replace(
+      /\bwith the C-level going from\b/gi,
+      "with C-level executives to take organizations from"
+    );
+    fixed = fixed.replace(
+      /\bwith the C going from\b/gi,
+      "with C-level executives to take organizations from"
+    );
+    if (fixed !== before) corrections.push("Fixed C-level phrasing");
+  }
+
+  // Fix tilde character issues (˜ → ~)
+  {
+    const before = fixed;
+    fixed = fixed.replace(/˜/g, "~");
+    if (fixed !== before) corrections.push("Fixed tilde character ˜ → ~");
+  }
+
+  // Fix missing "and" between amounts and achievements (e.g., "$130,000 achieved" → "$130,000 and achieved")
+  {
+    const before = fixed;
+    fixed = fixed.replace(/(\$[\d,]+)\s+(achieved\s)/gi, "$1 and $2");
+    if (fixed !== before) corrections.push("Added missing 'and' between amounts");
+  }
+
+  // === DUPLICATE SUMMARY REMOVAL ===
+  // Remove duplicate opening summary if PROFESSIONAL SUMMARY section exists
+  {
+    const professionalSummaryIndex = fixed.indexOf("PROFESSIONAL SUMMARY");
+    if (professionalSummaryIndex > 0 && professionalSummaryIndex < 500) {
+      // Check if there's a paragraph before PROFESSIONAL SUMMARY that looks like a duplicate summary
+      const beforeSection = fixed.slice(0, professionalSummaryIndex).trim();
+      const lines = beforeSection.split("\n").filter(l => l.trim());
+      
+      // If there's a substantial paragraph (50+ chars) right before PROFESSIONAL SUMMARY, remove it
+      const lastParagraph = lines[lines.length - 1];
+      if (lastParagraph && lastParagraph.length > 50 && !lastParagraph.includes(":")) {
+        // This looks like a duplicate opening summary - remove it
+        const newBefore = lines.slice(0, -1).join("\n");
+        fixed = newBefore + (newBefore ? "\n\n" : "") + fixed.slice(professionalSummaryIndex);
+        corrections.push("Removed duplicate opening summary paragraph");
+      }
+    }
+  }
+
+  // === E-COMMERCE CONSISTENCY ===
+  // Standardize to "e-commerce" (lowercase with hyphen)
+  {
+    const before = fixed;
+    fixed = fixed.replace(/\bE-commerce\b/g, "e-commerce");
+    fixed = fixed.replace(/\beCommerce\b/g, "e-commerce");
+    fixed = fixed.replace(/\bEcommerce\b/g, "e-commerce");
+    if (fixed !== before) corrections.push("Standardized e-commerce spelling");
+  }
+
   // Restore common numeric corruptions from the original resume (when available)
   if (originalResume) {
     // 1) Decimal multipliers getting their dot dropped (3.5x → 35x, 1.5x → 15x)
