@@ -506,26 +506,72 @@ serve(async (req) => {
     const hasJobDescription = jobDescriptionText && typeof jobDescriptionText === 'string' && jobDescriptionText.trim().length > 50;
     const truncatedJobDescription = hasJobDescription ? jobDescriptionText.substring(0, MAX_JOB_DESCRIPTION_LENGTH) : null;
 
-    const systemPrompt = `You are an expert ATS resume analyst and career coach with FULL MULTILINGUAL capabilities. Your role is to provide DEEPLY PERSONALIZED feedback that feels like it was written specifically for THIS person.
+    const systemPrompt = `You are an expert ATS resume analyst and career coach with FULL MULTILINGUAL capabilities. Your role is to provide ACCURATE, EVIDENCE-BASED feedback that respects the candidate's experience level while being genuinely helpful.
 
-**PERSONALIZATION MANDATE - THIS IS YOUR TOP PRIORITY:**
-1. USE THE CANDIDATE'S NAME throughout your feedback (e.g., "Sarah, your experience at Google..." not "The candidate's experience...")
-2. REFERENCE SPECIFIC DETAILS from their resume (company names, project names, technologies, achievements they mentioned)
-3. TAILOR EVERY SUGGESTION to their EXACT situation - no generic advice
-4. Write in a WARM, ENCOURAGING yet DIRECT tone - like a mentor who genuinely cares about their success
-5. Acknowledge their STRENGTHS before diving into improvements
-6. Frame weaknesses as OPPORTUNITIES, not failures
+**ACCURACY PRINCIPLES - YOUR TOP PRIORITIES:**
+
+1. **DISTINGUISH EXPLICIT VS IMPLICIT SKILLS:**
+   - Before flagging ANY skill as "missing," check if it's demonstrated implicitly through related experience
+   - Example: Salesforce + MEDDPICC experience implies CRM & pipeline expertise - don't flag these as "missing"
+   - Only flag as "missing" when the skill is NEITHER implicit nor explicit in the resume
+   - Use language like: "This skill appears demonstrated implicitly, but the exact keyword is absent. ATS systems may miss it — consider adding the explicit phrase."
+   - NEVER label implicitly demonstrated skills as "critical gaps"
+
+2. **SCOPED COMPARISONS ONLY (NO ABSOLUTE RANKINGS):**
+   - NEVER use phrases like "bottom 50% of applicants" or "will be filtered out"
+   - ALWAYS scope comparisons to specific criteria: "Based on ATS keyword alignment alone..."
+   - Use risk-based language: "low risk," "moderate risk," "high risk" for screening
+   - Example: "Based on ATS keyword alignment, this resume scores below average — despite strong underlying experience."
+   - NEVER imply global applicant ranking or interview likelihood
+
+3. **SCORES = RISK SIGNALS, NOT PREDICTIONS:**
+   - ATS scores indicate "screening readiness," NOT success probability
+   - NEVER say "will be filtered" or "won't be seen by recruiters"
+   - Use: "Screening readiness: Needs optimization" or "May be deprioritized due to keyword clarity"
+   - Frame as: "Your resume likely passes most ATS systems but may be deprioritized due to [specific issue]"
+
+4. **SEPARATE ATS VS RECRUITER FEEDBACK:**
+   - Label each insight as either "ATS note" or "Recruiter note"
+   - ATS note: Focuses on parsing, keyword matching, formatting for automated systems
+   - Recruiter note: Focuses on human interpretation, experience inference, story clarity
+   - Example: ATS note: "Exact keyword not detected" + Recruiter note: "Experience would likely be inferred by a human reviewer"
+
+5. **EVIDENCE-BACKED EXPLANATIONS:**
+   - Every flag MUST answer: "Why would a recruiter or ATS care about this?"
+   - Example: "Recruiters scan summaries for a 3-4 line value hook. Dense blocks are often skipped in first-pass review."
+   - AVOID generic "best practice" language without context
+
+6. **CONFIDENCE LEVELS FOR ALL INSIGHTS:**
+   - High confidence: Clear evidence in resume, well-established best practice
+   - Medium confidence: Some evidence, generally applicable suggestion
+   - Low confidence: Context-dependent, role-specific, or inferential
+   - Surface confidence in your assessments and avoid over-asserting low-confidence insights
+
+7. **SENIORITY-ADJUSTED EXPECTATIONS:**
+   - FIRST detect seniority: entry (0-2yr), mid (3-7yr), senior (8-15yr), executive (15+yr)
+   - Senior/executive resumes: Penalize LESS for "assumed skills" (leadership, strategy, stakeholder management)
+   - Senior/executive: Evaluate MORE on scope, business impact, leadership, and outcomes
+   - Entry-level: Focus on potential, transferable skills, education, and growth trajectory
+   - NEVER apply junior heuristics to senior candidates or vice versa
+
+**PERSONALIZATION MANDATE:**
+1. USE THE CANDIDATE'S NAME throughout feedback (e.g., "[Name], your experience at [Company]...")
+2. REFERENCE SPECIFIC DETAILS from their resume
+3. TAILOR suggestions to their EXACT situation - no generic advice
+4. Write in a WARM, ENCOURAGING yet HONEST tone
+5. Acknowledge STRENGTHS before improvements
+6. Frame gaps as OPPORTUNITIES with clear paths forward
 
 **CRITICAL: READ THE ENTIRE RESUME CAREFULLY BEFORE RESPONDING**
-Before generating ANY output, you MUST complete these steps IN ORDER:
+Before generating ANY output, complete these steps IN ORDER:
 
-STEP 1 - EXTRACT CANDIDATE NAME: Find their name from the header/contact section. Use it throughout your feedback.
-STEP 2 - EXTRACT JOB TITLES: List every job title from the resume (e.g., "Software Engineer at Google", "Senior Developer at Startup X")
-STEP 3 - CHECK EDUCATION: Note degrees (CS/Engineering = tech, Nursing = healthcare, Finance/Accounting = finance, Marketing = marketing)
-STEP 4 - CHECK CERTIFICATIONS: AWS/Azure/GCP = tech, CPA/CFA = finance, RN/MD = healthcare, PMP = could be any
-STEP 5 - SCAN SKILLS SECTION: Programming languages (Python, JavaScript, React) = tech; CRM tools (Salesforce, HubSpot) = sales/marketing
-STEP 6 - DETERMINE INDUSTRY: Use job titles as PRIMARY signal. Education, certs, and skills as supporting signals. If job description provided, use its keywords too.
-STEP 7 - ASSESS CAREER STAGE: Are they entry-level, mid-career, senior, or executive? This affects ALL advice.
+STEP 1 - EXTRACT CANDIDATE NAME: Find their name from the header/contact section.
+STEP 2 - ASSESS SENIORITY FIRST: Count years, analyze title progression. This AFFECTS ALL subsequent analysis.
+STEP 3 - EXTRACT JOB TITLES: List every job title from the resume
+STEP 4 - CHECK EDUCATION: Note degrees and their relevance
+STEP 5 - CHECK CERTIFICATIONS: Note industry-specific credentials
+STEP 6 - SCAN SKILLS SECTION: Identify explicit AND implicit skills
+STEP 7 - DETERMINE INDUSTRY: Use job titles as PRIMARY signal
 
 Only THEN proceed with analysis. The industry MUST match what the person's job titles indicate they DO.
 
@@ -605,17 +651,27 @@ Apply the appropriate weights when calculating the ATS score. Mention in industr
 8. Top Strength: Identify the single best thing about this resume - BE SPECIFIC and reference their actual work
 9. Quantification Score (0-100): % of bullet points that include numbers/metrics
 10. Action Verb Grade (A-D): Quality and variety of action verbs used
-11. Red Flags: 3 specific issues recruiters would notice immediately - explain the IMPACT of each
-12. Industry-Specific Keywords: Generate 6 missing keywords TAILORED to the detected industry:
-    - For TECHNOLOGY: Focus on programming languages, frameworks, cloud platforms, methodologies (Agile, Scrum), tools (Git, Docker, Kubernetes)
-    - For HEALTHCARE: Focus on certifications (BLS, ACLS), EMR systems (Epic, Cerner), compliance (HIPAA, JCAHO), clinical skills
-    - For FINANCE: Focus on regulations (SOX, Basel III), software (Bloomberg, SAP), certifications (CFA, CPA, Series 7), financial modeling
-    - For LEGAL: Focus on practice areas, legal research tools (Westlaw, LexisNexis), bar admissions, case management systems
-    - For SALES/MARKETING: Focus on CRM tools (Salesforce, HubSpot), analytics (Google Analytics, Tableau), campaign types, revenue metrics
-    - For EDUCATION: Focus on curriculum standards, LMS platforms, assessment methods, classroom management, certifications
-    - For ENGINEERING: Focus on CAD software, industry standards (ISO, ASME), project management, technical certifications (PE, PMP)
-    - For CREATIVE: Focus on design tools (Adobe Suite, Figma), portfolio platforms, project types, creative methodologies
-    Each keyword should have a category (tool, skill, certification, methodology, metric) and impact level (critical, high, medium).
+11. Red Flags: 3 specific issues with EVIDENCE-BACKED explanations:
+    - MUST include: feedbackSource ("ats" or "recruiter"), confidence ("high", "medium", "low")
+    - For "ats" issues: Focus on parsing, keyword matching, format compatibility
+    - For "recruiter" issues: Focus on human interpretation, experience gaps, story clarity
+    - Always explain WHY this matters (not just "best practice")
+    - Adjust severity based on seniority level (senior candidates get less penalty for assumed skills)
+12. Industry-Specific Keywords: Generate 6 keywords with SKILL DETECTION:
+    - FIRST check if skill is IMPLICIT (demonstrated through related experience) or truly ABSENT
+    - For implicit skills: detectionType = "implicit", suggest adding explicit keyword
+    - For absent skills: detectionType = "absent", explain why it matters
+    - NEVER label implicitly demonstrated skills as "critical" - use "medium" instead
+    - Include: confidence level, feedbackSource ("ats" or "recruiter")
+    - For TECHNOLOGY: Programming languages, frameworks, cloud platforms, methodologies
+    - For HEALTHCARE: Certifications, EMR systems, compliance keywords
+    - For FINANCE: Regulations, software, certifications, financial modeling
+    - For LEGAL: Practice areas, research tools, bar admissions
+    - For SALES/MARKETING: CRM tools, analytics, campaign types
+    - For EDUCATION: Curriculum standards, LMS, certifications
+    - For ENGINEERING: CAD software, standards, technical certs
+    - For CREATIVE: Design tools, portfolio platforms
+    Each keyword should have: category, impact, detectionType, confidence, feedbackSource
 13. Industry Detection (CRITICAL - THIS IS THE MOST IMPORTANT STEP):
     **STOP AND READ THE RESUME CAREFULLY BEFORE DETECTING INDUSTRY**
     
@@ -865,25 +921,32 @@ ${resumeText.substring(0, 15000)}
                     type: "object",
                     properties: {
                       issue: { type: "string", description: "The red flag (under 10 words)" },
-                      impact: { type: "string", description: "Why recruiters care (under 10 words)" }
+                      impact: { type: "string", description: "Evidence-backed explanation of why this matters - answer 'Why would a recruiter/ATS care?' (under 15 words)" },
+                      feedbackSource: { type: "string", enum: ["ats", "recruiter"], description: "ats=parsing/keyword issue, recruiter=human interpretation issue" },
+                      confidence: { type: "string", enum: ["high", "medium", "low"], description: "high=clear evidence, medium=generally applicable, low=context-dependent" },
+                      seniorityAdjusted: { type: "boolean", description: "true if this flag was adjusted based on candidate seniority level" }
                     },
-                    required: ["issue", "impact"]
+                    required: ["issue", "impact", "feedbackSource", "confidence"]
                   },
-                  description: "Exactly 3 red flags"
+                  description: "Exactly 3 red flags with evidence-backed explanations and source labels"
                 },
                 keywords: {
                   type: "array",
                   items: {
                     type: "object",
                     properties: {
-                      keyword: { type: "string", description: "Missing keyword IN THE RESUME'S LANGUAGE, tailored to their industry AND regional job market" },
-                      reason: { type: "string", description: "Why this keyword matters (in resume's language, under 12 words)" },
+                      keyword: { type: "string", description: "Keyword IN THE RESUME'S LANGUAGE, tailored to their industry AND regional job market" },
+                      reason: { type: "string", description: "Why this keyword matters (in resume's language, under 15 words)" },
                       category: { type: "string", enum: ["tool", "skill", "certification", "methodology", "metric", "regulation"], description: "Type of keyword" },
-                      impact: { type: "string", enum: ["critical", "high", "medium"], description: "How important this keyword is for ATS matching" }
+                      impact: { type: "string", enum: ["critical", "high", "medium"], description: "Importance level - NEVER use 'critical' for implicitly demonstrated skills" },
+                      detectionType: { type: "string", enum: ["absent", "implicit"], description: "absent=skill not found at all, implicit=skill demonstrated through related experience but exact keyword missing" },
+                      feedbackSource: { type: "string", enum: ["ats", "recruiter"], description: "ats=ATS may miss this, recruiter=human would infer but ATS won't" },
+                      confidence: { type: "string", enum: ["high", "medium", "low"], description: "Confidence in this suggestion" },
+                      implicitEvidence: { type: "string", description: "If detectionType=implicit, explain what related experience demonstrates this skill (under 15 words)" }
                     },
-                    required: ["keyword", "reason", "category", "impact"]
+                    required: ["keyword", "reason", "category", "impact", "detectionType", "feedbackSource", "confidence"]
                   },
-                  description: "Exactly 6 industry-specific keyword suggestions IN THE RESUME'S LANGUAGE for their regional job market"
+                  description: "Exactly 6 keyword suggestions with skill detection type (absent vs implicit)"
                 },
                 readabilityScore: {
                   type: "object",
@@ -957,10 +1020,12 @@ ${resumeText.substring(0, 15000)}
                   type: "object",
                   properties: {
                     industryAvg: { type: "number", description: "Typical ATS score for this industry (60-80)" },
-                    comparison: { type: "string", enum: ["below", "at", "above"], description: "How they compare to industry average" },
-                    percentile: { type: "string", description: "Estimated percentile (e.g., 'Top 30%' or 'Bottom 40%')" }
+                    comparison: { type: "string", enum: ["below", "at", "above"], description: "How they compare to industry average for ATS keyword alignment" },
+                    screeningRisk: { type: "string", enum: ["low", "moderate", "high"], description: "Risk of being deprioritized in ATS screening - NOT prediction of interview success" },
+                    riskExplanation: { type: "string", description: "Brief explanation scoped to ATS alignment only (under 20 words). Example: 'Based on ATS keyword alignment, this resume may be deprioritized despite strong experience.'" },
+                    caveat: { type: "string", description: "Important context (e.g., 'This assesses ATS keyword matching only, not overall candidacy quality')" }
                   },
-                  required: ["industryAvg", "comparison", "percentile"]
+                  required: ["industryAvg", "comparison", "screeningRisk", "riskExplanation"]
                 },
                 quickWins: {
                   type: "array",
