@@ -5,67 +5,99 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Retry configuration
-const MAX_RETRIES = 2;
-const REQUEST_TIMEOUT_MS = 60000;
-const RETRY_DELAY_MS = 2000;
+// Retry and fallback configuration
+const MAX_RETRIES = 1;
+const REQUEST_TIMEOUT_MS = 55000;
+const RETRY_DELAY_MS = 1000;
+
+// Model fallback order
+const MODEL_FALLBACK_ORDER = [
+  'openai/gpt-5',
+  'google/gemini-2.5-pro',
+  'openai/gpt-5-mini',
+];
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function fetchWithRetry(
-  url: string, 
-  options: RequestInit, 
-  maxRetries = MAX_RETRIES
-): Promise<Response> {
+interface AIRequestOptions {
+  messages: Array<{ role: string; content: string }>;
+  tools?: unknown[];
+  tool_choice?: unknown;
+}
+
+async function callAIWithFallback(
+  apiKey: string,
+  options: AIRequestOptions,
+  context: string = 'AI call'
+): Promise<{ response: Response; modelUsed: string }> {
   let lastError: Error | null = null;
   
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-      
-      console.log(`[TAILORED-RESUME] API call attempt ${attempt + 1}/${maxRetries + 1}`);
-      
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (response.ok || (response.status >= 400 && response.status < 500)) {
-        return response;
-      }
-      
-      if (response.status >= 500 && attempt < maxRetries) {
-        const errorText = await response.text();
-        console.log(`[TAILORED-RESUME] Server error ${response.status}, retrying...`, errorText.substring(0, 200));
-        lastError = new Error(`Server error: ${response.status}`);
-        await sleep(RETRY_DELAY_MS * (attempt + 1));
-        continue;
-      }
-      
-      return response;
-      
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      if (errorMessage.includes('aborted')) {
-        console.log(`[TAILORED-RESUME] Request timed out after ${REQUEST_TIMEOUT_MS}ms`);
-        lastError = new Error(`Request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
-      } else {
-        console.log(`[TAILORED-RESUME] Network error: ${errorMessage}`);
+  for (const model of MODEL_FALLBACK_ORDER) {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+        
+        console.log(`[TAILORED-RESUME] ${context} - trying ${model}, attempt ${attempt + 1}`);
+        
+        const requestBody: Record<string, unknown> = {
+          model,
+          messages: options.messages,
+        };
+        if (options.tools) requestBody.tools = options.tools;
+        if (options.tool_choice) requestBody.tool_choice = options.tool_choice;
+        
+        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          console.log(`[TAILORED-RESUME] ${context} - succeeded with ${model}`);
+          return { response, modelUsed: model };
+        }
+        
+        if (response.status === 429 || response.status === 402) {
+          return { response, modelUsed: model };
+        }
+        
+        if (response.status >= 400 && response.status < 500) {
+          console.log(`[TAILORED-RESUME] ${context} - client error ${response.status}, trying next model`);
+          break;
+        }
+        
+        if (response.status >= 500) {
+          console.log(`[TAILORED-RESUME] ${context} - server error ${response.status}`);
+          if (attempt < MAX_RETRIES) {
+            await sleep(RETRY_DELAY_MS);
+            continue;
+          }
+          break;
+        }
+        
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log(`[TAILORED-RESUME] ${context} - error with ${model}: ${errorMessage}`);
         lastError = error instanceof Error ? error : new Error(errorMessage);
-      }
-      
-      if (attempt < maxRetries) {
-        await sleep(RETRY_DELAY_MS * (attempt + 1));
-        continue;
+        
+        if (attempt < MAX_RETRIES) {
+          await sleep(RETRY_DELAY_MS);
+          continue;
+        }
+        break;
       }
     }
+    console.log(`[TAILORED-RESUME] ${context} - ${model} failed, trying next model`);
   }
   
-  throw lastError || new Error('Max retries exceeded');
+  throw lastError || new Error('All AI models failed');
 }
 
 serve(async (req) => {
@@ -138,14 +170,9 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
 
     console.log("[TAILORED-RESUME] Generating tailored resume for:", jobTitle, "at", jobCompany);
 
-    const response = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-5",
+    const { response, modelUsed } = await callAIWithFallback(
+      LOVABLE_API_KEY,
+      {
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
@@ -198,8 +225,9 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
           }
         }],
         tool_choice: { type: "function", function: { name: "submit_tailored_resume" } }
-      }),
-    });
+      },
+      'Tailored resume generation'
+    );
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -215,12 +243,14 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
         );
       }
       const errorText = await response.text();
-      console.error("[TAILORED-RESUME] AI API error:", response.status, errorText);
+      console.error("[TAILORED-RESUME] AI API error:", response.status, errorText, "model:", modelUsed);
       return new Response(
         JSON.stringify({ error: "Failed to generate tailored resume" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log("[TAILORED-RESUME] AI call succeeded with model:", modelUsed);
 
     const data = await response.json();
     

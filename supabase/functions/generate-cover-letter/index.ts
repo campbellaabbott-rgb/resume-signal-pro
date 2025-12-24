@@ -9,67 +9,95 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[GENERATE-COVER-LETTER] ${step}`, details ? JSON.stringify(details) : '');
 };
 
-// Retry configuration
-const MAX_RETRIES = 2;
-const REQUEST_TIMEOUT_MS = 60000;
-const RETRY_DELAY_MS = 2000;
+// Retry and fallback configuration
+const MAX_RETRIES = 1;
+const REQUEST_TIMEOUT_MS = 55000;
+const RETRY_DELAY_MS = 1000;
+
+// Model fallback order
+const MODEL_FALLBACK_ORDER = [
+  'openai/gpt-5',
+  'google/gemini-2.5-pro',
+  'openai/gpt-5-mini',
+];
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function fetchWithRetry(
-  url: string, 
-  options: RequestInit, 
-  maxRetries = MAX_RETRIES
-): Promise<Response> {
+interface AIRequestOptions {
+  messages: Array<{ role: string; content: string }>;
+  max_completion_tokens?: number;
+}
+
+async function callAIWithFallback(
+  apiKey: string,
+  options: AIRequestOptions,
+  context: string = 'AI call'
+): Promise<{ response: Response; modelUsed: string }> {
   let lastError: Error | null = null;
   
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-      
-      logStep(`API call attempt ${attempt + 1}/${maxRetries + 1}`);
-      
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (response.ok || (response.status >= 400 && response.status < 500)) {
-        return response;
-      }
-      
-      if (response.status >= 500 && attempt < maxRetries) {
-        const errorText = await response.text();
-        logStep(`Server error ${response.status}, retrying...`, { error: errorText.substring(0, 200) });
-        lastError = new Error(`Server error: ${response.status}`);
-        await sleep(RETRY_DELAY_MS * (attempt + 1));
-        continue;
-      }
-      
-      return response;
-      
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      if (errorMessage.includes('aborted')) {
-        logStep(`Request timed out after ${REQUEST_TIMEOUT_MS}ms`);
-        lastError = new Error(`Request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
-      } else {
-        logStep(`Network error: ${errorMessage}`);
+  for (const model of MODEL_FALLBACK_ORDER) {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+        
+        logStep(`${context} - trying ${model}`, { attempt: attempt + 1, model });
+        
+        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model,
+            messages: options.messages,
+            max_completion_tokens: options.max_completion_tokens,
+          }),
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          logStep(`${context} - succeeded with ${model}`);
+          return { response, modelUsed: model };
+        }
+        
+        if (response.status === 429 || response.status === 402) {
+          return { response, modelUsed: model };
+        }
+        
+        if (response.status >= 400 && response.status < 500) {
+          logStep(`${context} - client error, trying next model`, { status: response.status, model });
+          break;
+        }
+        
+        if (response.status >= 500) {
+          logStep(`${context} - server error`, { status: response.status, model });
+          if (attempt < MAX_RETRIES) {
+            await sleep(RETRY_DELAY_MS);
+            continue;
+          }
+          break;
+        }
+        
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logStep(`${context} - error with ${model}`, { error: errorMessage });
         lastError = error instanceof Error ? error : new Error(errorMessage);
-      }
-      
-      if (attempt < maxRetries) {
-        await sleep(RETRY_DELAY_MS * (attempt + 1));
-        continue;
+        
+        if (attempt < MAX_RETRIES) {
+          await sleep(RETRY_DELAY_MS);
+          continue;
+        }
+        break;
       }
     }
+    logStep(`${context} - ${model} failed, trying next model`);
   }
   
-  throw lastError || new Error('Max retries exceeded');
+  throw lastError || new Error('All AI models failed');
 }
 
 serve(async (req) => {
@@ -193,27 +221,23 @@ TONE: ${tone}
 
 Write something that sounds like this specific person wrote it - confident, specific, genuine. Reference their actual experiences with concrete details.`;
 
-    logStep("Calling AI API");
+    logStep("Calling AI API with fallback");
 
-    const response = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-5",
+    const { response, modelUsed } = await callAIWithFallback(
+      apiKey,
+      {
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
         max_completion_tokens: 4000,
-      }),
-    });
+      },
+      'Cover letter generation'
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      logStep("AI API error", { status: response.status, error: errorText });
+      logStep("AI API error", { status: response.status, error: errorText, model: modelUsed });
       
       if (response.status === 429) {
         return new Response(
@@ -232,7 +256,7 @@ Write something that sounds like this specific person wrote it - confident, spec
     }
 
     const aiResponse = await response.json();
-    logStep("AI response received");
+    logStep("AI response received", { model: modelUsed });
 
     const content = aiResponse.choices?.[0]?.message?.content;
     if (!content) {

@@ -174,13 +174,131 @@ const validateContent = (content: string, originalResume: string): { issues: str
   return { issues, score };
 };
 
-// Retry configuration
-const MAX_RETRIES = 2;
-const REQUEST_TIMEOUT_MS = 60000; // 60 seconds cap
-const RETRY_DELAY_MS = 2000;
+// Retry and fallback configuration
+const MAX_RETRIES = 1; // Reduced since we have model fallback
+const REQUEST_TIMEOUT_MS = 55000; // 55 seconds per model attempt
+const RETRY_DELAY_MS = 1000;
+
+// Model fallback order: primary -> same-quality different provider -> faster model
+const MODEL_FALLBACK_ORDER = [
+  'openai/gpt-5',           // Primary: best quality
+  'google/gemini-2.5-pro',  // Fallback 1: same quality, different provider
+  'openai/gpt-5-mini',      // Fallback 2: faster, slightly lower quality
+];
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+interface AIRequestOptions {
+  messages: Array<{ role: string; content: string }>;
+  max_completion_tokens?: number;
+  tools?: unknown[];
+  tool_choice?: unknown;
+}
+
+async function callAIWithFallback(
+  apiKey: string,
+  options: AIRequestOptions,
+  context: string = 'AI call'
+): Promise<{ response: Response; modelUsed: string }> {
+  let lastError: Error | null = null;
+  
+  for (const model of MODEL_FALLBACK_ORDER) {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+        
+        const startTime = Date.now();
+        logStep(`${context} - trying ${model}`, { attempt: attempt + 1, model });
+        
+        const requestBody: Record<string, unknown> = {
+          model,
+          messages: options.messages,
+        };
+        
+        if (options.max_completion_tokens) {
+          requestBody.max_completion_tokens = options.max_completion_tokens;
+        }
+        if (options.tools) {
+          requestBody.tools = options.tools;
+        }
+        if (options.tool_choice) {
+          requestBody.tool_choice = options.tool_choice;
+        }
+        
+        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        const duration = Date.now() - startTime;
+        
+        // Success
+        if (response.ok) {
+          logStep(`${context} - succeeded with ${model}`, { duration, model });
+          return { response, modelUsed: model };
+        }
+        
+        // Rate limit or payment required - don't retry, don't fallback
+        if (response.status === 429 || response.status === 402) {
+          logStep(`${context} - rate limit/payment issue`, { status: response.status, model });
+          return { response, modelUsed: model };
+        }
+        
+        // Client error (4xx) - don't retry same model, try fallback
+        if (response.status >= 400 && response.status < 500) {
+          const errorText = await response.text();
+          logStep(`${context} - client error, trying next model`, { status: response.status, error: errorText.substring(0, 100), model });
+          lastError = new Error(`Client error ${response.status}: ${errorText.substring(0, 100)}`);
+          break; // Try next model
+        }
+        
+        // Server error (5xx) - retry same model once, then fallback
+        if (response.status >= 500) {
+          const errorText = await response.text();
+          logStep(`${context} - server error`, { status: response.status, attempt: attempt + 1, model });
+          lastError = new Error(`Server error: ${response.status}`);
+          
+          if (attempt < MAX_RETRIES) {
+            await sleep(RETRY_DELAY_MS);
+            continue;
+          }
+          break; // Try next model
+        }
+        
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        if (errorMessage.includes('aborted')) {
+          logStep(`${context} - timeout with ${model}`, { model });
+          lastError = new Error(`Timeout with ${model}`);
+        } else {
+          logStep(`${context} - network error with ${model}`, { error: errorMessage, model });
+          lastError = error instanceof Error ? error : new Error(errorMessage);
+        }
+        
+        if (attempt < MAX_RETRIES) {
+          await sleep(RETRY_DELAY_MS);
+          continue;
+        }
+        break; // Try next model
+      }
+    }
+    
+    logStep(`${context} - ${model} failed, trying next model`);
+  }
+  
+  // All models failed
+  throw lastError || new Error('All AI models failed');
+}
+
+// Legacy function for backward compatibility
 async function fetchWithRetry(
   url: string, 
   options: RequestInit, 
@@ -193,49 +311,26 @@ async function fetchWithRetry(
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
       
-      const startTime = Date.now();
-      logStep(`API call attempt ${attempt + 1}/${maxRetries + 1}`, { url: url.substring(0, 50) });
-      
       const response = await fetch(url, {
         ...options,
         signal: controller.signal,
       });
       
       clearTimeout(timeoutId);
-      const duration = Date.now() - startTime;
       
-      // If successful or client error (4xx), return immediately
       if (response.ok || (response.status >= 400 && response.status < 500)) {
-        logStep(`API call succeeded`, { attempt: attempt + 1, duration, status: response.status });
         return response;
       }
       
-      // Server errors (5xx) - retry
-      if (response.status >= 500) {
-        const errorText = await response.text();
-        logStep(`Server error, will retry`, { attempt: attempt + 1, status: response.status, error: errorText.substring(0, 200) });
-        lastError = new Error(`Server error: ${response.status}`);
-        
-        if (attempt < maxRetries) {
-          await sleep(RETRY_DELAY_MS * (attempt + 1));
-          continue;
-        }
+      if (response.status >= 500 && attempt < maxRetries) {
+        await sleep(RETRY_DELAY_MS * (attempt + 1));
+        continue;
       }
       
       return response;
       
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      // Timeout or network error
-      if (errorMessage.includes('aborted') || errorMessage.includes('timeout')) {
-        logStep(`Request timed out after ${REQUEST_TIMEOUT_MS}ms`, { attempt: attempt + 1 });
-        lastError = new Error(`Request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
-      } else {
-        logStep(`Network error`, { attempt: attempt + 1, error: errorMessage });
-        lastError = error instanceof Error ? error : new Error(errorMessage);
-      }
-      
+      lastError = error instanceof Error ? error : new Error(String(error));
       if (attempt < maxRetries) {
         await sleep(RETRY_DELAY_MS * (attempt + 1));
         continue;
@@ -370,25 +465,21 @@ ${jobDescription}` : 'No job description provided - optimize for general profess
 
 BEFORE YOU RESPOND: Count all jobs, education entries, and major bullet points in the original. Your output MUST contain ALL of them, enhanced.`;
 
-    const resumeResponse = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-5",
+    const { response: resumeResponse, modelUsed: resumeModel } = await callAIWithFallback(
+      apiKey,
+      {
         messages: [
           { role: "system", content: resumeSystemPrompt },
           { role: "user", content: resumeUserPrompt }
         ],
         max_completion_tokens: 12000,
-      }),
-    });
+      },
+      'Resume generation'
+    );
 
     if (!resumeResponse.ok) {
       const errorText = await resumeResponse.text();
-      logStep("Resume AI API error", { status: resumeResponse.status, error: errorText });
+      logStep("Resume AI API error", { status: resumeResponse.status, error: errorText, model: resumeModel });
       
       if (resumeResponse.status === 429) {
         return new Response(
@@ -405,6 +496,8 @@ BEFORE YOU RESPOND: Count all jobs, education entries, and major bullet points i
       
       throw new Error(`Resume AI API error: ${resumeResponse.status}`);
     }
+
+    logStep("Resume generated successfully", { model: resumeModel });
 
     const resumeAiResponse = await resumeResponse.json();
     const resumeContent = resumeAiResponse.choices?.[0]?.message?.content;
@@ -511,25 +604,21 @@ ${jobDescription}` : ''}
 
 Write a cover letter that sounds like it was written by this specific person - confident, articulate, and genuine. Reference specific experiences from their resume with concrete details.`;
 
-    const coverLetterResponse = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-5",
+    const { response: coverLetterResponse, modelUsed: coverLetterModel } = await callAIWithFallback(
+      apiKey,
+      {
         messages: [
           { role: "system", content: coverLetterSystemPrompt },
           { role: "user", content: coverLetterUserPrompt }
         ],
         max_completion_tokens: 4000,
-      }),
-    });
+      },
+      'Cover letter generation'
+    );
 
     if (!coverLetterResponse.ok) {
       const errorText = await coverLetterResponse.text();
-      logStep("Cover letter AI API error", { status: coverLetterResponse.status, error: errorText });
+      logStep("Cover letter AI API error", { status: coverLetterResponse.status, error: errorText, model: coverLetterModel });
       
       if (coverLetterResponse.status === 429) {
         return new Response(
@@ -540,6 +629,8 @@ Write a cover letter that sounds like it was written by this specific person - c
       
       throw new Error(`Cover letter AI API error: ${coverLetterResponse.status}`);
     }
+
+    logStep("Cover letter generated successfully", { model: coverLetterModel });
 
     const coverLetterAiResponse = await coverLetterResponse.json();
     const coverLetterContent = coverLetterAiResponse.choices?.[0]?.message?.content;
@@ -604,6 +695,10 @@ Write a cover letter that sounds like it was written by this specific person - c
         company: jobCompany || 'Not specified'
       },
       generatedAt: new Date().toISOString(),
+      modelsUsed: {
+        resume: resumeModel,
+        coverLetter: coverLetterModel
+      },
       validation: {
         resumeQualityScore: resumeValidation.score,
         resumeIssues: resumeValidation.issues,
