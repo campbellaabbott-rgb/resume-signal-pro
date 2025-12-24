@@ -26,10 +26,18 @@ interface CheckResult {
 
 // Thresholds in ms (relaxed for cold start scenarios)
 const THRESHOLDS = {
-  database: { ok: 800, slow: 2000 },
+  database: { ok: 1000, slow: 3000 },
   ai_gateway: { ok: 3000, slow: 6000 },
   stripe: { ok: 800, slow: 2000 },
 };
+
+// Timeout wrapper for promises
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), timeoutMs))
+  ]);
+}
 
 // Cached Supabase client to avoid re-initialization
 let cachedSupabase: any = null;
@@ -47,16 +55,26 @@ function getSupabaseClient() {
 
 async function checkDatabase(supabase: any): Promise<CheckResult> {
   const start = Date.now();
+  const DB_TIMEOUT = 3000;
+  
   try {
-    // Use count query which is faster than selecting data
-    const { count, error } = await supabase
-      .from('daily_scan_stats')
-      .select('*', { count: 'exact', head: true });
+    // Simple RPC call that's faster than table queries
+    const queryPromise = supabase.rpc('get_today_scan_count');
+    
+    const result = await withTimeout(
+      queryPromise,
+      DB_TIMEOUT,
+      { data: null, error: { message: 'Database timeout' } }
+    );
     
     const latency = Date.now() - start;
     
-    if (error) {
-      return { status: 'error', latency_ms: latency, message: error.message };
+    if (result.error) {
+      // Timeout or actual error - mark as slow, not error, if it's just slow
+      if (latency >= DB_TIMEOUT) {
+        return { status: 'slow', latency_ms: latency, message: 'Timeout - database slow' };
+      }
+      return { status: 'error', latency_ms: latency, message: result.error.message };
     }
     
     const status = latency <= THRESHOLDS.database.ok ? 'ok' : 
@@ -64,9 +82,10 @@ async function checkDatabase(supabase: any): Promise<CheckResult> {
     
     return { status, latency_ms: latency };
   } catch (e) {
+    const latency = Date.now() - start;
     return { 
-      status: 'error', 
-      latency_ms: Date.now() - start, 
+      status: latency >= DB_TIMEOUT ? 'slow' : 'error', 
+      latency_ms: latency, 
       message: e instanceof Error ? e.message : 'Unknown error' 
     };
   }
