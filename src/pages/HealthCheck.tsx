@@ -6,6 +6,7 @@ import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Activity, Database, Zap
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getAllCircuitStates, resetServiceCircuit } from '@/hooks/use-circuit-breaker';
+import { HealthTrendChart } from '@/components/dashboard/HealthTrendChart';
 
 interface CheckResult {
   status: 'ok' | 'slow' | 'error';
@@ -703,6 +704,9 @@ export default function HealthCheck() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Scan Activity Trends */}
+        <HealthTrendChart className="mb-6" />
 
         {/* Warm-Up Status */}
         <Card className="mb-6">
