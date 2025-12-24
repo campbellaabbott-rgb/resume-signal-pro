@@ -57,6 +57,14 @@ export function HealthHistoryChart() {
 
       if (error) throw error;
 
+      // Debug: log raw data structure
+      if (records && records.length > 0) {
+        const sample = records[0] as any;
+        console.log('[HealthHistoryChart] Sample record keys:', Object.keys(sample));
+        console.log('[HealthHistoryChart] Sample metadata:', sample.metadata);
+        console.log('[HealthHistoryChart] Sample probes:', sample.metadata?.probes);
+      }
+
       const typedRecords = (records || []) as HealthRecord[];
       setData(typedRecords);
       
@@ -72,30 +80,31 @@ export function HealthHistoryChart() {
       });
 
       const stats: HourlyStats[] = [];
-      hourlyMap.forEach((records, hour) => {
-        const passed = records.filter(r => r.test_passed).length;
-        const total = records.length;
-        const latencies = records.filter(r => r.response_time_ms).map(r => r.response_time_ms!);
+      hourlyMap.forEach((hourRecords, hour) => {
+        const passed = hourRecords.filter(r => r.test_passed).length;
+        const total = hourRecords.length;
+        const latencies = hourRecords.filter(r => r.response_time_ms).map(r => r.response_time_ms!);
         
         // Extract service-specific latencies (scheduled probe stores them in metadata.probes)
         let dbLatencies: number[] = [];
         let aiLatencies: number[] = [];
         let stripeLatencies: number[] = [];
 
-        records.forEach(r => {
+        hourRecords.forEach(record => {
           // Legacy/alternate format: checks_passed contains nested objects with latency
-          const checks = r.checks_passed as any;
+          const checks = record.checks_passed as any;
           if (checks?.database?.latency_ms) dbLatencies.push(Number(checks.database.latency_ms));
           if (checks?.ai_gateway?.latency_ms) aiLatencies.push(Number(checks.ai_gateway.latency_ms));
           if (checks?.stripe?.latency_ms) stripeLatencies.push(Number(checks.stripe.latency_ms));
 
           // Current format: metadata.probes array
-          const probes = (r.metadata as any)?.probes;
+          const metadata = record.metadata as any;
+          const probes = metadata?.probes;
           if (Array.isArray(probes)) {
-            probes.forEach((p: any) => {
-              const service = String(p?.service ?? p?.name ?? '').toLowerCase();
-              const latency = Number(p?.latency_ms ?? p?.latencyMs ?? p?.latency);
-              if (!Number.isFinite(latency)) return;
+            probes.forEach((probe: any) => {
+              const service = String(probe?.service ?? probe?.name ?? '').toLowerCase();
+              const latency = Number(probe?.latency_ms ?? probe?.latencyMs ?? probe?.latency);
+              if (!Number.isFinite(latency) || latency <= 0) return;
 
               if (service === 'database') dbLatencies.push(latency);
               if (service === 'ai-gateway' || service === 'ai_gateway' || service === 'aigateway') aiLatencies.push(latency);
@@ -116,6 +125,11 @@ export function HealthHistoryChart() {
           stripeLatency: stripeLatencies.length > 0 ? Math.round(stripeLatencies.reduce((a, b) => a + b, 0) / stripeLatencies.length) : 0,
         });
       });
+      
+      // Debug: log first stats entry
+      if (stats.length > 0) {
+        console.log('[HealthHistoryChart] First hourly stat:', stats[0]);
+      }
 
       setHourlyStats(stats);
 
