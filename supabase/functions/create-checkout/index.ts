@@ -247,22 +247,29 @@ serve(async (req) => {
   try {
     logStep("Function started", { ip: clientIp });
 
-    // Check persistent rate limit
+    // Initialize Supabase client once
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check per-function rate limit
-    const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
-      p_ip: clientIp,
-      p_function: 'create-checkout',
-      p_max_requests: RATE_LIMIT,
-      p_window_minutes: RATE_WINDOW_MINUTES
-    });
+    // Check BOTH rate limits in parallel (saves ~100-200ms)
+    const [rateLimitResult, globalRateLimitResult] = await Promise.all([
+      supabase.rpc('check_rate_limit', {
+        p_ip: clientIp,
+        p_function: 'create-checkout',
+        p_max_requests: RATE_LIMIT,
+        p_window_minutes: RATE_WINDOW_MINUTES
+      }),
+      supabase.rpc('check_global_rate_limit', {
+        p_ip: clientIp,
+        p_max_requests: 100,
+        p_window_minutes: 60
+      })
+    ]);
 
-    if (rlError) {
-      console.error("[CREATE-CHECKOUT] Rate limit check error:", rlError);
-    } else if (!allowed) {
+    if (rateLimitResult.error) {
+      console.error("[CREATE-CHECKOUT] Rate limit check error:", rateLimitResult.error);
+    } else if (!rateLimitResult.data) {
       logStep("Rate limit exceeded", { ip: clientIp });
       return new Response(
         JSON.stringify({ error: "Too many requests. Please try again later." }),
@@ -270,16 +277,9 @@ serve(async (req) => {
       );
     }
 
-    // Check global rate limit (100 req/hr across ALL functions)
-    const { data: globalAllowed, error: globalRlError } = await supabase.rpc('check_global_rate_limit', {
-      p_ip: clientIp,
-      p_max_requests: 100,
-      p_window_minutes: 60
-    });
-
-    if (globalRlError) {
-      console.error("[CREATE-CHECKOUT] Global rate limit check error:", globalRlError);
-    } else if (!globalAllowed) {
+    if (globalRateLimitResult.error) {
+      console.error("[CREATE-CHECKOUT] Global rate limit check error:", globalRateLimitResult.error);
+    } else if (!globalRateLimitResult.data) {
       logStep("Global rate limit exceeded", { ip: clientIp });
       return new Response(
         JSON.stringify({ error: "Too many requests. Please try again later." }),
