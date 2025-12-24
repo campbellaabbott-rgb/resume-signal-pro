@@ -272,6 +272,7 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
         success: true,
         jobTitle,
         jobCompany,
+        modelUsed,
         ...tailoredContent
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

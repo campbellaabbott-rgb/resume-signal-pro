@@ -517,6 +517,7 @@ export type Database = {
       }
       product_deliveries: {
         Row: {
+          ai_model_used: string | null
           ai_parse_error: string | null
           ai_response_valid: boolean | null
           amount_cents: number | null
@@ -544,6 +545,7 @@ export type Database = {
           stripe_session_id: string
         }
         Insert: {
+          ai_model_used?: string | null
           ai_parse_error?: string | null
           ai_response_valid?: boolean | null
           amount_cents?: number | null
@@ -571,6 +573,7 @@ export type Database = {
           stripe_session_id: string
         }
         Update: {
+          ai_model_used?: string | null
           ai_parse_error?: string | null
           ai_response_valid?: boolean | null
           amount_cents?: number | null
