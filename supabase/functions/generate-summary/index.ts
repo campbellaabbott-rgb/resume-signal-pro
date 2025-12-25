@@ -13,7 +13,7 @@ const REQUEST_TIMEOUT_MS = 30000; // 30 second timeout
 
 // Cache configuration
 const CACHE_FUNCTION_NAME = 'generate-summary';
-const CACHE_TTL_HOURS = 2; // Cache for 2 hours
+const CACHE_TTL_HOURS = 24; // Extended to 24 hours for better hit rates
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
