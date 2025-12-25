@@ -114,13 +114,16 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
       return;
     }
     
-    // Cancel any existing scan
+    // Cancel any existing scan and clear old cache if different resume
+    if (lastResumeHashRef.current !== currentHash) {
+      backgroundScanCache.current = null; // Clear stale cache immediately
+    }
     backgroundScanAbortRef.current?.abort();
     backgroundScanAbortRef.current = new AbortController();
     isScanningRef.current = true;
     lastResumeHashRef.current = currentHash;
     
-    console.log('[ScanPrefetch] Starting background scan...');
+    console.log('[ScanPrefetch] Starting background scan for hash:', currentHash.substring(0, 8));
     
     try {
       const response = await fetch(
@@ -199,10 +202,20 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
       clearTimeout(debounceTimerRef.current);
     }
     
+    // Immediately clear stale cache if resume changed (before debounce)
+    const newHash = getResumeHash(text);
+    if (lastResumeHashRef.current && lastResumeHashRef.current !== newHash) {
+      console.log('[ScanPrefetch] New resume detected, clearing stale cache');
+      backgroundScanCache.current = null;
+      // Abort any in-progress scan for the old resume
+      backgroundScanAbortRef.current?.abort();
+      isScanningRef.current = false;
+    }
+    
     debounceTimerRef.current = setTimeout(() => {
       runBackgroundScan(text, jobDesc, hp);
     }, DEBOUNCE_MS);
-  }, [runBackgroundScan]);
+  }, [runBackgroundScan, getResumeHash]);
 
   // Original hover prefetch (warmup + validation)
   const prefetch = useCallback(async () => {
