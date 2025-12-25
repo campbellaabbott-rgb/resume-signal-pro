@@ -572,16 +572,38 @@ export function ResumeUploader({
                 )}
               </div>
             ) : (
-              <div id="resume-paste-panel" role="tabpanel" aria-labelledby="resume-paste-tab" className="relative">
-                <textarea
-                  value={textInput}
-                  onChange={(e) => setTextInput(e.target.value)}
-                  placeholder={t('uploader.resume.pasteHere')}
-                  className="w-full h-48 p-4 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 resize-none text-sm leading-relaxed transition-all"
-                />
-                <div className="absolute bottom-3 right-3 px-2 py-1 rounded-lg bg-card/80 border border-border text-xs text-muted-foreground">
-                  {textInput.length.toLocaleString()} {t('uploader.resume.chars')}
+              <div id="resume-paste-panel" role="tabpanel" aria-labelledby="resume-paste-tab" className="space-y-4">
+                <div className="relative">
+                  <textarea
+                    value={textInput}
+                    onChange={(e) => setTextInput(e.target.value)}
+                    placeholder={t('uploader.resume.pasteHere')}
+                    className={cn(
+                      "w-full h-48 p-4 rounded-2xl bg-card/50 backdrop-blur-sm border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 resize-none text-sm leading-relaxed transition-all",
+                      textInput.length > 100 
+                        ? "border-success/50 focus:ring-success/50 focus:border-success/50" 
+                        : "border-border/50 focus:ring-primary/50 focus:border-primary/50"
+                    )}
+                  />
+                  <div className="absolute bottom-3 right-3 px-2 py-1 rounded-lg bg-card/80 border border-border text-xs text-muted-foreground">
+                    {textInput.length.toLocaleString()} {t('uploader.resume.chars')}
+                  </div>
                 </div>
+                
+                {/* Arrow guide when text is pasted - same as upload flow */}
+                {textInput.length > 100 && (
+                  <div className="p-4 rounded-xl bg-success/10 border border-success/30 animate-fade-in">
+                    <p className="text-sm font-semibold text-success flex items-center justify-center gap-2 mb-3">
+                      <Zap className="w-4 h-4" />
+                      Resume ready! Now verify it below
+                    </p>
+                    <div className="flex items-center justify-center gap-2 text-success">
+                      <ArrowDown className="w-5 h-5 animate-bounce" />
+                      <span className="text-xs font-medium uppercase tracking-wide">Scroll to verify & scan</span>
+                      <ArrowDown className="w-5 h-5 animate-bounce" />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
