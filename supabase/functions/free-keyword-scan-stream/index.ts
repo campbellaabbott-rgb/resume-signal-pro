@@ -635,6 +635,22 @@ serve(async (req) => {
           .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '') // Remove phone numbers
           .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '') // Remove emails
           .replace(/\b\d{5}(-\d{4})?\b/g, '')          // Remove zip codes
+          // Synonym normalization - common abbreviations
+          .replace(/\bsr\b/gi, 'senior')
+          .replace(/\bjr\b/gi, 'junior')
+          .replace(/\bmgr\b/gi, 'manager')
+          .replace(/\bdir\b/gi, 'director')
+          .replace(/\bvp\b/gi, 'vice president')
+          .replace(/\bexec\b/gi, 'executive')
+          .replace(/\bassoc\b/gi, 'associate')
+          .replace(/\basst\b/gi, 'assistant')
+          .replace(/\badmin\b/gi, 'administrator')
+          .replace(/\bdev\b/gi, 'developer')
+          .replace(/\beng\b/gi, 'engineer')
+          .replace(/\bmkt\b/gi, 'marketing')
+          .replace(/\bops\b/gi, 'operations')
+          // Remove filler phrases that don't affect analysis
+          .replace(/\b(responsible for|duties included|tasked with|worked on|assisted with|helped with|in charge of|accountable for)\b/gi, '')
           .trim()
           .toLowerCase();
       };
