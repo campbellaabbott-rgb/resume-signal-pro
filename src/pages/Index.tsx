@@ -468,9 +468,18 @@ const Index = () => {
   const handleFreeScan = async (skipCacheArg?: unknown) => {
     // NOTE: onClick handlers pass a MouseEvent as the first arg; only treat explicit `true` as skipCache.
     const skipCache = skipCacheArg === true;
-    const contentToAnalyze = resumeText;
-    
-    if (!contentToAnalyze && !selectedFile) {
+    const overrideText = typeof skipCacheArg === "string" ? skipCacheArg : undefined;
+    const contentToAnalyze = (overrideText ?? resumeText).trim();
+
+    // If the scan was triggered from the paste box, persist it so the UI preview + session stay in sync.
+    if (overrideText && overrideText.trim() && overrideText.trim() !== resumeText) {
+      const normalized = overrideText.trim();
+      setResumeText(normalized);
+      saveResumeToSession(normalized, linkedInText || undefined, jobDescriptionText || undefined);
+      preStoreResume(normalized, linkedInText || undefined, jobDescriptionText || undefined);
+    }
+
+    if (!contentToAnalyze) {
       toast({
         title: "No resume provided",
         description: "Please upload a file or paste your resume text.",
