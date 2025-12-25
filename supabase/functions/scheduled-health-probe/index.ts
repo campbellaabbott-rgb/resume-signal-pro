@@ -145,7 +145,7 @@ async function probeAIGateway(): Promise<ProbeResult> {
   };
 }
 
-// Direct Stripe check
+// Direct Stripe check - increased timeout to prevent false positives
 async function probeStripe(): Promise<ProbeResult> {
   const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
   
@@ -162,7 +162,8 @@ async function probeStripe(): Promise<ProbeResult> {
     'stripe',
     async () => {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      // Increased from 2500ms to 5000ms - Stripe can be slow on cold starts
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
       
       const response = await fetch('https://api.stripe.com/v1/balance', {
         headers: {
@@ -183,9 +184,10 @@ async function probeStripe(): Promise<ProbeResult> {
     PROBE_TIMEOUT
   );
 
+  // More lenient thresholds: healthy < 2000ms, degraded < 5000ms
   return {
     service: 'stripe',
-    status: probe.success ? (probe.latency_ms < 800 ? 'healthy' : 'degraded') : 'unhealthy',
+    status: probe.success ? (probe.latency_ms < 2000 ? 'healthy' : 'degraded') : 'unhealthy',
     latency_ms: probe.latency_ms,
     error: probe.error,
   };
