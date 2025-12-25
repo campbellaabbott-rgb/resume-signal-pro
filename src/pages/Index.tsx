@@ -159,7 +159,8 @@ const Index = () => {
   const [linkedInText, setLinkedInText] = useState<string>("");
   const [jobDescriptionText, setJobDescriptionText] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [showFloatingScan, setShowFloatingScan] = useState(false); // Only true after fresh upload
+  const [showFloatingScan, setShowFloatingScan] = useState(false); // Only true after fresh upload / paste-ready
+  const [floatingScanTrigger, setFloatingScanTrigger] = useState(0);
   const [freeKeywordResult, setFreeKeywordResult] = useState<FreeKeywordResult | null>(null);
   const [isCachedResult, setIsCachedResult] = useState(false);
   const [honeypot, setHoneypot] = useState<string>(""); // Honeypot field for bot detection
@@ -328,11 +329,8 @@ const Index = () => {
 
   // Show floating scan button when resumeText is available (covers both file upload and text paste)
   useEffect(() => {
-    if (resumeText && resumeText.length > 100 && !freeKeywordResult) {
-      setShowFloatingScan(true);
-    } else if (!resumeText || resumeText.length <= 100) {
-      setShowFloatingScan(false);
-    }
+    const ready = !!resumeText && resumeText.length > 100;
+    setShowFloatingScan(ready && !freeKeywordResult);
   }, [resumeText, freeKeywordResult]);
 
   useEffect(() => {
@@ -367,6 +365,7 @@ const Index = () => {
   const handleFileSelect = async (file: File) => {
     setSelectedFile(file);
     setShowFloatingScan(true); // Show floating button on fresh upload
+    setFloatingScanTrigger((v) => v + 1);
     setFreeKeywordResult(null); // Clear previous results
     
     // Track upload started in funnel
@@ -869,6 +868,18 @@ const Index = () => {
     handleCheckout(text, linkedIn, jobDescription);
   };
 
+  // For paste mode: keep the preview + floating CTAs in sync with the textarea (no checkout yet)
+  const handleResumeDraftChange = useCallback((draft: string) => {
+    const normalized = draft.trim();
+    setResumeText(normalized);
+    setFreeKeywordResult(null);
+
+    // Only "pop" the floating CTA when the user first becomes eligible to scan
+    if (normalized.length > 100) {
+      setFloatingScanTrigger((v) => v + 1);
+    }
+  }, []);
+
   const handleCheckout = async (text?: string, linkedIn?: string, jobDescription?: string) => {
     const contentToAnalyze = text || resumeText;
     const linkedInContent = linkedIn || linkedInText;
@@ -1118,6 +1129,7 @@ const Index = () => {
         <ResumeUploader
           onFileSelect={handleFileSelect}
           onTextSubmit={handleTextSubmit}
+          onResumeDraftChange={handleResumeDraftChange}
           onCheckout={(linkedIn, jobDescription) => handleCheckout(undefined, linkedIn, jobDescription)}
           onFreeScan={handleFreeScan}
           onClearResume={handleClearResume}
@@ -1242,7 +1254,11 @@ const Index = () => {
       
       
       
-      <FloatingUploadButton hasContent={showFloatingScan} scanComplete={!!freeKeywordResult} />
+      <FloatingUploadButton
+        hasContent={showFloatingScan}
+        scanComplete={!!freeKeywordResult}
+        trigger={floatingScanTrigger}
+      />
       <FloatingSeeReportButton isVisible={!!freeKeywordResult} />
 
       
