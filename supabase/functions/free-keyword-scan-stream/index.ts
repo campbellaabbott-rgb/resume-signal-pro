@@ -553,6 +553,10 @@ serve(async (req) => {
     try {
       const { resumeText, jobDescriptionText, honeypot, skipCache } = await req.json();
 
+      // Debug: Log first 100 chars of resume to verify correct text is being sent
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Resume preview (first 100 chars): ${resumeText?.substring(0, 100)?.replace(/\n/g, ' ')}`);
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Resume length: ${resumeText?.length}, skipCache: ${skipCache}`);
+
       // Honeypot check
       if (honeypot && honeypot.trim() !== '') {
         send('complete', { success: true, atsScoreEstimate: 65, industry: "General" });
