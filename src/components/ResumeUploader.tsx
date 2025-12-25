@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Target, Zap, Link, Table2, Download, ChevronDown, ChevronUp } from "lucide-react";
+import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Target, Zap, Link, Table2, Download, ChevronDown, ChevronUp, ArrowDown } from "lucide-react";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { JobComparisonCTA } from "@/components/JobComparisonCTA";
 import { PRODUCTS } from "@/config/products";
 import { resilientCallers } from "@/lib/resilient-edge-function";
 import { useToast } from "@/hooks/use-toast";
-
+import { ScanGuideArrow } from "@/components/ScanGuideArrow";
 // Step indicator component for better UX guidance
 interface StepIndicatorProps {
   number: number;
@@ -534,12 +534,17 @@ export function ResumeUploader({
                       </button>
                     </div>
                     
-                    {/* Clear next step indicator */}
-                    <div className="mt-4 p-4 rounded-xl bg-primary/10 border border-primary/30 animate-fade-in">
-                      <p className="text-sm font-semibold text-primary flex items-center justify-center gap-2">
+                    {/* Clear next step indicator with animated arrow */}
+                    <div className="mt-4 p-4 rounded-xl bg-success/10 border border-success/30 animate-fade-in">
+                      <p className="text-sm font-semibold text-success flex items-center justify-center gap-2 mb-3">
                         <Zap className="w-4 h-4" />
-                        Ready! Scroll down and tap "Get Free Resume Analysis"
+                        Resume ready! Now scan it below
                       </p>
+                      <div className="flex items-center justify-center gap-2 text-success">
+                        <ArrowDown className="w-5 h-5 animate-bounce" />
+                        <span className="text-xs font-medium uppercase tracking-wide">Scroll to scan button</span>
+                        <ArrowDown className="w-5 h-5 animate-bounce" />
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -583,29 +588,40 @@ export function ResumeUploader({
           
           {/* Resume Preview Panel - Shows what will be scanned */}
           {resumeText && resumeText.length > 50 && (
-            <div className="mt-4 p-4 rounded-xl bg-muted/30 border border-border/50">
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                  <span className="text-sm font-medium text-foreground">Resume loaded ({resumeText.length.toLocaleString()} characters)</span>
+            <div className="mt-4 space-y-3">
+              <div className="p-4 rounded-xl bg-success/5 border border-success/30">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                    <span className="text-sm font-medium text-success">Resume loaded ({resumeText.length.toLocaleString()} characters)</span>
+                  </div>
+                  {onClearResume && (
+                    <button
+                      onClick={onClearResume}
+                      className="text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
+                    >
+                      <X className="w-3 h-3" />
+                      Clear
+                    </button>
+                  )}
                 </div>
-                {onClearResume && (
-                  <button
-                    onClick={onClearResume}
-                    className="text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
-                  >
-                    <X className="w-3 h-3" />
-                    Clear
-                  </button>
-                )}
+                <div className="text-xs text-muted-foreground bg-card/50 rounded-lg p-3 max-h-24 overflow-hidden relative">
+                  <p className="line-clamp-3 whitespace-pre-wrap">{resumeText.slice(0, 400)}...</p>
+                  <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card/50 to-transparent pointer-events-none" />
+                </div>
+                <p className="text-xs text-muted-foreground/70 mt-2">
+                  👆 This is what will be scanned. Wrong resume? Click "Clear" above.
+                </p>
               </div>
-              <div className="text-xs text-muted-foreground bg-card/50 rounded-lg p-3 max-h-24 overflow-hidden relative">
-                <p className="line-clamp-3 whitespace-pre-wrap">{resumeText.slice(0, 400)}...</p>
-                <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card/50 to-transparent pointer-events-none" />
+              
+              {/* Animated arrow guide pointing to scan button */}
+              <div className="flex flex-col items-center py-2 animate-fade-in">
+                <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-success/10 border border-success/30">
+                  <ArrowDown className="w-4 h-4 text-success animate-bounce" />
+                  <span className="text-sm font-semibold text-success">Now tap the green button below!</span>
+                  <ArrowDown className="w-4 h-4 text-success animate-bounce" />
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground/70 mt-2">
-                👆 This is what will be scanned. Wrong resume? Click "Clear" above.
-              </p>
             </div>
           )}
 
