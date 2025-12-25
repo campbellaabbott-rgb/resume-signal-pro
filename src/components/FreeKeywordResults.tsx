@@ -1217,46 +1217,47 @@ export function FreeKeywordResults({
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
       {/* Personalized Header */}
       <div className="text-center mb-6">
-        <div className="flex items-center justify-center gap-2 mb-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success text-sm font-medium">
-            <Sparkles className="w-4 h-4" />
-            {t('freeScan.complete')}
+        <div className="flex flex-col items-center gap-3 mb-3">
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success text-sm font-medium">
+              <Sparkles className="w-4 h-4" />
+              {t('freeScan.complete')}
+            </div>
           </div>
           
-          {/* Cached indicator with instant results badge and re-analyze button */}
-          {isCached && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
-              <Zap className="w-3 h-3" />
-              <span>Instant results</span>
-            </div>
-          )}
-          
+          {/* Prominent cached results notice with re-analyze CTA */}
           {isCached && onForceReanalyze && (
-            <button
-              onClick={() => {
-                // Track re-analyze button click
-                supabase.functions.invoke('track-ab-event', {
-                  body: {
-                    testName: 'cache_reanalyze',
-                    variant: 'button_click',
-                    eventType: 'conversion',
-                    visitorId: localStorage.getItem('ab_visitor_id') || crypto.randomUUID(),
-                    metadata: { source: 'free_keyword_results' }
-                  }
-                }).catch(console.error);
-                onForceReanalyze();
-              }}
-              disabled={isLoading}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground text-sm font-medium transition-colors border border-border/50"
-              title="Get fresh AI analysis"
-            >
-              {isLoading ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="w-3.5 h-3.5" />
-              )}
-              <span className="hidden sm:inline">Re-analyze</span>
-            </button>
+            <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border border-primary/20">
+              <div className="flex items-center gap-2 text-primary">
+                <Zap className="w-4 h-4" />
+                <span className="text-sm font-medium">Showing saved results</span>
+              </div>
+              <div className="h-4 w-px bg-primary/20" />
+              <button
+                onClick={() => {
+                  // Track re-analyze button click
+                  supabase.functions.invoke('track-ab-event', {
+                    body: {
+                      testName: 'cache_reanalyze',
+                      variant: 'button_click',
+                      eventType: 'conversion',
+                      visitorId: localStorage.getItem('ab_visitor_id') || crypto.randomUUID(),
+                      metadata: { source: 'free_keyword_results' }
+                    }
+                  }).catch(console.error);
+                  onForceReanalyze();
+                }}
+                disabled={isLoading}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium transition-colors shadow-sm"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5" />
+                )}
+                <span>Run Fresh Analysis</span>
+              </button>
+            </div>
           )}
         </div>
         
