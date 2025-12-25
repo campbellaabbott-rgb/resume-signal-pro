@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PRODUCTS, ProductId } from '@/config/products';
@@ -6,6 +6,7 @@ import { useConversionTracking } from '@/hooks/use-conversion-tracking';
 import { useFunnelTracking } from '@/hooks/use-funnel-tracking';
 import { parseEdgeFunctionError } from '@/lib/edge-function-errors';
 import { getStoredReferralCode } from '@/hooks/use-affiliate-auth';
+import { useCheckoutPrefetch } from '@/hooks/use-checkout-prefetch';
 
 export interface CheckoutOptions {
   sessionId?: string;
@@ -20,6 +21,7 @@ export function useProductCheckout() {
   const { toast } = useToast();
   const { trackButtonClick, trackCheckoutInitiated } = useConversionTracking();
   const { trackProductClicked, trackCheckoutStarted } = useFunnelTracking();
+  const { prefetch: prefetchCheckout, prefetchProps } = useCheckoutPrefetch();
 
   const purchaseProduct = async (productId: ProductId, options?: CheckoutOptions | string): Promise<string | null> => {
     // Handle backwards compatibility - if options is a string, treat it as sessionId
@@ -102,6 +104,9 @@ export function useProductCheckout() {
     purchaseProduct,
     isLoading,
     currentProduct,
-    products: PRODUCTS
+    products: PRODUCTS,
+    // Prefetch utilities for checkout buttons
+    prefetchCheckout,
+    checkoutPrefetchProps: prefetchProps,
   };
 }

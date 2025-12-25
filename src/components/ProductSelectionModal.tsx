@@ -41,7 +41,7 @@ export function ProductSelectionModal({
   const [jobTitle, setJobTitle] = useState('');
   const [jobCompany, setJobCompany] = useState('');
   const [showJobDetailsTip, setShowJobDetailsTip] = useState(false);
-  const { purchaseProduct, isLoading } = useProductCheckout();
+  const { purchaseProduct, isLoading, checkoutPrefetchProps } = useProductCheckout();
   const isMobile = useIsMobile();
 
   // Reset form when modal opens/closes
@@ -269,6 +269,7 @@ export function ProductSelectionModal({
           disabled={!selectedProduct || isLoading}
           className="w-full mt-4"
           size="lg"
+          {...checkoutPrefetchProps}
         >
           {isLoading ? (
             <>
