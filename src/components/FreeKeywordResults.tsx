@@ -2103,7 +2103,7 @@ export function FreeKeywordResults({
           </p>
 
           {/* Indicators */}
-          {careerSituation.indicators.length > 0 && (
+          {careerSituation.indicators && careerSituation.indicators.length > 0 && (
             <div className="mb-4">
               <p className="text-xs font-medium text-muted-foreground mb-2">What we detected:</p>
               <div className="flex flex-wrap gap-2">
@@ -2117,37 +2117,39 @@ export function FreeKeywordResults({
           )}
 
           {/* Tailored Advice */}
-          <div className="space-y-3">
-            <p className="text-sm font-semibold text-foreground">Tailored advice for your situation:</p>
-            {careerSituation.tailoredAdvice.map((advice, index) => (
-              <div 
-                key={index}
-                className={cn(
-                  "p-3 rounded-lg border",
-                  advice.priority === "critical" ? "bg-destructive/5 border-destructive/20" :
-                  advice.priority === "important" ? "bg-warning/5 border-warning/20" : "bg-muted/50 border-border"
-                )}
-              >
-                <div className="flex items-start gap-2">
-                  <span className={cn(
-                    "text-xs px-2 py-0.5 rounded-full shrink-0 mt-0.5",
-                    advice.priority === "critical" ? "bg-destructive/20 text-destructive" :
-                    advice.priority === "important" ? "bg-warning/20 text-warning" : "bg-muted text-muted-foreground"
-                  )}>
-                    {advice.priority}
-                  </span>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">{advice.tip}</p>
-                    {advice.example && (
-                      <p className="text-xs text-muted-foreground mt-1 italic">
-                        Example: "{advice.example}"
-                      </p>
-                    )}
+          {careerSituation.tailoredAdvice && careerSituation.tailoredAdvice.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-foreground">Tailored advice for your situation:</p>
+              {careerSituation.tailoredAdvice.map((advice, index) => (
+                <div 
+                  key={index}
+                  className={cn(
+                    "p-3 rounded-lg border",
+                    advice.priority === "critical" ? "bg-destructive/5 border-destructive/20" :
+                    advice.priority === "important" ? "bg-warning/5 border-warning/20" : "bg-muted/50 border-border"
+                  )}
+                >
+                  <div className="flex items-start gap-2">
+                    <span className={cn(
+                      "text-xs px-2 py-0.5 rounded-full shrink-0 mt-0.5",
+                      advice.priority === "critical" ? "bg-destructive/20 text-destructive" :
+                      advice.priority === "important" ? "bg-warning/20 text-warning" : "bg-muted text-muted-foreground"
+                    )}>
+                      {advice.priority}
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">{advice.tip}</p>
+                      {advice.example && (
+                        <p className="text-xs text-muted-foreground mt-1 italic">
+                          Example: "{advice.example}"
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -2206,7 +2208,7 @@ export function FreeKeywordResults({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Next Role Suggestions */}
-              {personalizedCareerInsights.nextRoleSuggestions?.length > 0 && (
+              {personalizedCareerInsights.nextRoleSuggestions && personalizedCareerInsights.nextRoleSuggestions.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Rocket className="w-4 h-4 text-primary" />
@@ -2235,7 +2237,7 @@ export function FreeKeywordResults({
               )}
 
               {/* Interview Talking Points */}
-              {personalizedCareerInsights.interviewTalkingPoints?.length > 0 && (
+              {personalizedCareerInsights.interviewTalkingPoints && personalizedCareerInsights.interviewTalkingPoints.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <MessageSquare className="w-4 h-4 text-primary" />
@@ -2273,7 +2275,7 @@ export function FreeKeywordResults({
                   <span className="text-2xl font-bold text-success">{personalizedCareerInsights.salaryInsight.estimatedRange}</span>
                   <span className="text-xs text-muted-foreground">estimated range</span>
                 </div>
-                {personalizedCareerInsights.salaryInsight.leveragePoints?.length > 0 && (
+                {personalizedCareerInsights.salaryInsight.leveragePoints && personalizedCareerInsights.salaryInsight.leveragePoints.length > 0 && (
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-2">Your negotiation leverage:</p>
                     <div className="flex flex-wrap gap-1.5">
@@ -2291,7 +2293,7 @@ export function FreeKeywordResults({
             {/* Hidden Strengths & Personal Brand */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
               {/* Hidden Strengths */}
-              {personalizedCareerInsights.hiddenStrengths?.length > 0 && (
+              {personalizedCareerInsights.hiddenStrengths && personalizedCareerInsights.hiddenStrengths.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Lightbulb className="w-4 h-4 text-warning" />
@@ -2419,36 +2421,40 @@ export function FreeKeywordResults({
           </div>
 
           {/* Industry Norms */}
-          <div className="mb-4">
-            <p className="text-sm font-semibold mb-3">What top {industry} resumes do:</p>
-            <div className="space-y-2">
-              {formatRecommendation.industryNorms.map((norm, index) => (
-                <div key={index} className="flex items-start gap-2">
-                  <span className={cn(
-                    "text-xs px-2 py-0.5 rounded shrink-0 mt-0.5",
-                    norm.importance === "must_have" ? "bg-destructive/20 text-destructive" :
-                    norm.importance === "recommended" ? "bg-primary/20 text-primary" :
-                    "bg-muted text-muted-foreground"
-                  )}>
-                    {norm.importance === "must_have" ? "Must" : norm.importance === "recommended" ? "Rec" : "Opt"}
-                  </span>
-                  <p className="text-sm text-foreground">{norm.norm}</p>
-                </div>
-              ))}
+          {formatRecommendation.industryNorms && formatRecommendation.industryNorms.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm font-semibold mb-3">What top {industry} resumes do:</p>
+              <div className="space-y-2">
+                {formatRecommendation.industryNorms.map((norm, index) => (
+                  <div key={index} className="flex items-start gap-2">
+                    <span className={cn(
+                      "text-xs px-2 py-0.5 rounded shrink-0 mt-0.5",
+                      norm.importance === "must_have" ? "bg-destructive/20 text-destructive" :
+                      norm.importance === "recommended" ? "bg-primary/20 text-primary" :
+                      "bg-muted text-muted-foreground"
+                    )}>
+                      {norm.importance === "must_have" ? "Must" : norm.importance === "recommended" ? "Rec" : "Opt"}
+                    </span>
+                    <p className="text-sm text-foreground">{norm.norm}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Things to Avoid */}
-          <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20 mb-4">
-            <p className="text-xs font-semibold text-destructive mb-2">Avoid for {industry}:</p>
-            <div className="flex flex-wrap gap-2">
-              {formatRecommendation.avoidList.map((item, index) => (
-                <span key={index} className="text-xs px-2 py-1 rounded-full bg-destructive/10 text-destructive">
-                  ✗ {item}
-                </span>
-              ))}
+          {formatRecommendation.avoidList && formatRecommendation.avoidList.length > 0 && (
+            <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20 mb-4">
+              <p className="text-xs font-semibold text-destructive mb-2">Avoid for {industry}:</p>
+              <div className="flex flex-wrap gap-2">
+                {formatRecommendation.avoidList.map((item, index) => (
+                  <span key={index} className="text-xs px-2 py-1 rounded-full bg-destructive/10 text-destructive">
+                    ✗ {item}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Template Suggestion */}
           <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
