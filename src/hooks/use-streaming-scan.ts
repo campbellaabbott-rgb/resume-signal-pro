@@ -9,25 +9,52 @@ import {
 } from '@/lib/resume-validation';
 
 // Client-side cache configuration
-const CLIENT_CACHE_KEY_PREFIX = 'resume_scan_cache_';
-const CLIENT_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const CLIENT_CACHE_KEY_PREFIX = 'resume_scan_cache_v2_';
+const CLIENT_CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours (reduced from 24)
 
-// Generate cache key from resume text (simplified hash for client-side)
-function generateClientCacheKey(resumeText: string, jobDescription?: string): string {
-  const normalized = (resumeText + (jobDescription || ''))
+// Generate cache key from resume text using SHA-256-like robust hash
+async function generateClientCacheKey(resumeText: string, jobDescription?: string): Promise<string> {
+  // Normalize content for consistent hashing
+  const normalized = (resumeText + '|JD|' + (jobDescription || ''))
     .replace(/\s+/g, ' ')
     .trim()
-    .toLowerCase()
-    .substring(0, 2000);
+    .toLowerCase();
   
-  // Simple hash function for client-side
-  let hash = 0;
-  for (let i = 0; i < normalized.length; i++) {
-    const char = normalized.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
+  // Use SubtleCrypto for robust SHA-256 hash (browser native)
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(normalized);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return CLIENT_CACHE_KEY_PREFIX + hashHex.substring(0, 32);
+  } catch {
+    // Fallback to simple hash if SubtleCrypto unavailable
+    let hash = 0;
+    for (let i = 0; i < normalized.length; i++) {
+      const char = normalized.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return CLIENT_CACHE_KEY_PREFIX + Math.abs(hash).toString(36);
   }
-  return CLIENT_CACHE_KEY_PREFIX + Math.abs(hash).toString(36);
+}
+
+// Clear all client-side scan caches (for fresh analysis)
+export function clearAllClientScanCaches(): void {
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('resume_scan_cache')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    console.log(`[StreamingScan] Cleared ${keysToRemove.length} cached scan results`);
+  } catch {
+    // Ignore localStorage errors
+  }
 }
 
 // Get cached result from localStorage
@@ -36,27 +63,28 @@ function getClientCachedResult(cacheKey: string): StreamingScanResult | null {
     const cached = localStorage.getItem(cacheKey);
     if (!cached) return null;
     
-    const { result, timestamp } = JSON.parse(cached);
+    const { result, timestamp, resumePreview } = JSON.parse(cached);
     if (Date.now() - timestamp > CLIENT_CACHE_TTL_MS) {
       localStorage.removeItem(cacheKey);
       return null;
     }
     
-    console.log('[StreamingScan] Client cache HIT');
+    console.log('[StreamingScan] Client cache HIT for key:', cacheKey.substring(0, 20), 'preview:', resumePreview?.substring(0, 50));
     return result;
   } catch {
     return null;
   }
 }
 
-// Store result in localStorage
-function setClientCachedResult(cacheKey: string, result: StreamingScanResult): void {
+// Store result in localStorage with resume preview for debugging
+function setClientCachedResult(cacheKey: string, result: StreamingScanResult, resumePreview: string): void {
   try {
     localStorage.setItem(cacheKey, JSON.stringify({
       result,
       timestamp: Date.now(),
+      resumePreview: resumePreview.substring(0, 100), // Store first 100 chars for debugging
     }));
-    console.log('[StreamingScan] Cached result in localStorage');
+    console.log('[StreamingScan] Cached result in localStorage for key:', cacheKey.substring(0, 20));
   } catch (e) {
     console.warn('[StreamingScan] Failed to cache result:', e);
   }
@@ -153,7 +181,7 @@ export function useStreamingScan() {
     const retryDelay = options?.retryDelay ?? DEFAULT_RETRY_DELAY;
     
     // Step 0: Check client-side cache first (instant, 0ms latency)
-    const clientCacheKey = generateClientCacheKey(resumeText, options?.jobDescriptionText);
+    const clientCacheKey = await generateClientCacheKey(resumeText, options?.jobDescriptionText);
     
     // If skipCache is true, clear the localStorage cache for this resume
     if (options?.skipCache) {
@@ -344,7 +372,7 @@ export function useStreamingScan() {
                   
                   // Cache successful result in localStorage for instant repeat scans
                   if (result.success !== false) {
-                    setClientCachedResult(clientCacheKey, result);
+                    setClientCachedResult(clientCacheKey, result, resumeText);
                   }
                   
                   setState({
