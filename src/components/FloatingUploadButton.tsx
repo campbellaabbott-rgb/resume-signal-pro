@@ -22,17 +22,23 @@ export function FloatingUploadButton({
   const [showVerifyFirst, setShowVerifyFirst] = useState(true);
   const [justTriggered, setJustTriggered] = useState(false);
 
+  // Track if user has clicked verify this session
+  const [hasClickedVerify, setHasClickedVerify] = useState(false);
+
   useEffect(() => {
     if (!hasContent || scanComplete) {
       setIsVisible(false);
       setShowVerifyFirst(true);
       setJustTriggered(false);
+      setHasClickedVerify(false); // Reset on new content
       return;
     }
 
     // Pop the button whenever trigger increments (upload OR paste-ready)
+    // ALWAYS start with Step 1: Verify Resume
     setIsVisible(true);
     setShowVerifyFirst(true);
+    setHasClickedVerify(false); // Reset - new upload means new verification needed
     setJustTriggered(true);
 
     const timer = setTimeout(() => {
@@ -42,12 +48,12 @@ export function FloatingUploadButton({
     return () => clearTimeout(timer);
   }, [hasContent, scanComplete, trigger]);
 
-  // When resumeVerified changes, switch to scan button
+  // Only switch to Step 2 after explicit verify click OR external resumeVerified
   useEffect(() => {
-    if (resumeVerified) {
+    if (resumeVerified && hasContent && !scanComplete) {
       setShowVerifyFirst(false);
     }
-  }, [resumeVerified]);
+  }, [resumeVerified, hasContent, scanComplete]);
 
   useEffect(() => {
     if (!hasContent || scanComplete || justTriggered) return;
@@ -86,6 +92,7 @@ export function FloatingUploadButton({
     }
     // After scrolling to verify, switch to showing scan button
     setTimeout(() => {
+      setHasClickedVerify(true);
       setShowVerifyFirst(false);
       onVerifyClick?.();
     }, 800);
