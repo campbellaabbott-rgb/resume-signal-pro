@@ -144,7 +144,7 @@ interface ResumeUploaderProps {
   onFileSelect: (file: File) => void;
   onTextSubmit: (text: string, linkedInText?: string, jobDescriptionText?: string) => void;
   onCheckout: (linkedInText?: string, jobDescriptionText?: string) => void;
-  onFreeScan?: () => void;
+  onFreeScan?: (resumeOverrideText?: string) => void;
   onClearResume?: () => void;
   isLoading?: boolean;
   isFreeScanLoading?: boolean;
@@ -1130,7 +1130,7 @@ export function ResumeUploader({
                     <Button
                       size="xl"
                       disabled={!canProceed}
-                      onClick={onFreeScan}
+                      onClick={() => onFreeScan(resumeMode === "paste" ? textInput.trim() : undefined)}
                       className="w-full sm:w-auto sm:min-w-[340px] h-16 text-lg gap-3 border-2 border-success bg-success hover:bg-success/90 text-success-foreground font-bold shadow-[0_0_25px_rgba(34,197,94,0.4)] hover:shadow-[0_0_35px_rgba(34,197,94,0.5)] transition-all touch-manipulation active:scale-[0.98]"
                     >
                       <Zap className="w-5 h-5 fill-current" />
