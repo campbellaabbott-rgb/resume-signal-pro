@@ -114,9 +114,16 @@ serve(async (req) => {
   }
 
   const startTime = Date.now();
-  console.log('[WARM-UP] Starting warm-up cycle');
-
+  
   try {
+    // Check if this is a targeted warmup (single function) or full warmup
+    let body: { target?: string } = {};
+    try {
+      body = await req.json();
+    } catch {
+      // No body is fine - do full warmup
+    }
+    
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
@@ -127,7 +134,26 @@ serve(async (req) => {
     // Use anon key for function invocation (same as client would)
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Warm functions in batches to avoid resource contention
+    // If a target function is specified, only warm that one (fast path for prefetch)
+    if (body.target && FUNCTIONS_TO_WARM.includes(body.target)) {
+      console.log(`[WARM-UP] Quick warm for: ${body.target}`);
+      const result = await warmFunction(supabase, body.target);
+      const duration = Date.now() - startTime;
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          mode: 'targeted',
+          target: body.target,
+          duration_ms: duration,
+          result,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Full warmup - warm functions in batches
+    console.log('[WARM-UP] Starting full warm-up cycle');
     const batches = chunkArray(FUNCTIONS_TO_WARM, BATCH_SIZE);
     const results: WarmResult[] = [];
     

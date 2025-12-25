@@ -12,6 +12,7 @@ import { PRODUCTS } from "@/config/products";
 import { resilientCallers } from "@/lib/resilient-edge-function";
 import { useToast } from "@/hooks/use-toast";
 import { ScanGuideArrow } from "@/components/ScanGuideArrow";
+import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
 // Step indicator component for better UX guidance
 interface StepIndicatorProps {
   number: number;
@@ -219,6 +220,12 @@ export function ResumeUploader({
   const [isParsingLinkedIn, setIsParsingLinkedIn] = useState(false);
   const [parsedJobs, setParsedJobs] = useState<JobEntry[]>([]);
   const [selectedJob, setSelectedJob] = useState<JobEntry | null>(null);
+
+  // Prefetch scan resources on hover for faster perceived performance
+  const effectiveResumeText = resumeMode === "paste" ? textInput.trim() : resumeText;
+  const { prefetch: prefetchScan, isWarmedUp } = useScanPrefetch({
+    resumeText: effectiveResumeText,
+  });
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -1185,6 +1192,8 @@ export function ResumeUploader({
                       size="xl"
                       disabled={!canProceed}
                       onClick={() => onFreeScan(resumeMode === "paste" ? textInput.trim() : undefined)}
+                      onMouseEnter={prefetchScan}
+                      onFocus={prefetchScan}
                       className="w-full sm:w-auto sm:min-w-[340px] h-16 text-lg gap-3 border-2 border-success bg-success hover:bg-success/90 text-success-foreground font-bold shadow-[0_0_25px_rgba(34,197,94,0.4)] hover:shadow-[0_0_35px_rgba(34,197,94,0.5)] transition-all touch-manipulation active:scale-[0.98]"
                     >
                       <Zap className="w-5 h-5 fill-current" />
