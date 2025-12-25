@@ -273,11 +273,23 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
       validationResult: null,
     });
   }, []);
+
+  // Clear only the background scan cache (for force reanalyze)
+  const clearBackgroundScanCache = useCallback(() => {
+    backgroundScanAbortRef.current?.abort();
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    backgroundScanCache.current = null;
+    isScanningRef.current = false;
+    console.log('[ScanPrefetch] Background scan cache cleared for fresh analysis');
+  }, []);
   
   return {
     ...state,
     prefetch,
     reset,
+    clearBackgroundScanCache,
     getValidation: () => state.validationResult ?? validateResumeBeforeSend(resumeText),
     // Background scan methods
     triggerBackgroundScan,

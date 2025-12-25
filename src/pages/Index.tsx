@@ -208,7 +208,8 @@ const Index = () => {
     triggerBackgroundScan, 
     getBackgroundScanResult, 
     waitForBackgroundScan,
-    isBackgroundScanning 
+    isBackgroundScanning,
+    clearBackgroundScanCache
   } = useScanPrefetch({ 
     resumeText, 
     jobDescriptionText, 
@@ -1248,7 +1249,11 @@ const Index = () => {
                 isGeneratingTailored={isGeneratingTailored}
                 isLoading={isLoading || isFreeScanLoading}
                 isCached={isCachedResult}
-                onForceReanalyze={() => handleFreeScan(true)}
+                onForceReanalyze={() => {
+                  clearBackgroundScanCache();
+                  setIsCachedResult(false);
+                  handleFreeScan(true);
+                }}
                 resumeText={resumeText}
                 jobDescriptionText={jobDescriptionText}
                 jobTitle={uploadedJobs[0]?.title}
