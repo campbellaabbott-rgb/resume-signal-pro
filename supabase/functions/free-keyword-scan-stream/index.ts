@@ -104,6 +104,68 @@ function normalizeIndustry(raw: string | undefined | null): string {
   return 'general';
 }
 
+/**
+ * Server-side industry detection from resume text
+ * This overrides AI detection when there's clear evidence
+ */
+function detectIndustryFromResume(resumeText: string): string | null {
+  const text = resumeText.toLowerCase();
+  
+  // Tech job title patterns - these are definitive
+  const techTitlePatterns = [
+    /\b(software\s+engineer|senior\s+software\s+engineer|staff\s+engineer)\b/,
+    /\b(developer|frontend\s+developer|backend\s+developer|full[\s-]?stack\s+developer)\b/,
+    /\b(data\s+scientist|machine\s+learning\s+engineer|ml\s+engineer)\b/,
+    /\b(devops\s+engineer|sre|site\s+reliability\s+engineer|platform\s+engineer)\b/,
+    /\b(cloud\s+engineer|infrastructure\s+engineer|systems\s+engineer)\b/,
+    /\b(qa\s+engineer|test\s+engineer|automation\s+engineer)\b/,
+    /\b(tech\s+lead|engineering\s+manager|vp\s+of\s+engineering|cto)\b/,
+    /\b(programmer|coder|software\s+architect)\b/,
+  ];
+  
+  // Check for definitive tech titles
+  for (const pattern of techTitlePatterns) {
+    if (pattern.test(text)) {
+      console.log(`[INDUSTRY-DETECT] Matched tech title pattern: ${pattern}`);
+      return 'technology';
+    }
+  }
+  
+  // Tech skills that strongly indicate technology field (must have multiple)
+  const techSkills = [
+    'javascript', 'typescript', 'python', 'react', 'node.js', 'nodejs',
+    'aws', 'docker', 'kubernetes', 'git', 'github', 'postgresql', 'mongodb',
+    'java', 'c++', 'golang', 'rust', 'sql', 'graphql', 'rest api', 'microservices',
+    'ci/cd', 'agile', 'scrum', 'jira', 'jenkins', 'terraform'
+  ];
+  
+  const foundTechSkills = techSkills.filter(skill => text.includes(skill));
+  if (foundTechSkills.length >= 4) {
+    console.log(`[INDUSTRY-DETECT] Found ${foundTechSkills.length} tech skills: ${foundTechSkills.join(', ')}`);
+    return 'technology';
+  }
+  
+  // Sales job title patterns - only if NOT tech
+  const salesTitlePatterns = [
+    /\b(account\s+executive|sales\s+rep|sales\s+manager)\b/,
+    /\b(business\s+development\s+representative|bdr|sdr)\b/,
+    /\b(sales\s+director|vp\s+of\s+sales|chief\s+revenue\s+officer)\b/,
+  ];
+  
+  // Only return sales if no tech indicators found
+  if (foundTechSkills.length < 2) {
+    for (const pattern of salesTitlePatterns) {
+      if (pattern.test(text)) {
+        console.log(`[INDUSTRY-DETECT] Matched sales title pattern: ${pattern}`);
+        return 'sales';
+      }
+    }
+  }
+  
+  // Return null to let AI detection stand
+  return null;
+}
+
 // ======================== Server-side Resume Parsing Helpers ========================
 
 /**
@@ -876,11 +938,18 @@ Focus on: ATS score (0-100), industry detection, format grade (A-D), experience 
         return;
       }
 
-      // Normalize industry to valid value
+      // Normalize industry to valid value, with server-side override for obvious misclassifications
       const rawIndustry = analysis.industry;
-      analysis.industry = normalizeIndustry(rawIndustry);
-      if (rawIndustry !== analysis.industry) {
-        console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry normalized: "${rawIndustry}" -> "${analysis.industry}"`);
+      const serverDetectedIndustry = detectIndustryFromResume(resumeText);
+      
+      if (serverDetectedIndustry && serverDetectedIndustry !== normalizeIndustry(rawIndustry)) {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Server override: AI said "${rawIndustry}" but text clearly indicates "${serverDetectedIndustry}"`);
+        analysis.industry = serverDetectedIndustry;
+      } else {
+        analysis.industry = normalizeIndustry(rawIndustry);
+        if (rawIndustry !== analysis.industry) {
+          console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry normalized: "${rawIndustry}" -> "${analysis.industry}"`);
+        }
       }
 
       // ======================== Server-Side Computed Fields ========================
