@@ -2127,22 +2127,31 @@ export function FreeKeywordResults({
             </div>
           </div>
           
-          {/* Industry Comparison - Single consistent message */}
-          <div className={cn(
-            "text-center py-3 px-4 rounded-lg mb-3",
-            industryBenchmark.comparison === "above" ? "bg-success/15" :
-            industryBenchmark.comparison === "at" ? "bg-warning/15" : "bg-destructive/15"
-          )}>
-            <p className={cn("text-lg font-bold",
-              industryBenchmark.comparison === "above" ? "text-success" :
-              industryBenchmark.comparison === "at" ? "text-warning" : "text-destructive"
-            )}>
-              {industryBenchmark.percentile}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Compared to other {industry} resumes
-            </p>
-          </div>
+          {/* Industry Comparison - Single consistent message anchored on cohort */}
+          {(() => {
+            const cohortLabel = `${experienceLevel.level} ${industry} resumes`;
+            const isTop = industryBenchmark.comparison === "above";
+            const isAt = industryBenchmark.comparison === "at";
+            const displayPercentile = industryBenchmark.percentile.includes("%") || industryBenchmark.percentile.toLowerCase().includes("top") || industryBenchmark.percentile.toLowerCase().includes("bottom")
+              ? industryBenchmark.percentile
+              : isTop ? "Above average" : isAt ? "Around average" : "Below average";
+
+            return (
+              <div className={cn(
+                "text-center py-3 px-4 rounded-lg mb-3",
+                isTop ? "bg-success/15" : isAt ? "bg-warning/15" : "bg-destructive/15"
+              )}>
+                <p className={cn("text-base font-bold",
+                  isTop ? "text-success" : isAt ? "text-warning" : "text-destructive"
+                )}>
+                  {displayPercentile}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  for ATS readiness among {cohortLabel}
+                </p>
+              </div>
+            );
+          })()}
           
           {/* What This Means - Clear, non-contradictory guidance */}
           <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
