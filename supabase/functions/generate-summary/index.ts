@@ -92,7 +92,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const nameToUse = candidateName && candidateName.trim() && !candidateName.includes('[') ? candidateName.split(' ')[0] : null;
+    const nameToUse = candidateName && candidateName.trim() && !candidateName.includes('[') && !candidateName.toLowerCase().includes('friend') ? candidateName.split(' ')[0] : null;
     const scoreContext = atsScore >= 80 ? "strong" : atsScore >= 60 ? "decent but improvable" : "needs attention";
     const topQuickWin = quickWins?.[0]?.fix || "adding quantified achievements";
     

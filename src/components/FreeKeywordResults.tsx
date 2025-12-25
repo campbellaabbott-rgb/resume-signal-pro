@@ -1743,11 +1743,13 @@ export function FreeKeywordResults({
             {quantificationScore.score}<span className="text-sm text-muted-foreground">%</span>
           </p>
           <p className="text-[10px] text-muted-foreground mt-1">
-            {quantificationScore.verdict === "strong" 
-              ? "✓ Good use of numbers" 
-              : quantificationScore.tip || (quantificationScore.score >= 50 
-                ? "⚠ Add more metrics in older roles" 
-                : "⚠ Add numbers ($, %, #) to stand out")}
+            {quantificationScore.tip 
+              ? quantificationScore.tip 
+              : quantificationScore.verdict === "strong" 
+                ? "✓ Strong metrics in summary & recent roles" 
+                : quantificationScore.score >= 50 
+                  ? "⚠ Strong recent metrics; older roles need numbers" 
+                  : "⚠ Add more $, %, # throughout"}
           </p>
         </div>
 
@@ -1861,11 +1863,13 @@ export function FreeKeywordResults({
             {bulletImpactScore.score}<span className="text-sm text-muted-foreground">%</span>
           </p>
           <p className="text-[10px] text-muted-foreground mt-1">
-            {bulletImpactScore.verdict === "achievement_focused" 
-              ? "✓ Shows results, not tasks" 
-              : bulletImpactScore.tip || (bulletImpactScore.score >= 50 
-                ? "⚠ Some bullets need more impact" 
-                : "⚠ Focus on outcomes over duties")}
+            {bulletImpactScore.tip 
+              ? bulletImpactScore.tip 
+              : bulletImpactScore.verdict === "achievement_focused" 
+                ? "✓ Shows results, not tasks" 
+                : bulletImpactScore.score >= 50 
+                  ? "⚠ Recent roles strong; earlier roles list duties" 
+                  : "⚠ Focus on outcomes over duties"}
           </p>
         </div>
 
