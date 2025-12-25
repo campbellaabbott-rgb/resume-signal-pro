@@ -739,11 +739,19 @@ QUOTA/METRICS RULES:
 - Only flag "Missing Quota Data" if NO revenue/quota language exists at all.
 - "Surpassed quota 2x" or "120% attainment" = quota data IS present.
 
-ACCURACY:
-- Scores = screening readiness, NOT success predictions
-- Use "low/moderate/high risk" not "bottom 50%" or "will be filtered"
-- Every flag must explain WHY recruiters care
-- Label as "ATS note" vs "Recruiter note"
+MESSAGING ACCURACY (critical):
+- NEVER say "will be filtered out" or "at risk of being filtered" - ATS filtering only applies to job portal uploads.
+- Explain that direct emails, referrals, LinkedIn outreach, or recruiter requests BYPASS ATS entirely.
+- For format grades: D grade means ATS may "classify as incomplete or down-rank" NOT "scramble" the content.
+- Format issues cause: classification errors, reduced ranking, sometimes auto-rejection - NOT data scrambling.
+- Frame as "ATS portal readiness" not universal job search risk.
+- Always note: "This analysis applies primarily to ATS-based job portal applications. Direct outreach, referrals, and recruiter requests bypass these systems."
+
+SCORING CONTEXT:
+- Scores = ATS screening readiness for job portal uploads, NOT overall resume quality or career success
+- Use "lower visibility in ATS systems" not "will be filtered" or "will be rejected"
+- Every flag must explain WHY it matters AND when it applies
+- Label clearly: "ATS portal concern" vs "Recruiter readability note"
 
 BEFORE ANALYSIS: Extract name → find earliest job date → calculate total years → assess seniority → extract titles → check education/certs → scan skills → determine industry.
 
