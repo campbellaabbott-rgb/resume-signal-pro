@@ -2513,7 +2513,7 @@ export function FreeKeywordResults({
               <span className="text-sm font-semibold text-success">Works Best With</span>
             </div>
             <div className="space-y-2">
-              {atsSystemCompatibility.bestSystems.map((system, index) => (
+              {(atsSystemCompatibility.bestSystems || []).map((system, index) => (
                 <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-background/50">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground">{system.name}</span>
@@ -2540,7 +2540,7 @@ export function FreeKeywordResults({
               <span className="text-sm font-semibold text-destructive">May Have Issues</span>
             </div>
             <div className="space-y-2">
-              {atsSystemCompatibility.worstSystems.map((system, index) => (
+              {(atsSystemCompatibility.worstSystems || []).map((system, index) => (
                 <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-background/50">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground">{system.name}</span>
