@@ -24,13 +24,17 @@ export function FloatingUploadButton({
 
   // Track if user has clicked verify this session
   const [hasClickedVerify, setHasClickedVerify] = useState(false);
+  
+  // Prevent double-clicks during verify process
+  const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
     if (!hasContent || scanComplete) {
       setIsVisible(false);
       setShowVerifyFirst(true);
       setJustTriggered(false);
-      setHasClickedVerify(false); // Reset on new content
+      setHasClickedVerify(false);
+      setIsVerifying(false); // Reset on new content
       return;
     }
 
@@ -38,7 +42,8 @@ export function FloatingUploadButton({
     // ALWAYS start with Step 1: Verify Resume
     setIsVisible(true);
     setShowVerifyFirst(true);
-    setHasClickedVerify(false); // Reset - new upload means new verification needed
+    setHasClickedVerify(false);
+    setIsVerifying(false); // Reset - new upload means new verification needed
     setJustTriggered(true);
 
     const timer = setTimeout(() => {
@@ -86,6 +91,11 @@ export function FloatingUploadButton({
   }, [hasContent, scanComplete, showVerifyFirst, justTriggered]);
 
   const handleVerifyClick = () => {
+    // Prevent double-clicks - only process if not already verifying
+    if (isVerifying) return;
+    
+    setIsVerifying(true);
+    
     const resumeSection = document.querySelector('[data-resume-loaded="true"]');
     if (resumeSection) {
       resumeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -94,6 +104,7 @@ export function FloatingUploadButton({
     setTimeout(() => {
       setHasClickedVerify(true);
       setShowVerifyFirst(false);
+      setIsVerifying(false);
       onVerifyClick?.();
     }, 800);
   };
