@@ -588,7 +588,7 @@ export function ResumeUploader({
           
           {/* Resume Preview Panel - Shows what will be scanned */}
           {resumeText && resumeText.length > 50 && (
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 space-y-3" data-resume-loaded="true">
               <div className="p-4 rounded-xl bg-success/5 border border-success/30">
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex items-center gap-2">
