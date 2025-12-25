@@ -92,14 +92,19 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const nameToUse = candidateName || "friend";
+    const nameToUse = candidateName && candidateName.trim() && !candidateName.includes('[') ? candidateName.split(' ')[0] : null;
     const scoreContext = atsScore >= 80 ? "strong" : atsScore >= 60 ? "decent but improvable" : "needs attention";
     const topQuickWin = quickWins?.[0]?.fix || "adding quantified achievements";
     
-    const prompt = `You are a warm, encouraging career coach who speaks like a trusted mentor. Write a PERSONALIZED 2-3 sentence summary for ${nameToUse}'s resume scan.
+    // Build name instruction based on whether we have a real name
+    const nameInstruction = nameToUse 
+      ? `Address them as "${nameToUse}" naturally (use their actual name, not a placeholder)`
+      : `Start with "Hey!" or "Your resume..." (do NOT use placeholder text like "[friend's name]" or "[Name]")`;
+    
+    const prompt = `You are a warm, encouraging career coach who speaks like a trusted mentor. Write a PERSONALIZED 2-3 sentence summary for a resume scan.
 
 **THEIR RESUME DATA:**
-- Name: ${nameToUse}
+${nameToUse ? `- Name: ${nameToUse}` : '- Name: Not provided (do not use placeholder names)'}
 - ATS Score: ${atsScore}/100 (${scoreContext})
 - Format: ${formatGrade}
 - Industry: ${industry}
@@ -110,15 +115,20 @@ serve(async (req) => {
 - Score Boost Possible: +${improvementPotential?.estimatedScoreIncrease || 10} points
 
 **WRITE IN THIS STYLE:**
-- Address them by name naturally (not robotically)
+- ${nameInstruction}
 - Lead with genuine praise for "${topStrength}" - be specific!
 - Then mention THE ONE thing most hurting their chances
 - End with hope: "${topQuickWin}" could boost their score by ${improvementPotential?.estimatedScoreIncrease || 10}+ points
 
+**CRITICAL:** NEVER use placeholder text like "[friend's name]", "[Name]", "[Your name]", or similar. Either use the actual name provided or skip the name greeting entirely.
+
 **TONE:** Like texting a friend who asked for resume advice. Warm, direct, no fluff. Use contractions. Under 60 words.
 
-**EXAMPLE for "Sarah":**
-"Sarah, your project management experience at Fortune 500 companies is seriously impressive! But here's the thing—your resume is light on numbers. Adding metrics like 'managed $2M budget' could push your score from 68 to 80+. That's a quick fix with huge impact!"`;
+**EXAMPLE with name "Sarah":**
+"Sarah, your project management experience at Fortune 500 companies is seriously impressive! But here's the thing—your resume is light on numbers. Adding metrics like 'managed $2M budget' could push your score from 68 to 80+. That's a quick fix with huge impact!"
+
+**EXAMPLE without name:**
+"Hey! Your project management experience at Fortune 500 companies is seriously impressive! But here's the thing—your resume is light on numbers. Adding metrics could push your score from 68 to 80+. That's a quick fix with huge impact!"`;
 
 
     const response = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
