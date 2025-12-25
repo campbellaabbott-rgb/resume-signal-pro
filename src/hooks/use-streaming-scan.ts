@@ -1,6 +1,12 @@
 import { useState, useCallback, useRef } from 'react';
 import { parseEdgeFunctionError, ParsedEdgeFunctionError } from '@/lib/edge-function-errors';
 import { isNetworkRetryable } from '@/lib/resilient-edge-function';
+import { 
+  validateResumeBeforeSend, 
+  validateExperienceEstimate,
+  ResumeValidationResult,
+  ExperienceValidationResult 
+} from '@/lib/resume-validation';
 
 export interface StreamProgress {
   stage: string;
@@ -14,6 +20,8 @@ export interface StreamingScanState {
   error: ParsedEdgeFunctionError | null;
   attempt: number;
   isRetrying: boolean;
+  resumeValidation?: ResumeValidationResult;
+  experienceValidation?: ExperienceValidationResult;
 }
 
 export interface StreamingScanResult {
@@ -50,6 +58,9 @@ export interface StreamingScanResult {
     estimatedScoreIncrease: number;
     topPriority: string;
   };
+  // Validation results
+  _resumeValidation?: ResumeValidationResult;
+  _experienceValidation?: ExperienceValidationResult;
   [key: string]: unknown;
 }
 
@@ -63,6 +74,7 @@ interface StreamingScanOptions {
   onComplete?: (result: StreamingScanResult) => void;
   onError?: (error: ParsedEdgeFunctionError) => void;
   onRetry?: (attempt: number, delay: number) => void;
+  onValidationWarning?: (warning: string) => void;
 }
 
 const DEFAULT_MAX_RETRIES = 2;
@@ -86,6 +98,39 @@ export function useStreamingScan() {
     const maxRetries = options?.maxRetries ?? DEFAULT_MAX_RETRIES;
     const retryDelay = options?.retryDelay ?? DEFAULT_RETRY_DELAY;
     
+    // Step 1: Pre-send validation - ensure resume text is complete
+    const resumeValidation = validateResumeBeforeSend(resumeText);
+    console.log('[StreamingScan] Pre-send validation:', resumeValidation);
+    
+    // Report validation errors
+    if (!resumeValidation.isValid) {
+      const errorMsg = resumeValidation.errors.join('; ');
+      const parsedError: ParsedEdgeFunctionError = {
+        title: 'Resume Validation Failed',
+        description: errorMsg,
+        isRetryable: false,
+        errorCode: 'VALIDATION_ERROR',
+      };
+      setState({
+        isStreaming: false,
+        progress: null,
+        error: parsedError,
+        attempt: 0,
+        isRetrying: false,
+        resumeValidation,
+      });
+      options?.onError?.(parsedError);
+      return null;
+    }
+    
+    // Report validation warnings
+    if (resumeValidation.warnings.length > 0) {
+      resumeValidation.warnings.forEach(warning => {
+        console.warn('[StreamingScan] Validation warning:', warning);
+        options?.onValidationWarning?.(warning);
+      });
+    }
+    
     // Abort any existing scan
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -102,6 +147,7 @@ export function useStreamingScan() {
         error: null,
         attempt,
         isRetrying: attempt > 1,
+        resumeValidation,
       });
 
       try {
@@ -196,12 +242,34 @@ export function useStreamingScan() {
                 case 'complete':
                   result = parsed as StreamingScanResult;
                   console.log(`[StreamingScan] Complete after ${attempt} attempt(s)`);
+                  
+                  // Step 2: Post-receive validation - check experience estimate consistency
+                  let experienceValidation: ExperienceValidationResult | undefined;
+                  if (result.experienceLevel?.yearsEstimate) {
+                    experienceValidation = validateExperienceEstimate(
+                      resumeText,
+                      result.experienceLevel.yearsEstimate
+                    );
+                    
+                    // Attach validation results to the result object
+                    result._resumeValidation = resumeValidation;
+                    result._experienceValidation = experienceValidation;
+                    
+                    // Report experience validation warning
+                    if (!experienceValidation.isConsistent && experienceValidation.warning) {
+                      console.warn('[StreamingScan] Experience validation warning:', experienceValidation.warning);
+                      options?.onValidationWarning?.(experienceValidation.warning);
+                    }
+                  }
+                  
                   setState({
                     isStreaming: false,
                     progress: { stage: 'complete', message: 'Complete!', progress: 100 },
                     error: null,
                     attempt,
                     isRetrying: false,
+                    resumeValidation,
+                    experienceValidation,
                   });
                   options?.onComplete?.(result);
                   break;
