@@ -625,9 +625,22 @@ serve(async (req) => {
       const hasJobDescription = jobDescriptionText && typeof jobDescriptionText === 'string' && jobDescriptionText.trim().length > 50;
       const truncatedJobDescription = hasJobDescription ? jobDescriptionText.substring(0, MAX_JOB_DESCRIPTION_LENGTH) : null;
 
-      // ======================== AI Response Caching ========================
-      // Create cache key from content hash (resume + job description)
-      const cacheInput = `${resumeText.substring(0, 5000)}|${truncatedJobDescription?.substring(0, 2000) || ''}`;
+      // ======================== Robust AI Response Caching ========================
+      // Normalize text for consistent cache hits (whitespace, case-insensitive first line)
+      const normalizeForCache = (text: string): string => {
+        return text
+          .replace(/\s+/g, ' ')           // Collapse all whitespace to single space
+          .replace(/\n+/g, '\n')          // Collapse multiple newlines
+          .trim()                          // Remove leading/trailing whitespace
+          .toLowerCase()                   // Case insensitive matching
+          .substring(0, 5000);             // Use first 5000 chars
+      };
+      
+      const normalizedResume = normalizeForCache(resumeText);
+      const normalizedJob = truncatedJobDescription ? normalizeForCache(truncatedJobDescription).substring(0, 2000) : '';
+      
+      // Create cache key from normalized content hash
+      const cacheInput = `${normalizedResume}|${normalizedJob}`;
       const cacheKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheInput))
         .then(hash => Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''))
         .then(hex => hex.substring(0, 32)); // Use first 32 chars of hash
