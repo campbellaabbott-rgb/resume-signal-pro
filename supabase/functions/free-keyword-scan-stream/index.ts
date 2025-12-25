@@ -626,27 +626,31 @@ serve(async (req) => {
       const truncatedJobDescription = hasJobDescription ? jobDescriptionText.substring(0, MAX_JOB_DESCRIPTION_LENGTH) : null;
 
       // ======================== Robust AI Response Caching ========================
-      // Normalize text for consistent cache hits (whitespace, case-insensitive first line)
+      // Aggressive normalization for maximum cache hits without affecting analysis quality
       const normalizeForCache = (text: string): string => {
         return text
-          .replace(/\s+/g, ' ')           // Collapse all whitespace to single space
-          .replace(/\n+/g, '\n')          // Collapse multiple newlines
-          .trim()                          // Remove leading/trailing whitespace
-          .toLowerCase()                   // Case insensitive matching
-          .substring(0, 5000);             // Use first 5000 chars
+          .replace(/[\r\n]+/g, ' ')                    // Replace all newlines with space
+          .replace(/\s+/g, ' ')                        // Collapse all whitespace to single space
+          .replace(/[^\w\s]/g, '')                     // Remove punctuation/special chars
+          .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '') // Remove phone numbers
+          .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '') // Remove emails
+          .replace(/\b\d{5}(-\d{4})?\b/g, '')          // Remove zip codes
+          .trim()
+          .toLowerCase();
       };
       
-      const normalizedResume = normalizeForCache(resumeText);
-      const normalizedJob = truncatedJobDescription ? normalizeForCache(truncatedJobDescription).substring(0, 2000) : '';
+      // Use first 3000 chars (enough for uniqueness, faster hashing)
+      const normalizedResume = normalizeForCache(resumeText).substring(0, 3000);
+      const normalizedJob = truncatedJobDescription ? normalizeForCache(truncatedJobDescription).substring(0, 1500) : '';
       
       // Create cache key from normalized content hash
-      const cacheInput = `${normalizedResume}|${normalizedJob}`;
+      const cacheInput = `v2|${normalizedResume}|${normalizedJob}`;
       const cacheKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheInput))
         .then(hash => Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''))
-        .then(hex => hex.substring(0, 32)); // Use first 32 chars of hash
+        .then(hex => hex.substring(0, 32));
       
       const CACHE_FUNCTION_NAME = 'free-keyword-scan-stream';
-      const CACHE_TTL_HOURS = 2; // Cache for 2 hours
+      const CACHE_TTL_HOURS = 24; // Extended to 24 hours for better hit rates
       
       // Check cache first
       const { data: cachedResponse, error: cacheError } = await supabase.rpc('get_cached_response', {
