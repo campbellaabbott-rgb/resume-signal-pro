@@ -104,6 +104,270 @@ function normalizeIndustry(raw: string | undefined | null): string {
   return 'general';
 }
 
+// ======================== Server-side Resume Parsing Helpers ========================
+
+/**
+ * Extract years from resume text (e.g., "2015", "2019-2022", "January 2015")
+ */
+function extractYearsFromText(text: string): number[] {
+  const years: number[] = [];
+  const currentYear = new Date().getFullYear();
+  const yearRegex = /\b(19[7-9]\d|20[0-2]\d)\b/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = yearRegex.exec(text)) !== null) {
+    const year = parseInt(match[1], 10);
+    if (year >= 1970 && year <= currentYear + 1) {
+      years.push(year);
+    }
+  }
+
+  // Also detect "present", "current", "ongoing" as current year
+  if (/\b(present|current|ongoing|now|today)\b/i.test(text)) {
+    years.push(currentYear);
+  }
+
+  return [...new Set(years)].sort((a, b) => a - b);
+}
+
+/**
+ * Compute timeline analysis from resume text
+ */
+function computeTimelineAnalysis(resumeText: string): {
+  totalYears: string;
+  avgTenure: string;
+  progression: "stagnant" | "steady" | "rapid" | "unclear";
+  hasGaps: boolean;
+  gapNote?: string;
+} {
+  const currentYear = new Date().getFullYear();
+  const years = extractYearsFromText(resumeText);
+
+  if (years.length < 2) {
+    return {
+      totalYears: years.length === 1 ? `${currentYear - years[0]} years` : "Unknown",
+      avgTenure: "2 years",
+      progression: "unclear",
+      hasGaps: false,
+    };
+  }
+
+  const earliest = years[0];
+  const latest = years.includes(currentYear) ? currentYear : years[years.length - 1];
+  const totalSpan = latest - earliest;
+
+  // Estimate number of roles by counting distinct year-pairs or job-like patterns
+  const rolePatterns = resumeText.match(/\b(20\d{2}|19\d{2})\s*[-–—]\s*(20\d{2}|19\d{2}|present|current|ongoing|now)\b/gi) || [];
+  const estimatedRoles = Math.max(1, rolePatterns.length);
+  const avgTenureNum = estimatedRoles > 0 ? Math.round((totalSpan / estimatedRoles) * 10) / 10 : totalSpan;
+
+  // Detect progression by looking for title keywords
+  const seniorKeywords = /(senior|lead|principal|director|vp|head|chief|manager|executive)/gi;
+  const titleMatches = resumeText.match(seniorKeywords) || [];
+  let progression: "stagnant" | "steady" | "rapid" | "unclear" = "unclear";
+  if (titleMatches.length >= 3 && totalSpan >= 5) {
+    progression = "rapid";
+  } else if (titleMatches.length >= 1 && totalSpan >= 3) {
+    progression = "steady";
+  } else if (totalSpan >= 5 && titleMatches.length === 0) {
+    progression = "stagnant";
+  }
+
+  // Detect gaps (simplistic: look for year jumps > 1 year between consecutive years)
+  let hasGaps = false;
+  let gapNote: string | undefined;
+  for (let i = 1; i < years.length; i++) {
+    if (years[i] - years[i - 1] > 2) {
+      hasGaps = true;
+      gapNote = `Gap detected between ${years[i - 1]} and ${years[i]}`;
+      break;
+    }
+  }
+
+  return {
+    totalYears: `${totalSpan} ${totalSpan === 1 ? "year" : "years"}`,
+    avgTenure: `${avgTenureNum} ${avgTenureNum === 1 ? "year" : "years"}`,
+    progression,
+    hasGaps,
+    gapNote,
+  };
+}
+
+/**
+ * Get the Experience section text from the resume
+ */
+function getExperienceSection(resumeText: string): string {
+  const lines = resumeText.split(/\r?\n/);
+  const startIdx = lines.findIndex((l) => /\b(professional\s+experience|experience|work\s+history|employment)\b/i.test(l));
+  if (startIdx === -1) return resumeText;
+
+  const endIdx = lines.findIndex(
+    (l, i) => i > startIdx && /\b(education|skills|certifications|projects|awards|publications|references)\b/i.test(l)
+  );
+
+  return lines.slice(startIdx, endIdx === -1 ? undefined : endIdx).join("\n");
+}
+
+/**
+ * Extract bullet points from text
+ */
+function extractBullets(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => /^([•\-*·▪►◦➤])\s+/.test(l) || /^\d+\.\s+/.test(l))
+    .map((l) => l.replace(/^([•\-*·▪►◦➤]|\d+\.)\s+/, "").trim())
+    .filter(Boolean);
+}
+
+/**
+ * Compute quantification score with section-aware feedback
+ */
+function computeQuantificationScore(resumeText: string): {
+  score: number;
+  verdict: "weak" | "average" | "strong";
+  tip: string;
+} {
+  const expText = getExperienceSection(resumeText);
+  const bullets = extractBullets(expText);
+
+  if (bullets.length === 0) {
+    // Fall back to checking raw text for numbers
+    const hasNumbers = /(\$|%|\b\d[\d,\.]*\b|\b\d+\s*(k|m|b)\b)/i.test(resumeText);
+    return {
+      score: hasNumbers ? 40 : 20,
+      verdict: hasNumbers ? "average" : "weak",
+      tip: "Add bullet points with specific numbers ($, %, #) to quantify your impact.",
+    };
+  }
+
+  const hasNumber = (s: string) => /(\$|%|\b\d[\d,\.]*\b|\b\d+\s*(k|m|b)\b)/i.test(s);
+
+  const mid = Math.ceil(bullets.length / 2);
+  const recent = bullets.slice(0, mid);
+  const older = bullets.slice(mid);
+
+  const pct = (arr: string[]) => (arr.length ? Math.round((arr.filter(hasNumber).length / arr.length) * 100) : 0);
+
+  const overall = pct(bullets);
+  const recentPct = pct(recent);
+  const olderPct = pct(older);
+
+  const verdict: "weak" | "average" | "strong" = overall >= 60 ? "strong" : overall >= 35 ? "average" : "weak";
+
+  let tip = "Add more numbers ($, %, #) to show measurable impact.";
+  if (recentPct >= 55 && olderPct > 0 && olderPct <= 35) {
+    tip = "Strong metrics in summary/recent roles; older roles rely more on responsibilities. Add 1–2 numbers per older role.";
+  } else if (overall >= 60) {
+    tip = "Good use of numbers—keep this consistency across all roles.";
+  } else if (overall >= 35) {
+    tip = "Good start—add metrics to 1–2 more bullets per role.";
+  }
+
+  return { score: overall, verdict, tip };
+}
+
+/**
+ * Compute bullet impact score with section-aware feedback
+ */
+function computeBulletImpactScore(resumeText: string): {
+  score: number;
+  verdict: "responsibility_heavy" | "balanced" | "achievement_focused";
+  tip: string;
+} {
+  const expText = getExperienceSection(resumeText);
+  const bullets = extractBullets(expText);
+
+  if (bullets.length === 0) {
+    return {
+      score: 30,
+      verdict: "responsibility_heavy",
+      tip: "Add bullet points that start with action verbs and show outcomes.",
+    };
+  }
+
+  const hasNumber = (s: string) => /(\$|%|\b\d[\d,\.]*\b|\b\d+\s*(k|m|b)\b)/i.test(s);
+  const hasResultVerb = (s: string) =>
+    /\b(increased|grew|reduced|improved|drove|generated|closed|won|achieved|accelerated|delivered|launched|expanded|exceeded|scaled|optimized|transformed|led|spearheaded|pioneered)\b/i.test(s);
+  const responsibilityPhrase = (s: string) =>
+    /\b(responsible for|assisted|helped|supported|worked on|duties included|tasked with|handled)\b/i.test(s);
+
+  const isAchievement = (s: string) => (hasNumber(s) || hasResultVerb(s)) && !responsibilityPhrase(s);
+
+  const mid = Math.ceil(bullets.length / 2);
+  const recent = bullets.slice(0, mid);
+  const older = bullets.slice(mid);
+
+  const pct = (arr: string[]) => (arr.length ? Math.round((arr.filter(isAchievement).length / arr.length) * 100) : 0);
+
+  const overall = pct(bullets);
+  const recentPct = pct(recent);
+  const olderPct = pct(older);
+
+  const verdict: "responsibility_heavy" | "balanced" | "achievement_focused" =
+    overall >= 60 ? "achievement_focused" : overall >= 35 ? "balanced" : "responsibility_heavy";
+
+  let tip = "Lead bullets with outcomes (what changed) before responsibilities (what you did).";
+  if (recentPct >= 55 && olderPct > 0 && olderPct <= 35) {
+    tip = "Recent bullets show outcomes; older bullets read more like responsibilities. Add results verbs + one metric per older role.";
+  } else if (overall >= 60) {
+    tip = "Strong achievement focus—keep emphasizing scope + outcomes.";
+  } else if (overall >= 35) {
+    tip = "Some bullets read as responsibilities—add outcomes + proof.";
+  }
+
+  return { score: overall, verdict, tip };
+}
+
+/**
+ * Compute industry benchmark based on score
+ */
+function computeIndustryBenchmark(
+  score: number,
+  industry: string
+): {
+  industryAvg: number;
+  comparison: "below" | "at" | "above";
+  percentile: string;
+} {
+  // Industry-specific averages (simplified)
+  const industryAverages: Record<string, { avg: number; top: number }> = {
+    technology: { avg: 68, top: 85 },
+    sales: { avg: 65, top: 82 },
+    marketing: { avg: 64, top: 80 },
+    finance: { avg: 70, top: 88 },
+    healthcare: { avg: 66, top: 84 },
+    legal: { avg: 72, top: 90 },
+    consulting: { avg: 70, top: 86 },
+    engineering: { avg: 67, top: 84 },
+    general: { avg: 65, top: 82 },
+  };
+
+  const benchmarks = industryAverages[industry] || industryAverages.general;
+  const { avg, top } = benchmarks;
+
+  let comparison: "below" | "at" | "above";
+  let percentile: string;
+
+  if (score >= top) {
+    comparison = "above";
+    percentile = "Top 5%";
+  } else if (score >= avg + 10) {
+    comparison = "above";
+    const pct = Math.round(50 - ((score - avg) / (top - avg)) * 45);
+    percentile = `Top ${Math.max(5, pct)}%`;
+  } else if (score >= avg - 5) {
+    comparison = "at";
+    percentile = "Around average";
+  } else {
+    comparison = "below";
+    const pct = Math.round(50 + ((avg - score) / avg) * 35);
+    percentile = `Bottom ${Math.min(60, pct)}%`;
+  }
+
+  return { industryAvg: avg, comparison, percentile };
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -589,10 +853,35 @@ Focus on: ATS score (0-100), industry detection, format grade (A-D), experience 
         console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry normalized: "${rawIndustry}" -> "${analysis.industry}"`);
       }
 
-      // Build response
+      // ======================== Server-Side Computed Fields ========================
+      // These are computed from the raw resume text for accuracy and consistency
+
+      // 1. Timeline Analysis (experience years, tenure, progression)
+      const computedTimeline = computeTimelineAnalysis(resumeText);
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Computed timeline: ${JSON.stringify(computedTimeline)}`);
+
+      // 2. Quantification Score (section-aware)
+      const computedQuantification = computeQuantificationScore(resumeText);
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Computed quantification: ${JSON.stringify(computedQuantification)}`);
+
+      // 3. Bullet Impact Score (section-aware)
+      const computedBulletImpact = computeBulletImpactScore(resumeText);
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Computed bullet impact: ${JSON.stringify(computedBulletImpact)}`);
+
+      // 4. Industry Benchmark
+      const computedBenchmark = computeIndustryBenchmark(analysis.atsScoreEstimate || 0, analysis.industry);
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Computed benchmark: ${JSON.stringify(computedBenchmark)}`);
+
+      // Build response with computed fields merged
       const responseData = {
         success: true,
         ...analysis,
+        // Override/add computed fields
+        timelineAnalysis: computedTimeline,
+        quantificationScore: computedQuantification,
+        bulletImpactScore: computedBulletImpact,
+        industryBenchmark: computedBenchmark,
+        // Trim arrays
         redFlags: (analysis.redFlags || []).slice(0, 3),
         keywords: (analysis.keywords || []).slice(0, 6),
         quickWins: (analysis.quickWins || []).slice(0, 3),
