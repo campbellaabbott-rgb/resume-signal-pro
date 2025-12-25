@@ -92,9 +92,9 @@ export function IndustryKeywordSuggestions({
           </div>
           <p className="text-xs text-muted-foreground">
             {hasCriticalGaps 
-              ? `Missing ${criticalMissing.length} critical keyword${criticalMissing.length > 1 ? 's' : ''} that most ${config.name} roles require`
+              ? `${criticalMissing.length} keyword${criticalMissing.length > 1 ? 's' : ''} not explicitly stated — ATS optimization opportunity`
               : hasHighGaps
-                ? `Good coverage, but missing ${highMissing.length} high-impact keyword${highMissing.length > 1 ? 's' : ''}`
+                ? `Good coverage — ${highMissing.length} high-impact keyword${highMissing.length > 1 ? 's' : ''} could strengthen your match`
                 : 'Great keyword coverage for your industry!'
             }
           </p>
@@ -116,9 +116,9 @@ export function IndustryKeywordSuggestions({
       {criticalMissing.length > 0 && (
         <div className="mb-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
           <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-4 h-4 text-destructive" />
-            <span className="text-xs font-semibold text-destructive uppercase tracking-wider">
-              Critical Keywords Missing
+            <AlertTriangle className="w-4 h-4 text-warning" />
+            <span className="text-xs font-semibold text-warning uppercase tracking-wider">
+              Not Explicitly Stated (ATS Opportunity)
             </span>
           </div>
           <div className="flex flex-wrap gap-1.5">
