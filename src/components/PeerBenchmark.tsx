@@ -28,16 +28,21 @@ function calculatePercentile(score: number, avgScore: number, topScore: number):
 }
 
 // Get comparison message based on percentile
-function getComparisonMessage(percentile: number): { message: string; tone: "success" | "warning" | "neutral" } {
-  if (percentile >= 80) {
-    return { message: "You're in the top tier of candidates", tone: "success" };
-  } else if (percentile >= 60) {
-    return { message: "You're performing above average", tone: "success" };
-  } else if (percentile >= 40) {
-    return { message: "You're in the middle of the pack", tone: "neutral" };
-  } else {
-    return { message: "There's room to improve your standing", tone: "warning" };
+function getComparisonMessage(
+  percentile: number,
+  cohortLabel: string
+): { message: string; tone: "success" | "warning" | "neutral" } {
+  const topPct = Math.max(1, 100 - percentile);
+
+  if (percentile >= 70) {
+    return { message: `Top ${topPct}% for ATS readiness among ${cohortLabel}`, tone: "success" };
   }
+
+  if (percentile >= 45) {
+    return { message: `Around average ATS readiness among ${cohortLabel}`, tone: "neutral" };
+  }
+
+  return { message: `Below average ATS readiness among ${cohortLabel} (fixable)`, tone: "warning" };
 }
 
 export function PeerBenchmark({ score, industry, experienceLevel, targetRole }: PeerBenchmarkProps) {
@@ -48,8 +53,9 @@ export function PeerBenchmark({ score, industry, experienceLevel, targetRole }: 
   
   const { avgScore, topScore } = industryConfig.industryBenchmarks;
   const percentile = calculatePercentile(score, avgScore, topScore);
-  const comparison = getComparisonMessage(percentile);
-  
+  const cohortLabel = `${experienceLevel ? `${experienceLevel} ` : ""}${industryConfig.name} resumes`;
+  const comparison = getComparisonMessage(percentile, cohortLabel);
+
   // Calculate how many points needed to reach next tier
   const pointsToTop = Math.max(0, topScore - score);
   const pointsToAverage = Math.max(0, avgScore - score);
