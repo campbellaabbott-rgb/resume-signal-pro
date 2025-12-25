@@ -625,6 +625,47 @@ serve(async (req) => {
       const hasJobDescription = jobDescriptionText && typeof jobDescriptionText === 'string' && jobDescriptionText.trim().length > 50;
       const truncatedJobDescription = hasJobDescription ? jobDescriptionText.substring(0, MAX_JOB_DESCRIPTION_LENGTH) : null;
 
+      // ======================== AI Response Caching ========================
+      // Create cache key from content hash (resume + job description)
+      const cacheInput = `${resumeText.substring(0, 5000)}|${truncatedJobDescription?.substring(0, 2000) || ''}`;
+      const cacheKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheInput))
+        .then(hash => Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''))
+        .then(hex => hex.substring(0, 32)); // Use first 32 chars of hash
+      
+      const CACHE_FUNCTION_NAME = 'free-keyword-scan-stream';
+      const CACHE_TTL_HOURS = 2; // Cache for 2 hours
+      
+      // Check cache first
+      const { data: cachedResponse, error: cacheError } = await supabase.rpc('get_cached_response', {
+        p_cache_key: cacheKey,
+        p_function_name: CACHE_FUNCTION_NAME
+      });
+      
+      if (!cacheError && cachedResponse) {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Cache HIT for key ${cacheKey.substring(0, 8)}...`);
+        metricCtx.cacheHit = true;
+        
+        // Send quick progress updates
+        send('progress', PROGRESS_STAGES[2]);
+        send('progress', PROGRESS_STAGES[3]);
+        send('progress', PROGRESS_STAGES[4]);
+        send('progress', PROGRESS_STAGES[5]);
+        
+        // Log successful cache hit
+        logScanMetric(metricCtx, 'completed', {
+          outputValid: true,
+          responseScore: cachedResponse.atsScoreEstimate,
+          metadata: { cached: true, cacheKey: cacheKey.substring(0, 8) }
+        });
+        
+        // Return cached result
+        send('complete', { ...cachedResponse, cached: true });
+        close();
+        return;
+      }
+      
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Cache MISS for key ${cacheKey.substring(0, 8)}...`);
+
       send('progress', PROGRESS_STAGES[2]);
 
       // Get API key
@@ -1065,6 +1106,28 @@ Focus on: ATS score (0-100), industry detection, format grade (A-D), experience 
           hasJobDescription: !!truncatedJobDescription
         }
       });
+
+      // Store in cache for future requests (non-blocking)
+      EdgeRuntime.waitUntil(
+        (async () => {
+          try {
+            const { error: storeError } = await supabase.rpc('store_cached_response', {
+              p_cache_key: cacheKey,
+              p_function_name: CACHE_FUNCTION_NAME,
+              p_response: responseData,
+              p_ttl_hours: CACHE_TTL_HOURS
+            });
+            
+            if (storeError) {
+              console.error(`[FREE-KEYWORD-SCAN-STREAM] Cache store error:`, storeError.message);
+            } else {
+              console.log(`[FREE-KEYWORD-SCAN-STREAM] Cached response for key ${cacheKey.substring(0, 8)}...`);
+            }
+          } catch (err) {
+            console.error(`[FREE-KEYWORD-SCAN-STREAM] Cache store exception:`, err);
+          }
+        })()
+      );
 
       // Log performance
       const duration = Date.now() - requestStartTime;
