@@ -761,8 +761,27 @@ export function FreeKeywordResults({
   const resumeLength = resumeLengthProp || { currentPages: 1, recommendedPages: 1, verdict: "just_right" as const };
   const wordCount = wordCountProp || { current: 500, idealMin: 400, idealMax: 600, verdict: "ideal" as const };
   const experienceLevel = experienceLevelProp || { level: "mid" as const, yearsEstimate: "3-5 years" };
-  const sectionCheck = sectionCheckProp || { hasContact: true, hasSummary: false, hasExperience: true, hasEducation: true, hasSkills: true, missingSections: [] };
-  const contactInfo = contactInfoProp || { hasEmail: true, hasPhone: true, hasLinkedIn: false, missingItems: [] };
+
+  // NOTE: the backend may omit nested array fields (e.g. missingSections/missingItems),
+  // so we deep-default them to avoid runtime `.length` crashes.
+  const sectionCheck = {
+    hasContact: true,
+    hasSummary: false,
+    hasExperience: true,
+    hasEducation: true,
+    hasSkills: true,
+    ...sectionCheckProp,
+    missingSections: sectionCheckProp?.missingSections ?? [],
+  };
+
+  const contactInfo = {
+    hasEmail: true,
+    hasPhone: true,
+    hasLinkedIn: false,
+    ...contactInfoProp,
+    missingItems: contactInfoProp?.missingItems ?? [],
+  };
+
   const topStrength = topStrengthProp || { title: "Clear Experience", description: "Your work history is well-documented" };
   const quantificationScore = quantificationScoreProp || { score: 40, verdict: "average" as const, tip: "Add more metrics" };
   const actionVerbGrade = actionVerbGradeProp || { grade: "B", issue: "Good variety" };
