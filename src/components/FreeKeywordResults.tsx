@@ -1228,10 +1228,18 @@ export function FreeKeywordResults({
           {/* Prominent cached results notice with re-analyze CTA */}
           {isCached && onForceReanalyze && (
             <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border border-primary/20">
-              <div className="flex items-center gap-2 text-primary">
-                <Zap className="w-4 h-4" />
-                <span className="text-sm font-medium">Showing saved results</span>
-              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 text-primary cursor-help">
+                    <Zap className="w-4 h-4" />
+                    <span className="text-sm font-medium">Showing saved results</span>
+                    <HelpCircle className="w-3.5 h-3.5 opacity-60" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs text-center">
+                  <p className="text-sm">We detected the same resume and loaded your previous results instantly. This provides faster loading and reduces server load.</p>
+                </TooltipContent>
+              </Tooltip>
               <div className="h-4 w-px bg-primary/20" />
               <button
                 onClick={() => {
