@@ -54,6 +54,7 @@ import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useErrorTracking } from "@/hooks/use-error-tracking";
 import { useAffiliateTracking, getStoredReferralCode } from "@/hooks/use-affiliate-auth";
 import { useStreamingScan, type StreamProgress } from "@/hooks/use-streaming-scan";
+import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
 
 interface FreeKeywordResult {
   candidateName?: string | null;
@@ -201,6 +202,18 @@ const Index = () => {
   
   // Streaming scan for real-time progress updates
   const { isStreaming, progress: streamingProgress, startStreamingScan, cancelScan } = useStreamingScan();
+  
+  // Background scan prefetch - starts analysis when user pastes/uploads
+  const { 
+    triggerBackgroundScan, 
+    getBackgroundScanResult, 
+    waitForBackgroundScan,
+    isBackgroundScanning 
+  } = useScanPrefetch({ 
+    resumeText, 
+    jobDescriptionText, 
+    honeypot 
+  });
   
   // Track if we're pre-storing to avoid duplicate calls
   const isPreStoring = useRef(false);
@@ -376,6 +389,7 @@ const Index = () => {
       setResumeText(text);
       saveResumeToSession(text); // Persist to session storage
       preStoreResume(text); // Pre-store server-side for faster checkout
+      triggerBackgroundScan(text, jobDescriptionText, honeypot); // Start background scan
       trackUploadCompleted(file.size);
       return;
     }
@@ -403,6 +417,7 @@ const Index = () => {
           setResumeText(data.text);
           saveResumeToSession(data.text); // Persist to session storage
           preStoreResume(data.text); // Pre-store server-side for faster checkout
+          triggerBackgroundScan(data.text, jobDescriptionText, honeypot); // Start background scan
           trackUploadCompleted(file.size, Date.now());
           toast({
             title: "PDF parsed successfully",
@@ -451,6 +466,7 @@ const Index = () => {
           setResumeText(data.text);
           saveResumeToSession(data.text); // Persist to session storage
           preStoreResume(data.text); // Pre-store server-side for faster checkout
+          triggerBackgroundScan(data.text, jobDescriptionText, honeypot); // Start background scan
           trackUploadCompleted(file.size, Date.now());
           toast({
             title: "Document parsed successfully",
@@ -505,21 +521,42 @@ const Index = () => {
     trackScanStarted();
 
     try {
-      // Use streaming scan for real-time progress updates
-      let result = await startStreamingScan(contentToAnalyze, {
-        jobDescriptionText: jobDescriptionText || undefined,
-        honeypot,
-        skipCache,
-        onProgress: (progress) => {
-          console.log('[StreamingScan] Progress:', progress.stage, progress.progress + '%');
-        },
-        onComplete: (data) => {
-          console.log('[StreamingScan] Complete:', data.atsScoreEstimate);
-        },
-        onError: (error) => {
-          console.error('[StreamingScan] Error:', error);
-        },
-      });
+      // Check if we have a background scan result ready (from paste/upload prefetch)
+      let result: any = null;
+      
+      if (!skipCache) {
+        // First check if background scan already completed
+        result = getBackgroundScanResult(contentToAnalyze);
+        
+        // If not ready but in progress, wait for it (up to 8s)
+        if (!result && isBackgroundScanning()) {
+          console.log('[FreeScan] Background scan in progress, waiting...');
+          result = await waitForBackgroundScan(contentToAnalyze, 8000);
+        }
+        
+        if (result) {
+          console.log('[FreeScan] Using prefetched background scan result');
+          setIsCachedResult(true);
+        }
+      }
+      
+      // If no prefetch result, run the streaming scan
+      if (!result) {
+        result = await startStreamingScan(contentToAnalyze, {
+          jobDescriptionText: jobDescriptionText || undefined,
+          honeypot,
+          skipCache,
+          onProgress: (progress) => {
+            console.log('[StreamingScan] Progress:', progress.stage, progress.progress + '%');
+          },
+          onComplete: (data) => {
+            console.log('[StreamingScan] Complete:', data.atsScoreEstimate);
+          },
+          onError: (error) => {
+            console.error('[StreamingScan] Error:', error);
+          },
+        });
+      }
 
       // Fallback to non-streaming endpoint if streaming failed
       if (!result) {
@@ -865,6 +902,9 @@ const Index = () => {
     // Save to session storage so it persists across refreshes
     saveResumeToSession(text, linkedIn, jobDescription);
     
+    // Start background scan for faster results
+    triggerBackgroundScan(text, jobDescription, honeypot);
+    
     handleCheckout(text, linkedIn, jobDescription);
   };
 
@@ -877,8 +917,10 @@ const Index = () => {
     // Only "pop" the floating CTA when the user first becomes eligible to scan
     if (normalized.length > 100) {
       setFloatingScanTrigger((v) => v + 1);
+      // Trigger background scan when user pastes/types enough text
+      triggerBackgroundScan(normalized, jobDescriptionText, honeypot);
     }
-  }, []);
+  }, [triggerBackgroundScan, jobDescriptionText, honeypot]);
 
   const handleCheckout = async (text?: string, linkedIn?: string, jobDescription?: string) => {
     const contentToAnalyze = text || resumeText;
