@@ -757,10 +757,155 @@ export function FreeKeywordResults({
     onGetFullAnalysis();
   };
 
+  // Lightweight fallbacks: when the backend omits some fields, derive them from the raw resume text.
+  const extractYearsFromTextLocal = (text: string): number[] => {
+    const years: number[] = [];
+    const currentYear = new Date().getFullYear();
+    const yearRegex = /\b(19[7-9]\d|20[0-2]\d)\b/g;
+
+    let match: RegExpExecArray | null;
+    while ((match = yearRegex.exec(text)) !== null) {
+      const y = parseInt(match[1], 10);
+      if (y >= 1970 && y <= currentYear + 1) years.push(y);
+    }
+
+    if (/\b(present|current|ongoing|now|today)\b/i.test(text)) years.push(currentYear);
+
+    return [...new Set(years)].sort((a, b) => a - b);
+  };
+
+  const parseYearsEstimateLocal = (estimate?: string | null): number => {
+    if (!estimate) return 0;
+    const cleaned = estimate.toLowerCase().trim();
+
+    const plusMatch = cleaned.match(/(\d+)\+?\s*years?/i);
+    if (plusMatch) return parseInt(plusMatch[1], 10);
+
+    const rangeMatch = cleaned.match(/(\d+)\s*-\s*(\d+)\s*years?/i);
+    if (rangeMatch) return parseInt(rangeMatch[2], 10);
+
+    const numMatch = cleaned.match(/(\d+)/);
+    if (numMatch) return parseInt(numMatch[1], 10);
+
+    return 0;
+  };
+
+  const deriveTotalExperienceText = (): string | null => {
+    const text = resumeText?.trim();
+    if (text) {
+      const years = extractYearsFromTextLocal(text);
+      if (years.length > 0) {
+        const currentYear = new Date().getFullYear();
+        const earliest = years[0];
+        const latest = years.includes(currentYear) ? currentYear : years[years.length - 1];
+        const span = Math.max(0, latest - earliest);
+        if (span > 0) return `${span} ${span === 1 ? "year" : "years"}`;
+      }
+    }
+
+    const y = parseYearsEstimateLocal(experienceLevelProp?.yearsEstimate);
+    return y > 0 ? `${y} ${y === 1 ? "year" : "years"}` : null;
+  };
+
+  const getExperienceSectionText = (): string => {
+    const text = resumeText || "";
+    if (!text) return "";
+
+    const lines = text.split(/\r?\n/);
+    const startIdx = lines.findIndex((l) => /\b(professional\s+experience|experience)\b/i.test(l));
+    if (startIdx === -1) return text;
+
+    const endIdx = lines.findIndex(
+      (l, i) =>
+        i > startIdx && /\b(education|skills|certifications|projects|awards|publications)\b/i.test(l)
+    );
+
+    return lines.slice(startIdx, endIdx === -1 ? undefined : endIdx).join("\n");
+  };
+
+  const extractBullets = (text: string): string[] =>
+    text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => /^([•\-*·])\s+/.test(l))
+      .map((l) => l.replace(/^([•\-*·])\s+/, "").trim())
+      .filter(Boolean);
+
+  const computeQuantificationFromText = (): QuantificationScore | null => {
+    const expText = getExperienceSectionText();
+    const bullets = extractBullets(expText);
+    if (!bullets.length) return null;
+
+    const hasNumber = (s: string) => /(\$|%|\b\d[\d,\.]*\b|\b\d+\s*(k|m|b)\b)/i.test(s);
+
+    const mid = Math.ceil(bullets.length / 2);
+    const recent = bullets.slice(0, mid);
+    const older = bullets.slice(mid);
+
+    const pct = (arr: string[]) => (arr.length ? Math.round((arr.filter(hasNumber).length / arr.length) * 100) : 0);
+
+    const overall = pct(bullets);
+    const recentPct = pct(recent);
+    const olderPct = pct(older);
+
+    const verdict: QuantificationScore["verdict"] = overall >= 60 ? "strong" : overall >= 40 ? "average" : "weak";
+
+    let tip = "Add more numbers ($, %, #) to show impact.";
+    if (recentPct >= 60 && olderPct > 0 && olderPct <= 40) {
+      tip = "Strong metrics in summary/recent roles; older roles rely more on responsibilities. Add 1–2 numbers per older role.";
+    } else if (overall >= 60) {
+      tip = "Good use of numbers—keep this consistency across all roles.";
+    } else if (overall >= 40) {
+      tip = "Good start—add a few more metrics, especially in older roles.";
+    }
+
+    return { score: overall, verdict, tip };
+  };
+
+  const computeBulletImpactFromText = (): BulletImpactScore | null => {
+    const expText = getExperienceSectionText();
+    const bullets = extractBullets(expText);
+    if (!bullets.length) return null;
+
+    const hasNumber = (s: string) => /(\$|%|\b\d[\d,\.]*\b|\b\d+\s*(k|m|b)\b)/i.test(s);
+    const hasResultVerb = (s: string) =>
+      /\b(increased|grew|reduced|improved|drove|generated|closed|won|achieved|accelerated|delivered|launched|expanded|exceeded|scaled)\b/i.test(s);
+    const responsibilityPhrase = (s: string) => /\b(responsible for|assisted|helped|supported|worked on|duties included)\b/i.test(s);
+
+    const isAchievement = (s: string) => (hasNumber(s) || hasResultVerb(s)) && !responsibilityPhrase(s);
+
+    const mid = Math.ceil(bullets.length / 2);
+    const recent = bullets.slice(0, mid);
+    const older = bullets.slice(mid);
+
+    const pct = (arr: string[]) => (arr.length ? Math.round((arr.filter(isAchievement).length / arr.length) * 100) : 0);
+
+    const overall = pct(bullets);
+    const recentPct = pct(recent);
+    const olderPct = pct(older);
+
+    const verdict: BulletImpactScore["verdict"] = overall >= 60 ? "achievement_focused" : overall >= 40 ? "balanced" : "responsibility_heavy";
+
+    let tip = "Lead bullets with outcomes (what changed) before responsibilities (what you did).";
+    if (recentPct >= 60 && olderPct > 0 && olderPct <= 40) {
+      tip = "Recent bullets show outcomes; older bullets read more like responsibilities. Add results verbs + one metric per older role.";
+    } else if (overall >= 60) {
+      tip = "Strong achievement focus—keep emphasizing scope + outcomes.";
+    } else if (overall >= 40) {
+      tip = "Some bullets read as responsibilities—tighten to outcomes + proof.";
+    }
+
+    return { score: overall, verdict, tip };
+  };
+
   // Safe defaults
   const resumeLength = resumeLengthProp || { currentPages: 1, recommendedPages: 1, verdict: "just_right" as const };
   const wordCount = wordCountProp || { current: 500, idealMin: 400, idealMax: 600, verdict: "ideal" as const };
   const experienceLevel = experienceLevelProp || { level: "mid" as const, yearsEstimate: "3-5 years" };
+
+  const computedTotalYears = deriveTotalExperienceText();
+  const computedQuantificationScore = !quantificationScoreProp && resumeText ? computeQuantificationFromText() : null;
+  const computedBulletImpactScore = !bulletImpactScoreProp && resumeText ? computeBulletImpactFromText() : null;
 
   // NOTE: the backend may omit nested array fields (e.g. missingSections/missingItems),
   // so we deep-default them to avoid runtime `.length` crashes.
@@ -783,17 +928,23 @@ export function FreeKeywordResults({
   };
 
   const topStrength = topStrengthProp || { title: "Clear Experience", description: "Your work history is well-documented" };
-  const quantificationScore = quantificationScoreProp || { score: 40, verdict: "average" as const, tip: "Add more metrics" };
+  const quantificationScore =
+    quantificationScoreProp ||
+    computedQuantificationScore ||
+    ({ score: 0, verdict: "average" as const, tip: "Quantification could not be detected from this text." } satisfies QuantificationScore);
   const actionVerbGrade = actionVerbGradeProp || { grade: "B", issue: "Good variety" };
   const readabilityScore = readabilityScoreProp || { score: 65, verdict: "readable" as const, issue: "Some long sentences" };
-  const bulletImpactScore = bulletImpactScoreProp || { score: 45, verdict: "responsibility_heavy" as const, tip: "Focus on achievements" };
+  const bulletImpactScore =
+    bulletImpactScoreProp ||
+    computedBulletImpactScore ||
+    ({ score: 0, verdict: "balanced" as const, tip: "Bullet impact could not be detected from this text." } satisfies BulletImpactScore);
   const keywordDensity = keywordDensityProp || { level: "moderate" as const, explanation: "Good keyword presence" };
   const improvementPotential = improvementPotentialProp || { level: "medium" as const, estimatedScoreIncrease: 15, topPriority: "Add quantified achievements" };
   const redFlags = redFlagsProp || [];
   const topSkipReasons = topSkipReasonsProp || [];
   const powerWords = powerWordsProp || [];
   const weakPhrases = weakPhrasesProp || [];
-  const timelineAnalysis = timelineAnalysisProp || { avgTenure: "2 years", progression: "steady" as const, hasGaps: false, totalYears: "5 years" };
+  const timelineAnalysis = timelineAnalysisProp || { avgTenure: "2 years", progression: "steady" as const, hasGaps: false, totalYears: computedTotalYears ?? "—" };
   const industryBenchmark = industryBenchmarkProp || { industryAvg: 72, comparison: "at" as const, percentile: "Top 50%" };
   const quickWins = quickWinsProp || [];
   const sampleRewrite = sampleRewriteProp;

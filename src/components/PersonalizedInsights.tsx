@@ -335,9 +335,9 @@ export function PersonalizedInsights({
               benchmarkComparison === 'average' ? "bg-amber-500/10 text-amber-600" :
               "bg-destructive/10 text-destructive"
             )}>
-              {benchmarkComparison === 'top' && "🏆 You're in the top tier for your industry!"}
-              {benchmarkComparison === 'average' && "📊 You're at the industry average—room to stand out."}
-              {benchmarkComparison === 'below' && "⚠️ You're below average for your industry—optimization critical."}
+              {benchmarkComparison === 'top' && "Above-average ATS readiness for your industry."}
+              {benchmarkComparison === 'average' && "Around the ATS average for your industry."}
+              {benchmarkComparison === 'below' && "Below the ATS average for your industry (fixable)."}
             </div>
           </div>
         </div>
