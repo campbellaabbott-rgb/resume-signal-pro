@@ -93,20 +93,36 @@ export function FloatingUploadButton({
   const handleVerifyClick = () => {
     // Prevent double-clicks - only process if not already verifying
     if (isVerifying) return;
-    
+
     setIsVerifying(true);
-    
-    const resumeSection = document.querySelector('[data-resume-loaded="true"]');
-    if (resumeSection) {
-      resumeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    // After scrolling to verify, switch to showing scan button
-    setTimeout(() => {
-      setHasClickedVerify(true);
-      setShowVerifyFirst(false);
-      setIsVerifying(false);
-      onVerifyClick?.();
-    }, 800);
+
+    const startedAt = Date.now();
+
+    const tryScrollToResume = () => {
+      const resumeSection = document.querySelector('[data-resume-loaded="true"]');
+      if (resumeSection) {
+        resumeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // After scrolling to verify, switch to showing scan button
+        window.setTimeout(() => {
+          setHasClickedVerify(true);
+          setShowVerifyFirst(false);
+          setIsVerifying(false);
+          onVerifyClick?.();
+        }, 800);
+        return;
+      }
+
+      // If the resume section hasn't mounted yet (fast click after upload), retry briefly.
+      if (Date.now() - startedAt > 1500) {
+        setIsVerifying(false);
+        return;
+      }
+
+      window.setTimeout(tryScrollToResume, 100);
+    };
+
+    tryScrollToResume();
   };
 
   const handleScanClick = () => {
