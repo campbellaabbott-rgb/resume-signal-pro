@@ -143,6 +143,8 @@ function FreeScanProgress({ streamingProgress }: FreeScanProgressProps) {
 interface ResumeUploaderProps {
   onFileSelect: (file: File) => void;
   onTextSubmit: (text: string, linkedInText?: string, jobDescriptionText?: string) => void;
+  /** For paste mode: lets parent reflect the textarea (for preview + floating CTAs) */
+  onResumeDraftChange?: (text: string) => void;
   onCheckout: (linkedInText?: string, jobDescriptionText?: string) => void;
   onFreeScan?: (resumeOverrideText?: string) => void;
   onClearResume?: () => void;
@@ -164,7 +166,8 @@ interface ResumeUploaderProps {
 
 export function ResumeUploader({ 
   onFileSelect, 
-  onTextSubmit, 
+  onTextSubmit,
+  onResumeDraftChange,
   onCheckout,
   onFreeScan,
   onClearResume,
@@ -188,6 +191,19 @@ export function ResumeUploader({
   const [textInput, setTextInput] = useState("");
   const [resumeMode, setResumeMode] = useState<"upload" | "paste">("upload");
   const [linkedInMode, setLinkedInMode] = useState<"upload" | "paste">("upload");
+
+  // Keep parent in sync with paste textarea so the UI matches the upload flow
+  useEffect(() => {
+    if (!onResumeDraftChange) return;
+    if (resumeMode !== "paste") return;
+
+    const trimmed = textInput.trim();
+    const timer = window.setTimeout(() => {
+      onResumeDraftChange(trimmed);
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [resumeMode, textInput, onResumeDraftChange]);
   const [linkedInFile, setLinkedInFile] = useState<File | null>(null);
   const [localLinkedInText, setLocalLinkedInText] = useState("");
   // Collapse optional sections by default on mobile

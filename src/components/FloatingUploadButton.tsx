@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { Zap, FileText, CheckCircle2, ArrowDown, Eye } from "lucide-react";
+import { Zap, FileText, ArrowDown, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FloatingUploadButtonProps {
   hasContent?: boolean;
   scanComplete?: boolean;
+  /** increments whenever we want the floating CTA to "pop" again */
+  trigger?: number;
   resumeVerified?: boolean;
   onVerifyClick?: () => void;
 }
@@ -12,32 +14,33 @@ interface FloatingUploadButtonProps {
 export function FloatingUploadButton({ 
   hasContent = false, 
   scanComplete = false,
+  trigger = 0,
   resumeVerified = false,
   onVerifyClick
 }: FloatingUploadButtonProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [showVerifyFirst, setShowVerifyFirst] = useState(true);
-  const [justAppeared, setJustAppeared] = useState(false);
+  const [justTriggered, setJustTriggered] = useState(false);
 
   useEffect(() => {
     if (!hasContent || scanComplete) {
       setIsVisible(false);
       setShowVerifyFirst(true);
-      setJustAppeared(false);
+      setJustTriggered(false);
       return;
     }
 
-    // Show immediately when resume is uploaded
+    // Pop the button whenever trigger increments (upload OR paste-ready)
     setIsVisible(true);
-    setJustAppeared(true);
+    setShowVerifyFirst(true);
+    setJustTriggered(true);
 
-    // Reset animation after delay
     const timer = setTimeout(() => {
-      setJustAppeared(false);
-    }, 3000);
+      setJustTriggered(false);
+    }, 2500);
 
     return () => clearTimeout(timer);
-  }, [hasContent, scanComplete]);
+  }, [hasContent, scanComplete, trigger]);
 
   // When resumeVerified changes, switch to scan button
   useEffect(() => {
@@ -47,12 +50,11 @@ export function FloatingUploadButton({
   }, [resumeVerified]);
 
   useEffect(() => {
-    if (!hasContent || scanComplete) return;
+    if (!hasContent || scanComplete || justTriggered) return;
 
     const handleScroll = () => {
       // Check visibility of appropriate section based on current step
       if (showVerifyFirst) {
-        // Check if resume loaded section is visible
         const resumeSection = document.querySelector('[data-resume-loaded="true"]');
         if (resumeSection) {
           const rect = resumeSection.getBoundingClientRect();
@@ -61,7 +63,6 @@ export function FloatingUploadButton({
           setIsVisible(!isResumeVisible);
         }
       } else {
-        // Check if scan button is visible
         const scanButton = document.querySelector('[data-scan-button="true"]');
         if (scanButton) {
           const rect = scanButton.getBoundingClientRect();
@@ -76,7 +77,7 @@ export function FloatingUploadButton({
     handleScroll();
 
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [hasContent, scanComplete, showVerifyFirst]);
+  }, [hasContent, scanComplete, showVerifyFirst, justTriggered]);
 
   const handleVerifyClick = () => {
     const resumeSection = document.querySelector('[data-resume-loaded="true"]');
@@ -118,7 +119,7 @@ export function FloatingUploadButton({
             "bg-gradient-to-r from-primary via-primary to-indigo-500 text-primary-foreground font-bold text-base",
             "shadow-xl shadow-primary/40 hover:shadow-2xl hover:shadow-primary/50",
             "touch-manipulation",
-            justAppeared && "animate-bounce"
+            justTriggered && "animate-bounce"
           )}
           aria-label="Verify your resume"
         >
