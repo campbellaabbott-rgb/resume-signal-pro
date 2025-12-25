@@ -360,7 +360,7 @@
     "plusMore": "Plus : Lacunes de compétences, insights sectoriels, verbes d'action, mots-clés & résumé"
   },
   "freeScan": {
-    "complete": "Scan gratuit 17 points terminé",
+    "complete": "Scan gratuit 24 points terminé",
     "preview": "Voici votre aperçu complet",
     "detected": "Détecté",
     "atsScore": "Score ATS",
@@ -497,7 +497,7 @@
     "fullAnalysis": "Analyse Complète",
     "ctaButton": "Voir Tous les Forfaits",
     "comparison": {
-      "atsScore": "Score ATS & 17 Diagnostics",
+      "atsScore": "Score ATS & 24 Diagnostics",
       "redFlags": "Signaux d'Alerte & Mots-clés Manquants",
       "sampleBullet": "1 Puce Exemple Réécrite",
       "allBullets": "TOUTES les Puces Réécrites avec Métriques",
