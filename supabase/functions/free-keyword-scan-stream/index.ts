@@ -551,7 +551,7 @@ serve(async (req) => {
   // Process in background while streaming progress
   EdgeRuntime.waitUntil((async () => {
     try {
-      const { resumeText, jobDescriptionText, honeypot } = await req.json();
+      const { resumeText, jobDescriptionText, honeypot, skipCache } = await req.json();
 
       // Honeypot check
       if (honeypot && honeypot.trim() !== '') {
@@ -668,33 +668,37 @@ serve(async (req) => {
       const CACHE_FUNCTION_NAME = 'free-keyword-scan-stream';
       const CACHE_TTL_HOURS = 24; // Extended to 24 hours for better hit rates
       
-      // Check cache first
-      const { data: cachedResponse, error: cacheError } = await supabase.rpc('get_cached_response', {
-        p_cache_key: cacheKey,
-        p_function_name: CACHE_FUNCTION_NAME
-      });
-      
-      if (!cacheError && cachedResponse) {
-        console.log(`[FREE-KEYWORD-SCAN-STREAM] Cache HIT for key ${cacheKey.substring(0, 8)}...`);
-        metricCtx.cacheHit = true;
-        
-        // Send quick progress updates
-        send('progress', PROGRESS_STAGES[2]);
-        send('progress', PROGRESS_STAGES[3]);
-        send('progress', PROGRESS_STAGES[4]);
-        send('progress', PROGRESS_STAGES[5]);
-        
-        // Log successful cache hit
-        logScanMetric(metricCtx, 'completed', {
-          outputValid: true,
-          responseScore: cachedResponse.atsScoreEstimate,
-          metadata: { cached: true, cacheKey: cacheKey.substring(0, 8) }
+      // Check cache first (skip if user requested fresh analysis)
+      if (!skipCache) {
+        const { data: cachedResponse, error: cacheError } = await supabase.rpc('get_cached_response', {
+          p_cache_key: cacheKey,
+          p_function_name: CACHE_FUNCTION_NAME
         });
         
-        // Return cached result
-        send('complete', { ...cachedResponse, cached: true });
-        close();
-        return;
+        if (!cacheError && cachedResponse) {
+          console.log(`[FREE-KEYWORD-SCAN-STREAM] Cache HIT for key ${cacheKey.substring(0, 8)}...`);
+          metricCtx.cacheHit = true;
+          
+          // Send quick progress updates
+          send('progress', PROGRESS_STAGES[2]);
+          send('progress', PROGRESS_STAGES[3]);
+          send('progress', PROGRESS_STAGES[4]);
+          send('progress', PROGRESS_STAGES[5]);
+          
+          // Log successful cache hit
+          logScanMetric(metricCtx, 'completed', {
+            outputValid: true,
+            responseScore: cachedResponse.atsScoreEstimate,
+            metadata: { cached: true, cacheKey: cacheKey.substring(0, 8) }
+          });
+          
+          // Return cached result
+          send('complete', { ...cachedResponse, cached: true });
+          close();
+          return;
+        }
+      } else {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Skipping cache (skipCache=true)`);
       }
       
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Cache MISS for key ${cacheKey.substring(0, 8)}...`);
