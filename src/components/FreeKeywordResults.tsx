@@ -1480,27 +1480,43 @@ export function FreeKeywordResults({
         </div>
       )}
       
-      {/* Percentile Urgency Banner */}
-      {atsScoreEstimate < 80 && (
-        <div className="rounded-2xl bg-gradient-to-r from-destructive/20 via-destructive/10 to-warning/10 border-2 border-destructive/40 p-4 mb-4 animate-pulse-slow">
+      {/* ATS Score Context Banner - Only shown for below-passing scores, uses consistent language */}
+      {atsScoreEstimate < 75 && (
+        <div className={cn(
+          "rounded-2xl border-2 p-4 mb-4",
+          atsScoreEstimate < 60 
+            ? "bg-gradient-to-r from-destructive/20 via-destructive/10 to-destructive/5 border-destructive/40" 
+            : "bg-gradient-to-r from-warning/15 via-warning/10 to-warning/5 border-warning/40"
+        )}>
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-destructive/20 animate-bounce-slow">
-                <AlertTriangle className="w-5 h-5 text-destructive" />
+              <div className={cn(
+                "p-2 rounded-full",
+                atsScoreEstimate < 60 ? "bg-destructive/20" : "bg-warning/20"
+              )}>
+                <AlertTriangle className={cn(
+                  "w-5 h-5",
+                  atsScoreEstimate < 60 ? "text-destructive" : "text-warning"
+                )} />
               </div>
               <div>
-                <p className="font-bold text-destructive text-lg">
-                  You rank in the bottom {atsScoreEstimate < 60 ? "30%" : atsScoreEstimate < 70 ? "40%" : "50%"} of applicants
+                <p className={cn(
+                  "font-bold text-lg",
+                  atsScoreEstimate < 60 ? "text-destructive" : "text-warning"
+                )}>
+                  {atsScoreEstimate < 60 
+                    ? "Your resume is at risk of being filtered out"
+                    : "Your resume needs improvement to compete"}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {atsScoreEstimate < 60 
-                    ? "Most ATS systems will auto-reject your resume" 
-                    : "Your resume may get filtered before a human sees it"}
+                    ? "Most ATS systems require 60+ to pass initial screening" 
+                    : "A score of 75+ significantly increases your callback rate"}
                 </p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-xs text-muted-foreground">Average score needed to pass ATS</p>
+              <p className="text-xs text-muted-foreground">Recommended score</p>
               <p className="text-2xl font-bold text-success">75+</p>
             </div>
           </div>
@@ -1565,7 +1581,7 @@ export function FreeKeywordResults({
           </p>
         </div>
 
-        {/* Quantification Score */}
+        {/* Quantification Score - Use AI's tip for nuanced feedback */}
         <div className={cn("rounded-2xl border p-3", getQuantificationBgColor(quantificationScore.verdict))}>
           <div className="flex items-center gap-2 mb-1">
             <Hash className="w-4 h-4 text-primary" />
@@ -1576,8 +1592,11 @@ export function FreeKeywordResults({
             {quantificationScore.score}<span className="text-sm text-muted-foreground">%</span>
           </p>
           <p className="text-[10px] text-muted-foreground mt-1">
-            {quantificationScore.verdict === "strong" ? "✓ Good use of numbers" : 
-             quantificationScore.verdict === "average" ? "⚠ Add more metrics ($, %, #)" : "✗ Numbers make you stand out"}
+            {quantificationScore.verdict === "strong" 
+              ? "✓ Good use of numbers" 
+              : quantificationScore.tip || (quantificationScore.score >= 50 
+                ? "⚠ Add more metrics in older roles" 
+                : "⚠ Add numbers ($, %, #) to stand out")}
           </p>
         </div>
 
@@ -1680,7 +1699,7 @@ export function FreeKeywordResults({
           </p>
         </div>
 
-        {/* Bullet Impact Score */}
+        {/* Bullet Impact Score - Use AI's tip for nuanced feedback */}
         <div className={cn("rounded-2xl border p-3", getBulletImpactBgColor(bulletImpactScore.verdict))}>
           <div className="flex items-center gap-2 mb-1">
             <Target className="w-4 h-4 text-primary" />
@@ -1691,8 +1710,11 @@ export function FreeKeywordResults({
             {bulletImpactScore.score}<span className="text-sm text-muted-foreground">%</span>
           </p>
           <p className="text-[10px] text-muted-foreground mt-1">
-            {bulletImpactScore.verdict === "achievement_focused" ? "✓ Shows results, not tasks" : 
-             bulletImpactScore.verdict === "balanced" ? "⚠ Add more achievements" : "✗ Lists duties, not wins"}
+            {bulletImpactScore.verdict === "achievement_focused" 
+              ? "✓ Shows results, not tasks" 
+              : bulletImpactScore.tip || (bulletImpactScore.score >= 50 
+                ? "⚠ Some bullets need more impact" 
+                : "⚠ Focus on outcomes over duties")}
           </p>
         </div>
 
@@ -1954,7 +1976,7 @@ export function FreeKeywordResults({
             </div>
           </div>
           
-          {/* Percentile Badge with explanation */}
+          {/* Industry Comparison - Single consistent message */}
           <div className={cn(
             "text-center py-3 px-4 rounded-lg mb-3",
             industryBenchmark.comparison === "above" ? "bg-success/15" :
@@ -1967,29 +1989,25 @@ export function FreeKeywordResults({
               {industryBenchmark.percentile}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {industryBenchmark.comparison === "above" 
-                ? `Better than most ${industry} candidates` 
-                : industryBenchmark.comparison === "at" 
-                  ? "Average — won't stand out" 
-                  : "Below average — needs work"}
+              Compared to other {industry} resumes
             </p>
           </div>
           
-          {/* What This Means */}
+          {/* What This Means - Clear, non-contradictory guidance */}
           <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
             <p className="text-xs font-medium text-foreground mb-1">
               {industryBenchmark.comparison === "above" 
-                ? "✓ You're ahead of the competition" 
+                ? "✓ Strong position in your industry" 
                 : industryBenchmark.comparison === "at" 
-                  ? "⚠ You're blending in with the crowd"
-                  : "✗ Stronger candidates will beat you"}
+                  ? "→ Room for improvement"
+                  : "⚠ Below industry average"}
             </p>
             <p className="text-xs text-muted-foreground leading-relaxed">
               {industryBenchmark.comparison === "above" 
-                ? "Your resume is more likely to get past ATS filters and catch a recruiter's eye. Keep it updated!"
+                ? "Your resume scores well against peers. Focus on tailoring to specific roles for best results."
                 : industryBenchmark.comparison === "at" 
-                  ? "You'll pass some ATS screens, but won't stand out. A few tweaks could move you into the top tier."
-                : "Many ATS systems will filter you out before a human sees your resume. The full analysis shows exactly what to fix."}
+                  ? "Your resume is competitive but could be stronger. The suggestions below will help you stand out."
+                : "Other candidates in your field are scoring higher. Apply the fixes below to improve your chances."}
             </p>
           </div>
           
@@ -2489,11 +2507,11 @@ export function FreeKeywordResults({
       <div className="rounded-2xl bg-card border border-border p-5 mb-5">
         <div className="flex items-center gap-2 mb-2">
           <FileCheck className="w-4 h-4 text-primary" />
-          <h4 className="font-semibold flex-1">ATS System Compatibility</h4>
+          <h4 className="font-semibold flex-1">Estimated ATS Parsing Compatibility</h4>
           <MetricTooltip metricKey="atsCompatibility" />
         </div>
         <p className="text-xs text-muted-foreground mb-4">
-          See how your resume performs across the most popular Applicant Tracking Systems
+          Estimated compatibility based on your resume's format and structure
         </p>
 
         {/* Overall Rating Badge */}
@@ -2523,7 +2541,7 @@ export function FreeKeywordResults({
           </p>
         </div>
 
-        {/* Best & Worst Systems Grid */}
+        {/* Best & Worst Systems Grid - Using bands instead of exact percentages */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {/* Best Systems */}
           <div className="p-4 rounded-xl bg-success/5 border border-success/20">
@@ -2544,7 +2562,7 @@ export function FreeKeywordResults({
                       system.score >= 80 ? "bg-success/20 text-success" : 
                       system.score >= 60 ? "bg-warning/20 text-warning" : "bg-destructive/20 text-destructive"
                     )}>
-                      {system.score}%
+                      {system.score >= 80 ? "High" : system.score >= 60 ? "Medium" : "Low"}
                     </span>
                   </div>
                 </div>
@@ -2570,7 +2588,7 @@ export function FreeKeywordResults({
                       "text-xs font-bold px-2 py-0.5 rounded",
                       system.score >= 70 ? "bg-warning/20 text-warning" : "bg-destructive/20 text-destructive"
                     )}>
-                      {system.score}%
+                      {system.score >= 70 ? "Medium" : "Low"}
                     </span>
                   </div>
                 </div>
@@ -2578,6 +2596,11 @@ export function FreeKeywordResults({
             </div>
           </div>
         </div>
+
+        {/* Disclaimer about estimates */}
+        <p className="text-[10px] text-muted-foreground/70 italic mb-3">
+          * Compatibility ratings are estimates based on format analysis. Actual results may vary by company configuration.
+        </p>
 
         {/* Top Issue to Fix */}
         {atsSystemCompatibility.topIssue && (
