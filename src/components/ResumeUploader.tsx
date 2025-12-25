@@ -145,9 +145,11 @@ interface ResumeUploaderProps {
   onTextSubmit: (text: string, linkedInText?: string, jobDescriptionText?: string) => void;
   onCheckout: (linkedInText?: string, jobDescriptionText?: string) => void;
   onFreeScan?: () => void;
+  onClearResume?: () => void;
   isLoading?: boolean;
   isFreeScanLoading?: boolean;
   hasContent?: boolean;
+  resumeText?: string;
   linkedInText?: string;
   onLinkedInTextChange?: (text: string) => void;
   jobDescriptionText?: string;
@@ -165,9 +167,11 @@ export function ResumeUploader({
   onTextSubmit, 
   onCheckout,
   onFreeScan,
+  onClearResume,
   isLoading,
   isFreeScanLoading,
   hasContent,
+  resumeText = "",
   linkedInText = "",
   onLinkedInTextChange,
   jobDescriptionText = "",
@@ -576,6 +580,34 @@ export function ResumeUploader({
               </div>
             )}
           </div>
+          
+          {/* Resume Preview Panel - Shows what will be scanned */}
+          {resumeText && resumeText.length > 50 && (
+            <div className="mt-4 p-4 rounded-xl bg-muted/30 border border-border/50">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                  <span className="text-sm font-medium text-foreground">Resume loaded ({resumeText.length.toLocaleString()} characters)</span>
+                </div>
+                {onClearResume && (
+                  <button
+                    onClick={onClearResume}
+                    className="text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
+                  >
+                    <X className="w-3 h-3" />
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground bg-card/50 rounded-lg p-3 max-h-24 overflow-hidden relative">
+                <p className="line-clamp-3 whitespace-pre-wrap">{resumeText.slice(0, 400)}...</p>
+                <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card/50 to-transparent pointer-events-none" />
+              </div>
+              <p className="text-xs text-muted-foreground/70 mt-2">
+                👆 This is what will be scanned. Wrong resume? Click "Clear" above.
+              </p>
+            </div>
+          )}
 
           {/* STEP 2: Job Description Section (Optional, collapsible) */}
           <div className="mb-6 opacity-70 hover:opacity-100 transition-opacity">
