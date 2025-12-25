@@ -328,14 +328,25 @@ serve(async (req) => {
 3. TAILOR suggestions to their situation
 4. Write WARM, HONEST, ENCOURAGING tone
 
+**EXPERIENCE YEARS CALCULATION - CRITICAL:**
+1. Find the EARLIEST job start date mentioned anywhere in the resume (e.g., "2015", "January 2015", "2015-present")
+2. Calculate from that earliest date to TODAY (current year is 2025)
+3. COUNT ALL ROLES - consulting, sales, part-time, freelance, contract work ALL count toward total experience
+4. DO NOT truncate based on role type or job titles
+5. If someone shows roles from 2015 to present, that is ~10 years, NOT 5 years
+6. Example: Roles spanning 2015→2019 (4 years) + 2019→2022 (3 years) + 2022→present (3 years) = 10 years total
+7. Report as "X years" or "X+ years" (e.g., "10 years", "9+ years")
+
 **STEPS BEFORE ANALYSIS:**
 STEP 1 - EXTRACT CANDIDATE NAME
-STEP 2 - ASSESS SENIORITY FIRST (this affects ALL analysis)
-STEP 3 - EXTRACT JOB TITLES
-STEP 4 - CHECK EDUCATION
-STEP 5 - CHECK CERTIFICATIONS
-STEP 6 - SCAN SKILLS (explicit AND implicit)
-STEP 7 - DETERMINE INDUSTRY
+STEP 2 - FIND EARLIEST JOB DATE (scan ALL job entries for the oldest start year)
+STEP 3 - CALCULATE TOTAL EXPERIENCE YEARS (earliest date to present)
+STEP 4 - ASSESS SENIORITY based on actual years (not just titles)
+STEP 5 - EXTRACT JOB TITLES
+STEP 6 - CHECK EDUCATION
+STEP 7 - CHECK CERTIFICATIONS
+STEP 8 - SCAN SKILLS (explicit AND implicit)
+STEP 9 - DETERMINE INDUSTRY
 
 Only THEN proceed with analysis. The industry MUST match what the person's job titles indicate they DO.
 
@@ -413,9 +424,10 @@ Focus on: ATS score (0-100), industry detection, format grade (A-D), experience 
                   formatIssue: { type: "string" },
                   experienceLevel: {
                     type: "object",
+                    description: "Calculate yearsEstimate from earliest job date to present (2025). Count ALL roles including consulting, sales, part-time, freelance.",
                     properties: {
-                      level: { type: "string" },
-                      yearsEstimate: { type: "string" }
+                      level: { type: "string", description: "Entry-level, Mid-level, Senior, Executive, etc." },
+                      yearsEstimate: { type: "string", description: "Total years from earliest job date to now (e.g., '10 years', '9+ years'). Do NOT truncate." }
                     }
                   },
                   sectionCheck: {
