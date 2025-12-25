@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,10 @@ const corsHeaders = {
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY_MS = 1000;
 const REQUEST_TIMEOUT_MS = 30000; // 30 second timeout
+
+// Cache configuration
+const CACHE_FUNCTION_NAME = 'generate-summary';
+const CACHE_TTL_HOURS = 2; // Cache for 2 hours
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -86,6 +91,38 @@ serve(async (req) => {
       quickWins,
       improvementPotential
     } = await req.json();
+
+    // Initialize Supabase for caching
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error("Supabase configuration missing");
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Create cache key from inputs
+    const cacheInput = `${atsScore}|${formatGrade}|${industry}|${experienceLevel}|${topStrength}|${redFlagsCount}|${improvementPotential?.estimatedScoreIncrease || 0}`;
+    const cacheKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheInput))
+      .then(hash => Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''))
+      .then(hex => hex.substring(0, 32));
+    
+    // Check cache first
+    const { data: cachedResponse, error: cacheError } = await supabase.rpc('get_cached_response', {
+      p_cache_key: cacheKey,
+      p_function_name: CACHE_FUNCTION_NAME
+    });
+    
+    if (!cacheError && cachedResponse?.summary) {
+      const duration = Date.now() - startTime;
+      console.log(`[GENERATE-SUMMARY] Cache HIT in ${duration}ms for key ${cacheKey.substring(0, 8)}...`);
+      return new Response(JSON.stringify({ summary: cachedResponse.summary, cached: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    console.log(`[GENERATE-SUMMARY] Cache MISS for key ${cacheKey.substring(0, 8)}...`);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -171,6 +208,27 @@ ${nameToUse ? `- Name: ${nameToUse}` : '- Name: Not provided (do not use placeho
     const summary = data.choices?.[0]?.message?.content?.trim() || null;
 
     console.log(`[GENERATE-SUMMARY] Success in ${duration}ms`);
+
+    // Store in cache for future requests (non-blocking)
+    if (summary) {
+      (async () => {
+        try {
+          const { error } = await supabase.rpc('store_cached_response', {
+            p_cache_key: cacheKey,
+            p_function_name: CACHE_FUNCTION_NAME,
+            p_response: { summary },
+            p_ttl_hours: CACHE_TTL_HOURS
+          });
+          if (error) {
+            console.error(`[GENERATE-SUMMARY] Cache store error:`, error.message);
+          } else {
+            console.log(`[GENERATE-SUMMARY] Cached response for key ${cacheKey.substring(0, 8)}...`);
+          }
+        } catch (err) {
+          console.error(`[GENERATE-SUMMARY] Cache store exception:`, err);
+        }
+      })();
+    }
 
     return new Response(JSON.stringify({ summary }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
