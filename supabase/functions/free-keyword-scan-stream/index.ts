@@ -222,6 +222,7 @@ function extractBullets(text: string): string[] {
 
 /**
  * Compute quantification score with section-aware feedback
+ * More generous scoring: checks summary/highlights + recent roles more heavily
  */
 function computeQuantificationScore(resumeText: string): {
   score: number;
@@ -230,14 +231,21 @@ function computeQuantificationScore(resumeText: string): {
 } {
   const expText = getExperienceSection(resumeText);
   const bullets = extractBullets(expText);
+  
+  // Also check summary/highlights for metrics (often overlooked)
+  const summarySection = resumeText.split(/\b(experience|work\s+history|employment)\b/i)[0] || '';
+  const summaryHasMetrics = /(\$[\d,]+|\d+%|\b\d{2,}[\+k]?\b)/i.test(summarySection);
 
   if (bullets.length === 0) {
-    // Fall back to checking raw text for numbers
+    // Fall back to checking raw text for numbers - be more generous
     const hasNumbers = /(\$|%|\b\d[\d,\.]*\b|\b\d+\s*(k|m|b)\b)/i.test(resumeText);
+    const baseScore = hasNumbers ? 50 : 25;
     return {
-      score: hasNumbers ? 40 : 20,
-      verdict: hasNumbers ? "average" : "weak",
-      tip: "Add bullet points with specific numbers ($, %, #) to quantify your impact.",
+      score: summaryHasMetrics ? Math.min(baseScore + 15, 70) : baseScore,
+      verdict: baseScore >= 50 ? "average" : "weak",
+      tip: summaryHasMetrics 
+        ? "Good metrics in summary; add bullet points with numbers to reinforce."
+        : "Add bullet points with specific numbers ($, %, #) to quantify your impact.",
     };
   }
 
@@ -249,19 +257,29 @@ function computeQuantificationScore(resumeText: string): {
 
   const pct = (arr: string[]) => (arr.length ? Math.round((arr.filter(hasNumber).length / arr.length) * 100) : 0);
 
-  const overall = pct(bullets);
+  let overall = pct(bullets);
   const recentPct = pct(recent);
   const olderPct = pct(older);
+  
+  // Boost score if summary has strong metrics (give credit for that)
+  if (summaryHasMetrics && overall < 70) {
+    overall = Math.min(overall + 10, 75);
+  }
+  
+  // Also boost if recent roles are strong (weight recent work more)
+  if (recentPct >= 50 && overall < 65) {
+    overall = Math.min(overall + 8, 70);
+  }
 
-  const verdict: "weak" | "average" | "strong" = overall >= 60 ? "strong" : overall >= 35 ? "average" : "weak";
+  const verdict: "weak" | "average" | "strong" = overall >= 55 ? "strong" : overall >= 30 ? "average" : "weak";
 
   let tip = "Add more numbers ($, %, #) to show measurable impact.";
-  if (recentPct >= 55 && olderPct > 0 && olderPct <= 35) {
-    tip = "Strong metrics in summary/recent roles; older roles rely more on responsibilities. Add 1–2 numbers per older role.";
-  } else if (overall >= 60) {
+  if (recentPct >= 45 && olderPct <= 35) {
+    tip = "Strong metrics in summary & recent roles; add 1–2 numbers to older role bullets.";
+  } else if (overall >= 55) {
     tip = "Good use of numbers—keep this consistency across all roles.";
-  } else if (overall >= 35) {
-    tip = "Good start—add metrics to 1–2 more bullets per role.";
+  } else if (overall >= 30) {
+    tip = "Solid foundation—add metrics to 1–2 more bullets per role for max impact.";
   }
 
   return { score: overall, verdict, tip };
@@ -269,6 +287,7 @@ function computeQuantificationScore(resumeText: string): {
 
 /**
  * Compute bullet impact score with section-aware feedback
+ * More generous: counts strong action verbs even without strict "result" pattern
  */
 function computeBulletImpactScore(resumeText: string): {
   score: number;
@@ -279,20 +298,26 @@ function computeBulletImpactScore(resumeText: string): {
   const bullets = extractBullets(expText);
 
   if (bullets.length === 0) {
+    // Check if text has achievement language even without bullet structure
+    const hasAchievementLanguage = /\b(increased|grew|reduced|achieved|delivered|launched|exceeded|led|drove|generated)\b/i.test(resumeText);
     return {
-      score: 30,
-      verdict: "responsibility_heavy",
-      tip: "Add bullet points that start with action verbs and show outcomes.",
+      score: hasAchievementLanguage ? 40 : 30,
+      verdict: hasAchievementLanguage ? "balanced" : "responsibility_heavy",
+      tip: hasAchievementLanguage 
+        ? "Good achievement language found; format as bullet points for clarity."
+        : "Add bullet points that start with action verbs and show outcomes.",
     };
   }
 
   const hasNumber = (s: string) => /(\$|%|\b\d[\d,\.]*\b|\b\d+\s*(k|m|b)\b)/i.test(s);
+  // Expanded result verbs list for more generous detection
   const hasResultVerb = (s: string) =>
-    /\b(increased|grew|reduced|improved|drove|generated|closed|won|achieved|accelerated|delivered|launched|expanded|exceeded|scaled|optimized|transformed|led|spearheaded|pioneered)\b/i.test(s);
+    /\b(increased|grew|reduced|improved|drove|generated|closed|won|achieved|accelerated|delivered|launched|expanded|exceeded|scaled|optimized|transformed|led|spearheaded|pioneered|built|created|developed|established|implemented|managed|designed|executed|negotiated|secured|acquired|retained|streamlined|automated|mentored|trained|coached)\b/i.test(s);
   const responsibilityPhrase = (s: string) =>
-    /\b(responsible for|assisted|helped|supported|worked on|duties included|tasked with|handled)\b/i.test(s);
+    /\b(responsible for|assisted with|helped with|supported|worked on|duties included|tasked with)\b/i.test(s);
 
-  const isAchievement = (s: string) => (hasNumber(s) || hasResultVerb(s)) && !responsibilityPhrase(s);
+  // More generous: count as achievement if has result verb OR number (not AND)
+  const isAchievement = (s: string) => !responsibilityPhrase(s) && (hasNumber(s) || hasResultVerb(s));
 
   const mid = Math.ceil(bullets.length / 2);
   const recent = bullets.slice(0, mid);
@@ -300,20 +325,25 @@ function computeBulletImpactScore(resumeText: string): {
 
   const pct = (arr: string[]) => (arr.length ? Math.round((arr.filter(isAchievement).length / arr.length) * 100) : 0);
 
-  const overall = pct(bullets);
+  let overall = pct(bullets);
   const recentPct = pct(recent);
   const olderPct = pct(older);
+  
+  // Boost score if recent roles are achievement-focused (weight recent work more)
+  if (recentPct >= 50 && overall < 60) {
+    overall = Math.min(overall + 10, 65);
+  }
 
   const verdict: "responsibility_heavy" | "balanced" | "achievement_focused" =
-    overall >= 60 ? "achievement_focused" : overall >= 35 ? "balanced" : "responsibility_heavy";
+    overall >= 50 ? "achievement_focused" : overall >= 30 ? "balanced" : "responsibility_heavy";
 
   let tip = "Lead bullets with outcomes (what changed) before responsibilities (what you did).";
-  if (recentPct >= 55 && olderPct > 0 && olderPct <= 35) {
-    tip = "Recent bullets show outcomes; older bullets read more like responsibilities. Add results verbs + one metric per older role.";
-  } else if (overall >= 60) {
+  if (recentPct >= 45 && olderPct <= 35) {
+    tip = "Recent bullets show outcomes; add results verbs + one metric to older role bullets.";
+  } else if (overall >= 50) {
     tip = "Strong achievement focus—keep emphasizing scope + outcomes.";
-  } else if (overall >= 35) {
-    tip = "Some bullets read as responsibilities—add outcomes + proof.";
+  } else if (overall >= 30) {
+    tip = "Solid start—add quantified outcomes to 1–2 more bullets per role.";
   }
 
   return { score: overall, verdict, tip };
@@ -881,8 +911,22 @@ Focus on: ATS score (0-100), industry detection, format grade (A-D), experience 
         quantificationScore: computedQuantification,
         bulletImpactScore: computedBulletImpact,
         industryBenchmark: computedBenchmark,
-        // Trim arrays
-        redFlags: (analysis.redFlags || []).slice(0, 3),
+        // Trim arrays and filter false-positive red flags
+        redFlags: (analysis.redFlags || []).filter((flag: { issue?: string }) => {
+          // Only flag "missing contact info" if 2+ elements are actually missing
+          const issue = (flag.issue || '').toLowerCase();
+          if (issue.includes('contact') || issue.includes('email') || issue.includes('phone')) {
+            // Check resume for contact elements
+            const hasEmail = /@[\w\.-]+\.\w+/.test(resumeText);
+            const hasPhone = /\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/.test(resumeText);
+            const hasLinkedIn = /linkedin\.com|linkedin/i.test(resumeText);
+            const hasLocation = /\b(city|state|[A-Z][a-z]+,\s*[A-Z]{2}|\d{5})\b/i.test(resumeText);
+            const contactCount = [hasEmail, hasPhone, hasLinkedIn, hasLocation].filter(Boolean).length;
+            // Only show as red flag if 2+ are missing (i.e., only 0-1 present)
+            return contactCount <= 1;
+          }
+          return true;
+        }).slice(0, 3),
         keywords: (analysis.keywords || []).slice(0, 6),
         quickWins: (analysis.quickWins || []).slice(0, 3),
       };
