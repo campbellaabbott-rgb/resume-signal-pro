@@ -360,7 +360,7 @@
     "plusMore": "Además: Brecha de Habilidades, Perspectivas de Industria, Verbos de Acción, Palabras Clave y Reescritura de Resumen"
   },
   "freeScan": {
-    "complete": "Escaneo Gratuito de 17 Puntos Completado",
+    "complete": "Escaneo Gratuito de 24 Puntos Completado",
     "preview": "Aquí está tu vista previa completa",
     "detected": "Detectado",
     "atsScore": "Puntuación ATS",
@@ -497,7 +497,7 @@
     "fullAnalysis": "Análisis Completo",
     "ctaButton": "Ver Todos los Paquetes",
     "comparison": {
-      "atsScore": "Puntuación ATS y 17 Diagnósticos",
+      "atsScore": "Puntuación ATS y 24 Diagnósticos",
       "redFlags": "Señales de Alerta y Keywords Faltantes",
       "sampleBullet": "1 Viñeta de Ejemplo Reescrita",
       "allBullets": "TODAS las Viñetas Reescritas con Métricas",
