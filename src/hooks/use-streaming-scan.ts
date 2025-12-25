@@ -154,7 +154,16 @@ export function useStreamingScan() {
     
     // Step 0: Check client-side cache first (instant, 0ms latency)
     const clientCacheKey = generateClientCacheKey(resumeText, options?.jobDescriptionText);
-    if (!options?.skipCache) {
+    
+    // If skipCache is true, clear the localStorage cache for this resume
+    if (options?.skipCache) {
+      try {
+        localStorage.removeItem(clientCacheKey);
+        console.log('[StreamingScan] Cleared client cache for fresh analysis');
+      } catch {
+        // Ignore localStorage errors
+      }
+    } else {
       const cachedResult = getClientCachedResult(clientCacheKey);
       if (cachedResult) {
         setState({
