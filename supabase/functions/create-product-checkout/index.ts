@@ -120,24 +120,6 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Rate limit check
-    const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
-      p_ip: clientIp,
-      p_function: 'create-product-checkout',
-      p_max_requests: RATE_LIMIT,
-      p_window_minutes: RATE_WINDOW_MINUTES
-    });
-
-    if (rlError) {
-      console.error("[CREATE-PRODUCT-CHECKOUT] Rate limit check error:", rlError);
-    } else if (!allowed) {
-      logStep("Rate limit exceeded", { ip: clientIp });
-      return new Response(
-        JSON.stringify({ error: "Too many requests. Please try again later." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     // Initialize Stripe
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) {
@@ -149,17 +131,42 @@ serve(async (req) => {
     }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
-    const origin = req.headers.get("origin") || "https://lovable.dev";
 
-    // Check if customer exists (only if email provided)
-    let customerId: string | undefined;
-    if (normalizedEmail) {
-      const customers = await stripe.customers.list({ email: normalizedEmail, limit: 1 });
-      if (customers.data.length > 0) {
-        customerId = customers.data[0].id;
-        logStep("Found existing customer", { customerId });
-      }
+    // PARALLEL: Run rate limit check and customer lookup simultaneously
+    // These are independent operations - no need to wait for one before starting the other
+    const [rateLimitResult, customerResult] = await Promise.all([
+      // Rate limit check
+      supabase.rpc('check_rate_limit', {
+        p_ip: clientIp,
+        p_function: 'create-product-checkout',
+        p_max_requests: RATE_LIMIT,
+        p_window_minutes: RATE_WINDOW_MINUTES
+      }),
+      // Customer lookup (only if email provided)
+      normalizedEmail 
+        ? stripe.customers.list({ email: normalizedEmail, limit: 1 })
+        : Promise.resolve({ data: [] })
+    ]);
+
+    // Check rate limit result
+    if (rateLimitResult.error) {
+      console.error("[CREATE-PRODUCT-CHECKOUT] Rate limit check error:", rateLimitResult.error);
+    } else if (!rateLimitResult.data) {
+      logStep("Rate limit exceeded", { ip: clientIp });
+      return new Response(
+        JSON.stringify({ error: "Too many requests. Please try again later." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    // Get customer ID from parallel lookup
+    let customerId: string | undefined;
+    if (customerResult.data.length > 0) {
+      customerId = customerResult.data[0].id;
+      logStep("Found existing customer", { customerId });
+    }
+
+    const origin = req.headers.get("origin") || "https://lovable.dev";
 
     // Create checkout session with automatic currency conversion
     // Stripe will show the price in the customer's local currency
