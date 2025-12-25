@@ -53,7 +53,7 @@ import {
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useErrorTracking } from "@/hooks/use-error-tracking";
 import { useAffiliateTracking, getStoredReferralCode } from "@/hooks/use-affiliate-auth";
-import { useStreamingScan, type StreamProgress } from "@/hooks/use-streaming-scan";
+import { useStreamingScan, type StreamProgress, clearAllClientScanCaches } from "@/hooks/use-streaming-scan";
 import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
 
 interface FreeKeywordResult {
@@ -381,6 +381,10 @@ const Index = () => {
     setShowFloatingScan(true); // Show floating button on fresh upload
     setFloatingScanTrigger((v) => v + 1);
     setFreeKeywordResult(null); // Clear previous results
+    
+    // Clear ALL caches when a new file is uploaded to ensure fresh analysis
+    clearBackgroundScanCache();
+    clearAllClientScanCaches();
     
     // Track upload started in funnel
     trackUploadStarted(file.type);
@@ -914,6 +918,9 @@ const Index = () => {
     const normalized = draft.trim();
     setResumeText(normalized);
     setFreeKeywordResult(null);
+    
+    // Clear caches when text changes significantly
+    clearAllClientScanCaches();
 
     // Only "pop" the floating CTA when the user first becomes eligible to scan
     if (normalized.length > 100) {

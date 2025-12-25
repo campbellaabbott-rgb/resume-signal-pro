@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { validateResumeBeforeSend } from '@/lib/resume-validation';
+import { clearAllClientScanCaches } from './use-streaming-scan';
 
 interface PrefetchState {
   isWarmedUp: boolean;
@@ -11,6 +12,7 @@ interface BackgroundScanResult {
   result: any;
   timestamp: number;
   resumeHash: string;
+  resumePreview: string; // For debugging
 }
 
 interface UseScanPrefetchOptions {
@@ -20,8 +22,34 @@ interface UseScanPrefetchOptions {
   onValidationComplete?: (result: ReturnType<typeof validateResumeBeforeSend>) => void;
 }
 
-const BACKGROUND_SCAN_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const BACKGROUND_SCAN_TTL_MS = 3 * 60 * 1000; // 3 minutes (reduced from 5)
 const DEBOUNCE_MS = 2000; // Wait 2s after last change before background scan
+
+// Generate SHA-256 hash for robust cache keys (synchronous fallback version for quick checks)
+function getSimpleHash(text: string): string {
+  const normalized = text.replace(/\s+/g, ' ').trim().toLowerCase().substring(0, 3000);
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i++) {
+    const char = normalized.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return 'h_' + Math.abs(hash).toString(36);
+}
+
+// Generate SHA-256 hash for robust cache keys (async for background scan)
+async function generateSecureHash(text: string): Promise<string> {
+  const normalized = text.replace(/\s+/g, ' ').trim().toLowerCase();
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(normalized);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32);
+  } catch {
+    return getSimpleHash(text);
+  }
+}
 
 /**
  * Hook for prefetching scan resources on hover AND background scanning on paste/upload
@@ -43,32 +71,26 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isScanningRef = useRef(false);
   
-  // Simple hash to detect resume changes
-  const getResumeHash = useCallback((text: string) => {
-    const normalized = text.replace(/\s+/g, ' ').trim().toLowerCase().substring(0, 2000);
-    let hash = 0;
-    for (let i = 0; i < normalized.length; i++) {
-      const char = normalized.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(36);
-  }, []);
-  
   // Get background scan result if available
   const getBackgroundScanResult = useCallback((text: string): any | null => {
     if (!backgroundScanCache.current || !text) return null;
     
-    const currentHash = getResumeHash(text);
+    const currentHash = getSimpleHash(text);
     const cache = backgroundScanCache.current;
     
-    if (cache.resumeHash === currentHash && Date.now() - cache.timestamp < BACKGROUND_SCAN_TTL_MS) {
-      console.log('[ScanPrefetch] Using background scan result');
+    // Verify both hash AND content preview match to prevent collisions
+    const textPreview = text.substring(0, 100).toLowerCase().replace(/\s+/g, ' ');
+    const cachePreview = cache.resumePreview?.toLowerCase().replace(/\s+/g, ' ') || '';
+    
+    if (cache.resumeHash === currentHash && 
+        textPreview === cachePreview &&
+        Date.now() - cache.timestamp < BACKGROUND_SCAN_TTL_MS) {
+      console.log('[ScanPrefetch] Using background scan result for:', textPreview.substring(0, 50));
       return cache.result;
     }
     
     return null;
-  }, [getResumeHash]);
+  }, []);
 
   // Check if background scan is in progress
   const isBackgroundScanning = useCallback(() => isScanningRef.current, []);
@@ -79,7 +101,7 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
       return getBackgroundScanResult(text);
     }
 
-    const currentHash = getResumeHash(text);
+    const currentHash = getSimpleHash(text);
     if (lastResumeHashRef.current !== currentHash) {
       return null; // Different resume, don't wait
     }
@@ -95,13 +117,13 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
         }
       }, 100);
     });
-  }, [getResumeHash, getBackgroundScanResult]);
+  }, [getBackgroundScanResult]);
 
   // Run actual scan in background
   const runBackgroundScan = useCallback(async (text: string, jobDesc?: string, hp?: string) => {
     if (!text || text.length < 100) return;
     
-    const currentHash = getResumeHash(text);
+    const currentHash = getSimpleHash(text);
     
     // Skip if already have results
     if (getBackgroundScanResult(text)) {
@@ -117,13 +139,15 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
     // Cancel any existing scan and clear old cache if different resume
     if (lastResumeHashRef.current !== currentHash) {
       backgroundScanCache.current = null; // Clear stale cache immediately
+      // Also clear client-side localStorage caches
+      clearAllClientScanCaches();
     }
     backgroundScanAbortRef.current?.abort();
     backgroundScanAbortRef.current = new AbortController();
     isScanningRef.current = true;
     lastResumeHashRef.current = currentHash;
     
-    console.log('[ScanPrefetch] Starting background scan for hash:', currentHash.substring(0, 8));
+    console.log('[ScanPrefetch] Starting background scan for hash:', currentHash.substring(0, 8), 'preview:', text.substring(0, 50));
     
     try {
       const response = await fetch(
@@ -138,6 +162,7 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
             resumeText: text,
             jobDescriptionText: jobDesc || undefined,
             honeypot: hp || '',
+            skipCache: true, // Always get fresh results for background scan
           }),
           signal: backgroundScanAbortRef.current.signal,
         }
@@ -179,13 +204,15 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
         }
       }
 
-      if (result && getResumeHash(text) === currentHash) {
+      // Verify the hash still matches before caching
+      if (result && getSimpleHash(text) === currentHash) {
         backgroundScanCache.current = {
           result: { ...result, prefetched: true, cached: true },
           timestamp: Date.now(),
           resumeHash: currentHash,
+          resumePreview: text.substring(0, 100), // Store preview for collision detection
         };
-        console.log('[ScanPrefetch] Background scan complete, result cached');
+        console.log('[ScanPrefetch] Background scan complete, result cached for:', text.substring(0, 50));
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
@@ -194,7 +221,7 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
     } finally {
       isScanningRef.current = false;
     }
-  }, [getResumeHash, getBackgroundScanResult]);
+  }, [getBackgroundScanResult]);
 
   // Trigger background scan with debounce (call on text change/upload)
   const triggerBackgroundScan = useCallback((text: string, jobDesc?: string, hp?: string) => {
@@ -203,10 +230,11 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
     }
     
     // Immediately clear stale cache if resume changed (before debounce)
-    const newHash = getResumeHash(text);
+    const newHash = getSimpleHash(text);
     if (lastResumeHashRef.current && lastResumeHashRef.current !== newHash) {
-      console.log('[ScanPrefetch] New resume detected, clearing stale cache');
+      console.log('[ScanPrefetch] New resume detected, clearing all caches');
       backgroundScanCache.current = null;
+      clearAllClientScanCaches(); // Clear localStorage caches too
       // Abort any in-progress scan for the old resume
       backgroundScanAbortRef.current?.abort();
       isScanningRef.current = false;
@@ -215,13 +243,13 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
     debounceTimerRef.current = setTimeout(() => {
       runBackgroundScan(text, jobDesc, hp);
     }, DEBOUNCE_MS);
-  }, [runBackgroundScan, getResumeHash]);
+  }, [runBackgroundScan]);
 
   // Original hover prefetch (warmup + validation)
   const prefetch = useCallback(async () => {
     if (state.isWarming || !resumeText?.trim()) return;
     
-    const currentHash = getResumeHash(resumeText);
+    const currentHash = getSimpleHash(resumeText);
     
     if (state.isWarmedUp && lastResumeHashRef.current === currentHash) return;
     
@@ -269,7 +297,7 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
       console.warn('[ScanPrefetch] Prefetch failed:', error);
       setState(prev => ({ ...prev, isWarming: false }));
     }
-  }, [resumeText, state.isWarming, state.isWarmedUp, getResumeHash, onValidationComplete]);
+  }, [resumeText, state.isWarming, state.isWarmedUp, onValidationComplete]);
   
   const reset = useCallback(() => {
     warmupAbortRef.current?.abort();
@@ -295,7 +323,8 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
     }
     backgroundScanCache.current = null;
     isScanningRef.current = false;
-    console.log('[ScanPrefetch] Background scan cache cleared for fresh analysis');
+    clearAllClientScanCaches(); // Also clear localStorage caches
+    console.log('[ScanPrefetch] All scan caches cleared for fresh analysis');
   }, []);
   
   return {
