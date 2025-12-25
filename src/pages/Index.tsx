@@ -826,6 +826,19 @@ const Index = () => {
     }
   };
 
+  // Clear resume and start fresh
+  const handleClearResume = useCallback(() => {
+    setResumeText("");
+    setSelectedFile(null);
+    setFreeKeywordResult(null);
+    setShowFloatingScan(false);
+    clearResumeSession();
+    toast({
+      title: "Resume cleared",
+      description: "Upload or paste a new resume to continue.",
+    });
+  }, [toast]);
+
   const handleTextSubmit = (text: string, linkedIn?: string, jobDescription?: string) => {
     setResumeText(text);
     setFreeKeywordResult(null);
@@ -1089,9 +1102,11 @@ const Index = () => {
           onTextSubmit={handleTextSubmit}
           onCheckout={(linkedIn, jobDescription) => handleCheckout(undefined, linkedIn, jobDescription)}
           onFreeScan={handleFreeScan}
+          onClearResume={handleClearResume}
           isLoading={isLoading}
           isFreeScanLoading={isFreeScanLoading || isStreaming}
           hasContent={!!resumeText || !!selectedFile}
+          resumeText={resumeText}
           linkedInText={linkedInText}
           onLinkedInTextChange={setLinkedInText}
           jobDescriptionText={jobDescriptionText}
