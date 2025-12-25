@@ -1223,7 +1223,14 @@ export function FreeKeywordResults({
             {t('freeScan.complete')}
           </div>
           
-          {/* Cached indicator with re-analyze button */}
+          {/* Cached indicator with instant results badge and re-analyze button */}
+          {isCached && (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+              <Zap className="w-3 h-3" />
+              <span>Instant results</span>
+            </div>
+          )}
+          
           {isCached && onForceReanalyze && (
             <button
               onClick={() => {
