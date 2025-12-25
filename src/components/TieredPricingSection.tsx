@@ -25,7 +25,7 @@ const tierIcons: Record<string, React.ElementType> = {
 };
 
 export function TieredPricingSection({ onFullAnalysisCheckout, sessionId }: TieredPricingSectionProps) {
-  const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
+  const { purchaseProduct, isLoading, currentProduct, checkoutPrefetchProps } = useProductCheckout();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const { t } = useTranslation();
 
@@ -116,6 +116,7 @@ export function TieredPricingSection({ onFullAnalysisCheckout, sessionId }: Tier
                   highlight && "shadow-md shadow-primary/20"
                 )}
                 variant={highlight ? "default" : "outline"}
+                {...checkoutPrefetchProps}
               >
                 {isLoadingThis ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />

@@ -162,7 +162,7 @@ const CoverLetterButton = ({
   variant: 'control' | 'benefit_focused' | 'scarcity';
   section?: string;
 }) => {
-  const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
+  const { purchaseProduct, isLoading, currentProduct, checkoutPrefetchProps } = useProductCheckout();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const isPurchasing = isLoading && currentProduct === 'coverLetter';
   const copy = getProductCtaCopy(variant, formatPrice, isLocalCurrency).coverLetter;
@@ -182,6 +182,7 @@ const CoverLetterButton = ({
       disabled={isPurchasing}
       size="sm"
       className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+      {...checkoutPrefetchProps}
     >
       {isPurchasing ? (
         <>
@@ -206,7 +207,7 @@ const KeywordFixButton = ({
   variant: 'control' | 'benefit_focused' | 'scarcity';
   section?: string;
 }) => {
-  const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
+  const { purchaseProduct, isLoading, currentProduct, checkoutPrefetchProps } = useProductCheckout();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const isPurchasing = isLoading && currentProduct === 'basicKeywordFix';
   const copy = getProductCtaCopy(variant, formatPrice, isLocalCurrency).keywordFix;
@@ -217,6 +218,7 @@ const KeywordFixButton = ({
       disabled={isPurchasing}
       size="sm"
       className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+      {...checkoutPrefetchProps}
     >
       {isPurchasing ? (
         <>
@@ -243,7 +245,7 @@ const PremiumPackageButton = ({
   isPrimary?: boolean;
   section?: string;
 }) => {
-  const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
+  const { purchaseProduct, isLoading, currentProduct, checkoutPrefetchProps } = useProductCheckout();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const isPurchasing = isLoading && currentProduct === 'premiumPackage';
   const copy = getProductCtaCopy(variant, formatPrice, isLocalCurrency).premiumPackage;
@@ -259,6 +261,7 @@ const PremiumPackageButton = ({
         disabled={isPurchasing}
         size="lg"
         className="gap-2 bg-white hover:bg-white/90 text-primary font-bold shadow-lg"
+        {...checkoutPrefetchProps}
       >
         {isPurchasing ? (
           <>
@@ -282,6 +285,7 @@ const PremiumPackageButton = ({
       size="lg"
       variant="outline"
       className="flex-1 sm:flex-none gap-2 border-primary/30 hover:bg-primary/10 text-primary font-bold"
+      {...checkoutPrefetchProps}
     >
       {isPurchasing ? (
         <>
