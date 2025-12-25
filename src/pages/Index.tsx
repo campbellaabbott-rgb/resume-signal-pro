@@ -326,6 +326,15 @@ const Index = () => {
     }
   }, []);
 
+  // Show floating scan button when resumeText is available (covers both file upload and text paste)
+  useEffect(() => {
+    if (resumeText && resumeText.length > 100 && !freeKeywordResult) {
+      setShowFloatingScan(true);
+    } else if (!resumeText || resumeText.length <= 100) {
+      setShowFloatingScan(false);
+    }
+  }, [resumeText, freeKeywordResult]);
+
   useEffect(() => {
     if (searchParams.get("canceled") === "true") {
       toast({
