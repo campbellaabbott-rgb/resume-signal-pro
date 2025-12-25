@@ -727,6 +727,18 @@ CORE RULES:
 4. SENIORITY-ADJUSTED: Senior roles = less penalty for assumed skills. Entry-level = focus on potential.
 5. PERSONALIZATION: Use candidate's NAME. Reference SPECIFIC achievements. Warm, encouraging tone.
 
+TENURE RULES (critical for sales/BD roles):
+- 1.5-2.5 year average tenure is NORMAL in SaaS/tech sales. Do NOT flag as red flag.
+- Only flag tenure if < 1 year average across 3+ roles.
+- Logical career progression (e.g., startup → scale-up → enterprise) = strength, not weakness.
+- Promotions or "first sales hire" roles explain short tenures.
+
+QUOTA/METRICS RULES:
+- SEARCH the resume text for quota language: "exceeded quota", "surpassed quota", "% of target", "attainment", "revenue generated", "$X ARR".
+- If quota metrics EXIST but aren't formatted clearly → flag as "Presentation Issue: Quota data present but could be formatted more clearly with specific percentages/numbers"
+- Only flag "Missing Quota Data" if NO revenue/quota language exists at all.
+- "Surpassed quota 2x" or "120% attainment" = quota data IS present.
+
 ACCURACY:
 - Scores = screening readiness, NOT success predictions
 - Use "low/moderate/high risk" not "bottom 50%" or "will be filtered"
