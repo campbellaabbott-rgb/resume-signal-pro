@@ -112,6 +112,7 @@ const VALID_INDUSTRIES = [
   'customer_success', 'revenue_operations', 'growth_marketing',
   'solutions_architecture', 'security_engineering', 'ml_engineering',
   'business_intelligence', 'platform_engineering',
+  'quantitative_finance', 'product_design', 'sre',
   'general'
 ];
 
@@ -256,6 +257,9 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'ml_engineering': 'technology',
   'business_intelligence': 'technology',
   'platform_engineering': 'technology',
+  'quantitative_finance': 'finance',
+  'product_design': 'creative',
+  'sre': 'technology',
 };
 
 // Industry aliases for normalization
@@ -329,8 +333,8 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'systems integrator': 'it_consulting', 'technology consulting': 'it_consulting',
   'process improvement': 'operations_consulting', 'business process': 'operations_consulting',
   // Creative aliases
-  'ui': 'ux_design', 'ux': 'ux_design', 'product design': 'ux_design', 'interaction design': 'ux_design',
-  'visual design': 'graphic_design', 'branding design': 'graphic_design',
+  'ui': 'ux_design', 'ux': 'ux_design', 'interaction design ux': 'ux_design',
+  'branding design': 'graphic_design',
   'film': 'video_production', 'motion graphics': 'video_production', 'animation': 'video_production',
   'creative copy': 'copywriting_creative', 'scriptwriter': 'copywriting_creative',
   'creative director': 'art_direction', 'brand creative': 'art_direction',
@@ -417,7 +421,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'ai research': 'ai_ml',
   
   // UX/Creative aliases (non-duplicate)
-  'ux designer': 'ux_design', 'ui designer': 'ux_design', 'user researcher': 'ux_design',
+  'user researcher': 'ux_research',
   'graphic artist': 'graphic_design', 'motion designer': 'video_production',
   
   // Healthcare aliases
@@ -550,7 +554,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'ux research': 'ux_research', 'user research': 'ux_research', 'ux researcher': 'ux_research',
   'user experience research': 'ux_research', 'usability research': 'ux_research', 'design research': 'ux_research',
   'user insights': 'ux_research', 'human factors': 'ux_research', 'hci': 'ux_research',
-  'usability testing': 'ux_research', 'user interviews': 'ux_research', 'journey mapping': 'ux_research',
+  'user interviews': 'ux_research',
   'personas': 'ux_research', 'card sorting': 'ux_research', 'tree testing': 'ux_research',
   'eye tracking': 'ux_research', 'heuristic evaluation': 'ux_research', 'affinity mapping': 'ux_research',
   'dovetail': 'ux_research', 'usertesting': 'ux_research', 'optimal workshop': 'ux_research',
@@ -702,6 +706,40 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'gitops': 'platform_engineering', 'argocd': 'platform_engineering',
   'helm': 'platform_engineering', 'service mesh': 'platform_engineering',
   'internal tooling': 'platform_engineering', 'paved roads': 'platform_engineering',
+  
+  // ==================== QUANTITATIVE FINANCE ALIASES ====================
+  'quantitative finance': 'quantitative_finance', 'quant': 'quantitative_finance',
+  'quantitative analyst': 'quantitative_finance', 'quant analyst': 'quantitative_finance',
+  'quant developer': 'quantitative_finance', 'quant dev': 'quantitative_finance',
+  'quant researcher': 'quantitative_finance', 'algorithmic trading': 'quantitative_finance',
+  'algo trading': 'quantitative_finance', 'systematic trading': 'quantitative_finance',
+  'financial engineering': 'quantitative_finance', 'derivatives pricing': 'quantitative_finance',
+  'risk modeling': 'quantitative_finance', 'alpha generation': 'quantitative_finance',
+  'portfolio optimization': 'quantitative_finance', 'backtesting': 'quantitative_finance',
+  'monte carlo': 'quantitative_finance', 'time series analysis': 'quantitative_finance',
+  'stochastic calculus': 'quantitative_finance', 'black-scholes': 'quantitative_finance',
+  'market microstructure': 'quantitative_finance', 'execution algorithms': 'quantitative_finance',
+  
+  // ==================== PRODUCT DESIGN ALIASES ====================
+  'product design': 'product_design', 'product designer': 'product_design',
+  'ux designer': 'product_design', 'ui designer': 'product_design',
+  'ux/ui designer': 'product_design', 'ui/ux designer': 'product_design',
+  'design lead': 'product_design', 'senior product designer': 'product_design',
+  'design systems': 'product_design', 'interaction design': 'product_design',
+  'visual design': 'product_design', 'user experience design': 'product_design',
+  'figma expert': 'product_design', 'prototyping': 'product_design',
+  'wireframing': 'product_design', 'usability testing': 'product_design',
+  'design thinking': 'product_design', 'user flows': 'product_design',
+  'journey mapping': 'product_design',
+  
+  // ==================== SRE ALIASES ====================
+  'site reliability engineering': 'sre', 'site reliability engineer': 'sre',
+  'sre engineer': 'sre', 'reliability engineer': 'sre',
+  'production engineer': 'sre', 'infrastructure reliability': 'sre',
+  'slos': 'sre', 'slis': 'sre', 'error budgets': 'sre',
+  'incident response sre': 'sre', 'on-call': 'sre', 'postmortem': 'sre',
+  'chaos engineering': 'sre', 'capacity planning': 'sre',
+  'prometheus': 'sre', 'grafana': 'sre', 'datadog': 'sre',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -3601,6 +3639,73 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         /\b(built|designed|implemented)\s+.*\b(platform|idp|developer\s+experience|infrastructure)\b/i,
         /\b(reduced|improved)\s+.*\b(deployment|developer\s+productivity|time\s+to\s+production)\b/i,
         /\b(enabled|created)\s+.*\b(self-service|golden\s+path|paved\s+road)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    quantitative_finance: {
+      titlePatterns: [
+        /\b(quant|quantitative\s+analyst|quant\s+analyst)\b/i,
+        /\b(quant\s+developer|quant\s+researcher)\b/i,
+        /\b(algorithmic\s+trader|systematic\s+trader)\b/i,
+        /\b(financial\s+engineer|quantitative\s+trader)\b/i,
+      ],
+      skillPatterns: [
+        'quantitative analysis', 'python', 'statistical modeling', 'machine learning',
+        'risk modeling', 'time series analysis', 'monte carlo', 'derivatives pricing',
+        'bloomberg', 'c++', 'sql', 'backtesting', 'alpha generation',
+        'portfolio optimization', 'var', 'greeks', 'stochastic calculus',
+        'black-scholes', 'r', 'matlab', 'pandas', 'numpy',
+        'execution algorithms', 'market microstructure'
+      ],
+      contextPatterns: [
+        /\b(developed|built|implemented)\s+.*\b(trading\s+strategy|quant\s+model|pricing\s+model|risk\s+model)\b/i,
+        /\b(generated|achieved)\s+.*\b(alpha|sharpe|returns|pnl)\b/i,
+        /\b(optimized|backtested)\s+.*\b(portfolio|strategy|algorithm)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    product_design: {
+      titlePatterns: [
+        /\b(product\s+designer|ux\s+designer|ui\s+designer)\b/i,
+        /\b(ux\/ui\s+designer|ui\/ux\s+designer)\b/i,
+        /\b(design\s+lead|senior\s+product\s+designer)\b/i,
+        /\b(staff\s+designer|principal\s+designer)\b/i,
+      ],
+      skillPatterns: [
+        'product design', 'figma', 'user research', 'design systems', 'prototyping',
+        'user experience', 'wireframing', 'usability testing', 'interaction design',
+        'visual design', 'design thinking', 'a/b testing', 'sketch', 'adobe xd',
+        'invision', 'accessibility', 'mobile design', 'responsive design',
+        'information architecture', 'user flows', 'journey mapping'
+      ],
+      contextPatterns: [
+        /\b(designed|created|led)\s+.*\b(product|feature|experience|interface)\b/i,
+        /\b(conducted|led)\s+.*\b(user\s+research|usability\s+testing|design\s+sprint)\b/i,
+        /\b(built|established)\s+.*\b(design\s+system|component\s+library|style\s+guide)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    sre: {
+      titlePatterns: [
+        /\b(site\s+reliability\s+engineer|sre)\b/i,
+        /\b(reliability\s+engineer|production\s+engineer)\b/i,
+        /\b(infrastructure\s+reliability|platform\s+reliability)\b/i,
+        /\b(senior\s+sre|staff\s+sre)\b/i,
+      ],
+      skillPatterns: [
+        'site reliability engineering', 'kubernetes', 'monitoring', 'incident response',
+        'on-call', 'slos', 'slis', 'error budgets', 'observability',
+        'prometheus', 'grafana', 'datadog', 'terraform', 'aws', 'gcp',
+        'linux', 'python', 'go', 'postmortem', 'chaos engineering',
+        'capacity planning', 'performance optimization', 'automation', 'ci/cd'
+      ],
+      contextPatterns: [
+        /\b(reduced|improved)\s+.*\b(downtime|latency|reliability|availability|mttr)\b/i,
+        /\b(implemented|built)\s+.*\b(monitoring|alerting|observability|slo)\b/i,
+        /\b(led|managed)\s+.*\b(incident|on-call|postmortem|outage)\b/i,
       ],
       minSkillsForHigh: 4,
       titleWeight: 50
