@@ -720,7 +720,7 @@ serve(async (req) => {
       // Build prompts with multilingual support and accuracy improvements
       const systemPrompt = `Expert ATS resume analyst. Respond in resume's language. All fields in that language.
 
-CRITICAL: READ THE ENTIRE RESUME CAREFULLY before making claims about missing content.
+CRITICAL: READ THE ENTIRE RESUME CAREFULLY before making claims about missing content or suggesting keywords.
 
 CORE RULES:
 1. EXPERIENCE YEARS: Find EARLIEST job date → calculate to 2025. ALL roles count (consulting, sales, freelance). Example: 2015→present = 10 years.
@@ -728,6 +728,24 @@ CORE RULES:
 3. IMPLICIT SKILLS: Check if skill is demonstrated implicitly before flagging as missing. Salesforce + MEDDPICC implies CRM expertise.
 4. SENIORITY-ADJUSTED: Senior roles = less penalty for assumed skills. Entry-level = focus on potential.
 5. PERSONALIZATION: Use candidate's NAME. Reference SPECIFIC achievements. Warm, encouraging tone.
+
+KEYWORD SUGGESTIONS (CRITICAL - avoid false positives):
+BEFORE suggesting to add ANY keyword, SEARCH the resume text for:
+- The exact keyword (case-insensitive)
+- Common variations (React/ReactJS, Node/Node.js, AWS/Amazon Web Services)
+- Related terms that imply the skill
+
+NEVER SUGGEST adding a keyword that ALREADY EXISTS in the resume.
+If React, Node, AWS, Python, etc. are mentioned → they are PRESENT. Do not suggest adding them.
+Only suggest keywords that are genuinely MISSING and relevant to the target role.
+Focus on truly missing high-value keywords, not generic checklist items.
+
+GITHUB/PORTFOLIO ADVICE (role-appropriate):
+- For senior engineers at large companies: GitHub/portfolio is OPTIONAL, not required
+- For startups or IC-heavy roles: GitHub/portfolio is valuable but not mandatory
+- For non-technical roles: GitHub is irrelevant
+- Frame as "nice-to-have for [specific context]" not "missing/required"
+- Don't include in red flags - only mention as optional enhancement in quickWins if relevant
 
 TENURE RULES (critical for sales/BD roles):
 - 1.5-2.5 year average tenure is NORMAL in SaaS/tech sales. Do NOT flag as red flag.
@@ -775,9 +793,9 @@ SCORING CONTEXT:
 - Every flag must explain WHY it matters AND when it applies (portal vs direct outreach)
 - Be specific about what's ACTUALLY missing vs what could be ENHANCED
 
-BEFORE ANALYSIS: Extract name → find earliest job date → calculate total years → assess seniority → SCAN FOR EXISTING METRICS/QUOTA DATA → check contact info → extract titles → check education/certs → scan skills → determine industry.
+BEFORE ANALYSIS: Extract name → find earliest job date → calculate total years → assess seniority → LIST ALL EXISTING SKILLS/KEYWORDS → SCAN FOR EXISTING METRICS/QUOTA DATA → check contact info → extract titles → check education/certs → determine industry.
 
-OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywords, red flags. Address candidate by name. Be accurate - don't flag content that exists.`;
+OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywords (ONLY truly missing ones), red flags. Address candidate by name. Be accurate - don't flag content that exists or suggest keywords already present.`;
 
       const userPrompt = hasJobDescription 
         ? `Analyze this resume for the target job:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>\n\n<job_description>\n${truncatedJobDescription}\n</job_description>`
@@ -1066,8 +1084,71 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
           
           return true;
         }).slice(0, 3),
-        keywords: (analysis.keywords || []).slice(0, 6),
-        quickWins: (analysis.quickWins || []).slice(0, 3),
+        // Filter keywords that already exist in the resume (false positive prevention)
+        keywords: (analysis.keywords || []).filter((kw: { keyword?: string; reason?: string }) => {
+          const keyword = (kw.keyword || '').toLowerCase().trim();
+          if (!keyword) return false;
+          
+          const resumeLower = resumeText.toLowerCase();
+          
+          // Common keyword variations to check
+          const variations: Record<string, string[]> = {
+            'react': ['react', 'reactjs', 'react.js'],
+            'node': ['node', 'nodejs', 'node.js'],
+            'aws': ['aws', 'amazon web services', 'amazon aws'],
+            'javascript': ['javascript', 'js', 'ecmascript'],
+            'typescript': ['typescript', 'ts'],
+            'python': ['python', 'py'],
+            'docker': ['docker', 'containerization'],
+            'kubernetes': ['kubernetes', 'k8s'],
+            'github': ['github', 'git'],
+            'postgresql': ['postgresql', 'postgres', 'psql'],
+            'mongodb': ['mongodb', 'mongo'],
+            'graphql': ['graphql', 'gql'],
+            'rest api': ['rest api', 'restful', 'rest'],
+            'ci/cd': ['ci/cd', 'cicd', 'continuous integration', 'continuous deployment'],
+            'agile': ['agile', 'scrum', 'kanban'],
+            'salesforce': ['salesforce', 'sfdc', 'crm'],
+          };
+          
+          // Check if keyword or any variation exists in resume
+          const keywordBase = keyword.replace(/[^a-z0-9]/g, '');
+          const toCheck = variations[keyword] || variations[keywordBase] || [keyword];
+          
+          for (const variant of toCheck) {
+            if (resumeLower.includes(variant)) {
+              console.log(`[KEYWORD-FILTER] Filtered out "${keyword}" - already present as "${variant}"`);
+              return false;
+            }
+          }
+          
+          // Also do a direct check for the keyword itself
+          if (resumeLower.includes(keyword)) {
+            console.log(`[KEYWORD-FILTER] Filtered out "${keyword}" - direct match found`);
+            return false;
+          }
+          
+          return true;
+        }).slice(0, 6),
+        // Filter quickWins to remove GitHub/portfolio suggestions for non-relevant roles
+        quickWins: (analysis.quickWins || []).filter((win: { fix?: string; impact?: string }) => {
+          const fix = (win.fix || '').toLowerCase();
+          
+          // Only show GitHub/portfolio advice for relevant contexts
+          if (fix.includes('github') || fix.includes('portfolio') || fix.includes('personal website') || fix.includes('projects')) {
+            // Check if this is a senior role at large company (where it's less relevant)
+            const isSenior = /\b(senior|lead|principal|director|vp|head|chief|staff)\b/i.test(resumeText);
+            const isLargeCompany = /\b(google|amazon|microsoft|meta|apple|netflix|fortune\s*500|enterprise)\b/i.test(resumeText);
+            
+            // For senior roles at large companies, GitHub is optional - don't suggest it
+            if (isSenior && isLargeCompany) {
+              console.log(`[QUICKWIN-FILTER] Filtered GitHub/portfolio suggestion for senior role at large company`);
+              return false;
+            }
+          }
+          
+          return true;
+        }).slice(0, 3),
       };
 
       const country = getCountryFromHeaders(req) || 'Unknown';
