@@ -317,11 +317,23 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'data': 'data_science', 'ml': 'data_science', 'ai': 'ai_ml',
   'security': 'cybersecurity',
   'infrastructure': 'devops', 'sre': 'devops', 'platform': 'devops',
-  // Sales aliases
-  'b2b sales': 'enterprise_sales', 'enterprise': 'enterprise_sales',
+  // Sales aliases - Enhanced for better detection
+  'b2b sales': 'enterprise_sales', 'enterprise': 'enterprise_sales', 'saas sales': 'enterprise_sales',
   'sdr': 'inside_sales', 'bdr': 'business_development', 'outbound': 'inside_sales',
   'pre-sales': 'sales_engineering', 'solutions': 'sales_engineering',
   'partnerships': 'business_development', 'alliances': 'business_development',
+  // Sales methodology keywords -> map to enterprise_sales/business_development for accurate detection
+  'meddpicc': 'enterprise_sales', 'meddic': 'enterprise_sales', 
+  'spin selling': 'enterprise_sales', 'challenger sale': 'enterprise_sales',
+  'challenger': 'enterprise_sales', 'sandler': 'enterprise_sales',
+  'solution selling': 'enterprise_sales', 'consultative selling': 'enterprise_sales',
+  'value selling': 'enterprise_sales', 'gap selling': 'enterprise_sales',
+  'miller heiman': 'enterprise_sales', 'strategic selling': 'enterprise_sales',
+  // Revenue metrics -> sales
+  'arr': 'enterprise_sales', 'acv': 'enterprise_sales', 'mrr': 'enterprise_sales',
+  'quota attainment': 'enterprise_sales', 'exceeded quota': 'enterprise_sales',
+  'quota': 'sales', 'pipeline': 'sales', 'saas': 'enterprise_sales',
+  'account executive': 'enterprise_sales', 'ae': 'enterprise_sales',
   // Marketing aliases
   'pmm': 'product_marketing', 'go-to-market': 'product_marketing',
   // Legal aliases
@@ -425,7 +437,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   
   // EXPANDED ALIASES - Added for better detection
   // Technology broad category
-  'startup': 'technology', 'saas': 'technology', 'b2b tech': 'technology', 'b2c tech': 'technology',
+  'startup': 'technology', 'b2b tech': 'technology', 'b2c tech': 'technology',
   'product lead': 'product_management', 'product owner': 'product_management',
   
   // Software engineering aliases
@@ -1656,13 +1668,35 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         /\b(vp\s+of\s+sales|director\s+of\s+sales|regional\s+sales\s+director)\b/,
       ],
       skillPatterns: [
-        'enterprise sales', 'solution selling', 'consultative selling', 'strategic accounts',
-        'salesforce', 'c-suite', 'stakeholder management', 'contract negotiation',
-        'complex sales', 'saas', 'arr', 'multi-threading', 'champion building'
+        // Sales methodologies - CRITICAL for detection
+        'meddpicc', 'meddic', 'spin selling', 'challenger sale', 'challenger sales',
+        'sandler', 'solution selling', 'consultative selling', 'value selling',
+        'command of the message', 'command of the sale', 'force management',
+        'gap selling', 'miller heiman', 'strategic selling', 'conceptual selling',
+        // Revenue metrics - CRITICAL for detection
+        'arr', 'acv', 'mrr', 'tcv', 'atr', 'revenue', 'annual recurring revenue',
+        'annual contract value', 'monthly recurring revenue', 'total contract value',
+        'net revenue retention', 'nrr', 'gross revenue retention', 'grr',
+        // Quota and performance
+        'quota attainment', 'quota', 'exceeded quota', 'beat quota', 'over quota',
+        '100% of quota', '150% quota', '200% quota', 'presidents club', "president's club",
+        'top performer', 'top 10%', 'top rep', '#1 rep',
+        // Sales process
+        'enterprise sales', 'strategic accounts', 'salesforce', 'c-suite',
+        'stakeholder management', 'contract negotiation', 'complex sales',
+        'saas', 'multi-threading', 'champion building', 'executive sponsorship',
+        'deal desk', 'pricing', 'commercial negotiation', 'procurement',
+        'land and expand', 'expansion revenue', 'upsell', 'cross-sell',
+        // Tools
+        'salesforce', 'hubspot', 'gong', 'chorus', 'outreach', 'salesloft',
+        'clari', 'linkedin sales navigator', 'zoominfo', 'clearbit', 'apollo'
       ],
       contextPatterns: [
         /\b(closed|won|managed)\s+.*\$[\d,]+[mMkK]\s*(deal|contract|account)/i,
         /\b(exceeded|achieved|surpassed)\s+.*\b(quota|target|goal)\s+by\s+\d+%/i,
+        /\b\d+x\s+quota\b/i,
+        /\b(arr|acv|mrr)\s+of\s+\$[\d,]+[kKmM]/i,
+        /\$[\d,]+[kKmM]\+?\s+(arr|acv|mrr|revenue|pipeline)/i,
       ],
       minSkillsForHigh: 3,
       titleWeight: 40
@@ -1708,15 +1742,30 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         /\b(business\s+development|bdr|bd\s+representative|bd\s+manager)\b/,
         /\b(partnerships?\s+manager|channel\s+manager|alliances?\s+manager)\b/,
         /\b(strategic\s+partnerships|corporate\s+development)\b/,
+        /\b(account\s+executive|ae|sales\s+representative|sales\s+manager)\b/,
       ],
       skillPatterns: [
+        // Sales methodologies - CRITICAL
+        'meddpicc', 'meddic', 'spin selling', 'challenger sale', 'challenger',
+        'sandler', 'solution selling', 'consultative selling', 'value selling',
+        // Revenue metrics - CRITICAL
+        'arr', 'acv', 'mrr', 'revenue', 'quota', 'quota attainment',
+        // BD-specific
         'partnerships', 'alliances', 'channel sales', 'reseller', 'referral',
         'prospecting', 'lead generation', 'market development', 'new business',
-        'territory', 'expansion', 'pipeline', 'networking'
+        'territory', 'expansion', 'pipeline', 'networking',
+        // Sales process
+        'cold calling', 'outbound', 'discovery calls', 'demos', 'closing',
+        'negotiation', 'stakeholder management', 'executive selling',
+        // Tools
+        'salesforce', 'hubspot', 'linkedin sales navigator', 'outreach', 'salesloft'
       ],
       contextPatterns: [
         /\b(developed|established|built)\s+.*\b(partnerships?|relationships?|channels?)\b/i,
         /\b(grew|expanded|launched)\s+.*\b(territory|market|region)\b/i,
+        /\b(exceeded|surpassed|beat)\s+.*\bquota\b/i,
+        /\$[\d,]+[kKmM]\+?\s+(arr|acv|mrr|revenue|pipeline)/i,
+        /\b\d+%\s+(of|over|above)\s+quota\b/i,
       ],
       minSkillsForHigh: 3,
       titleWeight: 35
@@ -4097,23 +4146,42 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         /\b(strategic\s+account\s+manager|key\s+account\s+manager)\b/i,
         /\b(enterprise\s+account\s+manager|global\s+account\s+manager)\b/i,
         /\b(named\s+account\s+manager|major\s+account\s+manager)\b/i,
-        /\b(enterprise\s+ae|strategic\s+ae)\b/i,
+        /\b(enterprise\s+ae|strategic\s+ae|senior\s+ae)\b/i,
+        /\b(account\s+executive|sales\s+director)\b/i,
       ],
       skillPatterns: [
+        // Sales methodologies - CRITICAL for distinguishing from generic
+        'meddpicc', 'meddic', 'spin selling', 'spin', 'challenger sale', 'challenger',
+        'sandler', 'gap selling', 'miller heiman', 'strategic selling', 'conceptual selling',
+        'command of the message', 'command of the sale', 'force management',
+        'solution selling', 'consultative selling', 'value selling',
+        // Revenue metrics - CRITICAL
+        'arr', 'acv', 'mrr', 'tcv', 'atr', 'net revenue retention', 'nrr', 'grr',
+        'annual recurring revenue', 'annual contract value', 'monthly recurring revenue',
+        // Quota and performance
+        'quota', 'quota attainment', 'exceeded quota', 'beat quota', 'over quota',
+        'presidents club', "president's club", 'top performer', 'top 10%',
+        // Account management
         'strategic account management', 'enterprise sales', 'executive relationships',
-        'account planning', 'c-suite selling', 'multi-threading', 'value selling',
+        'account planning', 'c-suite selling', 'multi-threading',
         'complex sales cycles', 'account expansion', 'land and expand', 'qbr',
-        'executive sponsorship', 'meddic', 'spin selling', 'challenger sale',
-        'solution selling', 'account mapping', 'stakeholder management',
+        'executive sponsorship', 'account mapping', 'stakeholder management',
         'contract negotiation', 'enterprise deals', 'strategic planning',
-        'customer success', 'account retention', 'global account strategy'
+        'customer success', 'account retention', 'global account strategy',
+        // Tools
+        'salesforce', 'gong', 'chorus', 'clari', 'outreach', 'salesloft',
+        'linkedin sales navigator', 'zoominfo', 'apollo', 'hubspot'
       ],
       contextPatterns: [
         /\b(managed|owned|led)\s+.*\b(strategic|key|enterprise|global)\s+account/i,
         /\b(closed|won|grew)\s+.*\b(enterprise|strategic|major|seven\s+figure)\s+deal/i,
         /\b(built|developed)\s+.*\b(c-suite|executive|stakeholder)\s+relationship/i,
+        /\b(exceeded|surpassed|beat)\s+.*\bquota\b/i,
+        /\$[\d,]+[kKmM]\+?\s+(arr|acv|mrr|revenue|pipeline|deal)/i,
+        /\b\d+x\s+quota\b/i,
+        /\b\d+%\s+(of|over|above)\s+quota\b/i,
       ],
-      minSkillsForHigh: 4,
+      minSkillsForHigh: 3,
       titleWeight: 50
     },
     performance_marketing: {
