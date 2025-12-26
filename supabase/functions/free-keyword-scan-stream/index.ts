@@ -101,6 +101,8 @@ const VALID_INDUSTRIES = [
   'fundraising', 'program_management_nonprofit', 'advocacy', 'grant_writing', 'volunteer_management',
   // Emerging roles
   'sustainability', 'dei', 'remote_work', 'creator_economy',
+  // HYBRID INDUSTRIES - Cross-domain roles
+  'healthcare_it', 'fintech', 'legaltech', 'hrtech', 'proptech', 'insurtech', 'regtech', 'govtech',
   'general'
 ];
 
@@ -207,6 +209,15 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'dei': 'hr',
   'remote_work': 'hr',
   'creator_economy': 'creative',
+  // HYBRID INDUSTRIES - These are their own parent (primary domain)
+  'healthcare_it': 'technology',
+  'fintech': 'finance',
+  'legaltech': 'legal',
+  'hrtech': 'hr',
+  'proptech': 'real_estate',
+  'insurtech': 'finance',
+  'regtech': 'finance',
+  'govtech': 'government',
 };
 
 // Industry aliases for normalization
@@ -320,6 +331,17 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'machine learning': 'ai_ml', 'deep learning': 'ai_ml', 'nlp': 'ai_ml', 'computer vision': 'ai_ml',
   'web3': 'blockchain', 'crypto': 'blockchain', 'defi': 'blockchain', 'smart contracts': 'blockchain',
   'aws': 'cloud_engineering', 'azure': 'cloud_engineering', 'gcp': 'cloud_engineering',
+  // HYBRID INDUSTRY aliases
+  'health it': 'healthcare_it', 'health informatics': 'healthcare_it', 'clinical informatics': 'healthcare_it',
+  'health tech': 'healthcare_it', 'healthtech': 'healthcare_it', 'ehr': 'healthcare_it', 'epic': 'healthcare_it',
+  'cerner': 'healthcare_it', 'meditech': 'healthcare_it', 'hl7': 'healthcare_it', 'fhir': 'healthcare_it',
+  'financial technology': 'fintech', 'payments': 'fintech', 'neobank': 'fintech', 'stripe': 'fintech',
+  'legal tech': 'legaltech', 'legal technology': 'legaltech', 'e-discovery': 'legaltech',
+  'hr tech': 'hrtech', 'hr technology': 'hrtech', 'people analytics': 'hrtech',
+  'property tech': 'proptech', 'real estate tech': 'proptech', 'retech': 'proptech',
+  'insurance tech': 'insurtech', 'insurance technology': 'insurtech',
+  'regulatory tech': 'regtech', 'regulatory technology': 'regtech',
+  'government tech': 'govtech', 'civic tech': 'govtech',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -2281,6 +2303,152 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
       ],
       minSkillsForHigh: 3
     },
+    
+    // === HYBRID INDUSTRIES (Cross-domain roles) ===
+    healthcare_it: {
+      titlePatterns: [
+        /\b(health\s+informatics|clinical\s+informatics|health\s+it)\b/i,
+        /\b(ehr\s+specialist|ehr\s+analyst|ehr\s+implementation)\b/i,
+        /\b(clinical\s+systems\s+analyst|healthcare\s+technology|health\s+information)\b/i,
+        /\b(him\s+specialist|him\s+director|medical\s+informatics)\b/i,
+        /\b(epic\s+analyst|cerner\s+analyst|meditech\s+specialist)\b/i,
+      ],
+      skillPatterns: [
+        'epic', 'cerner', 'meditech', 'ehr', 'emr', 'hl7', 'fhir', 'hipaa',
+        'health informatics', 'clinical informatics', 'interoperability',
+        'healthcare analytics', 'phi', 'meaningful use', 'icd-10', 'cpt',
+        'allscripts', 'athenahealth', 'nextgen', 'eclinicalworks',
+        'sql', 'python', 'data analytics', 'tableau', 'power bi'
+      ],
+      contextPatterns: [
+        /\b(implemented|deployed|migrated|optimized)\s+.*\b(ehr|emr|epic|cerner|clinical\s+system)\b/i,
+        /\b(hospital|clinic|healthcare|clinical)\s+.*\b(system|technology|data|integration)\b/i,
+        /\b(trained|supported)\s+.*\b(clinical\s+staff|nurses?|physicians?)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50 // High weight to prioritize hybrid detection
+    },
+    fintech: {
+      titlePatterns: [
+        /\b(fintech|financial\s+technology)\b/i,
+        /\b(payments?\s+engineer|payments?\s+product)\b/i,
+        /\b(stripe|square|paypal|braintree|adyen)\b/i,
+        /\b(banking\s+engineer|neo\s*bank|digital\s+banking)\b/i,
+        /\b(crypto|blockchain|defi)\s+.*\b(engineer|developer|product)\b/i,
+      ],
+      skillPatterns: [
+        'payments', 'payment processing', 'stripe', 'square', 'paypal', 'plaid',
+        'pci dss', 'pci compliance', 'banking api', 'open banking',
+        'lending', 'credit scoring', 'fraud detection', 'kyc', 'aml',
+        'trading systems', 'fintech', 'neobank', 'challenger bank',
+        'crypto', 'blockchain', 'smart contracts', 'defi', 'web3'
+      ],
+      contextPatterns: [
+        /\b(payment|transaction|financial|banking)\s+.*\b(system|platform|api|integration)\b/i,
+        /\b(processed|handled)\s+.*\$[\d,]+[mMbB]?\s*(volume|transactions?)/i,
+        /\b(reduced|improved)\s+.*\b(fraud|conversion|processing)/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 50
+    },
+    // Note: edtech already defined in education sub-industries above
+    legaltech: {
+      titlePatterns: [
+        /\b(legal\s+tech|legal\s+technology|legaltech)\b/i,
+        /\b(e[\s-]?discovery|ediscovery)\b/i,
+        /\b(legal\s+operations|legal\s+ops)\b/i,
+        /\b(contract\s+automation|clm)\b/i,
+      ],
+      skillPatterns: [
+        'e-discovery', 'ediscovery', 'relativity', 'concordance', 'nuix',
+        'contract management', 'clm', 'docusign', 'ironclad', 'agiloft',
+        'legal analytics', 'legal ai', 'document automation', 'legal workflows',
+        'westlaw', 'lexisnexis', 'practice management', 'clio', 'litify'
+      ],
+      contextPatterns: [
+        /\b(implemented|deployed|managed)\s+.*\b(legal\s+technology|e[\s-]?discovery|clm)\b/i,
+        /\b(automated|streamlined)\s+.*\b(legal|contract|document|workflow)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 45
+    },
+    hrtech: {
+      titlePatterns: [
+        /\b(hr\s+tech|hrtech|hr\s+technology)\b/i,
+        /\b(hris\s+analyst|hris\s+manager|hris\s+administrator)\b/i,
+        /\b(people\s+analytics|workforce\s+analytics)\b/i,
+        /\b(workday|successfactors|oracle\s+hcm)\s+.*\b(consultant|specialist|analyst)\b/i,
+      ],
+      skillPatterns: [
+        'workday', 'successfactors', 'oracle hcm', 'adp', 'ultipro', 'ceridian',
+        'hris', 'hcm', 'people analytics', 'workforce analytics', 'hr data',
+        'bamboohr', 'namely', 'paylocity', 'greenhouse', 'lever', 'icims',
+        'hr automation', 'onboarding systems', 'performance management systems'
+      ],
+      contextPatterns: [
+        /\b(implemented|configured|managed)\s+.*\b(hris|hcm|workday|hr\s+system)\b/i,
+        /\b(analyzed|reported)\s+.*\b(hr\s+data|workforce|employee|people)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 45
+    },
+    proptech: {
+      titlePatterns: [
+        /\b(proptech|property\s+tech|real\s+estate\s+tech)\b/i,
+        /\b(real\s+estate\s+technology|property\s+technology)\b/i,
+        /\b(contech|construction\s+tech)\b/i,
+      ],
+      skillPatterns: [
+        'proptech', 'yardi', 'appfolio', 'buildium', 'realpage', 'mri software',
+        'zillow', 'redfin', 'procore', 'plangrid', 'bluebeam',
+        'smart building', 'iot', 'building automation', 'facility management',
+        'costar', 'argus', 'real estate analytics'
+      ],
+      contextPatterns: [
+        /\b(developed|implemented)\s+.*\b(property|real\s+estate|building)\s+.*\b(tech|platform|system)\b/i,
+        /\b(managed|optimized)\s+.*\b(property|portfolio|building)\s+.*\b(data|analytics|technology)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 45
+    },
+    insurtech: {
+      titlePatterns: [
+        /\b(insurtech|insurance\s+tech|insurance\s+technology)\b/i,
+        /\b(claims?\s+automation|underwriting\s+automation)\b/i,
+        /\b(insurance\s+analytics|actuarial\s+tech)\b/i,
+      ],
+      skillPatterns: [
+        'insurtech', 'claims management', 'policy administration', 'underwriting',
+        'guidewire', 'duck creek', 'majesco', 'insurance analytics',
+        'actuarial', 'risk modeling', 'telematics', 'usage-based insurance',
+        'claims automation', 'digital insurance', 'insurance platform'
+      ],
+      contextPatterns: [
+        /\b(developed|implemented)\s+.*\b(insurance|claims?|underwriting|policy)\s+.*\b(system|platform|automation)\b/i,
+        /\b(modernized|transformed)\s+.*\b(insurance|claims?|policy)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 45
+    },
+    govtech: {
+      titlePatterns: [
+        /\b(govtech|government\s+tech|civic\s+tech)\b/i,
+        /\b(digital\s+government|digital\s+transformation.*government)\b/i,
+        /\b(public\s+sector.*technology|government.*technology)\b/i,
+      ],
+      skillPatterns: [
+        'govtech', 'civic tech', 'digital government', 'e-government',
+        'fedramp', 'fisma', 'nist', 'government cloud', 'aws govcloud',
+        'citizen services', 'government digital services', 'usds', '18f',
+        'open data', 'transparency', 'government modernization'
+      ],
+      contextPatterns: [
+        /\b(modernized|transformed|digitized)\s+.*\b(government|public\s+sector|agency|citizen)\b/i,
+        /\b(implemented|deployed)\s+.*\b(federal|state|municipal|government)\s+.*\b(system|platform|service)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 45
+    },
   };
   
   // Score each industry with detailed tracking
@@ -2423,15 +2591,124 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
   };
 }
 
+// ==================== CAREER CHANGER DETECTION ====================
+/**
+ * Detect if resume shows a career transition and identify the current/target role
+ * Returns the most recent industry if a career change is detected
+ */
+interface CareerTransitionInfo {
+  isCareerChanger: boolean;
+  currentIndustry?: string;
+  previousIndustry?: string;
+  transitionSignals: string[];
+}
+
+function detectCareerTransition(resumeText: string): CareerTransitionInfo {
+  const text = resumeText.toLowerCase();
+  const signals: string[] = [];
+  
+  // Common career transition phrases
+  const transitionPhrases = [
+    /career\s+(transition|change|pivot|switch)/i,
+    /transitioning\s+(from|to|into)/i,
+    /former\s+(teacher|nurse|lawyer|banker|engineer|manager)/i,
+    /pivoting\s+(to|into|from)/i,
+    /career\s+changer/i,
+    /making\s+a\s+career\s+(change|transition)/i,
+    /changing\s+careers?/i,
+    /aspiring\s+(developer|designer|analyst|engineer|pm|product\s+manager)/i,
+  ];
+  
+  for (const phrase of transitionPhrases) {
+    if (phrase.test(text)) {
+      signals.push('Explicit career transition language detected');
+      break;
+    }
+  }
+  
+  // Look for education/bootcamp signals indicating recent skill acquisition
+  const recentEducation = [
+    /\b(bootcamp|coding\s+bootcamp|immersive|intensive)\b/i,
+    /\b(certificate|certification)\s+(in|for)\s+(ux|ui|data|web|software|product)/i,
+    /\brecent\s+(graduate|grad)\b/i,
+    /\b(google|meta|coursera|udemy|udacity)\s+(certificate|certification)\b/i,
+    /\b202[3-5]\)?\s*$.*?(bootcamp|certificate|certification)/mi,
+  ];
+  
+  for (const pattern of recentEducation) {
+    if (pattern.test(text)) {
+      signals.push('Recent career-change education detected');
+      break;
+    }
+  }
+  
+  // Check for recent job titles that differ significantly from older ones
+  // Look at "Present" or "Current" roles
+  const currentRoleMatch = text.match(/(present|current|now|\b202[4-5]\s*[-–—]\s*(present|current|now)?)/i);
+  
+  // If we find career transition signals, identify current vs previous
+  if (signals.length > 0 || currentRoleMatch) {
+    // Try to identify what they're transitioning TO (most recent role/education)
+    const recentRolePatterns: [RegExp, string][] = [
+      [/\b(ux\s+design|ui\s+design|product\s+design)\s+(intern|associate|junior|apprentice)/i, 'ux_design'],
+      [/\b(software|web|app)\s+(developer|engineer)\s+(intern|associate|junior|apprentice)/i, 'software_engineering'],
+      [/\b(data\s+analyst|data\s+scientist)\s+(intern|associate|junior|apprentice)/i, 'data_science'],
+      [/\b(product\s+manager|pm)\s+(intern|associate|junior|apprentice)/i, 'product_management'],
+      [/\bintern\b.*\b(ux|design|developer|engineer|data|product)/i, 'technology'],
+      [/\bbootcamp\b.*\b(ux|design|developer|engineer|data|software)/i, 'technology'],
+    ];
+    
+    for (const [pattern, industry] of recentRolePatterns) {
+      if (pattern.test(text)) {
+        signals.push(`Recent/current role: ${industry}`);
+        return {
+          isCareerChanger: true,
+          currentIndustry: industry,
+          transitionSignals: signals
+        };
+      }
+    }
+  }
+  
+  return {
+    isCareerChanger: signals.length > 0,
+    transitionSignals: signals
+  };
+}
+
 /**
  * Hybrid detection: combines server-side detection with AI suggestion
  * Uses AI as fallback when server confidence is low
+ * Now also handles career changers and hybrid industries
  */
 function hybridIndustryDetection(
   serverResult: IndustryDetectionResult, 
-  aiSuggested: string | undefined
+  aiSuggested: string | undefined,
+  resumeText?: string
 ): IndustryDetectionResult {
   const normalizedAI = normalizeIndustry(aiSuggested);
+  
+  // CAREER CHANGER DETECTION: Check if this is a career transition resume
+  // and prioritize their current/target industry over historical experience
+  if (resumeText) {
+    const careerInfo = detectCareerTransition(resumeText);
+    if (careerInfo.isCareerChanger && careerInfo.currentIndustry) {
+      console.log(`[INDUSTRY-HYBRID] Career changer detected - using current/target industry: ${careerInfo.currentIndustry}`);
+      console.log(`[INDUSTRY-HYBRID] Career transition signals: ${careerInfo.transitionSignals.join(', ')}`);
+      return {
+        industry: careerInfo.currentIndustry,
+        parentIndustry: INDUSTRY_PARENTS[careerInfo.currentIndustry],
+        confidence: 'medium',
+        signals: [...careerInfo.transitionSignals, `Current/target industry: ${careerInfo.currentIndustry}`],
+        score: serverResult.score,
+        detectionSource: 'ai_override', // Treat as special override
+        alternativeIndustries: serverResult.alternativeIndustries,
+        matchedTitlePatterns: serverResult.matchedTitlePatterns,
+        matchedSkillCount: serverResult.matchedSkillCount,
+        matchedContextPatterns: serverResult.matchedContextPatterns
+      };
+    }
+  }
   
   // CRITICAL: Never return "general" if AI has a specific suggestion
   // This ensures 100% detection rate
@@ -3921,7 +4198,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       const industryDetectionStart = Date.now();
       const rawIndustry = analysis.industry;
       const serverDetection = detectIndustryFromResume(resumeText);
-      const hybridResult = hybridIndustryDetection(serverDetection, rawIndustry);
+      const hybridResult = hybridIndustryDetection(serverDetection, rawIndustry, resumeText);
       const industryDetectionDuration = Date.now() - industryDetectionStart;
       
       // Apply hybrid result
