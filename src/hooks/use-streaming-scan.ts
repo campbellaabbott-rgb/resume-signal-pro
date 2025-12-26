@@ -239,15 +239,21 @@ export function useStreamingScan() {
       });
     }
     
-    // Abort any existing scan
+    // Abort any existing scan (only if one is actually in progress)
+    // Note: Create new controller BEFORE aborting old one to prevent race conditions
+    const newAbortController = new AbortController();
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
+    abortControllerRef.current = newAbortController;
     
     let lastError: unknown = null;
     
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-      abortControllerRef.current = new AbortController();
+      // Only create new abort controller for retries, first attempt uses the one we created above
+      if (attempt > 1) {
+        abortControllerRef.current = new AbortController();
+      }
       
       setState({
         isStreaming: true,
