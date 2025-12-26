@@ -166,6 +166,529 @@ function detectIndustryFromResume(resumeText: string): string | null {
   return null;
 }
 
+// ======================== Resume Type Detection ========================
+
+type ResumeType = 'chronological' | 'executive_summary' | 'ats_optimized' | 'outreach_referral' | 'hybrid';
+
+interface ResumeTypeResult {
+  type: ResumeType;
+  label: string;
+  description: string;
+  atsRelevance: 'high' | 'medium' | 'low';
+  scoringAdjustment: string;
+}
+
+/**
+ * Detect the type of resume to adjust scoring and feedback appropriately
+ */
+function detectResumeType(resumeText: string): ResumeTypeResult {
+  const text = resumeText.toLowerCase();
+  const lines = resumeText.split('\n');
+  
+  // Patterns for different resume types
+  const hasChronologicalExp = /\b(20\d{2}|19\d{2})\s*[-–—]\s*(20\d{2}|19\d{2}|present|current)/gi.test(resumeText);
+  const hasCompanyTitleDate = /\b(inc|llc|corp|company|ltd|gmbh|co\.)\b.*\b(20\d{2}|19\d{2})/i.test(resumeText);
+  const hasHighlightSection = /\b(tailored\s+experience\s+highlights?|key\s+achievements?|career\s+highlights?|selected\s+accomplishments?)\b/i.test(resumeText);
+  const hasExecutiveSummary = /\b(executive\s+summary|professional\s+summary|career\s+summary|leadership\s+profile)\b/i.test(resumeText);
+  const hasBulletPoints = (resumeText.match(/^[\s]*[•\-*·▪►◦➤]\s+/gm) || []).length;
+  const hasSkillsSection = /\b(technical\s+skills?|core\s+competencies|skills?\s*&\s*expertise|areas\s+of\s+expertise)\b/i.test(resumeText);
+  const hasATSKeywords = /\b(ats|applicant\s+tracking|keywords?)\b/i.test(resumeText);
+  
+  // Count date ranges (indicator of chronological format)
+  const dateRanges = (resumeText.match(/\b(20\d{2}|19\d{2})\s*[-–—]\s*(20\d{2}|19\d{2}|present|current)/gi) || []).length;
+  
+  // Check for referral/outreach indicators
+  const isShort = resumeText.length < 2500;
+  const hasIntroLetter = /\b(dear|i\s+am\s+writing|i\s+would\s+like\s+to|please\s+find|attached)\b/i.test(resumeText);
+  
+  // Decision logic
+  
+  // 1. Executive Summary / Highlights (no chronological roles, mostly achievements)
+  if (hasHighlightSection && !hasChronologicalExp && dateRanges < 2) {
+    return {
+      type: 'executive_summary',
+      label: 'Executive Summary / Highlights',
+      description: 'This is a highlights-based document designed for human readers, not ATS portals.',
+      atsRelevance: 'low',
+      scoringAdjustment: 'ATS score reflects portal optimization only. This format is ideal for referrals, networking, and direct outreach.'
+    };
+  }
+  
+  // 2. Outreach / Referral Resume (short, no dates, intro-style)
+  if ((isShort || hasIntroLetter) && dateRanges < 2 && !hasChronologicalExp) {
+    return {
+      type: 'outreach_referral',
+      label: 'Outreach / Referral Resume',
+      description: 'This is a concise document for direct outreach, not job portal submissions.',
+      atsRelevance: 'low',
+      scoringAdjustment: 'ATS score is less relevant for this format. Best for email outreach, referrals, and networking.'
+    };
+  }
+  
+  // 3. Hybrid (has highlights + chronological experience)
+  if (hasHighlightSection && hasChronologicalExp && dateRanges >= 2) {
+    return {
+      type: 'hybrid',
+      label: 'Hybrid Resume',
+      description: 'Combines highlights section with chronological experience. Works for both ATS and humans.',
+      atsRelevance: 'high',
+      scoringAdjustment: 'ATS compatible. The highlights section adds human appeal while dates ensure ATS parsing.'
+    };
+  }
+  
+  // 4. ATS-Optimized (lots of keywords, skills sections, structured format)
+  if (hasSkillsSection && hasBulletPoints >= 10 && hasChronologicalExp) {
+    return {
+      type: 'ats_optimized',
+      label: 'ATS-Optimized Resume',
+      description: 'Structured format with keywords and bullet points, optimized for ATS parsing.',
+      atsRelevance: 'high',
+      scoringAdjustment: 'This format is well-suited for job portal submissions. Score reflects ATS compatibility.'
+    };
+  }
+  
+  // 5. Default: Chronological (traditional format)
+  if (hasChronologicalExp && dateRanges >= 2) {
+    return {
+      type: 'chronological',
+      label: 'Traditional Chronological Resume',
+      description: 'Standard resume format with work history in reverse chronological order.',
+      atsRelevance: 'high',
+      scoringAdjustment: 'Standard format for job portal submissions. Score reflects ATS compatibility.'
+    };
+  }
+  
+  // Fallback
+  return {
+    type: 'chronological',
+    label: 'Resume',
+    description: 'Resume document for job applications.',
+    atsRelevance: 'medium',
+    scoringAdjustment: 'Score reflects general ATS compatibility.'
+  };
+}
+
+// ======================== Seniority Detection ========================
+
+type SeniorityLevel = 'entry' | 'mid' | 'senior' | 'executive';
+
+function detectSeniorityLevel(resumeText: string): SeniorityLevel {
+  const text = resumeText.toLowerCase();
+  
+  const executivePatterns = [
+    /\b(ceo|cto|cfo|coo|cmo|cro|chief\s+\w+\s+officer)\b/,
+    /\b(president|founder|co-founder|partner)\b/,
+    /\b(vp|vice\s+president)\b/,
+    /\b(evp|svp|executive\s+vice\s+president|senior\s+vice\s+president)\b/,
+    /\b(managing\s+director|general\s+manager)\b/,
+  ];
+  
+  const seniorPatterns = [
+    /\b(senior|sr\.?|lead|principal|staff)\s+(engineer|developer|manager|director|analyst|designer|consultant)/,
+    /\b(director|head\s+of)\b/,
+    /\b(\d{2}\+?\s*years?\s*(of\s+)?experience)/,
+    /\b(10|11|12|13|14|15|16|17|18|19|20)\+?\s*years?\b/,
+  ];
+  
+  const midPatterns = [
+    /\b(mid[\s-]?level|intermediate)\b/,
+    /\b([3-9])\s*years?\s*(of\s+)?experience\b/,
+  ];
+  
+  // Check patterns in order of seniority
+  for (const pattern of executivePatterns) {
+    if (pattern.test(text)) return 'executive';
+  }
+  
+  for (const pattern of seniorPatterns) {
+    if (pattern.test(text)) return 'senior';
+  }
+  
+  for (const pattern of midPatterns) {
+    if (pattern.test(text)) return 'mid';
+  }
+  
+  return 'entry';
+}
+
+// ======================== Credibility Issue Detection ========================
+
+interface CredibilityIssue {
+  type: 'date_inconsistency' | 'timeline_overlap' | 'impossible_timeline' | 'gap';
+  severity: 'high' | 'medium' | 'low';
+  description: string;
+  location?: string;
+}
+
+function detectCredibilityIssues(resumeText: string): CredibilityIssue[] {
+  const issues: CredibilityIssue[] = [];
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+  
+  // Extract all date ranges
+  const dateRangePattern = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)?\s*'?(\d{4}|\d{2})\s*[-–—]\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)?\s*'?(\d{4}|\d{2}|present|current|now)/gi;
+  
+  const ranges: Array<{ start: number; end: number; text: string }> = [];
+  let match;
+  
+  while ((match = dateRangePattern.exec(resumeText)) !== null) {
+    let startYear = parseInt(match[2]);
+    let endYear = match[4].toLowerCase();
+    
+    // Handle 2-digit years
+    if (startYear < 100) startYear += startYear > 50 ? 1900 : 2000;
+    
+    let endNum: number;
+    if (['present', 'current', 'now'].includes(endYear)) {
+      endNum = currentYear;
+    } else {
+      endNum = parseInt(endYear);
+      if (endNum < 100) endNum += endNum > 50 ? 1900 : 2000;
+    }
+    
+    if (!isNaN(startYear) && !isNaN(endNum)) {
+      ranges.push({ start: startYear, end: endNum, text: match[0] });
+    }
+  }
+  
+  // Check for impossible timelines (end before start)
+  for (const range of ranges) {
+    if (range.end < range.start) {
+      issues.push({
+        type: 'impossible_timeline',
+        severity: 'high',
+        description: `Date range "${range.text}" shows end date before start date`,
+        location: range.text
+      });
+    }
+  }
+  
+  // Check for future dates
+  for (const range of ranges) {
+    if (range.start > currentYear || (range.end > currentYear && range.end !== currentYear)) {
+      issues.push({
+        type: 'date_inconsistency',
+        severity: 'high',
+        description: `Date "${range.text}" contains future year`,
+        location: range.text
+      });
+    }
+  }
+  
+  // Check for overlapping roles (might be intentional for consulting/side projects)
+  const sortedRanges = [...ranges].sort((a, b) => a.start - b.start);
+  for (let i = 0; i < sortedRanges.length - 1; i++) {
+    const current = sortedRanges[i];
+    const next = sortedRanges[i + 1];
+    
+    // If current role ends after next role starts
+    if (current.end > next.start + 1) { // Allow 1 year overlap for transitions
+      // Only flag if significant overlap
+      const overlapYears = current.end - next.start;
+      if (overlapYears > 2) {
+        issues.push({
+          type: 'timeline_overlap',
+          severity: 'medium',
+          description: `Significant overlap (${overlapYears}+ years) between roles may need clarification`,
+          location: `${current.text} and ${next.text}`
+        });
+      }
+    }
+  }
+  
+  return issues;
+}
+
+// ======================== Content Location Detection ========================
+
+interface ContentLocation {
+  exists: boolean;
+  locations: string[];
+  suggestion: string;
+}
+
+function checkContentLocation(resumeText: string, contentType: 'quota' | 'metrics' | 'keywords'): ContentLocation {
+  const text = resumeText.toLowerCase();
+  const lines = resumeText.split('\n');
+  
+  // Find section boundaries
+  const summaryEnd = lines.findIndex(l => /\b(experience|work\s+history|employment)\b/i.test(l));
+  const experienceStart = summaryEnd > 0 ? summaryEnd : 0;
+  const experienceEnd = lines.findIndex((l, i) => i > experienceStart && /\b(education|skills|certifications)\b/i.test(l));
+  
+  const summaryText = lines.slice(0, summaryEnd > 0 ? summaryEnd : 5).join('\n').toLowerCase();
+  const experienceText = lines.slice(experienceStart, experienceEnd > 0 ? experienceEnd : undefined).join('\n').toLowerCase();
+  
+  if (contentType === 'quota') {
+    const quotaPatterns = [
+      /\b\d{2,3}%\s*(of|attainment|quota|goal|target)/i,
+      /\b(exceeded|surpassed|beat|over)\s*(quota|goal|target)/i,
+      /\b[2-9]x\b|\b\d+\.\d+x\b/i,
+      /\$\d+[kKmM]?\s*(arr|mrr|revenue|pipeline)/i,
+    ];
+    
+    const inSummary = quotaPatterns.some(p => p.test(summaryText));
+    const inExperience = quotaPatterns.some(p => p.test(experienceText));
+    
+    if (inSummary && !inExperience) {
+      return {
+        exists: true,
+        locations: ['summary'],
+        suggestion: 'Quota metrics appear in summary — consider reinforcing at role-level bullets for recruiter skimmability'
+      };
+    } else if (!inSummary && inExperience) {
+      return {
+        exists: true,
+        locations: ['experience'],
+        suggestion: 'Good quota metrics in experience section'
+      };
+    } else if (inSummary && inExperience) {
+      return {
+        exists: true,
+        locations: ['summary', 'experience'],
+        suggestion: 'Strong quota metrics throughout resume'
+      };
+    }
+    
+    return {
+      exists: false,
+      locations: [],
+      suggestion: 'Add specific quota percentages (e.g., "120% of quota") to strengthen impact'
+    };
+  }
+  
+  // Similar for metrics
+  if (contentType === 'metrics') {
+    const metricPatterns = [
+      /\$[\d,]+[kKmM]?/,
+      /\b\d+%\b/,
+      /\b\d+x\b/i,
+      /\b\d+\+?\s*(users|customers|clients|deals|accounts)\b/i,
+    ];
+    
+    const inSummary = metricPatterns.some(p => p.test(summaryText));
+    const inExperience = metricPatterns.some(p => p.test(experienceText));
+    
+    if (inSummary && !inExperience) {
+      return {
+        exists: true,
+        locations: ['summary'],
+        suggestion: 'Metrics appear in summary — add 1-2 numbers per role for consistency'
+      };
+    } else if (inSummary || inExperience) {
+      return {
+        exists: true,
+        locations: inSummary && inExperience ? ['summary', 'experience'] : inExperience ? ['experience'] : ['summary'],
+        suggestion: 'Good metric usage'
+      };
+    }
+    
+    return {
+      exists: false,
+      locations: [],
+      suggestion: 'Add quantified achievements ($, %, #) to show measurable impact'
+    };
+  }
+  
+  return { exists: false, locations: [], suggestion: '' };
+}
+
+// ======================== Usage Recommendation ========================
+
+interface UsageRecommendation {
+  channel: string;
+  suitability: 'excellent' | 'good' | 'limited' | 'not_recommended';
+  note: string;
+}
+
+function generateUsageRecommendations(
+  resumeType: ResumeTypeResult,
+  atsScore: number,
+  formatGrade: string
+): UsageRecommendation[] {
+  const recommendations: UsageRecommendation[] = [];
+  
+  // ATS submissions
+  if (resumeType.atsRelevance === 'high' && atsScore >= 70 && ['A', 'B'].includes(formatGrade)) {
+    recommendations.push({
+      channel: 'Job Portal Submissions',
+      suitability: 'excellent',
+      note: 'Well-optimized for ATS parsing'
+    });
+  } else if (resumeType.atsRelevance === 'high' && atsScore >= 55) {
+    recommendations.push({
+      channel: 'Job Portal Submissions',
+      suitability: 'good',
+      note: 'Acceptable for ATS, some optimization opportunities'
+    });
+  } else if (resumeType.atsRelevance === 'low') {
+    recommendations.push({
+      channel: 'Job Portal Submissions',
+      suitability: 'not_recommended',
+      note: 'This format is designed for direct outreach, not ATS portals'
+    });
+  } else {
+    recommendations.push({
+      channel: 'Job Portal Submissions',
+      suitability: 'limited',
+      note: 'Consider adding chronological experience for better ATS parsing'
+    });
+  }
+  
+  // Referrals
+  if (resumeType.type === 'executive_summary' || resumeType.type === 'outreach_referral') {
+    recommendations.push({
+      channel: 'Referrals',
+      suitability: 'excellent',
+      note: 'Highlights format is ideal for internal referrals'
+    });
+  } else {
+    recommendations.push({
+      channel: 'Referrals',
+      suitability: 'good',
+      note: 'Works well when paired with a referral introduction'
+    });
+  }
+  
+  // Direct email outreach
+  if (resumeType.type === 'outreach_referral' || resumeType.type === 'executive_summary') {
+    recommendations.push({
+      channel: 'Email Outreach',
+      suitability: 'excellent',
+      note: 'Concise format works well for cold outreach'
+    });
+  } else if (atsScore >= 60) {
+    recommendations.push({
+      channel: 'Email Outreach',
+      suitability: 'good',
+      note: 'Consider a 1-page highlights version for cold emails'
+    });
+  } else {
+    recommendations.push({
+      channel: 'Email Outreach',
+      suitability: 'good',
+      note: 'Suitable for email attachments'
+    });
+  }
+  
+  // LinkedIn applications
+  recommendations.push({
+    channel: 'LinkedIn Easy Apply',
+    suitability: atsScore >= 65 && resumeType.atsRelevance !== 'low' ? 'good' : 'limited',
+    note: atsScore >= 65 ? 'Compatible with LinkedIn parsing' : 'May have parsing issues on LinkedIn'
+  });
+  
+  return recommendations;
+}
+
+// ======================== Language Calibration ========================
+
+interface CalibratedLanguage {
+  headline: string;
+  overallTone: 'warning' | 'optimization' | 'praise';
+  scoreContext: string;
+}
+
+function calibrateLanguage(atsScore: number, seniority: SeniorityLevel, resumeType: ResumeTypeResult): CalibratedLanguage {
+  // For non-ATS formats, always use optimization tone
+  if (resumeType.atsRelevance === 'low') {
+    return {
+      headline: 'Outreach-Ready Resume',
+      overallTone: 'optimization',
+      scoreContext: `This ${resumeType.label} is optimized for direct outreach. ATS score (${atsScore}) reflects portal compatibility only — not relevant for referrals or direct emails.`
+    };
+  }
+  
+  // High scores (85+) - praise with minor optimization
+  if (atsScore >= 85) {
+    return {
+      headline: 'Strong Resume Ready for Applications',
+      overallTone: 'praise',
+      scoreContext: 'Your resume is well-optimized for ATS systems. The suggestions below are minor enhancements to maximize impact.'
+    };
+  }
+  
+  // Good scores (70-84) - optimization language
+  if (atsScore >= 70) {
+    return {
+      headline: 'Good Foundation — Optimization Opportunities',
+      overallTone: 'optimization',
+      scoreContext: `Score of ${atsScore} indicates solid ATS compatibility. The suggestions below could improve visibility with recruiters.`
+    };
+  }
+  
+  // Mid scores (55-69) - balanced guidance
+  if (atsScore >= 55) {
+    return {
+      headline: 'Room for Improvement',
+      overallTone: 'optimization',
+      scoreContext: seniority === 'senior' || seniority === 'executive'
+        ? `Score of ${atsScore} suggests optimization opportunities. For senior roles, focus on outcomes and scope rather than keyword density.`
+        : `Score of ${atsScore} indicates room for improvement. The suggestions below can strengthen your application.`
+    };
+  }
+  
+  // Low scores (<55) - actionable guidance (not alarmist)
+  return {
+    headline: 'Key Improvements Needed',
+    overallTone: 'warning',
+    scoreContext: `Score of ${atsScore} suggests significant optimization opportunities. Focus on the high-priority suggestions to improve visibility.`
+  };
+}
+
+// ======================== Dual Scoring ========================
+
+interface DualScore {
+  atsCompatibility: number;
+  recruiterImpact: number;
+  atsNote: string;
+  recruiterNote: string;
+}
+
+function computeDualScore(
+  baseAtsScore: number,
+  quantificationScore: number,
+  bulletImpactScore: number,
+  seniority: SeniorityLevel,
+  resumeType: ResumeTypeResult
+): DualScore {
+  // ATS Compatibility = base score (format, keywords, structure)
+  let atsCompatibility = baseAtsScore;
+  
+  // Recruiter Impact = weighted combination of metrics, outcomes, and seniority signals
+  let recruiterImpact = Math.round(
+    (quantificationScore * 0.35) + 
+    (bulletImpactScore * 0.35) + 
+    (baseAtsScore * 0.3)
+  );
+  
+  // Adjust for seniority - senior roles care more about outcomes than keywords
+  if (seniority === 'senior' || seniority === 'executive') {
+    recruiterImpact = Math.min(100, recruiterImpact + 5);
+  }
+  
+  // Adjust for resume type
+  if (resumeType.atsRelevance === 'low') {
+    // Executive summary / outreach resumes get recruiter boost but ATS penalty
+    recruiterImpact = Math.min(100, recruiterImpact + 10);
+    atsCompatibility = Math.max(0, atsCompatibility - 10);
+  }
+  
+  const atsNote = atsCompatibility >= 75 
+    ? 'Optimized for job portal submissions' 
+    : atsCompatibility >= 55 
+      ? 'Acceptable for portals, some improvements possible' 
+      : 'Consider ATS optimization for portal submissions';
+      
+  const recruiterNote = recruiterImpact >= 75
+    ? 'Strong impact and outcome messaging'
+    : recruiterImpact >= 55
+      ? 'Good foundation, add more quantified outcomes'
+      : 'Focus on metrics and achievements';
+  
+  return { atsCompatibility, recruiterImpact, atsNote, recruiterNote };
+}
+
 // ======================== Server-side Resume Parsing Helpers ========================
 
 /**
@@ -520,9 +1043,9 @@ function createSSEStream() {
 // Progress stages for UI feedback
 const PROGRESS_STAGES = [
   { stage: 'parsing', message: 'Parsing resume content...', progress: 10 },
-  { stage: 'detecting', message: 'Detecting industry & experience...', progress: 20 },
+  { stage: 'detecting', message: 'Detecting resume type & experience...', progress: 20 },
   { stage: 'analyzing', message: 'Running AI analysis...', progress: 40 },
-  { stage: 'scoring', message: 'Calculating ATS score...', progress: 70 },
+  { stage: 'scoring', message: 'Calculating ATS & recruiter scores...', progress: 70 },
   { stage: 'generating', message: 'Generating insights...', progress: 85 },
   { stage: 'finalizing', message: 'Finalizing report...', progress: 95 },
 ];
@@ -625,6 +1148,14 @@ serve(async (req) => {
 
       send('progress', PROGRESS_STAGES[1]);
 
+      // ======================== Early Resume Type & Seniority Detection ========================
+      const resumeType = detectResumeType(resumeText);
+      const seniority = detectSeniorityLevel(resumeText);
+      const credibilityIssues = detectCredibilityIssues(resumeText);
+      
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Resume type: ${resumeType.type}, Seniority: ${seniority}`);
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Credibility issues: ${credibilityIssues.length}`);
+
       // Check if job description provided
       const hasJobDescription = jobDescriptionText && typeof jobDescriptionText === 'string' && jobDescriptionText.trim().length > 50;
       const truncatedJobDescription = hasJobDescription ? jobDescriptionText.substring(0, MAX_JOB_DESCRIPTION_LENGTH) : null;
@@ -664,7 +1195,7 @@ serve(async (req) => {
       const normalizedJob = truncatedJobDescription ? normalizeForCache(truncatedJobDescription).substring(0, 1500) : '';
       
       // Create cache key from normalized content hash
-      const cacheInput = `v2|${normalizedResume}|${normalizedJob}`;
+      const cacheInput = `v3|${normalizedResume}|${normalizedJob}`;
       const cacheKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheInput))
         .then(hash => Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''))
         .then(hex => hex.substring(0, 32));
@@ -717,17 +1248,32 @@ serve(async (req) => {
         return;
       }
 
-      // Build prompts with multilingual support and accuracy improvements
+      // Build prompts with resume type awareness and accuracy improvements
       const systemPrompt = `Expert ATS resume analyst. Respond in resume's language. All fields in that language.
 
+RESUME TYPE DETECTED: ${resumeType.type} (${resumeType.label})
+SENIORITY LEVEL: ${seniority}
+ATS RELEVANCE: ${resumeType.atsRelevance}
+
 CRITICAL: READ THE ENTIRE RESUME CAREFULLY before making claims about missing content or suggesting keywords.
+CRITICAL: Adjust your analysis based on the detected resume type. A highlights-based resume should NOT be penalized for "missing work history" if it's clearly designed for direct outreach.
 
 CORE RULES:
 1. EXPERIENCE YEARS: Find EARLIEST job date → calculate to 2025. ALL roles count (consulting, sales, freelance). Example: 2015→present = 10 years.
 2. INDUSTRY DETECTION: Prioritize JOB FUNCTION over product domain. "Software Sales", "SaaS Sales", "Enterprise Sales" = "sales" NOT "technology". "Sales Engineer" = "sales". Pure engineering/dev roles (Software Engineer, Developer, Data Scientist) = "technology". Account Executive/BDR/SDR = "sales". Valid: technology, healthcare, finance, legal, sales, marketing, education, engineering, creative, hr, consulting, retail, hospitality, manufacturing, government, general
 3. IMPLICIT SKILLS: Check if skill is demonstrated implicitly before flagging as missing. Salesforce + MEDDPICC implies CRM expertise.
-4. SENIORITY-ADJUSTED: Senior roles = less penalty for assumed skills. Entry-level = focus on potential.
+4. SENIORITY-ADJUSTED SCORING: 
+   - Senior/Executive roles: Weight outcomes, scope, and leadership HIGHER than keyword density
+   - Entry/Mid roles: Keyword density matters more for ATS parsing
+   - For ${seniority} level: ${seniority === 'senior' || seniority === 'executive' ? 'Focus on strategic impact, deal size, team leadership, and revenue influence over keyword repetition' : 'Balance keywords with achievements'}
 5. PERSONALIZATION: Use candidate's NAME. Reference SPECIFIC achievements. Warm, encouraging tone.
+
+CONTENT LOCATION RULES (CRITICAL - stop false "missing" flags):
+BEFORE flagging ANY content as "missing", CHECK if it exists ANYWHERE in the resume:
+- If quota/metrics exist in SUMMARY but not in role bullets → say "Quota attainment mentioned in summary — consider reinforcing at role-level bullets for recruiter skimmability"
+- If keywords exist but aren't repeated → say "Found [keyword] — could be reinforced in additional sections"
+- NEVER say "missing" for content that exists in a different section
+- Use "could be reinforced" or "consider adding to [section]" instead of "missing"
 
 KEYWORD SUGGESTIONS (CRITICAL - avoid false positives):
 BEFORE suggesting to add ANY keyword, SEARCH the resume text for:
@@ -762,7 +1308,7 @@ BEFORE flagging "missing quota" or "missing metrics", SEARCH for these patterns:
 - Comparisons: "vs goal", "above target", "beat forecast"
 
 If ANY quota/revenue metrics exist → resume HAS quota data. Do NOT flag as missing.
-Only flag "Add specific quota percentages" if metrics exist but lack specificity (e.g., "exceeded goals" without numbers).
+If metrics exist in summary but not bullets → say "reinforce at role level" NOT "missing"
 Only flag "Missing Quota Data" if ZERO revenue/quota language exists anywhere.
 
 CONTACT INFO DETECTION (CRITICAL - avoid false positives):
@@ -771,15 +1317,20 @@ BEFORE flagging "missing contact info", CHECK for:
 - If 2+ of these exist, contact info is PRESENT. Do NOT flag.
 - Only flag if genuinely missing (e.g., no name, no email, no phone, no location).
 
-FORMAT GRADING (nuanced, not alarmist):
-- Grade A: Clean single-column, standard sections, bullet points, chronological experience
-- Grade B: Minor issues (unusual section names, some formatting inconsistency) - still ATS-readable
-- Grade C: Moderate issues (functional format, missing standard sections, but parseable)
-- Grade D: Significant issues (tables/columns, graphics, non-standard format that may cause parsing errors)
-- IMPORTANT: "Tailored Experience Highlights" section is FINE if chronological experience also exists
-- If only highlight-style experience (no dates/companies): note as "Consider adding chronological experience section" not a D grade
+FORMAT GRADING (nuanced, resume-type aware):
+For ${resumeType.type} resumes:
+${resumeType.type === 'executive_summary' || resumeType.type === 'outreach_referral' 
+  ? '- This format is intentionally non-chronological. Do NOT penalize for missing dates.\n- Grade based on clarity, impact, and professional presentation.\n- A/B grade is appropriate if content is well-organized.'
+  : resumeType.type === 'hybrid'
+  ? '- Highlights section + chronological experience = excellent format.\n- A grade if both sections are well-executed.'
+  : '- Grade A: Clean single-column, standard sections, bullet points, chronological experience\n- Grade B: Minor issues (unusual section names, some formatting inconsistency) - still ATS-readable\n- Grade C: Moderate issues (functional format, missing standard sections, but parseable)\n- Grade D: Significant issues (tables/columns, graphics, non-standard format that may cause parsing errors)'}
 
-MESSAGING ACCURACY (critical):
+MESSAGING ACCURACY (critical - calibrate to score):
+- For scores 85+: Use OPTIMIZATION language ("enhance", "fine-tune", "maximize impact")
+- For scores 70-84: Use IMPROVEMENT language ("strengthen", "add", "consider")
+- For scores 55-69: Use GUIDANCE language ("focus on", "prioritize")
+- For scores <55: Use ACTIONABLE language ("key improvements needed")
+
 - NEVER say "will be filtered out" or "at risk of being filtered" - ATS filtering only applies to job portal uploads.
 - Explain that direct emails, referrals, LinkedIn outreach, or recruiter requests BYPASS ATS entirely.
 - For format grades: D grade means ATS may "classify as incomplete or down-rank" NOT "scramble" the content.
@@ -793,13 +1344,20 @@ SCORING CONTEXT:
 - Every flag must explain WHY it matters AND when it applies (portal vs direct outreach)
 - Be specific about what's ACTUALLY missing vs what could be ENHANCED
 
+CREDIBILITY ISSUES (prioritize over keyword gaps):
+These are HIGH-PRIORITY red flags that should be mentioned before keyword suggestions:
+- Date inconsistencies (end before start, future dates)
+- Impossible timelines (10 years experience but graduated 2 years ago)
+- Overlapping roles without explanation
+- Missing company names for listed roles
+
 BEFORE ANALYSIS: Extract name → find earliest job date → calculate total years → assess seniority → LIST ALL EXISTING SKILLS/KEYWORDS → SCAN FOR EXISTING METRICS/QUOTA DATA → check contact info → extract titles → check education/certs → determine industry.
 
 OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywords (ONLY truly missing ones), red flags. Address candidate by name. Be accurate - don't flag content that exists or suggest keywords already present.`;
 
       const userPrompt = hasJobDescription 
-        ? `Analyze this resume for the target job:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>\n\n<job_description>\n${truncatedJobDescription}\n</job_description>`
-        : `Analyze this resume:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>`;
+        ? `Analyze this ${resumeType.label} for the target job:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>\n\n<job_description>\n${truncatedJobDescription}\n</job_description>`
+        : `Analyze this ${resumeType.label}:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>`;
 
       // Call AI with streaming enabled
       const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -1029,10 +1587,47 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       const computedBenchmark = computeIndustryBenchmark(analysis.atsScoreEstimate || 0, analysis.industry);
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Computed benchmark: ${JSON.stringify(computedBenchmark)}`);
 
+      // 5. Dual Scoring (ATS Compatibility + Recruiter Impact)
+      const dualScore = computeDualScore(
+        analysis.atsScoreEstimate || 0,
+        computedQuantification.score,
+        computedBulletImpact.score,
+        seniority,
+        resumeType
+      );
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Dual score: ${JSON.stringify(dualScore)}`);
+
+      // 6. Calibrated Language
+      const calibratedLanguage = calibrateLanguage(analysis.atsScoreEstimate || 0, seniority, resumeType);
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Calibrated language: ${JSON.stringify(calibratedLanguage)}`);
+
+      // 7. Usage Recommendations
+      const usageRecommendations = generateUsageRecommendations(
+        resumeType,
+        analysis.atsScoreEstimate || 0,
+        analysis.formatGrade || 'B'
+      );
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Usage recommendations: ${JSON.stringify(usageRecommendations)}`);
+
+      // 8. Content Location Checks
+      const quotaLocation = checkContentLocation(resumeText, 'quota');
+      const metricsLocation = checkContentLocation(resumeText, 'metrics');
+
       // Build response with computed fields merged
       const responseData = {
         success: true,
         ...analysis,
+        // New fields for improved analysis
+        resumeType,
+        seniorityLevel: seniority,
+        dualScore,
+        calibratedLanguage,
+        usageRecommendations,
+        credibilityIssues: credibilityIssues.slice(0, 3), // Top 3 credibility issues
+        contentLocations: {
+          quota: quotaLocation,
+          metrics: metricsLocation
+        },
         // Override/add computed fields
         timelineAnalysis: computedTimeline,
         quantificationScore: computedQuantification,
@@ -1057,17 +1652,9 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
           
           // Filter 2: Don't flag "missing quota/metrics" if resume has clear quota language
           if (combined.includes('quota') || combined.includes('metric') || combined.includes('quantif') || combined.includes('number') || combined.includes('revenue') && combined.includes('missing')) {
-            const quotaPatterns = [
-              /\b\d{2,3}%\s*(of|attainment|quota|goal|target)/i,
-              /\b(exceeded|surpassed|beat|over)\s*(quota|goal|target)/i,
-              /\b[2-9]x\b|\b\d+\.\d+x\b/i, // 2x, 3x, 1.5x, etc.
-              /\$\d{2,}[,\d]*\s*(arr|mrr|deal|revenue|pipeline|contract)/i,
-              /\b(100|1[0-9]{2}|2[0-9]{2})\s*%\s*(of|quota|attainment)/i, // 100%, 120%, 200% of quota
-              /quota.*\d+%|\d+%.*quota/i,
-              /attainment.*\d+%|\d+%.*attainment/i,
-            ];
-            const hasQuotaLanguage = quotaPatterns.some(pattern => pattern.test(resumeText));
-            if (hasQuotaLanguage) return false;
+            if (quotaLocation.exists || metricsLocation.exists) {
+              return false;
+            }
           }
           
           // Filter 3: Don't flag normal sales tenure (1.5-2.5 years) as job hopping
@@ -1079,6 +1666,13 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
               const tenurePattern = /\b(20\d{2}|19\d{2})\s*[-–—]\s*(20\d{2}|19\d{2}|present|current)/gi;
               const matches = resumeText.match(tenurePattern) || [];
               if (matches.length <= 3) return false; // Not enough data to claim job hopping
+            }
+          }
+          
+          // Filter 4: For non-ATS resume types, don't flag missing chronological experience
+          if (resumeType.atsRelevance === 'low') {
+            if (combined.includes('chronological') || combined.includes('work history') || combined.includes('date') && combined.includes('missing')) {
+              return false;
             }
           }
           
@@ -1179,7 +1773,10 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
                   <ul>
                     <li><strong>Country:</strong> ${country}</li>
                     <li><strong>Industry:</strong> ${analysis.industry || 'Unknown'}</li>
+                    <li><strong>Resume Type:</strong> ${resumeType.label}</li>
+                    <li><strong>Seniority:</strong> ${seniority}</li>
                     <li><strong>ATS Score:</strong> ${atsScore}/100</li>
+                    <li><strong>Recruiter Score:</strong> ${dualScore.recruiterImpact}/100</li>
                     <li><strong>Experience Level:</strong> ${analysis.experienceLevel?.level || 'Unknown'}</li>
                     <li><strong>IP Address:</strong> ${clientIp}</li>
                     <li><strong>Time:</strong> ${new Date().toISOString()}</li>
@@ -1213,7 +1810,9 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         metadata: { 
           industry: analysis.industry,
           experienceLevel: analysis.experienceLevel?.level,
-          hasJobDescription: !!truncatedJobDescription
+          hasJobDescription: !!truncatedJobDescription,
+          resumeType: resumeType.type,
+          seniority
         }
       });
 
@@ -1241,7 +1840,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
 
       // Log performance
       const duration = Date.now() - requestStartTime;
-      console.log(`[FREE-KEYWORD-SCAN-STREAM] Complete in ${duration}ms, ATS: ${analysis.atsScoreEstimate}`);
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Complete in ${duration}ms, ATS: ${analysis.atsScoreEstimate}, Recruiter: ${dualScore.recruiterImpact}`);
 
       // Send final result
       send('progress', { stage: 'complete', message: 'Analysis complete!', progress: 100 });
