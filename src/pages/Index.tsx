@@ -190,6 +190,12 @@ interface FreeKeywordResult {
       suggestion: string;
     };
   };
+  industryDetection?: {
+    detected: string;
+    confidence: 'high' | 'medium' | 'low';
+    signals: string[];
+    aiSuggested?: string;
+  };
 }
 
 const Index = () => {
@@ -1315,6 +1321,7 @@ const Index = () => {
                 usageRecommendations={freeKeywordResult.usageRecommendations}
                 credibilityIssues={freeKeywordResult.credibilityIssues}
                 contentLocations={freeKeywordResult.contentLocations}
+                industryDetection={freeKeywordResult.industryDetection}
               />
               
               {/* Score-based package recommendation */}

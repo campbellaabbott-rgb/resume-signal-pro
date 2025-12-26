@@ -107,63 +107,313 @@ function normalizeIndustry(raw: string | undefined | null): string {
 /**
  * Server-side industry detection from resume text
  * This overrides AI detection when there's clear evidence
+ * Returns { industry, confidence, signals } for transparency
  */
-function detectIndustryFromResume(resumeText: string): string | null {
+interface IndustryDetectionResult {
+  industry: string;
+  confidence: 'high' | 'medium' | 'low';
+  signals: string[];
+}
+
+function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
   const text = resumeText.toLowerCase();
+  const signals: string[] = [];
   
-  // Tech job title patterns - these are definitive
-  const techTitlePatterns = [
-    /\b(software\s+engineer|senior\s+software\s+engineer|staff\s+engineer)\b/,
-    /\b(developer|frontend\s+developer|backend\s+developer|full[\s-]?stack\s+developer)\b/,
-    /\b(data\s+scientist|machine\s+learning\s+engineer|ml\s+engineer)\b/,
-    /\b(devops\s+engineer|sre|site\s+reliability\s+engineer|platform\s+engineer)\b/,
-    /\b(cloud\s+engineer|infrastructure\s+engineer|systems\s+engineer)\b/,
-    /\b(qa\s+engineer|test\s+engineer|automation\s+engineer)\b/,
-    /\b(tech\s+lead|engineering\s+manager|vp\s+of\s+engineering|cto)\b/,
-    /\b(programmer|coder|software\s+architect)\b/,
-  ];
+  // Define industry patterns with weights
+  const industryPatterns: Record<string, { 
+    titlePatterns: RegExp[]; 
+    skillPatterns: string[];
+    contextPatterns: RegExp[];
+    minSkillsForHigh: number;
+  }> = {
+    technology: {
+      titlePatterns: [
+        /\b(software\s+engineer|senior\s+software\s+engineer|staff\s+engineer)\b/,
+        /\b(developer|frontend\s+developer|backend\s+developer|full[\s-]?stack\s+developer)\b/,
+        /\b(data\s+scientist|machine\s+learning\s+engineer|ml\s+engineer|ai\s+engineer)\b/,
+        /\b(devops\s+engineer|sre|site\s+reliability\s+engineer|platform\s+engineer)\b/,
+        /\b(cloud\s+engineer|infrastructure\s+engineer|systems\s+engineer)\b/,
+        /\b(qa\s+engineer|test\s+engineer|automation\s+engineer)\b/,
+        /\b(tech\s+lead|engineering\s+manager|vp\s+of\s+engineering|cto)\b/,
+        /\b(programmer|coder|software\s+architect|solutions\s+architect)\b/,
+        /\b(data\s+engineer|analytics\s+engineer|bi\s+engineer)\b/,
+        /\b(product\s+manager|technical\s+product\s+manager)\b/,
+      ],
+      skillPatterns: [
+        'javascript', 'typescript', 'python', 'react', 'node.js', 'nodejs', 'vue', 'angular',
+        'aws', 'docker', 'kubernetes', 'git', 'github', 'postgresql', 'mongodb', 'redis',
+        'java', 'c++', 'golang', 'rust', 'sql', 'graphql', 'rest api', 'microservices',
+        'ci/cd', 'terraform', 'jenkins', 'azure', 'gcp', 'machine learning', 'deep learning'
+      ],
+      contextPatterns: [
+        /\b(built|developed|architected|deployed|implemented)\s+(the|a|an)?\s*(platform|system|application|api|service|infrastructure)\b/i,
+        /\b(engineering|development)\s+team\b/i,
+        /\b(pull\s+requests?|code\s+reviews?|sprint|standups?)\b/i,
+      ],
+      minSkillsForHigh: 4
+    },
+    sales: {
+      titlePatterns: [
+        /\b(account\s+executive|senior\s+account\s+executive|enterprise\s+account\s+executive)\b/,
+        /\b(sales\s+rep|sales\s+representative|sales\s+manager|regional\s+sales\s+manager)\b/,
+        /\b(business\s+development\s+representative|bdr|sdr|sales\s+development\s+representative)\b/,
+        /\b(sales\s+director|vp\s+of\s+sales|chief\s+revenue\s+officer|cro)\b/,
+        /\b(territory\s+manager|field\s+sales|inside\s+sales)\b/,
+        /\b(channel\s+sales|partner\s+sales|strategic\s+accounts?)\b/,
+        /\b(sales\s+engineer|solutions\s+consultant|pre[\s-]?sales)\b/,
+      ],
+      skillPatterns: [
+        'salesforce', 'hubspot', 'crm', 'quota', 'pipeline', 'prospecting', 'cold calling',
+        'meddic', 'meddpicc', 'bant', 'spin selling', 'challenger sale', 'negotiation',
+        'closing', 'forecasting', 'territory', 'revenue', 'arr', 'mrr', 'saas sales',
+        'enterprise sales', 'b2b sales', 'outbound', 'inbound', 'lead generation'
+      ],
+      contextPatterns: [
+        /\b(closed|sold|exceeded|achieved|surpassed)\s+.*\b(quota|target|goal)\b/i,
+        /\$[\d,]+[kKmM]?\s*(arr|mrr|deal|revenue|pipeline)/i,
+        /\b\d+%\s*(of\s+)?(quota|target|attainment)\b/i,
+        /\b(new\s+business|expansion|upsell|cross[\s-]?sell)\b/i,
+      ],
+      minSkillsForHigh: 3
+    },
+    marketing: {
+      titlePatterns: [
+        /\b(marketing\s+manager|marketing\s+director|vp\s+of\s+marketing|cmo)\b/,
+        /\b(digital\s+marketing|content\s+marketing|product\s+marketing)\b/,
+        /\b(brand\s+manager|growth\s+marketing|demand\s+gen|demand\s+generation)\b/,
+        /\b(seo\s+specialist|sem\s+manager|social\s+media\s+manager)\b/,
+        /\b(marketing\s+coordinator|marketing\s+analyst|marketing\s+operations)\b/,
+      ],
+      skillPatterns: [
+        'seo', 'sem', 'ppc', 'google analytics', 'google ads', 'facebook ads', 'linkedin ads',
+        'hubspot', 'marketo', 'mailchimp', 'content strategy', 'copywriting', 'a/b testing',
+        'conversion rate', 'cac', 'ltv', 'roi', 'brand awareness', 'campaign management',
+        'email marketing', 'marketing automation', 'lead nurturing'
+      ],
+      contextPatterns: [
+        /\b(increased|grew|improved)\s+.*\b(traffic|conversions?|engagement|leads?|awareness)\b/i,
+        /\b(launched|executed|managed)\s+.*\b(campaign|initiative|program)\b/i,
+      ],
+      minSkillsForHigh: 3
+    },
+    finance: {
+      titlePatterns: [
+        /\b(financial\s+analyst|senior\s+financial\s+analyst|finance\s+manager)\b/,
+        /\b(accountant|cpa|controller|cfo|chief\s+financial\s+officer)\b/,
+        /\b(investment\s+analyst|portfolio\s+manager|fund\s+manager)\b/,
+        /\b(risk\s+analyst|credit\s+analyst|compliance\s+officer)\b/,
+        /\b(fp&a|financial\s+planning|treasury|auditor)\b/,
+      ],
+      skillPatterns: [
+        'financial modeling', 'excel', 'gaap', 'ifrs', 'budgeting', 'forecasting',
+        'variance analysis', 'p&l', 'balance sheet', 'cash flow', 'valuation',
+        'bloomberg', 'quickbooks', 'sap', 'oracle financials', 'netsuite',
+        'cfa', 'cpa', 'due diligence', 'm&a', 'investment banking'
+      ],
+      contextPatterns: [
+        /\b(managed|prepared|analyzed)\s+.*\b(budget|forecast|financial|statements?)\b/i,
+        /\$[\d,]+[kKmMbB]\s*(budget|savings?|reduction|investment)/i,
+      ],
+      minSkillsForHigh: 3
+    },
+    healthcare: {
+      titlePatterns: [
+        /\b(nurse|rn|registered\s+nurse|lpn|nurse\s+practitioner|np)\b/,
+        /\b(physician|doctor|md|do|surgeon|specialist)\b/,
+        /\b(medical\s+assistant|clinical\s+coordinator|patient\s+care)\b/,
+        /\b(healthcare\s+administrator|hospital\s+manager|clinical\s+director)\b/,
+        /\b(pharmacist|pharmacy\s+technician|pharm\.?d)\b/,
+      ],
+      skillPatterns: [
+        'hipaa', 'ehr', 'emr', 'epic', 'cerner', 'patient care', 'clinical',
+        'medical terminology', 'fda', 'cpr', 'bls', 'acls', 'medication',
+        'diagnosis', 'treatment', 'healthcare compliance', 'patient safety'
+      ],
+      contextPatterns: [
+        /\b(patient|clinical|medical|healthcare|hospital|clinic)\b/i,
+        /\b(treated|diagnosed|cared\s+for|administered)\b/i,
+      ],
+      minSkillsForHigh: 3
+    },
+    consulting: {
+      titlePatterns: [
+        /\b(consultant|senior\s+consultant|principal\s+consultant|managing\s+consultant)\b/,
+        /\b(strategy\s+consultant|management\s+consultant|business\s+consultant)\b/,
+        /\b(associate|analyst|manager|director|partner)\s+at\s+(mckinsey|bcg|bain|deloitte|pwc|ey|kpmg|accenture)\b/i,
+      ],
+      skillPatterns: [
+        'strategy', 'stakeholder management', 'client engagement', 'business analysis',
+        'powerpoint', 'excel', 'problem solving', 'project management', 'change management',
+        'process improvement', 'due diligence', 'executive presentation', 'workshop facilitation'
+      ],
+      contextPatterns: [
+        /\b(advised|consulted|partnered\s+with)\s+.*\b(clients?|executives?|c[\s-]?suite)\b/i,
+        /\b(delivered|led|facilitated)\s+.*\b(engagement|project|initiative)\b/i,
+      ],
+      minSkillsForHigh: 3
+    },
+    hr: {
+      titlePatterns: [
+        /\b(hr\s+manager|human\s+resources|hr\s+business\s+partner|hrbp)\b/,
+        /\b(recruiter|talent\s+acquisition|recruiting\s+manager)\b/,
+        /\b(people\s+operations|people\s+manager|chro|chief\s+people\s+officer)\b/,
+        /\b(compensation|benefits|employee\s+relations)\b/,
+      ],
+      skillPatterns: [
+        'talent acquisition', 'hris', 'workday', 'adp', 'recruiting', 'onboarding',
+        'performance management', 'employee relations', 'compensation', 'benefits',
+        'shrm', 'compliance', 'diversity', 'inclusion', 'training', 'development'
+      ],
+      contextPatterns: [
+        /\b(hired|recruited|onboarded)\s+.*\b(employees?|candidates?|hires?)\b/i,
+        /\b(implemented|developed|managed)\s+.*\b(hr|people|talent|compensation)\s+(program|initiative|policy)/i,
+      ],
+      minSkillsForHigh: 3
+    },
+    engineering: {
+      titlePatterns: [
+        /\b(mechanical\s+engineer|electrical\s+engineer|civil\s+engineer|structural\s+engineer)\b/,
+        /\b(chemical\s+engineer|industrial\s+engineer|manufacturing\s+engineer)\b/,
+        /\b(aerospace\s+engineer|biomedical\s+engineer|environmental\s+engineer)\b/,
+        /\b(pe|professional\s+engineer|project\s+engineer)\b/,
+      ],
+      skillPatterns: [
+        'cad', 'autocad', 'solidworks', 'catia', 'ansys', 'matlab', 'simulation',
+        'design', 'manufacturing', 'testing', 'prototyping', 'specifications',
+        'iso', 'lean', 'six sigma', 'quality control', 'project management'
+      ],
+      contextPatterns: [
+        /\b(designed|engineered|tested|developed)\s+.*\b(system|product|component|solution)\b/i,
+        /\b(reduced|improved|optimized)\s+.*\b(efficiency|cost|quality|performance)\b/i,
+      ],
+      minSkillsForHigh: 3
+    },
+    legal: {
+      titlePatterns: [
+        /\b(attorney|lawyer|counsel|paralegal|legal\s+assistant)\b/,
+        /\b(associate|partner|of\s+counsel)\s+at\s+.*\b(llp|law\s+firm|legal)\b/i,
+        /\b(general\s+counsel|chief\s+legal\s+officer|clo)\b/,
+        /\b(litigator|contract\s+attorney|corporate\s+counsel)\b/,
+      ],
+      skillPatterns: [
+        'legal research', 'contract review', 'litigation', 'compliance', 'due diligence',
+        'westlaw', 'lexisnexis', 'drafting', 'negotiation', 'corporate law',
+        'm&a', 'intellectual property', 'ip', 'regulatory', 'arbitration'
+      ],
+      contextPatterns: [
+        /\b(drafted|negotiated|reviewed)\s+.*\b(contract|agreement|document|brief)\b/i,
+        /\b(represented|advised|counseled)\s+.*\b(client|company|organization)\b/i,
+      ],
+      minSkillsForHigh: 3
+    },
+    education: {
+      titlePatterns: [
+        /\b(teacher|professor|instructor|educator|lecturer)\b/,
+        /\b(principal|dean|superintendent|academic\s+director)\b/,
+        /\b(teaching\s+assistant|tutor|curriculum\s+developer)\b/,
+      ],
+      skillPatterns: [
+        'curriculum', 'lesson planning', 'classroom management', 'assessment',
+        'lms', 'canvas', 'blackboard', 'differentiated instruction', 'iep',
+        'student engagement', 'edtech', 'state standards', 'professional development'
+      ],
+      contextPatterns: [
+        /\b(taught|instructed|developed)\s+.*\b(course|curriculum|lesson|program)\b/i,
+        /\b(improved|increased)\s+.*\b(student|learning|achievement|engagement)\b/i,
+      ],
+      minSkillsForHigh: 3
+    },
+    creative: {
+      titlePatterns: [
+        /\b(graphic\s+designer|ux\s+designer|ui\s+designer|product\s+designer)\b/,
+        /\b(art\s+director|creative\s+director|visual\s+designer)\b/,
+        /\b(copywriter|content\s+writer|creative\s+strategist)\b/,
+        /\b(video\s+editor|motion\s+designer|animator)\b/,
+      ],
+      skillPatterns: [
+        'figma', 'sketch', 'adobe', 'photoshop', 'illustrator', 'indesign', 'after effects',
+        'user research', 'prototyping', 'wireframing', 'design systems', 'typography',
+        'branding', 'visual design', 'interaction design', 'usability testing'
+      ],
+      contextPatterns: [
+        /\b(designed|created|developed)\s+.*\b(design|brand|visual|experience|interface)\b/i,
+        /\b(led|managed|directed)\s+.*\b(creative|design|visual)\s+(team|project|initiative)\b/i,
+      ],
+      minSkillsForHigh: 3
+    },
+  };
   
-  // Check for definitive tech titles
-  for (const pattern of techTitlePatterns) {
-    if (pattern.test(text)) {
-      console.log(`[INDUSTRY-DETECT] Matched tech title pattern: ${pattern}`);
-      return 'technology';
-    }
-  }
+  // Score each industry
+  const industryScores: { industry: string; score: number; signals: string[] }[] = [];
   
-  // Tech skills that strongly indicate technology field (must have multiple)
-  const techSkills = [
-    'javascript', 'typescript', 'python', 'react', 'node.js', 'nodejs',
-    'aws', 'docker', 'kubernetes', 'git', 'github', 'postgresql', 'mongodb',
-    'java', 'c++', 'golang', 'rust', 'sql', 'graphql', 'rest api', 'microservices',
-    'ci/cd', 'agile', 'scrum', 'jira', 'jenkins', 'terraform'
-  ];
-  
-  const foundTechSkills = techSkills.filter(skill => text.includes(skill));
-  if (foundTechSkills.length >= 4) {
-    console.log(`[INDUSTRY-DETECT] Found ${foundTechSkills.length} tech skills: ${foundTechSkills.join(', ')}`);
-    return 'technology';
-  }
-  
-  // Sales job title patterns - only if NOT tech
-  const salesTitlePatterns = [
-    /\b(account\s+executive|sales\s+rep|sales\s+manager)\b/,
-    /\b(business\s+development\s+representative|bdr|sdr)\b/,
-    /\b(sales\s+director|vp\s+of\s+sales|chief\s+revenue\s+officer)\b/,
-  ];
-  
-  // Only return sales if no tech indicators found
-  if (foundTechSkills.length < 2) {
-    for (const pattern of salesTitlePatterns) {
-      if (pattern.test(text)) {
-        console.log(`[INDUSTRY-DETECT] Matched sales title pattern: ${pattern}`);
-        return 'sales';
+  for (const [industry, patterns] of Object.entries(industryPatterns)) {
+    let score = 0;
+    const industrySignals: string[] = [];
+    
+    // Check title patterns (high weight)
+    for (const pattern of patterns.titlePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        score += 30;
+        industrySignals.push(`Title: "${match[0]}"`);
       }
     }
+    
+    // Check skills (medium weight)
+    const foundSkills = patterns.skillPatterns.filter(skill => {
+      // Check for exact word boundary match
+      const regex = new RegExp(`\\b${skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      return regex.test(text);
+    });
+    score += foundSkills.length * 5;
+    if (foundSkills.length > 0) {
+      industrySignals.push(`Skills: ${foundSkills.slice(0, 5).join(', ')}`);
+    }
+    
+    // Check context patterns (medium weight)
+    for (const pattern of patterns.contextPatterns) {
+      if (pattern.test(text)) {
+        score += 10;
+        industrySignals.push(`Context match`);
+        break; // Only count once
+      }
+    }
+    
+    if (score > 0) {
+      industryScores.push({ industry, score, signals: industrySignals });
+    }
   }
   
-  // Return null to let AI detection stand
-  return null;
+  // Sort by score descending
+  industryScores.sort((a, b) => b.score - a.score);
+  
+  console.log(`[INDUSTRY-DETECT] Scores: ${JSON.stringify(industryScores.map(s => ({ industry: s.industry, score: s.score })))}`);
+  
+  if (industryScores.length === 0) {
+    return { industry: 'general', confidence: 'low', signals: ['No clear industry signals detected'] };
+  }
+  
+  const topIndustry = industryScores[0];
+  const secondIndustry = industryScores[1];
+  
+  // Determine confidence
+  let confidence: 'high' | 'medium' | 'low';
+  if (topIndustry.score >= 50 && (!secondIndustry || topIndustry.score > secondIndustry.score * 1.5)) {
+    confidence = 'high';
+  } else if (topIndustry.score >= 25) {
+    confidence = 'medium';
+  } else {
+    confidence = 'low';
+  }
+  
+  console.log(`[INDUSTRY-DETECT] Result: ${topIndustry.industry} (confidence: ${confidence}, score: ${topIndustry.score})`);
+  console.log(`[INDUSTRY-DETECT] Signals: ${topIndustry.signals.join('; ')}`);
+  
+  return {
+    industry: topIndustry.industry,
+    confidence,
+    signals: topIndustry.signals
+  };
 }
 
 // ======================== Resume Type Detection ========================
@@ -1556,17 +1806,29 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
 
       // Normalize industry to valid value, with server-side override for obvious misclassifications
       const rawIndustry = analysis.industry;
-      const serverDetectedIndustry = detectIndustryFromResume(resumeText);
+      const industryDetection = detectIndustryFromResume(resumeText);
       
-      if (serverDetectedIndustry && serverDetectedIndustry !== normalizeIndustry(rawIndustry)) {
-        console.log(`[FREE-KEYWORD-SCAN-STREAM] Server override: AI said "${rawIndustry}" but text clearly indicates "${serverDetectedIndustry}"`);
-        analysis.industry = serverDetectedIndustry;
+      // Use server detection if confident, otherwise fall back to AI + normalization
+      if (industryDetection.confidence === 'high' || industryDetection.confidence === 'medium') {
+        if (industryDetection.industry !== normalizeIndustry(rawIndustry)) {
+          console.log(`[FREE-KEYWORD-SCAN-STREAM] Server override: AI said "${rawIndustry}" but text clearly indicates "${industryDetection.industry}" (${industryDetection.confidence} confidence)`);
+        }
+        analysis.industry = industryDetection.industry;
       } else {
         analysis.industry = normalizeIndustry(rawIndustry);
         if (rawIndustry !== analysis.industry) {
           console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry normalized: "${rawIndustry}" -> "${analysis.industry}"`);
         }
       }
+      
+      // Store detection metadata for UI
+      const industryDetectionMeta = {
+        detected: analysis.industry,
+        confidence: industryDetection.confidence,
+        signals: industryDetection.signals,
+        aiSuggested: rawIndustry
+      };
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry detection: ${JSON.stringify(industryDetectionMeta)}`);
 
       // ======================== Server-Side Computed Fields ========================
       // These are computed from the raw resume text for accuracy and consistency
@@ -1628,6 +1890,8 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
           quota: quotaLocation,
           metrics: metricsLocation
         },
+        // Industry detection with metadata for transparency
+        industryDetection: industryDetectionMeta,
         // Override/add computed fields
         timelineAnalysis: computedTimeline,
         quantificationScore: computedQuantification,
