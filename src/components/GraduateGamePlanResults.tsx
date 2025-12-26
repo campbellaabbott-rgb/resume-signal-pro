@@ -14,7 +14,8 @@ import {
   Users,
   BookOpen,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Download
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +24,7 @@ import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { exportGraduateGamePlanPDF } from '@/lib/pdf-export';
 
 interface ResumeReadinessGate {
   verdict: 'Ready to Apply' | 'Fix These First';
@@ -207,8 +209,25 @@ const WeekCard = ({ weekNum, plan }: { weekNum: number; plan: WeekPlan }) => {
 export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) {
   const isReady = data.resumeReadinessGate.verdict === 'Ready to Apply';
 
+  const handleExportPDF = () => {
+    try {
+      exportGraduateGamePlanPDF(data);
+      toast.success('PDF downloaded successfully!');
+    } catch (error) {
+      toast.error('Failed to generate PDF');
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Export Button */}
+      <div className="flex justify-end">
+        <Button onClick={handleExportPDF} variant="outline" className="gap-2">
+          <Download className="w-4 h-4" />
+          Download PDF Report
+        </Button>
+      </div>
+
       {/* Resume Readiness Gate */}
       <Card className={cn(
         "border-2",

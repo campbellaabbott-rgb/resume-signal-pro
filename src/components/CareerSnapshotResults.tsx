@@ -12,7 +12,8 @@ import {
   Shield,
   Award,
   Copy,
-  Check
+  Check,
+  Download
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +22,7 @@ import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { exportCareerSnapshotPDF } from '@/lib/pdf-export';
 
 interface CareerSignalScore {
   overall: 'Strong' | 'Mixed' | 'Risky';
@@ -181,8 +183,25 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
     return 'bg-destructive/20 text-destructive border-destructive/30';
   };
 
+  const handleExportPDF = () => {
+    try {
+      exportCareerSnapshotPDF(data);
+      toast.success('PDF downloaded successfully!');
+    } catch (error) {
+      toast.error('Failed to generate PDF');
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Export Button */}
+      <div className="flex justify-end">
+        <Button onClick={handleExportPDF} variant="outline" className="gap-2">
+          <Download className="w-4 h-4" />
+          Download PDF Report
+        </Button>
+      </div>
+
       {/* Overall Career Signal Score */}
       <Card className="border-2 border-primary/20 bg-gradient-to-br from-card to-primary/5">
         <CardHeader className="pb-4">
