@@ -108,6 +108,7 @@ const VALID_INDUSTRIES = [
   // Specialized sub-industries
   'supply_chain_analytics', 'sports_management',
   'ux_research', 'product_analytics', 'technical_writing',
+  'data_engineering', 'devrel', 'content_strategy',
   'general'
 ];
 
@@ -242,6 +243,9 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'ux_research': 'creative',
   'product_analytics': 'technology',
   'technical_writing': 'technology',
+  'data_engineering': 'technology',
+  'devrel': 'technology',
+  'content_strategy': 'marketing',
 };
 
 // Industry aliases for normalization
@@ -401,7 +405,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   
   // Data science aliases
   'business intelligence analyst': 'data_science', 'bi developer': 'data_science',
-  'data analyst role': 'data_science', 'data engineering': 'data_science', 'ml engineering': 'ai_ml',
+  'data analyst role': 'data_science', 'ml engineering': 'ai_ml',
   'ai research': 'ai_ml', 'deep learning engineer': 'ai_ml',
   
   // UX/Creative aliases (non-duplicate)
@@ -548,7 +552,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   // ==================== PRODUCT ANALYTICS ALIASES ====================
   'product analytics': 'product_analytics', 'product analyst': 'product_analytics',
   'growth analytics': 'product_analytics', 'product intelligence': 'product_analytics',
-  'product data': 'product_analytics', 'analytics engineer': 'product_analytics',
+  'product data': 'product_analytics',
   'amplitude': 'product_analytics', 'mixpanel': 'product_analytics', 'segment': 'product_analytics',
   'funnel analysis': 'product_analytics', 'cohort analysis': 'product_analytics',
   'retention analysis': 'product_analytics', 'user segmentation': 'product_analytics',
@@ -569,6 +573,36 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'openapi docs': 'technical_writing', 'style guides': 'technical_writing',
   'information architecture': 'technical_writing', 'single sourcing': 'technical_writing',
   'topic-based authoring': 'technical_writing',
+  
+  // ==================== DATA ENGINEERING ALIASES ====================
+  'data engineering': 'data_engineering', 'data engineer': 'data_engineering',
+  'data infrastructure': 'data_engineering', 'data platform': 'data_engineering',
+  'etl developer': 'data_engineering', 'etl engineer': 'data_engineering',
+  'data pipeline': 'data_engineering', 'big data engineer': 'data_engineering',
+  'analytics engineer': 'data_engineering', 'data warehouse': 'data_engineering',
+  'spark': 'data_engineering', 'airflow': 'data_engineering', 'dbt': 'data_engineering',
+  'snowflake': 'data_engineering', 'databricks': 'data_engineering', 'bigquery': 'data_engineering',
+  'redshift': 'data_engineering', 'kafka': 'data_engineering', 'fivetran': 'data_engineering',
+  'data lake': 'data_engineering', 'data modeling': 'data_engineering',
+  'dimensional modeling': 'data_engineering', 'stream processing': 'data_engineering',
+  
+  // ==================== DEVREL ALIASES ====================
+  'developer relations': 'devrel', 'developer advocacy': 'devrel', 'developer advocate': 'devrel',
+  'devrel': 'devrel', 'developer evangelist': 'devrel', 'developer experience': 'devrel',
+  'dx engineer': 'devrel', 'community manager tech': 'devrel', 'tech evangelist': 'devrel',
+  'sdk development': 'devrel', 'developer onboarding': 'devrel', 'developer community': 'devrel',
+  'open source advocate': 'devrel', 'conference speaking': 'devrel', 'tech community': 'devrel',
+  'developer education': 'devrel', 'hackathon': 'devrel',
+  
+  // ==================== CONTENT STRATEGY ALIASES ====================
+  'content strategy': 'content_strategy', 'content strategist': 'content_strategy',
+  'content planning': 'content_strategy', 'editorial strategy': 'content_strategy',
+  'content operations': 'content_strategy', 'content lead': 'content_strategy',
+  'content governance': 'content_strategy', 'ux writing': 'content_strategy',
+  'content audit': 'content_strategy', 'editorial calendar': 'content_strategy',
+  'voice and tone': 'content_strategy', 'content modeling': 'content_strategy',
+  'taxonomy': 'content_strategy', 'content performance': 'content_strategy',
+  'content localization': 'content_strategy', 'content migration': 'content_strategy',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -3237,6 +3271,73 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         /\b(wrote|authored|created|developed)\s+.*\b(documentation|guides|manuals|api\s+docs)\b/i,
         /\b(maintained|managed)\s+.*\b(knowledge\s+base|documentation|wiki|confluence)\b/i,
         /\b(collaborated|worked)\s+.*\b(engineers|developers|smes|product)\s+.*\b(document|technical)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    data_engineering: {
+      titlePatterns: [
+        /\b(data\s+engineer|data\s+engineering)\b/i,
+        /\b(etl\s+developer|etl\s+engineer|data\s+pipeline\s+engineer)\b/i,
+        /\b(big\s+data\s+engineer|analytics\s+engineer|data\s+platform)\b/i,
+        /\b(data\s+infrastructure|senior\s+data\s+engineer)\b/i,
+      ],
+      skillPatterns: [
+        'data pipelines', 'etl', 'apache spark', 'spark', 'airflow', 'sql', 'python',
+        'dbt', 'snowflake', 'databricks', 'bigquery', 'redshift', 'kafka',
+        'data warehouse', 'data lake', 'data modeling', 'dimensional modeling',
+        'stream processing', 'batch processing', 'aws glue', 'fivetran', 'prefect',
+        'luigi', 'data quality', 'schema design', 'orchestration', 'ci/cd'
+      ],
+      contextPatterns: [
+        /\b(built|developed|designed)\s+.*\b(data\s+pipeline|etl|data\s+warehouse|data\s+lake)\b/i,
+        /\b(migrated|optimized)\s+.*\b(data|warehouse|database|infrastructure)\b/i,
+        /\b(processed|transformed)\s+.*\b(terabytes|petabytes|millions|billions)\s+.*\b(records|rows|data)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    devrel: {
+      titlePatterns: [
+        /\b(developer\s+advocate|developer\s+relations|devrel)\b/i,
+        /\b(developer\s+evangelist|tech\s+evangelist)\b/i,
+        /\b(developer\s+experience|dx\s+engineer)\b/i,
+        /\b(community\s+manager.*tech|developer\s+community)\b/i,
+      ],
+      skillPatterns: [
+        'developer advocacy', 'technical content', 'developer experience', 'api documentation',
+        'community building', 'technical presentations', 'conference speaking', 'sdk development',
+        'code samples', 'developer onboarding', 'github', 'open source', 'technical writing',
+        'video content', 'twitch', 'youtube', 'discord', 'slack community', 'hackathons',
+        'developer feedback', 'tutorials', 'blog posts', 'meetups'
+      ],
+      contextPatterns: [
+        /\b(grew|built|managed)\s+.*\b(developer|community|discord|slack)\s+.*\b(community|members|engagement)\b/i,
+        /\b(spoke|presented)\s+.*\b(conference|meetup|event|webinar)\b/i,
+        /\b(created|wrote)\s+.*\b(tutorial|documentation|sdk|sample|demo)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    content_strategy: {
+      titlePatterns: [
+        /\b(content\s+strategist|content\s+strategy)\b/i,
+        /\b(editorial\s+strategist|content\s+lead)\b/i,
+        /\b(content\s+operations|ux\s+writer)\b/i,
+        /\b(senior\s+content\s+strategist|head\s+of\s+content)\b/i,
+      ],
+      skillPatterns: [
+        'content strategy', 'content audit', 'editorial calendar', 'content governance',
+        'information architecture', 'content modeling', 'ux writing', 'voice and tone',
+        'style guide', 'seo', 'cms', 'contentful', 'sanity', 'wordpress',
+        'content operations', 'taxonomy', 'metadata', 'content performance',
+        'analytics', 'stakeholder management', 'content localization', 'a/b testing',
+        'user research', 'content migration'
+      ],
+      contextPatterns: [
+        /\b(developed|created|defined)\s+.*\b(content\s+strategy|editorial\s+calendar|style\s+guide)\b/i,
+        /\b(led|managed)\s+.*\b(content\s+audit|content\s+migration|content\s+team)\b/i,
+        /\b(improved|increased)\s+.*\b(engagement|traffic|conversion)\s+.*\b(content|copy)\b/i,
       ],
       minSkillsForHigh: 4,
       titleWeight: 50
