@@ -612,21 +612,32 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
     },
     brand_marketing: {
       titlePatterns: [
-        /\b(brand\s+manager|brand\s+marketing\s+manager|brand\s+director)\b/,
-        /\b(marketing\s+communications|marcom|pr\s+manager)\b/,
-        /\b(creative\s+director|brand\s+strategist|campaign\s+manager)\b/,
+        /\b(brand\s+manager|brand\s+marketing\s+manager|brand\s+marketing\s+director)\b/i,
+        /\b(brand\s+director|director\s+of\s+brand|head\s+of\s+brand)\b/i,
+        /\b(brand\s+strategist|brand\s+lead|brand\s+specialist)\b/i,
+        /\b(vp\s+of\s+brand|chief\s+brand\s+officer|cbo)\b/i,
+        /\b(creative\s+director|brand\s+communications)\b/i,
+        /\b(marketing\s+communications\s+manager|marcom\s+manager)\b/i,
       ],
       skillPatterns: [
-        'brand strategy', 'brand identity', 'brand guidelines', 'positioning',
-        'creative campaigns', 'advertising', 'media relations', 'pr',
-        'agency management', 'event marketing', 'sponsorships', 'brand awareness'
+        'brand strategy', 'brand identity', 'brand positioning', 'brand guidelines',
+        'brand awareness', 'brand messaging', 'brand campaigns', 'brand development',
+        'creative direction', 'advertising campaigns', 'media planning', 'pr',
+        'agency management', 'event marketing', 'sponsorships', 'consumer insights',
+        'market research', 'brand portfolio', 'brand architecture', 'rebranding',
+        'visual identity', 'brand voice', 'brand storytelling', 'creative brief'
       ],
       contextPatterns: [
-        /\b(launched|developed|managed)\s+.*\b(campaign|brand|initiative)\b/i,
-        /\b(increased|improved)\s+.*\b(awareness|recognition|perception)\b/i,
+        /\b(brand\s+strategy|brand\s+positioning|brand\s+identity)\b/i,
+        /\b(brand\s+awareness|brand\s+recognition|brand\s+perception)\b/i,
+        /\b(launched|developed|managed)\s+.*\b(brand|campaign|advertising)\b/i,
+        /\b(increased|improved|grew)\s+.*\b(awareness|recognition|perception|equity)\b/i,
+        /\b(portfolio\s+of|consumer)\s+brands?\b/i,
+        /\b(creative\s+direction|brand\s+guidelines|visual\s+identity)\b/i,
+        /\b(rebranding|brand\s+refresh|brand\s+launch)\b/i,
       ],
-      minSkillsForHigh: 3,
-      titleWeight: 35
+      minSkillsForHigh: 2,
+      titleWeight: 45
     },
     growth_marketing: {
       titlePatterns: [
