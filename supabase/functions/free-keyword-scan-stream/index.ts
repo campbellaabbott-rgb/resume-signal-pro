@@ -73,6 +73,12 @@ const VALID_INDUSTRIES = [
   'nursing', 'physician', 'pharmacy', 'mental_health',
   // Sub-industries for finance
   'investment_banking', 'accounting', 'financial_planning',
+  // Sub-industries for sales
+  'enterprise_sales', 'inside_sales', 'sales_engineering', 'business_development',
+  // Sub-industries for marketing
+  'digital_marketing', 'content_marketing', 'brand_marketing', 'growth_marketing', 'product_marketing',
+  // Sub-industries for legal
+  'corporate_law', 'litigation', 'intellectual_property', 'employment_law', 'compliance',
   'general'
 ];
 
@@ -95,6 +101,23 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'investment_banking': 'finance',
   'accounting': 'finance',
   'financial_planning': 'finance',
+  // Sales sub-industries
+  'enterprise_sales': 'sales',
+  'inside_sales': 'sales',
+  'sales_engineering': 'sales',
+  'business_development': 'sales',
+  // Marketing sub-industries
+  'digital_marketing': 'marketing',
+  'content_marketing': 'marketing',
+  'brand_marketing': 'marketing',
+  'growth_marketing': 'marketing',
+  'product_marketing': 'marketing',
+  // Legal sub-industries
+  'corporate_law': 'legal',
+  'litigation': 'legal',
+  'intellectual_property': 'legal',
+  'employment_law': 'legal',
+  'compliance': 'legal',
 };
 
 // Industry aliases for normalization
@@ -104,10 +127,16 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'web development': 'software_engineering', 'app development': 'software_engineering',
   'medical': 'healthcare', 'health': 'healthcare', 'medicine': 'physician',
   'nursing': 'nursing', 'pharmaceutical': 'pharmacy', 'pharma': 'pharmacy',
-  'law': 'legal', 'attorney': 'legal', 'lawyer': 'legal',
+  'law': 'legal', 'attorney': 'corporate_law', 'lawyer': 'litigation',
+  'corporate lawyer': 'corporate_law', 'litigator': 'litigation', 'patent': 'intellectual_property',
+  'trademark': 'intellectual_property', 'ip law': 'intellectual_property',
+  'labor law': 'employment_law', 'hr law': 'employment_law',
   'banking': 'investment_banking', 'accounting': 'accounting', 'financial services': 'finance',
   'cpa': 'accounting', 'bookkeeping': 'accounting',
-  'advertising': 'marketing', 'pr': 'marketing', 'public relations': 'marketing',
+  'advertising': 'brand_marketing', 'pr': 'brand_marketing', 'public relations': 'brand_marketing',
+  'seo': 'digital_marketing', 'ppc': 'digital_marketing', 'social media': 'digital_marketing',
+  'content': 'content_marketing', 'copywriting': 'content_marketing',
+  'growth hacking': 'growth_marketing', 'performance marketing': 'growth_marketing',
   'teaching': 'education', 'academia': 'education', 'academic': 'education',
   'design': 'creative', 'art': 'creative', 'media': 'creative',
   'human resources': 'hr', 'recruitment': 'hr', 'talent': 'hr',
@@ -127,6 +156,16 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'data': 'data_science', 'ml': 'data_science', 'ai': 'data_science',
   'security': 'cybersecurity', 'infosec': 'cybersecurity',
   'infrastructure': 'devops', 'sre': 'devops', 'platform': 'devops',
+  // Sales aliases
+  'b2b sales': 'enterprise_sales', 'enterprise': 'enterprise_sales', 'strategic sales': 'enterprise_sales',
+  'sdr': 'inside_sales', 'bdr': 'business_development', 'outbound': 'inside_sales',
+  'pre-sales': 'sales_engineering', 'solutions': 'sales_engineering', 'technical sales': 'sales_engineering',
+  'partnerships': 'business_development', 'alliances': 'business_development',
+  // Marketing aliases
+  'demand gen': 'growth_marketing', 'lead generation': 'growth_marketing',
+  'pmm': 'product_marketing', 'go-to-market': 'product_marketing',
+  // Legal aliases
+  'regulatory': 'compliance', 'risk': 'compliance', 'governance': 'compliance',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -455,6 +494,264 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
       contextPatterns: [
         /\b(managed|advised|grew)\s+.*\$[\d,]+[kKmMbB]?\s*(aum|assets|portfolio)/i,
         /\b(developed|created)\s+.*\b(financial\s+plan|retirement\s+strategy)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    
+    // === SUB-INDUSTRIES FOR SALES ===
+    enterprise_sales: {
+      titlePatterns: [
+        /\b(enterprise\s+account\s+executive|strategic\s+account\s+executive|senior\s+account\s+executive)\b/,
+        /\b(major\s+accounts?\s+manager|named\s+accounts?\s+manager|key\s+accounts?\s+manager)\b/,
+        /\b(vp\s+of\s+sales|director\s+of\s+sales|regional\s+sales\s+director)\b/,
+      ],
+      skillPatterns: [
+        'enterprise sales', 'solution selling', 'consultative selling', 'strategic accounts',
+        'salesforce', 'c-suite', 'stakeholder management', 'contract negotiation',
+        'complex sales', 'saas', 'arr', 'multi-threading', 'champion building'
+      ],
+      contextPatterns: [
+        /\b(closed|won|managed)\s+.*\$[\d,]+[mMkK]\s*(deal|contract|account)/i,
+        /\b(exceeded|achieved|surpassed)\s+.*\b(quota|target|goal)\s+by\s+\d+%/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    inside_sales: {
+      titlePatterns: [
+        /\b(inside\s+sales|sdr|sales\s+development\s+representative)\b/,
+        /\b(account\s+development|outbound\s+sales|inbound\s+sales)\b/,
+        /\b(phone\s+sales|telesales|virtual\s+sales)\b/,
+      ],
+      skillPatterns: [
+        'cold calling', 'outbound', 'inbound', 'lead qualification', 'pipeline generation',
+        'salesforce', 'outreach', 'salesloft', 'gong', 'chorus',
+        'discovery calls', 'demos', 'email sequences', 'cadence'
+      ],
+      contextPatterns: [
+        /\b(booked|scheduled|generated)\s+.*\b(meetings?|demos?|appointments?|leads?)\b/i,
+        /\b(exceeded|achieved)\s+.*\b(activity|call|email)\s+targets?\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    sales_engineering: {
+      titlePatterns: [
+        /\b(sales\s+engineer|solutions\s+engineer|pre[\s-]?sales\s+engineer)\b/,
+        /\b(solutions\s+consultant|technical\s+sales|solutions\s+architect)\b/,
+        /\b(presales|demo\s+engineer|customer\s+engineer)\b/,
+      ],
+      skillPatterns: [
+        'technical demos', 'poc', 'proof of concept', 'rfp', 'rfi',
+        'solution design', 'technical discovery', 'architecture',
+        'api', 'integration', 'customization', 'implementation'
+      ],
+      contextPatterns: [
+        /\b(delivered|presented|conducted)\s+.*\b(demo|poc|presentation|workshop)\b/i,
+        /\b(designed|architected)\s+.*\b(solution|integration|implementation)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    business_development: {
+      titlePatterns: [
+        /\b(business\s+development|bdr|bd\s+representative|bd\s+manager)\b/,
+        /\b(partnerships?\s+manager|channel\s+manager|alliances?\s+manager)\b/,
+        /\b(strategic\s+partnerships|corporate\s+development)\b/,
+      ],
+      skillPatterns: [
+        'partnerships', 'alliances', 'channel sales', 'reseller', 'referral',
+        'prospecting', 'lead generation', 'market development', 'new business',
+        'territory', 'expansion', 'pipeline', 'networking'
+      ],
+      contextPatterns: [
+        /\b(developed|established|built)\s+.*\b(partnerships?|relationships?|channels?)\b/i,
+        /\b(grew|expanded|launched)\s+.*\b(territory|market|region)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    
+    // === SUB-INDUSTRIES FOR MARKETING ===
+    digital_marketing: {
+      titlePatterns: [
+        /\b(digital\s+marketing\s+manager|digital\s+marketing\s+specialist|digital\s+strategist)\b/,
+        /\b(ppc\s+manager|sem\s+manager|paid\s+media\s+manager)\b/,
+        /\b(seo\s+manager|seo\s+specialist|search\s+marketing)\b/,
+      ],
+      skillPatterns: [
+        'google ads', 'facebook ads', 'ppc', 'sem', 'seo', 'paid media',
+        'google analytics', 'ga4', 'gtm', 'google tag manager', 'meta ads',
+        'display advertising', 'retargeting', 'programmatic', 'cpc', 'cpm', 'roas'
+      ],
+      contextPatterns: [
+        /\b(increased|improved|grew)\s+.*\b(roas|roi|ctr|conversions?|traffic)\b/i,
+        /\b(managed|optimized)\s+.*\$[\d,]+[kKmM]?\s*(budget|spend|campaigns?)/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 35
+    },
+    content_marketing: {
+      titlePatterns: [
+        /\b(content\s+marketing\s+manager|content\s+strategist|content\s+director)\b/,
+        /\b(copywriter|content\s+writer|editorial\s+manager)\b/,
+        /\b(blog\s+manager|content\s+lead|head\s+of\s+content)\b/,
+      ],
+      skillPatterns: [
+        'content strategy', 'copywriting', 'blog', 'editorial', 'seo writing',
+        'content calendar', 'storytelling', 'brand voice', 'thought leadership',
+        'cms', 'wordpress', 'hubspot', 'contentful', 'webflow'
+      ],
+      contextPatterns: [
+        /\b(created|produced|developed)\s+.*\b(content|articles?|blogs?|copy)\b/i,
+        /\b(increased|grew)\s+.*\b(traffic|engagement|subscribers?|readership)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    brand_marketing: {
+      titlePatterns: [
+        /\b(brand\s+manager|brand\s+marketing\s+manager|brand\s+director)\b/,
+        /\b(marketing\s+communications|marcom|pr\s+manager)\b/,
+        /\b(creative\s+director|brand\s+strategist|campaign\s+manager)\b/,
+      ],
+      skillPatterns: [
+        'brand strategy', 'brand identity', 'brand guidelines', 'positioning',
+        'creative campaigns', 'advertising', 'media relations', 'pr',
+        'agency management', 'event marketing', 'sponsorships', 'brand awareness'
+      ],
+      contextPatterns: [
+        /\b(launched|developed|managed)\s+.*\b(campaign|brand|initiative)\b/i,
+        /\b(increased|improved)\s+.*\b(awareness|recognition|perception)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    growth_marketing: {
+      titlePatterns: [
+        /\b(growth\s+marketing\s+manager|growth\s+lead|head\s+of\s+growth)\b/,
+        /\b(demand\s+generation|demand\s+gen|lifecycle\s+marketing)\b/,
+        /\b(performance\s+marketing|acquisition\s+marketing|cro\s+manager)\b/,
+      ],
+      skillPatterns: [
+        'growth hacking', 'a/b testing', 'conversion optimization', 'funnel optimization',
+        'demand generation', 'lead generation', 'marketing automation', 'hubspot',
+        'marketo', 'segment', 'amplitude', 'mixpanel', 'attribution'
+      ],
+      contextPatterns: [
+        /\b(grew|increased|improved)\s+.*\b(conversion|acquisition|activation|retention)\b/i,
+        /\b(optimized|tested)\s+.*\b(funnel|journey|experience)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 40
+    },
+    product_marketing: {
+      titlePatterns: [
+        /\b(product\s+marketing\s+manager|pmm|senior\s+pmm)\b/,
+        /\b(go[\s-]?to[\s-]?market|gtm\s+manager|launch\s+manager)\b/,
+        /\b(competitive\s+intelligence|market\s+research\s+manager)\b/,
+      ],
+      skillPatterns: [
+        'product positioning', 'messaging', 'go-to-market', 'gtm', 'launch',
+        'competitive analysis', 'market research', 'buyer personas', 'sales enablement',
+        'product launches', 'feature adoption', 'customer insights'
+      ],
+      contextPatterns: [
+        /\b(launched|positioned|marketed)\s+.*\b(product|feature|release)\b/i,
+        /\b(developed|created)\s+.*\b(positioning|messaging|collateral|enablement)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    
+    // === SUB-INDUSTRIES FOR LEGAL ===
+    corporate_law: {
+      titlePatterns: [
+        /\b(corporate\s+attorney|corporate\s+counsel|transactional\s+attorney)\b/,
+        /\b(m&a\s+attorney|securities\s+attorney|general\s+counsel)\b/,
+        /\b(in[\s-]?house\s+counsel|associate\s+attorney|corporate\s+lawyer)\b/,
+      ],
+      skillPatterns: [
+        'corporate law', 'mergers and acquisitions', 'm&a', 'securities', 'due diligence',
+        'contract drafting', 'corporate governance', 'board resolutions', 'bylaws',
+        'stock purchase', 'asset purchase', 'private equity', 'venture capital'
+      ],
+      contextPatterns: [
+        /\b(drafted|negotiated|closed)\s+.*\b(transaction|deal|acquisition|merger)\b/i,
+        /\b(advised|counseled)\s+.*\b(board|executives?|management|clients?)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    litigation: {
+      titlePatterns: [
+        /\b(litigation\s+attorney|litigator|trial\s+attorney|trial\s+lawyer)\b/,
+        /\b(associate\s+attorney|senior\s+associate|litigation\s+counsel)\b/,
+        /\b(defense\s+attorney|plaintiff\s+attorney|appellate\s+attorney)\b/,
+      ],
+      skillPatterns: [
+        'litigation', 'trial', 'deposition', 'discovery', 'motion practice',
+        'brief writing', 'oral argument', 'westlaw', 'lexisnexis', 'pacer',
+        'e-discovery', 'arbitration', 'mediation', 'civil procedure'
+      ],
+      contextPatterns: [
+        /\b(tried|litigated|defended|represented)\s+.*\b(case|matter|client|plaintiff)\b/i,
+        /\b(drafted|argued|filed)\s+.*\b(motion|brief|complaint|appeal)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    intellectual_property: {
+      titlePatterns: [
+        /\b(ip\s+attorney|patent\s+attorney|trademark\s+attorney)\b/,
+        /\b(intellectual\s+property|patent\s+agent|ip\s+counsel)\b/,
+        /\b(copyright\s+attorney|trade\s+secret|ip\s+litigator)\b/,
+      ],
+      skillPatterns: [
+        'patent', 'trademark', 'copyright', 'trade secret', 'intellectual property',
+        'patent prosecution', 'ip litigation', 'licensing', 'infringement',
+        'uspto', 'patent office', 'prior art', 'claims drafting', 'ip portfolio'
+      ],
+      contextPatterns: [
+        /\b(prosecuted|drafted|filed)\s+.*\b(patent|trademark|application)\b/i,
+        /\b(managed|protected)\s+.*\b(ip\s+portfolio|intellectual\s+property)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    employment_law: {
+      titlePatterns: [
+        /\b(employment\s+attorney|labor\s+attorney|employment\s+counsel)\b/,
+        /\b(labor\s+relations|hr\s+counsel|workplace\s+attorney)\b/,
+        /\b(discrimination|wrongful\s+termination|wage\s+and\s+hour)\b/,
+      ],
+      skillPatterns: [
+        'employment law', 'labor law', 'eeoc', 'nlra', 'flsa', 'ada',
+        'discrimination', 'harassment', 'wrongful termination', 'wage and hour',
+        'employment contracts', 'severance', 'non-compete', 'workplace investigations'
+      ],
+      contextPatterns: [
+        /\b(advised|counseled|represented)\s+.*\b(employer|employee|hr|management)\b/i,
+        /\b(defended|litigated)\s+.*\b(discrimination|harassment|termination)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    compliance: {
+      titlePatterns: [
+        /\b(compliance\s+officer|chief\s+compliance|compliance\s+manager)\b/,
+        /\b(regulatory\s+affairs|compliance\s+counsel|regulatory\s+counsel)\b/,
+        /\b(risk\s+manager|compliance\s+analyst|compliance\s+director)\b/,
+      ],
+      skillPatterns: [
+        'compliance', 'regulatory', 'risk management', 'audit', 'sox',
+        'gdpr', 'hipaa', 'aml', 'kyc', 'bsa', 'finra', 'sec',
+        'policy development', 'internal controls', 'governance'
+      ],
+      contextPatterns: [
+        /\b(developed|implemented|managed)\s+.*\b(compliance|policy|program)\b/i,
+        /\b(ensured|maintained)\s+.*\b(compliance|regulatory|adherence)\b/i,
       ],
       minSkillsForHigh: 3,
       titleWeight: 35
