@@ -103,6 +103,8 @@ const VALID_INDUSTRIES = [
   'sustainability', 'dei', 'remote_work', 'creator_economy',
   // HYBRID INDUSTRIES - Cross-domain roles
   'healthcare_it', 'fintech', 'legaltech', 'hrtech', 'proptech', 'insurtech', 'regtech', 'govtech',
+  'agtech', 'cleantech', 'martech', 'adtech', 'retailtech', 'traveltech', 'sporttech', 'foodtech',
+  'biotech', 'medtech', 'wealthtech', 'supplychain_tech', 'constructech',
   'general'
 ];
 
@@ -218,6 +220,19 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'insurtech': 'finance',
   'regtech': 'finance',
   'govtech': 'government',
+  'agtech': 'agriculture',
+  'cleantech': 'energy',
+  'martech': 'marketing',
+  'adtech': 'marketing',
+  'retailtech': 'retail',
+  'traveltech': 'hospitality',
+  'sporttech': 'technology',
+  'foodtech': 'hospitality',
+  'biotech': 'healthcare',
+  'medtech': 'healthcare',
+  'wealthtech': 'finance',
+  'supplychain_tech': 'logistics',
+  'constructech': 'construction',
 };
 
 // Industry aliases for normalization
@@ -342,6 +357,26 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'insurance tech': 'insurtech', 'insurance technology': 'insurtech',
   'regulatory tech': 'regtech', 'regulatory technology': 'regtech',
   'government tech': 'govtech', 'civic tech': 'govtech',
+  // New hybrid industry aliases
+  'agricultural tech': 'agtech', 'agricultural technology': 'agtech', 'ag tech': 'agtech',
+  'precision agriculture': 'agtech', 'farm tech': 'agtech', 'smart farming': 'agtech',
+  'clean tech': 'cleantech', 'clean technology': 'cleantech', 'green tech': 'cleantech',
+  'sustainability tech': 'cleantech', 'climate tech': 'cleantech', 'renewable energy tech': 'cleantech',
+  'marketing tech': 'martech', 'marketing technology': 'martech', 'mar tech': 'martech',
+  'marketing automation': 'martech', 'marketing platform': 'martech',
+  'advertising tech': 'adtech', 'advertising technology': 'adtech', 'ad tech': 'adtech',
+  'programmatic': 'adtech', 'dsp': 'adtech', 'ssp': 'adtech',
+  'retail tech': 'retailtech', 'retail technology': 'retailtech', 'ecommerce tech': 'retailtech',
+  'travel tech': 'traveltech', 'travel technology': 'traveltech', 'hospitality tech': 'traveltech',
+  'sports tech': 'sporttech', 'sports technology': 'sporttech', 'sport tech': 'sporttech',
+  'fitness tech': 'sporttech', 'athletic tech': 'sporttech',
+  'food tech': 'foodtech', 'food technology': 'foodtech', 'foodservice tech': 'foodtech',
+  'restaurant tech': 'foodtech', 'ghost kitchen': 'foodtech', 'meal delivery': 'foodtech',
+  'biotechnology': 'biotech', 'bio tech': 'biotech', 'life sciences': 'biotech',
+  'medical tech': 'medtech', 'medical technology': 'medtech', 'medical device': 'medtech',
+  'wealth tech': 'wealthtech', 'wealth technology': 'wealthtech', 'robo advisor': 'wealthtech',
+  'supply chain tech': 'supplychain_tech', 'logistics tech': 'supplychain_tech', 'freight tech': 'supplychain_tech',
+  'construction tech': 'constructech', 'con tech': 'constructech', 'building tech': 'constructech',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -2445,6 +2480,280 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
       contextPatterns: [
         /\b(modernized|transformed|digitized)\s+.*\b(government|public\s+sector|agency|citizen)\b/i,
         /\b(implemented|deployed)\s+.*\b(federal|state|municipal|government)\s+.*\b(system|platform|service)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 45
+    },
+    // === NEW HYBRID INDUSTRIES ===
+    agtech: {
+      titlePatterns: [
+        /\b(agtech|ag[\s-]?tech|agricultural\s+technology)\b/i,
+        /\b(precision\s+agriculture|smart\s+farming|farm\s+tech)\b/i,
+        /\b(agriculture.*(?:engineer|developer|product|manager))\b/i,
+        /\b((?:engineer|developer|product|manager).*agriculture)\b/i,
+      ],
+      skillPatterns: [
+        'precision agriculture', 'smart farming', 'iot sensors', 'drone technology',
+        'crop monitoring', 'soil analysis', 'farm management software', 'agribusiness',
+        'john deere', 'climate corporation', 'granular', 'farmers edge',
+        'livestock management', 'vertical farming', 'hydroponics', 'yield optimization',
+        'satellite imagery', 'remote sensing', 'agricultural data', 'farm automation'
+      ],
+      contextPatterns: [
+        /\b(developed|implemented)\s+.*\b(farm|agriculture|crop|livestock)\s+.*\b(tech|platform|system|automation)\b/i,
+        /\b(improved|optimized)\s+.*\b(yield|harvest|crop|farming)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 50
+    },
+    cleantech: {
+      titlePatterns: [
+        /\b(cleantech|clean[\s-]?tech|climate[\s-]?tech)\b/i,
+        /\b(sustainability.*(?:engineer|manager|director))\b/i,
+        /\b(renewable\s+energy.*(?:engineer|developer|manager))\b/i,
+        /\b(clean\s+energy|green\s+technology)\b/i,
+      ],
+      skillPatterns: [
+        'renewable energy', 'solar', 'wind', 'battery storage', 'ev charging',
+        'carbon capture', 'carbon neutral', 'net zero', 'sustainability',
+        'esg', 'environmental', 'circular economy', 'waste reduction',
+        'smart grid', 'energy management', 'building efficiency', 'leed',
+        'clean energy', 'greenhouse gas', 'decarbonization', 'climate'
+      ],
+      contextPatterns: [
+        /\b(developed|implemented)\s+.*\b(clean|renewable|sustainable|green)\s+.*\b(energy|solution|technology)\b/i,
+        /\b(reduced|eliminated)\s+.*\b(carbon|emissions|waste|footprint)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 50
+    },
+    martech: {
+      titlePatterns: [
+        /\b(martech|marketing[\s-]?tech|marketing\s+technology)\b/i,
+        /\b(marketing\s+operations|marketing\s+automation)\b/i,
+        /\b(marketing\s+platform|customer\s+data\s+platform)\b/i,
+        /\b(cdp|marketing\s+engineer)\b/i,
+      ],
+      skillPatterns: [
+        'marketing automation', 'hubspot', 'marketo', 'pardot', 'eloqua',
+        'salesforce marketing cloud', 'customer data platform', 'cdp', 'segment',
+        'braze', 'iterable', 'klaviyo', 'mailchimp', 'customer journey',
+        'marketing analytics', 'attribution', 'mta', 'marketing mix',
+        'campaign management', 'lead scoring', 'marketing ops', 'mar ops'
+      ],
+      contextPatterns: [
+        /\b(implemented|managed)\s+.*\b(marketing|automation|campaign|customer)\s+.*\b(platform|system|tool|stack)\b/i,
+        /\b(built|developed)\s+.*\b(marketing|customer)\s+.*\b(integration|pipeline|workflow)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 50
+    },
+    adtech: {
+      titlePatterns: [
+        /\b(adtech|ad[\s-]?tech|advertising\s+technology)\b/i,
+        /\b(programmatic|dsp|ssp|demand[\s-]?side|supply[\s-]?side)\b/i,
+        /\b(ad\s+operations|ad\s+ops|advertising\s+operations)\b/i,
+        /\b((?:rtb|real[\s-]?time\s+bidding))\b/i,
+      ],
+      skillPatterns: [
+        'programmatic advertising', 'dsp', 'ssp', 'rtb', 'real-time bidding',
+        'google ads', 'dv360', 'the trade desk', 'xandr', 'amazon dsp',
+        'ad exchange', 'header bidding', 'prebid', 'ad server', 'dfp',
+        'viewability', 'brand safety', 'fraud detection', 'attribution',
+        'cookies', 'identity', 'audience targeting', 'data management platform', 'dmp'
+      ],
+      contextPatterns: [
+        /\b(managed|optimized)\s+.*\b(ad|advertising|programmatic|campaign)\s+.*\b(spend|budget|performance)\b/i,
+        /\b(built|developed)\s+.*\b(ad|advertising|bidding)\s+.*\b(platform|system|algorithm)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 50
+    },
+    retailtech: {
+      titlePatterns: [
+        /\b(retailtech|retail[\s-]?tech|retail\s+technology)\b/i,
+        /\b(ecommerce.*(?:engineer|developer|platform))\b/i,
+        /\b((?:engineer|developer).*ecommerce)\b/i,
+        /\b(pos\s+system|point\s+of\s+sale.*tech)\b/i,
+      ],
+      skillPatterns: [
+        'shopify', 'magento', 'bigcommerce', 'woocommerce', 'salesforce commerce',
+        'pos systems', 'inventory management', 'omnichannel', 'unified commerce',
+        'order management', 'fulfillment', 'warehouse management', 'rfid',
+        'customer experience', 'personalization', 'recommendation engine',
+        'retail analytics', 'store technology', 'self-checkout', 'mobile commerce'
+      ],
+      contextPatterns: [
+        /\b(built|developed|implemented)\s+.*\b(ecommerce|retail|store|commerce)\s+.*\b(platform|system|solution)\b/i,
+        /\b(increased|improved)\s+.*\b(conversion|sales|aov|customer)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 45
+    },
+    traveltech: {
+      titlePatterns: [
+        /\b(traveltech|travel[\s-]?tech|travel\s+technology)\b/i,
+        /\b(hospitality.*technology|booking.*(?:engineer|platform))\b/i,
+        /\b(ota|online\s+travel\s+agency)\b/i,
+        /\b((?:amadeus|sabre|travelport).*(?:engineer|developer|consultant))\b/i,
+      ],
+      skillPatterns: [
+        'gds', 'amadeus', 'sabre', 'travelport', 'booking engine',
+        'hotel distribution', 'channel manager', 'pms', 'property management',
+        'revenue management', 'dynamic pricing', 'inventory allocation',
+        'travel booking', 'flight booking', 'hotel booking', 'ota',
+        'metasearch', 'travel api', 'travel aggregation', 'guest experience'
+      ],
+      contextPatterns: [
+        /\b(built|developed|implemented)\s+.*\b(travel|booking|hospitality|hotel)\s+.*\b(platform|system|solution)\b/i,
+        /\b(managed|optimized)\s+.*\b(booking|reservation|distribution|inventory)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 45
+    },
+    sporttech: {
+      titlePatterns: [
+        /\b(sporttech|sport[\s-]?tech|sports\s+technology)\b/i,
+        /\b(fitness[\s-]?tech|athletic\s+technology)\b/i,
+        /\b(sports\s+analytics|performance\s+tracking)\b/i,
+        /\b((?:peloton|whoop|strava|garmin).*(?:engineer|product|developer))\b/i,
+      ],
+      skillPatterns: [
+        'sports analytics', 'performance tracking', 'wearables', 'fitness tracking',
+        'peloton', 'whoop', 'strava', 'garmin', 'fitbit', 'oura',
+        'player tracking', 'biomechanics', 'video analysis', 'coaching software',
+        'fantasy sports', 'sports betting', 'esports', 'stadium technology',
+        'fan engagement', 'ticketing technology', 'broadcasting tech'
+      ],
+      contextPatterns: [
+        /\b(built|developed)\s+.*\b(sports?|fitness|athletic|performance)\s+.*\b(platform|app|system|technology)\b/i,
+        /\b(tracked|analyzed|optimized)\s+.*\b(performance|athlete|player|team)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 45
+    },
+    foodtech: {
+      titlePatterns: [
+        /\b(foodtech|food[\s-]?tech|food\s+technology)\b/i,
+        /\b(restaurant.*technology|ghost\s+kitchen)\b/i,
+        /\b(food\s+delivery.*(?:engineer|platform|tech))\b/i,
+        /\b((?:doordash|uber\s+eats|grubhub|instacart).*(?:engineer|product|developer))\b/i,
+      ],
+      skillPatterns: [
+        'food delivery', 'ghost kitchen', 'cloud kitchen', 'dark kitchen',
+        'restaurant technology', 'pos restaurant', 'kitchen display system',
+        'doordash', 'uber eats', 'grubhub', 'instacart', 'postmates',
+        'menu management', 'food ordering', 'delivery optimization',
+        'food safety tech', 'supply chain food', 'meal kit', 'food automation'
+      ],
+      contextPatterns: [
+        /\b(built|developed|launched)\s+.*\b(food|restaurant|delivery|kitchen)\s+.*\b(platform|system|app|service)\b/i,
+        /\b(optimized|improved)\s+.*\b(delivery|ordering|kitchen|menu)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 45
+    },
+    biotech: {
+      titlePatterns: [
+        /\b(biotech|biotechnology|bio[\s-]?tech)\b/i,
+        /\b(bioinformatics|computational\s+biology)\b/i,
+        /\b(life\s+sciences.*(?:engineer|scientist|developer))\b/i,
+        /\b(genomics|proteomics|drug\s+discovery)\b/i,
+      ],
+      skillPatterns: [
+        'bioinformatics', 'genomics', 'proteomics', 'drug discovery', 'drug development',
+        'clinical trials', 'fda', 'regulatory affairs', 'gmp', 'glp',
+        'crispr', 'gene therapy', 'cell therapy', 'immunotherapy',
+        'molecular biology', 'biochemistry', 'biomarkers', 'sequencing',
+        'python', 'r', 'machine learning', 'data science', 'lab automation'
+      ],
+      contextPatterns: [
+        /\b(developed|discovered|researched)\s+.*\b(drug|therapy|treatment|compound)\b/i,
+        /\b(analyzed|sequenced|studied)\s+.*\b(genome|gene|protein|dna|rna)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 50
+    },
+    medtech: {
+      titlePatterns: [
+        /\b(medtech|med[\s-]?tech|medical\s+technology)\b/i,
+        /\b(medical\s+device.*(?:engineer|designer|developer))\b/i,
+        /\b(biomedical\s+engineer|clinical\s+engineer)\b/i,
+        /\b((?:engineer|developer).*medical\s+device)\b/i,
+      ],
+      skillPatterns: [
+        'medical devices', 'fda 510k', 'fda approval', 'ce marking', 'iso 13485',
+        'design controls', 'risk management', 'iec 62304', 'validation',
+        'embedded systems', 'firmware', 'medical imaging', 'diagnostic',
+        'wearable medical', 'remote patient monitoring', 'telehealth technology',
+        'surgical robotics', 'prosthetics', 'implants', 'sterilization'
+      ],
+      contextPatterns: [
+        /\b(designed|developed|launched)\s+.*\b(medical\s+device|diagnostic|implant|surgical)\b/i,
+        /\b(obtained|achieved)\s+.*\b(fda|ce|510k|clearance|approval)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 50
+    },
+    wealthtech: {
+      titlePatterns: [
+        /\b(wealthtech|wealth[\s-]?tech|wealth\s+technology)\b/i,
+        /\b(robo[\s-]?advisor|digital\s+wealth)\b/i,
+        /\b(investment.*technology|trading\s+platform)\b/i,
+        /\b((?:betterment|wealthfront|robinhood|schwab).*(?:engineer|developer|product))\b/i,
+      ],
+      skillPatterns: [
+        'robo-advisor', 'digital wealth', 'investment platform', 'trading platform',
+        'portfolio management', 'wealth management', 'financial planning software',
+        'betterment', 'wealthfront', 'robinhood', 'personal capital',
+        'rebalancing', 'tax-loss harvesting', 'financial api', 'plaid',
+        'securities', 'brokerage', 'custody', 'clearing', 'sec compliance'
+      ],
+      contextPatterns: [
+        /\b(built|developed)\s+.*\b(investment|wealth|trading|portfolio)\s+.*\b(platform|system|algorithm)\b/i,
+        /\b(managed|processed)\s+.*\$[\d,]+[mMbB]\s*(aum|assets|trades)/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 50
+    },
+    supplychain_tech: {
+      titlePatterns: [
+        /\b(supply\s+chain.*technology|logistics[\s-]?tech|freight[\s-]?tech)\b/i,
+        /\b(supply\s+chain.*(?:engineer|developer|platform))\b/i,
+        /\b((?:flexport|project44|fourkites).*(?:engineer|developer|product))\b/i,
+        /\b(warehouse\s+management\s+system|wms\s+engineer)\b/i,
+      ],
+      skillPatterns: [
+        'supply chain', 'logistics', 'warehouse management', 'wms', 'tms',
+        'transportation management', 'fleet management', 'route optimization',
+        'inventory optimization', 'demand forecasting', 'erp', 'sap', 'oracle scm',
+        'flexport', 'project44', 'fourkites', 'shippo', 'easypost',
+        'tracking', 'visibility', 'freight', 'last mile', 'fulfillment'
+      ],
+      contextPatterns: [
+        /\b(built|developed|implemented)\s+.*\b(supply\s+chain|logistics|warehouse|shipping)\s+.*\b(platform|system|solution)\b/i,
+        /\b(optimized|reduced)\s+.*\b(shipping|delivery|inventory|fulfillment)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 45
+    },
+    constructech: {
+      titlePatterns: [
+        /\b(constructech|construc?tion[\s-]?tech|construction\s+technology)\b/i,
+        /\b(construction.*(?:software|platform|technology))\b/i,
+        /\b(bim.*(?:manager|specialist|engineer))\b/i,
+        /\b((?:procore|autodesk|plangrid).*(?:engineer|developer|specialist))\b/i,
+      ],
+      skillPatterns: [
+        'construction software', 'bim', 'building information modeling', 'revit',
+        'procore', 'plangrid', 'bluebeam', 'autodesk', 'primavera',
+        'project management', 'scheduling', 'cost estimation', 'takeoff',
+        'field management', 'safety software', 'drone inspection', 'reality capture',
+        'prefab', 'modular construction', 'digital twin', 'construction analytics'
+      ],
+      contextPatterns: [
+        /\b(implemented|deployed|managed)\s+.*\b(construction|project|field|site)\s+.*\b(software|technology|platform)\b/i,
+        /\b(digitized|modernized|transformed)\s+.*\b(construction|building|project)\s+.*\b(process|workflow)\b/i,
       ],
       minSkillsForHigh: 3,
       titleWeight: 45
