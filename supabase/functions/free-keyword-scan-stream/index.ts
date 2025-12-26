@@ -111,6 +111,7 @@ const VALID_INDUSTRIES = [
   'data_engineering', 'devrel', 'content_strategy',
   'customer_success', 'revenue_operations', 'growth_marketing',
   'solutions_architecture', 'security_engineering', 'ml_engineering',
+  'business_intelligence', 'platform_engineering',
   'general'
 ];
 
@@ -253,6 +254,8 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'solutions_architecture': 'technology',
   'security_engineering': 'technology',
   'ml_engineering': 'technology',
+  'business_intelligence': 'technology',
+  'platform_engineering': 'technology',
 };
 
 // Industry aliases for normalization
@@ -409,7 +412,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'python developer': 'software_engineering', 'java developer': 'software_engineering',
   
   // Data science aliases
-  'business intelligence analyst': 'data_science', 'bi developer': 'data_science',
+  'business intelligence analyst': 'business_intelligence',
   'data analyst role': 'data_science',
   'ai research': 'ai_ml',
   
@@ -435,7 +438,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'account manager': 'enterprise_sales',
   
   // DevOps/Cloud aliases (non-duplicate)
-  'cloud engineer': 'cloud_engineering', 'platform engineering': 'devops',
+  'cloud engineer': 'cloud_engineering',
   'site reliability': 'devops', 'kubernetes engineer': 'devops', 'docker specialist': 'devops',
   
   // ==================== EXPANDED LEGAL ALIASES ====================
@@ -583,16 +586,15 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'data infrastructure': 'data_engineering', 'data platform': 'data_engineering',
   'etl developer': 'data_engineering', 'etl engineer': 'data_engineering',
   'data pipeline': 'data_engineering', 'big data engineer': 'data_engineering',
-  'analytics engineer': 'data_engineering', 'data warehouse': 'data_engineering',
-  'spark': 'data_engineering', 'airflow': 'data_engineering', 'dbt': 'data_engineering',
-  'snowflake': 'data_engineering', 'databricks': 'data_engineering', 'bigquery': 'data_engineering',
-  'redshift': 'data_engineering', 'kafka': 'data_engineering', 'fivetran': 'data_engineering',
-  'data lake': 'data_engineering', 'data modeling': 'data_engineering',
-  'dimensional modeling': 'data_engineering', 'stream processing': 'data_engineering',
+  'spark': 'data_engineering', 'airflow': 'data_engineering', 'dbt data': 'data_engineering',
+  'databricks': 'data_engineering', 'bigquery data': 'data_engineering',
+  'redshift data': 'data_engineering', 'kafka': 'data_engineering', 'fivetran': 'data_engineering',
+  'data lake': 'data_engineering', 'data modeling de': 'data_engineering',
+  'stream processing': 'data_engineering',
   
   // ==================== DEVREL ALIASES ====================
   'developer relations': 'devrel', 'developer advocacy': 'devrel', 'developer advocate': 'devrel',
-  'devrel': 'devrel', 'developer evangelist': 'devrel', 'developer experience': 'devrel',
+  'devrel': 'devrel', 'developer evangelist': 'devrel',
   'dx engineer': 'devrel', 'community manager tech': 'devrel', 'tech evangelist': 'devrel',
   'sdk development': 'devrel', 'developer onboarding': 'devrel', 'developer community': 'devrel',
   'open source advocate': 'devrel', 'conference speaking': 'devrel', 'tech community': 'devrel',
@@ -674,6 +676,32 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'distributed training': 'ml_engineering', 'experiment tracking': 'ml_engineering',
   'model registry': 'ml_engineering', 'inference optimization': 'ml_engineering',
   'hugging face': 'ml_engineering', 'transformers ml': 'ml_engineering', 'llms': 'ml_engineering',
+  
+  // ==================== BUSINESS INTELLIGENCE ALIASES ====================
+  'business intelligence': 'business_intelligence', 'bi analyst': 'business_intelligence',
+  'bi developer': 'business_intelligence', 'bi engineer': 'business_intelligence',
+  'data visualization': 'business_intelligence', 'reporting analyst': 'business_intelligence',
+  'tableau developer': 'business_intelligence', 'power bi developer': 'business_intelligence',
+  'looker developer': 'business_intelligence', 'analytics engineer': 'business_intelligence',
+  'dashboards': 'business_intelligence', 'kpi reporting': 'business_intelligence',
+  'executive reporting': 'business_intelligence', 'dimensional modeling': 'business_intelligence',
+  'olap': 'business_intelligence', 'data warehouse': 'business_intelligence',
+  'dax': 'business_intelligence', 'qlik': 'business_intelligence', 'qlikview': 'business_intelligence',
+  'qliksense': 'business_intelligence', 'self-service analytics': 'business_intelligence',
+  'ad hoc reporting': 'business_intelligence', 'tableau': 'business_intelligence',
+  'power bi': 'business_intelligence', 'looker': 'business_intelligence',
+  
+  // ==================== PLATFORM ENGINEERING ALIASES ====================
+  'platform engineering': 'platform_engineering', 'platform engineer': 'platform_engineering',
+  'infrastructure engineer': 'platform_engineering', 'developer experience': 'platform_engineering',
+  'devex': 'platform_engineering', 'internal developer platform': 'platform_engineering',
+  'idp': 'platform_engineering', 'developer platform': 'platform_engineering',
+  'backstage': 'platform_engineering', 'golden paths': 'platform_engineering',
+  'self-service infrastructure': 'platform_engineering', 'platform apis': 'platform_engineering',
+  'crossplane': 'platform_engineering', 'developer productivity': 'platform_engineering',
+  'gitops': 'platform_engineering', 'argocd': 'platform_engineering',
+  'helm': 'platform_engineering', 'service mesh': 'platform_engineering',
+  'internal tooling': 'platform_engineering', 'paved roads': 'platform_engineering',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -3529,6 +3557,50 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         /\b(built|deployed|trained)\s+.*\b(model|ml|machine\s+learning|deep\s+learning)\b/i,
         /\b(optimized|improved)\s+.*\b(inference|latency|accuracy|model)\b/i,
         /\b(implemented|developed)\s+.*\b(mlops|pipeline|feature|training)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    business_intelligence: {
+      titlePatterns: [
+        /\b(bi\s+analyst|bi\s+developer|bi\s+engineer)\b/i,
+        /\b(business\s+intelligence\s+analyst|business\s+intelligence\s+developer)\b/i,
+        /\b(reporting\s+analyst|data\s+visualization\s+analyst)\b/i,
+        /\b(analytics\s+engineer|senior\s+bi\s+analyst)\b/i,
+      ],
+      skillPatterns: [
+        'business intelligence', 'tableau', 'power bi', 'data visualization',
+        'sql', 'etl', 'data warehousing', 'looker', 'snowflake', 'dashboards',
+        'kpi reporting', 'data modeling', 'dimensional modeling', 'dax', 'olap',
+        'qlik', 'redshift', 'bigquery', 'dbt', 'data governance',
+        'self-service analytics', 'ad hoc reporting', 'executive reporting'
+      ],
+      contextPatterns: [
+        /\b(built|created|developed)\s+.*\b(dashboard|report|visualization|bi\s+solution)\b/i,
+        /\b(designed|implemented)\s+.*\b(data\s+model|warehouse|etl|pipeline)\b/i,
+        /\b(delivered|provided)\s+.*\b(insights|analytics|reporting|kpis)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    platform_engineering: {
+      titlePatterns: [
+        /\b(platform\s+engineer|infrastructure\s+engineer)\b/i,
+        /\b(developer\s+experience|devex\s+engineer)\b/i,
+        /\b(internal\s+developer\s+platform|idp\s+engineer)\b/i,
+        /\b(senior\s+platform\s+engineer|staff\s+platform\s+engineer)\b/i,
+      ],
+      skillPatterns: [
+        'platform engineering', 'kubernetes', 'developer experience', 'internal developer platform',
+        'infrastructure as code', 'terraform', 'ci/cd', 'gitops', 'argocd', 'helm',
+        'docker', 'aws', 'gcp', 'azure', 'backstage', 'service mesh', 'observability',
+        'golden paths', 'self-service infrastructure', 'platform apis', 'crossplane',
+        'pulumi', 'sre', 'developer productivity'
+      ],
+      contextPatterns: [
+        /\b(built|designed|implemented)\s+.*\b(platform|idp|developer\s+experience|infrastructure)\b/i,
+        /\b(reduced|improved)\s+.*\b(deployment|developer\s+productivity|time\s+to\s+production)\b/i,
+        /\b(enabled|created)\s+.*\b(self-service|golden\s+path|paved\s+road)\b/i,
       ],
       minSkillsForHigh: 4,
       titleWeight: 50
