@@ -116,3 +116,6 @@ verify_jwt = false
 
 [functions.warm-up]
 verify_jwt = false
+
+[functions.generate-career-snapshot]
+verify_jwt = false

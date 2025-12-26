@@ -83,7 +83,7 @@ export function ProductSelectionModal({
     { key: 'fullAnalysis' as ProductId, product: PRODUCTS.fullAnalysis },
     { key: 'premiumPackage' as ProductId, product: PRODUCTS.premiumPackage },
     { key: 'coverLetter' as ProductId, product: PRODUCTS.coverLetter },
-    { key: 'careerBundle' as ProductId, product: PRODUCTS.careerBundle },
+    { key: 'careerSnapshot' as ProductId, product: PRODUCTS.careerSnapshot },
   ];
 
   const getSelectedProductName = () => {

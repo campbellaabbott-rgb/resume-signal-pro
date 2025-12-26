@@ -242,6 +242,10 @@ async function triggerProductDelivery(
       body.tone = 'professional';
     } else if (productType === 'premium_package') {
       endpoint = 'generate-premium-package';
+    } else if (productType === 'career_snapshot') {
+      endpoint = 'generate-career-snapshot';
+    } else if (productType === 'ats_defense') {
+      endpoint = 'generate-ats-defense';
     } else {
       throw new Error(`Unknown product type: ${productType}`);
     }

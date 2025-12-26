@@ -8,13 +8,13 @@ import { useCurrency } from "@/hooks/use-currency";
 const featuredProductKeys: { key: ProductId; highlight?: boolean }[] = [
   { key: 'premiumPackage', highlight: false },
   { key: 'atsDefense', highlight: true },
-  { key: 'careerBundle', highlight: false },
+  { key: 'careerSnapshot', highlight: false },
 ];
 
 const productIcons: Record<string, React.ElementType> = {
   premiumPackage: Crown,
   atsDefense: ShieldCheck,
-  careerBundle: Package,
+  careerSnapshot: Package,
 };
 
 export function MiniPricingCards() {
