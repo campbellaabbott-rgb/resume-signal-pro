@@ -11,6 +11,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { IndustryConfidenceIndicator } from "./IndustryConfidenceIndicator";
 
 // Resume Type Detection Types
 export type ResumeType = 'chronological' | 'executive_summary' | 'ats_optimized' | 'outreach_referral' | 'hybrid';
@@ -82,6 +83,7 @@ interface EnhancedAnalysisDisplayProps {
   industryDetection?: IndustryDetection;
   industry?: string;
   candidateName?: string | null;
+  onIndustryChange?: (newIndustry: string) => void;
 }
 
 // Mobile-friendly tooltip
@@ -139,42 +141,12 @@ export function EnhancedAnalysisDisplay({
   contentLocations,
   industryDetection,
   industry,
-  candidateName
+  candidateName,
+  onIndustryChange
 }: EnhancedAnalysisDisplayProps) {
-  if (!dualScore && !resumeType && !usageRecommendations && !industryDetection) {
+  if (!dualScore && !resumeType && !usageRecommendations && !industryDetection && !industry) {
     return null;
   }
-
-  // Format industry name for display
-  const formatIndustryName = (ind: string) => {
-    const industryLabels: Record<string, string> = {
-      technology: 'Technology',
-      sales: 'Sales',
-      marketing: 'Marketing',
-      finance: 'Finance',
-      healthcare: 'Healthcare',
-      legal: 'Legal',
-      consulting: 'Consulting',
-      hr: 'Human Resources',
-      engineering: 'Engineering',
-      education: 'Education',
-      creative: 'Creative/Design',
-      retail: 'Retail',
-      hospitality: 'Hospitality',
-      manufacturing: 'Manufacturing',
-      government: 'Government',
-      general: 'General'
-    };
-    return industryLabels[ind] || ind.charAt(0).toUpperCase() + ind.slice(1);
-  };
-
-  const getConfidenceColor = (confidence: 'high' | 'medium' | 'low') => {
-    switch (confidence) {
-      case 'high': return 'bg-success/20 text-success border-success/30';
-      case 'medium': return 'bg-warning/20 text-warning border-warning/30';
-      case 'low': return 'bg-muted text-muted-foreground border-border';
-    }
-  };
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-success";
@@ -244,47 +216,13 @@ export function EnhancedAnalysisDisplay({
 
   return (
     <div className="space-y-4 mb-6">
-      {/* Industry Detection Banner */}
+      {/* Industry Detection with Confidence and Correction */}
       {(industryDetection || industry) && (
-        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-3">
-              <Briefcase className="w-5 h-5 text-primary" />
-              <div>
-                <span className="text-sm text-muted-foreground">Detected Industry: </span>
-                <span className="font-bold text-foreground text-lg">
-                  {formatIndustryName(industryDetection?.detected || industry || 'general')}
-                </span>
-              </div>
-            </div>
-            {industryDetection && (
-              <div className="flex items-center gap-2">
-                <span className={cn(
-                  "text-xs px-2 py-1 rounded-full font-medium border",
-                  getConfidenceColor(industryDetection.confidence)
-                )}>
-                  {industryDetection.confidence === 'high' ? '✓ High Confidence' :
-                   industryDetection.confidence === 'medium' ? '◐ Medium Confidence' :
-                   '○ Low Confidence'}
-                </span>
-                {industryDetection.signals && industryDetection.signals.length > 0 && (
-                  <InfoTooltip 
-                    title="How We Detected This" 
-                    description={`Based on: ${industryDetection.signals.slice(0, 3).join('; ')}`}
-                  />
-                )}
-              </div>
-            )}
-          </div>
-          {industryDetection && industryDetection.signals && industryDetection.signals.length > 0 && (
-            <div className="mt-2 pt-2 border-t border-border/30">
-              <p className="text-xs text-muted-foreground">
-                <span className="font-medium">Signals: </span>
-                {industryDetection.signals.slice(0, 3).join(' • ')}
-              </p>
-            </div>
-          )}
-        </div>
+        <IndustryConfidenceIndicator
+          industry={industryDetection?.detected || industry || 'general'}
+          industryDetection={industryDetection}
+          onIndustryChange={onIndustryChange}
+        />
       )}
 
       {/* Resume Type & Calibrated Language Header */}
