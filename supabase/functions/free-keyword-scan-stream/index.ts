@@ -368,9 +368,135 @@ interface IndustryDetectionResult {
   matchedContextPatterns?: boolean;
 }
 
+// ==================== FUZZY TITLE MATCHING ====================
+// Normalize common abbreviations and variations in job titles
+function normalizeResumeText(text: string): string {
+  const abbreviations: [RegExp, string][] = [
+    // Title abbreviations
+    [/\bsr\.?\s+/gi, 'senior '],
+    [/\bjr\.?\s+/gi, 'junior '],
+    [/\bdev\b/gi, 'developer'],
+    [/\beng\b/gi, 'engineer'],
+    [/\bmgr\b/gi, 'manager'],
+    [/\bdir\b/gi, 'director'],
+    [/\bvp\b/gi, 'vice president'],
+    [/\bsvp\b/gi, 'senior vice president'],
+    [/\bevp\b/gi, 'executive vice president'],
+    [/\bexec\b/gi, 'executive'],
+    [/\bassoc\b/gi, 'associate'],
+    [/\basst\b/gi, 'assistant'],
+    [/\badmin\b/gi, 'administrator'],
+    [/\bops\b/gi, 'operations'],
+    [/\btech\b/gi, 'technical'],
+    [/\bsw\s+eng/gi, 'software engineer'],
+    [/\bse\s+/gi, 'software engineer '],
+    [/\bswe\b/gi, 'software engineer'],
+    [/\bpm\b/gi, 'product manager'],
+    [/\bux\b/gi, 'user experience'],
+    [/\bui\b/gi, 'user interface'],
+    [/\bqa\b/gi, 'quality assurance'],
+    [/\bhr\b/gi, 'human resources'],
+    [/\bpr\b/gi, 'public relations'],
+    [/\bbd\b/gi, 'business development'],
+    [/\bsdr\b/gi, 'sales development representative'],
+    [/\bbdr\b/gi, 'business development representative'],
+    [/\bae\b/gi, 'account executive'],
+    [/\bcsm\b/gi, 'customer success manager'],
+    [/\bcso\b/gi, 'chief security officer'],
+    [/\bcfo\b/gi, 'chief financial officer'],
+    [/\bceo\b/gi, 'chief executive officer'],
+    [/\bcoo\b/gi, 'chief operating officer'],
+    [/\bcto\b/gi, 'chief technology officer'],
+    [/\bcmo\b/gi, 'chief marketing officer'],
+    [/\bcpo\b/gi, 'chief product officer'],
+    [/\bcro\b/gi, 'chief revenue officer'],
+    [/\bchro\b/gi, 'chief human resources officer'],
+    // Industry abbreviations
+    [/\bml\b/gi, 'machine learning'],
+    [/\bai\b/gi, 'artificial intelligence'],
+    [/\bnlp\b/gi, 'natural language processing'],
+    [/\biot\b/gi, 'internet of things'],
+    [/\bsaas\b/gi, 'software as a service'],
+    [/\bb2b\b/gi, 'business to business'],
+    [/\bb2c\b/gi, 'business to consumer'],
+    [/\bcrm\b/gi, 'customer relationship management'],
+    [/\berp\b/gi, 'enterprise resource planning'],
+  ];
+  
+  let normalized = text;
+  for (const [pattern, replacement] of abbreviations) {
+    normalized = normalized.replace(pattern, replacement);
+  }
+  return normalized;
+}
+
+// ==================== KEYWORD DENSITY SCORING ====================
+// Calculate keyword density for each industry to catch edge cases
+function calculateKeywordDensity(text: string): Record<string, number> {
+  const industryKeywords: Record<string, string[]> = {
+    technology: ['software', 'code', 'programming', 'app', 'application', 'website', 'database', 'algorithm', 'api', 'cloud', 'server', 'data', 'system', 'platform', 'tech', 'digital', 'computer', 'network', 'mobile', 'web'],
+    sales: ['sales', 'quota', 'revenue', 'pipeline', 'leads', 'prospects', 'deals', 'closing', 'commission', 'territory', 'account', 'customer', 'client', 'negotiation', 'contract', 'pitch', 'demo', 'opportunity'],
+    marketing: ['marketing', 'campaign', 'brand', 'content', 'seo', 'social media', 'advertising', 'creative', 'audience', 'engagement', 'awareness', 'leads', 'conversion', 'analytics', 'traffic', 'email', 'digital'],
+    finance: ['financial', 'accounting', 'budget', 'revenue', 'profit', 'investment', 'audit', 'tax', 'compliance', 'banking', 'portfolio', 'assets', 'equity', 'forecast', 'reporting', 'statements'],
+    healthcare: ['patient', 'clinical', 'medical', 'hospital', 'healthcare', 'nursing', 'diagnosis', 'treatment', 'pharmacy', 'health', 'care', 'physician', 'doctor', 'nurse', 'therapy', 'wellness'],
+    hr: ['recruiting', 'hiring', 'talent', 'employee', 'workforce', 'benefits', 'compensation', 'training', 'performance', 'onboarding', 'culture', 'engagement', 'hr', 'human resources', 'staffing'],
+    legal: ['legal', 'law', 'attorney', 'lawyer', 'litigation', 'contract', 'compliance', 'regulatory', 'court', 'case', 'counsel', 'patent', 'trademark', 'intellectual property'],
+    education: ['teaching', 'curriculum', 'student', 'classroom', 'education', 'learning', 'school', 'university', 'instructor', 'professor', 'academic', 'training', 'course'],
+    engineering: ['engineering', 'design', 'manufacturing', 'cad', 'mechanical', 'electrical', 'civil', 'structural', 'prototype', 'testing', 'specifications'],
+    consulting: ['consulting', 'advisory', 'strategy', 'client', 'engagement', 'stakeholder', 'recommendation', 'analysis', 'project', 'deliverable'],
+    creative: ['design', 'creative', 'visual', 'brand', 'art', 'graphic', 'photography', 'video', 'animation', 'illustration', 'layout', 'typography'],
+    retail: ['retail', 'store', 'merchandise', 'inventory', 'sales floor', 'customer service', 'pos', 'shopping', 'e-commerce', 'products'],
+    hospitality: ['hotel', 'restaurant', 'hospitality', 'guest', 'service', 'food', 'beverage', 'catering', 'event', 'tourism', 'travel'],
+    manufacturing: ['manufacturing', 'production', 'factory', 'assembly', 'quality', 'lean', 'supply chain', 'operations', 'process', 'equipment'],
+    government: ['government', 'federal', 'state', 'public', 'policy', 'regulation', 'agency', 'administration', 'civic', 'municipal'],
+    nonprofit: ['nonprofit', 'charity', 'donation', 'fundraising', 'volunteer', 'mission', 'grant', 'community', 'advocacy', 'impact'],
+  };
+  
+  const scores: Record<string, number> = {};
+  for (const [industry, keywords] of Object.entries(industryKeywords)) {
+    let count = 0;
+    for (const keyword of keywords) {
+      const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+      const matches = text.match(regex);
+      if (matches) count += matches.length;
+    }
+    scores[industry] = count;
+  }
+  return scores;
+}
+
+// Get best industry from keyword density scores
+function getBestIndustryFromDensity(scores: Record<string, number>): { 
+  industry: string; 
+  score: number; 
+  alternatives: { industry: string; score: number }[];
+} | null {
+  const sorted = Object.entries(scores)
+    .filter(([_, count]) => count >= 3) // Minimum 3 keyword matches
+    .sort((a, b) => b[1] - a[1]);
+  
+  if (sorted.length === 0) return null;
+  
+  const [topIndustry, topScore] = sorted[0];
+  const alternatives = sorted.slice(1, 4).map(([industry, score]) => ({ industry, score }));
+  
+  return {
+    industry: topIndustry,
+    score: topScore,
+    alternatives
+  };
+}
+
 function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
-  const text = resumeText.toLowerCase();
+  // Normalize text with abbreviation expansion for fuzzy matching
+  const normalizedText = normalizeResumeText(resumeText);
+  const text = normalizedText.toLowerCase();
   const signals: string[] = [];
+  
+  // ==================== KEYWORD DENSITY SCORING ====================
+  // Count industry-specific keywords for fallback detection
+  const keywordDensityScores = calculateKeywordDensity(text);
+  
   
   // Define industry patterns with weights - expanded with sub-industries and new industries
   const industryPatterns: Record<string, { 
@@ -2226,10 +2352,29 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
   console.log(`[INDUSTRY-DETECT] Top 5 scores: ${JSON.stringify(industryScores.slice(0, 5).map(s => ({ industry: s.industry, score: s.score })))}`);
   
   if (industryScores.length === 0) {
+    // Fallback to keyword density scoring when no patterns match
+    console.log(`[INDUSTRY-DETECT] No pattern matches, using keyword density fallback`);
+    const densityFallback = getBestIndustryFromDensity(keywordDensityScores);
+    if (densityFallback) {
+      console.log(`[INDUSTRY-DETECT] Keyword density fallback: ${densityFallback.industry} (density: ${densityFallback.score})`);
+      return { 
+        industry: densityFallback.industry, 
+        confidence: 'low', 
+        signals: [`Keyword density: ${densityFallback.industry} (${densityFallback.score} keywords)`], 
+        score: densityFallback.score,
+        detectionSource: 'server_low',
+        alternativeIndustries: densityFallback.alternatives,
+        matchedTitlePatterns: [],
+        matchedSkillCount: 0,
+        matchedContextPatterns: false
+      };
+    }
+    
+    // Absolute fallback - should rarely happen
     return { 
       industry: 'general', 
       confidence: 'low', 
-      signals: ['No clear industry signals detected'], 
+      signals: ['No clear industry signals detected - requires AI'], 
       score: 0,
       detectionSource: 'server_low',
       alternativeIndustries: [],
@@ -2288,6 +2433,24 @@ function hybridIndustryDetection(
 ): IndustryDetectionResult {
   const normalizedAI = normalizeIndustry(aiSuggested);
   
+  // CRITICAL: Never return "general" if AI has a specific suggestion
+  // This ensures 100% detection rate
+  if (serverResult.industry === 'general' && normalizedAI !== 'general') {
+    console.log(`[INDUSTRY-HYBRID] Server returned general, using AI mandatory fallback: ${normalizedAI}`);
+    return {
+      industry: normalizedAI,
+      parentIndustry: INDUSTRY_PARENTS[normalizedAI],
+      confidence: 'low',
+      signals: [`AI detected (mandatory fallback): ${normalizedAI}`],
+      score: serverResult.score,
+      detectionSource: 'ai_fallback',
+      alternativeIndustries: serverResult.alternativeIndustries,
+      matchedTitlePatterns: serverResult.matchedTitlePatterns,
+      matchedSkillCount: serverResult.matchedSkillCount,
+      matchedContextPatterns: serverResult.matchedContextPatterns
+    };
+  }
+  
   // If server has high confidence, trust it
   if (serverResult.confidence === 'high') {
     console.log(`[INDUSTRY-HYBRID] Using server result (high confidence): ${serverResult.industry}`);
@@ -2342,6 +2505,20 @@ function hybridIndustryDetection(
       matchedTitlePatterns: serverResult.matchedTitlePatterns,
       matchedSkillCount: serverResult.matchedSkillCount,
       matchedContextPatterns: serverResult.matchedContextPatterns
+    };
+  }
+  
+  // Final fallback: if both server and AI return general, use the highest keyword density
+  // This should be extremely rare
+  if (serverResult.industry === 'general' && normalizedAI === 'general') {
+    console.log(`[INDUSTRY-HYBRID] Both server and AI returned general - this needs attention`);
+    // Return technology as a safe fallback for most resumes
+    return {
+      ...serverResult,
+      industry: 'technology', // Most common fallback
+      confidence: 'low',
+      signals: [...serverResult.signals, 'Default fallback: technology (no strong signals)'],
+      detectionSource: 'server_low'
     };
   }
   
