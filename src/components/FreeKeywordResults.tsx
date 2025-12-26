@@ -1364,6 +1364,8 @@ export function FreeKeywordResults({
         industry={effectiveIndustry}
         candidateName={candidateName}
         onIndustryChange={handleIndustryChange}
+        resumeTextLength={resumeText?.length}
+        visitorId={localStorage.getItem('ab_visitor_id') || undefined}
       />
 
       {/* Returning User Insights - shown for users who have scanned before */}

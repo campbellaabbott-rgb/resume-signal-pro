@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { INDUSTRY_KEYWORDS } from "@/config/industry-keywords";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface IndustryDetectionData {
   detected: string;
@@ -25,6 +26,8 @@ interface IndustryConfidenceIndicatorProps {
   industryDetection?: IndustryDetectionData;
   onIndustryChange?: (newIndustry: string) => void;
   className?: string;
+  resumeTextLength?: number;
+  visitorId?: string;
 }
 
 // Format industry name for display
@@ -142,7 +145,9 @@ export function IndustryConfidenceIndicator({
   industry,
   industryDetection,
   onIndustryChange,
-  className
+  className,
+  resumeTextLength,
+  visitorId
 }: IndustryConfidenceIndicatorProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showCorrection, setShowCorrection] = useState(false);
@@ -155,7 +160,24 @@ export function IndustryConfidenceIndicator({
   const config = getConfidenceConfig(confidence);
   const availableIndustries = getAvailableIndustries();
   
-  const handleCorrection = (newIndustry: string) => {
+  const handleCorrection = async (newIndustry: string) => {
+    // Log the correction for improving detection algorithm
+    try {
+      await supabase.rpc('log_industry_correction', {
+        p_original_industry: industry,
+        p_corrected_industry: newIndustry,
+        p_original_confidence: confidence,
+        p_detection_source: industryDetection ? 'server' : 'fallback',
+        p_resume_text_length: resumeTextLength || null,
+        p_server_signals: signals.length > 0 ? signals : null,
+        p_ai_suggested_industry: aiSuggested || null,
+        p_visitor_id: visitorId || null
+      });
+      console.log('[IndustryCorrection] Logged correction:', industry, '->', newIndustry);
+    } catch (err) {
+      console.error('[IndustryCorrection] Failed to log:', err);
+    }
+    
     setSelectedIndustry(newIndustry);
     onIndustryChange?.(newIndustry);
     setShowCorrection(false);
