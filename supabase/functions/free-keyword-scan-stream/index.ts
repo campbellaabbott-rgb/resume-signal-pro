@@ -116,6 +116,7 @@ const VALID_INDUSTRIES = [
   'technical_program_management', 'cloud_security', 'data_privacy',
   'sales_operations', 'channel_sales', 'strategic_accounts',
   'performance_marketing', 'influencer_marketing', 'marketing_analytics',
+  'private_equity', 'venture_capital', 'treasury_management',
   'general'
 ];
 
@@ -272,6 +273,9 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'performance_marketing': 'marketing',
   'influencer_marketing': 'marketing',
   'marketing_analytics': 'marketing',
+  'private_equity': 'finance',
+  'venture_capital': 'finance',
+  'treasury_management': 'finance',
 };
 
 // Industry aliases for normalization
@@ -447,7 +451,6 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   
   // Finance aliases
   'financial analyst': 'finance', 'equity research': 'investment_banking', 'm&a analyst': 'investment_banking',
-  'private equity': 'investment_banking', 'venture capital': 'investment_banking',
   'wealth management': 'financial_planning', 'cfp': 'financial_planning',
   
   // Sales aliases (non-duplicate)
@@ -855,6 +858,39 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'marketing bi': 'marketing_analytics', 'marketing dashboards': 'marketing_analytics',
   'amplitude analyst': 'marketing_analytics', 'mixpanel analyst': 'marketing_analytics',
   'segment specialist': 'marketing_analytics', 'adobe analytics specialist': 'marketing_analytics',
+  
+  // ==================== PRIVATE EQUITY ALIASES ====================
+  'private equity': 'private_equity', 'pe associate': 'private_equity',
+  'private equity analyst': 'private_equity', 'private equity associate': 'private_equity',
+  'pe analyst': 'private_equity', 'buyout': 'private_equity',
+  'leveraged buyout': 'private_equity', 'lbo analyst': 'private_equity',
+  'growth equity': 'private_equity', 'growth equity associate': 'private_equity',
+  'pe principal': 'private_equity', 'pe vice president': 'private_equity',
+  'pe portfolio': 'private_equity', 'portfolio operations': 'private_equity',
+  'deal sourcing pe': 'private_equity', 'investment professional': 'private_equity',
+  'fund management': 'private_equity', 'pitchbook analyst': 'private_equity',
+  
+  // ==================== VENTURE CAPITAL ALIASES ====================
+  'venture capital': 'venture_capital', 'vc analyst': 'venture_capital',
+  'vc associate': 'venture_capital', 'venture capital associate': 'venture_capital',
+  'venture capital analyst': 'venture_capital', 'vc principal': 'venture_capital',
+  'startup investor': 'venture_capital', 'seed investor': 'venture_capital',
+  'early stage investor': 'venture_capital', 'series a investor': 'venture_capital',
+  'venture partner': 'venture_capital', 'partner vc': 'venture_capital',
+  'deal sourcing vc': 'venture_capital', 'startup ecosystem': 'venture_capital',
+  'founder relations': 'venture_capital', 'portfolio support': 'venture_capital',
+  'crunchbase analyst': 'venture_capital', 'angellist': 'venture_capital',
+  
+  // ==================== TREASURY MANAGEMENT ALIASES ====================
+  'treasury management': 'treasury_management', 'treasury manager': 'treasury_management',
+  'treasury analyst': 'treasury_management', 'corporate treasury': 'treasury_management',
+  'cash management': 'treasury_management', 'cash manager': 'treasury_management',
+  'liquidity management': 'treasury_management', 'liquidity analyst': 'treasury_management',
+  'treasury operations': 'treasury_management', 'fx treasury': 'treasury_management',
+  'treasury director': 'treasury_management', 'vp treasury': 'treasury_management',
+  'head of treasury': 'treasury_management', 'ctp': 'treasury_management',
+  'kyriba': 'treasury_management', 'sap treasury': 'treasury_management',
+  'cash forecasting': 'treasury_management', 'working capital management': 'treasury_management',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -4029,6 +4065,74 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         /\b(built|created|developed)\s+.*\b(dashboard|report|analytics|attribution)\b/i,
         /\b(analyzed|measured|tracked)\s+.*\b(campaign|marketing|funnel|conversion)\b/i,
         /\b(implemented|deployed)\s+.*\b(analytics|tracking|attribution|segment)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    private_equity: {
+      titlePatterns: [
+        /\b(private\s+equity\s+analyst|pe\s+analyst)\b/i,
+        /\b(private\s+equity\s+associate|pe\s+associate)\b/i,
+        /\b(pe\s+principal|pe\s+vice\s+president)\b/i,
+        /\b(buyout\s+analyst|growth\s+equity)\b/i,
+      ],
+      skillPatterns: [
+        'private equity', 'lbo modeling', 'due diligence', 'financial modeling',
+        'valuation', 'deal sourcing', 'portfolio management', 'value creation',
+        'm&a', 'dcf analysis', 'excel', 'capiq', 'pitchbook', 'comparable analysis',
+        'investment thesis', 'exit strategy', 'debt financing', 'management buyout',
+        'ebitda', 'irr', 'moic', 'fund performance', 'lp relations', 'investment committee'
+      ],
+      contextPatterns: [
+        /\b(sourced|executed|closed)\s+.*\b(deal|transaction|investment|acquisition)\b/i,
+        /\b(led|conducted)\s+.*\b(due\s+diligence|valuation|lbo\s+model)\b/i,
+        /\b(managed|supported)\s+.*\b(portfolio|fund|investment)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    venture_capital: {
+      titlePatterns: [
+        /\b(venture\s+capital\s+analyst|vc\s+analyst)\b/i,
+        /\b(venture\s+capital\s+associate|vc\s+associate)\b/i,
+        /\b(vc\s+principal|venture\s+partner)\b/i,
+        /\b(startup\s+investor|seed\s+investor)\b/i,
+      ],
+      skillPatterns: [
+        'venture capital', 'deal sourcing', 'due diligence', 'startup investing',
+        'term sheets', 'cap table', 'portfolio support', 'seed stage', 'series a',
+        'series b', 'founder relations', 'market sizing', 'tam sam som',
+        'investment memo', 'pitch deck review', 'startup ecosystem', 'angellist',
+        'crunchbase', 'pitchbook', 'syndication', 'pro rata rights', 'board seat',
+        'valuation', 'exit analysis'
+      ],
+      contextPatterns: [
+        /\b(sourced|evaluated|invested\s+in)\s+.*\b(startup|company|deal)\b/i,
+        /\b(led|participated\s+in)\s+.*\b(seed|series\s+a|series\s+b|round)\b/i,
+        /\b(supported|advised)\s+.*\b(portfolio|founder|startup)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    treasury_management: {
+      titlePatterns: [
+        /\b(treasury\s+manager|treasury\s+analyst)\b/i,
+        /\b(corporate\s+treasury|treasury\s+director)\b/i,
+        /\b(head\s+of\s+treasury|vp\s+treasury)\b/i,
+        /\b(cash\s+manager|liquidity\s+manager)\b/i,
+      ],
+      skillPatterns: [
+        'treasury management', 'cash management', 'liquidity management', 'fx hedging',
+        'interest rate risk', 'cash forecasting', 'working capital', 'bank relationships',
+        'debt management', 'investment policy', 'treasury workstation', 'kyriba',
+        'sap treasury', 'swift', 'letters of credit', 'payment processing',
+        'intercompany loans', 'cash pooling', 'netting', 'derivatives',
+        'sox compliance', 'bank account management', 'ctp', 'money market'
+      ],
+      contextPatterns: [
+        /\b(managed|optimized)\s+.*\b(cash|liquidity|treasury|working\s+capital)\b/i,
+        /\b(implemented|executed)\s+.*\b(hedging|fx|interest\s+rate)\s+strategy/i,
+        /\b(maintained|built)\s+.*\b(bank\s+relationship|credit\s+facility)\b/i,
       ],
       minSkillsForHigh: 4,
       titleWeight: 50
