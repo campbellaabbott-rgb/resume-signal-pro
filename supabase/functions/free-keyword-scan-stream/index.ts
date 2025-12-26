@@ -720,6 +720,8 @@ serve(async (req) => {
       // Build prompts with multilingual support and accuracy improvements
       const systemPrompt = `Expert ATS resume analyst. Respond in resume's language. All fields in that language.
 
+CRITICAL: READ THE ENTIRE RESUME CAREFULLY before making claims about missing content.
+
 CORE RULES:
 1. EXPERIENCE YEARS: Find EARLIEST job date → calculate to 2025. ALL roles count (consulting, sales, freelance). Example: 2015→present = 10 years.
 2. INDUSTRY DETECTION: Prioritize JOB FUNCTION over product domain. "Software Sales", "SaaS Sales", "Enterprise Sales" = "sales" NOT "technology". "Sales Engineer" = "sales". Pure engineering/dev roles (Software Engineer, Developer, Data Scientist) = "technology". Account Executive/BDR/SDR = "sales". Valid: technology, healthcare, finance, legal, sales, marketing, education, engineering, creative, hr, consulting, retail, hospitality, manufacturing, government, general
@@ -733,11 +735,31 @@ TENURE RULES (critical for sales/BD roles):
 - Logical career progression (e.g., startup → scale-up → enterprise) = strength, not weakness.
 - Promotions or "first sales hire" roles explain short tenures.
 
-QUOTA/METRICS RULES:
-- SEARCH the resume text for quota language: "exceeded quota", "surpassed quota", "% of target", "attainment", "revenue generated", "$X ARR".
-- If quota metrics EXIST but aren't formatted clearly → flag as "Presentation Issue: Quota data present but could be formatted more clearly with specific percentages/numbers"
-- Only flag "Missing Quota Data" if NO revenue/quota language exists at all.
-- "Surpassed quota 2x" or "120% attainment" = quota data IS present.
+QUOTA/METRICS DETECTION (CRITICAL - avoid false positives):
+BEFORE flagging "missing quota" or "missing metrics", SEARCH for these patterns:
+- "exceeded quota", "surpassed quota", "% of target", "% attainment", "quota attainment"
+- "X% of goal", "2x", "3x", "120%", "100%+", "over quota"
+- Dollar amounts with context: "$130K deal", "$1M ARR", "$500K pipeline"
+- Growth metrics: "grew revenue", "increased sales", "expanded accounts"
+- Comparisons: "vs goal", "above target", "beat forecast"
+
+If ANY quota/revenue metrics exist → resume HAS quota data. Do NOT flag as missing.
+Only flag "Add specific quota percentages" if metrics exist but lack specificity (e.g., "exceeded goals" without numbers).
+Only flag "Missing Quota Data" if ZERO revenue/quota language exists anywhere.
+
+CONTACT INFO DETECTION (CRITICAL - avoid false positives):
+BEFORE flagging "missing contact info", CHECK for:
+- Email addresses, phone numbers, LinkedIn URLs, city/state, name at top
+- If 2+ of these exist, contact info is PRESENT. Do NOT flag.
+- Only flag if genuinely missing (e.g., no name, no email, no phone, no location).
+
+FORMAT GRADING (nuanced, not alarmist):
+- Grade A: Clean single-column, standard sections, bullet points, chronological experience
+- Grade B: Minor issues (unusual section names, some formatting inconsistency) - still ATS-readable
+- Grade C: Moderate issues (functional format, missing standard sections, but parseable)
+- Grade D: Significant issues (tables/columns, graphics, non-standard format that may cause parsing errors)
+- IMPORTANT: "Tailored Experience Highlights" section is FINE if chronological experience also exists
+- If only highlight-style experience (no dates/companies): note as "Consider adding chronological experience section" not a D grade
 
 MESSAGING ACCURACY (critical):
 - NEVER say "will be filtered out" or "at risk of being filtered" - ATS filtering only applies to job portal uploads.
@@ -745,17 +767,17 @@ MESSAGING ACCURACY (critical):
 - For format grades: D grade means ATS may "classify as incomplete or down-rank" NOT "scramble" the content.
 - Format issues cause: classification errors, reduced ranking, sometimes auto-rejection - NOT data scrambling.
 - Frame as "ATS portal readiness" not universal job search risk.
-- Always note: "This analysis applies primarily to ATS-based job portal applications. Direct outreach, referrals, and recruiter requests bypass these systems."
 
 SCORING CONTEXT:
-- Scores = ATS screening readiness for job portal uploads, NOT overall resume quality or career success
-- Use "lower visibility in ATS systems" not "will be filtered" or "will be rejected"
-- Every flag must explain WHY it matters AND when it applies
-- Label clearly: "ATS portal concern" vs "Recruiter readability note"
+- Scores are DIRECTIONAL SIGNALS for ATS optimization, not pass/fail metrics
+- A score of 65 vs 75 doesn't mean rejection - it means room for optimization
+- Use "could improve ATS visibility" not "will be filtered" or "will be rejected"
+- Every flag must explain WHY it matters AND when it applies (portal vs direct outreach)
+- Be specific about what's ACTUALLY missing vs what could be ENHANCED
 
-BEFORE ANALYSIS: Extract name → find earliest job date → calculate total years → assess seniority → extract titles → check education/certs → scan skills → determine industry.
+BEFORE ANALYSIS: Extract name → find earliest job date → calculate total years → assess seniority → SCAN FOR EXISTING METRICS/QUOTA DATA → check contact info → extract titles → check education/certs → scan skills → determine industry.
 
-OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywords, red flags. Address candidate by name.`;
+OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywords, red flags. Address candidate by name. Be accurate - don't flag content that exists.`;
 
       const userPrompt = hasJobDescription 
         ? `Analyze this resume for the target job:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>\n\n<job_description>\n${truncatedJobDescription}\n</job_description>`
@@ -999,19 +1021,49 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         bulletImpactScore: computedBulletImpact,
         industryBenchmark: computedBenchmark,
         // Trim arrays and filter false-positive red flags
-        redFlags: (analysis.redFlags || []).filter((flag: { issue?: string }) => {
-          // Only flag "missing contact info" if 2+ elements are actually missing
+        redFlags: (analysis.redFlags || []).filter((flag: { issue?: string; impact?: string }) => {
           const issue = (flag.issue || '').toLowerCase();
-          if (issue.includes('contact') || issue.includes('email') || issue.includes('phone')) {
-            // Check resume for contact elements
+          const impact = (flag.impact || '').toLowerCase();
+          const combined = issue + ' ' + impact;
+          
+          // Filter 1: Only flag "missing contact info" if 2+ elements are actually missing
+          if (combined.includes('contact') || combined.includes('email') || combined.includes('phone') || combined.includes('missing') && combined.includes('information')) {
             const hasEmail = /@[\w\.-]+\.\w+/.test(resumeText);
             const hasPhone = /\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/.test(resumeText);
             const hasLinkedIn = /linkedin\.com|linkedin/i.test(resumeText);
             const hasLocation = /\b(city|state|[A-Z][a-z]+,\s*[A-Z]{2}|\d{5})\b/i.test(resumeText);
             const contactCount = [hasEmail, hasPhone, hasLinkedIn, hasLocation].filter(Boolean).length;
             // Only show as red flag if 2+ are missing (i.e., only 0-1 present)
-            return contactCount <= 1;
+            if (contactCount >= 2) return false;
           }
+          
+          // Filter 2: Don't flag "missing quota/metrics" if resume has clear quota language
+          if (combined.includes('quota') || combined.includes('metric') || combined.includes('quantif') || combined.includes('number') || combined.includes('revenue') && combined.includes('missing')) {
+            const quotaPatterns = [
+              /\b\d{2,3}%\s*(of|attainment|quota|goal|target)/i,
+              /\b(exceeded|surpassed|beat|over)\s*(quota|goal|target)/i,
+              /\b[2-9]x\b|\b\d+\.\d+x\b/i, // 2x, 3x, 1.5x, etc.
+              /\$\d{2,}[,\d]*\s*(arr|mrr|deal|revenue|pipeline|contract)/i,
+              /\b(100|1[0-9]{2}|2[0-9]{2})\s*%\s*(of|quota|attainment)/i, // 100%, 120%, 200% of quota
+              /quota.*\d+%|\d+%.*quota/i,
+              /attainment.*\d+%|\d+%.*attainment/i,
+            ];
+            const hasQuotaLanguage = quotaPatterns.some(pattern => pattern.test(resumeText));
+            if (hasQuotaLanguage) return false;
+          }
+          
+          // Filter 3: Don't flag normal sales tenure (1.5-2.5 years) as job hopping
+          if (combined.includes('tenure') || combined.includes('job hop') || combined.includes('short stint')) {
+            // Check if this is a sales role
+            const isSalesRole = /\b(sales|account\s+executive|ae|bdr|sdr|business\s+development)/i.test(resumeText);
+            if (isSalesRole) {
+              // In sales, 1.5-2.5 year tenure is normal, only flag if clearly < 1 year average
+              const tenurePattern = /\b(20\d{2}|19\d{2})\s*[-–—]\s*(20\d{2}|19\d{2}|present|current)/gi;
+              const matches = resumeText.match(tenurePattern) || [];
+              if (matches.length <= 3) return false; // Not enough data to claim job hopping
+            }
+          }
+          
           return true;
         }).slice(0, 3),
         keywords: (analysis.keywords || []).slice(0, 6),
