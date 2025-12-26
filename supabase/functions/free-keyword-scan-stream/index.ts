@@ -6627,121 +6627,192 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         ? `Analyze this ${resumeType.label} for the target job:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>\n\n<job_description>\n${truncatedJobDescription}\n</job_description>`
         : `Analyze this ${resumeType.label}:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>`;
 
-      // Call AI with streaming enabled
-      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-pro", // Using Pro for better analysis quality
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt }
-          ],
-          stream: true,
-          tools: [{
-            type: "function",
-            function: {
-              name: "submit_analysis",
-              description: "Submit resume analysis",
-              parameters: {
-                type: "object",
-                properties: {
-                  detectedLanguage: {
-                    type: "object",
-                    properties: {
-                      code: { type: "string" },
-                      name: { type: "string" }
-                    }
-                  },
-                  candidateName: { type: "string" },
-                  industry: { type: "string" },
-                  currentRole: { type: "string" },
-                  atsScoreEstimate: { type: "number" },
-                  formatGrade: { type: "string" },
-                  formatIssue: { type: "string" },
-                  experienceLevel: {
-                    type: "object",
-                    description: "Calculate yearsEstimate from earliest job date to present (2025). Count ALL roles including consulting, sales, part-time, freelance.",
-                    properties: {
-                      level: { type: "string", description: "Entry-level, Mid-level, Senior, Executive, etc." },
-                      yearsEstimate: { type: "string", description: "Total years from earliest job date to now (e.g., '10 years', '9+ years'). Do NOT truncate." }
-                    }
-                  },
-                  sectionCheck: {
-                    type: "object",
-                    properties: {
-                      hasContact: { type: "boolean" },
-                      hasSummary: { type: "boolean" },
-                      hasExperience: { type: "boolean" },
-                      hasEducation: { type: "boolean" },
-                      hasSkills: { type: "boolean" }
-                    }
-                  },
-                  topStrength: {
-                    type: "object",
-                    properties: {
-                      title: { type: "string" },
-                      description: { type: "string" }
-                    }
-                  },
-                  redFlags: {
-                    type: "array",
-                    items: {
+      // AI request with retry logic
+      const AI_MODELS = [
+        "google/gemini-2.5-pro",
+        "openai/gpt-5",           // Fallback 1
+        "google/gemini-2.5-flash" // Fallback 2 (faster, cheaper)
+      ];
+      const MAX_RETRIES = 3;
+      const RETRY_DELAYS = [1000, 2000, 4000]; // Exponential backoff
+      
+      const makeAIRequest = async (model: string): Promise<Response> => {
+        return fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            stream: true,
+            tools: [{
+              type: "function",
+              function: {
+                name: "submit_analysis",
+                description: "Submit resume analysis",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    detectedLanguage: {
                       type: "object",
                       properties: {
-                        issue: { type: "string" },
-                        impact: { type: "string" }
+                        code: { type: "string" },
+                        name: { type: "string" }
+                      }
+                    },
+                    candidateName: { type: "string" },
+                    industry: { type: "string" },
+                    currentRole: { type: "string" },
+                    atsScoreEstimate: { type: "number" },
+                    formatGrade: { type: "string" },
+                    formatIssue: { type: "string" },
+                    experienceLevel: {
+                      type: "object",
+                      description: "Calculate yearsEstimate from earliest job date to present (2025). Count ALL roles including consulting, sales, part-time, freelance.",
+                      properties: {
+                        level: { type: "string", description: "Entry-level, Mid-level, Senior, Executive, etc." },
+                        yearsEstimate: { type: "string", description: "Total years from earliest job date to now (e.g., '10 years', '9+ years'). Do NOT truncate." }
+                      }
+                    },
+                    sectionCheck: {
+                      type: "object",
+                      properties: {
+                        hasContact: { type: "boolean" },
+                        hasSummary: { type: "boolean" },
+                        hasExperience: { type: "boolean" },
+                        hasEducation: { type: "boolean" },
+                        hasSkills: { type: "boolean" }
+                      }
+                    },
+                    topStrength: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        description: { type: "string" }
+                      }
+                    },
+                    redFlags: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          issue: { type: "string" },
+                          impact: { type: "string" }
+                        }
+                      }
+                    },
+                    keywords: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          keyword: { type: "string" },
+                          reason: { type: "string" }
+                        }
+                      }
+                    },
+                    quickWins: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          fix: { type: "string" },
+                          timeEstimate: { type: "string" },
+                          impact: { type: "string" }
+                        }
+                      }
+                    },
+                    improvementPotential: {
+                      type: "object",
+                      properties: {
+                        level: { type: "string" },
+                        estimatedScoreIncrease: { type: "number" },
+                        topPriority: { type: "string" }
                       }
                     }
                   },
-                  keywords: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        keyword: { type: "string" },
-                        reason: { type: "string" }
-                      }
-                    }
-                  },
-                  quickWins: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        fix: { type: "string" },
-                        timeEstimate: { type: "string" },
-                        impact: { type: "string" }
-                      }
-                    }
-                  },
-                  improvementPotential: {
-                    type: "object",
-                    properties: {
-                      level: { type: "string" },
-                      estimatedScoreIncrease: { type: "number" },
-                      topPriority: { type: "string" }
-                    }
-                  }
-                },
-                required: ["detectedLanguage", "industry", "atsScoreEstimate", "formatGrade", "experienceLevel", "keywords", "redFlags"]
+                  required: ["detectedLanguage", "industry", "atsScoreEstimate", "formatGrade", "experienceLevel", "keywords", "redFlags"]
+                }
               }
+            }],
+            tool_choice: { type: "function", function: { name: "submit_analysis" } }
+          }),
+        });
+      };
+      
+      let aiResponse: Response | null = null;
+      let lastError: string = '';
+      let modelUsed = AI_MODELS[0];
+      
+      // Try with retries and model fallbacks
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        const modelIndex = Math.min(attempt, AI_MODELS.length - 1);
+        modelUsed = AI_MODELS[modelIndex];
+        
+        try {
+          console.log(`[FREE-KEYWORD-SCAN-STREAM] AI attempt ${attempt + 1}/${MAX_RETRIES} with model ${modelUsed}`);
+          const response = await makeAIRequest(modelUsed);
+          
+          if (response.ok) {
+            aiResponse = response;
+            if (attempt > 0) {
+              console.log(`[FREE-KEYWORD-SCAN-STREAM] AI succeeded on attempt ${attempt + 1} with model ${modelUsed}`);
             }
-          }],
-          tool_choice: { type: "function", function: { name: "submit_analysis" } }
-        }),
-      });
-
-      if (!aiResponse.ok) {
-        const errorText = await aiResponse.text();
-        console.error("[FREE-KEYWORD-SCAN-STREAM] AI error:", aiResponse.status, errorText);
-        send('error', { error: 'Analysis failed. Please try again.' });
+            break;
+          }
+          
+          lastError = await response.text();
+          console.error(`[FREE-KEYWORD-SCAN-STREAM] AI error on attempt ${attempt + 1}:`, response.status, lastError);
+          
+          // Don't retry on 4xx errors (client errors) except rate limits
+          if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+            logScanMetric(metricCtx, 'failed', {
+              errorCode: 'AI_CLIENT_ERROR',
+              errorMessage: `AI request failed with status ${response.status}`,
+              outputValid: false,
+              metadata: { attempt: attempt + 1, model: modelUsed, status: response.status }
+            });
+            send('error', { error: 'Analysis failed. Please try again.' });
+            close();
+            return;
+          }
+          
+          // Wait before retry
+          if (attempt < MAX_RETRIES - 1) {
+            const delay = RETRY_DELAYS[attempt] || RETRY_DELAYS[RETRY_DELAYS.length - 1];
+            console.log(`[FREE-KEYWORD-SCAN-STREAM] Waiting ${delay}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        } catch (fetchError) {
+          lastError = fetchError instanceof Error ? fetchError.message : 'Network error';
+          console.error(`[FREE-KEYWORD-SCAN-STREAM] Network error on attempt ${attempt + 1}:`, lastError);
+          
+          if (attempt < MAX_RETRIES - 1) {
+            const delay = RETRY_DELAYS[attempt] || RETRY_DELAYS[RETRY_DELAYS.length - 1];
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
+      }
+      
+      if (!aiResponse) {
+        logScanMetric(metricCtx, 'failed', {
+          errorCode: 'AI_ALL_RETRIES_FAILED',
+          errorMessage: `All ${MAX_RETRIES} AI attempts failed: ${lastError}`,
+          outputValid: false,
+          metadata: { attempts: MAX_RETRIES, lastModel: modelUsed }
+        });
+        send('error', { error: 'Analysis failed after multiple attempts. Please try again later.' });
         close();
         return;
       }
+      
+      // Update metric context with actual model used
+      metricCtx.aiModel = modelUsed;
 
       send('progress', PROGRESS_STAGES[3]);
 
@@ -6795,29 +6866,88 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         }
       }
 
-      // Parse final result
+      // Parse final result with auto-repair for common JSON issues
       let analysis = null;
-      try {
-        analysis = JSON.parse(toolCallArgs);
-      } catch (e) {
-        console.error("[FREE-KEYWORD-SCAN-STREAM] Failed to parse tool args:", e);
+      
+      const tryParseJSON = (jsonString: string): any => {
+        // First try direct parse
+        try {
+          return JSON.parse(jsonString);
+        } catch (e) {
+          // Try to auto-repair common issues
+          console.log(`[FREE-KEYWORD-SCAN-STREAM] Direct parse failed, attempting auto-repair...`);
+        }
+        
+        // Repair attempt 1: Fix truncated JSON by closing open brackets
+        let repaired = jsonString.trim();
+        const openBraces = (repaired.match(/{/g) || []).length;
+        const closeBraces = (repaired.match(/}/g) || []).length;
+        const openBrackets = (repaired.match(/\[/g) || []).length;
+        const closeBrackets = (repaired.match(/\]/g) || []).length;
+        
+        // Close any unclosed arrays/objects
+        for (let i = 0; i < openBrackets - closeBrackets; i++) repaired += ']';
+        for (let i = 0; i < openBraces - closeBraces; i++) repaired += '}';
+        
+        try {
+          const parsed = JSON.parse(repaired);
+          console.log(`[FREE-KEYWORD-SCAN-STREAM] JSON auto-repaired (added ${openBraces - closeBraces} }, ${openBrackets - closeBrackets} ])`);
+          return parsed;
+        } catch (e2) {
+          // Repair attempt 2: Remove trailing commas before closing brackets
+          repaired = repaired.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+          try {
+            const parsed = JSON.parse(repaired);
+            console.log(`[FREE-KEYWORD-SCAN-STREAM] JSON auto-repaired (removed trailing commas)`);
+            return parsed;
+          } catch (e3) {
+            // Log the problematic JSON for debugging (truncated)
+            const preview = jsonString.length > 500 
+              ? `${jsonString.substring(0, 250)}...${jsonString.substring(jsonString.length - 250)}`
+              : jsonString;
+            console.error(`[FREE-KEYWORD-SCAN-STREAM] JSON repair failed. Content preview: ${preview}`);
+            return null;
+          }
+        }
+      };
+      
+      analysis = tryParseJSON(toolCallArgs);
+      
+      if (!analysis) {
+        console.error("[FREE-KEYWORD-SCAN-STREAM] Failed to parse tool args after repair attempts");
+        
+        // Log detailed error info for debugging
         logScanMetric(metricCtx, 'failed', {
           errorCode: 'PARSE_ERROR',
-          errorMessage: 'Failed to parse AI response',
-          outputValid: false
+          errorMessage: 'Failed to parse AI response after repair attempts',
+          outputValid: false,
+          metadata: {
+            responseLength: toolCallArgs.length,
+            modelUsed,
+            hasContent: toolCallArgs.length > 0,
+            // Sample first/last chars to help debug
+            startChars: toolCallArgs.substring(0, 50),
+            endChars: toolCallArgs.substring(Math.max(0, toolCallArgs.length - 50))
+          }
         });
-        send('error', { error: 'Failed to parse analysis results.' });
+        send('error', { error: 'Failed to parse analysis results. Please try again.' });
         close();
         return;
       }
-
-      if (!analysis) {
+      
+      // Validate essential fields exist
+      const requiredFields = ['atsScoreEstimate', 'industry'];
+      const missingFields = requiredFields.filter(f => analysis[f] === undefined);
+      
+      if (missingFields.length > 0) {
+        console.error(`[FREE-KEYWORD-SCAN-STREAM] Analysis missing required fields: ${missingFields.join(', ')}`);
         logScanMetric(metricCtx, 'failed', {
-          errorCode: 'NO_ANALYSIS',
-          errorMessage: 'No analysis returned from AI',
-          outputValid: false
+          errorCode: 'INCOMPLETE_ANALYSIS',
+          errorMessage: `Missing required fields: ${missingFields.join(', ')}`,
+          outputValid: false,
+          metadata: { missingFields, modelUsed }
         });
-        send('error', { error: 'No analysis returned.' });
+        send('error', { error: 'Incomplete analysis received. Please try again.' });
         close();
         return;
       }
