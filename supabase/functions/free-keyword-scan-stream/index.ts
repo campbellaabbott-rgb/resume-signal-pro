@@ -361,6 +361,11 @@ interface IndustryDetectionResult {
   confidence: 'high' | 'medium' | 'low';
   signals: string[];
   score: number;
+  detectionSource?: 'server_high' | 'server_medium' | 'server_low' | 'ai_override' | 'ai_fallback';
+  alternativeIndustries?: { industry: string; score: number }[];
+  matchedTitlePatterns?: string[];
+  matchedSkillCount?: number;
+  matchedContextPatterns?: boolean;
 }
 
 function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
@@ -2152,12 +2157,22 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
     },
   };
   
-  // Score each industry
-  const industryScores: { industry: string; score: number; signals: string[] }[] = [];
+  // Score each industry with detailed tracking
+  const industryScores: { 
+    industry: string; 
+    score: number; 
+    signals: string[]; 
+    matchedTitles: string[];
+    matchedSkillCount: number;
+    matchedContext: boolean;
+  }[] = [];
   
   for (const [industry, patterns] of Object.entries(industryPatterns)) {
     let score = 0;
     const industrySignals: string[] = [];
+    const matchedTitles: string[] = [];
+    let matchedSkillCount = 0;
+    let matchedContext = false;
     const titleWeight = patterns.titleWeight || 30;
     const skillWeight = patterns.skillWeight || 5;
     
@@ -2167,6 +2182,7 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
       if (match) {
         score += titleWeight;
         industrySignals.push(`Title: "${match[0]}"`);
+        matchedTitles.push(match[0]);
       }
     }
     
@@ -2177,6 +2193,7 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
       return regex.test(text);
     });
     score += foundSkills.length * skillWeight;
+    matchedSkillCount = foundSkills.length;
     if (foundSkills.length > 0) {
       industrySignals.push(`Skills: ${foundSkills.slice(0, 5).join(', ')}`);
     }
@@ -2186,12 +2203,20 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
       if (pattern.test(text)) {
         score += 10;
         industrySignals.push(`Context match`);
+        matchedContext = true;
         break; // Only count once
       }
     }
     
     if (score > 0) {
-      industryScores.push({ industry, score, signals: industrySignals });
+      industryScores.push({ 
+        industry, 
+        score, 
+        signals: industrySignals,
+        matchedTitles,
+        matchedSkillCount,
+        matchedContext
+      });
     }
   }
   
@@ -2201,7 +2226,17 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
   console.log(`[INDUSTRY-DETECT] Top 5 scores: ${JSON.stringify(industryScores.slice(0, 5).map(s => ({ industry: s.industry, score: s.score })))}`);
   
   if (industryScores.length === 0) {
-    return { industry: 'general', confidence: 'low', signals: ['No clear industry signals detected'], score: 0 };
+    return { 
+      industry: 'general', 
+      confidence: 'low', 
+      signals: ['No clear industry signals detected'], 
+      score: 0,
+      detectionSource: 'server_low',
+      alternativeIndustries: [],
+      matchedTitlePatterns: [],
+      matchedSkillCount: 0,
+      matchedContextPatterns: false
+    };
   }
   
   const topIndustry = industryScores[0];
@@ -2234,7 +2269,12 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
     parentIndustry: parentIndustry,
     confidence,
     signals: topIndustry.signals,
-    score: topIndustry.score
+    score: topIndustry.score,
+    detectionSource: `server_${confidence}` as 'server_high' | 'server_medium' | 'server_low',
+    alternativeIndustries: industryScores.slice(1, 4).map(s => ({ industry: s.industry, score: s.score })),
+    matchedTitlePatterns: topIndustry.matchedTitles,
+    matchedSkillCount: topIndustry.matchedSkillCount,
+    matchedContextPatterns: topIndustry.matchedContext
   };
 }
 
@@ -2251,7 +2291,10 @@ function hybridIndustryDetection(
   // If server has high confidence, trust it
   if (serverResult.confidence === 'high') {
     console.log(`[INDUSTRY-HYBRID] Using server result (high confidence): ${serverResult.industry}`);
-    return serverResult;
+    return {
+      ...serverResult,
+      detectionSource: 'server_high'
+    };
   }
   
   // If server has medium confidence but AI agrees (or maps to same parent), trust server
@@ -2261,7 +2304,10 @@ function hybridIndustryDetection(
     
     if (serverResult.industry === normalizedAI || serverParent === aiParent || serverParent === normalizedAI || serverResult.industry === aiParent) {
       console.log(`[INDUSTRY-HYBRID] Server and AI agree: ${serverResult.industry} (AI: ${normalizedAI})`);
-      return serverResult;
+      return {
+        ...serverResult,
+        detectionSource: 'server_medium'
+      };
     }
     
     // If AI suggests something different and specific, consider it
@@ -2271,9 +2317,15 @@ function hybridIndustryDetection(
         ...serverResult,
         industry: normalizedAI,
         confidence: 'medium',
-        signals: [...serverResult.signals, `AI suggested: ${normalizedAI}`]
+        signals: [...serverResult.signals, `AI suggested: ${normalizedAI}`],
+        detectionSource: 'ai_override'
       };
     }
+    
+    return {
+      ...serverResult,
+      detectionSource: 'server_medium'
+    };
   }
   
   // If server has low confidence, prefer AI if it's specific
@@ -2284,12 +2336,20 @@ function hybridIndustryDetection(
       parentIndustry: INDUSTRY_PARENTS[normalizedAI],
       confidence: 'low',
       signals: [`AI detected: ${normalizedAI}`],
-      score: serverResult.score
+      score: serverResult.score,
+      detectionSource: 'ai_fallback',
+      alternativeIndustries: serverResult.alternativeIndustries,
+      matchedTitlePatterns: serverResult.matchedTitlePatterns,
+      matchedSkillCount: serverResult.matchedSkillCount,
+      matchedContextPatterns: serverResult.matchedContextPatterns
     };
   }
   
   console.log(`[INDUSTRY-HYBRID] Defaulting to server result: ${serverResult.industry}`);
-  return serverResult;
+  return {
+    ...serverResult,
+    detectionSource: 'server_low'
+  };
 }
 
 // ======================== Resume Type Detection ========================
@@ -3681,9 +3741,11 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       }
 
       // Normalize industry using hybrid detection (combines server + AI)
+      const industryDetectionStart = Date.now();
       const rawIndustry = analysis.industry;
       const serverDetection = detectIndustryFromResume(resumeText);
       const hybridResult = hybridIndustryDetection(serverDetection, rawIndustry);
+      const industryDetectionDuration = Date.now() - industryDetectionStart;
       
       // Apply hybrid result
       analysis.industry = hybridResult.industry;
@@ -3703,6 +3765,45 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         score: hybridResult.score
       };
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry detection: ${JSON.stringify(industryDetectionMeta)}`);
+
+      // Log industry detection metrics for accuracy tracking (non-blocking)
+      const normalizedAISuggested = normalizeIndustry(rawIndustry);
+      const serverAIMatch = serverDetection.industry === normalizedAISuggested;
+      const serverAIParentMatch = getParentIndustry(serverDetection.industry) === getParentIndustry(normalizedAISuggested) ||
+        serverDetection.industry === getParentIndustry(normalizedAISuggested) ||
+        getParentIndustry(serverDetection.industry) === normalizedAISuggested;
+      
+      EdgeRuntime.waitUntil(
+        (async () => {
+          const { error } = await supabase.rpc('log_industry_detection', {
+            p_resume_text_length: resumeText.length,
+            p_visitor_id: metricCtx.visitorId || null,
+            p_ip_country: metricCtx.ipCountry || null,
+            p_server_industry: serverDetection.industry,
+            p_server_sub_industry: serverDetection.subIndustry || null,
+            p_server_parent_industry: serverDetection.parentIndustry || null,
+            p_server_confidence: serverDetection.confidence,
+            p_server_score: serverDetection.score,
+            p_server_signals: serverDetection.signals || [],
+            p_ai_suggested_industry: normalizedAISuggested,
+            p_final_industry: hybridResult.industry,
+            p_final_confidence: hybridResult.confidence,
+            p_detection_source: hybridResult.detectionSource || 'server_high',
+            p_server_ai_match: serverAIMatch,
+            p_server_ai_parent_match: serverAIParentMatch,
+            p_alternative_industries: JSON.stringify(serverDetection.alternativeIndustries || []),
+            p_detection_duration_ms: industryDetectionDuration,
+            p_matched_title_patterns: serverDetection.matchedTitlePatterns || [],
+            p_matched_skill_count: serverDetection.matchedSkillCount || 0,
+            p_matched_context_patterns: serverDetection.matchedContextPatterns || false
+          });
+          if (error) {
+            console.error(`[FREE-KEYWORD-SCAN-STREAM] Failed to log industry detection metric:`, error.message);
+          } else {
+            console.log(`[FREE-KEYWORD-SCAN-STREAM] Logged industry detection: ${hybridResult.industry} (${hybridResult.detectionSource})`);
+          }
+        })()
+      );
 
       // ======================== Server-Side Computed Fields ========================
       // These are computed from the raw resume text for accuracy and consistency

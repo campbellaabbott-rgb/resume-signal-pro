@@ -446,6 +446,81 @@ export type Database = {
         }
         Relationships: []
       }
+      industry_detection_metrics: {
+        Row: {
+          ai_suggested_industry: string | null
+          alternative_industries: Json | null
+          created_at: string
+          detection_duration_ms: number | null
+          detection_source: string
+          final_confidence: string
+          final_industry: string
+          id: string
+          ip_country: string | null
+          matched_context_patterns: boolean | null
+          matched_skill_count: number | null
+          matched_title_patterns: string[] | null
+          resume_text_length: number
+          server_ai_match: boolean | null
+          server_ai_parent_match: boolean | null
+          server_confidence: string
+          server_industry: string
+          server_parent_industry: string | null
+          server_score: number
+          server_signals: string[] | null
+          server_sub_industry: string | null
+          visitor_id: string | null
+        }
+        Insert: {
+          ai_suggested_industry?: string | null
+          alternative_industries?: Json | null
+          created_at?: string
+          detection_duration_ms?: number | null
+          detection_source: string
+          final_confidence: string
+          final_industry: string
+          id?: string
+          ip_country?: string | null
+          matched_context_patterns?: boolean | null
+          matched_skill_count?: number | null
+          matched_title_patterns?: string[] | null
+          resume_text_length: number
+          server_ai_match?: boolean | null
+          server_ai_parent_match?: boolean | null
+          server_confidence: string
+          server_industry: string
+          server_parent_industry?: string | null
+          server_score: number
+          server_signals?: string[] | null
+          server_sub_industry?: string | null
+          visitor_id?: string | null
+        }
+        Update: {
+          ai_suggested_industry?: string | null
+          alternative_industries?: Json | null
+          created_at?: string
+          detection_duration_ms?: number | null
+          detection_source?: string
+          final_confidence?: string
+          final_industry?: string
+          id?: string
+          ip_country?: string | null
+          matched_context_patterns?: boolean | null
+          matched_skill_count?: number | null
+          matched_title_patterns?: string[] | null
+          resume_text_length?: number
+          server_ai_match?: boolean | null
+          server_ai_parent_match?: boolean | null
+          server_confidence?: string
+          server_industry?: string
+          server_parent_industry?: string | null
+          server_score?: number
+          server_signals?: string[] | null
+          server_sub_industry?: string | null
+          visitor_id?: string | null
+        }
+        Relationships: []
+      }
       parse_failures: {
         Row: {
           created_at: string
@@ -1105,6 +1180,20 @@ export type Database = {
           total_scans: number
         }[]
       }
+      get_industry_detection_stats: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          avg_server_score: number
+          confidence_by_industry: Json
+          detection_sources: Json
+          high_confidence_rate: number
+          low_confidence_rate: number
+          medium_confidence_rate: number
+          server_ai_match_rate: number
+          top_industries: Json
+          total_detections: number
+        }[]
+      }
       get_parse_failure_stats: {
         Args: { p_hours_back?: number }
         Returns: {
@@ -1300,6 +1389,31 @@ export type Database = {
           p_response_time_ms: number
           p_status: string
           p_test_passed: boolean
+        }
+        Returns: string
+      }
+      log_industry_detection: {
+        Args: {
+          p_ai_suggested_industry?: string
+          p_alternative_industries?: Json
+          p_detection_duration_ms?: number
+          p_detection_source?: string
+          p_final_confidence?: string
+          p_final_industry?: string
+          p_ip_country?: string
+          p_matched_context_patterns?: boolean
+          p_matched_skill_count?: number
+          p_matched_title_patterns?: string[]
+          p_resume_text_length: number
+          p_server_ai_match?: boolean
+          p_server_ai_parent_match?: boolean
+          p_server_confidence?: string
+          p_server_industry?: string
+          p_server_parent_industry?: string
+          p_server_score?: number
+          p_server_signals?: string[]
+          p_server_sub_industry?: string
+          p_visitor_id?: string
         }
         Returns: string
       }
