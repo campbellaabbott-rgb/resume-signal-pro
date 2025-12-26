@@ -4485,6 +4485,457 @@ function createSSEStream() {
   return { stream, send, close };
 }
 
+// ==================== INDUSTRY-SPECIFIC KEYWORD SUGGESTIONS ====================
+// Provides tailored keyword recommendations based on detected industry
+
+interface IndustryKeywordSuggestion {
+  keyword: string;
+  category: 'technical' | 'soft' | 'certification' | 'tool' | 'methodology';
+  importance: 'critical' | 'high' | 'medium';
+  present: boolean;
+  suggestion?: string;
+}
+
+interface IndustryKeywordAnalysis {
+  industry: string;
+  industryName: string;
+  keywordsFound: number;
+  keywordsMissing: number;
+  coverageScore: number;
+  criticalMissing: IndustryKeywordSuggestion[];
+  highPriorityMissing: IndustryKeywordSuggestion[];
+  present: IndustryKeywordSuggestion[];
+  recommendations: string[];
+}
+
+// Industry keyword database - must match frontend config for consistency
+const INDUSTRY_KEYWORD_DB: Record<string, { name: string; keywords: Array<{ keyword: string; category: 'technical' | 'soft' | 'certification' | 'tool' | 'methodology'; importance: 'critical' | 'high' | 'medium' }> }> = {
+  technology: {
+    name: 'Technology',
+    keywords: [
+      { keyword: 'Agile', category: 'methodology', importance: 'critical' },
+      { keyword: 'Cloud Computing', category: 'technical', importance: 'critical' },
+      { keyword: 'AWS', category: 'tool', importance: 'critical' },
+      { keyword: 'Python', category: 'technical', importance: 'high' },
+      { keyword: 'JavaScript', category: 'technical', importance: 'high' },
+      { keyword: 'SQL', category: 'technical', importance: 'high' },
+      { keyword: 'API', category: 'technical', importance: 'high' },
+      { keyword: 'CI/CD', category: 'methodology', importance: 'high' },
+      { keyword: 'Git', category: 'tool', importance: 'high' },
+      { keyword: 'DevOps', category: 'methodology', importance: 'high' },
+    ],
+  },
+  software_engineering: {
+    name: 'Software Engineering',
+    keywords: [
+      { keyword: 'Full Stack', category: 'technical', importance: 'critical' },
+      { keyword: 'React', category: 'tool', importance: 'high' },
+      { keyword: 'Node.js', category: 'tool', importance: 'high' },
+      { keyword: 'TypeScript', category: 'technical', importance: 'high' },
+      { keyword: 'System Design', category: 'technical', importance: 'critical' },
+      { keyword: 'Data Structures', category: 'technical', importance: 'high' },
+      { keyword: 'Microservices', category: 'technical', importance: 'high' },
+      { keyword: 'Docker', category: 'tool', importance: 'high' },
+      { keyword: 'Kubernetes', category: 'tool', importance: 'medium' },
+      { keyword: 'REST API', category: 'technical', importance: 'high' },
+    ],
+  },
+  data_science: {
+    name: 'Data Science',
+    keywords: [
+      { keyword: 'Python', category: 'technical', importance: 'critical' },
+      { keyword: 'Machine Learning', category: 'technical', importance: 'critical' },
+      { keyword: 'SQL', category: 'technical', importance: 'critical' },
+      { keyword: 'TensorFlow', category: 'tool', importance: 'high' },
+      { keyword: 'PyTorch', category: 'tool', importance: 'high' },
+      { keyword: 'Statistical Analysis', category: 'technical', importance: 'high' },
+      { keyword: 'Data Visualization', category: 'technical', importance: 'high' },
+      { keyword: 'Pandas', category: 'tool', importance: 'high' },
+      { keyword: 'Deep Learning', category: 'technical', importance: 'medium' },
+      { keyword: 'A/B Testing', category: 'methodology', importance: 'high' },
+    ],
+  },
+  healthcare: {
+    name: 'Healthcare',
+    keywords: [
+      { keyword: 'Patient Care', category: 'technical', importance: 'critical' },
+      { keyword: 'HIPAA', category: 'certification', importance: 'critical' },
+      { keyword: 'EMR', category: 'tool', importance: 'critical' },
+      { keyword: 'Clinical Research', category: 'technical', importance: 'high' },
+      { keyword: 'Medical Terminology', category: 'technical', importance: 'high' },
+      { keyword: 'CPR Certified', category: 'certification', importance: 'high' },
+      { keyword: 'BLS', category: 'certification', importance: 'high' },
+      { keyword: 'Epic', category: 'tool', importance: 'high' },
+      { keyword: 'Patient Safety', category: 'technical', importance: 'high' },
+      { keyword: 'Care Coordination', category: 'technical', importance: 'medium' },
+    ],
+  },
+  nursing: {
+    name: 'Nursing',
+    keywords: [
+      { keyword: 'Patient Care', category: 'technical', importance: 'critical' },
+      { keyword: 'BLS', category: 'certification', importance: 'critical' },
+      { keyword: 'ACLS', category: 'certification', importance: 'critical' },
+      { keyword: 'EMR', category: 'tool', importance: 'high' },
+      { keyword: 'Epic', category: 'tool', importance: 'high' },
+      { keyword: 'Medication Administration', category: 'technical', importance: 'high' },
+      { keyword: 'Triage', category: 'technical', importance: 'high' },
+      { keyword: 'Patient Assessment', category: 'technical', importance: 'high' },
+      { keyword: 'IV Therapy', category: 'technical', importance: 'medium' },
+      { keyword: 'Care Planning', category: 'technical', importance: 'medium' },
+    ],
+  },
+  finance: {
+    name: 'Finance',
+    keywords: [
+      { keyword: 'Financial Analysis', category: 'technical', importance: 'critical' },
+      { keyword: 'Risk Management', category: 'technical', importance: 'critical' },
+      { keyword: 'Excel', category: 'tool', importance: 'critical' },
+      { keyword: 'Financial Modeling', category: 'technical', importance: 'high' },
+      { keyword: 'Bloomberg', category: 'tool', importance: 'high' },
+      { keyword: 'GAAP', category: 'certification', importance: 'high' },
+      { keyword: 'CFA', category: 'certification', importance: 'high' },
+      { keyword: 'Budgeting', category: 'technical', importance: 'high' },
+      { keyword: 'Forecasting', category: 'technical', importance: 'high' },
+      { keyword: 'Valuation', category: 'technical', importance: 'high' },
+    ],
+  },
+  legal: {
+    name: 'Legal',
+    keywords: [
+      { keyword: 'Legal Research', category: 'technical', importance: 'critical' },
+      { keyword: 'Contract Review', category: 'technical', importance: 'critical' },
+      { keyword: 'Compliance', category: 'technical', importance: 'high' },
+      { keyword: 'Westlaw', category: 'tool', importance: 'high' },
+      { keyword: 'LexisNexis', category: 'tool', importance: 'high' },
+      { keyword: 'Litigation', category: 'technical', importance: 'high' },
+      { keyword: 'Due Diligence', category: 'technical', importance: 'high' },
+      { keyword: 'Drafting', category: 'technical', importance: 'high' },
+      { keyword: 'Negotiation', category: 'soft', importance: 'high' },
+      { keyword: 'Case Management', category: 'tool', importance: 'medium' },
+    ],
+  },
+  sales: {
+    name: 'Sales',
+    keywords: [
+      { keyword: 'CRM', category: 'tool', importance: 'critical' },
+      { keyword: 'Salesforce', category: 'tool', importance: 'critical' },
+      { keyword: 'Pipeline Management', category: 'technical', importance: 'critical' },
+      { keyword: 'Revenue Growth', category: 'technical', importance: 'high' },
+      { keyword: 'Quota Attainment', category: 'technical', importance: 'high' },
+      { keyword: 'Lead Generation', category: 'technical', importance: 'high' },
+      { keyword: 'Negotiation', category: 'soft', importance: 'high' },
+      { keyword: 'B2B', category: 'technical', importance: 'medium' },
+      { keyword: 'Closing', category: 'technical', importance: 'high' },
+      { keyword: 'Territory Management', category: 'technical', importance: 'medium' },
+    ],
+  },
+  marketing: {
+    name: 'Marketing',
+    keywords: [
+      { keyword: 'SEO', category: 'technical', importance: 'critical' },
+      { keyword: 'Google Analytics', category: 'tool', importance: 'critical' },
+      { keyword: 'Content Strategy', category: 'technical', importance: 'critical' },
+      { keyword: 'Social Media', category: 'technical', importance: 'high' },
+      { keyword: 'PPC', category: 'technical', importance: 'high' },
+      { keyword: 'HubSpot', category: 'tool', importance: 'high' },
+      { keyword: 'A/B Testing', category: 'methodology', importance: 'high' },
+      { keyword: 'ROI', category: 'technical', importance: 'high' },
+      { keyword: 'Lead Generation', category: 'technical', importance: 'high' },
+      { keyword: 'Campaign Management', category: 'technical', importance: 'high' },
+    ],
+  },
+  education: {
+    name: 'Education',
+    keywords: [
+      { keyword: 'Curriculum Development', category: 'technical', importance: 'critical' },
+      { keyword: 'Lesson Planning', category: 'technical', importance: 'critical' },
+      { keyword: 'Student Engagement', category: 'technical', importance: 'high' },
+      { keyword: 'Classroom Management', category: 'technical', importance: 'high' },
+      { keyword: 'Assessment', category: 'technical', importance: 'high' },
+      { keyword: 'LMS', category: 'tool', importance: 'high' },
+      { keyword: 'Differentiated Instruction', category: 'methodology', importance: 'high' },
+      { keyword: 'IEP', category: 'technical', importance: 'medium' },
+      { keyword: 'Google Classroom', category: 'tool', importance: 'medium' },
+      { keyword: 'Student Achievement', category: 'technical', importance: 'high' },
+    ],
+  },
+  k12_education: {
+    name: 'K-12 Education',
+    keywords: [
+      { keyword: 'Lesson Planning', category: 'technical', importance: 'critical' },
+      { keyword: 'Classroom Management', category: 'technical', importance: 'critical' },
+      { keyword: 'Student Assessment', category: 'technical', importance: 'high' },
+      { keyword: 'IEP', category: 'technical', importance: 'high' },
+      { keyword: 'Parent Communication', category: 'soft', importance: 'high' },
+      { keyword: 'State Standards', category: 'technical', importance: 'high' },
+      { keyword: 'Differentiated Instruction', category: 'methodology', importance: 'high' },
+      { keyword: 'Google Classroom', category: 'tool', importance: 'medium' },
+      { keyword: 'Student Engagement', category: 'soft', importance: 'high' },
+      { keyword: 'Curriculum Development', category: 'technical', importance: 'medium' },
+    ],
+  },
+  hospitality: {
+    name: 'Hospitality',
+    keywords: [
+      { keyword: 'Guest Satisfaction', category: 'technical', importance: 'critical' },
+      { keyword: 'Revenue Management', category: 'technical', importance: 'critical' },
+      { keyword: 'OPERA', category: 'tool', importance: 'high' },
+      { keyword: 'ServSafe', category: 'certification', importance: 'high' },
+      { keyword: 'Food Cost Control', category: 'technical', importance: 'high' },
+      { keyword: 'Customer Service', category: 'soft', importance: 'critical' },
+      { keyword: 'POS Systems', category: 'tool', importance: 'high' },
+      { keyword: 'Event Coordination', category: 'technical', importance: 'high' },
+      { keyword: 'HACCP', category: 'certification', importance: 'high' },
+      { keyword: 'Labor Cost Management', category: 'technical', importance: 'high' },
+    ],
+  },
+  food_beverage: {
+    name: 'Food & Beverage',
+    keywords: [
+      { keyword: 'ServSafe', category: 'certification', importance: 'critical' },
+      { keyword: 'Food Cost Control', category: 'technical', importance: 'critical' },
+      { keyword: 'Menu Development', category: 'technical', importance: 'high' },
+      { keyword: 'HACCP', category: 'certification', importance: 'high' },
+      { keyword: 'Kitchen Management', category: 'technical', importance: 'high' },
+      { keyword: 'Inventory Management', category: 'technical', importance: 'high' },
+      { keyword: 'POS Systems', category: 'tool', importance: 'high' },
+      { keyword: 'Culinary', category: 'technical', importance: 'high' },
+      { keyword: 'Staff Training', category: 'soft', importance: 'medium' },
+      { keyword: 'Guest Relations', category: 'soft', importance: 'high' },
+    ],
+  },
+  manufacturing: {
+    name: 'Manufacturing',
+    keywords: [
+      { keyword: 'Lean Manufacturing', category: 'methodology', importance: 'critical' },
+      { keyword: 'Six Sigma', category: 'certification', importance: 'critical' },
+      { keyword: 'Quality Control', category: 'technical', importance: 'critical' },
+      { keyword: 'ISO 9001', category: 'certification', importance: 'high' },
+      { keyword: 'ERP', category: 'tool', importance: 'high' },
+      { keyword: 'SAP', category: 'tool', importance: 'high' },
+      { keyword: 'CNC', category: 'technical', importance: 'high' },
+      { keyword: 'GD&T', category: 'technical', importance: 'high' },
+      { keyword: 'Kaizen', category: 'methodology', importance: 'high' },
+      { keyword: 'OSHA', category: 'certification', importance: 'high' },
+    ],
+  },
+  lean_manufacturing: {
+    name: 'Lean Manufacturing',
+    keywords: [
+      { keyword: 'Kaizen', category: 'methodology', importance: 'critical' },
+      { keyword: 'Six Sigma', category: 'certification', importance: 'critical' },
+      { keyword: 'Value Stream Mapping', category: 'methodology', importance: 'high' },
+      { keyword: '5S', category: 'methodology', importance: 'high' },
+      { keyword: 'Continuous Improvement', category: 'methodology', importance: 'high' },
+      { keyword: 'Root Cause Analysis', category: 'methodology', importance: 'high' },
+      { keyword: 'TPM', category: 'methodology', importance: 'medium' },
+      { keyword: 'SPC', category: 'technical', importance: 'medium' },
+      { keyword: 'Green Belt', category: 'certification', importance: 'high' },
+      { keyword: 'Black Belt', category: 'certification', importance: 'high' },
+    ],
+  },
+  nonprofit: {
+    name: 'Nonprofit',
+    keywords: [
+      { keyword: 'Fundraising', category: 'technical', importance: 'critical' },
+      { keyword: 'Grant Writing', category: 'technical', importance: 'critical' },
+      { keyword: 'Donor Relations', category: 'technical', importance: 'critical' },
+      { keyword: 'Program Evaluation', category: 'technical', importance: 'high' },
+      { keyword: 'Impact Measurement', category: 'technical', importance: 'high' },
+      { keyword: 'Volunteer Management', category: 'technical', importance: 'high' },
+      { keyword: 'CRM', category: 'tool', importance: 'high' },
+      { keyword: 'Stewardship', category: 'technical', importance: 'high' },
+      { keyword: 'Major Gifts', category: 'technical', importance: 'high' },
+      { keyword: 'Community Outreach', category: 'technical', importance: 'medium' },
+    ],
+  },
+  grant_writing: {
+    name: 'Grant Writing',
+    keywords: [
+      { keyword: 'Grant Writing', category: 'technical', importance: 'critical' },
+      { keyword: 'Proposal Development', category: 'technical', importance: 'critical' },
+      { keyword: 'Grant Compliance', category: 'technical', importance: 'high' },
+      { keyword: 'Federal Grants', category: 'technical', importance: 'high' },
+      { keyword: 'Foundation Relations', category: 'technical', importance: 'high' },
+      { keyword: 'Budget Development', category: 'technical', importance: 'high' },
+      { keyword: 'Program Evaluation', category: 'technical', importance: 'high' },
+      { keyword: 'RFP Response', category: 'technical', importance: 'high' },
+      { keyword: 'Outcome Measurement', category: 'technical', importance: 'medium' },
+      { keyword: 'Grant Management', category: 'technical', importance: 'medium' },
+    ],
+  },
+  hr: {
+    name: 'Human Resources',
+    keywords: [
+      { keyword: 'Talent Acquisition', category: 'technical', importance: 'critical' },
+      { keyword: 'HRIS', category: 'tool', importance: 'critical' },
+      { keyword: 'Employee Relations', category: 'technical', importance: 'high' },
+      { keyword: 'Onboarding', category: 'technical', importance: 'high' },
+      { keyword: 'Performance Management', category: 'technical', importance: 'high' },
+      { keyword: 'Workday', category: 'tool', importance: 'high' },
+      { keyword: 'Compliance', category: 'technical', importance: 'high' },
+      { keyword: 'SHRM', category: 'certification', importance: 'high' },
+      { keyword: 'Training & Development', category: 'technical', importance: 'medium' },
+      { keyword: 'Employee Engagement', category: 'technical', importance: 'medium' },
+    ],
+  },
+  ux_design: {
+    name: 'UX Design',
+    keywords: [
+      { keyword: 'Figma', category: 'tool', importance: 'critical' },
+      { keyword: 'User Research', category: 'technical', importance: 'critical' },
+      { keyword: 'Prototyping', category: 'technical', importance: 'high' },
+      { keyword: 'Wireframing', category: 'technical', importance: 'high' },
+      { keyword: 'Design Systems', category: 'technical', importance: 'high' },
+      { keyword: 'Usability Testing', category: 'methodology', importance: 'high' },
+      { keyword: 'Accessibility', category: 'technical', importance: 'high' },
+      { keyword: 'Information Architecture', category: 'technical', importance: 'medium' },
+      { keyword: 'Interaction Design', category: 'technical', importance: 'medium' },
+      { keyword: 'Design Thinking', category: 'methodology', importance: 'medium' },
+    ],
+  },
+  devops: {
+    name: 'DevOps',
+    keywords: [
+      { keyword: 'CI/CD', category: 'methodology', importance: 'critical' },
+      { keyword: 'Docker', category: 'tool', importance: 'critical' },
+      { keyword: 'Kubernetes', category: 'tool', importance: 'critical' },
+      { keyword: 'AWS', category: 'tool', importance: 'high' },
+      { keyword: 'Terraform', category: 'tool', importance: 'high' },
+      { keyword: 'Jenkins', category: 'tool', importance: 'high' },
+      { keyword: 'Monitoring', category: 'technical', importance: 'high' },
+      { keyword: 'Infrastructure as Code', category: 'methodology', importance: 'high' },
+      { keyword: 'Linux', category: 'technical', importance: 'high' },
+      { keyword: 'Ansible', category: 'tool', importance: 'medium' },
+    ],
+  },
+};
+
+/**
+ * Compute industry-specific keyword suggestions based on detected industry and resume content
+ */
+function computeIndustryKeywordSuggestions(
+  industry: string,
+  resumeText: string
+): IndustryKeywordAnalysis | null {
+  // Try exact match first, then parent industry
+  let industryConfig = INDUSTRY_KEYWORD_DB[industry];
+  const parentIndustry = INDUSTRY_PARENTS[industry];
+  
+  if (!industryConfig && parentIndustry) {
+    industryConfig = INDUSTRY_KEYWORD_DB[parentIndustry];
+  }
+  
+  // Fallback to general/technology if no match
+  if (!industryConfig) {
+    industryConfig = INDUSTRY_KEYWORD_DB['technology'];
+    if (!industryConfig) return null;
+  }
+  
+  const resumeLower = resumeText.toLowerCase();
+  const present: IndustryKeywordSuggestion[] = [];
+  const missing: IndustryKeywordSuggestion[] = [];
+  
+  for (const kw of industryConfig.keywords) {
+    const keywordLower = kw.keyword.toLowerCase();
+    // Check for keyword presence with variations
+    const variations = [
+      keywordLower,
+      keywordLower.replace(/\s+/g, ''),
+      keywordLower.replace(/\//g, ''),
+      keywordLower.replace(/&/g, 'and'),
+    ];
+    
+    const isPresent = variations.some(v => resumeLower.includes(v));
+    
+    if (isPresent) {
+      present.push({ ...kw, present: true });
+    } else {
+      missing.push({ 
+        ...kw, 
+        present: false,
+        suggestion: getSuggestionForKeyword(kw.keyword, kw.category, industry)
+      });
+    }
+  }
+  
+  // Sort by importance
+  const importanceOrder = { critical: 0, high: 1, medium: 2 };
+  missing.sort((a, b) => importanceOrder[a.importance] - importanceOrder[b.importance]);
+  present.sort((a, b) => importanceOrder[a.importance] - importanceOrder[b.importance]);
+  
+  const criticalMissing = missing.filter(k => k.importance === 'critical');
+  const highPriorityMissing = missing.filter(k => k.importance === 'high');
+  
+  const totalKeywords = industryConfig.keywords.length;
+  const coverageScore = Math.round((present.length / totalKeywords) * 100);
+  
+  // Generate recommendations based on gaps
+  const recommendations: string[] = [];
+  
+  if (criticalMissing.length > 0) {
+    recommendations.push(`Add these critical ${industryConfig.name} keywords: ${criticalMissing.slice(0, 3).map(k => k.keyword).join(', ')}`);
+  }
+  
+  if (highPriorityMissing.length > 0 && recommendations.length < 3) {
+    const certsMissing = highPriorityMissing.filter(k => k.category === 'certification');
+    const toolsMissing = highPriorityMissing.filter(k => k.category === 'tool');
+    
+    if (certsMissing.length > 0) {
+      recommendations.push(`Consider adding certifications: ${certsMissing.slice(0, 2).map(k => k.keyword).join(', ')}`);
+    }
+    if (toolsMissing.length > 0) {
+      recommendations.push(`Highlight experience with: ${toolsMissing.slice(0, 3).map(k => k.keyword).join(', ')}`);
+    }
+  }
+  
+  if (coverageScore >= 70) {
+    recommendations.push(`Strong keyword coverage for ${industryConfig.name}. Consider adding 1-2 more for ATS optimization.`);
+  } else if (coverageScore >= 40) {
+    recommendations.push(`Moderate keyword coverage. Add more industry-specific terms to improve ATS matching.`);
+  } else {
+    recommendations.push(`Low keyword coverage for ${industryConfig.name}. Review job descriptions for common terms.`);
+  }
+  
+  return {
+    industry,
+    industryName: industryConfig.name,
+    keywordsFound: present.length,
+    keywordsMissing: missing.length,
+    coverageScore,
+    criticalMissing: criticalMissing.slice(0, 5),
+    highPriorityMissing: highPriorityMissing.slice(0, 5),
+    present: present.slice(0, 10),
+    recommendations: recommendations.slice(0, 3),
+  };
+}
+
+/**
+ * Generate contextual suggestion for adding a keyword
+ */
+function getSuggestionForKeyword(keyword: string, category: string, industry: string): string {
+  const suggestions: Record<string, Record<string, string>> = {
+    certification: {
+      default: `Add "${keyword}" to your certifications section or mention in summary.`,
+    },
+    tool: {
+      default: `List "${keyword}" in your skills section or mention specific projects using it.`,
+    },
+    methodology: {
+      default: `Describe experience with "${keyword}" in your work history with specific examples.`,
+    },
+    technical: {
+      default: `Incorporate "${keyword}" into your experience bullets or skills summary.`,
+    },
+    soft: {
+      default: `Demonstrate "${keyword}" through specific achievements or outcomes.`,
+    },
+  };
+  
+  return suggestions[category]?.default || `Consider adding "${keyword}" to strengthen your ${industry} profile.`;
+}
+
 // Progress stages for UI feedback
 const PROGRESS_STAGES = [
   { stage: 'parsing', message: 'Parsing resume content...', progress: 10 },
@@ -5126,6 +5577,15 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       const quotaLocation = checkContentLocation(resumeText, 'quota');
       const metricsLocation = checkContentLocation(resumeText, 'metrics');
 
+      // 9. Industry-Specific Keyword Suggestions
+      const industryKeywordAnalysis = computeIndustryKeywordSuggestions(hybridResult.industry, resumeText);
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry keyword analysis: ${JSON.stringify({
+        industry: industryKeywordAnalysis?.industryName,
+        found: industryKeywordAnalysis?.keywordsFound,
+        missing: industryKeywordAnalysis?.keywordsMissing,
+        coverage: industryKeywordAnalysis?.coverageScore
+      })}`);
+
       // Build response with computed fields merged
       const responseData = {
         success: true,
@@ -5143,6 +5603,8 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         },
         // Industry detection with metadata for transparency
         industryDetection: industryDetectionMeta,
+        // Industry-specific keyword suggestions
+        industryKeywords: industryKeywordAnalysis,
         // Override/add computed fields
         timelineAnalysis: computedTimeline,
         quantificationScore: computedQuantification,
