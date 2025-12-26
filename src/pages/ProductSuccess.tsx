@@ -23,7 +23,8 @@ import {
   Lightbulb,
   RefreshCw,
   ShieldCheck,
-  Brain
+  Brain,
+  Calendar
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -40,6 +41,8 @@ import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { clearReferralCode } from "@/hooks/use-affiliate-auth";
 import { getResumeFromSession, hasResumeInSession } from "@/hooks/use-session-resume";
 import { ATSDefenseResults, type ATSDefenseData } from "@/components/ATSDefenseResults";
+import { CareerSnapshotResults } from "@/components/CareerSnapshotResults";
+import { GraduateGamePlanResults } from "@/components/GraduateGamePlanResults";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { AIGenerationProgress } from "@/components/AIGenerationProgress";
 import { useStreamingGeneration } from "@/hooks/use-streaming-generation";
@@ -55,6 +58,8 @@ const productIcons: Record<string, React.ElementType> = {
   fullAnalysis: Sparkles,
   scanPack: Zap,
   atsDefense: ShieldCheck,
+  careerSnapshot: Brain,
+  graduateGamePlan: Target,
 };
 
 // Product-specific next steps and how-it-works info
@@ -156,6 +161,38 @@ const productInfo: Record<string, {
     ],
     deliveryTime: "Instant",
     deliveryMethod: "Credits Added to Account"
+  },
+  careerSnapshot: {
+    howItWorks: [
+      "Our AI analyzed your career from a senior recruiter's perspective",
+      "We evaluated your performance, trajectory, and credibility signals",
+      "Identified how recruiters will perceive your background",
+      "Generated strategic positioning recommendations",
+      "Created actionable priority fixes you can implement today"
+    ],
+    nextSteps: [
+      { icon: Target, title: "Review Your Score", description: "See your Career Signal Score breakdown" },
+      { icon: Brain, title: "Understand Perception", description: "Learn how recruiters see your career" },
+      { icon: FileText, title: "Apply Fixes", description: "Implement the priority recommendations" }
+    ],
+    deliveryTime: "Instant",
+    deliveryMethod: "On This Page"
+  },
+  graduateGamePlan: {
+    howItWorks: [
+      "Our AI evaluated your resume readiness for the job market",
+      "We identified roles that match your background and experience",
+      "Created a targeted application strategy for new grads",
+      "Generated networking scripts you can use immediately",
+      "Built a 30-day action plan to land your first role"
+    ],
+    nextSteps: [
+      { icon: CheckCircle2, title: "Check Readiness", description: "See if your resume is ready to apply" },
+      { icon: Target, title: "Target Roles", description: "Review roles that fit your background" },
+      { icon: Calendar, title: "Follow the Plan", description: "Execute the 30-day action plan" }
+    ],
+    deliveryTime: "Instant",
+    deliveryMethod: "On This Page"
   }
 };
 
@@ -202,6 +239,8 @@ export default function ProductSuccess() {
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [generatedContent, setGeneratedContent] = useState<KeywordData | CoverLetterData | PremiumPackageData | ATSDefenseData | null>(null);
   const [atsDefenseData, setAtsDefenseData] = useState<ATSDefenseData | null>(null);
+  const [careerSnapshotData, setCareerSnapshotData] = useState<any>(null);
+  const [graduateGamePlanData, setGraduateGamePlanData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'resume' | 'coverLetter'>('resume');
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
@@ -287,6 +326,12 @@ export default function ProductSuccess() {
         body.targetRoles = validRoles;
         body.allowRegeneration = true; // Flag to bypass session-used check for recovery
         if (jobDescription) body.jobDescription = jobDescription;
+      } else if (productKey === 'careerSnapshot') {
+        endpoint = 'generate-career-snapshot';
+        if (jobDescription) body.jobDescription = jobDescription;
+      } else if (productKey === 'graduateGamePlan') {
+        endpoint = 'generate-graduate-gameplan';
+        if (jobDescription) body.jobDescription = jobDescription;
       }
 
       if (!endpoint) {
@@ -320,6 +365,28 @@ export default function ProductSuccess() {
         toast({
           title: "ATS Defense Report Generated!",
           description: "Your comprehensive analysis is ready below.",
+        });
+        return true;
+      }
+
+      // Handle Career Snapshot response
+      if (productKey === 'careerSnapshot' && data?.data) {
+        setCareerSnapshotData(data.data);
+        setIsRecoveryMode(false);
+        toast({
+          title: "Career Snapshot Generated!",
+          description: "Your career intelligence report is ready below.",
+        });
+        return true;
+      }
+
+      // Handle Graduate Game Plan response
+      if (productKey === 'graduateGamePlan' && data?.data) {
+        setGraduateGamePlanData(data.data);
+        setIsRecoveryMode(false);
+        toast({
+          title: "Graduate Game Plan Generated!",
+          description: "Your action plan is ready below.",
         });
         return true;
       }
@@ -808,6 +875,8 @@ export default function ProductSuccess() {
   const isCoverLetter = productKey === 'coverLetter';
   const isPremiumPackage = productKey === 'premiumPackage';
   const isAtsDefense = productKey === 'atsDefense';
+  const isCareerSnapshot = productKey === 'careerSnapshot';
+  const isGraduateGamePlan = productKey === 'graduateGamePlan';
   const keywordData = isKeywordFix ? generatedContent as KeywordData : null;
   const coverLetterData = isCoverLetter ? generatedContent as CoverLetterData : null;
   const premiumData = isPremiumPackage ? generatedContent as PremiumPackageData : null;
@@ -1217,6 +1286,46 @@ export default function ProductSuccess() {
           </section>
         )}
 
+        {/* Generated Content Section - Career Snapshot */}
+        {isCareerSnapshot && careerSnapshotData && (
+          <section className="py-12 border-t border-border/50">
+            <div className="container max-w-4xl">
+              <div className="text-center mb-8">
+                <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
+                  <Brain className="w-3 h-3 mr-1" />
+                  Career Intelligence Report Ready
+                </Badge>
+                <h2 className="text-2xl font-bold mb-2">Your Career Snapshot</h2>
+                <p className="text-muted-foreground">
+                  Recruiter-style career intelligence showing how your career looks at a glance
+                </p>
+              </div>
+
+              <CareerSnapshotResults data={careerSnapshotData} />
+            </div>
+          </section>
+        )}
+
+        {/* Generated Content Section - Graduate Game Plan */}
+        {isGraduateGamePlan && graduateGamePlanData && (
+          <section className="py-12 border-t border-border/50">
+            <div className="container max-w-4xl">
+              <div className="text-center mb-8">
+                <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
+                  <Target className="w-3 h-3 mr-1" />
+                  Your Game Plan is Ready
+                </Badge>
+                <h2 className="text-2xl font-bold mb-2">Graduate Game Plan</h2>
+                <p className="text-muted-foreground">
+                  A clear, step-by-step playbook for what to do next
+                </p>
+              </div>
+
+              <GraduateGamePlanResults data={graduateGamePlanData} />
+            </div>
+          </section>
+        )}
+
         {/* AI Generation Progress Overlay for Recovery Mode */}
         <AIGenerationProgress 
           isVisible={isRegenerating} 
@@ -1224,20 +1333,26 @@ export default function ProductSuccess() {
         />
 
         {/* No Generated Content - Show Inline Upload Recovery */}
-        {(isKeywordFix || isCoverLetter || isPremiumPackage || isAtsDefense) && !generatedContent && !atsDefenseData && !verificationError && !isVerifying && !isRegenerating && (
+        {(isKeywordFix || isCoverLetter || isPremiumPackage || isAtsDefense || isCareerSnapshot || isGraduateGamePlan) && !generatedContent && !atsDefenseData && !careerSnapshotData && !graduateGamePlanData && !verificationError && !isVerifying && !isRegenerating && (
           <section className="py-12 border-t border-border/50">
             <div className="container max-w-2xl">
               <div className="p-8 rounded-2xl bg-muted/50 border border-border">
                     <div className="text-center mb-6">
                       <Upload className="w-12 h-12 text-primary mx-auto mb-4" />
                       <h3 className="text-xl font-semibold mb-2">
-                        {isAtsDefense ? 'Complete Your ATS Defense Report' :
+                        {isCareerSnapshot ? 'Complete Your Career Snapshot' :
+                         isGraduateGamePlan ? 'Complete Your Graduate Game Plan' :
+                         isAtsDefense ? 'Complete Your ATS Defense Report' :
                          isPremiumPackage ? 'Complete Your Premium Package' :
                          isCoverLetter ? 'Complete Your Cover Letter' :
                          'Complete Your Keyword Analysis'}
                       </h3>
                       <p className="text-muted-foreground">
-                        {isAtsDefense ? 
+                        {isCareerSnapshot ?
+                          'Upload your resume to get your career intelligence report.' :
+                         isGraduateGamePlan ?
+                          'Upload your resume to get your personalized game plan for landing your first role.' :
+                         isAtsDefense ? 
                           'Upload your resume and optionally add target roles and job description for personalized optimization.' :
                          isPremiumPackage ?
                           'Upload your resume and add a job description to get your optimized resume and cover letter.' :
