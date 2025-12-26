@@ -114,6 +114,7 @@ const VALID_INDUSTRIES = [
   'business_intelligence', 'platform_engineering',
   'quantitative_finance', 'product_design', 'sre',
   'technical_program_management', 'cloud_security', 'data_privacy',
+  'sales_operations', 'channel_sales', 'strategic_accounts',
   'general'
 ];
 
@@ -264,6 +265,9 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'technical_program_management': 'technology',
   'cloud_security': 'technology',
   'data_privacy': 'legal',
+  'sales_operations': 'sales',
+  'channel_sales': 'sales',
+  'strategic_accounts': 'sales',
 };
 
 // Industry aliases for normalization
@@ -302,7 +306,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'security': 'cybersecurity',
   'infrastructure': 'devops', 'sre': 'devops', 'platform': 'devops',
   // Sales aliases
-  'b2b sales': 'enterprise_sales', 'enterprise': 'enterprise_sales', 'strategic sales': 'enterprise_sales',
+  'b2b sales': 'enterprise_sales', 'enterprise': 'enterprise_sales',
   'sdr': 'inside_sales', 'bdr': 'business_development', 'outbound': 'inside_sales',
   'pre-sales': 'sales_engineering', 'solutions': 'sales_engineering',
   'partnerships': 'business_development', 'alliances': 'business_development',
@@ -631,13 +635,11 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   
   // ==================== REVENUE OPERATIONS ALIASES ====================
   'revenue operations': 'revenue_operations', 'revops': 'revenue_operations',
-  'revenue ops': 'revenue_operations', 'sales operations': 'revenue_operations',
+  'revenue ops': 'revenue_operations',
   'go-to-market operations': 'revenue_operations', 'gtm operations': 'revenue_operations',
-  'pipeline management': 'revenue_operations', 'sales forecasting': 'revenue_operations',
-  'territory planning': 'revenue_operations', 'quota setting': 'revenue_operations',
-  'commission plans': 'revenue_operations', 'sales enablement': 'revenue_operations',
-  'clari': 'revenue_operations', 'gong': 'revenue_operations', 'outreach': 'revenue_operations',
-  'salesloft': 'revenue_operations', 'deal desk': 'revenue_operations', 'cpq': 'revenue_operations',
+  'quota setting': 'revenue_operations', 'commission plans': 'revenue_operations',
+  'gong': 'revenue_operations', 'outreach': 'revenue_operations',
+  'salesloft': 'revenue_operations', 'cpq': 'revenue_operations',
   
   // ==================== GROWTH MARKETING ALIASES ====================
   'growth marketing': 'growth_marketing', 'growth hacking': 'growth_marketing',
@@ -775,6 +777,47 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'trustarc': 'data_privacy', 'bigid': 'data_privacy', 'data classification': 'data_privacy',
   'cross-border data transfer': 'data_privacy', 'data retention': 'data_privacy',
   'data breach response': 'data_privacy', 'cipp': 'data_privacy', 'cipm': 'data_privacy',
+  
+  // ==================== SALES OPERATIONS ALIASES ====================
+  'sales operations': 'sales_operations', 'sales ops': 'sales_operations',
+  'sales operations manager': 'sales_operations', 'director of sales operations': 'sales_operations',
+  'vp sales operations': 'sales_operations', 'head of sales ops': 'sales_operations',
+  'sales enablement': 'sales_operations', 'sales enablement manager': 'sales_operations',
+  'deal desk': 'sales_operations', 'deal desk manager': 'sales_operations',
+  'salesforce administrator': 'sales_operations', 'crm manager': 'sales_operations',
+  'sales analytics': 'sales_operations', 'sales analyst': 'sales_operations',
+  'sales planning': 'sales_operations', 'territory planning': 'sales_operations',
+  'quota management': 'sales_operations', 'sales compensation': 'sales_operations',
+  'pipeline management': 'sales_operations', 'sales forecasting': 'sales_operations',
+  'go-to-market ops': 'sales_operations', 'gtm ops': 'sales_operations',
+  'clari': 'sales_operations', 'gong analyst': 'sales_operations',
+  
+  // ==================== CHANNEL SALES ALIASES ====================
+  'channel sales': 'channel_sales', 'channel manager': 'channel_sales',
+  'channel sales manager': 'channel_sales', 'partner sales': 'channel_sales',
+  'partner manager': 'channel_sales', 'partner sales manager': 'channel_sales',
+  'channel director': 'channel_sales', 'director of channel': 'channel_sales',
+  'vp channel': 'channel_sales', 'head of partnerships': 'channel_sales',
+  'alliance manager': 'channel_sales', 'strategic alliances': 'channel_sales',
+  'reseller manager': 'channel_sales', 'var manager': 'channel_sales',
+  'distribution manager': 'channel_sales', 'indirect sales': 'channel_sales',
+  'partner enablement': 'channel_sales', 'channel enablement': 'channel_sales',
+  'partner development': 'channel_sales', 'ecosystem manager': 'channel_sales',
+  'partner success': 'channel_sales', 'channel account manager': 'channel_sales',
+  'parm': 'channel_sales', 'prm specialist': 'channel_sales',
+  
+  // ==================== STRATEGIC ACCOUNTS ALIASES ====================
+  'strategic accounts': 'strategic_accounts', 'strategic account manager': 'strategic_accounts',
+  'key account manager': 'strategic_accounts', 'key accounts': 'strategic_accounts',
+  'enterprise account manager': 'strategic_accounts', 'enterprise accounts': 'strategic_accounts',
+  'global account manager': 'strategic_accounts', 'global accounts': 'strategic_accounts',
+  'named account manager': 'strategic_accounts', 'named accounts': 'strategic_accounts',
+  'major accounts': 'strategic_accounts', 'major account manager': 'strategic_accounts',
+  'strategic sales': 'strategic_accounts', 'enterprise sales rep': 'strategic_accounts',
+  'enterprise ae': 'strategic_accounts', 'strategic ae': 'strategic_accounts',
+  'c-suite selling': 'strategic_accounts', 'executive selling': 'strategic_accounts',
+  'complex sales': 'strategic_accounts', 'large deal sales': 'strategic_accounts',
+  'account executive enterprise': 'strategic_accounts', 'senior account executive': 'strategic_accounts',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -3810,6 +3853,76 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         /\b(implemented|built|led)\s+.*\b(privacy\s+program|gdpr|ccpa|compliance)\b/i,
         /\b(conducted|performed)\s+.*\b(privacy\s+impact|data\s+mapping|assessment)\b/i,
         /\b(managed|handled)\s+.*\b(data\s+subject|breach|incident)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    sales_operations: {
+      titlePatterns: [
+        /\b(sales\s+operations\s+manager|director\s+of\s+sales\s+operations)\b/i,
+        /\b(vp\s+sales\s+operations|head\s+of\s+sales\s+ops)\b/i,
+        /\b(sales\s+enablement\s+manager|deal\s+desk\s+manager)\b/i,
+        /\b(salesforce\s+administrator|crm\s+manager)\b/i,
+      ],
+      skillPatterns: [
+        'sales operations', 'salesforce', 'sales enablement', 'crm management',
+        'sales forecasting', 'territory planning', 'quota setting', 'pipeline analytics',
+        'compensation planning', 'process optimization', 'hubspot', 'outreach', 'gong',
+        'clari', 'sales metrics', 'deal desk', 'cpq', 'sales training',
+        'go-to-market', 'revenue intelligence', 'lead routing', 'sales playbooks',
+        'win loss analysis', 'sales tech stack'
+      ],
+      contextPatterns: [
+        /\b(managed|optimized|built)\s+.*\b(sales\s+operations|sales\s+process|crm)\b/i,
+        /\b(increased|improved)\s+.*\b(pipeline|quota|forecast|efficiency)\b/i,
+        /\b(implemented|deployed)\s+.*\b(salesforce|hubspot|sales\s+tool|enablement)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    channel_sales: {
+      titlePatterns: [
+        /\b(channel\s+manager|channel\s+sales\s+manager)\b/i,
+        /\b(partner\s+manager|partner\s+sales\s+manager)\b/i,
+        /\b(channel\s+director|director\s+of\s+channel)\b/i,
+        /\b(alliance\s+manager|vp\s+channel)\b/i,
+      ],
+      skillPatterns: [
+        'channel sales', 'partner management', 'partner recruitment', 'channel strategy',
+        'reseller programs', 'partner enablement', 'co-selling', 'deal registration',
+        'partner portal', 'mdf', 'partner incentives', 'channel conflict',
+        'distribution', 'var management', 'alliance building', 'partner revenue',
+        'channel marketing', 'partner certification', 'ecosystem development',
+        'indirect revenue', 'partner success', 'crossbeam', 'partnerstack', 'prm'
+      ],
+      contextPatterns: [
+        /\b(managed|built|grew)\s+.*\b(channel|partner|reseller|alliance)\b/i,
+        /\b(recruited|enabled|onboarded)\s+.*\b(partner|var|reseller|distributor)\b/i,
+        /\b(increased|drove)\s+.*\b(partner\s+revenue|indirect|channel\s+sales)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    strategic_accounts: {
+      titlePatterns: [
+        /\b(strategic\s+account\s+manager|key\s+account\s+manager)\b/i,
+        /\b(enterprise\s+account\s+manager|global\s+account\s+manager)\b/i,
+        /\b(named\s+account\s+manager|major\s+account\s+manager)\b/i,
+        /\b(enterprise\s+ae|strategic\s+ae)\b/i,
+      ],
+      skillPatterns: [
+        'strategic account management', 'enterprise sales', 'executive relationships',
+        'account planning', 'c-suite selling', 'multi-threading', 'value selling',
+        'complex sales cycles', 'account expansion', 'land and expand', 'qbr',
+        'executive sponsorship', 'meddic', 'spin selling', 'challenger sale',
+        'solution selling', 'account mapping', 'stakeholder management',
+        'contract negotiation', 'enterprise deals', 'strategic planning',
+        'customer success', 'account retention', 'global account strategy'
+      ],
+      contextPatterns: [
+        /\b(managed|owned|led)\s+.*\b(strategic|key|enterprise|global)\s+account/i,
+        /\b(closed|won|grew)\s+.*\b(enterprise|strategic|major|seven\s+figure)\s+deal/i,
+        /\b(built|developed)\s+.*\b(c-suite|executive|stakeholder)\s+relationship/i,
       ],
       minSkillsForHigh: 4,
       titleWeight: 50
