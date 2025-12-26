@@ -78,7 +78,7 @@ const VALID_INDUSTRIES = [
   // Sub-industries for sales
   'enterprise_sales', 'inside_sales', 'sales_engineering', 'business_development',
   // Sub-industries for marketing
-  'digital_marketing', 'content_marketing', 'brand_marketing', 'growth_marketing', 'product_marketing',
+  'digital_marketing', 'content_marketing', 'brand_marketing', 'product_marketing',
   // Sub-industries for legal
   'corporate_law', 'litigation', 'intellectual_property', 'employment_law', 'compliance',
   // Sub-industries for education
@@ -109,6 +109,7 @@ const VALID_INDUSTRIES = [
   'supply_chain_analytics', 'sports_management',
   'ux_research', 'product_analytics', 'technical_writing',
   'data_engineering', 'devrel', 'content_strategy',
+  'customer_success', 'revenue_operations', 'growth_marketing',
   'general'
 ];
 
@@ -148,7 +149,6 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'digital_marketing': 'marketing',
   'content_marketing': 'marketing',
   'brand_marketing': 'marketing',
-  'growth_marketing': 'marketing',
   'product_marketing': 'marketing',
   // Legal sub-industries
   'corporate_law': 'legal',
@@ -246,6 +246,9 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'data_engineering': 'technology',
   'devrel': 'technology',
   'content_strategy': 'marketing',
+  'customer_success': 'sales',
+  'revenue_operations': 'sales',
+  'growth_marketing': 'marketing',
 };
 
 // Industry aliases for normalization
@@ -264,7 +267,6 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'advertising': 'brand_marketing', 'pr': 'brand_marketing', 'public relations': 'brand_marketing',
   'seo': 'digital_marketing', 'ppc': 'digital_marketing', 'social media': 'digital_marketing',
   'content': 'content_marketing', 'copywriting': 'content_marketing',
-  'growth hacking': 'growth_marketing', 'performance marketing': 'growth_marketing',
   'teaching': 'education', 'academia': 'education', 'academic': 'education',
   'design': 'creative', 'art': 'creative', 'media': 'creative',
   'human resources': 'hr', 'recruitment': 'hr', 'talent': 'hr',
@@ -290,7 +292,6 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'pre-sales': 'sales_engineering', 'solutions': 'sales_engineering', 'technical sales': 'sales_engineering',
   'partnerships': 'business_development', 'alliances': 'business_development',
   // Marketing aliases
-  'demand gen': 'growth_marketing', 'lead generation': 'growth_marketing',
   'pmm': 'product_marketing', 'go-to-market': 'product_marketing',
   // Legal aliases
   'regulatory': 'compliance', 'risk': 'compliance', 'governance': 'compliance',
@@ -427,8 +428,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'wealth management': 'financial_planning', 'cfp': 'financial_planning',
   
   // Sales aliases (non-duplicate)
-  'account manager': 'enterprise_sales', 'client success manager': 'enterprise_sales',
-  'customer success manager': 'enterprise_sales', 'revenue operations': 'sales',
+  'account manager': 'enterprise_sales',
   
   // DevOps/Cloud aliases (non-duplicate)
   'cloud engineer': 'cloud_engineering', 'platform engineering': 'devops',
@@ -559,7 +559,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'experimentation': 'product_analytics', 'ab testing product': 'product_analytics',
   'heap analytics': 'product_analytics', 'event tracking': 'product_analytics',
   'ltv analysis': 'product_analytics', 'churn analysis': 'product_analytics',
-  'feature adoption': 'product_analytics', 'product-led growth': 'product_analytics',
+  'feature adoption': 'product_analytics',
   
   // ==================== TECHNICAL WRITING ALIASES ====================
   'technical writing': 'technical_writing', 'technical writer': 'technical_writing',
@@ -603,6 +603,37 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'voice and tone': 'content_strategy', 'content modeling': 'content_strategy',
   'taxonomy': 'content_strategy', 'content performance': 'content_strategy',
   'content localization': 'content_strategy', 'content migration': 'content_strategy',
+  
+  // ==================== CUSTOMER SUCCESS ALIASES ====================
+  'customer success': 'customer_success', 'csm': 'customer_success',
+  'customer success manager': 'customer_success', 'client success': 'customer_success',
+  'account management': 'customer_success', 'customer experience': 'customer_success',
+  'customer retention': 'customer_success', 'churn prevention': 'customer_success',
+  'customer onboarding': 'customer_success', 'nps': 'customer_success',
+  'customer health': 'customer_success', 'qbr': 'customer_success', 'qbrs': 'customer_success',
+  'renewal management': 'customer_success', 'gainsight': 'customer_success',
+  'totango': 'customer_success', 'churnzero': 'customer_success',
+  'expansion revenue': 'customer_success', 'product adoption': 'customer_success',
+  
+  // ==================== REVENUE OPERATIONS ALIASES ====================
+  'revenue operations': 'revenue_operations', 'revops': 'revenue_operations',
+  'revenue ops': 'revenue_operations', 'sales operations': 'revenue_operations',
+  'go-to-market operations': 'revenue_operations', 'gtm operations': 'revenue_operations',
+  'pipeline management': 'revenue_operations', 'sales forecasting': 'revenue_operations',
+  'territory planning': 'revenue_operations', 'quota setting': 'revenue_operations',
+  'commission plans': 'revenue_operations', 'sales enablement': 'revenue_operations',
+  'clari': 'revenue_operations', 'gong': 'revenue_operations', 'outreach': 'revenue_operations',
+  'salesloft': 'revenue_operations', 'deal desk': 'revenue_operations', 'cpq': 'revenue_operations',
+  
+  // ==================== GROWTH MARKETING ALIASES ====================
+  'growth marketing': 'growth_marketing', 'growth hacking': 'growth_marketing',
+  'growth manager': 'growth_marketing', 'performance marketing': 'growth_marketing',
+  'acquisition marketing': 'growth_marketing', 'lifecycle marketing': 'growth_marketing',
+  'demand generation': 'growth_marketing', 'user acquisition': 'growth_marketing',
+  'conversion optimization': 'growth_marketing', 'cro': 'growth_marketing',
+  'paid acquisition': 'growth_marketing', 'cac': 'growth_marketing', 'ltv': 'growth_marketing',
+  'aarrr': 'growth_marketing', 'product-led growth': 'growth_marketing',
+  'viral loops': 'growth_marketing', 'referral programs': 'growth_marketing',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -1386,21 +1417,27 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
     },
     growth_marketing: {
       titlePatterns: [
-        /\b(growth\s+marketing\s+manager|growth\s+lead|head\s+of\s+growth)\b/,
-        /\b(demand\s+generation|demand\s+gen|lifecycle\s+marketing)\b/,
-        /\b(performance\s+marketing|acquisition\s+marketing|cro\s+manager)\b/,
+        /\b(growth\s+marketing\s+manager|growth\s+lead|head\s+of\s+growth)\b/i,
+        /\b(demand\s+generation|demand\s+gen|lifecycle\s+marketing)\b/i,
+        /\b(performance\s+marketing|acquisition\s+marketing|cro\s+manager)\b/i,
+        /\b(growth\s+manager|director.*growth)\b/i,
       ],
       skillPatterns: [
-        'growth hacking', 'a/b testing', 'conversion optimization', 'funnel optimization',
-        'demand generation', 'lead generation', 'marketing automation', 'hubspot',
-        'marketo', 'segment', 'amplitude', 'mixpanel', 'attribution'
+        'growth marketing', 'user acquisition', 'conversion optimization', 'a/b testing',
+        'funnel optimization', 'paid acquisition', 'seo', 'sem', 'facebook ads',
+        'google ads', 'linkedin ads', 'cac', 'ltv', 'retention', 'activation',
+        'aarrr', 'product-led growth', 'viral loops', 'referral programs',
+        'email marketing', 'lifecycle marketing', 'mixpanel', 'amplitude', 'segment',
+        'experimentation', 'demand generation', 'lead generation', 'marketing automation',
+        'hubspot', 'marketo', 'attribution'
       ],
       contextPatterns: [
-        /\b(grew|increased|improved)\s+.*\b(conversion|acquisition|activation|retention)\b/i,
-        /\b(optimized|tested)\s+.*\b(funnel|journey|experience)\b/i,
+        /\b(grew|increased|scaled)\s+.*\b(user|customer|acquisition|conversion|retention)\b/i,
+        /\b(reduced|optimized|improved)\s+.*\b(cac|cost|funnel|churn)\b/i,
+        /\b(launched|built|managed)\s+.*\b(campaign|experiment|test|growth)\b/i,
       ],
       minSkillsForHigh: 4,
-      titleWeight: 40
+      titleWeight: 45
     },
     product_marketing: {
       titlePatterns: [
@@ -3338,6 +3375,51 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         /\b(developed|created|defined)\s+.*\b(content\s+strategy|editorial\s+calendar|style\s+guide)\b/i,
         /\b(led|managed)\s+.*\b(content\s+audit|content\s+migration|content\s+team)\b/i,
         /\b(improved|increased)\s+.*\b(engagement|traffic|conversion)\s+.*\b(content|copy)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    customer_success: {
+      titlePatterns: [
+        /\b(customer\s+success\s+manager|csm|client\s+success)\b/i,
+        /\b(customer\s+success\s+lead|head\s+of\s+customer\s+success)\b/i,
+        /\b(account\s+manager|customer\s+experience\s+manager)\b/i,
+        /\b(senior\s+csm|enterprise\s+csm|strategic\s+csm)\b/i,
+      ],
+      skillPatterns: [
+        'customer success', 'customer retention', 'churn prevention', 'onboarding',
+        'nps', 'customer health score', 'qbrs', 'renewal management', 'upselling',
+        'cross-selling', 'gainsight', 'totango', 'churnzero', 'salesforce',
+        'customer advocacy', 'stakeholder management', 'expansion revenue',
+        'customer journey', 'product adoption', 'time to value', 'playbooks'
+      ],
+      contextPatterns: [
+        /\b(managed|owned)\s+.*\b(portfolio|accounts|customers|clients)\b/i,
+        /\b(reduced|prevented|decreased)\s+.*\b(churn|attrition)\b/i,
+        /\b(increased|grew|drove)\s+.*\b(retention|renewal|expansion|nps)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    revenue_operations: {
+      titlePatterns: [
+        /\b(revenue\s+operations|revops|revenue\s+ops)\b/i,
+        /\b(sales\s+operations|sales\s+ops)\b/i,
+        /\b(go-to-market\s+operations|gtm\s+operations)\b/i,
+        /\b(director.*revenue\s+operations|head\s+of\s+revops)\b/i,
+      ],
+      skillPatterns: [
+        'revenue operations', 'sales operations', 'pipeline management', 'forecasting',
+        'salesforce', 'hubspot', 'crm administration', 'territory planning',
+        'quota setting', 'commission plans', 'sales enablement', 'gtm strategy',
+        'clari', 'gong', 'outreach', 'salesloft', 'deal desk', 'cpq',
+        'lead scoring', 'attribution', 'funnel optimization', 'data hygiene',
+        'process automation', 'revenue analytics'
+      ],
+      contextPatterns: [
+        /\b(built|designed|implemented)\s+.*\b(sales\s+process|pipeline|forecasting|crm)\b/i,
+        /\b(improved|optimized)\s+.*\b(pipeline|conversion|quota|territory)\b/i,
+        /\b(managed|administered)\s+.*\b(salesforce|hubspot|crm|sales\s+tools)\b/i,
       ],
       minSkillsForHigh: 4,
       titleWeight: 50
