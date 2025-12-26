@@ -107,6 +107,7 @@ const VALID_INDUSTRIES = [
   'biotech', 'medtech', 'wealthtech', 'supplychain_tech', 'constructech',
   // Specialized sub-industries
   'supply_chain_analytics', 'sports_management',
+  'ux_research', 'product_analytics', 'technical_writing',
   'general'
 ];
 
@@ -238,6 +239,9 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   // Specialized sub-industries
   'supply_chain_analytics': 'logistics',
   'sports_management': 'hospitality',
+  'ux_research': 'creative',
+  'product_analytics': 'technology',
+  'technical_writing': 'technology',
 };
 
 // Industry aliases for normalization
@@ -530,6 +534,41 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'fan engagement': 'sports_management', 'ncaa': 'sports_management', 'ncaa compliance': 'sports_management',
   'professional sports': 'sports_management', 'minor league': 'sports_management', 'major league': 'sports_management',
   'esports management': 'sports_management', 'esports': 'sports_management',
+  
+  // ==================== UX RESEARCH ALIASES ====================
+  'ux research': 'ux_research', 'user research': 'ux_research', 'ux researcher': 'ux_research',
+  'user experience research': 'ux_research', 'usability research': 'ux_research', 'design research': 'ux_research',
+  'user insights': 'ux_research', 'human factors': 'ux_research', 'hci': 'ux_research',
+  'usability testing': 'ux_research', 'user interviews': 'ux_research', 'journey mapping': 'ux_research',
+  'personas': 'ux_research', 'card sorting': 'ux_research', 'tree testing': 'ux_research',
+  'eye tracking': 'ux_research', 'heuristic evaluation': 'ux_research', 'affinity mapping': 'ux_research',
+  'dovetail': 'ux_research', 'usertesting': 'ux_research', 'optimal workshop': 'ux_research',
+  'lookback': 'ux_research', 'maze design': 'ux_research',
+  
+  // ==================== PRODUCT ANALYTICS ALIASES ====================
+  'product analytics': 'product_analytics', 'product analyst': 'product_analytics',
+  'growth analytics': 'product_analytics', 'product intelligence': 'product_analytics',
+  'product data': 'product_analytics', 'analytics engineer': 'product_analytics',
+  'amplitude': 'product_analytics', 'mixpanel': 'product_analytics', 'segment': 'product_analytics',
+  'funnel analysis': 'product_analytics', 'cohort analysis': 'product_analytics',
+  'retention analysis': 'product_analytics', 'user segmentation': 'product_analytics',
+  'experimentation': 'product_analytics', 'ab testing product': 'product_analytics',
+  'heap analytics': 'product_analytics', 'event tracking': 'product_analytics',
+  'ltv analysis': 'product_analytics', 'churn analysis': 'product_analytics',
+  'feature adoption': 'product_analytics', 'product-led growth': 'product_analytics',
+  
+  // ==================== TECHNICAL WRITING ALIASES ====================
+  'technical writing': 'technical_writing', 'technical writer': 'technical_writing',
+  'tech writer': 'technical_writing', 'documentation specialist': 'technical_writing',
+  'api documentation': 'technical_writing', 'content developer': 'technical_writing',
+  'information developer': 'technical_writing', 'knowledge management': 'technical_writing',
+  'technical documentation': 'technical_writing', 'user guides': 'technical_writing',
+  'knowledge base': 'technical_writing', 'release notes': 'technical_writing',
+  'dita': 'technical_writing', 'madcap flare': 'technical_writing', 'framemaker': 'technical_writing',
+  'readme': 'technical_writing', 'docusaurus': 'technical_writing', 'swagger docs': 'technical_writing',
+  'openapi docs': 'technical_writing', 'style guides': 'technical_writing',
+  'information architecture': 'technical_writing', 'single sourcing': 'technical_writing',
+  'topic-based authoring': 'technical_writing',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -3131,6 +3170,73 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         /\b(managed|negotiated)\s+.*\b(athlete|player|team|sponsorship|contract)\b/i,
         /\b(increased|grew)\s+.*\b(ticket|attendance|revenue|fan|sponsorship)\b/i,
         /\b(sports|athletic|ncaa|professional\s+team|esports)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    ux_research: {
+      titlePatterns: [
+        /\b(ux\s+researcher|user\s+researcher|design\s+researcher)\b/i,
+        /\b(usability\s+researcher|user\s+experience\s+researcher)\b/i,
+        /\b(research\s+lead.*ux|senior\s+.*researcher.*user)\b/i,
+        /\b(human\s+factors|hci\s+researcher|customer\s+insights\s+researcher)\b/i,
+      ],
+      skillPatterns: [
+        'user research', 'usability testing', 'user interviews', 'a/b testing',
+        'journey mapping', 'personas', 'surveys', 'card sorting', 'tree testing',
+        'eye tracking', 'heuristic evaluation', 'affinity mapping', 'usertesting',
+        'optimal workshop', 'dovetail', 'lookback', 'maze', 'figma', 'miro',
+        'qualitative analysis', 'quantitative research', 'research repository',
+        'accessibility', 'wcag', 'research synthesis', 'moderated testing'
+      ],
+      contextPatterns: [
+        /\b(conducted|led|performed)\s+.*\b(user|usability|research|interviews|testing)\b/i,
+        /\b(synthesized|analyzed)\s+.*\b(research|user|qualitative|quantitative)\s+.*\b(findings|data|insights)\b/i,
+        /\b(created|developed)\s+.*\b(personas|journey\s+maps|research\s+reports)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    product_analytics: {
+      titlePatterns: [
+        /\b(product\s+analyst|product\s+analytics)\b/i,
+        /\b(growth\s+analyst|analytics\s+engineer|data\s+product)\b/i,
+        /\b(experimentation\s+analyst|business\s+intelligence.*product)\b/i,
+        /\b(senior\s+analyst.*product|product\s+data\s+scientist)\b/i,
+      ],
+      skillPatterns: [
+        'product analytics', 'amplitude', 'mixpanel', 'segment', 'funnel analysis',
+        'cohort analysis', 'retention analysis', 'user segmentation', 'a/b testing',
+        'experimentation', 'sql', 'python', 'looker', 'tableau', 'mode', 'dbt',
+        'heap', 'event tracking', 'kpis', 'okrs', 'ltv', 'churn analysis',
+        'feature adoption', 'product-led growth', 'data storytelling', 'statistical significance'
+      ],
+      contextPatterns: [
+        /\b(analyzed|measured|tracked)\s+.*\b(product|user|feature|funnel|cohort)\s+.*\b(metrics|performance|adoption)\b/i,
+        /\b(built|developed|created)\s+.*\b(dashboards|reports|analytics|experimentation)\b/i,
+        /\b(increased|improved)\s+.*\b(retention|conversion|engagement|activation)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    technical_writing: {
+      titlePatterns: [
+        /\b(technical\s+writer|tech\s+writer|documentation\s+specialist)\b/i,
+        /\b(api\s+writer|content\s+developer|information\s+developer)\b/i,
+        /\b(knowledge\s+management.*specialist|documentation\s+engineer)\b/i,
+        /\b(senior\s+technical\s+writer|lead\s+technical\s+writer)\b/i,
+      ],
+      skillPatterns: [
+        'technical documentation', 'api documentation', 'user guides', 'knowledge base',
+        'release notes', 'dita', 'markdown', 'confluence', 'swagger', 'openapi',
+        'git', 'madcap flare', 'adobe framemaker', 'readme', 'docusaurus',
+        'style guides', 'information architecture', 'content strategy', 'single sourcing',
+        'topic-based authoring', 'jira', 'agile', 'sme interviews', 'editing'
+      ],
+      contextPatterns: [
+        /\b(wrote|authored|created|developed)\s+.*\b(documentation|guides|manuals|api\s+docs)\b/i,
+        /\b(maintained|managed)\s+.*\b(knowledge\s+base|documentation|wiki|confluence)\b/i,
+        /\b(collaborated|worked)\s+.*\b(engineers|developers|smes|product)\s+.*\b(document|technical)\b/i,
       ],
       minSkillsForHigh: 4,
       titleWeight: 50
