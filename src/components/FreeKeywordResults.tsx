@@ -666,6 +666,8 @@ interface FreeKeywordResultsProps {
     metrics?: ContentLocation;
   };
   industryDetection?: IndustryDetection;
+  // Industry correction callback
+  onIndustryChange?: (newIndustry: string) => void;
 }
 
 export function FreeKeywordResults({
@@ -731,7 +733,8 @@ export function FreeKeywordResults({
   usageRecommendations,
   credibilityIssues,
   contentLocations,
-  industryDetection
+  industryDetection,
+  onIndustryChange
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -742,6 +745,20 @@ export function FreeKeywordResults({
   const { addScanEntry, setUserEmail, isReturningUser, getLatestScan } = useScanHistory();
   const [hasRecordedScan, setHasRecordedScan] = useState(false);
   const [currentScanId, setCurrentScanId] = useState<string | null>(null);
+  const [correctedIndustry, setCorrectedIndustry] = useState<string | null>(null);
+  
+  // Use corrected industry if set, otherwise use detected
+  const effectiveIndustry = correctedIndustry || industry;
+  
+  // Handle industry correction
+  const handleIndustryChange = (newIndustry: string) => {
+    setCorrectedIndustry(newIndustry);
+    onIndustryChange?.(newIndustry);
+    toast({
+      title: "Industry Updated",
+      description: `Keyword recommendations will now be tailored for ${newIndustry.replace(/_/g, ' ')}.`,
+    });
+  };
   
   // Record this scan in history (only once per render)
   useEffect(() => {
@@ -1142,7 +1159,7 @@ export function FreeKeywordResults({
       const { data, error } = await supabase.functions.invoke('save-lead', {
         body: { 
           email, 
-          industry, 
+          industry: effectiveIndustry, 
           atsScore: atsScoreEstimate,
           honeypot: honeypotValue || ''
         }
@@ -1310,11 +1327,11 @@ export function FreeKeywordResults({
         <p className="text-sm text-muted-foreground">
           {currentRole ? (
             <>
-              <span className="text-foreground font-medium">{currentRole}</span> in <span className="text-foreground font-medium">{industry}</span> • <span className="text-foreground font-medium">{getExperienceLevelLabel(experienceLevel.level)}</span> ({experienceLevel.yearsEstimate})
+              <span className="text-foreground font-medium">{currentRole}</span> in <span className="text-foreground font-medium">{effectiveIndustry}</span> • <span className="text-foreground font-medium">{getExperienceLevelLabel(experienceLevel.level)}</span> ({experienceLevel.yearsEstimate})
             </>
           ) : (
             <>
-              {t('freeScan.detected')}: <span className="text-foreground font-medium">{industry}</span> • <span className="text-foreground font-medium">{getExperienceLevelLabel(experienceLevel.level)}</span> ({experienceLevel.yearsEstimate})
+              {t('freeScan.detected')}: <span className="text-foreground font-medium">{effectiveIndustry}</span> • <span className="text-foreground font-medium">{getExperienceLevelLabel(experienceLevel.level)}</span> ({experienceLevel.yearsEstimate})
             </>
           )}
         </p>
@@ -1325,7 +1342,7 @@ export function FreeKeywordResults({
         candidateName={candidateName}
         atsScore={atsScoreEstimate}
         formatGrade={formatGrade}
-        industry={industry}
+        industry={effectiveIndustry}
         experienceLevel={getExperienceLevelLabel(experienceLevel.level)}
         topStrength={topStrength.title}
         redFlagsCount={redFlags.length}
@@ -1344,19 +1361,20 @@ export function FreeKeywordResults({
         credibilityIssues={credibilityIssues}
         contentLocations={contentLocations}
         industryDetection={industryDetection}
-        industry={industry}
+        industry={effectiveIndustry}
         candidateName={candidateName}
+        onIndustryChange={handleIndustryChange}
       />
 
       {/* Returning User Insights - shown for users who have scanned before */}
       <ReturningUserInsights 
         currentScore={atsScoreEstimate} 
-        currentIndustry={industry}
+        currentIndustry={effectiveIndustry}
       />
 
       {/* Industry-Specific Keyword Suggestions */}
       <IndustryKeywordSuggestions 
-        industry={industry} 
+        industry={effectiveIndustry} 
         resumeText={resumeText}
         className="mb-4"
       />
@@ -1390,8 +1408,8 @@ export function FreeKeywordResults({
         </h4>
         <p className="text-sm text-muted-foreground mb-4">
           {currentRole 
-            ? `Get ${industry}-specific fixes for your ${currentRole} resume, with rewritten bullet points and optimized keywords.`
-            : `Get specific fixes, rewritten bullet points, and AI-ATS-optimized suggestions tailored to ${industry}.`
+            ? `Get ${effectiveIndustry.replace(/_/g, ' ')}-specific fixes for your ${currentRole} resume, with rewritten bullet points and optimized keywords.`
+            : `Get specific fixes, rewritten bullet points, and AI-ATS-optimized suggestions tailored to ${effectiveIndustry.replace(/_/g, ' ')}.`
           }
         </p>
         
