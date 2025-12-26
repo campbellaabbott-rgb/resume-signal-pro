@@ -60,7 +60,7 @@ function logScanMetric(
 const VALID_INDUSTRIES = [
   // Core industries
   'technology', 'healthcare', 'finance', 'legal', 'sales', 
-  'marketing', 'education', 'engineering', 'creative', 'hr', 
+  'marketing', 'education', 'engineering', 'creative', 'hr', 'human_resources', 
   'consulting', 'retail', 'hospitality', 'manufacturing', 
   'government', 'nonprofit', 'construction', 'real_estate',
   'logistics', 'energy', 'agriculture',
@@ -176,12 +176,16 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'lean_manufacturing': 'manufacturing',
   'supply_chain_manufacturing': 'manufacturing',
   'plant_management': 'manufacturing',
-  // HR sub-industries
-  'talent_acquisition': 'hr',
-  'hr_business_partner': 'hr',
-  'compensation_benefits': 'hr',
-  'learning_development': 'hr',
-  'hr_operations': 'hr',
+  // HR sub-industries (use 'human_resources' as canonical parent)
+  'talent_acquisition': 'human_resources',
+  'hr_business_partner': 'human_resources',
+  'compensation_benefits': 'human_resources',
+  'learning_development': 'human_resources',
+  'hr_operations': 'human_resources',
+  'employee_experience': 'human_resources',
+  'organizational_development': 'human_resources',
+  'dei': 'human_resources',
+  'remote_work': 'human_resources',
   // Consulting sub-industries
   'management_consulting': 'consulting',
   'strategy_consulting': 'consulting',
@@ -220,14 +224,12 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'volunteer_management': 'nonprofit',
   // Emerging roles (cross-industry)
   'sustainability': 'technology',
-  'dei': 'hr',
-  'remote_work': 'hr',
   'creator_economy': 'creative',
   // HYBRID INDUSTRIES - These are their own parent (primary domain)
   'healthcare_it': 'technology',
   'fintech': 'finance',
   'legaltech': 'legal',
-  'hrtech': 'hr',
+  'hrtech': 'human_resources',
   'proptech': 'real_estate',
   'insurtech': 'finance',
   'regtech': 'finance',
@@ -277,8 +279,6 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'private_equity': 'finance',
   'venture_capital': 'finance',
   'treasury_management': 'finance',
-  'organizational_development': 'human_resources',
-  'employee_experience': 'human_resources',
   'hr_analytics': 'human_resources',
 };
 
@@ -300,7 +300,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'content': 'content_marketing', 'copywriting': 'content_marketing',
   'teaching': 'education', 'academia': 'education', 'academic': 'education',
   'design': 'creative', 'art': 'creative', 'media': 'creative',
-  'human resources': 'hr', 'recruitment': 'hr', 'talent': 'hr',
+  'human resources': 'human_resources', 'hr': 'human_resources', 'recruitment': 'human_resources', 'talent': 'human_resources',
   'management consulting': 'consulting', 'strategy': 'consulting',
   'ecommerce': 'retail', 'e-commerce': 'retail', 'store': 'retail',
   'hotel': 'hospitality', 'restaurant': 'hospitality', 'tourism': 'hospitality',
@@ -6789,14 +6789,27 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       const serverParent = getParentIndustry(serverDetection.industry);
       const aiParent = getParentIndustry(normalizedAISuggested);
       
+      // Parent aliases - treat these as equivalent for matching purposes
+      const PARENT_ALIASES: Record<string, string> = {
+        'hr': 'human_resources',
+        'human_resources': 'human_resources',
+      };
+      
+      // Normalize parents for comparison
+      const normalizedServerParent = PARENT_ALIASES[serverParent] || serverParent;
+      const normalizedAIParent = PARENT_ALIASES[aiParent] || aiParent;
+      const normalizedAIForComparison = PARENT_ALIASES[normalizedAISuggested] || normalizedAISuggested;
+      
       // Exact match (both same specific industry)
       const isExactMatch = serverDetection.industry === normalizedAISuggested;
       // Parent match (server sub-industry maps to AI's broad category)
-      const isParentMatch = serverParent === normalizedAISuggested || 
-        serverDetection.industry === aiParent ||
-        serverParent === aiParent;
+      const isParentMatch = normalizedServerParent === normalizedAIForComparison || 
+        serverDetection.industry === normalizedAIParent ||
+        normalizedServerParent === normalizedAIParent;
       // Cross-level match (AI returns parent, server returns child of that parent)
-      const isCrossLevelMatch = INDUSTRY_PARENTS[serverDetection.industry] === normalizedAISuggested;
+      const serverParentFromMap = INDUSTRY_PARENTS[serverDetection.industry];
+      const normalizedServerParentFromMap = serverParentFromMap ? (PARENT_ALIASES[serverParentFromMap] || serverParentFromMap) : null;
+      const isCrossLevelMatch = normalizedServerParentFromMap === normalizedAIForComparison;
       
       // Combined: consider it a match if any level matches
       const serverAIMatch = isExactMatch || isParentMatch || isCrossLevelMatch;
