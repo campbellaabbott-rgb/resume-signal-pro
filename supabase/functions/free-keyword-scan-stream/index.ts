@@ -377,6 +377,49 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'wealth tech': 'wealthtech', 'wealth technology': 'wealthtech', 'robo advisor': 'wealthtech',
   'supply chain tech': 'supplychain_tech', 'logistics tech': 'supplychain_tech', 'freight tech': 'supplychain_tech',
   'construction tech': 'constructech', 'con tech': 'constructech', 'building tech': 'constructech',
+  
+  // EXPANDED ALIASES - Added for better detection
+  // Technology broad category
+  'startup': 'technology', 'saas': 'technology', 'b2b tech': 'technology', 'b2c tech': 'technology',
+  'product lead': 'product_management', 'product owner': 'product_management',
+  
+  // Software engineering aliases
+  'frontend developer': 'software_engineering', 'backend developer': 'software_engineering', 
+  'fullstack developer': 'software_engineering', 'full-stack developer': 'software_engineering', 
+  'front-end developer': 'software_engineering', 'back-end developer': 'software_engineering',
+  'react developer': 'software_engineering', 'node developer': 'software_engineering',
+  'python developer': 'software_engineering', 'java developer': 'software_engineering',
+  
+  // Data science aliases
+  'business intelligence analyst': 'data_science', 'bi developer': 'data_science',
+  'data analyst role': 'data_science', 'data engineering': 'data_science', 'ml engineering': 'ai_ml',
+  'ai research': 'ai_ml', 'deep learning engineer': 'ai_ml',
+  
+  // UX/Creative aliases (non-duplicate)
+  'ux designer': 'ux_design', 'ui designer': 'ux_design', 'user researcher': 'ux_design',
+  'graphic artist': 'graphic_design', 'motion designer': 'video_production',
+  
+  // Healthcare aliases
+  'rn': 'nursing', 'lpn': 'nursing', 'bsn': 'nursing', 'msn': 'nursing',
+  'np': 'nursing', 'nurse practitioner': 'nursing', 'registered nurse': 'nursing',
+  'md': 'physician', 'do': 'physician', 'medical resident': 'physician',
+  
+  // Education aliases  
+  'instructor role': 'education', 'tutor': 'education', 'corporate trainer': 'learning_development',
+  'facilitator role': 'learning_development', 'lecturer': 'higher_education',
+  
+  // Finance aliases
+  'financial analyst': 'finance', 'equity research': 'investment_banking', 'm&a analyst': 'investment_banking',
+  'private equity': 'investment_banking', 'venture capital': 'investment_banking',
+  'wealth management': 'financial_planning', 'cfp': 'financial_planning',
+  
+  // Sales aliases (non-duplicate)
+  'account manager': 'enterprise_sales', 'client success manager': 'enterprise_sales',
+  'customer success manager': 'enterprise_sales', 'revenue operations': 'sales',
+  
+  // DevOps/Cloud aliases (non-duplicate)
+  'cloud engineer': 'cloud_engineering', 'platform engineering': 'devops',
+  'site reliability': 'devops', 'kubernetes engineer': 'devops', 'docker specialist': 'devops',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -2953,8 +2996,9 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
     const matchedTitles: string[] = [];
     let matchedSkillCount = 0;
     let matchedContext = false;
-    const titleWeight = patterns.titleWeight || 30;
-    const skillWeight = patterns.skillWeight || 5;
+    // BOOSTED: Increased default weights for better confidence scores
+    const titleWeight = patterns.titleWeight || 40; // was 30
+    const skillWeight = patterns.skillWeight || 7;  // was 5
     
     // Check title patterns (high weight)
     for (const pattern of patterns.titlePatterns) {
@@ -2978,10 +3022,10 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
       industrySignals.push(`Skills: ${foundSkills.slice(0, 5).join(', ')}`);
     }
     
-    // Check context patterns (medium weight)
+    // Check context patterns (BOOSTED weight)
     for (const pattern of patterns.contextPatterns) {
       if (pattern.test(text)) {
-        score += 10;
+        score += 15; // was 10
         industrySignals.push(`Context match`);
         matchedContext = true;
         break; // Only count once
@@ -3041,15 +3085,21 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
   const topIndustry = industryScores[0];
   const secondIndustry = industryScores[1];
   
-  // Enhanced confidence scoring
+  // Enhanced confidence scoring with BOOSTED thresholds
+  // Lower thresholds to push more detections into high/medium confidence
   let confidence: 'high' | 'medium' | 'low';
   const scoreDifferential = secondIndustry ? topIndustry.score / secondIndustry.score : 10;
   
-  if (topIndustry.score >= 60 && scoreDifferential >= 1.5) {
+  // BOOST: Lower thresholds for high confidence (was 60 -> 45)
+  // Also consider skill count and context match as confidence boosters
+  const hasStrongSignals = topIndustry.matchedSkillCount >= 4 || topIndustry.matchedContext;
+  const effectiveScore = hasStrongSignals ? topIndustry.score * 1.2 : topIndustry.score;
+  
+  if (effectiveScore >= 45 && scoreDifferential >= 1.4) {
     confidence = 'high';
-  } else if (topIndustry.score >= 40 && scoreDifferential >= 1.3) {
+  } else if (effectiveScore >= 30 && scoreDifferential >= 1.2) {
     confidence = 'medium';
-  } else if (topIndustry.score >= 25) {
+  } else if (effectiveScore >= 20) {
     confidence = 'medium';
   } else {
     confidence = 'low';
@@ -4892,10 +4942,27 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
 
       // Log industry detection metrics for accuracy tracking (non-blocking)
       const normalizedAISuggested = normalizeIndustry(rawIndustry);
-      const serverAIMatch = serverDetection.industry === normalizedAISuggested;
-      const serverAIParentMatch = getParentIndustry(serverDetection.industry) === getParentIndustry(normalizedAISuggested) ||
-        serverDetection.industry === getParentIndustry(normalizedAISuggested) ||
-        getParentIndustry(serverDetection.industry) === normalizedAISuggested;
+      
+      // IMPROVED: Compare at parent level - AI often returns broad categories like 'technology', 'creative'
+      // while server returns specific sub-industries like 'software_engineering', 'ux_design'
+      // Both should be considered a match if they share the same parent industry
+      const serverParent = getParentIndustry(serverDetection.industry);
+      const aiParent = getParentIndustry(normalizedAISuggested);
+      
+      // Exact match (both same specific industry)
+      const isExactMatch = serverDetection.industry === normalizedAISuggested;
+      // Parent match (server sub-industry maps to AI's broad category)
+      const isParentMatch = serverParent === normalizedAISuggested || 
+        serverDetection.industry === aiParent ||
+        serverParent === aiParent;
+      // Cross-level match (AI returns parent, server returns child of that parent)
+      const isCrossLevelMatch = INDUSTRY_PARENTS[serverDetection.industry] === normalizedAISuggested;
+      
+      // Combined: consider it a match if any level matches
+      const serverAIMatch = isExactMatch || isParentMatch || isCrossLevelMatch;
+      const serverAIParentMatch = isParentMatch || isCrossLevelMatch;
+      
+      console.log(`[INDUSTRY-DETECT-METRICS] Match analysis: server=${serverDetection.industry} (parent=${serverParent}), AI=${normalizedAISuggested} (parent=${aiParent}), exact=${isExactMatch}, parent=${isParentMatch}, cross=${isCrossLevelMatch}, final=${serverAIMatch}`);
       
       EdgeRuntime.waitUntil(
         (async () => {
