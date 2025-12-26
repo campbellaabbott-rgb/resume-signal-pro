@@ -29,11 +29,10 @@ const PRODUCTS: Record<string, { priceId: string; name: string; productType: str
     name: "ATS Defense Complete",
     productType: "ats_defense"
   },
-  careerBundle: {
-    priceId: "price_1Sgv3rHBplUUV1CgC3N97S71",
-    name: "Career Bundle (75 Analyses)",
-    productType: "career_bundle",
-    credits: 75
+  careerSnapshot: {
+    priceId: "price_1SibLiHBplUUV1CgHmRy7ayi",
+    name: "Career Snapshot",
+    productType: "career_snapshot"
   },
   scanPack: {
     priceId: "price_1Sgv2THBplUUV1CgntHsXlDK",

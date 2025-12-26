@@ -91,21 +91,22 @@ export const PRODUCTS = {
     ],
     badge: 'Most Comprehensive'
   },
-  careerBundle: {
-    id: 'career_bundle',
-    name: 'Career Bundle (75 Analyses)',
-    description: '75 full resume analyses - Best value for job seekers',
-    priceUsd: 20,
-    priceId: 'price_1Sgv3rHBplUUV1CgC3N97S71',
-    credits: 75,
+  careerSnapshot: {
+    id: 'career_snapshot',
+    name: 'Career Snapshot',
+    description: 'Recruiter-style career intelligence report showing how your career looks at a glance',
+    priceUsd: 25,
+    priceId: 'price_1SibLiHBplUUV1CgHmRy7ayi',
     features: [
-      '75 full resume analyses',
-      'Use for multiple jobs',
-      'Share with friends',
-      'Never expires'
+      'Career Signal Score (Performance, Trajectory, Credibility, Seniority)',
+      'Recruiter Perception Summary — what they see at a glance',
+      'Top 3 strengths that actually matter',
+      'Top 3 career risks & questions recruiters will ask',
+      'Positioning guidance — roles to target, roles to avoid',
+      '3 priority fixes — exactly what to do first'
     ],
-    badge: 'Bulk Discount',
-    savings: 'Save $355'
+    badge: 'Career Intelligence',
+    tagline: 'Before you rewrite your resume, understand your career.'
   }
 } as const;
 

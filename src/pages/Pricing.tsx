@@ -23,12 +23,12 @@ const productIcons: Record<string, React.ElementType> = {
 };
 
 const productOrder: ProductId[] = [
+  'careerSnapshot',
   'atsDefense',
   'premiumPackage',
   'basicKeywordFix',
   'fullAnalysis', 
   'coverLetter',
-  'careerBundle',
 ];
 
 export default function Pricing() {
@@ -94,7 +94,7 @@ export default function Pricing() {
               const product = PRODUCTS[key];
               const Icon = productIcons[key] || Sparkles;
               const isPremium = key === 'premiumPackage';
-              const isBundle = key === 'careerBundle';
+              const isCareerSnapshot = key === 'careerSnapshot';
               const isLoadingThis = isLoading && currentProduct === key;
               
               return (
