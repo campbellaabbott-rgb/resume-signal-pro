@@ -107,6 +107,23 @@ export const PRODUCTS = {
     ],
     badge: 'Career Intelligence',
     tagline: 'Before you rewrite your resume, understand your career.'
+  },
+  graduateGamePlan: {
+    id: 'graduate_gameplan',
+    name: 'Graduate Game Plan',
+    description: 'A clear, step-by-step playbook for new grads on what to do next',
+    priceUsd: 10,
+    priceId: 'price_1SibRNHBplUUV1CgEj5L8eH1',
+    features: [
+      'Resume readiness check — permission to move forward',
+      'Role targeting map — what jobs fit your background',
+      'Application strategy — quality over quantity approach',
+      'Networking playbook with copy-paste scripts',
+      'Interview readiness checklist with story prompts',
+      '30-day action plan — week-by-week execution guide'
+    ],
+    badge: 'New Grads',
+    tagline: 'Your resume isn\'t the problem. Not knowing what to do next is.'
   }
 } as const;
 

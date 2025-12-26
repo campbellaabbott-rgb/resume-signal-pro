@@ -84,6 +84,7 @@ export function ProductSelectionModal({
     { key: 'premiumPackage' as ProductId, product: PRODUCTS.premiumPackage },
     { key: 'coverLetter' as ProductId, product: PRODUCTS.coverLetter },
     { key: 'careerSnapshot' as ProductId, product: PRODUCTS.careerSnapshot },
+    { key: 'graduateGamePlan' as ProductId, product: PRODUCTS.graduateGamePlan },
   ];
 
   const getSelectedProductName = () => {

@@ -34,6 +34,11 @@ const PRODUCTS: Record<string, { priceId: string; name: string; productType: str
     name: "Career Snapshot",
     productType: "career_snapshot"
   },
+  graduateGamePlan: {
+    priceId: "price_1SibRNHBplUUV1CgEj5L8eH1",
+    name: "Graduate Game Plan",
+    productType: "graduate_gameplan"
+  },
   scanPack: {
     priceId: "price_1Sgv2THBplUUV1CgntHsXlDK",
     name: "Scan Pack (10 Credits)",
