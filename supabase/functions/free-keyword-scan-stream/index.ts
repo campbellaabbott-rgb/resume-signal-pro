@@ -4384,11 +4384,11 @@ serve(async (req) => {
   // Process in background while streaming progress
   EdgeRuntime.waitUntil((async () => {
     try {
-      const { resumeText, jobDescriptionText, honeypot, skipCache } = await req.json();
+      const { resumeText, jobDescriptionText, honeypot, skipCache, skipAdminEmail } = await req.json();
 
       // Debug: Log first 100 chars of resume to verify correct text is being sent
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Resume preview (first 100 chars): ${resumeText?.substring(0, 100)?.replace(/\n/g, ' ')}`);
-      console.log(`[FREE-KEYWORD-SCAN-STREAM] Resume length: ${resumeText?.length}, skipCache: ${skipCache}`);
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Resume length: ${resumeText?.length}, skipCache: ${skipCache}, skipAdminEmail: ${skipAdminEmail}`);
 
       // Honeypot check
       if (honeypot && honeypot.trim() !== '') {
@@ -5110,10 +5110,16 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
 
       const country = getCountryFromHeaders(req) || 'Unknown';
 
-      // Send admin notification email for every free scan
+      // Send admin notification email for every free scan (skip if testing)
       EdgeRuntime.waitUntil(
         (async () => {
           try {
+            // Skip admin email if explicitly requested (for testing)
+            if (skipAdminEmail) {
+              console.log('[FREE-KEYWORD-SCAN-STREAM] Skipping admin notification (skipAdminEmail=true)');
+              return;
+            }
+            
             const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
             if (!RESEND_API_KEY) {
               console.log('[FREE-KEYWORD-SCAN-STREAM] No RESEND_API_KEY, skipping admin notification');
