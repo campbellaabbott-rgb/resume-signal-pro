@@ -3087,25 +3087,155 @@ interface CareerTransitionInfo {
   currentIndustry?: string;
   previousIndustry?: string;
   transitionSignals: string[];
+  confidenceScore?: number;
+  confidence?: 'high' | 'medium' | 'low';
 }
 
 function detectCareerTransition(resumeText: string): CareerTransitionInfo {
   const text = resumeText.toLowerCase();
   const signals: string[] = [];
+  let confidenceBoost = 0;
+  
+  // ==================== IMPROVEMENT 1: RECENCY WEIGHTING ====================
+  // Extract year from date ranges and boost recent years (2023-2025)
+  const recentYearPattern = /\b(202[3-5])\s*[-–—]\s*(present|current|now|202[4-5])?/gi;
+  const recentYearMatches = text.match(recentYearPattern);
+  const hasRecentDates = recentYearMatches && recentYearMatches.length > 0;
+  if (hasRecentDates) {
+    confidenceBoost += 15;
+    signals.push(`Recent role dates detected (${recentYearMatches?.length} matches) - 2x weight applied`);
+  }
+  
+  // ==================== IMPROVEMENT 2: PORTFOLIO/URL DETECTION ====================
+  // Detect portfolio URLs that indicate target industry
+  const portfolioPatterns: [RegExp, string, number][] = [
+    // Design portfolios
+    [/\b(behance\.net|dribbble\.com|portfolio\.(io|me|design)|\.design\/|uxfolio\.(me|com)|figma\.com\/@|notion\.so\/.*portfolio)/i, 'ux_design', 25],
+    [/\bportfolio[\s.:]+\S*\.(io|me|design|com)/i, 'ux_design', 20],
+    [/\b(sarahdesigns|janedesigns|designportfolio|uxportfolio|myuxwork)\.(io|me|com)/i, 'ux_design', 25],
+    
+    // Tech portfolios
+    [/\b(github\.com|gitlab\.com|codepen\.io|replit\.com|stackblitz\.com)/i, 'software_engineering', 20],
+    [/\bgithub\.com\/[a-z0-9_-]+/i, 'software_engineering', 25],
+    
+    // Data portfolios
+    [/\b(kaggle\.com|tableau\.public\.com|datastudio)/i, 'data_science', 20],
+    
+    // Marketing portfolios
+    [/\b(medium\.com\/@|substack\.com|wordpress\.com)/i, 'content_marketing', 15],
+  ];
+  
+  for (const [pattern, industry, boost] of portfolioPatterns) {
+    if (pattern.test(text)) {
+      confidenceBoost += boost;
+      signals.push(`Portfolio/URL signal detected: ${industry} (+${boost} confidence)`);
+    }
+  }
+  
+  // ==================== IMPROVEMENT 3: SECTION HEADER CONTEXT ====================
+  // Detect section headers that negate skills for career changers
+  const previousCareerSections = [
+    /\n\s*(previous\s+career|prior\s+experience|former\s+career|earlier\s+career|past\s+experience|background)\s*\n/i,
+    /\n\s*(teaching\s+experience|education\s+experience|nursing\s+experience)\s*\n/i,
+    /\n\s*(before\s+transition|pre-career\s+change)\s*\n/i,
+  ];
+  
+  let hasPreviousCareerSection = false;
+  for (const pattern of previousCareerSections) {
+    if (pattern.test(resumeText)) {
+      hasPreviousCareerSection = true;
+      confidenceBoost += 20;
+      signals.push('Previous career section header detected - negating old industry signals');
+      break;
+    }
+  }
+  
+  // ==================== IMPROVEMENT 4: EDUCATION RECENCY ====================
+  // Weight recent education (2023-2025) much higher than old degrees
+  const recentEducationPatterns: [RegExp, number][] = [
+    // 2024-2025 bootcamps/certs = very strong signal
+    [/\b(202[4-5])[^\n]*?(bootcamp|certificate|certification|immersive|intensive)/i, 40],
+    [/\b(bootcamp|certificate|certification)[^\n]*?(202[4-5])/i, 40],
+    // 2023 = strong signal
+    [/\b(2023)[^\n]*?(bootcamp|certificate|certification)/i, 30],
+    [/\b(bootcamp|certificate|certification)[^\n]*?(2023)/i, 30],
+    // Recent program names = strong signal
+    [/\b(google|meta|coursera|udacity|general\s+assembly|flatiron|springboard|careerfoundry|thinkful|ironhack)[^\n]*?202[3-5]/i, 35],
+    [/\b202[3-5][^\n]*?(google|meta|coursera|udacity|general\s+assembly|flatiron|springboard|careerfoundry|thinkful|ironhack)/i, 35],
+  ];
+  
+  let recentEducationBoost = 0;
+  for (const [pattern, boost] of recentEducationPatterns) {
+    if (pattern.test(text)) {
+      recentEducationBoost = Math.max(recentEducationBoost, boost);
+    }
+  }
+  if (recentEducationBoost > 0) {
+    confidenceBoost += recentEducationBoost;
+    signals.push(`Recent career-change education (2023-2025) detected - 3x weight applied (+${recentEducationBoost})`);
+  }
+  
+  // Old degrees should NOT count against current direction
+  const oldDegreePattern = /\b(20[01]\d|199\d)[^\n]*?(master|bachelor|b\.?a\.?|b\.?s\.?|m\.?a\.?|m\.?s\.?|m\.?ed|phd)/i;
+  const hasOldDegree = oldDegreePattern.test(text);
+  if (hasOldDegree && recentEducationBoost > 0) {
+    signals.push('Old degree detected but outweighed by recent career-change education');
+  }
+  
+  // ==================== IMPROVEMENT 5: MORE TRANSITION PHRASES ====================
+  // Extended list of career transition phrases
+  const transitionPhrases = [
+    /career\s+(transition|change|pivot|switch|shift)/i,
+    /transitioning\s+(from|to|into)/i,
+    /former\s+(teacher|nurse|lawyer|banker|engineer|manager|accountant|doctor|military)/i,
+    /pivoting\s+(to|into|from)/i,
+    /career\s+changer/i,
+    /making\s+a\s+career\s+(change|transition|move)/i,
+    /changing\s+careers?/i,
+    /aspiring\s+(developer|designer|analyst|engineer|pm|product\s+manager|data\s+scientist)/i,
+    /seeking\s+to\s+transition/i,
+    /pursuing\s+a\s+(new\s+)?career\s+in/i,
+    /new\s+career\s+path/i,
+    /retraining\s+(as|for|in)/i,
+    /upskilling\s+(to|into|for)/i,
+    /breaking\s+into\s+(tech|design|data|product)/i,
+    /launching\s+(my|a)\s+career\s+in/i,
+    /embarking\s+on\s+a\s+new\s+career/i,
+    /switched\s+from\s+\w+\s+to/i,
+    /moved\s+from\s+\w+\s+to\s+(tech|design|data)/i,
+    /left\s+(teaching|nursing|law|banking)\s+to/i,
+    /combining\s+.*background\s+with/i,
+    /leveraging\s+.*experience\s+(in|for|to)/i,
+  ];
+  
+  let transitionPhraseCount = 0;
+  for (const phrase of transitionPhrases) {
+    if (phrase.test(text)) {
+      transitionPhraseCount++;
+      if (transitionPhraseCount === 1) {
+        signals.push('Explicit career transition language detected');
+      }
+    }
+  }
+  if (transitionPhraseCount > 1) {
+    confidenceBoost += 10 * (transitionPhraseCount - 1);
+    signals.push(`Multiple transition phrases detected (${transitionPhraseCount})`);
+  }
   
   // NEGATIVE SIGNALS: Identify "former/previous" role mentions
-  // These should REDUCE weight for that industry, not increase
   const negativePatterns: [RegExp, string][] = [
     [/\b(former|previous|ex[\s-]?)(teacher|educator|instructor)/i, 'education'],
     [/\b(former|previous|ex[\s-]?)(nurse|nursing|rn|lpn)/i, 'nursing'],
     [/\b(former|previous|ex[\s-]?)(attorney|lawyer|legal)/i, 'legal'],
-    [/\b(former|previous|ex[\s-]?)(banker|finance|financial)/i, 'finance'],
+    [/\b(former|previous|ex[\s-]?)(banker|finance|financial\s+analyst)/i, 'finance'],
     [/\b(former|previous|ex[\s-]?)(engineer|engineering)/i, 'engineering'],
     [/\b(former|previous|ex[\s-]?)(manager|management)/i, 'management'],
     [/\b(former|previous|ex[\s-]?)(accountant|accounting|cpa)/i, 'accounting'],
     [/\b(former|previous|ex[\s-]?)(doctor|physician|md)/i, 'physician'],
     [/\b(former|previous|ex[\s-]?)(military|army|navy|marine|air\s+force)/i, 'military'],
-    [/\b(left|leaving|transitioned?\s+from)\s+(teaching|nursing|law|banking|finance)/i, 'career_change'],
+    [/\b(former|previous|ex[\s-]?)(sales|salesperson|account\s+exec)/i, 'sales'],
+    [/\b(former|previous|ex[\s-]?)(retail|store\s+manager)/i, 'retail'],
+    [/\b(left|leaving|transitioned?\s+from)\s+(teaching|nursing|law|banking|finance|sales|retail)/i, 'career_change'],
   ];
   
   const previousIndustries: string[] = [];
@@ -3116,106 +3246,86 @@ function detectCareerTransition(resumeText: string): CareerTransitionInfo {
     }
   }
   
-  // Common career transition phrases
-  const transitionPhrases = [
-    /career\s+(transition|change|pivot|switch)/i,
-    /transitioning\s+(from|to|into)/i,
-    /former\s+(teacher|nurse|lawyer|banker|engineer|manager)/i,
-    /pivoting\s+(to|into|from)/i,
-    /career\s+changer/i,
-    /making\s+a\s+career\s+(change|transition)/i,
-    /changing\s+careers?/i,
-    /aspiring\s+(developer|designer|analyst|engineer|pm|product\s+manager)/i,
-    /seeking\s+to\s+transition/i,
-    /pursuing\s+a\s+career\s+in/i,
-    /new\s+career\s+path/i,
-  ];
-  
-  for (const phrase of transitionPhrases) {
-    if (phrase.test(text)) {
-      signals.push('Explicit career transition language detected');
-      break;
-    }
-  }
-  
-  // Look for education/bootcamp signals indicating recent skill acquisition
-  const recentEducation = [
-    /\b(bootcamp|coding\s+bootcamp|immersive|intensive)\b/i,
-    /\b(certificate|certification)\s+(in|for)\s+(ux|ui|data|web|software|product)/i,
-    /\brecent\s+(graduate|grad)\b/i,
-    /\b(google|meta|coursera|udemy|udacity|general\s+assembly|flatiron|springboard)\s+(certificate|certification|bootcamp)/i,
-    /\b202[3-5]\)?\s*$.*?(bootcamp|certificate|certification)/mi,
-    /\b(career\s+change|career\s+transition)\s+(program|bootcamp|course)/i,
-  ];
-  
-  for (const pattern of recentEducation) {
-    if (pattern.test(text)) {
-      signals.push('Recent career-change education detected');
-      break;
-    }
-  }
-  
   // Check for recent job titles that differ significantly from older ones
   // Look at "Present" or "Current" roles - these are MOST IMPORTANT
   const currentRoleMatch = text.match(/(present|current|now|\b202[4-5]\s*[-–—]\s*(present|current|now)?)/i);
   
-  // ENHANCED: Look for current/target roles with higher specificity
-  // Order matters - check more specific patterns first
+  // ENHANCED: Look for current/target roles with higher specificity and recency boost
+  // Scores now include recency multiplier
+  const baseRecencyMultiplier = hasRecentDates ? 1.5 : 1.0;
   const recentRolePatterns: [RegExp, string, number][] = [
     // UX/Product Design - very common career change target
-    [/\b(ux\s+designer?|user\s+experience\s+designer?|ui\/ux\s+designer?|product\s+designer?)/i, 'ux_design', 50],
-    [/\b(ux\s+design|ui\s+design|product\s+design)\s+(intern|associate|junior|apprentice|fellow)/i, 'ux_design', 60],
-    [/\bbootcamp\b.*\b(ux|design)/i, 'ux_design', 45],
-    [/\b(ux|ui|product\s+design)\s+(bootcamp|certificate|certification)/i, 'ux_design', 55],
+    [/\b(ux\s+designer?|user\s+experience\s+designer?|ui\/ux\s+designer?|product\s+designer?)/i, 'ux_design', 55],
+    [/\b(ux\s+design|ui\s+design|product\s+design)\s+(intern|associate|junior|apprentice|fellow)/i, 'ux_design', 65],
+    [/\bbootcamp\b.*\b(ux|design)/i, 'ux_design', 50],
+    [/\b(ux|ui|product\s+design)\s+(bootcamp|certificate|certification)/i, 'ux_design', 60],
+    [/\bfreelance\s+(ux|ui|product)?\s*designer/i, 'ux_design', 55],
     
     // Software Engineering
-    [/\b(software|web|full[\s-]?stack|frontend|backend)\s+(developer|engineer)/i, 'software_engineering', 50],
-    [/\b(software|web|app)\s+(developer|engineer)\s+(intern|associate|junior|apprentice)/i, 'software_engineering', 60],
-    [/\bbootcamp\b.*\b(coding|developer|engineer|software|web)/i, 'software_engineering', 45],
-    [/\b(coding|software|web\s+development)\s+(bootcamp|certificate)/i, 'software_engineering', 55],
+    [/\b(software|web|full[\s-]?stack|frontend|backend)\s+(developer|engineer)/i, 'software_engineering', 55],
+    [/\b(software|web|app)\s+(developer|engineer)\s+(intern|associate|junior|apprentice)/i, 'software_engineering', 65],
+    [/\bbootcamp\b.*\b(coding|developer|engineer|software|web)/i, 'software_engineering', 50],
+    [/\b(coding|software|web\s+development)\s+(bootcamp|certificate)/i, 'software_engineering', 60],
+    [/\bfreelance\s+(software|web)?\s*(developer|engineer)/i, 'software_engineering', 55],
     
     // Data Science/Analytics
-    [/\b(data\s+scientist|data\s+analyst|business\s+analyst)/i, 'data_science', 50],
-    [/\b(data\s+analyst|data\s+scientist)\s+(intern|associate|junior|apprentice)/i, 'data_science', 60],
-    [/\bbootcamp\b.*\b(data|analytics)/i, 'data_science', 45],
-    [/\b(data\s+science|data\s+analytics)\s+(bootcamp|certificate)/i, 'data_science', 55],
+    [/\b(data\s+scientist|data\s+analyst|business\s+analyst)/i, 'data_science', 55],
+    [/\b(data\s+analyst|data\s+scientist)\s+(intern|associate|junior|apprentice)/i, 'data_science', 65],
+    [/\bbootcamp\b.*\b(data|analytics)/i, 'data_science', 50],
+    [/\b(data\s+science|data\s+analytics)\s+(bootcamp|certificate)/i, 'data_science', 60],
     
     // Product Management
-    [/\b(product\s+manager|associate\s+product\s+manager|apm)/i, 'product_management', 50],
-    [/\b(product\s+manager|pm)\s+(intern|associate|junior|apprentice)/i, 'product_management', 60],
-    [/\b(product\s+management)\s+(bootcamp|certificate|program)/i, 'product_management', 55],
+    [/\b(product\s+manager|associate\s+product\s+manager|apm)/i, 'product_management', 55],
+    [/\b(product\s+manager|pm)\s+(intern|associate|junior|apprentice)/i, 'product_management', 65],
+    [/\b(product\s+management)\s+(bootcamp|certificate|program)/i, 'product_management', 60],
     
     // Digital Marketing (common for career changers)
-    [/\b(digital\s+marketing|seo|social\s+media\s+marketing)/i, 'digital_marketing', 45],
-    [/\b(digital\s+marketing|marketing)\s+(bootcamp|certificate)/i, 'digital_marketing', 50],
+    [/\b(digital\s+marketing|seo|social\s+media\s+marketing)/i, 'digital_marketing', 50],
+    [/\b(digital\s+marketing|marketing)\s+(bootcamp|certificate)/i, 'digital_marketing', 55],
     
     // Cybersecurity
-    [/\b(cybersecurity|security\s+analyst|information\s+security)/i, 'cybersecurity', 50],
-    [/\b(cybersecurity|infosec)\s+(bootcamp|certificate|certification)/i, 'cybersecurity', 55],
+    [/\b(cybersecurity|security\s+analyst|information\s+security)/i, 'cybersecurity', 55],
+    [/\b(cybersecurity|infosec)\s+(bootcamp|certificate|certification)/i, 'cybersecurity', 60],
     
     // General tech fallback
-    [/\bintern\b.*\b(tech|startup|technology)/i, 'technology', 35],
+    [/\bintern\b.*\b(tech|startup|technology)/i, 'technology', 40],
   ];
   
   // If we find career transition signals OR current role markers, identify what they're transitioning TO
-  if (signals.length > 0 || currentRoleMatch) {
+  if (signals.length > 0 || currentRoleMatch || confidenceBoost > 20) {
     let bestMatch: { industry: string; score: number } | null = null;
     
-    for (const [pattern, industry, score] of recentRolePatterns) {
+    for (const [pattern, industry, baseScore] of recentRolePatterns) {
       if (pattern.test(text)) {
-        if (!bestMatch || score > bestMatch.score) {
-          bestMatch = { industry, score };
+        // Apply recency multiplier and confidence boost
+        const adjustedScore = Math.round(baseScore * baseRecencyMultiplier) + confidenceBoost;
+        if (!bestMatch || adjustedScore > bestMatch.score) {
+          bestMatch = { industry, score: adjustedScore };
         }
       }
     }
     
     if (bestMatch) {
+      // ==================== IMPROVEMENT 5 CONTINUED: CONFIDENCE THRESHOLDS ====================
+      // Determine confidence level based on total score
+      let confidence: 'high' | 'medium' | 'low' = 'medium';
+      if (bestMatch.score >= 80) {
+        confidence = 'high';
+        signals.push(`High confidence career changer (score: ${bestMatch.score})`);
+      } else if (bestMatch.score >= 50) {
+        confidence = 'medium';
+      } else {
+        confidence = 'low';
+      }
+      
       signals.push(`Current/target role detected: ${bestMatch.industry} (score: ${bestMatch.score})`);
       return {
         isCareerChanger: true,
         currentIndustry: bestMatch.industry,
         previousIndustry: previousIndustries[0],
-        transitionSignals: signals
+        transitionSignals: signals,
+        confidenceScore: bestMatch.score,
+        confidence
       };
     }
   }
@@ -3254,12 +3364,13 @@ function hybridIndustryDetection(
     if (careerInfo.isCareerChanger && careerInfo.currentIndustry) {
       console.log(`[INDUSTRY-HYBRID] Career changer detected - using current/target industry: ${careerInfo.currentIndustry}`);
       console.log(`[INDUSTRY-HYBRID] Career transition signals: ${careerInfo.transitionSignals.join(', ')}`);
+      console.log(`[INDUSTRY-HYBRID] Career changer confidence: ${careerInfo.confidence || 'medium'} (score: ${careerInfo.confidenceScore || 'N/A'})`);
       return {
         industry: careerInfo.currentIndustry,
         parentIndustry: INDUSTRY_PARENTS[careerInfo.currentIndustry],
-        confidence: 'medium',
+        confidence: careerInfo.confidence || 'medium', // Use calculated confidence
         signals: [...careerInfo.transitionSignals, `Current/target industry: ${careerInfo.currentIndustry}`],
-        score: serverResult.score,
+        score: careerInfo.confidenceScore || serverResult.score,
         detectionSource: 'ai_override', // Treat as special override
         alternativeIndustries: serverResult.alternativeIndustries,
         matchedTitlePatterns: serverResult.matchedTitlePatterns,
