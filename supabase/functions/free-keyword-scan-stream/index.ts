@@ -110,6 +110,7 @@ const VALID_INDUSTRIES = [
   'ux_research', 'product_analytics', 'technical_writing',
   'data_engineering', 'devrel', 'content_strategy',
   'customer_success', 'revenue_operations', 'growth_marketing',
+  'solutions_architecture', 'security_engineering', 'ml_engineering',
   'general'
 ];
 
@@ -249,6 +250,9 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'customer_success': 'sales',
   'revenue_operations': 'sales',
   'growth_marketing': 'marketing',
+  'solutions_architecture': 'technology',
+  'security_engineering': 'technology',
+  'ml_engineering': 'technology',
 };
 
 // Industry aliases for normalization
@@ -284,12 +288,12 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'oil': 'energy', 'gas': 'energy', 'renewable': 'energy', 'utilities': 'energy',
   'farming': 'agriculture', 'agribusiness': 'agriculture',
   'data': 'data_science', 'ml': 'data_science', 'ai': 'ai_ml',
-  'security': 'cybersecurity', 'infosec': 'cybersecurity',
+  'security': 'cybersecurity',
   'infrastructure': 'devops', 'sre': 'devops', 'platform': 'devops',
   // Sales aliases
   'b2b sales': 'enterprise_sales', 'enterprise': 'enterprise_sales', 'strategic sales': 'enterprise_sales',
   'sdr': 'inside_sales', 'bdr': 'business_development', 'outbound': 'inside_sales',
-  'pre-sales': 'sales_engineering', 'solutions': 'sales_engineering', 'technical sales': 'sales_engineering',
+  'pre-sales': 'sales_engineering', 'solutions': 'sales_engineering',
   'partnerships': 'business_development', 'alliances': 'business_development',
   // Marketing aliases
   'pmm': 'product_marketing', 'go-to-market': 'product_marketing',
@@ -406,8 +410,8 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   
   // Data science aliases
   'business intelligence analyst': 'data_science', 'bi developer': 'data_science',
-  'data analyst role': 'data_science', 'ml engineering': 'ai_ml',
-  'ai research': 'ai_ml', 'deep learning engineer': 'ai_ml',
+  'data analyst role': 'data_science',
+  'ai research': 'ai_ml',
   
   // UX/Creative aliases (non-duplicate)
   'ux designer': 'ux_design', 'ui designer': 'ux_design', 'user researcher': 'ux_design',
@@ -634,6 +638,42 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'paid acquisition': 'growth_marketing', 'cac': 'growth_marketing', 'ltv': 'growth_marketing',
   'aarrr': 'growth_marketing', 'product-led growth': 'growth_marketing',
   'viral loops': 'growth_marketing', 'referral programs': 'growth_marketing',
+  
+  // ==================== SOLUTIONS ARCHITECTURE ALIASES ====================
+  'solutions architecture': 'solutions_architecture', 'solutions architect': 'solutions_architecture',
+  'solution architect': 'solutions_architecture', 'enterprise architect': 'solutions_architecture',
+  'cloud architect': 'solutions_architecture', 'technical architect': 'solutions_architecture',
+  'pre-sales engineer': 'solutions_architecture', 'presales': 'solutions_architecture',
+  'technical discovery': 'solutions_architecture', 'architecture diagrams': 'solutions_architecture',
+  'poc': 'solutions_architecture', 'proof of concept': 'solutions_architecture',
+  'rfp response': 'solutions_architecture', 'technical sales': 'solutions_architecture',
+  'well-architected': 'solutions_architecture', 'togaf': 'solutions_architecture',
+  'migration strategy': 'solutions_architecture',
+  
+  // ==================== SECURITY ENGINEERING ALIASES ====================
+  'security engineering': 'security_engineering', 'security engineer': 'security_engineering',
+  'infosec': 'security_engineering', 'appsec': 'security_engineering',
+  'application security': 'security_engineering', 'security architect': 'security_engineering',
+  'devsecops': 'security_engineering', 'penetration testing': 'security_engineering',
+  'penetration tester': 'security_engineering', 'pentest': 'security_engineering',
+  'vulnerability assessment': 'security_engineering', 'threat modeling': 'security_engineering',
+  'siem': 'security_engineering', 'owasp': 'security_engineering',
+  'cissp': 'security_engineering', 'ceh': 'security_engineering',
+  'incident response': 'security_engineering', 'zero trust': 'security_engineering',
+  'splunk security': 'security_engineering', 'crowdstrike': 'security_engineering',
+  'burp suite': 'security_engineering', 'nessus': 'security_engineering',
+  
+  // ==================== ML ENGINEERING ALIASES ====================
+  'ml engineering': 'ml_engineering', 'ml engineer': 'ml_engineering',
+  'machine learning engineer': 'ml_engineering', 'mlops': 'ml_engineering',
+  'ai engineer': 'ml_engineering', 'deep learning engineer': 'ml_engineering',
+  'ml infrastructure': 'ml_engineering', 'model training': 'ml_engineering',
+  'model deployment': 'ml_engineering', 'feature engineering': 'ml_engineering',
+  'model monitoring': 'ml_engineering', 'kubeflow': 'ml_engineering',
+  'mlflow': 'ml_engineering', 'sagemaker': 'ml_engineering', 'vertex ai': 'ml_engineering',
+  'distributed training': 'ml_engineering', 'experiment tracking': 'ml_engineering',
+  'model registry': 'ml_engineering', 'inference optimization': 'ml_engineering',
+  'hugging face': 'ml_engineering', 'transformers ml': 'ml_engineering', 'llms': 'ml_engineering',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -3420,6 +3460,75 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         /\b(built|designed|implemented)\s+.*\b(sales\s+process|pipeline|forecasting|crm)\b/i,
         /\b(improved|optimized)\s+.*\b(pipeline|conversion|quota|territory)\b/i,
         /\b(managed|administered)\s+.*\b(salesforce|hubspot|crm|sales\s+tools)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    solutions_architecture: {
+      titlePatterns: [
+        /\b(solutions?\s+architect|enterprise\s+architect)\b/i,
+        /\b(cloud\s+architect|technical\s+architect)\b/i,
+        /\b(pre[\s-]?sales\s+engineer|presales\s+architect)\b/i,
+        /\b(principal\s+architect|senior\s+.*architect)\b/i,
+      ],
+      skillPatterns: [
+        'solutions architecture', 'enterprise architecture', 'cloud architecture',
+        'aws', 'azure', 'gcp', 'technical discovery', 'architecture diagrams',
+        'poc', 'proof of concept', 'rfp response', 'technical sales',
+        'stakeholder management', 'microservices', 'api design', 'system integration',
+        'scalability', 'high availability', 'disaster recovery', 'togaf',
+        'well-architected', 'cost optimization', 'migration strategy', 'terraform', 'kubernetes'
+      ],
+      contextPatterns: [
+        /\b(designed|architected)\s+.*\b(solution|system|platform|infrastructure)\b/i,
+        /\b(led|conducted)\s+.*\b(technical\s+discovery|poc|proof\s+of\s+concept)\b/i,
+        /\b(migrated|transformed)\s+.*\b(cloud|aws|azure|gcp)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    security_engineering: {
+      titlePatterns: [
+        /\b(security\s+engineer|security\s+architect)\b/i,
+        /\b(appsec|application\s+security)\b/i,
+        /\b(penetration\s+tester|pentest|devsecops)\b/i,
+        /\b(infosec|information\s+security)\b/i,
+      ],
+      skillPatterns: [
+        'security engineering', 'application security', 'penetration testing',
+        'vulnerability assessment', 'siem', 'owasp', 'threat modeling',
+        'security automation', 'cissp', 'ceh', 'soc 2', 'iso 27001',
+        'incident response', 'security architecture', 'identity management',
+        'zero trust', 'encryption', 'splunk', 'crowdstrike', 'burp suite',
+        'nessus', 'cloud security', 'devsecops', 'code review'
+      ],
+      contextPatterns: [
+        /\b(conducted|performed)\s+.*\b(penetration\s+test|security\s+assessment|vulnerability)\b/i,
+        /\b(implemented|built)\s+.*\b(security|siem|monitoring|detection)\b/i,
+        /\b(achieved|maintained)\s+.*\b(soc\s+2|iso|compliance|certification)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    ml_engineering: {
+      titlePatterns: [
+        /\b(ml\s+engineer|machine\s+learning\s+engineer)\b/i,
+        /\b(mlops|ai\s+engineer|deep\s+learning\s+engineer)\b/i,
+        /\b(ml\s+infrastructure|ml\s+platform)\b/i,
+        /\b(senior\s+ml\s+engineer|staff\s+ml\s+engineer)\b/i,
+      ],
+      skillPatterns: [
+        'machine learning', 'deep learning', 'mlops', 'tensorflow', 'pytorch',
+        'python', 'model training', 'model deployment', 'feature engineering',
+        'model monitoring', 'kubeflow', 'mlflow', 'sagemaker', 'vertex ai',
+        'data pipelines', 'gpu computing', 'distributed training', 'a/b testing',
+        'experiment tracking', 'model registry', 'inference optimization',
+        'hugging face', 'transformers', 'llms'
+      ],
+      contextPatterns: [
+        /\b(built|deployed|trained)\s+.*\b(model|ml|machine\s+learning|deep\s+learning)\b/i,
+        /\b(optimized|improved)\s+.*\b(inference|latency|accuracy|model)\b/i,
+        /\b(implemented|developed)\s+.*\b(mlops|pipeline|feature|training)\b/i,
       ],
       minSkillsForHigh: 4,
       titleWeight: 50
