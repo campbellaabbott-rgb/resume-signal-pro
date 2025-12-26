@@ -1285,7 +1285,83 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
   // Count industry-specific keywords for fallback detection
   const keywordDensityScores = calculateKeywordDensity(text);
   
+  // ==================== DEFINITIVE CERTIFICATIONS ====================
+  // These certifications are DEFINITIVE industry signals with very high weight (100+)
+  // If found, they should strongly influence or override other signals
+  const definitiveCertifications: { pattern: RegExp; industry: string; weight: number; name: string }[] = [
+    // Healthcare / Nursing - DEFINITIVE
+    { pattern: /\b(registered\s+nurse|rn\b(?!\s*manager)|r\.n\.|bsn|msn|nurse\s+practitioner|np\b|lpn|lvn|cna)\b/i, industry: 'nursing', weight: 120, name: 'Nursing License (RN/LPN/NP)' },
+    { pattern: /\b(nclex|nursing\s+license|nursing\s+certification)\b/i, industry: 'nursing', weight: 100, name: 'NCLEX/Nursing Certification' },
+    { pattern: /\b(md\b|m\.d\.|doctor\s+of\s+medicine|physician)\b/i, industry: 'physician', weight: 120, name: 'MD/Physician' },
+    { pattern: /\b(pharmd|pharm\.d\.|pharmacist|pharmacy\s+license)\b/i, industry: 'pharmacy', weight: 120, name: 'PharmD/Pharmacist' },
+    
+    // Finance - DEFINITIVE
+    { pattern: /\b(cpa\b|c\.p\.a\.|certified\s+public\s+accountant)\b/i, industry: 'accounting', weight: 120, name: 'CPA' },
+    { pattern: /\b(cfa\b|c\.f\.a\.|chartered\s+financial\s+analyst)\b/i, industry: 'investment_banking', weight: 110, name: 'CFA' },
+    { pattern: /\b(cfp\b|c\.f\.p\.|certified\s+financial\s+planner)\b/i, industry: 'wealth_management', weight: 110, name: 'CFP' },
+    { pattern: /\b(cma\b(?!\s+awards)|certified\s+management\s+accountant)\b/i, industry: 'finance', weight: 100, name: 'CMA' },
+    { pattern: /\b(series\s+(7|63|65|66)\b|finra\s+license)\b/i, industry: 'finance', weight: 90, name: 'FINRA Series License' },
+    { pattern: /\b(frm\b|financial\s+risk\s+manager)\b/i, industry: 'risk_management', weight: 100, name: 'FRM' },
+    
+    // Legal - DEFINITIVE
+    { pattern: /\b(j\.?d\.?\b|juris\s+doctor|bar\s+admission|bar\s+exam|admitted\s+to\s+the\s+bar|attorney\s+at\s+law|esq\.?\b)\b/i, industry: 'legal', weight: 120, name: 'JD/Bar Admission' },
+    { pattern: /\b(paralegal\s+certification|certified\s+paralegal|cp\b.*paralegal|pace)\b/i, industry: 'legal', weight: 90, name: 'Paralegal Certification' },
+    
+    // HR - DEFINITIVE  
+    { pattern: /\b(shrm[\s-]?(cp|scp)|sphr|phr\b|shrm\s+certified)\b/i, industry: 'hr', weight: 100, name: 'SHRM/PHR Certification' },
+    
+    // Project Management - DEFINITIVE
+    { pattern: /\b(pmp\b|p\.m\.p\.|project\s+management\s+professional)\b/i, industry: 'project_management', weight: 100, name: 'PMP' },
+    { pattern: /\b(prince2|six\s+sigma\s+(black|green)\s+belt|lean\s+six\s+sigma)\b/i, industry: 'operations', weight: 90, name: 'Six Sigma/PRINCE2' },
+    { pattern: /\b(csm\b|certified\s+scrum\s+master|psm\s+i|safe\s+agilist)\b/i, industry: 'project_management', weight: 80, name: 'Scrum/Agile Certification' },
+    
+    // Cybersecurity - DEFINITIVE
+    { pattern: /\b(cissp|cism|cisa|ceh|oscp|security\+|comptia\s+security)\b/i, industry: 'cybersecurity', weight: 110, name: 'CISSP/CISM/CEH' },
+    { pattern: /\b(ccna|ccnp|ccie|network\+|comptia\s+network)\b/i, industry: 'network_engineering', weight: 100, name: 'Cisco/CompTIA Network' },
+    
+    // Cloud/Tech - DEFINITIVE
+    { pattern: /\b(aws\s+(certified|solutions\s+architect|developer|sysops)|ccp|saa-c0[23])\b/i, industry: 'cloud_security', weight: 90, name: 'AWS Certification' },
+    { pattern: /\b(azure\s+(administrator|developer|architect)|az-\d{3})\b/i, industry: 'cloud_security', weight: 90, name: 'Azure Certification' },
+    { pattern: /\b(gcp\s+(certified|professional)|google\s+cloud\s+(certified|professional))\b/i, industry: 'cloud_security', weight: 90, name: 'GCP Certification' },
+    
+    // Real Estate - DEFINITIVE
+    { pattern: /\b(real\s+estate\s+license|realtor\b|broker\s+license|licensed\s+real\s+estate)\b/i, industry: 'real_estate', weight: 110, name: 'Real Estate License' },
+    
+    // Education - DEFINITIVE
+    { pattern: /\b(teaching\s+(license|certificate|credential)|state\s+teaching\s+certificate|certified\s+teacher)\b/i, industry: 'k12_education', weight: 110, name: 'Teaching License' },
+    { pattern: /\b(tesol|tefl|celta|delta)\b/i, industry: 'education', weight: 90, name: 'TESOL/TEFL' },
+    
+    // Insurance - DEFINITIVE
+    { pattern: /\b(insurance\s+license|licensed\s+insurance|cpcu|alu|clcs)\b/i, industry: 'insurance', weight: 100, name: 'Insurance License' },
+    
+    // Medical/Clinical - DEFINITIVE
+    { pattern: /\b(board\s+certified|abms|medical\s+license|dea\s+license)\b/i, industry: 'healthcare', weight: 100, name: 'Medical Board Certification' },
+    { pattern: /\b(pt\b.*license|dpt|physical\s+therapist)\b/i, industry: 'physical_therapy', weight: 110, name: 'PT License' },
+    { pattern: /\b(ot\b.*license|otr|occupational\s+therapist)\b/i, industry: 'occupational_therapy', weight: 110, name: 'OT License' },
+    
+    // Actuarial - DEFINITIVE
+    { pattern: /\b(fsa|asa|fcas|acas|actuarial\s+(fellow|associate))\b/i, industry: 'actuarial', weight: 120, name: 'Actuarial Credential' },
+  ];
   
+  // Check for definitive certifications FIRST
+  let certificationBoost: { industry: string; weight: number; signal: string } | null = null;
+  for (const cert of definitiveCertifications) {
+    if (cert.pattern.test(text)) {
+      if (!certificationBoost || cert.weight > certificationBoost.weight) {
+        certificationBoost = { 
+          industry: cert.industry, 
+          weight: cert.weight, 
+          signal: `Definitive certification: ${cert.name}` 
+        };
+      }
+    }
+  }
+  
+  if (certificationBoost) {
+    signals.push(certificationBoost.signal);
+    console.log(`[INDUSTRY-DETECT] ${certificationBoost.signal} -> ${certificationBoost.industry} (+${certificationBoost.weight})`);
+  }
+
   // Define industry patterns with weights - expanded with sub-industries and new industries
   const industryPatterns: Record<string, { 
     titlePatterns: RegExp[]; 
@@ -4301,6 +4377,12 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
       }
     }
     
+    // Apply certification boost if this industry matches the definitive certification
+    if (certificationBoost && industry === certificationBoost.industry) {
+      score += certificationBoost.weight;
+      industrySignals.push(certificationBoost.signal);
+    }
+    
     if (score > 0) {
       industryScores.push({ 
         industry, 
@@ -4309,6 +4391,21 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         matchedTitles,
         matchedSkillCount,
         matchedContext
+      });
+    }
+  }
+  
+  // If we have a certification boost but no matching industry pattern, add it directly
+  if (certificationBoost) {
+    const hasCertIndustry = industryScores.some(s => s.industry === certificationBoost!.industry);
+    if (!hasCertIndustry) {
+      industryScores.push({
+        industry: certificationBoost.industry,
+        score: certificationBoost.weight,
+        signals: [certificationBoost.signal],
+        matchedTitles: [],
+        matchedSkillCount: 0,
+        matchedContext: false
       });
     }
   }
@@ -4359,18 +4456,41 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
   let confidence: 'high' | 'medium' | 'low';
   const scoreDifferential = secondIndustry ? topIndustry.score / secondIndustry.score : 10;
   
+  // Check if top result has a definitive certification (score >= 80 from cert alone)
+  const hasCertificationSignal = topIndustry.signals.some(s => s.includes('Definitive certification'));
+  
   // BOOST: Lower thresholds for high confidence (was 60 -> 45)
   // Also consider skill count and context match as confidence boosters
-  const hasStrongSignals = topIndustry.matchedSkillCount >= 4 || topIndustry.matchedContext;
+  // Certification signals are automatically high confidence
+  const hasStrongSignals = topIndustry.matchedSkillCount >= 4 || topIndustry.matchedContext || hasCertificationSignal;
   const effectiveScore = hasStrongSignals ? topIndustry.score * 1.2 : topIndustry.score;
   
-  if (effectiveScore >= 45 && scoreDifferential >= 1.4) {
+  // Certification matches are always high confidence
+  if (hasCertificationSignal && topIndustry.score >= 80) {
+    confidence = 'high';
+  } else if (effectiveScore >= 45 && scoreDifferential >= 1.4) {
     confidence = 'high';
   } else if (effectiveScore >= 30 && scoreDifferential >= 1.2) {
     confidence = 'medium';
   } else if (effectiveScore >= 20) {
     confidence = 'medium';
   } else {
+    // IMPROVEMENT 3: When confidence is low, consider falling back to 'general'
+    // Only use the detected industry if score is meaningful
+    if (topIndustry.score < 15) {
+      console.log(`[INDUSTRY-DETECT] Very low score (${topIndustry.score}), falling back to general`);
+      return {
+        industry: 'general',
+        confidence: 'low',
+        signals: [`Weak signals for ${topIndustry.industry} (score: ${topIndustry.score}) - defaulting to general`],
+        score: topIndustry.score,
+        detectionSource: 'server_low',
+        alternativeIndustries: industryScores.slice(0, 4).map(s => ({ industry: s.industry, score: s.score })),
+        matchedTitlePatterns: topIndustry.matchedTitles,
+        matchedSkillCount: topIndustry.matchedSkillCount,
+        matchedContextPatterns: topIndustry.matchedContext
+      };
+    }
     confidence = 'low';
   }
   
@@ -4378,7 +4498,7 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
   const parentIndustry = INDUSTRY_PARENTS[topIndustry.industry];
   const isSubIndustry = !!parentIndustry;
   
-  console.log(`[INDUSTRY-DETECT] Result: ${topIndustry.industry}${parentIndustry ? ` (parent: ${parentIndustry})` : ''} (confidence: ${confidence}, score: ${topIndustry.score})`);
+  console.log(`[INDUSTRY-DETECT] Result: ${topIndustry.industry}${parentIndustry ? ` (parent: ${parentIndustry})` : ''} (confidence: ${confidence}, score: ${topIndustry.score}${hasCertificationSignal ? ', CERT MATCH' : ''})`);
   console.log(`[INDUSTRY-DETECT] Signals: ${topIndustry.signals.join('; ')}`);
   
   return {
