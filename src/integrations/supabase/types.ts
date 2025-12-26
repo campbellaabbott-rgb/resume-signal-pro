@@ -446,6 +446,48 @@ export type Database = {
         }
         Relationships: []
       }
+      industry_corrections: {
+        Row: {
+          ai_suggested_industry: string | null
+          corrected_industry: string
+          created_at: string
+          detection_source: string | null
+          id: string
+          ip_country: string | null
+          original_confidence: string | null
+          original_industry: string
+          resume_text_length: number | null
+          server_signals: string[] | null
+          visitor_id: string | null
+        }
+        Insert: {
+          ai_suggested_industry?: string | null
+          corrected_industry: string
+          created_at?: string
+          detection_source?: string | null
+          id?: string
+          ip_country?: string | null
+          original_confidence?: string | null
+          original_industry: string
+          resume_text_length?: number | null
+          server_signals?: string[] | null
+          visitor_id?: string | null
+        }
+        Update: {
+          ai_suggested_industry?: string | null
+          corrected_industry?: string
+          created_at?: string
+          detection_source?: string | null
+          id?: string
+          ip_country?: string | null
+          original_confidence?: string | null
+          original_industry?: string
+          resume_text_length?: number | null
+          server_signals?: string[] | null
+          visitor_id?: string | null
+        }
+        Relationships: []
+      }
       industry_detection_metrics: {
         Row: {
           ai_suggested_industry: string | null
@@ -1180,6 +1222,16 @@ export type Database = {
           total_scans: number
         }[]
       }
+      get_industry_correction_stats: {
+        Args: { p_days_back?: number }
+        Returns: {
+          avg_confidence: string
+          common_signals: string[]
+          corrected_to: string
+          correction_count: number
+          original_industry: string
+        }[]
+      }
       get_industry_detection_stats: {
         Args: { p_hours_back?: number }
         Returns: {
@@ -1389,6 +1441,20 @@ export type Database = {
           p_response_time_ms: number
           p_status: string
           p_test_passed: boolean
+        }
+        Returns: string
+      }
+      log_industry_correction: {
+        Args: {
+          p_ai_suggested_industry?: string
+          p_corrected_industry: string
+          p_detection_source?: string
+          p_ip_country?: string
+          p_original_confidence?: string
+          p_original_industry: string
+          p_resume_text_length?: number
+          p_server_signals?: string[]
+          p_visitor_id?: string
         }
         Returns: string
       }

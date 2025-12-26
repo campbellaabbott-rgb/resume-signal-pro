@@ -84,6 +84,8 @@ interface EnhancedAnalysisDisplayProps {
   industry?: string;
   candidateName?: string | null;
   onIndustryChange?: (newIndustry: string) => void;
+  resumeTextLength?: number;
+  visitorId?: string;
 }
 
 // Mobile-friendly tooltip
@@ -142,7 +144,9 @@ export function EnhancedAnalysisDisplay({
   industryDetection,
   industry,
   candidateName,
-  onIndustryChange
+  onIndustryChange,
+  resumeTextLength,
+  visitorId
 }: EnhancedAnalysisDisplayProps) {
   if (!dualScore && !resumeType && !usageRecommendations && !industryDetection && !industry) {
     return null;
@@ -222,6 +226,8 @@ export function EnhancedAnalysisDisplay({
           industry={industryDetection?.detected || industry || 'general'}
           industryDetection={industryDetection}
           onIndustryChange={onIndustryChange}
+          resumeTextLength={resumeTextLength}
+          visitorId={visitorId}
         />
       )}
 
