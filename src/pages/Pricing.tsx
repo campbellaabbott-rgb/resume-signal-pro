@@ -20,10 +20,13 @@ const productIcons: Record<string, React.ElementType> = {
   fullAnalysis: Sparkles,
   scanPack: Zap,
   atsDefense: ShieldCheck,
+  careerSnapshot: Package,
+  graduateGamePlan: Star,
 };
 
 const productOrder: ProductId[] = [
   'careerSnapshot',
+  'graduateGamePlan',
   'atsDefense',
   'premiumPackage',
   'basicKeywordFix',

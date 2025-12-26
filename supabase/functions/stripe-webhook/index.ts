@@ -242,6 +242,8 @@ async function triggerProductDelivery(
       body.tone = 'professional';
     } else if (productType === 'premium_package') {
       endpoint = 'generate-premium-package';
+    } else if (productType === 'graduate_gameplan') {
+      endpoint = 'generate-graduate-gameplan';
     } else if (productType === 'career_snapshot') {
       endpoint = 'generate-career-snapshot';
     } else if (productType === 'ats_defense') {
