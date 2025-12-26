@@ -25,6 +25,15 @@ import { useScanHistory, generateChecklist } from "@/hooks/use-scan-history";
 import { InteractiveChecklist } from "./InteractiveChecklist";
 import { AISummary } from "./AISummary";
 import { ShareableScoreCard } from "./ShareableScoreCard";
+import { 
+  EnhancedAnalysisDisplay, 
+  ResumeTypeResult, 
+  DualScore, 
+  CalibratedLanguage, 
+  UsageRecommendation,
+  CredibilityIssue,
+  ContentLocation
+} from "./EnhancedAnalysisDisplay";
 
 import { useCurrency } from "@/hooks/use-currency";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -644,6 +653,17 @@ interface FreeKeywordResultsProps {
   // Cache control props
   isCached?: boolean;
   onForceReanalyze?: () => void;
+  // Enhanced analysis props (new)
+  resumeType?: ResumeTypeResult;
+  seniorityLevel?: string;
+  dualScore?: DualScore;
+  calibratedLanguage?: CalibratedLanguage;
+  usageRecommendations?: UsageRecommendation[];
+  credibilityIssues?: CredibilityIssue[];
+  contentLocations?: {
+    quota?: ContentLocation;
+    metrics?: ContentLocation;
+  };
 }
 
 export function FreeKeywordResults({
@@ -700,7 +720,15 @@ export function FreeKeywordResults({
   jobTitle,
   jobCompany,
   isCached,
-  onForceReanalyze
+  onForceReanalyze,
+  // Enhanced analysis props
+  resumeType,
+  seniorityLevel,
+  dualScore,
+  calibratedLanguage,
+  usageRecommendations,
+  credibilityIssues,
+  contentLocations
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1301,6 +1329,18 @@ export function FreeKeywordResults({
         quickWins={quickWins}
         improvementPotential={improvementPotential}
         resumeHash={currentScan?.resumeHash}
+      />
+
+      {/* Enhanced Analysis Display - Resume Type, Dual Scoring, Usage Recommendations */}
+      <EnhancedAnalysisDisplay
+        resumeType={resumeType}
+        seniorityLevel={seniorityLevel}
+        dualScore={dualScore}
+        calibratedLanguage={calibratedLanguage}
+        usageRecommendations={usageRecommendations}
+        credibilityIssues={credibilityIssues}
+        contentLocations={contentLocations}
+        candidateName={candidateName}
       />
 
       {/* Returning User Insights - shown for users who have scanned before */}

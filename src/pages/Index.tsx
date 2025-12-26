@@ -147,6 +147,49 @@ interface FreeKeywordResult {
     salaryInsight: { estimatedRange: string; marketPosition: "below_market" | "at_market" | "above_market"; leveragePoints: string[] };
     personalizedEncouragement: string;
   };
+  // Enhanced analysis fields (new)
+  resumeType?: {
+    type: 'chronological' | 'executive_summary' | 'ats_optimized' | 'outreach_referral' | 'hybrid';
+    label: string;
+    description: string;
+    atsRelevance: 'high' | 'medium' | 'low';
+    scoringAdjustment: string;
+  };
+  seniorityLevel?: string;
+  dualScore?: {
+    atsCompatibility: number;
+    recruiterImpact: number;
+    atsNote: string;
+    recruiterNote: string;
+  };
+  calibratedLanguage?: {
+    headline: string;
+    overallTone: 'warning' | 'optimization' | 'praise';
+    scoreContext: string;
+  };
+  usageRecommendations?: {
+    channel: string;
+    suitability: 'excellent' | 'good' | 'limited' | 'not_recommended';
+    note: string;
+  }[];
+  credibilityIssues?: {
+    type: 'date_inconsistency' | 'timeline_overlap' | 'impossible_timeline' | 'gap';
+    severity: 'high' | 'medium' | 'low';
+    description: string;
+    location?: string;
+  }[];
+  contentLocations?: {
+    quota?: {
+      exists: boolean;
+      locations: string[];
+      suggestion: string;
+    };
+    metrics?: {
+      exists: boolean;
+      locations: string[];
+      suggestion: string;
+    };
+  };
 }
 
 const Index = () => {
@@ -1265,6 +1308,13 @@ const Index = () => {
                 jobDescriptionText={jobDescriptionText}
                 jobTitle={uploadedJobs[0]?.title}
                 jobCompany={uploadedJobs[0]?.company}
+                resumeType={freeKeywordResult.resumeType}
+                seniorityLevel={freeKeywordResult.seniorityLevel}
+                dualScore={freeKeywordResult.dualScore}
+                calibratedLanguage={freeKeywordResult.calibratedLanguage}
+                usageRecommendations={freeKeywordResult.usageRecommendations}
+                credibilityIssues={freeKeywordResult.credibilityIssues}
+                contentLocations={freeKeywordResult.contentLocations}
               />
               
               {/* Score-based package recommendation */}
