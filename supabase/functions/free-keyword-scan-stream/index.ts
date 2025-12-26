@@ -70,7 +70,8 @@ const VALID_INDUSTRIES = [
   'mechanical_engineering', 'electrical_engineering', 'civil_engineering', 
   'chemical_engineering', 'aerospace_engineering',
   // Sub-industries for healthcare
-  'nursing', 'physician', 'pharmacy', 'mental_health',
+  'nursing', 'physician', 'pharmacy', 'mental_health', 'medical_devices', 
+  'health_administration', 'clinical_research', 'physical_therapy', 'radiology',
   // Sub-industries for finance
   'investment_banking', 'accounting', 'financial_planning',
   // Sub-industries for sales
@@ -79,6 +80,10 @@ const VALID_INDUSTRIES = [
   'digital_marketing', 'content_marketing', 'brand_marketing', 'growth_marketing', 'product_marketing',
   // Sub-industries for legal
   'corporate_law', 'litigation', 'intellectual_property', 'employment_law', 'compliance',
+  // Sub-industries for education
+  'k12_education', 'higher_education', 'edtech', 'curriculum_development', 'special_education',
+  // Sub-industries for manufacturing
+  'quality_engineering', 'process_engineering', 'lean_manufacturing', 'supply_chain_manufacturing', 'plant_management',
   'general'
 ];
 
@@ -98,6 +103,11 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'physician': 'healthcare',
   'pharmacy': 'healthcare',
   'mental_health': 'healthcare',
+  'medical_devices': 'healthcare',
+  'health_administration': 'healthcare',
+  'clinical_research': 'healthcare',
+  'physical_therapy': 'healthcare',
+  'radiology': 'healthcare',
   'investment_banking': 'finance',
   'accounting': 'finance',
   'financial_planning': 'finance',
@@ -118,6 +128,18 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'intellectual_property': 'legal',
   'employment_law': 'legal',
   'compliance': 'legal',
+  // Education sub-industries
+  'k12_education': 'education',
+  'higher_education': 'education',
+  'edtech': 'education',
+  'curriculum_development': 'education',
+  'special_education': 'education',
+  // Manufacturing sub-industries
+  'quality_engineering': 'manufacturing',
+  'process_engineering': 'manufacturing',
+  'lean_manufacturing': 'manufacturing',
+  'supply_chain_manufacturing': 'manufacturing',
+  'plant_management': 'manufacturing',
 };
 
 // Industry aliases for normalization
@@ -166,6 +188,22 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'pmm': 'product_marketing', 'go-to-market': 'product_marketing',
   // Legal aliases
   'regulatory': 'compliance', 'risk': 'compliance', 'governance': 'compliance',
+  // Healthcare aliases
+  'medtech': 'medical_devices', 'biomedical': 'medical_devices', 'medical equipment': 'medical_devices',
+  'hospital administration': 'health_administration', 'healthcare management': 'health_administration',
+  'clinical trials': 'clinical_research', 'cra': 'clinical_research', 'research coordinator': 'clinical_research',
+  'pt': 'physical_therapy', 'occupational therapy': 'physical_therapy', 'rehabilitation': 'physical_therapy',
+  'imaging': 'radiology', 'mri': 'radiology', 'ct scan': 'radiology', 'x-ray': 'radiology',
+  // Education aliases
+  'teacher': 'k12_education', 'elementary': 'k12_education', 'high school': 'k12_education', 'middle school': 'k12_education',
+  'professor': 'higher_education', 'university': 'higher_education', 'college': 'higher_education',
+  'learning technology': 'edtech', 'instructional design': 'curriculum_development', 'course design': 'curriculum_development',
+  'sped': 'special_education', 'iep': 'special_education', 'learning disabilities': 'special_education',
+  // Manufacturing aliases
+  'qa': 'quality_engineering', 'quality control': 'quality_engineering', 'qc': 'quality_engineering',
+  'six sigma': 'lean_manufacturing', 'kaizen': 'lean_manufacturing', 'continuous improvement': 'lean_manufacturing',
+  'operations': 'plant_management', 'plant operations': 'plant_management', 'production manager': 'plant_management',
+  'manufacturing engineering': 'process_engineering', 'industrial engineering': 'process_engineering',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -766,6 +804,310 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
       ],
       minSkillsForHigh: 3,
       titleWeight: 35
+    },
+    
+    // === HEALTHCARE SUB-INDUSTRIES ===
+    medical_devices: {
+      titlePatterns: [
+        /\b(medical\s+device\s+engineer|biomedical\s+engineer|product\s+development\s+engineer)\b/i,
+        /\b(quality\s+engineer.*medical|regulatory\s+affairs.*medical)\b/i,
+        /\b(clinical\s+engineer|field\s+service\s+engineer.*medical)\b/i,
+        /\b(r&d\s+engineer.*medical|design\s+engineer.*medical)\b/i,
+      ],
+      skillPatterns: [
+        'medical devices', 'fda', '510(k)', 'iso 13485', 'iec 62304', 'design controls',
+        'biomedical', 'class ii', 'class iii', 'dhf', 'dhr', 'risk management',
+        'v&v', 'verification', 'validation', 'sterilization', 'biocompatibility'
+      ],
+      contextPatterns: [
+        /\b(medical\s+device|fda\s+submission|510\(k\)|regulatory\s+approval)\b/i,
+        /\b(developed|designed|launched)\s+.*\b(device|implant|instrument)\b/i,
+        /\b(iso\s+13485|design\s+controls|dhf)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    health_administration: {
+      titlePatterns: [
+        /\b(healthcare\s+administrator|hospital\s+administrator|practice\s+manager)\b/i,
+        /\b(health\s+services\s+manager|clinic\s+manager|medical\s+director)\b/i,
+        /\b(director\s+of\s+operations.*healthcare|coo.*hospital)\b/i,
+        /\b(revenue\s+cycle\s+manager|health\s+information\s+manager)\b/i,
+      ],
+      skillPatterns: [
+        'healthcare administration', 'hospital operations', 'revenue cycle', 'billing',
+        'ehr', 'epic', 'cerner', 'hipaa', 'cms', 'jcaho', 'accreditation',
+        'patient satisfaction', 'staff scheduling', 'budgeting', 'compliance'
+      ],
+      contextPatterns: [
+        /\b(managed|oversaw|directed)\s+.*\b(hospital|clinic|practice|facility)\b/i,
+        /\b(improved|increased)\s+.*\b(patient\s+satisfaction|efficiency|revenue)\b/i,
+        /\b(healthcare|hospital|clinical)\s+operations\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    clinical_research: {
+      titlePatterns: [
+        /\b(clinical\s+research\s+associate|cra|clinical\s+research\s+coordinator)\b/i,
+        /\b(clinical\s+trial\s+manager|clinical\s+project\s+manager)\b/i,
+        /\b(clinical\s+data\s+manager|clinical\s+scientist|medical\s+monitor)\b/i,
+        /\b(regulatory\s+affairs\s+specialist|clinical\s+operations)\b/i,
+      ],
+      skillPatterns: [
+        'clinical trials', 'gcp', 'ich', 'irb', 'protocol', 'informed consent',
+        'ctms', 'edc', 'medidata', 'veeva', 'sae', 'adverse events',
+        'site monitoring', 'crf', 'phase i', 'phase ii', 'phase iii', 'fda'
+      ],
+      contextPatterns: [
+        /\b(managed|monitored|coordinated)\s+.*\b(trial|study|protocol)\b/i,
+        /\b(phase\s+[iI123]+|clinical\s+trial|research\s+site)\b/i,
+        /\b(gcp|ich|irb|regulatory\s+submission)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    physical_therapy: {
+      titlePatterns: [
+        /\b(physical\s+therapist|pt|physiotherapist)\b/i,
+        /\b(occupational\s+therapist|ot|rehabilitation\s+specialist)\b/i,
+        /\b(sports\s+medicine|athletic\s+trainer|rehab\s+director)\b/i,
+        /\b(physical\s+therapy\s+assistant|pta)\b/i,
+      ],
+      skillPatterns: [
+        'physical therapy', 'rehabilitation', 'manual therapy', 'exercise prescription',
+        'orthopedic', 'neurological', 'geriatric', 'pediatric', 'sports medicine',
+        'patient assessment', 'treatment planning', 'mobility', 'functional training'
+      ],
+      contextPatterns: [
+        /\b(treated|rehabilitated|assessed)\s+.*\b(patient|client|injury)\b/i,
+        /\b(improved|restored)\s+.*\b(mobility|function|range\s+of\s+motion)\b/i,
+        /\b(physical\s+therapy|rehabilitation|orthopedic)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    radiology: {
+      titlePatterns: [
+        /\b(radiologist|radiology\s+technologist|radiologic\s+technician)\b/i,
+        /\b(mri\s+technologist|ct\s+technologist|x[\s-]?ray\s+technician)\b/i,
+        /\b(diagnostic\s+imaging|ultrasound\s+technologist|sonographer)\b/i,
+        /\b(interventional\s+radiologist|nuclear\s+medicine)\b/i,
+      ],
+      skillPatterns: [
+        'radiology', 'mri', 'ct', 'x-ray', 'ultrasound', 'mammography',
+        'pacs', 'dicom', 'radiation safety', 'contrast', 'imaging',
+        'fluoroscopy', 'nuclear medicine', 'pet scan', 'interventional'
+      ],
+      contextPatterns: [
+        /\b(performed|interpreted|conducted)\s+.*\b(imaging|scan|x[\s-]?ray|mri|ct)\b/i,
+        /\b(diagnostic\s+imaging|radiology\s+department)\b/i,
+        /\b(pacs|dicom|radiation)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    
+    // === EDUCATION SUB-INDUSTRIES ===
+    k12_education: {
+      titlePatterns: [
+        /\b(teacher|elementary\s+teacher|high\s+school\s+teacher|middle\s+school)\b/i,
+        /\b(principal|assistant\s+principal|school\s+administrator)\b/i,
+        /\b(school\s+counselor|department\s+chair|instructional\s+coach)\b/i,
+        /\b(special\s+education\s+teacher|reading\s+specialist)\b/i,
+      ],
+      skillPatterns: [
+        'classroom management', 'lesson planning', 'curriculum', 'differentiated instruction',
+        'assessment', 'grading', 'parent communication', 'state standards', 'common core',
+        'iep', 'student engagement', 'behavior management', 'pbis'
+      ],
+      contextPatterns: [
+        /\b(taught|instructed|educated)\s+.*\b(students?|class|grade)\b/i,
+        /\b(improved|increased)\s+.*\b(test\s+scores?|student\s+achievement|graduation)\b/i,
+        /\b(elementary|middle|high)\s+school\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    higher_education: {
+      titlePatterns: [
+        /\b(professor|associate\s+professor|assistant\s+professor|lecturer)\b/i,
+        /\b(dean|provost|department\s+chair|academic\s+director)\b/i,
+        /\b(research\s+professor|adjunct\s+professor|faculty)\b/i,
+        /\b(academic\s+advisor|registrar|admissions\s+director)\b/i,
+      ],
+      skillPatterns: [
+        'curriculum development', 'research', 'grant writing', 'peer review',
+        'tenure', 'academic publishing', 'lecture', 'dissertation',
+        'accreditation', 'student advising', 'academic program', 'higher education'
+      ],
+      contextPatterns: [
+        /\b(taught|lectured|advised)\s+.*\b(undergraduate|graduate|students?)\b/i,
+        /\b(published|researched|presented)\s+.*\b(journal|conference|paper)\b/i,
+        /\b(university|college|academic)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    edtech: {
+      titlePatterns: [
+        /\b(instructional\s+designer|learning\s+experience\s+designer)\b/i,
+        /\b(e[\s-]?learning\s+developer|educational\s+technologist)\b/i,
+        /\b(lms\s+administrator|learning\s+management|training\s+developer)\b/i,
+        /\b(curriculum\s+developer.*tech|learning\s+engineer)\b/i,
+      ],
+      skillPatterns: [
+        'instructional design', 'lms', 'scorm', 'articulate', 'storyline', 'captivate',
+        'e-learning', 'canvas', 'blackboard', 'moodle', 'learning management',
+        'addie', 'sam', 'adult learning', 'online learning', 'video production'
+      ],
+      contextPatterns: [
+        /\b(developed|designed|created)\s+.*\b(course|training|module|curriculum)\b/i,
+        /\b(e[\s-]?learning|online\s+learning|learning\s+platform)\b/i,
+        /\b(lms|scorm|instructional\s+design)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    curriculum_development: {
+      titlePatterns: [
+        /\b(curriculum\s+developer|curriculum\s+designer|curriculum\s+specialist)\b/i,
+        /\b(curriculum\s+coordinator|curriculum\s+director|instructional\s+coordinator)\b/i,
+        /\b(assessment\s+specialist|standards\s+specialist)\b/i,
+      ],
+      skillPatterns: [
+        'curriculum development', 'curriculum design', 'learning objectives', 'assessment design',
+        'standards alignment', 'backward design', 'scope and sequence', 'textbook',
+        'educational content', 'pedagogical', 'bloom\'s taxonomy', 'rubrics'
+      ],
+      contextPatterns: [
+        /\b(developed|designed|created)\s+.*\b(curriculum|standards|assessment)\b/i,
+        /\b(aligned|mapped)\s+.*\b(standards|objectives|outcomes)\b/i,
+        /\b(curriculum\s+framework|learning\s+outcomes)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    special_education: {
+      titlePatterns: [
+        /\b(special\s+education\s+teacher|sped\s+teacher|resource\s+teacher)\b/i,
+        /\b(special\s+education\s+coordinator|inclusion\s+specialist)\b/i,
+        /\b(behavior\s+specialist|autism\s+specialist|learning\s+specialist)\b/i,
+        /\b(special\s+education\s+director|iep\s+coordinator)\b/i,
+      ],
+      skillPatterns: [
+        'special education', 'iep', 'idea', '504 plan', 'behavior intervention',
+        'differentiated instruction', 'autism', 'learning disabilities', 'adhd',
+        'assistive technology', 'inclusion', 'aba', 'sensory', 'accommodation'
+      ],
+      contextPatterns: [
+        /\b(developed|implemented|managed)\s+.*\b(iep|504|behavior\s+plan)\b/i,
+        /\b(supported|taught|worked\s+with)\s+.*\b(special\s+needs|disabilities)\b/i,
+        /\b(special\s+education|inclusion|learning\s+support)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    
+    // === MANUFACTURING SUB-INDUSTRIES ===
+    quality_engineering: {
+      titlePatterns: [
+        /\b(quality\s+engineer|quality\s+assurance\s+engineer|qa\s+engineer)\b/i,
+        /\b(quality\s+manager|quality\s+director|quality\s+lead)\b/i,
+        /\b(quality\s+control\s+engineer|qc\s+engineer|supplier\s+quality)\b/i,
+        /\b(quality\s+systems\s+engineer|metrology\s+engineer)\b/i,
+      ],
+      skillPatterns: [
+        'quality assurance', 'quality control', 'iso 9001', 'six sigma', 'spc',
+        'fmea', 'ppap', 'apqp', 'root cause analysis', '8d', 'capa',
+        'audit', 'inspection', 'gd&t', 'cmm', 'metrology', 'iatf 16949'
+      ],
+      contextPatterns: [
+        /\b(reduced|improved)\s+.*\b(defects?|quality|scrap|yield)\b/i,
+        /\b(implemented|managed)\s+.*\b(quality\s+system|audit|inspection)\b/i,
+        /\b(iso|six\s+sigma|quality\s+assurance)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    process_engineering: {
+      titlePatterns: [
+        /\b(process\s+engineer|manufacturing\s+engineer|industrial\s+engineer)\b/i,
+        /\b(process\s+improvement\s+engineer|continuous\s+improvement)\b/i,
+        /\b(production\s+engineer|methods\s+engineer|process\s+specialist)\b/i,
+      ],
+      skillPatterns: [
+        'process engineering', 'manufacturing engineering', 'industrial engineering',
+        'time study', 'line balancing', 'capacity planning', 'lean', 'kaizen',
+        'value stream mapping', 'work instructions', 'standard work', 'automation'
+      ],
+      contextPatterns: [
+        /\b(improved|optimized|designed)\s+.*\b(process|line|workflow|manufacturing)\b/i,
+        /\b(reduced|decreased)\s+.*\b(cycle\s+time|labor|cost|waste)\b/i,
+        /\b(process\s+improvement|manufacturing\s+engineering)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    lean_manufacturing: {
+      titlePatterns: [
+        /\b(lean\s+engineer|lean\s+specialist|lean\s+manager)\b/i,
+        /\b(continuous\s+improvement\s+manager|ci\s+manager|kaizen\s+leader)\b/i,
+        /\b(six\s+sigma\s+black\s+belt|master\s+black\s+belt|green\s+belt)\b/i,
+        /\b(operational\s+excellence|opex\s+manager)\b/i,
+      ],
+      skillPatterns: [
+        'lean', 'six sigma', 'kaizen', '5s', 'value stream mapping', 'dmaic',
+        'continuous improvement', 'waste reduction', 'tpm', 'kanban', 'poka-yoke',
+        'black belt', 'green belt', 'root cause analysis', 'a3', 'pdca'
+      ],
+      contextPatterns: [
+        /\b(implemented|led|facilitated)\s+.*\b(kaizen|lean|improvement)\b/i,
+        /\b(reduced|eliminated)\s+.*\b(waste|defects?|downtime|cycle\s+time)\b/i,
+        /\b(lean|six\s+sigma|continuous\s+improvement)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    supply_chain_manufacturing: {
+      titlePatterns: [
+        /\b(supply\s+chain\s+manager|procurement\s+manager|materials\s+manager)\b/i,
+        /\b(supply\s+planner|demand\s+planner|production\s+planner)\b/i,
+        /\b(buyer|purchasing\s+manager|sourcing\s+manager)\b/i,
+        /\b(inventory\s+manager|materials\s+coordinator)\b/i,
+      ],
+      skillPatterns: [
+        'supply chain', 'procurement', 'purchasing', 'mrp', 'erp', 'sap',
+        'vendor management', 'supplier development', 'inventory management',
+        'demand planning', 'production scheduling', 's&op', 'logistics', 'jit'
+      ],
+      contextPatterns: [
+        /\b(managed|negotiated|sourced)\s+.*\b(supplier|vendor|material|component)\b/i,
+        /\b(reduced|optimized)\s+.*\b(inventory|cost|lead\s+time)\b/i,
+        /\b(supply\s+chain|procurement|purchasing)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    plant_management: {
+      titlePatterns: [
+        /\b(plant\s+manager|factory\s+manager|site\s+manager)\b/i,
+        /\b(operations\s+manager|production\s+manager|manufacturing\s+manager)\b/i,
+        /\b(general\s+manager.*manufacturing|vp\s+of\s+operations)\b/i,
+        /\b(plant\s+director|site\s+director|facility\s+manager)\b/i,
+      ],
+      skillPatterns: [
+        'plant management', 'operations management', 'production management',
+        'p&l', 'budget', 'safety', 'osha', 'ehs', 'union', 'labor relations',
+        'capacity planning', 'kpi', 'oee', 'downtime', 'maintenance'
+      ],
+      contextPatterns: [
+        /\b(managed|led|directed)\s+.*\b(plant|factory|facility|site)\b/i,
+        /\b(improved|increased)\s+.*\b(production|efficiency|output|oee)\b/i,
+        /\b(plant\s+operations|manufacturing\s+operations)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
     },
     
     // === NEW INDUSTRIES ===
