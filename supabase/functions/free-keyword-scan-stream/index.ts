@@ -105,6 +105,8 @@ const VALID_INDUSTRIES = [
   'healthcare_it', 'fintech', 'legaltech', 'hrtech', 'proptech', 'insurtech', 'regtech', 'govtech',
   'agtech', 'cleantech', 'martech', 'adtech', 'retailtech', 'traveltech', 'sporttech', 'foodtech',
   'biotech', 'medtech', 'wealthtech', 'supplychain_tech', 'constructech',
+  // Specialized sub-industries
+  'supply_chain_analytics', 'sports_management',
   'general'
 ];
 
@@ -233,6 +235,9 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'wealthtech': 'finance',
   'supplychain_tech': 'logistics',
   'constructech': 'construction',
+  // Specialized sub-industries
+  'supply_chain_analytics': 'logistics',
+  'sports_management': 'hospitality',
 };
 
 // Industry aliases for normalization
@@ -505,6 +510,26 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'philanthropy': 'nonprofit', 'humanitarian': 'nonprofit', 'relief': 'nonprofit',
   'red cross': 'nonprofit', 'habitat for humanity': 'nonprofit', 'united way': 'nonprofit',
   'ymca': 'nonprofit', 'boys and girls club': 'nonprofit', 'salvation army': 'nonprofit',
+  
+  // ==================== SUPPLY CHAIN ANALYTICS ALIASES ====================
+  'supply chain analytics': 'supply_chain_analytics', 'demand planning': 'supply_chain_analytics',
+  'demand forecasting': 'supply_chain_analytics', 'inventory analytics': 'supply_chain_analytics',
+  'procurement analytics': 'supply_chain_analytics', 'supply chain optimization': 'supply_chain_analytics',
+  'scm analytics': 'supply_chain_analytics', 'logistics analytics': 'supply_chain_analytics',
+  's&op': 'supply_chain_analytics', 'sales and operations planning': 'supply_chain_analytics',
+  'supply chain data': 'supply_chain_analytics', 'supply chain modeling': 'supply_chain_analytics',
+  'network optimization': 'supply_chain_analytics', 'supply chain insights': 'supply_chain_analytics',
+  
+  // ==================== SPORTS MANAGEMENT ALIASES ====================
+  'sports management': 'sports_management', 'sports marketing': 'sports_management',
+  'athletic administration': 'sports_management', 'athletic director': 'sports_management',
+  'sports business': 'sports_management', 'team management': 'sports_management',
+  'sports agent': 'sports_management', 'athlete management': 'sports_management',
+  'sports operations': 'sports_management', 'player personnel': 'sports_management',
+  'ticket sales sports': 'sports_management', 'sports sponsorship': 'sports_management',
+  'fan engagement': 'sports_management', 'ncaa': 'sports_management', 'ncaa compliance': 'sports_management',
+  'professional sports': 'sports_management', 'minor league': 'sports_management', 'major league': 'sports_management',
+  'esports management': 'sports_management', 'esports': 'sports_management',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -3062,6 +3087,53 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
       ],
       minSkillsForHigh: 3,
       titleWeight: 45
+    },
+    
+    // === SPECIALIZED SUB-INDUSTRIES ===
+    supply_chain_analytics: {
+      titlePatterns: [
+        /\b(supply\s+chain\s+analyst|demand\s+planning|demand\s+planner)\b/i,
+        /\b(supply\s+chain\s+analytics|inventory\s+analyst|procurement\s+analyst)\b/i,
+        /\b(s&op\s+manager|s&op\s+analyst|forecast\s+analyst)\b/i,
+        /\b(logistics\s+analyst|supply\s+chain\s+data|scm\s+analyst)\b/i,
+      ],
+      skillPatterns: [
+        'demand forecasting', 'inventory optimization', 'supply chain modeling',
+        's&op', 'sales and operations planning', 'network optimization',
+        'demand planning', 'supply planning', 'safety stock', 'lead time',
+        'sql', 'python', 'tableau', 'power bi', 'sap', 'oracle scm',
+        'blue yonder', 'kinaxis', 'llamasoft', 'statistical modeling',
+        'cpim', 'cscp', 'apics', 'kpi dashboards', 'cost-to-serve'
+      ],
+      contextPatterns: [
+        /\b(reduced|improved|optimized)\s+.*\b(inventory|forecast|demand|supply)\b/i,
+        /\b(built|developed)\s+.*\b(forecasting|analytics|model|dashboard)\b/i,
+        /\b(s&op|sales\s+and\s+operations\s+planning|demand\s+planning)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    sports_management: {
+      titlePatterns: [
+        /\b(sports\s+marketing|athletic\s+director|sports\s+manager)\b/i,
+        /\b(athlete\s+management|sports\s+agent|player\s+personnel)\b/i,
+        /\b(sports\s+business|team\s+operations|sports\s+operations)\b/i,
+        /\b(ticket\s+sales.*sports|sponsorship.*sports|esports\s+manager)\b/i,
+      ],
+      skillPatterns: [
+        'athlete management', 'sports marketing', 'sponsorship', 'ticket sales',
+        'fan engagement', 'ncaa compliance', 'ncaa', 'contract negotiation',
+        'media relations', 'brand management', 'event operations', 'sports analytics',
+        'partnership development', 'revenue generation', 'crm', 'salesforce',
+        'game day operations', 'broadcast rights', 'merchandise', 'player development'
+      ],
+      contextPatterns: [
+        /\b(managed|negotiated)\s+.*\b(athlete|player|team|sponsorship|contract)\b/i,
+        /\b(increased|grew)\s+.*\b(ticket|attendance|revenue|fan|sponsorship)\b/i,
+        /\b(sports|athletic|ncaa|professional\s+team|esports)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
     },
   };
   
