@@ -115,6 +115,7 @@ const VALID_INDUSTRIES = [
   'quantitative_finance', 'product_design', 'sre',
   'technical_program_management', 'cloud_security', 'data_privacy',
   'sales_operations', 'channel_sales', 'strategic_accounts',
+  'performance_marketing', 'influencer_marketing', 'marketing_analytics',
   'general'
 ];
 
@@ -268,6 +269,9 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'sales_operations': 'sales',
   'channel_sales': 'sales',
   'strategic_accounts': 'sales',
+  'performance_marketing': 'marketing',
+  'influencer_marketing': 'marketing',
+  'marketing_analytics': 'marketing',
 };
 
 // Industry aliases for normalization
@@ -570,7 +574,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   
   // ==================== PRODUCT ANALYTICS ALIASES ====================
   'product analytics': 'product_analytics', 'product analyst': 'product_analytics',
-  'growth analytics': 'product_analytics', 'product intelligence': 'product_analytics',
+  'product intelligence': 'product_analytics',
   'product data': 'product_analytics',
   'amplitude': 'product_analytics', 'mixpanel': 'product_analytics', 'segment': 'product_analytics',
   'funnel analysis': 'product_analytics', 'cohort analysis': 'product_analytics',
@@ -643,11 +647,10 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   
   // ==================== GROWTH MARKETING ALIASES ====================
   'growth marketing': 'growth_marketing', 'growth hacking': 'growth_marketing',
-  'growth manager': 'growth_marketing', 'performance marketing': 'growth_marketing',
+  'growth manager': 'growth_marketing',
   'acquisition marketing': 'growth_marketing', 'lifecycle marketing': 'growth_marketing',
-  'demand generation': 'growth_marketing', 'user acquisition': 'growth_marketing',
   'conversion optimization': 'growth_marketing', 'cro': 'growth_marketing',
-  'paid acquisition': 'growth_marketing', 'cac': 'growth_marketing', 'ltv': 'growth_marketing',
+  'cac optimization': 'growth_marketing', 'ltv optimization': 'growth_marketing',
   'aarrr': 'growth_marketing', 'product-led growth': 'growth_marketing',
   'viral loops': 'growth_marketing', 'referral programs': 'growth_marketing',
   
@@ -818,6 +821,40 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'c-suite selling': 'strategic_accounts', 'executive selling': 'strategic_accounts',
   'complex sales': 'strategic_accounts', 'large deal sales': 'strategic_accounts',
   'account executive enterprise': 'strategic_accounts', 'senior account executive': 'strategic_accounts',
+  
+  // ==================== PERFORMANCE MARKETING ALIASES ====================
+  'performance marketing': 'performance_marketing', 'performance marketer': 'performance_marketing',
+  'paid media manager': 'performance_marketing', 'paid media specialist': 'performance_marketing',
+  'paid acquisition': 'performance_marketing', 'digital advertising': 'performance_marketing',
+  'ppc specialist': 'performance_marketing', 'ppc manager': 'performance_marketing',
+  'sem manager': 'performance_marketing', 'search marketing': 'performance_marketing',
+  'google ads specialist': 'performance_marketing', 'facebook ads specialist': 'performance_marketing',
+  'meta ads manager': 'performance_marketing', 'paid social manager': 'performance_marketing',
+  'media buyer': 'performance_marketing', 'demand gen manager': 'performance_marketing',
+  'growth marketer': 'performance_marketing', 'user acquisition': 'performance_marketing',
+  'programmatic manager': 'performance_marketing', 'roas optimization': 'performance_marketing',
+  
+  // ==================== INFLUENCER MARKETING ALIASES ====================
+  'influencer marketing': 'influencer_marketing', 'influencer manager': 'influencer_marketing',
+  'influencer marketing manager': 'influencer_marketing', 'creator marketing': 'influencer_marketing',
+  'creator partnerships': 'influencer_marketing', 'influencer relations': 'influencer_marketing',
+  'ugc manager': 'influencer_marketing', 'user generated content': 'influencer_marketing',
+  'brand ambassador manager': 'influencer_marketing', 'ambassador program': 'influencer_marketing',
+  'creator economy manager': 'influencer_marketing', 'social partnerships': 'influencer_marketing',
+  'influencer strategist': 'influencer_marketing', 'talent partnerships': 'influencer_marketing',
+  'creator relations': 'influencer_marketing', 'content creator partnerships': 'influencer_marketing',
+  'aspireiq': 'influencer_marketing', 'grin platform': 'influencer_marketing', 'creatoriq': 'influencer_marketing',
+  
+  // ==================== MARKETING ANALYTICS ALIASES ====================
+  'marketing analytics': 'marketing_analytics', 'marketing analyst': 'marketing_analytics',
+  'marketing data analyst': 'marketing_analytics', 'marketing science': 'marketing_analytics',
+  'digital analytics manager': 'marketing_analytics', 'web analytics': 'marketing_analytics',
+  'growth analytics': 'marketing_analytics', 'marketing intelligence': 'marketing_analytics',
+  'attribution analyst': 'marketing_analytics', 'marketing mix modeling': 'marketing_analytics',
+  'customer analytics marketing': 'marketing_analytics', 'funnel analyst': 'marketing_analytics',
+  'marketing bi': 'marketing_analytics', 'marketing dashboards': 'marketing_analytics',
+  'amplitude analyst': 'marketing_analytics', 'mixpanel analyst': 'marketing_analytics',
+  'segment specialist': 'marketing_analytics', 'adobe analytics specialist': 'marketing_analytics',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -3923,6 +3960,75 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         /\b(managed|owned|led)\s+.*\b(strategic|key|enterprise|global)\s+account/i,
         /\b(closed|won|grew)\s+.*\b(enterprise|strategic|major|seven\s+figure)\s+deal/i,
         /\b(built|developed)\s+.*\b(c-suite|executive|stakeholder)\s+relationship/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    performance_marketing: {
+      titlePatterns: [
+        /\b(performance\s+marketing\s+manager|paid\s+media\s+manager)\b/i,
+        /\b(ppc\s+specialist|ppc\s+manager|sem\s+manager)\b/i,
+        /\b(paid\s+acquisition\s+manager|growth\s+marketer)\b/i,
+        /\b(media\s+buyer|demand\s+gen\s+manager)\b/i,
+      ],
+      skillPatterns: [
+        'performance marketing', 'paid media', 'google ads', 'facebook ads', 'meta ads',
+        'roas', 'cac', 'ltv', 'conversion rate optimization', 'a/b testing',
+        'attribution modeling', 'programmatic advertising', 'display advertising',
+        'retargeting', 'linkedin ads', 'tiktok ads', 'media buying',
+        'campaign optimization', 'bid management', 'landing page optimization',
+        'google analytics', 'budget allocation', 'audience targeting', 'demand generation'
+      ],
+      contextPatterns: [
+        /\b(managed|optimized|scaled)\s+.*\b(paid\s+media|advertising|campaigns|budget)\b/i,
+        /\b(achieved|improved|increased)\s+.*\b(roas|cac|conversion|ctr)\b/i,
+        /\b(launched|ran)\s+.*\b(google\s+ads|facebook\s+ads|paid\s+campaigns)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    influencer_marketing: {
+      titlePatterns: [
+        /\b(influencer\s+marketing\s+manager|influencer\s+manager)\b/i,
+        /\b(creator\s+partnerships\s+manager|creator\s+marketing)\b/i,
+        /\b(brand\s+ambassador\s+manager|ugc\s+manager)\b/i,
+        /\b(influencer\s+strategist|talent\s+partnerships)\b/i,
+      ],
+      skillPatterns: [
+        'influencer marketing', 'creator partnerships', 'influencer outreach', 'ugc',
+        'creator economy', 'influencer campaigns', 'brand ambassadors', 'affiliate marketing',
+        'instagram marketing', 'tiktok marketing', 'youtube partnerships', 'influencer roi',
+        'content collaboration', 'micro-influencers', 'macro-influencers', 'influencer platforms',
+        'aspireiq', 'grin', 'creatoriq', 'sponsored content', 'engagement rate',
+        'campaign tracking', 'talent management', 'contract negotiation'
+      ],
+      contextPatterns: [
+        /\b(managed|built|launched)\s+.*\b(influencer|creator|ambassador)\s+(program|campaign|partnership)/i,
+        /\b(recruited|partnered\s+with)\s+.*\b(influencer|creator|talent)\b/i,
+        /\b(drove|generated)\s+.*\b(ugc|engagement|impressions|reach)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    marketing_analytics: {
+      titlePatterns: [
+        /\b(marketing\s+analyst|marketing\s+analytics\s+manager)\b/i,
+        /\b(marketing\s+data\s+analyst|digital\s+analytics\s+manager)\b/i,
+        /\b(growth\s+analyst|attribution\s+analyst)\b/i,
+        /\b(marketing\s+science|marketing\s+intelligence)\b/i,
+      ],
+      skillPatterns: [
+        'marketing analytics', 'google analytics', 'marketing attribution', 'data visualization',
+        'sql', 'tableau', 'looker', 'marketing mix modeling', 'customer segmentation',
+        'cohort analysis', 'funnel analysis', 'a/b testing', 'python', 'r',
+        'amplitude', 'mixpanel', 'segment', 'marketing dashboards', 'kpi tracking',
+        'roi analysis', 'predictive analytics', 'customer journey analytics',
+        'multi-touch attribution', 'adobe analytics'
+      ],
+      contextPatterns: [
+        /\b(built|created|developed)\s+.*\b(dashboard|report|analytics|attribution)\b/i,
+        /\b(analyzed|measured|tracked)\s+.*\b(campaign|marketing|funnel|conversion)\b/i,
+        /\b(implemented|deployed)\s+.*\b(analytics|tracking|attribution|segment)\b/i,
       ],
       minSkillsForHigh: 4,
       titleWeight: 50
