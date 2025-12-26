@@ -56,31 +56,83 @@ function logScanMetric(
 }
 
 // Valid industries list
+// Expanded industry list with sub-industries
 const VALID_INDUSTRIES = [
+  // Core industries
   'technology', 'healthcare', 'finance', 'legal', 'sales', 
   'marketing', 'education', 'engineering', 'creative', 'hr', 
   'consulting', 'retail', 'hospitality', 'manufacturing', 
-  'government', 'general'
+  'government', 'nonprofit', 'construction', 'real_estate',
+  'logistics', 'energy', 'agriculture',
+  // Sub-industries for technology
+  'software_engineering', 'data_science', 'devops', 'cybersecurity', 'product_management',
+  // Sub-industries for engineering
+  'mechanical_engineering', 'electrical_engineering', 'civil_engineering', 
+  'chemical_engineering', 'aerospace_engineering',
+  // Sub-industries for healthcare
+  'nursing', 'physician', 'pharmacy', 'mental_health',
+  // Sub-industries for finance
+  'investment_banking', 'accounting', 'financial_planning',
+  'general'
 ];
+
+// Industry parent mapping (sub-industry -> parent)
+const INDUSTRY_PARENTS: Record<string, string> = {
+  'software_engineering': 'technology',
+  'data_science': 'technology',
+  'devops': 'technology',
+  'cybersecurity': 'technology',
+  'product_management': 'technology',
+  'mechanical_engineering': 'engineering',
+  'electrical_engineering': 'engineering',
+  'civil_engineering': 'engineering',
+  'chemical_engineering': 'engineering',
+  'aerospace_engineering': 'engineering',
+  'nursing': 'healthcare',
+  'physician': 'healthcare',
+  'pharmacy': 'healthcare',
+  'mental_health': 'healthcare',
+  'investment_banking': 'finance',
+  'accounting': 'finance',
+  'financial_planning': 'finance',
+};
 
 // Industry aliases for normalization
 const INDUSTRY_ALIASES: Record<string, string> = {
-  'tech': 'technology', 'software': 'technology', 'it': 'technology',
-  'software development': 'technology', 'information technology': 'technology',
-  'medical': 'healthcare', 'health': 'healthcare', 'medicine': 'healthcare',
-  'nursing': 'healthcare', 'pharmaceutical': 'healthcare',
+  'tech': 'technology', 'software': 'software_engineering', 'it': 'technology',
+  'software development': 'software_engineering', 'information technology': 'technology',
+  'web development': 'software_engineering', 'app development': 'software_engineering',
+  'medical': 'healthcare', 'health': 'healthcare', 'medicine': 'physician',
+  'nursing': 'nursing', 'pharmaceutical': 'pharmacy', 'pharma': 'pharmacy',
   'law': 'legal', 'attorney': 'legal', 'lawyer': 'legal',
-  'banking': 'finance', 'accounting': 'finance', 'financial services': 'finance',
+  'banking': 'investment_banking', 'accounting': 'accounting', 'financial services': 'finance',
+  'cpa': 'accounting', 'bookkeeping': 'accounting',
   'advertising': 'marketing', 'pr': 'marketing', 'public relations': 'marketing',
   'teaching': 'education', 'academia': 'education', 'academic': 'education',
   'design': 'creative', 'art': 'creative', 'media': 'creative',
   'human resources': 'hr', 'recruitment': 'hr', 'talent': 'hr',
   'management consulting': 'consulting', 'strategy': 'consulting',
-  'ecommerce': 'retail', 'e-commerce': 'retail',
+  'ecommerce': 'retail', 'e-commerce': 'retail', 'store': 'retail',
   'hotel': 'hospitality', 'restaurant': 'hospitality', 'tourism': 'hospitality',
-  'production': 'manufacturing', 'factory': 'manufacturing',
-  'public sector': 'government', 'federal': 'government', 'state': 'government'
+  'food service': 'hospitality', 'lodging': 'hospitality',
+  'production': 'manufacturing', 'factory': 'manufacturing', 'assembly': 'manufacturing',
+  'public sector': 'government', 'federal': 'government', 'state': 'government',
+  'municipal': 'government', 'civil service': 'government',
+  'ngo': 'nonprofit', 'charity': 'nonprofit', 'foundation': 'nonprofit',
+  'building': 'construction', 'contractor': 'construction', 'trades': 'construction',
+  'property': 'real_estate', 'realty': 'real_estate',
+  'supply chain': 'logistics', 'shipping': 'logistics', 'warehouse': 'logistics',
+  'oil': 'energy', 'gas': 'energy', 'renewable': 'energy', 'utilities': 'energy',
+  'farming': 'agriculture', 'agribusiness': 'agriculture',
+  'data': 'data_science', 'ml': 'data_science', 'ai': 'data_science',
+  'security': 'cybersecurity', 'infosec': 'cybersecurity',
+  'infrastructure': 'devops', 'sre': 'devops', 'platform': 'devops',
 };
+
+// Get parent industry for display (preserves sub-industry detail)
+function getParentIndustry(industry: string): string {
+  return INDUSTRY_PARENTS[industry] || industry;
+}
 
 // Normalize industry to valid value
 function normalizeIndustry(raw: string | undefined | null): string {
@@ -106,238 +158,619 @@ function normalizeIndustry(raw: string | undefined | null): string {
 
 /**
  * Server-side industry detection from resume text
- * This overrides AI detection when there's clear evidence
- * Returns { industry, confidence, signals } for transparency
+ * Enhanced with sub-industries, better confidence scoring, and AI hybrid support
+ * Returns { industry, subIndustry, parentIndustry, confidence, signals, score } for transparency
  */
 interface IndustryDetectionResult {
   industry: string;
+  subIndustry?: string;
+  parentIndustry?: string;
   confidence: 'high' | 'medium' | 'low';
   signals: string[];
+  score: number;
 }
 
 function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
   const text = resumeText.toLowerCase();
   const signals: string[] = [];
   
-  // Define industry patterns with weights
+  // Define industry patterns with weights - expanded with sub-industries and new industries
   const industryPatterns: Record<string, { 
     titlePatterns: RegExp[]; 
     skillPatterns: string[];
     contextPatterns: RegExp[];
     minSkillsForHigh: number;
+    titleWeight?: number; // Custom weight for titles (default 30)
+    skillWeight?: number; // Custom weight per skill (default 5)
   }> = {
-    technology: {
+    // === SUB-INDUSTRIES FOR TECHNOLOGY ===
+    software_engineering: {
       titlePatterns: [
         /\b(software\s+engineer|senior\s+software\s+engineer|staff\s+engineer)\b/,
         /\b(developer|frontend\s+developer|backend\s+developer|full[\s-]?stack\s+developer)\b/,
-        /\b(data\s+scientist|machine\s+learning\s+engineer|ml\s+engineer|ai\s+engineer)\b/,
-        /\b(devops\s+engineer|sre|site\s+reliability\s+engineer|platform\s+engineer)\b/,
-        /\b(cloud\s+engineer|infrastructure\s+engineer|systems\s+engineer)\b/,
-        /\b(qa\s+engineer|test\s+engineer|automation\s+engineer)\b/,
-        /\b(tech\s+lead|engineering\s+manager|vp\s+of\s+engineering|cto)\b/,
         /\b(programmer|coder|software\s+architect|solutions\s+architect)\b/,
-        /\b(data\s+engineer|analytics\s+engineer|bi\s+engineer)\b/,
-        /\b(product\s+manager|technical\s+product\s+manager)\b/,
+        /\b(web\s+developer|mobile\s+developer|ios\s+developer|android\s+developer)\b/,
+        /\b(tech\s+lead|engineering\s+manager|vp\s+of\s+engineering|cto)\b/,
       ],
       skillPatterns: [
         'javascript', 'typescript', 'python', 'react', 'node.js', 'nodejs', 'vue', 'angular',
-        'aws', 'docker', 'kubernetes', 'git', 'github', 'postgresql', 'mongodb', 'redis',
-        'java', 'c++', 'golang', 'rust', 'sql', 'graphql', 'rest api', 'microservices',
-        'ci/cd', 'terraform', 'jenkins', 'azure', 'gcp', 'machine learning', 'deep learning'
+        'java', 'c++', 'c#', 'golang', 'rust', 'swift', 'kotlin', 'ruby', 'php',
+        'sql', 'graphql', 'rest api', 'microservices', 'git', 'github', 'gitlab'
       ],
       contextPatterns: [
-        /\b(built|developed|architected|deployed|implemented)\s+(the|a|an)?\s*(platform|system|application|api|service|infrastructure)\b/i,
-        /\b(engineering|development)\s+team\b/i,
-        /\b(pull\s+requests?|code\s+reviews?|sprint|standups?)\b/i,
+        /\b(built|developed|architected|deployed|implemented)\s+(the|a|an)?\s*(platform|system|application|api|service)\b/i,
+        /\b(pull\s+requests?|code\s+reviews?|sprint|agile|scrum)\b/i,
       ],
-      minSkillsForHigh: 4
+      minSkillsForHigh: 4,
+      titleWeight: 35
+    },
+    data_science: {
+      titlePatterns: [
+        /\b(data\s+scientist|senior\s+data\s+scientist|lead\s+data\s+scientist)\b/,
+        /\b(machine\s+learning\s+engineer|ml\s+engineer|ai\s+engineer)\b/,
+        /\b(data\s+analyst|business\s+intelligence|bi\s+analyst)\b/,
+        /\b(data\s+engineer|analytics\s+engineer)\b/,
+      ],
+      skillPatterns: [
+        'machine learning', 'deep learning', 'tensorflow', 'pytorch', 'scikit-learn',
+        'python', 'r', 'sql', 'pandas', 'numpy', 'spark', 'hadoop',
+        'statistics', 'a/b testing', 'data visualization', 'tableau', 'power bi'
+      ],
+      contextPatterns: [
+        /\b(trained|built|deployed)\s+.*\b(model|algorithm|pipeline)\b/i,
+        /\b(improved|increased)\s+.*\b(accuracy|precision|recall|auc)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 35
+    },
+    devops: {
+      titlePatterns: [
+        /\b(devops\s+engineer|sre|site\s+reliability\s+engineer)\b/,
+        /\b(platform\s+engineer|infrastructure\s+engineer|cloud\s+engineer)\b/,
+        /\b(systems\s+engineer|systems\s+administrator)\b/,
+      ],
+      skillPatterns: [
+        'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'terraform', 'ansible',
+        'jenkins', 'gitlab ci', 'github actions', 'ci/cd', 'linux', 'bash',
+        'prometheus', 'grafana', 'datadog', 'cloudformation', 'helm'
+      ],
+      contextPatterns: [
+        /\b(deployed|managed|maintained)\s+.*\b(infrastructure|cluster|pipeline)\b/i,
+        /\b(reduced|improved)\s+.*\b(uptime|latency|deployment|availability)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 35
+    },
+    cybersecurity: {
+      titlePatterns: [
+        /\b(security\s+engineer|cybersecurity\s+analyst|security\s+architect)\b/,
+        /\b(penetration\s+tester|ethical\s+hacker|security\s+consultant)\b/,
+        /\b(ciso|chief\s+information\s+security\s+officer|security\s+manager)\b/,
+      ],
+      skillPatterns: [
+        'penetration testing', 'vulnerability assessment', 'siem', 'splunk',
+        'firewall', 'ids', 'ips', 'encryption', 'compliance', 'iso 27001',
+        'soc', 'incident response', 'threat hunting', 'malware analysis'
+      ],
+      contextPatterns: [
+        /\b(identified|mitigated|prevented)\s+.*\b(vulnerability|threat|breach|attack)\b/i,
+        /\b(implemented|managed)\s+.*\b(security|compliance|audit)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    product_management: {
+      titlePatterns: [
+        /\b(product\s+manager|senior\s+product\s+manager|group\s+product\s+manager)\b/,
+        /\b(technical\s+product\s+manager|product\s+owner|cpo)\b/,
+        /\b(director\s+of\s+product|vp\s+of\s+product|head\s+of\s+product)\b/,
+      ],
+      skillPatterns: [
+        'product strategy', 'roadmap', 'user research', 'a/b testing', 'analytics',
+        'jira', 'confluence', 'agile', 'scrum', 'stakeholder management',
+        'prioritization', 'user stories', 'prd', 'mvp', 'product-market fit'
+      ],
+      contextPatterns: [
+        /\b(launched|shipped|defined)\s+.*\b(product|feature|mvp|roadmap)\b/i,
+        /\b(grew|increased)\s+.*\b(engagement|retention|adoption|revenue)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    
+    // === SUB-INDUSTRIES FOR ENGINEERING ===
+    mechanical_engineering: {
+      titlePatterns: [
+        /\b(mechanical\s+engineer|senior\s+mechanical\s+engineer|lead\s+mechanical\s+engineer)\b/,
+        /\b(design\s+engineer|r&d\s+engineer|product\s+engineer)\b/,
+        /\b(thermal\s+engineer|hvac\s+engineer)\b/,
+      ],
+      skillPatterns: [
+        'solidworks', 'catia', 'autocad', 'creo', 'inventor', 'nx',
+        'fea', 'cfd', 'ansys', 'thermal analysis', 'gd&t', 'dfm', 'dfa',
+        '3d printing', 'prototyping', 'materials selection', 'mechanical design'
+      ],
+      contextPatterns: [
+        /\b(designed|developed|engineered)\s+.*\b(component|system|product|mechanism)\b/i,
+        /\b(reduced|improved)\s+.*\b(weight|cost|efficiency|performance)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 40
+    },
+    electrical_engineering: {
+      titlePatterns: [
+        /\b(electrical\s+engineer|senior\s+electrical\s+engineer|power\s+engineer)\b/,
+        /\b(electronics\s+engineer|hardware\s+engineer|pcb\s+engineer)\b/,
+        /\b(control\s+systems\s+engineer|instrumentation\s+engineer)\b/,
+      ],
+      skillPatterns: [
+        'pcb', 'circuit design', 'verilog', 'vhdl', 'fpga', 'microcontroller',
+        'eagle', 'altium', 'cadence', 'spice', 'oscilloscope', 'power electronics',
+        'embedded systems', 'plc', 'scada', 'modbus', 'can bus'
+      ],
+      contextPatterns: [
+        /\b(designed|developed|tested)\s+.*\b(circuit|pcb|board|system)\b/i,
+        /\b(reduced|improved)\s+.*\b(power|noise|efficiency|signal)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 40
+    },
+    civil_engineering: {
+      titlePatterns: [
+        /\b(civil\s+engineer|structural\s+engineer|geotechnical\s+engineer)\b/,
+        /\b(transportation\s+engineer|environmental\s+engineer|water\s+resources)\b/,
+        /\b(project\s+engineer|construction\s+engineer|site\s+engineer)\b/,
+      ],
+      skillPatterns: [
+        'autocad', 'revit', 'civil 3d', 'staad', 'sap2000', 'etabs',
+        'surveying', 'structural analysis', 'concrete', 'steel', 'foundations',
+        'hydrology', 'stormwater', 'traffic analysis', 'geotechnical'
+      ],
+      contextPatterns: [
+        /\b(designed|engineered|managed)\s+.*\b(bridge|road|building|structure)\b/i,
+        /\b(supervised|oversaw)\s+.*\b(construction|project|site)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 40
+    },
+    aerospace_engineering: {
+      titlePatterns: [
+        /\b(aerospace\s+engineer|propulsion\s+engineer|flight\s+systems\s+engineer)\b/,
+        /\b(avionics\s+engineer|structural\s+engineer|aerodynamics\s+engineer)\b/,
+      ],
+      skillPatterns: [
+        'cfd', 'fea', 'catia', 'nastran', 'matlab', 'simulink',
+        'propulsion', 'aerodynamics', 'flight dynamics', 'composites',
+        'mil-std', 'do-178', 'as9100', 'faa', 'nasa'
+      ],
+      contextPatterns: [
+        /\b(designed|developed|tested)\s+.*\b(aircraft|spacecraft|rocket|satellite)\b/i,
+        /\b(boeing|lockheed|spacex|nasa|airbus|northrop)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    
+    // === SUB-INDUSTRIES FOR HEALTHCARE ===
+    nursing: {
+      titlePatterns: [
+        /\b(nurse|rn|registered\s+nurse|lpn|lvn)\b/,
+        /\b(nurse\s+practitioner|np|clinical\s+nurse|charge\s+nurse)\b/,
+        /\b(nurse\s+manager|director\s+of\s+nursing|cno)\b/,
+      ],
+      skillPatterns: [
+        'patient care', 'medication administration', 'iv therapy', 'wound care',
+        'vital signs', 'charting', 'epic', 'cerner', 'bls', 'acls', 'pals',
+        'hipaa', 'infection control', 'care planning', 'triage'
+      ],
+      contextPatterns: [
+        /\b(provided|administered|monitored)\s+.*\b(care|medication|treatment)\b/i,
+        /\b(managed|coordinated)\s+.*\b(patient|ward|unit)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 40
+    },
+    physician: {
+      titlePatterns: [
+        /\b(physician|doctor|md|do|surgeon|specialist)\b/,
+        /\b(attending|resident|fellow|chief\s+medical\s+officer)\b/,
+        /\b(cardiologist|oncologist|pediatrician|internist)\b/,
+      ],
+      skillPatterns: [
+        'diagnosis', 'treatment planning', 'surgery', 'patient consultation',
+        'medical records', 'ehr', 'prescribing', 'clinical trials',
+        'board certified', 'cme', 'medical license', 'residency'
+      ],
+      contextPatterns: [
+        /\b(diagnosed|treated|operated|performed)\s+.*\b(patient|procedure|surgery)\b/i,
+        /\b(published|researched|presented)\s+.*\b(study|paper|findings)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    pharmacy: {
+      titlePatterns: [
+        /\b(pharmacist|pharmacy\s+technician|pharm\.?d)\b/,
+        /\b(clinical\s+pharmacist|staff\s+pharmacist|pharmacy\s+manager)\b/,
+      ],
+      skillPatterns: [
+        'dispensing', 'compounding', 'medication review', 'drug interactions',
+        'pharmacy software', 'inventory management', 'patient counseling',
+        'controlled substances', 'immunizations', 'mtm'
+      ],
+      contextPatterns: [
+        /\b(dispensed|verified|counseled)\s+.*\b(medication|prescription|patient)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    
+    // === SUB-INDUSTRIES FOR FINANCE ===
+    investment_banking: {
+      titlePatterns: [
+        /\b(investment\s+banker|analyst|associate)\s+at\s+.*(goldman|morgan|jpmorgan|bofa|citi)/i,
+        /\b(m&a\s+analyst|private\s+equity|venture\s+capital)\b/,
+        /\b(portfolio\s+manager|fund\s+manager|hedge\s+fund)\b/,
+      ],
+      skillPatterns: [
+        'financial modeling', 'valuation', 'dcf', 'lbo', 'pitch deck',
+        'm&a', 'due diligence', 'bloomberg', 'factset', 'capital iq',
+        'deal execution', 'underwriting', 'ipo', 'equity research'
+      ],
+      contextPatterns: [
+        /\b(executed|advised|closed)\s+.*\$[\d,]+[mMbB]\b/i,
+        /\b(led|supported)\s+.*\b(transaction|deal|acquisition|merger)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    accounting: {
+      titlePatterns: [
+        /\b(accountant|cpa|controller|staff\s+accountant|senior\s+accountant)\b/,
+        /\b(auditor|tax\s+accountant|forensic\s+accountant)\b/,
+        /\b(accounts\s+payable|accounts\s+receivable|bookkeeper)\b/,
+      ],
+      skillPatterns: [
+        'gaap', 'ifrs', 'quickbooks', 'sage', 'netsuite', 'sap',
+        'reconciliation', 'journal entries', 'financial statements',
+        'tax preparation', 'audit', 'month-end close', 'budgeting'
+      ],
+      contextPatterns: [
+        /\b(prepared|reviewed|reconciled)\s+.*\b(financial|account|statement|ledger)\b/i,
+        /\b(managed|oversaw)\s+.*\b(audit|compliance|reporting)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    financial_planning: {
+      titlePatterns: [
+        /\b(financial\s+planner|wealth\s+advisor|cfp|financial\s+advisor)\b/,
+        /\b(retirement\s+specialist|estate\s+planner|insurance\s+agent)\b/,
+      ],
+      skillPatterns: [
+        'financial planning', 'retirement planning', 'estate planning',
+        'insurance', 'investments', 'tax planning', 'wealth management',
+        'client relationship', 'portfolio', 'cfp', 'chfc'
+      ],
+      contextPatterns: [
+        /\b(managed|advised|grew)\s+.*\$[\d,]+[kKmMbB]?\s*(aum|assets|portfolio)/i,
+        /\b(developed|created)\s+.*\b(financial\s+plan|retirement\s+strategy)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    
+    // === NEW INDUSTRIES ===
+    retail: {
+      titlePatterns: [
+        /\b(store\s+manager|retail\s+manager|district\s+manager)\b/,
+        /\b(sales\s+associate|cashier|merchandiser|visual\s+merchandiser)\b/,
+        /\b(buyer|category\s+manager|e[\s-]?commerce\s+manager)\b/,
+      ],
+      skillPatterns: [
+        'pos', 'inventory management', 'visual merchandising', 'customer service',
+        'loss prevention', 'planogram', 'shopify', 'retail analytics',
+        'vendor relations', 'supply chain', 'omnichannel', 'store operations'
+      ],
+      contextPatterns: [
+        /\b(increased|exceeded|achieved)\s+.*\b(sales|revenue|targets?)\b/i,
+        /\b(managed|supervised)\s+.*\b(store|team|staff)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 30
+    },
+    hospitality: {
+      titlePatterns: [
+        /\b(hotel\s+manager|general\s+manager|front\s+desk\s+manager)\b/,
+        /\b(chef|executive\s+chef|sous\s+chef|restaurant\s+manager)\b/,
+        /\b(concierge|event\s+coordinator|catering\s+manager)\b/,
+      ],
+      skillPatterns: [
+        'guest relations', 'hotel operations', 'food service', 'banquet',
+        'opera pms', 'micros', 'reservations', 'event planning',
+        'hospitality management', 'servesafe', 'revenue management'
+      ],
+      contextPatterns: [
+        /\b(managed|supervised)\s+.*\b(hotel|restaurant|property|venue)\b/i,
+        /\b(improved|increased)\s+.*\b(guest\s+satisfaction|occupancy|revenue)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 30
+    },
+    manufacturing: {
+      titlePatterns: [
+        /\b(plant\s+manager|manufacturing\s+manager|production\s+manager)\b/,
+        /\b(operations\s+manager|quality\s+manager|maintenance\s+manager)\b/,
+        /\b(production\s+supervisor|line\s+supervisor|shift\s+supervisor)\b/,
+      ],
+      skillPatterns: [
+        'lean manufacturing', 'six sigma', 'kaizen', '5s', 'tpm', 'oee',
+        'erp', 'sap', 'mrp', 'kanban', 'jit', 'iso 9001', 'iatf 16949',
+        'cnc', 'plc', 'automation', 'quality control', 'spc'
+      ],
+      contextPatterns: [
+        /\b(reduced|improved|increased)\s+.*\b(defects?|efficiency|throughput|oee)\b/i,
+        /\b(managed|oversaw|led)\s+.*\b(plant|production|manufacturing|operations)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 35
+    },
+    construction: {
+      titlePatterns: [
+        /\b(construction\s+manager|project\s+manager|site\s+manager)\b/,
+        /\b(superintendent|foreman|contractor|general\s+contractor)\b/,
+        /\b(estimator|construction\s+estimator|quantity\s+surveyor)\b/,
+      ],
+      skillPatterns: [
+        'project management', 'scheduling', 'primavera', 'procore', 'bluebeam',
+        'estimating', 'budgeting', 'osha', 'safety', 'subcontractor management',
+        'blueprints', 'permits', 'inspection', 'leed', 'bim'
+      ],
+      contextPatterns: [
+        /\b(managed|completed|oversaw)\s+.*\$[\d,]+[kKmM]?\s*(project|construction|budget)/i,
+        /\b(supervised|coordinated)\s+.*\b(construction|site|project|team)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    government: {
+      titlePatterns: [
+        /\b(program\s+analyst|policy\s+analyst|government\s+affairs)\b/,
+        /\b(public\s+administrator|city\s+manager|government\s+contractor)\b/,
+        /\b(federal\s+employee|civil\s+servant|public\s+servant)\b/,
+      ],
+      skillPatterns: [
+        'policy analysis', 'grant writing', 'federal acquisition', 'far',
+        'public administration', 'regulatory compliance', 'legislation',
+        'constituent services', 'budget management', 'procurement'
+      ],
+      contextPatterns: [
+        /\b(federal|state|municipal|county|city)\s+(government|agency|department)\b/i,
+        /\b(administered|managed|developed)\s+.*\b(program|policy|initiative)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 30
+    },
+    nonprofit: {
+      titlePatterns: [
+        /\b(executive\s+director|program\s+director|development\s+director)\b/,
+        /\b(fundraiser|grant\s+writer|volunteer\s+coordinator)\b/,
+        /\b(program\s+manager|community\s+outreach|advocacy)\b/,
+      ],
+      skillPatterns: [
+        'fundraising', 'grant writing', 'donor relations', 'volunteer management',
+        'community outreach', 'program evaluation', 'nonprofit management',
+        'salesforce nonprofit', 'raiser\'s edge', 'board relations', 'advocacy'
+      ],
+      contextPatterns: [
+        /\b(raised|secured)\s+.*\$[\d,]+[kKmMbB]?\s*(funding|grants?|donations?)/i,
+        /\b(managed|coordinated)\s+.*\b(program|volunteers?|campaign)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 30
+    },
+    logistics: {
+      titlePatterns: [
+        /\b(logistics\s+manager|supply\s+chain\s+manager|warehouse\s+manager)\b/,
+        /\b(distribution\s+manager|transportation\s+manager|fleet\s+manager)\b/,
+        /\b(inventory\s+manager|procurement\s+manager|operations\s+manager)\b/,
+      ],
+      skillPatterns: [
+        'supply chain', 'logistics', 'inventory management', 'wms', 'tms',
+        'erp', 'sap', 'procurement', 'vendor management', 'freight',
+        '3pl', 'distribution', 'warehousing', 'route optimization'
+      ],
+      contextPatterns: [
+        /\b(reduced|improved|optimized)\s+.*\b(costs?|delivery|efficiency|inventory)\b/i,
+        /\b(managed|oversaw)\s+.*\b(warehouse|distribution|logistics|supply\s+chain)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 30
+    },
+    real_estate: {
+      titlePatterns: [
+        /\b(real\s+estate\s+agent|realtor|broker|property\s+manager)\b/,
+        /\b(real\s+estate\s+developer|acquisitions\s+analyst|asset\s+manager)\b/,
+        /\b(leasing\s+manager|commercial\s+real\s+estate)\b/,
+      ],
+      skillPatterns: [
+        'mls', 'property valuation', 'market analysis', 'negotiation',
+        'lease administration', 'property management', 'tenant relations',
+        'commercial real estate', 'residential', 'argus', 'yardi'
+      ],
+      contextPatterns: [
+        /\b(closed|sold|leased)\s+.*\$[\d,]+[kKmMbB]?\s*(property|deal|transaction)/i,
+        /\b(managed|marketed)\s+.*\b(properties|portfolio|listings?)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 30
+    },
+    energy: {
+      titlePatterns: [
+        /\b(petroleum\s+engineer|drilling\s+engineer|reservoir\s+engineer)\b/,
+        /\b(power\s+systems\s+engineer|renewable\s+energy|solar\s+engineer)\b/,
+        /\b(energy\s+analyst|utility\s+manager|energy\s+consultant)\b/,
+      ],
+      skillPatterns: [
+        'oil and gas', 'drilling', 'reservoir', 'production', 'refinery',
+        'solar', 'wind', 'renewable energy', 'power generation', 'grid',
+        'ferc', 'nerc', 'energy efficiency', 'sustainability'
+      ],
+      contextPatterns: [
+        /\b(managed|operated)\s+.*\b(well|plant|facility|field)\b/i,
+        /\b(reduced|improved|optimized)\s+.*\b(production|efficiency|output)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    
+    // === EXISTING BROAD INDUSTRIES (for fallback) ===
+    technology: {
+      titlePatterns: [
+        /\b(software\s+engineer|developer|data\s+scientist|devops)\b/,
+        /\b(tech\s+lead|engineering\s+manager|cto)\b/,
+      ],
+      skillPatterns: [
+        'javascript', 'python', 'react', 'aws', 'docker', 'kubernetes',
+        'machine learning', 'sql', 'git'
+      ],
+      contextPatterns: [
+        /\b(engineering|development)\s+team\b/i,
+      ],
+      minSkillsForHigh: 3
     },
     sales: {
       titlePatterns: [
-        /\b(account\s+executive|senior\s+account\s+executive|enterprise\s+account\s+executive)\b/,
-        /\b(sales\s+rep|sales\s+representative|sales\s+manager|regional\s+sales\s+manager)\b/,
-        /\b(business\s+development\s+representative|bdr|sdr|sales\s+development\s+representative)\b/,
-        /\b(sales\s+director|vp\s+of\s+sales|chief\s+revenue\s+officer|cro)\b/,
-        /\b(territory\s+manager|field\s+sales|inside\s+sales)\b/,
-        /\b(channel\s+sales|partner\s+sales|strategic\s+accounts?)\b/,
-        /\b(sales\s+engineer|solutions\s+consultant|pre[\s-]?sales)\b/,
+        /\b(account\s+executive|sales\s+rep|sales\s+manager|bdr|sdr)\b/,
+        /\b(sales\s+director|vp\s+of\s+sales|cro)\b/,
       ],
       skillPatterns: [
-        'salesforce', 'hubspot', 'crm', 'quota', 'pipeline', 'prospecting', 'cold calling',
-        'meddic', 'meddpicc', 'bant', 'spin selling', 'challenger sale', 'negotiation',
-        'closing', 'forecasting', 'territory', 'revenue', 'arr', 'mrr', 'saas sales',
-        'enterprise sales', 'b2b sales', 'outbound', 'inbound', 'lead generation'
+        'salesforce', 'hubspot', 'crm', 'quota', 'pipeline', 'prospecting',
+        'closing', 'negotiation', 'revenue'
       ],
       contextPatterns: [
-        /\b(closed|sold|exceeded|achieved|surpassed)\s+.*\b(quota|target|goal)\b/i,
-        /\$[\d,]+[kKmM]?\s*(arr|mrr|deal|revenue|pipeline)/i,
-        /\b\d+%\s*(of\s+)?(quota|target|attainment)\b/i,
-        /\b(new\s+business|expansion|upsell|cross[\s-]?sell)\b/i,
+        /\b(closed|exceeded|achieved)\s+.*\b(quota|target)\b/i,
       ],
       minSkillsForHigh: 3
     },
     marketing: {
       titlePatterns: [
-        /\b(marketing\s+manager|marketing\s+director|vp\s+of\s+marketing|cmo)\b/,
-        /\b(digital\s+marketing|content\s+marketing|product\s+marketing)\b/,
-        /\b(brand\s+manager|growth\s+marketing|demand\s+gen|demand\s+generation)\b/,
-        /\b(seo\s+specialist|sem\s+manager|social\s+media\s+manager)\b/,
-        /\b(marketing\s+coordinator|marketing\s+analyst|marketing\s+operations)\b/,
+        /\b(marketing\s+manager|digital\s+marketing|content\s+marketing)\b/,
+        /\b(brand\s+manager|growth\s+marketing|cmo)\b/,
       ],
       skillPatterns: [
-        'seo', 'sem', 'ppc', 'google analytics', 'google ads', 'facebook ads', 'linkedin ads',
-        'hubspot', 'marketo', 'mailchimp', 'content strategy', 'copywriting', 'a/b testing',
-        'conversion rate', 'cac', 'ltv', 'roi', 'brand awareness', 'campaign management',
-        'email marketing', 'marketing automation', 'lead nurturing'
+        'seo', 'sem', 'ppc', 'google analytics', 'content strategy',
+        'marketing automation', 'campaign management'
       ],
       contextPatterns: [
-        /\b(increased|grew|improved)\s+.*\b(traffic|conversions?|engagement|leads?|awareness)\b/i,
-        /\b(launched|executed|managed)\s+.*\b(campaign|initiative|program)\b/i,
+        /\b(increased|grew)\s+.*\b(traffic|conversions?|engagement)\b/i,
       ],
       minSkillsForHigh: 3
     },
     finance: {
       titlePatterns: [
-        /\b(financial\s+analyst|senior\s+financial\s+analyst|finance\s+manager)\b/,
-        /\b(accountant|cpa|controller|cfo|chief\s+financial\s+officer)\b/,
-        /\b(investment\s+analyst|portfolio\s+manager|fund\s+manager)\b/,
-        /\b(risk\s+analyst|credit\s+analyst|compliance\s+officer)\b/,
-        /\b(fp&a|financial\s+planning|treasury|auditor)\b/,
+        /\b(financial\s+analyst|accountant|cfo|controller)\b/,
+        /\b(investment\s+analyst|portfolio\s+manager)\b/,
       ],
       skillPatterns: [
-        'financial modeling', 'excel', 'gaap', 'ifrs', 'budgeting', 'forecasting',
-        'variance analysis', 'p&l', 'balance sheet', 'cash flow', 'valuation',
-        'bloomberg', 'quickbooks', 'sap', 'oracle financials', 'netsuite',
-        'cfa', 'cpa', 'due diligence', 'm&a', 'investment banking'
+        'financial modeling', 'excel', 'gaap', 'budgeting', 'valuation'
       ],
       contextPatterns: [
-        /\b(managed|prepared|analyzed)\s+.*\b(budget|forecast|financial|statements?)\b/i,
-        /\$[\d,]+[kKmMbB]\s*(budget|savings?|reduction|investment)/i,
+        /\b(managed|prepared)\s+.*\b(budget|financial)\b/i,
       ],
       minSkillsForHigh: 3
     },
     healthcare: {
       titlePatterns: [
-        /\b(nurse|rn|registered\s+nurse|lpn|nurse\s+practitioner|np)\b/,
-        /\b(physician|doctor|md|do|surgeon|specialist)\b/,
-        /\b(medical\s+assistant|clinical\s+coordinator|patient\s+care)\b/,
-        /\b(healthcare\s+administrator|hospital\s+manager|clinical\s+director)\b/,
-        /\b(pharmacist|pharmacy\s+technician|pharm\.?d)\b/,
+        /\b(nurse|physician|doctor|pharmacist)\b/,
+        /\b(healthcare\s+administrator|clinical\s+director)\b/,
       ],
       skillPatterns: [
-        'hipaa', 'ehr', 'emr', 'epic', 'cerner', 'patient care', 'clinical',
-        'medical terminology', 'fda', 'cpr', 'bls', 'acls', 'medication',
-        'diagnosis', 'treatment', 'healthcare compliance', 'patient safety'
+        'hipaa', 'ehr', 'epic', 'cerner', 'patient care', 'clinical'
       ],
       contextPatterns: [
-        /\b(patient|clinical|medical|healthcare|hospital|clinic)\b/i,
-        /\b(treated|diagnosed|cared\s+for|administered)\b/i,
+        /\b(patient|clinical|medical|hospital)\b/i,
       ],
       minSkillsForHigh: 3
     },
     consulting: {
       titlePatterns: [
-        /\b(consultant|senior\s+consultant|principal\s+consultant|managing\s+consultant)\b/,
-        /\b(strategy\s+consultant|management\s+consultant|business\s+consultant)\b/,
-        /\b(associate|analyst|manager|director|partner)\s+at\s+(mckinsey|bcg|bain|deloitte|pwc|ey|kpmg|accenture)\b/i,
+        /\b(consultant|strategy|management\s+consultant)\b/,
       ],
       skillPatterns: [
-        'strategy', 'stakeholder management', 'client engagement', 'business analysis',
-        'powerpoint', 'excel', 'problem solving', 'project management', 'change management',
-        'process improvement', 'due diligence', 'executive presentation', 'workshop facilitation'
+        'strategy', 'stakeholder management', 'client engagement',
+        'project management', 'change management'
       ],
       contextPatterns: [
-        /\b(advised|consulted|partnered\s+with)\s+.*\b(clients?|executives?|c[\s-]?suite)\b/i,
-        /\b(delivered|led|facilitated)\s+.*\b(engagement|project|initiative)\b/i,
+        /\b(advised|consulted)\s+.*\b(client|executive)\b/i,
       ],
       minSkillsForHigh: 3
     },
     hr: {
       titlePatterns: [
-        /\b(hr\s+manager|human\s+resources|hr\s+business\s+partner|hrbp)\b/,
-        /\b(recruiter|talent\s+acquisition|recruiting\s+manager)\b/,
-        /\b(people\s+operations|people\s+manager|chro|chief\s+people\s+officer)\b/,
-        /\b(compensation|benefits|employee\s+relations)\b/,
+        /\b(hr\s+manager|recruiter|talent\s+acquisition)\b/,
+        /\b(people\s+operations|chro)\b/,
       ],
       skillPatterns: [
-        'talent acquisition', 'hris', 'workday', 'adp', 'recruiting', 'onboarding',
-        'performance management', 'employee relations', 'compensation', 'benefits',
-        'shrm', 'compliance', 'diversity', 'inclusion', 'training', 'development'
+        'talent acquisition', 'hris', 'workday', 'recruiting', 'onboarding',
+        'performance management', 'compensation', 'shrm'
       ],
       contextPatterns: [
-        /\b(hired|recruited|onboarded)\s+.*\b(employees?|candidates?|hires?)\b/i,
-        /\b(implemented|developed|managed)\s+.*\b(hr|people|talent|compensation)\s+(program|initiative|policy)/i,
+        /\b(hired|recruited)\s+.*\b(employees?|candidates?)\b/i,
       ],
       minSkillsForHigh: 3
     },
     engineering: {
       titlePatterns: [
-        /\b(mechanical\s+engineer|electrical\s+engineer|civil\s+engineer|structural\s+engineer)\b/,
-        /\b(chemical\s+engineer|industrial\s+engineer|manufacturing\s+engineer)\b/,
-        /\b(aerospace\s+engineer|biomedical\s+engineer|environmental\s+engineer)\b/,
-        /\b(pe|professional\s+engineer|project\s+engineer)\b/,
+        /\b(mechanical\s+engineer|electrical\s+engineer|civil\s+engineer)\b/,
+        /\b(pe|professional\s+engineer)\b/,
       ],
       skillPatterns: [
-        'cad', 'autocad', 'solidworks', 'catia', 'ansys', 'matlab', 'simulation',
-        'design', 'manufacturing', 'testing', 'prototyping', 'specifications',
-        'iso', 'lean', 'six sigma', 'quality control', 'project management'
+        'cad', 'autocad', 'solidworks', 'ansys', 'manufacturing', 'iso'
       ],
       contextPatterns: [
-        /\b(designed|engineered|tested|developed)\s+.*\b(system|product|component|solution)\b/i,
-        /\b(reduced|improved|optimized)\s+.*\b(efficiency|cost|quality|performance)\b/i,
+        /\b(designed|engineered)\s+.*\b(system|product|component)\b/i,
       ],
       minSkillsForHigh: 3
     },
     legal: {
       titlePatterns: [
-        /\b(attorney|lawyer|counsel|paralegal|legal\s+assistant)\b/,
-        /\b(associate|partner|of\s+counsel)\s+at\s+.*\b(llp|law\s+firm|legal)\b/i,
-        /\b(general\s+counsel|chief\s+legal\s+officer|clo)\b/,
-        /\b(litigator|contract\s+attorney|corporate\s+counsel)\b/,
+        /\b(attorney|lawyer|counsel|paralegal)\b/,
+        /\b(general\s+counsel|clo)\b/,
       ],
       skillPatterns: [
-        'legal research', 'contract review', 'litigation', 'compliance', 'due diligence',
-        'westlaw', 'lexisnexis', 'drafting', 'negotiation', 'corporate law',
-        'm&a', 'intellectual property', 'ip', 'regulatory', 'arbitration'
+        'legal research', 'contract review', 'litigation', 'compliance',
+        'westlaw', 'lexisnexis'
       ],
       contextPatterns: [
-        /\b(drafted|negotiated|reviewed)\s+.*\b(contract|agreement|document|brief)\b/i,
-        /\b(represented|advised|counseled)\s+.*\b(client|company|organization)\b/i,
+        /\b(drafted|negotiated|reviewed)\s+.*\b(contract|agreement)\b/i,
       ],
       minSkillsForHigh: 3
     },
     education: {
       titlePatterns: [
-        /\b(teacher|professor|instructor|educator|lecturer)\b/,
-        /\b(principal|dean|superintendent|academic\s+director)\b/,
-        /\b(teaching\s+assistant|tutor|curriculum\s+developer)\b/,
+        /\b(teacher|professor|instructor|principal)\b/,
       ],
       skillPatterns: [
-        'curriculum', 'lesson planning', 'classroom management', 'assessment',
-        'lms', 'canvas', 'blackboard', 'differentiated instruction', 'iep',
-        'student engagement', 'edtech', 'state standards', 'professional development'
+        'curriculum', 'lesson planning', 'classroom management',
+        'lms', 'canvas', 'student engagement'
       ],
       contextPatterns: [
-        /\b(taught|instructed|developed)\s+.*\b(course|curriculum|lesson|program)\b/i,
-        /\b(improved|increased)\s+.*\b(student|learning|achievement|engagement)\b/i,
+        /\b(taught|instructed)\s+.*\b(course|curriculum|lesson)\b/i,
       ],
       minSkillsForHigh: 3
     },
     creative: {
       titlePatterns: [
-        /\b(graphic\s+designer|ux\s+designer|ui\s+designer|product\s+designer)\b/,
-        /\b(art\s+director|creative\s+director|visual\s+designer)\b/,
-        /\b(copywriter|content\s+writer|creative\s+strategist)\b/,
-        /\b(video\s+editor|motion\s+designer|animator)\b/,
+        /\b(graphic\s+designer|ux\s+designer|art\s+director)\b/,
+        /\b(creative\s+director|copywriter)\b/,
       ],
       skillPatterns: [
-        'figma', 'sketch', 'adobe', 'photoshop', 'illustrator', 'indesign', 'after effects',
-        'user research', 'prototyping', 'wireframing', 'design systems', 'typography',
-        'branding', 'visual design', 'interaction design', 'usability testing'
+        'figma', 'sketch', 'adobe', 'photoshop', 'illustrator',
+        'branding', 'visual design'
       ],
       contextPatterns: [
-        /\b(designed|created|developed)\s+.*\b(design|brand|visual|experience|interface)\b/i,
-        /\b(led|managed|directed)\s+.*\b(creative|design|visual)\s+(team|project|initiative)\b/i,
+        /\b(designed|created)\s+.*\b(design|brand|visual)\b/i,
       ],
       minSkillsForHigh: 3
     },
@@ -349,12 +782,14 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
   for (const [industry, patterns] of Object.entries(industryPatterns)) {
     let score = 0;
     const industrySignals: string[] = [];
+    const titleWeight = patterns.titleWeight || 30;
+    const skillWeight = patterns.skillWeight || 5;
     
     // Check title patterns (high weight)
     for (const pattern of patterns.titlePatterns) {
       const match = text.match(pattern);
       if (match) {
-        score += 30;
+        score += titleWeight;
         industrySignals.push(`Title: "${match[0]}"`);
       }
     }
@@ -365,7 +800,7 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
       const regex = new RegExp(`\\b${skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
       return regex.test(text);
     });
-    score += foundSkills.length * 5;
+    score += foundSkills.length * skillWeight;
     if (foundSkills.length > 0) {
       industrySignals.push(`Skills: ${foundSkills.slice(0, 5).join(', ')}`);
     }
@@ -387,33 +822,98 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
   // Sort by score descending
   industryScores.sort((a, b) => b.score - a.score);
   
-  console.log(`[INDUSTRY-DETECT] Scores: ${JSON.stringify(industryScores.map(s => ({ industry: s.industry, score: s.score })))}`);
+  console.log(`[INDUSTRY-DETECT] Top 5 scores: ${JSON.stringify(industryScores.slice(0, 5).map(s => ({ industry: s.industry, score: s.score })))}`);
   
   if (industryScores.length === 0) {
-    return { industry: 'general', confidence: 'low', signals: ['No clear industry signals detected'] };
+    return { industry: 'general', confidence: 'low', signals: ['No clear industry signals detected'], score: 0 };
   }
   
   const topIndustry = industryScores[0];
   const secondIndustry = industryScores[1];
   
-  // Determine confidence
+  // Enhanced confidence scoring
   let confidence: 'high' | 'medium' | 'low';
-  if (topIndustry.score >= 50 && (!secondIndustry || topIndustry.score > secondIndustry.score * 1.5)) {
+  const scoreDifferential = secondIndustry ? topIndustry.score / secondIndustry.score : 10;
+  
+  if (topIndustry.score >= 60 && scoreDifferential >= 1.5) {
     confidence = 'high';
+  } else if (topIndustry.score >= 40 && scoreDifferential >= 1.3) {
+    confidence = 'medium';
   } else if (topIndustry.score >= 25) {
     confidence = 'medium';
   } else {
     confidence = 'low';
   }
   
-  console.log(`[INDUSTRY-DETECT] Result: ${topIndustry.industry} (confidence: ${confidence}, score: ${topIndustry.score})`);
+  // Determine parent industry for sub-industries
+  const parentIndustry = INDUSTRY_PARENTS[topIndustry.industry];
+  const isSubIndustry = !!parentIndustry;
+  
+  console.log(`[INDUSTRY-DETECT] Result: ${topIndustry.industry}${parentIndustry ? ` (parent: ${parentIndustry})` : ''} (confidence: ${confidence}, score: ${topIndustry.score})`);
   console.log(`[INDUSTRY-DETECT] Signals: ${topIndustry.signals.join('; ')}`);
   
   return {
-    industry: topIndustry.industry,
+    industry: isSubIndustry ? topIndustry.industry : topIndustry.industry,
+    subIndustry: isSubIndustry ? topIndustry.industry : undefined,
+    parentIndustry: parentIndustry,
     confidence,
-    signals: topIndustry.signals
+    signals: topIndustry.signals,
+    score: topIndustry.score
   };
+}
+
+/**
+ * Hybrid detection: combines server-side detection with AI suggestion
+ * Uses AI as fallback when server confidence is low
+ */
+function hybridIndustryDetection(
+  serverResult: IndustryDetectionResult, 
+  aiSuggested: string | undefined
+): IndustryDetectionResult {
+  const normalizedAI = normalizeIndustry(aiSuggested);
+  
+  // If server has high confidence, trust it
+  if (serverResult.confidence === 'high') {
+    console.log(`[INDUSTRY-HYBRID] Using server result (high confidence): ${serverResult.industry}`);
+    return serverResult;
+  }
+  
+  // If server has medium confidence but AI agrees (or maps to same parent), trust server
+  if (serverResult.confidence === 'medium') {
+    const serverParent = getParentIndustry(serverResult.industry);
+    const aiParent = getParentIndustry(normalizedAI);
+    
+    if (serverResult.industry === normalizedAI || serverParent === aiParent || serverParent === normalizedAI || serverResult.industry === aiParent) {
+      console.log(`[INDUSTRY-HYBRID] Server and AI agree: ${serverResult.industry} (AI: ${normalizedAI})`);
+      return serverResult;
+    }
+    
+    // If AI suggests something different and specific, consider it
+    if (normalizedAI !== 'general' && serverResult.score < 40) {
+      console.log(`[INDUSTRY-HYBRID] AI override (server score ${serverResult.score} < 40): ${normalizedAI}`);
+      return {
+        ...serverResult,
+        industry: normalizedAI,
+        confidence: 'medium',
+        signals: [...serverResult.signals, `AI suggested: ${normalizedAI}`]
+      };
+    }
+  }
+  
+  // If server has low confidence, prefer AI if it's specific
+  if (serverResult.confidence === 'low' && normalizedAI !== 'general') {
+    console.log(`[INDUSTRY-HYBRID] Using AI (server low confidence): ${normalizedAI}`);
+    return {
+      industry: normalizedAI,
+      parentIndustry: INDUSTRY_PARENTS[normalizedAI],
+      confidence: 'low',
+      signals: [`AI detected: ${normalizedAI}`],
+      score: serverResult.score
+    };
+  }
+  
+  console.log(`[INDUSTRY-HYBRID] Defaulting to server result: ${serverResult.industry}`);
+  return serverResult;
 }
 
 // ======================== Resume Type Detection ========================
@@ -1804,29 +2304,27 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         return;
       }
 
-      // Normalize industry to valid value, with server-side override for obvious misclassifications
+      // Normalize industry using hybrid detection (combines server + AI)
       const rawIndustry = analysis.industry;
-      const industryDetection = detectIndustryFromResume(resumeText);
+      const serverDetection = detectIndustryFromResume(resumeText);
+      const hybridResult = hybridIndustryDetection(serverDetection, rawIndustry);
       
-      // Use server detection if confident, otherwise fall back to AI + normalization
-      if (industryDetection.confidence === 'high' || industryDetection.confidence === 'medium') {
-        if (industryDetection.industry !== normalizeIndustry(rawIndustry)) {
-          console.log(`[FREE-KEYWORD-SCAN-STREAM] Server override: AI said "${rawIndustry}" but text clearly indicates "${industryDetection.industry}" (${industryDetection.confidence} confidence)`);
-        }
-        analysis.industry = industryDetection.industry;
-      } else {
-        analysis.industry = normalizeIndustry(rawIndustry);
-        if (rawIndustry !== analysis.industry) {
-          console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry normalized: "${rawIndustry}" -> "${analysis.industry}"`);
-        }
+      // Apply hybrid result
+      analysis.industry = hybridResult.industry;
+      
+      if (hybridResult.industry !== normalizeIndustry(rawIndustry)) {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry adjusted: AI said "${rawIndustry}" -> hybrid result "${hybridResult.industry}" (${hybridResult.confidence} confidence, score: ${hybridResult.score})`);
       }
       
-      // Store detection metadata for UI
+      // Store enhanced detection metadata for UI (includes sub-industry info)
       const industryDetectionMeta = {
-        detected: analysis.industry,
-        confidence: industryDetection.confidence,
-        signals: industryDetection.signals,
-        aiSuggested: rawIndustry
+        detected: hybridResult.industry,
+        subIndustry: hybridResult.subIndustry,
+        parentIndustry: hybridResult.parentIndustry || getParentIndustry(hybridResult.industry),
+        confidence: hybridResult.confidence,
+        signals: hybridResult.signals,
+        aiSuggested: rawIndustry,
+        score: hybridResult.score
       };
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry detection: ${JSON.stringify(industryDetectionMeta)}`);
 
