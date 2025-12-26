@@ -113,6 +113,7 @@ const VALID_INDUSTRIES = [
   'solutions_architecture', 'security_engineering', 'ml_engineering',
   'business_intelligence', 'platform_engineering',
   'quantitative_finance', 'product_design', 'sre',
+  'technical_program_management', 'cloud_security', 'data_privacy',
   'general'
 ];
 
@@ -260,6 +261,9 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'quantitative_finance': 'finance',
   'product_design': 'creative',
   'sre': 'technology',
+  'technical_program_management': 'technology',
+  'cloud_security': 'technology',
+  'data_privacy': 'legal',
 };
 
 // Industry aliases for normalization
@@ -457,7 +461,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'labor attorney': 'employment_law', 'employment attorney': 'employment_law', 'workplace law': 'employment_law',
   'eeoc': 'employment_law', 'wrongful termination': 'employment_law', 'wage and hour': 'employment_law',
   'compliance officer': 'compliance', 'regulatory affairs': 'compliance', 'aml': 'compliance',
-  'kyc': 'compliance', 'sox compliance': 'compliance', 'gdpr': 'compliance', 'hipaa': 'compliance',
+  'kyc': 'compliance', 'sox compliance': 'compliance', 'gdpr compliance': 'compliance', 'hipaa compliance': 'compliance',
   'legal operations': 'legal', 'legal project manager': 'legal', 'law firm': 'legal',
   'bar exam': 'legal', 'jd': 'legal', 'law school': 'legal', 'clerk': 'legal',
   'magistrate': 'legal', 'judge': 'legal', 'arbitrator': 'legal', 'mediator': 'legal',
@@ -496,7 +500,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'process engineer': 'process_engineering', 'manufacturing engineer': 'process_engineering', 'tooling engineer': 'process_engineering',
   'automation engineer': 'process_engineering', 'robotics engineer': 'process_engineering', 'plc programmer': 'process_engineering',
   'lean engineer': 'lean_manufacturing', 'black belt': 'lean_manufacturing', 'green belt': 'lean_manufacturing',
-  'value stream': 'lean_manufacturing', '5s': 'lean_manufacturing', 'tpm': 'lean_manufacturing',
+  'value stream': 'lean_manufacturing', '5s': 'lean_manufacturing', 'total productive maintenance': 'lean_manufacturing',
   'production planning': 'supply_chain_manufacturing', 'mrp': 'supply_chain_manufacturing', 'erp manufacturing': 'supply_chain_manufacturing',
   'inventory control': 'supply_chain_manufacturing', 'materials management': 'supply_chain_manufacturing',
   'plant manager': 'plant_management', 'operations manager manufacturing': 'plant_management', 'shift supervisor': 'plant_management',
@@ -740,6 +744,37 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'incident response sre': 'sre', 'on-call': 'sre', 'postmortem': 'sre',
   'chaos engineering': 'sre', 'capacity planning': 'sre',
   'prometheus': 'sre', 'grafana': 'sre', 'datadog': 'sre',
+  
+  // ==================== TECHNICAL PROGRAM MANAGEMENT ALIASES ====================
+  'technical program management': 'technical_program_management', 'tpm': 'technical_program_management',
+  'technical program manager': 'technical_program_management', 'program manager': 'technical_program_management',
+  'engineering program manager': 'technical_program_management', 'technical project manager': 'technical_program_management',
+  'senior tpm': 'technical_program_management', 'staff tpm': 'technical_program_management',
+  'cross-functional leadership': 'technical_program_management', 'roadmap planning': 'technical_program_management',
+  'dependency management': 'technical_program_management', 'release management': 'technical_program_management',
+  'okrs': 'technical_program_management', 'kpis tpm': 'technical_program_management',
+  
+  // ==================== CLOUD SECURITY ALIASES ====================
+  'cloud security': 'cloud_security', 'cloud security engineer': 'cloud_security',
+  'cloud security architect': 'cloud_security', 'cloud security analyst': 'cloud_security',
+  'aws security': 'cloud_security', 'azure security': 'cloud_security', 'gcp security': 'cloud_security',
+  'cspm': 'cloud_security', 'cwpp': 'cloud_security', 'cloud workload protection': 'cloud_security',
+  'container security': 'cloud_security', 'kubernetes security': 'cloud_security',
+  'security posture': 'cloud_security', 'secret management': 'cloud_security',
+  'hashicorp vault': 'cloud_security', 'aws guardduty': 'cloud_security',
+  'azure sentinel': 'cloud_security', 'prisma cloud': 'cloud_security', 'wiz': 'cloud_security',
+  
+  // ==================== DATA PRIVACY ALIASES ====================
+  'data privacy': 'data_privacy', 'privacy engineer': 'data_privacy',
+  'privacy analyst': 'data_privacy', 'data protection officer': 'data_privacy',
+  'dpo': 'data_privacy', 'privacy compliance': 'data_privacy',
+  'gdpr': 'data_privacy', 'ccpa': 'data_privacy', 'privacy by design': 'data_privacy',
+  'data protection': 'data_privacy', 'privacy impact assessment': 'data_privacy',
+  'data mapping': 'data_privacy', 'consent management': 'data_privacy',
+  'data subject rights': 'data_privacy', 'onetrust': 'data_privacy',
+  'trustarc': 'data_privacy', 'bigid': 'data_privacy', 'data classification': 'data_privacy',
+  'cross-border data transfer': 'data_privacy', 'data retention': 'data_privacy',
+  'data breach response': 'data_privacy', 'cipp': 'data_privacy', 'cipm': 'data_privacy',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -3706,6 +3741,75 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         /\b(reduced|improved)\s+.*\b(downtime|latency|reliability|availability|mttr)\b/i,
         /\b(implemented|built)\s+.*\b(monitoring|alerting|observability|slo)\b/i,
         /\b(led|managed)\s+.*\b(incident|on-call|postmortem|outage)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    technical_program_management: {
+      titlePatterns: [
+        /\b(technical\s+program\s+manager|tpm)\b/i,
+        /\b(engineering\s+program\s+manager|program\s+manager)\b/i,
+        /\b(technical\s+project\s+manager|senior\s+tpm)\b/i,
+        /\b(staff\s+tpm|principal\s+tpm)\b/i,
+      ],
+      skillPatterns: [
+        'technical program management', 'program management', 'cross-functional leadership',
+        'roadmap planning', 'stakeholder management', 'agile', 'scrum', 'jira',
+        'risk management', 'resource planning', 'technical architecture', 'okrs', 'kpis',
+        'dependency management', 'release management', 'executive communication',
+        'pmp', 'technical documentation', 'process improvement', 'vendor management',
+        'budget management', 'confluence', 'asana'
+      ],
+      contextPatterns: [
+        /\b(led|managed|drove)\s+.*\b(program|initiative|roadmap|release)\b/i,
+        /\b(coordinated|aligned)\s+.*\b(cross-functional|stakeholder|team)\b/i,
+        /\b(delivered|shipped)\s+.*\b(on\s+time|under\s+budget|ahead\s+of\s+schedule)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    cloud_security: {
+      titlePatterns: [
+        /\b(cloud\s+security\s+engineer|cloud\s+security\s+architect)\b/i,
+        /\b(cloud\s+security\s+analyst|security\s+engineer\s+cloud)\b/i,
+        /\b(devsecops\s+engineer|security\s+automation)\b/i,
+        /\b(senior\s+cloud\s+security|staff\s+cloud\s+security)\b/i,
+      ],
+      skillPatterns: [
+        'cloud security', 'aws security', 'azure security', 'gcp security', 'iam',
+        'security automation', 'cspm', 'cwpp', 'terraform', 'infrastructure as code',
+        'container security', 'kubernetes security', 'soc 2', 'cissp',
+        'cloud workload protection', 'security posture', 'zero trust',
+        'secret management', 'hashicorp vault', 'aws guardduty', 'azure sentinel',
+        'prisma cloud', 'wiz'
+      ],
+      contextPatterns: [
+        /\b(implemented|built|designed)\s+.*\b(security|iam|cspm|compliance)\b/i,
+        /\b(achieved|maintained)\s+.*\b(soc\s+2|compliance|certification)\b/i,
+        /\b(secured|hardened)\s+.*\b(cloud|aws|azure|gcp|infrastructure)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    data_privacy: {
+      titlePatterns: [
+        /\b(privacy\s+engineer|privacy\s+analyst)\b/i,
+        /\b(data\s+protection\s+officer|dpo)\b/i,
+        /\b(privacy\s+manager|privacy\s+counsel)\b/i,
+        /\b(senior\s+privacy|head\s+of\s+privacy)\b/i,
+      ],
+      skillPatterns: [
+        'data privacy', 'gdpr', 'ccpa', 'privacy by design', 'data protection',
+        'hipaa', 'privacy impact assessment', 'data mapping', 'consent management',
+        'data subject rights', 'cookie compliance', 'onetrust', 'trustarc', 'bigid',
+        'data classification', 'cross-border data transfer', 'data retention',
+        'privacy program', 'vendor risk assessment', 'data breach response',
+        'cipp', 'cipm'
+      ],
+      contextPatterns: [
+        /\b(implemented|built|led)\s+.*\b(privacy\s+program|gdpr|ccpa|compliance)\b/i,
+        /\b(conducted|performed)\s+.*\b(privacy\s+impact|data\s+mapping|assessment)\b/i,
+        /\b(managed|handled)\s+.*\b(data\s+subject|breach|incident)\b/i,
       ],
       minSkillsForHigh: 4,
       titleWeight: 50
