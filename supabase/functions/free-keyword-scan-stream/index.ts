@@ -117,6 +117,7 @@ const VALID_INDUSTRIES = [
   'sales_operations', 'channel_sales', 'strategic_accounts',
   'performance_marketing', 'influencer_marketing', 'marketing_analytics',
   'private_equity', 'venture_capital', 'treasury_management',
+  'organizational_development', 'employee_experience', 'hr_analytics',
   'general'
 ];
 
@@ -276,6 +277,9 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'private_equity': 'finance',
   'venture_capital': 'finance',
   'treasury_management': 'finance',
+  'organizational_development': 'human_resources',
+  'employee_experience': 'human_resources',
+  'hr_analytics': 'human_resources',
 };
 
 // Industry aliases for normalization
@@ -341,9 +345,9 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   // HR aliases
   'recruiter': 'talent_acquisition', 'sourcer': 'talent_acquisition', 'ta': 'talent_acquisition',
   'hrbp': 'hr_business_partner', 'people partner': 'hr_business_partner',
-  'comp': 'compensation_benefits', 'benefits': 'compensation_benefits', 'total rewards': 'compensation_benefits',
-  'l&d': 'learning_development', 'training': 'learning_development', 'organizational development': 'learning_development',
-  'hris': 'hr_operations', 'people ops': 'hr_operations', 'hr analyst': 'hr_operations',
+  'comp': 'compensation_benefits', 'benefits': 'compensation_benefits',
+  'l&d': 'learning_development', 'training': 'learning_development',
+  'hris': 'hr_operations', 'people ops': 'hr_operations',
   // Consulting aliases
   'mbb': 'strategy_consulting', 'mckinsey': 'strategy_consulting', 'bain': 'strategy_consulting', 'bcg': 'strategy_consulting',
   'systems integrator': 'it_consulting', 'technology consulting': 'it_consulting',
@@ -891,6 +895,42 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'head of treasury': 'treasury_management', 'ctp': 'treasury_management',
   'kyriba': 'treasury_management', 'sap treasury': 'treasury_management',
   'cash forecasting': 'treasury_management', 'working capital management': 'treasury_management',
+  
+  // ==================== ORGANIZATIONAL DEVELOPMENT ALIASES ====================
+  'organizational development': 'organizational_development', 'od consultant': 'organizational_development',
+  'od specialist': 'organizational_development', 'organization development': 'organizational_development',
+  'org development': 'organizational_development', 'organizational effectiveness': 'organizational_development',
+  'change management': 'organizational_development', 'change manager': 'organizational_development',
+  'change consultant': 'organizational_development', 'leadership development': 'organizational_development',
+  'leadership development manager': 'organizational_development', 'culture transformation': 'organizational_development',
+  'organizational design': 'organizational_development', 'org design': 'organizational_development',
+  'talent development director': 'organizational_development', 'executive coaching': 'organizational_development',
+  'succession planning manager': 'organizational_development', 'prosci': 'organizational_development',
+  'adkar': 'organizational_development', 'kotter change': 'organizational_development',
+  
+  // ==================== EMPLOYEE EXPERIENCE ALIASES ====================
+  'employee experience': 'employee_experience', 'ex manager': 'employee_experience',
+  'employee experience manager': 'employee_experience', 'employee engagement': 'employee_experience',
+  'employee engagement manager': 'employee_experience', 'people experience': 'employee_experience',
+  'workplace experience': 'employee_experience', 'culture manager': 'employee_experience',
+  'culture director': 'employee_experience', 'evp manager': 'employee_experience',
+  'employer branding': 'employee_experience', 'employer brand manager': 'employee_experience',
+  'internal communications': 'employee_experience', 'employee listening': 'employee_experience',
+  'dei manager': 'employee_experience', 'diversity and inclusion': 'employee_experience',
+  'wellbeing manager': 'employee_experience', 'ex total rewards': 'employee_experience',
+  'culture amp': 'employee_experience', 'glint': 'employee_experience', 'peakon': 'employee_experience',
+  
+  // ==================== HR ANALYTICS ALIASES ====================
+  'hr analytics': 'hr_analytics', 'hr analytics manager': 'hr_analytics',
+  'people analytics manager': 'hr_analytics', 'people analyst': 'hr_analytics',
+  'workforce analytics': 'hr_analytics', 'workforce analytics manager': 'hr_analytics',
+  'talent analytics': 'hr_analytics', 'talent analytics manager': 'hr_analytics',
+  'hr data analyst': 'hr_analytics', 'people data analyst': 'hr_analytics',
+  'hris analyst': 'hr_analytics', 'hr reporting': 'hr_analytics',
+  'hr metrics': 'hr_analytics', 'hr dashboards': 'hr_analytics',
+  'visier': 'hr_analytics', 'workday analyst': 'hr_analytics',
+  'compensation analyst': 'hr_analytics', 'attrition modeling': 'hr_analytics',
+  'predictive hr': 'hr_analytics', 'workforce planning analyst': 'hr_analytics',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -4133,6 +4173,76 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         /\b(managed|optimized)\s+.*\b(cash|liquidity|treasury|working\s+capital)\b/i,
         /\b(implemented|executed)\s+.*\b(hedging|fx|interest\s+rate)\s+strategy/i,
         /\b(maintained|built)\s+.*\b(bank\s+relationship|credit\s+facility)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    organizational_development: {
+      titlePatterns: [
+        /\b(organizational\s+development\s+manager|od\s+consultant)\b/i,
+        /\b(od\s+specialist|organization\s+development)\b/i,
+        /\b(change\s+management\s+manager|change\s+consultant)\b/i,
+        /\b(leadership\s+development\s+manager|culture\s+transformation)\b/i,
+      ],
+      skillPatterns: [
+        'organizational development', 'change management', 'leadership development',
+        'organizational design', 'culture transformation', 'team effectiveness',
+        'executive coaching', 'talent assessment', 'succession planning',
+        'performance management', 'employee engagement', 'strategic planning',
+        'adkar', 'prosci', 'kotter', '360 feedback', 'disc', 'myers-briggs',
+        'competency modeling', 'workforce planning', 'high-potential programs',
+        'organization effectiveness', 'facilitation', 'action learning'
+      ],
+      contextPatterns: [
+        /\b(led|facilitated)\s+.*\b(change|transformation|culture|leadership)\s+(initiative|program|effort)/i,
+        /\b(designed|implemented)\s+.*\b(leadership|succession|development)\s+(program|framework)/i,
+        /\b(coached|developed)\s+.*\b(executive|leader|high-potential|senior)/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    employee_experience: {
+      titlePatterns: [
+        /\b(employee\s+experience\s+manager|ex\s+manager)\b/i,
+        /\b(employee\s+engagement\s+manager|people\s+experience)\b/i,
+        /\b(culture\s+manager|culture\s+director)\b/i,
+        /\b(employer\s+branding\s+manager|dei\s+manager)\b/i,
+      ],
+      skillPatterns: [
+        'employee experience', 'employee engagement', 'culture building', 'evp',
+        'employee value proposition', 'onboarding', 'employee journey mapping',
+        'pulse surveys', 'enps', 'wellbeing programs', 'recognition programs',
+        'internal communications', 'qualtrics', 'glint', 'culture amp', 'peakon',
+        'workplace design', 'dei', 'diversity and inclusion', 'employee listening',
+        'employer branding', 'retention strategy', 'benefits strategy', 'total rewards'
+      ],
+      contextPatterns: [
+        /\b(launched|designed|led)\s+.*\b(engagement|experience|culture|wellbeing)\s+(program|initiative|strategy)/i,
+        /\b(improved|increased)\s+.*\b(engagement|retention|enps|satisfaction)\b/i,
+        /\b(built|created)\s+.*\b(evp|employer\s+brand|culture|recognition)\b/i,
+      ],
+      minSkillsForHigh: 4,
+      titleWeight: 50
+    },
+    hr_analytics: {
+      titlePatterns: [
+        /\b(people\s+analytics\s+manager|hr\s+analytics\s+manager)\b/i,
+        /\b(workforce\s+analytics\s+manager|talent\s+analytics)\b/i,
+        /\b(hr\s+data\s+analyst|people\s+data\s+analyst)\b/i,
+        /\b(hris\s+analyst|hr\s+reporting\s+manager)\b/i,
+      ],
+      skillPatterns: [
+        'people analytics', 'hr analytics', 'workforce analytics', 'predictive analytics',
+        'attrition modeling', 'talent analytics', 'workforce planning', 'hr metrics',
+        'hr dashboards', 'workday', 'visier', 'sql', 'python', 'r', 'tableau',
+        'power bi', 'statistical analysis', 'compensation analysis', 'turnover analysis',
+        'employee segmentation', 'org network analysis', 'hris', 'sap successfactors',
+        'data storytelling'
+      ],
+      contextPatterns: [
+        /\b(built|developed|created)\s+.*\b(dashboard|analytics|model|report)\b/i,
+        /\b(analyzed|predicted|modeled)\s+.*\b(attrition|turnover|engagement|performance)\b/i,
+        /\b(reduced|improved)\s+.*\b(turnover|attrition|retention)\s+.*\b(analytics|data|insights)/i,
       ],
       minSkillsForHigh: 4,
       titleWeight: 50
