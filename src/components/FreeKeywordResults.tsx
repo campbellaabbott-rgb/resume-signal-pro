@@ -32,7 +32,8 @@ import {
   CalibratedLanguage, 
   UsageRecommendation,
   CredibilityIssue,
-  ContentLocation
+  ContentLocation,
+  IndustryDetection
 } from "./EnhancedAnalysisDisplay";
 
 import { useCurrency } from "@/hooks/use-currency";
@@ -664,6 +665,7 @@ interface FreeKeywordResultsProps {
     quota?: ContentLocation;
     metrics?: ContentLocation;
   };
+  industryDetection?: IndustryDetection;
 }
 
 export function FreeKeywordResults({
@@ -728,7 +730,8 @@ export function FreeKeywordResults({
   calibratedLanguage,
   usageRecommendations,
   credibilityIssues,
-  contentLocations
+  contentLocations,
+  industryDetection
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1340,6 +1343,8 @@ export function FreeKeywordResults({
         usageRecommendations={usageRecommendations}
         credibilityIssues={credibilityIssues}
         contentLocations={contentLocations}
+        industryDetection={industryDetection}
+        industry={industry}
         candidateName={candidateName}
       />
 
