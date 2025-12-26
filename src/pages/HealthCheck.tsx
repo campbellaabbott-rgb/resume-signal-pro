@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Activity, Database, Zap, CreditCard, ArrowLeft, BarChart3, Clock, FileSearch, AlertOctagon, Mail, ShieldAlert, Ban, DollarSign, Webhook, FileWarning, Bell, Shuffle, Shield, ShieldOff, Timer, Flame, Snowflake, Thermometer } from 'lucide-react';
+import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Activity, Database, Zap, CreditCard, ArrowLeft, BarChart3, Clock, FileSearch, AlertOctagon, Mail, ShieldAlert, Ban, DollarSign, Webhook, FileWarning, Bell, Shuffle, Shield, ShieldOff, Timer, Flame, Snowflake, Thermometer, Target } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getAllCircuitStates, resetServiceCircuit } from '@/hooks/use-circuit-breaker';
@@ -13,6 +13,7 @@ import { AIGenerationTrendChart } from '@/components/dashboard/AIGenerationTrend
 import { UserHealthTable } from '@/components/dashboard/UserHealthTable';
 import { HealthHistoryChart } from '@/components/dashboard/HealthHistoryChart';
 import { GeoPerformanceChart } from '@/components/dashboard/GeoPerformanceChart';
+import { IndustryDetectionChart } from '@/components/dashboard/IndustryDetectionChart';
 
 interface CheckResult {
   status: 'ok' | 'slow' | 'error';
@@ -1436,6 +1437,19 @@ export default function HealthCheck() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Industry Detection Quality */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-indigo-500" />
+              Industry Detection Quality
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <IndustryDetectionChart />
+          </CardContent>
+        </Card>
 
         {/* AI Model Fallback Status */}
         <Card className="mb-6">

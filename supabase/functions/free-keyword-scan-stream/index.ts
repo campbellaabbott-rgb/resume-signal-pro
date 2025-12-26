@@ -490,23 +490,200 @@ function normalizeResumeText(text: string): string {
 // ==================== KEYWORD DENSITY SCORING ====================
 // Calculate keyword density for each industry to catch edge cases
 function calculateKeywordDensity(text: string): Record<string, number> {
+  // Multilingual industry keywords (English + Spanish + French + German + Portuguese)
   const industryKeywords: Record<string, string[]> = {
-    technology: ['software', 'code', 'programming', 'app', 'application', 'website', 'database', 'algorithm', 'api', 'cloud', 'server', 'data', 'system', 'platform', 'tech', 'digital', 'computer', 'network', 'mobile', 'web'],
-    sales: ['sales', 'quota', 'revenue', 'pipeline', 'leads', 'prospects', 'deals', 'closing', 'commission', 'territory', 'account', 'customer', 'client', 'negotiation', 'contract', 'pitch', 'demo', 'opportunity'],
-    marketing: ['marketing', 'campaign', 'brand', 'content', 'seo', 'social media', 'advertising', 'creative', 'audience', 'engagement', 'awareness', 'leads', 'conversion', 'analytics', 'traffic', 'email', 'digital'],
-    finance: ['financial', 'accounting', 'budget', 'revenue', 'profit', 'investment', 'audit', 'tax', 'compliance', 'banking', 'portfolio', 'assets', 'equity', 'forecast', 'reporting', 'statements'],
-    healthcare: ['patient', 'clinical', 'medical', 'hospital', 'healthcare', 'nursing', 'diagnosis', 'treatment', 'pharmacy', 'health', 'care', 'physician', 'doctor', 'nurse', 'therapy', 'wellness'],
-    hr: ['recruiting', 'hiring', 'talent', 'employee', 'workforce', 'benefits', 'compensation', 'training', 'performance', 'onboarding', 'culture', 'engagement', 'hr', 'human resources', 'staffing'],
-    legal: ['legal', 'law', 'attorney', 'lawyer', 'litigation', 'contract', 'compliance', 'regulatory', 'court', 'case', 'counsel', 'patent', 'trademark', 'intellectual property'],
-    education: ['teaching', 'curriculum', 'student', 'classroom', 'education', 'learning', 'school', 'university', 'instructor', 'professor', 'academic', 'training', 'course'],
-    engineering: ['engineering', 'design', 'manufacturing', 'cad', 'mechanical', 'electrical', 'civil', 'structural', 'prototype', 'testing', 'specifications'],
-    consulting: ['consulting', 'advisory', 'strategy', 'client', 'engagement', 'stakeholder', 'recommendation', 'analysis', 'project', 'deliverable'],
-    creative: ['design', 'creative', 'visual', 'brand', 'art', 'graphic', 'photography', 'video', 'animation', 'illustration', 'layout', 'typography'],
-    retail: ['retail', 'store', 'merchandise', 'inventory', 'sales floor', 'customer service', 'pos', 'shopping', 'e-commerce', 'products'],
-    hospitality: ['hotel', 'restaurant', 'hospitality', 'guest', 'service', 'food', 'beverage', 'catering', 'event', 'tourism', 'travel'],
-    manufacturing: ['manufacturing', 'production', 'factory', 'assembly', 'quality', 'lean', 'supply chain', 'operations', 'process', 'equipment'],
-    government: ['government', 'federal', 'state', 'public', 'policy', 'regulation', 'agency', 'administration', 'civic', 'municipal'],
-    nonprofit: ['nonprofit', 'charity', 'donation', 'fundraising', 'volunteer', 'mission', 'grant', 'community', 'advocacy', 'impact'],
+    technology: [
+      // English
+      'software', 'code', 'programming', 'app', 'application', 'website', 'database', 'algorithm', 'api', 'cloud', 'server', 'data', 'system', 'platform', 'tech', 'digital', 'computer', 'network', 'mobile', 'web',
+      // Spanish
+      'desarrollador', 'programación', 'aplicación', 'sitio web', 'base de datos', 'computadora', 'ordenador', 'tecnología', 'informática', 'sistema', 'ingeniero de software',
+      // French
+      'développeur', 'programmation', 'logiciel', 'informatique', 'numérique', 'ordinateur', 'réseau', 'données', 'ingénieur',
+      // German
+      'entwickler', 'programmierung', 'anwendung', 'datenbank', 'rechner', 'technologie', 'softwareentwickler', 'informatik',
+      // Portuguese
+      'desenvolvedor', 'programação', 'aplicativo', 'banco de dados', 'computador', 'tecnologia', 'engenheiro de software', 'sistemas'
+    ],
+    sales: [
+      // English
+      'sales', 'quota', 'revenue', 'pipeline', 'leads', 'prospects', 'deals', 'closing', 'commission', 'territory', 'account', 'customer', 'client', 'negotiation', 'contract', 'pitch', 'demo', 'opportunity',
+      // Spanish
+      'ventas', 'cliente', 'negociación', 'contrato', 'ingresos', 'comisión', 'territorio', 'oportunidad', 'cuenta', 'vendedor',
+      // French
+      'ventes', 'client', 'négociation', 'contrat', 'chiffre d\'affaires', 'commission', 'territoire', 'commercial', 'vendeur',
+      // German
+      'verkauf', 'vertrieb', 'kunde', 'verhandlung', 'vertrag', 'umsatz', 'provision', 'verkäufer',
+      // Portuguese
+      'vendas', 'cliente', 'negociação', 'contrato', 'receita', 'comissão', 'vendedor', 'oportunidade'
+    ],
+    marketing: [
+      // English
+      'marketing', 'campaign', 'brand', 'content', 'seo', 'social media', 'advertising', 'creative', 'audience', 'engagement', 'awareness', 'leads', 'conversion', 'analytics', 'traffic', 'email', 'digital',
+      // Spanish
+      'mercadeo', 'mercadotecnia', 'campaña', 'marca', 'contenido', 'publicidad', 'audiencia', 'redes sociales', 'conversión',
+      // French
+      'campagne', 'marque', 'contenu', 'publicité', 'réseaux sociaux', 'audience', 'numérique', 'engagement',
+      // German
+      'werbung', 'marke', 'kampagne', 'inhalt', 'zielgruppe', 'soziale medien', 'markenführung',
+      // Portuguese
+      'campanha', 'marca', 'conteúdo', 'publicidade', 'mídia social', 'audiência', 'conversão'
+    ],
+    finance: [
+      // English
+      'financial', 'accounting', 'budget', 'revenue', 'profit', 'investment', 'audit', 'tax', 'compliance', 'banking', 'portfolio', 'assets', 'equity', 'forecast', 'reporting', 'statements',
+      // Spanish
+      'finanzas', 'financiero', 'contabilidad', 'presupuesto', 'inversión', 'auditoría', 'impuestos', 'banca', 'activos',
+      // French
+      'finance', 'financier', 'comptabilité', 'budget', 'investissement', 'audit', 'impôts', 'banque', 'actifs',
+      // German
+      'finanzen', 'buchhaltung', 'haushalt', 'investition', 'prüfung', 'steuern', 'bank', 'vermögen',
+      // Portuguese
+      'finanças', 'financeiro', 'contabilidade', 'orçamento', 'investimento', 'auditoria', 'impostos', 'ativos'
+    ],
+    healthcare: [
+      // English
+      'patient', 'clinical', 'medical', 'hospital', 'healthcare', 'nursing', 'diagnosis', 'treatment', 'pharmacy', 'health', 'care', 'physician', 'doctor', 'nurse', 'therapy', 'wellness',
+      // Spanish
+      'paciente', 'clínico', 'médico', 'hospital', 'salud', 'enfermería', 'diagnóstico', 'tratamiento', 'farmacia', 'enfermera', 'doctor', 'terapia', 'bienestar',
+      // French
+      'patient', 'clinique', 'médical', 'hôpital', 'santé', 'soins infirmiers', 'diagnostic', 'traitement', 'pharmacie', 'médecin', 'infirmier', 'thérapie',
+      // German
+      'patient', 'klinisch', 'medizinisch', 'krankenhaus', 'gesundheit', 'pflege', 'diagnose', 'behandlung', 'apotheke', 'arzt', 'krankenschwester', 'therapie',
+      // Portuguese
+      'paciente', 'clínico', 'médico', 'hospital', 'saúde', 'enfermagem', 'diagnóstico', 'tratamento', 'farmácia', 'enfermeiro', 'doutor', 'terapia'
+    ],
+    hr: [
+      // English
+      'recruiting', 'hiring', 'talent', 'employee', 'workforce', 'benefits', 'compensation', 'training', 'performance', 'onboarding', 'culture', 'engagement', 'hr', 'human resources', 'staffing',
+      // Spanish
+      'reclutamiento', 'contratación', 'talento', 'empleado', 'recursos humanos', 'beneficios', 'compensación', 'capacitación', 'personal',
+      // French
+      'recrutement', 'embauche', 'talent', 'employé', 'ressources humaines', 'avantages', 'rémunération', 'formation', 'personnel',
+      // German
+      'rekrutierung', 'einstellung', 'talent', 'mitarbeiter', 'personalwesen', 'vergütung', 'schulung', 'personal',
+      // Portuguese
+      'recrutamento', 'contratação', 'talento', 'funcionário', 'recursos humanos', 'benefícios', 'compensação', 'treinamento'
+    ],
+    legal: [
+      // English
+      'legal', 'law', 'attorney', 'lawyer', 'litigation', 'contract', 'compliance', 'regulatory', 'court', 'case', 'counsel', 'patent', 'trademark', 'intellectual property',
+      // Spanish
+      'legal', 'abogado', 'litigio', 'contrato', 'cumplimiento', 'tribunal', 'caso', 'patente', 'marca registrada', 'derecho', 'ley', 'propiedad intelectual',
+      // French
+      'juridique', 'avocat', 'litige', 'contrat', 'conformité', 'tribunal', 'affaire', 'brevet', 'marque déposée', 'droit', 'loi',
+      // German
+      'rechtlich', 'anwalt', 'rechtsstreit', 'vertrag', 'compliance', 'gericht', 'fall', 'patent', 'marke', 'recht', 'gesetz',
+      // Portuguese
+      'jurídico', 'advogado', 'litígio', 'contrato', 'conformidade', 'tribunal', 'caso', 'patente', 'marca registrada', 'direito', 'lei'
+    ],
+    education: [
+      // English
+      'teaching', 'curriculum', 'student', 'classroom', 'education', 'learning', 'school', 'university', 'instructor', 'professor', 'academic', 'training', 'course',
+      // Spanish
+      'enseñanza', 'currículo', 'estudiante', 'aula', 'educación', 'aprendizaje', 'escuela', 'universidad', 'profesor', 'académico', 'curso', 'maestro',
+      // French
+      'enseignement', 'curriculum', 'étudiant', 'salle de classe', 'éducation', 'apprentissage', 'école', 'université', 'professeur', 'cours', 'formation',
+      // German
+      'unterricht', 'lehrplan', 'student', 'klassenzimmer', 'bildung', 'lernen', 'schule', 'universität', 'lehrer', 'professor', 'kurs',
+      // Portuguese
+      'ensino', 'currículo', 'estudante', 'sala de aula', 'educação', 'aprendizado', 'escola', 'universidade', 'professor', 'curso'
+    ],
+    engineering: [
+      // English
+      'engineering', 'design', 'manufacturing', 'cad', 'mechanical', 'electrical', 'civil', 'structural', 'prototype', 'testing', 'specifications',
+      // Spanish
+      'ingeniería', 'diseño', 'manufactura', 'mecánico', 'eléctrico', 'civil', 'estructural', 'prototipo', 'especificaciones', 'ingeniero',
+      // French
+      'ingénierie', 'conception', 'fabrication', 'mécanique', 'électrique', 'civil', 'structurel', 'prototype', 'spécifications', 'ingénieur',
+      // German
+      'ingenieurwesen', 'konstruktion', 'fertigung', 'mechanisch', 'elektrisch', 'zivil', 'strukturell', 'prototyp', 'ingenieur',
+      // Portuguese
+      'engenharia', 'design', 'fabricação', 'mecânico', 'elétrico', 'civil', 'estrutural', 'protótipo', 'engenheiro'
+    ],
+    consulting: [
+      // English
+      'consulting', 'advisory', 'strategy', 'client', 'engagement', 'stakeholder', 'recommendation', 'analysis', 'project', 'deliverable',
+      // Spanish
+      'consultoría', 'asesoría', 'estrategia', 'cliente', 'análisis', 'proyecto', 'recomendación', 'consultor',
+      // French
+      'conseil', 'stratégie', 'client', 'engagement', 'analyse', 'projet', 'recommandation', 'consultant',
+      // German
+      'beratung', 'strategie', 'kunde', 'analyse', 'projekt', 'empfehlung', 'berater',
+      // Portuguese
+      'consultoria', 'assessoria', 'estratégia', 'cliente', 'análise', 'projeto', 'recomendação', 'consultor'
+    ],
+    creative: [
+      // English
+      'design', 'creative', 'visual', 'brand', 'art', 'graphic', 'photography', 'video', 'animation', 'illustration', 'layout', 'typography',
+      // Spanish
+      'diseño', 'creativo', 'visual', 'marca', 'arte', 'gráfico', 'fotografía', 'video', 'animación', 'ilustración', 'diseñador',
+      // French
+      'design', 'créatif', 'visuel', 'marque', 'art', 'graphique', 'photographie', 'vidéo', 'animation', 'illustration', 'designer',
+      // German
+      'design', 'kreativ', 'visuell', 'marke', 'kunst', 'grafik', 'fotografie', 'video', 'animation', 'illustration', 'designer',
+      // Portuguese
+      'design', 'criativo', 'visual', 'marca', 'arte', 'gráfico', 'fotografia', 'vídeo', 'animação', 'ilustração', 'designer'
+    ],
+    retail: [
+      // English
+      'retail', 'store', 'merchandise', 'inventory', 'sales floor', 'customer service', 'pos', 'shopping', 'e-commerce', 'products',
+      // Spanish
+      'minorista', 'tienda', 'mercancía', 'inventario', 'atención al cliente', 'comercio electrónico', 'productos', 'ventas',
+      // French
+      'vente au détail', 'magasin', 'marchandise', 'inventaire', 'service client', 'commerce électronique', 'produits',
+      // German
+      'einzelhandel', 'geschäft', 'waren', 'inventar', 'kundenservice', 'e-commerce', 'produkte',
+      // Portuguese
+      'varejo', 'loja', 'mercadoria', 'estoque', 'atendimento ao cliente', 'comércio eletrônico', 'produtos'
+    ],
+    hospitality: [
+      // English
+      'hotel', 'restaurant', 'hospitality', 'guest', 'service', 'food', 'beverage', 'catering', 'event', 'tourism', 'travel',
+      // Spanish
+      'hotel', 'restaurante', 'hospitalidad', 'huésped', 'servicio', 'alimentos', 'bebidas', 'turismo', 'viaje', 'evento',
+      // French
+      'hôtel', 'restaurant', 'hôtellerie', 'invité', 'service', 'nourriture', 'boissons', 'tourisme', 'voyage', 'événement',
+      // German
+      'hotel', 'restaurant', 'gastgewerbe', 'gast', 'service', 'essen', 'getränke', 'tourismus', 'reise', 'veranstaltung',
+      // Portuguese
+      'hotel', 'restaurante', 'hospitalidade', 'hóspede', 'serviço', 'alimentos', 'bebidas', 'turismo', 'viagem', 'evento'
+    ],
+    manufacturing: [
+      // English
+      'manufacturing', 'production', 'factory', 'assembly', 'quality', 'lean', 'supply chain', 'operations', 'process', 'equipment',
+      // Spanish
+      'manufactura', 'producción', 'fábrica', 'ensamblaje', 'calidad', 'cadena de suministro', 'operaciones', 'proceso', 'equipo',
+      // French
+      'fabrication', 'production', 'usine', 'assemblage', 'qualité', 'chaîne d\'approvisionnement', 'opérations', 'processus', 'équipement',
+      // German
+      'fertigung', 'produktion', 'fabrik', 'montage', 'qualität', 'lieferkette', 'betrieb', 'prozess', 'ausrüstung',
+      // Portuguese
+      'manufatura', 'produção', 'fábrica', 'montagem', 'qualidade', 'cadeia de suprimentos', 'operações', 'processo', 'equipamento'
+    ],
+    government: [
+      // English
+      'government', 'federal', 'state', 'public', 'policy', 'regulation', 'agency', 'administration', 'civic', 'municipal',
+      // Spanish
+      'gobierno', 'federal', 'estatal', 'público', 'política', 'regulación', 'agencia', 'administración', 'cívico', 'municipal',
+      // French
+      'gouvernement', 'fédéral', 'étatique', 'public', 'politique', 'réglementation', 'agence', 'administration', 'civique', 'municipal',
+      // German
+      'regierung', 'bundes', 'staatlich', 'öffentlich', 'politik', 'regulierung', 'behörde', 'verwaltung', 'kommunal',
+      // Portuguese
+      'governo', 'federal', 'estadual', 'público', 'política', 'regulamentação', 'agência', 'administração', 'cívico', 'municipal'
+    ],
+    nonprofit: [
+      // English
+      'nonprofit', 'charity', 'donation', 'fundraising', 'volunteer', 'mission', 'grant', 'community', 'advocacy', 'impact',
+      // Spanish
+      'sin fines de lucro', 'caridad', 'donación', 'recaudación de fondos', 'voluntario', 'misión', 'subvención', 'comunidad', 'defensa', 'impacto',
+      // French
+      'sans but lucratif', 'charité', 'don', 'collecte de fonds', 'bénévole', 'mission', 'subvention', 'communauté', 'plaidoyer', 'impact',
+      // German
+      'gemeinnützig', 'wohltätigkeit', 'spende', 'fundraising', 'freiwilliger', 'mission', 'zuschuss', 'gemeinschaft', 'interessenvertretung',
+      // Portuguese
+      'sem fins lucrativos', 'caridade', 'doação', 'arrecadação de fundos', 'voluntário', 'missão', 'subvenção', 'comunidade', 'advocacia', 'impacto'
+    ],
   };
   
   const scores: Record<string, number> = {};
@@ -2916,6 +3093,29 @@ function detectCareerTransition(resumeText: string): CareerTransitionInfo {
   const text = resumeText.toLowerCase();
   const signals: string[] = [];
   
+  // NEGATIVE SIGNALS: Identify "former/previous" role mentions
+  // These should REDUCE weight for that industry, not increase
+  const negativePatterns: [RegExp, string][] = [
+    [/\b(former|previous|ex[\s-]?)(teacher|educator|instructor)/i, 'education'],
+    [/\b(former|previous|ex[\s-]?)(nurse|nursing|rn|lpn)/i, 'nursing'],
+    [/\b(former|previous|ex[\s-]?)(attorney|lawyer|legal)/i, 'legal'],
+    [/\b(former|previous|ex[\s-]?)(banker|finance|financial)/i, 'finance'],
+    [/\b(former|previous|ex[\s-]?)(engineer|engineering)/i, 'engineering'],
+    [/\b(former|previous|ex[\s-]?)(manager|management)/i, 'management'],
+    [/\b(former|previous|ex[\s-]?)(accountant|accounting|cpa)/i, 'accounting'],
+    [/\b(former|previous|ex[\s-]?)(doctor|physician|md)/i, 'physician'],
+    [/\b(former|previous|ex[\s-]?)(military|army|navy|marine|air\s+force)/i, 'military'],
+    [/\b(left|leaving|transitioned?\s+from)\s+(teaching|nursing|law|banking|finance)/i, 'career_change'],
+  ];
+  
+  const previousIndustries: string[] = [];
+  for (const [pattern, industry] of negativePatterns) {
+    if (pattern.test(text)) {
+      previousIndustries.push(industry);
+      signals.push(`Former role detected: ${industry}`);
+    }
+  }
+  
   // Common career transition phrases
   const transitionPhrases = [
     /career\s+(transition|change|pivot|switch)/i,
@@ -2926,6 +3126,9 @@ function detectCareerTransition(resumeText: string): CareerTransitionInfo {
     /making\s+a\s+career\s+(change|transition)/i,
     /changing\s+careers?/i,
     /aspiring\s+(developer|designer|analyst|engineer|pm|product\s+manager)/i,
+    /seeking\s+to\s+transition/i,
+    /pursuing\s+a\s+career\s+in/i,
+    /new\s+career\s+path/i,
   ];
   
   for (const phrase of transitionPhrases) {
@@ -2940,8 +3143,9 @@ function detectCareerTransition(resumeText: string): CareerTransitionInfo {
     /\b(bootcamp|coding\s+bootcamp|immersive|intensive)\b/i,
     /\b(certificate|certification)\s+(in|for)\s+(ux|ui|data|web|software|product)/i,
     /\brecent\s+(graduate|grad)\b/i,
-    /\b(google|meta|coursera|udemy|udacity)\s+(certificate|certification)\b/i,
+    /\b(google|meta|coursera|udemy|udacity|general\s+assembly|flatiron|springboard)\s+(certificate|certification|bootcamp)/i,
     /\b202[3-5]\)?\s*$.*?(bootcamp|certificate|certification)/mi,
+    /\b(career\s+change|career\s+transition)\s+(program|bootcamp|course)/i,
   ];
   
   for (const pattern of recentEducation) {
@@ -2952,31 +3156,77 @@ function detectCareerTransition(resumeText: string): CareerTransitionInfo {
   }
   
   // Check for recent job titles that differ significantly from older ones
-  // Look at "Present" or "Current" roles
+  // Look at "Present" or "Current" roles - these are MOST IMPORTANT
   const currentRoleMatch = text.match(/(present|current|now|\b202[4-5]\s*[-–—]\s*(present|current|now)?)/i);
   
-  // If we find career transition signals, identify current vs previous
-  if (signals.length > 0 || currentRoleMatch) {
-    // Try to identify what they're transitioning TO (most recent role/education)
-    const recentRolePatterns: [RegExp, string][] = [
-      [/\b(ux\s+design|ui\s+design|product\s+design)\s+(intern|associate|junior|apprentice)/i, 'ux_design'],
-      [/\b(software|web|app)\s+(developer|engineer)\s+(intern|associate|junior|apprentice)/i, 'software_engineering'],
-      [/\b(data\s+analyst|data\s+scientist)\s+(intern|associate|junior|apprentice)/i, 'data_science'],
-      [/\b(product\s+manager|pm)\s+(intern|associate|junior|apprentice)/i, 'product_management'],
-      [/\bintern\b.*\b(ux|design|developer|engineer|data|product)/i, 'technology'],
-      [/\bbootcamp\b.*\b(ux|design|developer|engineer|data|software)/i, 'technology'],
-    ];
+  // ENHANCED: Look for current/target roles with higher specificity
+  // Order matters - check more specific patterns first
+  const recentRolePatterns: [RegExp, string, number][] = [
+    // UX/Product Design - very common career change target
+    [/\b(ux\s+designer?|user\s+experience\s+designer?|ui\/ux\s+designer?|product\s+designer?)/i, 'ux_design', 50],
+    [/\b(ux\s+design|ui\s+design|product\s+design)\s+(intern|associate|junior|apprentice|fellow)/i, 'ux_design', 60],
+    [/\bbootcamp\b.*\b(ux|design)/i, 'ux_design', 45],
+    [/\b(ux|ui|product\s+design)\s+(bootcamp|certificate|certification)/i, 'ux_design', 55],
     
-    for (const [pattern, industry] of recentRolePatterns) {
+    // Software Engineering
+    [/\b(software|web|full[\s-]?stack|frontend|backend)\s+(developer|engineer)/i, 'software_engineering', 50],
+    [/\b(software|web|app)\s+(developer|engineer)\s+(intern|associate|junior|apprentice)/i, 'software_engineering', 60],
+    [/\bbootcamp\b.*\b(coding|developer|engineer|software|web)/i, 'software_engineering', 45],
+    [/\b(coding|software|web\s+development)\s+(bootcamp|certificate)/i, 'software_engineering', 55],
+    
+    // Data Science/Analytics
+    [/\b(data\s+scientist|data\s+analyst|business\s+analyst)/i, 'data_science', 50],
+    [/\b(data\s+analyst|data\s+scientist)\s+(intern|associate|junior|apprentice)/i, 'data_science', 60],
+    [/\bbootcamp\b.*\b(data|analytics)/i, 'data_science', 45],
+    [/\b(data\s+science|data\s+analytics)\s+(bootcamp|certificate)/i, 'data_science', 55],
+    
+    // Product Management
+    [/\b(product\s+manager|associate\s+product\s+manager|apm)/i, 'product_management', 50],
+    [/\b(product\s+manager|pm)\s+(intern|associate|junior|apprentice)/i, 'product_management', 60],
+    [/\b(product\s+management)\s+(bootcamp|certificate|program)/i, 'product_management', 55],
+    
+    // Digital Marketing (common for career changers)
+    [/\b(digital\s+marketing|seo|social\s+media\s+marketing)/i, 'digital_marketing', 45],
+    [/\b(digital\s+marketing|marketing)\s+(bootcamp|certificate)/i, 'digital_marketing', 50],
+    
+    // Cybersecurity
+    [/\b(cybersecurity|security\s+analyst|information\s+security)/i, 'cybersecurity', 50],
+    [/\b(cybersecurity|infosec)\s+(bootcamp|certificate|certification)/i, 'cybersecurity', 55],
+    
+    // General tech fallback
+    [/\bintern\b.*\b(tech|startup|technology)/i, 'technology', 35],
+  ];
+  
+  // If we find career transition signals OR current role markers, identify what they're transitioning TO
+  if (signals.length > 0 || currentRoleMatch) {
+    let bestMatch: { industry: string; score: number } | null = null;
+    
+    for (const [pattern, industry, score] of recentRolePatterns) {
       if (pattern.test(text)) {
-        signals.push(`Recent/current role: ${industry}`);
-        return {
-          isCareerChanger: true,
-          currentIndustry: industry,
-          transitionSignals: signals
-        };
+        if (!bestMatch || score > bestMatch.score) {
+          bestMatch = { industry, score };
+        }
       }
     }
+    
+    if (bestMatch) {
+      signals.push(`Current/target role detected: ${bestMatch.industry} (score: ${bestMatch.score})`);
+      return {
+        isCareerChanger: true,
+        currentIndustry: bestMatch.industry,
+        previousIndustry: previousIndustries[0],
+        transitionSignals: signals
+      };
+    }
+  }
+  
+  // Even if no current role found, if we detected "former" signals, mark as career changer
+  if (previousIndustries.length > 0 && signals.length > 0) {
+    return {
+      isCareerChanger: true,
+      previousIndustry: previousIndustries[0],
+      transitionSignals: signals
+    };
   }
   
   return {
