@@ -66,6 +66,7 @@ const VALID_INDUSTRIES = [
   'logistics', 'energy', 'agriculture',
   // Sub-industries for technology
   'software_engineering', 'data_science', 'devops', 'cybersecurity', 'product_management',
+  'ai_ml', 'blockchain', 'cloud_engineering',
   // Sub-industries for engineering
   'mechanical_engineering', 'electrical_engineering', 'civil_engineering', 
   'chemical_engineering', 'aerospace_engineering',
@@ -84,6 +85,22 @@ const VALID_INDUSTRIES = [
   'k12_education', 'higher_education', 'edtech', 'curriculum_development', 'special_education',
   // Sub-industries for manufacturing
   'quality_engineering', 'process_engineering', 'lean_manufacturing', 'supply_chain_manufacturing', 'plant_management',
+  // Sub-industries for HR
+  'talent_acquisition', 'hr_business_partner', 'compensation_benefits', 'learning_development', 'hr_operations',
+  // Sub-industries for consulting
+  'management_consulting', 'strategy_consulting', 'it_consulting', 'hr_consulting', 'operations_consulting',
+  // Sub-industries for creative
+  'graphic_design', 'ux_design', 'video_production', 'copywriting_creative', 'art_direction',
+  // Sub-industries for retail
+  'store_management', 'merchandising', 'ecommerce', 'retail_buying', 'loss_prevention',
+  // Sub-industries for hospitality
+  'hotel_management', 'food_beverage', 'event_management', 'tourism', 'casino_gaming',
+  // Sub-industries for government
+  'policy_analysis', 'public_administration', 'military', 'law_enforcement', 'intelligence',
+  // Sub-industries for nonprofit
+  'fundraising', 'program_management_nonprofit', 'advocacy', 'grant_writing', 'volunteer_management',
+  // Emerging roles
+  'sustainability', 'dei', 'remote_work', 'creator_economy',
   'general'
 ];
 
@@ -94,6 +111,9 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'devops': 'technology',
   'cybersecurity': 'technology',
   'product_management': 'technology',
+  'ai_ml': 'technology',
+  'blockchain': 'technology',
+  'cloud_engineering': 'technology',
   'mechanical_engineering': 'engineering',
   'electrical_engineering': 'engineering',
   'civil_engineering': 'engineering',
@@ -140,6 +160,53 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'lean_manufacturing': 'manufacturing',
   'supply_chain_manufacturing': 'manufacturing',
   'plant_management': 'manufacturing',
+  // HR sub-industries
+  'talent_acquisition': 'hr',
+  'hr_business_partner': 'hr',
+  'compensation_benefits': 'hr',
+  'learning_development': 'hr',
+  'hr_operations': 'hr',
+  // Consulting sub-industries
+  'management_consulting': 'consulting',
+  'strategy_consulting': 'consulting',
+  'it_consulting': 'consulting',
+  'hr_consulting': 'consulting',
+  'operations_consulting': 'consulting',
+  // Creative sub-industries
+  'graphic_design': 'creative',
+  'ux_design': 'creative',
+  'video_production': 'creative',
+  'copywriting_creative': 'creative',
+  'art_direction': 'creative',
+  // Retail sub-industries
+  'store_management': 'retail',
+  'merchandising': 'retail',
+  'ecommerce': 'retail',
+  'retail_buying': 'retail',
+  'loss_prevention': 'retail',
+  // Hospitality sub-industries
+  'hotel_management': 'hospitality',
+  'food_beverage': 'hospitality',
+  'event_management': 'hospitality',
+  'tourism': 'hospitality',
+  'casino_gaming': 'hospitality',
+  // Government sub-industries
+  'policy_analysis': 'government',
+  'public_administration': 'government',
+  'military': 'government',
+  'law_enforcement': 'government',
+  'intelligence': 'government',
+  // Nonprofit sub-industries
+  'fundraising': 'nonprofit',
+  'program_management_nonprofit': 'nonprofit',
+  'advocacy': 'nonprofit',
+  'grant_writing': 'nonprofit',
+  'volunteer_management': 'nonprofit',
+  // Emerging roles (cross-industry)
+  'sustainability': 'technology',
+  'dei': 'hr',
+  'remote_work': 'hr',
+  'creator_economy': 'creative',
 };
 
 // Industry aliases for normalization
@@ -175,7 +242,7 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'supply chain': 'logistics', 'shipping': 'logistics', 'warehouse': 'logistics',
   'oil': 'energy', 'gas': 'energy', 'renewable': 'energy', 'utilities': 'energy',
   'farming': 'agriculture', 'agribusiness': 'agriculture',
-  'data': 'data_science', 'ml': 'data_science', 'ai': 'data_science',
+  'data': 'data_science', 'ml': 'data_science', 'ai': 'ai_ml',
   'security': 'cybersecurity', 'infosec': 'cybersecurity',
   'infrastructure': 'devops', 'sre': 'devops', 'platform': 'devops',
   // Sales aliases
@@ -204,6 +271,55 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'six sigma': 'lean_manufacturing', 'kaizen': 'lean_manufacturing', 'continuous improvement': 'lean_manufacturing',
   'operations': 'plant_management', 'plant operations': 'plant_management', 'production manager': 'plant_management',
   'manufacturing engineering': 'process_engineering', 'industrial engineering': 'process_engineering',
+  // HR aliases
+  'recruiter': 'talent_acquisition', 'sourcer': 'talent_acquisition', 'ta': 'talent_acquisition',
+  'hrbp': 'hr_business_partner', 'people partner': 'hr_business_partner',
+  'comp': 'compensation_benefits', 'benefits': 'compensation_benefits', 'total rewards': 'compensation_benefits',
+  'l&d': 'learning_development', 'training': 'learning_development', 'organizational development': 'learning_development',
+  'hris': 'hr_operations', 'people ops': 'hr_operations', 'hr analyst': 'hr_operations',
+  // Consulting aliases
+  'mbb': 'strategy_consulting', 'mckinsey': 'strategy_consulting', 'bain': 'strategy_consulting', 'bcg': 'strategy_consulting',
+  'systems integrator': 'it_consulting', 'technology consulting': 'it_consulting',
+  'process improvement': 'operations_consulting', 'business process': 'operations_consulting',
+  // Creative aliases
+  'ui': 'ux_design', 'ux': 'ux_design', 'product design': 'ux_design', 'interaction design': 'ux_design',
+  'visual design': 'graphic_design', 'branding design': 'graphic_design',
+  'film': 'video_production', 'motion graphics': 'video_production', 'animation': 'video_production',
+  'creative copy': 'copywriting_creative', 'scriptwriter': 'copywriting_creative',
+  'creative director': 'art_direction', 'brand creative': 'art_direction',
+  // Retail aliases
+  'store manager': 'store_management', 'retail manager': 'store_management', 'district manager': 'store_management',
+  'buyer': 'retail_buying', 'category management': 'retail_buying', 'assortment': 'merchandising',
+  'visual merchandising': 'merchandising', 'planogram': 'merchandising',
+  'asset protection': 'loss_prevention', 'shrink': 'loss_prevention',
+  'online retail': 'ecommerce', 'dtc': 'ecommerce', 'direct to consumer': 'ecommerce',
+  // Hospitality aliases
+  'gm hotel': 'hotel_management', 'front office': 'hotel_management', 'rooms division': 'hotel_management',
+  'f&b': 'food_beverage', 'chef': 'food_beverage', 'restaurant manager': 'food_beverage',
+  'event planner': 'event_management', 'catering': 'event_management', 'banquet': 'event_management',
+  'travel': 'tourism', 'destination': 'tourism', 'hospitality marketing': 'tourism',
+  'casino': 'casino_gaming', 'gaming': 'casino_gaming', 'table games': 'casino_gaming',
+  // Government aliases
+  'policy': 'policy_analysis', 'think tank': 'policy_analysis', 'legislative': 'policy_analysis',
+  'city manager': 'public_administration', 'public affairs': 'public_administration',
+  'armed forces': 'military', 'veteran': 'military', 'defense': 'military',
+  'police': 'law_enforcement', 'fbi': 'law_enforcement', 'corrections': 'law_enforcement',
+  'cia': 'intelligence', 'nsa': 'intelligence', 'analyst': 'intelligence',
+  // Nonprofit aliases
+  'development director': 'fundraising', 'major gifts': 'fundraising', 'donor relations': 'fundraising',
+  'program director': 'program_management_nonprofit', 'impact': 'program_management_nonprofit',
+  'lobbying': 'advocacy', 'campaign': 'advocacy', 'grassroots': 'advocacy',
+  'grants': 'grant_writing', 'proposal writing': 'grant_writing',
+  'volunteer coordinator': 'volunteer_management', 'community engagement': 'volunteer_management',
+  // Emerging role aliases
+  'esg': 'sustainability', 'climate': 'sustainability', 'green': 'sustainability', 'carbon': 'sustainability',
+  'diversity': 'dei', 'inclusion': 'dei', 'equity': 'dei', 'belonging': 'dei',
+  'remote': 'remote_work', 'distributed': 'remote_work', 'virtual work': 'remote_work',
+  'influencer': 'creator_economy', 'content creator': 'creator_economy', 'youtuber': 'creator_economy',
+  // Technology emerging aliases
+  'machine learning': 'ai_ml', 'deep learning': 'ai_ml', 'nlp': 'ai_ml', 'computer vision': 'ai_ml',
+  'web3': 'blockchain', 'crypto': 'blockchain', 'defi': 'blockchain', 'smart contracts': 'blockchain',
+  'aws': 'cloud_engineering', 'azure': 'cloud_engineering', 'gcp': 'cloud_engineering',
 };
 
 // Get parent industry for display (preserves sub-industry detail)
@@ -1110,7 +1226,617 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
       titleWeight: 40
     },
     
-    // === NEW INDUSTRIES ===
+    // === HR SUB-INDUSTRIES ===
+    talent_acquisition: {
+      titlePatterns: [
+        /\b(recruiter|talent\s+acquisition|sourcer|recruiting\s+coordinator)\b/i,
+        /\b(head\s+of\s+recruiting|ta\s+manager|recruitment\s+manager)\b/i,
+        /\b(technical\s+recruiter|executive\s+recruiter|campus\s+recruiter)\b/i,
+      ],
+      skillPatterns: [
+        'recruiting', 'sourcing', 'linkedin recruiter', 'ats', 'greenhouse', 'lever',
+        'talent pipeline', 'candidate experience', 'employer branding', 'job posting',
+        'interview coordination', 'offer negotiation', 'onboarding', 'hiring'
+      ],
+      contextPatterns: [
+        /\b(recruited|hired|sourced)\s+.*\b(candidates?|talent|engineers?|employees?)\b/i,
+        /\b(reduced|improved)\s+.*\b(time[\s-]to[\s-]fill|cost[\s-]per[\s-]hire|quality[\s-]of[\s-]hire)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    hr_business_partner: {
+      titlePatterns: [
+        /\b(hr\s+business\s+partner|hrbp|people\s+partner)\b/i,
+        /\b(hr\s+manager|human\s+resources\s+manager|people\s+manager)\b/i,
+        /\b(senior\s+hrbp|director.*hr|vp.*people)\b/i,
+      ],
+      skillPatterns: [
+        'employee relations', 'performance management', 'workforce planning', 'hr strategy',
+        'organizational development', 'change management', 'talent management', 'succession planning',
+        'coaching', 'conflict resolution', 'policy development', 'labor relations'
+      ],
+      contextPatterns: [
+        /\b(partnered|advised|supported)\s+.*\b(leadership|executives?|managers?|business)\b/i,
+        /\b(implemented|developed)\s+.*\b(hr\s+strategy|people\s+strategy|initiative)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    compensation_benefits: {
+      titlePatterns: [
+        /\b(compensation\s+analyst|benefits\s+analyst|total\s+rewards)\b/i,
+        /\b(compensation\s+manager|benefits\s+manager|rewards\s+manager)\b/i,
+        /\b(comp\s+and\s+ben|c&b\s+manager|payroll\s+manager)\b/i,
+      ],
+      skillPatterns: [
+        'compensation', 'benefits', 'total rewards', 'salary benchmarking', 'job evaluation',
+        'pay equity', 'incentive design', 'equity compensation', 'workday', 'hris',
+        'payroll', '401k', 'health insurance', 'wellness programs'
+      ],
+      contextPatterns: [
+        /\b(designed|administered|managed)\s+.*\b(compensation|benefits|rewards|pay)\b/i,
+        /\b(conducted|performed)\s+.*\b(benchmarking|analysis|survey)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    learning_development: {
+      titlePatterns: [
+        /\b(learning\s+and\s+development|l&d\s+manager|training\s+manager)\b/i,
+        /\b(organizational\s+development|talent\s+development|training\s+specialist)\b/i,
+        /\b(learning\s+designer|training\s+coordinator|leadership\s+development)\b/i,
+      ],
+      skillPatterns: [
+        'training', 'learning and development', 'instructional design', 'facilitation',
+        'leadership development', 'coaching', 'lms', 'e-learning', 'needs assessment',
+        'curriculum development', 'performance consulting', 'talent development'
+      ],
+      contextPatterns: [
+        /\b(designed|developed|delivered)\s+.*\b(training|program|curriculum|workshop)\b/i,
+        /\b(improved|increased)\s+.*\b(engagement|performance|competency|skills)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    hr_operations: {
+      titlePatterns: [
+        /\b(hr\s+operations|people\s+operations|hr\s+analyst)\b/i,
+        /\b(hris\s+analyst|workday\s+analyst|hr\s+systems)\b/i,
+        /\b(hr\s+coordinator|hr\s+administrator|hr\s+generalist)\b/i,
+      ],
+      skillPatterns: [
+        'hris', 'workday', 'successfactors', 'adp', 'hr analytics', 'people analytics',
+        'employee data', 'hr reporting', 'onboarding', 'offboarding', 'compliance',
+        'hr processes', 'employee lifecycle', 'hr metrics'
+      ],
+      contextPatterns: [
+        /\b(managed|administered|maintained)\s+.*\b(hris|systems?|data|records)\b/i,
+        /\b(streamlined|optimized|improved)\s+.*\b(process|operations|workflow)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 30
+    },
+    
+    // === CONSULTING SUB-INDUSTRIES ===
+    management_consulting: {
+      titlePatterns: [
+        /\b(management\s+consultant|business\s+consultant|consultant)\b/i,
+        /\b(associate\s+consultant|senior\s+consultant|principal)\b/i,
+        /\b(engagement\s+manager|project\s+leader|partner)\b/i,
+      ],
+      skillPatterns: [
+        'consulting', 'stakeholder management', 'client engagement', 'problem solving',
+        'business strategy', 'market analysis', 'competitive analysis', 'due diligence',
+        'presentation', 'excel', 'powerpoint', 'project management'
+      ],
+      contextPatterns: [
+        /\b(advised|consulted|supported)\s+.*\b(client|executive|c[\s-]?suite|leadership)\b/i,
+        /\b(led|managed)\s+.*\b(engagement|project|workstream|initiative)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    strategy_consulting: {
+      titlePatterns: [
+        /\b(strategy\s+consultant|corporate\s+strategy|strategic\s+planning)\b/i,
+        /\b(mckinsey|bain|bcg|big\s+three|mbb)\b/i,
+        /\b(strategy\s+manager|director\s+of\s+strategy|vp\s+strategy)\b/i,
+      ],
+      skillPatterns: [
+        'corporate strategy', 'business strategy', 'market entry', 'growth strategy',
+        'm&a strategy', 'competitive strategy', 'strategic planning', 'scenario planning',
+        'market sizing', 'financial modeling', 'business case', 'transformation'
+      ],
+      contextPatterns: [
+        /\b(developed|defined|led)\s+.*\b(strategy|strategic\s+plan|roadmap)\b/i,
+        /\b(advised|supported)\s+.*\b(ceo|board|executive|c[\s-]?suite)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    it_consulting: {
+      titlePatterns: [
+        /\b(it\s+consultant|technology\s+consultant|systems\s+consultant)\b/i,
+        /\b(solutions\s+architect|enterprise\s+architect|technical\s+consultant)\b/i,
+        /\b(implementation\s+consultant|erp\s+consultant|sap\s+consultant)\b/i,
+      ],
+      skillPatterns: [
+        'it consulting', 'systems integration', 'erp implementation', 'sap', 'oracle',
+        'digital transformation', 'cloud migration', 'enterprise architecture', 'agile',
+        'project management', 'requirements gathering', 'solution design'
+      ],
+      contextPatterns: [
+        /\b(implemented|deployed|designed)\s+.*\b(system|solution|platform|erp)\b/i,
+        /\b(led|managed)\s+.*\b(implementation|migration|transformation)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    
+    // === CREATIVE SUB-INDUSTRIES ===
+    graphic_design: {
+      titlePatterns: [
+        /\b(graphic\s+designer|visual\s+designer|brand\s+designer)\b/i,
+        /\b(senior\s+designer|design\s+lead|creative\s+designer)\b/i,
+        /\b(print\s+designer|digital\s+designer|marketing\s+designer)\b/i,
+      ],
+      skillPatterns: [
+        'photoshop', 'illustrator', 'indesign', 'figma', 'sketch', 'canva',
+        'typography', 'layout', 'branding', 'logo design', 'print design',
+        'packaging', 'visual identity', 'color theory', 'adobe creative suite'
+      ],
+      contextPatterns: [
+        /\b(designed|created|developed)\s+.*\b(brand|logo|visual|marketing|collateral)\b/i,
+        /\b(led|managed)\s+.*\b(design|creative|visual|branding)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    ux_design: {
+      titlePatterns: [
+        /\b(ux\s+designer|ui\s+designer|product\s+designer|interaction\s+designer)\b/i,
+        /\b(ux\s+researcher|user\s+researcher|design\s+researcher)\b/i,
+        /\b(ux\s+lead|head\s+of\s+design|design\s+director)\b/i,
+      ],
+      skillPatterns: [
+        'ux design', 'ui design', 'user research', 'wireframing', 'prototyping',
+        'figma', 'sketch', 'invision', 'user testing', 'usability', 'personas',
+        'journey mapping', 'design systems', 'accessibility', 'interaction design'
+      ],
+      contextPatterns: [
+        /\b(designed|created|led)\s+.*\b(user\s+experience|interface|product|app)\b/i,
+        /\b(conducted|performed)\s+.*\b(user\s+research|usability\s+testing|interviews?)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    video_production: {
+      titlePatterns: [
+        /\b(video\s+producer|videographer|editor|film\s+editor)\b/i,
+        /\b(motion\s+graphics|animator|creative\s+producer)\b/i,
+        /\b(director\s+of\s+photography|cinematographer|post[\s-]production)\b/i,
+      ],
+      skillPatterns: [
+        'premiere pro', 'after effects', 'final cut', 'davinci resolve', 'avid',
+        'video editing', 'motion graphics', 'animation', 'color grading', 'sound design',
+        'cinematography', 'storyboarding', 'directing', 'youtube', 'live streaming'
+      ],
+      contextPatterns: [
+        /\b(produced|edited|created|directed)\s+.*\b(video|film|content|commercial)\b/i,
+        /\b(managed|led)\s+.*\b(production|shoot|project|campaign)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    art_direction: {
+      titlePatterns: [
+        /\b(art\s+director|creative\s+director|associate\s+creative\s+director)\b/i,
+        /\b(head\s+of\s+creative|chief\s+creative\s+officer|ecd)\b/i,
+        /\b(senior\s+art\s+director|group\s+creative\s+director)\b/i,
+      ],
+      skillPatterns: [
+        'art direction', 'creative direction', 'brand strategy', 'campaign development',
+        'creative concept', 'visual storytelling', 'photography direction', 'team leadership',
+        'agency experience', 'client presentation', 'creative brief', 'advertising'
+      ],
+      contextPatterns: [
+        /\b(led|directed|managed)\s+.*\b(creative|campaign|visual|brand)\b/i,
+        /\b(developed|created|concepted)\s+.*\b(campaign|concept|creative|advertising)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 45
+    },
+    
+    // === RETAIL SUB-INDUSTRIES ===
+    store_management: {
+      titlePatterns: [
+        /\b(store\s+manager|retail\s+manager|assistant\s+store\s+manager)\b/i,
+        /\b(district\s+manager|regional\s+manager|area\s+manager)\b/i,
+        /\b(general\s+manager|operations\s+manager.*retail)\b/i,
+      ],
+      skillPatterns: [
+        'store operations', 'retail management', 'inventory management', 'p&l',
+        'sales targets', 'customer service', 'team leadership', 'scheduling',
+        'visual merchandising', 'loss prevention', 'cash handling', 'pos systems'
+      ],
+      contextPatterns: [
+        /\b(managed|led|supervised)\s+.*\b(store|team|staff|location)\b/i,
+        /\b(achieved|exceeded)\s+.*\b(sales|revenue|targets?|quota)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    merchandising: {
+      titlePatterns: [
+        /\b(merchandiser|visual\s+merchandiser|merchandise\s+manager)\b/i,
+        /\b(merchandise\s+planner|allocation\s+analyst|assortment\s+planner)\b/i,
+        /\b(vmd|display\s+coordinator|field\s+merchandiser)\b/i,
+      ],
+      skillPatterns: [
+        'visual merchandising', 'planogram', 'product placement', 'inventory allocation',
+        'assortment planning', 'markdown optimization', 'space planning', 'fixture design',
+        'retail analytics', 'trend analysis', 'seasonal planning', 'vendor management'
+      ],
+      contextPatterns: [
+        /\b(developed|executed|managed)\s+.*\b(merchandising|display|planogram|assortment)\b/i,
+        /\b(increased|improved)\s+.*\b(sales|conversion|productivity|turns)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    ecommerce: {
+      titlePatterns: [
+        /\b(ecommerce\s+manager|e[\s-]commerce\s+manager|online\s+retail)\b/i,
+        /\b(digital\s+commerce|dtc\s+manager|marketplace\s+manager)\b/i,
+        /\b(head\s+of\s+ecommerce|director\s+of\s+digital|vp\s+ecommerce)\b/i,
+      ],
+      skillPatterns: [
+        'ecommerce', 'shopify', 'magento', 'woocommerce', 'amazon seller', 'marketplace',
+        'conversion optimization', 'a/b testing', 'digital marketing', 'seo',
+        'product catalog', 'inventory sync', 'order fulfillment', 'dropshipping'
+      ],
+      contextPatterns: [
+        /\b(grew|scaled|managed)\s+.*\b(ecommerce|online|digital|dtc)\b/i,
+        /\b(increased|improved)\s+.*\b(conversion|revenue|aov|traffic)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    
+    // === HOSPITALITY SUB-INDUSTRIES ===
+    hotel_management: {
+      titlePatterns: [
+        /\b(hotel\s+manager|general\s+manager|resident\s+manager)\b/i,
+        /\b(front\s+office\s+manager|rooms\s+division|guest\s+services)\b/i,
+        /\b(hotel\s+director|resort\s+manager|lodging\s+manager)\b/i,
+      ],
+      skillPatterns: [
+        'hotel operations', 'revenue management', 'guest satisfaction', 'opera pms',
+        'front desk', 'housekeeping', 'reservations', 'occupancy', 'adr', 'revpar',
+        'guest relations', 'brand standards', 'star rating', 'hospitality management'
+      ],
+      contextPatterns: [
+        /\b(managed|directed|led)\s+.*\b(hotel|property|resort|rooms)\b/i,
+        /\b(improved|increased)\s+.*\b(occupancy|revpar|satisfaction|rating)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    food_beverage: {
+      titlePatterns: [
+        /\b(f&b\s+manager|food\s+and\s+beverage|restaurant\s+manager)\b/i,
+        /\b(executive\s+chef|chef|sous\s+chef|culinary\s+director)\b/i,
+        /\b(bar\s+manager|beverage\s+director|sommelier)\b/i,
+      ],
+      skillPatterns: [
+        'food service', 'restaurant management', 'culinary', 'menu development',
+        'food cost', 'labor cost', 'inventory', 'servesafe', 'pos systems',
+        'wine', 'beverage', 'banquet', 'catering', 'fine dining'
+      ],
+      contextPatterns: [
+        /\b(managed|led|directed)\s+.*\b(restaurant|kitchen|f&b|dining)\b/i,
+        /\b(reduced|improved)\s+.*\b(food\s+cost|labor|service|reviews?)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    event_management: {
+      titlePatterns: [
+        /\b(event\s+manager|event\s+planner|event\s+coordinator)\b/i,
+        /\b(catering\s+manager|banquet\s+manager|conference\s+manager)\b/i,
+        /\b(wedding\s+planner|meeting\s+planner|corporate\s+events)\b/i,
+      ],
+      skillPatterns: [
+        'event planning', 'event management', 'catering', 'banquet', 'conference',
+        'vendor management', 'budget management', 'logistics', 'cvent', 'eventbrite',
+        'contract negotiation', 'floor plans', 'av', 'decor', 'timeline management'
+      ],
+      contextPatterns: [
+        /\b(planned|coordinated|managed)\s+.*\b(event|wedding|conference|meeting)\b/i,
+        /\b(executed|delivered)\s+.*\b(event|experience|function)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    
+    // === GOVERNMENT SUB-INDUSTRIES ===
+    policy_analysis: {
+      titlePatterns: [
+        /\b(policy\s+analyst|policy\s+advisor|policy\s+specialist)\b/i,
+        /\b(legislative\s+analyst|research\s+analyst.*policy|think\s+tank)\b/i,
+        /\b(policy\s+director|director\s+of\s+policy|policy\s+manager)\b/i,
+      ],
+      skillPatterns: [
+        'policy analysis', 'policy research', 'legislative analysis', 'regulatory',
+        'public policy', 'policy development', 'stakeholder engagement', 'briefings',
+        'white papers', 'testimony', 'impact assessment', 'cost-benefit analysis'
+      ],
+      contextPatterns: [
+        /\b(developed|analyzed|drafted)\s+.*\b(policy|legislation|regulation|brief)\b/i,
+        /\b(advised|briefed|supported)\s+.*\b(policymakers?|legislators?|leadership)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    public_administration: {
+      titlePatterns: [
+        /\b(city\s+manager|town\s+manager|county\s+administrator)\b/i,
+        /\b(public\s+administrator|government\s+administrator|agency\s+director)\b/i,
+        /\b(department\s+head|division\s+director|bureau\s+chief)\b/i,
+      ],
+      skillPatterns: [
+        'public administration', 'government operations', 'budget management', 'procurement',
+        'municipal', 'constituent services', 'public meetings', 'intergovernmental',
+        'grants management', 'public finance', 'civil service', 'emergency management'
+      ],
+      contextPatterns: [
+        /\b(managed|directed|administered)\s+.*\b(department|agency|division|office)\b/i,
+        /\b(government|public|municipal|county|state|federal)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    military: {
+      titlePatterns: [
+        /\b(military|veteran|army|navy|air\s+force|marines|coast\s+guard)\b/i,
+        /\b(officer|enlisted|nco|warrant\s+officer|commander)\b/i,
+        /\b(sergeant|captain|lieutenant|major|colonel)\b/i,
+      ],
+      skillPatterns: [
+        'military', 'leadership', 'mission planning', 'operations', 'logistics',
+        'security clearance', 'classified', 'combat', 'training', 'tactics',
+        'personnel management', 'equipment maintenance', 'communications'
+      ],
+      contextPatterns: [
+        /\b(served|deployed|commanded|led)\s+.*\b(unit|team|mission|operations)\b/i,
+        /\b(military|army|navy|air\s+force|marines|armed\s+forces)\b/i,
+      ],
+      minSkillsForHigh: 2,
+      titleWeight: 45
+    },
+    law_enforcement: {
+      titlePatterns: [
+        /\b(police\s+officer|detective|special\s+agent|investigator)\b/i,
+        /\b(sergeant|lieutenant|captain|chief\s+of\s+police)\b/i,
+        /\b(fbi|dea|atf|marshal|corrections\s+officer)\b/i,
+      ],
+      skillPatterns: [
+        'law enforcement', 'investigation', 'criminal justice', 'patrol',
+        'evidence collection', 'report writing', 'arrest procedures', 'firearms',
+        'de-escalation', 'community policing', 'surveillance', 'interviewing'
+      ],
+      contextPatterns: [
+        /\b(investigated|arrested|patrolled|enforced)\b/i,
+        /\b(police|law\s+enforcement|criminal|detective|federal)\b/i,
+      ],
+      minSkillsForHigh: 2,
+      titleWeight: 45
+    },
+    
+    // === NONPROFIT SUB-INDUSTRIES ===
+    fundraising: {
+      titlePatterns: [
+        /\b(development\s+director|fundraiser|major\s+gifts|donor\s+relations)\b/i,
+        /\b(chief\s+development|vp\s+development|annual\s+fund)\b/i,
+        /\b(capital\s+campaign|planned\s+giving|advancement)\b/i,
+      ],
+      skillPatterns: [
+        'fundraising', 'donor relations', 'major gifts', 'grant writing', 'stewardship',
+        'raiser\'s edge', 'salesforce nonprofit', 'cultivation', 'solicitation',
+        'capital campaign', 'annual fund', 'planned giving', 'events'
+      ],
+      contextPatterns: [
+        /\b(raised|secured|cultivated)\s+.*\$[\d,]+[kKmMbB]?\b/i,
+        /\b(managed|grew|developed)\s+.*\b(donor|portfolio|relationships?)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    program_management_nonprofit: {
+      titlePatterns: [
+        /\b(program\s+director|program\s+manager|program\s+coordinator)\b/i,
+        /\b(director\s+of\s+programs|vp\s+programs|impact\s+director)\b/i,
+        /\b(community\s+program|youth\s+program|outreach\s+director)\b/i,
+      ],
+      skillPatterns: [
+        'program management', 'program evaluation', 'impact measurement', 'logic model',
+        'grant management', 'community outreach', 'stakeholder engagement', 'partnerships',
+        'case management', 'client services', 'data collection', 'reporting'
+      ],
+      contextPatterns: [
+        /\b(managed|led|directed)\s+.*\b(program|initiative|project|services?)\b/i,
+        /\b(served|impacted|supported)\s+.*\b(clients?|community|population|beneficiaries)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    advocacy: {
+      titlePatterns: [
+        /\b(advocacy\s+director|policy\s+advocate|campaign\s+director)\b/i,
+        /\b(government\s+relations|public\s+affairs|lobbyist)\b/i,
+        /\b(grassroots|organizing\s+director|community\s+organizer)\b/i,
+      ],
+      skillPatterns: [
+        'advocacy', 'lobbying', 'government relations', 'grassroots organizing',
+        'coalition building', 'public affairs', 'campaign strategy', 'mobilization',
+        'legislative affairs', 'public speaking', 'media relations', 'messaging'
+      ],
+      contextPatterns: [
+        /\b(advocated|lobbied|organized|mobilized)\b/i,
+        /\b(passed|influenced|shaped)\s+.*\b(legislation|policy|bill|law)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    grant_writing: {
+      titlePatterns: [
+        /\b(grant\s+writer|proposal\s+writer|grants\s+manager)\b/i,
+        /\b(grants\s+coordinator|foundation\s+relations|grants\s+specialist)\b/i,
+        /\b(director\s+of\s+grants|grants\s+director)\b/i,
+      ],
+      skillPatterns: [
+        'grant writing', 'proposal writing', 'grant management', 'foundation relations',
+        'rfp', 'budget development', 'grant reporting', 'compliance', 'research',
+        'federal grants', 'foundation grants', 'corporate grants', 'fluxx'
+      ],
+      contextPatterns: [
+        /\b(wrote|secured|submitted)\s+.*\b(grant|proposal|funding)\b/i,
+        /\b(awarded|received)\s+.*\$[\d,]+[kKmMbB]?\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 35
+    },
+    
+    // === EMERGING ROLES ===
+    ai_ml: {
+      titlePatterns: [
+        /\b(machine\s+learning\s+engineer|ml\s+engineer|ai\s+engineer)\b/i,
+        /\b(deep\s+learning|nlp\s+engineer|computer\s+vision)\b/i,
+        /\b(ai\s+researcher|ml\s+scientist|applied\s+scientist)\b/i,
+      ],
+      skillPatterns: [
+        'machine learning', 'deep learning', 'tensorflow', 'pytorch', 'keras',
+        'nlp', 'computer vision', 'neural networks', 'transformers', 'llm',
+        'gpt', 'bert', 'reinforcement learning', 'mlops', 'model deployment'
+      ],
+      contextPatterns: [
+        /\b(built|trained|deployed)\s+.*\b(model|algorithm|pipeline|system)\b/i,
+        /\b(improved|achieved)\s+.*\b(accuracy|performance|f1|auc)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 45
+    },
+    blockchain: {
+      titlePatterns: [
+        /\b(blockchain\s+developer|web3\s+developer|smart\s+contract)\b/i,
+        /\b(crypto|solidity\s+developer|defi\s+engineer)\b/i,
+        /\b(blockchain\s+architect|protocol\s+engineer)\b/i,
+      ],
+      skillPatterns: [
+        'blockchain', 'solidity', 'web3', 'ethereum', 'smart contracts', 'defi',
+        'nft', 'cryptocurrency', 'consensus', 'hardhat', 'truffle', 'metamask',
+        'tokenomics', 'dao', 'layer 2', 'polygon', 'rust'
+      ],
+      contextPatterns: [
+        /\b(developed|built|deployed)\s+.*\b(smart\s+contract|dapp|protocol|token)\b/i,
+        /\b(web3|blockchain|crypto|defi|nft)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    cloud_engineering: {
+      titlePatterns: [
+        /\b(cloud\s+engineer|cloud\s+architect|solutions\s+architect)\b/i,
+        /\b(aws\s+engineer|azure\s+engineer|gcp\s+engineer)\b/i,
+        /\b(cloud\s+infrastructure|cloud\s+platform|cloud\s+security)\b/i,
+      ],
+      skillPatterns: [
+        'aws', 'azure', 'gcp', 'cloud architecture', 'serverless', 'lambda',
+        'ec2', 's3', 'cloudformation', 'terraform', 'kubernetes', 'docker',
+        'vpc', 'iam', 'cloud security', 'cost optimization', 'multi-cloud'
+      ],
+      contextPatterns: [
+        /\b(designed|architected|migrated)\s+.*\b(cloud|aws|azure|gcp|infrastructure)\b/i,
+        /\b(reduced|optimized)\s+.*\b(cost|latency|availability|performance)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    sustainability: {
+      titlePatterns: [
+        /\b(sustainability\s+manager|esg\s+manager|sustainability\s+director)\b/i,
+        /\b(climate|environmental\s+manager|carbon\s+analyst)\b/i,
+        /\b(chief\s+sustainability|cso|head\s+of\s+esg)\b/i,
+      ],
+      skillPatterns: [
+        'sustainability', 'esg', 'environmental', 'carbon footprint', 'climate',
+        'renewable energy', 'circular economy', 'ghg', 'net zero', 'life cycle assessment',
+        'sustainability reporting', 'gri', 'cdp', 'science-based targets', 'b corp'
+      ],
+      contextPatterns: [
+        /\b(reduced|achieved|implemented)\s+.*\b(carbon|emissions?|sustainability|environmental)\b/i,
+        /\b(esg|sustainability|climate|environmental)\s+\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    dei: {
+      titlePatterns: [
+        /\b(dei\s+manager|diversity\s+manager|inclusion\s+manager)\b/i,
+        /\b(chief\s+diversity|head\s+of\s+dei|vp\s+diversity)\b/i,
+        /\b(belonging|equity\s+officer|d&i\s+director)\b/i,
+      ],
+      skillPatterns: [
+        'diversity', 'equity', 'inclusion', 'belonging', 'dei strategy',
+        'unconscious bias', 'erg', 'employee resource groups', 'culture',
+        'hiring practices', 'pay equity', 'training', 'metrics', 'representation'
+      ],
+      contextPatterns: [
+        /\b(led|developed|implemented)\s+.*\b(dei|diversity|inclusion|equity)\b/i,
+        /\b(improved|increased)\s+.*\b(diversity|representation|belonging|culture)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 40
+    },
+    remote_work: {
+      titlePatterns: [
+        /\b(remote\s+work|head\s+of\s+remote|distributed\s+work)\b/i,
+        /\b(workplace\s+experience|future\s+of\s+work)\b/i,
+        /\b(hybrid\s+work|virtual\s+collaboration)\b/i,
+      ],
+      skillPatterns: [
+        'remote work', 'distributed teams', 'async communication', 'virtual collaboration',
+        'zoom', 'slack', 'notion', 'remote culture', 'time zone management',
+        'digital workplace', 'employee experience', 'hybrid work', 'flexibility'
+      ],
+      contextPatterns: [
+        /\b(built|led|managed)\s+.*\b(remote|distributed|virtual)\s+\b/i,
+        /\b(remote[\s-]first|fully\s+remote|hybrid)\b/i,
+      ],
+      minSkillsForHigh: 3,
+      titleWeight: 30
+    },
+    creator_economy: {
+      titlePatterns: [
+        /\b(content\s+creator|influencer|youtuber|streamer)\b/i,
+        /\b(creator\s+manager|influencer\s+marketing|talent\s+manager)\b/i,
+        /\b(podcaster|social\s+media\s+personality)\b/i,
+      ],
+      skillPatterns: [
+        'content creation', 'youtube', 'tiktok', 'instagram', 'twitch', 'podcast',
+        'video production', 'audience growth', 'monetization', 'brand partnerships',
+        'community building', 'personal branding', 'analytics', 'engagement'
+      ],
+      contextPatterns: [
+        /\b(grew|built)\s+.*\b(audience|followers?|subscribers?|community)\b/i,
+        /\b(content|influencer|creator|youtube|tiktok|podcast)\b/i,
+      ],
+      minSkillsForHigh: 2,
+      titleWeight: 30
+    },
+    
+    // === EXISTING BROAD INDUSTRIES (for fallback) ===
     retail: {
       titlePatterns: [
         /\b(store\s+manager|retail\s+manager|district\s+manager)\b/,
