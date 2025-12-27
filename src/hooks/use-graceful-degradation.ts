@@ -156,21 +156,11 @@ export function useGracefulDegradation<T>(options: GracefulDegradationOptions) {
 }
 
 /**
- * Check if backend is available (quick health check)
+ * Check if backend is available (uses cached connection health)
  */
 export async function checkBackendHealth(): Promise<boolean> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    const { error } = await supabase.rpc("get_today_scan_count");
-    
-    clearTimeout(timeoutId);
-    
-    return !error;
-  } catch {
-    return false;
-  }
+  const { checkConnectionHealth } = await import('@/hooks/use-shared-data');
+  return checkConnectionHealth();
 }
 
 /**

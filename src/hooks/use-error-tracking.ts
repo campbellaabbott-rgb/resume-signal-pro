@@ -281,10 +281,8 @@ export function useErrorTracking() {
     }
   }, []);
 
-  // Load error history on mount
-  useEffect(() => {
-    checkErrorHistory();
-  }, [checkErrorHistory]);
+  // Skip auto-load on mount - use useVisitorErrorHistory from use-shared-data.ts instead
+  // This prevents duplicate calls when multiple components use this hook
 
   return {
     visitorId: visitorId.current,

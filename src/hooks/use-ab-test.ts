@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { queueABEvent } from '@/hooks/use-shared-data';
 
 // =============================================================================
 // A/B TESTING CONFIGURATION
@@ -76,28 +76,23 @@ const getVariant = <T extends TestName>(testName: T): VariantOf<T> => {
   return variant as VariantOf<T>;
 };
 
-// Track event via edge function
-const trackEvent = async (
+// Track event via batched queue (reduces network calls)
+const trackEvent = (
   testName: string,
   variant: string,
   eventType: 'view' | 'conversion',
   metadata?: Record<string, unknown>
 ) => {
-  try {
-    const visitorId = getVisitorId();
-    
-    await supabase.functions.invoke('track-ab-event', {
-      body: {
-        testName,
-        variant,
-        eventType,
-        visitorId,
-        metadata
-      }
-    });
-  } catch (error) {
-    console.error('Failed to track A/B event:', error);
-  }
+  const visitorId = getVisitorId();
+  
+  // Queue the event for batched sending
+  queueABEvent({
+    testName,
+    variant,
+    eventType,
+    visitorId,
+    metadata
+  });
 };
 
 export function useABTest<T extends TestName>(testName: T) {
