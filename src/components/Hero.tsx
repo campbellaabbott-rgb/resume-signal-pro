@@ -4,11 +4,11 @@ import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Users, Spark
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
-import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PRODUCTS } from "@/config/products";
 import { useABTest } from "@/hooks/use-ab-test";
 import { SampleReportPreview } from "./SampleReportPreview";
+import { useTodayScanCount } from "@/hooks/use-shared-data";
 
 // Animated result preview component - shows what users get
 function AnimatedResultPreview() {
@@ -41,29 +41,16 @@ function AnimatedResultPreview() {
 
 // Hero stats bar - immediate social proof with inflated live count
 function HeroStatsBar() {
-  const [displayCount, setDisplayCount] = useState<number>(2847);
+  const { inflatedCount } = useTodayScanCount();
+  const [displayCount, setDisplayCount] = useState<number>(inflatedCount);
   const [isAnimating, setIsAnimating] = useState(false);
 
+  // Sync with shared data
   useEffect(() => {
-    // Fetch the actual count from database and inflate it
-    const fetchCount = async () => {
-      try {
-        const { data, error } = await supabase.rpc('get_today_scan_count');
-        if (!error && data !== null) {
-          // Inflate the number: base of 2800 + actual count * multiplier
-          const inflatedBase = 2800 + (data * 3);
-          setDisplayCount(inflatedBase);
-        }
-      } catch (e) {
-        // Fallback to time-based calculation
-        const now = new Date();
-        const hoursSinceMidnight = now.getHours() + now.getMinutes() / 60;
-        setDisplayCount(2800 + Math.floor(hoursSinceMidnight * 25));
-      }
-    };
+    setDisplayCount(inflatedCount);
+  }, [inflatedCount]);
 
-    fetchCount();
-
+  useEffect(() => {
     // Slow increment every 8-15 seconds to simulate real-time activity
     const incrementInterval = setInterval(() => {
       setDisplayCount(prev => {
@@ -73,12 +60,8 @@ function HeroStatsBar() {
       });
     }, Math.random() * 7000 + 8000); // Random interval between 8-15 seconds
 
-    // Sync with database every 2 minutes
-    const syncInterval = setInterval(fetchCount, 120000);
-
     return () => {
       clearInterval(incrementInterval);
-      clearInterval(syncInterval);
     };
   }, []);
 

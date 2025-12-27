@@ -278,7 +278,7 @@ const Index = () => {
     ]);
   };
 
-  // Check network connectivity - more forgiving check
+  // Check network connectivity - uses cached connection health
   const checkConnection = async (): Promise<boolean> => {
     // First check browser's online status
     if (!navigator.onLine) {
@@ -286,37 +286,9 @@ const Index = () => {
       return false;
     }
     
-    // Quick connectivity test - try multiple methods for reliability
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased timeout
-      
-      // Use Supabase client's built-in health check which handles auth properly
-      const { error } = await supabase.rpc('get_today_scan_count');
-      
-      clearTimeout(timeoutId);
-      
-      // Even if the RPC returns an error, if we got a response the connection works
-      // Only return false if it was an actual network failure
-      if (error && (error.message?.includes('fetch') || error.message?.includes('network'))) {
-        console.log("[Connection] Network error:", error.message);
-        return false;
-      }
-      
-      return true;
-    } catch (err: any) {
-      // Only fail on actual network errors, not server errors
-      const isNetworkError = err?.message?.includes('fetch') || 
-                            err?.message?.includes('network') ||
-                            err?.message?.includes('Failed to fetch') ||
-                            err?.name === 'AbortError';
-      
-      console.log("[Connection] Check error:", err?.message, "isNetworkError:", isNetworkError);
-      
-      // If it's not clearly a network error, assume connection is OK
-      // and let the actual checkout call handle any errors
-      return !isNetworkError;
-    }
+    // Use cached connection health check to avoid redundant calls
+    const { checkConnectionHealth } = await import('@/hooks/use-shared-data');
+    return checkConnectionHealth();
   };
 
   // Check if popups are likely blocked (for desktop in iframe)
