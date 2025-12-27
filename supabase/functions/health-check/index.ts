@@ -101,23 +101,29 @@ async function checkAIGateway(): Promise<CheckResult> {
   
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1500);
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
     
-    // HEAD request to check if gateway is reachable - no AI call needed
-    // This is a simple connectivity check, not an actual inference
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/models", {
-      method: "GET",
+    // Minimal POST to check gateway connectivity - empty messages triggers fast validation error
+    // This is faster than actual inference but confirms gateway is reachable
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [], // Empty messages = fast validation error, gateway still responds
+      }),
       signal: controller.signal,
     });
     
     clearTimeout(timeoutId);
     const latency = Date.now() - start;
     
-    // 200 = success, 401/403 = auth issue but gateway is up, 429 = rate limited but up
-    if (response.ok || response.status === 401 || response.status === 403 || response.status === 429) {
+    // Gateway is up if it responds at all (200, 400, 429 all mean it's reachable)
+    // Only 5xx or network errors indicate gateway problems
+    if (response.status < 500) {
       const status = latency <= THRESHOLDS.ai_gateway.ok ? 'ok' : 
                      latency <= THRESHOLDS.ai_gateway.slow ? 'slow' : 'error';
       return { status, latency_ms: latency };
