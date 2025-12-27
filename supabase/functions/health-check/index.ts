@@ -101,28 +101,23 @@ async function checkAIGateway(): Promise<CheckResult> {
   
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 1500);
     
-    // Use the fastest, cheapest model with minimal request
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
+    // HEAD request to check if gateway is reachable - no AI call needed
+    // This is a simple connectivity check, not an actual inference
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/models", {
+      method: "GET",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [{ role: "user", content: "1" }],
-        max_tokens: 1,
-      }),
       signal: controller.signal,
     });
     
     clearTimeout(timeoutId);
     const latency = Date.now() - start;
     
-    // 200 = success, 429 = rate limited but gateway is up
-    if (response.ok || response.status === 429) {
+    // 200 = success, 401/403 = auth issue but gateway is up, 429 = rate limited but up
+    if (response.ok || response.status === 401 || response.status === 403 || response.status === 429) {
       const status = latency <= THRESHOLDS.ai_gateway.ok ? 'ok' : 
                      latency <= THRESHOLDS.ai_gateway.slow ? 'slow' : 'error';
       return { status, latency_ms: latency };
