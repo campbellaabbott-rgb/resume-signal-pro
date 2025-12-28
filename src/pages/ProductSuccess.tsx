@@ -1754,6 +1754,8 @@ export default function ProductSuccess() {
                             Generate {isKeywordFix ? 'Keyword Analysis' : 
                                       isPremiumPackage ? 'Premium Package' : 
                                       isAtsDefense ? 'ATS Defense Report' :
+                                      isCareerSnapshot ? 'Career Snapshot Report' :
+                                      isGraduateGamePlan ? 'Graduate Game Plan Report' :
                                       'Cover Letter'}
                           </>
                         )}
