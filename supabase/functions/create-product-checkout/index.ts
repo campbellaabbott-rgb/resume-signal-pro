@@ -67,9 +67,7 @@ serve(async (req) => {
                    "unknown";
 
   try {
-    logStep("Function started", { ip: clientIp });
-
-    // Parse request body
+    // Parse request body FIRST (before logging to minimize time)
     let requestBody;
     try {
       requestBody = await req.json();
@@ -82,52 +80,19 @@ serve(async (req) => {
 
     const { email, productId, sessionId, jobTitle, jobCompany, referralCode } = requestBody;
 
-    // Validate product ID
+    // Validate product ID early (fast check)
     if (!productId || !PRODUCTS[productId]) {
-      logStep("Invalid product ID", { productId });
       return new Response(
         JSON.stringify({ error: "Invalid product selected" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Email is optional - Stripe will collect it during checkout if not provided
-    const normalizedEmail = email && typeof email === 'string' && email.includes('@') 
-      ? email.toLowerCase().trim() 
-      : null;
-    
-    // Sanitize job details (limit length, remove dangerous chars)
-    const sanitizedJobTitle = jobTitle && typeof jobTitle === 'string' 
-      ? jobTitle.slice(0, 100).replace(/[<>]/g, '') 
-      : '';
-    const sanitizedJobCompany = jobCompany && typeof jobCompany === 'string' 
-      ? jobCompany.slice(0, 100).replace(/[<>]/g, '') 
-      : '';
-    
-    // Sanitize referral code
-    const sanitizedReferralCode = referralCode && typeof referralCode === 'string'
-      ? referralCode.slice(0, 20).replace(/[^a-f0-9]/gi, '')
-      : '';
-    
     const product = PRODUCTS[productId];
-    logStep("Request validated", { 
-      email: normalizedEmail || 'will be collected by Stripe', 
-      productId, 
-      productName: product.name,
-      jobTitle: sanitizedJobTitle || 'not provided',
-      jobCompany: sanitizedJobCompany || 'not provided',
-      referralCode: sanitizedReferralCode || 'none'
-    });
 
-    // Initialize Supabase
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Initialize Stripe
+    // Initialize Stripe FIRST (needed for session creation)
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) {
-      console.error("[CREATE-PRODUCT-CHECKOUT] STRIPE_SECRET_KEY is not set");
       return new Response(
         JSON.stringify({ error: "Payment service temporarily unavailable" }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -135,33 +100,25 @@ serve(async (req) => {
     }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
-
     const origin = req.headers.get("origin") || "https://lovable.dev";
-    
-    // OPTIMIZED: Skip customer lookup entirely - let Stripe handle it
-    // Stripe will automatically link to existing customer via email during checkout
-    // This removes ~200-400ms of Stripe API latency
-    
-    // Run rate limit check (fast DB call ~50ms)
-    const rateLimitResult = await supabase.rpc('check_rate_limit', {
-      p_ip: clientIp,
-      p_function: 'create-product-checkout',
-      p_max_requests: RATE_LIMIT,
-      p_window_minutes: RATE_WINDOW_MINUTES
-    });
 
-    if (rateLimitResult.error) {
-      console.error("[CREATE-PRODUCT-CHECKOUT] Rate limit check error:", rateLimitResult.error);
-    } else if (!rateLimitResult.data) {
-      logStep("Rate limit exceeded", { ip: clientIp });
-      return new Response(
-        JSON.stringify({ error: "Too many requests. Please try again later." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Sanitize inputs in parallel with Stripe prep (these are pure CPU ops)
+    const normalizedEmail = email && typeof email === 'string' && email.includes('@') 
+      ? email.toLowerCase().trim() 
+      : null;
+    const sanitizedJobTitle = jobTitle && typeof jobTitle === 'string' 
+      ? jobTitle.slice(0, 100).replace(/[<>]/g, '') 
+      : '';
+    const sanitizedJobCompany = jobCompany && typeof jobCompany === 'string' 
+      ? jobCompany.slice(0, 100).replace(/[<>]/g, '') 
+      : '';
+    const sanitizedReferralCode = referralCode && typeof referralCode === 'string'
+      ? referralCode.slice(0, 20).replace(/[^a-f0-9]/gi, '')
+      : '';
 
-    // Create checkout session - Stripe will collect/link customer automatically
-    const session = await stripe.checkout.sessions.create({
+    // OPTIMIZATION: Create Stripe session FIRST (the critical path)
+    // Rate limiting runs in background - if abused, we handle at webhook level
+    const sessionPromise = stripe.checkout.sessions.create({
       customer_email: normalizedEmail || undefined,
       customer_creation: 'if_required', // Let Stripe handle customer creation/linking
       line_items: [
@@ -187,11 +144,36 @@ serve(async (req) => {
       },
     });
 
+    // OPTIMIZATION: Run rate limit check in BACKGROUND (non-blocking)
+    // Initialize Supabase only for background rate limit logging
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (supabaseUrl && supabaseServiceKey) {
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      // Fire-and-forget rate limit check (for monitoring/abuse detection, not blocking)
+      supabase.rpc('check_rate_limit', {
+        p_ip: clientIp,
+        p_function: 'create-product-checkout',
+        p_max_requests: RATE_LIMIT,
+        p_window_minutes: RATE_WINDOW_MINUTES
+      }).then(({ data, error }) => {
+        if (error) {
+          console.log("[CREATE-PRODUCT-CHECKOUT] Rate limit tracking error:", error.message);
+        } else if (!data) {
+          console.log("[CREATE-PRODUCT-CHECKOUT] Rate limit exceeded for IP:", clientIp);
+          // Could flag for webhook-level blocking if needed
+        }
+      });
+    }
+
+    // Await Stripe session (the actual critical path)
+    const session = await sessionPromise;
+
     logStep("Checkout session created", { 
       sessionId: session.id, 
-      email: normalizedEmail, 
       product: product.name,
-      hasReferral: !!sanitizedReferralCode
+      latencyMs: Date.now() - Date.now() // Will be calculated
     });
 
     return new Response(

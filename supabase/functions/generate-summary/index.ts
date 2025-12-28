@@ -95,19 +95,38 @@ serve(async (req) => {
     // Initialize Supabase for caching
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error("Supabase configuration missing");
     }
     
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Create cache key from inputs
+    // Create cache key from inputs (fast CPU operation)
     const cacheInput = `${atsScore}|${formatGrade}|${industry}|${experienceLevel}|${topStrength}|${redFlagsCount}|${improvementPotential?.estimatedScoreIncrease || 0}`;
     const cacheKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheInput))
       .then(hash => Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''))
       .then(hex => hex.substring(0, 32));
     
+    // Prepare prompt WHILE cache check runs (doesn't depend on cache result)
+    const nameToUse = candidateName && candidateName.trim() && !candidateName.includes('[') && !candidateName.toLowerCase().includes('friend') ? candidateName.split(' ')[0] : null;
+    const topQuickWin = quickWins?.[0]?.fix || "adding quantified achievements";
+    
+    const prompt = `Write a 2-3 sentence personalized resume feedback. Warm, direct, like texting a friend. Under 60 words.
+
+DATA:
+${nameToUse ? `Name: ${nameToUse}` : 'No name (start with "Hey!")'}
+Score: ${atsScore}/100 | Format: ${formatGrade} | Industry: ${industry} | Level: ${experienceLevel}
+Strength: ${topStrength} | Issues: ${redFlagsCount} | Quick win: ${topQuickWin} | Potential boost: +${improvementPotential?.estimatedScoreIncrease || 10}pts
+
+STRUCTURE: ${nameToUse ? `"${nameToUse}, [praise strength]..."` : '"Hey! [praise strength]..."'} → mention #1 issue → end with quick win hope.
+NEVER use placeholders like "[Name]". Use actual name or skip it.`;
+
     // Check cache first
     const { data: cachedResponse, error: cacheError } = await supabase.rpc('get_cached_response', {
       p_cache_key: cacheKey,
@@ -124,25 +143,7 @@ serve(async (req) => {
     
     console.log(`[GENERATE-SUMMARY] Cache MISS for key ${cacheKey.substring(0, 8)}...`);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
-    const nameToUse = candidateName && candidateName.trim() && !candidateName.includes('[') && !candidateName.toLowerCase().includes('friend') ? candidateName.split(' ')[0] : null;
-    const topQuickWin = quickWins?.[0]?.fix || "adding quantified achievements";
-    
-    const prompt = `Write a 2-3 sentence personalized resume feedback. Warm, direct, like texting a friend. Under 60 words.
-
-DATA:
-${nameToUse ? `Name: ${nameToUse}` : 'No name (start with "Hey!")'}
-Score: ${atsScore}/100 | Format: ${formatGrade} | Industry: ${industry} | Level: ${experienceLevel}
-Strength: ${topStrength} | Issues: ${redFlagsCount} | Quick win: ${topQuickWin} | Potential boost: +${improvementPotential?.estimatedScoreIncrease || 10}pts
-
-STRUCTURE: ${nameToUse ? `"${nameToUse}, [praise strength]..."` : '"Hey! [praise strength]..."'} → mention #1 issue → end with quick win hope.
-NEVER use placeholders like "[Name]". Use actual name or skip it.`;
-
-
+    // Prompt already prepared above - proceed to AI call
     const response = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
