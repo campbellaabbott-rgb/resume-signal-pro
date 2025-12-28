@@ -723,6 +723,68 @@ export default function ProductSuccess() {
           }
         }
         
+        // Handle Career Snapshot - generate content with resume
+        if (productKey === 'careerSnapshot') {
+          console.log('[ProductSuccess] Generating Career Snapshot');
+          const sessionData = getResumeFromSession();
+          if (sessionData.resumeText) {
+            const { data: snapshotData, error: snapshotError } = await supabase.functions.invoke('generate-career-snapshot', {
+              body: { 
+                resumeText: sessionData.resumeText,
+                jobDescription: sessionData.jobDescriptionText || undefined
+              }
+            });
+            
+            if (snapshotError) {
+              console.error('Career Snapshot generation error:', snapshotError);
+              const parsedError = await parseEdgeFunctionError(snapshotError);
+              toast({
+                title: parsedError.title,
+                description: parsedError.description,
+                variant: "destructive"
+              });
+              setIsRecoveryMode(true);
+            } else if (snapshotData?.data) {
+              setCareerSnapshotData(snapshotData.data);
+            } else {
+              setIsRecoveryMode(true);
+            }
+          } else {
+            setIsRecoveryMode(true);
+          }
+        }
+        
+        // Handle Graduate Game Plan - generate content with resume
+        if (productKey === 'graduateGamePlan') {
+          console.log('[ProductSuccess] Generating Graduate Game Plan');
+          const sessionData = getResumeFromSession();
+          if (sessionData.resumeText) {
+            const { data: gameplanData, error: gameplanError } = await supabase.functions.invoke('generate-graduate-gameplan', {
+              body: { 
+                resumeText: sessionData.resumeText,
+                jobDescription: sessionData.jobDescriptionText || undefined
+              }
+            });
+            
+            if (gameplanError) {
+              console.error('Graduate Game Plan generation error:', gameplanError);
+              const parsedError = await parseEdgeFunctionError(gameplanError);
+              toast({
+                title: parsedError.title,
+                description: parsedError.description,
+                variant: "destructive"
+              });
+              setIsRecoveryMode(true);
+            } else if (gameplanData?.data) {
+              setGraduateGamePlanData(gameplanData.data);
+            } else {
+              setIsRecoveryMode(true);
+            }
+          } else {
+            setIsRecoveryMode(true);
+          }
+        }
+        
         // Track successful purchase completion for non-streaming products
         if (productKey && product && !useStreaming) {
           trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
@@ -757,7 +819,9 @@ export default function ProductSuccess() {
     productKey === 'basicKeywordFix' || 
     productKey === 'coverLetter' || 
     productKey === 'premiumPackage' ||
-    productKey === 'atsDefense'
+    productKey === 'atsDefense' ||
+    productKey === 'careerSnapshot' ||
+    productKey === 'graduateGamePlan'
   );
 
   // Show streaming UI for real-time generation - keep showing even after complete
