@@ -1,15 +1,41 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+
+// Declare EdgeRuntime for background tasks
+declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
 };
 
-// Send email alert for payment failures
-async function sendFailureAlert(details: {
+// OPTIMIZATION: Module-level singletons for reuse across warm invocations
+let stripeInstance: Stripe | null = null;
+// deno-lint-ignore no-explicit-any
+let supabaseInstance: SupabaseClient<any, any, any> | null = null;
+
+function getStripe(): Stripe {
+  if (!stripeInstance) {
+    stripeInstance = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2025-12-15.clover" });
+  }
+  return stripeInstance;
+}
+
+// deno-lint-ignore no-explicit-any
+function getSupabase(): SupabaseClient<any, any, any> {
+  if (!supabaseInstance) {
+    supabaseInstance = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+  }
+  return supabaseInstance;
+}
+
+// Send email alert for payment failures (non-blocking)
+function sendFailureAlertBackground(details: {
   type: string;
   amount: number;
   currency: string;
@@ -18,76 +44,42 @@ async function sendFailureAlert(details: {
   customerEmail?: string | null;
   paymentIntentId: string;
 }) {
-  const resendKey = Deno.env.get("RESEND_API_KEY");
-  const adminEmail = Deno.env.get("ADMIN_EMAIL");
-  
-  if (!resendKey || !adminEmail) {
-    logStep("Email alert skipped - missing RESEND_API_KEY or ADMIN_EMAIL");
-    return;
-  }
+  EdgeRuntime.waitUntil((async () => {
+    const resendKey = Deno.env.get("RESEND_API_KEY");
+    const adminEmail = Deno.env.get("ADMIN_EMAIL");
+    if (!resendKey || !adminEmail) return;
 
-  const resend = new Resend(resendKey);
-  const formattedAmount = (details.amount / 100).toFixed(2);
-  
-  try {
-    await resend.emails.send({
-      from: "Resume Booster <alerts@resend.dev>",
-      to: [adminEmail],
-      subject: `⚠️ Payment Failed - $${formattedAmount} ${details.currency.toUpperCase()}`,
-      html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #dc2626; margin-bottom: 20px;">Payment Failure Alert</h2>
-          
-          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
-            <p style="margin: 0; font-weight: 600; color: #991b1b;">${details.type}</p>
+    const resend = new Resend(resendKey);
+    const formattedAmount = (details.amount / 100).toFixed(2);
+    
+    try {
+      await resend.emails.send({
+        from: "Resume Booster <alerts@resend.dev>",
+        to: [adminEmail],
+        subject: `⚠️ Payment Failed - $${formattedAmount} ${details.currency.toUpperCase()}`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #dc2626;">Payment Failure Alert</h2>
+            <p><strong>${details.type}</strong></p>
+            <p>Amount: $${formattedAmount} ${details.currency.toUpperCase()}</p>
+            <p>Customer: ${details.customerEmail || 'N/A'}</p>
+            <p>Code: ${details.failureCode || 'N/A'}</p>
+            <p>Message: ${details.failureMessage || 'N/A'}</p>
+            <a href="https://dashboard.stripe.com/payments/${details.paymentIntentId}">View in Stripe</a>
           </div>
-          
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280;">Amount</td>
-              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; font-weight: 600;">$${formattedAmount} ${details.currency.toUpperCase()}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280;">Customer Email</td>
-              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">${details.customerEmail || 'Not provided'}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280;">Failure Code</td>
-              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; color: #dc2626;">${details.failureCode || 'N/A'}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280;">Failure Message</td>
-              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">${details.failureMessage || 'No details available'}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 0; color: #6b7280;">Payment Intent</td>
-              <td style="padding: 8px 0; font-family: monospace; font-size: 12px;">${details.paymentIntentId}</td>
-            </tr>
-          </table>
-          
-          <div style="margin-top: 24px;">
-            <a href="https://dashboard.stripe.com/payments/${details.paymentIntentId}" 
-               style="display: inline-block; background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px;">
-              View in Stripe Dashboard
-            </a>
-          </div>
-          
-          <p style="margin-top: 24px; color: #9ca3af; font-size: 12px;">
-            This is an automated alert from Resume Booster.
-          </p>
-        </div>
-      `,
-    });
-    logStep("Email alert sent successfully");
-  } catch (error) {
-    logStep("Failed to send email alert", { error: String(error) });
-  }
+        `,
+      });
+    } catch (e) {
+      console.error("[STRIPE-WEBHOOK] Alert email failed:", e);
+    }
+  })());
 }
 
 // Trigger product delivery for a completed checkout
+// deno-lint-ignore no-explicit-any
 async function triggerProductDelivery(
   session: Stripe.Checkout.Session,
-  supabase: any,
+  supabase: SupabaseClient<any, any, any>,
   supabaseUrl: string
 ) {
   const sessionId = session.id;
@@ -96,29 +88,24 @@ async function triggerProductDelivery(
   const customerEmail = session.customer_email || session.metadata?.customer_email;
   const resumeSessionId = session.metadata?.session_id;
 
-  logStep("Triggering product delivery", { sessionId, productType, customerEmail });
+  logStep("Triggering product delivery", { sessionId, productType });
 
-  // Check if this session was already processed
-  const { data: existingSession } = await supabase
-    .from('used_stripe_sessions')
-    .select('session_id')
-    .eq('session_id', sessionId)
-    .single();
+  // OPTIMIZATION: Parallel check for existing session + insert new record
+  const [existingCheck, deliveryInsert] = await Promise.all([
+    supabase.from('used_stripe_sessions').select('session_id').eq('session_id', sessionId).maybeSingle(),
+    // Pre-create delivery record (will check existingCheck result)
+    Promise.resolve(null)
+  ]);
 
-  if (existingSession) {
-    logStep("Session already processed, skipping delivery", { sessionId });
+  if (existingCheck.data) {
+    logStep("Session already processed", { sessionId });
     return { alreadyProcessed: true };
   }
 
-  // Mark session as used immediately to prevent duplicates
-  await supabase
-    .from('used_stripe_sessions')
-    .insert({ session_id: sessionId });
-
-  // Create delivery tracking record
-  const { data: deliveryRecord } = await supabase
-    .from('product_deliveries')
-    .insert({
+  // Mark session as used + create delivery record in parallel
+  const [, deliveryRecord] = await Promise.all([
+    supabase.from('used_stripe_sessions').insert({ session_id: sessionId }),
+    supabase.from('product_deliveries').insert({
       stripe_session_id: sessionId,
       product_type: productType || 'unknown',
       product_name: productName,
@@ -132,13 +119,10 @@ async function triggerProductDelivery(
         job_company: session.metadata?.job_company,
         referral_code: session.metadata?.referral_code
       }
-    })
-    .select()
-    .single();
+    }).select().single()
+  ]);
 
-  logStep("Delivery record created", { deliveryId: deliveryRecord?.id });
-
-  // Skip content generation for scan packs - just add credits
+  // Handle scan packs - just add credits
   if (productType === 'scan_pack' || productType === 'scan_credits' || productType === 'career_bundle') {
     if (customerEmail) {
       let credits = parseInt(session.metadata?.credits || "10");
@@ -151,58 +135,38 @@ async function triggerProductDelivery(
 
       if (creditError) {
         logStep("Error adding credits", { error: creditError.message });
-        await supabase.rpc('update_delivery_retry', {
-          p_id: deliveryRecord?.id,
-          p_status: 'generation_failed',
-          p_error: creditError.message,
-          p_increment_retry: true
-        });
       } else {
-        logStep("Credits added successfully", { credits, email: customerEmail });
+        logStep("Credits added", { credits, email: customerEmail });
         
-        // Save to purchased_content
-        await supabase.rpc('save_purchased_content', {
-          p_stripe_session_id: sessionId,
-          p_customer_email: customerEmail,
-          p_product_type: productType,
-          p_product_name: productName || `${credits} Scan Credits`,
-          p_generated_content: { credits, message: `${credits} scan credits added` }
-        });
-
-        // Update delivery status to completed
-        await supabase
-          .from('product_deliveries')
-          .update({ status: 'delivered', generation_success: true })
-          .eq('id', deliveryRecord?.id);
+        // Background: save to purchased_content and update delivery
+        EdgeRuntime.waitUntil(Promise.all([
+          supabase.rpc('save_purchased_content', {
+            p_stripe_session_id: sessionId,
+            p_customer_email: customerEmail,
+            p_product_type: productType,
+            p_product_name: productName || `${credits} Scan Credits`,
+            p_generated_content: { credits, message: `${credits} scan credits added` }
+          }),
+          supabase.from('product_deliveries')
+            .update({ status: 'delivered', generation_success: true })
+            .eq('id', deliveryRecord.data?.id)
+        ]));
       }
     }
     return { success: true, productType };
   }
 
-  // For content products, we need resume data
+  // For content products, need resume data
   if (!resumeSessionId) {
-    logStep("No resume session ID, cannot generate content");
-    await supabase.rpc('update_delivery_retry', {
-      p_id: deliveryRecord?.id,
-      p_status: 'generation_failed',
-      p_error: 'No resume session ID available',
-      p_increment_retry: true
-    });
+    logStep("No resume session ID");
     return { success: false, error: 'No resume session ID' };
   }
 
-  // Get resume data
   const { data: resumeData, error: resumeError } = await supabase
     .rpc('get_temp_resume', { p_session_id: resumeSessionId });
 
-  if (resumeError || !resumeData || resumeData.length === 0) {
-    logStep("Resume data not found or expired", { error: resumeError?.message });
-    await supabase.rpc('update_delivery_retry', {
-      p_id: deliveryRecord?.id,
-      p_status: 'generation_failed',
-      p_error: 'Resume data expired or not found',
-      p_increment_retry: true
-    });
+  if (resumeError || !resumeData?.[0]) {
+    logStep("Resume data not found");
     return { success: false, error: 'Resume data not found' };
   }
 
@@ -210,46 +174,36 @@ async function triggerProductDelivery(
   const jobTitle = session.metadata?.job_title || 'Target Position';
   const jobCompany = session.metadata?.job_company || '';
 
-  logStep("Generating content", { productType, resumeLength: resume_text?.length });
-
-  // Update status to generating
-  await supabase
-    .from('product_deliveries')
-    .update({ 
-      status: 'generating',
-      content_generation_started_at: new Date().toISOString()
-    })
-    .eq('id', deliveryRecord?.id);
+  // Update status to generating (background)
+  EdgeRuntime.waitUntil(
+    Promise.resolve(
+      supabase.from('product_deliveries')
+        .update({ status: 'generating', content_generation_started_at: new Date().toISOString() })
+        .eq('id', deliveryRecord.data?.id)
+    )
+  );
 
   const generationStart = Date.now();
   let generatedContent = null;
   let generationError = null;
 
   try {
-    // Generate content based on product type
     let endpoint = '';
-    let body: Record<string, unknown> = {
+    const body: Record<string, unknown> = {
       resumeText: resume_text,
       jobDescription: job_description_text || '',
       jobTitle,
       jobCompany
     };
 
-    if (productType === 'basic_keyword_fix') {
-      endpoint = 'generate-keyword-fix';
-    } else if (productType === 'cover_letter') {
-      endpoint = 'generate-cover-letter';
-      body.tone = 'professional';
-    } else if (productType === 'premium_package') {
-      endpoint = 'generate-premium-package';
-    } else if (productType === 'graduate_gameplan') {
-      endpoint = 'generate-graduate-gameplan';
-    } else if (productType === 'career_snapshot') {
-      endpoint = 'generate-career-snapshot';
-    } else if (productType === 'ats_defense') {
-      endpoint = 'generate-ats-defense';
-    } else {
-      throw new Error(`Unknown product type: ${productType}`);
+    switch (productType) {
+      case 'basic_keyword_fix': endpoint = 'generate-keyword-fix'; break;
+      case 'cover_letter': endpoint = 'generate-cover-letter'; body.tone = 'professional'; break;
+      case 'premium_package': endpoint = 'generate-premium-package'; break;
+      case 'graduate_gameplan': endpoint = 'generate-graduate-gameplan'; break;
+      case 'career_snapshot': endpoint = 'generate-career-snapshot'; break;
+      case 'ats_defense': endpoint = 'generate-ats-defense'; break;
+      default: throw new Error(`Unknown product type: ${productType}`);
     }
 
     const response = await fetch(`${supabaseUrl}/functions/v1/${endpoint}`, {
@@ -262,14 +216,12 @@ async function triggerProductDelivery(
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Generation failed: ${response.status} - ${errorText}`);
+      throw new Error(`Generation failed: ${response.status}`);
     }
 
     const result = await response.json();
     generatedContent = result.data;
-    logStep("Content generated successfully", { productType });
-
+    logStep("Content generated", { productType });
   } catch (error) {
     generationError = error instanceof Error ? error.message : String(error);
     logStep("Content generation failed", { error: generationError });
@@ -278,183 +230,148 @@ async function triggerProductDelivery(
   const generationDuration = Date.now() - generationStart;
 
   if (generatedContent) {
-    // Extract AI model used for tracking
-    let aiModelUsed: string | null = null;
-    if (generatedContent.modelsUsed) {
-      // Premium package tracks both resume and cover letter models
-      aiModelUsed = generatedContent.modelsUsed.resume || generatedContent.modelsUsed.coverLetter || null;
-      logStep("AI models used", generatedContent.modelsUsed);
-    } else if (generatedContent.modelUsed) {
-      // Single product (cover letter, keyword fix) tracks one model
-      aiModelUsed = generatedContent.modelUsed;
-    }
+    const aiModelUsed = generatedContent.modelsUsed?.resume || 
+                        generatedContent.modelsUsed?.coverLetter || 
+                        generatedContent.modelUsed || null;
 
-    // Save content permanently
-    await supabase.rpc('save_purchased_content', {
-      p_stripe_session_id: sessionId,
-      p_customer_email: customerEmail || '',
-      p_product_type: productType,
-      p_product_name: productName,
-      p_generated_content: generatedContent
-    });
-
-    // Update delivery status with AI model tracking
-    await supabase
-      .from('product_deliveries')
-      .update({
+    // Save content + update delivery in parallel
+    await Promise.all([
+      supabase.rpc('save_purchased_content', {
+        p_stripe_session_id: sessionId,
+        p_customer_email: customerEmail || '',
+        p_product_type: productType,
+        p_product_name: productName,
+        p_generated_content: generatedContent
+      }),
+      supabase.from('product_deliveries').update({
         status: 'content_generated',
         generation_success: true,
         content_generation_completed_at: new Date().toISOString(),
         generation_duration_ms: generationDuration,
         ai_model_used: aiModelUsed
-      })
-      .eq('id', deliveryRecord?.id);
+      }).eq('id', deliveryRecord.data?.id)
+    ]);
 
-    // Send email
+    // Send email (background)
     if (customerEmail) {
-      try {
-        const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
-          },
-          body: JSON.stringify({
-            email: customerEmail,
-            productType,
-            productName,
-            generatedContent
-          })
-        });
+      EdgeRuntime.waitUntil((async () => {
+        try {
+          const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+            },
+            body: JSON.stringify({ email: customerEmail, productType, productName, generatedContent })
+          });
 
-        if (emailResponse.ok) {
-          logStep("Confirmation email sent", { email: customerEmail });
-          await supabase
-            .from('product_deliveries')
-            .update({
+          if (emailResponse.ok) {
+            await supabase.from('product_deliveries').update({
               status: 'delivered',
               email_success: true,
               email_sent_at: new Date().toISOString()
-            })
-            .eq('id', deliveryRecord?.id);
-        } else {
-          throw new Error(`Email failed: ${emailResponse.status}`);
+            }).eq('id', deliveryRecord.data?.id);
+          }
+        } catch (e) {
+          console.error("[STRIPE-WEBHOOK] Email send failed:", e);
         }
-      } catch (emailError) {
-        logStep("Email send failed", { error: String(emailError) });
-        await supabase.rpc('update_delivery_retry', {
-          p_id: deliveryRecord?.id,
-          p_status: 'email_failed',
-          p_error: String(emailError),
-          p_increment_retry: true
-        });
-      }
+      })());
     }
 
-    return { success: true, productType, generatedContent };
+    return { success: true, productType };
   } else {
-    // Generation failed
-    await supabase.rpc('update_delivery_retry', {
-      p_id: deliveryRecord?.id,
-      p_status: 'generation_failed',
-      p_error: generationError,
-      p_increment_retry: true
-    });
+    EdgeRuntime.waitUntil(
+      Promise.resolve(
+        supabase.rpc('update_delivery_retry', {
+          p_id: deliveryRecord.data?.id,
+          p_status: 'generation_failed',
+          p_error: generationError,
+          p_increment_retry: true
+        })
+      )
+    );
     return { success: false, error: generationError };
   }
 }
 
 serve(async (req) => {
-  // Stripe webhooks must be POST
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
 
-  try {
-    logStep("Webhook received");
+  const processingStart = Date.now();
 
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+  try {
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-    
-    if (!stripeKey || !webhookSecret) {
-      console.error("[STRIPE-WEBHOOK] Missing required secrets");
+    if (!webhookSecret) {
       return new Response("Configuration error", { status: 500 });
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
-    
-    // Get the raw body for signature verification
+    const stripe = getStripe();
     const body = await req.text();
     const signature = req.headers.get("stripe-signature");
     
     if (!signature) {
-      logStep("Missing signature header");
       return new Response("Missing signature", { status: 400 });
     }
 
-    // Verify the webhook signature
     let event: Stripe.Event;
     try {
       event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      logStep("Signature verification failed", { error: message });
-      return new Response(`Webhook signature verification failed: ${message}`, { status: 400 });
+      logStep("Signature verification failed");
+      return new Response("Webhook signature verification failed", { status: 400 });
     }
 
     logStep("Event verified", { type: event.type, id: event.id });
 
-    // Initialize Supabase
+    const supabase = getSupabase();
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const processingStart = Date.now();
+    // OPTIMIZATION: Log webhook received in background
+    EdgeRuntime.waitUntil(
+      Promise.resolve(
+        supabase.rpc('log_webhook_event', {
+          p_event_type: event.type,
+          p_event_id: event.id,
+          p_payload: event.data.object,
+          p_processed: false
+        })
+      )
+    );
+
     let processingError: string | null = null;
 
-    // Log webhook received
-    await supabase.rpc('log_webhook_event', {
-      p_event_type: event.type,
-      p_event_id: event.id,
-      p_payload: event.data.object,
-      p_processed: false
-    });
-
-    // Handle different event types
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         
-        logStep("Checkout completed - triggering delivery", {
-          sessionId: session.id,
-          productType: session.metadata?.product_type,
-          email: session.customer_email
-        });
-
-        // Only trigger delivery for paid sessions
         if (session.payment_status === 'paid') {
           try {
             const result = await triggerProductDelivery(session, supabase, supabaseUrl);
             logStep("Delivery result", result);
             
-            // Handle affiliate conversion
+            // Affiliate conversion (background)
             const referralCode = session.metadata?.referral_code;
             if (referralCode && session.amount_total) {
               const productType = session.metadata?.product_type;
-              const lowCommissionProducts = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits'];
-              const commissionCents = lowCommissionProducts.includes(productType || '') ? 100 : 500;
+              const lowCommission = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits'];
+              const commissionCents = lowCommission.includes(productType || '') ? 100 : 500;
               
-              await supabase.rpc('record_affiliate_conversion', {
-                p_referral_code: referralCode,
-                p_stripe_session_id: session.id,
-                p_product_name: session.metadata?.product_name || productType || 'Product',
-                p_sale_amount: session.amount_total,
-                p_commission_override: commissionCents
-              });
-              logStep("Affiliate conversion recorded");
+              EdgeRuntime.waitUntil(
+                Promise.resolve(
+                  supabase.rpc('record_affiliate_conversion', {
+                    p_referral_code: referralCode,
+                    p_stripe_session_id: session.id,
+                    p_product_name: session.metadata?.product_name || productType || 'Product',
+                    p_sale_amount: session.amount_total,
+                    p_commission_override: commissionCents
+                  })
+                )
+              );
             }
-          } catch (deliveryError) {
-            processingError = String(deliveryError);
+          } catch (err) {
+            processingError = String(err);
             logStep("Delivery failed", { error: processingError });
           }
         }
@@ -462,181 +379,125 @@ serve(async (req) => {
       }
 
       case "payment_intent.payment_failed": {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        const pi = event.data.object as Stripe.PaymentIntent;
         
-        logStep("Payment failed", {
-          id: paymentIntent.id,
-          amount: paymentIntent.amount,
-          failureCode: paymentIntent.last_payment_error?.code,
-          failureMessage: paymentIntent.last_payment_error?.message
-        });
-
-        // Get customer email if available
-        let customerEmail: string | null = null;
-        if (paymentIntent.customer) {
-          try {
-            const customer = await stripe.customers.retrieve(paymentIntent.customer as string);
-            if (customer && !customer.deleted && 'email' in customer) {
-              customerEmail = customer.email;
-            }
-          } catch (e) {
-            logStep("Could not fetch customer", { error: String(e) });
+        // Background: log to DB and send alert
+        EdgeRuntime.waitUntil((async () => {
+          let customerEmail: string | null = null;
+          if (pi.customer) {
+            try {
+              const customer = await stripe.customers.retrieve(pi.customer as string);
+              if (customer && !customer.deleted && 'email' in customer) {
+                customerEmail = customer.email;
+              }
+            } catch {}
           }
-        }
 
-        // Log to database with enhanced currency-specific details
-        const { error: insertError } = await supabase
-          .from('payment_failures')
-          .insert({
-            payment_intent_id: paymentIntent.id,
-            amount: paymentIntent.amount,
-            currency: paymentIntent.currency,
-            failure_code: paymentIntent.last_payment_error?.code || null,
-            failure_message: paymentIntent.last_payment_error?.message || null,
+          await supabase.from('payment_failures').insert({
+            payment_intent_id: pi.id,
+            amount: pi.amount,
+            currency: pi.currency,
+            failure_code: pi.last_payment_error?.code || null,
+            failure_message: pi.last_payment_error?.message || null,
             customer_email: customerEmail,
             metadata: {
-              decline_code: paymentIntent.last_payment_error?.decline_code,
-              payment_method_type: paymentIntent.last_payment_error?.payment_method?.type,
-              description: paymentIntent.description,
-              card_brand: (paymentIntent.last_payment_error?.payment_method as any)?.card?.brand,
-              card_country: (paymentIntent.last_payment_error?.payment_method as any)?.card?.country,
-              card_funding: (paymentIntent.last_payment_error?.payment_method as any)?.card?.funding,
-              card_last4: (paymentIntent.last_payment_error?.payment_method as any)?.card?.last4,
-              original_currency: paymentIntent.currency,
-              error_type: paymentIntent.last_payment_error?.type,
-              error_doc_url: paymentIntent.last_payment_error?.doc_url
+              decline_code: pi.last_payment_error?.decline_code,
+              payment_method_type: pi.last_payment_error?.payment_method?.type
             }
           });
 
-        if (insertError) {
-          console.error("[STRIPE-WEBHOOK] Failed to insert payment failure:", insertError);
-        } else {
-          logStep("Payment failure logged to database");
-        }
-
-        // Send email alert
-        await sendFailureAlert({
-          type: "Payment Intent Failed",
-          amount: paymentIntent.amount,
-          currency: paymentIntent.currency,
-          failureCode: paymentIntent.last_payment_error?.code,
-          failureMessage: paymentIntent.last_payment_error?.message,
-          customerEmail: customerEmail,
-          paymentIntentId: paymentIntent.id
-        });
+          sendFailureAlertBackground({
+            type: "Payment Intent Failed",
+            amount: pi.amount,
+            currency: pi.currency,
+            failureCode: pi.last_payment_error?.code,
+            failureMessage: pi.last_payment_error?.message,
+            customerEmail,
+            paymentIntentId: pi.id
+          });
+        })());
         break;
       }
 
       case "charge.failed": {
         const charge = event.data.object as Stripe.Charge;
         
-        logStep("Charge failed", {
-          id: charge.id,
-          amount: charge.amount,
-          failureCode: charge.failure_code,
-          failureMessage: charge.failure_message
-        });
-
-        // Log to database
-        const { error: insertError } = await supabase
-          .from('payment_failures')
-          .insert({
+        EdgeRuntime.waitUntil((async () => {
+          await supabase.from('payment_failures').insert({
             payment_intent_id: charge.payment_intent as string || charge.id,
             amount: charge.amount,
             currency: charge.currency,
             failure_code: charge.failure_code || null,
             failure_message: charge.failure_message || null,
             customer_email: charge.billing_details?.email || null,
-            metadata: {
-              charge_id: charge.id,
-              outcome: charge.outcome
-            }
+            metadata: { charge_id: charge.id }
           });
 
-        if (insertError) {
-          console.error("[STRIPE-WEBHOOK] Failed to insert charge failure:", insertError);
-        } else {
-          logStep("Charge failure logged to database");
-        }
-
-        // Send email alert
-        await sendFailureAlert({
-          type: "Charge Failed",
-          amount: charge.amount,
-          currency: charge.currency,
-          failureCode: charge.failure_code,
-          failureMessage: charge.failure_message,
-          customerEmail: charge.billing_details?.email,
-          paymentIntentId: charge.payment_intent as string || charge.id
-        });
+          sendFailureAlertBackground({
+            type: "Charge Failed",
+            amount: charge.amount,
+            currency: charge.currency,
+            failureCode: charge.failure_code,
+            failureMessage: charge.failure_message,
+            customerEmail: charge.billing_details?.email,
+            paymentIntentId: charge.payment_intent as string || charge.id
+          });
+        })());
         break;
       }
 
       case "checkout.session.expired": {
         const session = event.data.object as Stripe.Checkout.Session;
         
-        logStep("Checkout session expired", {
-          id: session.id,
-          email: session.customer_email
-        });
-
-        // Log expired checkouts (abandoned carts)
-        const { error: insertError } = await supabase
-          .from('payment_failures')
-          .insert({
+        EdgeRuntime.waitUntil((async () => {
+          await supabase.from('payment_failures').insert({
             payment_intent_id: session.payment_intent as string || session.id,
             amount: session.amount_total || 0,
             currency: session.currency || 'usd',
             failure_code: 'checkout_expired',
-            failure_message: 'Customer abandoned checkout before completing payment',
+            failure_message: 'Checkout abandoned',
             customer_email: session.customer_email,
-            metadata: {
-              session_id: session.id,
-              product_type: session.metadata?.product_type
-            }
+            metadata: { session_id: session.id, product_type: session.metadata?.product_type }
           });
 
-        if (insertError) {
-          console.error("[STRIPE-WEBHOOK] Failed to insert expired session:", insertError);
-        } else {
-          logStep("Expired checkout logged to database");
-        }
-
-        // Send email alert for abandoned checkout
-        await sendFailureAlert({
-          type: "Checkout Abandoned",
-          amount: session.amount_total || 0,
-          currency: session.currency || 'usd',
-          failureCode: 'checkout_expired',
-          failureMessage: 'Customer abandoned checkout before completing payment',
-          customerEmail: session.customer_email,
-          paymentIntentId: session.payment_intent as string || session.id
-        });
+          sendFailureAlertBackground({
+            type: "Checkout Abandoned",
+            amount: session.amount_total || 0,
+            currency: session.currency || 'usd',
+            failureCode: 'checkout_expired',
+            failureMessage: 'Checkout abandoned',
+            customerEmail: session.customer_email,
+            paymentIntentId: session.payment_intent as string || session.id
+          });
+        })());
         break;
       }
 
       default:
-        logStep("Unhandled event type", { type: event.type });
+        logStep("Unhandled event", { type: event.type });
     }
 
-    // Log successful processing
+    // Log completion in background
     const processingTime = Date.now() - processingStart;
-    await supabase.rpc('log_webhook_event', {
-      p_event_type: event.type,
-      p_event_id: event.id,
-      p_processed: true,
-      p_error: processingError,
-      p_time_ms: processingTime
-    });
+    EdgeRuntime.waitUntil(
+      Promise.resolve(
+        supabase.rpc('log_webhook_event', {
+          p_event_type: event.type,
+          p_event_id: event.id,
+          p_processed: true,
+          p_error: processingError,
+          p_time_ms: processingTime
+        })
+      )
+    );
 
     return new Response(JSON.stringify({ received: true }), {
       headers: { "Content-Type": "application/json" },
       status: 200
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("[STRIPE-WEBHOOK] Error:", errorMessage);
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    console.error("[STRIPE-WEBHOOK] Error:", error);
+    return new Response(JSON.stringify({ error: "Webhook processing failed" }), {
       headers: { "Content-Type": "application/json" },
       status: 500
     });

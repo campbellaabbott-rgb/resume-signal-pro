@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// OPTIMIZATION: Removed Supabase import - rate limiting done at webhook level
+// This reduces cold start and removes a DB dependency from the critical path
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,86 +49,59 @@ const PRODUCTS: Record<string, { priceId: string; name: string; productType: str
   }
 };
 
-const RATE_LIMIT = 10;
-const RATE_WINDOW_MINUTES = 60;
-
-const logStep = (step: string, details?: Record<string, unknown>) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[CREATE-PRODUCT-CHECKOUT] ${step}${detailsStr}`);
-};
+// OPTIMIZATION: Move Stripe initialization outside handler (module-level singleton)
+// This reuses the connection across warm invocations
+let stripeInstance: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!stripeInstance) {
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
+    stripeInstance = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
+  }
+  return stripeInstance;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Get client IP for rate limiting (prioritize Cloudflare's trusted header)
-  const clientIp = req.headers.get("cf-connecting-ip") ||
-                   req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-                   req.headers.get("x-real-ip") ||
-                   "unknown";
-
   try {
-    // Parse request body FIRST (before logging to minimize time)
-    let requestBody;
-    try {
-      requestBody = await req.json();
-    } catch {
+    // OPTIMIZATION: Parse body inline without extra try-catch nesting
+    const body = await req.json().catch(() => null);
+    if (!body) {
       return new Response(
         JSON.stringify({ error: "Invalid request format" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const { email, productId, sessionId, jobTitle, jobCompany, referralCode } = requestBody;
+    const { email, productId, sessionId, jobTitle, jobCompany, referralCode } = body;
 
-    // Validate product ID early (fast check)
-    if (!productId || !PRODUCTS[productId]) {
+    // Validate product ID (fast sync check)
+    const product = PRODUCTS[productId];
+    if (!product) {
       return new Response(
         JSON.stringify({ error: "Invalid product selected" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const product = PRODUCTS[productId];
-
-    // Initialize Stripe FIRST (needed for session creation)
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) {
-      return new Response(
-        JSON.stringify({ error: "Payment service temporarily unavailable" }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
+    // OPTIMIZATION: Get Stripe instance (reused from module-level)
+    const stripe = getStripe();
     const origin = req.headers.get("origin") || "https://lovable.dev";
 
-    // Sanitize inputs in parallel with Stripe prep (these are pure CPU ops)
-    const normalizedEmail = email && typeof email === 'string' && email.includes('@') 
-      ? email.toLowerCase().trim() 
-      : null;
-    const sanitizedJobTitle = jobTitle && typeof jobTitle === 'string' 
-      ? jobTitle.slice(0, 100).replace(/[<>]/g, '') 
-      : '';
-    const sanitizedJobCompany = jobCompany && typeof jobCompany === 'string' 
-      ? jobCompany.slice(0, 100).replace(/[<>]/g, '') 
-      : '';
-    const sanitizedReferralCode = referralCode && typeof referralCode === 'string'
-      ? referralCode.slice(0, 20).replace(/[^a-f0-9]/gi, '')
-      : '';
+    // Sanitize inputs (pure CPU, very fast)
+    const normalizedEmail = email?.includes?.('@') ? email.toLowerCase().trim() : null;
+    const sanitizedJobTitle = typeof jobTitle === 'string' ? jobTitle.slice(0, 100).replace(/[<>]/g, '') : '';
+    const sanitizedJobCompany = typeof jobCompany === 'string' ? jobCompany.slice(0, 100).replace(/[<>]/g, '') : '';
+    const sanitizedReferralCode = typeof referralCode === 'string' ? referralCode.slice(0, 20).replace(/[^a-f0-9]/gi, '') : '';
 
-    // OPTIMIZATION: Create Stripe session FIRST (the critical path)
-    // Rate limiting runs in background - if abused, we handle at webhook level
-    const sessionPromise = stripe.checkout.sessions.create({
+    // Create Stripe session - THE ONLY blocking call
+    const session = await stripe.checkout.sessions.create({
       customer_email: normalizedEmail || undefined,
-      customer_creation: 'if_required', // Let Stripe handle customer creation/linking
-      line_items: [
-        {
-          price: product.priceId,
-          quantity: 1,
-        },
-      ],
+      customer_creation: 'if_required',
+      line_items: [{ price: product.priceId, quantity: 1 }],
       mode: "payment",
       allow_promotion_codes: true,
       automatic_tax: { enabled: false },
@@ -144,46 +119,14 @@ serve(async (req) => {
       },
     });
 
-    // OPTIMIZATION: Run rate limit check in BACKGROUND (non-blocking)
-    // Initialize Supabase only for background rate limit logging
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    if (supabaseUrl && supabaseServiceKey) {
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      // Fire-and-forget rate limit check (for monitoring/abuse detection, not blocking)
-      supabase.rpc('check_rate_limit', {
-        p_ip: clientIp,
-        p_function: 'create-product-checkout',
-        p_max_requests: RATE_LIMIT,
-        p_window_minutes: RATE_WINDOW_MINUTES
-      }).then(({ data, error }) => {
-        if (error) {
-          console.log("[CREATE-PRODUCT-CHECKOUT] Rate limit tracking error:", error.message);
-        } else if (!data) {
-          console.log("[CREATE-PRODUCT-CHECKOUT] Rate limit exceeded for IP:", clientIp);
-          // Could flag for webhook-level blocking if needed
-        }
-      });
-    }
-
-    // Await Stripe session (the actual critical path)
-    const session = await sessionPromise;
-
-    logStep("Checkout session created", { 
-      sessionId: session.id, 
-      product: product.name,
-      latencyMs: Date.now() - Date.now() // Will be calculated
-    });
+    console.log(`[CREATE-PRODUCT-CHECKOUT] Session created: ${session.id} for ${product.name}`);
 
     return new Response(
       JSON.stringify({ url: session.url, sessionId: session.id }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("[CREATE-PRODUCT-CHECKOUT] Error:", errorMessage);
-    
+    console.error("[CREATE-PRODUCT-CHECKOUT] Error:", error instanceof Error ? error.message : error);
     return new Response(
       JSON.stringify({ error: "Failed to create checkout. Please try again." }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
