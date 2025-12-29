@@ -275,11 +275,8 @@ export async function callEdgeFunctionWithRetry<T = unknown>(
       const totalDuration = Date.now() - startTime;
       console.log(`[EdgeFunction] ${functionName} succeeded after ${attempts} attempt(s) in ${totalDuration}ms`);
 
-      // Log success telemetry
-      if (enableTelemetry) {
-        const eventType = attempts === 1 ? 'first_attempt_success' : 'retry_success';
-        logRetryTelemetry(functionName, eventType, attempts, maxRetries, totalDuration);
-      }
+      // NOTE: Don't log success telemetry to error_telemetry table
+      // Success events were incorrectly being logged there and showing as "errors" in dashboard
 
       return {
         data,
