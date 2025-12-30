@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
+import { detectIndustry, formatDetectionForPrompt } from "./industry-detection.ts";
 
 // Metric tracking - logs to scan_metrics table for dashboard visibility
 interface ScanMetricContext {
@@ -512,7 +513,18 @@ serve(async (req) => {
     const hasJobDescription = jobDescriptionText && typeof jobDescriptionText === 'string' && jobDescriptionText.trim().length > 50;
     const truncatedJobDescription = hasJobDescription ? jobDescriptionText.substring(0, MAX_JOB_DESCRIPTION_LENGTH) : null;
 
+    // Run server-side industry detection BEFORE AI call
+    console.log("[FREE-KEYWORD-SCAN] Running server-side industry detection...");
+    const industryDetection = detectIndustry(resumeText);
+    console.log(`[FREE-KEYWORD-SCAN] Pre-detected industry: ${industryDetection.industry} (confidence: ${industryDetection.confidence}, score: ${industryDetection.score.toFixed(1)})`);
+    console.log(`[FREE-KEYWORD-SCAN] Signals: ${industryDetection.signals.slice(0, 3).join(', ')}`);
+    
+    // Format detection result for AI prompt
+    const industryHint = formatDetectionForPrompt(industryDetection);
+
     const systemPrompt = `You are an expert ATS resume analyst and career coach with FULL MULTILINGUAL capabilities. Your role is to provide ACCURATE, EVIDENCE-BASED feedback that respects the candidate's experience level while being genuinely helpful.
+
+${industryHint}
 
 **ACCURACY PRINCIPLES - YOUR TOP PRIORITIES:**
 
@@ -1149,15 +1161,49 @@ ${resumeText.substring(0, 15000)}
       console.log(`[FREE-KEYWORD-SCAN] Industry normalized: "${rawIndustry}" -> "${analysis.industry}"`);
     }
 
+    // Check if AI agreed with server detection
+    const serverAIMatch = analysis.industry === industryDetection.industry;
+    const serverAIParentMatch = analysis.industry === industryDetection.industry || 
+      industryDetection.alternativeIndustries.some(alt => alt.industry === analysis.industry);
+    
+    if (!serverAIMatch) {
+      console.log(`[FREE-KEYWORD-SCAN] Industry mismatch - Server: ${industryDetection.industry} vs AI: ${analysis.industry}`);
+    }
+
     // Ensure limits
     const keywords = (analysis.keywords || []).slice(0, 6);
     const redFlags = (analysis.redFlags || []).slice(0, 3);
 
     // Log core metrics only
-    console.log(`[FREE-KEYWORD-SCAN] Analysis: ATS=${analysis.atsScoreEstimate}, Industry="${analysis.industry}", ExpLevel=${analysis.experienceLevel?.level}`);
+    console.log(`[FREE-KEYWORD-SCAN] Analysis: ATS=${analysis.atsScoreEstimate}, Industry="${analysis.industry}", ExpLevel=${analysis.experienceLevel?.level}, ServerDetected="${industryDetection.industry}" (${industryDetection.confidence})`);
 
     const country = await getCountryCode(req, clientIp) || "Unknown";
     console.log(`[FREE-KEYWORD-SCAN] Success for IP: ${clientIp}, country: ${country}, industry: ${analysis.industry}`);
+
+    // Log industry detection metrics for monitoring/improvement (non-blocking)
+    EdgeRuntime.waitUntil(
+      (async () => {
+        try {
+          await supabase.rpc('log_industry_detection', {
+            p_resume_text_length: resumeText.length,
+            p_server_industry: industryDetection.industry,
+            p_server_confidence: industryDetection.confidence,
+            p_server_score: industryDetection.score,
+            p_server_signals: industryDetection.signals,
+            p_ai_suggested_industry: analysis.industry,
+            p_final_industry: analysis.industry, // AI takes precedence for now
+            p_final_confidence: industryDetection.confidence,
+            p_server_ai_match: serverAIMatch,
+            p_server_ai_parent_match: serverAIParentMatch,
+            p_alternative_industries: industryDetection.alternativeIndustries,
+            p_ip_country: country,
+            p_detection_source: 'server_with_ai_override'
+          });
+        } catch (err) {
+          console.error('[FREE-KEYWORD-SCAN] Failed to log industry detection:', err);
+        }
+      })()
+    );
 
     // Increment daily scan counter in background
     EdgeRuntime.waitUntil(
