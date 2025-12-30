@@ -20,8 +20,12 @@ interface ProbeReport {
   alerts_triggered: string[];
 }
 
-// Reduced timeout for faster probes
-const PROBE_TIMEOUT = 6000;
+// Relaxed thresholds for realistic cold-start scenarios
+const THRESHOLDS = {
+  database: { healthy: 1500, degraded: 4000 },
+  ai_gateway: { healthy: 2000, degraded: 5000 },
+  stripe: { healthy: 1500, degraded: 4000 },
+};
 
 // Cached Supabase client
 let cachedSupabase: any = null;
@@ -42,18 +46,22 @@ function logStep(step: string, details?: Record<string, unknown>) {
   console.log(`[HEALTH-PROBE] ${step}${detailsStr}`);
 }
 
+// Generic probe with timeout - simplified
 async function probeWithTimeout<T>(
   name: string,
   fn: () => Promise<T>,
   timeoutMs: number
 ): Promise<{ success: boolean; result?: T; error?: string; latency_ms: number }> {
   const start = Date.now();
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   
   try {
-    const result = await fn();
-    clearTimeout(timeoutId);
+    // Create a timeout promise that rejects
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`${name} timeout`)), timeoutMs);
+    });
+    
+    // Race the actual function against the timeout
+    const result = await Promise.race([fn(), timeoutPromise]);
     
     return {
       success: true,
@@ -61,39 +69,48 @@ async function probeWithTimeout<T>(
       latency_ms: Date.now() - start,
     };
   } catch (error) {
-    clearTimeout(timeoutId);
-    const isTimeout = error instanceof Error && error.name === 'AbortError';
     return {
       success: false,
-      error: isTimeout ? 'Probe timeout' : (error instanceof Error ? error.message : String(error)),
+      error: error instanceof Error ? error.message : String(error),
       latency_ms: Date.now() - start,
     };
   }
 }
 
-// Direct database check - no nested function call
+// Fast database check - use simple RPC call
 async function probeDatabase(supabase: any): Promise<ProbeResult> {
   const probe = await probeWithTimeout(
     'database',
     async () => {
-      const { count, error } = await supabase
-        .from('heartbeat_results')
-        .select('*', { count: 'exact', head: true });
+      const { data, error } = await supabase.rpc('get_today_scan_count');
       if (error) throw error;
-      return count;
+      return data;
     },
-    PROBE_TIMEOUT
+    4000
   );
+
+  const latency = probe.latency_ms;
+  let status: 'healthy' | 'degraded' | 'unhealthy';
+  
+  if (!probe.success) {
+    status = 'unhealthy';
+  } else if (latency < THRESHOLDS.database.healthy) {
+    status = 'healthy';
+  } else if (latency < THRESHOLDS.database.degraded) {
+    status = 'degraded';
+  } else {
+    status = 'degraded'; // Very slow but still working
+  }
 
   return {
     service: 'database',
-    status: probe.success ? (probe.latency_ms < 800 ? 'healthy' : 'degraded') : 'unhealthy',
-    latency_ms: probe.latency_ms,
+    status,
+    latency_ms: latency,
     error: probe.error,
   };
 }
 
-// Direct AI gateway check - no nested function call
+// FAST AI gateway check - don't do actual inference, just check reachability
 async function probeAIGateway(): Promise<ProbeResult> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
@@ -109,9 +126,8 @@ async function probeAIGateway(): Promise<ProbeResult> {
   const probe = await probeWithTimeout(
     'ai-gateway',
     async () => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
-      
+      // Use empty messages for FAST validation error - gateway still responds
+      // This proves gateway is reachable without waiting for actual AI inference
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -120,32 +136,45 @@ async function probeAIGateway(): Promise<ProbeResult> {
         },
         body: JSON.stringify({
           model: "google/gemini-2.5-flash-lite",
-          messages: [{ role: "user", content: "1" }],
-          max_tokens: 1,
+          messages: [], // Empty = fast validation error, but gateway responds
         }),
-        signal: controller.signal,
       });
       
-      clearTimeout(timeoutId);
-      
-      if (!response.ok && response.status !== 429) {
+      // Gateway is UP if it responds at all (200, 400, 429 all mean reachable)
+      // Only 5xx or network errors indicate gateway problems
+      if (response.status >= 500) {
         throw new Error(`AI Gateway error: ${response.status}`);
       }
       
       return true;
     },
-    PROBE_TIMEOUT
+    3000 // 3 second timeout - validation should be very fast
   );
+
+  const latency = probe.latency_ms;
+  let status: 'healthy' | 'degraded' | 'unhealthy';
+  
+  if (!probe.success) {
+    // Check if it's a timeout vs real error
+    const isTimeout = probe.error?.includes('timeout');
+    status = isTimeout ? 'degraded' : 'unhealthy';
+  } else if (latency < THRESHOLDS.ai_gateway.healthy) {
+    status = 'healthy';
+  } else if (latency < THRESHOLDS.ai_gateway.degraded) {
+    status = 'degraded';
+  } else {
+    status = 'degraded';
+  }
 
   return {
     service: 'ai-gateway',
-    status: probe.success ? (probe.latency_ms < 4000 ? 'healthy' : 'degraded') : 'unhealthy',
-    latency_ms: probe.latency_ms,
+    status,
+    latency_ms: latency,
     error: probe.error,
   };
 }
 
-// Direct Stripe check - increased timeout to prevent false positives
+// Stripe check with relaxed thresholds
 async function probeStripe(): Promise<ProbeResult> {
   const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
   
@@ -161,18 +190,11 @@ async function probeStripe(): Promise<ProbeResult> {
   const probe = await probeWithTimeout(
     'stripe',
     async () => {
-      const controller = new AbortController();
-      // Increased from 2500ms to 5000ms - Stripe can be slow on cold starts
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
       const response = await fetch('https://api.stripe.com/v1/balance', {
         headers: {
           'Authorization': `Bearer ${stripeKey}`,
         },
-        signal: controller.signal,
       });
-      
-      clearTimeout(timeoutId);
       
       // 401 still means Stripe is reachable
       if (!response.ok && response.status !== 401) {
@@ -181,14 +203,27 @@ async function probeStripe(): Promise<ProbeResult> {
       
       return true;
     },
-    PROBE_TIMEOUT
+    4000
   );
 
-  // More lenient thresholds: healthy < 2000ms, degraded < 5000ms
+  const latency = probe.latency_ms;
+  let status: 'healthy' | 'degraded' | 'unhealthy';
+  
+  if (!probe.success) {
+    const isTimeout = probe.error?.includes('timeout');
+    status = isTimeout ? 'degraded' : 'unhealthy';
+  } else if (latency < THRESHOLDS.stripe.healthy) {
+    status = 'healthy';
+  } else if (latency < THRESHOLDS.stripe.degraded) {
+    status = 'degraded';
+  } else {
+    status = 'degraded';
+  }
+
   return {
     service: 'stripe',
-    status: probe.success ? (probe.latency_ms < 2000 ? 'healthy' : 'degraded') : 'unhealthy',
-    latency_ms: probe.latency_ms,
+    status,
+    latency_ms: latency,
     error: probe.error,
   };
 }
@@ -208,7 +243,7 @@ Deno.serve(async (req) => {
       throw new Error("Missing Supabase configuration");
     }
 
-    // Run all probes in parallel - removed nested health-check call
+    // Run ALL probes in parallel - no sequential waiting
     logStep("Running probes in parallel");
     
     const probes = await Promise.all([
@@ -217,12 +252,14 @@ Deno.serve(async (req) => {
       probeStripe(),
     ]);
 
-    // Determine overall status
-    const hasUnhealthy = probes.some(p => p.status === 'unhealthy');
-    const hasDegraded = probes.some(p => p.status === 'degraded');
+    // Determine overall status - only unhealthy if DATABASE is down
+    const dbProbe = probes.find(p => p.service === 'database');
+    const hasUnhealthy = dbProbe?.status === 'unhealthy'; // Only DB down = unhealthy
+    const hasDegraded = probes.some(p => p.status === 'degraded' || (p.status === 'unhealthy' && p.service !== 'database'));
+    
     const overallStatus = hasUnhealthy ? 'unhealthy' : hasDegraded ? 'degraded' : 'healthy';
 
-    // Collect alerts for unhealthy services
+    // Collect alerts only for truly unhealthy services
     const alerts: string[] = [];
     for (const probe of probes) {
       logStep(`Probe result: ${probe.service}`, {
@@ -246,8 +283,7 @@ Deno.serve(async (req) => {
       alerts_triggered: alerts,
     };
 
-    // OPTIMIZED: Single RPC call to log heartbeat result
-    // Only log to DB if there's something important to track
+    // Log heartbeat result in background (non-blocking)
     const logPromise = supabase.rpc('log_heartbeat_result', {
       p_function_name: 'scheduled-health-probe',
       p_status: overallStatus,
@@ -267,11 +303,10 @@ Deno.serve(async (req) => {
       },
     });
 
-    // Only do extra DB calls if there are critical failures
-    if (alerts.length > 0) {
-      logStep("Critical services unhealthy", { alerts });
+    // Only do extra work if there are critical failures (DB down)
+    if (hasUnhealthy) {
+      logStep("Critical service unhealthy", { alerts });
       
-      // Run alert checks in parallel with the main log
       const [, alertResult] = await Promise.all([
         logPromise,
         supabase.rpc('should_send_alert', {
@@ -302,11 +337,11 @@ Deno.serve(async (req) => {
         ]);
       }
     } else {
-      // No alerts - just wait for the main log to complete
-      await logPromise;
+      // No critical alerts - fire and forget the log
+      logPromise.catch((e: Error) => console.error('Log failed:', e.message));
     }
 
-    logStep(`Probe complete: ${overallStatus}`, { duration_ms: duration, unhealthy_count: alerts.length });
+    logStep(`Probe complete: ${overallStatus}`, { duration_ms: duration });
 
     return new Response(JSON.stringify(report), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

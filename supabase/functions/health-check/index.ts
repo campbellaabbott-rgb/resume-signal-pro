@@ -26,9 +26,9 @@ interface CheckResult {
 
 // Thresholds in ms (relaxed for cold start scenarios)
 const THRESHOLDS = {
-  database: { ok: 1000, slow: 3000 },
-  ai_gateway: { ok: 3000, slow: 6000 },
-  stripe: { ok: 800, slow: 2000 },
+  database: { ok: 1500, slow: 4000 },
+  ai_gateway: { ok: 2000, slow: 5000 },
+  stripe: { ok: 1500, slow: 4000 },
 };
 
 // Timeout wrapper for promises
