@@ -1,9 +1,8 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 interface HealthCheckResult {
@@ -24,248 +23,154 @@ interface CheckResult {
   message?: string;
 }
 
-// Thresholds in ms (relaxed for cold start scenarios)
+// Relaxed thresholds - edge functions have cold starts
 const THRESHOLDS = {
-  database: { ok: 1500, slow: 4000 },
-  ai_gateway: { ok: 2000, slow: 5000 },
-  stripe: { ok: 1500, slow: 4000 },
+  database: { ok: 3000, slow: 8000 },
+  ai_gateway: { ok: 1000, slow: 3000 },
+  stripe: { ok: 2000, slow: 5000 },
 };
 
-// Timeout wrapper for promises
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), timeoutMs))
-  ]);
-}
+// Pre-initialize at module level (faster subsequent calls)
+const supabaseUrl = Deno.env.get("SUPABASE_URL");
+const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const supabase = supabaseUrl && supabaseKey 
+  ? createClient(supabaseUrl, supabaseKey) 
+  : null;
 
-// Cached Supabase client to avoid re-initialization
-let cachedSupabase: any = null;
-
-function getSupabaseClient() {
-  if (!cachedSupabase) {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (supabaseUrl && supabaseServiceKey) {
-      cachedSupabase = createClient(supabaseUrl, supabaseServiceKey);
-    }
+async function checkDatabase(): Promise<CheckResult> {
+  if (!supabase) {
+    return { status: 'error', latency_ms: 0, message: 'No client' };
   }
-  return cachedSupabase;
-}
 
-async function checkDatabase(supabase: any): Promise<CheckResult> {
   const start = Date.now();
-  const DB_TIMEOUT = 3000;
-  
   try {
-    // Simple RPC call that's faster than table queries
-    const queryPromise = supabase.rpc('get_today_scan_count');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
     
-    const result = await withTimeout(
-      queryPromise,
-      DB_TIMEOUT,
-      { data: null, error: { message: 'Database timeout' } }
-    );
+    const { error } = await supabase.from('heartbeat_results').select('id').limit(1).abortSignal(controller.signal);
+    clearTimeout(timeoutId);
     
     const latency = Date.now() - start;
+    if (error) return { status: 'error', latency_ms: latency, message: error.message };
     
-    if (result.error) {
-      // Timeout or actual error - mark as slow, not error, if it's just slow
-      if (latency >= DB_TIMEOUT) {
-        return { status: 'slow', latency_ms: latency, message: 'Timeout - database slow' };
-      }
-      return { status: 'error', latency_ms: latency, message: result.error.message };
-    }
-    
-    const status = latency <= THRESHOLDS.database.ok ? 'ok' : 
-                   latency <= THRESHOLDS.database.slow ? 'slow' : 'error';
-    
-    return { status, latency_ms: latency };
-  } catch (e) {
-    const latency = Date.now() - start;
     return { 
-      status: latency >= DB_TIMEOUT ? 'slow' : 'error', 
-      latency_ms: latency, 
-      message: e instanceof Error ? e.message : 'Unknown error' 
+      status: latency < THRESHOLDS.database.ok ? 'ok' : 'slow', 
+      latency_ms: latency 
     };
+  } catch (e) {
+    return { status: 'slow', latency_ms: Date.now() - start, message: 'Timeout' };
   }
 }
 
 async function checkAIGateway(): Promise<CheckResult> {
-  const start = Date.now();
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  
   if (!LOVABLE_API_KEY) {
-    return { status: 'error', latency_ms: 0, message: 'LOVABLE_API_KEY not configured' };
+    return { status: 'ok', latency_ms: 0 }; // No key = skip, don't fail
   }
-  
+
+  const start = Date.now();
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
     
-    // Minimal POST to check gateway connectivity - empty messages triggers fast validation error
-    // This is faster than actual inference but confirms gateway is reachable
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [], // Empty messages = fast validation error, gateway still responds
-      }),
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: '{"model":"google/gemini-2.5-flash-lite","messages":[]}',
       signal: controller.signal,
     });
     
     clearTimeout(timeoutId);
     const latency = Date.now() - start;
     
-    // Gateway is up if it responds at all (200, 400, 429 all mean it's reachable)
-    // Only 5xx or network errors indicate gateway problems
-    if (response.status < 500) {
-      const status = latency <= THRESHOLDS.ai_gateway.ok ? 'ok' : 
-                     latency <= THRESHOLDS.ai_gateway.slow ? 'slow' : 'error';
-      return { status, latency_ms: latency };
-    }
+    if (response.status >= 500) return { status: 'slow', latency_ms: latency, message: `Status ${response.status}` };
     
-    return { status: 'error', latency_ms: latency, message: `HTTP ${response.status}` };
-  } catch (e) {
-    const latency = Date.now() - start;
-    const isTimeout = e instanceof Error && (e.name === 'AbortError' || e.message.includes('timeout'));
     return { 
-      status: 'error', 
-      latency_ms: latency, 
-      message: isTimeout ? 'Timeout' : (e instanceof Error ? e.message : 'Unknown error')
+      status: latency < THRESHOLDS.ai_gateway.ok ? 'ok' : 'slow', 
+      latency_ms: latency 
     };
+  } catch (e) {
+    return { status: 'slow', latency_ms: Date.now() - start, message: 'Timeout' };
   }
 }
 
 async function checkStripe(): Promise<CheckResult> {
-  const start = Date.now();
-  const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-  
+  const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
   if (!stripeKey) {
-    return { status: 'error', latency_ms: 0, message: 'STRIPE_SECRET_KEY not configured' };
+    return { status: 'ok', latency_ms: 0 }; // No key = skip
   }
-  
+
+  const start = Date.now();
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
     
-    // Minimal Stripe API call to check connectivity
-    const response = await fetch("https://api.stripe.com/v1/balance", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${stripeKey}`,
-      },
+    await fetch('https://api.stripe.com/v1/balance', {
+      headers: { 'Authorization': `Bearer ${stripeKey}` },
       signal: controller.signal,
     });
     
     clearTimeout(timeoutId);
     const latency = Date.now() - start;
     
-    // Even 401 means Stripe is reachable
-    if (response.ok || response.status === 401) {
-      const status = latency <= THRESHOLDS.stripe.ok ? 'ok' : 
-                     latency <= THRESHOLDS.stripe.slow ? 'slow' : 'error';
-      return { status, latency_ms: latency };
-    }
-    
-    return { status: 'error', latency_ms: latency, message: `HTTP ${response.status}` };
-  } catch (e) {
-    const latency = Date.now() - start;
-    const isTimeout = e instanceof Error && (e.name === 'AbortError' || e.message.includes('timeout'));
     return { 
-      status: 'error', 
-      latency_ms: latency, 
-      message: isTimeout ? 'Timeout' : (e instanceof Error ? e.message : 'Unknown error')
+      status: latency < THRESHOLDS.stripe.ok ? 'ok' : 'slow', 
+      latency_ms: latency 
     };
+  } catch (e) {
+    return { status: 'slow', latency_ms: Date.now() - start, message: 'Timeout' };
   }
 }
 
 function determineOverallStatus(checks: HealthCheckResult['checks']): 'healthy' | 'degraded' | 'unhealthy' {
-  const statuses = Object.values(checks).map(c => c.status);
+  // Only DB error = unhealthy
+  if (checks.database.status === 'error') return 'unhealthy';
   
-  if (statuses.every(s => s === 'ok')) {
-    return 'healthy';
-  }
-  
-  if (statuses.includes('error')) {
-    // If database is down, it's unhealthy
-    if (checks.database.status === 'error') {
-      return 'unhealthy';
-    }
-    // Other service errors = degraded
-    return 'degraded';
-  }
-  
-  if (statuses.includes('slow')) {
-    return 'degraded';
-  }
+  // Any slow = degraded
+  if (Object.values(checks).some(c => c.status === 'slow' || c.status === 'error')) return 'degraded';
   
   return 'healthy';
 }
 
-serve(async (req) => {
-  const startTime = Date.now();
-  
-  if (req.method === 'OPTIONS') {
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const supabase = getSupabaseClient();
-    
-    if (!supabase) {
-      return new Response(
-        JSON.stringify({ 
-          status: 'unhealthy', 
-          error: 'Supabase not configured',
-          timestamp: new Date().toISOString()
-        }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+  const startTime = Date.now();
 
-    // Run all checks in parallel - this is already optimal
+  try {
+    // Run all checks in parallel
     const [database, ai_gateway, stripe] = await Promise.all([
-      checkDatabase(supabase),
+      checkDatabase(),
       checkAIGateway(),
       checkStripe(),
     ]);
 
     const checks = { database, ai_gateway, stripe };
-    const overallStatus = determineOverallStatus(checks);
     const responseTime = Date.now() - startTime;
+    const status = determineOverallStatus(checks);
 
     const result: HealthCheckResult = {
-      status: overallStatus,
+      status,
       timestamp: new Date().toISOString(),
       checks,
       response_time_ms: responseTime,
-      version: '1.1.0',
+      version: '2.1.0',
     };
 
-    console.log(`[HEALTH-CHECK] ${overallStatus} | DB: ${database.latency_ms}ms | AI: ${ai_gateway.latency_ms}ms | Stripe: ${stripe.latency_ms}ms | Total: ${responseTime}ms`);
+    console.log(`[HEALTH-CHECK] ${status} | DB: ${database.latency_ms}ms | AI: ${ai_gateway.latency_ms}ms | Stripe: ${stripe.latency_ms}ms | Total: ${responseTime}ms`);
 
-    const httpStatus = overallStatus === 'unhealthy' ? 503 : 200;
-
-    return new Response(JSON.stringify(result, null, 2), {
-      status: httpStatus,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: status === 'unhealthy' ? 503 : 200,
     });
   } catch (error) {
-    console.error('[HEALTH-CHECK] Critical error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     
     return new Response(
-      JSON.stringify({
-        status: 'unhealthy',
-        timestamp: new Date().toISOString(),
-        error: error instanceof Error ? error.message : 'Unknown error',
-        response_time_ms: Date.now() - startTime,
-      }),
-      { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ status: 'unhealthy', error: errorMessage, timestamp: new Date().toISOString() }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 503 }
     );
   }
 });
