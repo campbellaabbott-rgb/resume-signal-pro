@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getServiceClient } from "../_shared/supabase-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,17 +22,13 @@ interface ProbeReport {
 
 // VERY relaxed thresholds - edge functions have cold starts
 const THRESHOLDS = {
-  database: { healthy: 3000, degraded: 8000 },    // DB queries can be slow on cold
-  ai_gateway: { healthy: 1000, degraded: 3000 },  // Just a ping, should be fast
-  stripe: { healthy: 2000, degraded: 5000 },      // External API
+  database: { healthy: 3000, degraded: 8000 },
+  ai_gateway: { healthy: 1000, degraded: 3000 },
+  stripe: { healthy: 2000, degraded: 5000 },
 };
 
-// Pre-initialize Supabase client at module level (runs once on boot)
-const supabaseUrl = Deno.env.get("SUPABASE_URL");
-const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey) 
-  : null;
+// Pre-initialize Supabase client at module level with optimized settings
+const supabase = getServiceClient();
 
 function logStep(step: string, details?: Record<string, unknown>) {
   const detailsStr = details ? ` ${JSON.stringify(details)}` : '';
@@ -48,11 +44,9 @@ async function probeDatabase(): Promise<ProbeResult> {
   const start = Date.now();
   
   try {
-    // Use AbortController for timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     
-    // Simplest possible query - just check connection
     const { error } = await supabase.from('heartbeat_results').select('id').limit(1).abortSignal(controller.signal);
     
     clearTimeout(timeoutId);
@@ -70,42 +64,40 @@ async function probeDatabase(): Promise<ProbeResult> {
   } catch (e) {
     return { 
       service: 'database', 
-      status: 'degraded', // Timeout = degraded, not unhealthy
+      status: 'degraded',
       latency_ms: Date.now() - start, 
       error: e instanceof Error ? e.message : 'Unknown error' 
     };
   }
 }
 
-// Ultra-fast AI gateway check - just HEAD request to verify reachability
+// Ultra-fast AI gateway check
 async function probeAIGateway(): Promise<ProbeResult> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
   if (!LOVABLE_API_KEY) {
-    return { service: 'ai-gateway', status: 'healthy', latency_ms: 0 }; // No key = skip, don't fail
+    return { service: 'ai-gateway', status: 'healthy', latency_ms: 0 };
   }
 
   const start = Date.now();
   
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
     
-    // Just check if gateway responds - minimal payload
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: '{"model":"google/gemini-2.5-flash-lite","messages":[]}', // Pre-serialized for speed
+      body: '{"model":"google/gemini-2.5-flash-lite","messages":[]}',
       signal: controller.signal,
     });
     
     clearTimeout(timeoutId);
     const latency = Date.now() - start;
     
-    // Any response = gateway is up (400 for invalid request is fine)
     if (response.status >= 500) {
       return { service: 'ai-gateway', status: 'degraded', latency_ms: latency, error: `Status ${response.status}` };
     }
@@ -129,7 +121,7 @@ async function probeStripe(): Promise<ProbeResult> {
   const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
   
   if (!stripeKey) {
-    return { service: 'stripe', status: 'healthy', latency_ms: 0 }; // No key = skip
+    return { service: 'stripe', status: 'healthy', latency_ms: 0 };
   }
 
   const start = Date.now();
@@ -138,7 +130,7 @@ async function probeStripe(): Promise<ProbeResult> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
     
-    const response = await fetch('https://api.stripe.com/v1/balance', {
+    await fetch('https://api.stripe.com/v1/balance', {
       headers: { 'Authorization': `Bearer ${stripeKey}` },
       signal: controller.signal,
     });
@@ -146,7 +138,6 @@ async function probeStripe(): Promise<ProbeResult> {
     clearTimeout(timeoutId);
     const latency = Date.now() - start;
     
-    // Any response = Stripe is reachable
     const status = latency < THRESHOLDS.stripe.healthy ? 'healthy' 
       : latency < THRESHOLDS.stripe.degraded ? 'degraded' : 'degraded';
     
@@ -185,7 +176,7 @@ Deno.serve(async (req) => {
       logStep(`${probe.service}: ${probe.status} (${probe.latency_ms}ms)${probe.error ? ` - ${probe.error}` : ''}`);
     }
 
-    // Only DB failure = unhealthy. Everything else = degraded at worst
+    // Only DB failure = unhealthy
     const dbProbe = probes.find(p => p.service === 'database');
     const dbUnhealthy = dbProbe?.status === 'unhealthy';
     const anyDegraded = probes.some(p => p.status === 'degraded' || p.status === 'unhealthy');
@@ -201,7 +192,7 @@ Deno.serve(async (req) => {
       alerts_triggered: dbUnhealthy ? [`database: ${dbProbe?.error || 'Failed'}`] : [],
     };
 
-    // Fire-and-forget logging (don't wait)
+    // Fire-and-forget logging
     (async () => {
       try {
         await supabase.rpc('log_heartbeat_result', {
