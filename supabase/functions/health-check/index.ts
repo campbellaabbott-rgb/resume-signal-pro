@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getServiceClient } from "../_shared/supabase-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,12 +30,8 @@ const THRESHOLDS = {
   stripe: { ok: 2000, slow: 5000 },
 };
 
-// Pre-initialize at module level (faster subsequent calls)
-const supabaseUrl = Deno.env.get("SUPABASE_URL");
-const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const supabase = supabaseUrl && supabaseKey 
-  ? createClient(supabaseUrl, supabaseKey) 
-  : null;
+// Pre-initialize at module level with optimized client
+const supabase = getServiceClient();
 
 async function checkDatabase(): Promise<CheckResult> {
   if (!supabase) {
@@ -156,7 +152,7 @@ Deno.serve(async (req) => {
       timestamp: new Date().toISOString(),
       checks,
       response_time_ms: responseTime,
-      version: '2.1.0',
+      version: '2.2.0',
     };
 
     console.log(`[HEALTH-CHECK] ${status} | DB: ${database.latency_ms}ms | AI: ${ai_gateway.latency_ms}ms | Stripe: ${stripe.latency_ms}ms | Total: ${responseTime}ms`);
