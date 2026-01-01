@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 import { detectIndustry, formatDetectionForPrompt } from "./industry-detection.ts";
+import { getServiceClient } from "../_shared/supabase-client.ts";
 
 // Metric tracking - logs to scan_metrics table for dashboard visibility
 interface ScanMetricContext {
@@ -409,19 +409,16 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Supabase for rate limiting
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    // Use optimized shared Supabase client with connection pooling
+    const supabase = getServiceClient();
     
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("[FREE-KEYWORD-SCAN] Supabase credentials not configured");
+    if (!supabase) {
+      console.error("[FREE-KEYWORD-SCAN] Supabase client not available");
       return new Response(
         JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // OPTIMIZATION: Run rate limit checks IN PARALLEL with country lookup
     // This saves ~100-200ms by not waiting for each sequentially
@@ -1297,11 +1294,9 @@ ${resumeText.substring(0, 15000)}
     );
 
   } catch (error) {
-    // Log error metric - need to create a basic context since we may have failed before metricCtx was created
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (supabaseUrl && supabaseServiceKey) {
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Log error metric using shared client
+    const supabase = getServiceClient();
+    if (supabase) {
       EdgeRuntime.waitUntil(
         (async () => {
           try {
