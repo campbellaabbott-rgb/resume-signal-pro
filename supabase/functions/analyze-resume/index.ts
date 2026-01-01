@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
+import { getServiceClient } from "../_shared/supabase-client.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -709,19 +709,16 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Supabase client for persistent session tracking
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    // Use optimized shared Supabase client with connection pooling
+    const supabase = getServiceClient();
     
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("[ANALYZE-RESUME] Supabase credentials not configured");
+    if (!supabase) {
+      console.error("[ANALYZE-RESUME] Supabase client not available");
       return new Response(
         JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const clientIp = getClientIp(req);
 
     // Check global rate limit (100 req/hr across ALL functions)
