@@ -135,6 +135,38 @@ Deno.serve(async (req) => {
 
   const startTime = Date.now();
 
+  // Warm-up path: avoid external network calls (AI/Stripe) and just warm the DB client
+  let isWarmup = false;
+  try {
+    const body = await req.json();
+    isWarmup = body?._warmup === true;
+  } catch {
+    // ignore
+  }
+
+  if (isWarmup) {
+    const database = await checkDatabase();
+    const ai_gateway: CheckResult = { status: 'ok', latency_ms: 0 };
+    const stripe: CheckResult = { status: 'ok', latency_ms: 0 };
+
+    const checks = { database, ai_gateway, stripe };
+    const responseTime = Date.now() - startTime;
+    const status = determineOverallStatus(checks);
+
+    const result: HealthCheckResult = {
+      status,
+      timestamp: new Date().toISOString(),
+      checks,
+      response_time_ms: responseTime,
+      version: '2.2.0',
+    };
+
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: status === 'unhealthy' ? 503 : 200,
+    });
+  }
+
   try {
     // Run all checks in parallel
     const [database, ai_gateway, stripe] = await Promise.all([

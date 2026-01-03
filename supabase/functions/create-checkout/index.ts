@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getServiceClient } from "../_shared/supabase-client.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -83,6 +83,17 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Module-level singletons (reduces latency variance on warm invocations)
+const supabase = getServiceClient();
+
+let stripeInstance: Stripe | null = null;
+function getStripe(stripeKey: string): Stripe {
+  if (!stripeInstance) {
+    stripeInstance = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
+  }
+  return stripeInstance;
+}
 
 const RATE_LIMIT = 30; // 30 requests per hour (increased for checkout - revenue critical)
 const RATE_WINDOW_MINUTES = 60;
@@ -247,10 +258,39 @@ serve(async (req) => {
   try {
     logStep("Function started", { ip: clientIp });
 
-    // Initialize Supabase client once
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Parse body early so warm-up can short-circuit without hitting DB or Stripe API
+    let requestBody: any;
+    try {
+      requestBody = await req.json();
+    } catch {
+      logStep("Invalid JSON in request body");
+      return new Response(
+        JSON.stringify({ error: "Invalid request format. Please try again." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Warm-up requests should NEVER create real Stripe sessions or consume rate limits
+    if (requestBody?._warmup === true) {
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (stripeKey) {
+        // Initialize Stripe client (no network calls)
+        getStripe(stripeKey);
+      }
+
+      if (!supabase) {
+        console.error("[CREATE-CHECKOUT] Missing backend configuration during warm-up");
+      }
+
+      return new Response(
+        JSON.stringify({ warmed: true, timestamp: new Date().toISOString() }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
+    if (!supabase) {
+      throw new Error("Missing Supabase configuration");
+    }
 
     // Check BOTH rate limits in parallel (saves ~100-200ms)
     const [rateLimitResult, globalRateLimitResult] = await Promise.all([
@@ -297,18 +337,6 @@ serve(async (req) => {
     }
     logStep("Stripe key verified");
 
-    // Parse and validate request body
-    let requestBody;
-    try {
-      requestBody = await req.json();
-    } catch {
-      logStep("Invalid JSON in request body");
-      return new Response(
-        JSON.stringify({ error: "Invalid request format. Please try again." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const { resumeData, currency: requestedCurrency, promoCode } = requestBody;
     logStep("Received request", { hasResumeData: !!resumeData, currency: requestedCurrency });
 
@@ -321,7 +349,7 @@ serve(async (req) => {
       );
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
+    const stripe = getStripe(stripeKey);
     const origin = req.headers.get("origin") || "https://lovable.dev";
 
     // Optional coupon code (normalize to UPPERCASE)

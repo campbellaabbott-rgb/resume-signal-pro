@@ -159,6 +159,39 @@ Deno.serve(async (req) => {
 
   const startTime = Date.now();
 
+  // Warm-up path: keep it cheap and avoid external network calls (AI/Stripe)
+  let isWarmup = false;
+  try {
+    const body = await req.json();
+    isWarmup = body?._warmup === true;
+  } catch {
+    // ignore
+  }
+
+  if (isWarmup) {
+    const dbProbe = await probeDatabase();
+    const duration = Date.now() - startTime;
+
+    const overallStatus = dbProbe.status === 'unhealthy'
+      ? 'unhealthy'
+      : dbProbe.status === 'degraded'
+        ? 'degraded'
+        : 'healthy';
+
+    const report: ProbeReport = {
+      timestamp: new Date().toISOString(),
+      overall_status: overallStatus,
+      probes: [dbProbe],
+      duration_ms: duration,
+      alerts_triggered: [],
+    };
+
+    return new Response(JSON.stringify(report), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: dbProbe.status === 'unhealthy' ? 503 : 200,
+    });
+  }
+
   try {
     if (!supabase) {
       throw new Error("Missing Supabase configuration");
