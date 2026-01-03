@@ -16,6 +16,7 @@ const corsHeaders = {
 const FUNCTIONS_TO_WARM = [
   // Critical user-facing functions
   'health-check',
+  'scheduled-health-probe',
   'free-keyword-scan',
   'free-keyword-scan-stream',
   'analyze-resume',
