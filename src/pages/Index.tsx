@@ -1369,11 +1369,6 @@ const Index = () => {
         onOpenChange={setShowProductModal}
         sessionId={preStoredSessionId || undefined}
       />
-      
-      
-      {/* Live Activity Indicator */}
-      <LiveActivityIndicator variant="toast" />
-      
     </div>
   );
 };
