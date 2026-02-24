@@ -8,6 +8,7 @@ import {
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
   TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket
 } from "lucide-react";
+import { LockedPremiumInsight } from "./LockedPremiumInsight";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { PersonalizedInsights } from "./PersonalizedInsights";
 import { TieredPricingSection } from "./TieredPricingSection";
@@ -3006,6 +3007,49 @@ export function FreeKeywordResults({
           </div>
         </div>
       )}
+
+      {/* Score-Gated Premium Insights */}
+      <div className="space-y-4 mb-6">
+        <LockedPremiumInsight
+          title="AI-Rewritten Bullet Points"
+          description="Get every bullet point rewritten with measurable impact and power verbs"
+          previewLines={[
+            "• Replace 'Responsible for managing team of 5' → 'Led cross-functional team of 5, driving 32% efficiency gain'",
+            "• Replace 'Helped with customer support' → 'Resolved 150+ customer tickets/week, achieving 98% satisfaction'",
+            "• Add metrics to 6 bullet points that currently lack quantification",
+            "• Restructure 3 responsibility-focused bullets into achievement statements",
+          ]}
+          onUnlock={() => handleUpgradeClick('locked_bullet_rewrites')}
+          isLoading={isLoading}
+          variant="highlight"
+        />
+
+        <LockedPremiumInsight
+          title="Complete Keyword Gap Analysis"
+          description={`50+ missing keywords specific to ${effectiveIndustry.replace(/_/g, ' ')} that ATS systems look for`}
+          previewLines={[
+            "• 12 critical hard skills missing from your resume",
+            "• 8 industry certifications to mention (even in progress)",
+            "• 15 action verbs that outperform your current word choices",
+            "• 6 methodology keywords your competitors are using",
+          ]}
+          onUnlock={() => handleUpgradeClick('locked_keyword_gap')}
+          isLoading={isLoading}
+        />
+
+        <LockedPremiumInsight
+          title="Personalized Career Strategy"
+          description="Salary insights, next-role suggestions, and interview talking points based on your profile"
+          previewLines={[
+            "• Estimated salary range: $85,000 - $120,000 (based on role + location signals)",
+            "• 3 natural next-role progressions with gap analysis for each",
+            "• 4 interview talking points derived from your strongest achievements",
+            "• Personal brand assessment: current vs ideal positioning",
+          ]}
+          onUnlock={() => handleUpgradeClick('locked_career_strategy')}
+          isLoading={isLoading}
+        />
+      </div>
 
       {/* Detailed Section Check */}
       <div className="rounded-2xl bg-card border border-border p-5 mb-5">
