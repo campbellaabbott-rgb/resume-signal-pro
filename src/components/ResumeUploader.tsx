@@ -13,6 +13,7 @@ import { resilientCallers } from "@/lib/resilient-edge-function";
 import { useToast } from "@/hooks/use-toast";
 import { ScanGuideArrow } from "@/components/ScanGuideArrow";
 import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
+import { ScanProgressStages } from "@/components/ScanProgressStages";
 // Step indicator component for better UX guidance
 interface StepIndicatorProps {
   number: number;
@@ -1182,7 +1183,7 @@ export function ResumeUploader({
           {/* CTAs - Free Scan as primary */}
           <div className="text-center space-y-4 mt-8">
             {isFreeScanLoading ? (
-              <FreeScanProgress streamingProgress={streamingProgress} />
+              <ScanProgressStages streamingProgress={streamingProgress} />
             ) : (
               <>
                 {/* Primary CTA: Free Scan */}
