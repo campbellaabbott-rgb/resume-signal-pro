@@ -516,5 +516,49 @@
     "guarantee": "Directe resultaten • Geen abonnement",
     "button": "Mijn analyse nu",
     "roi": "Eén gesprek = $ 25 terugverdiend"
+  },
+  "scanProgress": {
+    "title": "AI-analyse bezig",
+    "subtitle": "Gemini Pro voor maximale nauwkeurigheid",
+    "complete": "{{percent}}% voltooid",
+    "live": "Live",
+    "securityNote": "Je cv wordt veilig geanalyseerd en nooit opgeslagen",
+    "stages": {
+      "parsing": { "label": "CV wordt geparsed", "description": "Tekst en structuur worden geëxtraheerd" },
+      "industry": { "label": "Branche wordt gedetecteerd", "description": "Je vakgebied en rol worden geïdentificeerd" },
+      "ats": { "label": "ATS-simulatie draait", "description": "Test tegen 50+ ATS-systemen" },
+      "keywords": { "label": "Keywords worden geanalyseerd", "description": "Branchespecifieke termen worden gematcht" },
+      "scoring": { "label": "Scoring en benchmark", "description": "Vergelijking met topcandidaten" },
+      "ai": { "label": "AI diepte-analyse", "description": "Gepersonaliseerde inzichten worden gegenereerd" },
+      "report": { "label": "Rapport wordt opgebouwd", "description": "Actiegerichte aanbevelingen worden samengesteld" }
+    },
+    "tips": {
+      "numbers": "💡 Tip: CV's met cijfers krijgen 40% meer reacties",
+      "atsReject": "📊 Wist je dat? 75% van de CV's wordt afgewezen door ATS voordat een mens ze ziet",
+      "keywords": "🎯 Gerichte keywords verhogen de match-rate met 3x",
+      "actionVerbs": "⚡ Actiewerkwoorden zoals 'aangedreven' en 'gelanceerd' presteren beter dan 'beheerd'",
+      "placement": "🔑 De meeste ATS-systemen waarderen keywords in het bovenste derde het hoogst"
+    }
+  },
+  "lockedInsight": {
+    "premium": "Premium",
+    "unlockButton": "Volledig rapport ontgrendelen"
+  },
+  "languageDetection": {
+    "detected": "Je cv lijkt in het {{language}} te zijn",
+    "switchPrompt": "Sitetaal wijzigen naar {{language}}?",
+    "switchButton": "Overschakelen naar {{language}}",
+    "dismiss": "{{current}} behouden"
+  },
+  "faq": {
+    "stillHaveQuestions": "Nog vragen?"
+  },
+  "socialProof": {
+    "testimonials": {
+      "reddit": {
+        "quote": "De service is super behulpzaam en nuttig.",
+        "role": "Reddit-gebruiker • Betalende klant"
+      }
+    }
   }
 }

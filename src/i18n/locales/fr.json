@@ -516,5 +516,49 @@
     "guarantee": "Résultats instantanés • Sans abonnement",
     "button": "Obtenir mon analyse",
     "roi": "Un entretien = 25 $ rentabilisés"
+  },
+  "scanProgress": {
+    "title": "Analyse IA en cours",
+    "subtitle": "Gemini Pro pour une précision maximale",
+    "complete": "{{percent}}% terminé",
+    "live": "En direct",
+    "securityNote": "Votre CV est analysé en toute sécurité et jamais stocké",
+    "stages": {
+      "parsing": { "label": "Analyse du CV", "description": "Extraction du texte et de la structure" },
+      "industry": { "label": "Détection du secteur", "description": "Identification de votre domaine et rôle" },
+      "ats": { "label": "Simulation ATS", "description": "Test sur 50+ systèmes ATS" },
+      "keywords": { "label": "Analyse des mots-clés", "description": "Correspondance des termes sectoriels" },
+      "scoring": { "label": "Scoring et benchmark", "description": "Comparaison avec les meilleurs candidats" },
+      "ai": { "label": "Analyse IA approfondie", "description": "Génération d'insights personnalisés" },
+      "report": { "label": "Construction du rapport", "description": "Compilation des recommandations" }
+    },
+    "tips": {
+      "numbers": "💡 Astuce : Les CV avec des chiffres reçoivent 40% plus de rappels",
+      "atsReject": "📊 Le saviez-vous ? 75% des CV sont rejetés par l'ATS avant qu'un humain ne les voie",
+      "keywords": "🎯 Les mots-clés ciblés augmentent le taux de correspondance par 3",
+      "actionVerbs": "⚡ Les verbes d'action comme 'piloté' et 'lancé' surpassent 'géré' et 'aidé'",
+      "placement": "🔑 La plupart des ATS valorisent les mots-clés placés dans le premier tiers"
+    }
+  },
+  "lockedInsight": {
+    "premium": "Premium",
+    "unlockButton": "Débloquer le rapport complet"
+  },
+  "languageDetection": {
+    "detected": "Votre CV semble être en {{language}}",
+    "switchPrompt": "Changer la langue du site en {{language}} ?",
+    "switchButton": "Passer en {{language}}",
+    "dismiss": "Garder {{current}}"
+  },
+  "faq": {
+    "stillHaveQuestions": "Encore des questions ?"
+  },
+  "socialProof": {
+    "testimonials": {
+      "reddit": {
+        "quote": "Le service est super utile et pratique.",
+        "role": "Utilisateur Reddit • Client payant"
+      }
+    }
   }
 }

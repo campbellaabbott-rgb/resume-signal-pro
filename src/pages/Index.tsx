@@ -17,6 +17,7 @@ import { StickyBottomCTA } from "@/components/StickyBottomCTA";
 import { FinalCTA } from "@/components/FinalCTA";
 import { RateLimitUpsell } from "@/components/RateLimitUpsell";
 import { TailoredResumeModal } from "@/components/TailoredResumeModal";
+import { ResumeLanguageSuggestion } from "@/components/ResumeLanguageSuggestion";
 import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 
 import { LiveActivityIndicator } from "@/components/LiveActivityIndicator";
@@ -57,6 +58,7 @@ import { useStreamingScan, type StreamProgress, clearAllClientScanCaches } from 
 import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
 
 interface FreeKeywordResult {
+  detectedLanguage?: { code: string; name: string } | null;
   candidateName?: string | null;
   currentRole?: string;
   industry: string;
@@ -665,6 +667,7 @@ const Index = () => {
         setIsCachedResult(!!result.cached);
         
         setFreeKeywordResult({
+          detectedLanguage: (result as any).detectedLanguage || null,
           industry: result.industry || 'General',
           atsScoreEstimate: result.atsScoreEstimate || 0,
           formatGrade: result.formatGrade || 'C',
@@ -784,6 +787,7 @@ const Index = () => {
 
       if (data?.success) {
         setFreeKeywordResult({
+          detectedLanguage: data.detectedLanguage || null,
           industry: data.industry,
           atsScoreEstimate: data.atsScoreEstimate,
           formatGrade: data.formatGrade,
@@ -1227,7 +1231,8 @@ const Index = () => {
         {/* Free Keyword Results */}
         {freeKeywordResult && (
           <section id="free-results" className="py-12 scroll-mt-20" data-results-section="true">
-            <div className="container">
+            <div className="container space-y-4">
+              <ResumeLanguageSuggestion detectedLanguage={freeKeywordResult.detectedLanguage} />
               <FreeKeywordResults
                 candidateName={freeKeywordResult.candidateName}
                 currentRole={freeKeywordResult.currentRole}
