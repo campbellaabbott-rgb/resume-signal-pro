@@ -516,5 +516,49 @@
     "guarantee": "Sofortige Ergebnisse • Kein Abo",
     "button": "Jetzt Analyse erhalten",
     "roi": "Ein Vorstellungsgespräch = 25 $ amortisiert"
+  },
+  "scanProgress": {
+    "title": "KI-Analyse läuft",
+    "subtitle": "Gemini Pro für maximale Genauigkeit",
+    "complete": "{{percent}}% abgeschlossen",
+    "live": "Live",
+    "securityNote": "Ihr Lebenslauf wird sicher analysiert und nie gespeichert",
+    "stages": {
+      "parsing": { "label": "Lebenslauf wird geparst", "description": "Text und Struktur werden extrahiert" },
+      "industry": { "label": "Branche wird erkannt", "description": "Ihr Bereich und Ihre Rolle werden identifiziert" },
+      "ats": { "label": "ATS-Simulation läuft", "description": "Test gegen 50+ ATS-Systeme" },
+      "keywords": { "label": "Keywords werden analysiert", "description": "Branchenspezifische Begriffe werden abgeglichen" },
+      "scoring": { "label": "Bewertung & Benchmark", "description": "Vergleich mit Top-Kandidaten" },
+      "ai": { "label": "KI-Tiefenanalyse", "description": "Personalisierte Einblicke werden generiert" },
+      "report": { "label": "Bericht wird erstellt", "description": "Umsetzbare Empfehlungen werden zusammengestellt" }
+    },
+    "tips": {
+      "numbers": "💡 Tipp: Lebensläufe mit Zahlen erhalten 40% mehr Rückrufe",
+      "atsReject": "📊 Wussten Sie? 75% der Lebensläufe werden von ATS abgelehnt, bevor ein Mensch sie sieht",
+      "keywords": "🎯 Gezielte Keywords erhöhen die Match-Rate um das 3-fache",
+      "actionVerbs": "⚡ Aktionsverben wie 'getrieben' und 'gestartet' übertreffen 'verwaltet' und 'geholfen'",
+      "placement": "🔑 Die meisten ATS-Systeme bewerten Keywords im oberen Drittel am höchsten"
+    }
+  },
+  "lockedInsight": {
+    "premium": "Premium",
+    "unlockButton": "Vollständigen Bericht freischalten"
+  },
+  "languageDetection": {
+    "detected": "Ihr Lebenslauf scheint auf {{language}} zu sein",
+    "switchPrompt": "Seitensprache auf {{language}} wechseln?",
+    "switchButton": "Zu {{language}} wechseln",
+    "dismiss": "{{current}} beibehalten"
+  },
+  "faq": {
+    "stillHaveQuestions": "Noch Fragen?"
+  },
+  "socialProof": {
+    "testimonials": {
+      "reddit": {
+        "quote": "Der Service ist super hilfreich und nützlich.",
+        "role": "Reddit-Nutzer • Zahlender Kunde"
+      }
+    }
   }
 }

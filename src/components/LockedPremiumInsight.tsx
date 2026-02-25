@@ -1,11 +1,11 @@
 import { Lock, Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface LockedPremiumInsightProps {
   title: string;
   description: string;
-  /** Fake preview content shown blurred behind the lock */
   previewLines?: string[];
   onUnlock: () => void;
   isLoading?: boolean;
@@ -27,6 +27,8 @@ export function LockedPremiumInsight({
   className,
   variant = "default",
 }: LockedPremiumInsightProps) {
+  const { t } = useTranslation();
+
   return (
     <div className={cn(
       "relative rounded-2xl border overflow-hidden",
@@ -49,7 +51,7 @@ export function LockedPremiumInsight({
           </div>
           <h4 className="font-bold text-foreground">{title}</h4>
           <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold uppercase tracking-wider">
-            Premium
+            {t('lockedInsight.premium')}
           </span>
         </div>
         
@@ -80,7 +82,7 @@ export function LockedPremiumInsight({
             className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Unlock Full Report
+            {t('lockedInsight.unlockButton')}
             <ArrowRight className="w-3.5 h-3.5" />
           </Button>
         </div>

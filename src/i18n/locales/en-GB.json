@@ -516,5 +516,49 @@
     "guarantee": "Instant results • No subscription",
     "button": "Get My Analysis Now",
     "roi": "One interview = £20 paid for itself"
+  },
+  "scanProgress": {
+    "title": "AI Analysis in Progress",
+    "subtitle": "Using Gemini Pro for maximum accuracy",
+    "complete": "{{percent}}% complete",
+    "live": "Live",
+    "securityNote": "Your CV is analysed securely and never stored",
+    "stages": {
+      "parsing": { "label": "Parsing CV", "description": "Extracting text and structure" },
+      "industry": { "label": "Detecting Industry", "description": "Identifying your field & role" },
+      "ats": { "label": "Running ATS Simulation", "description": "Testing against 50+ ATS systems" },
+      "keywords": { "label": "Analysing Keywords", "description": "Matching industry-specific terms" },
+      "scoring": { "label": "Scoring & Benchmarking", "description": "Comparing against top candidates" },
+      "ai": { "label": "AI Deep Analysis", "description": "Generating personalised insights" },
+      "report": { "label": "Building Your Report", "description": "Compiling actionable recommendations" }
+    },
+    "tips": {
+      "numbers": "💡 Tip: CVs with numbers get 40% more callbacks",
+      "atsReject": "📊 Did you know? 75% of CVs are rejected by ATS before a human sees them",
+      "keywords": "🎯 Targeted keywords increase match rates by 3x",
+      "actionVerbs": "⚡ Action verbs like 'drove' and 'launched' outperform 'managed' and 'helped'",
+      "placement": "🔑 Most ATS systems rank keyword placement in your top third highest"
+    }
+  },
+  "lockedInsight": {
+    "premium": "Premium",
+    "unlockButton": "Unlock Full Report"
+  },
+  "languageDetection": {
+    "detected": "Your CV appears to be in {{language}}",
+    "switchPrompt": "Switch site language to {{language}}?",
+    "switchButton": "Switch to {{language}}",
+    "dismiss": "Keep {{current}}"
+  },
+  "faq": {
+    "stillHaveQuestions": "Still have questions?"
+  },
+  "socialProof": {
+    "testimonials": {
+      "reddit": {
+        "quote": "Service is super helpful and useful.",
+        "role": "Reddit User • Paid Customer"
+      }
+    }
   }
 }

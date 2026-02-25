@@ -5,24 +5,24 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
+import { useTranslation } from "react-i18next";
 
 interface ScanStage {
   id: string;
-  label: string;
-  description: string;
+  labelKey: string;
+  descriptionKey: string;
   icon: React.ElementType;
-  /** Progress threshold where this stage starts (0-100) */
   startAt: number;
 }
 
 const SCAN_STAGES: ScanStage[] = [
-  { id: "parsing", label: "Parsing Resume", description: "Extracting text and structure", icon: FileSearch, startAt: 0 },
-  { id: "industry", label: "Detecting Industry", description: "Identifying your field & role", icon: Search, startAt: 10 },
-  { id: "ats", label: "Running ATS Simulation", description: "Testing against 50+ ATS systems", icon: Shield, startAt: 25 },
-  { id: "keywords", label: "Analyzing Keywords", description: "Matching industry-specific terms", icon: Target, startAt: 40 },
-  { id: "scoring", label: "Scoring & Benchmarking", description: "Comparing against top candidates", icon: BarChart3, startAt: 55 },
-  { id: "ai", label: "AI Deep Analysis", description: "Generating personalized insights", icon: Brain, startAt: 70 },
-  { id: "report", label: "Building Your Report", description: "Compiling actionable recommendations", icon: Sparkles, startAt: 85 },
+  { id: "parsing", labelKey: "scanProgress.stages.parsing.label", descriptionKey: "scanProgress.stages.parsing.description", icon: FileSearch, startAt: 0 },
+  { id: "industry", labelKey: "scanProgress.stages.industry.label", descriptionKey: "scanProgress.stages.industry.description", icon: Search, startAt: 10 },
+  { id: "ats", labelKey: "scanProgress.stages.ats.label", descriptionKey: "scanProgress.stages.ats.description", icon: Shield, startAt: 25 },
+  { id: "keywords", labelKey: "scanProgress.stages.keywords.label", descriptionKey: "scanProgress.stages.keywords.description", icon: Target, startAt: 40 },
+  { id: "scoring", labelKey: "scanProgress.stages.scoring.label", descriptionKey: "scanProgress.stages.scoring.description", icon: BarChart3, startAt: 55 },
+  { id: "ai", labelKey: "scanProgress.stages.ai.label", descriptionKey: "scanProgress.stages.ai.description", icon: Brain, startAt: 70 },
+  { id: "report", labelKey: "scanProgress.stages.report.label", descriptionKey: "scanProgress.stages.report.description", icon: Sparkles, startAt: 85 },
 ];
 
 interface ScanProgressStagesProps {
@@ -34,21 +34,21 @@ interface ScanProgressStagesProps {
 }
 
 export function ScanProgressStages({ streamingProgress }: ScanProgressStagesProps) {
+  const { t } = useTranslation();
   const [fallbackProgress, setFallbackProgress] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [tip, setTip] = useState(0);
 
-  const tips = [
-    "💡 Tip: Resumes with numbers get 40% more callbacks",
-    "📊 Did you know? 75% of resumes are rejected by ATS before a human sees them",
-    "🎯 Targeted keywords increase match rates by 3x",
-    "⚡ Action verbs like 'drove' and 'launched' outperform 'managed' and 'helped'",
-    "🔑 Most ATS systems rank keyword placement in your top third highest",
+  const tipKeys = [
+    "scanProgress.tips.numbers",
+    "scanProgress.tips.atsReject",
+    "scanProgress.tips.keywords",
+    "scanProgress.tips.actionVerbs",
+    "scanProgress.tips.placement",
   ];
 
   const progress = streamingProgress?.progress ?? fallbackProgress;
 
-  // Determine active stage based on progress
   const activeStageIndex = SCAN_STAGES.reduce((best, stage, i) => {
     return progress >= stage.startAt ? i : best;
   }, 0);
@@ -67,10 +67,9 @@ export function ScanProgressStages({ streamingProgress }: ScanProgressStagesProp
     return () => clearInterval(interval);
   }, [streamingProgress]);
 
-  // Cycle tips every 8 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      setTip(prev => (prev + 1) % tips.length);
+      setTip(prev => (prev + 1) % tipKeys.length);
     }, 8000);
     return () => clearInterval(interval);
   }, []);
@@ -88,10 +87,10 @@ export function ScanProgressStages({ streamingProgress }: ScanProgressStagesProp
             <Cpu className="w-5 h-5 text-primary animate-pulse" />
             <div className="absolute -inset-1 rounded-full bg-primary/20 animate-ping" style={{ animationDuration: '2s' }} />
           </div>
-          <span className="text-sm font-semibold text-foreground">AI Analysis in Progress</span>
+          <span className="text-sm font-semibold text-foreground">{t('scanProgress.title')}</span>
         </div>
         <p className="text-xs text-muted-foreground">
-          Using Gemini Pro for maximum accuracy
+          {t('scanProgress.subtitle')}
         </p>
       </div>
 
@@ -99,11 +98,11 @@ export function ScanProgressStages({ streamingProgress }: ScanProgressStagesProp
       <div className="space-y-1.5">
         <Progress value={progress} className="h-2.5" />
         <div className="flex justify-between text-xs text-muted-foreground">
-          <span>{Math.round(progress)}% complete</span>
+          <span>{t('scanProgress.complete', { percent: Math.round(progress) })}</span>
           {streamingProgress ? (
             <span className="text-success font-medium flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-              Live
+              {t('scanProgress.live')}
             </span>
           ) : (
             <span>
@@ -150,11 +149,11 @@ export function ScanProgressStages({ streamingProgress }: ScanProgressStagesProp
                   "text-xs font-medium truncate",
                   isActive ? "text-foreground" : "text-muted-foreground"
                 )}>
-                  {stage.label}
+                  {t(stage.labelKey)}
                 </p>
                 {isActive && (
                   <p className="text-[11px] text-muted-foreground animate-fade-in truncate">
-                    {streamingProgress?.message || stage.description}
+                    {streamingProgress?.message || t(stage.descriptionKey)}
                   </p>
                 )}
               </div>
@@ -166,13 +165,13 @@ export function ScanProgressStages({ streamingProgress }: ScanProgressStagesProp
       {/* Rotating Tips */}
       <div className="px-3 py-2.5 rounded-lg bg-muted/50 border border-border/50">
         <p className="text-xs text-muted-foreground text-center transition-all duration-300" key={tip}>
-          {tips[tip]}
+          {t(tipKeys[tip])}
         </p>
       </div>
 
       {/* Security note */}
       <p className="text-[11px] text-muted-foreground/60 text-center">
-        🔒 Your resume is analyzed securely and never stored
+        🔒 {t('scanProgress.securityNote')}
       </p>
     </div>
   );

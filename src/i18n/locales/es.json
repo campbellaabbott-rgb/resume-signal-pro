@@ -516,5 +516,49 @@
     "guarantee": "Resultados instantáneos • Sin suscripción",
     "button": "Obtener Mi Análisis Ahora",
     "roi": "Una entrevista = $25 recuperados"
+  },
+  "scanProgress": {
+    "title": "Análisis IA en Progreso",
+    "subtitle": "Usando Gemini Pro para máxima precisión",
+    "complete": "{{percent}}% completado",
+    "live": "En vivo",
+    "securityNote": "Tu currículum se analiza de forma segura y nunca se almacena",
+    "stages": {
+      "parsing": { "label": "Analizando CV", "description": "Extrayendo texto y estructura" },
+      "industry": { "label": "Detectando Industria", "description": "Identificando tu campo y rol" },
+      "ats": { "label": "Simulación ATS", "description": "Probando contra 50+ sistemas ATS" },
+      "keywords": { "label": "Analizando Palabras Clave", "description": "Comparando términos específicos" },
+      "scoring": { "label": "Puntuando y Comparando", "description": "Comparando con los mejores candidatos" },
+      "ai": { "label": "Análisis Profundo IA", "description": "Generando insights personalizados" },
+      "report": { "label": "Construyendo Tu Informe", "description": "Compilando recomendaciones accionables" }
+    },
+    "tips": {
+      "numbers": "💡 Consejo: Los CVs con números obtienen 40% más respuestas",
+      "atsReject": "📊 ¿Sabías? El 75% de los CVs son rechazados por ATS antes de que un humano los vea",
+      "keywords": "🎯 Las palabras clave dirigidas aumentan las coincidencias 3 veces",
+      "actionVerbs": "⚡ Verbos como 'impulsé' y 'lancé' superan a 'gestioné' y 'ayudé'",
+      "placement": "🔑 Los ATS dan más peso a las palabras clave en el primer tercio del CV"
+    }
+  },
+  "lockedInsight": {
+    "premium": "Premium",
+    "unlockButton": "Desbloquear Informe Completo"
+  },
+  "languageDetection": {
+    "detected": "Tu currículum parece estar en {{language}}",
+    "switchPrompt": "¿Cambiar idioma del sitio a {{language}}?",
+    "switchButton": "Cambiar a {{language}}",
+    "dismiss": "Mantener {{current}}"
+  },
+  "faq": {
+    "stillHaveQuestions": "¿Aún tienes preguntas?"
+  },
+  "socialProof": {
+    "testimonials": {
+      "reddit": {
+        "quote": "El servicio es súper útil y práctico.",
+        "role": "Usuario de Reddit • Cliente de pago"
+      }
+    }
   }
 }

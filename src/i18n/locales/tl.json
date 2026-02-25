@@ -516,5 +516,49 @@
     "guarantee": "Instant na resulta • Walang subscription",
     "button": "Kunin ang Aking Analysis Ngayon",
     "roi": "Isang interview = $25 na-recover"
+  },
+  "scanProgress": {
+    "title": "AI Analysis na Ginagawa",
+    "subtitle": "Gumagamit ng Gemini Pro para sa pinakamataas na katumpakan",
+    "complete": "{{percent}}% kumpleto",
+    "live": "Live",
+    "securityNote": "Ang iyong resume ay sinusuri nang ligtas at hindi naka-store",
+    "stages": {
+      "parsing": { "label": "Pina-parse ang Resume", "description": "Kinukuha ang text at istruktura" },
+      "industry": { "label": "Tine-detect ang Industriya", "description": "Tinutukoy ang iyong larangan at role" },
+      "ats": { "label": "Pinapatakbo ang ATS Simulation", "description": "Sinusubok laban sa 50+ ATS systems" },
+      "keywords": { "label": "Sinusuri ang mga Keyword", "description": "Tinatapat ang mga industry-specific na termino" },
+      "scoring": { "label": "Scoring at Benchmarking", "description": "Ikinocompare sa mga top candidates" },
+      "ai": { "label": "AI Deep Analysis", "description": "Gumagawa ng personalized insights" },
+      "report": { "label": "Ginagawa ang Iyong Report", "description": "Kinocompile ang mga actionable recommendations" }
+    },
+    "tips": {
+      "numbers": "💡 Tip: Ang mga resume na may numero ay nakakakuha ng 40% mas maraming callbacks",
+      "atsReject": "📊 Alam mo ba? 75% ng mga resume ay tinatanggihan ng ATS bago makita ng tao",
+      "keywords": "🎯 Ang targeted keywords ay nagpapataas ng match rates ng 3x",
+      "actionVerbs": "⚡ Ang action verbs tulad ng 'pinangunahan' at 'inilunsad' ay mas maganda kaysa 'pinamamahalaan'",
+      "placement": "🔑 Karamihan ng ATS systems ay mas binibigyan ng halaga ang keywords sa unang ikatlong bahagi"
+    }
+  },
+  "lockedInsight": {
+    "premium": "Premium",
+    "unlockButton": "I-unlock ang Buong Report"
+  },
+  "languageDetection": {
+    "detected": "Ang iyong resume ay mukhang nasa {{language}}",
+    "switchPrompt": "Palitan ang wika ng site sa {{language}}?",
+    "switchButton": "Lumipat sa {{language}}",
+    "dismiss": "Panatilihin ang {{current}}"
+  },
+  "faq": {
+    "stillHaveQuestions": "May iba ka pang tanong?"
+  },
+  "socialProof": {
+    "testimonials": {
+      "reddit": {
+        "quote": "Ang serbisyo ay super nakakatulong at kapaki-pakinabang.",
+        "role": "Reddit User • Nagbayad na Customer"
+      }
+    }
   }
 }

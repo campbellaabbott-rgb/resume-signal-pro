@@ -517,5 +517,46 @@
     "guarantee": "Resultados instantâneos • Sem subscrição",
     "button": "Obter a Minha Análise Agora",
     "roi": "Uma entrevista = $25 que se paga sozinho"
+  },
+  "scanProgress": {
+    "title": "Análise IA em Progresso",
+    "subtitle": "Usando Gemini Pro para máxima precisão",
+    "complete": "{{percent}}% completo",
+    "live": "Ao vivo",
+    "securityNote": "O seu currículo é analisado com segurança e nunca armazenado",
+    "stages": {
+      "parsing": { "label": "A processar currículo", "description": "A extrair texto e estrutura" },
+      "industry": { "label": "A detetar indústria", "description": "A identificar o seu campo e função" },
+      "ats": { "label": "Simulação ATS em curso", "description": "A testar contra 50+ sistemas ATS" },
+      "keywords": { "label": "A analisar palavras-chave", "description": "A corresponder termos do setor" },
+      "scoring": { "label": "Pontuação e benchmark", "description": "A comparar com os melhores candidatos" },
+      "ai": { "label": "Análise IA profunda", "description": "A gerar insights personalizados" },
+      "report": { "label": "A construir o relatório", "description": "A compilar recomendações práticas" }
+    },
+    "tips": {
+      "numbers": "💡 Dica: Currículos com números recebem 40% mais respostas",
+      "atsReject": "📊 Sabia que? 75% dos currículos são rejeitados pelo ATS antes de um humano os ver",
+      "keywords": "🎯 Palavras-chave direcionadas aumentam a taxa de correspondência em 3x",
+      "actionVerbs": "⚡ Verbos de ação como 'impulsionei' e 'lancei' superam 'geri' e 'ajudei'",
+      "placement": "🔑 A maioria dos ATS valoriza mais as palavras-chave no primeiro terço"
+    }
+  },
+  "lockedInsight": {
+    "premium": "Premium",
+    "unlockButton": "Desbloquear Relatório Completo"
+  },
+  "languageDetection": {
+    "detected": "O seu currículo parece estar em {{language}}",
+    "switchPrompt": "Mudar idioma do site para {{language}}?",
+    "switchButton": "Mudar para {{language}}",
+    "dismiss": "Manter {{current}}"
+  },
+  "socialProof": {
+    "testimonials": {
+      "reddit": {
+        "quote": "O serviço é super útil e prático.",
+        "role": "Utilizador Reddit • Cliente pagante"
+      }
+    }
   }
 }
