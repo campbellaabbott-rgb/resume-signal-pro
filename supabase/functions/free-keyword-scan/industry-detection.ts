@@ -27,7 +27,10 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'vp of sales', 'chief revenue officer', 'cro', 'sales engineer',
       'solution consultant', 'sales consultant', 'client executive',
       'named account executive', 'strategic account executive',
-      'commercial account executive', 'gtm', 'go-to-market'
+      'commercial account executive', 'gtm', 'go-to-market',
+      'founding gtm', 'salesperson', 'sales associate', 'sales lead',
+      'business development manager', 'partnerships manager',
+      'revenue operations', 'revops', 'sales operations'
     ],
     primary: [
       'quota', 'pipeline', 'closed won', 'closed-won', 'revenue', 'arr', 'mrr',
@@ -37,7 +40,10 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'attainment', 'exceeded quota', 'above quota', 'over-achieved',
       'new business', 'net new', 'expansion revenue', 'upsell', 'cross-sell',
       'renewal', 'churn', 'customer acquisition', 'sales qualified',
-      'opportunity', 'opportunities', 'forecast', 'forecasting'
+      'opportunity', 'opportunities', 'forecast', 'forecasting',
+      'acv', 'total contract value', 'tcv', 'closed deals', 'landed',
+      'surpassed quota', 'shattered', 'exceeded', 'leaderboard',
+      'selling', 'sell', 'sold', 'sale', 'sales'
     ],
     secondary: [
       'crm', 'salesforce', 'hubspot', 'outreach', 'salesloft', 'gong',
@@ -45,7 +51,10 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'customer success', 'account management', 'stakeholder',
       'c-suite', 'decision maker', 'buying committee', 'procurement',
       'contract', 'negotiation', 'pricing', 'proposal', 'rfp', 'sow',
-      'client relationship', 'land and expand', 'white space'
+      'client relationship', 'land and expand', 'white space',
+      'apollo', 'rb2b', 'outbound motions', 'tech stack', 'prospecting',
+      'consultative selling', 'objection handling', 'closing',
+      'cold call', 'lead generation', 'business development'
     ],
     certifications: [
       'meddpicc', 'meddic', 'bant', 'spin selling', 'challenger sale',
@@ -413,28 +422,42 @@ function extractSections(resumeText: string): {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   
   // Extract job titles - look for common patterns
-  const jobTitlePatterns = [
-    /^([a-z\s,&-]+)\s*[-–|@at]\s*[a-z]/i,  // "Account Executive - Company"
-    /^([a-z\s,&-]+)\s*\|\s*[a-z]/i,          // "Software Engineer | Company"
-    /^([a-z\s,&-]+)\s+at\s+[a-z]/i,          // "Manager at Company"
-  ];
-  
   const jobTitles: string[] = [];
   const titleKeywords = [
     'manager', 'director', 'engineer', 'developer', 'analyst', 'specialist',
     'coordinator', 'consultant', 'executive', 'lead', 'head', 'vp', 'president',
     'associate', 'senior', 'principal', 'architect', 'designer', 'administrator',
-    'representative', 'rep', 'officer', 'nurse', 'teacher', 'attorney', 'accountant'
+    'representative', 'rep', 'officer', 'nurse', 'teacher', 'attorney', 'accountant',
+    'salesperson', 'gtm', 'go-to-market', 'founder', 'ceo', 'cfo', 'cto', 'cro',
+    'recruiter', 'therapist', 'scientist', 'researcher', 'strategist'
   ];
   
   for (const line of lines) {
-    // Check if line looks like a job title (short, contains title keyword)
-    if (line.length < 100) {
+    if (line.length < 120) {
       const hasTitle = titleKeywords.some(kw => line.includes(kw));
       if (hasTitle) {
-        // Clean up the title
-        const cleanTitle = line.split(/[-–|@]|\d{4}|january|february|march|april|may|june|july|august|september|october|november|december/i)[0].trim();
-        if (cleanTitle.length > 3 && cleanTitle.length < 80) {
+        let cleanTitle = '';
+        
+        // Pattern 1: "Company, Location; Title (Date)" — semicolon separates company from title
+        const semicolonMatch = line.match(/;\s*(.+?)(?:\s*\(|$)/i);
+        if (semicolonMatch) {
+          cleanTitle = semicolonMatch[1].trim();
+        }
+        
+        // Pattern 2: "Title - Company" or "Title | Company" or "Title @ Company"
+        if (!cleanTitle) {
+          cleanTitle = line.split(/[-–|@]|\d{4}|january|february|march|april|may|june|july|august|september|october|november|december/i)[0].trim();
+        }
+        
+        // Pattern 3: "Title at Company"
+        if (!cleanTitle || cleanTitle === line.trim()) {
+          const atMatch = line.match(/^(.+?)\s+at\s+/i);
+          if (atMatch) {
+            cleanTitle = atMatch[1].trim();
+          }
+        }
+        
+        if (cleanTitle && cleanTitle.length > 3 && cleanTitle.length < 80) {
           jobTitles.push(cleanTitle);
         }
       }
