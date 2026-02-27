@@ -66,19 +66,27 @@ const VALID_INDUSTRIES = [
 const INDUSTRY_ALIASES: Record<string, string> = {
   'tech': 'technology', 'software': 'technology', 'it': 'technology',
   'software development': 'technology', 'information technology': 'technology',
+  'software_engineering': 'technology', 'software engineering': 'technology',
+  'ai_ml': 'technology', 'data_engineering': 'technology',
   'medical': 'healthcare', 'health': 'healthcare', 'medicine': 'healthcare',
   'nursing': 'healthcare', 'pharmaceutical': 'healthcare',
   'law': 'legal', 'attorney': 'legal', 'lawyer': 'legal',
   'banking': 'finance', 'accounting': 'finance', 'financial services': 'finance',
   'advertising': 'marketing', 'pr': 'marketing', 'public relations': 'marketing',
+  'digital_marketing': 'marketing', 'digital marketing': 'marketing',
+  'content_marketing': 'marketing', 'performance_marketing': 'marketing',
   'teaching': 'education', 'academia': 'education', 'academic': 'education',
   'design': 'creative', 'art': 'creative', 'media': 'creative',
   'human resources': 'hr', 'recruitment': 'hr', 'talent': 'hr',
   'management consulting': 'consulting', 'strategy': 'consulting',
+  'management_consulting': 'consulting',
+  'business_development': 'sales', 'business development': 'sales',
   'ecommerce': 'retail', 'e-commerce': 'retail',
   'hotel': 'hospitality', 'restaurant': 'hospitality', 'tourism': 'hospitality',
   'production': 'manufacturing', 'factory': 'manufacturing',
-  'public sector': 'government', 'federal': 'government', 'state': 'government'
+  'public sector': 'government', 'federal': 'government', 'state': 'government',
+  'military': 'general', 'technical_program_management': 'technology',
+  'product_management': 'technology'
 };
 
 // Normalize industry to valid value
@@ -1152,20 +1160,58 @@ ${resumeText.substring(0, 15000)}
     }
 
     // Normalize industry to valid value
-    const rawIndustry = analysis.industry;
-    analysis.industry = normalizeIndustry(rawIndustry);
-    if (rawIndustry !== analysis.industry) {
-      console.log(`[FREE-KEYWORD-SCAN] Industry normalized: "${rawIndustry}" -> "${analysis.industry}"`);
+    const rawAIIndustry = analysis.industry;
+    const normalizedAIIndustry = normalizeIndustry(rawAIIndustry);
+    if (rawAIIndustry !== normalizedAIIndustry) {
+      console.log(`[FREE-KEYWORD-SCAN] AI industry normalized: "${rawAIIndustry}" -> "${normalizedAIIndustry}"`);
     }
 
-    // Check if AI agreed with server detection
-    const serverAIMatch = analysis.industry === industryDetection.industry;
-    const serverAIParentMatch = analysis.industry === industryDetection.industry || 
-      industryDetection.alternativeIndustries.some(alt => alt.industry === analysis.industry);
-    
-    if (!serverAIMatch) {
-      console.log(`[FREE-KEYWORD-SCAN] Industry mismatch - Server: ${industryDetection.industry} vs AI: ${analysis.industry}`);
+    // === INDUSTRY TRUST HIERARCHY ===
+    // Server detection uses structured keyword analysis; AI can hallucinate industry.
+    // Trust hierarchy: server HIGH > AI > server MEDIUM > server LOW
+    let finalIndustry: string;
+    let detectionSource: string;
+    const serverAIMatch = normalizedAIIndustry === industryDetection.industry;
+    const serverAIParentMatch = serverAIMatch || 
+      industryDetection.alternativeIndustries.some(alt => alt.industry === normalizedAIIndustry);
+
+    if (industryDetection.confidence === 'high') {
+      // HIGH confidence server detection — ALWAYS trust server
+      // AI override is the #1 cause of misclassification (e.g., sales→digital_marketing)
+      finalIndustry = industryDetection.industry;
+      detectionSource = serverAIMatch ? 'server_high_ai_agree' : 'server_high_ai_overruled';
+      if (!serverAIMatch) {
+        console.log(`[FREE-KEYWORD-SCAN] OVERRULED AI: Server HIGH confidence "${industryDetection.industry}" beats AI "${normalizedAIIndustry}"`);
+      }
+    } else if (industryDetection.confidence === 'medium') {
+      // MEDIUM confidence — AI can override only if it picked a plausible alternative
+      if (serverAIMatch) {
+        finalIndustry = industryDetection.industry;
+        detectionSource = 'server_medium_ai_agree';
+      } else if (serverAIParentMatch) {
+        // AI picked a related/alternative industry — use AI since server wasn't sure
+        finalIndustry = normalizedAIIndustry;
+        detectionSource = 'ai_override_medium_parent';
+      } else {
+        // AI picked something completely different — trust server (medium > random AI)
+        finalIndustry = industryDetection.industry;
+        detectionSource = 'server_medium_ai_unrelated';
+        console.log(`[FREE-KEYWORD-SCAN] Kept server MEDIUM "${industryDetection.industry}" — AI "${normalizedAIIndustry}" was unrelated`);
+      }
+    } else {
+      // LOW confidence — AI takes precedence
+      finalIndustry = normalizedAIIndustry;
+      detectionSource = serverAIMatch ? 'server_low_ai_agree' : 'ai_override_low';
     }
+
+    analysis.industry = finalIndustry;
+    
+    // Determine final confidence
+    const finalConfidence = industryDetection.confidence === 'high' ? 'high' :
+      (serverAIMatch ? industryDetection.confidence : 
+        (industryDetection.confidence === 'medium' ? 'medium' : 'low'));
+
+    console.log(`[FREE-KEYWORD-SCAN] Final industry: "${finalIndustry}" (source: ${detectionSource}, confidence: ${finalConfidence})`);
 
     // Ensure limits
     const keywords = (analysis.keywords || []).slice(0, 6);
@@ -1187,14 +1233,14 @@ ${resumeText.substring(0, 15000)}
             p_server_confidence: industryDetection.confidence,
             p_server_score: industryDetection.score,
             p_server_signals: industryDetection.signals,
-            p_ai_suggested_industry: analysis.industry,
-            p_final_industry: analysis.industry, // AI takes precedence for now
-            p_final_confidence: industryDetection.confidence,
+            p_ai_suggested_industry: normalizedAIIndustry,
+            p_final_industry: finalIndustry,
+            p_final_confidence: finalConfidence,
             p_server_ai_match: serverAIMatch,
             p_server_ai_parent_match: serverAIParentMatch,
             p_alternative_industries: industryDetection.alternativeIndustries,
             p_ip_country: country,
-            p_detection_source: 'server_with_ai_override'
+            p_detection_source: detectionSource
           });
         } catch (err) {
           console.error('[FREE-KEYWORD-SCAN] Failed to log industry detection:', err);

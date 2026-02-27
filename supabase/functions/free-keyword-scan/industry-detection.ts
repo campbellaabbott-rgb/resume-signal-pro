@@ -6,14 +6,16 @@
  */
 
 // Section weights - job titles and summary have highest influence
+// REBALANCED: Titles increased, skills decreased to prevent misclassification
+// from skills-section noise (e.g., "Digital Marketing" in a Sales person's skills)
 const SECTION_WEIGHTS = {
-  jobTitle: 5.0,     // Job titles are the strongest signal
-  summary: 3.0,      // Professional summary is second most important
+  jobTitle: 8.0,     // Job titles are the STRONGEST signal (was 5.0)
+  summary: 3.5,      // Professional summary is second most important
   heading: 2.5,      // Section headings (e.g., "Sales Experience")
   firstBullets: 2.0, // First 2-3 bullets per role
   otherBullets: 1.0, // Other bullet points
-  skills: 0.7,       // Skills section - lower weight
-  misc: 0.5          // Footer, education descriptions, etc.
+  skills: 0.4,       // Skills section - LOW weight (was 0.7) — skills lists are noisy
+  misc: 0.3          // Footer, education descriptions, etc.
 };
 
 // Industry-specific keyword dictionaries with weights
@@ -367,7 +369,9 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['prospecting', 'outbound', 'cold'],
     ['account', 'executive', 'enterprise'],
     ['meddpicc', 'salesforce', 'quota'],
-    ['attainment', 'bookings', 'arr']
+    ['attainment', 'bookings', 'arr'],
+    ['gtm', 'revenue', 'sales'],
+    ['selling', 'quota', 'deals']
   ],
   technology: [
     ['code', 'deploy', 'git'],
@@ -389,6 +393,57 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['portfolio', 'aum', 'returns'],
     ['budget', 'forecast', 'variance'],
     ['gaap', 'financial', 'statements']
+  ],
+  healthcare: [
+    ['patient', 'clinical', 'hospital'],
+    ['nursing', 'care', 'medication'],
+    ['hipaa', 'emr', 'charting']
+  ],
+  hr: [
+    ['recruiting', 'hiring', 'talent'],
+    ['onboarding', 'employee', 'hris'],
+    ['compensation', 'benefits', 'payroll']
+  ],
+  legal: [
+    ['litigation', 'court', 'contract'],
+    ['counsel', 'compliance', 'legal'],
+    ['westlaw', 'bar', 'attorney']
+  ],
+  education: [
+    ['teaching', 'students', 'curriculum'],
+    ['classroom', 'instruction', 'lesson']
+  ],
+  engineering: [
+    ['design', 'manufacturing', 'specifications'],
+    ['autocad', 'solidworks', 'tolerance']
+  ],
+  consulting: [
+    ['client', 'engagement', 'strategy'],
+    ['advisory', 'deliverable', 'workstream']
+  ],
+  creative: [
+    ['design', 'portfolio', 'visual'],
+    ['figma', 'photoshop', 'branding']
+  ]
+};
+
+// Negative keyword rules — when an industry has high title score but these
+// keywords dominate the skills/bullets, it should NOT switch to the negative industry.
+// Format: { industry: keywords_that_should_NOT_cause_reclassification_away }
+const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleSignal: boolean }[]> = {
+  // If someone has sales titles, marketing keywords in skills shouldn't reclassify them
+  sales: [
+    { negativeFor: 'marketing', requiredTitleSignal: true },
+    { negativeFor: 'creative', requiredTitleSignal: true }
+  ],
+  // If someone has tech titles, consulting keywords shouldn't reclassify them
+  technology: [
+    { negativeFor: 'consulting', requiredTitleSignal: true },
+    { negativeFor: 'sales', requiredTitleSignal: true }
+  ],
+  // If someone has marketing titles, sales keywords shouldn't reclassify
+  marketing: [
+    { negativeFor: 'sales', requiredTitleSignal: true }
   ]
 };
 
@@ -654,6 +709,46 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
 }
 
 /**
+ * Check if the top industry has strong title-based signals
+ */
+function hasStrongTitleSignal(signals: string[]): boolean {
+  return signals.some(s => s.startsWith('Job title match:'));
+}
+
+/**
+ * Apply disambiguation rules to prevent misclassification
+ * when skills-section noise from a different industry inflates scores
+ */
+function applyDisambiguation(
+  scores: Array<{ industry: string; score: number; signals: string[] }>
+): void {
+  const top = scores[0];
+  if (!top) return;
+  
+  const rules = DISAMBIGUATION_RULES[top.industry];
+  if (!rules) return;
+  
+  const topHasTitles = hasStrongTitleSignal(top.signals);
+  if (!topHasTitles) return;
+  
+  // If the top industry has title matches, penalize competing industries
+  // that are marked as "negative" (i.e., noise from skills section)
+  for (let i = 1; i < scores.length; i++) {
+    const competitor = scores[i];
+    const rule = rules.find(r => r.negativeFor === competitor.industry);
+    if (rule && rule.requiredTitleSignal && !hasStrongTitleSignal(competitor.signals)) {
+      // Competitor has no title signal but high score → likely skills noise
+      // Penalize by 50%
+      competitor.score *= 0.5;
+      competitor.signals.push('Score reduced: no title signal vs dominant industry');
+    }
+  }
+  
+  // Re-sort after penalties
+  scores.sort((a, b) => b.score - a.score);
+}
+
+/**
  * Main detection function
  */
 export function detectIndustry(resumeText: string): DetectionResult {
@@ -674,13 +769,20 @@ export function detectIndustry(resumeText: string): DetectionResult {
   // Sort by score
   scores.sort((a, b) => b.score - a.score);
   
+  // Apply disambiguation rules to handle skills-section noise
+  applyDisambiguation(scores);
+  
   const top = scores[0];
   const second = scores[1];
   
-  // Determine confidence
+  // Determine confidence — with boosted thresholds for title-matched industries
   let confidence: 'high' | 'medium' | 'low';
+  const hasTitles = hasStrongTitleSignal(top.signals);
   
-  if (top.score >= 15 && (top.score / (second?.score || 1)) >= 1.5) {
+  if (hasTitles && top.score >= 10) {
+    // Title match is the strongest signal — high confidence even at lower total score
+    confidence = 'high';
+  } else if (top.score >= 15 && (top.score / (second?.score || 1)) >= 1.5) {
     confidence = 'high';
   } else if (top.score >= 8) {
     confidence = 'medium';
@@ -688,9 +790,8 @@ export function detectIndustry(resumeText: string): DetectionResult {
     confidence = 'low';
   }
   
-  // Check for mixed signals (dilutes confidence)
-  if (second && second.score > 0 && (top.score / second.score) < 1.3) {
-    // Close competition = lower confidence
+  // Check for mixed signals (dilutes confidence) — but NOT if top has title matches
+  if (!hasTitles && second && second.score > 0 && (top.score / second.score) < 1.3) {
     confidence = confidence === 'high' ? 'medium' : 'low';
     top.signals.push(`Note: Also shows signals for ${second.industry}`);
   }
@@ -715,16 +816,18 @@ export function detectIndustry(resumeText: string): DetectionResult {
  */
 export function formatDetectionForPrompt(result: DetectionResult): string {
   return `
-**PRE-DETECTED INDUSTRY (Use this as strong prior):**
+**PRE-DETECTED INDUSTRY (MANDATORY — your response MUST use this industry):**
 - Detected Industry: ${result.industry.toUpperCase()}
 - Confidence: ${result.confidence}
 - Score: ${result.score.toFixed(1)}
 - Key Signals: ${result.signals.join('; ')}
 ${result.alternativeIndustries.length > 0 ? `- Alternative industries: ${result.alternativeIndustries.map(a => `${a.industry}(${a.score.toFixed(1)})`).join(', ')}` : ''}
 
-IMPORTANT: The pre-detection algorithm has analyzed job titles, keyword frequency, section weights, and co-occurrence patterns. 
-${result.confidence === 'high' ? 'HIGH CONFIDENCE - Accept this industry classification unless there is overwhelming evidence otherwise.' : 
-  result.confidence === 'medium' ? 'MEDIUM CONFIDENCE - Verify but lean toward this classification.' :
-  'LOW CONFIDENCE - Use your judgment but consider these signals.'}
+CRITICAL INSTRUCTION: The pre-detection algorithm has analyzed job titles, keyword frequency, section weights, and co-occurrence patterns.
+${result.confidence === 'high' ? 
+  `HIGH CONFIDENCE — You MUST return "${result.industry}" as the industry. DO NOT override this. The algorithm matched job titles directly. Even if the skills section mentions other fields (e.g., marketing keywords on a sales resume), the JOB TITLES determine industry.` : 
+  result.confidence === 'medium' ? 
+  `MEDIUM CONFIDENCE — Return "${result.industry}" unless you have STRONG title-based evidence for a different industry. Skills-section keywords alone are NOT sufficient evidence to override.` :
+  'LOW CONFIDENCE — Use your judgment but consider these signals. Job titles should weigh more than skills lists.'}
 `;
 }
