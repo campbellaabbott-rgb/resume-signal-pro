@@ -35,28 +35,28 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'revenue operations', 'revops', 'sales operations'
     ],
     primary: [
-      'quota', 'pipeline', 'closed won', 'closed-won', 'revenue', 'arr', 'mrr',
+      'quota', 'closed won', 'closed-won', 'arr', 'mrr',
       'bookings', 'deals', 'prospects', 'prospecting', 'cold calling',
       'outbound', 'inbound sales', 'demo', 'demos', 'discovery call',
       'sales cycle', 'deal size', 'average deal', 'enterprise deals',
       'attainment', 'exceeded quota', 'above quota', 'over-achieved',
       'new business', 'net new', 'expansion revenue', 'upsell', 'cross-sell',
       'renewal', 'churn', 'customer acquisition', 'sales qualified',
-      'opportunity', 'opportunities', 'forecast', 'forecasting',
       'acv', 'total contract value', 'tcv', 'closed deals', 'landed',
-      'surpassed quota', 'shattered', 'exceeded', 'leaderboard',
-      'selling', 'sell', 'sold', 'sale', 'sales'
+      'surpassed quota', 'shattered quota', 'leaderboard',
+      'selling', 'sold', 'sales pipeline', 'sales revenue',
+      'sales quota', 'sales target', 'sales goal'
     ],
     secondary: [
       'crm', 'salesforce', 'hubspot', 'outreach', 'salesloft', 'gong',
       'zoominfo', 'linkedin sales navigator', 'clari', 'chorus',
-      'customer success', 'account management', 'stakeholder',
+      'customer success', 'account management',
       'c-suite', 'decision maker', 'buying committee', 'procurement',
-      'contract', 'negotiation', 'pricing', 'proposal', 'rfp', 'sow',
+      'rfp', 'sow',
       'client relationship', 'land and expand', 'white space',
-      'apollo', 'rb2b', 'outbound motions', 'tech stack', 'prospecting',
-      'consultative selling', 'objection handling', 'closing',
-      'cold call', 'lead generation', 'business development'
+      'apollo', 'rb2b', 'outbound motions',
+      'consultative selling', 'objection handling',
+      'cold call', 'lead generation'
     ],
     certifications: [
       'meddpicc', 'meddic', 'bant', 'spin selling', 'challenger sale',
@@ -294,22 +294,40 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'design engineer', 'manufacturing engineer', 'process engineer',
       'quality engineer', 'industrial engineer', 'systems engineer',
       'aerospace engineer', 'environmental engineer', 'biomedical engineer',
-      'pe', 'professional engineer', 'engineering manager'
+      'pe', 'professional engineer', 'engineering manager',
+      'reliability engineer', 'test engineer', 'field engineer',
+      'maintenance engineer', 'controls engineer', 'automation engineer',
+      'materials engineer', 'nuclear engineer', 'marine engineer',
+      'geological engineer', 'mining engineer', 'safety engineer',
+      'packaging engineer', 'validation engineer', 'commissioning engineer',
+      'r&d engineer', 'research engineer', 'applications engineer'
     ],
     primary: [
       'engineering', 'design', 'analysis', 'testing', 'prototype',
       'specifications', 'drawings', 'schematics', 'calculations',
       'simulation', 'modeling', 'manufacturing', 'production',
-      'quality', 'inspection', 'tolerance', 'materials'
+      'quality', 'inspection', 'tolerance', 'materials',
+      'blueprints', 'cad', 'technical drawings', 'bill of materials',
+      'bom', 'fabrication', 'assembly', 'welding', 'machining',
+      'thermal', 'structural', 'fluid', 'dynamics', 'statics',
+      'load', 'stress', 'strain', 'fatigue', 'vibration',
+      'commissioning', 'installation', 'maintenance', 'troubleshooting',
+      'root cause analysis', 'rca', 'failure analysis', 'fmea',
+      'validation', 'verification', 'calibration', 'metrology'
     ],
     secondary: [
       'autocad', 'solidworks', 'catia', 'creo', 'inventor', 'revit',
       'matlab', 'simulink', 'ansys', 'fea', 'cfd', 'cam', 'cnc',
-      'lean', 'six sigma', 'iso', 'asme', 'astm', 'osha', 'safety'
+      'lean', 'six sigma', 'iso', 'asme', 'astm', 'osha', 'safety',
+      'gd&t', 'geometric dimensioning', 'p&id', 'piping',
+      'plc', 'scada', 'hmi', 'pneumatic', 'hydraulic',
+      'thermodynamics', 'heat transfer', 'kinematics', 'robotics'
     ],
     certifications: [
       'pe license', 'professional engineer', 'fe', 'eit',
-      'pmp', 'six sigma black belt', 'green belt', 'lean certified'
+      'pmp', 'six sigma black belt', 'green belt', 'lean certified',
+      'api certified', 'aws cwi', 'certified welding inspector',
+      'nace', 'asnt', 'nbic'
     ]
   },
   
@@ -415,7 +433,15 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
   ],
   engineering: [
     ['design', 'manufacturing', 'specifications'],
-    ['autocad', 'solidworks', 'tolerance']
+    ['autocad', 'solidworks', 'tolerance'],
+    ['engineering', 'design', 'analysis'],
+    ['prototype', 'testing', 'specifications'],
+    ['cad', 'simulation', 'materials'],
+    ['fea', 'ansys', 'modeling'],
+    ['mechanical', 'thermal', 'structural'],
+    ['electrical', 'circuit', 'power'],
+    ['civil', 'structural', 'construction'],
+    ['process', 'chemical', 'plant']
   ],
   consulting: [
     ['client', 'engagement', 'strategy'],
@@ -444,6 +470,42 @@ const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleS
   // If someone has marketing titles, sales keywords shouldn't reclassify
   marketing: [
     { negativeFor: 'sales', requiredTitleSignal: true }
+  ],
+  // If someone has engineering titles, sales/consulting keywords shouldn't reclassify
+  engineering: [
+    { negativeFor: 'sales', requiredTitleSignal: true },
+    { negativeFor: 'consulting', requiredTitleSignal: true },
+    { negativeFor: 'technology', requiredTitleSignal: true }
+  ],
+  // If someone has healthcare titles, sales keywords shouldn't reclassify
+  healthcare: [
+    { negativeFor: 'sales', requiredTitleSignal: true }
+  ],
+  // If someone has finance titles, consulting keywords shouldn't reclassify
+  finance: [
+    { negativeFor: 'consulting', requiredTitleSignal: true },
+    { negativeFor: 'sales', requiredTitleSignal: true }
+  ],
+  // If someone has HR titles, consulting/sales keywords shouldn't reclassify
+  hr: [
+    { negativeFor: 'consulting', requiredTitleSignal: true },
+    { negativeFor: 'sales', requiredTitleSignal: true }
+  ],
+  // If someone has education titles, consulting keywords shouldn't reclassify
+  education: [
+    { negativeFor: 'consulting', requiredTitleSignal: true }
+  ],
+  // If someone has legal titles, consulting keywords shouldn't reclassify
+  legal: [
+    { negativeFor: 'consulting', requiredTitleSignal: true }
+  ],
+  // If someone has consulting titles, sales keywords shouldn't reclassify
+  consulting: [
+    { negativeFor: 'sales', requiredTitleSignal: true }
+  ],
+  // If someone has creative titles, marketing keywords shouldn't reclassify
+  creative: [
+    { negativeFor: 'marketing', requiredTitleSignal: true }
   ]
 };
 
