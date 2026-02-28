@@ -4887,8 +4887,14 @@ function hybridIndustryDetection(
     }
   }
   
+  // === INDUSTRY TRUST HIERARCHY (synced with free-keyword-scan) ===
+  // Server detection uses structured keyword analysis; AI can hallucinate industry.
+  // Trust hierarchy: server HIGH > AI > server MEDIUM > server LOW
+  const serverAIMatch = normalizedAI === serverResult.industry;
+  const serverAIParentMatch = serverAIMatch || 
+    (serverResult.alternativeIndustries || []).some(alt => alt.industry === normalizedAI);
+
   // CRITICAL: Never return "general" if AI has a specific suggestion
-  // This ensures 100% detection rate
   if (serverResult.industry === 'general' && normalizedAI !== 'general') {
     console.log(`[INDUSTRY-HYBRID] Server returned general, using AI mandatory fallback: ${normalizedAI}`);
     return {
@@ -4904,49 +4910,52 @@ function hybridIndustryDetection(
       matchedContextPatterns: serverResult.matchedContextPatterns
     };
   }
-  
-  // If server has high confidence, trust it
+
   if (serverResult.confidence === 'high') {
-    console.log(`[INDUSTRY-HYBRID] Using server result (high confidence): ${serverResult.industry}`);
+    // HIGH confidence server detection — ALWAYS trust server
+    // AI override is the #1 cause of misclassification (e.g., sales→digital_marketing, engineering→sales)
+    const detectionSource = serverAIMatch ? 'server_high_ai_agree' : 'server_high_ai_overruled';
+    if (!serverAIMatch) {
+      console.log(`[INDUSTRY-HYBRID] OVERRULED AI: Server HIGH confidence "${serverResult.industry}" beats AI "${normalizedAI}"`);
+    }
     return {
       ...serverResult,
-      detectionSource: 'server_high'
+      detectionSource
     };
   }
   
-  // If server has medium confidence but AI agrees (or maps to same parent), trust server
   if (serverResult.confidence === 'medium') {
-    const serverParent = getParentIndustry(serverResult.industry);
-    const aiParent = getParentIndustry(normalizedAI);
-    
-    if (serverResult.industry === normalizedAI || serverParent === aiParent || serverParent === normalizedAI || serverResult.industry === aiParent) {
-      console.log(`[INDUSTRY-HYBRID] Server and AI agree: ${serverResult.industry} (AI: ${normalizedAI})`);
+    // MEDIUM confidence — AI can override only if it picked a plausible alternative
+    if (serverAIMatch) {
+      console.log(`[INDUSTRY-HYBRID] Server and AI agree: ${serverResult.industry}`);
       return {
         ...serverResult,
-        detectionSource: 'server_medium'
+        detectionSource: 'server_medium_ai_agree'
       };
     }
     
-    // If AI suggests something different and specific, consider it
-    if (normalizedAI !== 'general' && serverResult.score < 40) {
-      console.log(`[INDUSTRY-HYBRID] AI override (server score ${serverResult.score} < 40): ${normalizedAI}`);
+    if (serverAIParentMatch) {
+      // AI picked a related/alternative industry — use AI since server wasn't sure
+      console.log(`[INDUSTRY-HYBRID] AI override (parent match): ${normalizedAI}`);
       return {
         ...serverResult,
         industry: normalizedAI,
         confidence: 'medium',
-        signals: [...serverResult.signals, `AI suggested: ${normalizedAI}`],
-        detectionSource: 'ai_override'
+        signals: [...serverResult.signals, `AI suggested related: ${normalizedAI}`],
+        detectionSource: 'ai_override_medium_parent'
       };
     }
     
+    // AI picked something completely different — trust server (medium > random AI)
+    console.log(`[INDUSTRY-HYBRID] Kept server MEDIUM "${serverResult.industry}" — AI "${normalizedAI}" was unrelated`);
     return {
       ...serverResult,
-      detectionSource: 'server_medium'
+      detectionSource: 'server_medium_ai_unrelated'
     };
   }
   
-  // If server has low confidence, prefer AI if it's specific
-  if (serverResult.confidence === 'low' && normalizedAI !== 'general') {
+  // LOW confidence — AI takes precedence
+  if (normalizedAI !== 'general') {
     console.log(`[INDUSTRY-HYBRID] Using AI (server low confidence): ${normalizedAI}`);
     return {
       industry: normalizedAI,
@@ -4954,7 +4963,7 @@ function hybridIndustryDetection(
       confidence: 'low',
       signals: [`AI detected: ${normalizedAI}`],
       score: serverResult.score,
-      detectionSource: 'ai_fallback',
+      detectionSource: serverAIMatch ? 'server_low_ai_agree' : 'ai_override_low',
       alternativeIndustries: serverResult.alternativeIndustries,
       matchedTitlePatterns: serverResult.matchedTitlePatterns,
       matchedSkillCount: serverResult.matchedSkillCount,
@@ -4962,20 +4971,7 @@ function hybridIndustryDetection(
     };
   }
   
-  // Final fallback: if both server and AI return general, use the highest keyword density
-  // This should be extremely rare
-  if (serverResult.industry === 'general' && normalizedAI === 'general') {
-    console.log(`[INDUSTRY-HYBRID] Both server and AI returned general - this needs attention`);
-    // Return technology as a safe fallback for most resumes
-    return {
-      ...serverResult,
-      industry: 'technology', // Most common fallback
-      confidence: 'low',
-      signals: [...serverResult.signals, 'Default fallback: technology (no strong signals)'],
-      detectionSource: 'server_low'
-    };
-  }
-  
+  // Final fallback
   console.log(`[INDUSTRY-HYBRID] Defaulting to server result: ${serverResult.industry}`);
   return {
     ...serverResult,
