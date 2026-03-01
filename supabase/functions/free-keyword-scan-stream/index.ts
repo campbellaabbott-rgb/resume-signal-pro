@@ -213,7 +213,7 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   // Government sub-industries
   'policy_analysis': 'government',
   'public_administration': 'government',
-  'military': 'government',
+  'military': 'general', // Military isn't a real industry — remapped to general so hybrid detection can assign based on actual skills
   'law_enforcement': 'government',
   'intelligence': 'government',
   // Nonprofit sub-industries
@@ -4894,14 +4894,18 @@ function hybridIndustryDetection(
   const serverAIParentMatch = serverAIMatch || 
     (serverResult.alternativeIndustries || []).some(alt => alt.industry === normalizedAI);
 
-  // CRITICAL: Never return "general" if AI has a specific suggestion
-  if (serverResult.industry === 'general' && normalizedAI !== 'general') {
-    console.log(`[INDUSTRY-HYBRID] Server returned general, using AI mandatory fallback: ${normalizedAI}`);
+  // CRITICAL: Never return "general" or phantom industries if AI has a specific suggestion
+  // Also remap phantom industries (military, operations) — they aren't real industries
+  const phantomIndustries = ['general', 'military', 'operations'];
+  const serverIsPhantom = phantomIndustries.includes(serverResult.industry);
+  
+  if (serverIsPhantom && normalizedAI !== 'general' && !phantomIndustries.includes(normalizedAI)) {
+    console.log(`[INDUSTRY-HYBRID] Server returned phantom "${serverResult.industry}", using AI mandatory fallback: ${normalizedAI}`);
     return {
       industry: normalizedAI,
       parentIndustry: INDUSTRY_PARENTS[normalizedAI],
       confidence: 'low',
-      signals: [`AI detected (mandatory fallback): ${normalizedAI}`],
+      signals: [`AI detected (mandatory fallback from "${serverResult.industry}"): ${normalizedAI}`],
       score: serverResult.score,
       detectionSource: 'ai_fallback',
       alternativeIndustries: serverResult.alternativeIndustries,
@@ -4909,6 +4913,24 @@ function hybridIndustryDetection(
       matchedSkillCount: serverResult.matchedSkillCount,
       matchedContextPatterns: serverResult.matchedContextPatterns
     };
+  }
+  
+  // If server returned phantom and AI also has nothing, check alternatives
+  if (serverIsPhantom && (normalizedAI === 'general' || phantomIndustries.includes(normalizedAI))) {
+    const bestAlt = (serverResult.alternativeIndustries || []).find(
+      alt => alt.score >= 5 && !phantomIndustries.includes(alt.industry)
+    );
+    if (bestAlt) {
+      console.log(`[INDUSTRY-HYBRID] Both server & AI phantom — using best alternative: ${bestAlt.industry} (score: ${bestAlt.score})`);
+      return {
+        ...serverResult,
+        industry: bestAlt.industry,
+        parentIndustry: INDUSTRY_PARENTS[bestAlt.industry],
+        confidence: 'low',
+        signals: [...serverResult.signals, `Remapped from "${serverResult.industry}" via alternative`],
+        detectionSource: 'phantom_remap'
+      };
+    }
   }
 
   if (serverResult.confidence === 'high') {

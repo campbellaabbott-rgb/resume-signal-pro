@@ -811,6 +811,70 @@ function applyDisambiguation(
 }
 
 /**
+ * Fallback keyword pass — lightweight scan when primary engine returns low scores.
+ * Uses broad keyword clusters to at least narrow down the industry family.
+ */
+function fallbackKeywordPass(text: string): { industry: string; score: number; signals: string[] } | null {
+  const lowerText = text.toLowerCase();
+  
+  // Broad keyword clusters — less precise but catches resumes the main engine misses
+  const broadClusters: Array<{ industry: string; keywords: string[]; minMatches: number }> = [
+    { industry: 'finance', keywords: ['revenue', 'budget', 'financial', 'accounting', 'audit', 'tax', 'investment', 'portfolio', 'banking', 'fiscal', 'quarterly', 'annual report', 'p&l', 'balance sheet', 'cash flow', 'forecast', 'compliance'], minMatches: 3 },
+    { industry: 'technology', keywords: ['software', 'code', 'programming', 'developer', 'engineer', 'api', 'database', 'cloud', 'deploy', 'agile', 'sprint', 'git', 'infrastructure', 'system', 'architecture'], minMatches: 3 },
+    { industry: 'healthcare', keywords: ['patient', 'clinical', 'hospital', 'medical', 'nursing', 'care', 'health', 'diagnosis', 'treatment', 'medication', 'physician', 'therapy', 'hipaa'], minMatches: 3 },
+    { industry: 'sales', keywords: ['quota', 'revenue target', 'closed', 'deals', 'prospect', 'pipeline', 'crm', 'selling', 'account executive', 'sales', 'commission', 'territory'], minMatches: 3 },
+    { industry: 'marketing', keywords: ['campaign', 'brand', 'content', 'seo', 'social media', 'advertising', 'analytics', 'digital', 'engagement', 'conversion', 'funnel', 'leads'], minMatches: 3 },
+    { industry: 'engineering', keywords: ['design', 'manufacturing', 'cad', 'specifications', 'tolerance', 'materials', 'testing', 'prototype', 'simulation', 'assembly', 'quality', 'inspection'], minMatches: 3 },
+    { industry: 'hr', keywords: ['recruiting', 'hiring', 'talent', 'onboarding', 'employee', 'compensation', 'benefits', 'payroll', 'workforce', 'retention', 'hris'], minMatches: 3 },
+    { industry: 'education', keywords: ['teaching', 'students', 'curriculum', 'classroom', 'lesson', 'instruction', 'academic', 'school', 'university', 'learning'], minMatches: 3 },
+    { industry: 'legal', keywords: ['legal', 'law', 'contract', 'compliance', 'court', 'litigation', 'attorney', 'counsel', 'regulation', 'statute'], minMatches: 3 },
+    { industry: 'consulting', keywords: ['client', 'engagement', 'strategy', 'advisory', 'deliverable', 'stakeholder', 'recommendation', 'transformation', 'consulting'], minMatches: 3 },
+  ];
+  
+  let bestMatch: { industry: string; score: number; signals: string[] } | null = null;
+  
+  for (const cluster of broadClusters) {
+    const matched = cluster.keywords.filter(kw => lowerText.includes(kw));
+    if (matched.length >= cluster.minMatches) {
+      const score = matched.length * 2; // Simple scoring
+      if (!bestMatch || score > bestMatch.score) {
+        bestMatch = {
+          industry: cluster.industry,
+          score,
+          signals: matched.slice(0, 3).map(kw => `Fallback match: "${kw}"`)
+        };
+      }
+    }
+  }
+  
+  return bestMatch;
+}
+
+/**
+ * Context-aware military/operations remapping.
+ * "military" isn't a real industry — detect what the person actually does
+ * based on their other resume keywords and remap accordingly.
+ */
+function remapPhantomIndustry(
+  industry: string,
+  text: string,
+  scores: Array<{ industry: string; score: number; signals: string[] }>
+): string {
+  // Only remap phantom industries
+  const phantomIndustries = ['military', 'general'];
+  if (!phantomIndustries.includes(industry)) return industry;
+  
+  // If the second-best industry has a reasonable score, use that instead
+  const secondBest = scores.find(s => s.industry !== industry && s.score >= 5);
+  if (secondBest) {
+    console.log(`[INDUSTRY-DETECTION] Remapped "${industry}" → "${secondBest.industry}" (score: ${secondBest.score})`);
+    return secondBest.industry;
+  }
+  
+  return industry;
+}
+
+/**
  * Main detection function
  */
 export function detectIndustry(resumeText: string): DetectionResult {
@@ -842,7 +906,6 @@ export function detectIndustry(resumeText: string): DetectionResult {
   const hasTitles = hasStrongTitleSignal(top.signals);
   
   if (hasTitles && top.score >= 10) {
-    // Title match is the strongest signal — high confidence even at lower total score
     confidence = 'high';
   } else if (top.score >= 15 && (top.score / (second?.score || 1)) >= 1.5) {
     confidence = 'high';
@@ -852,20 +915,42 @@ export function detectIndustry(resumeText: string): DetectionResult {
     confidence = 'low';
   }
   
-  // Check for mixed signals (dilutes confidence) — but NOT if top has title matches
+  // Check for mixed signals — but NOT if top has title matches
   if (!hasTitles && second && second.score > 0 && (top.score / second.score) < 1.3) {
     confidence = confidence === 'high' ? 'medium' : 'low';
     top.signals.push(`Note: Also shows signals for ${second.industry}`);
   }
   
-  // Fallback to general if no clear winner
-  const finalIndustry = top.score >= 3 ? top.industry : 'general';
+  // Determine initial industry
+  let finalIndustry = top.score >= 3 ? top.industry : 'general';
+  let finalSignals = top.signals;
+  let finalScore = top.score;
+  
+  // === FALLBACK KEYWORD PASS ===
+  // When primary engine returns low scores, run a lighter broad-cluster scan
+  if (confidence === 'low' || finalIndustry === 'general') {
+    const fallback = fallbackKeywordPass(resumeText);
+    if (fallback && fallback.score > finalScore) {
+      console.log(`[INDUSTRY-DETECTION] Fallback pass upgraded: "${finalIndustry}" → "${fallback.industry}" (fallback score: ${fallback.score})`);
+      finalIndustry = fallback.industry;
+      finalSignals = [...fallback.signals, ...finalSignals.slice(0, 2)];
+      finalScore = fallback.score;
+      // Upgrade confidence since fallback found something
+      if (confidence === 'low' && fallback.score >= 6) {
+        confidence = 'medium';
+      }
+    }
+  }
+  
+  // === PHANTOM INDUSTRY REMAPPING ===
+  // "military", "general" etc. aren't real industries — remap based on context
+  finalIndustry = remapPhantomIndustry(finalIndustry, resumeText, scores);
   
   return {
     industry: finalIndustry,
     confidence,
-    score: top.score,
-    signals: top.signals.slice(0, 5),
+    score: finalScore,
+    signals: finalSignals.slice(0, 5),
     alternativeIndustries: scores.slice(1, 4).map(s => ({
       industry: s.industry,
       score: s.score
