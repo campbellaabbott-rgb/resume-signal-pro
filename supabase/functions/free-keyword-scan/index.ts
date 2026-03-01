@@ -62,31 +62,55 @@ const VALID_INDUSTRIES = [
   'government', 'general'
 ];
 
-// Industry aliases for normalization
+// Industry aliases for normalization — collapses niche sub-industries to parent categories
 const INDUSTRY_ALIASES: Record<string, string> = {
+  // Technology umbrella
   'tech': 'technology', 'software': 'technology', 'it': 'technology',
   'software development': 'technology', 'information technology': 'technology',
   'software_engineering': 'technology', 'software engineering': 'technology',
   'ai_ml': 'technology', 'data_engineering': 'technology',
+  'dataengineering': 'technology', 'data engineering': 'technology',
+  'technical_program_management': 'technology', 'product_management': 'technology',
+  'securityengineering': 'technology', 'security_engineering': 'technology',
+  'security engineering': 'technology', 'cybersecurity': 'technology',
+  'cloud_engineering': 'technology', 'platform_engineering': 'technology',
+  'devops': 'technology', 'sre': 'technology',
+  // Healthcare umbrella
   'medical': 'healthcare', 'health': 'healthcare', 'medicine': 'healthcare',
   'nursing': 'healthcare', 'pharmaceutical': 'healthcare',
-  'law': 'legal', 'attorney': 'legal', 'lawyer': 'legal',
+  'physician': 'healthcare', 'clinical': 'healthcare',
+  // Finance umbrella
   'banking': 'finance', 'accounting': 'finance', 'financial services': 'finance',
+  'supplychainanalytics': 'finance', 'supply_chain_analytics': 'finance',
+  'businessintelligence': 'finance', 'business_intelligence': 'finance',
+  'quantitative_finance': 'finance', 'private_equity': 'finance',
+  // Legal
+  'law': 'legal', 'attorney': 'legal', 'lawyer': 'legal',
+  // Marketing umbrella
   'advertising': 'marketing', 'pr': 'marketing', 'public relations': 'marketing',
   'digital_marketing': 'marketing', 'digital marketing': 'marketing',
   'content_marketing': 'marketing', 'performance_marketing': 'marketing',
+  // Education
   'teaching': 'education', 'academia': 'education', 'academic': 'education',
+  // Creative
   'design': 'creative', 'art': 'creative', 'media': 'creative',
+  // HR
   'human resources': 'hr', 'recruitment': 'hr', 'talent': 'hr',
+  'humanresources': 'hr', 'human_resources': 'hr',
+  // Consulting
   'management consulting': 'consulting', 'strategy': 'consulting',
   'management_consulting': 'consulting',
+  // Sales
   'business_development': 'sales', 'business development': 'sales',
+  // Retail / Hospitality / Manufacturing / Government
   'ecommerce': 'retail', 'e-commerce': 'retail',
   'hotel': 'hospitality', 'restaurant': 'hospitality', 'tourism': 'hospitality',
   'production': 'manufacturing', 'factory': 'manufacturing',
   'public sector': 'government', 'federal': 'government', 'state': 'government',
-  'military': 'general', 'technical_program_management': 'technology',
-  'product_management': 'technology'
+  // Military → context-aware (handled by detection engine), default to general
+  'military': 'general',
+  // Operations → general (too ambiguous without context)
+  'operations': 'general',
 };
 
 // Normalize industry to valid value
