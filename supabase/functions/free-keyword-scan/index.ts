@@ -71,6 +71,8 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'ai_ml': 'technology', 'data_engineering': 'technology',
   'dataengineering': 'technology', 'data engineering': 'technology',
   'technical_program_management': 'technology', 'product_management': 'technology',
+  'product management': 'technology', 'program management': 'technology',
+  'scrum master': 'technology', 'agile coach': 'technology',
   'securityengineering': 'technology', 'security_engineering': 'technology',
   'security engineering': 'technology', 'cybersecurity': 'technology',
   'cloud_engineering': 'technology', 'platform_engineering': 'technology',
@@ -1333,7 +1335,7 @@ ${resumeText.substring(0, 15000)}
     );
 
     // Build response with analysis data (use actual values, slice arrays)
-    const responseData = {
+    const responseData: Record<string, unknown> = {
       success: true,
       ...analysis,
       redFlags: (analysis.redFlags || []).slice(0, 3),
@@ -1343,6 +1345,12 @@ ${resumeText.substring(0, 15000)}
       weakPhrases: (analysis.weakPhrases || []).slice(0, 4),
       quickWins: (analysis.quickWins || []).slice(0, 3),
     };
+    
+    // Add multi-industry data if detected
+    if (industryDetection.secondaryIndustry) {
+      responseData.secondaryIndustry = industryDetection.secondaryIndustry;
+      responseData.secondaryIndustryScore = industryDetection.secondaryScore;
+    }
     
     
     // Log successful completion metric

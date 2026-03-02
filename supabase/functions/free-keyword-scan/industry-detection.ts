@@ -331,6 +331,38 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
     ]
   },
   
+  product_management: {
+    titles: [
+      'product manager', 'senior product manager', 'group product manager',
+      'director of product', 'vp of product', 'head of product', 'chief product officer',
+      'cpo', 'associate product manager', 'apm', 'product lead',
+      'product owner', 'program manager', 'technical program manager', 'tpm',
+      'scrum master', 'agile coach', 'release train engineer', 'rte',
+      'portfolio manager', 'product director', 'product strategist'
+    ],
+    primary: [
+      'product roadmap', 'roadmap', 'product strategy', 'product vision',
+      'user stories', 'backlog', 'sprint planning', 'prioritization',
+      'product launch', 'feature', 'mvp', 'minimum viable product',
+      'product requirements', 'prd', 'product spec', 'product discovery',
+      'stakeholder alignment', 'cross-functional', 'go-to-market',
+      'product metrics', 'okr', 'kpi', 'adoption', 'retention',
+      'product lifecycle', 'product development', 'ideation'
+    ],
+    secondary: [
+      'jira', 'confluence', 'asana', 'trello', 'notion', 'productboard',
+      'amplitude', 'mixpanel', 'fullstory', 'hotjar', 'pendo',
+      'figma', 'miro', 'lucidchart', 'aha',
+      'a/b testing', 'user research', 'customer interviews',
+      'competitive analysis', 'market research', 'customer feedback',
+      'safe', 'scaled agile', 'pi planning'
+    ],
+    certifications: [
+      'cspo', 'pspo', 'csm', 'psm', 'safe', 'pmp', 'prince2',
+      'pragmatic marketing', 'product school', 'certified scrum'
+    ]
+  },
+  
   consulting: {
     titles: [
       'consultant', 'senior consultant', 'management consultant',
@@ -450,6 +482,13 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
   creative: [
     ['design', 'portfolio', 'visual'],
     ['figma', 'photoshop', 'branding']
+  ],
+  product_management: [
+    ['roadmap', 'stakeholder', 'prioritization'],
+    ['product', 'sprint', 'backlog'],
+    ['okr', 'metrics', 'adoption'],
+    ['jira', 'confluence', 'agile'],
+    ['product manager', 'roadmap', 'cross-functional']
   ]
 };
 
@@ -506,6 +545,12 @@ const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleS
   // If someone has creative titles, marketing keywords shouldn't reclassify
   creative: [
     { negativeFor: 'marketing', requiredTitleSignal: true }
+  ],
+  // If someone has PM titles, technology/consulting keywords shouldn't reclassify
+  product_management: [
+    { negativeFor: 'technology', requiredTitleSignal: true },
+    { negativeFor: 'consulting', requiredTitleSignal: true },
+    { negativeFor: 'sales', requiredTitleSignal: true }
   ]
 };
 
@@ -515,6 +560,8 @@ interface DetectionResult {
   score: number;
   signals: string[];
   alternativeIndustries: Array<{ industry: string; score: number }>;
+  secondaryIndustry?: string;
+  secondaryScore?: number;
 }
 
 interface SectionMatch {
@@ -829,6 +876,7 @@ function fallbackKeywordPass(text: string): { industry: string; score: number; s
     { industry: 'education', keywords: ['teaching', 'students', 'curriculum', 'classroom', 'lesson', 'instruction', 'academic', 'school', 'university', 'learning'], minMatches: 3 },
     { industry: 'legal', keywords: ['legal', 'law', 'contract', 'compliance', 'court', 'litigation', 'attorney', 'counsel', 'regulation', 'statute'], minMatches: 3 },
     { industry: 'consulting', keywords: ['client', 'engagement', 'strategy', 'advisory', 'deliverable', 'stakeholder', 'recommendation', 'transformation', 'consulting'], minMatches: 3 },
+    { industry: 'product_management', keywords: ['product manager', 'roadmap', 'backlog', 'sprint planning', 'user stories', 'prioritization', 'product strategy', 'product launch', 'cross-functional', 'stakeholder alignment', 'okr', 'product requirements'], minMatches: 3 },
   ];
   
   let bestMatch: { industry: string; score: number; signals: string[] } | null = null;
@@ -851,27 +899,108 @@ function fallbackKeywordPass(text: string): { industry: string; score: number; s
 }
 
 /**
- * Context-aware military/operations remapping.
- * "military" isn't a real industry — detect what the person actually does
- * based on their other resume keywords and remap accordingly.
+ * Context-aware military/operations remapping (v2).
+ * "military" isn't a real industry — detect what the person actually does.
+ * V2: More aggressive remapping — NEVER allow military/general as final.
  */
 function remapPhantomIndustry(
   industry: string,
   text: string,
   scores: Array<{ industry: string; score: number; signals: string[] }>
 ): string {
-  // Only remap phantom industries
   const phantomIndustries = ['military', 'general'];
   if (!phantomIndustries.includes(industry)) return industry;
   
-  // If the second-best industry has a reasonable score, use that instead
-  const secondBest = scores.find(s => s.industry !== industry && s.score >= 5);
+  // Military-specific context clues for remapping
+  const lowerText = text.toLowerCase();
+  const contextClues: Record<string, string[]> = {
+    'consulting': ['strategic planning', 'advisory', 'transformation', 'change management', 'stakeholder'],
+    'finance': ['budget', 'financial', 'procurement', 'fiscal', 'cost analysis', 'audit'],
+    'technology': ['software', 'systems', 'network', 'cyber', 'it infrastructure', 'database'],
+    'hr': ['recruiting', 'training', 'personnel', 'workforce', 'staffing', 'talent'],
+    'engineering': ['maintenance', 'equipment', 'technical', 'mechanical', 'electrical', 'design'],
+    'healthcare': ['medical', 'patient', 'clinical', 'health', 'nursing'],
+    'education': ['instructor', 'training program', 'curriculum', 'teaching'],
+    'sales': ['account', 'business development', 'client', 'revenue', 'pipeline'],
+    'product_management': ['program manager', 'project manager', 'roadmap', 'cross-functional', 'stakeholder alignment'],
+  };
+  
+  // Score each potential remap based on context keywords
+  let bestRemap: { industry: string; matchCount: number } | null = null;
+  for (const [targetIndustry, clues] of Object.entries(contextClues)) {
+    const matchCount = clues.filter(clue => lowerText.includes(clue)).length;
+    if (matchCount >= 2 && (!bestRemap || matchCount > bestRemap.matchCount)) {
+      bestRemap = { industry: targetIndustry, matchCount };
+    }
+  }
+  
+  if (bestRemap) {
+    console.log(`[INDUSTRY-DETECTION] Remapped "${industry}" → "${bestRemap.industry}" (${bestRemap.matchCount} context clues matched)`);
+    return bestRemap.industry;
+  }
+  
+  // Fall back to second-best scoring industry (lower threshold than v1)
+  const secondBest = scores.find(s => !phantomIndustries.includes(s.industry) && s.score >= 3);
   if (secondBest) {
     console.log(`[INDUSTRY-DETECTION] Remapped "${industry}" → "${secondBest.industry}" (score: ${secondBest.score})`);
     return secondBest.industry;
   }
   
+  // Absolute last resort: return consulting (most common for military transitions)
+  if (industry === 'military') {
+    console.log(`[INDUSTRY-DETECTION] Military fallback → consulting (no other signals)`);
+    return 'consulting';
+  }
+  
   return industry;
+}
+
+/**
+ * Apply feedback loop: boost scores based on historical user corrections.
+ * If users frequently correct industry X → Y, boost Y's score when X is detected.
+ * Uses a static correction map (populated from analytics queries).
+ */
+const CORRECTION_BOOSTS: Record<string, { target: string; boost: number }[]> = {
+  // Based on industry_corrections table analysis:
+  'military': [
+    { target: 'consulting', boost: 5 },
+    { target: 'finance', boost: 4 },
+    { target: 'technology', boost: 3 },
+  ],
+  'general': [
+    { target: 'technology', boost: 3 },
+    { target: 'consulting', boost: 3 },
+    { target: 'sales', boost: 2 },
+  ],
+  'technology': [
+    { target: 'product_management', boost: 2 },
+    { target: 'engineering', boost: 2 },
+  ],
+  'consulting': [
+    { target: 'finance', boost: 2 },
+    { target: 'technology', boost: 2 },
+  ],
+};
+
+function applyCorrectionsBoost(
+  scores: Array<{ industry: string; score: number; signals: string[] }>,
+  topIndustry: string
+): void {
+  const boosts = CORRECTION_BOOSTS[topIndustry];
+  if (!boosts) return;
+  
+  for (const { target, boost } of boosts) {
+    const entry = scores.find(s => s.industry === target);
+    if (entry && entry.score > 0) {
+      // Only boost if the target already has some signal (don't create from nothing)
+      entry.score += boost;
+      entry.signals.push(`Correction boost: +${boost} (historical pattern)`);
+      console.log(`[INDUSTRY-DETECTION] Applied correction boost: ${target} +${boost} (from ${topIndustry} correction history)`);
+    }
+  }
+  
+  // Re-sort after boosts
+  scores.sort((a, b) => b.score - a.score);
 }
 
 /**
@@ -901,33 +1030,40 @@ export function detectIndustry(resumeText: string): DetectionResult {
   const top = scores[0];
   const second = scores[1];
   
+  // === FEEDBACK LOOP: Apply correction boosts ===
+  // If top industry has historical correction patterns, boost likely targets
+  applyCorrectionsBoost(scores, top.industry);
+  
+  // Re-read top/second after potential re-sort
+  const adjustedTop = scores[0];
+  const adjustedSecond = scores[1];
+  
   // Determine confidence — with boosted thresholds for title-matched industries
   let confidence: 'high' | 'medium' | 'low';
-  const hasTitles = hasStrongTitleSignal(top.signals);
+  const hasTitles = hasStrongTitleSignal(adjustedTop.signals);
   
-  if (hasTitles && top.score >= 10) {
+  if (hasTitles && adjustedTop.score >= 10) {
     confidence = 'high';
-  } else if (top.score >= 15 && (top.score / (second?.score || 1)) >= 1.5) {
+  } else if (adjustedTop.score >= 15 && (adjustedTop.score / (adjustedSecond?.score || 1)) >= 1.5) {
     confidence = 'high';
-  } else if (top.score >= 8) {
+  } else if (adjustedTop.score >= 8) {
     confidence = 'medium';
   } else {
     confidence = 'low';
   }
   
   // Check for mixed signals — but NOT if top has title matches
-  if (!hasTitles && second && second.score > 0 && (top.score / second.score) < 1.3) {
+  if (!hasTitles && adjustedSecond && adjustedSecond.score > 0 && (adjustedTop.score / adjustedSecond.score) < 1.3) {
     confidence = confidence === 'high' ? 'medium' : 'low';
-    top.signals.push(`Note: Also shows signals for ${second.industry}`);
+    adjustedTop.signals.push(`Note: Also shows signals for ${adjustedSecond.industry}`);
   }
   
   // Determine initial industry
-  let finalIndustry = top.score >= 3 ? top.industry : 'general';
-  let finalSignals = top.signals;
-  let finalScore = top.score;
+  let finalIndustry = adjustedTop.score >= 3 ? adjustedTop.industry : 'general';
+  let finalSignals = adjustedTop.signals;
+  let finalScore = adjustedTop.score;
   
   // === FALLBACK KEYWORD PASS ===
-  // When primary engine returns low scores, run a lighter broad-cluster scan
   if (confidence === 'low' || finalIndustry === 'general') {
     const fallback = fallbackKeywordPass(resumeText);
     if (fallback && fallback.score > finalScore) {
@@ -935,16 +1071,32 @@ export function detectIndustry(resumeText: string): DetectionResult {
       finalIndustry = fallback.industry;
       finalSignals = [...fallback.signals, ...finalSignals.slice(0, 2)];
       finalScore = fallback.score;
-      // Upgrade confidence since fallback found something
       if (confidence === 'low' && fallback.score >= 6) {
         confidence = 'medium';
       }
     }
   }
   
-  // === PHANTOM INDUSTRY REMAPPING ===
-  // "military", "general" etc. aren't real industries — remap based on context
+  // === PHANTOM INDUSTRY REMAPPING (v2) ===
   finalIndustry = remapPhantomIndustry(finalIndustry, resumeText, scores);
+  
+  // === MULTI-INDUSTRY DETECTION ===
+  // If the second industry has a strong enough score relative to the first,
+  // report it as a secondary industry (useful for cross-functional roles)
+  let secondaryIndustry: string | undefined;
+  let secondaryScore: number | undefined;
+  
+  const nonPhantomSecond = scores.find(s => 
+    s.industry !== finalIndustry && 
+    !['military', 'general'].includes(s.industry) && 
+    s.score >= 8
+  );
+  
+  if (nonPhantomSecond && nonPhantomSecond.score >= adjustedTop.score * 0.5) {
+    secondaryIndustry = nonPhantomSecond.industry;
+    secondaryScore = nonPhantomSecond.score;
+    console.log(`[INDUSTRY-DETECTION] Multi-industry: primary="${finalIndustry}" (${finalScore}), secondary="${secondaryIndustry}" (${secondaryScore})`);
+  }
   
   return {
     industry: finalIndustry,
@@ -954,7 +1106,9 @@ export function detectIndustry(resumeText: string): DetectionResult {
     alternativeIndustries: scores.slice(1, 4).map(s => ({
       industry: s.industry,
       score: s.score
-    }))
+    })),
+    secondaryIndustry,
+    secondaryScore,
   };
 }
 
@@ -962,12 +1116,16 @@ export function detectIndustry(resumeText: string): DetectionResult {
  * Format detection result for AI prompt
  */
 export function formatDetectionForPrompt(result: DetectionResult): string {
+  const multiIndustryNote = result.secondaryIndustry 
+    ? `\n- Secondary Industry: ${result.secondaryIndustry} (score: ${result.secondaryScore?.toFixed(1)})\n  NOTE: This candidate shows strong signals for BOTH industries. Tailor keywords and recommendations to cover both domains.`
+    : '';
+    
   return `
 **PRE-DETECTED INDUSTRY (MANDATORY — your response MUST use this industry):**
 - Detected Industry: ${result.industry.toUpperCase()}
 - Confidence: ${result.confidence}
 - Score: ${result.score.toFixed(1)}
-- Key Signals: ${result.signals.join('; ')}
+- Key Signals: ${result.signals.join('; ')}${multiIndustryNote}
 ${result.alternativeIndustries.length > 0 ? `- Alternative industries: ${result.alternativeIndustries.map(a => `${a.industry}(${a.score.toFixed(1)})`).join(', ')}` : ''}
 
 CRITICAL INSTRUCTION: The pre-detection algorithm has analyzed job titles, keyword frequency, section weights, and co-occurrence patterns.

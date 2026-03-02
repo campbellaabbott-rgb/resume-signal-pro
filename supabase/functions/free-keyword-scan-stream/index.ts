@@ -439,6 +439,8 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   // Technology broad category
   'startup': 'technology', 'b2b tech': 'technology', 'b2c tech': 'technology',
   'product lead': 'product_management', 'product owner': 'product_management',
+  'scrum master': 'technology', 'agile coach': 'technology',
+  'program manager': 'product_management', 'technical program manager': 'product_management',
   
   // Software engineering aliases
   'frontend developer': 'software_engineering', 'backend developer': 'software_engineering', 
