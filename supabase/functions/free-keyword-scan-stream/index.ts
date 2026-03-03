@@ -4995,12 +4995,25 @@ function hybridIndustryDetection(
     };
   }
   
-  // Final fallback
-  console.log(`[INDUSTRY-HYBRID] Defaulting to server result: ${serverResult.industry}`);
-  return {
-    ...serverResult,
-    detectionSource: 'server_low'
-  };
+  // Final fallback — but NEVER return a phantom industry
+  let finalResult: IndustryDetectionResult;
+  if (phantomIndustries.includes(serverResult.industry)) {
+    console.log(`[INDUSTRY-HYBRID] FORCE-KILL: server returned phantom "${serverResult.industry}" with no AI override → defaulting to consulting`);
+    finalResult = {
+      ...serverResult,
+      industry: 'consulting',
+      confidence: 'low',
+      signals: [...serverResult.signals, `Force-remapped from "${serverResult.industry}"`],
+      detectionSource: 'phantom_force_kill'
+    };
+  } else {
+    console.log(`[INDUSTRY-HYBRID] Defaulting to server result: ${serverResult.industry}`);
+    finalResult = {
+      ...serverResult,
+      detectionSource: 'server_low'
+    };
+  }
+  return finalResult;
 }
 
 // ======================== Resume Type Detection ========================
