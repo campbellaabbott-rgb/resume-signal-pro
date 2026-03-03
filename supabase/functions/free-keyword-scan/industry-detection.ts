@@ -301,6 +301,7 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'geological engineer', 'mining engineer', 'safety engineer',
       'packaging engineer', 'validation engineer', 'commissioning engineer',
       'r&d engineer', 'research engineer', 'applications engineer'
+      // NOTE: 'editor' is NOT an engineering title — do NOT add it
     ],
     primary: [
       'engineering', 'design', 'analysis', 'testing', 'prototype',
@@ -347,7 +348,10 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'product requirements', 'prd', 'product spec', 'product discovery',
       'stakeholder alignment', 'cross-functional', 'go-to-market',
       'product metrics', 'okr', 'kpi', 'adoption', 'retention',
-      'product lifecycle', 'product development', 'ideation'
+      'product lifecycle', 'product development', 'ideation',
+      // Single-word strong signals for PM (help when multi-word phrases miss)
+      'stakeholders', 'epics', 'sprints', 'retrospective', 'standup',
+      'wireframes', 'prototyping', 'requirements', 'specifications'
     ],
     secondary: [
       'jira', 'confluence', 'asana', 'trello', 'notion', 'productboard',
@@ -488,7 +492,11 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['product', 'sprint', 'backlog'],
     ['okr', 'metrics', 'adoption'],
     ['jira', 'confluence', 'agile'],
-    ['product manager', 'roadmap', 'cross-functional']
+    ['product manager', 'roadmap', 'cross-functional'],
+    ['epics', 'sprints', 'backlog'],
+    ['stakeholders', 'requirements', 'roadmap'],
+    ['prd', 'product', 'feature'],
+    ['mvp', 'product', 'launch']
   ]
 };
 
@@ -587,13 +595,17 @@ function extractSections(resumeText: string): {
   
   // Extract job titles - look for common patterns
   const jobTitles: string[] = [];
+  // Title-detecting keywords — used to identify lines that may contain job titles
+  // NOTE: 'editor' is excluded because it causes false matches (e.g., "Photo Editor", "Video Editor")
+  // which incorrectly score as engineering. Creative/media editors are handled by the creative industry.
   const titleKeywords = [
     'manager', 'director', 'engineer', 'developer', 'analyst', 'specialist',
     'coordinator', 'consultant', 'executive', 'lead', 'head', 'vp', 'president',
     'associate', 'senior', 'principal', 'architect', 'designer', 'administrator',
     'representative', 'rep', 'officer', 'nurse', 'teacher', 'attorney', 'accountant',
     'salesperson', 'gtm', 'go-to-market', 'founder', 'ceo', 'cfo', 'cto', 'cro',
-    'recruiter', 'therapist', 'scientist', 'researcher', 'strategist'
+    'recruiter', 'therapist', 'scientist', 'researcher', 'strategist',
+    'product owner', 'scrum master', 'product manager'
   ];
   
   for (const line of lines) {
@@ -741,8 +753,18 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
   let score = 0;
   const signals: string[] = [];
   
+  // FALSE POSITIVE TITLE PATTERNS — prevent specific title words from matching wrong industries
+  const FALSE_POSITIVE_TITLES: Record<string, string[]> = {
+    engineering: ['editor', 'photo editor', 'video editor', 'copy editor', 'managing editor', 'editor-in-chief', 'content editor'],
+  };
+  const falsePositives = FALSE_POSITIVE_TITLES[industry] || [];
+  
   // Check job titles (HIGHEST WEIGHT)
   for (const title of sections.jobTitles) {
+    // Skip if this title matches a known false positive for this industry
+    const isFalsePositive = falsePositives.some(fp => title.includes(fp));
+    if (isFalsePositive) continue;
+    
     for (const industryTitle of keywords.titles) {
       if (title.includes(industryTitle)) {
         score += SECTION_WEIGHTS.jobTitle * 2; // Double weight for exact title match
@@ -957,11 +979,11 @@ function remapPhantomIndustry(
 
 /**
  * Apply feedback loop: boost scores based on historical user corrections.
- * If users frequently correct industry X → Y, boost Y's score when X is detected.
- * Uses a static correction map (populated from analytics queries).
+ * DYNAMIC VERSION: accepts correction data loaded from DB at scan time.
+ * Falls back to a static map if no dynamic data is provided.
  */
-const CORRECTION_BOOSTS: Record<string, { target: string; boost: number }[]> = {
-  // Based on industry_corrections table analysis:
+const STATIC_CORRECTION_BOOSTS: Record<string, { target: string; boost: number }[]> = {
+  // Fallback if dynamic data isn't available
   'military': [
     { target: 'consulting', boost: 5 },
     { target: 'finance', boost: 4 },
@@ -982,20 +1004,40 @@ const CORRECTION_BOOSTS: Record<string, { target: string; boost: number }[]> = {
   ],
 };
 
+/**
+ * Build dynamic correction boosts from DB correction records.
+ * Format: array of { original_industry, corrected_industry, count }
+ */
+export function buildDynamicCorrectionBoosts(
+  corrections: Array<{ original_industry: string; corrected_industry: string; count: number }>
+): Record<string, { target: string; boost: number }[]> {
+  const boosts: Record<string, { target: string; boost: number }[]> = {};
+  
+  for (const { original_industry, corrected_industry, count } of corrections) {
+    if (!boosts[original_industry]) boosts[original_industry] = [];
+    // Scale boost: 1 correction = +1, 3+ = +3, 5+ = +5 (capped)
+    const boost = Math.min(5, Math.max(1, Math.floor(count * 1.5)));
+    boosts[original_industry].push({ target: corrected_industry, boost });
+  }
+  
+  return boosts;
+}
+
 function applyCorrectionsBoost(
   scores: Array<{ industry: string; score: number; signals: string[] }>,
-  topIndustry: string
+  topIndustry: string,
+  dynamicBoosts?: Record<string, { target: string; boost: number }[]>
 ): void {
-  const boosts = CORRECTION_BOOSTS[topIndustry];
+  const boostMap = dynamicBoosts || STATIC_CORRECTION_BOOSTS;
+  const boosts = boostMap[topIndustry];
   if (!boosts) return;
   
   for (const { target, boost } of boosts) {
     const entry = scores.find(s => s.industry === target);
     if (entry && entry.score > 0) {
-      // Only boost if the target already has some signal (don't create from nothing)
       entry.score += boost;
-      entry.signals.push(`Correction boost: +${boost} (historical pattern)`);
-      console.log(`[INDUSTRY-DETECTION] Applied correction boost: ${target} +${boost} (from ${topIndustry} correction history)`);
+      entry.signals.push(`Correction boost: +${boost} (${dynamicBoosts ? 'dynamic' : 'static'} pattern)`);
+      console.log(`[INDUSTRY-DETECTION] Applied correction boost: ${target} +${boost} (from ${topIndustry}, ${dynamicBoosts ? 'dynamic' : 'static'})`);
     }
   }
   
@@ -1005,8 +1047,12 @@ function applyCorrectionsBoost(
 
 /**
  * Main detection function
+ * @param dynamicCorrections - Optional correction data from DB for dynamic learning
  */
-export function detectIndustry(resumeText: string): DetectionResult {
+export function detectIndustry(
+  resumeText: string,
+  dynamicCorrections?: Record<string, { target: string; boost: number }[]>
+): DetectionResult {
   const sections = extractSections(resumeText);
   
   // Calculate scores for all industries
@@ -1030,9 +1076,8 @@ export function detectIndustry(resumeText: string): DetectionResult {
   const top = scores[0];
   const second = scores[1];
   
-  // === FEEDBACK LOOP: Apply correction boosts ===
-  // If top industry has historical correction patterns, boost likely targets
-  applyCorrectionsBoost(scores, top.industry);
+  // === FEEDBACK LOOP: Apply correction boosts (dynamic or static) ===
+  applyCorrectionsBoost(scores, top.industry, dynamicCorrections);
   
   // Re-read top/second after potential re-sort
   const adjustedTop = scores[0];
@@ -1077,8 +1122,17 @@ export function detectIndustry(resumeText: string): DetectionResult {
     }
   }
   
-  // === PHANTOM INDUSTRY REMAPPING (v2) ===
+  // === PHANTOM INDUSTRY REMAPPING (v3 — MANDATORY) ===
+  // Military/general should NEVER be a final result
   finalIndustry = remapPhantomIndustry(finalIndustry, resumeText, scores);
+  
+  // DOUBLE-CHECK: If remap still returned a phantom, force to consulting
+  if (['military', 'general'].includes(finalIndustry)) {
+    console.log(`[INDUSTRY-DETECTION] FORCE-KILL: "${finalIndustry}" escaped remap → forcing to consulting`);
+    finalIndustry = 'consulting';
+    if (confidence === 'high') confidence = 'medium';
+    finalSignals.push('Forced remap from non-functional industry');
+  }
   
   // === MULTI-INDUSTRY DETECTION ===
   // If the second industry has a strong enough score relative to the first,

@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
-import { detectIndustry, formatDetectionForPrompt } from "./industry-detection.ts";
+import { detectIndustry, formatDetectionForPrompt, buildDynamicCorrectionBoosts } from "./industry-detection.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 
 // Metric tracking - logs to scan_metrics table for dashboard visibility
@@ -546,7 +546,37 @@ serve(async (req) => {
 
     // Run server-side industry detection BEFORE AI call
     console.log("[FREE-KEYWORD-SCAN] Running server-side industry detection...");
-    const industryDetection = detectIndustry(resumeText);
+    
+    // Load dynamic correction boosts from DB (non-blocking fallback to static)
+    let dynamicBoosts: Record<string, { target: string; boost: number }[]> | undefined;
+    try {
+      const { data: correctionData } = await supabase
+        .from('industry_corrections')
+        .select('original_industry, corrected_industry')
+        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+      
+      if (correctionData && correctionData.length > 0) {
+        // Aggregate corrections
+        const counts: Record<string, Record<string, number>> = {};
+        for (const row of correctionData) {
+          if (!counts[row.original_industry]) counts[row.original_industry] = {};
+          counts[row.original_industry][row.corrected_industry] = (counts[row.original_industry][row.corrected_industry] || 0) + 1;
+        }
+        const flatCorrections = Object.entries(counts).flatMap(([orig, targets]) =>
+          Object.entries(targets).map(([corrected, count]) => ({
+            original_industry: orig,
+            corrected_industry: corrected,
+            count,
+          }))
+        );
+        dynamicBoosts = buildDynamicCorrectionBoosts(flatCorrections);
+        console.log(`[FREE-KEYWORD-SCAN] Loaded ${flatCorrections.length} dynamic correction patterns`);
+      }
+    } catch (err) {
+      console.warn('[FREE-KEYWORD-SCAN] Failed to load dynamic corrections, using static:', err);
+    }
+    
+    const industryDetection = detectIndustry(resumeText, dynamicBoosts);
     console.log(`[FREE-KEYWORD-SCAN] Pre-detected industry: ${industryDetection.industry} (confidence: ${industryDetection.confidence}, score: ${industryDetection.score.toFixed(1)})`);
     console.log(`[FREE-KEYWORD-SCAN] Signals: ${industryDetection.signals.slice(0, 3).join(', ')}`);
     
