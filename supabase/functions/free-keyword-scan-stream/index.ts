@@ -4868,7 +4868,11 @@ function hybridIndustryDetection(
   
   // CAREER CHANGER DETECTION: Check if this is a career transition resume
   // and prioritize their current/target industry over historical experience
-  if (resumeText) {
+  // IMPORTANT: Only override when server confidence is NOT high — high-confidence
+  // server detection means the keyword engine is very sure about the industry,
+  // and career changer heuristics should NOT override it (causes false positives
+  // like sales executives at tech companies being labeled as career changers)
+  if (resumeText && serverResult.confidence !== 'high') {
     const careerInfo = detectCareerTransition(resumeText);
     if (careerInfo.isCareerChanger && careerInfo.currentIndustry) {
       console.log(`[INDUSTRY-HYBRID] Career changer detected - using current/target industry: ${careerInfo.currentIndustry}`);
@@ -4877,10 +4881,10 @@ function hybridIndustryDetection(
       return {
         industry: careerInfo.currentIndustry,
         parentIndustry: INDUSTRY_PARENTS[careerInfo.currentIndustry],
-        confidence: careerInfo.confidence || 'medium', // Use calculated confidence
+        confidence: careerInfo.confidence || 'medium',
         signals: [...careerInfo.transitionSignals, `Current/target industry: ${careerInfo.currentIndustry}`],
         score: careerInfo.confidenceScore || serverResult.score,
-        detectionSource: 'ai_override', // Treat as special override
+        detectionSource: 'ai_override',
         alternativeIndustries: serverResult.alternativeIndustries,
         matchedTitlePatterns: serverResult.matchedTitlePatterns,
         matchedSkillCount: serverResult.matchedSkillCount,

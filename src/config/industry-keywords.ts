@@ -1260,17 +1260,50 @@ export const INDUSTRY_KEYWORDS: Record<string, IndustryKeywordConfig> = {
 
 // Helper function to find industry config by name (case-insensitive, alias matching)
 export function findIndustryConfig(industryName: string): IndustryKeywordConfig | null {
+  // Normalize: lowercase, trim, and convert underscores to spaces for matching
   const normalized = industryName.toLowerCase().trim();
+  const normalizedSpaced = normalized.replace(/_/g, ' ');
   
-  // Direct match
+  // Direct match (with underscore→space normalization)
   for (const [key, config] of Object.entries(INDUSTRY_KEYWORDS)) {
-    if (key.toLowerCase() === normalized || config.name.toLowerCase() === normalized) {
+    const keyLower = key.toLowerCase();
+    if (keyLower === normalized || keyLower === normalizedSpaced || 
+        config.name.toLowerCase() === normalized || config.name.toLowerCase() === normalizedSpaced) {
       return config;
     }
-    // Alias match
-    if (config.aliases.some(alias => normalized.includes(alias) || alias.includes(normalized))) {
+    // Alias match (also check underscore-normalized version)
+    if (config.aliases.some(alias => 
+      normalized.includes(alias) || alias.includes(normalized) ||
+      normalizedSpaced.includes(alias) || alias.includes(normalizedSpaced)
+    )) {
       return config;
     }
+  }
+  
+  // Sub-industry → parent fallback: e.g. "business_development" → "sales", "digital_marketing" → "marketing"
+  const SUB_INDUSTRY_PARENTS: Record<string, string> = {
+    'business_development': 'sales', 'enterprise_sales': 'sales', 'inside_sales': 'sales',
+    'sales_engineering': 'sales', 'sales_operations': 'sales', 'channel_sales': 'sales',
+    'strategic_accounts': 'sales', 'customer_success': 'sales', 'revenue_operations': 'sales',
+    'digital_marketing': 'marketing', 'content_marketing': 'marketing', 'brand_marketing': 'marketing',
+    'product_marketing': 'marketing', 'performance_marketing': 'marketing', 'growth_marketing': 'marketing',
+    'software_engineering': 'technology', 'data_science': 'technology', 'devops': 'technology',
+    'cybersecurity': 'technology', 'product_management': 'technology', 'ai_ml': 'technology',
+    'data_engineering': 'technology', 'platform_engineering': 'technology', 'sre': 'technology',
+    'investment_banking': 'finance', 'accounting': 'finance', 'financial_planning': 'finance',
+    'quantitative_finance': 'finance', 'private_equity': 'finance', 'venture_capital': 'finance',
+    'talent_acquisition': 'humanResources', 'hr_business_partner': 'humanResources',
+    'nursing': 'healthcare', 'physician': 'healthcare', 'pharmacy': 'healthcare',
+    'corporate_law': 'legal', 'litigation': 'legal', 'intellectual_property': 'legal',
+    'management_consulting': 'consulting', 'strategy_consulting': 'consulting',
+    'graphic_design': 'design', 'ux_design': 'design', 'product_design': 'design',
+    'k12_education': 'education', 'higher_education': 'education',
+    'lean_manufacturing': 'operations', 'quality_engineering': 'operations',
+  };
+  
+  const parentKey = SUB_INDUSTRY_PARENTS[normalized];
+  if (parentKey && INDUSTRY_KEYWORDS[parentKey]) {
+    return INDUSTRY_KEYWORDS[parentKey];
   }
   
   return null;
