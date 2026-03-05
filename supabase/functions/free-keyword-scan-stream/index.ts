@@ -6519,6 +6519,20 @@ serve(async (req) => {
           console.log(`[FREE-KEYWORD-SCAN-STREAM] Cache HIT for key ${cacheKey.substring(0, 8)}...`);
           metricCtx.cacheHit = true;
           
+          // IMPORTANT: Re-run industry detection on cached results to prevent stale classifications
+          // This ensures code fixes to industry detection take effect even for cached resumes
+          const cachedServerDetection = detectIndustryFromResume(resumeText);
+          const cachedHybridResult = hybridIndustryDetection(cachedServerDetection, cachedResponse.industry, resumeText);
+          
+          if (cachedHybridResult.industry !== cachedResponse.industry) {
+            console.log(`[FREE-KEYWORD-SCAN-STREAM] Cache industry CORRECTED: "${cachedResponse.industry}" -> "${cachedHybridResult.industry}" (${cachedHybridResult.confidence})`);
+            cachedResponse.industry = cachedHybridResult.industry;
+            // Update industryHint if present
+            if (cachedResponse.industryHint) {
+              cachedResponse.industryHint = cachedHybridResult.parentIndustry || cachedHybridResult.industry;
+            }
+          }
+          
           // Send quick progress updates
           send('progress', PROGRESS_STAGES[2]);
           send('progress', PROGRESS_STAGES[3]);
@@ -6529,7 +6543,7 @@ serve(async (req) => {
           logScanMetric(metricCtx, 'completed', {
             outputValid: true,
             responseScore: cachedResponse.atsScoreEstimate,
-            metadata: { cached: true, cacheKey: cacheKey.substring(0, 8) }
+            metadata: { cached: true, cacheKey: cacheKey.substring(0, 8), industryCorrected: cachedHybridResult.industry !== cachedResponse.industry }
           });
           
           // Return cached result
