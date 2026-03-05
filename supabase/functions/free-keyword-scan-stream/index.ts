@@ -5829,7 +5829,6 @@ function computeIndustryBenchmark(
   const parentIndustry = INDUSTRY_PARENTS[industry];
   const benchmarks = industryAverages[industry] || (parentIndustry ? industryAverages[parentIndustry] : null) || industryAverages.general;
 
-  const benchmarks = industryAverages[industry] || industryAverages.general;
   const { avg, top } = benchmarks;
 
   let comparison: "below" | "at" | "above";
