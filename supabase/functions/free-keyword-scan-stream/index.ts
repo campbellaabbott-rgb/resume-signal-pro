@@ -5809,10 +5809,26 @@ function computeIndustryBenchmark(
     legal: { avg: 72, top: 90 },
     consulting: { avg: 70, top: 86 },
     engineering: { avg: 67, top: 84 },
+    education: { avg: 63, top: 80 },
+    hr: { avg: 64, top: 81 },
+    human_resources: { avg: 64, top: 81 },
+    creative: { avg: 62, top: 79 },
+    retail: { avg: 60, top: 78 },
+    hospitality: { avg: 58, top: 76 },
+    manufacturing: { avg: 66, top: 83 },
+    nonprofit: { avg: 62, top: 79 },
+    government: { avg: 65, top: 82 },
+    construction: { avg: 63, top: 80 },
+    logistics: { avg: 63, top: 80 },
+    real_estate: { avg: 61, top: 78 },
+    energy: { avg: 66, top: 83 },
     general: { avg: 65, top: 82 },
   };
+  
+  // Resolve sub-industry to parent for benchmark lookup
+  const parentIndustry = INDUSTRY_PARENTS[industry];
+  const benchmarks = industryAverages[industry] || (parentIndustry ? industryAverages[parentIndustry] : null) || industryAverages.general;
 
-  const benchmarks = industryAverages[industry] || industryAverages.general;
   const { avg, top } = benchmarks;
 
   let comparison: "below" | "at" | "above";
@@ -6219,7 +6235,233 @@ const INDUSTRY_KEYWORD_DB: Record<string, { name: string; keywords: Array<{ keyw
       { keyword: 'Ansible', category: 'tool', importance: 'medium' },
     ],
   },
+  enterprise_sales: {
+    name: 'Enterprise Sales',
+    keywords: [
+      { keyword: 'MEDDPICC', category: 'methodology', importance: 'critical' },
+      { keyword: 'Salesforce', category: 'tool', importance: 'critical' },
+      { keyword: 'Quota Attainment', category: 'technical', importance: 'critical' },
+      { keyword: 'ARR', category: 'technical', importance: 'critical' },
+      { keyword: 'ACV', category: 'technical', importance: 'high' },
+      { keyword: 'Pipeline Management', category: 'technical', importance: 'high' },
+      { keyword: 'C-Suite Selling', category: 'technical', importance: 'high' },
+      { keyword: 'Complex Sales', category: 'technical', importance: 'high' },
+      { keyword: 'Multi-threading', category: 'technical', importance: 'high' },
+      { keyword: 'Gong', category: 'tool', importance: 'medium' },
+    ],
+  },
+  business_development: {
+    name: 'Business Development',
+    keywords: [
+      { keyword: 'Pipeline Management', category: 'technical', importance: 'critical' },
+      { keyword: 'CRM', category: 'tool', importance: 'critical' },
+      { keyword: 'Revenue Growth', category: 'technical', importance: 'critical' },
+      { keyword: 'Quota Attainment', category: 'technical', importance: 'high' },
+      { keyword: 'Lead Generation', category: 'technical', importance: 'high' },
+      { keyword: 'Partnerships', category: 'technical', importance: 'high' },
+      { keyword: 'Negotiation', category: 'soft', importance: 'high' },
+      { keyword: 'Prospecting', category: 'technical', importance: 'high' },
+      { keyword: 'Salesforce', category: 'tool', importance: 'high' },
+      { keyword: 'Territory Management', category: 'technical', importance: 'medium' },
+    ],
+  },
+  product_management: {
+    name: 'Product Management',
+    keywords: [
+      { keyword: 'Product Roadmap', category: 'technical', importance: 'critical' },
+      { keyword: 'User Stories', category: 'technical', importance: 'critical' },
+      { keyword: 'Stakeholder Management', category: 'soft', importance: 'critical' },
+      { keyword: 'Jira', category: 'tool', importance: 'high' },
+      { keyword: 'A/B Testing', category: 'methodology', importance: 'high' },
+      { keyword: 'OKRs', category: 'methodology', importance: 'high' },
+      { keyword: 'Product Discovery', category: 'technical', importance: 'high' },
+      { keyword: 'Agile', category: 'methodology', importance: 'high' },
+      { keyword: 'Cross-Functional', category: 'soft', importance: 'high' },
+      { keyword: 'MVP', category: 'technical', importance: 'medium' },
+    ],
+  },
+  consulting: {
+    name: 'Consulting',
+    keywords: [
+      { keyword: 'Strategy', category: 'technical', importance: 'critical' },
+      { keyword: 'Stakeholder Management', category: 'soft', importance: 'critical' },
+      { keyword: 'Business Analysis', category: 'technical', importance: 'high' },
+      { keyword: 'PowerPoint', category: 'tool', importance: 'high' },
+      { keyword: 'Excel', category: 'tool', importance: 'high' },
+      { keyword: 'Process Improvement', category: 'technical', importance: 'high' },
+      { keyword: 'Change Management', category: 'methodology', importance: 'high' },
+      { keyword: 'Client Engagement', category: 'technical', importance: 'high' },
+      { keyword: 'Project Management', category: 'methodology', importance: 'high' },
+      { keyword: 'ROI', category: 'technical', importance: 'medium' },
+    ],
+  },
+  engineering: {
+    name: 'Engineering',
+    keywords: [
+      { keyword: 'CAD', category: 'tool', importance: 'critical' },
+      { keyword: 'SolidWorks', category: 'tool', importance: 'high' },
+      { keyword: 'AutoCAD', category: 'tool', importance: 'high' },
+      { keyword: 'GD&T', category: 'technical', importance: 'high' },
+      { keyword: 'Root Cause Analysis', category: 'methodology', importance: 'high' },
+      { keyword: 'Six Sigma', category: 'certification', importance: 'high' },
+      { keyword: 'FEA', category: 'technical', importance: 'medium' },
+      { keyword: 'ISO', category: 'certification', importance: 'high' },
+      { keyword: 'MATLAB', category: 'tool', importance: 'medium' },
+      { keyword: 'PE License', category: 'certification', importance: 'high' },
+    ],
+  },
+  digital_marketing: {
+    name: 'Digital Marketing',
+    keywords: [
+      { keyword: 'Google Ads', category: 'tool', importance: 'critical' },
+      { keyword: 'SEO', category: 'technical', importance: 'critical' },
+      { keyword: 'Google Analytics', category: 'tool', importance: 'critical' },
+      { keyword: 'PPC', category: 'technical', importance: 'high' },
+      { keyword: 'Facebook Ads', category: 'tool', importance: 'high' },
+      { keyword: 'ROAS', category: 'technical', importance: 'high' },
+      { keyword: 'Conversion Rate', category: 'technical', importance: 'high' },
+      { keyword: 'A/B Testing', category: 'methodology', importance: 'high' },
+      { keyword: 'Landing Pages', category: 'technical', importance: 'medium' },
+      { keyword: 'Attribution', category: 'technical', importance: 'medium' },
+    ],
+  },
+  content_marketing: {
+    name: 'Content Marketing',
+    keywords: [
+      { keyword: 'Content Strategy', category: 'technical', importance: 'critical' },
+      { keyword: 'SEO', category: 'technical', importance: 'critical' },
+      { keyword: 'Copywriting', category: 'technical', importance: 'high' },
+      { keyword: 'CMS', category: 'tool', importance: 'high' },
+      { keyword: 'Editorial Calendar', category: 'technical', importance: 'high' },
+      { keyword: 'Blog Management', category: 'technical', importance: 'high' },
+      { keyword: 'HubSpot', category: 'tool', importance: 'high' },
+      { keyword: 'Content Distribution', category: 'technical', importance: 'medium' },
+      { keyword: 'Analytics', category: 'tool', importance: 'medium' },
+      { keyword: 'Email Marketing', category: 'technical', importance: 'medium' },
+    ],
+  },
+  accounting: {
+    name: 'Accounting',
+    keywords: [
+      { keyword: 'GAAP', category: 'certification', importance: 'critical' },
+      { keyword: 'CPA', category: 'certification', importance: 'critical' },
+      { keyword: 'Financial Statements', category: 'technical', importance: 'critical' },
+      { keyword: 'QuickBooks', category: 'tool', importance: 'high' },
+      { keyword: 'Reconciliation', category: 'technical', importance: 'high' },
+      { keyword: 'Audit', category: 'technical', importance: 'high' },
+      { keyword: 'Tax Preparation', category: 'technical', importance: 'high' },
+      { keyword: 'Month-End Close', category: 'technical', importance: 'high' },
+      { keyword: 'NetSuite', category: 'tool', importance: 'medium' },
+      { keyword: 'Journal Entries', category: 'technical', importance: 'medium' },
+    ],
+  },
+  construction: {
+    name: 'Construction',
+    keywords: [
+      { keyword: 'Project Management', category: 'methodology', importance: 'critical' },
+      { keyword: 'Procore', category: 'tool', importance: 'high' },
+      { keyword: 'OSHA', category: 'certification', importance: 'critical' },
+      { keyword: 'Estimating', category: 'technical', importance: 'high' },
+      { keyword: 'Blueprints', category: 'technical', importance: 'high' },
+      { keyword: 'Scheduling', category: 'technical', importance: 'high' },
+      { keyword: 'Subcontractor Management', category: 'technical', importance: 'high' },
+      { keyword: 'BIM', category: 'tool', importance: 'medium' },
+      { keyword: 'LEED', category: 'certification', importance: 'medium' },
+      { keyword: 'Safety', category: 'technical', importance: 'high' },
+    ],
+  },
+  government: {
+    name: 'Government',
+    keywords: [
+      { keyword: 'Policy Analysis', category: 'technical', importance: 'critical' },
+      { keyword: 'Grant Writing', category: 'technical', importance: 'high' },
+      { keyword: 'Federal Acquisition', category: 'technical', importance: 'high' },
+      { keyword: 'Public Administration', category: 'technical', importance: 'high' },
+      { keyword: 'Regulatory Compliance', category: 'technical', importance: 'high' },
+      { keyword: 'Budget Management', category: 'technical', importance: 'high' },
+      { keyword: 'Stakeholder Engagement', category: 'soft', importance: 'high' },
+      { keyword: 'Legislation', category: 'technical', importance: 'medium' },
+      { keyword: 'Procurement', category: 'technical', importance: 'medium' },
+      { keyword: 'Security Clearance', category: 'certification', importance: 'medium' },
+    ],
+  },
+  logistics: {
+    name: 'Logistics',
+    keywords: [
+      { keyword: 'Supply Chain', category: 'technical', importance: 'critical' },
+      { keyword: 'WMS', category: 'tool', importance: 'critical' },
+      { keyword: 'Inventory Management', category: 'technical', importance: 'high' },
+      { keyword: 'ERP', category: 'tool', importance: 'high' },
+      { keyword: 'SAP', category: 'tool', importance: 'high' },
+      { keyword: 'Procurement', category: 'technical', importance: 'high' },
+      { keyword: 'Freight', category: 'technical', importance: 'medium' },
+      { keyword: 'TMS', category: 'tool', importance: 'medium' },
+      { keyword: '3PL', category: 'technical', importance: 'medium' },
+      { keyword: 'Route Optimization', category: 'technical', importance: 'medium' },
+    ],
+  },
+  real_estate: {
+    name: 'Real Estate',
+    keywords: [
+      { keyword: 'Property Valuation', category: 'technical', importance: 'critical' },
+      { keyword: 'MLS', category: 'tool', importance: 'critical' },
+      { keyword: 'Market Analysis', category: 'technical', importance: 'high' },
+      { keyword: 'Negotiation', category: 'soft', importance: 'high' },
+      { keyword: 'Contract Management', category: 'technical', importance: 'high' },
+      { keyword: 'Client Relations', category: 'soft', importance: 'high' },
+      { keyword: 'CRM', category: 'tool', importance: 'high' },
+      { keyword: 'Commercial Real Estate', category: 'technical', importance: 'medium' },
+      { keyword: 'Lease Administration', category: 'technical', importance: 'medium' },
+      { keyword: 'Yardi', category: 'tool', importance: 'medium' },
+    ],
+  },
+  retail: {
+    name: 'Retail',
+    keywords: [
+      { keyword: 'Customer Service', category: 'soft', importance: 'critical' },
+      { keyword: 'Inventory Management', category: 'technical', importance: 'critical' },
+      { keyword: 'POS Systems', category: 'tool', importance: 'high' },
+      { keyword: 'Visual Merchandising', category: 'technical', importance: 'high' },
+      { keyword: 'Loss Prevention', category: 'technical', importance: 'high' },
+      { keyword: 'Sales Targets', category: 'technical', importance: 'high' },
+      { keyword: 'Omnichannel', category: 'technical', importance: 'medium' },
+      { keyword: 'Vendor Relations', category: 'soft', importance: 'medium' },
+      { keyword: 'Shopify', category: 'tool', importance: 'medium' },
+      { keyword: 'Store Operations', category: 'technical', importance: 'high' },
+    ],
+  },
+  creative: {
+    name: 'Creative',
+    keywords: [
+      { keyword: 'Adobe Creative Suite', category: 'tool', importance: 'critical' },
+      { keyword: 'Visual Design', category: 'technical', importance: 'critical' },
+      { keyword: 'Branding', category: 'technical', importance: 'high' },
+      { keyword: 'Typography', category: 'technical', importance: 'high' },
+      { keyword: 'Photography', category: 'technical', importance: 'medium' },
+      { keyword: 'Video Production', category: 'technical', importance: 'medium' },
+      { keyword: 'Art Direction', category: 'technical', importance: 'high' },
+      { keyword: 'Illustration', category: 'technical', importance: 'medium' },
+      { keyword: 'Figma', category: 'tool', importance: 'high' },
+      { keyword: 'InDesign', category: 'tool', importance: 'medium' },
+    ],
+  },
+  energy: {
+    name: 'Energy',
+    keywords: [
+      { keyword: 'Renewable Energy', category: 'technical', importance: 'critical' },
+      { keyword: 'Power Generation', category: 'technical', importance: 'high' },
+      { keyword: 'Grid', category: 'technical', importance: 'high' },
+      { keyword: 'FERC', category: 'certification', importance: 'high' },
+      { keyword: 'NERC', category: 'certification', importance: 'high' },
+      { keyword: 'Energy Efficiency', category: 'technical', importance: 'high' },
+      { keyword: 'Oil and Gas', category: 'technical', importance: 'medium' },
+      { keyword: 'Sustainability', category: 'technical', importance: 'high' },
+      { keyword: 'Solar', category: 'technical', importance: 'medium' },
+      { keyword: 'Wind', category: 'technical', importance: 'medium' },
+    ],
+  },
 };
+
 
 /**
  * Compute industry-specific keyword suggestions based on detected industry and resume content
@@ -6232,14 +6474,22 @@ function computeIndustryKeywordSuggestions(
   let industryConfig = INDUSTRY_KEYWORD_DB[industry];
   const parentIndustry = INDUSTRY_PARENTS[industry];
   
-  if (!industryConfig && parentIndustry) {
-    industryConfig = INDUSTRY_KEYWORD_DB[parentIndustry];
+  // Fallback chain: exact match → parent industry → 'general' category based on parent
+  if (!industryConfig) {
+    // Try well-known parent aliases
+    const parentAliases: Record<string, string> = {
+      'human_resources': 'hr',
+    };
+    const aliasKey = parentIndustry ? (parentAliases[parentIndustry] || parentIndustry) : null;
+    if (aliasKey) {
+      industryConfig = INDUSTRY_KEYWORD_DB[aliasKey];
+    }
   }
   
-  // Fallback to general/technology if no match
+  // Fallback: don't default to 'technology' — that causes wrong keywords. Use parent or null.
   if (!industryConfig) {
-    industryConfig = INDUSTRY_KEYWORD_DB['technology'];
-    if (!industryConfig) return null;
+    console.log(`[INDUSTRY-KEYWORDS] No keyword DB entry for "${industry}" (parent: ${parentIndustry})`);
+    return null;
   }
   
   const resumeLower = resumeText.toLowerCase();

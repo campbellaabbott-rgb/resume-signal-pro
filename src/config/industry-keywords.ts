@@ -1282,23 +1282,54 @@ export function findIndustryConfig(industryName: string): IndustryKeywordConfig 
   
   // Sub-industry → parent fallback: e.g. "business_development" → "sales", "digital_marketing" → "marketing"
   const SUB_INDUSTRY_PARENTS: Record<string, string> = {
+    // Sales
     'business_development': 'sales', 'enterprise_sales': 'sales', 'inside_sales': 'sales',
     'sales_engineering': 'sales', 'sales_operations': 'sales', 'channel_sales': 'sales',
     'strategic_accounts': 'sales', 'customer_success': 'sales', 'revenue_operations': 'sales',
+    // Marketing
     'digital_marketing': 'marketing', 'content_marketing': 'marketing', 'brand_marketing': 'marketing',
     'product_marketing': 'marketing', 'performance_marketing': 'marketing', 'growth_marketing': 'marketing',
+    'influencer_marketing': 'marketing', 'marketing_analytics': 'marketing', 'content_strategy': 'marketing',
+    // Technology
     'software_engineering': 'technology', 'data_science': 'technology', 'devops': 'technology',
     'cybersecurity': 'technology', 'product_management': 'technology', 'ai_ml': 'technology',
     'data_engineering': 'technology', 'platform_engineering': 'technology', 'sre': 'technology',
+    'cloud_engineering': 'technology', 'security_engineering': 'technology', 'ml_engineering': 'technology',
+    'business_intelligence': 'technology', 'technical_program_management': 'technology',
+    'cloud_security': 'technology', 'solutions_architecture': 'technology',
+    'product_analytics': 'technology', 'technical_writing': 'technology', 'devrel': 'technology',
+    // Finance
     'investment_banking': 'finance', 'accounting': 'finance', 'financial_planning': 'finance',
     'quantitative_finance': 'finance', 'private_equity': 'finance', 'venture_capital': 'finance',
+    'treasury_management': 'finance',
+    // HR
     'talent_acquisition': 'humanResources', 'hr_business_partner': 'humanResources',
+    'compensation_benefits': 'humanResources', 'learning_development': 'humanResources',
+    'hr_operations': 'humanResources', 'employee_experience': 'humanResources',
+    'organizational_development': 'humanResources', 'hr_analytics': 'humanResources',
+    // Healthcare
     'nursing': 'healthcare', 'physician': 'healthcare', 'pharmacy': 'healthcare',
+    'mental_health': 'healthcare', 'medical_devices': 'healthcare', 'health_administration': 'healthcare',
+    'clinical_research': 'healthcare', 'physical_therapy': 'healthcare', 'radiology': 'healthcare',
+    // Legal
     'corporate_law': 'legal', 'litigation': 'legal', 'intellectual_property': 'legal',
+    'employment_law': 'legal', 'compliance': 'legal', 'data_privacy': 'legal',
+    // Consulting
     'management_consulting': 'consulting', 'strategy_consulting': 'consulting',
+    'it_consulting': 'consulting', 'operations_consulting': 'consulting', 'hr_consulting': 'consulting',
+    // Design/Creative
     'graphic_design': 'design', 'ux_design': 'design', 'product_design': 'design',
-    'k12_education': 'education', 'higher_education': 'education',
+    'ux_research': 'design', 'video_production': 'design',
+    // Education
+    'k12_education': 'education', 'higher_education': 'education', 'edtech': 'education',
+    'curriculum_development': 'education', 'special_education': 'education',
+    // Operations/Manufacturing
     'lean_manufacturing': 'operations', 'quality_engineering': 'operations',
+    'process_engineering': 'operations', 'supply_chain_manufacturing': 'operations',
+    'plant_management': 'operations',
+    // Other
+    'supply_chain_analytics': 'operations', 'sports_management': 'operations',
+    'healthcare_it': 'technology', 'fintech': 'finance',
   };
   
   const parentKey = SUB_INDUSTRY_PARENTS[normalized];
