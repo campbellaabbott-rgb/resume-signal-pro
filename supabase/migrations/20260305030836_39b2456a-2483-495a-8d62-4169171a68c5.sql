@@ -1,0 +1,1 @@
+DELETE FROM ai_response_cache WHERE function_name = 'free-keyword-scan-stream';
