@@ -5809,8 +5809,25 @@ function computeIndustryBenchmark(
     legal: { avg: 72, top: 90 },
     consulting: { avg: 70, top: 86 },
     engineering: { avg: 67, top: 84 },
+    education: { avg: 63, top: 80 },
+    hr: { avg: 64, top: 81 },
+    human_resources: { avg: 64, top: 81 },
+    creative: { avg: 62, top: 79 },
+    retail: { avg: 60, top: 78 },
+    hospitality: { avg: 58, top: 76 },
+    manufacturing: { avg: 66, top: 83 },
+    nonprofit: { avg: 62, top: 79 },
+    government: { avg: 65, top: 82 },
+    construction: { avg: 63, top: 80 },
+    logistics: { avg: 63, top: 80 },
+    real_estate: { avg: 61, top: 78 },
+    energy: { avg: 66, top: 83 },
     general: { avg: 65, top: 82 },
   };
+  
+  // Resolve sub-industry to parent for benchmark lookup
+  const parentIndustry = INDUSTRY_PARENTS[industry];
+  const benchmarks = industryAverages[industry] || (parentIndustry ? industryAverages[parentIndustry] : null) || industryAverages.general;
 
   const benchmarks = industryAverages[industry] || industryAverages.general;
   const { avg, top } = benchmarks;
