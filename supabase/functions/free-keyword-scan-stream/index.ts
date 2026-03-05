@@ -6474,14 +6474,22 @@ function computeIndustryKeywordSuggestions(
   let industryConfig = INDUSTRY_KEYWORD_DB[industry];
   const parentIndustry = INDUSTRY_PARENTS[industry];
   
-  if (!industryConfig && parentIndustry) {
-    industryConfig = INDUSTRY_KEYWORD_DB[parentIndustry];
+  // Fallback chain: exact match → parent industry → 'general' category based on parent
+  if (!industryConfig) {
+    // Try well-known parent aliases
+    const parentAliases: Record<string, string> = {
+      'human_resources': 'hr',
+    };
+    const aliasKey = parentIndustry ? (parentAliases[parentIndustry] || parentIndustry) : null;
+    if (aliasKey) {
+      industryConfig = INDUSTRY_KEYWORD_DB[aliasKey];
+    }
   }
   
-  // Fallback to general/technology if no match
+  // Fallback: don't default to 'technology' — that causes wrong keywords. Use parent or null.
   if (!industryConfig) {
-    industryConfig = INDUSTRY_KEYWORD_DB['technology'];
-    if (!industryConfig) return null;
+    console.log(`[INDUSTRY-KEYWORDS] No keyword DB entry for "${industry}" (parent: ${parentIndustry})`);
+    return null;
   }
   
   const resumeLower = resumeText.toLowerCase();
