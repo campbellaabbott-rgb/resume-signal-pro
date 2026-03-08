@@ -154,6 +154,7 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'sales_engineering': 'sales',
   'business_development': 'sales',
   // Marketing sub-industries
+  'general_marketing': 'marketing',
   'digital_marketing': 'marketing',
   'content_marketing': 'marketing',
   'brand_marketing': 'marketing',
