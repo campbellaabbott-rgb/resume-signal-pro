@@ -2153,22 +2153,20 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* Personalized Career Insights - NEW SECTION */}
+      {/* Personalized Career Insights */}
       {personalizedCareerInsights && (
-        <div className="rounded-2xl bg-gradient-to-br from-primary/5 via-card to-card border border-primary/20 p-5 mb-5 relative overflow-hidden">
-          {/* Decorative background */}
+        <CollapsibleSection
+          id="career-insights"
+          title="Personalized Career Insights"
+          subtitle={`Tailored for ${candidateName || 'you'}`}
+          icon={<Sparkles className="w-4 h-4" />}
+          defaultOpen={false}
+          badge={<span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">AI-powered</span>}
+        >
+        <div className="rounded-xl bg-gradient-to-br from-primary/5 via-card to-card border border-primary/20 p-4 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.08),transparent_50%)] pointer-events-none" />
           
           <div className="relative">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="p-2 rounded-xl bg-primary/10">
-                <Sparkles className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h4 className="font-bold text-lg">Your Personalized Career Insights</h4>
-                <p className="text-xs text-muted-foreground">Tailored just for {candidateName || 'you'}</p>
-              </div>
-            </div>
 
             {/* Personalized Encouragement */}
             {personalizedCareerInsights.personalizedEncouragement && (
