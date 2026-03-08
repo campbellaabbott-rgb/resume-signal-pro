@@ -282,6 +282,7 @@ export function useStreamingScan() {
             jobDescriptionText: options?.jobDescriptionText,
             honeypot: options?.honeypot,
             skipCache: options?.skipCache,
+            language: localStorage.getItem('i18nextLng') || 'en',
           }),
           signal: abortControllerRef.current.signal,
         });

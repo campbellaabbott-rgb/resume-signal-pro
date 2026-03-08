@@ -7629,7 +7629,7 @@ What is the PRIMARY industry? Reply with only the industry name.`
       const scoringRubric = INDUSTRY_SCORING_RUBRICS[specificIndustry] || INDUSTRY_SCORING_RUBRICS[parentForRubric] || INDUSTRY_SCORING_RUBRICS.general;
 
       // Build prompts with resume type awareness and accuracy improvements
-      const systemPrompt = `Expert ATS resume analyst. Respond in resume's language. All fields in that language.
+      const systemPrompt = `Expert ATS resume analyst. Respond in ${language || "the resume's"} language. All fields in that language.
 
 RESUME TYPE DETECTED: ${resumeType.type} (${resumeType.label})
 SENIORITY LEVEL: ${seniority}
