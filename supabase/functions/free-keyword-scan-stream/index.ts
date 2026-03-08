@@ -7317,9 +7317,8 @@ serve(async (req) => {
       // Fetch recent correction patterns to inform AI (non-blocking)
       let correctionHints = '';
       try {
-        const serviceClient = getServiceClient();
-        if (serviceClient) {
-          const { data: corrections } = await serviceClient.rpc('get_industry_correction_stats', { p_days_back: 30 });
+        if (supabase) {
+          const { data: corrections } = await supabase.rpc('get_industry_correction_stats', { p_days_back: 30 });
           if (corrections && corrections.length > 0) {
             // Build hint string from frequent corrections
             const relevantCorrections = corrections
