@@ -18,7 +18,7 @@ serve(async (req) => {
   }
 
   try {
-    const { resumeText, jobDescription, jobTitle, jobCompany, tone = "professional" } = await req.json();
+    const { resumeText, jobDescription, jobTitle, jobCompany, tone = "professional", language } = await req.json();
 
     if (!resumeText) {
       return new Response(
@@ -43,7 +43,7 @@ serve(async (req) => {
 
     const toneDesc = toneDescriptions[tone] || toneDescriptions.professional;
 
-    const systemPrompt = `You are a senior executive recruiter who writes cover letters that sound authentically human.
+    const systemPrompt = `You are a senior executive recruiter who writes cover letters that sound authentically human. Respond in ${language || "the resume's"} language.
 
 Write a cover letter that is ${toneDesc}.
 

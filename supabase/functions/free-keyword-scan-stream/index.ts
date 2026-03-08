@@ -7257,7 +7257,7 @@ serve(async (req) => {
   // Process in background while streaming progress
   EdgeRuntime.waitUntil((async () => {
     try {
-      const { resumeText, jobDescriptionText, honeypot, skipCache, skipAdminEmail } = await req.json();
+      const { resumeText, jobDescriptionText, honeypot, skipCache, skipAdminEmail, language } = await req.json();
 
       // Debug: Log first 100 chars of resume to verify correct text is being sent
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Resume preview (first 100 chars): ${resumeText?.substring(0, 100)?.replace(/\n/g, ' ')}`);
@@ -7629,7 +7629,7 @@ What is the PRIMARY industry? Reply with only the industry name.`
       const scoringRubric = INDUSTRY_SCORING_RUBRICS[specificIndustry] || INDUSTRY_SCORING_RUBRICS[parentForRubric] || INDUSTRY_SCORING_RUBRICS.general;
 
       // Build prompts with resume type awareness and accuracy improvements
-      const systemPrompt = `Expert ATS resume analyst. Respond in resume's language. All fields in that language.
+      const systemPrompt = `Expert ATS resume analyst. Respond in ${language || "the resume's"} language. All fields in that language.
 
 RESUME TYPE DETECTED: ${resumeType.type} (${resumeType.label})
 SENIORITY LEVEL: ${seniority}
