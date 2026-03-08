@@ -7887,14 +7887,30 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       
       // If verified industry differs from hybrid result AND server was low confidence,
       // prefer verified industry (AI tiebreaker wins for ambiguous cases)
-      if (verifiedIndustry && verifiedIndustry !== hybridResult.industry && 
-          serverDetection.confidence !== 'high') {
-        console.log(`[FREE-KEYWORD-SCAN-STREAM] Two-pass override: hybrid="${hybridResult.industry}" -> verified="${verifiedIndustry}"`);
-        hybridResult.industry = verifiedIndustry;
-        hybridResult.detectionSource = 'ai_verified';
-        hybridResult.signals = [...hybridResult.signals, `AI verification confirmed: ${verifiedIndustry}`];
-        // Upgrade confidence if AI agrees
+      if (verifiedIndustry && verifiedIndustry !== hybridResult.industry) {
+        if (serverDetection.confidence === 'high') {
+          // High-confidence server detection — don't override, but log the disagreement
+          // This data helps identify when the server engine needs tuning
+          console.log(`[FREE-KEYWORD-SCAN-STREAM] AI confirmation DISAGREES but server HIGH confidence — keeping "${hybridResult.industry}" (AI suggested: "${verifiedIndustry}")`);
+          hybridResult.signals = [...hybridResult.signals, `AI confirmation suggested "${verifiedIndustry}" but server HIGH confidence prevails`];
+          hybridResult.detectionSource = 'server_high_ai_confirmed_disagree';
+        } else {
+          // Medium/low confidence — AI confirmation overrides
+          console.log(`[FREE-KEYWORD-SCAN-STREAM] AI confirmation override: hybrid="${hybridResult.industry}" -> verified="${verifiedIndustry}"`);
+          hybridResult.industry = verifiedIndustry;
+          hybridResult.parentIndustry = INDUSTRY_PARENTS[verifiedIndustry] || hybridResult.parentIndustry;
+          hybridResult.detectionSource = 'ai_confirmed';
+          hybridResult.signals = [...hybridResult.signals, `AI confirmation: ${verifiedIndustry}`];
+          // Upgrade confidence when AI provides confirmation
+          if (hybridResult.confidence === 'low') hybridResult.confidence = 'medium';
+        }
+      } else if (verifiedIndustry && verifiedIndustry === hybridResult.industry) {
+        // AI agrees with server — upgrade confidence
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] AI confirmation AGREES: "${hybridResult.industry}"`);
+        hybridResult.signals = [...hybridResult.signals, `AI confirmation agrees: ${verifiedIndustry}`];
         if (hybridResult.confidence === 'low') hybridResult.confidence = 'medium';
+        if (hybridResult.confidence === 'medium') hybridResult.confidence = 'high';
+        hybridResult.detectionSource = `${hybridResult.detectionSource || 'server'}_ai_confirmed`;
       }
       
       const industryDetectionDuration = Date.now() - industryDetectionStart;
