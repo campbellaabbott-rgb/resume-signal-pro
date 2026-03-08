@@ -7089,6 +7089,66 @@ serve(async (req) => {
         return;
       }
 
+      // ======================== TWO-PASS AI INDUSTRY VERIFICATION ========================
+      // When server-side detection has low/medium confidence, ask AI to verify
+      // using a fast, cheap model before the main analysis call
+      const preDetection = detectIndustryFromResume(resumeText);
+      let verifiedIndustry: string | null = null;
+      
+      if (preDetection.confidence !== 'high' && preDetection.score < 50) {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry confidence ${preDetection.confidence} (score: ${preDetection.score}) — running AI verification pass`);
+        
+        const topCandidates = [
+          preDetection.industry,
+          ...(preDetection.alternativeIndustries || []).slice(0, 2).map(a => a.industry)
+        ].filter(Boolean);
+        
+        // Extract first 2000 chars of resume for quick classification
+        const classificationExcerpt = resumeText.substring(0, 2000);
+        
+        try {
+          const verifyResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash-lite",
+              messages: [
+                { 
+                  role: "system", 
+                  content: "You are an industry classifier. Given a resume excerpt, pick the BEST industry from the candidate list. Respond with ONLY the industry name, nothing else."
+                },
+                { 
+                  role: "user", 
+                  content: `Candidate industries: ${topCandidates.join(', ')}\n\nResume excerpt:\n${classificationExcerpt}\n\nWhich industry best fits this resume? Reply with only the industry name.`
+                }
+              ],
+              max_tokens: 50,
+              temperature: 0,
+            }),
+          });
+          
+          if (verifyResponse.ok) {
+            const verifyData = await verifyResponse.json();
+            const aiVerified = verifyData.choices?.[0]?.message?.content?.trim()?.toLowerCase();
+            if (aiVerified) {
+              const normalizedVerified = normalizeIndustry(aiVerified);
+              if (VALID_INDUSTRIES.includes(normalizedVerified) || INDUSTRY_ALIASES[normalizedVerified]) {
+                verifiedIndustry = normalizedVerified;
+                console.log(`[FREE-KEYWORD-SCAN-STREAM] AI verification result: "${verifiedIndustry}" (from candidates: ${topCandidates.join(', ')})`);
+              }
+            }
+          }
+        } catch (verifyErr) {
+          console.warn(`[FREE-KEYWORD-SCAN-STREAM] AI verification failed (non-critical):`, verifyErr);
+          // Non-blocking — continue with server detection only
+        }
+      } else {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry confidence ${preDetection.confidence} (score: ${preDetection.score}) — skipping AI verification`);
+      }
+
       // Build prompts with resume type awareness and accuracy improvements
       const systemPrompt = `Expert ATS resume analyst. Respond in resume's language. All fields in that language.
 
@@ -7538,11 +7598,28 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         return;
       }
 
-      // Normalize industry using hybrid detection (combines server + AI)
+      // Normalize industry using hybrid detection (combines server + AI + two-pass verification)
       const industryDetectionStart = Date.now();
       const rawIndustry = analysis.industry;
-      const serverDetection = detectIndustryFromResume(resumeText);
-      const hybridResult = hybridIndustryDetection(serverDetection, rawIndustry, resumeText);
+      // Re-use pre-detection from two-pass verification if available, otherwise detect fresh
+      const serverDetection = preDetection || detectIndustryFromResume(resumeText);
+      
+      // If two-pass AI verification gave a result, use it as additional signal
+      const aiIndustryForHybrid = verifiedIndustry || rawIndustry;
+      const hybridResult = hybridIndustryDetection(serverDetection, aiIndustryForHybrid, resumeText);
+      
+      // If verified industry differs from hybrid result AND server was low confidence,
+      // prefer verified industry (AI tiebreaker wins for ambiguous cases)
+      if (verifiedIndustry && verifiedIndustry !== hybridResult.industry && 
+          serverDetection.confidence !== 'high') {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Two-pass override: hybrid="${hybridResult.industry}" -> verified="${verifiedIndustry}"`);
+        hybridResult.industry = verifiedIndustry;
+        hybridResult.detectionSource = 'ai_verified';
+        hybridResult.signals = [...hybridResult.signals, `AI verification confirmed: ${verifiedIndustry}`];
+        // Upgrade confidence if AI agrees
+        if (hybridResult.confidence === 'low') hybridResult.confidence = 'medium';
+      }
+      
       const industryDetectionDuration = Date.now() - industryDetectionStart;
       
       // Apply hybrid result
@@ -7773,6 +7850,62 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
               console.log(`[RED-FLAG-FILTER] Filtered short employment gap`);
               return false;
             }
+          }
+          
+          // ======================== EXPERIENCE-AWARE RED FLAG FILTERING ========================
+          // Filter 6: Gate red flags by seniority level
+          
+          // 6a: Entry-level should NOT be flagged for missing leadership/management keywords
+          if (seniority === 'entry') {
+            if (combined.includes('leadership') || combined.includes('management') || 
+                combined.includes('team lead') || combined.includes('strategic') ||
+                combined.includes('executive') || combined.includes('director')) {
+              console.log(`[RED-FLAG-FILTER] Filtered leadership flag for entry-level candidate`);
+              return false;
+            }
+          }
+          
+          // 6b: Senior/Executive roles should NOT be flagged for missing portfolio/GitHub
+          if (seniority === 'senior' || seniority === 'executive') {
+            if (combined.includes('github') || combined.includes('portfolio') || 
+                combined.includes('personal website') || combined.includes('personal project') ||
+                combined.includes('side project')) {
+              console.log(`[RED-FLAG-FILTER] Filtered portfolio/GitHub flag for ${seniority}-level candidate`);
+              return false;
+            }
+          }
+          
+          // 6c: Non-tech roles should NOT be flagged for missing technical portfolio/GitHub
+          const isNonTechIndustry = ['sales', 'marketing', 'hr', 'human_resources', 'legal', 
+            'education', 'healthcare', 'nursing', 'finance', 'accounting', 'hospitality',
+            'nonprofit', 'retail', 'consulting'].includes(analysis.industry);
+          if (isNonTechIndustry) {
+            if (combined.includes('github') || combined.includes('technical portfolio') ||
+                combined.includes('coding') || combined.includes('programming')) {
+              console.log(`[RED-FLAG-FILTER] Filtered tech-specific flag for ${analysis.industry} industry`);
+              return false;
+            }
+          }
+          
+          // 6d: Entry-level should NOT be penalized for lack of quantified results at same intensity
+          if (seniority === 'entry') {
+            if ((combined.includes('quantif') || combined.includes('metric') || combined.includes('measurable')) 
+                && combined.includes('missing')) {
+              // Downgrade but don't remove — entry-level resumes often lack metrics
+              // Let it through but the impact text should be softened by the AI prompt
+              // Only filter if framed as a critical/major issue
+              if (combined.includes('critical') || combined.includes('major') || combined.includes('significant')) {
+                console.log(`[RED-FLAG-FILTER] Filtered critical metrics flag for entry-level candidate`);
+                return false;
+              }
+            }
+          }
+          
+          // 6e: LinkedIn URL is less critical for senior/executive (they get found, not search)
+          if ((seniority === 'senior' || seniority === 'executive') && 
+              combined.includes('linkedin') && (combined.includes('missing') || combined.includes('add'))) {
+            console.log(`[RED-FLAG-FILTER] Filtered LinkedIn flag for ${seniority}-level candidate`);
+            return false;
           }
           
           return true;
