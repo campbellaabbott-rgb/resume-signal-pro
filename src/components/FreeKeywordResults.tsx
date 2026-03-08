@@ -1380,49 +1380,32 @@ export function FreeKeywordResults({
 
       </div> {/* end section-overview */}
 
-      {/* Personalized Action Required CTA Banner */}
-      <div className="rounded-2xl bg-gradient-to-r from-destructive/15 via-destructive/10 to-destructive/5 border border-destructive/30 p-5 mb-6">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="p-1.5 rounded-lg bg-destructive/20">
-            <AlertTriangle className="w-4 h-4 text-destructive" />
-          </div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-destructive">
-            {candidateName ? `${candidateName.split(' ')[0]}, action needed` : 'Action Required'}
-          </span>
-        </div>
-        
-        <h4 className="text-lg font-bold mb-2">
-          {redFlags.length > 0 
-            ? candidateName 
-              ? `${candidateName.split(' ')[0]}, ${redFlags.length} issues are blocking your applications`
-              : `${redFlags.length}+ Issues Holding Your Resume Back`
-            : `${atsScoreEstimate < 70 ? 'Critical' : 'Key'} Issues Found in Your Resume`
-          }
-        </h4>
-        <p className="text-sm text-muted-foreground mb-4">
-          {currentRole 
-            ? `Get ${effectiveIndustry.replace(/_/g, ' ')}-specific fixes for your ${currentRole} resume, with rewritten bullet points and optimized keywords.`
-            : `Get specific fixes, rewritten bullet points, and AI-ATS-optimized suggestions tailored to ${effectiveIndustry.replace(/_/g, ' ')}.`
-          }
-        </p>
-        
+      {/* Compact Action CTA */}
+      <div className="rounded-xl bg-gradient-to-r from-destructive/10 to-destructive/5 border border-destructive/20 p-4 mb-5">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-foreground">
+              {redFlags.length > 0 
+                ? `${redFlags.length} issues found — fix them now`
+                : `${atsScoreEstimate < 70 ? 'Critical' : 'Key'} improvements available`
+              }
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {currentRole 
+                ? `${effectiveIndustry.replace(/_/g, ' ')}-specific fixes for your ${currentRole} resume`
+                : `Industry-specific fixes with rewritten bullet points`
+              }
+            </p>
+          </div>
           <Button 
             onClick={() => handleUpgradeClick('action_required_banner')}
             disabled={isLoading}
-            className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-lg"
+            size="sm"
+            className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground shrink-0"
           >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Sparkles className="w-4 h-4" />
-            )}
+            {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
             {getFirstCtaText()}
-            <ArrowRight className="w-4 h-4" />
           </Button>
-          <span className="text-xs text-muted-foreground">
-            Takes 2 minutes • Instant results
-          </span>
         </div>
       </div>
 
