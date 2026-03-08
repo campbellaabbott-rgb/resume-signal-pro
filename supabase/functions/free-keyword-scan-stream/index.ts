@@ -6183,6 +6183,143 @@ function computeBulletImpactScore(resumeText: string): {
 }
 
 /**
+ * Calibrate ATS score based on industry-specific expectations.
+ * AI models tend to score keyword-heavy resumes higher (tech, marketing) and
+ * penalize industries where resumes have fewer buzzwords (healthcare, education, trades).
+ * This normalizes scores so a great nurse resume scores as well as a great PM resume.
+ */
+function calibrateScoreByIndustry(
+  rawScore: number,
+  industry: string,
+  seniority: SeniorityLevel,
+  resumeText: string
+): { calibratedScore: number; adjustment: number; reason: string } {
+  // Industry-specific calibration factors
+  // Positive = industry resumes tend to be under-scored by AI, boost them
+  // Negative = industry resumes tend to be over-scored by AI, reduce slightly
+  const INDUSTRY_CALIBRATION: Record<string, { 
+    baseAdjust: number; 
+    certBonus: number; 
+    certPatterns: RegExp[];
+    metricBonus: number;
+    metricPatterns: RegExp[];
+  }> = {
+    nursing: {
+      baseAdjust: 5, // Nursing resumes consistently under-scored
+      certBonus: 8,
+      certPatterns: [/\b(RN|BSN|MSN|ACLS|BLS|PALS|CCRN|CEN|CNS)\b/i],
+      metricBonus: 3,
+      metricPatterns: [/patient/i, /\b\d+\s*(patient|bed)/i, /satisfaction/i]
+    },
+    healthcare: {
+      baseAdjust: 4,
+      certBonus: 6,
+      certPatterns: [/\b(MD|DO|PA-C|NP|RN|BSN|CNA|HIPAA|EMR|EHR)\b/i],
+      metricBonus: 3,
+      metricPatterns: [/patient\s*(outcome|satisfaction|ratio)/i, /readmission/i, /mortality/i]
+    },
+    education: {
+      baseAdjust: 4,
+      certBonus: 5,
+      certPatterns: [/\b(M\.?Ed|Ed\.?D|teaching\s+certificate|credential|endorsement)\b/i],
+      metricBonus: 3,
+      metricPatterns: [/test\s*score/i, /student\s*(achievement|outcome|growth)/i, /class\s*size/i]
+    },
+    hospitality: {
+      baseAdjust: 3,
+      certBonus: 4,
+      certPatterns: [/\b(ServSafe|TIPS|CHA|CHIA|CHTP)\b/i],
+      metricBonus: 3,
+      metricPatterns: [/RevPAR/i, /occupancy/i, /guest\s*satisfaction/i, /\bNPS\b/i]
+    },
+    retail: {
+      baseAdjust: 3,
+      certBonus: 3,
+      certPatterns: [/\b(CPP|LPQ|LPC)\b/i],
+      metricBonus: 3,
+      metricPatterns: [/same.store\s*sales/i, /conversion\s*rate/i, /shrink(age)?/i, /comp\s*sales/i]
+    },
+    manufacturing: {
+      baseAdjust: 3,
+      certBonus: 5,
+      certPatterns: [/\b(Six\s*Sigma|Lean|PE|PMP|ISO|ASQ|CQE)\b/i],
+      metricBonus: 3,
+      metricPatterns: [/OEE/i, /yield/i, /defect/i, /cycle\s*time/i, /TRIR|DART/i]
+    },
+    construction: {
+      baseAdjust: 3,
+      certBonus: 5,
+      certPatterns: [/\b(PE|PMP|OSHA|LEED|CCM)\b/i],
+      metricBonus: 3,
+      metricPatterns: [/on.budget/i, /on.time/i, /\$\d+[MBK]/i, /safety\s*record/i]
+    },
+    creative: {
+      baseAdjust: 2,
+      certBonus: 2,
+      certPatterns: [/\b(portfolio|behance|dribbble)\b/i],
+      metricBonus: 3,
+      metricPatterns: [/engagement/i, /impression/i, /brand\s*(awareness|lift)/i]
+    },
+    // Tech/marketing/consulting tend to be scored fairly or slightly over-scored
+    technology: { baseAdjust: 0, certBonus: 2, certPatterns: [/\b(AWS|GCP|Azure|Kubernetes)\s*(certified|certificate)/i], metricBonus: 2, metricPatterns: [/uptime/i, /latency/i, /\d+[KMB]\s*users/i] },
+    marketing: { baseAdjust: 0, certBonus: 2, certPatterns: [/\b(Google\s*Analytics|HubSpot)\s*cert/i], metricBonus: 2, metricPatterns: [/ROI/i, /conversion/i, /CTR/i] },
+    sales: { baseAdjust: 0, certBonus: 0, certPatterns: [], metricBonus: 4, metricPatterns: [/quota/i, /\d+%\s*(of|attain|achiev)/i, /\$\d+/i, /ARR|MRR/i] },
+    finance: { baseAdjust: 0, certBonus: 4, certPatterns: [/\b(CFA|CPA|Series\s*\d+|CFP)\b/i], metricBonus: 2, metricPatterns: [/AUM/i, /portfolio/i, /return/i] },
+    legal: { baseAdjust: 0, certBonus: 3, certPatterns: [/\b(bar\s*admission|J\.?D\.?|LL\.?M)\b/i], metricBonus: 2, metricPatterns: [/settlement/i, /verdict/i, /\$\d+/i] },
+    consulting: { baseAdjust: 0, certBonus: 2, certPatterns: [/\b(PMP|MBA|Six\s*Sigma)\b/i], metricBonus: 3, metricPatterns: [/client\s*(outcome|ROI|impact)/i, /\$\d+[MBK]/i] },
+    hr: { baseAdjust: 2, certBonus: 4, certPatterns: [/\b(SHRM|PHR|SPHR)\b/i], metricBonus: 3, metricPatterns: [/retention/i, /time.to.hire/i, /turnover/i, /eNPS/i] },
+    general: { baseAdjust: 0, certBonus: 0, certPatterns: [], metricBonus: 0, metricPatterns: [] }
+  };
+
+  const parentIndustry = INDUSTRY_PARENTS[industry];
+  const calibration = INDUSTRY_CALIBRATION[industry] || (parentIndustry ? INDUSTRY_CALIBRATION[parentIndustry] : null) || INDUSTRY_CALIBRATION.general;
+  
+  let adjustment = calibration.baseAdjust;
+  const reasons: string[] = [];
+  
+  if (calibration.baseAdjust > 0) {
+    reasons.push(`${industry} base calibration +${calibration.baseAdjust}`);
+  }
+
+  // Cert bonus: check if resume contains industry-relevant certifications
+  if (calibration.certBonus > 0 && calibration.certPatterns.length > 0) {
+    const hasCerts = calibration.certPatterns.some(p => p.test(resumeText));
+    if (hasCerts) {
+      adjustment += calibration.certBonus;
+      reasons.push(`industry certs detected +${calibration.certBonus}`);
+    }
+  }
+
+  // Metric bonus: check if resume has industry-relevant metrics
+  if (calibration.metricBonus > 0 && calibration.metricPatterns.length > 0) {
+    const metricMatches = calibration.metricPatterns.filter(p => p.test(resumeText)).length;
+    if (metricMatches >= 2) {
+      adjustment += calibration.metricBonus;
+      reasons.push(`${metricMatches} industry metrics detected +${calibration.metricBonus}`);
+    }
+  }
+
+  // Seniority adjustment for non-tech industries
+  // Senior professionals in healthcare/education often have excellent resumes
+  // that AI under-scores due to lack of "modern" buzzwords
+  if ((seniority === 'senior' || seniority === 'executive') && calibration.baseAdjust > 0) {
+    const seniorityBoost = 3;
+    adjustment += seniorityBoost;
+    reasons.push(`senior ${industry} professional +${seniorityBoost}`);
+  }
+
+  // Cap adjustment to prevent inflation
+  adjustment = Math.min(adjustment, 15);
+  const calibratedScore = Math.min(100, Math.max(0, rawScore + adjustment));
+
+  return {
+    calibratedScore,
+    adjustment,
+    reason: reasons.length > 0 ? reasons.join(', ') : 'no calibration needed'
+  };
+}
+
+/**
  * Compute industry benchmark based on score
  */
 function computeIndustryBenchmark(
