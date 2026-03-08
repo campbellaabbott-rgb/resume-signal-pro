@@ -7257,7 +7257,7 @@ serve(async (req) => {
   // Process in background while streaming progress
   EdgeRuntime.waitUntil((async () => {
     try {
-      const { resumeText, jobDescriptionText, honeypot, skipCache, skipAdminEmail } = await req.json();
+      const { resumeText, jobDescriptionText, honeypot, skipCache, skipAdminEmail, language } = await req.json();
 
       // Debug: Log first 100 chars of resume to verify correct text is being sent
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Resume preview (first 100 chars): ${resumeText?.substring(0, 100)?.replace(/\n/g, ' ')}`);
