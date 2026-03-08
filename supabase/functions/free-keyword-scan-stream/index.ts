@@ -4542,12 +4542,28 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
     const titleWeight = patterns.titleWeight || 40; // was 30
     const skillWeight = patterns.skillWeight || 7;  // was 5
     
-    // Check title patterns (high weight)
+    // Check title patterns (high weight) with RECENCY MULTIPLIER
+    // Titles found in the most recent role get 2x weight
     for (const pattern of patterns.titlePatterns) {
       const match = text.match(pattern);
       if (match) {
-        score += titleWeight;
-        industrySignals.push(`Title: "${match[0]}"`);
+        // Check if this title match is in the most recent role section
+        const isInRecentRole = recentRoleText && pattern.test(recentRoleText);
+        const isInRecentTitle = recentRoleTitle && pattern.test(recentRoleTitle);
+        
+        // Apply recency multiplier: 3x for recent title line, 2x for recent section, 1x otherwise
+        let recencyMultiplier = 1.0;
+        if (isInRecentTitle) {
+          recencyMultiplier = 3.0;
+          industrySignals.push(`CURRENT ROLE Title: "${match[0]}" (3x weight)`);
+        } else if (isInRecentRole) {
+          recencyMultiplier = 2.0;
+          industrySignals.push(`Recent Role Title: "${match[0]}" (2x weight)`);
+        } else {
+          industrySignals.push(`Title: "${match[0]}"`);
+        }
+        
+        score += Math.round(titleWeight * recencyMultiplier);
         matchedTitles.push(match[0]);
       }
     }
