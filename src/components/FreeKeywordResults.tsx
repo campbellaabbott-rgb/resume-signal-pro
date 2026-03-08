@@ -15,6 +15,8 @@ import { PersonalizedInsights } from "./PersonalizedInsights";
 import { ElevatorPitchGenerator } from "./ElevatorPitchGenerator";
 import { RecruiterViewMode } from "./RecruiterViewMode";
 import { ResumeRoast } from "./ResumeRoast";
+import { InterviewCoach } from "./InterviewCoach";
+import { CareerPathSimulator } from "./CareerPathSimulator";
 import { TieredPricingSection } from "./TieredPricingSection";
 import { ResumeBeforeAfter } from "./ResumeBeforeAfter";
 import { JobKeywordMatcher } from "./JobKeywordMatcher";
