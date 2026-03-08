@@ -6183,6 +6183,143 @@ function computeBulletImpactScore(resumeText: string): {
 }
 
 /**
+ * Calibrate ATS score based on industry-specific expectations.
+ * AI models tend to score keyword-heavy resumes higher (tech, marketing) and
+ * penalize industries where resumes have fewer buzzwords (healthcare, education, trades).
+ * This normalizes scores so a great nurse resume scores as well as a great PM resume.
+ */
+function calibrateScoreByIndustry(
+  rawScore: number,
+  industry: string,
+  seniority: SeniorityLevel,
+  resumeText: string
+): { calibratedScore: number; adjustment: number; reason: string } {
+  // Industry-specific calibration factors
+  // Positive = industry resumes tend to be under-scored by AI, boost them
+  // Negative = industry resumes tend to be over-scored by AI, reduce slightly
+  const INDUSTRY_CALIBRATION: Record<string, { 
+    baseAdjust: number; 
+    certBonus: number; 
+    certPatterns: RegExp[];
+    metricBonus: number;
+    metricPatterns: RegExp[];
+  }> = {
+    nursing: {
+      baseAdjust: 5, // Nursing resumes consistently under-scored
+      certBonus: 8,
+      certPatterns: [/\b(RN|BSN|MSN|ACLS|BLS|PALS|CCRN|CEN|CNS)\b/i],
+      metricBonus: 3,
+      metricPatterns: [/patient/i, /\b\d+\s*(patient|bed)/i, /satisfaction/i]
+    },
+    healthcare: {
+      baseAdjust: 4,
+      certBonus: 6,
+      certPatterns: [/\b(MD|DO|PA-C|NP|RN|BSN|CNA|HIPAA|EMR|EHR)\b/i],
+      metricBonus: 3,
+      metricPatterns: [/patient\s*(outcome|satisfaction|ratio)/i, /readmission/i, /mortality/i]
+    },
+    education: {
+      baseAdjust: 4,
+      certBonus: 5,
+      certPatterns: [/\b(M\.?Ed|Ed\.?D|teaching\s+certificate|credential|endorsement)\b/i],
+      metricBonus: 3,
+      metricPatterns: [/test\s*score/i, /student\s*(achievement|outcome|growth)/i, /class\s*size/i]
+    },
+    hospitality: {
+      baseAdjust: 3,
+      certBonus: 4,
+      certPatterns: [/\b(ServSafe|TIPS|CHA|CHIA|CHTP)\b/i],
+      metricBonus: 3,
+      metricPatterns: [/RevPAR/i, /occupancy/i, /guest\s*satisfaction/i, /\bNPS\b/i]
+    },
+    retail: {
+      baseAdjust: 3,
+      certBonus: 3,
+      certPatterns: [/\b(CPP|LPQ|LPC)\b/i],
+      metricBonus: 3,
+      metricPatterns: [/same.store\s*sales/i, /conversion\s*rate/i, /shrink(age)?/i, /comp\s*sales/i]
+    },
+    manufacturing: {
+      baseAdjust: 3,
+      certBonus: 5,
+      certPatterns: [/\b(Six\s*Sigma|Lean|PE|PMP|ISO|ASQ|CQE)\b/i],
+      metricBonus: 3,
+      metricPatterns: [/OEE/i, /yield/i, /defect/i, /cycle\s*time/i, /TRIR|DART/i]
+    },
+    construction: {
+      baseAdjust: 3,
+      certBonus: 5,
+      certPatterns: [/\b(PE|PMP|OSHA|LEED|CCM)\b/i],
+      metricBonus: 3,
+      metricPatterns: [/on.budget/i, /on.time/i, /\$\d+[MBK]/i, /safety\s*record/i]
+    },
+    creative: {
+      baseAdjust: 2,
+      certBonus: 2,
+      certPatterns: [/\b(portfolio|behance|dribbble)\b/i],
+      metricBonus: 3,
+      metricPatterns: [/engagement/i, /impression/i, /brand\s*(awareness|lift)/i]
+    },
+    // Tech/marketing/consulting tend to be scored fairly or slightly over-scored
+    technology: { baseAdjust: 0, certBonus: 2, certPatterns: [/\b(AWS|GCP|Azure|Kubernetes)\s*(certified|certificate)/i], metricBonus: 2, metricPatterns: [/uptime/i, /latency/i, /\d+[KMB]\s*users/i] },
+    marketing: { baseAdjust: 0, certBonus: 2, certPatterns: [/\b(Google\s*Analytics|HubSpot)\s*cert/i], metricBonus: 2, metricPatterns: [/ROI/i, /conversion/i, /CTR/i] },
+    sales: { baseAdjust: 0, certBonus: 0, certPatterns: [], metricBonus: 4, metricPatterns: [/quota/i, /\d+%\s*(of|attain|achiev)/i, /\$\d+/i, /ARR|MRR/i] },
+    finance: { baseAdjust: 0, certBonus: 4, certPatterns: [/\b(CFA|CPA|Series\s*\d+|CFP)\b/i], metricBonus: 2, metricPatterns: [/AUM/i, /portfolio/i, /return/i] },
+    legal: { baseAdjust: 0, certBonus: 3, certPatterns: [/\b(bar\s*admission|J\.?D\.?|LL\.?M)\b/i], metricBonus: 2, metricPatterns: [/settlement/i, /verdict/i, /\$\d+/i] },
+    consulting: { baseAdjust: 0, certBonus: 2, certPatterns: [/\b(PMP|MBA|Six\s*Sigma)\b/i], metricBonus: 3, metricPatterns: [/client\s*(outcome|ROI|impact)/i, /\$\d+[MBK]/i] },
+    hr: { baseAdjust: 2, certBonus: 4, certPatterns: [/\b(SHRM|PHR|SPHR)\b/i], metricBonus: 3, metricPatterns: [/retention/i, /time.to.hire/i, /turnover/i, /eNPS/i] },
+    general: { baseAdjust: 0, certBonus: 0, certPatterns: [], metricBonus: 0, metricPatterns: [] }
+  };
+
+  const parentIndustry = INDUSTRY_PARENTS[industry];
+  const calibration = INDUSTRY_CALIBRATION[industry] || (parentIndustry ? INDUSTRY_CALIBRATION[parentIndustry] : null) || INDUSTRY_CALIBRATION.general;
+  
+  let adjustment = calibration.baseAdjust;
+  const reasons: string[] = [];
+  
+  if (calibration.baseAdjust > 0) {
+    reasons.push(`${industry} base calibration +${calibration.baseAdjust}`);
+  }
+
+  // Cert bonus: check if resume contains industry-relevant certifications
+  if (calibration.certBonus > 0 && calibration.certPatterns.length > 0) {
+    const hasCerts = calibration.certPatterns.some(p => p.test(resumeText));
+    if (hasCerts) {
+      adjustment += calibration.certBonus;
+      reasons.push(`industry certs detected +${calibration.certBonus}`);
+    }
+  }
+
+  // Metric bonus: check if resume has industry-relevant metrics
+  if (calibration.metricBonus > 0 && calibration.metricPatterns.length > 0) {
+    const metricMatches = calibration.metricPatterns.filter(p => p.test(resumeText)).length;
+    if (metricMatches >= 2) {
+      adjustment += calibration.metricBonus;
+      reasons.push(`${metricMatches} industry metrics detected +${calibration.metricBonus}`);
+    }
+  }
+
+  // Seniority adjustment for non-tech industries
+  // Senior professionals in healthcare/education often have excellent resumes
+  // that AI under-scores due to lack of "modern" buzzwords
+  if ((seniority === 'senior' || seniority === 'executive') && calibration.baseAdjust > 0) {
+    const seniorityBoost = 3;
+    adjustment += seniorityBoost;
+    reasons.push(`senior ${industry} professional +${seniorityBoost}`);
+  }
+
+  // Cap adjustment to prevent inflation
+  adjustment = Math.min(adjustment, 15);
+  const calibratedScore = Math.min(100, Math.max(0, rawScore + adjustment));
+
+  return {
+    calibratedScore,
+    adjustment,
+    reason: reasons.length > 0 ? reasons.join(', ') : 'no calibration needed'
+  };
+}
+
+/**
  * Compute industry benchmark based on score
  */
 function computeIndustryBenchmark(
@@ -7418,12 +7555,91 @@ What is the PRIMARY industry? Reply with only the industry name.`
         // Non-blocking — continue with server detection only
       }
 
+      // Industry-specific scoring rubrics for calibrated scoring
+      const INDUSTRY_SCORING_RUBRICS: Record<string, { weights: string; scoreNotes: string }> = {
+        technology: {
+          weights: 'Technical Skills (35%), Project Impact (25%), Keywords (20%), Format (20%)',
+          scoreNotes: 'GitHub/portfolio links are optional but valuable. Weight specific technologies (React, Python, AWS) heavily. Quantified system metrics (uptime, latency, users served) are critical differentiators.'
+        },
+        healthcare: {
+          weights: 'Certifications/Licensure (30%), Clinical Skills (25%), Compliance Language (20%), Format (15%), Keywords (10%)',
+          scoreNotes: 'Certifications (RN, BSN, ACLS, BLS) are MANDATORY — missing them is a major penalty. Clinical terminology matters more than generic action verbs. Patient outcomes and safety metrics are key quantifiers. Do NOT penalize for missing "Agile" or tech buzzwords.'
+        },
+        nursing: {
+          weights: 'Licensure/Certs (35%), Clinical Competencies (25%), Patient Care Metrics (20%), Format (10%), Keywords (10%)',
+          scoreNotes: 'Active RN license is essential. Certifications like ACLS, BLS, PALS are critical. Specialization keywords (ICU, ER, Med-Surg, Pediatrics) matter. Patient ratios, outcomes, and safety records are the key metrics. Do NOT suggest tech/business keywords.'
+        },
+        finance: {
+          weights: 'Technical Skills (25%), Certifications (25%), Quantified Results (25%), Keywords (15%), Format (10%)',
+          scoreNotes: 'CFA, CPA, Series licenses carry heavy weight. Revenue/AUM/portfolio performance metrics are essential. Regulatory compliance language (SOX, Basel, Dodd-Frank) matters. Excel/SQL/Python are relevant technical skills.'
+        },
+        sales: {
+          weights: 'Quota Attainment (30%), Revenue Metrics (25%), Methodology Keywords (20%), Career Progression (15%), Format (10%)',
+          scoreNotes: 'Quota achievement percentages are THE most important element. Revenue numbers, deal sizes, pipeline values are critical. Sales methodologies (MEDDPICC, SPIN, Challenger) are valuable keywords. 1.5-2.5 year tenure is NORMAL in SaaS sales.'
+        },
+        legal: {
+          weights: 'Jurisdictions/Bar Admissions (25%), Practice Area Expertise (25%), Case Outcomes (20%), Keywords (15%), Format (15%)',
+          scoreNotes: 'Bar admissions and jurisdictions are mandatory. Case outcomes, settlement amounts, and deal values are key metrics. Practice area terminology is critical. Conservative formatting expected.'
+        },
+        education: {
+          weights: 'Certifications/Credentials (30%), Student Outcomes (25%), Curriculum Skills (20%), Keywords (15%), Format (10%)',
+          scoreNotes: 'Teaching certifications and credentials are essential. Student achievement metrics, standardized test improvements, and class sizes matter. Curriculum development experience is valuable. Technology integration skills are increasingly important.'
+        },
+        marketing: {
+          weights: 'Campaign Metrics (30%), Tools/Platforms (20%), Strategy Skills (20%), Keywords (15%), Format (15%)',
+          scoreNotes: 'ROI, conversion rates, traffic growth, and campaign performance metrics are critical. Platform expertise (Google Analytics, HubSpot, Marketo) matters. Brand strategy and creative skills are valued alongside data skills.'
+        },
+        engineering: {
+          weights: 'Technical Expertise (30%), Project Scale (25%), Certifications (20%), Keywords (15%), Format (10%)',
+          scoreNotes: 'PE license is critical for many roles. Project budgets, team sizes, and safety records matter. Industry-specific certifications (FE, PE, PMP) carry weight. Quantified project outcomes are essential.'
+        },
+        consulting: {
+          weights: 'Client Impact (30%), Methodology (20%), Industry Expertise (20%), Credentials (15%), Format (15%)',
+          scoreNotes: 'Client outcomes and ROI are paramount. Consulting frameworks (McKinsey 7S, BCG matrix) are valuable. MBA and certifications (PMP, Six Sigma) carry weight. Deal/project sizes and team sizes matter.'
+        },
+        creative: {
+          weights: 'Portfolio Quality (30%), Tools/Software (20%), Campaign Results (20%), Awards (15%), Format (15%)',
+          scoreNotes: 'Portfolio links are ESSENTIAL, not optional. Software proficiency (Adobe Suite, Figma, Sketch) matters heavily. Campaign results and brand impact metrics are key. Award mentions are valuable. Non-traditional formatting is more acceptable.'
+        },
+        hr: {
+          weights: 'HR Metrics (25%), Certifications (25%), Program Impact (25%), Keywords (15%), Format (10%)',
+          scoreNotes: 'SHRM-CP, SHRM-SCP, PHR, SPHR certifications carry significant weight. Retention rates, time-to-hire, employee satisfaction scores are key metrics. HRIS platform expertise matters.'
+        },
+        retail: {
+          weights: 'Sales Metrics (30%), Team Leadership (25%), Customer Metrics (20%), Keywords (15%), Format (10%)',
+          scoreNotes: 'Revenue per square foot, same-store sales growth, and conversion rates are key. Team size and development metrics matter. Customer satisfaction scores and shrinkage reduction are valuable. Loss prevention and inventory management are important keywords.'
+        },
+        hospitality: {
+          weights: 'Guest Satisfaction (30%), Revenue Metrics (25%), Operations (20%), Certifications (15%), Format (10%)',
+          scoreNotes: 'Guest satisfaction scores, RevPAR, occupancy rates, and F&B revenue are key metrics. ServSafe, TIPS certifications matter. Team management and training metrics are important. Seasonal/high-volume experience is valued.'
+        },
+        manufacturing: {
+          weights: 'Process Metrics (30%), Safety Record (20%), Certifications (20%), Technical Skills (15%), Format (15%)',
+          scoreNotes: 'OEE, yield rates, defect reduction, and cycle time improvements are critical. Safety records (TRIR, DART) carry heavy weight. Six Sigma, Lean, ISO certifications are essential. Equipment/system expertise matters.'
+        },
+        general: {
+          weights: 'Keywords (25%), Quantified Results (25%), Format (20%), Skills (15%), Experience (15%)',
+          scoreNotes: 'Use balanced scoring across all categories. Prioritize quantified achievements and relevant keywords.'
+        }
+      };
+
+      // Get industry-specific rubric for the detected industry
+      const parentForRubric = preDetection?.parentIndustry || preDetection?.industry || 'general';
+      const specificIndustry = preDetection?.industry || 'general';
+      const scoringRubric = INDUSTRY_SCORING_RUBRICS[specificIndustry] || INDUSTRY_SCORING_RUBRICS[parentForRubric] || INDUSTRY_SCORING_RUBRICS.general;
+
       // Build prompts with resume type awareness and accuracy improvements
       const systemPrompt = `Expert ATS resume analyst. Respond in resume's language. All fields in that language.
 
 RESUME TYPE DETECTED: ${resumeType.type} (${resumeType.label})
 SENIORITY LEVEL: ${seniority}
 ATS RELEVANCE: ${resumeType.atsRelevance}
+DETECTED INDUSTRY: ${specificIndustry} (parent: ${parentForRubric})
+
+INDUSTRY-SPECIFIC SCORING RUBRIC:
+Scoring Weights: ${scoringRubric.weights}
+Scoring Notes: ${scoringRubric.scoreNotes}
+CRITICAL: Apply these industry-specific weights when calculating atsScoreEstimate. A nursing resume with all certifications and clinical skills should score HIGH even if it lacks tech buzzwords. A sales resume with strong quota attainment should score HIGH even with shorter tenure.
 
 CRITICAL: READ THE ENTIRE RESUME CAREFULLY before making claims about missing content or suggesting keywords.
 CRITICAL: Adjust your analysis based on the detected resume type. A highlights-based resume should NOT be penalized for "missing work history" if it's clearly designed for direct outreach.
@@ -8002,6 +8218,21 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         })()
       );
 
+      // ======================== Industry Score Calibration ========================
+      // Apply industry-specific calibration BEFORE computing derived fields
+      const rawAtsScore = analysis.atsScoreEstimate || 0;
+      const scoreCalibration = calibrateScoreByIndustry(
+        rawAtsScore,
+        hybridResult.industry,
+        seniority,
+        resumeText
+      );
+      
+      if (scoreCalibration.adjustment !== 0) {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Score calibration: ${rawAtsScore} -> ${scoreCalibration.calibratedScore} (${scoreCalibration.reason})`);
+        analysis.atsScoreEstimate = scoreCalibration.calibratedScore;
+      }
+
       // ======================== Server-Side Computed Fields ========================
       // These are computed from the raw resume text for accuracy and consistency
 
@@ -8017,7 +8248,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       const computedBulletImpact = computeBulletImpactScore(resumeText);
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Computed bullet impact: ${JSON.stringify(computedBulletImpact)}`);
 
-      // 4. Industry Benchmark
+      // 4. Industry Benchmark (uses calibrated score)
       const computedBenchmark = computeIndustryBenchmark(analysis.atsScoreEstimate || 0, analysis.industry);
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Computed benchmark: ${JSON.stringify(computedBenchmark)}`);
 
@@ -8090,6 +8321,13 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         quantificationScore: computedQuantification,
         bulletImpactScore: computedBulletImpact,
         industryBenchmark: computedBenchmark,
+        // Score calibration metadata
+        scoreCalibration: scoreCalibration.adjustment !== 0 ? {
+          rawScore: rawAtsScore,
+          calibratedScore: scoreCalibration.calibratedScore,
+          adjustment: scoreCalibration.adjustment,
+          reason: scoreCalibration.reason
+        } : undefined,
         // Trim arrays and filter false-positive red flags
         redFlags: (analysis.redFlags || []).filter((flag: { issue?: string; impact?: string }) => {
           const issue = (flag.issue || '').toLowerCase();
