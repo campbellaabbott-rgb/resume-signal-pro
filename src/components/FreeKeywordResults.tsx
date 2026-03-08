@@ -28,6 +28,7 @@ import { AISummary } from "./AISummary";
 import { ShareableScoreCard } from "./ShareableScoreCard";
 import { ScoreHero } from "./scorecard/ScoreHero";
 import { MetricCardsGrid } from "./scorecard/MetricCardsGrid";
+import { RedFlagsSection, KeywordsSection } from "./scorecard/RedFlagsKeywords";
 import { 
   EnhancedAnalysisDisplay, 
   ResumeTypeResult, 
@@ -2844,128 +2845,21 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* Red Flags Details */}
-      {redFlags.length > 0 && (
-        <div className="rounded-2xl bg-destructive/5 border border-destructive/20 p-5 mb-5">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="w-4 h-4 text-destructive" />
-            <h4 className="font-semibold">Recruiter Red Flags</h4>
-          </div>
-          <div className="space-y-2">
-            {redFlags.map((flag, index) => (
-              <div key={index} className="flex items-start gap-3 p-3 rounded-xl bg-background/50 border border-destructive/10">
-                <span className="text-destructive font-bold text-sm">{index + 1}.</span>
-                <div>
-                  <span className="font-medium text-foreground">{flag.issue}</span>
-                  <p className="text-sm text-muted-foreground">{flag.impact}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex items-center gap-1 mt-3 text-muted-foreground">
-            <Lock className="w-3 h-3" />
-            <span className="text-xs">More red flags + how to fix them in full analysis</span>
-          </div>
+      {/* Red Flags Details - Priority sorted with severity indicators */}
+      <RedFlagsSection
+        redFlags={redFlags}
+        onUpgradeClick={() => handleUpgradeClick('red_flags')}
+        premiumButton={<PremiumPackageButton variant="control" isPrimary section="red_flags" />}
+      />
 
-          {/* Premium Package CTA */}
-          <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-destructive/10 to-destructive/5 border border-destructive/20">
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <div className="flex-1 text-center sm:text-left">
-                <p className="font-semibold text-foreground text-sm">
-                  Fix all red flags automatically
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Get an AI-rewritten resume that eliminates these issues
-                </p>
-              </div>
-              <PremiumPackageButton variant="control" isPrimary section="red_flags" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Industry-Specific Keyword Suggestions */}
-      <div className="rounded-2xl bg-card border border-border p-5 mb-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Zap className="w-4 h-4 text-primary" />
-          <h4 className="font-semibold">{t('freeScan.missingKeywords')}</h4>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary capitalize">
-            {industry} keywords
-          </span>
-        </div>
-        <div className="space-y-3">
-          {keywords.slice(0, 3).map((item, index) => (
-            <div key={index} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30 border border-border/50">
-              <div className={cn(
-                "shrink-0 mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold",
-                item.impact === "critical" ? "bg-destructive/20 text-destructive" :
-                item.impact === "high" ? "bg-warning/20 text-warning" :
-                "bg-muted text-muted-foreground"
-              )}>
-                {item.impact === "critical" ? "!" : item.impact === "high" ? "↑" : "•"}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium text-foreground">{item.keyword}</span>
-                  {item.category && (
-                    <span className={cn(
-                      "text-[10px] px-1.5 py-0.5 rounded-full capitalize",
-                      item.category === "certification" ? "bg-success/10 text-success" :
-                      item.category === "tool" ? "bg-primary/10 text-primary" :
-                      item.category === "skill" ? "bg-warning/10 text-warning" :
-                      item.category === "methodology" ? "bg-blue-500/10 text-blue-500" :
-                      item.category === "metric" ? "bg-purple-500/10 text-purple-500" :
-                      "bg-muted text-muted-foreground"
-                    )}>
-                      {item.category}
-                    </span>
-                  )}
-                  {item.impact && (
-                    <span className={cn(
-                      "text-[10px] font-medium",
-                      item.impact === "critical" ? "text-destructive" :
-                      item.impact === "high" ? "text-warning" :
-                      "text-muted-foreground"
-                    )}>
-                      {item.impact === "critical" ? "Must have" : item.impact === "high" ? "High impact" : "Helpful"}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground mt-0.5">{item.reason}</p>
-              </div>
-            </div>
-          ))}
-          {keywords.length > 3 && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/20 border border-dashed border-muted-foreground/30">
-              <Lock className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">
-                +{keywords.length - 3} more {industry} keywords hidden...
-              </span>
-            </div>
-          )}
-        </div>
-        
-        {/* Keyword Fix Upsell */}
-        <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-primary/20 shrink-0">
-              <Target className="w-4 h-4 text-primary" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h5 className="font-semibold text-foreground">{getProductCtaCopy('control', formatPrice, isLocalCurrency).keywordFix.headline}</h5>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
-                  {isLocalCurrency ? `$${PRODUCTS.basicKeywordFix.priceUsd} ≈ ${formatPrice(PRODUCTS.basicKeywordFix.priceUsd)}` : `$${PRODUCTS.basicKeywordFix.priceUsd}`}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-3">
-                Get a complete keyword optimization report with exact phrases recruiters search for in your industry.
-              </p>
-              <KeywordFixButton variant="control" section="keyword_suggestions" />
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Missing Keywords - Priority sorted with impact indicators */}
+      <KeywordsSection
+        keywords={keywords}
+        industry={effectiveIndustry}
+        keywordFixButton={<KeywordFixButton variant="control" section="keyword_suggestions" />}
+        keywordFixHeadline={getProductCtaCopy('control', formatPrice, isLocalCurrency).keywordFix.headline}
+        keywordFixPrice={isLocalCurrency ? `$${PRODUCTS.basicKeywordFix.priceUsd} ≈ ${formatPrice(PRODUCTS.basicKeywordFix.priceUsd)}` : `$${PRODUCTS.basicKeywordFix.priceUsd}`}
+      />
 
       {/* Upgrade CTA Box 2 */}
       <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 border-2 border-primary/30 p-6 mb-5 relative overflow-hidden">
