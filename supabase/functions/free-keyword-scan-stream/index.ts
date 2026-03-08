@@ -5129,10 +5129,22 @@ type SeniorityLevel = 'entry' | 'mid' | 'senior' | 'executive';
 function detectSeniorityLevel(resumeText: string): SeniorityLevel {
   const text = resumeText.toLowerCase();
   
+  // IC sales titles that contain "executive" but are NOT executive-level
+  // These must be checked BEFORE executive patterns to avoid false positives
+  const icSalesTitles = [
+    /\baccount\s+executive\b/,
+    /\bae\b(?!\s*(of|officer|director))/,
+    /\bsales\s+executive\b(?!\s*(director|vp|vice))/,
+    /\bbusiness\s+development\s+executive\b/,
+  ];
+  
+  const isICSalesRole = icSalesTitles.some(p => p.test(text));
+  
+  // True executive patterns (C-suite, VP, etc.)
   const executivePatterns = [
     /\b(ceo|cto|cfo|coo|cmo|cro|chief\s+\w+\s+officer)\b/,
-    /\b(president|founder|co-founder|partner)\b/,
-    /\b(vp|vice\s+president)\b/,
+    /\b(president)\b(?!\s*(club|student|class|association))/,  // Avoid student orgs
+    /\b(vp|vice\s+president)\s+(of|for|–|-)\s+\w+/,  // VP of [something]
     /\b(evp|svp|executive\s+vice\s+president|senior\s+vice\s+president)\b/,
     /\b(managing\s+director|general\s+manager)\b/,
   ];
@@ -5142,16 +5154,30 @@ function detectSeniorityLevel(resumeText: string): SeniorityLevel {
     /\b(director|head\s+of)\b/,
     /\b(\d{2}\+?\s*years?\s*(of\s+)?experience)/,
     /\b(10|11|12|13|14|15|16|17|18|19|20)\+?\s*years?\b/,
+    // Senior AE/sales roles with enterprise/strategic qualifier  
+    /\b(senior\s+account\s+executive|enterprise\s+account\s+executive|strategic\s+account\s+executive)\b/,
   ];
   
   const midPatterns = [
     /\b(mid[\s-]?level|intermediate)\b/,
     /\b([3-9])\s*years?\s*(of\s+)?experience\b/,
+    // Standard AE and sales IC roles are mid-to-senior, not executive
+    /\baccount\s+executive\b/,
+    /\bsales\s+(representative|manager|associate)\b/,
   ];
   
   // Check patterns in order of seniority
-  for (const pattern of executivePatterns) {
-    if (pattern.test(text)) return 'executive';
+  // CRITICAL: Don't classify IC sales roles as "executive" just because the title contains that word
+  if (!isICSalesRole) {
+    for (const pattern of executivePatterns) {
+      if (pattern.test(text)) {
+        // Double-check: "founder" for a startup sales hire is more "senior" than "executive"
+        if (/\bfounder\b/i.test(text) && /\b(founding\s+)?(sales|gtm|growth|bdr|sdr|ae)\b/i.test(text)) {
+          return 'senior';
+        }
+        return 'executive';
+      }
+    }
   }
   
   for (const pattern of seniorPatterns) {
@@ -5163,6 +5189,139 @@ function detectSeniorityLevel(resumeText: string): SeniorityLevel {
   }
   
   return 'entry';
+}
+
+// ======================== Elite Signal Detection ========================
+
+interface EliteSignal {
+  type: 'brand_company' | 'large_deal' | 'founding_role' | 'quota_consistency' | 'career_progression';
+  signal: string;
+  strength: 'high' | 'medium';
+}
+
+function detectEliteSignals(resumeText: string): EliteSignal[] {
+  const signals: EliteSignal[] = [];
+  const text = resumeText.toLowerCase();
+  
+  // 1. Brand/Fortune 500 companies
+  const brandCompanies = [
+    'google', 'amazon', 'microsoft', 'meta', 'apple', 'netflix', 'github', 'salesforce',
+    'stack overflow', 'linkedin', 'twitter', 'stripe', 'airbnb', 'uber', 'lyft', 'snap',
+    'datadog', 'snowflake', 'mongodb', 'twilio', 'atlassian', 'hubspot', 'shopify',
+    'oracle', 'ibm', 'sap', 'adobe', 'intuit', 'zoom', 'slack', 'dropbox',
+    'mckinsey', 'bain', 'bcg', 'deloitte', 'accenture', 'pwc', 'kpmg', 'ey',
+    'goldman sachs', 'jpmorgan', 'morgan stanley', 'blackrock', 'citadel',
+    'fortune 500', 'fortune 100', 'f500', 'f100'
+  ];
+  
+  const foundBrands = brandCompanies.filter(c => text.includes(c));
+  if (foundBrands.length > 0) {
+    signals.push({
+      type: 'brand_company',
+      signal: `Recognized companies: ${foundBrands.slice(0, 3).map(b => b.charAt(0).toUpperCase() + b.slice(1)).join(', ')}`,
+      strength: foundBrands.length >= 2 ? 'high' : 'medium'
+    });
+  }
+  
+  // 2. Large deal sizes
+  const dealPatterns = [
+    /\$(\d+(?:\.\d+)?)\s*(?:m|mm|million)/gi,
+    /\$(\d{1,3}(?:,\d{3})+)(?:\s+(?:deal|contract|opportunity|pipeline|revenue))/gi,
+    /(\d+(?:\.\d+)?)\s*(?:m|mm|million)\s*(?:deal|contract|pipeline|arr|revenue)/gi,
+  ];
+  
+  for (const pattern of dealPatterns) {
+    const matches = [...resumeText.matchAll(pattern)];
+    if (matches.length > 0) {
+      signals.push({
+        type: 'large_deal',
+        signal: `Large deal experience demonstrated (${matches[0][0].trim()})`,
+        strength: 'high'
+      });
+      break;
+    }
+  }
+  
+  // Also check for $XXXk+ deals
+  const largeDealK = /\$(\d{3,})\s*k/gi;
+  if (!signals.find(s => s.type === 'large_deal')) {
+    const kMatches = [...resumeText.matchAll(largeDealK)];
+    const largeDeal = kMatches.find(m => parseInt(m[1]) >= 500);
+    if (largeDeal) {
+      signals.push({
+        type: 'large_deal',
+        signal: `Significant deal sizes (${largeDeal[0].trim()})`,
+        strength: 'medium'
+      });
+    }
+  }
+  
+  // 3. Founding/first-hire roles
+  const foundingPatterns = [
+    /\b(founding|first)\s+(sales|gtm|growth|ae|bdr|sdr|hire|team\s+member|employee)/gi,
+    /\b(employee\s+#?\d{1,2})\b/gi,
+    /\b(built\s+.{0,30}\s+from\s+(scratch|zero|ground\s+up|0))/gi,
+    /\b(0\s*(-|to|→)\s*1)\b/gi,
+  ];
+  
+  for (const pattern of foundingPatterns) {
+    if (pattern.test(resumeText)) {
+      signals.push({
+        type: 'founding_role',
+        signal: 'Founding/early-stage experience — demonstrates entrepreneurial capability',
+        strength: 'high'
+      });
+      break;
+    }
+  }
+  
+  // 4. Consistent quota performance
+  const quotaPatterns = [
+    /\b(\d{3,})%\s*(of\s+)?(quota|target|goal)/gi,
+    /\b(exceeded|surpassed|beat)\s+(quota|target|goal)/gi,
+    /\b([2-9](\.\d+)?x)\b/gi,
+    /\b(100%\+?\s*(quota|attainment))/gi,
+    /\b(president.?s\s+club|top\s+\d+%?|#\d\s+rep)/gi,
+  ];
+  
+  let quotaHits = 0;
+  for (const pattern of quotaPatterns) {
+    const matches = resumeText.match(pattern);
+    if (matches) quotaHits += matches.length;
+  }
+  
+  if (quotaHits >= 3) {
+    signals.push({
+      type: 'quota_consistency',
+      signal: `Consistent quota performance across multiple roles (${quotaHits} mentions)`,
+      strength: 'high'
+    });
+  } else if (quotaHits >= 1) {
+    signals.push({
+      type: 'quota_consistency',
+      signal: 'Demonstrated quota attainment',
+      strength: 'medium'
+    });
+  }
+  
+  // 5. Career progression
+  const progressionSignals = [
+    /\b(promoted\s+to|advanced\s+to|elevated\s+to)\b/gi,
+    /\b(increasing\s+responsibility|career\s+progression)\b/gi,
+  ];
+  
+  for (const pattern of progressionSignals) {
+    if (pattern.test(resumeText)) {
+      signals.push({
+        type: 'career_progression',
+        signal: 'Shows clear career advancement trajectory',
+        strength: 'medium'
+      });
+      break;
+    }
+  }
+  
+  return signals;
 }
 
 // ======================== Credibility Issue Detection ========================
