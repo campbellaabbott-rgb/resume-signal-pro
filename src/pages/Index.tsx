@@ -673,6 +673,8 @@ const Index = () => {
         
         setFreeKeywordResult({
           detectedLanguage: (result as any).detectedLanguage || null,
+          candidateName: (result as any).candidateName || null,
+          currentRole: (result as any).currentRole || undefined,
           industry: result.industry || 'General',
           atsScoreEstimate: result.atsScoreEstimate || 0,
           formatGrade: result.formatGrade || 'C',
