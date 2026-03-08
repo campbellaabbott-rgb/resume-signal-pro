@@ -1690,69 +1690,75 @@ export function FreeKeywordResults({
         </div>
       )}
       
-      {/* ATS Score Context Banner - Only shown for below-passing scores, uses consistent language */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION: Metrics */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <div id="section-metrics">
+
+      {/* ATS Score Context Banner - Only shown for below-passing scores */}
       {atsScoreEstimate < 75 && (
         <div className={cn(
-          "rounded-2xl border-2 p-4 mb-4",
+          "rounded-xl border p-3 mb-4",
           atsScoreEstimate < 60 
-            ? "bg-gradient-to-r from-destructive/20 via-destructive/10 to-destructive/5 border-destructive/40" 
-            : "bg-gradient-to-r from-warning/15 via-warning/10 to-warning/5 border-warning/40"
+            ? "bg-destructive/5 border-destructive/20" 
+            : "bg-warning/5 border-warning/20"
         )}>
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3">
-              <div className={cn(
-                "p-2 rounded-full",
-                atsScoreEstimate < 60 ? "bg-destructive/20" : "bg-warning/20"
-              )}>
-                <AlertTriangle className={cn(
-                  "w-5 h-5",
-                  atsScoreEstimate < 60 ? "text-destructive" : "text-warning"
-                )} />
-              </div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className={cn("w-4 h-4", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")} />
               <div>
-                <p className={cn(
-                  "font-bold text-lg",
-                  atsScoreEstimate < 60 ? "text-destructive" : "text-warning"
-                )}>
-                  {atsScoreEstimate < 60 
-                    ? "Your resume is at risk of being filtered out"
-                    : "Your resume needs improvement to compete"}
+                <p className={cn("text-sm font-semibold", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")}>
+                  {atsScoreEstimate < 60 ? "At risk of being filtered out" : "Needs improvement to compete"}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {atsScoreEstimate < 60 
-                    ? "Most ATS systems require 60+ to pass initial screening" 
-                    : "A score of 75+ significantly increases your callback rate"}
+                <p className="text-xs text-muted-foreground">
+                  {atsScoreEstimate < 60 ? "Most ATS require 60+ to pass" : "75+ increases callback rate"}
                 </p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">Recommended score</p>
-              <p className="text-2xl font-bold text-success">75+</p>
-            </div>
+            <span className="text-lg font-bold text-success shrink-0">75+</span>
           </div>
         </div>
       )}
 
-      {/* Personalized Insights Section */}
-      <div className="mb-6 p-4 rounded-2xl bg-card/50 border border-border/50">
-        <PersonalizedInsights
-          industry={industry}
-          experienceLevel={experienceLevel}
-          atsScore={atsScoreEstimate}
-          hasJobDescription={!!jobMatchScore}
-          currentRole={currentRole}
-        />
-      </div>
+      {/* Personalized Insights */}
+      <CollapsibleSection
+        id="personalized-tips"
+        title="Personalized Tips"
+        subtitle="Tailored insights for your profile"
+        icon={<Lightbulb className="w-4 h-4" />}
+        defaultOpen={false}
+      >
+        <div className="p-4 rounded-xl bg-card/50 border border-border/50">
+          <PersonalizedInsights
+            industry={industry}
+            experienceLevel={experienceLevel}
+            atsScore={atsScoreEstimate}
+            hasJobDescription={!!jobMatchScore}
+            currentRole={currentRole}
+          />
+        </div>
+      </CollapsibleSection>
 
-      {/* Interactive Checklist - Track fixes for this scan */}
+      {/* Interactive Checklist */}
       {currentScan && currentScan.checklist && currentScan.checklist.length > 0 && (
-        <div className="mb-6">
+        <CollapsibleSection
+          id="fix-checklist"
+          title="Fix Checklist"
+          subtitle={`${currentScan.checklist.filter((i: any) => i.completed).length}/${currentScan.checklist.length} completed`}
+          icon={<CheckCircle2 className="w-4 h-4" />}
+          defaultOpen={false}
+          badge={
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+              Track progress
+            </span>
+          }
+        >
           <InteractiveChecklist 
             entryId={currentScan.id}
             items={currentScan.checklist}
             candidateName={candidateName}
           />
-        </div>
+        </CollapsibleSection>
       )}
 
       {/* Dashboard-style Metric Cards Grid */}
@@ -1773,18 +1779,18 @@ export function FreeKeywordResults({
         redFlags={redFlags}
       />
 
-      {/* Elite Signals - Recruiter-attracting strengths */}
+      {/* Elite Signals */}
       {eliteSignals && eliteSignals.length > 0 && (
-        <div className="rounded-2xl border p-4 bg-primary/5 border-primary/20 mb-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-primary" />
+        <div className="rounded-xl border p-3 bg-primary/5 border-primary/20 mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
             <p className="text-xs font-medium text-primary uppercase tracking-wider">Recruiter-Attracting Signals</p>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {eliteSignals.map((signal, idx) => (
               <div key={idx} className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-foreground">{signal.signal}</p>
+                <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-foreground">{signal.signal}</p>
               </div>
             ))}
           </div>
