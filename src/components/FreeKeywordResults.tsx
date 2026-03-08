@@ -1820,6 +1820,13 @@ export function FreeKeywordResults({
         />
       </div>
 
+      </div> {/* end section-metrics */}
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION: Issues */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <div id="section-issues">
+
       {/* Top 5 Reasons Your Resume Is Being Skipped */}
       {topSkipReasons && topSkipReasons.length > 0 && (
         <div className="rounded-2xl bg-card border border-border p-5 mb-5">
