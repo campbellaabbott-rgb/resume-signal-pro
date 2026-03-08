@@ -5368,7 +5368,7 @@ function detectEliteSignals(resumeText: string): EliteSignal[] {
   const signals: EliteSignal[] = [];
   const text = resumeText.toLowerCase();
   
-  // 1. Brand/Fortune 500 companies
+  // 1. Brand/Fortune 500 companies (only when used as employers, not tools/platforms)
   const brandCompanies = [
     'google', 'amazon', 'microsoft', 'meta', 'apple', 'netflix', 'github', 'salesforce',
     'stack overflow', 'linkedin', 'twitter', 'stripe', 'airbnb', 'uber', 'lyft', 'snap',
@@ -5379,7 +5379,47 @@ function detectEliteSignals(resumeText: string): EliteSignal[] {
     'fortune 500', 'fortune 100', 'f500', 'f100'
   ];
   
-  const foundBrands = brandCompanies.filter(c => text.includes(c));
+  // Brands commonly mentioned as tools/platforms (not employers) — require employer-context proof
+  const ambiguousBrands = new Set([
+    'google', 'microsoft', 'linkedin', 'apple', 'adobe', 'salesforce', 'hubspot',
+    'slack', 'zoom', 'oracle', 'sap', 'github', 'twitter', 'instagram', 'meta'
+  ]);
+  
+  // Extract experience section lines to find employer mentions
+  const lines = resumeText.split('\n');
+  const experienceLines: string[] = [];
+  let inExperience = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^(?:experience|work\s*history|employment|professional\s*experience)/i.test(trimmed)) {
+      inExperience = true;
+      continue;
+    }
+    if (inExperience && /^(?:education|skills|certifications|projects|activities|volunteer|awards|publications|references)/i.test(trimmed)) {
+      break;
+    }
+    if (inExperience) {
+      experienceLines.push(trimmed);
+    }
+  }
+  
+  // Job title lines typically contain "|", "–", "—", "at", or company names
+  const titleLines = experienceLines.filter(line =>
+    /[|–—]/.test(line) || /\b(?:at|@)\s+/i.test(line)
+  ).map(l => l.toLowerCase());
+  
+  const foundBrands = brandCompanies.filter(brand => {
+    if (!text.includes(brand)) return false;
+    
+    // For ambiguous brands, require them to appear in a job title line (employer context)
+    if (ambiguousBrands.has(brand)) {
+      return titleLines.some(line => line.includes(brand));
+    }
+    
+    // Non-ambiguous brands (mckinsey, goldman sachs, etc.) — simple presence is enough
+    return true;
+  });
+  
   if (foundBrands.length > 0) {
     signals.push({
       type: 'brand_company',
@@ -7923,10 +7963,16 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       // 10. Elite Signal Detection (brand companies, deal sizes, founding roles, quota consistency)
       const eliteSignals = detectEliteSignals(resumeText);
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Elite signals detected: ${eliteSignals.length} (${eliteSignals.map(s => s.type).join(', ')})`);
+      // Strip any AI-hallucinated fields that we compute server-side
+      const { eliteSignals: _aiEliteSignals, credibilityIssues: _aiCredibility, ...sanitizedAnalysis } = analysis as any;
+      if (_aiEliteSignals) {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Stripped AI-hallucinated eliteSignals: ${JSON.stringify(_aiEliteSignals)}`);
+      }
+      
       // Build response with computed fields merged
       const responseData = {
         success: true,
-        ...analysis,
+        ...sanitizedAnalysis,
         // New fields for improved analysis
         resumeType,
         seniorityLevel: seniority,
