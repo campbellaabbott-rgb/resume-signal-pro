@@ -18,7 +18,7 @@ serve(async (req) => {
   }
 
   try {
-    const { resumeText, jobTitle, jobCompany, jobDescription, matchingSkills, missingSkills } = await req.json();
+    const { resumeText, jobTitle, jobCompany, jobDescription, matchingSkills, missingSkills, language } = await req.json();
 
     if (!resumeText || !jobTitle) {
       return new Response(
