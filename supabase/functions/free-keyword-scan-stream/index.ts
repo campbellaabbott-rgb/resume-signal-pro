@@ -7571,6 +7571,9 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         coverage: industryKeywordAnalysis?.coverageScore
       })}`);
 
+      // 10. Elite Signal Detection (brand companies, deal sizes, founding roles, quota consistency)
+      const eliteSignals = detectEliteSignals(resumeText);
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Elite signals detected: ${eliteSignals.length} (${eliteSignals.map(s => s.type).join(', ')})`);
       // Build response with computed fields merged
       const responseData = {
         success: true,
