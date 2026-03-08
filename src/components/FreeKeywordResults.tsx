@@ -3117,6 +3117,8 @@ export function FreeKeywordResults({
           <span className="text-success font-medium">One interview = {priceDisplay} paid for itself</span>
         </p>
       </div>
+
+      </div> {/* end section-upgrade */}
     </div>
     </TooltipProvider>
   );
