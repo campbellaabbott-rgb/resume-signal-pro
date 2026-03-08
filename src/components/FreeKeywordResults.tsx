@@ -28,6 +28,7 @@ import { AISummary } from "./AISummary";
 import { ShareableScoreCard } from "./ShareableScoreCard";
 import { ScoreHero } from "./scorecard/ScoreHero";
 import { MetricCardsGrid } from "./scorecard/MetricCardsGrid";
+import { RedFlagsSection, KeywordsSection } from "./scorecard/RedFlagsKeywords";
 import { 
   EnhancedAnalysisDisplay, 
   ResumeTypeResult, 
