@@ -4568,13 +4568,19 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
       }
     }
     
-    // Check skills (medium weight)
+    // Check skills (medium weight) with recency boost
     const foundSkills = patterns.skillPatterns.filter(skill => {
-      // Check for exact word boundary match
       const regex = new RegExp(`\\b${skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
       return regex.test(text);
     });
-    score += foundSkills.length * skillWeight;
+    // Skills found in recent role section get 1.5x weight
+    let skillScore = 0;
+    for (const skill of foundSkills) {
+      const regex = new RegExp(`\\b${skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      const inRecentRole = recentRoleText && regex.test(recentRoleText);
+      skillScore += Math.round(skillWeight * (inRecentRole ? 1.5 : 1.0));
+    }
+    score += skillScore;
     matchedSkillCount = foundSkills.length;
     if (foundSkills.length > 0) {
       industrySignals.push(`Skills: ${foundSkills.slice(0, 5).join(', ')}`);
