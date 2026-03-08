@@ -673,6 +673,7 @@ interface FreeKeywordResultsProps {
     metrics?: ContentLocation;
   };
   industryDetection?: IndustryDetection;
+  eliteSignals?: EliteSignal[];
   // Industry correction callback
   onIndustryChange?: (newIndustry: string) => void;
 }
