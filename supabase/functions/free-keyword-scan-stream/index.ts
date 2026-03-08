@@ -7598,11 +7598,28 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         return;
       }
 
-      // Normalize industry using hybrid detection (combines server + AI)
+      // Normalize industry using hybrid detection (combines server + AI + two-pass verification)
       const industryDetectionStart = Date.now();
       const rawIndustry = analysis.industry;
-      const serverDetection = detectIndustryFromResume(resumeText);
-      const hybridResult = hybridIndustryDetection(serverDetection, rawIndustry, resumeText);
+      // Re-use pre-detection from two-pass verification if available, otherwise detect fresh
+      const serverDetection = preDetection || detectIndustryFromResume(resumeText);
+      
+      // If two-pass AI verification gave a result, use it as additional signal
+      const aiIndustryForHybrid = verifiedIndustry || rawIndustry;
+      const hybridResult = hybridIndustryDetection(serverDetection, aiIndustryForHybrid, resumeText);
+      
+      // If verified industry differs from hybrid result AND server was low confidence,
+      // prefer verified industry (AI tiebreaker wins for ambiguous cases)
+      if (verifiedIndustry && verifiedIndustry !== hybridResult.industry && 
+          serverDetection.confidence !== 'high') {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Two-pass override: hybrid="${hybridResult.industry}" -> verified="${verifiedIndustry}"`);
+        hybridResult.industry = verifiedIndustry;
+        hybridResult.detectionSource = 'ai_verified';
+        hybridResult.signals = [...hybridResult.signals, `AI verification confirmed: ${verifiedIndustry}`];
+        // Upgrade confidence if AI agrees
+        if (hybridResult.confidence === 'low') hybridResult.confidence = 'medium';
+      }
+      
       const industryDetectionDuration = Date.now() - industryDetectionStart;
       
       // Apply hybrid result
