@@ -336,6 +336,9 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'quota': 'sales', 'pipeline': 'sales', 'saas': 'enterprise_sales',
   'account executive': 'enterprise_sales', 'ae': 'enterprise_sales',
   // Marketing aliases
+  'marketing intern': 'general_marketing', 'marketing coordinator': 'general_marketing',
+  'marketing assistant': 'general_marketing', 'marketing associate': 'general_marketing',
+  'marketing specialist': 'general_marketing', 'marketing analyst': 'general_marketing',
   'pmm': 'product_marketing', 'go-to-market': 'product_marketing',
   // Legal aliases
   'regulatory': 'compliance', 'risk': 'compliance', 'governance': 'compliance',
