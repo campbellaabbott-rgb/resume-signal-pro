@@ -219,7 +219,7 @@ export function ScoreHero({
             Analysis Complete
           </div>
           {eliteSignalsCount > 0 && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs font-semibold">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-warning/10 text-warning text-xs font-semibold">
               <Award className="w-3.5 h-3.5" />
               {eliteSignalsCount} elite signal{eliteSignalsCount > 1 ? "s" : ""}
             </div>
