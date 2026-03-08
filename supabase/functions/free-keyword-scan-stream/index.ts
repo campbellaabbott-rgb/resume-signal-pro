@@ -7037,6 +7037,19 @@ TENURE RULES (critical for sales/BD roles):
 - Logical career progression (e.g., startup → scale-up → enterprise) = strength, not weakness.
 - Promotions or "first sales hire" roles explain short tenures.
 
+EMPLOYMENT GAP RULES:
+- Gaps under 12 months are NORMAL and should NOT be flagged as red flags.
+- Only flag gaps of 12+ months, and frame as "Consider briefly addressing" not "critical issue".
+- Between-job gaps of 3-6 months are extremely common and never worth mentioning.
+- Gaps during COVID (2020-2021) should never be flagged.
+
+EXPERIENCE LEVEL CLASSIFICATION (CRITICAL):
+- "Account Executive" (AE) is an IC sales title, NOT executive-level. Classify as Senior or Mid-level.
+- "Sales Executive" without VP/Director/C-suite = Senior IC, NOT Executive.
+- "Founding sales hire" or "first AE" at startup = Senior, NOT Executive.
+- ONLY use "Executive" for: CEO, CTO, CFO, VP, SVP, EVP, Managing Director, General Manager.
+- For sales professionals: Mid-level (2-5 years), Senior (5-10 years), Executive (only if VP+ title).
+
 QUOTA/METRICS DETECTION (CRITICAL - avoid false positives):
 BEFORE flagging "missing quota" or "missing metrics", SEARCH for these patterns:
 - "exceeded quota", "surpassed quota", "% of target", "% attainment", "quota attainment"
