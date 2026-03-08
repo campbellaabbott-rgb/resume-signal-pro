@@ -5129,6 +5129,17 @@ type SeniorityLevel = 'entry' | 'mid' | 'senior' | 'executive';
 function detectSeniorityLevel(resumeText: string): SeniorityLevel {
   const text = resumeText.toLowerCase();
   
+  // Calculate actual career span from dates in resume
+  const yearMatches = text.match(/\b(20\d{2}|19\d{2})\b/g);
+  const presentMatch = /\b(present|current)\b/i.test(text);
+  let careerSpanYears = 0;
+  if (yearMatches && yearMatches.length >= 1) {
+    const years = yearMatches.map(Number);
+    const earliest = Math.min(...years);
+    const latest = presentMatch ? new Date().getFullYear() : Math.max(...years);
+    careerSpanYears = latest - earliest;
+  }
+  
   // IC sales titles that contain "executive" but are NOT executive-level
   // These must be checked BEFORE executive patterns to avoid false positives
   const icSalesTitles = [
@@ -5136,6 +5147,8 @@ function detectSeniorityLevel(resumeText: string): SeniorityLevel {
     /\bae\b(?!\s*(of|officer|director))/,
     /\bsales\s+executive\b(?!\s*(director|vp|vice))/,
     /\bbusiness\s+development\s+executive\b/,
+    /\bgtm\s+executive\b/,
+    /\bfounding\s+\w+\s+executive\b/,
   ];
   
   const isICSalesRole = icSalesTitles.some(p => p.test(text));
@@ -5143,8 +5156,8 @@ function detectSeniorityLevel(resumeText: string): SeniorityLevel {
   // True executive patterns (C-suite, VP, etc.)
   const executivePatterns = [
     /\b(ceo|cto|cfo|coo|cmo|cro|chief\s+\w+\s+officer)\b/,
-    /\b(president)\b(?!\s*(club|student|class|association))/,  // Avoid student orgs
-    /\b(vp|vice\s+president)\s+(of|for|–|-)\s+\w+/,  // VP of [something]
+    /\b(president)\b(?!\s*(club|student|class|association))/,
+    /\b(vp|vice\s+president)\s+(of|for|–|-)\s+\w+/,
     /\b(evp|svp|executive\s+vice\s+president|senior\s+vice\s+president)\b/,
     /\b(managing\s+director|general\s+manager)\b/,
   ];
@@ -5154,24 +5167,24 @@ function detectSeniorityLevel(resumeText: string): SeniorityLevel {
     /\b(director|head\s+of)\b/,
     /\b(\d{2}\+?\s*years?\s*(of\s+)?experience)/,
     /\b(10|11|12|13|14|15|16|17|18|19|20)\+?\s*years?\b/,
-    // Senior AE/sales roles with enterprise/strategic qualifier  
     /\b(senior\s+account\s+executive|enterprise\s+account\s+executive|strategic\s+account\s+executive)\b/,
+    /\bfounding\s+(gtm|sales|growth)\b/,
   ];
   
   const midPatterns = [
     /\b(mid[\s-]?level|intermediate)\b/,
     /\b([3-9])\s*years?\s*(of\s+)?experience\b/,
-    // Standard AE and sales IC roles are mid-to-senior, not executive
     /\baccount\s+executive\b/,
     /\bsales\s+(representative|manager|associate)\b/,
   ];
   
+  // Career span override: 8+ years of actual work history = at minimum "senior"
+  const careerSpanIsSenior = careerSpanYears >= 8;
+  
   // Check patterns in order of seniority
-  // CRITICAL: Don't classify IC sales roles as "executive" just because the title contains that word
   if (!isICSalesRole) {
     for (const pattern of executivePatterns) {
       if (pattern.test(text)) {
-        // Double-check: "founder" for a startup sales hire is more "senior" than "executive"
         if (/\bfounder\b/i.test(text) && /\b(founding\s+)?(sales|gtm|growth|bdr|sdr|ae)\b/i.test(text)) {
           return 'senior';
         }
@@ -5183,6 +5196,9 @@ function detectSeniorityLevel(resumeText: string): SeniorityLevel {
   for (const pattern of seniorPatterns) {
     if (pattern.test(text)) return 'senior';
   }
+  
+  // Career span override before mid check
+  if (careerSpanIsSenior) return 'senior';
   
   for (const pattern of midPatterns) {
     if (pattern.test(text)) return 'mid';
