@@ -7308,64 +7308,115 @@ serve(async (req) => {
         return;
       }
 
-      // ======================== TWO-PASS AI INDUSTRY VERIFICATION ========================
-      // When server-side detection has low/medium confidence, ask AI to verify
-      // using a fast, cheap model before the main analysis call
+      // ======================== AI-CONFIRMED INDUSTRY DETECTION ========================
+      // ALWAYS run AI verification to catch misclassifications — even for high-confidence
+      // server detection. Uses a fast model with open-ended classification.
       const preDetection = detectIndustryFromResume(resumeText);
       let verifiedIndustry: string | null = null;
       
-      if (preDetection.confidence !== 'high' && preDetection.score < 50) {
-        console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry confidence ${preDetection.confidence} (score: ${preDetection.score}) — running AI verification pass`);
-        
-        const topCandidates = [
-          preDetection.industry,
-          ...(preDetection.alternativeIndustries || []).slice(0, 2).map(a => a.industry)
-        ].filter(Boolean);
-        
-        // Extract first 2000 chars of resume for quick classification
-        const classificationExcerpt = resumeText.substring(0, 2000);
-        
-        try {
-          const verifyResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${LOVABLE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "google/gemini-2.5-flash-lite",
-              messages: [
-                { 
-                  role: "system", 
-                  content: "You are an industry classifier. Given a resume excerpt, pick the BEST industry from the candidate list. Respond with ONLY the industry name, nothing else."
-                },
-                { 
-                  role: "user", 
-                  content: `Candidate industries: ${topCandidates.join(', ')}\n\nResume excerpt:\n${classificationExcerpt}\n\nWhich industry best fits this resume? Reply with only the industry name.`
-                }
-              ],
-              max_tokens: 50,
-              temperature: 0,
-            }),
-          });
-          
-          if (verifyResponse.ok) {
-            const verifyData = await verifyResponse.json();
-            const aiVerified = verifyData.choices?.[0]?.message?.content?.trim()?.toLowerCase();
-            if (aiVerified) {
-              const normalizedVerified = normalizeIndustry(aiVerified);
-              if (VALID_INDUSTRIES.includes(normalizedVerified) || INDUSTRY_ALIASES[normalizedVerified]) {
-                verifiedIndustry = normalizedVerified;
-                console.log(`[FREE-KEYWORD-SCAN-STREAM] AI verification result: "${verifiedIndustry}" (from candidates: ${topCandidates.join(', ')})`);
-              }
+      // Fetch recent correction patterns to inform AI (non-blocking)
+      let correctionHints = '';
+      try {
+        const serviceClient = getServiceClient();
+        if (serviceClient) {
+          const { data: corrections } = await serviceClient.rpc('get_industry_correction_stats', { p_days_back: 30 });
+          if (corrections && corrections.length > 0) {
+            // Build hint string from frequent corrections
+            const relevantCorrections = corrections
+              .filter((c: any) => c.correction_count >= 2)
+              .slice(0, 5)
+              .map((c: any) => `"${c.original_industry}" is often corrected to "${c.corrected_to}"`)
+              .join('; ');
+            if (relevantCorrections) {
+              correctionHints = `\n\nKnown misclassification patterns (learn from these): ${relevantCorrections}`;
             }
           }
-        } catch (verifyErr) {
-          console.warn(`[FREE-KEYWORD-SCAN-STREAM] AI verification failed (non-critical):`, verifyErr);
-          // Non-blocking — continue with server detection only
         }
-      } else {
-        console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry confidence ${preDetection.confidence} (score: ${preDetection.score}) — skipping AI verification`);
+      } catch (corrErr) {
+        console.warn('[FREE-KEYWORD-SCAN-STREAM] Failed to fetch correction hints (non-critical):', corrErr);
+      }
+
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Running AI industry confirmation (server: ${preDetection.industry}, confidence: ${preDetection.confidence}, score: ${preDetection.score})`);
+      
+      // Build context with server candidates and alternatives
+      const serverCandidates = [
+        preDetection.industry,
+        ...(preDetection.alternativeIndustries || []).slice(0, 3).map(a => a.industry)
+      ].filter(Boolean);
+      
+      // Core parent industries for open-ended classification
+      const coreIndustries = [
+        'technology', 'healthcare', 'finance', 'legal', 'sales', 'marketing',
+        'education', 'engineering', 'consulting', 'retail', 'hospitality',
+        'manufacturing', 'government', 'nonprofit', 'construction', 'real_estate',
+        'logistics', 'energy', 'creative', 'hr'
+      ];
+      
+      // Extract structured resume excerpt for classification
+      const classificationExcerpt = resumeText.substring(0, 3000);
+      
+      try {
+        const verifyResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              { 
+                role: "system", 
+                content: `You are an expert resume industry classifier. Your job is to identify the PRIMARY professional industry of a resume.
+
+RULES:
+- Focus on the person's CURRENT or MOST RECENT role, not past roles
+- Look at job titles, skills, and industry-specific terminology
+- A "Marketing Intern" at a tech company is in MARKETING, not technology
+- A "Software Engineer" at a bank is in TECHNOLOGY, not finance
+- Consider the person's career trajectory and specialization
+- If the person works in a cross-functional role, classify by their FUNCTION (e.g., HR at a tech company = hr)${correctionHints}
+
+Available industries: ${coreIndustries.join(', ')}
+
+Sub-industries you may also use: product_management, data_science, software_engineering, digital_marketing, content_marketing, investment_banking, accounting, nursing, enterprise_sales, event_management, ux_design, devops, cybersecurity
+
+Respond with ONLY the industry name (snake_case), nothing else.`
+              },
+              { 
+                role: "user", 
+                content: `Server detection suggests: ${serverCandidates.join(', ')} (confidence: ${preDetection.confidence}, score: ${preDetection.score})
+
+Resume excerpt:
+${classificationExcerpt}
+
+What is the PRIMARY industry? Reply with only the industry name.`
+              }
+            ],
+            max_tokens: 50,
+            temperature: 0,
+          }),
+        });
+        
+        if (verifyResponse.ok) {
+          const verifyData = await verifyResponse.json();
+          const aiVerified = verifyData.choices?.[0]?.message?.content?.trim()?.toLowerCase()?.replace(/[^a-z_]/g, '');
+          if (aiVerified) {
+            const normalizedVerified = normalizeIndustry(aiVerified);
+            if (VALID_INDUSTRIES.includes(normalizedVerified) || INDUSTRY_ALIASES[normalizedVerified]) {
+              verifiedIndustry = INDUSTRY_ALIASES[normalizedVerified] || normalizedVerified;
+              const agreement = verifiedIndustry === preDetection.industry ? 'AGREES' : 'DISAGREES';
+              console.log(`[FREE-KEYWORD-SCAN-STREAM] AI confirmation ${agreement}: "${verifiedIndustry}" (server: "${preDetection.industry}", candidates: ${serverCandidates.join(', ')})`);
+            } else {
+              console.log(`[FREE-KEYWORD-SCAN-STREAM] AI returned unrecognized industry: "${aiVerified}" — ignoring`);
+            }
+          }
+        } else {
+          console.warn(`[FREE-KEYWORD-SCAN-STREAM] AI verification HTTP ${verifyResponse.status}`);
+        }
+      } catch (verifyErr) {
+        console.warn(`[FREE-KEYWORD-SCAN-STREAM] AI verification failed (non-critical):`, verifyErr);
+        // Non-blocking — continue with server detection only
       }
 
       // Build prompts with resume type awareness and accuracy improvements
