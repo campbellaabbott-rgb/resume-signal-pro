@@ -1275,6 +1275,22 @@ export function FreeKeywordResults({
     return "bg-primary/10 border-primary/20";
   };
 
+  const navSections = useMemo(() => {
+    const sections = [
+      { id: "section-overview", label: "Overview", icon: "📊" },
+      { id: "section-metrics", label: "Metrics", icon: "📈" },
+      { id: "section-issues", label: "Issues", icon: "⚠️" },
+    ];
+    if (jobMatchScore !== undefined) {
+      sections.push({ id: "section-job-match", label: "Job Match", icon: "🎯" });
+    }
+    sections.push(
+      { id: "section-insights", label: "Insights", icon: "💡" },
+      { id: "section-upgrade", label: "Next Steps", icon: "🚀" },
+    );
+    return sections;
+  }, [jobMatchScore]);
+
   return (
     <TooltipProvider delayDuration={200}>
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
@@ -1296,6 +1312,14 @@ export function FreeKeywordResults({
         isLoading={isLoading}
         eliteSignalsCount={eliteSignals?.length || 0}
       />
+
+      {/* Section Navigation */}
+      <SectionNav sections={navSections} className="mb-4" />
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION: Overview */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <div id="section-overview">
 
       {/* AI-Generated Summary */}
       <AISummary
@@ -1334,20 +1358,27 @@ export function FreeKeywordResults({
         currentIndustry={effectiveIndustry}
       />
 
-      {/* Industry-Specific Keyword Suggestions */}
-      <IndustryKeywordSuggestions 
-        industry={effectiveIndustry} 
-        resumeText={resumeText}
-        className="mb-4"
-      />
+      {/* Industry & Role Keyword Suggestions */}
+      <CollapsibleSection
+        id="keywords-suggestions"
+        title="Industry & Role Keywords"
+        subtitle="Keywords relevant to your field and target role"
+        icon={<Search className="w-4 h-4" />}
+        defaultOpen={false}
+      >
+        <IndustryKeywordSuggestions 
+          industry={effectiveIndustry} 
+          resumeText={resumeText}
+          className="mb-4"
+        />
+        <RoleKeywordSuggestions 
+          currentRole={currentRole}
+          targetRole={jobTitle}
+          resumeText={resumeText}
+        />
+      </CollapsibleSection>
 
-      {/* Role-Specific Keyword Suggestions */}
-      <RoleKeywordSuggestions 
-        currentRole={currentRole}
-        targetRole={jobTitle}
-        resumeText={resumeText}
-        className="mb-6"
-      />
+      </div> {/* end section-overview */}
 
       {/* Personalized Action Required CTA Banner */}
       <div className="rounded-2xl bg-gradient-to-r from-destructive/15 via-destructive/10 to-destructive/5 border border-destructive/30 p-5 mb-6">
