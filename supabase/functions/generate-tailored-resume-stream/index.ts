@@ -34,7 +34,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    const systemPrompt = `You are an expert resume strategist who helps candidates tailor their EXISTING experience for specific roles. You NEVER remove content - you enhance and reframe it.
+    const systemPrompt = `You are an expert resume strategist who helps candidates tailor their EXISTING experience for specific roles. You NEVER remove content - you enhance and reframe it. Respond in ${language || "the resume's"} language.
 
 Provide suggestions in this format:
 
