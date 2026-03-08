@@ -2334,6 +2334,7 @@ export function FreeKeywordResults({
             </div>
           </div>
         </div>
+        </CollapsibleSection>
       )}
 
       {/* Format Recommendation - Industry-Specific */}
