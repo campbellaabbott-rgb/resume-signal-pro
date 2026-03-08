@@ -180,6 +180,11 @@ interface FreeKeywordResult {
     description: string;
     location?: string;
   }[];
+  eliteSignals?: {
+    type: 'brand_company' | 'large_deal' | 'founding_role' | 'quota_consistency' | 'career_progression';
+    signal: string;
+    strength: 'high' | 'medium';
+  }[];
   contentLocations?: {
     quota?: {
       exists: boolean;
@@ -1297,6 +1302,7 @@ const Index = () => {
                 calibratedLanguage={freeKeywordResult.calibratedLanguage}
                 usageRecommendations={freeKeywordResult.usageRecommendations}
                 credibilityIssues={freeKeywordResult.credibilityIssues}
+                eliteSignals={freeKeywordResult.eliteSignals}
                 contentLocations={freeKeywordResult.contentLocations}
                 industryDetection={freeKeywordResult.industryDetection}
               />

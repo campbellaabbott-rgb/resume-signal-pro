@@ -597,6 +597,12 @@ interface PersonalizedCareerInsights {
   personalizedEncouragement: string;
 }
 
+interface EliteSignal {
+  type: 'brand_company' | 'large_deal' | 'founding_role' | 'quota_consistency' | 'career_progression';
+  signal: string;
+  strength: 'high' | 'medium';
+}
+
 interface FreeKeywordResultsProps {
   candidateName?: string | null;
   currentRole?: string;
@@ -667,6 +673,7 @@ interface FreeKeywordResultsProps {
     metrics?: ContentLocation;
   };
   industryDetection?: IndustryDetection;
+  eliteSignals?: EliteSignal[];
   // Industry correction callback
   onIndustryChange?: (newIndustry: string) => void;
 }
@@ -735,6 +742,7 @@ export function FreeKeywordResults({
   credibilityIssues,
   contentLocations,
   industryDetection,
+  eliteSignals,
   onIndustryChange
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
@@ -2098,7 +2106,25 @@ export function FreeKeywordResults({
         </div>
       </div>
 
-      {/* Shareable Score Card */}
+      {/* Elite Signals - Recruiter-attracting strengths */}
+      {eliteSignals && eliteSignals.length > 0 && (
+        <div className="rounded-2xl border p-4 bg-primary/5 border-primary/20 mb-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <p className="text-xs font-medium text-primary uppercase tracking-wider">Recruiter-Attracting Signals</p>
+          </div>
+          <div className="space-y-2">
+            {eliteSignals.map((signal, idx) => (
+              <div key={idx} className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-foreground">{signal.signal}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+
       <div className="rounded-2xl bg-card border border-border p-5 mb-5">
         <div className="flex items-center gap-2 mb-4">
           <Share2 className="w-4 h-4 text-primary" />

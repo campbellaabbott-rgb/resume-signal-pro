@@ -5129,10 +5129,22 @@ type SeniorityLevel = 'entry' | 'mid' | 'senior' | 'executive';
 function detectSeniorityLevel(resumeText: string): SeniorityLevel {
   const text = resumeText.toLowerCase();
   
+  // IC sales titles that contain "executive" but are NOT executive-level
+  // These must be checked BEFORE executive patterns to avoid false positives
+  const icSalesTitles = [
+    /\baccount\s+executive\b/,
+    /\bae\b(?!\s*(of|officer|director))/,
+    /\bsales\s+executive\b(?!\s*(director|vp|vice))/,
+    /\bbusiness\s+development\s+executive\b/,
+  ];
+  
+  const isICSalesRole = icSalesTitles.some(p => p.test(text));
+  
+  // True executive patterns (C-suite, VP, etc.)
   const executivePatterns = [
     /\b(ceo|cto|cfo|coo|cmo|cro|chief\s+\w+\s+officer)\b/,
-    /\b(president|founder|co-founder|partner)\b/,
-    /\b(vp|vice\s+president)\b/,
+    /\b(president)\b(?!\s*(club|student|class|association))/,  // Avoid student orgs
+    /\b(vp|vice\s+president)\s+(of|for|–|-)\s+\w+/,  // VP of [something]
     /\b(evp|svp|executive\s+vice\s+president|senior\s+vice\s+president)\b/,
     /\b(managing\s+director|general\s+manager)\b/,
   ];
@@ -5142,16 +5154,30 @@ function detectSeniorityLevel(resumeText: string): SeniorityLevel {
     /\b(director|head\s+of)\b/,
     /\b(\d{2}\+?\s*years?\s*(of\s+)?experience)/,
     /\b(10|11|12|13|14|15|16|17|18|19|20)\+?\s*years?\b/,
+    // Senior AE/sales roles with enterprise/strategic qualifier  
+    /\b(senior\s+account\s+executive|enterprise\s+account\s+executive|strategic\s+account\s+executive)\b/,
   ];
   
   const midPatterns = [
     /\b(mid[\s-]?level|intermediate)\b/,
     /\b([3-9])\s*years?\s*(of\s+)?experience\b/,
+    // Standard AE and sales IC roles are mid-to-senior, not executive
+    /\baccount\s+executive\b/,
+    /\bsales\s+(representative|manager|associate)\b/,
   ];
   
   // Check patterns in order of seniority
-  for (const pattern of executivePatterns) {
-    if (pattern.test(text)) return 'executive';
+  // CRITICAL: Don't classify IC sales roles as "executive" just because the title contains that word
+  if (!isICSalesRole) {
+    for (const pattern of executivePatterns) {
+      if (pattern.test(text)) {
+        // Double-check: "founder" for a startup sales hire is more "senior" than "executive"
+        if (/\bfounder\b/i.test(text) && /\b(founding\s+)?(sales|gtm|growth|bdr|sdr|ae)\b/i.test(text)) {
+          return 'senior';
+        }
+        return 'executive';
+      }
+    }
   }
   
   for (const pattern of seniorPatterns) {
@@ -5163,6 +5189,139 @@ function detectSeniorityLevel(resumeText: string): SeniorityLevel {
   }
   
   return 'entry';
+}
+
+// ======================== Elite Signal Detection ========================
+
+interface EliteSignal {
+  type: 'brand_company' | 'large_deal' | 'founding_role' | 'quota_consistency' | 'career_progression';
+  signal: string;
+  strength: 'high' | 'medium';
+}
+
+function detectEliteSignals(resumeText: string): EliteSignal[] {
+  const signals: EliteSignal[] = [];
+  const text = resumeText.toLowerCase();
+  
+  // 1. Brand/Fortune 500 companies
+  const brandCompanies = [
+    'google', 'amazon', 'microsoft', 'meta', 'apple', 'netflix', 'github', 'salesforce',
+    'stack overflow', 'linkedin', 'twitter', 'stripe', 'airbnb', 'uber', 'lyft', 'snap',
+    'datadog', 'snowflake', 'mongodb', 'twilio', 'atlassian', 'hubspot', 'shopify',
+    'oracle', 'ibm', 'sap', 'adobe', 'intuit', 'zoom', 'slack', 'dropbox',
+    'mckinsey', 'bain', 'bcg', 'deloitte', 'accenture', 'pwc', 'kpmg', 'ey',
+    'goldman sachs', 'jpmorgan', 'morgan stanley', 'blackrock', 'citadel',
+    'fortune 500', 'fortune 100', 'f500', 'f100'
+  ];
+  
+  const foundBrands = brandCompanies.filter(c => text.includes(c));
+  if (foundBrands.length > 0) {
+    signals.push({
+      type: 'brand_company',
+      signal: `Recognized companies: ${foundBrands.slice(0, 3).map(b => b.charAt(0).toUpperCase() + b.slice(1)).join(', ')}`,
+      strength: foundBrands.length >= 2 ? 'high' : 'medium'
+    });
+  }
+  
+  // 2. Large deal sizes
+  const dealPatterns = [
+    /\$(\d+(?:\.\d+)?)\s*(?:m|mm|million)/gi,
+    /\$(\d{1,3}(?:,\d{3})+)(?:\s+(?:deal|contract|opportunity|pipeline|revenue))/gi,
+    /(\d+(?:\.\d+)?)\s*(?:m|mm|million)\s*(?:deal|contract|pipeline|arr|revenue)/gi,
+  ];
+  
+  for (const pattern of dealPatterns) {
+    const matches = [...resumeText.matchAll(pattern)];
+    if (matches.length > 0) {
+      signals.push({
+        type: 'large_deal',
+        signal: `Large deal experience demonstrated (${matches[0][0].trim()})`,
+        strength: 'high'
+      });
+      break;
+    }
+  }
+  
+  // Also check for $XXXk+ deals
+  const largeDealK = /\$(\d{3,})\s*k/gi;
+  if (!signals.find(s => s.type === 'large_deal')) {
+    const kMatches = [...resumeText.matchAll(largeDealK)];
+    const largeDeal = kMatches.find(m => parseInt(m[1]) >= 500);
+    if (largeDeal) {
+      signals.push({
+        type: 'large_deal',
+        signal: `Significant deal sizes (${largeDeal[0].trim()})`,
+        strength: 'medium'
+      });
+    }
+  }
+  
+  // 3. Founding/first-hire roles
+  const foundingPatterns = [
+    /\b(founding|first)\s+(sales|gtm|growth|ae|bdr|sdr|hire|team\s+member|employee)/gi,
+    /\b(employee\s+#?\d{1,2})\b/gi,
+    /\b(built\s+.{0,30}\s+from\s+(scratch|zero|ground\s+up|0))/gi,
+    /\b(0\s*(-|to|→)\s*1)\b/gi,
+  ];
+  
+  for (const pattern of foundingPatterns) {
+    if (pattern.test(resumeText)) {
+      signals.push({
+        type: 'founding_role',
+        signal: 'Founding/early-stage experience — demonstrates entrepreneurial capability',
+        strength: 'high'
+      });
+      break;
+    }
+  }
+  
+  // 4. Consistent quota performance
+  const quotaPatterns = [
+    /\b(\d{3,})%\s*(of\s+)?(quota|target|goal)/gi,
+    /\b(exceeded|surpassed|beat)\s+(quota|target|goal)/gi,
+    /\b([2-9](\.\d+)?x)\b/gi,
+    /\b(100%\+?\s*(quota|attainment))/gi,
+    /\b(president.?s\s+club|top\s+\d+%?|#\d\s+rep)/gi,
+  ];
+  
+  let quotaHits = 0;
+  for (const pattern of quotaPatterns) {
+    const matches = resumeText.match(pattern);
+    if (matches) quotaHits += matches.length;
+  }
+  
+  if (quotaHits >= 3) {
+    signals.push({
+      type: 'quota_consistency',
+      signal: `Consistent quota performance across multiple roles (${quotaHits} mentions)`,
+      strength: 'high'
+    });
+  } else if (quotaHits >= 1) {
+    signals.push({
+      type: 'quota_consistency',
+      signal: 'Demonstrated quota attainment',
+      strength: 'medium'
+    });
+  }
+  
+  // 5. Career progression
+  const progressionSignals = [
+    /\b(promoted\s+to|advanced\s+to|elevated\s+to)\b/gi,
+    /\b(increasing\s+responsibility|career\s+progression)\b/gi,
+  ];
+  
+  for (const pattern of progressionSignals) {
+    if (pattern.test(resumeText)) {
+      signals.push({
+        type: 'career_progression',
+        signal: 'Shows clear career advancement trajectory',
+        strength: 'medium'
+      });
+      break;
+    }
+  }
+  
+  return signals;
 }
 
 // ======================== Credibility Issue Detection ========================
@@ -6043,6 +6202,7 @@ const INDUSTRY_KEYWORD_DB: Record<string, { name: string; keywords: Array<{ keyw
   sales: {
     name: 'Sales',
     keywords: [
+      // Core sales keywords that ATS systems actually filter on
       { keyword: 'CRM', category: 'tool', importance: 'critical' },
       { keyword: 'Salesforce', category: 'tool', importance: 'critical' },
       { keyword: 'Pipeline Management', category: 'technical', importance: 'critical' },
@@ -6052,7 +6212,11 @@ const INDUSTRY_KEYWORD_DB: Record<string, { name: string; keywords: Array<{ keyw
       { keyword: 'Negotiation', category: 'soft', importance: 'high' },
       { keyword: 'B2B', category: 'technical', importance: 'medium' },
       { keyword: 'Closing', category: 'technical', importance: 'high' },
+      { keyword: 'Account Management', category: 'technical', importance: 'high' },
+      // Nice-to-have but NOT critical for ATS — methodology terms
       { keyword: 'Territory Management', category: 'technical', importance: 'medium' },
+      { keyword: 'Sales Forecasting', category: 'technical', importance: 'medium' },
+      { keyword: 'Sales Enablement', category: 'technical', importance: 'medium' },
     ],
   },
   marketing: {
@@ -6238,15 +6402,20 @@ const INDUSTRY_KEYWORD_DB: Record<string, { name: string; keywords: Array<{ keyw
   enterprise_sales: {
     name: 'Enterprise Sales',
     keywords: [
-      { keyword: 'MEDDPICC', category: 'methodology', importance: 'critical' },
+      // Truly critical for ATS in enterprise sales
       { keyword: 'Salesforce', category: 'tool', importance: 'critical' },
       { keyword: 'Quota Attainment', category: 'technical', importance: 'critical' },
-      { keyword: 'ARR', category: 'technical', importance: 'critical' },
-      { keyword: 'ACV', category: 'technical', importance: 'high' },
-      { keyword: 'Pipeline Management', category: 'technical', importance: 'high' },
-      { keyword: 'C-Suite Selling', category: 'technical', importance: 'high' },
+      { keyword: 'Pipeline Management', category: 'technical', importance: 'critical' },
+      { keyword: 'Enterprise', category: 'technical', importance: 'high' },
+      { keyword: 'SaaS', category: 'technical', importance: 'high' },
+      { keyword: 'Account Management', category: 'technical', importance: 'high' },
+      { keyword: 'C-Suite', category: 'technical', importance: 'high' },
       { keyword: 'Complex Sales', category: 'technical', importance: 'high' },
-      { keyword: 'Multi-threading', category: 'technical', importance: 'high' },
+      // Nice-to-have methodology terms — helpful but NOT required by most ATS
+      { keyword: 'MEDDPICC', category: 'methodology', importance: 'medium' },
+      { keyword: 'ARR', category: 'technical', importance: 'medium' },
+      { keyword: 'ACV', category: 'technical', importance: 'medium' },
+      { keyword: 'Multi-threading', category: 'technical', importance: 'medium' },
       { keyword: 'Gong', category: 'tool', importance: 'medium' },
     ],
   },
@@ -6868,6 +7037,19 @@ TENURE RULES (critical for sales/BD roles):
 - Logical career progression (e.g., startup → scale-up → enterprise) = strength, not weakness.
 - Promotions or "first sales hire" roles explain short tenures.
 
+EMPLOYMENT GAP RULES:
+- Gaps under 12 months are NORMAL and should NOT be flagged as red flags.
+- Only flag gaps of 12+ months, and frame as "Consider briefly addressing" not "critical issue".
+- Between-job gaps of 3-6 months are extremely common and never worth mentioning.
+- Gaps during COVID (2020-2021) should never be flagged.
+
+EXPERIENCE LEVEL CLASSIFICATION (CRITICAL):
+- "Account Executive" (AE) is an IC sales title, NOT executive-level. Classify as Senior or Mid-level.
+- "Sales Executive" without VP/Director/C-suite = Senior IC, NOT Executive.
+- "Founding sales hire" or "first AE" at startup = Senior, NOT Executive.
+- ONLY use "Executive" for: CEO, CTO, CFO, VP, SVP, EVP, Managing Director, General Manager.
+- For sales professionals: Mid-level (2-5 years), Senior (5-10 years), Executive (only if VP+ title).
+
 QUOTA/METRICS DETECTION (CRITICAL - avoid false positives):
 BEFORE flagging "missing quota" or "missing metrics", SEARCH for these patterns:
 - "exceeded quota", "surpassed quota", "% of target", "% attainment", "quota attainment"
@@ -6974,9 +7156,9 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
                     formatIssue: { type: "string" },
                     experienceLevel: {
                       type: "object",
-                      description: "Calculate yearsEstimate from earliest job date to present (2025). Count ALL roles including consulting, sales, part-time, freelance.",
+                      description: "Calculate yearsEstimate from earliest job date to present (2025). Count ALL roles including consulting, sales, part-time, freelance. CRITICAL: 'Account Executive' is an IC sales title, NOT executive-level. Only use 'Executive' for C-suite (CEO, CTO, VP, SVP). AE/Sales Rep/BDR = Mid-level or Senior depending on years. Founding sales hire at startup = Senior, not Executive.",
                       properties: {
-                        level: { type: "string", description: "Entry-level, Mid-level, Senior, Executive, etc." },
+                        level: { type: "string", description: "Entry-level, Mid-level, Senior, or Executive. ONLY use 'Executive' for C-suite/VP roles. Account Executive = Senior or Mid-level." },
                         yearsEstimate: { type: "string", description: "Total years from earliest job date to now (e.g., '10 years', '9+ years'). Do NOT truncate." }
                       }
                     },
@@ -7402,6 +7584,9 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         coverage: industryKeywordAnalysis?.coverageScore
       })}`);
 
+      // 10. Elite Signal Detection (brand companies, deal sizes, founding roles, quota consistency)
+      const eliteSignals = detectEliteSignals(resumeText);
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Elite signals detected: ${eliteSignals.length} (${eliteSignals.map(s => s.type).join(', ')})`);
       // Build response with computed fields merged
       const responseData = {
         success: true,
@@ -7413,6 +7598,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         calibratedLanguage,
         usageRecommendations,
         credibilityIssues: credibilityIssues.slice(0, 3), // Top 3 credibility issues
+        eliteSignals, // Brand companies, large deals, founding roles, quota consistency
         contentLocations: {
           quota: quotaLocation,
           metrics: metricsLocation
@@ -7465,6 +7651,23 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
           // Filter 4: For non-ATS resume types, don't flag missing chronological experience
           if (resumeType.atsRelevance === 'low') {
             if (combined.includes('chronological') || combined.includes('work history') || combined.includes('date') && combined.includes('missing')) {
+              return false;
+            }
+          }
+          
+          // Filter 5: Don't flag short employment gaps (< 12 months) as critical
+          // Most recruiters don't notice or care about gaps under a year
+          if (combined.includes('gap') || combined.includes('employment gap') || combined.includes('career gap')) {
+            // Check if the gap is short (mentioned as months or < 1 year)
+            const monthsMatch = combined.match(/(\d+)\s*month/);
+            if (monthsMatch && parseInt(monthsMatch[1]) < 12) {
+              console.log(`[RED-FLAG-FILTER] Filtered short employment gap (${monthsMatch[1]} months)`);
+              return false;
+            }
+            // Also check for "8 month" style mentions in the issue
+            const shortGapPattern = /\b([1-9]|1[01])\s*month/;
+            if (shortGapPattern.test(combined)) {
+              console.log(`[RED-FLAG-FILTER] Filtered short employment gap`);
               return false;
             }
           }
