@@ -7924,7 +7924,10 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       const eliteSignals = detectEliteSignals(resumeText);
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Elite signals detected: ${eliteSignals.length} (${eliteSignals.map(s => s.type).join(', ')})`);
       // Strip any AI-hallucinated fields that we compute server-side
-      const { eliteSignals: _aiEliteSignals, ...sanitizedAnalysis } = analysis;
+      const { eliteSignals: _aiEliteSignals, credibilityIssues: _aiCredibility, ...sanitizedAnalysis } = analysis as any;
+      if (_aiEliteSignals) {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Stripped AI-hallucinated eliteSignals: ${JSON.stringify(_aiEliteSignals)}`);
+      }
       
       // Build response with computed fields merged
       const responseData = {
