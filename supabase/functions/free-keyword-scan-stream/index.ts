@@ -7852,6 +7852,62 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
             }
           }
           
+          // ======================== EXPERIENCE-AWARE RED FLAG FILTERING ========================
+          // Filter 6: Gate red flags by seniority level
+          
+          // 6a: Entry-level should NOT be flagged for missing leadership/management keywords
+          if (seniority === 'entry') {
+            if (combined.includes('leadership') || combined.includes('management') || 
+                combined.includes('team lead') || combined.includes('strategic') ||
+                combined.includes('executive') || combined.includes('director')) {
+              console.log(`[RED-FLAG-FILTER] Filtered leadership flag for entry-level candidate`);
+              return false;
+            }
+          }
+          
+          // 6b: Senior/Executive roles should NOT be flagged for missing portfolio/GitHub
+          if (seniority === 'senior' || seniority === 'executive') {
+            if (combined.includes('github') || combined.includes('portfolio') || 
+                combined.includes('personal website') || combined.includes('personal project') ||
+                combined.includes('side project')) {
+              console.log(`[RED-FLAG-FILTER] Filtered portfolio/GitHub flag for ${seniority}-level candidate`);
+              return false;
+            }
+          }
+          
+          // 6c: Non-tech roles should NOT be flagged for missing technical portfolio/GitHub
+          const isNonTechIndustry = ['sales', 'marketing', 'hr', 'human_resources', 'legal', 
+            'education', 'healthcare', 'nursing', 'finance', 'accounting', 'hospitality',
+            'nonprofit', 'retail', 'consulting'].includes(analysis.industry);
+          if (isNonTechIndustry) {
+            if (combined.includes('github') || combined.includes('technical portfolio') ||
+                combined.includes('coding') || combined.includes('programming')) {
+              console.log(`[RED-FLAG-FILTER] Filtered tech-specific flag for ${analysis.industry} industry`);
+              return false;
+            }
+          }
+          
+          // 6d: Entry-level should NOT be penalized for lack of quantified results at same intensity
+          if (seniority === 'entry') {
+            if ((combined.includes('quantif') || combined.includes('metric') || combined.includes('measurable')) 
+                && combined.includes('missing')) {
+              // Downgrade but don't remove — entry-level resumes often lack metrics
+              // Let it through but the impact text should be softened by the AI prompt
+              // Only filter if framed as a critical/major issue
+              if (combined.includes('critical') || combined.includes('major') || combined.includes('significant')) {
+                console.log(`[RED-FLAG-FILTER] Filtered critical metrics flag for entry-level candidate`);
+                return false;
+              }
+            }
+          }
+          
+          // 6e: LinkedIn URL is less critical for senior/executive (they get found, not search)
+          if ((seniority === 'senior' || seniority === 'executive') && 
+              combined.includes('linkedin') && (combined.includes('missing') || combined.includes('add'))) {
+            console.log(`[RED-FLAG-FILTER] Filtered LinkedIn flag for ${seniority}-level candidate`);
+            return false;
+          }
+          
           return true;
         }).slice(0, 3),
         // Filter keywords that already exist in the resume (false positive prevention)
