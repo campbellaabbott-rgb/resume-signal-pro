@@ -2593,6 +2593,7 @@ export function FreeKeywordResults({
           </div>
         </div>
       </div>
+      </CollapsibleSection>
 
       {/* Power Words & Weak Phrases */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
