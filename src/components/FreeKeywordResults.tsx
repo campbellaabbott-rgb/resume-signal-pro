@@ -2068,6 +2068,13 @@ export function FreeKeywordResults({
         </div>
       </div>
 
+      </div> {/* end section-issues */}
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION: Insights */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <div id="section-insights">
+
       {/* Career Situation Detection */}
       {careerSituation && careerSituation.situation !== "standard" && (
         <div className="rounded-2xl bg-card border border-border p-5 mb-5">
