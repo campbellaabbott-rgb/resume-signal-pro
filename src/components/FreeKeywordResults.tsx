@@ -742,6 +742,7 @@ export function FreeKeywordResults({
   credibilityIssues,
   contentLocations,
   industryDetection,
+  eliteSignals,
   onIndustryChange
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
