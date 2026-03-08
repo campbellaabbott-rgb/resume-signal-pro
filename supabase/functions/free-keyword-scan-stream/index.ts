@@ -6202,6 +6202,7 @@ const INDUSTRY_KEYWORD_DB: Record<string, { name: string; keywords: Array<{ keyw
   sales: {
     name: 'Sales',
     keywords: [
+      // Core sales keywords that ATS systems actually filter on
       { keyword: 'CRM', category: 'tool', importance: 'critical' },
       { keyword: 'Salesforce', category: 'tool', importance: 'critical' },
       { keyword: 'Pipeline Management', category: 'technical', importance: 'critical' },
@@ -6211,7 +6212,11 @@ const INDUSTRY_KEYWORD_DB: Record<string, { name: string; keywords: Array<{ keyw
       { keyword: 'Negotiation', category: 'soft', importance: 'high' },
       { keyword: 'B2B', category: 'technical', importance: 'medium' },
       { keyword: 'Closing', category: 'technical', importance: 'high' },
+      { keyword: 'Account Management', category: 'technical', importance: 'high' },
+      // Nice-to-have but NOT critical for ATS — methodology terms
       { keyword: 'Territory Management', category: 'technical', importance: 'medium' },
+      { keyword: 'Sales Forecasting', category: 'technical', importance: 'medium' },
+      { keyword: 'Sales Enablement', category: 'technical', importance: 'medium' },
     ],
   },
   marketing: {
