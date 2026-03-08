@@ -1856,6 +1856,7 @@ export function FreeKeywordResults({
         </CollapsibleSection>
       )}
 
+      {currentScan && currentScan.checklist && currentScan.checklist.length > 0 && (
         <CollapsibleSection
           id="fix-checklist"
           title="Fix Checklist"
