@@ -7638,6 +7638,23 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
             }
           }
           
+          // Filter 5: Don't flag short employment gaps (< 12 months) as critical
+          // Most recruiters don't notice or care about gaps under a year
+          if (combined.includes('gap') || combined.includes('employment gap') || combined.includes('career gap')) {
+            // Check if the gap is short (mentioned as months or < 1 year)
+            const monthsMatch = combined.match(/(\d+)\s*month/);
+            if (monthsMatch && parseInt(monthsMatch[1]) < 12) {
+              console.log(`[RED-FLAG-FILTER] Filtered short employment gap (${monthsMatch[1]} months)`);
+              return false;
+            }
+            // Also check for "8 month" style mentions in the issue
+            const shortGapPattern = /\b([1-9]|1[01])\s*month/;
+            if (shortGapPattern.test(combined)) {
+              console.log(`[RED-FLAG-FILTER] Filtered short employment gap`);
+              return false;
+            }
+          }
+          
           return true;
         }).slice(0, 3),
         // Filter keywords that already exist in the resume (false positive prevention)
