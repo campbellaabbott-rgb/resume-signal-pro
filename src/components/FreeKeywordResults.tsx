@@ -7,12 +7,13 @@ import {
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
   TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket,
-  BarChart3, Shield, Search, Settings2
+  BarChart3, Shield, Search, Settings2, Eye
 } from "lucide-react";
 import { LockedPremiumInsight } from "./LockedPremiumInsight";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { PersonalizedInsights } from "./PersonalizedInsights";
 import { ElevatorPitchGenerator } from "./ElevatorPitchGenerator";
+import { RecruiterViewMode } from "./RecruiterViewMode";
 import { TieredPricingSection } from "./TieredPricingSection";
 import { ResumeBeforeAfter } from "./ResumeBeforeAfter";
 import { JobKeywordMatcher } from "./JobKeywordMatcher";
@@ -1760,6 +1761,28 @@ export function FreeKeywordResults({
             currentRole={currentRole}
             experienceLevel={experienceLevel?.level}
             candidateName={candidateName || undefined}
+          />
+        </CollapsibleSection>
+      )}
+
+      {/* Recruiter View Mode */}
+      {resumeText && (
+        <CollapsibleSection
+          id="recruiter-view"
+          title="Recruiter View Mode"
+          subtitle="See exactly what recruiters see"
+          icon={<Eye className="w-4 h-4" />}
+          defaultOpen={false}
+          badge={
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+              Free
+            </span>
+          }
+        >
+          <RecruiterViewMode
+            resumeText={resumeText}
+            industry={industry}
+            currentRole={currentRole}
           />
         </CollapsibleSection>
       )}
