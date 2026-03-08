@@ -26,6 +26,7 @@ import { useScanHistory, generateChecklist } from "@/hooks/use-scan-history";
 import { InteractiveChecklist } from "./InteractiveChecklist";
 import { AISummary } from "./AISummary";
 import { ShareableScoreCard } from "./ShareableScoreCard";
+import { ScoreHero } from "./scorecard/ScoreHero";
 import { 
   EnhancedAnalysisDisplay, 
   ResumeTypeResult, 
