@@ -8321,6 +8321,13 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         quantificationScore: computedQuantification,
         bulletImpactScore: computedBulletImpact,
         industryBenchmark: computedBenchmark,
+        // Score calibration metadata
+        scoreCalibration: scoreCalibration.adjustment !== 0 ? {
+          rawScore: rawAtsScore,
+          calibratedScore: scoreCalibration.calibratedScore,
+          adjustment: scoreCalibration.adjustment,
+          reason: scoreCalibration.reason
+        } : undefined,
         // Trim arrays and filter false-positive red flags
         redFlags: (analysis.redFlags || []).filter((flag: { issue?: string; impact?: string }) => {
           const issue = (flag.issue || '').toLowerCase();
