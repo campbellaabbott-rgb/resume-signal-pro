@@ -12,6 +12,7 @@ import {
 import { LockedPremiumInsight } from "./LockedPremiumInsight";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { PersonalizedInsights } from "./PersonalizedInsights";
+import { ElevatorPitchGenerator } from "./ElevatorPitchGenerator";
 import { TieredPricingSection } from "./TieredPricingSection";
 import { ResumeBeforeAfter } from "./ResumeBeforeAfter";
 import { JobKeywordMatcher } from "./JobKeywordMatcher";
