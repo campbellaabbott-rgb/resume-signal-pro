@@ -2465,6 +2465,7 @@ export function FreeKeywordResults({
             </p>
           </div>
         </div>
+        </CollapsibleSection>
       )}
 
       {/* ATS System Compatibility */}
