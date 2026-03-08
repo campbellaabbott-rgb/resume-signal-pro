@@ -1302,6 +1302,7 @@ const Index = () => {
                 calibratedLanguage={freeKeywordResult.calibratedLanguage}
                 usageRecommendations={freeKeywordResult.usageRecommendations}
                 credibilityIssues={freeKeywordResult.credibilityIssues}
+                eliteSignals={freeKeywordResult.eliteSignals}
                 contentLocations={freeKeywordResult.contentLocations}
                 industryDetection={freeKeywordResult.industryDetection}
               />
