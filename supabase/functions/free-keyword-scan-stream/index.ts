@@ -7585,6 +7585,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         calibratedLanguage,
         usageRecommendations,
         credibilityIssues: credibilityIssues.slice(0, 3), // Top 3 credibility issues
+        eliteSignals, // Brand companies, large deals, founding roles, quota consistency
         contentLocations: {
           quota: quotaLocation,
           metrics: metricsLocation
