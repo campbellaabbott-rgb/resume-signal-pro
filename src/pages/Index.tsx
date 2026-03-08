@@ -795,6 +795,8 @@ const Index = () => {
       if (data?.success) {
         setFreeKeywordResult({
           detectedLanguage: data.detectedLanguage || null,
+          candidateName: data.candidateName || null,
+          currentRole: data.currentRole || undefined,
           industry: data.industry,
           atsScoreEstimate: data.atsScoreEstimate,
           formatGrade: data.formatGrade,
