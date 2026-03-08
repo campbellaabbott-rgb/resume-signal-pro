@@ -1740,7 +1740,30 @@ export function FreeKeywordResults({
         </div>
       </CollapsibleSection>
 
-      {/* Interactive Checklist */}
+      {/* Elevator Pitch Generator */}
+      {resumeText && (
+        <CollapsibleSection
+          id="elevator-pitch"
+          title="60-Second Elevator Pitch"
+          subtitle="AI-generated pitch from your resume"
+          icon={<Rocket className="w-4 h-4" />}
+          defaultOpen={false}
+          badge={
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+              Free
+            </span>
+          }
+        >
+          <ElevatorPitchGenerator
+            resumeText={resumeText}
+            industry={industry}
+            currentRole={currentRole}
+            experienceLevel={experienceLevel?.level}
+            candidateName={candidateName || undefined}
+          />
+        </CollapsibleSection>
+      )}
+
       {currentScan && currentScan.checklist && currentScan.checklist.length > 0 && (
         <CollapsibleSection
           id="fix-checklist"
