@@ -1289,11 +1289,138 @@ function getBestIndustryFromDensity(scores: Record<string, number>): {
   };
 }
 
+// ==================== MOST RECENT ROLE EXTRACTION ====================
+// Extracts the most recent job title and its surrounding context from the resume
+// Used to give 2x-3x weight to title matches in the current/most recent role
+
+interface MostRecentRole {
+  title: string;
+  section: string; // ~500 chars of context around the most recent role
+  year: number | null;
+}
+
+function extractMostRecentRole(resumeText: string): MostRecentRole | null {
+  const lines = resumeText.split(/\r?\n/);
+  const currentYear = new Date().getFullYear();
+  
+  // Strategy 1: Find "Present/Current" role — strongest signal
+  // Look for lines with "present", "current", "now" in date context
+  const presentPatterns = [
+    /\b(20\d{2})\s*[-–—]\s*(present|current|now)\b/i,
+    /\b(present|current)\b.*\b(20\d{2})\b/i,
+  ];
+  
+  let bestRoleLineIdx = -1;
+  let bestYear = 0;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    for (const pattern of presentPatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        bestRoleLineIdx = i;
+        bestYear = currentYear;
+        break;
+      }
+    }
+    if (bestRoleLineIdx >= 0) break;
+  }
+  
+  // Strategy 2: Find the most recent year in a date range (e.g., "2023 - 2025")
+  if (bestRoleLineIdx < 0) {
+    const dateRangePattern = /\b(20\d{2})\s*[-–—]\s*(20\d{2})\b/;
+    let latestEndYear = 0;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const match = lines[i].match(dateRangePattern);
+      if (match) {
+        const endYear = parseInt(match[2], 10);
+        if (endYear > latestEndYear) {
+          latestEndYear = endYear;
+          bestRoleLineIdx = i;
+          bestYear = endYear;
+        }
+      }
+    }
+  }
+  
+  // Strategy 3: Find the first role after "Experience" section header
+  if (bestRoleLineIdx < 0) {
+    const expHeaderIdx = lines.findIndex(l => 
+      /\b(professional\s+experience|experience|work\s+history|employment)\b/i.test(l)
+    );
+    if (expHeaderIdx >= 0 && expHeaderIdx + 1 < lines.length) {
+      bestRoleLineIdx = expHeaderIdx + 1;
+      bestYear = currentYear;
+    }
+  }
+  
+  if (bestRoleLineIdx < 0) return null;
+  
+  // Extract the title: look at the role line and nearby lines (title is often 1-2 lines above or on the date line)
+  // Scan from bestRoleLineIdx backwards up to 3 lines for a title-like line
+  let titleLine = '';
+  const searchStart = Math.max(0, bestRoleLineIdx - 3);
+  const searchEnd = Math.min(lines.length - 1, bestRoleLineIdx + 2);
+  
+  // Common title patterns: "Senior Software Engineer", "Account Executive", etc.
+  const titleRegex = /\b(senior|lead|principal|staff|chief|head|director|manager|vp|associate|junior|founding)\b/i;
+  const jobTitleRegex = /\b(engineer|developer|designer|analyst|manager|director|executive|specialist|coordinator|consultant|architect|scientist|officer|administrator|recruiter|attorney|nurse|teacher|accountant|sales|marketing|product)\b/i;
+  
+  for (let i = searchStart; i <= searchEnd; i++) {
+    const line = lines[i].trim();
+    if (line.length > 5 && line.length < 120 && (titleRegex.test(line) || jobTitleRegex.test(line))) {
+      // Prefer lines that look like titles (not date-only lines, not bullet points)
+      if (!/^[•\-*·▪►◦➤]/.test(line) && !/^\d+\./.test(line)) {
+        titleLine = line;
+        break;
+      }
+    }
+  }
+  
+  // If no clear title found, use the line itself
+  if (!titleLine) {
+    titleLine = lines[bestRoleLineIdx].trim();
+  }
+  
+  // Extract ~500 chars of context around the most recent role
+  const contextStart = Math.max(0, bestRoleLineIdx - 2);
+  // Find the next role (next date range) or take 15 lines
+  let contextEnd = Math.min(lines.length, bestRoleLineIdx + 15);
+  for (let i = bestRoleLineIdx + 2; i < contextEnd; i++) {
+    // Stop at the next role's date range
+    if (/\b(20\d{2}|19\d{2})\s*[-–—]\s*(20\d{2}|19\d{2}|present|current)/i.test(lines[i]) && i > bestRoleLineIdx + 1) {
+      contextEnd = i;
+      break;
+    }
+  }
+  
+  const section = lines.slice(contextStart, contextEnd).join('\n').substring(0, 800);
+  
+  console.log(`[RECENT-ROLE] Extracted most recent role: "${titleLine.substring(0, 80)}" (year: ${bestYear})`);
+  
+  return {
+    title: titleLine,
+    section,
+    year: bestYear || null
+  };
+}
+
 function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
   // Normalize text with abbreviation expansion for fuzzy matching
   const normalizedText = normalizeResumeText(resumeText);
   const text = normalizedText.toLowerCase();
   const signals: string[] = [];
+  
+  // ==================== MOST RECENT ROLE EXTRACTION ====================
+  // Extract the most recent role to apply recency weighting
+  const mostRecentRole = extractMostRecentRole(resumeText);
+  const recentRoleText = mostRecentRole ? normalizeResumeText(mostRecentRole.section).toLowerCase() : '';
+  const recentRoleTitle = mostRecentRole ? normalizeResumeText(mostRecentRole.title).toLowerCase() : '';
+  
+  if (mostRecentRole) {
+    signals.push(`Most recent role: "${mostRecentRole.title.substring(0, 60)}"`);
+  }
   
   // ==================== KEYWORD DENSITY SCORING ====================
   // Count industry-specific keywords for fallback detection
@@ -4415,23 +4542,45 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
     const titleWeight = patterns.titleWeight || 40; // was 30
     const skillWeight = patterns.skillWeight || 7;  // was 5
     
-    // Check title patterns (high weight)
+    // Check title patterns (high weight) with RECENCY MULTIPLIER
+    // Titles found in the most recent role get 2x weight
     for (const pattern of patterns.titlePatterns) {
       const match = text.match(pattern);
       if (match) {
-        score += titleWeight;
-        industrySignals.push(`Title: "${match[0]}"`);
+        // Check if this title match is in the most recent role section
+        const isInRecentRole = recentRoleText && pattern.test(recentRoleText);
+        const isInRecentTitle = recentRoleTitle && pattern.test(recentRoleTitle);
+        
+        // Apply recency multiplier: 3x for recent title line, 2x for recent section, 1x otherwise
+        let recencyMultiplier = 1.0;
+        if (isInRecentTitle) {
+          recencyMultiplier = 3.0;
+          industrySignals.push(`CURRENT ROLE Title: "${match[0]}" (3x weight)`);
+        } else if (isInRecentRole) {
+          recencyMultiplier = 2.0;
+          industrySignals.push(`Recent Role Title: "${match[0]}" (2x weight)`);
+        } else {
+          industrySignals.push(`Title: "${match[0]}"`);
+        }
+        
+        score += Math.round(titleWeight * recencyMultiplier);
         matchedTitles.push(match[0]);
       }
     }
     
-    // Check skills (medium weight)
+    // Check skills (medium weight) with recency boost
     const foundSkills = patterns.skillPatterns.filter(skill => {
-      // Check for exact word boundary match
       const regex = new RegExp(`\\b${skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
       return regex.test(text);
     });
-    score += foundSkills.length * skillWeight;
+    // Skills found in recent role section get 1.5x weight
+    let skillScore = 0;
+    for (const skill of foundSkills) {
+      const regex = new RegExp(`\\b${skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      const inRecentRole = recentRoleText && regex.test(recentRoleText);
+      skillScore += Math.round(skillWeight * (inRecentRole ? 1.5 : 1.0));
+    }
+    score += skillScore;
     matchedSkillCount = foundSkills.length;
     if (foundSkills.length > 0) {
       industrySignals.push(`Skills: ${foundSkills.slice(0, 5).join(', ')}`);
@@ -7265,7 +7414,14 @@ These are HIGH-PRIORITY red flags that should be mentioned before keyword sugges
 - Overlapping roles without explanation
 - Missing company names for listed roles
 
-BEFORE ANALYSIS: Extract name → find earliest job date → calculate total years → assess seniority → LIST ALL EXISTING SKILLS/KEYWORDS → SCAN FOR EXISTING METRICS/QUOTA DATA → check contact info → extract titles → check education/certs → determine industry.
+MOST RECENT ROLE FOCUS (CRITICAL):
+- The candidate's MOST RECENT / CURRENT role is the PRIMARY signal for industry, scoring, and keyword suggestions.
+- Base your industry detection on the CURRENT or MOST RECENT job title, not older roles.
+- Career changers: if someone was a teacher for 8 years but is now a software engineer for 1 year, classify as "technology" not "education".
+- Keyword suggestions should target the CURRENT role, not past industries.
+- When extracting "currentRole", always use the most recent job title (the one marked "Present", "Current", or with the latest date range).
+
+BEFORE ANALYSIS: Extract name → identify MOST RECENT ROLE TITLE first → find earliest job date → calculate total years → assess seniority → LIST ALL EXISTING SKILLS/KEYWORDS → SCAN FOR EXISTING METRICS/QUOTA DATA → check contact info → extract titles → check education/certs → determine industry BASED ON CURRENT ROLE.
 
 OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywords (ONLY truly missing ones), red flags. Address candidate by name. Be accurate - don't flag content that exists or suggest keywords already present.`;
 
