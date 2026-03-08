@@ -1411,7 +1411,7 @@ export function FreeKeywordResults({
 
       {/* Job Match Section - Show when job description was provided */}
       {jobMatchScore !== undefined && jobMatchGrade && (
-        <div className="rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-success/10 border-2 border-primary/30 p-5 mb-6">
+        <div id="section-job-match" className="rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-success/10 border-2 border-primary/30 p-5 mb-6">
           <div className="flex items-center gap-2 mb-4">
             <div className="p-2 rounded-lg bg-primary/20">
               <Target className="w-5 h-5 text-primary" />
