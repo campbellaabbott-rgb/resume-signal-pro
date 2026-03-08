@@ -7089,6 +7089,66 @@ serve(async (req) => {
         return;
       }
 
+      // ======================== TWO-PASS AI INDUSTRY VERIFICATION ========================
+      // When server-side detection has low/medium confidence, ask AI to verify
+      // using a fast, cheap model before the main analysis call
+      const preDetection = detectIndustryFromResume(resumeText);
+      let verifiedIndustry: string | null = null;
+      
+      if (preDetection.confidence !== 'high' && preDetection.score < 50) {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry confidence ${preDetection.confidence} (score: ${preDetection.score}) — running AI verification pass`);
+        
+        const topCandidates = [
+          preDetection.industry,
+          ...(preDetection.alternativeIndustries || []).slice(0, 2).map(a => a.industry)
+        ].filter(Boolean);
+        
+        // Extract first 2000 chars of resume for quick classification
+        const classificationExcerpt = resumeText.substring(0, 2000);
+        
+        try {
+          const verifyResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash-lite",
+              messages: [
+                { 
+                  role: "system", 
+                  content: "You are an industry classifier. Given a resume excerpt, pick the BEST industry from the candidate list. Respond with ONLY the industry name, nothing else."
+                },
+                { 
+                  role: "user", 
+                  content: `Candidate industries: ${topCandidates.join(', ')}\n\nResume excerpt:\n${classificationExcerpt}\n\nWhich industry best fits this resume? Reply with only the industry name.`
+                }
+              ],
+              max_tokens: 50,
+              temperature: 0,
+            }),
+          });
+          
+          if (verifyResponse.ok) {
+            const verifyData = await verifyResponse.json();
+            const aiVerified = verifyData.choices?.[0]?.message?.content?.trim()?.toLowerCase();
+            if (aiVerified) {
+              const normalizedVerified = normalizeIndustry(aiVerified);
+              if (VALID_INDUSTRIES.includes(normalizedVerified) || INDUSTRY_ALIASES[normalizedVerified]) {
+                verifiedIndustry = normalizedVerified;
+                console.log(`[FREE-KEYWORD-SCAN-STREAM] AI verification result: "${verifiedIndustry}" (from candidates: ${topCandidates.join(', ')})`);
+              }
+            }
+          }
+        } catch (verifyErr) {
+          console.warn(`[FREE-KEYWORD-SCAN-STREAM] AI verification failed (non-critical):`, verifyErr);
+          // Non-blocking — continue with server detection only
+        }
+      } else {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry confidence ${preDetection.confidence} (score: ${preDetection.score}) — skipping AI verification`);
+      }
+
       // Build prompts with resume type awareness and accuracy improvements
       const systemPrompt = `Expert ATS resume analyst. Respond in resume's language. All fields in that language.
 
