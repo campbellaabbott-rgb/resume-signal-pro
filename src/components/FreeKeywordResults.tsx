@@ -1788,6 +1788,28 @@ export function FreeKeywordResults({
         </CollapsibleSection>
       )}
 
+      {/* Resume Roast */}
+      {resumeText && (
+        <CollapsibleSection
+          id="resume-roast"
+          title="Resume Roast 🔥"
+          subtitle="Brutally honest, hilariously specific"
+          icon={<Flame className="w-4 h-4" />}
+          defaultOpen={false}
+          badge={
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">
+              Free
+            </span>
+          }
+        >
+          <ResumeRoast
+            resumeText={resumeText}
+            industry={industry}
+            currentRole={currentRole}
+          />
+        </CollapsibleSection>
+      )}
+
       {currentScan && currentScan.checklist && currentScan.checklist.length > 0 && (
         <CollapsibleSection
           id="fix-checklist"
