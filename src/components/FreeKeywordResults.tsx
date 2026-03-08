@@ -2795,36 +2795,12 @@ export function FreeKeywordResults({
         </div>
       </div>
 
-      {/* Upgrade CTA Box 1 */}
-      <div className="rounded-2xl bg-gradient-to-br from-destructive/15 via-destructive/10 to-destructive/5 border-2 border-destructive/40 p-6 mb-5 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-destructive/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-2 rounded-full bg-destructive/20 animate-pulse">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
-            </div>
-            <span className="text-xs font-bold uppercase tracking-wider text-destructive/80">Action Required</span>
-          </div>
-          <h4 className="text-lg font-bold text-foreground mb-2">
-            {redFlags.length}+ Issues Holding Your Resume Back
-          </h4>
-          <p className="text-sm text-muted-foreground mb-4">
-            Get specific fixes, rewritten bullet points, and ATS-optimized suggestions tailored to your industry.
-          </p>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <Button 
-              onClick={() => handleUpgradeClick('cta_box_1')}
-              size="lg"
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-lg shadow-destructive/25 hover:shadow-xl hover:shadow-destructive/30 transition-all"
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              {getFirstCtaText()}
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-            <span className="text-xs text-muted-foreground">Takes 2 minutes • Instant results</span>
-          </div>
-        </div>
-      </div>
+      </div> {/* end section-insights */}
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION: Upgrade / Next Steps */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <div id="section-upgrade">
 
       {/* Premium Resume Package CTA - Clear single action */}
       {onGenerateTailoredResume && (
