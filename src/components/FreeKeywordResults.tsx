@@ -1765,6 +1765,28 @@ export function FreeKeywordResults({
         </CollapsibleSection>
       )}
 
+      {/* Recruiter View Mode */}
+      {resumeText && (
+        <CollapsibleSection
+          id="recruiter-view"
+          title="Recruiter View Mode"
+          subtitle="See exactly what recruiters see"
+          icon={<Eye className="w-4 h-4" />}
+          defaultOpen={false}
+          badge={
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+              Free
+            </span>
+          }
+        >
+          <RecruiterViewMode
+            resumeText={resumeText}
+            industry={industry}
+            currentRole={currentRole}
+          />
+        </CollapsibleSection>
+      )}
+
       {currentScan && currentScan.checklist && currentScan.checklist.length > 0 && (
         <CollapsibleSection
           id="fix-checklist"
