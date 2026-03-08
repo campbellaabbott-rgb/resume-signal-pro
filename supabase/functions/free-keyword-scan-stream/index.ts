@@ -5368,7 +5368,7 @@ function detectEliteSignals(resumeText: string): EliteSignal[] {
   const signals: EliteSignal[] = [];
   const text = resumeText.toLowerCase();
   
-  // 1. Brand/Fortune 500 companies
+  // 1. Brand/Fortune 500 companies (only when used as employers, not tools/platforms)
   const brandCompanies = [
     'google', 'amazon', 'microsoft', 'meta', 'apple', 'netflix', 'github', 'salesforce',
     'stack overflow', 'linkedin', 'twitter', 'stripe', 'airbnb', 'uber', 'lyft', 'snap',
@@ -5379,7 +5379,66 @@ function detectEliteSignals(resumeText: string): EliteSignal[] {
     'fortune 500', 'fortune 100', 'f500', 'f100'
   ];
   
-  const foundBrands = brandCompanies.filter(c => text.includes(c));
+  // Tool/platform usage patterns that indicate the brand is mentioned as a tool, not employer
+  const toolContextPatterns = [
+    /google\s*(workspace|sheets|docs|drive|analytics|ads|cloud|maps|calendar|search|fonts|scholar)/gi,
+    /linkedin\s*(profile|easy\s*apply|learning|post|page|campaign|recruiter|sales\s*navigator)/gi,
+    /(on|for|via|using|through|post\s+on|posts?\s+for)\s+linkedin/gi,
+    /(on|for|via|using|through)\s+google/gi,
+    /microsoft\s*(office|word|excel|powerpoint|outlook|teams|365|azure|project)/gi,
+    /(on|for|via|using|through)\s+microsoft/gi,
+    /apple\s*(keynote|pages|numbers|watch|pay|music)/gi,
+    /adobe\s*(creative\s*suite|photoshop|illustrator|indesign|premiere|acrobat|xd|lightroom|after\s*effects)/gi,
+    /(on|for|via|using|through)\s+adobe/gi,
+    /salesforce\s*(crm|admin|developer|lightning|apex|soql)/gi,
+    /(using|in|with|via)\s+salesforce/gi,
+    /hubspot\s*(crm|marketing|sales|service|cms)/gi,
+    /(using|in|with|via)\s+hubspot/gi,
+    /slack\s*(channel|message|integration|workspace|notification)/gi,
+    /(on|in|via|using)\s+slack/gi,
+    /zoom\s*(meeting|call|webinar|conference)/gi,
+    /(on|via|using)\s+zoom/gi,
+    /oracle\s*(database|db|sql|cloud|erp|netsuite)/gi,
+    /sap\s*(erp|hana|s\/4|business|module|fi|co|mm|sd)/gi,
+    /(using|in|with|via)\s+sap/gi,
+    /github\s*(repo|repository|actions|pages|copilot|profile)/gi,
+    /(on|via|using)\s+github/gi,
+    /instagram\s*(and|&|,)\s*linkedin/gi,
+    /twitter\s*(and|&|,)\s*linkedin/gi,
+  ];
+  
+  // Check if a brand appears as an employer (near experience section patterns)
+  const employerPatterns = (brand: string) => [
+    new RegExp(`(?:at|@|\\|)\\s*${brand}`, 'i'),
+    new RegExp(`${brand}\\s*(?:\\||—|–|-)`, 'i'),
+    new RegExp(`(?:^|\\n)\\s*(?:[A-Z][a-z]+\\s+)*(?:at|@)\\s+${brand}`, 'im'),
+    new RegExp(`${brand}\\s*(?:\\n|$)`, 'im'),
+  ];
+  
+  const foundBrands = brandCompanies.filter(brand => {
+    if (!text.includes(brand)) return false;
+    
+    // Check if ALL mentions are tool/platform contexts (false positive)
+    const isToolOnly = toolContextPatterns.some(pattern => {
+      pattern.lastIndex = 0;
+      return pattern.test(resumeText);
+    });
+    
+    // Check if it appears in an employer context
+    const isEmployer = employerPatterns(brand).some(p => p.test(resumeText));
+    
+    // Only count as brand company if it appears as an employer, OR if there's no tool context
+    if (isEmployer) return true;
+    if (isToolOnly) return false;
+    
+    // For ambiguous cases (not clearly tool or employer), skip to avoid hallucination
+    // Only allow if the brand doesn't commonly appear as a tool name
+    const commonToolBrands = ['google', 'microsoft', 'linkedin', 'apple', 'adobe', 'salesforce', 'hubspot', 'slack', 'zoom', 'oracle', 'sap', 'github'];
+    if (commonToolBrands.includes(brand)) return false;
+    
+    return true;
+  });
+  
   if (foundBrands.length > 0) {
     signals.push({
       type: 'brand_company',
