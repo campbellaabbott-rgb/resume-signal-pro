@@ -7143,9 +7143,9 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
                     formatIssue: { type: "string" },
                     experienceLevel: {
                       type: "object",
-                      description: "Calculate yearsEstimate from earliest job date to present (2025). Count ALL roles including consulting, sales, part-time, freelance.",
+                      description: "Calculate yearsEstimate from earliest job date to present (2025). Count ALL roles including consulting, sales, part-time, freelance. CRITICAL: 'Account Executive' is an IC sales title, NOT executive-level. Only use 'Executive' for C-suite (CEO, CTO, VP, SVP). AE/Sales Rep/BDR = Mid-level or Senior depending on years. Founding sales hire at startup = Senior, not Executive.",
                       properties: {
-                        level: { type: "string", description: "Entry-level, Mid-level, Senior, Executive, etc." },
+                        level: { type: "string", description: "Entry-level, Mid-level, Senior, or Executive. ONLY use 'Executive' for C-suite/VP roles. Account Executive = Senior or Mid-level." },
                         yearsEstimate: { type: "string", description: "Total years from earliest job date to now (e.g., '10 years', '9+ years'). Do NOT truncate." }
                       }
                     },
