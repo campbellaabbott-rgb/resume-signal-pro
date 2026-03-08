@@ -2756,8 +2756,10 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         'contract negotiation', 'floor plans', 'av', 'decor', 'timeline management'
       ],
       contextPatterns: [
-        /\b(planned|coordinated|managed)\s+.*\b(event|wedding|conference|meeting)\b/i,
-        /\b(executed|delivered)\s+.*\b(event|experience|function)\b/i,
+        // Require hospitality/venue context — not just any mention of "event"
+        /\b(planned|coordinated|managed)\s+.*\b(wedding|conference|banquet|gala|reception|trade\s+show)\b/i,
+        /\b(executed|delivered)\s+.*\b(wedding|banquet|gala|reception|corporate\s+function)\b/i,
+        /\b(venue|catering|seating\s+chart|floor\s+plan|decor|centerpiece)\b/i,
       ],
       minSkillsForHigh: 3,
       titleWeight: 35
