@@ -7,13 +7,14 @@ import {
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
   TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket,
-  BarChart3, Shield, Search, Settings2, Eye
+  BarChart3, Shield, Search, Settings2, Eye, Flame
 } from "lucide-react";
 import { LockedPremiumInsight } from "./LockedPremiumInsight";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { PersonalizedInsights } from "./PersonalizedInsights";
 import { ElevatorPitchGenerator } from "./ElevatorPitchGenerator";
 import { RecruiterViewMode } from "./RecruiterViewMode";
+import { ResumeRoast } from "./ResumeRoast";
 import { TieredPricingSection } from "./TieredPricingSection";
 import { ResumeBeforeAfter } from "./ResumeBeforeAfter";
 import { JobKeywordMatcher } from "./JobKeywordMatcher";
@@ -1780,6 +1781,28 @@ export function FreeKeywordResults({
           }
         >
           <RecruiterViewMode
+            resumeText={resumeText}
+            industry={industry}
+            currentRole={currentRole}
+          />
+        </CollapsibleSection>
+      )}
+
+      {/* Resume Roast */}
+      {resumeText && (
+        <CollapsibleSection
+          id="resume-roast"
+          title="Resume Roast 🔥"
+          subtitle="Brutally honest, hilariously specific"
+          icon={<Flame className="w-4 h-4" />}
+          defaultOpen={false}
+          badge={
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">
+              Free
+            </span>
+          }
+        >
+          <ResumeRoast
             resumeText={resumeText}
             industry={industry}
             currentRole={currentRole}
