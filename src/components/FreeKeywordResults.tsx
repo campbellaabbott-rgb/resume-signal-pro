@@ -2874,55 +2874,6 @@ export function FreeKeywordResults({
         keywordFixPrice={isLocalCurrency ? `$${PRODUCTS.basicKeywordFix.priceUsd} ≈ ${formatPrice(PRODUCTS.basicKeywordFix.priceUsd)}` : `$${PRODUCTS.basicKeywordFix.priceUsd}`}
       />
 
-      {/* Upgrade CTA Box 2 */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 border-2 border-primary/30 p-6 mb-5 relative overflow-hidden">
-        <div className="absolute bottom-0 left-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex -space-x-1">
-              <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center">
-                <CheckCircle2 className="w-3 h-3 text-success" />
-              </div>
-              <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center">
-                <CheckCircle2 className="w-3 h-3 text-success" />
-              </div>
-              <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center">
-                <CheckCircle2 className="w-3 h-3 text-success" />
-              </div>
-            </div>
-            <span className="text-xs font-medium text-muted-foreground">10,000+ resumes improved</span>
-          </div>
-          <h4 className="text-lg font-bold text-foreground mb-2">
-            Turn Problems Into Interview Invites
-          </h4>
-          <p className="text-sm text-muted-foreground mb-4">
-            Get recruiter-approved rewrites and industry-specific keywords that actually work.
-          </p>
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            <div className="text-center p-2 rounded-lg bg-background/50">
-              <div className="text-lg font-bold text-primary">10+</div>
-              <div className="text-[10px] text-muted-foreground">Sections</div>
-            </div>
-            <div className="text-center p-2 rounded-lg bg-background/50">
-              <div className="text-lg font-bold text-primary">50+</div>
-              <div className="text-[10px] text-muted-foreground">Insights</div>
-            </div>
-            <div className="text-center p-2 rounded-lg bg-background/50">
-              <div className="text-lg font-bold text-primary">∞</div>
-              <div className="text-[10px] text-muted-foreground">Rewrites</div>
-            </div>
-          </div>
-          <Button 
-            onClick={() => handleUpgradeClick('cta_box_2')}
-            size="lg"
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            {getSecondCtaText()}
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
-      </div>
 
       {/* Email Capture */}
       <div className="rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 p-5 mb-5">
