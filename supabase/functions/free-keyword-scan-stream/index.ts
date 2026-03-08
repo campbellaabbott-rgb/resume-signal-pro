@@ -8218,6 +8218,21 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         })()
       );
 
+      // ======================== Industry Score Calibration ========================
+      // Apply industry-specific calibration BEFORE computing derived fields
+      const rawAtsScore = analysis.atsScoreEstimate || 0;
+      const scoreCalibration = calibrateScoreByIndustry(
+        rawAtsScore,
+        hybridResult.industry,
+        seniority,
+        resumeText
+      );
+      
+      if (scoreCalibration.adjustment !== 0) {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Score calibration: ${rawAtsScore} -> ${scoreCalibration.calibratedScore} (${scoreCalibration.reason})`);
+        analysis.atsScoreEstimate = scoreCalibration.calibratedScore;
+      }
+
       // ======================== Server-Side Computed Fields ========================
       // These are computed from the raw resume text for accuracy and consistency
 
@@ -8233,7 +8248,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       const computedBulletImpact = computeBulletImpactScore(resumeText);
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Computed bullet impact: ${JSON.stringify(computedBulletImpact)}`);
 
-      // 4. Industry Benchmark
+      // 4. Industry Benchmark (uses calibrated score)
       const computedBenchmark = computeIndustryBenchmark(analysis.atsScoreEstimate || 0, analysis.industry);
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Computed benchmark: ${JSON.stringify(computedBenchmark)}`);
 
