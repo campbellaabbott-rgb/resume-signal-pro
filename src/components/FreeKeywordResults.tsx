@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { useTranslation } from "react-i18next";
@@ -6,7 +6,8 @@ import {
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
-  TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket
+  TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket,
+  BarChart3, Shield, Search, Settings2
 } from "lucide-react";
 import { LockedPremiumInsight } from "./LockedPremiumInsight";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
@@ -29,6 +30,8 @@ import { ShareableScoreCard } from "./ShareableScoreCard";
 import { ScoreHero } from "./scorecard/ScoreHero";
 import { MetricCardsGrid } from "./scorecard/MetricCardsGrid";
 import { RedFlagsSection, KeywordsSection } from "./scorecard/RedFlagsKeywords";
+import { SectionNav } from "./scorecard/SectionNav";
+import { CollapsibleSection } from "./scorecard/CollapsibleSection";
 import { 
   EnhancedAnalysisDisplay, 
   ResumeTypeResult, 
@@ -1272,6 +1275,22 @@ export function FreeKeywordResults({
     return "bg-primary/10 border-primary/20";
   };
 
+  const navSections = useMemo(() => {
+    const sections = [
+      { id: "section-overview", label: "Overview", icon: "📊" },
+      { id: "section-metrics", label: "Metrics", icon: "📈" },
+      { id: "section-issues", label: "Issues", icon: "⚠️" },
+    ];
+    if (jobMatchScore !== undefined) {
+      sections.push({ id: "section-job-match", label: "Job Match", icon: "🎯" });
+    }
+    sections.push(
+      { id: "section-insights", label: "Insights", icon: "💡" },
+      { id: "section-upgrade", label: "Next Steps", icon: "🚀" },
+    );
+    return sections;
+  }, [jobMatchScore]);
+
   return (
     <TooltipProvider delayDuration={200}>
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
@@ -1293,6 +1312,14 @@ export function FreeKeywordResults({
         isLoading={isLoading}
         eliteSignalsCount={eliteSignals?.length || 0}
       />
+
+      {/* Section Navigation */}
+      <SectionNav sections={navSections} className="mb-4" />
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION: Overview */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <div id="section-overview">
 
       {/* AI-Generated Summary */}
       <AISummary
@@ -1331,70 +1358,60 @@ export function FreeKeywordResults({
         currentIndustry={effectiveIndustry}
       />
 
-      {/* Industry-Specific Keyword Suggestions */}
-      <IndustryKeywordSuggestions 
-        industry={effectiveIndustry} 
-        resumeText={resumeText}
-        className="mb-4"
-      />
+      {/* Industry & Role Keyword Suggestions */}
+      <CollapsibleSection
+        id="keywords-suggestions"
+        title="Industry & Role Keywords"
+        subtitle="Keywords relevant to your field and target role"
+        icon={<Search className="w-4 h-4" />}
+        defaultOpen={false}
+      >
+        <IndustryKeywordSuggestions 
+          industry={effectiveIndustry} 
+          resumeText={resumeText}
+          className="mb-4"
+        />
+        <RoleKeywordSuggestions 
+          currentRole={currentRole}
+          targetRole={jobTitle}
+          resumeText={resumeText}
+        />
+      </CollapsibleSection>
 
-      {/* Role-Specific Keyword Suggestions */}
-      <RoleKeywordSuggestions 
-        currentRole={currentRole}
-        targetRole={jobTitle}
-        resumeText={resumeText}
-        className="mb-6"
-      />
+      </div> {/* end section-overview */}
 
-      {/* Personalized Action Required CTA Banner */}
-      <div className="rounded-2xl bg-gradient-to-r from-destructive/15 via-destructive/10 to-destructive/5 border border-destructive/30 p-5 mb-6">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="p-1.5 rounded-lg bg-destructive/20">
-            <AlertTriangle className="w-4 h-4 text-destructive" />
-          </div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-destructive">
-            {candidateName ? `${candidateName.split(' ')[0]}, action needed` : 'Action Required'}
-          </span>
-        </div>
-        
-        <h4 className="text-lg font-bold mb-2">
-          {redFlags.length > 0 
-            ? candidateName 
-              ? `${candidateName.split(' ')[0]}, ${redFlags.length} issues are blocking your applications`
-              : `${redFlags.length}+ Issues Holding Your Resume Back`
-            : `${atsScoreEstimate < 70 ? 'Critical' : 'Key'} Issues Found in Your Resume`
-          }
-        </h4>
-        <p className="text-sm text-muted-foreground mb-4">
-          {currentRole 
-            ? `Get ${effectiveIndustry.replace(/_/g, ' ')}-specific fixes for your ${currentRole} resume, with rewritten bullet points and optimized keywords.`
-            : `Get specific fixes, rewritten bullet points, and AI-ATS-optimized suggestions tailored to ${effectiveIndustry.replace(/_/g, ' ')}.`
-          }
-        </p>
-        
+      {/* Compact Action CTA */}
+      <div className="rounded-xl bg-gradient-to-r from-destructive/10 to-destructive/5 border border-destructive/20 p-4 mb-5">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-foreground">
+              {redFlags.length > 0 
+                ? `${redFlags.length} issues found — fix them now`
+                : `${atsScoreEstimate < 70 ? 'Critical' : 'Key'} improvements available`
+              }
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {currentRole 
+                ? `${effectiveIndustry.replace(/_/g, ' ')}-specific fixes for your ${currentRole} resume`
+                : `Industry-specific fixes with rewritten bullet points`
+              }
+            </p>
+          </div>
           <Button 
             onClick={() => handleUpgradeClick('action_required_banner')}
             disabled={isLoading}
-            className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-lg"
+            size="sm"
+            className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground shrink-0"
           >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Sparkles className="w-4 h-4" />
-            )}
+            {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
             {getFirstCtaText()}
-            <ArrowRight className="w-4 h-4" />
           </Button>
-          <span className="text-xs text-muted-foreground">
-            Takes 2 minutes • Instant results
-          </span>
         </div>
       </div>
 
       {/* Job Match Section - Show when job description was provided */}
       {jobMatchScore !== undefined && jobMatchGrade && (
-        <div className="rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-success/10 border-2 border-primary/30 p-5 mb-6">
+        <div id="section-job-match" className="rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-success/10 border-2 border-primary/30 p-5 mb-6">
           <div className="flex items-center gap-2 mb-4">
             <div className="p-2 rounded-lg bg-primary/20">
               <Target className="w-5 h-5 text-primary" />
@@ -1673,69 +1690,75 @@ export function FreeKeywordResults({
         </div>
       )}
       
-      {/* ATS Score Context Banner - Only shown for below-passing scores, uses consistent language */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION: Metrics */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <div id="section-metrics">
+
+      {/* ATS Score Context Banner - Only shown for below-passing scores */}
       {atsScoreEstimate < 75 && (
         <div className={cn(
-          "rounded-2xl border-2 p-4 mb-4",
+          "rounded-xl border p-3 mb-4",
           atsScoreEstimate < 60 
-            ? "bg-gradient-to-r from-destructive/20 via-destructive/10 to-destructive/5 border-destructive/40" 
-            : "bg-gradient-to-r from-warning/15 via-warning/10 to-warning/5 border-warning/40"
+            ? "bg-destructive/5 border-destructive/20" 
+            : "bg-warning/5 border-warning/20"
         )}>
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3">
-              <div className={cn(
-                "p-2 rounded-full",
-                atsScoreEstimate < 60 ? "bg-destructive/20" : "bg-warning/20"
-              )}>
-                <AlertTriangle className={cn(
-                  "w-5 h-5",
-                  atsScoreEstimate < 60 ? "text-destructive" : "text-warning"
-                )} />
-              </div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className={cn("w-4 h-4", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")} />
               <div>
-                <p className={cn(
-                  "font-bold text-lg",
-                  atsScoreEstimate < 60 ? "text-destructive" : "text-warning"
-                )}>
-                  {atsScoreEstimate < 60 
-                    ? "Your resume is at risk of being filtered out"
-                    : "Your resume needs improvement to compete"}
+                <p className={cn("text-sm font-semibold", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")}>
+                  {atsScoreEstimate < 60 ? "At risk of being filtered out" : "Needs improvement to compete"}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {atsScoreEstimate < 60 
-                    ? "Most ATS systems require 60+ to pass initial screening" 
-                    : "A score of 75+ significantly increases your callback rate"}
+                <p className="text-xs text-muted-foreground">
+                  {atsScoreEstimate < 60 ? "Most ATS require 60+ to pass" : "75+ increases callback rate"}
                 </p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">Recommended score</p>
-              <p className="text-2xl font-bold text-success">75+</p>
-            </div>
+            <span className="text-lg font-bold text-success shrink-0">75+</span>
           </div>
         </div>
       )}
 
-      {/* Personalized Insights Section */}
-      <div className="mb-6 p-4 rounded-2xl bg-card/50 border border-border/50">
-        <PersonalizedInsights
-          industry={industry}
-          experienceLevel={experienceLevel}
-          atsScore={atsScoreEstimate}
-          hasJobDescription={!!jobMatchScore}
-          currentRole={currentRole}
-        />
-      </div>
+      {/* Personalized Insights */}
+      <CollapsibleSection
+        id="personalized-tips"
+        title="Personalized Tips"
+        subtitle="Tailored insights for your profile"
+        icon={<Lightbulb className="w-4 h-4" />}
+        defaultOpen={false}
+      >
+        <div className="p-4 rounded-xl bg-card/50 border border-border/50">
+          <PersonalizedInsights
+            industry={industry}
+            experienceLevel={experienceLevel}
+            atsScore={atsScoreEstimate}
+            hasJobDescription={!!jobMatchScore}
+            currentRole={currentRole}
+          />
+        </div>
+      </CollapsibleSection>
 
-      {/* Interactive Checklist - Track fixes for this scan */}
+      {/* Interactive Checklist */}
       {currentScan && currentScan.checklist && currentScan.checklist.length > 0 && (
-        <div className="mb-6">
+        <CollapsibleSection
+          id="fix-checklist"
+          title="Fix Checklist"
+          subtitle={`${currentScan.checklist.filter((i: any) => i.completed).length}/${currentScan.checklist.length} completed`}
+          icon={<CheckCircle2 className="w-4 h-4" />}
+          defaultOpen={false}
+          badge={
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+              Track progress
+            </span>
+          }
+        >
           <InteractiveChecklist 
             entryId={currentScan.id}
             items={currentScan.checklist}
             candidateName={candidateName}
           />
-        </div>
+        </CollapsibleSection>
       )}
 
       {/* Dashboard-style Metric Cards Grid */}
@@ -1756,18 +1779,18 @@ export function FreeKeywordResults({
         redFlags={redFlags}
       />
 
-      {/* Elite Signals - Recruiter-attracting strengths */}
+      {/* Elite Signals */}
       {eliteSignals && eliteSignals.length > 0 && (
-        <div className="rounded-2xl border p-4 bg-primary/5 border-primary/20 mb-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-primary" />
+        <div className="rounded-xl border p-3 bg-primary/5 border-primary/20 mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
             <p className="text-xs font-medium text-primary uppercase tracking-wider">Recruiter-Attracting Signals</p>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {eliteSignals.map((signal, idx) => (
               <div key={idx} className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-foreground">{signal.signal}</p>
+                <CheckCircle className="w-3.5 h-3.5 text-success flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-foreground">{signal.signal}</p>
               </div>
             ))}
           </div>
@@ -1796,6 +1819,13 @@ export function FreeKeywordResults({
           improvementPotential={improvementPotential.estimatedScoreIncrease}
         />
       </div>
+
+      </div> {/* end section-metrics */}
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION: Issues */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <div id="section-issues">
 
       {/* Top 5 Reasons Your Resume Is Being Skipped */}
       {topSkipReasons && topSkipReasons.length > 0 && (
@@ -2038,6 +2068,13 @@ export function FreeKeywordResults({
         </div>
       </div>
 
+      </div> {/* end section-issues */}
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION: Insights */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <div id="section-insights">
+
       {/* Career Situation Detection */}
       {careerSituation && careerSituation.situation !== "standard" && (
         <div className="rounded-2xl bg-card border border-border p-5 mb-5">
@@ -2116,22 +2153,20 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* Personalized Career Insights - NEW SECTION */}
+      {/* Personalized Career Insights */}
       {personalizedCareerInsights && (
-        <div className="rounded-2xl bg-gradient-to-br from-primary/5 via-card to-card border border-primary/20 p-5 mb-5 relative overflow-hidden">
-          {/* Decorative background */}
+        <CollapsibleSection
+          id="career-insights"
+          title="Personalized Career Insights"
+          subtitle={`Tailored for ${candidateName || 'you'}`}
+          icon={<Sparkles className="w-4 h-4" />}
+          defaultOpen={false}
+          badge={<span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">AI-powered</span>}
+        >
+        <div className="rounded-xl bg-gradient-to-br from-primary/5 via-card to-card border border-primary/20 p-4 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.08),transparent_50%)] pointer-events-none" />
           
           <div className="relative">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="p-2 rounded-xl bg-primary/10">
-                <Sparkles className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h4 className="font-bold text-lg">Your Personalized Career Insights</h4>
-                <p className="text-xs text-muted-foreground">Tailored just for {candidateName || 'you'}</p>
-              </div>
-            </div>
 
             {/* Personalized Encouragement */}
             {personalizedCareerInsights.personalizedEncouragement && (
@@ -2299,24 +2334,27 @@ export function FreeKeywordResults({
             </div>
           </div>
         </div>
+        </CollapsibleSection>
       )}
 
       {/* Format Recommendation - Industry-Specific */}
       {formatRecommendation && (
-        <div className="rounded-2xl bg-card border border-border p-5 mb-5">
-          <div className="flex items-center gap-2 mb-2">
-            <LayoutList className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold flex-1">Resume Format Recommendation</h4>
+        <CollapsibleSection
+          id="format-recommendation"
+          title="Resume Format Recommendation"
+          subtitle={`${formatRecommendation.recommendedStyle} style recommended for ${industry}`}
+          icon={<LayoutList className="w-4 h-4" />}
+          defaultOpen={false}
+          badge={
             <span className={cn(
-              "text-xs px-2 py-1 rounded-full font-medium capitalize",
-              formatRecommendation.recommendedStyle === "traditional" ? "bg-blue-500/20 text-blue-600 dark:text-blue-400" :
-              formatRecommendation.recommendedStyle === "modern" ? "bg-purple-500/20 text-purple-600 dark:text-purple-400" :
-              formatRecommendation.recommendedStyle === "creative" ? "bg-pink-500/20 text-pink-600 dark:text-pink-400" :
+              "text-[10px] px-1.5 py-0.5 rounded-full font-medium capitalize",
               "bg-primary/20 text-primary"
             )}>
-              {formatRecommendation.recommendedStyle} style
+              {formatRecommendation.recommendedStyle}
             </span>
-          </div>
+          }
+        >
+        <div className="rounded-xl bg-card border border-border p-4">
           <p className="text-xs text-muted-foreground mb-4">
             Based on {industry} industry standards and your experience level
           </p>
@@ -2427,18 +2465,18 @@ export function FreeKeywordResults({
             </p>
           </div>
         </div>
+        </CollapsibleSection>
       )}
 
       {/* ATS System Compatibility */}
-      <div className="rounded-2xl bg-card border border-border p-5 mb-5">
-        <div className="flex items-center gap-2 mb-2">
-          <FileCheck className="w-4 h-4 text-primary" />
-          <h4 className="font-semibold flex-1">Estimated ATS Parsing Compatibility</h4>
-          <MetricTooltip metricKey="atsCompatibility" />
-        </div>
-        <p className="text-xs text-muted-foreground mb-4">
-          Estimated compatibility based on your resume's format and structure
-        </p>
+      <CollapsibleSection
+        id="ats-compatibility"
+        title="ATS Parsing Compatibility"
+        subtitle="How well different ATS systems can read your resume"
+        icon={<FileCheck className="w-4 h-4" />}
+        defaultOpen={false}
+      >
+      <div className="rounded-xl bg-card border border-border p-4">
 
         {/* Overall Rating Badge */}
         <div className={cn(
@@ -2555,6 +2593,7 @@ export function FreeKeywordResults({
           </div>
         </div>
       </div>
+      </CollapsibleSection>
 
       {/* Power Words & Weak Phrases */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
@@ -2758,36 +2797,12 @@ export function FreeKeywordResults({
         </div>
       </div>
 
-      {/* Upgrade CTA Box 1 */}
-      <div className="rounded-2xl bg-gradient-to-br from-destructive/15 via-destructive/10 to-destructive/5 border-2 border-destructive/40 p-6 mb-5 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-destructive/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-2 rounded-full bg-destructive/20 animate-pulse">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
-            </div>
-            <span className="text-xs font-bold uppercase tracking-wider text-destructive/80">Action Required</span>
-          </div>
-          <h4 className="text-lg font-bold text-foreground mb-2">
-            {redFlags.length}+ Issues Holding Your Resume Back
-          </h4>
-          <p className="text-sm text-muted-foreground mb-4">
-            Get specific fixes, rewritten bullet points, and ATS-optimized suggestions tailored to your industry.
-          </p>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <Button 
-              onClick={() => handleUpgradeClick('cta_box_1')}
-              size="lg"
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-lg shadow-destructive/25 hover:shadow-xl hover:shadow-destructive/30 transition-all"
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              {getFirstCtaText()}
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-            <span className="text-xs text-muted-foreground">Takes 2 minutes • Instant results</span>
-          </div>
-        </div>
-      </div>
+      </div> {/* end section-insights */}
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SECTION: Upgrade / Next Steps */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <div id="section-upgrade">
 
       {/* Premium Resume Package CTA - Clear single action */}
       {onGenerateTailoredResume && (
@@ -2861,55 +2876,6 @@ export function FreeKeywordResults({
         keywordFixPrice={isLocalCurrency ? `$${PRODUCTS.basicKeywordFix.priceUsd} ≈ ${formatPrice(PRODUCTS.basicKeywordFix.priceUsd)}` : `$${PRODUCTS.basicKeywordFix.priceUsd}`}
       />
 
-      {/* Upgrade CTA Box 2 */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 border-2 border-primary/30 p-6 mb-5 relative overflow-hidden">
-        <div className="absolute bottom-0 left-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex -space-x-1">
-              <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center">
-                <CheckCircle2 className="w-3 h-3 text-success" />
-              </div>
-              <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center">
-                <CheckCircle2 className="w-3 h-3 text-success" />
-              </div>
-              <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center">
-                <CheckCircle2 className="w-3 h-3 text-success" />
-              </div>
-            </div>
-            <span className="text-xs font-medium text-muted-foreground">10,000+ resumes improved</span>
-          </div>
-          <h4 className="text-lg font-bold text-foreground mb-2">
-            Turn Problems Into Interview Invites
-          </h4>
-          <p className="text-sm text-muted-foreground mb-4">
-            Get recruiter-approved rewrites and industry-specific keywords that actually work.
-          </p>
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            <div className="text-center p-2 rounded-lg bg-background/50">
-              <div className="text-lg font-bold text-primary">10+</div>
-              <div className="text-[10px] text-muted-foreground">Sections</div>
-            </div>
-            <div className="text-center p-2 rounded-lg bg-background/50">
-              <div className="text-lg font-bold text-primary">50+</div>
-              <div className="text-[10px] text-muted-foreground">Insights</div>
-            </div>
-            <div className="text-center p-2 rounded-lg bg-background/50">
-              <div className="text-lg font-bold text-primary">∞</div>
-              <div className="text-[10px] text-muted-foreground">Rewrites</div>
-            </div>
-          </div>
-          <Button 
-            onClick={() => handleUpgradeClick('cta_box_2')}
-            size="lg"
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            {getSecondCtaText()}
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
-      </div>
 
       {/* Email Capture */}
       <div className="rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 p-5 mb-5">
@@ -3104,6 +3070,8 @@ export function FreeKeywordResults({
           <span className="text-success font-medium">One interview = {priceDisplay} paid for itself</span>
         </p>
       </div>
+
+      </div> {/* end section-upgrade */}
     </div>
     </TooltipProvider>
   );
