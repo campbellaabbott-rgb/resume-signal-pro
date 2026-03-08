@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { useTranslation } from "react-i18next";
@@ -6,7 +6,8 @@ import {
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
-  TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket
+  TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket,
+  BarChart3, Shield, Search, Settings2
 } from "lucide-react";
 import { LockedPremiumInsight } from "./LockedPremiumInsight";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
