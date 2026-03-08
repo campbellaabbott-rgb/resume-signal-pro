@@ -597,6 +597,12 @@ interface PersonalizedCareerInsights {
   personalizedEncouragement: string;
 }
 
+interface EliteSignal {
+  type: 'brand_company' | 'large_deal' | 'founding_role' | 'quota_consistency' | 'career_progression';
+  signal: string;
+  strength: 'high' | 'medium';
+}
+
 interface FreeKeywordResultsProps {
   candidateName?: string | null;
   currentRole?: string;
