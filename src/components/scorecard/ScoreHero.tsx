@@ -241,13 +241,14 @@ export function ScoreHero({
                 : "Your Resume Score"
               }
             </h3>
+            {currentRole && (
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-2 rounded-lg bg-primary/10 border border-primary/20 text-xs font-medium text-primary">
+                <Briefcase className="w-3 h-3" />
+                <span className="text-muted-foreground">Current Role:</span>
+                <span className="font-semibold truncate max-w-[200px]">{currentRole}</span>
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mb-3">
-              {currentRole && (
-                <>
-                  <span className="text-foreground font-medium truncate max-w-[180px]">{currentRole}</span>
-                  <span className="text-border">•</span>
-                </>
-              )}
               <span className="text-foreground/80">{displayIndustry}</span>
               <span className="text-border">•</span>
               <span>{getExperienceLevelLabel(experienceLevel.level)}</span>
