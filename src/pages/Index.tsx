@@ -180,6 +180,11 @@ interface FreeKeywordResult {
     description: string;
     location?: string;
   }[];
+  eliteSignals?: {
+    type: 'brand_company' | 'large_deal' | 'founding_role' | 'quota_consistency' | 'career_progression';
+    signal: string;
+    strength: 'high' | 'medium';
+  }[];
   contentLocations?: {
     quota?: {
       exists: boolean;
