@@ -1812,7 +1812,50 @@ export function FreeKeywordResults({
         </CollapsibleSection>
       )}
 
-      {currentScan && currentScan.checklist && currentScan.checklist.length > 0 && (
+      {/* Interview Coach */}
+      {resumeText && (
+        <CollapsibleSection
+          id="interview-coach"
+          title="Interview Coach"
+          subtitle="Practice with AI-generated questions"
+          icon={<MessageSquare className="w-4 h-4" />}
+          defaultOpen={false}
+          badge={
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+              Free
+            </span>
+          }
+        >
+          <InterviewCoach
+            resumeText={resumeText}
+            industry={industry}
+            currentRole={currentRole}
+          />
+        </CollapsibleSection>
+      )}
+
+      {/* Career Path Simulator */}
+      {resumeText && (
+        <CollapsibleSection
+          id="career-path"
+          title="Career Path Simulator"
+          subtitle="3 possible futures based on your resume"
+          icon={<TrendingUp className="w-4 h-4" />}
+          defaultOpen={false}
+          badge={
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+              Free
+            </span>
+          }
+        >
+          <CareerPathSimulator
+            resumeText={resumeText}
+            industry={industry}
+            currentRole={currentRole}
+          />
+        </CollapsibleSection>
+      )}
+
         <CollapsibleSection
           id="fix-checklist"
           title="Fix Checklist"
