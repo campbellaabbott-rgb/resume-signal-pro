@@ -1901,6 +1901,30 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
     },
     
     // === SUB-INDUSTRIES FOR MARKETING ===
+    // General marketing catch-all for generic marketing titles (intern, coordinator, etc.)
+    general_marketing: {
+      titlePatterns: [
+        /\b(marketing\s+intern|marketing\s+assistant|marketing\s+associate)\b/i,
+        /\b(marketing\s+coordinator|marketing\s+specialist|marketing\s+analyst)\b/i,
+        /\b(marketing\s+manager|marketing\s+director|vp\s+of\s+marketing)\b/i,
+        /\b(head\s+of\s+marketing|chief\s+marketing\s+officer|cmo)\b/i,
+        /\b(marketing\s+executive|marketing\s+officer|marketing\s+lead)\b/i,
+        /\b(intern,?\s+marketing|intern\s*[-–—]\s*marketing)\b/i,
+      ],
+      skillPatterns: [
+        'marketing', 'social media', 'campaign', 'brand', 'content creation',
+        'email marketing', 'marketing strategy', 'market research', 'advertising',
+        'public relations', 'pr', 'communications', 'engagement', 'analytics',
+        'canva', 'mailchimp', 'hootsuite', 'buffer', 'sprout social'
+      ],
+      contextPatterns: [
+        /\b(developed|created|managed|executed)\s+.*\b(marketing|campaign|social\s+media|brand)\b/i,
+        /\b(increased|grew|improved)\s+.*\b(engagement|followers|reach|awareness|traffic)\b/i,
+        /\b(marketing\s+event|marketing\s+campaign|marketing\s+initiative|marketing\s+material)\b/i,
+      ],
+      minSkillsForHigh: 2,
+      titleWeight: 40
+    },
     digital_marketing: {
       titlePatterns: [
         /\b(digital\s+marketing\s+manager|digital\s+marketing\s+specialist|digital\s+strategist)\b/,
