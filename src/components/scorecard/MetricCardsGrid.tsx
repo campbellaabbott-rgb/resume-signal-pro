@@ -40,7 +40,7 @@ interface KeywordDensity {
 interface ImprovementPotential {
   level: "low" | "medium" | "high";
   estimatedScoreIncrease: number;
-  topActions: string[];
+  topActions?: string[];
 }
 
 interface ResumeLength {
