@@ -26,6 +26,7 @@ import { useScanHistory, generateChecklist } from "@/hooks/use-scan-history";
 import { InteractiveChecklist } from "./InteractiveChecklist";
 import { AISummary } from "./AISummary";
 import { ShareableScoreCard } from "./ShareableScoreCard";
+import { ScoreHero } from "./scorecard/ScoreHero";
 import { 
   EnhancedAnalysisDisplay, 
   ResumeTypeResult, 
@@ -1272,79 +1273,24 @@ export function FreeKeywordResults({
   return (
     <TooltipProvider delayDuration={200}>
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
-      {/* Personalized Header */}
-      <div className="text-center mb-6">
-        <div className="flex flex-col items-center gap-3 mb-3">
-          <div className="flex items-center gap-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success text-sm font-medium">
-              <Sparkles className="w-4 h-4" />
-              {t('freeScan.complete')}
-            </div>
-          </div>
-          
-          {/* Prominent cached results notice with re-analyze CTA */}
-          {isCached && onForceReanalyze && (
-            <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border border-primary/20">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2 text-primary cursor-help">
-                    <Zap className="w-4 h-4" />
-                    <span className="text-sm font-medium">Showing saved results</span>
-                    <HelpCircle className="w-3.5 h-3.5 opacity-60" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-xs text-center">
-                  <p className="text-sm">We detected the same resume and loaded your previous results instantly. This provides faster loading and reduces server load.</p>
-                </TooltipContent>
-              </Tooltip>
-              <div className="h-4 w-px bg-primary/20" />
-              <button
-                onClick={() => {
-                  // Track re-analyze button click
-                  supabase.functions.invoke('track-ab-event', {
-                    body: {
-                      testName: 'cache_reanalyze',
-                      variant: 'button_click',
-                      eventType: 'conversion',
-                      visitorId: localStorage.getItem('ab_visitor_id') || crypto.randomUUID(),
-                      metadata: { source: 'free_keyword_results' }
-                    }
-                  }).catch(console.error);
-                  onForceReanalyze();
-                }}
-                disabled={isLoading}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium transition-colors shadow-sm"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-3.5 h-3.5" />
-                )}
-                <span>Run Fresh Analysis</span>
-              </button>
-            </div>
-          )}
-        </div>
-        
-        {/* Personalized greeting */}
-        <h3 className="text-xl font-bold mb-1">
-          {candidateName 
-            ? `${candidateName.split(' ')[0]}, here's your resume analysis`
-            : t('freeScan.preview')
-          }
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          {currentRole ? (
-            <>
-              <span className="text-foreground font-medium">{currentRole}</span> in <span className="text-foreground font-medium">{effectiveIndustry}</span> • <span className="text-foreground font-medium">{getExperienceLevelLabel(experienceLevel.level)}</span> ({experienceLevel.yearsEstimate})
-            </>
-          ) : (
-            <>
-              {t('freeScan.detected')}: <span className="text-foreground font-medium">{effectiveIndustry}</span> • <span className="text-foreground font-medium">{getExperienceLevelLabel(experienceLevel.level)}</span> ({experienceLevel.yearsEstimate})
-            </>
-          )}
-        </p>
-      </div>
+      {/* Dashboard-style Score Hero */}
+      <ScoreHero
+        candidateName={candidateName}
+        currentRole={currentRole}
+        industry={effectiveIndustry}
+        atsScoreEstimate={atsScoreEstimate}
+        experienceLevel={experienceLevel}
+        formatGrade={formatGrade}
+        redFlagsCount={redFlags.length}
+        keywordsCount={keywords?.length || 0}
+        quickWinsCount={quickWins?.length || 0}
+        quantificationScore={quantificationScore?.score}
+        bulletImpactScore={bulletImpactScore?.score}
+        isCached={isCached}
+        onForceReanalyze={onForceReanalyze}
+        isLoading={isLoading}
+        eliteSignalsCount={eliteSignals?.length || 0}
+      />
 
       {/* AI-Generated Summary */}
       <AISummary
