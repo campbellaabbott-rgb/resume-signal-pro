@@ -2339,20 +2339,22 @@ export function FreeKeywordResults({
 
       {/* Format Recommendation - Industry-Specific */}
       {formatRecommendation && (
-        <div className="rounded-2xl bg-card border border-border p-5 mb-5">
-          <div className="flex items-center gap-2 mb-2">
-            <LayoutList className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold flex-1">Resume Format Recommendation</h4>
+        <CollapsibleSection
+          id="format-recommendation"
+          title="Resume Format Recommendation"
+          subtitle={`${formatRecommendation.recommendedStyle} style recommended for ${industry}`}
+          icon={<LayoutList className="w-4 h-4" />}
+          defaultOpen={false}
+          badge={
             <span className={cn(
-              "text-xs px-2 py-1 rounded-full font-medium capitalize",
-              formatRecommendation.recommendedStyle === "traditional" ? "bg-blue-500/20 text-blue-600 dark:text-blue-400" :
-              formatRecommendation.recommendedStyle === "modern" ? "bg-purple-500/20 text-purple-600 dark:text-purple-400" :
-              formatRecommendation.recommendedStyle === "creative" ? "bg-pink-500/20 text-pink-600 dark:text-pink-400" :
+              "text-[10px] px-1.5 py-0.5 rounded-full font-medium capitalize",
               "bg-primary/20 text-primary"
             )}>
-              {formatRecommendation.recommendedStyle} style
+              {formatRecommendation.recommendedStyle}
             </span>
-          </div>
+          }
+        >
+        <div className="rounded-xl bg-card border border-border p-4">
           <p className="text-xs text-muted-foreground mb-4">
             Based on {industry} industry standards and your experience level
           </p>
