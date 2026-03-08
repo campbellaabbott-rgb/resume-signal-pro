@@ -154,6 +154,7 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'sales_engineering': 'sales',
   'business_development': 'sales',
   // Marketing sub-industries
+  'general_marketing': 'marketing',
   'digital_marketing': 'marketing',
   'content_marketing': 'marketing',
   'brand_marketing': 'marketing',
@@ -335,6 +336,9 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'quota': 'sales', 'pipeline': 'sales', 'saas': 'enterprise_sales',
   'account executive': 'enterprise_sales', 'ae': 'enterprise_sales',
   // Marketing aliases
+  'marketing intern': 'general_marketing', 'marketing coordinator': 'general_marketing',
+  'marketing assistant': 'general_marketing', 'marketing associate': 'general_marketing',
+  'marketing specialist': 'general_marketing', 'marketing analyst': 'general_marketing',
   'pmm': 'product_marketing', 'go-to-market': 'product_marketing',
   // Legal aliases
   'regulatory': 'compliance', 'risk': 'compliance', 'governance': 'compliance',
@@ -1901,6 +1905,30 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
     },
     
     // === SUB-INDUSTRIES FOR MARKETING ===
+    // General marketing catch-all for generic marketing titles (intern, coordinator, etc.)
+    general_marketing: {
+      titlePatterns: [
+        /\b(marketing\s+intern|marketing\s+assistant|marketing\s+associate)\b/i,
+        /\b(marketing\s+coordinator|marketing\s+specialist|marketing\s+analyst)\b/i,
+        /\b(marketing\s+manager|marketing\s+director|vp\s+of\s+marketing)\b/i,
+        /\b(head\s+of\s+marketing|chief\s+marketing\s+officer|cmo)\b/i,
+        /\b(marketing\s+executive|marketing\s+officer|marketing\s+lead)\b/i,
+        /\b(intern,?\s+marketing|intern\s*[-–—]\s*marketing)\b/i,
+      ],
+      skillPatterns: [
+        'marketing', 'social media', 'campaign', 'brand', 'content creation',
+        'email marketing', 'marketing strategy', 'market research', 'advertising',
+        'public relations', 'pr', 'communications', 'engagement', 'analytics',
+        'canva', 'mailchimp', 'hootsuite', 'buffer', 'sprout social'
+      ],
+      contextPatterns: [
+        /\b(developed|created|managed|executed)\s+.*\b(marketing|campaign|social\s+media|brand)\b/i,
+        /\b(increased|grew|improved)\s+.*\b(engagement|followers|reach|awareness|traffic)\b/i,
+        /\b(marketing\s+event|marketing\s+campaign|marketing\s+initiative|marketing\s+material)\b/i,
+      ],
+      minSkillsForHigh: 2,
+      titleWeight: 40
+    },
     digital_marketing: {
       titlePatterns: [
         /\b(digital\s+marketing\s+manager|digital\s+marketing\s+specialist|digital\s+strategist)\b/,
@@ -2732,8 +2760,10 @@ function detectIndustryFromResume(resumeText: string): IndustryDetectionResult {
         'contract negotiation', 'floor plans', 'av', 'decor', 'timeline management'
       ],
       contextPatterns: [
-        /\b(planned|coordinated|managed)\s+.*\b(event|wedding|conference|meeting)\b/i,
-        /\b(executed|delivered)\s+.*\b(event|experience|function)\b/i,
+        // Require hospitality/venue context — not just any mention of "event"
+        /\b(planned|coordinated|managed)\s+.*\b(wedding|conference|banquet|gala|reception|trade\s+show)\b/i,
+        /\b(executed|delivered)\s+.*\b(wedding|banquet|gala|reception|corporate\s+function)\b/i,
+        /\b(venue|catering|seating\s+chart|floor\s+plan|decor|centerpiece)\b/i,
       ],
       minSkillsForHigh: 3,
       titleWeight: 35
