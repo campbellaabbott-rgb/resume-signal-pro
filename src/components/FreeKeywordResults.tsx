@@ -32,7 +32,6 @@ import { MetricCardsGrid } from "./scorecard/MetricCardsGrid";
 import { RedFlagsSection, KeywordsSection } from "./scorecard/RedFlagsKeywords";
 import { SectionNav } from "./scorecard/SectionNav";
 import { CollapsibleSection } from "./scorecard/CollapsibleSection";
-import { RedFlagsSection, KeywordsSection } from "./scorecard/RedFlagsKeywords";
 import { 
   EnhancedAnalysisDisplay, 
   ResumeTypeResult, 
