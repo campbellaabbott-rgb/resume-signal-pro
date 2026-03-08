@@ -7414,7 +7414,14 @@ These are HIGH-PRIORITY red flags that should be mentioned before keyword sugges
 - Overlapping roles without explanation
 - Missing company names for listed roles
 
-BEFORE ANALYSIS: Extract name → find earliest job date → calculate total years → assess seniority → LIST ALL EXISTING SKILLS/KEYWORDS → SCAN FOR EXISTING METRICS/QUOTA DATA → check contact info → extract titles → check education/certs → determine industry.
+MOST RECENT ROLE FOCUS (CRITICAL):
+- The candidate's MOST RECENT / CURRENT role is the PRIMARY signal for industry, scoring, and keyword suggestions.
+- Base your industry detection on the CURRENT or MOST RECENT job title, not older roles.
+- Career changers: if someone was a teacher for 8 years but is now a software engineer for 1 year, classify as "technology" not "education".
+- Keyword suggestions should target the CURRENT role, not past industries.
+- When extracting "currentRole", always use the most recent job title (the one marked "Present", "Current", or with the latest date range).
+
+BEFORE ANALYSIS: Extract name → identify MOST RECENT ROLE TITLE first → find earliest job date → calculate total years → assess seniority → LIST ALL EXISTING SKILLS/KEYWORDS → SCAN FOR EXISTING METRICS/QUOTA DATA → check contact info → extract titles → check education/certs → determine industry BASED ON CURRENT ROLE.
 
 OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywords (ONLY truly missing ones), red flags. Address candidate by name. Be accurate - don't flag content that exists or suggest keywords already present.`;
 
