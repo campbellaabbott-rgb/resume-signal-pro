@@ -6402,15 +6402,20 @@ const INDUSTRY_KEYWORD_DB: Record<string, { name: string; keywords: Array<{ keyw
   enterprise_sales: {
     name: 'Enterprise Sales',
     keywords: [
-      { keyword: 'MEDDPICC', category: 'methodology', importance: 'critical' },
+      // Truly critical for ATS in enterprise sales
       { keyword: 'Salesforce', category: 'tool', importance: 'critical' },
       { keyword: 'Quota Attainment', category: 'technical', importance: 'critical' },
-      { keyword: 'ARR', category: 'technical', importance: 'critical' },
-      { keyword: 'ACV', category: 'technical', importance: 'high' },
-      { keyword: 'Pipeline Management', category: 'technical', importance: 'high' },
-      { keyword: 'C-Suite Selling', category: 'technical', importance: 'high' },
+      { keyword: 'Pipeline Management', category: 'technical', importance: 'critical' },
+      { keyword: 'Enterprise', category: 'technical', importance: 'high' },
+      { keyword: 'SaaS', category: 'technical', importance: 'high' },
+      { keyword: 'Account Management', category: 'technical', importance: 'high' },
+      { keyword: 'C-Suite', category: 'technical', importance: 'high' },
       { keyword: 'Complex Sales', category: 'technical', importance: 'high' },
-      { keyword: 'Multi-threading', category: 'technical', importance: 'high' },
+      // Nice-to-have methodology terms — helpful but NOT required by most ATS
+      { keyword: 'MEDDPICC', category: 'methodology', importance: 'medium' },
+      { keyword: 'ARR', category: 'technical', importance: 'medium' },
+      { keyword: 'ACV', category: 'technical', importance: 'medium' },
+      { keyword: 'Multi-threading', category: 'technical', importance: 'medium' },
       { keyword: 'Gong', category: 'tool', importance: 'medium' },
     ],
   },
