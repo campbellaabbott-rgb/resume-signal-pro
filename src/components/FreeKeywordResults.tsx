@@ -2469,15 +2469,14 @@ export function FreeKeywordResults({
       )}
 
       {/* ATS System Compatibility */}
-      <div className="rounded-2xl bg-card border border-border p-5 mb-5">
-        <div className="flex items-center gap-2 mb-2">
-          <FileCheck className="w-4 h-4 text-primary" />
-          <h4 className="font-semibold flex-1">Estimated ATS Parsing Compatibility</h4>
-          <MetricTooltip metricKey="atsCompatibility" />
-        </div>
-        <p className="text-xs text-muted-foreground mb-4">
-          Estimated compatibility based on your resume's format and structure
-        </p>
+      <CollapsibleSection
+        id="ats-compatibility"
+        title="ATS Parsing Compatibility"
+        subtitle="How well different ATS systems can read your resume"
+        icon={<FileCheck className="w-4 h-4" />}
+        defaultOpen={false}
+      >
+      <div className="rounded-xl bg-card border border-border p-4">
 
         {/* Overall Rating Badge */}
         <div className={cn(
