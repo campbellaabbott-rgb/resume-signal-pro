@@ -61,6 +61,8 @@ const productIcons: Record<string, React.ElementType> = {
   atsDefense: ShieldCheck,
   careerSnapshot: Brain,
   graduateGamePlan: Target,
+  interviewCoach: MessageSquare,
+  careerPathSimulator: TrendingUp,
 };
 
 // Product-specific next steps and how-it-works info
