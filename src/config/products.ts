@@ -32,7 +32,54 @@ export const PRODUCTS = {
     ]
   },
 
-  // New products
+  // $5 Add-Ons - Easy to find and purchase
+  resumeRoast: {
+    id: 'resume_roast',
+    name: 'Resume Roast',
+    description: 'Brutally honest feedback that tells you what recruiters really think',
+    priceUsd: 5,
+    priceId: 'price_resume_roast_5',
+    category: 'addon',
+    features: [
+      'No-holds-barred honest feedback',
+      'What recruiters actually think',
+      'Biggest weaknesses exposed',
+      'Tough love that helps'
+    ],
+    icon: 'Flame'
+  },
+  interviewCoach: {
+    id: 'interview_coach',
+    name: 'Interview Coach',
+    description: 'Practice tough interview questions based on your resume',
+    priceUsd: 5,
+    priceId: 'price_interview_coach_5',
+    category: 'addon',
+    features: [
+      'Personalized questions from your resume',
+      'Behavioral interview prep',
+      'STAR method guidance',
+      'Answer frameworks'
+    ],
+    icon: 'MessageSquare'
+  },
+  careerPathSimulator: {
+    id: 'career_path_simulator',
+    name: 'Career Path Simulator',
+    description: 'See your potential career trajectories and what it takes to get there',
+    priceUsd: 5,
+    priceId: 'price_career_path_5',
+    category: 'addon',
+    features: [
+      '3 realistic career paths',
+      'Skills gap analysis',
+      'Timeline projections',
+      'Action steps for each path'
+    ],
+    icon: 'TrendingUp'
+  },
+
+  // Premium products
   basicKeywordFix: {
     id: 'basic_keyword_fix',
     name: 'Basic Keyword Fix',
@@ -138,4 +185,22 @@ export function getProduct(id: ProductId) {
 // Get all purchasable products (for display)
 export function getAllProducts() {
   return Object.values(PRODUCTS);
+}
+
+// Get $5 add-on products
+export function getAddOnProducts() {
+  return [
+    PRODUCTS.resumeRoast,
+    PRODUCTS.interviewCoach,
+    PRODUCTS.careerPathSimulator,
+  ];
+}
+
+// Get premium products (higher tier)
+export function getPremiumProducts() {
+  return [
+    PRODUCTS.graduateGamePlan,
+    PRODUCTS.atsDefense,
+    PRODUCTS.careerSnapshot,
+  ];
 }
