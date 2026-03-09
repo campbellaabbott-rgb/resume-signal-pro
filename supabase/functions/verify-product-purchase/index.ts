@@ -347,7 +347,7 @@ serve(async (req) => {
     const referralCode = session.metadata?.referral_code;
     if (referralCode && isFirstUse && session.amount_total) {
       // Commission rates: $1 for basic products, $5 for premium products
-      const lowCommissionProducts = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits'];
+      const lowCommissionProducts = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'interview_coach', 'career_path_simulator'];
       const commissionCents = lowCommissionProducts.includes(productType || '') ? 100 : 500;
       logStep("Recording affiliate conversion", { 
         referralCode, 
