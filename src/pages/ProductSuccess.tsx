@@ -365,6 +365,12 @@ export default function ProductSuccess() {
       } else if (productKey === 'graduateGamePlan') {
         endpoint = 'generate-graduate-gameplan';
         if (jobDescription) body.jobDescription = jobDescription;
+      } else if (productKey === 'interviewCoach') {
+        endpoint = 'generate-interview-coach';
+        if (jobDescription) body.jobDescription = jobDescription;
+      } else if (productKey === 'careerPathSimulator') {
+        endpoint = 'generate-career-path';
+        if (jobDescription) body.jobDescription = jobDescription;
       }
 
       if (!endpoint) {
