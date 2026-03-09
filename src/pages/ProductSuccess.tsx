@@ -4,6 +4,7 @@ import {
   CheckCircle2, 
   Loader2, 
   FileText,
+  MessageSquare,
   Crown,
   Package,
   Sparkles,
@@ -60,6 +61,8 @@ const productIcons: Record<string, React.ElementType> = {
   atsDefense: ShieldCheck,
   careerSnapshot: Brain,
   graduateGamePlan: Target,
+  interviewCoach: MessageSquare,
+  careerPathSimulator: TrendingUp,
 };
 
 // Product-specific next steps and how-it-works info
@@ -190,6 +193,36 @@ const productInfo: Record<string, {
       { icon: CheckCircle2, title: "Check Readiness", description: "See if your resume is ready to apply" },
       { icon: Target, title: "Target Roles", description: "Review roles that fit your background" },
       { icon: Calendar, title: "Follow the Plan", description: "Execute the 30-day action plan" }
+    ],
+    deliveryTime: "Instant",
+    deliveryMethod: "On This Page"
+  },
+  interviewCoach: {
+    howItWorks: [
+      "Our AI analyzed your resume to identify key experiences",
+      "We generated personalized interview questions based on your background",
+      "Each question includes STAR method guidance for strong answers",
+      "Practice these to prepare for your next interview"
+    ],
+    nextSteps: [
+      { icon: MessageSquare, title: "Review Questions", description: "Go through each personalized question" },
+      { icon: Target, title: "Practice Answers", description: "Use the STAR method frameworks provided" },
+      { icon: TrendingUp, title: "Build Confidence", description: "Rehearse until you feel ready" }
+    ],
+    deliveryTime: "Instant",
+    deliveryMethod: "On This Page"
+  },
+  careerPathSimulator: {
+    howItWorks: [
+      "Our AI analyzed your skills, experience, and career trajectory",
+      "We identified 3 realistic career paths based on your background",
+      "Each path includes skills gaps and timeline projections",
+      "Use the action steps to pursue your preferred direction"
+    ],
+    nextSteps: [
+      { icon: TrendingUp, title: "Explore Paths", description: "Review your 3 career trajectory options" },
+      { icon: Target, title: "Identify Gaps", description: "See what skills you need for each path" },
+      { icon: Calendar, title: "Plan Ahead", description: "Follow the timeline for your chosen path" }
     ],
     deliveryTime: "Instant",
     deliveryMethod: "On This Page"
@@ -331,6 +364,12 @@ export default function ProductSuccess() {
         if (jobDescription) body.jobDescription = jobDescription;
       } else if (productKey === 'graduateGamePlan') {
         endpoint = 'generate-graduate-gameplan';
+        if (jobDescription) body.jobDescription = jobDescription;
+      } else if (productKey === 'interviewCoach') {
+        endpoint = 'generate-interview-coach';
+        if (jobDescription) body.jobDescription = jobDescription;
+      } else if (productKey === 'careerPathSimulator') {
+        endpoint = 'generate-career-path';
         if (jobDescription) body.jobDescription = jobDescription;
       }
 
@@ -785,7 +824,68 @@ export default function ProductSuccess() {
           }
         }
         
-        // Track successful purchase completion for non-streaming products
+        // Handle Interview Coach - generate content with resume
+        if (productKey === 'interviewCoach') {
+          console.log('[ProductSuccess] Generating Interview Coach');
+          const sessionData = getResumeFromSession();
+          if (sessionData.resumeText) {
+            const { data: coachData, error: coachError } = await supabase.functions.invoke('generate-interview-coach', {
+              body: { 
+                resumeText: sessionData.resumeText,
+                jobDescription: sessionData.jobDescriptionText || undefined
+              }
+            });
+            
+            if (coachError) {
+              console.error('Interview Coach generation error:', coachError);
+              const parsedError = await parseEdgeFunctionError(coachError);
+              toast({
+                title: parsedError.title,
+                description: parsedError.description,
+                variant: "destructive"
+              });
+              setIsRecoveryMode(true);
+            } else if (coachData?.data) {
+              setGeneratedContent(coachData.data);
+            } else {
+              setIsRecoveryMode(true);
+            }
+          } else {
+            setIsRecoveryMode(true);
+          }
+        }
+        
+        // Handle Career Path Simulator - generate content with resume
+        if (productKey === 'careerPathSimulator') {
+          console.log('[ProductSuccess] Generating Career Path Simulator');
+          const sessionData = getResumeFromSession();
+          if (sessionData.resumeText) {
+            const { data: pathData, error: pathError } = await supabase.functions.invoke('generate-career-path', {
+              body: { 
+                resumeText: sessionData.resumeText,
+                jobDescription: sessionData.jobDescriptionText || undefined
+              }
+            });
+            
+            if (pathError) {
+              console.error('Career Path generation error:', pathError);
+              const parsedError = await parseEdgeFunctionError(pathError);
+              toast({
+                title: parsedError.title,
+                description: parsedError.description,
+                variant: "destructive"
+              });
+              setIsRecoveryMode(true);
+            } else if (pathData?.data) {
+              setGeneratedContent(pathData.data);
+            } else {
+              setIsRecoveryMode(true);
+            }
+          } else {
+            setIsRecoveryMode(true);
+          }
+        }
+        
         if (productKey && product && !useStreaming) {
           trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
           trackFunnelPurchase(productKey, product.priceUsd, sessionId || undefined);
@@ -821,7 +921,9 @@ export default function ProductSuccess() {
     productKey === 'premiumPackage' ||
     productKey === 'atsDefense' ||
     productKey === 'careerSnapshot' ||
-    productKey === 'graduateGamePlan'
+    productKey === 'graduateGamePlan' ||
+    productKey === 'interviewCoach' ||
+    productKey === 'careerPathSimulator'
   );
 
   // Show streaming UI for real-time generation - keep showing even after complete
