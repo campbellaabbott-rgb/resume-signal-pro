@@ -3,6 +3,7 @@ import { ArrowRight, CheckCircle2, Zap, X, Check, Flame, MessageSquare, Trending
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS } from "@/config/products";
+import { cn } from "@/lib/utils";
 
 interface FinalCTAProps {
   onGetStarted: () => void;
