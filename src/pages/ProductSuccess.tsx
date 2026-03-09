@@ -4,6 +4,7 @@ import {
   CheckCircle2, 
   Loader2, 
   FileText,
+  MessageSquare,
   Crown,
   Package,
   Sparkles,
