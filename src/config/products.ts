@@ -32,22 +32,7 @@ export const PRODUCTS = {
     ]
   },
 
-  // $5 Add-Ons - Easy to find and purchase
-  resumeRoast: {
-    id: 'resume_roast',
-    name: 'Resume Roast',
-    description: 'Brutally honest feedback that tells you what recruiters really think',
-    priceUsd: 5,
-    priceId: 'price_resume_roast_5',
-    category: 'addon',
-    features: [
-      'No-holds-barred honest feedback',
-      'What recruiters actually think',
-      'Biggest weaknesses exposed',
-      'Tough love that helps'
-    ],
-    icon: 'Flame'
-  },
+  // $5 Add-Ons
   interviewCoach: {
     id: 'interview_coach',
     name: 'Interview Coach',
