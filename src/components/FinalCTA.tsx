@@ -1,4 +1,5 @@
-import { ArrowRight, CheckCircle2, Zap, X, Check } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowRight, CheckCircle2, Zap, X, Check, Flame, MessageSquare, TrendingUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS } from "@/config/products";
@@ -29,6 +30,12 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
     { featureKey: "finalCta.comparison.jobKeywords", free: false, paid: true },
     { featureKey: "finalCta.comparison.industryTemplates", free: false, paid: true },
     { featureKey: "finalCta.comparison.fullReport", free: false, paid: true },
+  ];
+
+  const addOns = [
+    { name: 'Resume Roast', icon: Flame, price: 5 },
+    { name: 'Interview Coach', icon: MessageSquare, price: 5 },
+    { name: 'Career Path', icon: TrendingUp, price: 5 },
   ];
 
   return (
