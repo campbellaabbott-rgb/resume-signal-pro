@@ -95,7 +95,14 @@ export default function Pricing() {
             </div>
           </div>
 
-          {/* Products Grid */}
+          {/* $5 Add-Ons Section */}
+          <AddOnsShowcase variant="full" className="mb-12" />
+
+          {/* Premium Products Grid */}
+          <div className="text-center mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">Premium Packages</h2>
+            <p className="text-muted-foreground">Complete career transformation tools</p>
+          </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
             {productOrder.map((key) => {
               const product = PRODUCTS[key];
