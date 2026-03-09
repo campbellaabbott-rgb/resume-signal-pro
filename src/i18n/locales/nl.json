@@ -553,16 +553,5 @@
     "switchPrompt": "Sitetaal wijzigen naar {{language}}?",
     "switchButton": "Overschakelen naar {{language}}",
     "dismiss": "{{current}} behouden"
-  },
-  "faq": {
-    "stillHaveQuestions": "Nog vragen?"
-  },
-  "socialProof": {
-    "testimonials": {
-      "reddit": {
-        "quote": "De service is super behulpzaam en nuttig.",
-        "role": "Reddit-gebruiker • Betalende klant"
-      }
-    }
   }
 }
