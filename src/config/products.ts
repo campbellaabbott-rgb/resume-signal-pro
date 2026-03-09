@@ -38,7 +38,7 @@ export const PRODUCTS = {
     name: 'Interview Coach',
     description: 'Practice tough interview questions based on your resume',
     priceUsd: 5,
-    priceId: 'price_interview_coach_5',
+    priceId: 'price_1T8u3pHBplUUV1CgN5CDJGEF',
     category: 'addon',
     features: [
       'Personalized questions from your resume',
