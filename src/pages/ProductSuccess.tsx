@@ -196,6 +196,36 @@ const productInfo: Record<string, {
     ],
     deliveryTime: "Instant",
     deliveryMethod: "On This Page"
+  },
+  interviewCoach: {
+    howItWorks: [
+      "Our AI analyzed your resume to identify key experiences",
+      "We generated personalized interview questions based on your background",
+      "Each question includes STAR method guidance for strong answers",
+      "Practice these to prepare for your next interview"
+    ],
+    nextSteps: [
+      { icon: MessageSquare, title: "Review Questions", description: "Go through each personalized question" },
+      { icon: Target, title: "Practice Answers", description: "Use the STAR method frameworks provided" },
+      { icon: TrendingUp, title: "Build Confidence", description: "Rehearse until you feel ready" }
+    ],
+    deliveryTime: "Instant",
+    deliveryMethod: "On This Page"
+  },
+  careerPathSimulator: {
+    howItWorks: [
+      "Our AI analyzed your skills, experience, and career trajectory",
+      "We identified 3 realistic career paths based on your background",
+      "Each path includes skills gaps and timeline projections",
+      "Use the action steps to pursue your preferred direction"
+    ],
+    nextSteps: [
+      { icon: TrendingUp, title: "Explore Paths", description: "Review your 3 career trajectory options" },
+      { icon: Target, title: "Identify Gaps", description: "See what skills you need for each path" },
+      { icon: Calendar, title: "Plan Ahead", description: "Follow the timeline for your chosen path" }
+    ],
+    deliveryTime: "Instant",
+    deliveryMethod: "On This Page"
   }
 };
 
