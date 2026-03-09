@@ -3,7 +3,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Sparkles, FileText, Crown, Package, Loader2, ArrowRight, Star, Shield, Zap, ShieldCheck } from "lucide-react";
+import { Check, Sparkles, FileText, Crown, Package, Loader2, ArrowRight, Star, Shield, Zap, ShieldCheck, Flame, MessageSquare, TrendingUp } from "lucide-react";
 import { PRODUCTS, ProductId } from "@/config/products";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ import { ValueComparison } from "@/components/ValueComparison";
 import { useCurrency } from "@/hooks/use-currency";
 import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
+import { AddOnsShowcase } from "@/components/AddOnsShowcase";
 
 const productIcons: Record<string, React.ElementType> = {
   basicKeywordFix: FileText,
@@ -22,14 +23,17 @@ const productIcons: Record<string, React.ElementType> = {
   atsDefense: ShieldCheck,
   careerSnapshot: Package,
   graduateGamePlan: Star,
+  resumeRoast: Flame,
+  interviewCoach: MessageSquare,
+  careerPathSimulator: TrendingUp,
 };
 
+// Premium products (shown in main grid)
 const productOrder: ProductId[] = [
   'careerSnapshot',
   'graduateGamePlan',
   'atsDefense',
   'premiumPackage',
-  'basicKeywordFix',
   'fullAnalysis', 
   'coverLetter',
 ];
