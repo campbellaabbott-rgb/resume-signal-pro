@@ -29,11 +29,14 @@ export function AddOnsShowcase({ variant = 'compact', sessionId, className }: Ad
   if (variant === 'compact') {
     return (
       <div className={cn("rounded-2xl bg-gradient-to-br from-accent/10 to-primary/5 border border-accent/30 p-5", className)}>
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-1">
           <Sparkles className="w-4 h-4 text-primary" />
-          <h4 className="font-bold text-foreground">$5 Add-Ons</h4>
-          <Badge variant="secondary" className="text-xs">Quick Boosts</Badge>
+          <h4 className="font-bold text-foreground">Power-Up Add-Ons</h4>
+          <Badge variant="secondary" className="text-xs">$5 each</Badge>
         </div>
+        <p className="text-xs text-muted-foreground mb-1">
+          <Flame className="w-3 h-3 inline text-destructive" /> <strong>Resume Roast</strong> is included free with your scan!
+        </p>
         <p className="text-sm text-muted-foreground mb-4">
           Get targeted insights to level up specific areas of your job search.
         </p>

@@ -172,10 +172,9 @@ export function getAllProducts() {
   return Object.values(PRODUCTS);
 }
 
-// Get $5 add-on products
+// Get $5 add-on products (Resume Roast is free with scanner)
 export function getAddOnProducts() {
   return [
-    PRODUCTS.resumeRoast,
     PRODUCTS.interviewCoach,
     PRODUCTS.careerPathSimulator,
   ];

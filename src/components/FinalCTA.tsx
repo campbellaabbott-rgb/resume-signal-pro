@@ -33,7 +33,7 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
   ];
 
   const addOns = [
-    { name: 'Resume Roast', icon: Flame, price: 5 },
+    { name: 'Resume Roast', icon: Flame, price: 'FREE' },
     { name: 'Interview Coach', icon: MessageSquare, price: 5 },
     { name: 'Career Path', icon: TrendingUp, price: 5 },
   ];
