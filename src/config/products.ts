@@ -53,7 +53,7 @@ export const PRODUCTS = {
     name: 'Career Path Simulator',
     description: 'See your potential career trajectories and what it takes to get there',
     priceUsd: 5,
-    priceId: 'price_career_path_5',
+    priceId: 'price_1T8u4NHBplUUV1CggBvfeDT0',
     category: 'addon',
     features: [
       '3 realistic career paths',
