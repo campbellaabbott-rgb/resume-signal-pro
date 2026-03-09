@@ -8,7 +8,6 @@ import { useCurrency } from "@/hooks/use-currency";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 
 const addOnProducts: { key: ProductId; icon: React.ElementType }[] = [
-  { key: 'resumeRoast', icon: Flame },
   { key: 'interviewCoach', icon: MessageSquare },
   { key: 'careerPathSimulator', icon: TrendingUp },
 ];
