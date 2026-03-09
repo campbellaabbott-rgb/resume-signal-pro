@@ -132,13 +132,12 @@ function BenefitChips() {
 function AddOnsTeaser() {
   return (
     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-card/60 border border-border/40">
-      <span className="text-xs text-muted-foreground">Plus:</span>
-      <span className="text-xs font-medium text-foreground">Resume Roast</span>
+      <span className="text-xs text-muted-foreground">Includes free:</span>
+      <span className="text-xs font-medium text-foreground">Resume Roast 🔥</span>
       <span className="text-muted-foreground/50">•</span>
       <span className="text-xs font-medium text-foreground">Interview Coach</span>
       <span className="text-muted-foreground/50">•</span>
       <span className="text-xs font-medium text-foreground">Career Path</span>
-      <span className="text-xs px-1.5 py-0.5 rounded bg-primary/20 text-primary font-bold">$5 each</span>
     </div>
   );
 }

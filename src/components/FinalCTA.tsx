@@ -3,6 +3,7 @@ import { ArrowRight, CheckCircle2, Zap, X, Check, Flame, MessageSquare, Trending
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS } from "@/config/products";
+import { cn } from "@/lib/utils";
 
 interface FinalCTAProps {
   onGetStarted: () => void;
@@ -33,7 +34,7 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
   ];
 
   const addOns = [
-    { name: 'Resume Roast', icon: Flame, price: 5 },
+    { name: 'Resume Roast', icon: Flame, price: 'FREE' },
     { name: 'Interview Coach', icon: MessageSquare, price: 5 },
     { name: 'Career Path', icon: TrendingUp, price: 5 },
   ];
@@ -93,20 +94,28 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
             </div>
           </div>
 
-          {/* $5 Add-Ons Showcase */}
+          {/* Add-Ons Showcase */}
           <div className="bg-card/60 border border-border/50 rounded-2xl p-6 mb-10 backdrop-blur-sm">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <span className="text-sm font-semibold text-foreground">$5 Add-Ons</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">Quick Boosts</span>
+              <span className="text-sm font-semibold text-foreground">Power-Up Add-Ons</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-success/20 text-success font-medium">Resume Roast FREE</span>
             </div>
             <div className="grid grid-cols-3 gap-4">
               {addOns.map(({ name, icon: Icon, price }) => (
                 <div key={name} className="flex flex-col items-center gap-2 p-3 rounded-xl bg-muted/30">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-primary" />
+                  <div className={cn(
+                    "w-10 h-10 rounded-lg flex items-center justify-center",
+                    price === 'FREE' ? "bg-success/10" : "bg-primary/10"
+                  )}>
+                    <Icon className={cn("w-5 h-5", price === 'FREE' ? "text-success" : "text-primary")} />
                   </div>
                   <span className="text-xs font-medium text-foreground">{name}</span>
-                  <span className="text-xs text-primary font-bold">${price}</span>
+                  <span className={cn(
+                    "text-xs font-bold",
+                    price === 'FREE' ? "text-success" : "text-primary"
+                  )}>
+                    {price === 'FREE' ? 'FREE' : `$${price}`}
+                  </span>
                 </div>
               ))}
             </div>
