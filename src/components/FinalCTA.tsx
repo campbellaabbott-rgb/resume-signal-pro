@@ -92,6 +92,32 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
               ))}
             </div>
           </div>
+
+          {/* $5 Add-Ons Showcase */}
+          <div className="bg-card/60 border border-border/50 rounded-2xl p-6 mb-10 backdrop-blur-sm">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <span className="text-sm font-semibold text-foreground">$5 Add-Ons</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">Quick Boosts</span>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              {addOns.map(({ name, icon: Icon, price }) => (
+                <div key={name} className="flex flex-col items-center gap-2 p-3 rounded-xl bg-muted/30">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Icon className="w-5 h-5 text-primary" />
+                  </div>
+                  <span className="text-xs font-medium text-foreground">{name}</span>
+                  <span className="text-xs text-primary font-bold">${price}</span>
+                </div>
+              ))}
+            </div>
+            <Link 
+              to="/pricing" 
+              onClick={() => window.scrollTo(0, 0)}
+              className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-4"
+            >
+              View all products <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
           
           {/* Price + CTA */}
           <div className="inline-flex flex-col items-center p-8 rounded-2xl bg-primary/10 border border-primary/30">
