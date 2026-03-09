@@ -824,7 +824,68 @@ export default function ProductSuccess() {
           }
         }
         
-        // Track successful purchase completion for non-streaming products
+        // Handle Interview Coach - generate content with resume
+        if (productKey === 'interviewCoach') {
+          console.log('[ProductSuccess] Generating Interview Coach');
+          const sessionData = getResumeFromSession();
+          if (sessionData.resumeText) {
+            const { data: coachData, error: coachError } = await supabase.functions.invoke('generate-interview-coach', {
+              body: { 
+                resumeText: sessionData.resumeText,
+                jobDescription: sessionData.jobDescriptionText || undefined
+              }
+            });
+            
+            if (coachError) {
+              console.error('Interview Coach generation error:', coachError);
+              const parsedError = await parseEdgeFunctionError(coachError);
+              toast({
+                title: parsedError.title,
+                description: parsedError.description,
+                variant: "destructive"
+              });
+              setIsRecoveryMode(true);
+            } else if (coachData?.data) {
+              setGeneratedContent(coachData.data);
+            } else {
+              setIsRecoveryMode(true);
+            }
+          } else {
+            setIsRecoveryMode(true);
+          }
+        }
+        
+        // Handle Career Path Simulator - generate content with resume
+        if (productKey === 'careerPathSimulator') {
+          console.log('[ProductSuccess] Generating Career Path Simulator');
+          const sessionData = getResumeFromSession();
+          if (sessionData.resumeText) {
+            const { data: pathData, error: pathError } = await supabase.functions.invoke('generate-career-path', {
+              body: { 
+                resumeText: sessionData.resumeText,
+                jobDescription: sessionData.jobDescriptionText || undefined
+              }
+            });
+            
+            if (pathError) {
+              console.error('Career Path generation error:', pathError);
+              const parsedError = await parseEdgeFunctionError(pathError);
+              toast({
+                title: parsedError.title,
+                description: parsedError.description,
+                variant: "destructive"
+              });
+              setIsRecoveryMode(true);
+            } else if (pathData?.data) {
+              setGeneratedContent(pathData.data);
+            } else {
+              setIsRecoveryMode(true);
+            }
+          } else {
+            setIsRecoveryMode(true);
+          }
+        }
+        
         if (productKey && product && !useStreaming) {
           trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
           trackFunnelPurchase(productKey, product.priceUsd, sessionId || undefined);
