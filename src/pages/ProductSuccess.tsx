@@ -921,7 +921,9 @@ export default function ProductSuccess() {
     productKey === 'premiumPackage' ||
     productKey === 'atsDefense' ||
     productKey === 'careerSnapshot' ||
-    productKey === 'graduateGamePlan'
+    productKey === 'graduateGamePlan' ||
+    productKey === 'interviewCoach' ||
+    productKey === 'careerPathSimulator'
   );
 
   // Show streaming UI for real-time generation - keep showing even after complete
