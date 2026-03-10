@@ -454,12 +454,13 @@ serve(async (req) => {
       );
     }
 
-    // OPTIMIZATION: Run rate limit checks IN PARALLEL with country lookup
-    // This saves ~100-200ms by not waiting for each sequentially
+    // OPTIMIZATION: Run rate limit checks, country lookup, AND industry corrections DB query ALL IN PARALLEL
+    // This saves ~300-500ms by not waiting for each sequentially
     const [
       globalRateLimitResult,
       functionRateLimitResult,
-      ipCountry
+      ipCountry,
+      correctionResult
     ] = await Promise.all([
       supabase.rpc('check_global_rate_limit', {
         p_ip: clientIp,
@@ -472,7 +473,19 @@ serve(async (req) => {
         p_max_requests: FREE_SCANS_PER_DAY,
         p_window_minutes: 1440 // 24 hours
       }),
-      getCountryCode(req, clientIp)
+      getCountryCode(req, clientIp),
+      // Load dynamic correction boosts from DB in parallel (for industry detection)
+      supabase
+        .from('industry_corrections')
+        .select('original_industry, corrected_industry')
+        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+        .then(({ data, error }) => {
+          if (error) {
+            console.warn('[FREE-KEYWORD-SCAN] Failed to load dynamic corrections:', error.message);
+            return null;
+          }
+          return data;
+        })
     ]);
 
     // Initialize metric context for tracking
@@ -530,50 +543,30 @@ serve(async (req) => {
       );
     }
 
-    // Call Lovable AI Gateway
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      console.error("[FREE-KEYWORD-SCAN] LOVABLE_API_KEY not configured");
-      return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Check if job description provided
     const hasJobDescription = jobDescriptionText && typeof jobDescriptionText === 'string' && jobDescriptionText.trim().length > 50;
     const truncatedJobDescription = hasJobDescription ? jobDescriptionText.substring(0, MAX_JOB_DESCRIPTION_LENGTH) : null;
 
-    // Run server-side industry detection BEFORE AI call
+    // Run server-side industry detection using pre-fetched correction data
     console.log("[FREE-KEYWORD-SCAN] Running server-side industry detection...");
     
-    // Load dynamic correction boosts from DB (non-blocking fallback to static)
+    // Build dynamic boosts from pre-fetched correction data
     let dynamicBoosts: Record<string, { target: string; boost: number }[]> | undefined;
-    try {
-      const { data: correctionData } = await supabase
-        .from('industry_corrections')
-        .select('original_industry, corrected_industry')
-        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
-      
-      if (correctionData && correctionData.length > 0) {
-        // Aggregate corrections
-        const counts: Record<string, Record<string, number>> = {};
-        for (const row of correctionData) {
-          if (!counts[row.original_industry]) counts[row.original_industry] = {};
-          counts[row.original_industry][row.corrected_industry] = (counts[row.original_industry][row.corrected_industry] || 0) + 1;
-        }
-        const flatCorrections = Object.entries(counts).flatMap(([orig, targets]) =>
-          Object.entries(targets).map(([corrected, count]) => ({
-            original_industry: orig,
-            corrected_industry: corrected,
-            count,
-          }))
-        );
-        dynamicBoosts = buildDynamicCorrectionBoosts(flatCorrections);
-        console.log(`[FREE-KEYWORD-SCAN] Loaded ${flatCorrections.length} dynamic correction patterns`);
+    if (correctionResult && correctionResult.length > 0) {
+      const counts: Record<string, Record<string, number>> = {};
+      for (const row of correctionResult) {
+        if (!counts[row.original_industry]) counts[row.original_industry] = {};
+        counts[row.original_industry][row.corrected_industry] = (counts[row.original_industry][row.corrected_industry] || 0) + 1;
       }
-    } catch (err) {
-      console.warn('[FREE-KEYWORD-SCAN] Failed to load dynamic corrections, using static:', err);
+      const flatCorrections = Object.entries(counts).flatMap(([orig, targets]) =>
+        Object.entries(targets).map(([corrected, count]) => ({
+          original_industry: orig,
+          corrected_industry: corrected,
+          count,
+        }))
+      );
+      dynamicBoosts = buildDynamicCorrectionBoosts(flatCorrections);
+      console.log(`[FREE-KEYWORD-SCAN] Loaded ${flatCorrections.length} dynamic correction patterns`);
     }
     
     const industryDetection = detectIndustry(resumeText, dynamicBoosts);
