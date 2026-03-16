@@ -842,6 +842,11 @@ ${resumeText.substring(0, 15000)}
 </resume>`;
 
 
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY not configured");
+    }
+
     console.log("[FREE-KEYWORD-SCAN] Calling Lovable AI Gateway...");
 
     const aiResponse = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
