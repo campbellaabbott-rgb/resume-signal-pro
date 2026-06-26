@@ -12,6 +12,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Loader2, TrendingUp, TrendingDown, Clock, ScrollText, ShoppingCart, BarChart3, CalendarIcon, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { AdminAuthGate } from "@/components/dashboard/AdminAuthGate";
+import { adminAuthHeaders } from "@/lib/admin-auth";
 
 interface MetricData {
   variant: string;
@@ -46,7 +48,7 @@ const PAGE_FILTERS = [
   { label: "Pricing", value: "pricing" },
 ];
 
-export default function AnalyticsDashboard() {
+function AnalyticsDashboardContent() {
   const [data, setData] = useState<EngagementData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +83,7 @@ export default function AnalyticsDashboard() {
           endDate: endOfDay(endDate).toISOString(),
           pageFilter,
         },
+        headers: adminAuthHeaders(),
       });
 
       if (invokeError) throw invokeError;
@@ -645,5 +648,13 @@ export default function AnalyticsDashboard() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+export default function AnalyticsDashboard() {
+  return (
+    <AdminAuthGate>
+      <AnalyticsDashboardContent />
+    </AdminAuthGate>
   );
 }

@@ -10,6 +10,8 @@ import { ErrorTrendChart } from '@/components/dashboard/ErrorTrendChart';
 import { LegacyUserHealthTable as UserHealthTable } from '@/components/dashboard/LegacyUserHealthTable';
 import { ErrorDiagnostics } from '@/components/dashboard/ErrorDiagnostics';
 import { ErrorStatsCards } from '@/components/dashboard/ErrorStatsCards';
+import { AdminAuthGate } from '@/components/dashboard/AdminAuthGate';
+import { adminAuthHeaders } from '@/lib/admin-auth';
 import { toast } from 'sonner';
 import { subHours, format } from 'date-fns';
 
@@ -83,7 +85,7 @@ function SectionHeader({ title, description }: { title: string; description: str
   );
 }
 
-export default function ErrorDashboard() {
+function ErrorDashboardContent() {
   const [errors, setErrors] = useState<ErrorTelemetry[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -100,20 +102,18 @@ export default function ErrorDashboard() {
       const hours = getHoursFromRange(timeRange);
       const startTime = subHours(new Date(), hours).toISOString();
       
-      const { data, error } = await supabase
-        .from('error_telemetry')
-        .select('*')
-        .gte('created_at', startTime)
-        .order('created_at', { ascending: false })
-        .limit(1000);
+      const { data: result, error } = await supabase.functions.invoke('get-error-telemetry', {
+        body: { sinceIso: startTime, limit: 1000 },
+        headers: adminAuthHeaders(),
+      });
 
-      if (error) {
-        console.error('Failed to fetch errors:', error);
+      if (error || result?.error) {
+        console.error('Failed to fetch errors:', error || result?.error);
         toast.error('Failed to load error data');
         return;
       }
 
-      setErrors(data as ErrorTelemetry[] || []);
+      setErrors((result?.data as ErrorTelemetry[]) || []);
       setLastUpdated(new Date());
       setNewErrorCount(0);
     } catch (err) {
@@ -434,5 +434,13 @@ export default function ErrorDashboard() {
         </section>
       </main>
     </div>
+  );
+}
+
+export default function ErrorDashboard() {
+  return (
+    <AdminAuthGate>
+      <ErrorDashboardContent />
+    </AdminAuthGate>
   );
 }

@@ -1616,21 +1616,33 @@ export default function ProductSuccess() {
                                 if (error) throw error;
                                 
                                 if (data?.found && data?.purchases?.length > 0) {
-                                  // Find most recent purchase matching this product type
+                                  // Find most recent purchase matching this product type.
+                                  // Note: scanPack/careerBundle aren't here — those are recovered
+                                  // via the email lookup in the "My Credits" widget instead, since
+                                  // there's no generatedContent blob to restore for credits. interviewCoach/
+                                  // careerPathSimulator aren't here either — they're self-contained widgets
+                                  // that only need resumeText (recovered via the upload form above), not a
+                                  // pre-generated content blob.
                                   const productTypeMap: Record<string, string> = {
                                     basicKeywordFix: 'basic_keyword_fix',
                                     coverLetter: 'cover_letter',
                                     premiumPackage: 'premium_package',
-                                    atsDefense: 'ats_defense'
+                                    atsDefense: 'ats_defense',
+                                    careerSnapshot: 'career_snapshot',
+                                    graduateGamePlan: 'graduate_gameplan'
                                   };
                                   const targetType = productTypeMap[productKey || ''];
                                   const matchingPurchase = data.purchases.find(
                                     (p: any) => p.productType === targetType
                                   );
-                                  
+
                                   if (matchingPurchase?.generatedContent) {
                                     if (productKey === 'atsDefense') {
                                       setAtsDefenseData(matchingPurchase.generatedContent);
+                                    } else if (productKey === 'careerSnapshot') {
+                                      setCareerSnapshotData(matchingPurchase.generatedContent);
+                                    } else if (productKey === 'graduateGamePlan') {
+                                      setGraduateGamePlanData(matchingPurchase.generatedContent);
                                     } else {
                                       setGeneratedContent(matchingPurchase.generatedContent);
                                     }

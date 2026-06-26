@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
+import { AdminAuthGate } from '@/components/dashboard/AdminAuthGate';
 import {
   LineChart,
   Line,
@@ -76,7 +77,7 @@ interface HeartbeatResult {
   checks_passed: Record<string, CheckResult> | null;
 }
 
-export default function ScanMetrics() {
+function ScanMetricsContent() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hoursBack, setHoursBack] = useState(24);
@@ -514,6 +515,14 @@ export default function ScanMetrics() {
         </Tabs>
       </main>
     </div>
+  );
+}
+
+export default function ScanMetrics() {
+  return (
+    <AdminAuthGate>
+      <ScanMetricsContent />
+    </AdminAuthGate>
   );
 }
 

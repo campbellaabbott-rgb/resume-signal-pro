@@ -14,6 +14,7 @@ import { UserHealthTable } from '@/components/dashboard/UserHealthTable';
 import { HealthHistoryChart } from '@/components/dashboard/HealthHistoryChart';
 import { GeoPerformanceChart } from '@/components/dashboard/GeoPerformanceChart';
 import { IndustryDetectionChart } from '@/components/dashboard/IndustryDetectionChart';
+import { AdminAuthGate } from '@/components/dashboard/AdminAuthGate';
 
 interface CheckResult {
   status: 'ok' | 'slow' | 'error';
@@ -243,7 +244,7 @@ const serviceLabels = {
   stripe: 'Stripe',
 };
 
-export default function HealthCheck() {
+function HealthCheckContent() {
   const [data, setData] = useState<HealthCheckData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1698,5 +1699,13 @@ export default function HealthCheck() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function HealthCheck() {
+  return (
+    <AdminAuthGate>
+      <HealthCheckContent />
+    </AdminAuthGate>
   );
 }
