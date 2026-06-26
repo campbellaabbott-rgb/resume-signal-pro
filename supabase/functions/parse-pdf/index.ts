@@ -174,6 +174,39 @@ serve(async (req) => {
     }
 
     const text = fullText.trim();
+
+    // PDF.js only extracts text that's actually embedded in the file. A scanned/
+    // image-based PDF (or one with only a couple of selectable characters, e.g.
+    // a page number) "succeeds" here with little-to-no text, which would otherwise
+    // silently flow into analysis as garbage input. Treat that as a parse failure
+    // with specific, actionable guidance instead of pretending it worked.
+    const MIN_CHARS_PER_PAGE = 20;
+    const looksLikeScannedPdf = text.length < Math.max(40, doc.numPages * MIN_CHARS_PER_PAGE);
+
+    if (looksLikeScannedPdf) {
+      trackPerformance(requestStartTime, 'parse-pdf', false, { pages: doc.numPages, textLength: text.length, reason: 'scanned_or_empty' }, clientIp);
+      console.log("[PARSE-PDF] Extracted text too short relative to page count — likely a scanned/image-based PDF. Length:", text.length, "Pages:", doc.numPages);
+
+      EdgeRuntime.waitUntil(
+        (async () => {
+          await supabase.rpc('log_parse_failure', {
+            p_file_type: 'pdf',
+            p_error_code: 'scanned_or_empty',
+            p_error_message: `Extracted ${text.length} chars across ${doc.numPages} page(s)`,
+            p_visitor_id: clientIp
+          });
+        })()
+      );
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "This PDF appears to be a scanned image with little or no selectable text. Please upload a text-based PDF (exported from Word/Google Docs), or paste your resume text directly.",
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     trackPerformance(requestStartTime, 'parse-pdf', true, { pages: doc.numPages, textLength: text.length }, clientIp);
     console.log("[PARSE-PDF] PDF parsed successfully. Text length:", text.length);
 

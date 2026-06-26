@@ -1,9 +1,9 @@
+/* Font loading with display=swap for performance — @import must precede all other rules */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Font loading with display=swap for performance */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 /* Screen reader only utility */
 .sr-only {

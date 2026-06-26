@@ -463,7 +463,9 @@ const Index = () => {
         console.error("PDF parsing error:", error);
         toast({
           title: "PDF parsing failed",
-          description: "Could not extract text from the PDF. Please try pasting the text manually.",
+          description: error instanceof Error && error.message
+            ? error.message
+            : "Could not extract text from the PDF. Please try pasting the text manually.",
           variant: "destructive",
         });
         setSelectedFile(null);
@@ -512,7 +514,9 @@ const Index = () => {
         console.error("DOCX parsing error:", error);
         toast({
           title: "Document parsing failed",
-          description: "Could not extract text from the DOCX. Please try pasting the text manually.",
+          description: error instanceof Error && error.message
+            ? error.message
+            : "Could not extract text from the DOCX. Please try pasting the text manually.",
           variant: "destructive",
         });
         setSelectedFile(null);

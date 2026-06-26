@@ -161,12 +161,40 @@ serve(async (req) => {
     const result = await mammoth.extractRawText({ arrayBuffer });
     const text = result.value.trim();
 
-    trackPerformance(requestStartTime, 'parse-docx', true, { textLength: text.length }, clientIp);
-    console.log("[PARSE-DOCX] DOCX parsed successfully. Text length:", text.length);
-
     if (result.messages && result.messages.length > 0) {
       console.log("[PARSE-DOCX] Mammoth messages:", result.messages);
     }
+
+    // A near-empty result usually means the document is blank or is text wrapped
+    // in an image/embedded object that mammoth can't extract. Surface a specific,
+    // actionable error instead of letting near-empty text flow into analysis.
+    const MIN_TEXT_LENGTH = 40;
+    if (text.length < MIN_TEXT_LENGTH) {
+      trackPerformance(requestStartTime, 'parse-docx', false, { textLength: text.length, reason: 'empty_or_too_short' }, clientIp);
+      console.log("[PARSE-DOCX] Extracted text too short:", text.length);
+
+      EdgeRuntime.waitUntil(
+        (async () => {
+          await supabase.rpc('log_parse_failure', {
+            p_file_type: 'docx',
+            p_error_code: 'empty_or_too_short',
+            p_error_message: `Extracted only ${text.length} chars`,
+            p_visitor_id: clientIp
+          });
+        })()
+      );
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Couldn't find readable text in this document. If your resume content is inside an image or text box, please paste your resume text directly instead.",
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    trackPerformance(requestStartTime, 'parse-docx', true, { textLength: text.length }, clientIp);
+    console.log("[PARSE-DOCX] DOCX parsed successfully. Text length:", text.length);
 
     return new Response(
       JSON.stringify({
