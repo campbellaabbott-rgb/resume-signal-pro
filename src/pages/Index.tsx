@@ -220,6 +220,10 @@ const Index = () => {
   const [checkoutError, setCheckoutError] = useState<string | undefined>();
   const [checkoutUrl, setCheckoutUrl] = useState<string | undefined>(); // Store URL for fallback
   const [resumeText, setResumeText] = useState<string>("");
+  // Only computed for PDF uploads (needs position data from text extraction);
+  // undefined for pasted text / DOCX, where the ATS parse simulator skips the
+  // layout check entirely rather than guessing.
+  const [resumeMultiColumnDetected, setResumeMultiColumnDetected] = useState<boolean | undefined>(undefined);
   const [linkedInText, setLinkedInText] = useState<string>("");
   const [jobDescriptionText, setJobDescriptionText] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -427,6 +431,7 @@ const Index = () => {
     if (file.type === "text/plain") {
       const text = await file.text();
       setResumeText(text);
+      setResumeMultiColumnDetected(undefined); // No layout data for plain text
       saveResumeToSession(text); // Persist to session storage
       preStoreResume(text); // Pre-store server-side for faster checkout
       triggerBackgroundScan(text, jobDescriptionText, honeypot); // Start background scan
@@ -452,9 +457,10 @@ const Index = () => {
           return;
         }
 
-        const data = result.data as { success?: boolean; text?: string; pages?: number; error?: string };
+        const data = result.data as { success?: boolean; text?: string; pages?: number; error?: string; multiColumnDetected?: boolean };
         if (data?.success && data?.text) {
           setResumeText(data.text);
+          setResumeMultiColumnDetected(data.multiColumnDetected);
           saveResumeToSession(data.text); // Persist to session storage
           preStoreResume(data.text); // Pre-store server-side for faster checkout
           triggerBackgroundScan(data.text, jobDescriptionText, honeypot); // Start background scan
@@ -506,6 +512,7 @@ const Index = () => {
         const data = result.data as { success?: boolean; text?: string; error?: string };
         if (data?.success && data?.text) {
           setResumeText(data.text);
+          setResumeMultiColumnDetected(undefined); // No layout data for DOCX
           saveResumeToSession(data.text); // Persist to session storage
           preStoreResume(data.text); // Pre-store server-side for faster checkout
           triggerBackgroundScan(data.text, jobDescriptionText, honeypot); // Start background scan
@@ -949,6 +956,7 @@ const Index = () => {
 
   const handleTextSubmit = (text: string, linkedIn?: string, jobDescription?: string) => {
     setResumeText(text);
+    setResumeMultiColumnDetected(undefined); // No layout data for pasted text
     setFreeKeywordResult(null);
     if (linkedIn) setLinkedInText(linkedIn);
     if (jobDescription) setJobDescriptionText(jobDescription);
@@ -1313,6 +1321,7 @@ const Index = () => {
                   handleFreeScan(true);
                 }}
                 resumeText={resumeText}
+                multiColumnDetected={resumeMultiColumnDetected}
                 jobDescriptionText={jobDescriptionText}
                 jobTitle={uploadedJobs[0]?.title}
                 jobCompany={uploadedJobs[0]?.company}

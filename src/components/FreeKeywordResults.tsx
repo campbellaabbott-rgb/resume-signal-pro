@@ -20,6 +20,7 @@ import { CareerPathSimulator } from "./CareerPathSimulator";
 import { TieredPricingSection } from "./TieredPricingSection";
 import { ResumeBeforeAfter } from "./ResumeBeforeAfter";
 import { JobKeywordMatcher } from "./JobKeywordMatcher";
+import { ATSParseSimulator } from "./ATSParseSimulator";
 import { PeerBenchmark } from "./PeerBenchmark";
 import { ReturningUserInsights } from "./ReturningUserInsights";
 import { IndustryKeywordSuggestions } from "./IndustryKeywordSuggestions";
@@ -677,6 +678,9 @@ interface FreeKeywordResultsProps {
   isGeneratingTailored?: boolean;
   // Deep job keyword matching props
   resumeText?: string;
+  // Set only for PDF uploads (needs position data from text extraction) — see
+  // ATSParseSimulator, which skips the layout check entirely when undefined.
+  multiColumnDetected?: boolean;
   jobDescriptionText?: string;
   jobTitle?: string;
   jobCompany?: string;
@@ -751,6 +755,7 @@ export function FreeKeywordResults({
   onGenerateTailoredResume,
   isGeneratingTailored,
   resumeText,
+  multiColumnDetected,
   jobDescriptionText,
   jobTitle,
   jobCompany,
@@ -1340,6 +1345,13 @@ export function FreeKeywordResults({
           </div>
           <ArrowRight className="w-4 h-4 text-primary shrink-0 group-hover:translate-x-0.5 transition-transform" />
         </Link>
+      )}
+
+      {/* Mechanical ATS Parse Simulation — distinct from the AI judgment below */}
+      {resumeText && (
+        <div className="mb-4">
+          <ATSParseSimulator resumeText={resumeText} multiColumnDetected={multiColumnDetected} />
+        </div>
       )}
 
       {/* Section Navigation */}

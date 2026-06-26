@@ -59,7 +59,33 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
 const RATE_LIMIT = 20; // 20 requests per hour
 const RATE_WINDOW_MINUTES = 60;
 
-type PdfTextItem = { str?: string };
+type PdfTextItem = { str?: string; transform?: number[] };
+
+// Detects a real, mechanical ATS-parsing risk: multi-column layouts. PDF.js (like
+// most real ATS text extractors) reads text in the order it appears in the file's
+// content stream, not visual reading order. A two-column resume often gets its
+// entire left column extracted, then jumps back up to the top of the page for the
+// right column — which an ATS reading linearly will interleave nonsensically
+// (e.g. a job title from the right column landing in the middle of a left-column
+// bullet). We detect this by watching for the y-coordinate jumping back upward
+// (a new "column" starting) more than once on a page — normal single-column text
+// only ever moves down the page.
+function detectMultiColumnRisk(items: PdfTextItem[]): boolean {
+  let lastY: number | null = null;
+  let upwardJumps = 0;
+  const Y_JUMP_THRESHOLD = 15; // points; ignores normal sub-line jitter
+
+  for (const item of items) {
+    const y = item.transform?.[5];
+    if (typeof y !== "number" || !item.str?.trim()) continue;
+    if (lastY !== null && y - lastY > Y_JUMP_THRESHOLD) {
+      upwardJumps++;
+    }
+    lastY = y;
+  }
+
+  return upwardJumps >= 2;
+}
 
 serve(async (req) => {
   const requestStartTime = Date.now();
@@ -164,13 +190,19 @@ serve(async (req) => {
 
     // Extract text from all pages
     let fullText = "";
+    let multiColumnDetected = false;
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
       const textContent = await page.getTextContent();
-      const pageText = (textContent.items as unknown[])
-        .map((item) => (item as PdfTextItem).str ?? "")
+      const items = textContent.items as PdfTextItem[];
+      const pageText = items
+        .map((item) => item.str ?? "")
         .join(" ");
       fullText += pageText + "\n\n";
+
+      if (!multiColumnDetected && detectMultiColumnRisk(items)) {
+        multiColumnDetected = true;
+      }
     }
 
     const text = fullText.trim();
@@ -215,6 +247,7 @@ serve(async (req) => {
         success: true,
         text,
         pages: doc.numPages,
+        multiColumnDetected,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
