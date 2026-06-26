@@ -27,6 +27,7 @@ const ErrorDashboard = lazy(() => import("./pages/ErrorDashboard"));
 const HealthCheck = lazy(() => import("./pages/HealthCheck"));
 const ScanMetrics = lazy(() => import("./pages/ScanMetrics"));
 const Trust = lazy(() => import("./pages/Trust"));
+const ResumeBuilder = lazy(() => import("./pages/ResumeBuilder"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
           <Route path="/health-check" element={<HealthCheck />} />
           <Route path="/scan-metrics" element={<ScanMetrics />} />
           <Route path="/trust" element={<Trust />} />
+          <Route path="/builder" element={<ResumeBuilder />} />
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

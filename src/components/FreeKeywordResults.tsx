@@ -7,7 +7,7 @@ import {
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
   TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket,
-  BarChart3, Shield, Search, Settings2, Eye, Flame
+  BarChart3, Shield, Search, Settings2, Eye, Flame, FileEdit
 } from "lucide-react";
 import { LockedPremiumInsight } from "./LockedPremiumInsight";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
@@ -1312,6 +1312,25 @@ export function FreeKeywordResults({
         isLoading={isLoading}
         eliteSignalsCount={eliteSignals?.length || 0}
       />
+
+      {/* Resume Builder CTA */}
+      {resumeText && (
+        <Link
+          to="/builder"
+          className="flex items-center justify-between gap-3 mb-4 p-4 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-full bg-primary/10 shrink-0">
+              <FileEdit className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm">Build a clean, structured version of this resume</p>
+              <p className="text-xs text-muted-foreground">Editable sections, live preview, export to PDF or Word</p>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-primary shrink-0 group-hover:translate-x-0.5 transition-transform" />
+        </Link>
+      )}
 
       {/* Section Navigation */}
       <SectionNav sections={navSections} className="mb-4" />
