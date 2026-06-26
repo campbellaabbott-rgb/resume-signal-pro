@@ -405,21 +405,25 @@ serve(async (req) => {
 
   const clientIp = getClientIp(req);
 
-  // Resolve country once per request — getCountryCode falls back to an external
-  // ipinfo.io call, so reuse this result instead of calling it again below.
-  const country = await getCountryCode(req, clientIp);
-
-  // Geo-blocking check
-  if (isBlockedCountry(country)) {
-    console.log(`[FREE-KEYWORD-SCAN] Blocked request from country: ${country}`);
-    return new Response(
-      JSON.stringify({ error: ERROR_MESSAGES.GEO_BLOCKED }),
-      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-
   try {
-    const { resumeText, jobDescriptionText, honeypot } = await req.json();
+    // Resolve country and parse the request body in parallel — getCountryCode can
+    // fall back to an external ipinfo.io call (up to ~2s) when CDN headers are
+    // missing, and there's no data dependency between it and req.json(), so running
+    // them sequentially was adding that latency to every request without one.
+    const [country, body] = await Promise.all([
+      getCountryCode(req, clientIp),
+      req.json()
+    ]);
+    const { resumeText, jobDescriptionText, honeypot } = body;
+
+    // Geo-blocking check
+    if (isBlockedCountry(country)) {
+      console.log(`[FREE-KEYWORD-SCAN] Blocked request from country: ${country}`);
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.GEO_BLOCKED }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Honeypot check - if filled, it's a bot
     if (honeypot && honeypot.trim() !== '') {
