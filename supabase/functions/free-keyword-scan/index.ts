@@ -706,6 +706,13 @@ INDUSTRY-SPECIFIC SCORING WEIGHTS:
 - GENERAL/OTHER: Keywords (25%), Experience (25%), Quantification (20%), Format (15%), Education (10%), Skills (5%)
 
 Apply the appropriate weights when calculating the ATS score. Mention in industryScoreInsight which weights were applied.
+
+ATS SCORE BANDS (apply after weighting, for consistency across similar resumes):
+- 85-100: Hits nearly all must-haves for the industry, strong quantification, clean format, no missing critical keywords
+- 70-84: Hits most must-haves, some quantification gaps or 1-2 missing critical keywords
+- 50-69: Missing multiple must-haves or critical keywords, weak quantification, format issues
+- Below 50: Missing most must-haves, little to no quantification, or significant format/parsing risk
+Two resumes with similar must-have coverage and quantification levels should land in the same band — do not let writing style or "polish" shift the score outside its band.
 2. Format Grade (A-D): A=Excellent ATS-friendly, B=Good with minor issues, C=Fair with problems, D=Poor
 3. Resume Length: Estimate pages and compare to recommendation (1 page <5yrs, 2 pages 5-15yrs, 3 pages 15+yrs)
 4. Word Count: Count words and compare to ideal range (400-600 for 1 page, 600-800 for 2 pages)
@@ -721,7 +728,7 @@ Apply the appropriate weights when calculating the ATS score. Mention in industr
 6. Section Check: Identify which essential sections are present (Contact, Summary, Experience, Education, Skills)
 7. Contact Info: Check for email, phone, and LinkedIn presence
 8. Top Strength: Identify the single best thing about this resume - BE SPECIFIC and reference their actual work
-9. Quantification Score (0-100): % of bullet points that include numbers/metrics
+9. Quantification Score (0-100): the % of bullet points that include a number/metric (%, $, count, or duration), rounded to the nearest 5. Score = that percentage directly — do not adjust up or down for "feel". Anchors: 0-20% of bullets quantified → 0-20 score; ~40% → ~40 score; ~60% → ~60 score; ~80%+ → 80-100 score.
 10. Action Verb Grade (A-D): Quality and variety of action verbs used
 11. Red Flags: 3 specific issues with EVIDENCE-BACKED explanations:
     - In the "issue" field: Prefix with [ATS] or [Recruiter] to indicate feedback source, and include confidence hint
@@ -784,8 +791,12 @@ Apply the appropriate weights when calculating the ATS score. Mention in industr
     
     Valid industries: technology, healthcare, finance, legal, sales, marketing, education, engineering, creative, hr, consulting, retail, hospitality, manufacturing, government, general
 14. Current Role: Detect the person's current or most recent job title/role (e.g., "Account Executive", "Software Engineer", "Registered Nurse", "Marketing Director")
-14. Readability Score (0-100): How easy is the resume to scan quickly
-15. Bullet Impact Score (0-100): % of bullets that show achievements vs responsibilities
+14. Readability Score (0-100): how easy the resume is to scan in 6 seconds. Score using these anchors:
+    - 90-100: Clear section headers, consistent bullet length (1-2 lines), no walls of text, scannable in <6 seconds
+    - 70-89: Mostly clean but 1-2 sections are dense paragraphs or inconsistent formatting
+    - 50-69: Several long paragraphs or dense bullets that slow down scanning
+    - Below 50: Wall-of-text formatting, inconsistent structure, hard to parse key info quickly
+15. Bullet Impact Score (0-100): the % of bullets that describe an ACHIEVEMENT/OUTCOME (what changed, grew, was delivered) rather than a RESPONSIBILITY (what the person was tasked with). Score = that percentage directly, same banding as Quantification Score above.
 16. Keyword Density: Rate keyword presence as sparse/moderate/dense
 17. Improvement Potential: How much better the resume could be with optimization
 18. Top 5 Skip Reasons: The most important reasons why THIS resume is being skipped - be BRUTALLY HONEST but constructive
@@ -1267,8 +1278,25 @@ ${resumeText.substring(0, 15000)}
 
     console.log(`[FREE-KEYWORD-SCAN] Final industry: "${finalIndustry}" (source: ${detectionSource}, confidence: ${finalConfidence})`);
 
+    // Defense-in-depth: the prompt instructs the model to only suggest keywords that
+    // are truly absent from the resume, but LLMs can still hallucinate a "missing"
+    // keyword that's literally already in the text. Drop any such false positives
+    // before they reach the user.
+    const normalizedResumeText = resumeText.toLowerCase();
+    const isKeywordActuallyMissing = (keyword: string): boolean => {
+      const normalizedKeyword = keyword.toLowerCase().trim();
+      if (!normalizedKeyword) return true;
+      return !(
+        normalizedResumeText.includes(normalizedKeyword) ||
+        normalizedResumeText.includes(normalizedKeyword.replace(/\s+/g, '')) ||
+        normalizedResumeText.includes(normalizedKeyword.replace(/&/g, 'and'))
+      );
+    };
+
     // Ensure limits
-    const keywords = (analysis.keywords || []).slice(0, 6);
+    const keywords = (analysis.keywords || [])
+      .filter((k: { keyword?: string }) => !k.keyword || isKeywordActuallyMissing(k.keyword))
+      .slice(0, 6);
     const redFlags = (analysis.redFlags || []).slice(0, 3);
 
     // Log core metrics only
@@ -1366,7 +1394,7 @@ ${resumeText.substring(0, 15000)}
       success: true,
       ...analysis,
       redFlags: (analysis.redFlags || []).slice(0, 3),
-      keywords: (analysis.keywords || []).slice(0, 6),
+      keywords,
       topSkipReasons: (analysis.topSkipReasons || []).slice(0, 5),
       powerWords: (analysis.powerWords || []).slice(0, 5),
       weakPhrases: (analysis.weakPhrases || []).slice(0, 4),

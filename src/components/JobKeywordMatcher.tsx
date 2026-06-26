@@ -837,11 +837,47 @@ function extractKeywordsWithContext(jobDescription: string): { keyword: string; 
   return Array.from(extracted.values());
 }
 
+// Curated equivalence groups so common abbreviation/full-form and skill-family
+// terms count as a match even when the exact JD phrase isn't echoed verbatim
+// in the resume (e.g. "ML Engineer" should match "Machine Learning Engineer").
+const SYNONYM_GROUPS: string[][] = [
+  ["machine learning", "ml"],
+  ["artificial intelligence", "ai"],
+  ["javascript", "js"],
+  ["typescript", "ts"],
+  ["kubernetes", "k8s"],
+  ["continuous integration", "ci"],
+  ["continuous deployment", "continuous delivery", "cd"],
+  ["database", "databases", "relational database", "relational databases", "rdbms", "sql", "postgresql", "postgres", "mysql", "mongodb", "nosql"],
+  ["natural language processing", "nlp"],
+  ["user experience", "ux"],
+  ["user interface", "ui"],
+  ["search engine optimization", "seo"],
+  ["search engine marketing", "sem"],
+  ["customer relationship management", "crm"],
+  ["enterprise resource planning", "erp"],
+  ["application programming interface", "api"],
+  ["bachelor's degree", "bachelors degree", "bachelor of science", "bachelor of arts", "ba", "bs"],
+  ["master's degree", "masters degree", "master of science", "master of business administration", "ma", "ms", "mba"],
+  ["return on investment", "roi"],
+  ["key performance indicator", "key performance indicators", "kpi", "kpis"],
+  ["software engineer", "software developer", "developer", "swe"],
+  ["project manager", "program manager", "pm"],
+  ["data analyst", "data analytics", "analytics"],
+];
+
+const synonymLookup: Map<string, string[]> = new Map();
+for (const group of SYNONYM_GROUPS) {
+  for (const term of group) {
+    synonymLookup.set(term, group);
+  }
+}
+
 // Check if keyword exists in resume and get context
 function findKeywordInResume(keyword: string, resumeText: string): { found: boolean; context: string } {
   const resumeLower = resumeText.toLowerCase();
   const keywordLower = keyword.toLowerCase();
-  
+
   // Check for exact match or variations
   const variations = [
     keywordLower,
@@ -849,7 +885,7 @@ function findKeywordInResume(keyword: string, resumeText: string): { found: bool
     keywordLower.replace(/-/g, " "),
     keywordLower.replace(/\./g, ""),
   ];
-  
+
   for (const variation of variations) {
     const index = resumeLower.indexOf(variation);
     if (index !== -1) {
@@ -860,7 +896,22 @@ function findKeywordInResume(keyword: string, resumeText: string): { found: bool
       return { found: true, context: "..." + context + "..." };
     }
   }
-  
+
+  // Fall back to curated synonym groups for common abbreviation/full-form equivalences
+  const synonyms = synonymLookup.get(keywordLower);
+  if (synonyms) {
+    for (const synonym of synonyms) {
+      if (synonym === keywordLower) continue;
+      const index = resumeLower.indexOf(synonym);
+      if (index !== -1) {
+        const start = Math.max(0, index - 30);
+        const end = Math.min(resumeText.length, index + synonym.length + 50);
+        const context = resumeText.substring(start, end).trim();
+        return { found: true, context: "..." + context + "..." };
+      }
+    }
+  }
+
   return { found: false, context: "" };
 }
 
