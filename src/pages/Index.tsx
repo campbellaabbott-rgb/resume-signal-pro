@@ -49,7 +49,8 @@ import {
   saveResumeToSession,
   getResumeFromSession,
   clearResumeSession,
-  hasResumeInSession
+  hasResumeInSession,
+  setMultiColumnDetectedInSession
 } from "@/hooks/use-session-resume";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useErrorTracking } from "@/hooks/use-error-tracking";
@@ -223,7 +224,14 @@ const Index = () => {
   // Only computed for PDF uploads (needs position data from text extraction);
   // undefined for pasted text / DOCX, where the ATS parse simulator skips the
   // layout check entirely rather than guessing.
-  const [resumeMultiColumnDetected, setResumeMultiColumnDetected] = useState<boolean | undefined>(undefined);
+  const [resumeMultiColumnDetected, setResumeMultiColumnDetectedState] = useState<boolean | undefined>(undefined);
+  // Persists alongside the state update so the flag survives into the post-checkout
+  // success page (same browser session) for ATS Defense's parse simulation, without
+  // needing to re-parse the file or pass it through the checkout/webhook pipeline.
+  const setResumeMultiColumnDetected = (value: boolean | undefined) => {
+    setResumeMultiColumnDetectedState(value);
+    setMultiColumnDetectedInSession(value);
+  };
   const [linkedInText, setLinkedInText] = useState<string>("");
   const [jobDescriptionText, setJobDescriptionText] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);

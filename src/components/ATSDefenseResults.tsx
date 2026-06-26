@@ -24,6 +24,8 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import jsPDF from "jspdf";
+import { ATSParseSimulator } from "./ATSParseSimulator";
+import { simulateAtsParse } from "@/lib/ats-parse-simulator";
 
 export interface ATSDefenseData {
   beforeScore: {
@@ -94,6 +96,13 @@ export interface ATSDefenseData {
 
 interface ATSDefenseResultsProps {
   data: ATSDefenseData;
+  // When available, renders the same deterministic ATS parse simulation shown
+  // on the free scan results page — mechanical checks distinct from the AI
+  // analysis in `data` above. Both are optional since some recovery paths
+  // (e.g. recovering previously-generated content by email) don't have the
+  // original resume text on hand.
+  resumeText?: string;
+  multiColumnDetected?: boolean;
 }
 
 function CopyButton({ text, label }: { text: string; label: string }) {
@@ -177,7 +186,7 @@ function ScoreComparison({ before, after, label }: { before: number; after: numb
   );
 }
 
-export function ATSDefenseResults({ data }: ATSDefenseResultsProps) {
+export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATSDefenseResultsProps) {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const scoreImprovement = data.afterScore.overall - data.beforeScore.overall;
 
@@ -228,6 +237,26 @@ export function ATSDefenseResults({ data }: ATSDefenseResultsProps) {
       addText(`After: ${data.afterScore.overall}/100`, margin + 70, y + 16, { fontSize: 11, color: [34, 197, 94] });
       addText(`+${scoreImprovement} points improvement`, margin + 130, y + 16, { fontSize: 11, fontStyle: 'bold', color: [34, 197, 94] });
       y += 40;
+
+      // ATS Parse Simulation — mechanical checks, included in the PDF since this is
+      // the deliverable the customer actually keeps and references later.
+      if (resumeText) {
+        addPageIfNeeded(30);
+        addText('ATS Parse Simulation (Mechanical Checks)', margin, y, { fontSize: 14, fontStyle: 'bold' });
+        y += 8;
+        const simulation = simulateAtsParse(resumeText, { multiColumnDetected });
+        addText(`Overall parse confidence: ${simulation.overallConfidence}%`, margin, y, { fontSize: 10, fontStyle: 'bold' });
+        y += 7;
+        simulation.checks.forEach((check) => {
+          addPageIfNeeded(15);
+          const statusColor: [number, number, number] = check.status === 'pass' ? [34, 197, 94] : check.status === 'warning' ? [234, 179, 8] : [220, 38, 38];
+          addText(`${check.status === 'pass' ? '✓' : check.status === 'warning' ? '!' : '✗'} ${check.label}`, margin + 3, y, { fontSize: 10, fontStyle: 'bold', color: statusColor });
+          y += 5;
+          y += addText(check.detail, margin + 3, y, { fontSize: 9, color: [80, 80, 80] });
+          y += 4;
+        });
+        y += 5;
+      }
 
       // Action Plan
       addPageIfNeeded(30);
@@ -389,6 +418,11 @@ export function ATSDefenseResults({ data }: ATSDefenseResultsProps) {
           </div>
         </div>
       </div>
+
+      {/* Mechanical ATS Parse Simulation — distinct from the AI before/after scores above */}
+      {resumeText && (
+        <ATSParseSimulator resumeText={resumeText} multiColumnDetected={multiColumnDetected} />
+      )}
 
       {/* Priority Action Plan */}
       <CollapsibleSection title="Priority Action Plan" icon={ListChecks} defaultOpen={true} badge={<Badge variant="destructive">{data.actionPlan.filter(a => a.impact === 'critical').length} Critical</Badge>}>

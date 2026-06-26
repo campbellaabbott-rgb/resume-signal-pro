@@ -41,7 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { clearReferralCode } from "@/hooks/use-affiliate-auth";
-import { getResumeFromSession, hasResumeInSession } from "@/hooks/use-session-resume";
+import { getResumeFromSession, hasResumeInSession, getMultiColumnDetectedFromSession } from "@/hooks/use-session-resume";
 import { InterviewCoach } from "@/components/InterviewCoach";
 import { CareerPathSimulator } from "@/components/CareerPathSimulator";
 import { ATSDefenseResults, type ATSDefenseData } from "@/components/ATSDefenseResults";
@@ -275,6 +275,10 @@ export default function ProductSuccess() {
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [generatedContent, setGeneratedContent] = useState<KeywordData | CoverLetterData | PremiumPackageData | ATSDefenseData | null>(null);
   const [atsDefenseData, setAtsDefenseData] = useState<ATSDefenseData | null>(null);
+  // Captured alongside atsDefenseData so ATSDefenseResults can run the same
+  // deterministic parse simulation shown on the free scan results page.
+  const [atsDefenseResumeText, setAtsDefenseResumeText] = useState<string | null>(null);
+  const [atsDefenseMultiColumnDetected, setAtsDefenseMultiColumnDetected] = useState<boolean | undefined>(undefined);
   const [careerSnapshotData, setCareerSnapshotData] = useState<any>(null);
   const [graduateGamePlanData, setGraduateGamePlanData] = useState<any>(null);
   const [scanCreditsResult, setScanCreditsResult] = useState<{ credits: number; email: string } | null>(null);
@@ -408,6 +412,10 @@ export default function ProductSuccess() {
       // Handle ATS Defense response (has .report)
       if (productKey === 'atsDefense' && data?.report) {
         setAtsDefenseData(data.report);
+        // No layout/position data when resumeText came from manual paste/upload
+        // recovery rather than the original PDF parse.
+        setAtsDefenseResumeText(resumeText);
+        setAtsDefenseMultiColumnDetected(undefined);
         setIsRecoveryMode(false);
         toast({
           title: "ATS Defense Report Generated!",
@@ -769,13 +777,13 @@ export default function ProductSuccess() {
           const sessionData = getResumeFromSession();
           if (sessionData.resumeText) {
             const { data: atsData, error: atsError } = await supabase.functions.invoke('generate-ats-defense', {
-              body: { 
+              body: {
                 sessionId,
                 resumeText: sessionData.resumeText,
                 targetRoles: []
               }
             });
-            
+
             if (atsError) {
               console.error('ATS Defense generation error:', atsError);
               const parsedError = await parseEdgeFunctionError(atsError);
@@ -787,6 +795,8 @@ export default function ProductSuccess() {
               setIsRecoveryMode(true);
             } else if (atsData?.report) {
               setAtsDefenseData(atsData.report);
+              setAtsDefenseResumeText(sessionData.resumeText);
+              setAtsDefenseMultiColumnDetected(getMultiColumnDetectedFromSession());
             } else {
               setIsRecoveryMode(true);
             }
@@ -1452,7 +1462,11 @@ export default function ProductSuccess() {
                 </p>
               </div>
 
-              <ATSDefenseResults data={atsDefenseData} />
+              <ATSDefenseResults
+                data={atsDefenseData}
+                resumeText={atsDefenseResumeText || undefined}
+                multiColumnDetected={atsDefenseMultiColumnDetected}
+              />
             </div>
           </section>
         )}

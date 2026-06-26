@@ -4,6 +4,8 @@ import {
   getResumeFromSession,
   clearResumeSession,
   hasResumeInSession,
+  setMultiColumnDetectedInSession,
+  getMultiColumnDetectedFromSession,
 } from "./use-session-resume";
 
 describe("use-session-resume", () => {
@@ -65,5 +67,35 @@ describe("use-session-resume", () => {
       jobDescriptionText: null,
     });
     expect(hasResumeInSession()).toBe(false);
+  });
+});
+
+describe("multiColumnDetected session storage", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+  });
+
+  it("returns undefined when nothing has been set", () => {
+    expect(getMultiColumnDetectedFromSession()).toBeUndefined();
+  });
+
+  it("round-trips true and false distinctly", () => {
+    setMultiColumnDetectedInSession(true);
+    expect(getMultiColumnDetectedFromSession()).toBe(true);
+
+    setMultiColumnDetectedInSession(false);
+    expect(getMultiColumnDetectedFromSession()).toBe(false);
+  });
+
+  it("clears the value when set to undefined", () => {
+    setMultiColumnDetectedInSession(true);
+    setMultiColumnDetectedInSession(undefined);
+    expect(getMultiColumnDetectedFromSession()).toBeUndefined();
+  });
+
+  it("is cleared by clearResumeSession", () => {
+    setMultiColumnDetectedInSession(true);
+    clearResumeSession();
+    expect(getMultiColumnDetectedFromSession()).toBeUndefined();
   });
 });
