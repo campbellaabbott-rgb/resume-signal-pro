@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -30,20 +30,24 @@ export function AISummary({
 }: AISummaryProps) {
   const [summary, setSummary] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasAttempted, setHasAttempted] = useState(false);
+  const hasAttemptedRef = useRef(false);
 
   useEffect(() => {
-    // Check cache first
-    const cacheKey = `ai_summary_${resumeHash || atsScore}_${industry}`;
-    const cached = localStorage.getItem(cacheKey);
-    
+    hasAttemptedRef.current = false;
+    setSummary(null);
+
+    // Cache is only safe to use when we have a resume-specific key;
+    // without it, different resumes with the same score/industry would collide.
+    const cacheKey = resumeHash ? `ai_summary_${resumeHash}_${industry}` : null;
+    const cached = cacheKey ? localStorage.getItem(cacheKey) : null;
+
     if (cached) {
       try {
         const { summary: cachedSummary, timestamp } = JSON.parse(cached);
         // Cache valid for 1 hour
         if (Date.now() - timestamp < 60 * 60 * 1000) {
           setSummary(cachedSummary);
-          setHasAttempted(true);
+          hasAttemptedRef.current = true;
           return;
         }
       } catch (e) {
@@ -52,10 +56,10 @@ export function AISummary({
     }
 
     const generateSummary = async () => {
-      if (hasAttempted) return;
-      
+      if (hasAttemptedRef.current) return;
+
       setIsLoading(true);
-      setHasAttempted(true);
+      hasAttemptedRef.current = true;
 
       try {
         const { data, error } = await supabase.functions.invoke('generate-summary', {
@@ -79,11 +83,12 @@ export function AISummary({
 
         if (data?.summary) {
           setSummary(data.summary);
-          // Cache the result
-          localStorage.setItem(cacheKey, JSON.stringify({
-            summary: data.summary,
-            timestamp: Date.now()
-          }));
+          if (cacheKey) {
+            localStorage.setItem(cacheKey, JSON.stringify({
+              summary: data.summary,
+              timestamp: Date.now()
+            }));
+          }
         }
       } catch (err) {
         console.error('Failed to generate summary:', err);

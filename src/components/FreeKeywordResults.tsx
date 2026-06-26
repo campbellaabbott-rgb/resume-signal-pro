@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useScanHistory, generateChecklist } from "@/hooks/use-scan-history";
+import { emailSchema } from "@/lib/security-validation";
 import { InteractiveChecklist } from "./InteractiveChecklist";
 import { AISummary } from "./AISummary";
 import { ShareableScoreCard } from "./ShareableScoreCard";
@@ -765,7 +766,6 @@ export function FreeKeywordResults({
   const { toast } = useToast();
   const { addScanEntry, setUserEmail, isReturningUser, getLatestScan } = useScanHistory();
   const [hasRecordedScan, setHasRecordedScan] = useState(false);
-  const [currentScanId, setCurrentScanId] = useState<string | null>(null);
   const [correctedIndustry, setCorrectedIndustry] = useState<string | null>(null);
   
   // Use corrected industry if set, otherwise use detected
@@ -792,7 +792,7 @@ export function FreeKeywordResults({
         redFlags: redFlagsProp,
       });
       
-      const entry = addScanEntry({
+      addScanEntry({
         candidateName: candidateName || null,
         currentRole: currentRole || null,
         atsScore: atsScoreEstimate,
@@ -806,10 +806,7 @@ export function FreeKeywordResults({
         readabilityScore: readabilityScoreProp?.score,
         checklist,
       }, resumeText);
-      
-      if (entry) {
-        setCurrentScanId(entry.id);
-      }
+
       setHasRecordedScan(true);
     }
   }, [atsScoreEstimate, hasRecordedScan]);
@@ -909,7 +906,7 @@ export function FreeKeywordResults({
     const bullets = extractBullets(expText);
     if (!bullets.length) return null;
 
-    const hasNumber = (s: string) => /(\$|%|\b\d[\d,\.]*\b|\b\d+\s*(k|m|b)\b)/i.test(s);
+    const hasNumber = (s: string) => /(\$|%|\b\d[\d,.]*\b|\b\d+\s*(k|m|b)\b)/i.test(s);
 
     const mid = Math.ceil(bullets.length / 2);
     const recent = bullets.slice(0, mid);
@@ -940,7 +937,7 @@ export function FreeKeywordResults({
     const bullets = extractBullets(expText);
     if (!bullets.length) return null;
 
-    const hasNumber = (s: string) => /(\$|%|\b\d[\d,\.]*\b|\b\d+\s*(k|m|b)\b)/i.test(s);
+    const hasNumber = (s: string) => /(\$|%|\b\d[\d,.]*\b|\b\d+\s*(k|m|b)\b)/i.test(s);
     const hasResultVerb = (s: string) =>
       /\b(increased|grew|reduced|improved|drove|generated|closed|won|achieved|accelerated|delivered|launched|expanded|exceeded|scaled)\b/i.test(s);
     const responsibilityPhrase = (s: string) => /\b(responsible for|assisted|helped|supported|worked on|duties included)\b/i.test(s);
@@ -1113,43 +1110,41 @@ export function FreeKeywordResults({
     return "bg-destructive/10 border-destructive/20";
   };
 
-  const getSectionScore = () => {
-    const total = 5;
-    const present = [sectionCheck.hasContact, sectionCheck.hasSummary, sectionCheck.hasExperience, sectionCheck.hasEducation, sectionCheck.hasSkills].filter(Boolean).length;
-    return `${present}/${total}`;
-  };
+  const sectionsPresent = useMemo(
+    () => [sectionCheck.hasContact, sectionCheck.hasSummary, sectionCheck.hasExperience, sectionCheck.hasEducation, sectionCheck.hasSkills].filter(Boolean).length,
+    [sectionCheck.hasContact, sectionCheck.hasSummary, sectionCheck.hasExperience, sectionCheck.hasEducation, sectionCheck.hasSkills]
+  );
+
+  const getSectionScore = () => `${sectionsPresent}/5`;
 
   const getSectionColor = () => {
-    const present = [sectionCheck.hasContact, sectionCheck.hasSummary, sectionCheck.hasExperience, sectionCheck.hasEducation, sectionCheck.hasSkills].filter(Boolean).length;
-    if (present === 5) return "text-success";
-    if (present >= 3) return "text-warning";
+    if (sectionsPresent === 5) return "text-success";
+    if (sectionsPresent >= 3) return "text-warning";
     return "text-destructive";
   };
 
   const getSectionBgColor = () => {
-    const present = [sectionCheck.hasContact, sectionCheck.hasSummary, sectionCheck.hasExperience, sectionCheck.hasEducation, sectionCheck.hasSkills].filter(Boolean).length;
-    if (present === 5) return "bg-success/10 border-success/20";
-    if (present >= 3) return "bg-warning/10 border-warning/20";
+    if (sectionsPresent === 5) return "bg-success/10 border-success/20";
+    if (sectionsPresent >= 3) return "bg-warning/10 border-warning/20";
     return "bg-destructive/10 border-destructive/20";
   };
 
-  const getContactScore = () => {
-    const total = 3;
-    const present = [contactInfo.hasEmail, contactInfo.hasPhone, contactInfo.hasLinkedIn].filter(Boolean).length;
-    return `${present}/${total}`;
-  };
+  const contactItemsPresent = useMemo(
+    () => [contactInfo.hasEmail, contactInfo.hasPhone, contactInfo.hasLinkedIn].filter(Boolean).length,
+    [contactInfo.hasEmail, contactInfo.hasPhone, contactInfo.hasLinkedIn]
+  );
+
+  const getContactScore = () => `${contactItemsPresent}/3`;
 
   const getContactColor = () => {
-    const present = [contactInfo.hasEmail, contactInfo.hasPhone, contactInfo.hasLinkedIn].filter(Boolean).length;
-    if (present === 3) return "text-success";
-    if (present >= 2) return "text-warning";
+    if (contactItemsPresent === 3) return "text-success";
+    if (contactItemsPresent >= 2) return "text-warning";
     return "text-destructive";
   };
 
   const getContactBgColor = () => {
-    const present = [contactInfo.hasEmail, contactInfo.hasPhone, contactInfo.hasLinkedIn].filter(Boolean).length;
-    if (present === 3) return "bg-success/10 border-success/20";
-    if (present >= 2) return "bg-warning/10 border-warning/20";
+    if (contactItemsPresent === 3) return "bg-success/10 border-success/20";
+    if (contactItemsPresent >= 2) return "bg-warning/10 border-warning/20";
     return "bg-destructive/10 border-destructive/20";
   };
 
@@ -1164,8 +1159,7 @@ export function FreeKeywordResults({
       return;
     }
 
-    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-    if (!emailRegex.test(email)) {
+    if (!emailSchema.safeParse(email).success) {
       toast({
         title: "Invalid email",
         description: "Please enter a valid email address.",
@@ -1221,7 +1215,7 @@ export function FreeKeywordResults({
         title: "You're on the list!",
         description: "We'll send you resume tips to help you land more interviews.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Email capture error:", error);
       toast({
         title: "Something went wrong",
@@ -1861,7 +1855,7 @@ export function FreeKeywordResults({
         <CollapsibleSection
           id="fix-checklist"
           title="Fix Checklist"
-          subtitle={`${currentScan.checklist.filter((i: any) => i.completed).length}/${currentScan.checklist.length} completed`}
+          subtitle={`${currentScan.checklist.filter((i) => i.completed).length}/${currentScan.checklist.length} completed`}
           icon={<CheckCircle2 className="w-4 h-4" />}
           defaultOpen={false}
           badge={

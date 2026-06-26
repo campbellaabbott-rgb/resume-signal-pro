@@ -391,31 +391,33 @@ async function getCountryCode(req: Request, clientIp: string): Promise<string | 
   return await getCountryFromIpInfo(clientIp);
 }
 
-const isBlockedCountry = async (req: Request, clientIp: string): Promise<boolean> => {
-  const country = await getCountryCode(req, clientIp);
+const isBlockedCountry = (country: string | null): boolean => {
   if (!country) return false; // Allow if country unknown
   return BLOCKED_COUNTRIES.has(country.toUpperCase());
 };
 
 serve(async (req) => {
   const requestStartTime = Date.now();
-  
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   const clientIp = getClientIp(req);
 
-  // Geo-blocking check (async with ipinfo.io fallback)
-  if (await isBlockedCountry(req, clientIp)) {
-    const country = await getCountryCode(req, clientIp);
+  // Resolve country once per request — getCountryCode falls back to an external
+  // ipinfo.io call, so reuse this result instead of calling it again below.
+  const country = await getCountryCode(req, clientIp);
+
+  // Geo-blocking check
+  if (isBlockedCountry(country)) {
     console.log(`[FREE-KEYWORD-SCAN] Blocked request from country: ${country}`);
     return new Response(
       JSON.stringify({ error: ERROR_MESSAGES.GEO_BLOCKED }),
       { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-  
+
   try {
     const { resumeText, jobDescriptionText, honeypot } = await req.json();
 
@@ -459,7 +461,6 @@ serve(async (req) => {
     const [
       globalRateLimitResult,
       functionRateLimitResult,
-      ipCountry,
       correctionResult
     ] = await Promise.all([
       supabase.rpc('check_global_rate_limit', {
@@ -473,7 +474,6 @@ serve(async (req) => {
         p_max_requests: FREE_SCANS_PER_DAY,
         p_window_minutes: 1440 // 24 hours
       }),
-      getCountryCode(req, clientIp),
       // Load dynamic correction boosts from DB in parallel (for industry detection)
       supabase
         .from('industry_corrections')
@@ -494,7 +494,7 @@ serve(async (req) => {
       startTime: requestStartTime,
       scanType: 'free',
       cacheHit: false,
-      ipCountry: ipCountry || null,
+      ipCountry: country || null,
       visitorId: clientIp,
       inputLength: resumeText.length,
       aiModel: 'google/gemini-2.5-pro'
@@ -1274,8 +1274,7 @@ ${resumeText.substring(0, 15000)}
     // Log core metrics only
     console.log(`[FREE-KEYWORD-SCAN] Analysis: ATS=${analysis.atsScoreEstimate}, Industry="${analysis.industry}", ExpLevel=${analysis.experienceLevel?.level}, ServerDetected="${industryDetection.industry}" (${industryDetection.confidence})`);
 
-    const country = await getCountryCode(req, clientIp) || "Unknown";
-    console.log(`[FREE-KEYWORD-SCAN] Success for IP: ${clientIp}, country: ${country}, industry: ${analysis.industry}`);
+    console.log(`[FREE-KEYWORD-SCAN] Success for IP: ${clientIp}, country: ${country || "Unknown"}, industry: ${analysis.industry}`);
 
     // Log industry detection metrics for monitoring/improvement (non-blocking)
     EdgeRuntime.waitUntil(
