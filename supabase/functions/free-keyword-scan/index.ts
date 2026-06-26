@@ -842,9 +842,19 @@ JOB MATCHING ANALYSIS (REQUIRED when job description is provided):
 30. Experience Fit: How well their experience level matches job requirements
 31. Title Alignment: How close their current/past titles are to the target job
 32. Job Match Summary: One sentence explaining match quality and top priority to improve
-33. Application Recommendation: Based on the overall fit, provide a clear recommendation with reasoning
-34. Skill Gap Actions: Specific actions they must take to be considered for this role
-35. Competitive Assessment: How they compare to likely other applicants for this specific role` : ''}
+33. Application Recommendation: A clear strong_apply/apply_with_changes/apply_as_stretch/do_not_apply call with
+    one sentence of reasoning and your confidence (high/medium/low) in that call
+34. Missing Skills Detailed: For EACH missing skill, determine if it's truly absent or just not stated explicitly
+    (implicit in related experience), its category (hard_skill/soft_skill/tool/certification/methodology), how
+    critical it is to this specific job (critical/important/nice_to_have based on how the JD emphasizes it), and
+    ONE concrete sentence on how/where to add it to the resume. This is semantic judgment based on reading both
+    documents in full — not keyword spotting. Treat a skill as present if the resume demonstrates it through
+    different wording or a closely related tool/responsibility, even if the exact term isn't used.
+35. Skill Gap Actions: 3-5 specific, prioritized actions the candidate must take to be seriously considered for
+    THIS role — each with a priority (must_have/should_have/nice_to_have) and a realistic timeframe (e.g. "Before applying", "This week", "Within 3 months")
+36. Competitive Assessment: Given everything in their resume and this job's requirements, how do they likely
+    compare to other applicants — likelyPosition (top_candidate/competitive/middle_of_pack/unlikely_to_advance),
+    their single biggest strength vs. the likely applicant pool, and their single biggest weakness vs. that pool` : ''}
 
 Be direct and specific. Quote actual text from the resume when relevant. Address the candidate by name.
 
@@ -1128,9 +1138,53 @@ ${resumeText.substring(0, 15000)}
                 jobMatchGrade: { type: "string" },
                 matchingSkills: { type: "array", items: { type: "string" } },
                 missingSkills: { type: "array", items: { type: "string" } },
+                missingSkillsDetailed: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      skill: { type: "string" },
+                      category: { type: "string", description: "hard_skill | soft_skill | tool | certification | methodology" },
+                      importance: { type: "string", description: "critical | important | nice_to_have" },
+                      isImplicit: { type: "boolean", description: "true if demonstrated through related experience but not stated explicitly" },
+                      fixSuggestion: { type: "string", description: "One concrete sentence on how/where to add this to the resume" }
+                    },
+                    required: ["skill", "category", "importance", "isImplicit", "fixSuggestion"]
+                  }
+                },
                 experienceFit: { type: "string" },
                 titleAlignment: { type: "string" },
                 jobMatchSummary: { type: "string" },
+                applicationRecommendation: {
+                  type: "object",
+                  properties: {
+                    recommendation: { type: "string", description: "strong_apply | apply_with_changes | apply_as_stretch | do_not_apply" },
+                    reasoning: { type: "string" },
+                    confidence: { type: "string", description: "high | medium | low" }
+                  },
+                  required: ["recommendation", "reasoning", "confidence"]
+                },
+                skillGapActions: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      action: { type: "string" },
+                      priority: { type: "string", description: "must_have | should_have | nice_to_have" },
+                      timeframe: { type: "string" }
+                    },
+                    required: ["action", "priority", "timeframe"]
+                  }
+                },
+                competitiveAssessment: {
+                  type: "object",
+                  properties: {
+                    likelyPosition: { type: "string", description: "top_candidate | competitive | middle_of_pack | unlikely_to_advance" },
+                    strengthVsField: { type: "string" },
+                    weaknessVsField: { type: "string" }
+                  },
+                  required: ["likelyPosition", "strengthVsField", "weaknessVsField"]
+                },
                 formatRecommendation: {
                   type: "object",
                   properties: {

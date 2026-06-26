@@ -510,6 +510,14 @@ interface ApplicationRecommendation {
   confidence: "high" | "medium" | "low";
 }
 
+interface MissingSkillDetail {
+  skill: string;
+  category: "hard_skill" | "soft_skill" | "tool" | "certification" | "methodology";
+  importance: "critical" | "important" | "nice_to_have";
+  isImplicit: boolean;
+  fixSuggestion: string;
+}
+
 interface SkillGapAction {
   action: string;
   priority: "must_have" | "should_have" | "nice_to_have";
@@ -655,6 +663,7 @@ interface FreeKeywordResultsProps {
   jobMatchGrade?: "A" | "B" | "C" | "D";
   matchingSkills?: string[];
   missingSkills?: string[];
+  missingSkillsDetailed?: MissingSkillDetail[];
   experienceFit?: "underqualified" | "good_fit" | "overqualified";
   titleAlignment?: "poor" | "partial" | "strong";
   jobMatchSummary?: string;
@@ -729,6 +738,7 @@ export function FreeKeywordResults({
   jobMatchGrade,
   matchingSkills = [],
   missingSkills = [],
+  missingSkillsDetailed = [],
   experienceFit,
   titleAlignment,
   jobMatchSummary,
@@ -1700,10 +1710,8 @@ export function FreeKeywordResults({
           <JobKeywordMatcher
             jobTitle={jobTitle}
             jobCompany={jobCompany}
-            resumeText={resumeText}
-            jobDescription={jobDescriptionText}
-            extractedKeywords={matchingSkills}
-            missingKeywords={missingSkills}
+            matchingSkills={matchingSkills}
+            missingSkillsDetailed={missingSkillsDetailed}
             matchScore={jobMatchScore}
           />
         </div>

@@ -104,6 +104,13 @@ interface FreeKeywordResult {
   jobMatchGrade?: "A" | "B" | "C" | "D";
   matchingSkills?: string[];
   missingSkills?: string[];
+  missingSkillsDetailed?: {
+    skill: string;
+    category: "hard_skill" | "soft_skill" | "tool" | "certification" | "methodology";
+    importance: "critical" | "important" | "nice_to_have";
+    isImplicit: boolean;
+    fixSuggestion: string;
+  }[];
   experienceFit?: "underqualified" | "good_fit" | "overqualified";
   titleAlignment?: "poor" | "partial" | "strong";
   jobMatchSummary?: string;
@@ -702,9 +709,13 @@ const Index = () => {
           jobMatchGrade: (result as any).jobMatchGrade,
           matchingSkills: (result as any).matchingSkills,
           missingSkills: (result as any).missingSkills,
+          missingSkillsDetailed: (result as any).missingSkillsDetailed,
           experienceFit: (result as any).experienceFit,
           titleAlignment: (result as any).titleAlignment,
           jobMatchSummary: (result as any).jobMatchSummary,
+          applicationRecommendation: (result as any).applicationRecommendation,
+          skillGapActions: (result as any).skillGapActions,
+          competitiveAssessment: (result as any).competitiveAssessment,
         });
         
         // Track scan completed in funnel
@@ -1280,6 +1291,7 @@ const Index = () => {
                 jobMatchGrade={freeKeywordResult.jobMatchGrade}
                 matchingSkills={freeKeywordResult.matchingSkills}
                 missingSkills={freeKeywordResult.missingSkills}
+                missingSkillsDetailed={freeKeywordResult.missingSkillsDetailed}
                 experienceFit={freeKeywordResult.experienceFit}
                 titleAlignment={freeKeywordResult.titleAlignment}
                 jobMatchSummary={freeKeywordResult.jobMatchSummary}
