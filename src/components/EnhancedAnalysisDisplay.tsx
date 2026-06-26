@@ -153,14 +153,14 @@ export function EnhancedAnalysisDisplay({
   }
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return "text-success";
-    if (score >= 60) return "text-warning";
+    if (score >= 70) return "text-success";
+    if (score >= 50) return "text-warning";
     return "text-destructive";
   };
 
   const getScoreBgColor = (score: number) => {
-    if (score >= 80) return "bg-success/10 border-success/20";
-    if (score >= 60) return "bg-warning/10 border-warning/20";
+    if (score >= 70) return "bg-success/10 border-success/20";
+    if (score >= 50) return "bg-warning/10 border-warning/20";
     return "bg-destructive/10 border-destructive/20";
   };
 

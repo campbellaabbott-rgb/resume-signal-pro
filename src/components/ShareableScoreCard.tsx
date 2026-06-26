@@ -64,16 +64,16 @@ export function ShareableScoreCard({
   const { toast } = useToast();
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return "#22c55e";
-    if (score >= 60) return "#eab308";
+    if (score >= 70) return "#22c55e";
+    if (score >= 50) return "#eab308";
     return "#ef4444";
   };
 
   const getScoreLabel = (score: number) => {
-    if (score >= 80) return "Excellent";
+    if (score >= 85) return "Excellent";
     if (score >= 70) return "Good";
-    if (score >= 60) return "Fair";
-    return "Needs Work";
+    if (score >= 50) return "Needs Improvement";
+    return "Poor";
   };
 
   const generateImage = async (): Promise<string | null> => {

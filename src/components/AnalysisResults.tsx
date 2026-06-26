@@ -190,39 +190,48 @@ interface AnalysisResultsProps {
 // Safe array access helper
 const safeArray = <T,>(arr: T[] | undefined | null): T[] => arr ?? [];
 
-// Calculate resume strength score based on analysis
+// Resume strength score — uses the AI's own computed atsScore (job title match,
+// skills match, action verbs, keyword coverage, formatting) when available, since
+// that reflects actual resume quality rather than how many items the AI happened
+// to return. Only falls back to a rough proxy when atsScore is missing entirely,
+// and that fallback has no inflated baseline — it starts at 0, not 50.
 function calculateResumeScore(data: AnalysisData): { score: number; label: string; color: string } {
-  let score = 50;
-  
-  const bullets = safeArray(data.optimizedBullets);
-  const verbs = safeArray(data.actionVerbs);
-  const keywords = safeArray(data.keywords);
-  const flags = safeArray(data.redFlags);
-  
-  score += Math.min(bullets.length * 3, 15);
-  score += Math.min(verbs.length * 2, 10);
-  score += Math.min(keywords.length * 1.5, 15);
-  score -= Math.min(flags.length * 8, 30);
-  
-  if (data.summaryRewrite?.professionalSummary) score += 5;
-  if (data.skillsGap && safeArray(data.skillsGap.missingTechnical).length < 3) score += 5;
-  
+  let score: number;
+
+  if (data.atsScore?.score !== undefined) {
+    score = data.atsScore.score;
+  } else {
+    const bullets = safeArray(data.optimizedBullets);
+    const verbs = safeArray(data.actionVerbs);
+    const keywords = safeArray(data.keywords);
+    const flags = safeArray(data.redFlags);
+
+    score = 0;
+    score += Math.min(bullets.length * 5, 25);
+    score += Math.min(verbs.length * 3, 15);
+    score += Math.min(keywords.length * 2, 20);
+    score -= Math.min(flags.length * 8, 30);
+
+    if (data.summaryRewrite?.professionalSummary) score += 5;
+    if (data.skillsGap && safeArray(data.skillsGap.missingTechnical).length < 3) score += 5;
+  }
+
   score = Math.max(0, Math.min(100, Math.round(score)));
-  
+
   let label: string;
   let color: string;
   
-  if (score >= 80) {
+  if (score >= 85) {
     label = "Excellent";
     color = "text-success";
-  } else if (score >= 65) {
+  } else if (score >= 70) {
     label = "Good";
-    color = "text-primary";
+    color = "text-success";
   } else if (score >= 50) {
-    label = "Fair";
+    label = "Needs Improvement";
     color = "text-warning";
   } else {
-    label = "Needs Work";
+    label = "Poor";
     color = "text-destructive";
   }
   
@@ -496,8 +505,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     {resumeScore.label}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {resumeScore.score >= 65 
-                      ? "Above average for your industry" 
+                    {resumeScore.score >= 70
+                      ? "Above average for your industry"
                       : "Apply our suggestions to improve"}
                   </span>
                 </div>

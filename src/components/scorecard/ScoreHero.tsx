@@ -51,17 +51,19 @@ function RadialGauge({ score, size = 140, strokeWidth = 10 }: { score: number; s
     return () => clearTimeout(timer);
   }, [score]);
 
+  // Bands match the scoring rubric in free-keyword-scan/index.ts (85/70/50) so the
+  // visual treatment doesn't soften a score the model has already judged as weak.
   const getColor = () => {
-    if (score >= 80) return "hsl(var(--success))";
-    if (score >= 60) return "hsl(var(--warning))";
+    if (score >= 70) return "hsl(var(--success))";
+    if (score >= 50) return "hsl(var(--warning))";
     return "hsl(var(--destructive))";
   };
 
   const getLabel = () => {
     if (score >= 85) return "Excellent";
-    if (score >= 75) return "Good";
-    if (score >= 60) return "Fair";
-    return "Needs Work";
+    if (score >= 70) return "Good";
+    if (score >= 50) return "Needs Improvement";
+    return "Poor";
   };
 
   return (

@@ -626,7 +626,17 @@ ${industryHint}
    - Entry-level: Focus on potential, transferable skills, education, and growth trajectory
    - NEVER apply junior heuristics to senior candidates or vice versa
 
-**PERSONALIZATION MANDATE:**
+**SCORING INTEGRITY (applies before personalization):**
+Numeric scores (atsScoreEstimate, quantificationScore, bulletImpactScore, readabilityScore) and
+formatGrade/actionVerbGrade must be calculated strictly from the rubrics above — be accurate, not
+generous. A genuinely weak resume (thin content, no quantification, poor formatting, missing
+must-haves) MUST score low and MUST receive a C or D format grade. The warmth/encouragement
+instructions below govern only the WORDING of narrative fields (topStrength, quickWins,
+careerSituationAdvice, personalizedEncouragement, etc.) — they must never cause you to inflate a
+number or grade to make the feedback feel nicer. A low score paired with encouraging, constructive
+narrative text is the correct and expected output for a weak resume.
+
+**PERSONALIZATION MANDATE (for narrative text fields only — does not apply to scores/grades):**
 1. USE THE CANDIDATE'S NAME throughout feedback (e.g., "[Name], your experience at [Company]...")
 2. REFERENCE SPECIFIC DETAILS from their resume
 3. TAILOR suggestions to their EXACT situation - no generic advice
