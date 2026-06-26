@@ -36,6 +36,22 @@ export function ScanCreditsCounter() {
     }
   }, [checkCredits]);
 
+  // Pick up credits immediately after a same-tab purchase (e.g. scan pack checkout
+  // success), without requiring the user to manually find this widget and re-enter
+  // their email — see ProductSuccess.tsx where this event is dispatched.
+  useEffect(() => {
+    const handleCreditsUpdated = (e: Event) => {
+      const updatedEmail = (e as CustomEvent<{ email: string }>).detail?.email;
+      if (updatedEmail) {
+        setEmail(updatedEmail);
+        setCheckedEmail(updatedEmail);
+        checkCredits(updatedEmail);
+      }
+    };
+    window.addEventListener("scanCreditsEmailUpdated", handleCreditsUpdated);
+    return () => window.removeEventListener("scanCreditsEmailUpdated", handleCreditsUpdated);
+  }, [checkCredits]);
+
   const handleCheckCredits = async () => {
     if (!email || !email.includes("@")) return;
     

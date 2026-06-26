@@ -25,7 +25,8 @@ import {
   RefreshCw,
   ShieldCheck,
   Brain,
-  Calendar
+  Calendar,
+  Coins
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -274,6 +275,7 @@ export default function ProductSuccess() {
   const [atsDefenseData, setAtsDefenseData] = useState<ATSDefenseData | null>(null);
   const [careerSnapshotData, setCareerSnapshotData] = useState<any>(null);
   const [graduateGamePlanData, setGraduateGamePlanData] = useState<any>(null);
+  const [scanCreditsResult, setScanCreditsResult] = useState<{ credits: number; email: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'resume' | 'coverLetter'>('resume');
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
@@ -688,7 +690,32 @@ export default function ProductSuccess() {
         // If we already have generated content from the verification, use it
         if (data?.generatedContent) {
           setGeneratedContent(data.generatedContent);
-          
+
+          // Scan pack / career bundle purchases grant credits rather than generated
+          // content. Persist the purchase email so the header's "My Credits" widget
+          // picks it up automatically, and surface an explicit on-page confirmation —
+          // otherwise the customer has no way to know the credits actually landed
+          // without manually finding and re-entering their email in that widget.
+          if (
+            productKey === 'scanPack' &&
+            typeof data.generatedContent === 'object' &&
+            data.generatedContent !== null &&
+            'credits' in data.generatedContent &&
+            data?.customerEmail
+          ) {
+            const normalizedEmail = String(data.customerEmail).toLowerCase().trim();
+            localStorage.setItem('scanCreditsEmail', normalizedEmail);
+            // The header's credits widget already mounted (and read localStorage)
+            // before this async verification resolved, so it won't pick up the new
+            // email on its own — notify it directly so the badge updates without
+            // requiring a page refresh.
+            window.dispatchEvent(new CustomEvent('scanCreditsEmailUpdated', { detail: { email: normalizedEmail } }));
+            setScanCreditsResult({
+              credits: Number((data.generatedContent as { credits: number }).credits) || 0,
+              email: normalizedEmail
+            });
+          }
+
           // Track purchase completion
           if (productKey && product) {
             trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
@@ -1100,6 +1127,24 @@ export default function ProductSuccess() {
                   </div>
                 </div>
               </div>
+
+              {/* Scan pack / career bundle credits confirmation */}
+              {scanCreditsResult && (
+                <div className="max-w-md mx-auto p-6 rounded-2xl bg-success/5 border border-success/30 text-left">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Coins className="w-5 h-5 text-success" />
+                    <h3 className="font-bold text-lg text-success">
+                      {scanCreditsResult.credits} Credits Added!
+                    </h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Your credits are now live on the account for{" "}
+                    <span className="font-medium text-foreground">{scanCreditsResult.email}</span>.
+                    You'll see your balance in the <strong>My Credits</strong> button in the
+                    header on this device — no need to enter your email again.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </section>
