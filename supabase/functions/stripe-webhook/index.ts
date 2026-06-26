@@ -90,37 +90,40 @@ async function triggerProductDelivery(
 
   logStep("Triggering product delivery", { sessionId, productType });
 
-  // OPTIMIZATION: Parallel check for existing session + insert new record
-  const [existingCheck, deliveryInsert] = await Promise.all([
-    supabase.from('used_stripe_sessions').select('session_id').eq('session_id', sessionId).maybeSingle(),
-    // Pre-create delivery record (will check existingCheck result)
-    Promise.resolve(null)
-  ]);
+  // Atomically claim this session via the PRIMARY KEY on session_id. This webhook
+  // and verify-product-purchase (triggered from the user's browser on the success
+  // page) can race each other for the same session — a separate SELECT-then-INSERT
+  // has a window where both see "not yet used" and both proceed to credit/generate
+  // content twice. Doing the INSERT first and checking its result makes the claim
+  // atomic: only one caller can win it.
+  const { error: claimError } = await supabase
+    .from('used_stripe_sessions')
+    .insert({ session_id: sessionId });
 
-  if (existingCheck.data) {
-    logStep("Session already processed", { sessionId });
+  if (claimError) {
+    if (claimError.code === '23505') {
+      logStep("Session already claimed by another process (race avoided)", { sessionId });
+    } else {
+      logStep("Error claiming session, aborting delivery", { error: claimError.message });
+    }
     return { alreadyProcessed: true };
   }
 
-  // Mark session as used + create delivery record in parallel
-  const [, deliveryRecord] = await Promise.all([
-    supabase.from('used_stripe_sessions').insert({ session_id: sessionId }),
-    supabase.from('product_deliveries').insert({
-      stripe_session_id: sessionId,
-      product_type: productType || 'unknown',
-      product_name: productName,
-      customer_email: customerEmail,
-      status: 'payment_received',
-      amount_cents: session.amount_total,
-      payment_completed_at: new Date().toISOString(),
-      metadata: {
-        resume_session_id: resumeSessionId,
-        job_title: session.metadata?.job_title,
-        job_company: session.metadata?.job_company,
-        referral_code: session.metadata?.referral_code
-      }
-    }).select().single()
-  ]);
+  const deliveryRecord = await supabase.from('product_deliveries').insert({
+    stripe_session_id: sessionId,
+    product_type: productType || 'unknown',
+    product_name: productName,
+    customer_email: customerEmail,
+    status: 'payment_received',
+    amount_cents: session.amount_total,
+    payment_completed_at: new Date().toISOString(),
+    metadata: {
+      resume_session_id: resumeSessionId,
+      job_title: session.metadata?.job_title,
+      job_company: session.metadata?.job_company,
+      referral_code: session.metadata?.referral_code
+    }
+  }).select().single();
 
   // Handle scan packs - just add credits
   if (productType === 'scan_pack' || productType === 'scan_credits' || productType === 'career_bundle') {

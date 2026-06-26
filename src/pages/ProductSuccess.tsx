@@ -42,6 +42,8 @@ import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { clearReferralCode } from "@/hooks/use-affiliate-auth";
 import { getResumeFromSession, hasResumeInSession } from "@/hooks/use-session-resume";
+import { InterviewCoach } from "@/components/InterviewCoach";
+import { CareerPathSimulator } from "@/components/CareerPathSimulator";
 import { ATSDefenseResults, type ATSDefenseData } from "@/components/ATSDefenseResults";
 import { CareerSnapshotResults } from "@/components/CareerSnapshotResults";
 import { GraduateGamePlanResults } from "@/components/GraduateGamePlanResults";
@@ -276,6 +278,10 @@ export default function ProductSuccess() {
   const [careerSnapshotData, setCareerSnapshotData] = useState<any>(null);
   const [graduateGamePlanData, setGraduateGamePlanData] = useState<any>(null);
   const [scanCreditsResult, setScanCreditsResult] = useState<{ credits: number; email: string } | null>(null);
+  // interviewCoach / careerPathSimulator are self-contained widgets that fetch their
+  // own content on demand (same components used for free on the scan results page) —
+  // they just need the resume text, not a pre-generated payload.
+  const [coachResumeText, setCoachResumeText] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'resume' | 'coverLetter'>('resume');
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
@@ -851,63 +857,15 @@ export default function ProductSuccess() {
           }
         }
         
-        // Handle Interview Coach - generate content with resume
-        if (productKey === 'interviewCoach') {
-          console.log('[ProductSuccess] Generating Interview Coach');
+        // Handle Interview Coach / Career Path Simulator — these are self-contained
+        // widgets (the same ones shown for free on the scan results page) that fetch
+        // their own content lazily on user interaction. We only need to hand them the
+        // resume text; calling the edge function here ourselves would generate content
+        // nobody can see, since there was no render path consuming it.
+        if (productKey === 'interviewCoach' || productKey === 'careerPathSimulator') {
           const sessionData = getResumeFromSession();
           if (sessionData.resumeText) {
-            const { data: coachData, error: coachError } = await supabase.functions.invoke('generate-interview-coach', {
-              body: { 
-                resumeText: sessionData.resumeText,
-                jobDescription: sessionData.jobDescriptionText || undefined
-              }
-            });
-            
-            if (coachError) {
-              console.error('Interview Coach generation error:', coachError);
-              const parsedError = await parseEdgeFunctionError(coachError);
-              toast({
-                title: parsedError.title,
-                description: parsedError.description,
-                variant: "destructive"
-              });
-              setIsRecoveryMode(true);
-            } else if (coachData?.data) {
-              setGeneratedContent(coachData.data);
-            } else {
-              setIsRecoveryMode(true);
-            }
-          } else {
-            setIsRecoveryMode(true);
-          }
-        }
-        
-        // Handle Career Path Simulator - generate content with resume
-        if (productKey === 'careerPathSimulator') {
-          console.log('[ProductSuccess] Generating Career Path Simulator');
-          const sessionData = getResumeFromSession();
-          if (sessionData.resumeText) {
-            const { data: pathData, error: pathError } = await supabase.functions.invoke('generate-career-path', {
-              body: { 
-                resumeText: sessionData.resumeText,
-                jobDescription: sessionData.jobDescriptionText || undefined
-              }
-            });
-            
-            if (pathError) {
-              console.error('Career Path generation error:', pathError);
-              const parsedError = await parseEdgeFunctionError(pathError);
-              toast({
-                title: parsedError.title,
-                description: parsedError.description,
-                variant: "destructive"
-              });
-              setIsRecoveryMode(true);
-            } else if (pathData?.data) {
-              setGeneratedContent(pathData.data);
-            } else {
-              setIsRecoveryMode(true);
-            }
+            setCoachResumeText(sessionData.resumeText);
           } else {
             setIsRecoveryMode(true);
           }
@@ -1070,6 +1028,8 @@ export default function ProductSuccess() {
   const isAtsDefense = productKey === 'atsDefense';
   const isCareerSnapshot = productKey === 'careerSnapshot';
   const isGraduateGamePlan = productKey === 'graduateGamePlan';
+  const isInterviewCoach = productKey === 'interviewCoach';
+  const isCareerPathSimulator = productKey === 'careerPathSimulator';
   const keywordData = isKeywordFix ? generatedContent as KeywordData : null;
   const coverLetterData = isCoverLetter ? generatedContent as CoverLetterData : null;
   const premiumData = isPremiumPackage ? generatedContent as PremiumPackageData : null;
@@ -1537,6 +1497,34 @@ export default function ProductSuccess() {
           </section>
         )}
 
+        {/* Generated Content Section - Interview Coach / Career Path Simulator */}
+        {(isInterviewCoach || isCareerPathSimulator) && coachResumeText && (
+          <section className="py-12 border-t border-border/50">
+            <div className="container max-w-4xl">
+              <div className="text-center mb-8">
+                <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  Your Session is Ready
+                </Badge>
+                <h2 className="text-2xl font-bold mb-2">
+                  {isInterviewCoach ? "Interview Coach" : "Career Path Simulator"}
+                </h2>
+                <p className="text-muted-foreground">
+                  {isInterviewCoach
+                    ? "Generate personalized interview questions and get feedback on your answers"
+                    : "Explore possible career trajectories based on your resume"}
+                </p>
+              </div>
+
+              {isInterviewCoach ? (
+                <InterviewCoach resumeText={coachResumeText} />
+              ) : (
+                <CareerPathSimulator resumeText={coachResumeText} />
+              )}
+            </div>
+          </section>
+        )}
+
         {/* AI Generation Progress Overlay for Recovery Mode */}
         <AIGenerationProgress 
           isVisible={isRegenerating} 
@@ -1544,7 +1532,7 @@ export default function ProductSuccess() {
         />
 
         {/* No Generated Content - Show Inline Upload Recovery */}
-        {(isKeywordFix || isCoverLetter || isPremiumPackage || isAtsDefense || isCareerSnapshot || isGraduateGamePlan) && !generatedContent && !atsDefenseData && !careerSnapshotData && !graduateGamePlanData && !verificationError && !isVerifying && !isRegenerating && (
+        {(isKeywordFix || isCoverLetter || isPremiumPackage || isAtsDefense || isCareerSnapshot || isGraduateGamePlan || isInterviewCoach || isCareerPathSimulator) && !generatedContent && !atsDefenseData && !careerSnapshotData && !graduateGamePlanData && !coachResumeText && !verificationError && !isVerifying && !isRegenerating && (
           <section className="py-12 border-t border-border/50">
             <div className="container max-w-2xl">
               <div className="p-8 rounded-2xl bg-muted/50 border border-border">
@@ -1556,6 +1544,8 @@ export default function ProductSuccess() {
                          isAtsDefense ? 'Complete Your ATS Defense Report' :
                          isPremiumPackage ? 'Complete Your Premium Package' :
                          isCoverLetter ? 'Complete Your Cover Letter' :
+                         isInterviewCoach ? 'Start Your Interview Coach Session' :
+                         isCareerPathSimulator ? 'Run Your Career Path Simulator' :
                          'Complete Your Keyword Analysis'}
                       </h3>
                       <p className="text-muted-foreground">
@@ -1563,12 +1553,16 @@ export default function ProductSuccess() {
                           'Upload your resume to get your career intelligence report.' :
                          isGraduateGamePlan ?
                           'Upload your resume to get your personalized game plan for landing your first role.' :
-                         isAtsDefense ? 
+                         isAtsDefense ?
                           'Upload your resume and optionally add target roles and job description for personalized optimization.' :
                          isPremiumPackage ?
                           'Upload your resume and add a job description to get your optimized resume and cover letter.' :
                          isCoverLetter ?
                           'Upload your resume and add the job details to generate a tailored cover letter.' :
+                         isInterviewCoach ?
+                          'Upload your resume to generate personalized interview questions.' :
+                         isCareerPathSimulator ?
+                          'Upload your resume to see possible career trajectories.' :
                           'Upload your resume to get keyword optimization suggestions.'}
                       </p>
                     </div>
@@ -1881,9 +1875,13 @@ export default function ProductSuccess() {
                           // Use streaming for premium package and cover letter
                           if (isPremiumPackage || isCoverLetter) {
                             startStreamingGeneration(recoveryResumeText, recoveryJobDescription || undefined);
+                          } else if (isInterviewCoach || isCareerPathSimulator) {
+                            // These are self-contained widgets that generate their own
+                            // content on demand — just hand them the resume text.
+                            setCoachResumeText(recoveryResumeText);
                           } else {
                             regenerateContent(
-                              recoveryResumeText, 
+                              recoveryResumeText,
                               recoveryJobDescription || undefined,
                               isAtsDefense ? recoveryTargetRoles : undefined
                             );
@@ -1898,11 +1896,13 @@ export default function ProductSuccess() {
                         ) : (
                           <>
                             <Sparkles className="w-4 h-4" />
-                            Generate {isKeywordFix ? 'Keyword Analysis' : 
-                                      isPremiumPackage ? 'Premium Package' : 
+                            Generate {isKeywordFix ? 'Keyword Analysis' :
+                                      isPremiumPackage ? 'Premium Package' :
                                       isAtsDefense ? 'ATS Defense Report' :
                                       isCareerSnapshot ? 'Career Snapshot Report' :
                                       isGraduateGamePlan ? 'Graduate Game Plan Report' :
+                                      isInterviewCoach ? 'Interview Questions' :
+                                      isCareerPathSimulator ? 'Career Paths' :
                                       'Cover Letter'}
                           </>
                         )}

@@ -66,23 +66,35 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check if this session was already processed
-    const { data: existingSession } = await supabase
+    // Atomically claim this session via the table's PRIMARY KEY on session_id.
+    // This function and stripe-webhook can both race to verify the same session
+    // (e.g. the webhook fires from Stripe while the user's browser hits this
+    // function almost simultaneously) — a separate SELECT-then-INSERT would have
+    // a window where both reads see "not yet used" and both proceed to credit/
+    // generate content. Doing the INSERT first and checking its result makes the
+    // claim atomic: only one caller can win the insert.
+    const { error: claimError } = await supabase
       .from('used_stripe_sessions')
-      .select('session_id')
-      .eq('session_id', sessionId)
-      .single();
+      .insert({ session_id: sessionId });
 
-    const isFirstUse = !existingSession;
+    let isFirstUse: boolean;
+    if (claimError) {
+      // Postgres unique_violation — another process already claimed this session.
+      if (claimError.code === '23505') {
+        isFirstUse = false;
+        logStep("Session already claimed by another process (race avoided)", { sessionId });
+      } else {
+        // Unexpected DB error — fail closed (treat as already-processed) rather
+        // than risk double-crediting/double-generating on a transient failure.
+        logStep("Error claiming session, treating as not-first-use", { error: claimError.message });
+        isFirstUse = false;
+      }
+    } else {
+      isFirstUse = true;
+      logStep("Session marked as used");
+    }
 
     if (isFirstUse) {
-      // Mark session as used
-      await supabase
-        .from('used_stripe_sessions')
-        .insert({ session_id: sessionId });
-      
-      logStep("Session marked as used");
-      
       // Log delivery step: payment received
       await supabase.rpc('log_delivery_step', {
         p_stripe_session_id: sessionId,
