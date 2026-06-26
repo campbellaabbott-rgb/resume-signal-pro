@@ -7,7 +7,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import jsPDF from "jspdf";
+// jspdf (~51KB gzipped) is only needed when the user exports a PDF, so it's
+// dynamically imported in generatePDF() below instead of shipping in the main chunk.
 
 interface TailoredResumeContent {
   professionalSummary: string;
@@ -63,6 +64,7 @@ export function TailoredResumeModal({
     setIsGeneratingPdf(true);
     
     try {
+      const { default: jsPDF } = await import("jspdf");
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",

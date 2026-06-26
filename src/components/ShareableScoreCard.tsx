@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import html2canvas from "html2canvas";
+// html2canvas (~99KB gzipped) is only needed when the user actually exports an
+// image, so it's dynamically imported in generateImage() below instead of being
+// bundled into the main chunk that every visitor downloads on page load.
 
 interface ShareableScoreCardProps {
   candidateName?: string | null;
@@ -91,7 +93,8 @@ export function ShareableScoreCard({
     try {
       // Wait for any pending renders
       await new Promise(r => setTimeout(r, 100));
-      
+
+      const { default: html2canvas } = await import("html2canvas");
       const canvas = await html2canvas(cardRef.current, {
         backgroundColor: "#0f172a",
         scale: 2,
