@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, Loader2, ChevronRight, DollarSign, AlertTriangle, Zap } from "lucide-react";
+import { TrendingUp, Loader2, ChevronRight, DollarSign, AlertTriangle, Zap, Download, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +9,9 @@ interface CareerPathSimulatorProps {
   resumeText: string;
   industry?: string;
   currentRole?: string;
+  // Paid tier: a concrete 90-day action plan per path and a downloadable
+  // roadmap PDF — distinct from the free version's high-level timeline only.
+  isPremium?: boolean;
 }
 
 interface TimelineStep {
@@ -28,6 +31,7 @@ interface CareerPath {
   requiredSkills: string[];
   riskLevel: string;
   probability: string;
+  actionPlan90Days?: string[];
 }
 
 interface CareerData {
@@ -53,17 +57,18 @@ const pathColors: Record<string, { bg: string; border: string; accent: string }>
   pivot: { bg: "bg-orange-500/5", border: "border-orange-500/20", accent: "text-orange-700" },
 };
 
-export function CareerPathSimulator({ resumeText, industry, currentRole }: CareerPathSimulatorProps) {
+export function CareerPathSimulator({ resumeText, industry, currentRole, isPremium }: CareerPathSimulatorProps) {
   const [data, setData] = useState<CareerData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activePath, setActivePath] = useState<string | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const { toast } = useToast();
 
   const generate = async () => {
     setIsLoading(true);
     try {
       const { data: result, error } = await supabase.functions.invoke("generate-career-path", {
-        body: { resumeText, industry, currentRole },
+        body: { resumeText, industry, currentRole, isPremium },
       });
       if (error) throw error;
       if (!result?.success) throw new Error(result?.error || "Generation failed");
@@ -76,6 +81,20 @@ export function CareerPathSimulator({ resumeText, industry, currentRole }: Caree
     }
   };
 
+  const handleExportPdf = async () => {
+    if (!data) return;
+    setIsExportingPdf(true);
+    try {
+      const { exportCareerPathPDF } = await import("@/lib/career-tools-export");
+      await exportCareerPathPDF(data);
+    } catch (err) {
+      console.error("[CareerPathSimulator] PDF export failed:", err);
+      toast({ title: "Export failed", description: "Could not generate the PDF. Please try again.", variant: "destructive" });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   if (!data) {
     return (
       <div className="text-center py-6 space-y-3">
@@ -84,7 +103,9 @@ export function CareerPathSimulator({ resumeText, industry, currentRole }: Caree
           See your career's future
         </div>
         <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-          AI projects 3 possible career paths based on your resume — ambitious, steady, and pivot — with salary ranges and key moves.
+          {isPremium
+            ? "AI projects 3 possible career paths with salary ranges, key moves, a concrete 90-day action plan for each, and a downloadable roadmap."
+            : "AI projects 3 possible career paths based on your resume — ambitious, steady, and pivot — with salary ranges and key moves."}
         </p>
         <Button onClick={generate} disabled={isLoading} size="sm" className="gap-2">
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4" />}
@@ -106,6 +127,18 @@ export function CareerPathSimulator({ resumeText, industry, currentRole }: Caree
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted/50 text-muted-foreground">
             {data.currentPosition?.level}
           </span>
+          {isPremium && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-6 gap-1 text-[10px] px-2 ml-auto"
+              disabled={isExportingPdf}
+              onClick={handleExportPdf}
+            >
+              {isExportingPdf ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+              Export Roadmap
+            </Button>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -187,6 +220,22 @@ export function CareerPathSimulator({ resumeText, industry, currentRole }: Caree
               ))}
             </div>
           </div>
+
+          {isPremium && activePathData.actionPlan90Days && activePathData.actionPlan90Days.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-border/30">
+              <p className="text-[10px] font-semibold text-foreground mb-1.5 flex items-center gap-1">
+                <ListChecks className="w-3 h-3 text-primary" /> 90-Day Action Plan for This Path
+              </p>
+              <div className="space-y-1">
+                {activePathData.actionPlan90Days.map((step, i) => (
+                  <div key={i} className="flex items-start gap-1.5 text-[11px] text-foreground">
+                    <span className="font-semibold text-primary shrink-0">{i + 1}.</span>
+                    <span>{step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

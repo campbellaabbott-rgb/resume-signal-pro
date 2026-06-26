@@ -1517,9 +1517,9 @@ export default function ProductSuccess() {
               </div>
 
               {isInterviewCoach ? (
-                <InterviewCoach resumeText={coachResumeText} />
+                <InterviewCoach resumeText={coachResumeText} isPremium />
               ) : (
-                <CareerPathSimulator resumeText={coachResumeText} />
+                <CareerPathSimulator resumeText={coachResumeText} isPremium />
               )}
             </div>
           </section>

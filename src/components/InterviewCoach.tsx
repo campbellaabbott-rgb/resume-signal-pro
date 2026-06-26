@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   MessageSquare, Loader2, ChevronRight, CheckCircle, AlertTriangle,
-  Send, RotateCcw, Star
+  Send, RotateCcw, Star, Download, Lightbulb
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,10 @@ interface InterviewCoachProps {
   resumeText: string;
   industry?: string;
   currentRole?: string;
+  // Paid tier: more questions, full STAR-method model answers, and a
+  // downloadable prep-guide PDF — distinct from the free version on the scan
+  // results page (6 questions, tips only, interactive practice only).
+  isPremium?: boolean;
 }
 
 interface Question {
@@ -22,6 +26,7 @@ interface Question {
   strongAnswerTips: string[];
   redFlags: string[];
   sampleOpener: string;
+  modelAnswer?: string;
   timeLimit: string;
   difficulty: string;
 }
@@ -62,7 +67,7 @@ const categoryColors: Record<string, string> = {
   "Culture Fit": "bg-green-500/10 text-green-700",
 };
 
-export function InterviewCoach({ resumeText, industry, currentRole }: InterviewCoachProps) {
+export function InterviewCoach({ resumeText, industry, currentRole, isPremium }: InterviewCoachProps) {
   const [data, setData] = useState<InterviewData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeQuestion, setActiveQuestion] = useState<number | null>(null);
@@ -70,13 +75,14 @@ export function InterviewCoach({ resumeText, industry, currentRole }: InterviewC
   const [evaluations, setEvaluations] = useState<Record<number, Evaluation>>({});
   const [evaluatingId, setEvaluatingId] = useState<number | null>(null);
   const [showTips, setShowTips] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const { toast } = useToast();
 
   const generate = async () => {
     setIsLoading(true);
     try {
       const { data: result, error } = await supabase.functions.invoke("generate-interview-coach", {
-        body: { resumeText, industry, currentRole, targetRole: currentRole },
+        body: { resumeText, industry, currentRole, targetRole: currentRole, isPremium },
       });
       if (error) throw error;
       if (!result?.success) throw new Error(result?.error || "Generation failed");
@@ -85,6 +91,20 @@ export function InterviewCoach({ resumeText, industry, currentRole }: InterviewC
       toast({ title: "Error", description: err.message || "Failed to generate", variant: "destructive" });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!data) return;
+    setIsExportingPdf(true);
+    try {
+      const { exportInterviewPrepPDF } = await import("@/lib/career-tools-export");
+      await exportInterviewPrepPDF(data);
+    } catch (err) {
+      console.error("[InterviewCoach] PDF export failed:", err);
+      toast({ title: "Export failed", description: "Could not generate the PDF. Please try again.", variant: "destructive" });
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -114,7 +134,9 @@ export function InterviewCoach({ resumeText, industry, currentRole }: InterviewC
           Practice with an AI interview coach
         </div>
         <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-          Get personalized interview questions based on your resume, practice your answers, and get instant AI feedback.
+          {isPremium
+            ? "14 in-depth questions across every category, full STAR-method model answers, and a downloadable prep guide — practice your answers and get instant AI feedback."
+            : "Get personalized interview questions based on your resume, practice your answers, and get instant AI feedback."}
         </p>
         <Button onClick={generate} disabled={isLoading} size="sm" className="gap-2">
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
@@ -135,7 +157,19 @@ export function InterviewCoach({ resumeText, industry, currentRole }: InterviewC
         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted/50 text-muted-foreground">
           {data.interviewProfile?.interviewType}
         </span>
-        <button onClick={() => setShowTips(!showTips)} className="ml-auto text-[10px] text-primary hover:underline">
+        {isPremium && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 gap-1 text-[10px] px-2"
+            disabled={isExportingPdf}
+            onClick={handleExportPdf}
+          >
+            {isExportingPdf ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+            Export Prep Guide
+          </Button>
+        )}
+        <button onClick={() => setShowTips(!showTips)} className={cn("text-[10px] text-primary hover:underline", !isPremium && "ml-auto")}>
           {showTips ? "Hide tips" : "Interview tips"}
         </button>
       </div>
@@ -220,6 +254,14 @@ export function InterviewCoach({ resumeText, industry, currentRole }: InterviewC
                         <p className="text-[10px] font-semibold text-muted-foreground mb-1">💡 Strong opener:</p>
                         <p className="text-[11px] text-foreground italic">"{q.sampleOpener}"</p>
                       </div>
+                      {isPremium && q.modelAnswer && (
+                        <div className="p-2 rounded-lg bg-primary/5 border border-primary/20">
+                          <p className="text-[10px] font-semibold text-primary mb-1 flex items-center gap-1">
+                            <Lightbulb className="w-3 h-3" /> Full model answer (STAR method):
+                          </p>
+                          <p className="text-[11px] text-foreground whitespace-pre-wrap">{q.modelAnswer}</p>
+                        </div>
+                      )}
                     </div>
                   )}
 
