@@ -264,12 +264,24 @@ export function useStreamingScan() {
         resumeValidation,
       });
 
+      // Bound how long we'll wait on a stalled connection or a hung response body —
+      // without this, a server-side stall (no error, no close, just silence) leaves
+      // the user staring at a spinner indefinitely since `reader.read()` has no
+      // timeout of its own. Capture this attempt's controller specifically so a late
+      // timer firing can't abort a *different* attempt's controller.
+      const STREAM_TIMEOUT_MS = 120_000;
+      const controllerForThisAttempt = abortControllerRef.current;
+      const timeoutId = setTimeout(() => {
+        console.warn('[StreamingScan] Client-side timeout — aborting stalled request');
+        controllerForThisAttempt.abort();
+      }, STREAM_TIMEOUT_MS);
+
       try {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        
+
         console.log(`[StreamingScan] Attempt ${attempt}/${maxRetries + 1}`);
-        
+
         const response = await fetch(`${supabaseUrl}/functions/v1/free-keyword-scan-stream`, {
           method: 'POST',
           headers: {
@@ -284,7 +296,7 @@ export function useStreamingScan() {
             skipCache: options?.skipCache,
             language: localStorage.getItem('i18nextLng') || 'en',
           }),
-          signal: abortControllerRef.current.signal,
+          signal: controllerForThisAttempt.signal,
         });
 
         if (!response.ok) {
@@ -469,6 +481,8 @@ export function useStreamingScan() {
         });
         options?.onError?.(parsedError);
         return null;
+      } finally {
+        clearTimeout(timeoutId);
       }
     }
 
