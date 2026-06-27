@@ -1,4 +1,4 @@
-import { Sparkles, CreditCard, Package, Shield } from "lucide-react";
+import { Sparkles, CreditCard, Package, Shield, Megaphone } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -89,6 +89,17 @@ export function Header() {
                 <Link to="/trust">
                   <Shield className="w-3.5 h-3.5" />
                   {t('header.trust')}
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <Link to="/changelog">
+                  <Megaphone className="w-3.5 h-3.5" />
+                  {t('header.changelog')}
                 </Link>
               </Button>
             </div>
