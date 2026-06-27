@@ -157,8 +157,20 @@ serve(async (req) => {
     // Convert file to array buffer
     const arrayBuffer = await file.arrayBuffer();
 
-    // Extract text using mammoth
-    const result = await mammoth.extractRawText({ arrayBuffer });
+    if (arrayBuffer.byteLength === 0) {
+      trackPerformance(requestStartTime, 'parse-docx', false, { reason: 'empty_file' }, clientIp);
+      return new Response(
+        JSON.stringify({ success: false, error: "This file appears to be empty. Please check the file and try again." }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Extract text using mammoth. mammoth's extractRawText() passes its input
+    // straight to unzip.openZip(), which only recognizes a `buffer`, `path`, or
+    // `file` key — never `arrayBuffer` (confirmed against mammoth@1.6.0's source).
+    // Passing { arrayBuffer } here always failed with "Could not find file in
+    // options", meaning every .docx upload through this function was failing.
+    const result = await mammoth.extractRawText({ buffer: arrayBuffer });
     const text = result.value.trim();
 
     if (result.messages && result.messages.length > 0) {
