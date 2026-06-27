@@ -12,8 +12,7 @@ import { getResumeFromSession } from "@/hooks/use-session-resume";
 import {
   BuilderResume,
   createEmptyResume,
-  createEmptyExperienceEntry,
-  createEmptyEducationEntry,
+  normalizeBuilderResume,
 } from "@/types/resume-builder";
 import { ExperienceEditor } from "@/components/builder/ExperienceEditor";
 import { EducationEditor } from "@/components/builder/EducationEditor";
@@ -69,23 +68,7 @@ export default function ResumeBuilder() {
           console.error("[ResumeBuilder] Prefill failed:", error || data?.error);
           return;
         }
-        const experience = (data.experience || []).map((entry: Record<string, unknown>) => ({
-          ...createEmptyExperienceEntry(),
-          ...entry,
-          bullets: Array.isArray(entry.bullets) && entry.bullets.length > 0 ? entry.bullets : [""],
-        }));
-        const education = (data.education || []).map((entry: Record<string, unknown>) => ({
-          ...createEmptyEducationEntry(),
-          ...entry,
-        }));
-        setResume({
-          contact: { ...createEmptyResume().contact, ...data.contact },
-          summary: data.summary || "",
-          experience: experience.length > 0 ? experience : [createEmptyExperienceEntry()],
-          education: education.length > 0 ? education : [createEmptyEducationEntry()],
-          skills: Array.isArray(data.skills) ? data.skills : [],
-          certifications: Array.isArray(data.certifications) ? data.certifications : [],
-        });
+        setResume(normalizeBuilderResume(data));
         toast({
           title: "Resume imported",
           description: "We've prefilled the builder from your most recent resume — edit anything below.",

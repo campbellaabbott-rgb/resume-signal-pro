@@ -49,6 +49,7 @@ import { ATSDefenseResults, type ATSDefenseData } from "@/components/ATSDefenseR
 import { CareerSnapshotResults } from "@/components/CareerSnapshotResults";
 import { GraduateGamePlanResults } from "@/components/GraduateGamePlanResults";
 import { ApplyAssistantResults, ApplyPackageData } from "@/components/ApplyAssistantResults";
+import { normalizeBuilderResume } from "@/types/resume-builder";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { AIGenerationProgress } from "@/components/AIGenerationProgress";
 import { useStreamingGeneration } from "@/hooks/use-streaming-generation";
@@ -395,7 +396,13 @@ export default function ProductSuccess() {
           return false;
         }
 
-        setApplyPackageData(packageResult.data as ApplyPackageData);
+        // Normalize tailoredResume: the AI never includes an `id` per experience/
+        // education entry (that's a client-only concern for React keys), so using
+        // the raw response directly would give every entry the same undefined key.
+        setApplyPackageData({
+          ...(packageResult.data as ApplyPackageData),
+          tailoredResume: normalizeBuilderResume(packageResult.data.tailoredResume),
+        });
         if (!coverLetterResult.error && coverLetterResult.data?.data?.coverLetter) {
           setApplyCoverLetter(coverLetterResult.data.data.coverLetter);
         }
@@ -938,7 +945,10 @@ export default function ProductSuccess() {
               });
               setIsRecoveryMode(true);
             } else {
-              setApplyPackageData(packageResult.data as ApplyPackageData);
+              setApplyPackageData({
+                ...(packageResult.data as ApplyPackageData),
+                tailoredResume: normalizeBuilderResume(packageResult.data.tailoredResume),
+              });
               if (!coverLetterResult.error && coverLetterResult.data?.data?.coverLetter) {
                 setApplyCoverLetter(coverLetterResult.data.data.coverLetter);
               }
@@ -1795,7 +1805,10 @@ export default function ProductSuccess() {
                                     } else if (productKey === 'graduateGamePlan') {
                                       setGraduateGamePlanData(matchingPurchase.generatedContent);
                                     } else if (productKey === 'applyAssistant') {
-                                      setApplyPackageData(matchingPurchase.generatedContent);
+                                      setApplyPackageData({
+                                        ...matchingPurchase.generatedContent,
+                                        tailoredResume: normalizeBuilderResume(matchingPurchase.generatedContent.tailoredResume),
+                                      });
                                       setApplyCoverLetter(matchingPurchase.generatedContent.coverLetter || null);
                                     } else {
                                       setGeneratedContent(matchingPurchase.generatedContent);

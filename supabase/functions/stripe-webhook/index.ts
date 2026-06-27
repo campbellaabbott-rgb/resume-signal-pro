@@ -397,7 +397,11 @@ serve(async (req) => {
             const referralCode = session.metadata?.referral_code;
             if (referralCode && session.amount_total) {
               const productType = session.metadata?.product_type;
-              const lowCommission = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits'];
+              // Kept in sync with the same list in verify-product-purchase/index.ts —
+              // this one had drifted out of sync (missing interview_coach/
+              // career_path_simulator entirely, and would have defaulted
+              // apply_assistant to the $5 tier on a $7 sale).
+              const lowCommission = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
               const commissionCents = lowCommission.includes(productType || '') ? 100 : 500;
               
               EdgeRuntime.waitUntil(

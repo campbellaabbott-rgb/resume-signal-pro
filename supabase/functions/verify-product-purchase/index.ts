@@ -358,8 +358,11 @@ serve(async (req) => {
     // Record affiliate conversion if there was a referral
     const referralCode = session.metadata?.referral_code;
     if (referralCode && isFirstUse && session.amount_total) {
-      // Commission rates: $1 for basic products, $5 for premium products
-      const lowCommissionProducts = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'interview_coach', 'career_path_simulator'];
+      // Commission rates: $1 for basic products, $5 for premium products.
+      // applyAssistant is $7 — without being in this list it defaulted to the $5
+      // premium-tier commission, leaving only ~$2 to cover the Stripe fee and two
+      // AI generation calls on every affiliate-referred sale.
+      const lowCommissionProducts = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
       const commissionCents = lowCommissionProducts.includes(productType || '') ? 100 : 500;
       logStep("Recording affiliate conversion", { 
         referralCode, 
