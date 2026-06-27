@@ -67,7 +67,7 @@ export function IndustryDetectionChart() {
       // with no SELECT policy (it holds per-visitor data like visitor_id/ip_country
       // that shouldn't be publicly queryable), so a direct .from() call here would
       // silently return nothing.
-      const { data: breakdownData } = await supabase.rpc('get_industry_detection_breakdown', { p_hours_back: 168 });
+      const { data: breakdownData } = await (supabase as any).rpc('get_industry_detection_breakdown', { p_hours_back: 168 }) as { data: Array<{ final_industry: string; final_confidence: string }> | null };
 
       if (breakdownData) {
         const grouped: Record<string, { count: number; confidences: string[] }> = {};
