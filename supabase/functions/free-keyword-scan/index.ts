@@ -1474,8 +1474,19 @@ ${resumeText.substring(0, 15000)}
       responseData.secondaryIndustry = industryDetection.secondaryIndustry;
       responseData.secondaryIndustryScore = industryDetection.secondaryScore;
     }
-    
-    
+
+    // Surface the detection details the frontend needs to let users flag a
+    // misclassification (IndustryConfidenceIndicator -> log_industry_correction).
+    // Without this, the correction UI never has real data to show and the
+    // industry_corrections feedback loop never gets fed.
+    responseData.industryDetection = {
+      detected: finalIndustry,
+      confidence: finalConfidence,
+      signals: industryDetection.signals,
+      aiSuggested: normalizedAIIndustry !== finalIndustry ? normalizedAIIndustry : undefined,
+    };
+
+
     // Log successful completion metric
     logScanMetric(metricCtx, 'completed', {
       outputValid: true,

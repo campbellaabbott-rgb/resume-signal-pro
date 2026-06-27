@@ -731,6 +731,7 @@ const Index = () => {
           applicationRecommendation: (result as any).applicationRecommendation,
           skillGapActions: (result as any).skillGapActions,
           competitiveAssessment: (result as any).competitiveAssessment,
+          industryDetection: (result as any).industryDetection,
         });
         
         // Track scan completed in funnel
@@ -852,6 +853,7 @@ const Index = () => {
           experienceFit: data.experienceFit,
           titleAlignment: data.titleAlignment,
           jobMatchSummary: data.jobMatchSummary,
+          industryDetection: data.industryDetection,
         });
         
         toast({
