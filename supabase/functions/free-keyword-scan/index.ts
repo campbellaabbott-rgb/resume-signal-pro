@@ -573,7 +573,7 @@ serve(async (req) => {
       console.log(`[FREE-KEYWORD-SCAN] Loaded ${flatCorrections.length} dynamic correction patterns`);
     }
     
-    const industryDetection = detectIndustry(resumeText, dynamicBoosts);
+    const industryDetection = detectIndustry(resumeText, dynamicBoosts, truncatedJobDescription || undefined);
     console.log(`[FREE-KEYWORD-SCAN] Pre-detected industry: ${industryDetection.industry} (confidence: ${industryDetection.confidence}, score: ${industryDetection.score.toFixed(1)})`);
     console.log(`[FREE-KEYWORD-SCAN] Signals: ${industryDetection.signals.slice(0, 3).join(', ')}`);
     

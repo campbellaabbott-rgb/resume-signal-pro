@@ -7511,7 +7511,8 @@ RULES:
 - A "Marketing Intern" at a tech company is in MARKETING, not technology
 - A "Software Engineer" at a bank is in TECHNOLOGY, not finance
 - Consider the person's career trajectory and specialization
-- If the person works in a cross-functional role, classify by their FUNCTION (e.g., HR at a tech company = hr)${correctionHints}
+- If the person works in a cross-functional role, classify by their FUNCTION (e.g., HR at a tech company = hr)
+- If a target job posting is provided, treat its stated title/industry as a strong signal for which industry to classify toward — the candidate is actively targeting that role${correctionHints}
 
 Available industries: ${coreIndustries.join(', ')}
 
@@ -7525,7 +7526,7 @@ Respond with ONLY the industry name (snake_case), nothing else.`
 
 Resume excerpt:
 ${classificationExcerpt}
-
+${jobDescriptionText ? `\nTarget job posting (the candidate is applying to this role — use its stated title/industry as a strong signal):\n${jobDescriptionText.substring(0, 1000)}\n` : ''}
 What is the PRIMARY industry? Reply with only the industry name.`
               }
             ],

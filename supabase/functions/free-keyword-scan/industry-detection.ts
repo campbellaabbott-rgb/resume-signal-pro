@@ -15,6 +15,11 @@ const SECTION_WEIGHTS = {
   firstBullets: 2.0, // First 2-3 bullets per role
   otherBullets: 1.0, // Other bullet points
   skills: 0.4,       // Skills section - LOW weight (was 0.7) — skills lists are noisy
+  jobPosting: 6.0,   // Target job posting text, when the user provides one — a stated
+                     // job title/industry in a posting the candidate is actively
+                     // applying to is a strong, unambiguous signal, but stays below
+                     // jobTitle since the resume itself is still the primary source
+                     // of truth about who the candidate actually is.
   misc: 0.3          // Footer, education descriptions, etc.
 };
 
@@ -759,19 +764,26 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
   };
   const falsePositives = FALSE_POSITIVE_TITLES[industry] || [];
   
-  // Check job titles (HIGHEST WEIGHT)
-  for (const title of sections.jobTitles) {
+  // Check job titles (HIGHEST WEIGHT). Resumes are conventionally reverse-
+  // chronological, so earlier entries in this array are more recent roles —
+  // weight them more heavily than older ones, since a person's current/most
+  // recent role is a much stronger industry signal than something from years
+  // ago (e.g. someone who moved from engineering into sales 3 years ago should
+  // score as sales, not engineering).
+  sections.jobTitles.forEach((title, index) => {
     // Skip if this title matches a known false positive for this industry
     const isFalsePositive = falsePositives.some(fp => title.includes(fp));
-    if (isFalsePositive) continue;
-    
+    if (isFalsePositive) return;
+
+    const recencyMultiplier = Math.max(0.4, 1 - index * 0.15);
+
     for (const industryTitle of keywords.titles) {
       if (title.includes(industryTitle)) {
-        score += SECTION_WEIGHTS.jobTitle * 2; // Double weight for exact title match
-        signals.push(`Job title match: "${industryTitle}"`);
+        score += SECTION_WEIGHTS.jobTitle * 2 * recencyMultiplier; // Double weight for exact title match
+        signals.push(`Job title match: "${industryTitle}"${index === 0 ? ' (most recent role)' : ''}`);
       }
     }
-  }
+  });
   
   // Check summary
   for (const kw of [...keywords.primary, ...keywords.titles]) {
@@ -811,10 +823,13 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
     }
   }
   
-  // Check certifications (strong signal)
+  // Check certifications. A licensing certification (CPA, RN, PMP, JD, etc.) is
+  // about as unambiguous a signal as exists on a resume — someone doesn't get a
+  // CPA without being in accounting. Weight it above job titles, not level with
+  // the much noisier summary section.
   for (const cert of keywords.certifications) {
     if (sections.fullText.includes(cert)) {
-      score += SECTION_WEIGHTS.summary; // Same weight as summary
+      score += SECTION_WEIGHTS.jobTitle * 1.5;
       if (signals.length < 10) signals.push(`Certification: "${cert}"`);
     }
   }
@@ -835,8 +850,45 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
     score += coOccurrenceScore;
     signals.push(`Co-occurrence patterns detected`);
   }
-  
+
   return { score, signals };
+}
+
+/**
+ * Score signal from a target job posting, when the user provided one for
+ * job-matching. A posting's title and required-skills section state the
+ * target industry directly — a strong signal that's otherwise sitting
+ * unused, since job-matching mode only used this text for skill-gap
+ * comparison, never for industry detection itself.
+ */
+function calculateJobPostingScore(jobDescriptionText: string, industry: string): {
+  score: number;
+  signals: string[];
+} {
+  const keywords = INDUSTRY_KEYWORDS[industry];
+  if (!keywords) return { score: 0, signals: [] };
+
+  const text = jobDescriptionText.toLowerCase();
+  let score = 0;
+  const signals: string[] = [];
+
+  // Job titles in a posting are usually stated plainly near the top — treat
+  // any title match anywhere in the text as a strong signal, same weight
+  // class as a resume's own job title.
+  for (const title of keywords.titles) {
+    if (text.includes(title)) {
+      score += SECTION_WEIGHTS.jobPosting;
+      signals.push(`Job posting title match: "${title}"`);
+    }
+  }
+
+  for (const kw of keywords.primary) {
+    if (text.includes(kw)) {
+      score += SECTION_WEIGHTS.jobPosting * 0.3;
+    }
+  }
+
+  return { score, signals: signals.slice(0, 3) };
 }
 
 /**
@@ -1051,19 +1103,29 @@ function applyCorrectionsBoost(
  */
 export function detectIndustry(
   resumeText: string,
-  dynamicCorrections?: Record<string, { target: string; boost: number }[]>
+  dynamicCorrections?: Record<string, { target: string; boost: number }[]>,
+  jobDescriptionText?: string
 ): DetectionResult {
   const sections = extractSections(resumeText);
-  
+
   // Calculate scores for all industries
   const scores: Array<{ industry: string; score: number; signals: string[] }> = [];
-  
+
   for (const industry of Object.keys(INDUSTRY_KEYWORDS)) {
     const result = calculateIndustryScore(sections, industry);
+    const signals = result.signals;
+    let score = result.score;
+
+    if (jobDescriptionText && jobDescriptionText.trim().length > 0) {
+      const jobPostingResult = calculateJobPostingScore(jobDescriptionText, industry);
+      score += jobPostingResult.score;
+      signals.push(...jobPostingResult.signals);
+    }
+
     scores.push({
       industry,
-      score: result.score,
-      signals: result.signals
+      score,
+      signals
     });
   }
   
