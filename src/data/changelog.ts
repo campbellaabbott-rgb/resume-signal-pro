@@ -14,6 +14,20 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-06-27",
+    title: "Fixed Word document uploads",
+    description:
+      "Fixed a bug that caused .docx resume uploads to fail. If you tried uploading a Word document recently and it didn't work, please try again — it's fixed now. We also added a clear message for older .doc files (which need to be saved as .docx first) and for any other unsupported file type, instead of leaving you stuck with no explanation.",
+    tags: ["fixed"],
+  },
+  {
+    date: "2026-06-27",
+    title: "Purchase recovery fix",
+    description:
+      "Fixed an issue where recovering a previous purchase (if you closed the tab before seeing your results) could fail. You can now recover your results using the link or session ID from your confirmation email.",
+    tags: ["fixed"],
+  },
+  {
+    date: "2026-06-27",
     title: "Checkout reliability fixes",
     description:
       "Fixed a pricing bug in the custom scan-credit purchase flow that could charge more than the displayed price, and fixed an issue where Interview Coach and Career Path Simulator purchases could fail to deliver their content after payment. If you were affected by either, reach out and we'll make it right.",
