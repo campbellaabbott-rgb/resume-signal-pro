@@ -1760,7 +1760,7 @@ export default function ProductSuccess() {
                           className="text-primary p-0 h-auto"
                           onClick={() => setShowEmailRecovery(true)}
                         >
-                          Recover your results by email →
+                          Recover your results →
                         </Button>
                       </div>
                     ) : (
@@ -1778,21 +1778,30 @@ export default function ProductSuccess() {
                             Cancel
                           </Button>
                         </div>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Paste the purchase link or session ID from your confirmation email — for
+                          your security, we can no longer look purchases up by email alone.
+                        </p>
                         <div className="space-y-3">
                           <Input
-                            type="email"
-                            placeholder="Enter the email used during checkout"
+                            type="text"
+                            placeholder="cs_live_... or the link from your confirmation email"
                             value={recoveryEmail}
                             onChange={(e) => setRecoveryEmail(e.target.value)}
                           />
-                          <Button 
+                          <Button
                             className="w-full gap-2"
                             disabled={!recoveryEmail || isRecoveringByEmail}
                             onClick={async () => {
                               setIsRecoveringByEmail(true);
                               try {
+                                // Accept either a raw session ID or a pasted confirmation-email
+                                // URL containing ?session_id=... — extract it either way.
+                                const sessionIdMatch = recoveryEmail.match(/session_id=([^&\s]+)/);
+                                const recoverySessionId = sessionIdMatch ? sessionIdMatch[1] : recoveryEmail.trim();
+
                                 const { data, error } = await supabase.functions.invoke('recover-purchase', {
-                                  body: { email: recoveryEmail }
+                                  body: { sessionId: recoverySessionId }
                                 });
                                 
                                 if (error) throw error;
@@ -1850,7 +1859,7 @@ export default function ProductSuccess() {
                                 } else {
                                   toast({
                                     title: "No purchases found",
-                                    description: "No purchases found for this email. Please check the email address.",
+                                    description: "No purchase found for that session ID. Please check the link from your confirmation email.",
                                     variant: "destructive"
                                   });
                                 }
