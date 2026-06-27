@@ -6,7 +6,8 @@
     "betaBanner": "Momenteel in Bèta — We horen graag je feedback!",
     "howItWorks": "Hoe het werkt",
     "pricing": "Prijzen",
-    "trust": "Vertrouwen"
+    "trust": "Vertrouwen",
+    "changelog": "Nieuw"
   },
   "hero": {
     "badge": "AI-gestuurde CV-analyse",
@@ -56,7 +57,9 @@
       "fixes": "Directe fixes"
     },
     "testimonial": "\"Dit is een geweldig product. Ik heb de gratis functies getest en kan vol vertrouwen zeggen dat het een groot succes wordt.\"",
+    "testimonial2": "De service is supernuttig en behulpzaam.",
     "testimonialAuthor": "Recente gebruiker",
+    "testimonialAuthorReddit": "Recente gebruiker",
     "trustedBy": "Vertrouwd door professionals bij",
     "freeScanReveals": "Je gratis scan onthult:",
     "reveal": {
@@ -87,7 +90,8 @@
     "terms": "Servicevoorwaarden",
     "contact": "Contact",
     "questions": "Vragen of feedback?",
-    "pricing": "Prijzen"
+    "pricing": "Prijzen",
+    "changelog": "Nieuw"
   },
   "howItWorks": {
     "badge": "AI-gestuurde Analyse",

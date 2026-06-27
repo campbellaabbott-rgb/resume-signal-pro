@@ -6,7 +6,8 @@
     "betaBanner": "Atualmente em Beta — Adoraríamos o seu feedback!",
     "howItWorks": "Como Funciona",
     "pricing": "Preços",
-    "trust": "Confiança"
+    "trust": "Confiança",
+    "changelog": "Novidades"
   },
   "hero": {
     "badge": "Análise de Currículo com IA",
@@ -56,7 +57,9 @@
       "fixes": "Correções instantâneas"
     },
     "testimonial": "\"Este é um produto maravilhoso. Acabei de experimentar as funcionalidades gratuitas e posso dizer com confiança que vai ser um grande sucesso.\"",
+    "testimonial2": "O serviço é super útil e proveitoso.",
     "testimonialAuthor": "Utilizador recente",
+    "testimonialAuthorReddit": "Utilizador recente",
     "trustedBy": "Confiado por profissionais da",
     "freeScanReveals": "A sua análise gratuita revela:",
     "reveal": {
@@ -87,7 +90,8 @@
     "terms": "Termos de Serviço",
     "contact": "Contacto",
     "questions": "Perguntas ou feedback?",
-    "pricing": "Preços"
+    "pricing": "Preços",
+    "changelog": "Novidades"
   },
   "howItWorks": {
     "badge": "Análise com IA",
@@ -298,7 +302,7 @@
       },
       "reddit": {
         "quote": "O serviço é super útil e prático.",
-        "role": "Utilizador Reddit • Cliente pago"
+        "role": "Utilizador Reddit • Cliente pagante"
       }
     },
     "trustMessage": "Junte-se a milhares de candidatos que melhoraram os seus currículos com feedback honesto e de nível profissional."
@@ -554,13 +558,5 @@
     "switchPrompt": "Mudar idioma do site para {{language}}?",
     "switchButton": "Mudar para {{language}}",
     "dismiss": "Manter {{current}}"
-  },
-  "socialProof": {
-    "testimonials": {
-      "reddit": {
-        "quote": "O serviço é super útil e prático.",
-        "role": "Utilizador Reddit • Cliente pagante"
-      }
-    }
   }
 }

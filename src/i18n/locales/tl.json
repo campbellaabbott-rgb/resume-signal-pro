@@ -6,7 +6,8 @@
     "betaBanner": "Kasalukuyang nasa Beta — Gusto naming marinig ang iyong feedback!",
     "howItWorks": "Paano Ito Gumagana",
     "pricing": "Presyo",
-    "trust": "Tiwala"
+    "trust": "Tiwala",
+    "changelog": "Bago"
   },
   "hero": {
     "badge": "AI-Powered Resume Analysis",
@@ -56,7 +57,9 @@
       "fixes": "Instant fixes"
     },
     "testimonial": "\"Ito ay isang napakagandang produkto. Sinubukan ko ang mga libreng feature at masasabi kong magiging malaking tagumpay ito.\"",
+    "testimonial2": "Ang serbisyo ay sobrang nakakatulong at kapaki-pakinabang.",
     "testimonialAuthor": "Kamakailang user",
+    "testimonialAuthorReddit": "Kamakailang user",
     "trustedBy": "Pinagkakatiwalaan ng mga propesyonal sa",
     "freeScanReveals": "Ang iyong libreng scan ay nagpapakita ng:",
     "reveal": {
@@ -87,7 +90,8 @@
     "terms": "Terms of Service",
     "contact": "Makipag-ugnayan",
     "questions": "May tanong o feedback?",
-    "pricing": "Presyo"
+    "pricing": "Presyo",
+    "changelog": "Bago"
   },
   "howItWorks": {
     "badge": "AI-Powered Analysis",
@@ -255,7 +259,8 @@
         "question": "Bakit ito mas maganda kaysa ChatGPT o resume templates?",
         "answer": "Ang Resume Booster ay sadyang ginawa para sa ATS optimization na may 5-kategoryang weighted scoring system, 14 industry-specific na templates, at recruiter-calibrated feedback. Hindi tulad ng ChatGPT, makakakuha ka ng consistent 10-section structured output nang walang prompt engineering. Hindi tulad ng templates, nagbibigay kami ng personalized rewrites, LinkedIn analysis, at job description alignment. Ang iyong data ay agad na itinatapon—hindi ginagamit para sa training."
       }
-    }
+    },
+    "stillHaveQuestions": "May iba ka pang tanong?"
   },
   "comparison": {
     "title": "Bakit Resume Booster?",
@@ -296,7 +301,7 @@
         "role": "Bagong Graduate"
       },
       "reddit": {
-        "quote": "Ang serbisyo ay super helpful at kapaki-pakinabang.",
+        "quote": "Ang serbisyo ay super nakakatulong at kapaki-pakinabang.",
         "role": "Reddit User • Nagbayad na Customer"
       }
     },
@@ -553,16 +558,5 @@
     "switchPrompt": "Palitan ang wika ng site sa {{language}}?",
     "switchButton": "Lumipat sa {{language}}",
     "dismiss": "Panatilihin ang {{current}}"
-  },
-  "faq": {
-    "stillHaveQuestions": "May iba ka pang tanong?"
-  },
-  "socialProof": {
-    "testimonials": {
-      "reddit": {
-        "quote": "Ang serbisyo ay super nakakatulong at kapaki-pakinabang.",
-        "role": "Reddit User • Nagbayad na Customer"
-      }
-    }
   }
 }

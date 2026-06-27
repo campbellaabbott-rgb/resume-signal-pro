@@ -6,7 +6,8 @@
     "betaBanner": "Actuellement en Bêta — Vos retours sont les bienvenus !",
     "howItWorks": "Comment ça marche",
     "pricing": "Tarifs",
-    "trust": "Confiance"
+    "trust": "Confiance",
+    "changelog": "Nouveautés"
   },
   "hero": {
     "badge": "Analyse de CV par IA",
@@ -56,7 +57,9 @@
       "fixes": "Corrections instantanées"
     },
     "testimonial": "\"C'est un produit merveilleux. J'ai testé les fonctionnalités gratuites et je peux dire avec confiance que ce sera un grand succès.\"",
+    "testimonial2": "Le service est super utile et pratique.",
     "testimonialAuthor": "Utilisateur récent",
+    "testimonialAuthorReddit": "Utilisateur récent",
     "trustedBy": "Fait confiance par des professionnels de",
     "freeScanReveals": "Votre scan gratuit révèle :",
     "reveal": {
@@ -87,7 +90,8 @@
     "terms": "Conditions d'utilisation",
     "contact": "Contact",
     "questions": "Questions ou commentaires ?",
-    "pricing": "Tarifs"
+    "pricing": "Tarifs",
+    "changelog": "Nouveautés"
   },
   "howItWorks": {
     "badge": "Analyse par IA",
@@ -255,7 +259,8 @@
         "question": "Pourquoi est-ce mieux que ChatGPT ?",
         "answer": "Resume Booster est conçu spécifiquement pour l'optimisation ATS avec un système de scoring en 5 catégories, 14 modèles sectoriels et un feedback calibré par des recruteurs."
       }
-    }
+    },
+    "stillHaveQuestions": "Encore des questions ?"
   },
   "comparison": {
     "title": "Pourquoi Resume Booster ?",
@@ -553,16 +558,5 @@
     "switchPrompt": "Changer la langue du site en {{language}} ?",
     "switchButton": "Passer en {{language}}",
     "dismiss": "Garder {{current}}"
-  },
-  "faq": {
-    "stillHaveQuestions": "Encore des questions ?"
-  },
-  "socialProof": {
-    "testimonials": {
-      "reddit": {
-        "quote": "Le service est super utile et pratique.",
-        "role": "Utilisateur Reddit • Client payant"
-      }
-    }
   }
 }

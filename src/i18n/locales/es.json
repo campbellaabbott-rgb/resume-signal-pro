@@ -6,7 +6,8 @@
     "betaBanner": "Actualmente en Beta — ¡Nos encantaría tu feedback!",
     "howItWorks": "Cómo Funciona",
     "pricing": "Precios",
-    "trust": "Confianza"
+    "trust": "Confianza",
+    "changelog": "Novedades"
   },
   "hero": {
     "badge": "Análisis de CV con IA",
@@ -56,7 +57,9 @@
       "fixes": "Correcciones instantáneas"
     },
     "testimonial": "\"Este es un producto maravilloso. Acabo de probar las funciones gratuitas y puedo decir con confianza que será un gran éxito.\"",
+    "testimonial2": "El servicio es súper útil y beneficioso.",
     "testimonialAuthor": "Usuario reciente",
+    "testimonialAuthorReddit": "Usuario reciente",
     "trustedBy": "Confiado por profesionales en",
     "freeScanReveals": "Tu escaneo gratuito revela:",
     "reveal": {
@@ -87,7 +90,8 @@
     "terms": "Términos de Servicio",
     "contact": "Contacto",
     "questions": "¿Preguntas o comentarios?",
-    "pricing": "Precios"
+    "pricing": "Precios",
+    "changelog": "Novedades"
   },
   "howItWorks": {
     "badge": "Análisis con IA",
@@ -255,7 +259,8 @@
         "question": "¿Por qué es mejor que ChatGPT o plantillas de currículum?",
         "answer": "Resume Booster está diseñado específicamente para optimización ATS con un sistema de puntuación ponderado de 5 categorías, 14 plantillas específicas por industria y feedback calibrado por reclutadores. A diferencia de ChatGPT, obtienes una salida estructurada de 10 secciones sin necesidad de crear prompts. A diferencia de las plantillas, proporcionamos reescrituras personalizadas, análisis de LinkedIn y alineación con descripciones de trabajo. Tus datos se descartan inmediatamente, nunca se usan para entrenamiento."
       }
-    }
+    },
+    "stillHaveQuestions": "¿Aún tienes preguntas?"
   },
   "comparison": {
     "title": "¿Por qué Resume Booster?",
@@ -297,7 +302,7 @@
       },
       "reddit": {
         "quote": "El servicio es súper útil y práctico.",
-        "role": "Usuario de Reddit • Cliente de Pago"
+        "role": "Usuario de Reddit • Cliente de pago"
       }
     },
     "trustMessage": "Únete a miles de buscadores de empleo que han mejorado sus currículums con comentarios honestos de nivel reclutador."
@@ -553,16 +558,5 @@
     "switchPrompt": "¿Cambiar idioma del sitio a {{language}}?",
     "switchButton": "Cambiar a {{language}}",
     "dismiss": "Mantener {{current}}"
-  },
-  "faq": {
-    "stillHaveQuestions": "¿Aún tienes preguntas?"
-  },
-  "socialProof": {
-    "testimonials": {
-      "reddit": {
-        "quote": "El servicio es súper útil y práctico.",
-        "role": "Usuario de Reddit • Cliente de pago"
-      }
-    }
   }
 }
