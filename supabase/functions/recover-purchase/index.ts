@@ -18,14 +18,18 @@ serve(async (req) => {
   try {
     const { email, sessionId } = await req.json();
 
-    if (!email && !sessionId) {
+    // Require sessionId to prevent enumeration of purchases by email alone.
+    // Email-only recovery is no longer permitted; users must provide their
+    // Stripe checkout session ID (delivered in the post-purchase email).
+    if (!sessionId) {
       return new Response(
-        JSON.stringify({ error: "Email or session ID is required" }),
+        JSON.stringify({ error: "A purchase session ID is required to recover content. Please use the link from your purchase confirmation email." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    logStep("Recovery request", { email: email?.substring(0, 5) + "...", hasSessionId: !!sessionId });
+    logStep("Recovery request", { email: email ? email.substring(0, 5) + "..." : undefined, hasSessionId: !!sessionId });
+
 
     // Initialize Supabase with service role for database access
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
