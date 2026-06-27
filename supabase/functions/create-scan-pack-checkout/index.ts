@@ -7,8 +7,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Price per credit: $1 each
-const CREDIT_PRICE_ID = "price_1SgEvtHBplUUV1CgLtMVyhkZ";
+// Price per credit must match PRODUCTS.scanPack in src/config/products.ts
+// ($2 for 10 credits = $0.20/credit). Uses inline price_data instead of a
+// fixed Stripe Price object — CREDIT_PRICE_ID previously pointed at a $1/credit
+// price, 5x what the purchase UI displays and charges the customer for.
+const PRICE_PER_CREDIT_CENTS = 20;
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MINUTES = 60;
 
@@ -117,7 +120,11 @@ serve(async (req) => {
       customer_email: customerId ? undefined : normalizedEmail,
       line_items: [
         {
-          price: CREDIT_PRICE_ID,
+          price_data: {
+            currency: "usd",
+            product_data: { name: "Resume Scan Credit" },
+            unit_amount: PRICE_PER_CREDIT_CENTS,
+          },
           quantity: credits,
         },
       ],

@@ -1688,6 +1688,28 @@ export default function ProductSuccess() {
           productName={product?.name || "your content"}
         />
 
+        {/* Verification Failed - don't leave the user on a blank page */}
+        {verificationError && !isVerifying && (
+          <section className="py-12 border-t border-border/50">
+            <div className="container max-w-2xl">
+              <div className="p-8 rounded-2xl bg-muted/50 border border-border text-center">
+                <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">We Couldn't Verify Your Purchase Yet</h3>
+                <p className="text-muted-foreground mb-6">
+                  Your payment may still be processing — this can take a minute. If you were charged,
+                  your purchase is safe and we'll have it ready shortly.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button onClick={() => window.location.reload()}>Try Again</Button>
+                  <Button variant="outline" asChild>
+                    <a href="mailto:resumeboostersupp@gmail.com">Contact Support</a>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* No Generated Content - Show Inline Upload Recovery */}
         {(isKeywordFix || isCoverLetter || isPremiumPackage || isAtsDefense || isCareerSnapshot || isGraduateGamePlan || isInterviewCoach || isCareerPathSimulator || isApplyAssistant) && !generatedContent && !atsDefenseData && !careerSnapshotData && !graduateGamePlanData && !coachResumeText && !applyPackageData && !verificationError && !isVerifying && !isRegenerating && (
           <section className="py-12 border-t border-border/50">

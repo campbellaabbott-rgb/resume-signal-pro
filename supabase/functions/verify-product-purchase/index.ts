@@ -11,6 +11,40 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[VERIFY-PRODUCT-PURCHASE] ${step}`, details ? JSON.stringify(details) : '');
 };
 
+// Maps each content product to its generation endpoint and request body.
+// Mirrors stripe-webhook's switch — this is the recovery path used when the
+// success page calls verify-product-purchase because the webhook hasn't
+// fired yet (or failed). A product missing here means recovery silently does
+// nothing for it, even though the customer paid.
+function buildGenerationRequest(
+  productType: string,
+  resumeText: string,
+  jobDescriptionText: string,
+  jobTitle: string,
+  jobCompany: string
+): { endpoint: string; body: Record<string, unknown> } | null {
+  switch (productType) {
+    case 'basic_keyword_fix':
+      return { endpoint: 'generate-keyword-fix', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany } };
+    case 'cover_letter':
+      return { endpoint: 'generate-cover-letter', body: { resumeText, jobDescription: jobDescriptionText, jobTitle: jobTitle || 'Professional Position', jobCompany, tone: 'professional' } };
+    case 'premium_package':
+      return { endpoint: 'generate-premium-package', body: { resumeText, jobDescription: jobDescriptionText, jobTitle: jobTitle || 'Target Position', jobCompany } };
+    case 'graduate_gameplan':
+      return { endpoint: 'generate-graduate-gameplan', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany } };
+    case 'career_snapshot':
+      return { endpoint: 'generate-career-snapshot', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany } };
+    case 'ats_defense':
+      return { endpoint: 'generate-ats-defense', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany } };
+    case 'interview_coach':
+      return { endpoint: 'generate-interview-coach', body: { resumeText, isPremium: true } };
+    case 'career_path_simulator':
+      return { endpoint: 'generate-career-path', body: { resumeText, isPremium: true } };
+    default:
+      return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -142,30 +176,36 @@ serve(async (req) => {
         const jobCompany = session.metadata?.job_company || '';
 
         // Generate content based on product type
-        if (productType === 'basic_keyword_fix' && resume_text) {
-          logStep("Calling generate-keyword-fix");
-          const keywordResponse = await fetch(`${supabaseUrl}/functions/v1/generate-keyword-fix`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
-            },
-            body: JSON.stringify({
-              resumeText: resume_text,
-              jobDescription: job_description_text || '',
-              jobTitle,
-              jobCompany
+        if (productType === 'apply_assistant' && resume_text && job_description_text) {
+          logStep("Calling generate-apply-package + generate-cover-letter");
+          const [packageResponse, coverLetterResponse] = await Promise.all([
+            fetch(`${supabaseUrl}/functions/v1/generate-apply-package`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+              body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text })
+            }),
+            fetch(`${supabaseUrl}/functions/v1/generate-cover-letter`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+              body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional' })
             })
-          });
+          ]);
 
-          const generationDuration = Date.now() - generationStartTime;
-          
-          if (keywordResponse.ok) {
-            const keywordResult = await keywordResponse.json();
-            generatedContent = keywordResult.data;
-            logStep("Keyword analysis generated successfully");
-            
-            // Save content permanently for customer recovery
+          const applyGenDuration = Date.now() - generationStartTime;
+
+          if (packageResponse.ok) {
+            const packageResult = await packageResponse.json();
+            const coverLetterResult = coverLetterResponse.ok ? await coverLetterResponse.json() : null;
+            generatedContent = {
+              jobMetadata: packageResult.jobMetadata,
+              tailoredResume: packageResult.tailoredResume,
+              skillGaps: packageResult.skillGaps,
+              checklist: packageResult.checklist,
+              coverLetter: coverLetterResult?.data?.coverLetter || null,
+              modelUsed: packageResult.modelUsed,
+            };
+            logStep("Apply package generated successfully");
+
             await supabase.rpc('save_purchased_content', {
               p_stripe_session_id: sessionId,
               p_customer_email: customerEmail || '',
@@ -174,133 +214,79 @@ serve(async (req) => {
               p_generated_content: generatedContent
             });
             logStep("Content saved for recovery");
-            
-            // Log generation completed successfully
-            await supabase.rpc('log_delivery_step', {
-              p_stripe_session_id: sessionId,
-              p_step: 'generation_completed',
-              p_success: true,
-              p_duration_ms: generationDuration
-            });
-          } else {
-            const errorText = await keywordResponse.text();
-            logStep("Keyword generation failed", { status: keywordResponse.status, error: errorText });
-            
-            // Log generation failed
-            await supabase.rpc('log_delivery_step', {
-              p_stripe_session_id: sessionId,
-              p_step: 'generation_completed',
-              p_success: false,
-              p_error: errorText.substring(0, 500),
-              p_duration_ms: generationDuration
-            });
-          }
-        } else if (productType === 'cover_letter' && resume_text) {
-          logStep("Calling generate-cover-letter");
-          // Cover letter needs jobDescription OR jobTitle - provide fallback
-          const coverLetterResponse = await fetch(`${supabaseUrl}/functions/v1/generate-cover-letter`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
-            },
-            body: JSON.stringify({
-              resumeText: resume_text,
-              jobDescription: job_description_text || '',
-              jobTitle: jobTitle || 'Professional Position',  // Fallback so it doesn't fail
-              jobCompany,
-              tone: 'professional'
-            })
-          });
 
-          const coverGenDuration = Date.now() - generationStartTime;
-          
-          if (coverLetterResponse.ok) {
-            const coverLetterResult = await coverLetterResponse.json();
-            generatedContent = coverLetterResult.data;
-            logStep("Cover letter generated successfully");
-            
-            // Save content permanently for customer recovery
-            await supabase.rpc('save_purchased_content', {
-              p_stripe_session_id: sessionId,
-              p_customer_email: customerEmail || '',
-              p_product_type: productType,
-              p_product_name: productName,
-              p_generated_content: generatedContent
-            });
-            logStep("Content saved for recovery");
-            
             await supabase.rpc('log_delivery_step', {
               p_stripe_session_id: sessionId,
               p_step: 'generation_completed',
               p_success: true,
-              p_duration_ms: coverGenDuration
+              p_duration_ms: applyGenDuration
             });
           } else {
-            const errorText = await coverLetterResponse.text();
-            logStep("Cover letter generation failed", { status: coverLetterResponse.status, error: errorText });
-            
-            await supabase.rpc('log_delivery_step', {
-              p_stripe_session_id: sessionId,
-              p_step: 'generation_completed',
-              p_success: false,
-              p_error: errorText.substring(0, 500),
-              p_duration_ms: coverGenDuration
-            });
-          }
-        } else if (productType === 'premium_package' && resume_text) {
-          logStep("Calling generate-premium-package");
-          const premiumResponse = await fetch(`${supabaseUrl}/functions/v1/generate-premium-package`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
-            },
-            body: JSON.stringify({
-              resumeText: resume_text,
-              jobDescription: job_description_text || '',
-              jobTitle: jobTitle || 'Target Position',
-              jobCompany
-            })
-          });
+            const errorText = await packageResponse.text();
+            logStep("Apply package generation failed", { status: packageResponse.status, error: errorText });
 
-          const premiumGenDuration = Date.now() - generationStartTime;
-          
-          if (premiumResponse.ok) {
-            const premiumResult = await premiumResponse.json();
-            generatedContent = premiumResult.data;
-            logStep("Premium package generated successfully");
-            
-            // Save content permanently for customer recovery
-            await supabase.rpc('save_purchased_content', {
-              p_stripe_session_id: sessionId,
-              p_customer_email: customerEmail || '',
-              p_product_type: productType,
-              p_product_name: productName,
-              p_generated_content: generatedContent
-            });
-            logStep("Content saved for recovery");
-            
-            await supabase.rpc('log_delivery_step', {
-              p_stripe_session_id: sessionId,
-              p_step: 'generation_completed',
-              p_success: true,
-              p_duration_ms: premiumGenDuration
-            });
-          } else {
-            const errorText = await premiumResponse.text();
-            logStep("Premium package generation failed", { status: premiumResponse.status, error: errorText });
-            
             await supabase.rpc('log_delivery_step', {
               p_stripe_session_id: sessionId,
               p_step: 'generation_completed',
               p_success: false,
               p_error: errorText.substring(0, 500),
-              p_duration_ms: premiumGenDuration
+              p_duration_ms: applyGenDuration
             });
           }
         } else {
-          logStep("No matching content generator", { productType, hasResumeText: !!resume_text });
+          const request = resume_text
+            ? buildGenerationRequest(productType, resume_text, job_description_text || '', jobTitle, jobCompany)
+            : null;
+
+          if (request) {
+            logStep(`Calling ${request.endpoint}`);
+            const genResponse = await fetch(`${supabaseUrl}/functions/v1/${request.endpoint}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+              },
+              body: JSON.stringify(request.body)
+            });
+
+            const genDuration = Date.now() - generationStartTime;
+
+            if (genResponse.ok) {
+              const genResult = await genResponse.json();
+              generatedContent = genResult.data;
+              logStep(`${request.endpoint} generated successfully`);
+
+              // Save content permanently for customer recovery
+              await supabase.rpc('save_purchased_content', {
+                p_stripe_session_id: sessionId,
+                p_customer_email: customerEmail || '',
+                p_product_type: productType,
+                p_product_name: productName,
+                p_generated_content: generatedContent
+              });
+              logStep("Content saved for recovery");
+
+              await supabase.rpc('log_delivery_step', {
+                p_stripe_session_id: sessionId,
+                p_step: 'generation_completed',
+                p_success: true,
+                p_duration_ms: genDuration
+              });
+            } else {
+              const errorText = await genResponse.text();
+              logStep(`${request.endpoint} generation failed`, { status: genResponse.status, error: errorText });
+
+              await supabase.rpc('log_delivery_step', {
+                p_stripe_session_id: sessionId,
+                p_step: 'generation_completed',
+                p_success: false,
+                p_error: errorText.substring(0, 500),
+                p_duration_ms: genDuration
+              });
+            }
+          } else {
+            logStep("No matching content generator", { productType, hasResumeText: !!resume_text });
+          }
         }
       } else {
         logStep("No resume data found for session", { resumeSessionId });

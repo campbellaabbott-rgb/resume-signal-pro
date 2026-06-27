@@ -244,6 +244,8 @@ async function triggerProductDelivery(
         case 'graduate_gameplan': endpoint = 'generate-graduate-gameplan'; break;
         case 'career_snapshot': endpoint = 'generate-career-snapshot'; break;
         case 'ats_defense': endpoint = 'generate-ats-defense'; break;
+        case 'interview_coach': endpoint = 'generate-interview-coach'; body.isPremium = true; break;
+        case 'career_path_simulator': endpoint = 'generate-career-path'; body.isPremium = true; break;
         default: throw new Error(`Unknown product type: ${productType}`);
       }
 
