@@ -39,6 +39,15 @@ const DATE_PATTERN = /\b(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a
 // extractor would hit, since most use the same category of PDF text layer.
 const BROKEN_ENCODING_PATTERN = /�/g;
 
+// Private Use Area codepoints (U+E000–U+F8FF) are where icon fonts (FontAwesome,
+// Material Icons, etc.) map their glyphs. Many resume templates — Canva's in
+// particular — use an icon font to render the phone/email/LinkedIn icons next to
+// contact info. A real text extractor doesn't render the glyph, it emits the raw
+// codepoint, which shows up as nothing, a tofu box, or a stray character right
+// next to your contact details. Distinct from BROKEN_ENCODING_PATTERN: this is a
+// valid Unicode codepoint, so it never produces U+FFFD — it just isn't text.
+const PRIVATE_USE_AREA_PATTERN = /[\uE000-\uF8FF]/g;
+
 function checkSections(text: string): ParseCheckResult {
   const found = SECTION_PATTERNS.filter((s) => s.pattern.test(text));
   const missing = SECTION_PATTERNS.filter((s) => !s.pattern.test(text));
@@ -149,6 +158,60 @@ function checkEncoding(text: string): ParseCheckResult {
   };
 }
 
+function checkIconFontGlyphs(text: string): ParseCheckResult {
+  const matches = text.match(PRIVATE_USE_AREA_PATTERN);
+  if (!matches || matches.length === 0) {
+    return {
+      id: "icon-glyphs",
+      label: "Icon Font Glyphs",
+      status: "pass",
+      detail: "No icon-font characters detected in the extracted text.",
+    };
+  }
+
+  return {
+    id: "icon-glyphs",
+    label: "Icon Font Glyphs",
+    status: "warning",
+    detail: `${matches.length} icon-font character(s) found in the extracted text — common in templates that use an icon font for the phone/email/LinkedIn symbols next to your contact info. A real ATS sees the raw codepoint, not the icon, which can leave stray characters or gaps right where your contact details should be.`,
+  };
+}
+
+function checkTextFlattening(text: string): ParseCheckResult | null {
+  const trimmed = text.trim();
+  if (trimmed.length < 200) {
+    return null; // Too short to reliably assess line structure either way.
+  }
+
+  const lineBreaks = (trimmed.match(/\n/g) || []).length;
+  const charsPerLine = trimmed.length / (lineBreaks + 1);
+
+  if (charsPerLine <= 120) {
+    return {
+      id: "flattening",
+      label: "Line Structure",
+      status: "pass",
+      detail: `Text extracted with normal line breaks (~${Math.round(charsPerLine)} characters per line) — content is segmented the way it visually appears.`,
+    };
+  }
+
+  if (charsPerLine <= 250) {
+    return {
+      id: "flattening",
+      label: "Line Structure",
+      status: "warning",
+      detail: `Text extracted with unusually long lines (~${Math.round(charsPerLine)} characters per line). This can happen when a table or text box collapses multiple visual lines into one — worth double-checking that your bullet points aren't running together.`,
+    };
+  }
+
+  return {
+    id: "flattening",
+    label: "Line Structure",
+    status: "fail",
+    detail: `Text extracted with almost no line breaks (~${Math.round(charsPerLine)} characters per line). This is the signature of a table-based layout or text boxes being flattened into one block — a real ATS parser would likely see your entire resume as one undifferentiated wall of text, losing all section and bullet structure.`,
+  };
+}
+
 function checkLayout(multiColumnDetected: boolean | undefined): ParseCheckResult | null {
   if (multiColumnDetected === undefined) {
     return null; // Not applicable — only computed for PDF uploads with position data.
@@ -187,7 +250,11 @@ export function simulateAtsParse(
     checkContactInfo(resumeText),
     checkDateParsing(resumeText),
     checkEncoding(resumeText),
+    checkIconFontGlyphs(resumeText),
   ];
+
+  const flatteningCheck = checkTextFlattening(resumeText);
+  if (flatteningCheck) checks.push(flatteningCheck);
 
   const layoutCheck = checkLayout(options?.multiColumnDetected);
   if (layoutCheck) checks.push(layoutCheck);

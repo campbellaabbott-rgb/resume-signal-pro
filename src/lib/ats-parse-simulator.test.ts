@@ -75,8 +75,39 @@ describe("simulateAtsParse", () => {
 
   it("gives a low confidence score for completely unstructured text", () => {
     const result = simulateAtsParse("asdf qwerty", { multiColumnDetected: true });
-    // sections, contact, dates, and layout all fail; only encoding passes (no
-    // broken characters) — confidence should reflect that, not be near 100.
-    expect(result.overallConfidence).toBeLessThanOrEqual(20);
+    // sections, contact, dates, and layout all fail; encoding and icon-glyphs
+    // pass (nothing broken to detect) — confidence should reflect the failures,
+    // not be near 100. Flattening is omitted entirely (text too short to assess).
+    expect(result.overallConfidence).toBeLessThanOrEqual(35);
+  });
+
+  it("passes icon-font glyph check when no private-use-area characters are present", () => {
+    const result = simulateAtsParse(GOOD_RESUME);
+    const iconCheck = result.checks.find((c) => c.id === "icon-glyphs");
+    expect(iconCheck?.status).toBe("pass");
+  });
+
+  it("flags icon-font glyphs from Private Use Area codepoints", () => {
+    const result = simulateAtsParse("Contact \uE001 jane@example.com \uE002 (555) 123-4567");
+    const iconCheck = result.checks.find((c) => c.id === "icon-glyphs");
+    expect(iconCheck?.status).toBe("warning");
+  });
+
+  it("omits the flattening check for text too short to assess", () => {
+    const result = simulateAtsParse("asdf qwerty");
+    expect(result.checks.find((c) => c.id === "flattening")).toBeUndefined();
+  });
+
+  it("passes the flattening check for normally line-broken text", () => {
+    const result = simulateAtsParse(GOOD_RESUME);
+    const flatteningCheck = result.checks.find((c) => c.id === "flattening");
+    expect(flatteningCheck?.status).toBe("pass");
+  });
+
+  it("flags text flattened into one block with no line breaks", () => {
+    const longFlatText = "Experience Software Engineer at Acme Corp Jan 2020 Present ".repeat(20);
+    const result = simulateAtsParse(longFlatText);
+    const flatteningCheck = result.checks.find((c) => c.id === "flattening");
+    expect(flatteningCheck?.status).toBe("fail");
   });
 });
