@@ -93,10 +93,10 @@ export function IndustryDetectionChart() {
       }
 
       // Fetch recent detections (same RLS/SECURITY DEFINER rationale as above)
-      const { data: recentData } = await supabase.rpc('get_industry_detection_recent', { p_limit: 10 });
+      const { data: recentData } = await (supabase as any).rpc('get_industry_detection_recent', { p_limit: 10 });
 
       if (recentData) {
-        setRecentDetections(recentData as RecentDetection[]);
+        setRecentDetections(recentData as unknown as RecentDetection[]);
       }
     } catch (e) {
       console.error('Failed to fetch industry detection data:', e);
