@@ -13,6 +13,34 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-06-27",
+    title: "Checkout reliability fixes",
+    description:
+      "Fixed a pricing bug in the custom scan-credit purchase flow that could charge more than the displayed price, and fixed an issue where Interview Coach and Career Path Simulator purchases could fail to deliver their content after payment. If you were affected by either, reach out and we'll make it right.",
+    tags: ["fixed"],
+  },
+  {
+    date: "2026-06-27",
+    title: "More mechanical ATS checks",
+    description:
+      "Added two more deterministic checks to the ATS Parse Simulator: detection of icon-font characters (common in templates that use an icon font for the phone/email/LinkedIn symbols, which can leave gaps next to your contact info) and detection of flattened text from table-based layouts.",
+    tags: ["new"],
+  },
+  {
+    date: "2026-06-27",
+    title: "FAQ section and translation fixes",
+    description:
+      "Fixed an issue where the FAQ section showed raw placeholder text instead of real answers in every language but one, and filled in a handful of untranslated strings so every supported language is fully translated.",
+    tags: ["fixed"],
+  },
+  {
+    date: "2026-06-26",
+    title: "Public changelog",
+    description:
+      "Added this page, linked from the header and footer, so you can always see what's new, improved, or fixed.",
+    tags: ["new"],
+  },
+  {
     date: "2026-06-26",
     title: "Apply Assistant",
     description:
