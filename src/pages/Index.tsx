@@ -545,7 +545,18 @@ const Index = () => {
       } finally {
         setIsLoading(false);
       }
+      return;
     }
+
+    // Unrecognized file type (e.g. legacy .doc, .rtf, .odt, .pages) — none of the
+    // branches above match, so without this the file sits "selected" with no
+    // error and no text ever extracted, leaving the user stuck with no feedback.
+    toast({
+      title: "Unsupported file type",
+      description: "Please upload a PDF or Word (.docx) file, or paste your resume text directly. Older .doc files aren't supported — save as .docx first.",
+      variant: "destructive",
+    });
+    setSelectedFile(null);
   };
 
   const handleFreeScan = async (skipCacheArg?: unknown) => {

@@ -165,6 +165,33 @@ serve(async (req) => {
       );
     }
 
+    // .docx is a ZIP archive (starts with "PK"); legacy .doc (pre-2007, OLE
+    // Compound File binary format) is not a ZIP at all and mammoth can't read it —
+    // it would fail deep inside JSZip with a confusing, generic error. The upload
+    // UI's accept filter discourages .doc, but drag-and-drop ignores that filter
+    // and the file-type check above explicitly allows a .doc extension through.
+    // Detect the legacy binary signature upfront and give specific guidance.
+    const header = new Uint8Array(arrayBuffer.slice(0, 8));
+    const isOleCompoundFile = header[0] === 0xD0 && header[1] === 0xCF && header[2] === 0x11 && header[3] === 0xE0;
+    if (isOleCompoundFile) {
+      trackPerformance(requestStartTime, 'parse-docx', false, { reason: 'legacy_doc_format' }, clientIp);
+      EdgeRuntime.waitUntil(
+        supabase.rpc('log_parse_failure', {
+          p_file_type: 'docx',
+          p_error_code: 'legacy_doc_format',
+          p_error_message: 'Legacy binary .doc format, not supported',
+          p_visitor_id: clientIp
+        })
+      );
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "This looks like an older .doc file (Word 2003 or earlier), which we can't read directly. Please save it as .docx in Word (File > Save As) or paste your resume text instead.",
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // Extract text using mammoth. mammoth's extractRawText() passes its input
     // straight to unzip.openZip(), which only recognizes a `buffer`, `path`, or
     // `file` key — never `arrayBuffer` (confirmed against mammoth@1.6.0's source).

@@ -723,12 +723,17 @@ export default function ProductSuccess() {
         } else {
           throw new Error("Failed to parse document");
         }
+      } else {
+        // Unrecognized type (legacy .doc, .rtf, .odt, etc.) — without this,
+        // none of the branches above run and the file sits "selected" with no
+        // text ever extracted and no indication anything went wrong.
+        throw new Error("Unsupported file type. Please upload a PDF or Word (.docx) file, or paste your resume text instead. Older .doc files aren't supported — save as .docx first.");
       }
     } catch (error) {
       console.error('File parsing error:', error);
       toast({
         title: "Parsing failed",
-        description: "Could not read the file. Please try pasting your resume text instead.",
+        description: error instanceof Error ? error.message : "Could not read the file. Please try pasting your resume text instead.",
         variant: "destructive"
       });
       setRecoveryFile(null);
