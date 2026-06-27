@@ -350,6 +350,16 @@ serve(async (req) => {
   }
 
   try {
+    // Require admin API key for this privileged endpoint
+    const adminKey = Deno.env.get("ADMIN_API_KEY");
+    const provided = req.headers.get("x-admin-key");
+    if (!adminKey || !provided || provided !== adminKey) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { email, resumeText, jobTitle, jobCompany, jobDescription } = await req.json();
 
     if (!email || !resumeText) {
