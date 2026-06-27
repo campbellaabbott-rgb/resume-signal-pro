@@ -1232,6 +1232,24 @@ export type Database = {
           original_industry: string
         }[]
       }
+      get_industry_detection_breakdown: {
+        Args: { p_hours_back?: number }
+        Returns: {
+          final_confidence: string
+          final_industry: string
+        }[]
+      }
+      get_industry_detection_recent: {
+        Args: { p_limit?: number }
+        Returns: {
+          created_at: string
+          detection_source: string
+          final_confidence: string
+          final_industry: string
+          matched_skill_count: number
+          server_score: number
+        }[]
+      }
       get_industry_detection_stats: {
         Args: { p_hours_back?: number }
         Returns: {

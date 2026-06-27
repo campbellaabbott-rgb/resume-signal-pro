@@ -404,16 +404,24 @@ serve(async (req) => {
               const lowCommission = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
               const commissionCents = lowCommission.includes(productType || '') ? 100 : 500;
               
+              // verify-product-purchase (triggered from the success page) can also
+              // record this same conversion — the table's UNIQUE constraint on
+              // stripe_session_id prevents an actual double-credit either way, but
+              // this call previously had no error handling at all, so losing that
+              // race failed completely silently instead of just being a harmless,
+              // logged no-op.
               EdgeRuntime.waitUntil(
-                Promise.resolve(
-                  supabase.rpc('record_affiliate_conversion', {
-                    p_referral_code: referralCode,
-                    p_stripe_session_id: session.id,
-                    p_product_name: session.metadata?.product_name || productType || 'Product',
-                    p_sale_amount: session.amount_total,
-                    p_commission_override: commissionCents
-                  })
-                )
+                supabase.rpc('record_affiliate_conversion', {
+                  p_referral_code: referralCode,
+                  p_stripe_session_id: session.id,
+                  p_product_name: session.metadata?.product_name || productType || 'Product',
+                  p_sale_amount: session.amount_total,
+                  p_commission_override: commissionCents
+                }).then(({ error }: { error: { message: string } | null }) => {
+                  if (error) {
+                    logStep("Affiliate conversion recording failed (likely already recorded by verify-product-purchase)", { error: error.message });
+                  }
+                })
               );
             }
           } catch (err) {

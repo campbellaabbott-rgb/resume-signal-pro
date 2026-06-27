@@ -62,11 +62,12 @@ export function IndustryDetectionChart() {
         });
       }
 
-      // Fetch industry breakdown
-      const { data: breakdownData } = await supabase
-        .from('industry_detection_metrics')
-        .select('final_industry, final_confidence')
-        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+      // Fetch industry breakdown. Goes through a SECURITY DEFINER RPC rather than
+      // querying the table directly — industry_detection_metrics has RLS enabled
+      // with no SELECT policy (it holds per-visitor data like visitor_id/ip_country
+      // that shouldn't be publicly queryable), so a direct .from() call here would
+      // silently return nothing.
+      const { data: breakdownData } = await supabase.rpc('get_industry_detection_breakdown', { p_hours_back: 168 });
 
       if (breakdownData) {
         const grouped: Record<string, { count: number; confidences: string[] }> = {};
@@ -91,12 +92,8 @@ export function IndustryDetectionChart() {
         setIndustryBreakdown(breakdown);
       }
 
-      // Fetch recent detections
-      const { data: recentData } = await supabase
-        .from('industry_detection_metrics')
-        .select('final_industry, final_confidence, server_score, detection_source, matched_skill_count, created_at')
-        .order('created_at', { ascending: false })
-        .limit(10);
+      // Fetch recent detections (same RLS/SECURITY DEFINER rationale as above)
+      const { data: recentData } = await supabase.rpc('get_industry_detection_recent', { p_limit: 10 });
 
       if (recentData) {
         setRecentDetections(recentData as RecentDetection[]);

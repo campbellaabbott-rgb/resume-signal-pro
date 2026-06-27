@@ -109,6 +109,102 @@ const productInfo: Record<string, {
       "View remaining credits in the header",
       "Optimize for each job you apply to"
     ]
+  },
+  ats_defense: {
+    emoji: "🛡️",
+    tagline: "Full ATS compatibility audit with before/after optimization",
+    howItWorks: [
+      "Our AI audited your resume against major ATS platforms",
+      "We identified parsing issues and keyword gaps",
+      "Your resume was restructured for maximum ATS compatibility",
+      "Review the before/after score breakdown on the success page"
+    ],
+    nextSteps: [
+      "Review your ATS compatibility audit on the success page",
+      "Apply the format and keyword recommendations",
+      "Download your complete report as a PDF",
+      "Re-check compatibility for each target role"
+    ]
+  },
+  career_snapshot: {
+    emoji: "📸",
+    tagline: "A recruiter's-eye view of your career, with a clear plan forward",
+    howItWorks: [
+      "Our AI analyzed your career from a senior recruiter's perspective",
+      "We evaluated your performance, trajectory, and credibility signals",
+      "Identified how recruiters will perceive your background",
+      "Generated strategic positioning recommendations"
+    ],
+    nextSteps: [
+      "Review your Career Signal Score breakdown",
+      "Read the recruiter perception summary",
+      "Apply the top 3 priority fixes",
+      "Use the positioning guidance for your next applications"
+    ]
+  },
+  graduate_gameplan: {
+    emoji: "🎓",
+    tagline: "A clear, step-by-step playbook for landing your first role",
+    howItWorks: [
+      "Our AI evaluated your resume readiness for the job market",
+      "We identified roles that match your background and experience",
+      "Created a targeted application strategy for new grads",
+      "Built a 30-day action plan to land your first role"
+    ],
+    nextSteps: [
+      "Check your resume readiness verdict",
+      "Review the roles targeted for your background",
+      "Follow the networking scripts provided",
+      "Work through the 30-day action plan"
+    ]
+  },
+  interview_coach: {
+    emoji: "🎤",
+    tagline: "Personalized interview questions and model answers based on your resume",
+    howItWorks: [
+      "Our AI generated interview questions specific to your background",
+      "Each question includes why it's asked and how to answer it",
+      "Full STAR-method model answers grounded in your real experience",
+      "Practice and get instant AI feedback on your answers"
+    ],
+    nextSteps: [
+      "Review your interview questions on the success page",
+      "Read through the model answers for each category",
+      "Practice answering in your own words",
+      "Download your prep guide as a PDF"
+    ]
+  },
+  career_path_simulator: {
+    emoji: "🧭",
+    tagline: "3 realistic career paths, with a 90-day plan to start either one",
+    howItWorks: [
+      "Our AI analyzed your skills, experience, and career trajectory",
+      "We identified 3 realistic career paths based on your background",
+      "Each path includes skill gaps and a concrete 90-day action plan",
+      "Pick the direction that fits and start executing this week"
+    ],
+    nextSteps: [
+      "Review your 3 career path options",
+      "Identify the skills gap for your preferred path",
+      "Follow the 90-day action plan",
+      "Download your roadmap as a PDF"
+    ]
+  },
+  apply_assistant: {
+    emoji: "📨",
+    tagline: "A tailored resume, cover letter, and checklist — ready for you to review and submit",
+    howItWorks: [
+      "You pasted the job posting you're applying to",
+      "Our AI tailored your resume to that specific role, using only your real experience",
+      "Generated a matching cover letter and a step-by-step submission checklist",
+      "Review everything and submit it yourself — nothing is sent automatically"
+    ],
+    nextSteps: [
+      "Review your tailored resume for accuracy",
+      "Read through the cover letter and the submission checklist",
+      "Export both documents as PDF or Word",
+      "Apply on the employer's site yourself"
+    ]
   }
 };
 
