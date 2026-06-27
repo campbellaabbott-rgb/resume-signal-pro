@@ -7,7 +7,7 @@ import {
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
   TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket,
-  BarChart3, Shield, Search, Settings2, Eye, Flame, FileEdit
+  BarChart3, Shield, Search, Settings2, Eye, Flame, FileEdit, Send
 } from "lucide-react";
 import { LockedPremiumInsight } from "./LockedPremiumInsight";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
@@ -260,8 +260,52 @@ const KeywordFixButton = ({
   );
 };
 
+// Apply Assistant Button component — requires a job description to be present,
+// since the product tailors a resume + cover letter to a specific posting.
+const ApplyAssistantButton = ({
+  hasJobDescription,
+  section = 'default'
+}: {
+  hasJobDescription: boolean;
+  section?: string;
+}) => {
+  const { purchaseProduct, isLoading, currentProduct, checkoutPrefetchProps } = useProductCheckout();
+  const isPurchasing = isLoading && currentProduct === 'applyAssistant';
+
+  if (!hasJobDescription) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Lock className="w-4 h-4" />
+        <span>Add a job description above to unlock</span>
+      </div>
+    );
+  }
+
+  return (
+    <Button
+      onClick={() => purchaseProduct('applyAssistant', { ctaSection: section })}
+      disabled={isPurchasing}
+      size="sm"
+      className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+      {...checkoutPrefetchProps}
+    >
+      {isPurchasing ? (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Processing...
+        </>
+      ) : (
+        <>
+          <Send className="w-4 h-4" />
+          Build My Application Package — $7
+        </>
+      )}
+    </Button>
+  );
+};
+
 // Premium Package Button component
-const PremiumPackageButton = ({ 
+const PremiumPackageButton = ({
   variant, 
   isPrimary = false, 
   section = 'default' 
@@ -1713,6 +1757,23 @@ export function FreeKeywordResults({
               </p>
             </div>
           )}
+
+          {/* Apply Assistant upsell — full tailored package, not just suggestions */}
+          <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border-2 border-primary/30">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 rounded-full bg-primary/20">
+                <Send className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h5 className="font-bold text-foreground">Want the Complete Package?</h5>
+                <p className="text-xs text-muted-foreground">
+                  Full tailored resume, cover letter, honest skill-gap callouts, and a submission checklist —
+                  you review and apply yourself, nothing is auto-submitted
+                </p>
+              </div>
+            </div>
+            <ApplyAssistantButton hasJobDescription={!!jobDescriptionText} section="job_match_apply_assistant" />
+          </div>
         </div>
       )}
       

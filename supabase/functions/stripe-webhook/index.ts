@@ -191,40 +191,79 @@ async function triggerProductDelivery(
   let generationError = null;
 
   try {
-    let endpoint = '';
-    const body: Record<string, unknown> = {
-      resumeText: resume_text,
-      jobDescription: job_description_text || '',
-      jobTitle,
-      jobCompany
-    };
+    if (productType === 'apply_assistant') {
+      // Needs two calls (tailored resume + cover letter) combined into one
+      // stored object, and explicitly requires a job posting — unlike the other
+      // products here, there's nothing useful to generate without one.
+      if (!job_description_text) {
+        throw new Error('Apply Assistant requires a job posting; none found in session');
+      }
 
-    switch (productType) {
-      case 'basic_keyword_fix': endpoint = 'generate-keyword-fix'; break;
-      case 'cover_letter': endpoint = 'generate-cover-letter'; body.tone = 'professional'; break;
-      case 'premium_package': endpoint = 'generate-premium-package'; break;
-      case 'graduate_gameplan': endpoint = 'generate-graduate-gameplan'; break;
-      case 'career_snapshot': endpoint = 'generate-career-snapshot'; break;
-      case 'ats_defense': endpoint = 'generate-ats-defense'; break;
-      default: throw new Error(`Unknown product type: ${productType}`);
+      const [packageResponse, coverLetterResponse] = await Promise.all([
+        fetch(`${supabaseUrl}/functions/v1/generate-apply-package`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+          body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text })
+        }),
+        fetch(`${supabaseUrl}/functions/v1/generate-cover-letter`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+          body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional' })
+        })
+      ]);
+
+      if (!packageResponse.ok) {
+        throw new Error(`Apply package generation failed: ${packageResponse.status}`);
+      }
+
+      const packageResult = await packageResponse.json();
+      const coverLetterResult = coverLetterResponse.ok ? await coverLetterResponse.json() : null;
+
+      generatedContent = {
+        jobMetadata: packageResult.jobMetadata,
+        tailoredResume: packageResult.tailoredResume,
+        skillGaps: packageResult.skillGaps,
+        checklist: packageResult.checklist,
+        coverLetter: coverLetterResult?.data?.coverLetter || null,
+        modelUsed: packageResult.modelUsed,
+      };
+      logStep("Content generated", { productType });
+    } else {
+      let endpoint = '';
+      const body: Record<string, unknown> = {
+        resumeText: resume_text,
+        jobDescription: job_description_text || '',
+        jobTitle,
+        jobCompany
+      };
+
+      switch (productType) {
+        case 'basic_keyword_fix': endpoint = 'generate-keyword-fix'; break;
+        case 'cover_letter': endpoint = 'generate-cover-letter'; body.tone = 'professional'; break;
+        case 'premium_package': endpoint = 'generate-premium-package'; break;
+        case 'graduate_gameplan': endpoint = 'generate-graduate-gameplan'; break;
+        case 'career_snapshot': endpoint = 'generate-career-snapshot'; break;
+        case 'ats_defense': endpoint = 'generate-ats-defense'; break;
+        default: throw new Error(`Unknown product type: ${productType}`);
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Generation failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      generatedContent = result.data;
+      logStep("Content generated", { productType });
     }
-
-    const response = await fetch(`${supabaseUrl}/functions/v1/${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
-      },
-      body: JSON.stringify(body)
-    });
-
-    if (!response.ok) {
-      throw new Error(`Generation failed: ${response.status}`);
-    }
-
-    const result = await response.json();
-    generatedContent = result.data;
-    logStep("Content generated", { productType });
   } catch (error) {
     generationError = error instanceof Error ? error.message : String(error);
     logStep("Content generation failed", { error: generationError });

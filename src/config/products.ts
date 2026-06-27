@@ -156,6 +156,23 @@ export const PRODUCTS = {
     ],
     badge: 'New Grads',
     tagline: 'Your resume isn\'t the problem. Not knowing what to do next is.'
+  },
+  applyAssistant: {
+    id: 'apply_assistant',
+    name: 'Apply Assistant',
+    description: 'Paste a job posting and get a tailored resume, cover letter, and application checklist — ready for you to review and submit yourself',
+    priceUsd: 7,
+    priceId: null, // Stripe creates an inline price per checkout — no pre-created Price object needed
+    features: [
+      'Resume tailored to the specific job posting',
+      'Matching cover letter',
+      'Honest skill-gap callouts (no fabricated experience)',
+      'Step-by-step submission checklist',
+      'Export to PDF or Word',
+      'You review and submit — nothing is auto-submitted on your behalf'
+    ],
+    badge: 'Human-Reviewed',
+    tagline: 'We do the prep work. You stay in control of every submission.'
   }
 } as const;
 
@@ -186,5 +203,6 @@ export function getPremiumProducts() {
     PRODUCTS.graduateGamePlan,
     PRODUCTS.atsDefense,
     PRODUCTS.careerSnapshot,
+    PRODUCTS.applyAssistant,
   ];
 }

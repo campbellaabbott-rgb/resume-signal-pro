@@ -3,7 +3,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Sparkles, FileText, Crown, Package, Loader2, ArrowRight, Star, Shield, Zap, ShieldCheck, Flame, MessageSquare, TrendingUp } from "lucide-react";
+import { Check, Sparkles, FileText, Crown, Package, Loader2, ArrowRight, Star, Shield, Zap, ShieldCheck, Flame, MessageSquare, TrendingUp, Send } from "lucide-react";
 import { PRODUCTS, ProductId } from "@/config/products";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,7 @@ const productIcons: Record<string, React.ElementType> = {
   resumeRoast: Flame,
   interviewCoach: MessageSquare,
   careerPathSimulator: TrendingUp,
+  applyAssistant: Send,
 };
 
 // Premium products (shown in main grid)
@@ -33,8 +34,9 @@ const productOrder: ProductId[] = [
   'careerSnapshot',
   'graduateGamePlan',
   'atsDefense',
+  'applyAssistant',
   'premiumPackage',
-  'fullAnalysis', 
+  'fullAnalysis',
   'coverLetter',
 ];
 

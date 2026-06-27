@@ -26,7 +26,8 @@ import {
   ShieldCheck,
   Brain,
   Calendar,
-  Coins
+  Coins,
+  Send
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -47,6 +48,7 @@ import { CareerPathSimulator } from "@/components/CareerPathSimulator";
 import { ATSDefenseResults, type ATSDefenseData } from "@/components/ATSDefenseResults";
 import { CareerSnapshotResults } from "@/components/CareerSnapshotResults";
 import { GraduateGamePlanResults } from "@/components/GraduateGamePlanResults";
+import { ApplyAssistantResults, ApplyPackageData } from "@/components/ApplyAssistantResults";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { AIGenerationProgress } from "@/components/AIGenerationProgress";
 import { useStreamingGeneration } from "@/hooks/use-streaming-generation";
@@ -66,6 +68,7 @@ const productIcons: Record<string, React.ElementType> = {
   graduateGamePlan: Target,
   interviewCoach: MessageSquare,
   careerPathSimulator: TrendingUp,
+  applyAssistant: Send,
 };
 
 // Product-specific next steps and how-it-works info
@@ -229,6 +232,21 @@ const productInfo: Record<string, {
     ],
     deliveryTime: "Instant",
     deliveryMethod: "On This Page"
+  },
+  applyAssistant: {
+    howItWorks: [
+      "Paste the job posting you're applying to",
+      "Our AI tailored your resume to that specific role, using only your real experience",
+      "Generated a matching cover letter and a step-by-step submission checklist",
+      "You review everything and submit it yourself — nothing is sent automatically"
+    ],
+    nextSteps: [
+      { icon: FileText, title: "Review Your Tailored Resume", description: "Check the AI's rewrite for accuracy" },
+      { icon: Send, title: "Follow the Checklist", description: "We tell you exactly what to do next — you do the submitting" },
+      { icon: Download, title: "Export & Apply", description: "Download the resume and cover letter, then apply on the employer's site" }
+    ],
+    deliveryTime: "Instant",
+    deliveryMethod: "On This Page"
   }
 };
 
@@ -286,6 +304,8 @@ export default function ProductSuccess() {
   // own content on demand (same components used for free on the scan results page) —
   // they just need the resume text, not a pre-generated payload.
   const [coachResumeText, setCoachResumeText] = useState<string | null>(null);
+  const [applyPackageData, setApplyPackageData] = useState<ApplyPackageData | null>(null);
+  const [applyCoverLetter, setApplyCoverLetter] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'resume' | 'coverLetter'>('resume');
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
@@ -345,12 +365,58 @@ export default function ProductSuccess() {
       return false;
     }
 
+    // Apply Assistant needs two parallel calls and a required (not optional) job
+    // description, so it doesn't fit the single-endpoint pattern below — handled
+    // as its own branch that returns early.
+    if (productKey === 'applyAssistant') {
+      if (!jobDescription || jobDescription.trim().length < 30) {
+        toast({
+          title: "Job posting required",
+          description: "Paste the job description you're applying to (at least 30 characters) before generating.",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      setIsRegenerating(true);
+      try {
+        const [packageResult, coverLetterResult] = await Promise.all([
+          supabase.functions.invoke('generate-apply-package', {
+            body: { resumeText, jobPostingText: jobDescription }
+          }),
+          supabase.functions.invoke('generate-cover-letter', {
+            body: { resumeText, jobDescription, jobTitle: 'Target Position', tone: 'professional' }
+          })
+        ]);
+
+        if (packageResult.error || !packageResult.data?.success) {
+          const parsedError = await parseEdgeFunctionError(packageResult.error || new Error(packageResult.data?.error || 'Generation failed'));
+          toast({ title: parsedError.title, description: parsedError.description, variant: "destructive" });
+          return false;
+        }
+
+        setApplyPackageData(packageResult.data as ApplyPackageData);
+        if (!coverLetterResult.error && coverLetterResult.data?.data?.coverLetter) {
+          setApplyCoverLetter(coverLetterResult.data.data.coverLetter);
+        }
+        setIsRecoveryMode(false);
+        toast({ title: "Application Package Ready!", description: "Your tailored resume and cover letter are ready below." });
+        return true;
+      } catch (err) {
+        console.error('Apply Assistant regeneration failed:', err);
+        toast({ title: "Error", description: "Something went wrong. Please try again.", variant: "destructive" });
+        return false;
+      } finally {
+        setIsRegenerating(false);
+      }
+    }
+
     setIsRegenerating(true);
-    
+
     try {
       let endpoint = '';
       let body: Record<string, unknown> = { resumeText };
-      
+
       if (productKey === 'basicKeywordFix') {
         endpoint = 'generate-keyword-fix';
         if (jobDescription) body.jobDescription = jobDescription;
@@ -835,7 +901,53 @@ export default function ProductSuccess() {
             setIsRecoveryMode(true);
           }
         }
-        
+
+        // Handle Apply Assistant - needs BOTH resumeText and a job posting (reuses
+        // the same jobDescriptionText session field the free scan's job-match
+        // feature already populates). Unlike other products, a missing job
+        // description isn't optional here — fall into recovery mode so the user
+        // gets prompted for it explicitly.
+        if (productKey === 'applyAssistant') {
+          console.log('[ProductSuccess] Generating Apply Assistant package');
+          const sessionData = getResumeFromSession();
+          if (sessionData.resumeText && sessionData.jobDescriptionText) {
+            const [packageResult, coverLetterResult] = await Promise.all([
+              supabase.functions.invoke('generate-apply-package', {
+                body: {
+                  resumeText: sessionData.resumeText,
+                  jobPostingText: sessionData.jobDescriptionText,
+                }
+              }),
+              supabase.functions.invoke('generate-cover-letter', {
+                body: {
+                  resumeText: sessionData.resumeText,
+                  jobDescription: sessionData.jobDescriptionText,
+                  jobTitle: 'Target Position',
+                  tone: 'professional',
+                }
+              })
+            ]);
+
+            if (packageResult.error || !packageResult.data?.success) {
+              console.error('Apply Assistant generation error:', packageResult.error || packageResult.data?.error);
+              const parsedError = await parseEdgeFunctionError(packageResult.error || new Error(packageResult.data?.error || 'Generation failed'));
+              toast({
+                title: parsedError.title,
+                description: parsedError.description,
+                variant: "destructive"
+              });
+              setIsRecoveryMode(true);
+            } else {
+              setApplyPackageData(packageResult.data as ApplyPackageData);
+              if (!coverLetterResult.error && coverLetterResult.data?.data?.coverLetter) {
+                setApplyCoverLetter(coverLetterResult.data.data.coverLetter);
+              }
+            }
+          } else {
+            setIsRecoveryMode(true);
+          }
+        }
+
         // Handle Graduate Game Plan - generate content with resume
         if (productKey === 'graduateGamePlan') {
           console.log('[ProductSuccess] Generating Graduate Game Plan');
@@ -1040,6 +1152,7 @@ export default function ProductSuccess() {
   const isGraduateGamePlan = productKey === 'graduateGamePlan';
   const isInterviewCoach = productKey === 'interviewCoach';
   const isCareerPathSimulator = productKey === 'careerPathSimulator';
+  const isApplyAssistant = productKey === 'applyAssistant';
   const keywordData = isKeywordFix ? generatedContent as KeywordData : null;
   const coverLetterData = isCoverLetter ? generatedContent as CoverLetterData : null;
   const premiumData = isPremiumPackage ? generatedContent as PremiumPackageData : null;
@@ -1511,6 +1624,26 @@ export default function ProductSuccess() {
           </section>
         )}
 
+        {/* Generated Content Section - Apply Assistant */}
+        {isApplyAssistant && applyPackageData && (
+          <section className="py-12 border-t border-border/50">
+            <div className="container max-w-4xl">
+              <div className="text-center mb-8">
+                <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
+                  <Send className="w-3 h-3 mr-1" />
+                  Your Application Package is Ready
+                </Badge>
+                <h2 className="text-2xl font-bold mb-2">Apply Assistant</h2>
+                <p className="text-muted-foreground">
+                  Tailored, reviewed by you, submitted by you
+                </p>
+              </div>
+
+              <ApplyAssistantResults data={applyPackageData} coverLetter={applyCoverLetter || undefined} />
+            </div>
+          </section>
+        )}
+
         {/* Generated Content Section - Interview Coach / Career Path Simulator */}
         {(isInterviewCoach || isCareerPathSimulator) && coachResumeText && (
           <section className="py-12 border-t border-border/50">
@@ -1546,7 +1679,7 @@ export default function ProductSuccess() {
         />
 
         {/* No Generated Content - Show Inline Upload Recovery */}
-        {(isKeywordFix || isCoverLetter || isPremiumPackage || isAtsDefense || isCareerSnapshot || isGraduateGamePlan || isInterviewCoach || isCareerPathSimulator) && !generatedContent && !atsDefenseData && !careerSnapshotData && !graduateGamePlanData && !coachResumeText && !verificationError && !isVerifying && !isRegenerating && (
+        {(isKeywordFix || isCoverLetter || isPremiumPackage || isAtsDefense || isCareerSnapshot || isGraduateGamePlan || isInterviewCoach || isCareerPathSimulator || isApplyAssistant) && !generatedContent && !atsDefenseData && !careerSnapshotData && !graduateGamePlanData && !coachResumeText && !applyPackageData && !verificationError && !isVerifying && !isRegenerating && (
           <section className="py-12 border-t border-border/50">
             <div className="container max-w-2xl">
               <div className="p-8 rounded-2xl bg-muted/50 border border-border">
@@ -1560,6 +1693,7 @@ export default function ProductSuccess() {
                          isCoverLetter ? 'Complete Your Cover Letter' :
                          isInterviewCoach ? 'Start Your Interview Coach Session' :
                          isCareerPathSimulator ? 'Run Your Career Path Simulator' :
+                         isApplyAssistant ? 'Build Your Application Package' :
                          'Complete Your Keyword Analysis'}
                       </h3>
                       <p className="text-muted-foreground">
@@ -1577,6 +1711,8 @@ export default function ProductSuccess() {
                           'Upload your resume to generate personalized interview questions.' :
                          isCareerPathSimulator ?
                           'Upload your resume to see possible career trajectories.' :
+                         isApplyAssistant ?
+                          'Upload your resume and paste the job posting you\'re applying to — both are required so we can tailor your application.' :
                           'Upload your resume to get keyword optimization suggestions.'}
                       </p>
                     </div>
@@ -1643,7 +1779,8 @@ export default function ProductSuccess() {
                                     premiumPackage: 'premium_package',
                                     atsDefense: 'ats_defense',
                                     careerSnapshot: 'career_snapshot',
-                                    graduateGamePlan: 'graduate_gameplan'
+                                    graduateGamePlan: 'graduate_gameplan',
+                                    applyAssistant: 'apply_assistant'
                                   };
                                   const targetType = productTypeMap[productKey || ''];
                                   const matchingPurchase = data.purchases.find(
@@ -1657,6 +1794,9 @@ export default function ProductSuccess() {
                                       setCareerSnapshotData(matchingPurchase.generatedContent);
                                     } else if (productKey === 'graduateGamePlan') {
                                       setGraduateGamePlanData(matchingPurchase.generatedContent);
+                                    } else if (productKey === 'applyAssistant') {
+                                      setApplyPackageData(matchingPurchase.generatedContent);
+                                      setApplyCoverLetter(matchingPurchase.generatedContent.coverLetter || null);
                                     } else {
                                       setGeneratedContent(matchingPurchase.generatedContent);
                                     }
@@ -1870,33 +2010,40 @@ export default function ProductSuccess() {
                       )}
 
                       {/* Job Description - for ATS Defense and other products */}
-                      {(isAtsDefense || isKeywordFix || isCoverLetter || isPremiumPackage) && (
+                      {(isAtsDefense || isKeywordFix || isCoverLetter || isPremiumPackage || isApplyAssistant) && (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <label className="text-sm font-medium text-foreground flex items-center gap-2">
                               <Target className="w-4 h-4" />
-                              Target Job Description
-                              <Badge variant="secondary" className="text-[10px]">
-                                {isCoverLetter || isPremiumPackage ? 'Recommended' : 'Optional'}
+                              {isApplyAssistant ? 'Job Posting' : 'Target Job Description'}
+                              <Badge variant={isApplyAssistant ? 'destructive' : 'secondary'} className="text-[10px]">
+                                {isApplyAssistant ? 'Required' : isCoverLetter || isPremiumPackage ? 'Recommended' : 'Optional'}
                               </Badge>
                             </label>
                           </div>
                           <Textarea
-                            placeholder="Paste the job description you're targeting to get keyword-optimized recommendations..."
+                            placeholder={isApplyAssistant
+                              ? "Paste the full job posting you're applying to — we need this to tailor your resume and cover letter."
+                              : "Paste the job description you're targeting to get keyword-optimized recommendations..."}
                             value={recoveryJobDescription}
                             onChange={(e) => setRecoveryJobDescription(e.target.value)}
                             className="min-h-[100px] resize-none"
                           />
                           <p className="text-xs text-muted-foreground">
-                            Adding a job description helps us optimize your resume for specific keywords and requirements.
+                            {isApplyAssistant
+                              ? 'Apply Assistant tailors your resume and cover letter to this exact posting — without it, we can\'t generate your application package.'
+                              : 'Adding a job description helps us optimize your resume for specific keywords and requirements.'}
                           </p>
                         </div>
                       )}
 
-                      <Button 
-                        size="lg" 
+                      <Button
+                        size="lg"
                         className="w-full gap-2"
-                        disabled={!recoveryResumeText || recoveryResumeText.length < 50 || isRegenerating || isStreaming}
+                        disabled={
+                          !recoveryResumeText || recoveryResumeText.length < 50 || isRegenerating || isStreaming ||
+                          (isApplyAssistant && recoveryJobDescription.trim().length < 30)
+                        }
                         onClick={() => {
                           // Use streaming for premium package and cover letter
                           if (isPremiumPackage || isCoverLetter) {
@@ -1929,6 +2076,7 @@ export default function ProductSuccess() {
                                       isGraduateGamePlan ? 'Graduate Game Plan Report' :
                                       isInterviewCoach ? 'Interview Questions' :
                                       isCareerPathSimulator ? 'Career Paths' :
+                                      isApplyAssistant ? 'Application Package' :
                                       'Cover Letter'}
                           </>
                         )}

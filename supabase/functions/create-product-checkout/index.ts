@@ -9,8 +9,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Product configuration with price IDs (keys match frontend ProductId keys)
-const PRODUCTS: Record<string, { priceId: string; name: string; productType: string; credits?: number }> = {
+// Product configuration with price IDs (keys match frontend ProductId keys).
+// Most products reference a pre-created Stripe Price object (priceId). applyAssistant
+// instead uses inline priceData — Stripe creates an ephemeral price per checkout
+// session from currency + unitAmount, so no Price object needs to exist in the
+// Stripe dashboard beforehand. Both are valid, fully-supported Stripe patterns.
+const PRODUCTS: Record<string, { priceId?: string; priceData?: { unitAmount: number; currency: string }; name: string; productType: string; credits?: number }> = {
   basicKeywordFix: {
     priceId: "price_1Sgv2hHBplUUV1Cgjdqw9kHi",
     name: "Basic Keyword Fix",
@@ -56,6 +60,11 @@ const PRODUCTS: Record<string, { priceId: string; name: string; productType: str
     name: "Scan Pack (10 Credits)",
     productType: "scan_pack",
     credits: 10
+  },
+  applyAssistant: {
+    priceData: { unitAmount: 700, currency: "usd" }, // $7.00
+    name: "Apply Assistant",
+    productType: "apply_assistant"
   }
 };
 
@@ -90,7 +99,7 @@ serve(async (req) => {
 
     // Validate product ID (fast sync check)
     const product = PRODUCTS[productId];
-    if (!product) {
+    if (!product || (!product.priceId && !product.priceData)) {
       return new Response(
         JSON.stringify({ error: "Invalid product selected" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -111,7 +120,18 @@ serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       customer_email: normalizedEmail || undefined,
       customer_creation: 'if_required',
-      line_items: [{ price: product.priceId, quantity: 1 }],
+      line_items: [
+        product.priceId
+          ? { price: product.priceId, quantity: 1 }
+          : {
+              price_data: {
+                currency: product.priceData!.currency,
+                product_data: { name: product.name },
+                unit_amount: product.priceData!.unitAmount,
+              },
+              quantity: 1,
+            }
+      ],
       mode: "payment",
       allow_promotion_codes: true,
       automatic_tax: { enabled: false },
