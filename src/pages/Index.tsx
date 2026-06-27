@@ -213,6 +213,8 @@ interface FreeKeywordResult {
   };
 }
 
+const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
+
 const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFreeScanLoading, setIsFreeScanLoading] = useState(false);
@@ -424,15 +426,27 @@ const Index = () => {
   }, [searchParams, toast, verifyPurchase]);
 
   const handleFileSelect = async (file: File) => {
+    // Fail fast on size before uploading anything — without this, an oversized
+    // file uploads in full over the network only to be rejected by the server's
+    // identical 10MB limit, wasting the user's time on a slow connection.
+    if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+      toast({
+        title: "File too large",
+        description: "Maximum file size is 10MB. Please upload a smaller file or paste your resume text directly.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSelectedFile(file);
     setShowFloatingScan(true); // Show floating button on fresh upload
     setFloatingScanTrigger((v) => v + 1);
     setFreeKeywordResult(null); // Clear previous results
-    
+
     // Clear ALL caches when a new file is uploaded to ensure fresh analysis
     clearBackgroundScanCache();
     clearAllClientScanCaches();
-    
+
     // Track upload started in funnel
     trackUploadStarted(file.type);
 

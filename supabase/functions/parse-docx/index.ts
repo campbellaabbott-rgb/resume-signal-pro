@@ -170,23 +170,27 @@ serve(async (req) => {
     // it would fail deep inside JSZip with a confusing, generic error. The upload
     // UI's accept filter discourages .doc, but drag-and-drop ignores that filter
     // and the file-type check above explicitly allows a .doc extension through.
-    // Detect the legacy binary signature upfront and give specific guidance.
+    // Note: a password-encrypted .docx (Word's "Encrypt with Password") is ALSO
+    // wrapped in this same OLE container per the MS-OFFCRYPTO spec, so this check
+    // catches both cases — the message below covers both rather than asserting
+    // it must be the legacy format, which would be actively wrong for an
+    // encrypted modern file.
     const header = new Uint8Array(arrayBuffer.slice(0, 8));
     const isOleCompoundFile = header[0] === 0xD0 && header[1] === 0xCF && header[2] === 0x11 && header[3] === 0xE0;
     if (isOleCompoundFile) {
-      trackPerformance(requestStartTime, 'parse-docx', false, { reason: 'legacy_doc_format' }, clientIp);
+      trackPerformance(requestStartTime, 'parse-docx', false, { reason: 'legacy_doc_or_encrypted' }, clientIp);
       EdgeRuntime.waitUntil(
         supabase.rpc('log_parse_failure', {
           p_file_type: 'docx',
-          p_error_code: 'legacy_doc_format',
-          p_error_message: 'Legacy binary .doc format, not supported',
+          p_error_code: 'legacy_doc_or_encrypted',
+          p_error_message: 'OLE compound file: legacy .doc format or password-encrypted .docx',
           p_visitor_id: clientIp
         })
       );
       return new Response(
         JSON.stringify({
           success: false,
-          error: "This looks like an older .doc file (Word 2003 or earlier), which we can't read directly. Please save it as .docx in Word (File > Save As) or paste your resume text instead.",
+          error: "We can't read this file directly — it's either an older .doc format (Word 2003 or earlier) or a password-protected document. Please save it as an unprotected .docx (File > Save As in Word) or paste your resume text instead.",
         }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );

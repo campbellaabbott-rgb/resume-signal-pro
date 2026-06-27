@@ -176,15 +176,97 @@ serve(async (req) => {
 
     // Convert file to typed array
     const arrayBuffer = await file.arrayBuffer();
+
+    if (arrayBuffer.byteLength === 0) {
+      trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'empty_file' }, clientIp);
+      return new Response(
+        JSON.stringify({ success: false, error: "This file appears to be empty. Please check the file and try again." }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const data = new Uint8Array(arrayBuffer);
 
     // Initialize PDF.js (serverless wrapper)
     const { getDocument } = await resolvePDFJS();
 
-    const doc = await getDocument({
-      data,
-      useSystemFonts: true,
-    }).promise;
+    let doc;
+    try {
+      doc = await getDocument({
+        data,
+        useSystemFonts: true,
+      }).promise;
+    } catch (loadError: unknown) {
+      // Distinguish the two most common, specific failure modes from the
+      // generic catch-all below — both used to surface as the same misleading
+      // "ensure the file is a valid PDF" message, even though a password-
+      // protected PDF is a perfectly valid PDF, just locked.
+      //
+      // Deliberately checking `.name` rather than `instanceof PasswordException`/
+      // `instanceof InvalidPDFException`: verified directly against this package's
+      // bundled source that PasswordException isn't actually re-exported from
+      // resolvePDFJS()'s returned object in a plain Node import (it's undefined),
+      // even though pdf.js's internals always set `.name` to a stable string on
+      // the thrown instance regardless of build target. `instanceof undefined`
+      // would throw its own TypeError, silently defeating this entire check — the
+      // edge function uses a different (Deno) build target than was verified
+      // locally, so trusting instanceof here would be exactly the kind of
+      // looks-right-but-isn't bug this session already found once with mammoth.
+      const errorName = (loadError as { name?: string })?.name;
+      if (errorName === 'PasswordException') {
+        trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'password_protected' }, clientIp);
+        EdgeRuntime.waitUntil(
+          supabase.rpc('log_parse_failure', {
+            p_file_type: 'pdf',
+            p_error_code: 'password_protected',
+            p_error_message: 'PDF is password-protected',
+            p_visitor_id: clientIp
+          })
+        );
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "This PDF is password-protected. Please remove the password (or export an unprotected copy) and try again.",
+          }),
+          { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      if (errorName === 'InvalidPDFException') {
+        trackPerformance(requestStartTime, 'parse-pdf', false, { reason: 'invalid_pdf' }, clientIp);
+        EdgeRuntime.waitUntil(
+          supabase.rpc('log_parse_failure', {
+            p_file_type: 'pdf',
+            p_error_code: 'invalid_pdf',
+            p_error_message: 'File is not a valid PDF',
+            p_visitor_id: clientIp
+          })
+        );
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "This file doesn't appear to be a valid PDF (it may be corrupted or a different file type renamed to .pdf). Please try re-exporting it or upload a different file.",
+          }),
+          { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      throw loadError; // Anything else falls through to the generic handler below.
+    }
+
+    // Defensive cap — a real resume is never more than a handful of pages.
+    // Without this, a pathological or abusive upload (hundreds of pages) would
+    // process every page sequentially and risk timing the function out instead
+    // of failing fast with a clear message.
+    const MAX_PAGES = 50;
+    if (doc.numPages > MAX_PAGES) {
+      trackPerformance(requestStartTime, 'parse-pdf', false, { pages: doc.numPages, reason: 'too_many_pages' }, clientIp);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `This PDF has ${doc.numPages} pages, which is more than we support (${MAX_PAGES} max). Please upload just your resume, not a combined document.`,
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     console.log("[PARSE-PDF] PDF loaded. Pages:", doc.numPages);
 
