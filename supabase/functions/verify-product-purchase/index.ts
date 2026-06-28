@@ -380,7 +380,7 @@ serve(async (req) => {
           
           if (affiliateData?.email) {
             const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-            await fetch(`${supabaseUrl}/functions/v1/send-affiliate-commission-email`, {
+            const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-affiliate-commission-email`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -394,7 +394,14 @@ serve(async (req) => {
                 referralCode
               })
             });
-            logStep("Affiliate commission email sent", { email: affiliateData.email });
+            // Previously logged "sent" unconditionally without checking the
+            // response — a misconfigured RESEND_API_KEY or a send failure
+            // would silently look successful in these logs.
+            if (emailResponse.ok) {
+              logStep("Affiliate commission email sent", { email: affiliateData.email });
+            } else {
+              logStep("Affiliate commission email failed", { email: affiliateData.email, status: emailResponse.status });
+            }
           }
         } catch (emailErr) {
           logStep("Affiliate email notification failed", { error: String(emailErr) });

@@ -11,6 +11,21 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[AFFILIATE-COMMISSION-EMAIL] ${step}${detailsStr}`);
 };
 
+// productName/referralCode are inserted directly into the HTML email below.
+// productName always comes from our own product config and referralCode is
+// sanitized to [a-f0-9] before storage elsewhere in the codebase, but escaping
+// here too is zero-cost defense-in-depth against any future code path that
+// supplies an unsanitized value.
+function escapeHtml(text: string | number | undefined | null): string {
+  if (text === undefined || text === null) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -20,9 +35,12 @@ serve(async (req) => {
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) {
       logStep("RESEND_API_KEY not set, skipping email");
+      // 503, matching send-product-email's convention — this used to return
+      // 200 with success:false, which the one caller (verify-product-purchase)
+      // doesn't actually check, so it silently logged "email sent" either way.
       return new Response(
         JSON.stringify({ success: false, message: "Email service not configured" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 503 }
       );
     }
 
@@ -72,7 +90,7 @@ serve(async (req) => {
             
             <div style="background: white; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
               <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 14px;">Product Sold</p>
-              <p style="margin: 0; font-size: 18px; font-weight: 600;">${productName || 'Resume Product'}</p>
+              <p style="margin: 0; font-size: 18px; font-weight: 600;">${escapeHtml(productName) || 'Resume Product'}</p>
             </div>
             
             <div style="display: flex; gap: 16px;">
@@ -96,7 +114,7 @@ serve(async (req) => {
           
           <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; text-align: center;">
             <p style="color: #6b7280; font-size: 14px; margin-bottom: 8px;">
-              Your referral code: <strong style="color: #111;">${referralCode}</strong>
+              Your referral code: <strong style="color: #111;">${escapeHtml(referralCode)}</strong>
             </p>
             <p style="color: #9ca3af; font-size: 12px; margin: 0;">
               Commission is pending approval and will be paid out monthly.
