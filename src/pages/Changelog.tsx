@@ -1,4 +1,5 @@
 import { Header } from "@/components/Header";
+import { SEO } from "@/components/seo/SEO";
 import { Footer } from "@/components/Footer";
 import { cn } from "@/lib/utils";
 import { changelog, ChangelogTag } from "@/data/changelog";
@@ -21,6 +22,7 @@ function formatEntryDate(iso: string): string {
 export default function Changelog() {
   return (
     <div className="min-h-screen bg-background">
+      <SEO title="Changelog — Resume Booster" description="New features, improvements, and fixes shipped to Resume Booster. Updated weekly." path="/changelog" />
       <Header />
       <main className="pt-28 pb-20">
         <div className="container max-w-2xl">

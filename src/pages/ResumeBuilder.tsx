@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { SEO } from "@/components/seo/SEO";
 import { Loader2, Download, FileText, RotateCcw, Sparkles } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -119,6 +120,7 @@ export default function ResumeBuilder() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO title="Free Resume Builder — Resume Booster" description="Build an ATS-friendly resume in minutes with our free guided builder. Export to PDF, no signup required." path="/builder" />
       <Header />
       <main className="pt-24 pb-20">
         <div className="container max-w-6xl">

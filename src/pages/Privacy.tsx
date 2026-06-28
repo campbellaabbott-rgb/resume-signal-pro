@@ -1,4 +1,5 @@
 import { Header } from "@/components/Header";
+import { SEO } from "@/components/seo/SEO";
 import { Footer } from "@/components/Footer";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -10,6 +11,7 @@ export default function Privacy() {
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      <SEO title="Privacy Policy — Resume Booster" description="How Resume Booster handles your resume data, retention windows, and your privacy rights." path="/privacy" />
       <Header />
       <main className="flex-1 py-16">
         <div className="container max-w-4xl">
