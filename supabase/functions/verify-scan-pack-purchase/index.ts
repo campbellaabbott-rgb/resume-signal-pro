@@ -97,35 +97,46 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check if session already used (prevent double-crediting)
-    const { data: existingUsage } = await supabase
+    // Atomically claim this session via the PRIMARY KEY on session_id, rather
+    // than a separate SELECT-then-INSERT. This function, stripe-webhook, and
+    // verify-product-purchase can all race for the same session (webhook fires
+    // server-side while this runs from the user's browser on the success page)
+    // — a SELECT-then-INSERT has a window where both see "not yet used" and
+    // both credit the customer twice. The other two were already fixed this
+    // way; this one was missed. Doing the INSERT first and checking its result
+    // makes the claim atomic: only one caller can win it.
+    const { error: claimError } = await supabase
       .from('used_stripe_sessions')
-      .select('session_id')
-      .eq('session_id', sessionId)
-      .single();
+      .insert({
+        session_id: sessionId,
+        ip_address: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 'unknown'
+      });
 
-    if (existingUsage) {
-      logStep("Session already used", { sessionId });
-      
-      // Get current credits for the email
-      const { data: credits } = await supabase.rpc('get_scan_credits', { p_email: customerEmail });
-      
+    if (claimError) {
+      if (claimError.code === '23505') {
+        logStep("Session already claimed by another process (race avoided)", { sessionId });
+
+        const { data: credits } = await supabase.rpc('get_scan_credits', { p_email: customerEmail });
+
+        return new Response(
+          JSON.stringify({
+            verified: true,
+            alreadyCredited: true,
+            email: customerEmail,
+            credits: credits || 0
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      }
+
+      // Unexpected DB error — fail closed rather than risk double-crediting
+      // on a transient failure.
+      console.error("[VERIFY-SCAN-PACK-PURCHASE] Error claiming session:", claimError.message);
       return new Response(
-        JSON.stringify({ 
-          verified: true, 
-          alreadyCredited: true,
-          email: customerEmail,
-          credits: credits || 0
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        JSON.stringify({ error: "Failed to verify purchase. Please contact support.", verified: false }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    // Mark session as used
-    await supabase.from('used_stripe_sessions').insert({
-      session_id: sessionId,
-      ip_address: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 'unknown'
-    });
 
     // Get credits from line items quantity (more reliable than metadata)
     let creditsToAdd = 1;
