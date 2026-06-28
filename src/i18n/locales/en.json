@@ -598,7 +598,8 @@
   "common": {
     "backToHome": "Back to Home",
     "lastUpdated": "Last updated",
-    "close": "Close"
+    "close": "Close",
+    "dismiss": "Dismiss"
   },
   "privacy": {
     "title": "Privacy Policy"
@@ -1318,6 +1319,16 @@
       "keywordAnalysis": { "feature": "Keyword analysis", "us": "Industry-specific AI", "them": "Manual research" },
       "revisions": { "feature": "Revisions included", "us": "Unlimited retries", "them": "1-2 rounds" },
       "jobTailoring": { "feature": "Job-specific tailoring", "them": "Extra $50-100" }
+    }
+  },
+  "finalCtaExtra": {
+    "powerUpAddOns": "Power-Up Add-Ons",
+    "resumeRoastFree": "Resume Roast FREE",
+    "viewAllProducts": "View all products",
+    "addOnNames": {
+      "resumeRoast": "Resume Roast",
+      "interviewCoach": "Interview Coach",
+      "careerPath": "Career Path"
     }
   }
 }

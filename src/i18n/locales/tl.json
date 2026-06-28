@@ -598,7 +598,8 @@
   "common": {
     "backToHome": "Bumalik sa Home",
     "lastUpdated": "Huling na-update",
-    "close": "Isara"
+    "close": "Isara",
+    "dismiss": "I-dismiss"
   },
   "privacy": {
     "title": "Patakaran sa Privacy"
@@ -1139,5 +1140,11 @@
       "revisions": { "feature": "Kasama ang mga revision", "us": "Walang limitasyong pag-retry", "them": "1-2 round" },
       "jobTailoring": { "feature": "Job-specific na pag-angkop", "them": "Karagdagang $50-100" }
     }
+  },
+  "finalCtaExtra": {
+    "powerUpAddOns": "Power-Up Add-Ons",
+    "resumeRoastFree": "Resume Roast LIBRE",
+    "viewAllProducts": "Tingnan lahat ng produkto",
+    "addOnNames": { "resumeRoast": "Resume Roast", "interviewCoach": "Interview Coach", "careerPath": "Career Path" }
   }
 }

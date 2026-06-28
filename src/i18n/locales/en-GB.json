@@ -598,7 +598,8 @@
   "common": {
     "backToHome": "Back to Home",
     "lastUpdated": "Last updated",
-    "close": "Close"
+    "close": "Close",
+    "dismiss": "Dismiss"
   },
   "privacy": {
     "title": "Privacy Policy"
@@ -1139,5 +1140,11 @@
       "revisions": { "feature": "Revisions included", "us": "Unlimited retries", "them": "1-2 rounds" },
       "jobTailoring": { "feature": "Job-specific tailoring", "them": "Extra £40-80" }
     }
+  },
+  "finalCtaExtra": {
+    "powerUpAddOns": "Power-Up Add-Ons",
+    "resumeRoastFree": "CV Roast FREE",
+    "viewAllProducts": "View all products",
+    "addOnNames": { "resumeRoast": "CV Roast", "interviewCoach": "Interview Coach", "careerPath": "Career Path" }
   }
 }

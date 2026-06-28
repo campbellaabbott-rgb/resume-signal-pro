@@ -81,7 +81,7 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
               <button
                 onClick={() => setIsDismissed(true)}
                 className="p-2.5 text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
-                aria-label="Dismiss"
+                aria-label={t('common.dismiss')}
               >
                 <X className="w-5 h-5" />
               </button>

@@ -598,7 +598,8 @@
   "common": {
     "backToHome": "Terug naar home",
     "lastUpdated": "Laatst bijgewerkt",
-    "close": "Sluiten"
+    "close": "Sluiten",
+    "dismiss": "Negeren"
   },
   "privacy": {
     "title": "Privacybeleid"
@@ -1139,5 +1140,11 @@
       "revisions": { "feature": "Inclusief revisies", "us": "Onbeperkte pogingen", "them": "1-2 rondes" },
       "jobTailoring": { "feature": "Functiespecifieke aanpassing", "them": "Extra €45-90" }
     }
+  },
+  "finalCtaExtra": {
+    "powerUpAddOns": "Power-Up Add-ons",
+    "resumeRoastFree": "Cv-Roast GRATIS",
+    "viewAllProducts": "Bekijk alle producten",
+    "addOnNames": { "resumeRoast": "Cv-Roast", "interviewCoach": "Interviewcoach", "careerPath": "Carrièrepad" }
   }
 }

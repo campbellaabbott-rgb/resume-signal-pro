@@ -598,7 +598,8 @@
   "common": {
     "backToHome": "होम पर वापस जाएं",
     "lastUpdated": "अंतिम अपडेट",
-    "close": "बंद करें"
+    "close": "बंद करें",
+    "dismiss": "खारिज करें"
   },
   "privacy": {
     "title": "गोपनीयता नीति"
@@ -1139,5 +1140,11 @@
       "revisions": { "feature": "संशोधन शामिल", "us": "असीमित पुनर्प्रयास", "them": "1-2 राउंड" },
       "jobTailoring": { "feature": "नौकरी-विशिष्ट अनुकूलन", "them": "अतिरिक्त $50-100" }
     }
+  },
+  "finalCtaExtra": {
+    "powerUpAddOns": "पावर-अप ऐड-ऑन्स",
+    "resumeRoastFree": "रिज़्यूमे रोस्ट मुफ़्त",
+    "viewAllProducts": "सभी प्रोडक्ट देखें",
+    "addOnNames": { "resumeRoast": "रिज़्यूमे रोस्ट", "interviewCoach": "इंटरव्यू कोच", "careerPath": "करियर पथ" }
   }
 }

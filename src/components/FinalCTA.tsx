@@ -13,6 +13,11 @@ interface FinalCTAProps {
 export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
+  const addOnNames = {
+    resumeRoast: t('finalCtaExtra.addOnNames.resumeRoast'),
+    interviewCoach: t('finalCtaExtra.addOnNames.interviewCoach'),
+    careerPath: t('finalCtaExtra.addOnNames.careerPath'),
+  };
 
   // Winners declared - using control variants
   const getCtaText = () => t('finalCta.ctaButton');
@@ -34,9 +39,9 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
   ];
 
   const addOns = [
-    { name: 'Resume Roast', icon: Flame, price: 'FREE' },
-    { name: 'Interview Coach', icon: MessageSquare, price: 5 },
-    { name: 'Career Path', icon: TrendingUp, price: 5 },
+    { name: addOnNames.resumeRoast, icon: Flame, price: 'FREE' },
+    { name: addOnNames.interviewCoach, icon: MessageSquare, price: 5 },
+    { name: addOnNames.careerPath, icon: TrendingUp, price: 5 },
   ];
 
   return (
@@ -97,8 +102,8 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
           {/* Add-Ons Showcase */}
           <div className="bg-card/60 border border-border/50 rounded-2xl p-6 mb-10 backdrop-blur-sm">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <span className="text-sm font-semibold text-foreground">Power-Up Add-Ons</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-success/20 text-success font-medium">Resume Roast FREE</span>
+              <span className="text-sm font-semibold text-foreground">{t('finalCtaExtra.powerUpAddOns')}</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-success/20 text-success font-medium">{t('finalCtaExtra.resumeRoastFree')}</span>
             </div>
             <div className="grid grid-cols-3 gap-4">
               {addOns.map(({ name, icon: Icon, price }) => (
@@ -124,7 +129,7 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
               onClick={() => window.scrollTo(0, 0)}
               className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-4"
             >
-              View all products <ArrowRight className="w-3 h-3" />
+              {t('finalCtaExtra.viewAllProducts')} <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
           

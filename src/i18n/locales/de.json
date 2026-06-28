@@ -598,7 +598,8 @@
   "common": {
     "backToHome": "Zurück zur Startseite",
     "lastUpdated": "Zuletzt aktualisiert",
-    "close": "Schließen"
+    "close": "Schließen",
+    "dismiss": "Schließen"
   },
   "privacy": {
     "title": "Datenschutzrichtlinie"
@@ -1139,5 +1140,11 @@
       "revisions": { "feature": "Inklusive Überarbeitungen", "us": "Unbegrenzte Versuche", "them": "1-2 Runden" },
       "jobTailoring": { "feature": "Jobspezifische Anpassung", "them": "Zusätzlich 50-100 €" }
     }
+  },
+  "finalCtaExtra": {
+    "powerUpAddOns": "Power-Up-Erweiterungen",
+    "resumeRoastFree": "Lebenslauf-Roast KOSTENLOS",
+    "viewAllProducts": "Alle Produkte ansehen",
+    "addOnNames": { "resumeRoast": "Lebenslauf-Roast", "interviewCoach": "Interview-Coach", "careerPath": "Karriereweg" }
   }
 }

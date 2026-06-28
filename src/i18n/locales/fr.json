@@ -598,7 +598,8 @@
   "common": {
     "backToHome": "Retour à l'accueil",
     "lastUpdated": "Dernière mise à jour",
-    "close": "Fermer"
+    "close": "Fermer",
+    "dismiss": "Ignorer"
   },
   "privacy": {
     "title": "Politique de confidentialité"
@@ -1139,5 +1140,11 @@
       "revisions": { "feature": "Révisions incluses", "us": "Tentatives illimitées", "them": "1 à 2 cycles" },
       "jobTailoring": { "feature": "Adaptation spécifique au poste", "them": "50-100 $ supplémentaires" }
     }
+  },
+  "finalCtaExtra": {
+    "powerUpAddOns": "Modules complémentaires boost",
+    "resumeRoastFree": "Critique de CV GRATUITE",
+    "viewAllProducts": "Voir tous les produits",
+    "addOnNames": { "resumeRoast": "Critique de CV", "interviewCoach": "Coach d'entretien", "careerPath": "Parcours de carrière" }
   }
 }

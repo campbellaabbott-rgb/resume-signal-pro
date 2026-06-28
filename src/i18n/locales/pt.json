@@ -598,7 +598,8 @@
   "common": {
     "backToHome": "Voltar ao Início",
     "lastUpdated": "Última atualização",
-    "close": "Fechar"
+    "close": "Fechar",
+    "dismiss": "Dispensar"
   },
   "privacy": {
     "title": "Política de Privacidade"
@@ -1139,5 +1140,11 @@
       "revisions": { "feature": "Revisões incluídas", "us": "Tentativas ilimitadas", "them": "1-2 rondas" },
       "jobTailoring": { "feature": "Adaptação específica à vaga", "them": "Extra de $50-100" }
     }
+  },
+  "finalCtaExtra": {
+    "powerUpAddOns": "Complementos de Potencialização",
+    "resumeRoastFree": "Crítica de Currículo GRATUITA",
+    "viewAllProducts": "Ver todos os produtos",
+    "addOnNames": { "resumeRoast": "Crítica de Currículo", "interviewCoach": "Coach de Entrevista", "careerPath": "Percurso de Carreira" }
   }
 }
