@@ -198,19 +198,13 @@ serve(async (req) => {
 
     // Extract text using mammoth. mammoth's extractRawText() passes its input
     // straight to unzip.openZip(), which only recognizes a `buffer`, `path`, or
-<<<<<<< HEAD
-    // `file` key — never `arrayBuffer` (confirmed against mammoth@1.6.0's source).
-    // Passing { arrayBuffer } here always failed with "Could not find file in
-    // options", meaning every .docx upload through this function was failing.
-    // Wrapped in a Uint8Array for consistency with the live deployed version
-    // (made directly via the Lovable editor, separately from this git history) —
-    // JSZip accepts a raw ArrayBuffer fine too, but matching avoids this file
-    // silently drifting from what's actually running in production.
-=======
-    // `file` key — and the `buffer` value must be a Node Buffer or Uint8Array,
-    // NOT a raw ArrayBuffer (JSZip's isNode/Buffer.isBuffer check rejects plain
-    // ArrayBuffers, which surfaces as "Could not find file in options").
->>>>>>> f0f3c9f89844618d9e2034d55b5fce22e113db07
+    // `file` key — never `arrayBuffer` (confirmed against mammoth@1.6.0's
+    // source). Passing { arrayBuffer } here always failed with "Could not find
+    // file in options", meaning every .docx upload through this function was
+    // failing. Wrapped in a Uint8Array before passing as `buffer` — verified
+    // directly against the real package that both a raw ArrayBuffer and a
+    // Uint8Array work under the `buffer` key, but Uint8Array is the safer,
+    // more conventional choice for binary data in Deno.
     const docxBuffer = new Uint8Array(arrayBuffer);
     const result = await mammoth.extractRawText({ buffer: docxBuffer });
     const text = result.value.trim();
