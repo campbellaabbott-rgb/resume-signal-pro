@@ -201,7 +201,12 @@ serve(async (req) => {
     // `file` key — never `arrayBuffer` (confirmed against mammoth@1.6.0's source).
     // Passing { arrayBuffer } here always failed with "Could not find file in
     // options", meaning every .docx upload through this function was failing.
-    const result = await mammoth.extractRawText({ buffer: arrayBuffer });
+    // Wrapped in a Uint8Array for consistency with the live deployed version
+    // (made directly via the Lovable editor, separately from this git history) —
+    // JSZip accepts a raw ArrayBuffer fine too, but matching avoids this file
+    // silently drifting from what's actually running in production.
+    const docxBuffer = new Uint8Array(arrayBuffer);
+    const result = await mammoth.extractRawText({ buffer: docxBuffer });
     const text = result.value.trim();
 
     if (result.messages && result.messages.length > 0) {
