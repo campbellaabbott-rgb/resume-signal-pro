@@ -13,6 +13,20 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-06-28",
+    title: "Real industry comparisons",
+    description:
+      "Your score is now compared against real data from actual resumes scanned in your industry, instead of a fixed estimate — so 'better than X% of similar resumes' actually means what it says.",
+    tags: ["improved"],
+  },
+  {
+    date: "2026-06-28",
+    title: "More specific keyword and bullet point insights",
+    description:
+      "We now point to your actual bullet points that are missing measurable impact, and show real counts of missing keywords for your industry — specific to your resume, not generic examples.",
+    tags: ["improved"],
+  },
+  {
     date: "2026-06-27",
     title: "Fixed Word document uploads",
     description:
