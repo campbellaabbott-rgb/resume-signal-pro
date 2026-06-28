@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +38,7 @@ export function ProductSelectionModal({
   preSelectedProduct,
   onFullAnalysisCheckout
 }: ProductSelectionModalProps) {
+  const { t } = useTranslation();
   const [selectedProduct, setSelectedProduct] = useState<ProductId | null>(preSelectedProduct || null);
   const [jobTitle, setJobTitle] = useState('');
   const [jobCompany, setJobCompany] = useState('');
@@ -88,18 +90,18 @@ export function ProductSelectionModal({
   ];
 
   const getSelectedProductName = () => {
-    if (!selectedProduct) return 'Select a package';
+    if (!selectedProduct) return t('productSelectionModal.selectPackage');
     const product = PRODUCTS[selectedProduct];
-    return `Purchase ${product.name} - $${product.priceUsd}`;
+    return t('productSelectionModal.purchaseFor', { name: product.name, price: product.priceUsd });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Choose Your Package</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">{t('productSelectionModal.title')}</DialogTitle>
           <DialogDescription>
-            Select the option that best fits your needs
+            {t('productSelectionModal.subtitle')}
           </DialogDescription>
         </DialogHeader>
 
@@ -183,8 +185,8 @@ export function ProductSelectionModal({
             <div className="space-y-4 p-4 rounded-lg bg-accent/50 border border-border">
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <Briefcase className="w-4 h-4 text-primary" />
-                <span>Target Job Details</span>
-                <Badge variant="secondary" className="text-xs">Optional</Badge>
+                <span>{t('productSelectionModal.targetJobDetails')}</span>
+                <Badge variant="secondary" className="text-xs">{t('productSelectionModal.optional')}</Badge>
                 {/* Mobile: Tap to show/hide tip */}
                 {isMobile ? (
                   <div className="relative">
@@ -197,17 +199,15 @@ export function ProductSelectionModal({
                     </button>
                     {showJobDetailsTip && (
                       <div className="absolute z-50 left-0 top-8 w-64 p-3 rounded-xl bg-card border border-border shadow-lg animate-fade-in">
-                        <button 
+                        <button
                           onClick={() => setShowJobDetailsTip(false)}
                           className="absolute top-2 right-2 p-1 text-muted-foreground"
-                          aria-label="Close"
+                          aria-label={t('common.close')}
                         >
                           <X className="w-3 h-3" />
                         </button>
                         <p className="text-xs pr-4">
-                          Adding the job title and company helps our AI tailor keywords, 
-                          language, and focus areas specifically for this role—improving 
-                          ATS matching and hiring manager appeal.
+                          {t('productSelectionModal.jobDetailsTooltip')}
                         </p>
                       </div>
                     )}
@@ -221,26 +221,24 @@ export function ProductSelectionModal({
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-xs text-center">
                       <p className="text-sm">
-                        Adding the job title and company helps our AI tailor keywords, 
-                        language, and focus areas specifically for this role—improving 
-                        ATS matching and hiring manager appeal.
+                        {t('productSelectionModal.jobDetailsTooltip')}
                       </p>
                     </TooltipContent>
                   </Tooltip>
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Helps personalize your content for better ATS matching and relevance.
+                {t('productSelectionModal.jobDetailsHelper')}
               </p>
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="jobTitle" className="text-xs flex items-center gap-1.5">
                   <Briefcase className="w-3 h-3" />
-                  Job Title
+                  {t('productSelectionModal.jobTitleLabel')}
                 </Label>
                 <Input
                   id="jobTitle"
-                  placeholder="e.g., Software Engineer"
+                  placeholder={t('productSelectionModal.jobTitlePlaceholder')}
                   value={jobTitle}
                   onChange={(e) => setJobTitle(e.target.value)}
                   className="h-9"
@@ -249,11 +247,11 @@ export function ProductSelectionModal({
               <div className="space-y-1.5">
                 <Label htmlFor="jobCompany" className="text-xs flex items-center gap-1.5">
                   <Building2 className="w-3 h-3" />
-                  Company
+                  {t('productSelectionModal.companyLabel')}
                 </Label>
                 <Input
                   id="jobCompany"
-                  placeholder="e.g., Google"
+                  placeholder={t('productSelectionModal.companyPlaceholder')}
                   value={jobCompany}
                   onChange={(e) => setJobCompany(e.target.value)}
                   className="h-9"
@@ -275,7 +273,7 @@ export function ProductSelectionModal({
           {isLoading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Redirecting to checkout...
+              {t('productSelectionModal.redirecting')}
             </>
           ) : (
             getSelectedProductName()
@@ -283,7 +281,7 @@ export function ProductSelectionModal({
         </Button>
 
         <p className="text-xs text-center text-muted-foreground">
-          Secure checkout powered by Stripe. One-time payment, no subscription.
+          {t('productSelectionModal.secureCheckout')}
         </p>
       </DialogContent>
     </Dialog>

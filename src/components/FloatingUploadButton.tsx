@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Zap, FileText, ArrowDown, Eye } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 interface FloatingUploadButtonProps {
@@ -18,6 +19,7 @@ export function FloatingUploadButton({
   resumeVerified = false,
   onVerifyClick
 }: FloatingUploadButtonProps) {
+  const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(false);
   const [showVerifyFirst, setShowVerifyFirst] = useState(true);
   const [justTriggered, setJustTriggered] = useState(false);
@@ -155,10 +157,10 @@ export function FloatingUploadButton({
             "touch-manipulation",
             justTriggered && "animate-bounce"
           )}
-          aria-label="Verify your resume"
+          aria-label={t('floatingUpload.verifyAriaLabel')}
         >
           <Eye className="w-5 h-5" />
-          <span>Step 1: Verify Resume</span>
+          <span>{t('floatingUpload.step1Verify')}</span>
           <ArrowDown className="w-4 h-4 animate-bounce" />
         </button>
       ) : (
@@ -172,10 +174,10 @@ export function FloatingUploadButton({
             "touch-manipulation",
             "animate-bounce"
           )}
-          aria-label="Scroll to free scan button"
+          aria-label={t('floatingUpload.scanAriaLabel')}
         >
           <Zap className="w-5 h-5 fill-current" />
-          <span>Step 2: Scan Now – FREE</span>
+          <span>{t('floatingUpload.step2Scan')}</span>
         </button>
       )}
     </div>
@@ -188,6 +190,7 @@ interface FloatingSeeReportButtonProps {
 }
 
 export function FloatingSeeReportButton({ isVisible = false }: FloatingSeeReportButtonProps) {
+  const { t } = useTranslation();
   const [showButton, setShowButton] = useState(false);
   const [justAppeared, setJustAppeared] = useState(false);
 
@@ -254,10 +257,10 @@ export function FloatingSeeReportButton({ isVisible = false }: FloatingSeeReport
           "touch-manipulation",
           justAppeared && "animate-bounce"
         )}
-        aria-label="Scroll to scan results"
+        aria-label={t('floatingUpload.seeReportAriaLabel')}
       >
         <FileText className="w-5 h-5" />
-        <span>See Report</span>
+        <span>{t('floatingUpload.seeReport')}</span>
       </button>
     </div>
   );

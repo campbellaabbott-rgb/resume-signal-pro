@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { 
@@ -36,6 +37,7 @@ export function TailoredResumeModal({
   isLoading,
   originalName = "Your Name"
 }: TailoredResumeModalProps) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -46,13 +48,13 @@ export function TailoredResumeModal({
       setCopiedSection(section);
       setTimeout(() => setCopiedSection(null), 2000);
       toast({
-        title: "Copied!",
-        description: `${section} copied to clipboard`,
+        title: t('tailoredResumeModal.copiedTitle'),
+        description: t('tailoredResumeModal.copiedDescription', { section }),
       });
     } catch (err) {
       toast({
-        title: "Copy failed",
-        description: "Please select and copy the text manually",
+        title: t('tailoredResumeModal.copyFailedTitle'),
+        description: t('tailoredResumeModal.copyFailedDescription'),
         variant: "destructive",
       });
     }
@@ -157,14 +159,14 @@ export function TailoredResumeModal({
       pdf.save(filename);
       
       toast({
-        title: "PDF Downloaded!",
-        description: "Your tailored resume has been saved",
+        title: t('tailoredResumeModal.pdfDownloadedTitle'),
+        description: t('tailoredResumeModal.pdfDownloadedDescription'),
       });
     } catch (err) {
       console.error("PDF generation error:", err);
       toast({
-        title: "PDF generation failed",
-        description: "Please try again or copy the content manually",
+        title: t('tailoredResumeModal.pdfFailedTitle'),
+        description: t('tailoredResumeModal.pdfFailedDescription'),
         variant: "destructive",
       });
     } finally {
@@ -178,7 +180,7 @@ export function TailoredResumeModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
-            Tailored Resume Content
+            {t('tailoredResumeModal.title')}
           </DialogTitle>
         </DialogHeader>
 
@@ -189,9 +191,9 @@ export function TailoredResumeModal({
               <Loader2 className="w-8 h-8 text-primary animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
             </div>
             <p className="text-muted-foreground text-center">
-              AI is tailoring your resume for this role...
+              {t('tailoredResumeModal.tailoring')}
             </p>
-            <p className="text-xs text-muted-foreground/70">This may take 15-30 seconds</p>
+            <p className="text-xs text-muted-foreground/70">{t('tailoredResumeModal.tailoringEta')}</p>
           </div>
         ) : content ? (
           <div className="space-y-6 py-4">
@@ -200,15 +202,15 @@ export function TailoredResumeModal({
               <div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                   <Target className="w-4 h-4" />
-                  Tailored for
+                  {t('tailoredResumeModal.tailoredFor')}
                 </div>
                 <h3 className="font-bold text-foreground">{content.jobTitle}</h3>
                 {content.jobCompany && (
                   <p className="text-sm text-muted-foreground">{content.jobCompany}</p>
                 )}
               </div>
-              <Button 
-                onClick={generatePDF} 
+              <Button
+                onClick={generatePDF}
                 disabled={isGeneratingPdf}
                 className="gap-2"
               >
@@ -217,7 +219,7 @@ export function TailoredResumeModal({
                 ) : (
                   <Download className="w-4 h-4" />
                 )}
-                Download PDF
+                {t('tailoredResumeModal.downloadPdf')}
               </Button>
             </div>
 
@@ -226,15 +228,15 @@ export function TailoredResumeModal({
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Briefcase className="w-4 h-4 text-primary" />
-                  <h4 className="font-semibold">Suggested Resume Title</h4>
+                  <h4 className="font-semibold">{t('tailoredResumeModal.suggestedTitle')}</h4>
                 </div>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
-                  onClick={() => copyToClipboard(content.suggestedJobTitle, "Title")}
+                  onClick={() => copyToClipboard(content.suggestedJobTitle, t('tailoredResumeModal.sections.title'))}
                   className="h-8"
                 >
-                  {copiedSection === "Title" ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                  {copiedSection === t('tailoredResumeModal.sections.title') ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
               <p className="text-foreground font-medium">{content.suggestedJobTitle}</p>
@@ -245,15 +247,15 @@ export function TailoredResumeModal({
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-primary" />
-                  <h4 className="font-semibold">Professional Summary</h4>
+                  <h4 className="font-semibold">{t('tailoredResumeModal.professionalSummary')}</h4>
                 </div>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
-                  onClick={() => copyToClipboard(content.professionalSummary, "Summary")}
+                  onClick={() => copyToClipboard(content.professionalSummary, t('tailoredResumeModal.sections.summary'))}
                   className="h-8"
                 >
-                  {copiedSection === "Summary" ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                  {copiedSection === t('tailoredResumeModal.sections.summary') ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
               <p className="text-muted-foreground leading-relaxed">{content.professionalSummary}</p>
@@ -264,20 +266,20 @@ export function TailoredResumeModal({
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-primary" />
-                  <h4 className="font-semibold">Key Skills to Highlight</h4>
+                  <h4 className="font-semibold">{t('tailoredResumeModal.keySkills')}</h4>
                 </div>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
-                  onClick={() => copyToClipboard(content.keySkills.join(", "), "Skills")}
+                  onClick={() => copyToClipboard(content.keySkills.join(", "), t('tailoredResumeModal.sections.skills'))}
                   className="h-8"
                 >
-                  {copiedSection === "Skills" ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                  {copiedSection === t('tailoredResumeModal.sections.skills') ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
               <div className="flex flex-wrap gap-2">
                 {content.keySkills.map((skill, i) => (
-                  <span 
+                  <span
                     key={i}
                     className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium"
                   >
@@ -292,18 +294,18 @@ export function TailoredResumeModal({
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <PenLine className="w-4 h-4 text-primary" />
-                  <h4 className="font-semibold">Tailored Experience Bullets</h4>
+                  <h4 className="font-semibold">{t('tailoredResumeModal.experienceBullets')}</h4>
                 </div>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
                   onClick={() => copyToClipboard(
                     content.experienceHighlights.map(h => `• ${h.tailored}`).join("\n"),
-                    "Experience"
+                    t('tailoredResumeModal.sections.experience')
                   )}
                   className="h-8"
                 >
-                  {copiedSection === "Experience" ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                  {copiedSection === t('tailoredResumeModal.sections.experience') ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
               <div className="space-y-3">
@@ -321,15 +323,15 @@ export function TailoredResumeModal({
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-success" />
-                  <h4 className="font-semibold text-success">Cover Letter Opening</h4>
+                  <h4 className="font-semibold text-success">{t('tailoredResumeModal.coverLetterOpening')}</h4>
                 </div>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
-                  onClick={() => copyToClipboard(content.coverLetterOpening, "Cover Letter")}
+                  onClick={() => copyToClipboard(content.coverLetterOpening, t('tailoredResumeModal.sections.coverLetter'))}
                   className="h-8"
                 >
-                  {copiedSection === "Cover Letter" ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                  {copiedSection === t('tailoredResumeModal.sections.coverLetter') ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
               <p className="text-muted-foreground leading-relaxed italic">"{content.coverLetterOpening}"</p>
@@ -339,7 +341,7 @@ export function TailoredResumeModal({
             <div className="rounded-xl border border-border bg-muted/30 p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Lightbulb className="w-4 h-4 text-warning" />
-                <h4 className="font-semibold">Application Tips</h4>
+                <h4 className="font-semibold">{t('tailoredResumeModal.applicationTips')}</h4>
               </div>
               <div className="space-y-2">
                 {content.applicationTips.map((tip, i) => (
@@ -353,13 +355,13 @@ export function TailoredResumeModal({
 
             {/* Actions */}
             <div className="flex justify-center gap-3 pt-4 border-t border-border">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={onClose}
               >
-                Close
+                {t('common.close')}
               </Button>
-              <Button 
+              <Button
                 onClick={generatePDF}
                 disabled={isGeneratingPdf}
                 className="gap-2"
@@ -369,13 +371,13 @@ export function TailoredResumeModal({
                 ) : (
                   <Download className="w-4 h-4" />
                 )}
-                Download PDF to Send
+                {t('tailoredResumeModal.downloadPdfToSend')}
               </Button>
             </div>
           </div>
         ) : (
           <div className="py-8 text-center text-muted-foreground">
-            <p>No content available</p>
+            <p>{t('tailoredResumeModal.noContent')}</p>
           </div>
         )}
       </DialogContent>
