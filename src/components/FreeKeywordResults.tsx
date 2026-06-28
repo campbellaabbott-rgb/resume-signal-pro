@@ -7,7 +7,7 @@ import {
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
   TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket,
-  BarChart3, Shield, Search, Settings2, Eye, Flame, FileEdit, Send
+  BarChart3, Shield, Search, Settings2, Eye, Flame, FileEdit, Send, Quote
 } from "lucide-react";
 import { LockedPremiumInsight } from "./LockedPremiumInsight";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
@@ -827,7 +827,28 @@ export function FreeKeywordResults({
   const { addScanEntry, setUserEmail, isReturningUser, getLatestScan } = useScanHistory();
   const [hasRecordedScan, setHasRecordedScan] = useState(false);
   const [correctedIndustry, setCorrectedIndustry] = useState<string | null>(null);
-  
+  const [showExitOffer, setShowExitOffer] = useState(false);
+
+  // Exit-intent fallback offer: if someone scrolls through every upsell and
+  // starts to leave without buying anything, show the cheapest paid product
+  // once instead of just losing them. Fires on the classic "mouse left
+  // toward the top of the viewport" signal, once per session (sessionStorage
+  // guard) so it can't become an annoyance on repeat visits or re-renders.
+  useEffect(() => {
+    if (sessionStorage.getItem('exitOfferShown')) return;
+
+    const handleMouseOut = (e: MouseEvent) => {
+      if (e.clientY <= 0 && !e.relatedTarget) {
+        setShowExitOffer(true);
+        sessionStorage.setItem('exitOfferShown', 'true');
+        document.removeEventListener('mouseout', handleMouseOut);
+      }
+    };
+
+    document.addEventListener('mouseout', handleMouseOut);
+    return () => document.removeEventListener('mouseout', handleMouseOut);
+  }, []);
+
   // Use corrected industry if set, otherwise use detected
   const effectiveIndustry = correctedIndustry || industry;
 
@@ -982,6 +1003,29 @@ export function FreeKeywordResults({
       .filter((l) => /^([•\-*·])\s+/.test(l))
       .map((l) => l.replace(/^([•\-*·])\s+/, "").trim())
       .filter(Boolean);
+
+  // Real weak bullets for the "AI-Rewritten Bullet Points" upsell card below —
+  // this used to show the same generic stock example ("Replace 'Responsible
+  // for managing team of 5'...") to every single user. Quoting their own
+  // actual bullet that lacks a number is both more honest and a much harder
+  // claim to dismiss than a made-up illustration. Deliberately NOT showing a
+  // fabricated "after" rewrite of their specific bullet — that's the actual
+  // paid output, not something to give away or fake in the free preview.
+  const realWeakBullets = useMemo(() => {
+    const expText = getExperienceSectionText();
+    const bullets = extractBullets(expText);
+    if (!bullets.length) return null;
+
+    const hasNumber = (s: string) => /(\$|%|\b\d[\d,.]*\b|\b\d+\s*(k|m|b)\b)/i.test(s);
+    const weak = bullets.filter((b) => !hasNumber(b) && b.length >= 30 && b.length <= 180);
+
+    return {
+      weakCount: weak.length,
+      totalCount: bullets.length,
+      examples: weak.slice(0, 2),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeText]);
 
   const computeQuantificationFromText = (): QuantificationScore | null => {
     const expText = getExperienceSectionText();
@@ -1376,6 +1420,25 @@ export function FreeKeywordResults({
   return (
     <TooltipProvider delayDuration={200}>
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
+      {showExitOffer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-sm bg-card border border-border rounded-2xl shadow-2xl p-6 animate-slide-up">
+            <button
+              onClick={() => setShowExitOffer(false)}
+              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <h3 className="text-lg font-bold mb-1">Before you go —</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Get your top missing keywords identified and a fix list, for the price of a coffee.
+            </p>
+            <KeywordFixButton variant="benefit_focused" section="exit_intent" />
+          </div>
+        </div>
+      )}
+
       {/* Dashboard-style Score Hero */}
       <ScoreHero
         candidateName={candidateName}
@@ -2957,17 +3020,53 @@ export function FreeKeywordResults({
         </div>
       )}
 
+      {/* Testimonial right before the upsell decision — by this point in the
+          page, any trust built on the homepage is several scrolls behind the
+          user. Reuses the same approved copy already shown in SocialProof.tsx
+          rather than inventing new testimonial content. Lightly matched to
+          the user's situation rather than always showing the same one. */}
+      {(() => {
+        const testimonialKey = experienceLevel.level === "entry"
+          ? "graduate"
+          : effectiveIndustry.includes("tech") || effectiveIndustry.includes("engineer") || effectiveIndustry === "software"
+            ? "engineer"
+            : "pm";
+        const testimonialName = testimonialKey === "graduate" ? "Alex T." : testimonialKey === "engineer" ? "David K." : "Sarah M.";
+        return (
+          <div className="mb-6 p-4 rounded-xl bg-card/50 border border-border/50">
+            <Quote className="w-5 h-5 text-primary/30 mb-2" />
+            <p className="text-sm text-foreground/90 italic mb-2">
+              "{t(`socialProof.testimonials.${testimonialKey}.quote`)}"
+            </p>
+            <p className="text-xs text-muted-foreground">
+              — {testimonialName}, {t(`socialProof.testimonials.${testimonialKey}.role`)}
+            </p>
+          </div>
+        );
+      })()}
+
       {/* Score-Gated Premium Insights */}
       <div className="space-y-4 mb-6">
         <LockedPremiumInsight
           title="AI-Rewritten Bullet Points"
           description="Get every bullet point rewritten with measurable impact and power verbs"
-          previewLines={[
-            "• Replace 'Responsible for managing team of 5' → 'Led cross-functional team of 5, driving 32% efficiency gain'",
-            "• Replace 'Helped with customer support' → 'Resolved 150+ customer tickets/week, achieving 98% satisfaction'",
-            "• Add metrics to 6 bullet points that currently lack quantification",
-            "• Restructure 3 responsibility-focused bullets into achievement statements",
-          ]}
+          previewLines={
+            realWeakBullets && realWeakBullets.weakCount > 0
+              ? [
+                  ...realWeakBullets.examples.map((bullet) => {
+                    const truncated = bullet.length > 100 ? `${bullet.slice(0, 100)}...` : bullet;
+                    return `• From your resume: "${truncated}" — no measurable impact stated`;
+                  }),
+                  `• ${realWeakBullets.weakCount} of your ${realWeakBullets.totalCount} bullet points lack quantification`,
+                  "• Get each one rewritten with metrics and a stronger power verb",
+                ]
+              : [
+                  "• Replace 'Responsible for managing team of 5' → 'Led cross-functional team of 5, driving 32% efficiency gain'",
+                  "• Replace 'Helped with customer support' → 'Resolved 150+ customer tickets/week, achieving 98% satisfaction'",
+                  "• Add metrics to bullet points that currently lack quantification",
+                  "• Restructure responsibility-focused bullets into achievement statements",
+                ]
+          }
           onUnlock={() => handleUpgradeClick('locked_bullet_rewrites')}
           isLoading={isLoading}
           variant="highlight"
