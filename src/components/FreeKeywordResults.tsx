@@ -1432,7 +1432,9 @@ export function FreeKeywordResults({
             </button>
             <h3 className="text-lg font-bold mb-1">Before you go —</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Get your top missing keywords identified and a fix list, for the price of a coffee.
+              {realKeywordGapStats && realKeywordGapStats.totalMissing > 0
+                ? `You're missing ${realKeywordGapStats.totalMissing} keywords common in ${effectiveIndustry.replace(/_/g, ' ')} roles. Get the fix list for the price of a coffee.`
+                : "Get your top missing keywords identified and a fix list, for the price of a coffee."}
             </p>
             <KeywordFixButton variant="benefit_focused" section="exit_intent" />
           </div>
@@ -3114,11 +3116,21 @@ export function FreeKeywordResults({
 
         <LockedPremiumInsight
           title="Personalized Career Strategy"
-          description="Salary insights, next-role suggestions, and interview talking points based on your profile"
+          description={
+            currentRole
+              ? `Salary negotiation guidance, next-role paths, and interview talking points for your ${currentRole} background`
+              : `Salary negotiation guidance, next-role paths, and interview talking points for ${effectiveIndustry.replace(/_/g, ' ')}`
+          }
           previewLines={[
-            "• Estimated salary range: $85,000 - $120,000 (based on role + location signals)",
-            "• 3 natural next-role progressions with gap analysis for each",
-            "• 4 interview talking points derived from your strongest achievements",
+            // Deliberately not asserting a specific salary number or count here —
+            // a prior version claimed the exact same "$85,000-$120,000" range and
+            // "3 next-role progressions" to every user regardless of their actual
+            // role, industry, or experience level. Real salary/role-path data
+            // isn't something this scan computes, so the honest fix is removing
+            // the fabricated precision, not replacing it with a different guess.
+            "• Salary negotiation guidance based on your actual role and experience level",
+            "• Next-role progression paths with a gap analysis for each",
+            "• Interview talking points derived from your strongest achievements",
             "• Personal brand assessment: current vs ideal positioning",
           ]}
           onUnlock={() => handleUpgradeClick('locked_career_strategy')}
