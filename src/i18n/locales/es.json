@@ -1146,5 +1146,98 @@
     "resumeRoastFree": "Crítica de Currículum GRATIS",
     "viewAllProducts": "Ver todos los productos",
     "addOnNames": { "resumeRoast": "Crítica de Currículum", "interviewCoach": "Coach de Entrevistas", "careerPath": "Trayectoria Profesional" }
+  },
+  "changelogPage": {
+    "metaTitle": "Registro de cambios — Resume Booster",
+    "metaDescription": "Nuevas funciones, mejoras y correcciones publicadas en Resume Booster. Actualizado semanalmente.",
+    "title": "Novedades",
+    "subtitle": "Lanzamos mejoras constantemente. Esto es lo que ha cambiado recientemente.",
+    "tags": { "new": "Nuevo", "improved": "Mejorado", "fixed": "Corregido" }
+  },
+  "changelogEntries": {
+    "yourReportsSpeakYourLanguage": {
+      "title": "Tus informes ahora hablan tu idioma",
+      "description": "Todos nuestros informes de pago — Puntuación de Currículum, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator y Apply Assistant — ahora generan su contenido de IA y el texto en pantalla en el idioma que hayas seleccionado entre los 9 que admitimos, en lugar de usar siempre inglés por defecto. Los currículums adaptados y las cartas de presentación que envías a empleadores siguen en su idioma original a propósito, ya que traducir una solicitud de empleo real sin avisar podría hacer más daño que bien."
+    },
+    "translatedHomepageAndScanFlow": {
+      "title": "Traducimos la página de inicio y el flujo principal de escaneo",
+      "description": "La página de inicio, el flujo de subida, las comparaciones de precios y toda la página de resultados del escaneo gratuito ahora están traducidas a los 9 idiomas admitidos — antes, gran parte de esto solo se mostraba en inglés sin importar tu configuración de idioma."
+    },
+    "fixedAtsDefenseDelivery": {
+      "title": "Corregimos la entrega de informes de ATS Defense",
+      "description": "Corregimos un error que podía impedir que los informes de ATS Defense se generaran automáticamente tras la compra. Si esto te afectó, tu informe ahora debería generarse correctamente — contáctanos si aún no lo ves."
+    },
+    "moreReliableDownloads": {
+      "title": "Descargas de PDF y Word más fiables",
+      "description": "Corregimos un problema por el cual un nombre con ciertos caracteres especiales podía generar un nombre de archivo de descarga roto. También añadimos un aviso claro si tu currículum o informe contiene caracteres que nuestra exportación a PDF aún no puede mostrar completamente (principalmente escrituras no latinas), en lugar de omitirlos silenciosamente."
+    },
+    "clearerMessagesHighDemand": {
+      "title": "Mensajes más claros cuando hay mucha demanda",
+      "description": "Si nuestra IA está brevemente sobrecargada mientras genera tus resultados de Interview Coach, Career Path, Career Snapshot, Graduate Game Plan o Keyword Fix, ahora verás un mensaje claro de 'inténtalo de nuevo en breve' en todos ellos, en lugar de un error genérico en algunos."
+    },
+    "realIndustryComparisons": {
+      "title": "Comparaciones reales por industria",
+      "description": "Tu puntuación ahora se compara con datos reales de currículums realmente escaneados en tu industria, en lugar de una estimación fija — así que 'mejor que el X% de currículums similares' realmente significa lo que dice."
+    },
+    "moreSpecificKeywordBulletInsights": {
+      "title": "Información más específica sobre palabras clave y viñetas",
+      "description": "Ahora señalamos tus viñetas reales que carecen de impacto medible, y mostramos recuentos reales de palabras clave faltantes para tu industria — específico para tu currículum, no ejemplos genéricos."
+    },
+    "fixedWordUploads": {
+      "title": "Corregimos las subidas de documentos Word",
+      "description": "Corregimos un error que causaba que fallaran las subidas de currículums .docx. Si intentaste subir un documento Word recientemente y no funcionó, inténtalo de nuevo — ya está corregido. También añadimos un mensaje claro para archivos .doc antiguos (que deben guardarse primero como .docx) y para cualquier otro tipo de archivo no compatible, en lugar de dejarte sin ninguna explicación."
+    },
+    "purchaseRecoveryFix": {
+      "title": "Corrección en la recuperación de compras",
+      "description": "Corregimos un problema por el cual recuperar una compra anterior (si cerraste la pestaña antes de ver tus resultados) podía fallar. Ahora puedes recuperar tus resultados usando el enlace o el ID de sesión de tu correo de confirmación."
+    },
+    "checkoutReliabilityFixes": {
+      "title": "Correcciones de fiabilidad en el pago",
+      "description": "Corregimos un error de precios en el flujo de compra personalizada de créditos de escaneo que podía cobrar más del precio mostrado, y corregimos un problema por el cual las compras de Interview Coach y Career Path Simulator podían no entregar su contenido tras el pago. Si te afectó alguno de los dos, contáctanos y lo solucionaremos."
+    },
+    "moreMechanicalAtsChecks": {
+      "title": "Más verificaciones mecánicas de ATS",
+      "description": "Añadimos dos verificaciones deterministas más al Simulador de Análisis ATS: detección de caracteres de fuentes de iconos (comunes en plantillas que usan una fuente de iconos para los símbolos de teléfono/correo/LinkedIn, lo que puede dejar huecos junto a tu información de contacto) y detección de texto aplanado de diseños basados en tablas."
+    },
+    "faqSectionTranslationFixes": {
+      "title": "Correcciones en la sección de preguntas frecuentes y traducciones",
+      "description": "Corregimos un problema por el cual la sección de preguntas frecuentes mostraba texto de marcador de posición en lugar de respuestas reales en todos los idiomas menos uno, y completamos algunas cadenas sin traducir para que cada idioma admitido esté completamente traducido."
+    },
+    "publicChangelog": {
+      "title": "Registro de cambios público",
+      "description": "Añadimos esta página, enlazada desde el encabezado y el pie de página, para que siempre puedas ver qué hay de nuevo, mejorado o corregido."
+    },
+    "applyAssistant": {
+      "title": "Apply Assistant",
+      "description": "Pega una oferta de empleo y obtén un currículum adaptado a ese puesto específico, una carta de presentación a juego, una lista honesta de carencias de habilidades (no inventamos experiencia que no tengas) y una lista de verificación paso a paso — revisada y enviada por ti, nunca enviada automáticamente en tu nombre."
+    },
+    "atsParseSimulation": {
+      "title": "Simulación de análisis ATS",
+      "description": "Añadimos una segunda verificación, totalmente mecánica, junto a la puntuación de IA: detectamos encabezados de sección faltantes, información de contacto no extraíble, fechas faltantes, codificación de caracteres rota por problemas de fuentes en PDF, e incluso diseños de varias columnas que los analizadores de texto ATS reales mezclan — todos hallazgos deterministas y reproducibles, no una conjetura de un modelo."
+    },
+    "realSemanticJobMatching": {
+      "title": "Coincidencia semántica real con el puesto",
+      "description": "Sustituimos la coincidencia literal de palabras clave por un juicio de IA genuino que lee tu currículum y la descripción del puesto juntos — así, una habilidad expresada de forma diferente (o demostrada mediante experiencia relacionada) ahora se reconoce correctamente en lugar de requerir una coincidencia de texto exacta."
+    },
+    "resumeBuilder": {
+      "title": "Constructor de currículum",
+      "description": "Un editor de currículum estructurado con secciones editables, una vista previa en vivo y exportación con un clic a PDF o Word — rellenado automáticamente a partir de tu escaneo más reciente."
+    },
+    "deeperInterviewCoachCareerPath": {
+      "title": "Interview Coach y Career Path Simulator más completos",
+      "description": "Las versiones de pago ahora van más allá de la vista previa gratuita: 14 preguntas de entrevista con respuestas modelo completas usando el método STAR, un plan de acción de 90 días para cada trayectoria profesional, e informes en PDF descargables para ambos."
+    },
+    "moreHonestScoring": {
+      "title": "Puntuación más honesta",
+      "description": "Eliminamos un error de puntuación que permitía que los currículums se inflaran hacia la mitad de la escala, y ajustamos las instrucciones de la IA para que un currículum realmente débil ahora obtenga una puntuación baja — el ánimo en los comentarios ya no suaviza el número real."
+    },
+    "fasterPageLoads": {
+      "title": "Carga de páginas más rápida",
+      "description": "Reducimos el tamaño inicial de la página en más de la mitad cargando solo lo que cada página realmente necesita — las exportaciones, los idiomas menos comunes y otras páginas ya no ralentizan tu primera visita."
+    },
+    "scannedPdfDetection": {
+      "title": "Detección de PDF escaneados",
+      "description": "Si subes un PDF escaneado basado en imágenes sin texto seleccionable, ahora te lo decimos de inmediato en lugar de analizar contenido vacío en silencio — con una sugerencia clara de subir una versión basada en texto o pegar tu currículum directamente."
+    }
   }
 }

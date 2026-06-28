@@ -1,162 +1,42 @@
 // Public changelog content. Add new entries to the TOP of this array as features
 // ship — newest first. Keep entries written for users (what changed and why it
 // helps them), not engineering changelogs (no file names, no internal jargon).
+//
+// Title and description text live in src/i18n/locales/*.json under
+// `changelogEntries.<id>.title` / `.description` (en.json is the source of
+// truth), not inline here — the `id` below is just the lookup key. When
+// adding a new entry, add the matching `changelogEntries.<id>` block to
+// en.json AND translate it into the other 8 locale files, or it will show up
+// untranslated (or trip the key-parity test) for non-English users.
 
 export type ChangelogTag = "new" | "improved" | "fixed";
 
 export interface ChangelogEntry {
+  id: string; // key into changelogEntries.<id>.title/.description in the locale files
   date: string; // ISO date, e.g. "2026-06-26"
-  title: string;
-  description: string;
   tags: ChangelogTag[];
 }
 
 export const changelog: ChangelogEntry[] = [
-  {
-    date: "2026-06-28",
-    title: "Your reports now speak your language",
-    description:
-      "All of our paid reports — Resume Score, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator, and Apply Assistant — now generate their AI content and on-screen text in whichever of our 9 supported languages you've selected, instead of always defaulting to English. Tailored resumes and cover letters you submit to employers still stay in their original language by design, since translating an actual job application without asking could do more harm than good.",
-    tags: ["improved"],
-  },
-  {
-    date: "2026-06-28",
-    title: "Translated the homepage and core scan flow",
-    description:
-      "The homepage, upload flow, pricing comparisons, and the full free-scan results page are now translated across all 9 supported languages — previously much of this only displayed in English regardless of your language setting.",
-    tags: ["improved"],
-  },
-  {
-    date: "2026-06-28",
-    title: "Fixed ATS Defense report delivery",
-    description:
-      "Fixed a bug where ATS Defense reports could fail to generate automatically after purchase. If this affected you, your report should now generate correctly — please reach out if you still don't see it.",
-    tags: ["fixed"],
-  },
-  {
-    date: "2026-06-28",
-    title: "More reliable PDF and Word downloads",
-    description:
-      "Fixed an issue where a name with certain special characters could produce a broken download filename. Also added a clear heads-up if your resume or report contains characters our PDF export can't fully render yet (mainly non-Latin scripts), instead of silently leaving them out.",
-    tags: ["fixed"],
-  },
-  {
-    date: "2026-06-28",
-    title: "Clearer messages when demand is high",
-    description:
-      "If our AI is briefly overloaded while generating your Interview Coach, Career Path, Career Snapshot, Graduate Game Plan, or Keyword Fix results, you'll now see a clear 'try again shortly' message across all of them, instead of a generic error on some.",
-    tags: ["improved"],
-  },
-  {
-    date: "2026-06-28",
-    title: "Real industry comparisons",
-    description:
-      "Your score is now compared against real data from actual resumes scanned in your industry, instead of a fixed estimate — so 'better than X% of similar resumes' actually means what it says.",
-    tags: ["improved"],
-  },
-  {
-    date: "2026-06-28",
-    title: "More specific keyword and bullet point insights",
-    description:
-      "We now point to your actual bullet points that are missing measurable impact, and show real counts of missing keywords for your industry — specific to your resume, not generic examples.",
-    tags: ["improved"],
-  },
-  {
-    date: "2026-06-27",
-    title: "Fixed Word document uploads",
-    description:
-      "Fixed a bug that caused .docx resume uploads to fail. If you tried uploading a Word document recently and it didn't work, please try again — it's fixed now. We also added a clear message for older .doc files (which need to be saved as .docx first) and for any other unsupported file type, instead of leaving you stuck with no explanation.",
-    tags: ["fixed"],
-  },
-  {
-    date: "2026-06-27",
-    title: "Purchase recovery fix",
-    description:
-      "Fixed an issue where recovering a previous purchase (if you closed the tab before seeing your results) could fail. You can now recover your results using the link or session ID from your confirmation email.",
-    tags: ["fixed"],
-  },
-  {
-    date: "2026-06-27",
-    title: "Checkout reliability fixes",
-    description:
-      "Fixed a pricing bug in the custom scan-credit purchase flow that could charge more than the displayed price, and fixed an issue where Interview Coach and Career Path Simulator purchases could fail to deliver their content after payment. If you were affected by either, reach out and we'll make it right.",
-    tags: ["fixed"],
-  },
-  {
-    date: "2026-06-27",
-    title: "More mechanical ATS checks",
-    description:
-      "Added two more deterministic checks to the ATS Parse Simulator: detection of icon-font characters (common in templates that use an icon font for the phone/email/LinkedIn symbols, which can leave gaps next to your contact info) and detection of flattened text from table-based layouts.",
-    tags: ["new"],
-  },
-  {
-    date: "2026-06-27",
-    title: "FAQ section and translation fixes",
-    description:
-      "Fixed an issue where the FAQ section showed raw placeholder text instead of real answers in every language but one, and filled in a handful of untranslated strings so every supported language is fully translated.",
-    tags: ["fixed"],
-  },
-  {
-    date: "2026-06-26",
-    title: "Public changelog",
-    description:
-      "Added this page, linked from the header and footer, so you can always see what's new, improved, or fixed.",
-    tags: ["new"],
-  },
-  {
-    date: "2026-06-26",
-    title: "Apply Assistant",
-    description:
-      "Paste a job posting and get a resume tailored to that specific role, a matching cover letter, an honest list of skill gaps (we don't fabricate experience you don't have), and a step-by-step checklist — reviewed and submitted by you, never auto-submitted on your behalf.",
-    tags: ["new"],
-  },
-  {
-    date: "2026-06-25",
-    title: "ATS Parse Simulation",
-    description:
-      "Added a second, fully mechanical check alongside the AI score: we detect missing section headers, unextractable contact info, missing dates, broken character encoding from PDF font issues, and even multi-column layouts that get scrambled by real ATS text parsers — all deterministic, reproducible findings, not a model's guess.",
-    tags: ["new"],
-  },
-  {
-    date: "2026-06-25",
-    title: "Real semantic job matching",
-    description:
-      "Replaced literal keyword pattern-matching with genuine AI judgment that reads your resume and the job description together — so a skill phrased differently (or demonstrated through related experience) is now recognized correctly instead of requiring an exact text match.",
-    tags: ["improved"],
-  },
-  {
-    date: "2026-06-24",
-    title: "Resume Builder",
-    description:
-      "A structured resume editor with editable sections, a live preview, and one-click export to PDF or Word — prefilled automatically from your most recent scan.",
-    tags: ["new"],
-  },
-  {
-    date: "2026-06-24",
-    title: "Deeper Interview Coach and Career Path Simulator",
-    description:
-      "The paid versions now go further than the free preview: 14 interview questions with full model answers using the STAR method, a 90-day action plan for each career path, and downloadable PDF reports for both.",
-    tags: ["improved"],
-  },
-  {
-    date: "2026-06-23",
-    title: "More honest scoring",
-    description:
-      "Removed a scoring bug that let resumes inflate toward the middle of the scale, and tightened the AI's instructions so a genuinely weak resume now scores low — encouragement in the feedback no longer softens the actual number.",
-    tags: ["fixed"],
-  },
-  {
-    date: "2026-06-22",
-    title: "Faster page loads",
-    description:
-      "Cut the initial page size by more than half by only loading what each page actually needs — exports, less-common languages, and other pages no longer slow down your first visit.",
-    tags: ["improved"],
-  },
-  {
-    date: "2026-06-21",
-    title: "Scanned PDF detection",
-    description:
-      "If you upload a scanned image-based PDF with no selectable text, we now tell you immediately instead of silently analyzing blank content — with a clear suggestion to upload a text-based version or paste your resume directly.",
-    tags: ["fixed"],
-  },
+  { id: "yourReportsSpeakYourLanguage", date: "2026-06-28", tags: ["improved"] },
+  { id: "translatedHomepageAndScanFlow", date: "2026-06-28", tags: ["improved"] },
+  { id: "fixedAtsDefenseDelivery", date: "2026-06-28", tags: ["fixed"] },
+  { id: "moreReliableDownloads", date: "2026-06-28", tags: ["fixed"] },
+  { id: "clearerMessagesHighDemand", date: "2026-06-28", tags: ["improved"] },
+  { id: "realIndustryComparisons", date: "2026-06-28", tags: ["improved"] },
+  { id: "moreSpecificKeywordBulletInsights", date: "2026-06-28", tags: ["improved"] },
+  { id: "fixedWordUploads", date: "2026-06-27", tags: ["fixed"] },
+  { id: "purchaseRecoveryFix", date: "2026-06-27", tags: ["fixed"] },
+  { id: "checkoutReliabilityFixes", date: "2026-06-27", tags: ["fixed"] },
+  { id: "moreMechanicalAtsChecks", date: "2026-06-27", tags: ["new"] },
+  { id: "faqSectionTranslationFixes", date: "2026-06-27", tags: ["fixed"] },
+  { id: "publicChangelog", date: "2026-06-26", tags: ["new"] },
+  { id: "applyAssistant", date: "2026-06-26", tags: ["new"] },
+  { id: "atsParseSimulation", date: "2026-06-25", tags: ["new"] },
+  { id: "realSemanticJobMatching", date: "2026-06-25", tags: ["improved"] },
+  { id: "resumeBuilder", date: "2026-06-24", tags: ["new"] },
+  { id: "deeperInterviewCoachCareerPath", date: "2026-06-24", tags: ["improved"] },
+  { id: "moreHonestScoring", date: "2026-06-23", tags: ["fixed"] },
+  { id: "fasterPageLoads", date: "2026-06-22", tags: ["improved"] },
+  { id: "scannedPdfDetection", date: "2026-06-21", tags: ["fixed"] },
 ];

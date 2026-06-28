@@ -1146,5 +1146,98 @@
     "resumeRoastFree": "Resume Roast LIBRE",
     "viewAllProducts": "Tingnan lahat ng produkto",
     "addOnNames": { "resumeRoast": "Resume Roast", "interviewCoach": "Interview Coach", "careerPath": "Career Path" }
+  },
+  "changelogPage": {
+    "metaTitle": "Changelog — Resume Booster",
+    "metaDescription": "Mga bagong feature, pagpapahusay, at fix na na-release sa Resume Booster. In-update kada linggo.",
+    "title": "Ano ang Bago",
+    "subtitle": "Palagi kaming naglalabas ng mga pagpapahusay. Ito ang mga bagong pagbabago.",
+    "tags": { "new": "Bago", "improved": "Pinahusay", "fixed": "Na-ayos" }
+  },
+  "changelogEntries": {
+    "yourReportsSpeakYourLanguage": {
+      "title": "Ang iyong mga ulat ay nagsasalita na ngayon ng iyong wika",
+      "description": "Lahat ng aming bayad na ulat — Resume Score, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator, at Apply Assistant — ay gumagawa na ngayon ng AI content at on-screen text sa isa sa 9 wikang sinusuportahan namin, depende sa iyong pinili, sa halip na laging nagde-default sa English. Ang mga inangkop na resume at cover letter na ipinapadala mo sa mga employer ay sinasadyang nananatili sa orihinal na wika, dahil ang pagsasalin ng totoong job application nang walang pagsang-ayon ay maaaring magdulot ng higit na pinsala kaysa benepisyo."
+    },
+    "translatedHomepageAndScanFlow": {
+      "title": "Isinalin namin ang homepage at pangunahing scan flow",
+      "description": "Ang homepage, upload flow, mga paghahambing ng pricing, at ang buong libreng resulta ng scan ay naisalin na ngayon sa 9 sinusuportahang wika — dati, malaking bahagi nito ay nagpapakita lamang sa English anuman ang setting mo ng wika."
+    },
+    "fixedAtsDefenseDelivery": {
+      "title": "Naayos ang paghahatid ng ATS Defense report",
+      "description": "Naayos namin ang bug kung saan posibleng hindi automatic na nagagawa ang mga ATS Defense report pagkatapos ng pagbili. Kung naapektuhan ka nito, dapat ngayong magawa nang maayos ang iyong report — kontakin kami kung hindi mo pa rin ito nakikita."
+    },
+    "moreReliableDownloads": {
+      "title": "Mas maaasahang PDF at Word download",
+      "description": "Naayos namin ang isyu kung saan ang pangalang may ilang espesyal na karakter ay nagdudulot ng sirang filename sa download. Nagdagdag din kami ng malinaw na babala kung ang iyong resume o report ay naglalaman ng mga karakter na hindi pa lubos na maipapakita ng aming PDF export (karamihan ay hindi Latin na script), sa halip na tahimik na alisin ito."
+    },
+    "clearerMessagesHighDemand": {
+      "title": "Mas malinaw na mensahe kapag mataas ang demand",
+      "description": "Kung saglit na overload ang aming AI habang ginagawa ang iyong resulta sa Interview Coach, Career Path, Career Snapshot, Graduate Game Plan, o Keyword Fix, makakakita ka na ngayon ng malinaw na 'subukan muli sa ilang sandali' na mensahe sa lahat ng ito, sa halip na generic error sa ilan."
+    },
+    "realIndustryComparisons": {
+      "title": "Tunay na paghahambing sa industriya",
+      "description": "Ang iyong score ay ihahambing na ngayon sa tunay na datos mula sa mga resume na talagang na-scan sa iyong industriya, sa halip na fixed na pagtatantya — kaya ang 'mas mahusay kaysa sa X% ng katulad na resume' ay talagang ibig sabihin nito."
+    },
+    "moreSpecificKeywordBulletInsights": {
+      "title": "Mas tiyak na insight sa keyword at bullet point",
+      "description": "Itinuturo na namin ngayon ang iyong tunay na mga bullet point na kulang sa masusukat na epekto, at ipinapakita ang tunay na bilang ng mga nawawalang keyword para sa iyong industriya — partikular sa iyong resume, hindi generic na halimbawa."
+    },
+    "fixedWordUploads": {
+      "title": "Naayos ang upload ng Word document",
+      "description": "Naayos namin ang bug na nagdudulot ng pagkabigo sa upload ng .docx resume. Kung sinubukan mong mag-upload ng Word document kamakailan at hindi gumana, subukan ulit — naayos na ito ngayon. Nagdagdag din kami ng malinaw na mensahe para sa mas lumang .doc file (na dapat i-save muna bilang .docx) at para sa anumang iba pang hindi suportadong file type, sa halip na iwanan kang walang anumang paliwanag."
+    },
+    "purchaseRecoveryFix": {
+      "title": "Fix sa pagbawi ng pagbili",
+      "description": "Naayos namin ang isyu kung saan ang pagbawi ng nakaraang pagbili (kung isinara mo ang tab bago makita ang resulta mo) ay posibleng mabigo. Maaari mo na ngayong bawiin ang iyong resulta gamit ang link o session ID mula sa iyong confirmation email."
+    },
+    "checkoutReliabilityFixes": {
+      "title": "Mga fix sa pagiging maaasahan ng checkout",
+      "description": "Naayos namin ang isang pricing bug sa custom scan credit purchase flow na posibleng singilin ka ng mas mataas kaysa sa nakikitang presyo, at naayos ang isyu kung saan ang pagbili ng Interview Coach at Career Path Simulator ay posibleng hindi maihatid ang content nito pagkatapos ng bayad. Kung naapektuhan ka ng alinman sa dalawa, kontakin kami at aayusin namin ito."
+    },
+    "moreMechanicalAtsChecks": {
+      "title": "Higit pang mekanikal na pagsusuri sa ATS",
+      "description": "Nagdagdag kami ng dalawa pang deterministic na pagsusuri sa ATS Parse Simulator: pagtukoy ng icon font character (karaniwan sa mga template na gumagamit ng icon font para sa simbolo ng telepono/email/LinkedIn, na maaaring magdulot ng puwang malapit sa iyong contact info) at pagtukoy ng flattened text mula sa mga layout na batay sa table."
+    },
+    "faqSectionTranslationFixes": {
+      "title": "Mga fix sa FAQ section at pagsasalin",
+      "description": "Naayos namin ang isyu kung saan ang FAQ section ay nagpapakita ng hilaw na placeholder text sa halip na tunay na sagot sa lahat maliban sa isang wika, at napunan ang ilang hindi naisalin na string upang ganap na maisalin ang bawat suportadong wika."
+    },
+    "publicChangelog": {
+      "title": "Pampublikong changelog",
+      "description": "Idinagdag namin ang page na ito, na naka-link mula sa header at footer, upang makita mo palagi kung ano ang bago, pinahusay, o na-ayos."
+    },
+    "applyAssistant": {
+      "title": "Apply Assistant",
+      "description": "I-paste ang isang job posting at makakuha ng resume na inangkop para sa partikular na role na iyon, kaakibat na cover letter, isang tapat na listahan ng mga skill gap (hindi kami gumagawa ng karanasang wala ka), at isang step-by-step checklist — sinuri at isinumite mo, hindi kailanman automatic na isinumite sa ngalan mo."
+    },
+    "atsParseSimulation": {
+      "title": "ATS Parse Simulation",
+      "description": "Nagdagdag kami ng pangalawa, ganap na mekanikal na pagsusuri kasama ang AI score: nakikita namin ang nawawalang section heading, hindi maibigay na contact info, nawawalang petsa, sirang character encoding mula sa isyu sa PDF font, at maging mga multi-column na layout na nalilito ang tunay na ATS text parser — lahat ay deterministic, reproducible na natuklasan, hindi hula ng modelo."
+    },
+    "realSemanticJobMatching": {
+      "title": "Tunay na semantic job matching",
+      "description": "Pinalitan namin ang literal na pagtutugma ng keyword ng tunay na paghusga ng AI na nagbabasa ng iyong resume at job description nang sabay — kaya ang isang skill na ibang pagkakasabi (o napatunayan sa pamamagitan ng kaugnay na karanasan) ay nakikilala na ngayon nang tama sa halip na hingin ang eksaktong pagtutugma ng teksto."
+    },
+    "resumeBuilder": {
+      "title": "Resume Builder",
+      "description": "Isang structured resume editor na may mga nababagong section, live preview, at one-click export sa PDF o Word — automatic na napupunan mula sa iyong pinakahuling scan."
+    },
+    "deeperInterviewCoachCareerPath": {
+      "title": "Mas malalim na Interview Coach at Career Path Simulator",
+      "description": "Ang mga bayad na bersyon ay nagiging mas malalim kaysa sa libreng preview: 14 na tanong sa interview na may kumpletong modelong sagot gamit ang STAR method, 90-araw na action plan para sa bawat career path, at downloadable na PDF report para sa pareho."
+    },
+    "moreHonestScoring": {
+      "title": "Mas tapat na scoring",
+      "description": "Inalis namin ang scoring bug na nagpapahintulot sa mga resume na mapalaki patungo sa gitna ng scale, at hinigpitan ang mga instruksyon ng AI upang ang isang talagang mahinang resume ay makakuha na ngayon ng mababang score — ang paghihikayat sa feedback ay hindi na pinapalambot ang tunay na numero."
+    },
+    "fasterPageLoads": {
+      "title": "Mas mabilis na pag-load ng page",
+      "description": "Binawasan namin ang paunang sukat ng page nang higit sa kalahati sa pagload lamang ng kailangang-kailangan ng bawat page — ang mga export, hindi pangkaraniwang wika, at iba pang page ay hindi na nagpapabagal sa iyong unang pagbisita."
+    },
+    "scannedPdfDetection": {
+      "title": "Pagtukoy ng na-scan na PDF",
+      "description": "Kung mag-upload ka ng image-based na na-scan na PDF na walang napipiling teksto, agad ka na namin sasabihan sa halip na tahimik na suriin ang walang lamang content — may malinaw na suhestiyon na mag-upload ng text-based na bersyon o i-paste mismo ang iyong resume."
+    }
   }
 }

@@ -1146,5 +1146,98 @@
     "resumeRoastFree": "Cv-Roast GRATIS",
     "viewAllProducts": "Bekijk alle producten",
     "addOnNames": { "resumeRoast": "Cv-Roast", "interviewCoach": "Interviewcoach", "careerPath": "Carrièrepad" }
+  },
+  "changelogPage": {
+    "metaTitle": "Wijzigingslogboek — Resume Booster",
+    "metaDescription": "Nieuwe functies, verbeteringen en oplossingen uitgebracht voor Resume Booster. Wekelijks bijgewerkt.",
+    "title": "Wat is er nieuw",
+    "subtitle": "We brengen voortdurend verbeteringen uit. Hier is wat er recent is veranderd.",
+    "tags": { "new": "Nieuw", "improved": "Verbeterd", "fixed": "Opgelost" }
+  },
+  "changelogEntries": {
+    "yourReportsSpeakYourLanguage": {
+      "title": "Je rapporten spreken nu jouw taal",
+      "description": "Al onze betaalde rapporten — Cv-score, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator en Apply Assistant — genereren hun AI-inhoud en schermtekst nu in een van onze 9 ondersteunde talen, afhankelijk van wat je hebt geselecteerd, in plaats van altijd standaard Engels. Aangepaste cv's en motivatiebrieven die je naar werkgevers stuurt, blijven met opzet in hun oorspronkelijke taal — een echte sollicitatie ongevraagd vertalen kan namelijk meer kwaad dan goed doen."
+    },
+    "translatedHomepageAndScanFlow": {
+      "title": "Homepage en kernscanflow vertaald",
+      "description": "De homepage, het uploadproces, prijsvergelijkingen en de volledige resultatenpagina van de gratis scan zijn nu vertaald in alle 9 ondersteunde talen — voorheen werd veel hiervan alleen in het Engels weergegeven, ongeacht je taalinstelling."
+    },
+    "fixedAtsDefenseDelivery": {
+      "title": "Levering van ATS Defense-rapport opgelost",
+      "description": "Een bug opgelost waardoor ATS Defense-rapporten na aankoop mogelijk niet automatisch werden gegenereerd. Als dit jou heeft getroffen, zou je rapport nu correct moeten worden gegenereerd — neem contact op als je het nog steeds niet ziet."
+    },
+    "moreReliableDownloads": {
+      "title": "Betrouwbaardere PDF- en Word-downloads",
+      "description": "Een probleem opgelost waarbij een naam met bepaalde speciale tekens een kapotte downloadbestandsnaam kon opleveren. Ook een duidelijke melding toegevoegd als je cv of rapport tekens bevat die onze PDF-export nog niet volledig kan weergeven (vooral niet-Latijnse schriften), in plaats van deze stilzwijgend weg te laten."
+    },
+    "clearerMessagesHighDemand": {
+      "title": "Duidelijkere meldingen bij hoge vraag",
+      "description": "Als onze AI kortstondig overbelast is tijdens het genereren van je Interview Coach-, Career Path-, Career Snapshot-, Graduate Game Plan- of Keyword Fix-resultaten, zie je nu overal een duidelijke melding 'probeer het straks opnieuw', in plaats van bij sommige een algemene foutmelding."
+    },
+    "realIndustryComparisons": {
+      "title": "Echte branchevergelijkingen",
+      "description": "Je score wordt nu vergeleken met echte gegevens van daadwerkelijk gescande cv's in jouw branche, in plaats van een vaste schatting — zodat 'beter dan X% van vergelijkbare cv's' echt betekent wat het zegt."
+    },
+    "moreSpecificKeywordBulletInsights": {
+      "title": "Specifiekere inzichten over zoekwoorden en bulletpoints",
+      "description": "We wijzen nu naar je daadwerkelijke bulletpoints die meetbare impact missen, en tonen echte aantallen ontbrekende zoekwoorden voor jouw branche — specifiek voor jouw cv, geen generieke voorbeelden."
+    },
+    "fixedWordUploads": {
+      "title": "Word-documentuploads opgelost",
+      "description": "Een bug opgelost waardoor .docx-cv-uploads mislukten. Als je recent een Word-document probeerde te uploaden en dit niet werkte, probeer het opnieuw — het is nu opgelost. We hebben ook een duidelijke melding toegevoegd voor oudere .doc-bestanden (die eerst als .docx moeten worden opgeslagen) en voor elk ander niet-ondersteund bestandstype, in plaats van je zonder uitleg vast te laten zitten."
+    },
+    "purchaseRecoveryFix": {
+      "title": "Herstel van aankoop opgelost",
+      "description": "Een probleem opgelost waarbij het herstellen van een eerdere aankoop (als je het tabblad sloot voordat je je resultaten zag) kon mislukken. Je kunt je resultaten nu herstellen met de link of sessie-ID uit je bevestigingsmail."
+    },
+    "checkoutReliabilityFixes": {
+      "title": "Betrouwbaarheidsverbeteringen bij afrekenen",
+      "description": "Een prijsbug opgelost in het aangepaste scankrediet-aankoopproces, waardoor meer dan de weergegeven prijs in rekening kon worden gebracht, en een probleem opgelost waarbij Interview Coach- en Career Path Simulator-aankopen hun inhoud na betaling mogelijk niet leverden. Als je hierdoor getroffen bent, neem contact op en we maken het goed."
+    },
+    "moreMechanicalAtsChecks": {
+      "title": "Meer mechanische ATS-controles",
+      "description": "Twee extra deterministische controles toegevoegd aan de ATS Parse Simulator: detectie van icoonlettertype-tekens (gangbaar in templates die een icoonlettertype gebruiken voor telefoon-/e-mail-/LinkedIn-symbolen, wat hiaten naast je contactgegevens kan veroorzaken) en detectie van platgeslagen tekst uit tabelgebaseerde lay-outs."
+    },
+    "faqSectionTranslationFixes": {
+      "title": "FAQ-sectie en vertaalfouten opgelost",
+      "description": "Een probleem opgelost waarbij de FAQ-sectie in elke taal behalve één onbewerkte placeholdertekst toonde in plaats van echte antwoorden, en een aantal onvertaalde tekenreeksen ingevuld zodat elke ondersteunde taal volledig is vertaald."
+    },
+    "publicChangelog": {
+      "title": "Openbaar wijzigingslogboek",
+      "description": "Deze pagina toegevoegd, gekoppeld vanuit de header en footer, zodat je altijd kunt zien wat nieuw, verbeterd of opgelost is."
+    },
+    "applyAssistant": {
+      "title": "Apply Assistant",
+      "description": "Plak een vacature en krijg een cv dat is afgestemd op die specifieke functie, een bijpassende motivatiebrief, een eerlijke lijst met vaardighedenhiaten (we verzinnen geen ervaring die je niet hebt) en een stapsgewijze checklist — door jou beoordeeld en ingediend, nooit automatisch namens jou verzonden."
+    },
+    "atsParseSimulation": {
+      "title": "ATS-verwerkingssimulatie",
+      "description": "Een tweede, volledig mechanische controle toegevoegd naast de AI-score: we detecteren ontbrekende sectiekoppen, niet-extraheerbare contactgegevens, ontbrekende datums, kapotte tekencodering door PDF-lettertypeproblemen, en zelfs meerkoloms lay-outs die door echte ATS-tekstparsers in de war worden gebracht — allemaal deterministische, reproduceerbare bevindingen, geen gok van een model."
+    },
+    "realSemanticJobMatching": {
+      "title": "Echte semantische functiematching",
+      "description": "Letterlijke zoekwoordmatching vervangen door echte AI-beoordeling die je cv en de functiebeschrijving samen leest — zodat een anders geformuleerde vaardigheid (of aangetoond via verwante ervaring) nu correct wordt herkend in plaats van een exacte tekstovereenkomst te vereisen."
+    },
+    "resumeBuilder": {
+      "title": "Cv-builder",
+      "description": "Een gestructureerde cv-editor met bewerkbare secties, een live voorbeeld en exporteren met één klik naar PDF of Word — automatisch voorgevuld vanuit je meest recente scan."
+    },
+    "deeperInterviewCoachCareerPath": {
+      "title": "Uitgebreidere Interview Coach en Career Path Simulator",
+      "description": "De betaalde versies gaan nu verder dan de gratis preview: 14 interviewvragen met volledige modelantwoorden volgens de STAR-methode, een 90-dagen actieplan voor elk carrièrepad, en downloadbare PDF-rapporten voor beide."
+    },
+    "moreHonestScoring": {
+      "title": "Eerlijkere scoring",
+      "description": "Een scoringbug verwijderd waardoor cv's richting het midden van de schaal werden opgeblazen, en de instructies van de AI aangescherpt zodat een echt zwak cv nu laag scoort — aanmoediging in de feedback verzacht het werkelijke cijfer niet meer."
+    },
+    "fasterPageLoads": {
+      "title": "Snellere paginalaadtijden",
+      "description": "De initiële paginagrootte met meer dan de helft verminderd door alleen te laden wat elke pagina daadwerkelijk nodig heeft — exports, minder gangbare talen en andere pagina's vertragen je eerste bezoek niet meer."
+    },
+    "scannedPdfDetection": {
+      "title": "Detectie van gescande pdf's",
+      "description": "Als je een gescande, op afbeeldingen gebaseerde PDF zonder selecteerbare tekst uploadt, laten we dit nu direct weten in plaats van stilzwijgend lege inhoud te analyseren — met een duidelijke suggestie om een tekstgebaseerde versie te uploaden of je cv direct te plakken."
+    }
   }
 }

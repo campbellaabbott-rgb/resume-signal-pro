@@ -1352,5 +1352,102 @@
     "getCreditsFor_one": "Get {{count}} Credit for {{price}}",
     "getCreditsFor_other": "Get {{count}} Credits for {{price}}",
     "noThanks": "No thanks, I'll wait for my free scans to reset"
+  },
+  "changelogPage": {
+    "metaTitle": "Changelog — Resume Booster",
+    "metaDescription": "New features, improvements, and fixes shipped to Resume Booster. Updated weekly.",
+    "title": "What's New",
+    "subtitle": "We ship improvements constantly. Here's what's recently changed.",
+    "tags": {
+      "new": "New",
+      "improved": "Improved",
+      "fixed": "Fixed"
+    }
+  },
+  "changelogEntries": {
+    "yourReportsSpeakYourLanguage": {
+      "title": "Your reports now speak your language",
+      "description": "All of our paid reports — Resume Score, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator, and Apply Assistant — now generate their AI content and on-screen text in whichever of our 9 supported languages you've selected, instead of always defaulting to English. Tailored resumes and cover letters you submit to employers still stay in their original language by design, since translating an actual job application without asking could do more harm than good."
+    },
+    "translatedHomepageAndScanFlow": {
+      "title": "Translated the homepage and core scan flow",
+      "description": "The homepage, upload flow, pricing comparisons, and the full free-scan results page are now translated across all 9 supported languages — previously much of this only displayed in English regardless of your language setting."
+    },
+    "fixedAtsDefenseDelivery": {
+      "title": "Fixed ATS Defense report delivery",
+      "description": "Fixed a bug where ATS Defense reports could fail to generate automatically after purchase. If this affected you, your report should now generate correctly — please reach out if you still don't see it."
+    },
+    "moreReliableDownloads": {
+      "title": "More reliable PDF and Word downloads",
+      "description": "Fixed an issue where a name with certain special characters could produce a broken download filename. Also added a clear heads-up if your resume or report contains characters our PDF export can't fully render yet (mainly non-Latin scripts), instead of silently leaving them out."
+    },
+    "clearerMessagesHighDemand": {
+      "title": "Clearer messages when demand is high",
+      "description": "If our AI is briefly overloaded while generating your Interview Coach, Career Path, Career Snapshot, Graduate Game Plan, or Keyword Fix results, you'll now see a clear 'try again shortly' message across all of them, instead of a generic error on some."
+    },
+    "realIndustryComparisons": {
+      "title": "Real industry comparisons",
+      "description": "Your score is now compared against real data from actual resumes scanned in your industry, instead of a fixed estimate — so 'better than X% of similar resumes' actually means what it says."
+    },
+    "moreSpecificKeywordBulletInsights": {
+      "title": "More specific keyword and bullet point insights",
+      "description": "We now point to your actual bullet points that are missing measurable impact, and show real counts of missing keywords for your industry — specific to your resume, not generic examples."
+    },
+    "fixedWordUploads": {
+      "title": "Fixed Word document uploads",
+      "description": "Fixed a bug that caused .docx resume uploads to fail. If you tried uploading a Word document recently and it didn't work, please try again — it's fixed now. We also added a clear message for older .doc files (which need to be saved as .docx first) and for any other unsupported file type, instead of leaving you stuck with no explanation."
+    },
+    "purchaseRecoveryFix": {
+      "title": "Purchase recovery fix",
+      "description": "Fixed an issue where recovering a previous purchase (if you closed the tab before seeing your results) could fail. You can now recover your results using the link or session ID from your confirmation email."
+    },
+    "checkoutReliabilityFixes": {
+      "title": "Checkout reliability fixes",
+      "description": "Fixed a pricing bug in the custom scan-credit purchase flow that could charge more than the displayed price, and fixed an issue where Interview Coach and Career Path Simulator purchases could fail to deliver their content after payment. If you were affected by either, reach out and we'll make it right."
+    },
+    "moreMechanicalAtsChecks": {
+      "title": "More mechanical ATS checks",
+      "description": "Added two more deterministic checks to the ATS Parse Simulator: detection of icon-font characters (common in templates that use an icon font for the phone/email/LinkedIn symbols, which can leave gaps next to your contact info) and detection of flattened text from table-based layouts."
+    },
+    "faqSectionTranslationFixes": {
+      "title": "FAQ section and translation fixes",
+      "description": "Fixed an issue where the FAQ section showed raw placeholder text instead of real answers in every language but one, and filled in a handful of untranslated strings so every supported language is fully translated."
+    },
+    "publicChangelog": {
+      "title": "Public changelog",
+      "description": "Added this page, linked from the header and footer, so you can always see what's new, improved, or fixed."
+    },
+    "applyAssistant": {
+      "title": "Apply Assistant",
+      "description": "Paste a job posting and get a resume tailored to that specific role, a matching cover letter, an honest list of skill gaps (we don't fabricate experience you don't have), and a step-by-step checklist — reviewed and submitted by you, never auto-submitted on your behalf."
+    },
+    "atsParseSimulation": {
+      "title": "ATS Parse Simulation",
+      "description": "Added a second, fully mechanical check alongside the AI score: we detect missing section headers, unextractable contact info, missing dates, broken character encoding from PDF font issues, and even multi-column layouts that get scrambled by real ATS text parsers — all deterministic, reproducible findings, not a model's guess."
+    },
+    "realSemanticJobMatching": {
+      "title": "Real semantic job matching",
+      "description": "Replaced literal keyword pattern-matching with genuine AI judgment that reads your resume and the job description together — so a skill phrased differently (or demonstrated through related experience) is now recognized correctly instead of requiring an exact text match."
+    },
+    "resumeBuilder": {
+      "title": "Resume Builder",
+      "description": "A structured resume editor with editable sections, a live preview, and one-click export to PDF or Word — prefilled automatically from your most recent scan."
+    },
+    "deeperInterviewCoachCareerPath": {
+      "title": "Deeper Interview Coach and Career Path Simulator",
+      "description": "The paid versions now go further than the free preview: 14 interview questions with full model answers using the STAR method, a 90-day action plan for each career path, and downloadable PDF reports for both."
+    },
+    "moreHonestScoring": {
+      "title": "More honest scoring",
+      "description": "Removed a scoring bug that let resumes inflate toward the middle of the scale, and tightened the AI's instructions so a genuinely weak resume now scores low — encouragement in the feedback no longer softens the actual number."
+    },
+    "fasterPageLoads": {
+      "title": "Faster page loads",
+      "description": "Cut the initial page size by more than half by only loading what each page actually needs — exports, less-common languages, and other pages no longer slow down your first visit."
+    },
+    "scannedPdfDetection": {
+      "title": "Scanned PDF detection",
+      "description": "If you upload a scanned image-based PDF with no selectable text, we now tell you immediately instead of silently analyzing blank content — with a clear suggestion to upload a text-based version or paste your resume directly."
+    }
   }
 }

@@ -1146,5 +1146,98 @@
     "resumeRoastFree": "Critique de CV GRATUITE",
     "viewAllProducts": "Voir tous les produits",
     "addOnNames": { "resumeRoast": "Critique de CV", "interviewCoach": "Coach d'entretien", "careerPath": "Parcours de carrière" }
+  },
+  "changelogPage": {
+    "metaTitle": "Journal des modifications — Resume Booster",
+    "metaDescription": "Nouvelles fonctionnalités, améliorations et corrections déployées sur Resume Booster. Mise à jour hebdomadaire.",
+    "title": "Nouveautés",
+    "subtitle": "Nous déployons des améliorations en continu. Voici ce qui a récemment changé.",
+    "tags": { "new": "Nouveau", "improved": "Amélioré", "fixed": "Corrigé" }
+  },
+  "changelogEntries": {
+    "yourReportsSpeakYourLanguage": {
+      "title": "Vos rapports parlent désormais votre langue",
+      "description": "Tous nos rapports payants — Score de CV, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator et Apply Assistant — génèrent désormais leur contenu IA et leur texte à l'écran dans l'une des 9 langues que nous prenons en charge, selon celle que vous avez sélectionnée, au lieu de toujours basculer sur l'anglais par défaut. Les CV personnalisés et les lettres de motivation que vous envoyez aux employeurs restent volontairement dans leur langue d'origine, car traduire une vraie candidature sans le demander pourrait faire plus de mal que de bien."
+    },
+    "translatedHomepageAndScanFlow": {
+      "title": "Page d'accueil et parcours d'analyse traduits",
+      "description": "La page d'accueil, le parcours de téléversement, les comparaisons de tarifs et la page complète des résultats du scan gratuit sont désormais traduits dans les 9 langues prises en charge — auparavant, une grande partie de ce contenu ne s'affichait qu'en anglais, quel que soit votre paramètre de langue."
+    },
+    "fixedAtsDefenseDelivery": {
+      "title": "Correction de la livraison du rapport ATS Defense",
+      "description": "Correction d'un bug empêchant parfois la génération automatique des rapports ATS Defense après l'achat. Si vous avez été concerné, votre rapport devrait désormais se générer correctement — contactez-nous si vous ne le voyez toujours pas."
+    },
+    "moreReliableDownloads": {
+      "title": "Téléchargements PDF et Word plus fiables",
+      "description": "Correction d'un problème où un nom contenant certains caractères spéciaux pouvait produire un nom de fichier de téléchargement corrompu. Ajout également d'un avertissement clair si votre CV ou rapport contient des caractères que notre export PDF ne peut pas encore restituer entièrement (principalement les écritures non latines), au lieu de les omettre silencieusement."
+    },
+    "clearerMessagesHighDemand": {
+      "title": "Messages plus clairs en cas de forte demande",
+      "description": "Si notre IA est brièvement surchargée lors de la génération de vos résultats Interview Coach, Career Path, Career Snapshot, Graduate Game Plan ou Keyword Fix, vous verrez désormais un message clair « réessayez dans un instant » pour chacun d'eux, au lieu d'une erreur générique pour certains."
+    },
+    "realIndustryComparisons": {
+      "title": "Comparaisons sectorielles réelles",
+      "description": "Votre score est désormais comparé à des données réelles issues de CV réellement analysés dans votre secteur, plutôt qu'à une estimation fixe — ainsi, « meilleur que X % de CV similaires » signifie réellement ce que cela dit."
+    },
+    "moreSpecificKeywordBulletInsights": {
+      "title": "Analyses plus précises des mots-clés et des puces",
+      "description": "Nous pointons désormais vos puces réelles auxquelles il manque un impact mesurable, et affichons des nombres réels de mots-clés manquants pour votre secteur — propres à votre CV, et non des exemples génériques."
+    },
+    "fixedWordUploads": {
+      "title": "Correction des téléversements de documents Word",
+      "description": "Correction d'un bug provoquant l'échec des téléversements de CV .docx. Si vous avez récemment essayé de téléverser un document Word sans succès, veuillez réessayer — c'est désormais corrigé. Nous avons également ajouté un message clair pour les anciens fichiers .doc (qui doivent d'abord être enregistrés en .docx) et pour tout autre type de fichier non pris en charge, au lieu de vous laisser sans aucune explication."
+    },
+    "purchaseRecoveryFix": {
+      "title": "Correction de la récupération d'achat",
+      "description": "Correction d'un problème où la récupération d'un achat précédent (si vous avez fermé l'onglet avant de voir vos résultats) pouvait échouer. Vous pouvez désormais récupérer vos résultats à l'aide du lien ou de l'identifiant de session figurant dans votre e-mail de confirmation."
+    },
+    "checkoutReliabilityFixes": {
+      "title": "Corrections de fiabilité du paiement",
+      "description": "Correction d'un bug de tarification dans le parcours d'achat personnalisé de crédits de scan, qui pouvait facturer plus que le prix affiché, ainsi que d'un problème où les achats Interview Coach et Career Path Simulator pouvaient ne pas livrer leur contenu après paiement. Si vous avez été concerné par l'un ou l'autre, contactez-nous et nous y remédierons."
+    },
+    "moreMechanicalAtsChecks": {
+      "title": "Plus de vérifications mécaniques ATS",
+      "description": "Ajout de deux vérifications déterministes supplémentaires au simulateur d'analyse ATS : détection des caractères de police d'icônes (courants dans les modèles utilisant une police d'icônes pour les symboles téléphone/e-mail/LinkedIn, ce qui peut laisser des trous près de vos coordonnées) et détection du texte aplati issu de mises en page basées sur des tableaux."
+    },
+    "faqSectionTranslationFixes": {
+      "title": "Corrections de la section FAQ et des traductions",
+      "description": "Correction d'un problème où la section FAQ affichait un texte d'espace réservé brut au lieu de vraies réponses dans toutes les langues sauf une, et ajout de quelques chaînes non traduites afin que chaque langue prise en charge soit entièrement traduite."
+    },
+    "publicChangelog": {
+      "title": "Journal des modifications public",
+      "description": "Ajout de cette page, accessible depuis l'en-tête et le pied de page, pour que vous puissiez toujours voir les nouveautés, améliorations ou corrections."
+    },
+    "applyAssistant": {
+      "title": "Apply Assistant",
+      "description": "Collez une offre d'emploi et obtenez un CV adapté à ce poste précis, une lettre de motivation correspondante, une liste honnête des lacunes de compétences (nous n'inventons jamais d'expérience que vous n'avez pas) et une liste de tâches étape par étape — relue et soumise par vous, jamais soumise automatiquement en votre nom."
+    },
+    "atsParseSimulation": {
+      "title": "Simulation d'analyse ATS",
+      "description": "Ajout d'une seconde vérification entièrement mécanique en complément du score IA : nous détectons les en-têtes de section manquants, les coordonnées non extractibles, les dates manquantes, l'encodage de caractères corrompu dû à des problèmes de police PDF, et même les mises en page à plusieurs colonnes brouillées par les véritables analyseurs de texte ATS — toutes des constatations déterministes et reproductibles, pas une supposition de modèle."
+    },
+    "realSemanticJobMatching": {
+      "title": "Véritable correspondance sémantique avec le poste",
+      "description": "Remplacement de la correspondance littérale de mots-clés par un véritable jugement de l'IA qui lit ensemble votre CV et la description de poste — ainsi, une compétence formulée différemment (ou démontrée par une expérience connexe) est désormais correctement reconnue au lieu d'exiger une correspondance exacte du texte."
+    },
+    "resumeBuilder": {
+      "title": "Créateur de CV",
+      "description": "Un éditeur de CV structuré avec des sections modifiables, un aperçu en direct et une exportation en un clic vers PDF ou Word — pré-rempli automatiquement à partir de votre analyse la plus récente."
+    },
+    "deeperInterviewCoachCareerPath": {
+      "title": "Interview Coach et Career Path Simulator approfondis",
+      "description": "Les versions payantes vont désormais plus loin que l'aperçu gratuit : 14 questions d'entretien avec des réponses modèles complètes selon la méthode STAR, un plan d'action de 90 jours pour chaque parcours de carrière, et des rapports PDF téléchargeables pour les deux."
+    },
+    "moreHonestScoring": {
+      "title": "Notation plus honnête",
+      "description": "Suppression d'un bug de notation qui permettait aux CV de gonfler vers le milieu de l'échelle, et durcissement des instructions de l'IA pour qu'un CV réellement faible obtienne désormais un score bas — l'encouragement dans les retours n'atténue plus le chiffre réel."
+    },
+    "fasterPageLoads": {
+      "title": "Chargement de pages plus rapide",
+      "description": "Réduction de plus de moitié de la taille initiale de la page en ne chargeant que ce dont chaque page a réellement besoin — exports, langues moins courantes et autres pages ne ralentissent plus votre première visite."
+    },
+    "scannedPdfDetection": {
+      "title": "Détection des PDF scannés",
+      "description": "Si vous téléversez un PDF scanné basé sur une image sans texte sélectionnable, nous vous en informons désormais immédiatement au lieu d'analyser silencieusement un contenu vide — avec une suggestion claire de téléverser une version basée sur du texte ou de coller votre CV directement."
+    }
   }
 }

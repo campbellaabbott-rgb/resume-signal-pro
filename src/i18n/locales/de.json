@@ -1146,5 +1146,98 @@
     "resumeRoastFree": "Lebenslauf-Roast KOSTENLOS",
     "viewAllProducts": "Alle Produkte ansehen",
     "addOnNames": { "resumeRoast": "Lebenslauf-Roast", "interviewCoach": "Interview-Coach", "careerPath": "Karriereweg" }
+  },
+  "changelogPage": {
+    "metaTitle": "Änderungsprotokoll — Resume Booster",
+    "metaDescription": "Neue Funktionen, Verbesserungen und Fehlerbehebungen, die bei Resume Booster veröffentlicht wurden. Wöchentlich aktualisiert.",
+    "title": "Neuigkeiten",
+    "subtitle": "Wir veröffentlichen ständig Verbesserungen. Hier ist, was sich zuletzt geändert hat.",
+    "tags": { "new": "Neu", "improved": "Verbessert", "fixed": "Behoben" }
+  },
+  "changelogEntries": {
+    "yourReportsSpeakYourLanguage": {
+      "title": "Deine Berichte sprechen jetzt deine Sprache",
+      "description": "Alle unsere kostenpflichtigen Berichte — Lebenslauf-Score, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator und Apply Assistant — generieren ihren KI-Inhalt und Bildschirmtext jetzt in einer der 9 von uns unterstützten Sprachen, je nachdem, welche du ausgewählt hast, statt immer auf Englisch zurückzugreifen. Angepasste Lebensläufe und Anschreiben, die du an Arbeitgeber sendest, bleiben weiterhin in ihrer Originalsprache — denn eine echte Bewerbung ungefragt zu übersetzen, könnte mehr schaden als nützen."
+    },
+    "translatedHomepageAndScanFlow": {
+      "title": "Startseite und Kern-Scan-Ablauf übersetzt",
+      "description": "Die Startseite, der Upload-Ablauf, die Preisvergleiche und die vollständige Ergebnisseite des kostenlosen Scans sind jetzt in alle 9 unterstützten Sprachen übersetzt — zuvor wurde vieles davon unabhängig von deiner Spracheinstellung nur auf Englisch angezeigt."
+    },
+    "fixedAtsDefenseDelivery": {
+      "title": "ATS-Defense-Berichtszustellung behoben",
+      "description": "Einen Fehler behoben, durch den ATS-Defense-Berichte nach dem Kauf möglicherweise nicht automatisch generiert wurden. Falls dich das betroffen hat, sollte dein Bericht jetzt korrekt generiert werden — melde dich bitte, falls du ihn weiterhin nicht siehst."
+    },
+    "moreReliableDownloads": {
+      "title": "Zuverlässigere PDF- und Word-Downloads",
+      "description": "Ein Problem behoben, bei dem ein Name mit bestimmten Sonderzeichen einen fehlerhaften Download-Dateinamen erzeugen konnte. Außerdem einen klaren Hinweis hinzugefügt, falls dein Lebenslauf oder Bericht Zeichen enthält, die unser PDF-Export noch nicht vollständig darstellen kann (hauptsächlich nicht-lateinische Schriftzeichen), statt sie stillschweigend wegzulassen."
+    },
+    "clearerMessagesHighDemand": {
+      "title": "Klarere Meldungen bei hoher Nachfrage",
+      "description": "Wenn unsere KI bei der Erstellung deiner Interview-Coach-, Career-Path-, Career-Snapshot-, Graduate-Game-Plan- oder Keyword-Fix-Ergebnisse kurzzeitig überlastet ist, siehst du jetzt überall eine klare Meldung „Bitte versuche es gleich noch einmal“ statt bei manchen nur eine allgemeine Fehlermeldung."
+    },
+    "realIndustryComparisons": {
+      "title": "Echte Branchenvergleiche",
+      "description": "Dein Score wird jetzt mit echten Daten aus tatsächlich gescannten Lebensläufen in deiner Branche verglichen, statt mit einer festen Schätzung — sodass „besser als X % ähnlicher Lebensläufe“ wirklich das bedeutet, was es sagt."
+    },
+    "moreSpecificKeywordBulletInsights": {
+      "title": "Genauere Einblicke zu Keywords und Stichpunkten",
+      "description": "Wir zeigen jetzt konkret deine Stichpunkte, denen messbare Wirkung fehlt, und zeigen echte Zahlen fehlender Keywords für deine Branche — spezifisch für deinen Lebenslauf, nicht generische Beispiele."
+    },
+    "fixedWordUploads": {
+      "title": "Word-Dokument-Uploads behoben",
+      "description": "Einen Fehler behoben, der dazu führte, dass .docx-Lebenslauf-Uploads fehlschlugen. Falls du vor Kurzem versucht hast, ein Word-Dokument hochzuladen, und es nicht funktioniert hat, versuche es bitte erneut — es ist jetzt behoben. Wir haben außerdem eine klare Meldung für ältere .doc-Dateien (die zuerst als .docx gespeichert werden müssen) und für jeden anderen nicht unterstützten Dateityp hinzugefügt, statt dich ohne Erklärung im Stich zu lassen."
+    },
+    "purchaseRecoveryFix": {
+      "title": "Kauf-Wiederherstellung behoben",
+      "description": "Ein Problem behoben, bei dem die Wiederherstellung eines früheren Kaufs (falls du den Tab vor dem Anzeigen deiner Ergebnisse geschlossen hast) fehlschlagen konnte. Du kannst deine Ergebnisse jetzt über den Link oder die Sitzungs-ID aus deiner Bestätigungs-E-Mail wiederherstellen."
+    },
+    "checkoutReliabilityFixes": {
+      "title": "Zuverlässigkeitsverbesserungen beim Checkout",
+      "description": "Einen Preisfehler im individuellen Scan-Credit-Kaufablauf behoben, der zu einer höheren Abbuchung als dem angezeigten Preis führen konnte, und ein Problem behoben, bei dem Interview-Coach- und Career-Path-Simulator-Käufe ihren Inhalt nach der Zahlung möglicherweise nicht lieferten. Falls du davon betroffen warst, melde dich bitte — wir machen es wieder gut."
+    },
+    "moreMechanicalAtsChecks": {
+      "title": "Mehr mechanische ATS-Prüfungen",
+      "description": "Zwei weitere deterministische Prüfungen zum ATS-Parse-Simulator hinzugefügt: Erkennung von Icon-Font-Zeichen (häufig in Vorlagen, die eine Icon-Schrift für Telefon-/E-Mail-/LinkedIn-Symbole verwenden, was Lücken neben deinen Kontaktinformationen hinterlassen kann) und Erkennung von durch tabellenbasierte Layouts abgeflachtem Text."
+    },
+    "faqSectionTranslationFixes": {
+      "title": "FAQ-Bereich und Übersetzungsfehler behoben",
+      "description": "Ein Problem behoben, bei dem der FAQ-Bereich in jeder Sprache außer einer rohen Platzhaltertext statt echter Antworten zeigte, und eine Handvoll nicht übersetzter Zeichenketten ergänzt, damit jede unterstützte Sprache vollständig übersetzt ist."
+    },
+    "publicChangelog": {
+      "title": "Öffentliches Änderungsprotokoll",
+      "description": "Diese Seite hinzugefügt, verlinkt von Header und Footer, damit du jederzeit sehen kannst, was neu, verbessert oder behoben wurde."
+    },
+    "applyAssistant": {
+      "title": "Apply Assistant",
+      "description": "Füge eine Stellenanzeige ein und erhalte einen auf diese konkrete Stelle zugeschnittenen Lebenslauf, ein passendes Anschreiben, eine ehrliche Liste von Qualifikationslücken (wir erfinden keine Erfahrung, die du nicht hast) und eine Schritt-für-Schritt-Checkliste — von dir überprüft und eingereicht, niemals automatisch in deinem Namen versendet."
+    },
+    "atsParseSimulation": {
+      "title": "ATS-Parse-Simulation",
+      "description": "Eine zweite, vollständig mechanische Prüfung neben dem KI-Score hinzugefügt: Wir erkennen fehlende Abschnittsüberschriften, nicht extrahierbare Kontaktinformationen, fehlende Daten, defekte Zeichenkodierung durch PDF-Schriftartprobleme und sogar mehrspaltige Layouts, die von echten ATS-Textparsern durcheinandergebracht werden — alles deterministische, reproduzierbare Befunde, keine Vermutung eines Modells."
+    },
+    "realSemanticJobMatching": {
+      "title": "Echtes semantisches Job-Matching",
+      "description": "Wörtlichen Keyword-Abgleich durch echtes KI-Urteil ersetzt, das deinen Lebenslauf und die Stellenbeschreibung gemeinsam liest — sodass eine anders formulierte Fähigkeit (oder eine durch verwandte Erfahrung nachgewiesene) jetzt korrekt erkannt wird, statt eine exakte Textübereinstimmung zu erfordern."
+    },
+    "resumeBuilder": {
+      "title": "Lebenslauf-Builder",
+      "description": "Ein strukturierter Lebenslauf-Editor mit bearbeitbaren Abschnitten, einer Live-Vorschau und Ein-Klick-Export als PDF oder Word — automatisch vorausgefüllt aus deinem letzten Scan."
+    },
+    "deeperInterviewCoachCareerPath": {
+      "title": "Tieferer Interview-Coach und Career-Path-Simulator",
+      "description": "Die kostenpflichtigen Versionen gehen jetzt weiter als die kostenlose Vorschau: 14 Interviewfragen mit vollständigen Musterantworten nach der STAR-Methode, ein 90-Tage-Aktionsplan für jeden Karriereweg und herunterladbare PDF-Berichte für beides."
+    },
+    "moreHonestScoring": {
+      "title": "Ehrlichere Bewertung",
+      "description": "Einen Bewertungsfehler entfernt, der Lebensläufe in Richtung Skalenmitte aufblähen ließ, und die Anweisungen der KI verschärft, damit ein wirklich schwacher Lebenslauf jetzt niedrig bewertet wird — ermutigende Worte im Feedback mildern die tatsächliche Zahl nicht mehr ab."
+    },
+    "fasterPageLoads": {
+      "title": "Schnellere Seitenladezeiten",
+      "description": "Die anfängliche Seitengröße um mehr als die Hälfte reduziert, indem nur das geladen wird, was jede Seite tatsächlich benötigt — Exporte, weniger gängige Sprachen und andere Seiten verlangsamen deinen ersten Besuch nicht mehr."
+    },
+    "scannedPdfDetection": {
+      "title": "Erkennung gescannter PDFs",
+      "description": "Wenn du ein gescanntes, bildbasiertes PDF ohne auswählbaren Text hochlädst, sagen wir dir das jetzt sofort, statt stillschweigend leeren Inhalt zu analysieren — mit einem klaren Vorschlag, eine textbasierte Version hochzuladen oder deinen Lebenslauf direkt einzufügen."
+    }
   }
 }
