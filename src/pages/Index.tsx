@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/seo/SEO";
 import { useSearchParams } from "react-router-dom";
 import { useScrollDepth } from "@/hooks/use-scroll-depth";
@@ -217,6 +218,7 @@ interface FreeKeywordResult {
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
 
 const Index = () => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [isFreeScanLoading, setIsFreeScanLoading] = useState(false);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
@@ -400,8 +402,8 @@ const Index = () => {
   useEffect(() => {
     if (searchParams.get("canceled") === "true") {
       toast({
-        title: "Payment canceled",
-        description: "Your payment was canceled. You can try again when you're ready.",
+        title: t('homepage.toast.paymentCanceled'),
+        description: t('homepage.toast.paymentCanceledDescription'),
         variant: "destructive",
       });
     }
@@ -418,8 +420,8 @@ const Index = () => {
     
     if (searchParams.get("scan_pack_canceled") === "true") {
       toast({
-        title: "Purchase canceled",
-        description: "Your scan pack purchase was canceled.",
+        title: t('homepage.toast.purchaseCanceled'),
+        description: t('homepage.toast.purchaseCanceledDescription'),
         variant: "destructive",
       });
       window.history.replaceState({}, '', window.location.pathname);
@@ -432,8 +434,8 @@ const Index = () => {
     // identical 10MB limit, wasting the user's time on a slow connection.
     if (file.size > MAX_UPLOAD_SIZE_BYTES) {
       toast({
-        title: "File too large",
-        description: "Maximum file size is 10MB. Please upload a smaller file or paste your resume text directly.",
+        title: t('homepage.toast.fileTooLarge'),
+        description: t('homepage.toast.fileTooLargeDescription'),
         variant: "destructive",
       });
       return;
@@ -489,8 +491,8 @@ const Index = () => {
           triggerBackgroundScan(data.text, jobDescriptionText, honeypot); // Start background scan
           trackUploadCompleted(file.size, Date.now());
           toast({
-            title: "PDF parsed successfully",
-            description: `Extracted text from ${data.pages} page(s).`,
+            title: t('homepage.toast.pdfParsedSuccess'),
+            description: t('homepage.toast.pdfParsedSuccessDescription', { pages: data.pages }),
           });
         } else {
           throw new Error(data?.error || "Failed to parse PDF");
@@ -498,10 +500,10 @@ const Index = () => {
       } catch (error) {
         console.error("PDF parsing error:", error);
         toast({
-          title: "PDF parsing failed",
+          title: t('homepage.toast.pdfParsingFailed'),
           description: error instanceof Error && error.message
             ? error.message
-            : "Could not extract text from the PDF. Please try pasting the text manually.",
+            : t('homepage.toast.pdfParsingFailedDescription'),
           variant: "destructive",
         });
         setSelectedFile(null);
@@ -541,8 +543,8 @@ const Index = () => {
           triggerBackgroundScan(data.text, jobDescriptionText, honeypot); // Start background scan
           trackUploadCompleted(file.size, Date.now());
           toast({
-            title: "Document parsed successfully",
-            description: "Text extracted from your Word document.",
+            title: t('homepage.toast.docParsedSuccess'),
+            description: t('homepage.toast.docParsedSuccessDescription'),
           });
         } else {
           throw new Error(data?.error || "Failed to parse DOCX");
@@ -550,10 +552,10 @@ const Index = () => {
       } catch (error) {
         console.error("DOCX parsing error:", error);
         toast({
-          title: "Document parsing failed",
+          title: t('homepage.toast.docParsingFailed'),
           description: error instanceof Error && error.message
             ? error.message
-            : "Could not extract text from the DOCX. Please try pasting the text manually.",
+            : t('homepage.toast.docParsingFailedDescription'),
           variant: "destructive",
         });
         setSelectedFile(null);
@@ -567,8 +569,8 @@ const Index = () => {
     // branches above match, so without this the file sits "selected" with no
     // error and no text ever extracted, leaving the user stuck with no feedback.
     toast({
-      title: "Unsupported file type",
-      description: "Please upload a PDF or Word (.docx) file, or paste your resume text directly. Older .doc files aren't supported — save as .docx first.",
+      title: t('homepage.toast.unsupportedFileType'),
+      description: t('homepage.toast.unsupportedFileTypeDescription'),
       variant: "destructive",
     });
     setSelectedFile(null);
@@ -590,8 +592,8 @@ const Index = () => {
 
     if (!contentToAnalyze) {
       toast({
-        title: "No resume provided",
-        description: "Please upload a file or paste your resume text.",
+        title: t('homepage.toast.noResumeProvided'),
+        description: t('homepage.toast.noResumeProvidedDescription'),
         variant: "destructive",
       });
       return;
@@ -658,7 +660,7 @@ const Index = () => {
           if (scanResult.error.errorCode === 'RATE_LIMITED') {
             trackRateLimitError('free-keyword-scan', 0, 7);
             toast({
-              title: "Daily Scan Limit Reached",
+              title: t('homepage.toast.dailyScanLimitReached'),
               description: scanResult.error.description,
               variant: "destructive",
             });
@@ -696,7 +698,7 @@ const Index = () => {
         } else if (data?.rateLimited) {
           trackRateLimitError('free-keyword-scan', data.scansUsed, data.scansLimit);
           toast({
-            title: "Daily Scan Limit Reached",
+            title: t('homepage.toast.dailyScanLimitReached'),
             description: data.error || `You've used all ${data.scansLimit || 7} free scans.`,
             variant: "destructive",
           });
@@ -711,7 +713,7 @@ const Index = () => {
       if (result?.rateLimited) {
         trackRateLimitError('free-keyword-scan', (result as any).scansUsed, (result as any).scansLimit);
         toast({
-          title: "Daily Scan Limit Reached",
+          title: t('homepage.toast.dailyScanLimitReached'),
           description: result.error || `You've used all your free scans. Resets in ~24 hours.`,
           variant: "destructive",
         });
@@ -782,8 +784,8 @@ const Index = () => {
       }
       
       toast({
-        title: "Analysis failed",
-        description: error?.message || "Please try again.",
+        title: t('homepage.toast.analysisFailed'),
+        description: error?.message || t('homepage.toast.tryAgain'),
         variant: "destructive",
       });
     } finally {
@@ -797,8 +799,8 @@ const Index = () => {
     
     if (!contentToAnalyze) {
       toast({
-        title: "No resume found",
-        description: "Please upload your resume first.",
+        title: t('homepage.toast.noResumeFound'),
+        description: t('homepage.toast.noResumeFoundDescription'),
         variant: "destructive",
       });
       return;
@@ -821,7 +823,7 @@ const Index = () => {
         if (scanResult.error.errorCode === 'RATE_LIMITED') {
           trackRateLimitError('free-keyword-scan', 0, 7);
           toast({
-            title: "Daily Scan Limit Reached",
+            title: t('homepage.toast.dailyScanLimitReached'),
             description: scanResult.error.description,
             variant: "destructive",
           });
@@ -841,7 +843,7 @@ const Index = () => {
       if (data?.rateLimited) {
         trackRateLimitError('free-keyword-scan', data.scansUsed, data.scansLimit);
         toast({
-          title: "Daily Scan Limit Reached",
+          title: t('homepage.toast.dailyScanLimitReached'),
           description: data.error || `You've used all ${data.scansLimit || 7} free scans. Resets in ~${data.hoursUntilReset || 24} hours.`,
           variant: "destructive",
         });
@@ -883,8 +885,8 @@ const Index = () => {
         });
         
         toast({
-          title: `Job Analysis Complete`,
-          description: `Now showing how you match for ${jobTitle} at ${jobCompany}`,
+          title: t('homepage.toast.jobAnalysisComplete'),
+          description: t('homepage.toast.jobAnalysisCompleteDescription', { jobTitle, jobCompany }),
         });
         
         setTimeout(() => {
@@ -910,8 +912,8 @@ const Index = () => {
   const handleGenerateTailoredResume = async () => {
     if (!resumeText) {
       toast({
-        title: "No resume found",
-        description: "Please upload your resume first.",
+        title: t('homepage.toast.noResumeFound'),
+        description: t('homepage.toast.noResumeFoundDescription'),
         variant: "destructive",
       });
       return;
@@ -957,8 +959,8 @@ const Index = () => {
       if (data?.success) {
         setTailoredResumeContent(data);
         toast({
-          title: "Tailored Resume Generated!",
-          description: "Your resume has been customized for this role. Download the PDF to apply!",
+          title: t('homepage.toast.tailoredResumeGenerated'),
+          description: t('homepage.toast.tailoredResumeGeneratedDescription'),
         });
       } else {
         throw new Error(data?.error || "Failed to generate tailored resume");
@@ -985,8 +987,8 @@ const Index = () => {
     setShowFloatingScan(false);
     clearResumeSession();
     toast({
-      title: "Resume cleared",
-      description: "Upload or paste a new resume to continue.",
+      title: t('homepage.toast.resumeCleared'),
+      description: t('homepage.toast.resumeClearedDescription'),
     });
   }, [toast]);
 
@@ -1045,8 +1047,8 @@ const Index = () => {
         contentLength: contentToAnalyze?.length 
       });
       toast({
-        title: "Resume required",
-        description: "Please upload or paste your resume first, then try again.",
+        title: t('homepage.toast.resumeRequired'),
+        description: t('homepage.toast.resumeRequiredDescription'),
         variant: "destructive",
       });
       return;
@@ -1075,7 +1077,7 @@ const Index = () => {
       console.log("[Checkout] Step 1: Verifying connection");
       const isConnected = await checkConnection();
       if (!isConnected) {
-        setCheckoutError("No internet connection. Please check your network and try again.");
+        setCheckoutError(t('homepage.toast.noInternetConnection'));
         setIsCheckoutLoading(false);
         setIsLoading(false);
         return;
@@ -1184,21 +1186,21 @@ const Index = () => {
       setPreStoredSessionId(null); // Clear pre-stored session on error
       
       // Parse specific error messages from the backend
-      let errorTitle = "Checkout failed";
-      let errorDescription = "There was an error creating your checkout session. Please try again.";
-      
+      let errorTitle = t('homepage.toast.checkoutFailed');
+      let errorDescription = t('homepage.toast.checkoutFailedDescription');
+
       const errorMessage = error?.message?.toLowerCase() || '';
       const errorContext = error?.context?.body || '';
-      
+
       if (errorMessage.includes('region') || errorContext.includes('region')) {
-        errorTitle = "Service unavailable";
-        errorDescription = "Our checkout service is not available in your region.";
+        errorTitle = t('homepage.toast.serviceUnavailable');
+        errorDescription = t('homepage.toast.serviceUnavailableDescription');
       } else if (errorMessage.includes('rate') || errorMessage.includes('too many') || errorContext.includes('Too many')) {
-        errorTitle = "Too many attempts";
-        errorDescription = "Please wait a few minutes before trying again.";
+        errorTitle = t('homepage.toast.tooManyAttempts');
+        errorDescription = t('homepage.toast.tooManyAttemptsDescription');
       } else if (errorMessage.includes('unavailable') || errorContext.includes('unavailable')) {
-        errorTitle = "Service temporarily unavailable";
-        errorDescription = "Our payment service is temporarily down. Please try again in a few minutes.";
+        errorTitle = t('homepage.toast.serviceTemporarilyUnavailable');
+        errorDescription = t('homepage.toast.serviceTemporarilyUnavailableDescription');
       }
       
       // Only show toast if we don't have a URL (true failure vs popup blocked)
@@ -1391,7 +1393,7 @@ const Index = () => {
         <section className="py-12 border-t border-border">
           <div className="container max-w-2xl">
             <h2 className="text-2xl font-bold text-center mb-6">
-              Why Choose Resume Booster?
+              {t('homepage.whyChoose')}
             </h2>
             <ValueComparison />
           </div>
