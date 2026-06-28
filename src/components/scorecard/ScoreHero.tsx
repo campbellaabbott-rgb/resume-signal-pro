@@ -37,6 +37,18 @@ const getExperienceLevelLabel = (level: string) => {
   return "Executive";
 };
 
+// Reframes the existing, already-calibrated score into outcome language —
+// deliberately hedged ("likely", "at risk") rather than a fabricated precise
+// probability. The score itself doesn't change; this only translates the same
+// tier thresholds RadialGauge already uses into what actually matters to the
+// person reading it: will this get filtered out before a human sees it.
+const getOutcomeMessage = (score: number): { text: string; status: "success" | "warning" | "destructive" } => {
+  if (score >= 85) return { text: "Strong candidate for clearing automated screening", status: "success" };
+  if (score >= 70) return { text: "Likely to clear most automated screens", status: "success" };
+  if (score >= 50) return { text: "At risk of being filtered by stricter ATS systems", status: "warning" };
+  return { text: "High risk of being filtered before a human sees it", status: "destructive" };
+};
+
 // SVG radial gauge component
 function RadialGauge({ score, size = 140, strokeWidth = 10 }: { score: number; size?: number; strokeWidth?: number }) {
   const [animatedScore, setAnimatedScore] = useState(0);
@@ -243,6 +255,15 @@ export function ScoreHero({
                 : "Your Resume Score"
               }
             </h3>
+            {(() => {
+              const outcome = getOutcomeMessage(atsScoreEstimate);
+              const outcomeColor = outcome.status === "success" ? "text-success" : outcome.status === "warning" ? "text-warning" : "text-destructive";
+              return (
+                <p className={cn("text-sm font-medium mb-2", outcomeColor)}>
+                  {outcome.text}
+                </p>
+              );
+            })()}
             {currentRole && (
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-2 rounded-lg bg-primary/10 border border-primary/20 text-xs font-medium text-primary">
                 <Briefcase className="w-3 h-3" />

@@ -6322,7 +6322,11 @@ function calibrateScoreByIndustry(
 /**
  * Compute industry benchmark based on score
  */
-function computeIndustryBenchmark(
+// Fallback used when there isn't enough real scan data yet for an industry
+// (or the lookup itself fails) — kept deliberately separate from the real,
+// data-backed path below so it's obvious which numbers are estimates and
+// which are computed from actual completed scans.
+function computeIndustryBenchmarkFallback(
   score: number,
   industry: string
 ): {
@@ -6330,7 +6334,8 @@ function computeIndustryBenchmark(
   comparison: "below" | "at" | "above";
   percentile: string;
 } {
-  // Industry-specific averages (simplified)
+  // Industry-specific averages (simplified estimates — used only until enough
+  // real scan volume exists for get_industry_score_benchmark to take over)
   const industryAverages: Record<string, { avg: number; top: number }> = {
     technology: { avg: 68, top: 85 },
     sales: { avg: 65, top: 82 },
@@ -6382,6 +6387,56 @@ function computeIndustryBenchmark(
   }
 
   return { industryAvg: avg, comparison, percentile };
+}
+
+// Real, data-backed benchmark — queries get_industry_score_benchmark, which
+// computes an actual percentile from completed scans of the same industry
+// (scan_metrics.metadata->>'industry'), instead of a static lookup table.
+// Falls back to the estimate above when there isn't enough real volume yet
+// for a given industry (the RPC itself enforces a minimum sample size) or if
+// the query fails for any reason — this should never block a scan result.
+async function computeIndustryBenchmark(
+  supabase: ReturnType<typeof createClient>,
+  score: number,
+  industry: string
+): Promise<{
+  industryAvg: number;
+  comparison: "below" | "at" | "above";
+  percentile: string;
+  isRealData?: boolean;
+}> {
+  try {
+    const { data, error } = await supabase.rpc('get_industry_score_benchmark', {
+      p_industry: industry,
+      p_score: Math.round(score),
+    });
+
+    const row = data?.[0];
+    if (!error && row && row.industry_avg !== null && row.percentile !== null) {
+      const avg = Number(row.industry_avg);
+      const percentileRank = Number(row.percentile); // 0-100: % of real scans scoring <= this user
+
+      let comparison: "below" | "at" | "above";
+      if (percentileRank >= 60) comparison = "above";
+      else if (percentileRank >= 40) comparison = "at";
+      else comparison = "below";
+
+      const percentileLabel = percentileRank >= 95
+        ? "Top 5%"
+        : percentileRank >= 50
+          ? `Top ${Math.max(5, 100 - Math.round(percentileRank))}%`
+          : `Bottom ${Math.max(1, Math.round(percentileRank))}%`;
+
+      console.log(`[BENCHMARK] Real data used: avg=${avg}, percentile=${percentileRank}, sample=${row.sample_size}`);
+      return { industryAvg: Math.round(avg), comparison, percentile: percentileLabel, isRealData: true };
+    }
+
+    console.log(`[BENCHMARK] Insufficient real data for "${industry}" (sample=${row?.sample_size ?? 0}) — using fallback estimate`);
+  } catch (e) {
+    console.warn('[BENCHMARK] Real benchmark query failed — using fallback estimate:', e);
+  }
+
+  return { ...computeIndustryBenchmarkFallback(score, industry), isRealData: false };
 }
 
 const corsHeaders = {
@@ -8250,7 +8305,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Computed bullet impact: ${JSON.stringify(computedBulletImpact)}`);
 
       // 4. Industry Benchmark (uses calibrated score)
-      const computedBenchmark = computeIndustryBenchmark(analysis.atsScoreEstimate || 0, analysis.industry);
+      const computedBenchmark = await computeIndustryBenchmark(supabase, analysis.atsScoreEstimate || 0, analysis.industry);
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Computed benchmark: ${JSON.stringify(computedBenchmark)}`);
 
       // 5. Dual Scoring (ATS Compatibility + Recruiter Impact)

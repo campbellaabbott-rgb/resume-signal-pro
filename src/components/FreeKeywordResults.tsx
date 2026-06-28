@@ -25,6 +25,7 @@ import { PeerBenchmark } from "./PeerBenchmark";
 import { ReturningUserInsights } from "./ReturningUserInsights";
 import { IndustryKeywordSuggestions } from "./IndustryKeywordSuggestions";
 import { RoleKeywordSuggestions } from "./RoleKeywordSuggestions";
+import { analyzeKeywordPresence } from "@/config/industry-keywords";
 import { AddOnsShowcase } from "./AddOnsShowcase";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -829,7 +830,29 @@ export function FreeKeywordResults({
   
   // Use corrected industry if set, otherwise use detected
   const effectiveIndustry = correctedIndustry || industry;
-  
+
+  // Real counts for the "Complete Keyword Gap Analysis" upsell card below —
+  // these used to be the same hardcoded marketing copy for every user
+  // ("50+ missing keywords", "12 critical hard skills") regardless of what's
+  // actually in their resume, which is exactly the kind of fake-precision
+  // claim that undercuts trust right in the section meant to convert. Computed
+  // from the same analyzeKeywordPresence() used by IndustryKeywordSuggestions.
+  const realKeywordGapStats = useMemo(() => {
+    if (!resumeText) return null;
+    const analysis = analyzeKeywordPresence(effectiveIndustry, resumeText);
+    if (analysis.missing.length === 0 && analysis.present.length === 0) return null; // No config for this industry
+
+    const byCategory = (category: string) => analysis.missing.filter((k) => k.category === category).length;
+    return {
+      totalMissing: analysis.missing.length,
+      criticalMissing: analysis.missing.filter((k) => k.importance === 'critical').length,
+      technical: byCategory('technical'),
+      certifications: byCategory('certification'),
+      tools: byCategory('tool'),
+      methodology: byCategory('methodology'),
+    };
+  }, [effectiveIndustry, resumeText]);
+
   // Handle industry correction
   const handleIndustryChange = (newIndustry: string) => {
     setCorrectedIndustry(newIndustry);
@@ -2952,13 +2975,40 @@ export function FreeKeywordResults({
 
         <LockedPremiumInsight
           title="Complete Keyword Gap Analysis"
-          description={`50+ missing keywords specific to ${effectiveIndustry.replace(/_/g, ' ')} that ATS systems look for`}
-          previewLines={[
-            "• 12 critical hard skills missing from your resume",
-            "• 8 industry certifications to mention (even in progress)",
-            "• 15 action verbs that outperform your current word choices",
-            "• 6 methodology keywords your competitors are using",
-          ]}
+          description={
+            realKeywordGapStats && realKeywordGapStats.totalMissing > 0
+              ? `${realKeywordGapStats.totalMissing} missing keywords found specific to ${effectiveIndustry.replace(/_/g, ' ')} that ATS systems look for`
+              : realKeywordGapStats
+                ? `Strong keyword coverage for ${effectiveIndustry.replace(/_/g, ' ')} — get phrasing and placement tips to make them count even more`
+                : `Missing keywords specific to ${effectiveIndustry.replace(/_/g, ' ')} that ATS systems look for`
+          }
+          previewLines={
+            realKeywordGapStats && realKeywordGapStats.totalMissing > 0
+              ? [
+                  `• ${realKeywordGapStats.criticalMissing} critical hard skill${realKeywordGapStats.criticalMissing === 1 ? '' : 's'} missing from your resume`,
+                  ...(realKeywordGapStats.certifications > 0
+                    ? [`• ${realKeywordGapStats.certifications} industry certification${realKeywordGapStats.certifications === 1 ? '' : 's'} to mention (even in progress)`]
+                    : []),
+                  ...(realKeywordGapStats.tools > 0
+                    ? [`• ${realKeywordGapStats.tools} tool${realKeywordGapStats.tools === 1 ? '' : 's'} commonly listed in your field that you're missing`]
+                    : []),
+                  ...(realKeywordGapStats.methodology > 0
+                    ? [`• ${realKeywordGapStats.methodology} methodology keyword${realKeywordGapStats.methodology === 1 ? '' : 's'} your competitors are using`]
+                    : []),
+                ]
+              : realKeywordGapStats
+                ? [
+                    "• Where to place your strongest keywords for maximum ATS weight",
+                    "• Action verbs that outperform your current word choices",
+                    "• How your keyword density compares to top resumes in your field",
+                  ]
+                : [
+                    "• Critical hard skills missing from your resume",
+                    "• Industry certifications to mention (even in progress)",
+                    "• Action verbs that outperform your current word choices",
+                    "• Methodology keywords your competitors are using",
+                  ]
+          }
           onUnlock={() => handleUpgradeClick('locked_keyword_gap')}
           isLoading={isLoading}
         />
