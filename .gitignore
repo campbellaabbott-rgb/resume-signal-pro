@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# jsPDF's .save() can write a real file to the working directory when run
+# under Node/jsdom in tests (rather than triggering a browser download) —
+# safety net so test-generated PDFs never get committed again.
+/*.pdf
