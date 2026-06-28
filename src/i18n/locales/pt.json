@@ -653,5 +653,49 @@
       "pdfSuccess": "PDF baixado com sucesso!",
       "pdfError": "Falha ao gerar o PDF"
     }
+  },
+  "graduateGamePlan": {
+    "downloadPdf": "Baixar relatório em PDF",
+    "copyDefault": "Copiar",
+    "toast": {
+      "copied": "Copiado para a área de transferência!",
+      "pdfCharWarning": "Alguns caracteres neste relatório podem não ser exibidos corretamente no PDF (suporte limitado de fonte para texto não latino).",
+      "pdfSuccess": "PDF baixado com sucesso!",
+      "pdfError": "Falha ao gerar o PDF"
+    },
+    "week": "Semana {{num}}",
+    "readinessGate": {
+      "title": "Preparação do Currículo",
+      "subtitle": "Já pode começar a se candidatar?",
+      "quickFixesLabel": "Correções rápidas a considerar:"
+    },
+    "roleTargeting": {
+      "title": "Mapa de Cargos-Alvo",
+      "priorityRoles": "Cargos Prioritários a Buscar",
+      "rolesToAvoid": "Cargos a Evitar"
+    },
+    "applicationStrategy": {
+      "title": "Estratégia de Candidatura",
+      "weeklyTarget": "Meta Semanal",
+      "whereToApply": "Onde se Candidatar",
+      "whatToAvoid": "O que Evitar",
+      "keyInsight": "💡 Insight Principal"
+    },
+    "networking": {
+      "title": "Guia de Networking",
+      "copyScript": "Copiar script",
+      "linkedinTips": "Dicas de LinkedIn"
+    },
+    "interview": {
+      "title": "Preparação para Entrevistas",
+      "storiesToPrepare": "Histórias a Preparar (Método STAR)",
+      "whyThisRole": "Como responder \"Por que este cargo?\"",
+      "copyAnswer": "Copiar resposta",
+      "projectTalkingPoints": "Pontos a Destacar sobre Projetos"
+    },
+    "thirtyDay": {
+      "title": "Plano de Ação de 30 Dias",
+      "badge": "Semana a semana"
+    }
   }
 }

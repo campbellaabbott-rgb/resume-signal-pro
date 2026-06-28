@@ -653,5 +653,49 @@
       "pdfSuccess": "PDF downloaded successfully!",
       "pdfError": "Failed to generate PDF"
     }
+  },
+  "graduateGamePlan": {
+    "downloadPdf": "Download PDF Report",
+    "copyDefault": "Copy",
+    "toast": {
+      "copied": "Copied to clipboard!",
+      "pdfCharWarning": "Some characters in this report may not display correctly in the PDF (limited font support for non-Latin text).",
+      "pdfSuccess": "PDF downloaded successfully!",
+      "pdfError": "Failed to generate PDF"
+    },
+    "week": "Week {{num}}",
+    "readinessGate": {
+      "title": "CV Readiness",
+      "subtitle": "Can you start applying?",
+      "quickFixesLabel": "Quick fixes to consider:"
+    },
+    "roleTargeting": {
+      "title": "Role Targeting Map",
+      "priorityRoles": "Priority Roles to Target",
+      "rolesToAvoid": "Roles to Avoid"
+    },
+    "applicationStrategy": {
+      "title": "Application Strategy",
+      "weeklyTarget": "Weekly Target",
+      "whereToApply": "Where to Apply",
+      "whatToAvoid": "What to Avoid",
+      "keyInsight": "💡 Key Insight"
+    },
+    "networking": {
+      "title": "Networking Playbook",
+      "copyScript": "Copy script",
+      "linkedinTips": "LinkedIn Tips"
+    },
+    "interview": {
+      "title": "Interview Readiness",
+      "storiesToPrepare": "Stories to Prepare (STAR Method)",
+      "whyThisRole": "How to answer \"Why this role?\"",
+      "copyAnswer": "Copy answer",
+      "projectTalkingPoints": "Project Talking Points"
+    },
+    "thirtyDay": {
+      "title": "30-Day Action Plan",
+      "badge": "Week-by-week"
+    }
   }
 }

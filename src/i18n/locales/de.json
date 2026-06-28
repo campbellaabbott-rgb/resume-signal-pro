@@ -653,5 +653,49 @@
       "pdfSuccess": "PDF erfolgreich heruntergeladen!",
       "pdfError": "PDF konnte nicht erstellt werden"
     }
+  },
+  "graduateGamePlan": {
+    "downloadPdf": "PDF-Bericht herunterladen",
+    "copyDefault": "Kopieren",
+    "toast": {
+      "copied": "In die Zwischenablage kopiert!",
+      "pdfCharWarning": "Einige Zeichen in diesem Bericht werden im PDF möglicherweise nicht korrekt angezeigt (eingeschränkte Schriftunterstützung für nicht-lateinische Schriftzeichen).",
+      "pdfSuccess": "PDF erfolgreich heruntergeladen!",
+      "pdfError": "PDF konnte nicht erstellt werden"
+    },
+    "week": "Woche {{num}}",
+    "readinessGate": {
+      "title": "Lebenslauf-Bereitschaft",
+      "subtitle": "Kannst du dich schon bewerben?",
+      "quickFixesLabel": "Schnelle Korrekturen zu beachten:"
+    },
+    "roleTargeting": {
+      "title": "Rollen-Targeting-Karte",
+      "priorityRoles": "Vorrangige Zielrollen",
+      "rolesToAvoid": "Zu vermeidende Rollen"
+    },
+    "applicationStrategy": {
+      "title": "Bewerbungsstrategie",
+      "weeklyTarget": "Wöchentliches Ziel",
+      "whereToApply": "Wo man sich bewirbt",
+      "whatToAvoid": "Was zu vermeiden ist",
+      "keyInsight": "💡 Wichtige Erkenntnis"
+    },
+    "networking": {
+      "title": "Networking-Leitfaden",
+      "copyScript": "Skript kopieren",
+      "linkedinTips": "LinkedIn-Tipps"
+    },
+    "interview": {
+      "title": "Interview-Bereitschaft",
+      "storiesToPrepare": "Vorzubereitende Geschichten (STAR-Methode)",
+      "whyThisRole": "Wie man \"Warum diese Rolle?\" beantwortet",
+      "copyAnswer": "Antwort kopieren",
+      "projectTalkingPoints": "Gesprächspunkte zu Projekten"
+    },
+    "thirtyDay": {
+      "title": "30-Tage-Aktionsplan",
+      "badge": "Woche für Woche"
+    }
   }
 }

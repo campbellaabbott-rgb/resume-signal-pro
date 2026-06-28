@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   ChevronDown, 
   ChevronUp, 
@@ -157,12 +158,13 @@ const ExpandableSection = ({
 };
 
 const CopyButton = ({ text, label }: { text: string; label?: string }) => {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(text);
     setCopied(true);
-    toast.success('Copied to clipboard!');
+    toast.success(t('graduateGamePlan.toast.copied'));
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -178,20 +180,21 @@ const CopyButton = ({ text, label }: { text: string; label?: string }) => {
       ) : (
         <Copy className="w-3 h-3 mr-1" />
       )}
-      {label || 'Copy'}
+      {label || t('graduateGamePlan.copyDefault')}
     </Button>
   );
 };
 
 const WeekCard = ({ weekNum, plan }: { weekNum: number; plan: WeekPlan }) => {
+  const { t } = useTranslation();
   const weekColors = ['bg-primary', 'bg-blue-500', 'bg-purple-500', 'bg-green-500'];
-  
+
   return (
     <div className="relative">
       <div className={cn("absolute left-0 top-0 bottom-0 w-1 rounded-full", weekColors[weekNum - 1])} />
       <div className="pl-4 py-2">
         <div className="flex items-center gap-2 mb-2">
-          <Badge className={cn("text-xs", weekColors[weekNum - 1])}>Week {weekNum}</Badge>
+          <Badge className={cn("text-xs", weekColors[weekNum - 1])}>{t('graduateGamePlan.week', { num: weekNum })}</Badge>
           <span className="text-sm font-medium">{plan.focus}</span>
         </div>
         <ul className="space-y-1">
@@ -208,6 +211,7 @@ const WeekCard = ({ weekNum, plan }: { weekNum: number; plan: WeekPlan }) => {
 };
 
 export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) {
+  const { t } = useTranslation();
   const isReady = data.resumeReadinessGate.verdict === 'Ready to Apply';
 
   const handleExportPDF = () => {
@@ -216,12 +220,12 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
       // punctuation — content in other scripts would otherwise render as
       // blank/missing glyphs with no explanation.
       if (hasUnsupportedPdfCharacters(JSON.stringify(data))) {
-        toast.warning('Some characters in this report may not display correctly in the PDF (limited font support for non-Latin text).');
+        toast.warning(t('graduateGamePlan.toast.pdfCharWarning'));
       }
       exportGraduateGamePlanPDF(data);
-      toast.success('PDF downloaded successfully!');
+      toast.success(t('graduateGamePlan.toast.pdfSuccess'));
     } catch (error) {
-      toast.error('Failed to generate PDF');
+      toast.error(t('graduateGamePlan.toast.pdfError'));
     }
   };
 
@@ -231,7 +235,7 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
       <div className="flex justify-end">
         <Button onClick={handleExportPDF} variant="outline" className="gap-2">
           <Download className="w-4 h-4" />
-          Download PDF Report
+          {t('graduateGamePlan.downloadPdf')}
         </Button>
       </div>
 
@@ -256,8 +260,8 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
                 )}
               </div>
               <div>
-                <CardTitle className="text-xl">Resume Readiness</CardTitle>
-                <p className="text-sm text-muted-foreground">Can you start applying?</p>
+                <CardTitle className="text-xl">{t('graduateGamePlan.readinessGate.title')}</CardTitle>
+                <p className="text-sm text-muted-foreground">{t('graduateGamePlan.readinessGate.subtitle')}</p>
               </div>
             </div>
             <Badge className={cn(
@@ -273,7 +277,7 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
           
           {data.resumeReadinessGate.quickFixes && data.resumeReadinessGate.quickFixes.length > 0 && (
             <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">Quick fixes to consider:</p>
+              <p className="text-sm font-medium text-muted-foreground">{t('graduateGamePlan.readinessGate.quickFixesLabel')}</p>
               {data.resumeReadinessGate.quickFixes.map((fix, i) => (
                 <div key={i} className="flex items-start gap-2 text-sm">
                   <ArrowRight className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
@@ -286,14 +290,14 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
       </Card>
 
       {/* Role Targeting Map */}
-      <ExpandableSection title="Role Targeting Map" icon={Target} defaultOpen accentColor="primary">
+      <ExpandableSection title={t('graduateGamePlan.roleTargeting.title')} icon={Target} defaultOpen accentColor="primary">
         <p className="text-muted-foreground mb-4">{data.roleTargetingMap.summary}</p>
-        
+
         <div className="grid md:grid-cols-2 gap-6">
           <div>
             <h4 className="font-medium text-sm text-foreground mb-3 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-success" />
-              Priority Roles to Target
+              {t('graduateGamePlan.roleTargeting.priorityRoles')}
             </h4>
             <div className="space-y-3">
               {data.roleTargetingMap.priorityRoles.map((role, i) => (
@@ -307,7 +311,7 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
           <div>
             <h4 className="font-medium text-sm text-foreground mb-3 flex items-center gap-2">
               <XCircle className="w-4 h-4 text-destructive" />
-              Roles to Avoid
+              {t('graduateGamePlan.roleTargeting.rolesToAvoid')}
             </h4>
             <div className="space-y-3">
               {data.roleTargetingMap.rolesToAvoid.map((role, i) => (
@@ -322,15 +326,15 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
       </ExpandableSection>
 
       {/* Application Strategy */}
-      <ExpandableSection title="Application Strategy" icon={Briefcase} accentColor="primary">
+      <ExpandableSection title={t('graduateGamePlan.applicationStrategy.title')} icon={Briefcase} accentColor="primary">
         <div className="space-y-6">
           <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
-            <p className="font-semibold text-primary mb-2">Weekly Target</p>
+            <p className="font-semibold text-primary mb-2">{t('graduateGamePlan.applicationStrategy.weeklyTarget')}</p>
             <p className="text-foreground">{data.applicationStrategy.weeklyTarget}</p>
           </div>
 
           <div>
-            <h4 className="font-medium text-sm text-foreground mb-3">Where to Apply</h4>
+            <h4 className="font-medium text-sm text-foreground mb-3">{t('graduateGamePlan.applicationStrategy.whereToApply')}</h4>
             <div className="space-y-3">
               {data.applicationStrategy.whereToApply.map((channel, i) => (
                 <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-accent/50 border border-border/50">
@@ -352,7 +356,7 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
           <div>
             <h4 className="font-medium text-sm text-foreground mb-2 flex items-center gap-2">
               <XCircle className="w-4 h-4 text-destructive" />
-              What to Avoid
+              {t('graduateGamePlan.applicationStrategy.whatToAvoid')}
             </h4>
             <ul className="space-y-1">
               {data.applicationStrategy.whatToAvoid.map((item, i) => (
@@ -365,14 +369,14 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
           </div>
 
           <div className="bg-accent/50 p-4 rounded-lg border border-border/50">
-            <p className="text-sm font-medium text-foreground mb-1">💡 Key Insight</p>
+            <p className="text-sm font-medium text-foreground mb-1">{t('graduateGamePlan.applicationStrategy.keyInsight')}</p>
             <p className="text-sm text-muted-foreground">{data.applicationStrategy.keyInsight}</p>
           </div>
         </div>
       </ExpandableSection>
 
       {/* Networking Playbook */}
-      <ExpandableSection title="Networking Playbook" icon={Users} accentColor="primary">
+      <ExpandableSection title={t('graduateGamePlan.networking.title')} icon={Users} accentColor="primary">
         <div className="space-y-6">
           <p className="text-muted-foreground">{data.networkingPlaybook.approach}</p>
 
@@ -388,7 +392,7 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
                 {data.networkingPlaybook.outreachScript.script}
               </p>
               <div className="flex justify-end mt-2">
-                <CopyButton text={data.networkingPlaybook.outreachScript.script} label="Copy script" />
+                <CopyButton text={data.networkingPlaybook.outreachScript.script} label={t('graduateGamePlan.networking.copyScript')} />
               </div>
             </div>
           </div>
@@ -396,7 +400,7 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
           <div>
             <h4 className="font-medium text-sm text-foreground mb-3 flex items-center gap-2">
               <Linkedin className="w-4 h-4 text-blue-500" />
-              LinkedIn Tips
+              {t('graduateGamePlan.networking.linkedinTips')}
             </h4>
             <ul className="space-y-2">
               {data.networkingPlaybook.linkedInTips.map((tip, i) => (
@@ -411,12 +415,12 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
       </ExpandableSection>
 
       {/* Interview Readiness */}
-      <ExpandableSection title="Interview Readiness" icon={BookOpen} accentColor="primary">
+      <ExpandableSection title={t('graduateGamePlan.interview.title')} icon={BookOpen} accentColor="primary">
         <div className="space-y-6">
           <p className="text-muted-foreground">{data.interviewReadiness.summary}</p>
 
           <div>
-            <h4 className="font-medium text-sm text-foreground mb-3">Stories to Prepare (STAR Method)</h4>
+            <h4 className="font-medium text-sm text-foreground mb-3">{t('graduateGamePlan.interview.storiesToPrepare')}</h4>
             <div className="space-y-3">
               {data.interviewReadiness.storiesToPrepare.map((story, i) => (
                 <div key={i} className="p-3 rounded-lg bg-accent/50 border border-border/50">
@@ -428,15 +432,15 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
           </div>
 
           <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
-            <h4 className="font-medium text-sm text-foreground mb-2">How to answer "Why this role?"</h4>
+            <h4 className="font-medium text-sm text-foreground mb-2">{t('graduateGamePlan.interview.whyThisRole')}</h4>
             <p className="text-sm text-muted-foreground">{data.interviewReadiness.whyThisRole}</p>
             <div className="flex justify-end mt-2">
-              <CopyButton text={data.interviewReadiness.whyThisRole} label="Copy answer" />
+              <CopyButton text={data.interviewReadiness.whyThisRole} label={t('graduateGamePlan.interview.copyAnswer')} />
             </div>
           </div>
 
           <div>
-            <h4 className="font-medium text-sm text-foreground mb-3">Project Talking Points</h4>
+            <h4 className="font-medium text-sm text-foreground mb-3">{t('graduateGamePlan.interview.projectTalkingPoints')}</h4>
             <ul className="space-y-2">
               {data.interviewReadiness.projectTalkingPoints.map((point, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm">
@@ -452,7 +456,7 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
       </ExpandableSection>
 
       {/* 30-Day Action Plan */}
-      <ExpandableSection title="30-Day Action Plan" icon={Calendar} badge="Week-by-week" accentColor="success">
+      <ExpandableSection title={t('graduateGamePlan.thirtyDay.title')} icon={Calendar} badge={t('graduateGamePlan.thirtyDay.badge')} accentColor="success">
         <div className="space-y-4">
           <Progress value={0} className="h-2 mb-6" />
           

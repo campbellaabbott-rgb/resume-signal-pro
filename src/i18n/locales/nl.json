@@ -653,5 +653,49 @@
       "pdfSuccess": "PDF succesvol gedownload!",
       "pdfError": "PDF genereren mislukt"
     }
+  },
+  "graduateGamePlan": {
+    "downloadPdf": "PDF-rapport downloaden",
+    "copyDefault": "Kopiëren",
+    "toast": {
+      "copied": "Gekopieerd naar klembord!",
+      "pdfCharWarning": "Sommige tekens in dit rapport worden mogelijk niet correct weergegeven in de PDF (beperkte lettertypeondersteuning voor niet-Latijnse tekst).",
+      "pdfSuccess": "PDF succesvol gedownload!",
+      "pdfError": "PDF genereren mislukt"
+    },
+    "week": "Week {{num}}",
+    "readinessGate": {
+      "title": "Cv-gereedheid",
+      "subtitle": "Kun je al gaan solliciteren?",
+      "quickFixesLabel": "Snelle verbeteringen om te overwegen:"
+    },
+    "roleTargeting": {
+      "title": "Functie-targetingkaart",
+      "priorityRoles": "Prioritaire functies om op te richten",
+      "rolesToAvoid": "Functies om te vermijden"
+    },
+    "applicationStrategy": {
+      "title": "Sollicitatiestrategie",
+      "weeklyTarget": "Wekelijks doel",
+      "whereToApply": "Waar te solliciteren",
+      "whatToAvoid": "Wat te vermijden",
+      "keyInsight": "💡 Belangrijk inzicht"
+    },
+    "networking": {
+      "title": "Netwerkgids",
+      "copyScript": "Script kopiëren",
+      "linkedinTips": "LinkedIn-tips"
+    },
+    "interview": {
+      "title": "Interviewvoorbereiding",
+      "storiesToPrepare": "Voor te bereiden verhalen (STAR-methode)",
+      "whyThisRole": "Hoe te antwoorden op \"Waarom deze functie?\"",
+      "copyAnswer": "Antwoord kopiëren",
+      "projectTalkingPoints": "Gesprekspunten over projecten"
+    },
+    "thirtyDay": {
+      "title": "30-dagenactieplan",
+      "badge": "Week voor week"
+    }
   }
 }

@@ -653,5 +653,49 @@
       "pdfSuccess": "PDF सफलतापूर्वक डाउनलोड हो गया!",
       "pdfError": "PDF बनाने में विफल"
     }
+  },
+  "graduateGamePlan": {
+    "downloadPdf": "PDF रिपोर्ट डाउनलोड करें",
+    "copyDefault": "कॉपी करें",
+    "toast": {
+      "copied": "क्लिपबोर्ड पर कॉपी हो गया!",
+      "pdfCharWarning": "इस रिपोर्ट में कुछ अक्षर PDF में सही ढंग से प्रदर्शित नहीं हो सकते (नॉन-लैटिन टेक्स्ट के लिए सीमित फ़ॉन्ट समर्थन)।",
+      "pdfSuccess": "PDF सफलतापूर्वक डाउनलोड हो गया!",
+      "pdfError": "PDF बनाने में विफल"
+    },
+    "week": "सप्ताह {{num}}",
+    "readinessGate": {
+      "title": "रिज़्यूमे तैयारी",
+      "subtitle": "क्या आप आवेदन शुरू कर सकते हैं?",
+      "quickFixesLabel": "विचार करने योग्य त्वरित सुधार:"
+    },
+    "roleTargeting": {
+      "title": "रोल टारगेटिंग मैप",
+      "priorityRoles": "लक्षित प्राथमिकता भूमिकाएँ",
+      "rolesToAvoid": "टालने योग्य भूमिकाएँ"
+    },
+    "applicationStrategy": {
+      "title": "आवेदन रणनीति",
+      "weeklyTarget": "साप्ताहिक लक्ष्य",
+      "whereToApply": "कहाँ आवेदन करें",
+      "whatToAvoid": "क्या टालें",
+      "keyInsight": "💡 मुख्य जानकारी"
+    },
+    "networking": {
+      "title": "नेटवर्किंग प्लेबुक",
+      "copyScript": "स्क्रिप्ट कॉपी करें",
+      "linkedinTips": "LinkedIn टिप्स"
+    },
+    "interview": {
+      "title": "इंटरव्यू तैयारी",
+      "storiesToPrepare": "तैयार करने योग्य कहानियाँ (STAR मेथड)",
+      "whyThisRole": "\"यह भूमिका क्यों?\" का उत्तर कैसे दें",
+      "copyAnswer": "जवाब कॉपी करें",
+      "projectTalkingPoints": "प्रोजेक्ट टॉकिंग पॉइंट्स"
+    },
+    "thirtyDay": {
+      "title": "30-दिन की कार्य योजना",
+      "badge": "सप्ताह-दर-सप्ताह"
+    }
   }
 }

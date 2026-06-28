@@ -653,5 +653,49 @@
       "pdfSuccess": "Matagumpay na na-download ang PDF!",
       "pdfError": "Hindi magawa ang PDF"
     }
+  },
+  "graduateGamePlan": {
+    "downloadPdf": "I-download ang PDF Report",
+    "copyDefault": "Kopyahin",
+    "toast": {
+      "copied": "Na-copy sa clipboard!",
+      "pdfCharWarning": "May mga character sa report na ito na posibleng hindi maipakita nang tama sa PDF (limitadong font support para sa non-Latin na teksto).",
+      "pdfSuccess": "Matagumpay na na-download ang PDF!",
+      "pdfError": "Hindi magawa ang PDF"
+    },
+    "week": "Linggo {{num}}",
+    "readinessGate": {
+      "title": "Kahandaan ng Resume",
+      "subtitle": "Pwede ka na bang mag-apply?",
+      "quickFixesLabel": "Mabilis na ayusin na dapat isaalang-alang:"
+    },
+    "roleTargeting": {
+      "title": "Mapa ng mga Tutugisin na Role",
+      "priorityRoles": "Mga Pangunahing Role na Tutugisin",
+      "rolesToAvoid": "Mga Role na Iiwasan"
+    },
+    "applicationStrategy": {
+      "title": "Estratehiya sa Pag-apply",
+      "weeklyTarget": "Lingguhang Target",
+      "whereToApply": "Saan Mag-apply",
+      "whatToAvoid": "Iiwasan",
+      "keyInsight": "💡 Mahalagang Insight"
+    },
+    "networking": {
+      "title": "Networking Playbook",
+      "copyScript": "Kopyahin ang script",
+      "linkedinTips": "Mga Tip sa LinkedIn"
+    },
+    "interview": {
+      "title": "Kahandaan sa Interview",
+      "storiesToPrepare": "Mga Kwentong Ihahanda (STAR Method)",
+      "whyThisRole": "Paano sasagutin ang \"Bakit ang role na ito?\"",
+      "copyAnswer": "Kopyahin ang sagot",
+      "projectTalkingPoints": "Mga Talking Point sa Proyekto"
+    },
+    "thirtyDay": {
+      "title": "30-Araw na Action Plan",
+      "badge": "Linggo-linggo"
+    }
   }
 }

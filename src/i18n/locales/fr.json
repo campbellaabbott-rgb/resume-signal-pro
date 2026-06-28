@@ -653,5 +653,49 @@
       "pdfSuccess": "PDF téléchargé avec succès !",
       "pdfError": "Impossible de générer le PDF"
     }
+  },
+  "graduateGamePlan": {
+    "downloadPdf": "Télécharger le rapport PDF",
+    "copyDefault": "Copier",
+    "toast": {
+      "copied": "Copié dans le presse-papiers !",
+      "pdfCharWarning": "Certains caractères de ce rapport pourraient ne pas s'afficher correctement dans le PDF (prise en charge limitée des polices pour les textes non latins).",
+      "pdfSuccess": "PDF téléchargé avec succès !",
+      "pdfError": "Impossible de générer le PDF"
+    },
+    "week": "Semaine {{num}}",
+    "readinessGate": {
+      "title": "Préparation du CV",
+      "subtitle": "Pouvez-vous commencer à postuler ?",
+      "quickFixesLabel": "Corrections rapides à envisager :"
+    },
+    "roleTargeting": {
+      "title": "Carte des postes cibles",
+      "priorityRoles": "Postes prioritaires à cibler",
+      "rolesToAvoid": "Postes à éviter"
+    },
+    "applicationStrategy": {
+      "title": "Stratégie de candidature",
+      "weeklyTarget": "Objectif hebdomadaire",
+      "whereToApply": "Où postuler",
+      "whatToAvoid": "À éviter",
+      "keyInsight": "💡 Point clé"
+    },
+    "networking": {
+      "title": "Guide de réseautage",
+      "copyScript": "Copier le script",
+      "linkedinTips": "Conseils LinkedIn"
+    },
+    "interview": {
+      "title": "Préparation à l'entretien",
+      "storiesToPrepare": "Histoires à préparer (méthode STAR)",
+      "whyThisRole": "Comment répondre à \"Pourquoi ce poste ?\"",
+      "copyAnswer": "Copier la réponse",
+      "projectTalkingPoints": "Points clés sur les projets"
+    },
+    "thirtyDay": {
+      "title": "Plan d'action sur 30 jours",
+      "badge": "Semaine par semaine"
+    }
   }
 }
