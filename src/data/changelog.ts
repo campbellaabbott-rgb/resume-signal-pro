@@ -14,6 +14,20 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-06-28",
+    title: "More reliable PDF and Word downloads",
+    description:
+      "Fixed an issue where a name with certain special characters could produce a broken download filename. Also added a clear heads-up if your resume or report contains characters our PDF export can't fully render yet (mainly non-Latin scripts), instead of silently leaving them out.",
+    tags: ["fixed"],
+  },
+  {
+    date: "2026-06-28",
+    title: "Clearer messages when demand is high",
+    description:
+      "If our AI is briefly overloaded while generating your Interview Coach, Career Path, Career Snapshot, Graduate Game Plan, or Keyword Fix results, you'll now see a clear 'try again shortly' message across all of them, instead of a generic error on some.",
+    tags: ["improved"],
+  },
+  {
+    date: "2026-06-28",
     title: "Real industry comparisons",
     description:
       "Your score is now compared against real data from actual resumes scanned in your industry, instead of a fixed estimate — so 'better than X% of similar resumes' actually means what it says.",
