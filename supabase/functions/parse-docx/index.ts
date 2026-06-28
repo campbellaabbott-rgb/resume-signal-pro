@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import mammoth from "https://esm.sh/mammoth@1.6.0";
+import { looksGarbled, isOleCompoundFile } from "../_shared/text-validation.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -175,9 +176,7 @@ serve(async (req) => {
     // catches both cases — the message below covers both rather than asserting
     // it must be the legacy format, which would be actively wrong for an
     // encrypted modern file.
-    const header = new Uint8Array(arrayBuffer.slice(0, 8));
-    const isOleCompoundFile = header[0] === 0xD0 && header[1] === 0xCF && header[2] === 0x11 && header[3] === 0xE0;
-    if (isOleCompoundFile) {
+    if (isOleCompoundFile(arrayBuffer)) {
       trackPerformance(requestStartTime, 'parse-docx', false, { reason: 'legacy_doc_or_encrypted' }, clientIp);
       EdgeRuntime.waitUntil(
         supabase.rpc('log_parse_failure', {
@@ -236,6 +235,34 @@ serve(async (req) => {
         JSON.stringify({
           success: false,
           error: "Couldn't find readable text in this document. If your resume content is inside an image or text box, please paste your resume text directly instead.",
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // mammoth can "succeed" (no exception, text isn't too short) while having
+    // extracted a wall of mis-decoded glyphs from a broken embedded font —
+    // that's a different failure mode than the too-short check above, and
+    // letting it through would feed garbage into the AI analysis instead of
+    // surfacing a clear, actionable error. Language-agnostic — does not assume
+    // English or any specific script.
+    if (looksGarbled(text)) {
+      trackPerformance(requestStartTime, 'parse-docx', false, { textLength: text.length, reason: 'garbled_text' }, clientIp);
+      console.log("[PARSE-DOCX] Extracted text looks garbled (broken encoding).");
+
+      EdgeRuntime.waitUntil(
+        supabase.rpc('log_parse_failure', {
+          p_file_type: 'docx',
+          p_error_code: 'garbled_text',
+          p_error_message: `Extracted ${text.length} chars but text appears corrupted`,
+          p_visitor_id: clientIp
+        })
+      );
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "We extracted text from this document, but it appears corrupted (likely a broken or embedded font). Please try saving the document again or paste your resume text directly.",
         }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );

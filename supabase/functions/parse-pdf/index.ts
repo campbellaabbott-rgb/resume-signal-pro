@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolvePDFJS } from "https://esm.sh/pdfjs-serverless@0.4.1?target=deno";
+import { looksGarbled } from "../_shared/text-validation.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -316,6 +317,34 @@ serve(async (req) => {
         JSON.stringify({
           success: false,
           error: "This PDF appears to be a scanned image with little or no selectable text. Please upload a text-based PDF (exported from Word/Google Docs), or paste your resume text directly.",
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // PDF.js can "succeed" (real text extracted, not too short) while that text
+    // is a wall of mis-decoded glyphs from a broken embedded font — a different
+    // failure mode than the scanned-PDF check above. Language-agnostic — does
+    // not assume English or any specific script.
+    if (looksGarbled(text)) {
+      trackPerformance(requestStartTime, 'parse-pdf', false, { pages: doc.numPages, textLength: text.length, reason: 'garbled_text' }, clientIp);
+      console.log("[PARSE-PDF] Extracted text looks garbled (broken encoding).");
+
+      EdgeRuntime.waitUntil(
+        (async () => {
+          await supabase.rpc('log_parse_failure', {
+            p_file_type: 'pdf',
+            p_error_code: 'garbled_text',
+            p_error_message: `Extracted ${text.length} chars but text appears corrupted`,
+            p_visitor_id: clientIp
+          });
+        })()
+      );
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "We extracted text from this PDF, but it appears corrupted (likely a broken or embedded font). Please try re-exporting the PDF or paste your resume text directly.",
         }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
