@@ -558,5 +558,52 @@
     "switchPrompt": "साइट की भाषा {{language}} में बदलें?",
     "switchButton": "{{language}} में बदलें",
     "dismiss": "{{current}} रखें"
+  },
+  "scoreHero": {
+    "showingSaved": "सहेजे गए परिणाम दिखाए जा रहे हैं",
+    "reanalyze": "फिर से विश्लेषण करें",
+    "analysisComplete": "विश्लेषण पूर्ण",
+    "eliteSignal_one": "{{count}} एलीट सिग्नल",
+    "eliteSignal_other": "{{count}} एलीट सिग्नल",
+    "greeting": "{{name}}, यह है आपका स्कोर",
+    "defaultTitle": "आपका रिज़्यूमे स्कोर",
+    "currentRole": "वर्तमान पद:",
+    "noRedFlags": "कोई चेतावनी संकेत नहीं",
+    "issue_one": "{{count}} समस्या",
+    "issue_other": "{{count}} समस्याएँ",
+    "quickFix_one": "{{count}} त्वरित सुधार",
+    "quickFix_other": "{{count}} त्वरित सुधार",
+    "experienceLevel": {
+      "entry": "प्रारंभिक स्तर",
+      "mid": "मध्य स्तर",
+      "senior": "वरिष्ठ",
+      "executive": "कार्यकारी"
+    },
+    "stats": {
+      "format": "फ़ॉर्मेट",
+      "keywords": "कीवर्ड",
+      "metrics": "मेट्रिक्स",
+      "impact": "प्रभाव",
+      "flags": "चेतावनियाँ"
+    },
+    "filterPhrase": {
+      "compliance": "सख्त, अनुपालन-केंद्रित ATS फ़िल्टर",
+      "credential": "योग्यता-केंद्रित आवेदक ट्रैकिंग सिस्टम",
+      "recruiterScreen": "रिक्रूटर के देखने से पहले स्वचालित फ़िल्टर",
+      "volume": "प्रति भूमिका सैकड़ों आवेदकों को फ़िल्टर करने वाले ATS सिस्टम",
+      "generic": "स्वचालित ATS फ़िल्टर"
+    },
+    "outcome": {
+      "strong": "{{filterPhrase}} पार करने के लिए मजबूत उम्मीदवार",
+      "likely": "अधिकांश {{filterPhrase}} पार करने की संभावना",
+      "atRisk": "{{filterPhrase}} द्वारा फ़िल्टर होने का जोखिम",
+      "highRisk": "किसी व्यक्ति के देखने से पहले {{filterPhrase}} द्वारा फ़िल्टर होने का उच्च जोखिम"
+    },
+    "gauge": {
+      "excellent": "उत्कृष्ट",
+      "good": "अच्छा",
+      "needsImprovement": "सुधार की आवश्यकता है",
+      "poor": "कमज़ोर"
+    }
   }
 }

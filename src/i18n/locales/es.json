@@ -558,5 +558,52 @@
     "switchPrompt": "¿Cambiar idioma del sitio a {{language}}?",
     "switchButton": "Cambiar a {{language}}",
     "dismiss": "Mantener {{current}}"
+  },
+  "scoreHero": {
+    "showingSaved": "Mostrando resultados guardados",
+    "reanalyze": "Volver a analizar",
+    "analysisComplete": "Análisis completo",
+    "eliteSignal_one": "{{count}} señal de élite",
+    "eliteSignal_other": "{{count}} señales de élite",
+    "greeting": "{{name}}, aquí está tu puntuación",
+    "defaultTitle": "Tu puntuación de currículum",
+    "currentRole": "Puesto actual:",
+    "noRedFlags": "Sin señales de alerta",
+    "issue_one": "{{count}} problema",
+    "issue_other": "{{count}} problemas",
+    "quickFix_one": "{{count}} solución rápida",
+    "quickFix_other": "{{count}} soluciones rápidas",
+    "experienceLevel": {
+      "entry": "Nivel inicial",
+      "mid": "Nivel medio",
+      "senior": "Senior",
+      "executive": "Ejecutivo"
+    },
+    "stats": {
+      "format": "Formato",
+      "keywords": "Palabras clave",
+      "metrics": "Métricas",
+      "impact": "Impacto",
+      "flags": "Alertas"
+    },
+    "filterPhrase": {
+      "compliance": "filtros ATS rígidos y orientados al cumplimiento normativo",
+      "credential": "sistemas de seguimiento de candidatos centrados en credenciales",
+      "recruiterScreen": "filtros automáticos antes de que un reclutador lo vea",
+      "volume": "sistemas ATS que filtran cientos de candidatos por puesto",
+      "generic": "filtros ATS automáticos"
+    },
+    "outcome": {
+      "strong": "Candidato sólido para superar {{filterPhrase}}",
+      "likely": "Probablemente supere la mayoría de {{filterPhrase}}",
+      "atRisk": "En riesgo de ser filtrado por {{filterPhrase}}",
+      "highRisk": "Alto riesgo de ser filtrado por {{filterPhrase}} antes de que un humano lo vea"
+    },
+    "gauge": {
+      "excellent": "Excelente",
+      "good": "Bueno",
+      "needsImprovement": "Necesita mejorar",
+      "poor": "Deficiente"
+    }
   }
 }

@@ -558,5 +558,52 @@
     "switchPrompt": "Changer la langue du site en {{language}} ?",
     "switchButton": "Passer en {{language}}",
     "dismiss": "Garder {{current}}"
+  },
+  "scoreHero": {
+    "showingSaved": "Affichage des résultats enregistrés",
+    "reanalyze": "Réanalyser",
+    "analysisComplete": "Analyse terminée",
+    "eliteSignal_one": "{{count}} signal d'élite",
+    "eliteSignal_other": "{{count}} signaux d'élite",
+    "greeting": "{{name}}, voici votre score",
+    "defaultTitle": "Le score de votre CV",
+    "currentRole": "Poste actuel :",
+    "noRedFlags": "Aucun signal d'alerte",
+    "issue_one": "{{count}} problème",
+    "issue_other": "{{count}} problèmes",
+    "quickFix_one": "{{count}} correction rapide",
+    "quickFix_other": "{{count}} corrections rapides",
+    "experienceLevel": {
+      "entry": "Niveau débutant",
+      "mid": "Niveau intermédiaire",
+      "senior": "Senior",
+      "executive": "Cadre dirigeant"
+    },
+    "stats": {
+      "format": "Format",
+      "keywords": "Mots-clés",
+      "metrics": "Indicateurs",
+      "impact": "Impact",
+      "flags": "Alertes"
+    },
+    "filterPhrase": {
+      "compliance": "filtres ATS rigides axés sur la conformité",
+      "credential": "systèmes de suivi des candidatures axés sur les qualifications",
+      "recruiterScreen": "filtres automatisés avant qu'un recruteur ne le voie",
+      "volume": "systèmes ATS filtrant des centaines de candidats par poste",
+      "generic": "filtres ATS automatisés"
+    },
+    "outcome": {
+      "strong": "Candidat solide pour passer {{filterPhrase}}",
+      "likely": "Susceptible de passer la plupart des {{filterPhrase}}",
+      "atRisk": "Risque d'être filtré par {{filterPhrase}}",
+      "highRisk": "Risque élevé d'être filtré par {{filterPhrase}} avant qu'un humain ne le voie"
+    },
+    "gauge": {
+      "excellent": "Excellent",
+      "good": "Bon",
+      "needsImprovement": "À améliorer",
+      "poor": "Faible"
+    }
   }
 }

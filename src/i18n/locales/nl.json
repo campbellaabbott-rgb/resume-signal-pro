@@ -558,5 +558,52 @@
     "switchPrompt": "Sitetaal wijzigen naar {{language}}?",
     "switchButton": "Overschakelen naar {{language}}",
     "dismiss": "{{current}} behouden"
+  },
+  "scoreHero": {
+    "showingSaved": "Opgeslagen resultaten worden weergegeven",
+    "reanalyze": "Opnieuw analyseren",
+    "analysisComplete": "Analyse voltooid",
+    "eliteSignal_one": "{{count}} topsignaal",
+    "eliteSignal_other": "{{count}} topsignalen",
+    "greeting": "{{name}}, hier is je score",
+    "defaultTitle": "Je cv-score",
+    "currentRole": "Huidige functie:",
+    "noRedFlags": "Geen waarschuwingssignalen",
+    "issue_one": "{{count}} probleem",
+    "issue_other": "{{count}} problemen",
+    "quickFix_one": "{{count}} snelle verbetering",
+    "quickFix_other": "{{count}} snelle verbeteringen",
+    "experienceLevel": {
+      "entry": "Startersniveau",
+      "mid": "Middenniveau",
+      "senior": "Senior",
+      "executive": "Directieniveau"
+    },
+    "stats": {
+      "format": "Opmaak",
+      "keywords": "Zoekwoorden",
+      "metrics": "Statistieken",
+      "impact": "Impact",
+      "flags": "Signalen"
+    },
+    "filterPhrase": {
+      "compliance": "strikte, compliance-gerichte ATS-filters",
+      "credential": "op kwalificaties gerichte sollicitantvolgsystemen",
+      "recruiterScreen": "geautomatiseerde filters voordat een recruiter het ziet",
+      "volume": "ATS-systemen die honderden kandidaten per functie filteren",
+      "generic": "geautomatiseerde ATS-filters"
+    },
+    "outcome": {
+      "strong": "Sterke kandidaat om {{filterPhrase}} te doorstaan",
+      "likely": "Komt waarschijnlijk door de meeste {{filterPhrase}}",
+      "atRisk": "Risico om uitgefilterd te worden door {{filterPhrase}}",
+      "highRisk": "Hoog risico om uitgefilterd te worden door {{filterPhrase}} voordat een mens het ziet"
+    },
+    "gauge": {
+      "excellent": "Uitstekend",
+      "good": "Goed",
+      "needsImprovement": "Voor verbetering vatbaar",
+      "poor": "Zwak"
+    }
   }
 }

@@ -558,5 +558,52 @@
     "switchPrompt": "Palitan ang wika ng site sa {{language}}?",
     "switchButton": "Lumipat sa {{language}}",
     "dismiss": "Panatilihin ang {{current}}"
+  },
+  "scoreHero": {
+    "showingSaved": "Ipinapakita ang naka-save na resulta",
+    "reanalyze": "Suriin ulit",
+    "analysisComplete": "Tapos na ang Pagsusuri",
+    "eliteSignal_one": "{{count}} elite signal",
+    "eliteSignal_other": "{{count}} elite signal",
+    "greeting": "{{name}}, ito ang iyong score",
+    "defaultTitle": "Ang Score ng Iyong Resume",
+    "currentRole": "Kasalukuyang Posisyon:",
+    "noRedFlags": "Walang red flag",
+    "issue_one": "{{count}} isyu",
+    "issue_other": "{{count}} isyu",
+    "quickFix_one": "{{count}} mabilis na ayos",
+    "quickFix_other": "{{count}} mabilis na ayos",
+    "experienceLevel": {
+      "entry": "Entry Level",
+      "mid": "Mid Level",
+      "senior": "Senior",
+      "executive": "Executive"
+    },
+    "stats": {
+      "format": "Format",
+      "keywords": "Keywords",
+      "metrics": "Metrics",
+      "impact": "Impact",
+      "flags": "Mga Flag"
+    },
+    "filterPhrase": {
+      "compliance": "mahigpit, compliance-style na ATS screens",
+      "credential": "applicant tracking systems na nakatutok sa kredensyal",
+      "recruiterScreen": "awtomatikong filter bago pa makita ng recruiter",
+      "volume": "mga ATS system na sumasala ng daan-daang aplikante kada role",
+      "generic": "awtomatikong ATS screens"
+    },
+    "outcome": {
+      "strong": "Malakas na kandidato para makapasa sa {{filterPhrase}}",
+      "likely": "Malamang na makapasa sa karamihan ng {{filterPhrase}}",
+      "atRisk": "May panganib na ma-filter ng {{filterPhrase}}",
+      "highRisk": "Mataas ang panganib na ma-filter ng {{filterPhrase}} bago pa makita ng tao"
+    },
+    "gauge": {
+      "excellent": "Napakahusay",
+      "good": "Maganda",
+      "needsImprovement": "Kailangan ng Pagpapabuti",
+      "poor": "Mahina"
+    }
   }
 }

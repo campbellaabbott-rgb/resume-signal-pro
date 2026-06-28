@@ -558,5 +558,52 @@
     "switchPrompt": "Mudar idioma do site para {{language}}?",
     "switchButton": "Mudar para {{language}}",
     "dismiss": "Manter {{current}}"
+  },
+  "scoreHero": {
+    "showingSaved": "A mostrar resultados guardados",
+    "reanalyze": "Reanalisar",
+    "analysisComplete": "Análise concluída",
+    "eliteSignal_one": "{{count}} sinal de destaque",
+    "eliteSignal_other": "{{count}} sinais de destaque",
+    "greeting": "{{name}}, aqui está a sua pontuação",
+    "defaultTitle": "A pontuação do seu currículo",
+    "currentRole": "Cargo atual:",
+    "noRedFlags": "Sem sinais de alerta",
+    "issue_one": "{{count}} problema",
+    "issue_other": "{{count}} problemas",
+    "quickFix_one": "{{count}} correção rápida",
+    "quickFix_other": "{{count}} correções rápidas",
+    "experienceLevel": {
+      "entry": "Nível inicial",
+      "mid": "Nível médio",
+      "senior": "Senior",
+      "executive": "Executivo"
+    },
+    "stats": {
+      "format": "Formato",
+      "keywords": "Palavras-chave",
+      "metrics": "Métricas",
+      "impact": "Impacto",
+      "flags": "Alertas"
+    },
+    "filterPhrase": {
+      "compliance": "filtros ATS rígidos e focados em conformidade",
+      "credential": "sistemas de rastreamento de candidatos focados em credenciais",
+      "recruiterScreen": "filtros automáticos antes de um recrutador o ver",
+      "volume": "sistemas ATS que filtram centenas de candidatos por vaga",
+      "generic": "filtros ATS automáticos"
+    },
+    "outcome": {
+      "strong": "Candidato forte para superar {{filterPhrase}}",
+      "likely": "Provavelmente irá superar a maioria dos {{filterPhrase}}",
+      "atRisk": "Em risco de ser filtrado por {{filterPhrase}}",
+      "highRisk": "Alto risco de ser filtrado por {{filterPhrase}} antes de um humano o ver"
+    },
+    "gauge": {
+      "excellent": "Excelente",
+      "good": "Bom",
+      "needsImprovement": "Precisa melhorar",
+      "poor": "Fraco"
+    }
   }
 }

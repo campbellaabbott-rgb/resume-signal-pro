@@ -1,71 +1,71 @@
 import { describe, it, expect } from "vitest";
-import { getFilterPhrase, getOutcomeMessage } from "./score-outcome-message";
+import { getFilterPhraseKey, getOutcomeTier, getOutcomeStatus, getOutcome } from "./score-outcome-message";
 
-describe("getFilterPhrase", () => {
-  it("returns industry-specific phrasing for legal/finance/consulting", () => {
-    expect(getFilterPhrase("legal")).toBe("rigid, compliance-style ATS screens");
-    expect(getFilterPhrase("finance")).toBe("rigid, compliance-style ATS screens");
-    expect(getFilterPhrase("consulting")).toBe("rigid, compliance-style ATS screens");
+describe("getFilterPhraseKey", () => {
+  it("returns 'compliance' for legal/finance/consulting", () => {
+    expect(getFilterPhraseKey("legal")).toBe("compliance");
+    expect(getFilterPhraseKey("finance")).toBe("compliance");
+    expect(getFilterPhraseKey("consulting")).toBe("compliance");
   });
 
-  it("returns industry-specific phrasing for healthcare", () => {
-    expect(getFilterPhrase("healthcare")).toBe("credential-focused applicant tracking systems");
-    expect(getFilterPhrase("nursing")).toBe("credential-focused applicant tracking systems");
+  it("returns 'credential' for healthcare", () => {
+    expect(getFilterPhraseKey("healthcare")).toBe("credential");
+    expect(getFilterPhraseKey("nursing")).toBe("credential");
   });
 
-  it("returns industry-specific phrasing for creative/marketing", () => {
-    expect(getFilterPhrase("marketing")).toBe("automated filters before a recruiter ever sees it");
-    expect(getFilterPhrase("creative")).toBe("automated filters before a recruiter ever sees it");
+  it("returns 'recruiterScreen' for creative/marketing", () => {
+    expect(getFilterPhraseKey("marketing")).toBe("recruiterScreen");
+    expect(getFilterPhraseKey("creative")).toBe("recruiterScreen");
   });
 
-  it("returns industry-specific phrasing for sales", () => {
-    expect(getFilterPhrase("sales")).toBe("ATS systems screening hundreds of applicants per role");
+  it("returns 'volume' for sales", () => {
+    expect(getFilterPhraseKey("sales")).toBe("volume");
   });
 
   it("is case-insensitive", () => {
-    expect(getFilterPhrase("LEGAL")).toBe("rigid, compliance-style ATS screens");
+    expect(getFilterPhraseKey("LEGAL")).toBe("compliance");
   });
 
-  it("falls back to generic phrasing for an unmatched/unknown industry", () => {
-    expect(getFilterPhrase("technology")).toBe("automated ATS screens");
-    expect(getFilterPhrase("")).toBe("automated ATS screens");
+  it("falls back to 'generic' for an unmatched/unknown industry", () => {
+    expect(getFilterPhraseKey("technology")).toBe("generic");
+    expect(getFilterPhraseKey("")).toBe("generic");
   });
 });
 
-describe("getOutcomeMessage", () => {
-  it("returns a success status with strong-candidate framing for a high score", () => {
-    const result = getOutcomeMessage(90, "technology");
-    expect(result.status).toBe("success");
-    expect(result.text).toContain("Strong candidate");
+describe("getOutcomeTier / getOutcomeStatus", () => {
+  it("returns 'strong' + success for a high score", () => {
+    expect(getOutcomeTier(90)).toBe("strong");
+    expect(getOutcomeStatus("strong")).toBe("success");
   });
 
-  it("returns a success status with hedged framing for a good (but not excellent) score", () => {
-    const result = getOutcomeMessage(75, "technology");
-    expect(result.status).toBe("success");
-    expect(result.text).toContain("Likely to clear");
+  it("returns 'likely' + success for a good (but not excellent) score", () => {
+    expect(getOutcomeTier(75)).toBe("likely");
+    expect(getOutcomeStatus("likely")).toBe("success");
   });
 
-  it("returns a warning status for a borderline score", () => {
-    const result = getOutcomeMessage(55, "technology");
-    expect(result.status).toBe("warning");
-    expect(result.text).toContain("At risk");
+  it("returns 'atRisk' + warning for a borderline score", () => {
+    expect(getOutcomeTier(55)).toBe("atRisk");
+    expect(getOutcomeStatus("atRisk")).toBe("warning");
   });
 
-  it("returns a destructive status for a low score", () => {
-    const result = getOutcomeMessage(30, "technology");
-    expect(result.status).toBe("destructive");
-    expect(result.text).toContain("High risk");
+  it("returns 'highRisk' + destructive for a low score", () => {
+    expect(getOutcomeTier(30)).toBe("highRisk");
+    expect(getOutcomeStatus("highRisk")).toBe("destructive");
+  });
+});
+
+describe("getOutcome", () => {
+  it("combines tier, status, and filter phrase key", () => {
+    expect(getOutcome(30, "legal")).toEqual({
+      tier: "highRisk",
+      status: "destructive",
+      filterPhraseKey: "compliance",
+    });
   });
 
-  it("incorporates the industry-specific filter phrase into the message", () => {
-    const result = getOutcomeMessage(30, "legal");
-    expect(result.text).toContain("rigid, compliance-style ATS screens");
-  });
-
-  it("never asserts a specific numeric probability (stays hedged, not fabricated precision)", () => {
-    for (const score of [10, 40, 60, 95]) {
-      const result = getOutcomeMessage(score, "technology");
-      expect(result.text).not.toMatch(/\d+%/);
-    }
+  it("never returns a numeric probability — only language-agnostic keys", () => {
+    const result = getOutcome(42, "sales");
+    expect(typeof result.tier).toBe("string");
+    expect(typeof result.filterPhraseKey).toBe("string");
   });
 });

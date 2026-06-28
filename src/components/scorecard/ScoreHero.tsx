@@ -11,7 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { getOutcomeMessage } from "@/lib/score-outcome-message";
+import { getOutcome } from "@/lib/score-outcome-message";
 
 interface ScoreHeroProps {
   candidateName?: string | null;
@@ -31,11 +31,11 @@ interface ScoreHeroProps {
   eliteSignalsCount?: number;
 }
 
-const getExperienceLevelLabel = (level: string) => {
-  if (level === "entry") return "Entry Level";
-  if (level === "mid") return "Mid Level";
-  if (level === "senior") return "Senior";
-  return "Executive";
+const getExperienceLevelKey = (level: string) => {
+  if (level === "entry") return "entry";
+  if (level === "mid") return "mid";
+  if (level === "senior") return "senior";
+  return "executive";
 };
 
 
@@ -61,11 +61,12 @@ function RadialGauge({ score, size = 140, strokeWidth = 10 }: { score: number; s
     return "hsl(var(--destructive))";
   };
 
+  const { t } = useTranslation();
   const getLabel = () => {
-    if (score >= 85) return "Excellent";
-    if (score >= 70) return "Good";
-    if (score >= 50) return "Needs Improvement";
-    return "Poor";
+    if (score >= 85) return t("scoreHero.gauge.excellent");
+    if (score >= 70) return t("scoreHero.gauge.good");
+    if (score >= 50) return t("scoreHero.gauge.needsImprovement");
+    return t("scoreHero.gauge.poor");
   };
 
   return (
@@ -185,7 +186,7 @@ export function ScoreHero({
         <div className="flex items-center justify-center gap-3 px-4 py-2 mb-4 rounded-lg border border-border bg-card/50">
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
             <Zap className="w-3.5 h-3.5 text-primary" />
-            <span>Showing saved results</span>
+            <span>{t("scoreHero.showingSaved")}</span>
           </div>
           <div className="h-3.5 w-px bg-border" />
           <button
@@ -209,7 +210,7 @@ export function ScoreHero({
             ) : (
               <RefreshCw className="w-3.5 h-3.5" />
             )}
-            Re-analyze
+            {t("scoreHero.reanalyze")}
           </button>
         </div>
       )}
@@ -220,12 +221,12 @@ export function ScoreHero({
         <div className="flex items-center justify-between mb-5">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-success/10 text-success text-xs font-semibold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
-            Analysis Complete
+            {t("scoreHero.analysisComplete")}
           </div>
           {eliteSignalsCount > 0 && (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-warning/10 text-warning text-xs font-semibold">
               <Award className="w-3.5 h-3.5" />
-              {eliteSignalsCount} elite signal{eliteSignalsCount > 1 ? "s" : ""}
+              {t("scoreHero.eliteSignal", { count: eliteSignalsCount })}
             </div>
           )}
         </div>
@@ -241,30 +242,31 @@ export function ScoreHero({
           <div className="flex-1 min-w-0">
             <h3 className="text-lg sm:text-xl font-bold text-foreground mb-1 truncate">
               {firstName
-                ? `${firstName}, here's your score`
-                : "Your Resume Score"
+                ? t("scoreHero.greeting", { name: firstName })
+                : t("scoreHero.defaultTitle")
               }
             </h3>
             {(() => {
-              const outcome = getOutcomeMessage(atsScoreEstimate, industry);
+              const outcome = getOutcome(atsScoreEstimate, industry);
               const outcomeColor = outcome.status === "success" ? "text-success" : outcome.status === "warning" ? "text-warning" : "text-destructive";
+              const filterPhrase = t(`scoreHero.filterPhrase.${outcome.filterPhraseKey}`);
               return (
                 <p className={cn("text-sm font-medium mb-2", outcomeColor)}>
-                  {outcome.text}
+                  {t(`scoreHero.outcome.${outcome.tier}`, { filterPhrase })}
                 </p>
               );
             })()}
             {currentRole && (
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-2 rounded-lg bg-primary/10 border border-primary/20 text-xs font-medium text-primary">
                 <Briefcase className="w-3 h-3" />
-                <span className="text-muted-foreground">Current Role:</span>
+                <span className="text-muted-foreground">{t("scoreHero.currentRole")}</span>
                 <span className="font-semibold truncate max-w-[200px]">{currentRole}</span>
               </div>
             )}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mb-3">
               <span className="text-foreground/80">{displayIndustry}</span>
               <span className="text-border">•</span>
-              <span>{getExperienceLevelLabel(experienceLevel.level)}</span>
+              <span>{t(`scoreHero.experienceLevel.${getExperienceLevelKey(experienceLevel.level)}`)}</span>
             </div>
 
             {/* Quick status row */}
@@ -272,18 +274,18 @@ export function ScoreHero({
               {redFlagsCount > 0 ? (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">
                   <AlertTriangle className="w-3 h-3" />
-                  {redFlagsCount} issue{redFlagsCount > 1 ? "s" : ""}
+                  {t("scoreHero.issue", { count: redFlagsCount })}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">
                   <CheckCircle2 className="w-3 h-3" />
-                  No red flags
+                  {t("scoreHero.noRedFlags")}
                 </span>
               )}
               {quickWinsCount > 0 && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
                   <TrendingUp className="w-3 h-3" />
-                  {quickWinsCount} quick fix{quickWinsCount > 1 ? "es" : ""}
+                  {t("scoreHero.quickFix", { count: quickWinsCount })}
                 </span>
               )}
             </div>
@@ -295,19 +297,19 @@ export function ScoreHero({
           <div className="grid grid-cols-4 sm:grid-cols-5 gap-4">
             <StatPill
               icon={FileCheck}
-              label="Format"
+              label={t("scoreHero.stats.format")}
               value={formatGrade}
               status={gradeStatus(formatGrade)}
             />
             <StatPill
               icon={Target}
-              label="Keywords"
+              label={t("scoreHero.stats.keywords")}
               value={`${keywordsCount}`}
               status={keywordsCount > 6 ? "destructive" : keywordsCount > 3 ? "warning" : "success"}
             />
             <StatPill
               icon={TrendingUp}
-              label="Metrics"
+              label={t("scoreHero.stats.metrics")}
               value={quantificationScore !== undefined ? `${quantificationScore}%` : "—"}
               status={
                 quantificationScore === undefined ? "muted"
@@ -318,7 +320,7 @@ export function ScoreHero({
             />
             <StatPill
               icon={Briefcase}
-              label="Impact"
+              label={t("scoreHero.stats.impact")}
               value={bulletImpactScore !== undefined ? `${bulletImpactScore}%` : "—"}
               status={
                 bulletImpactScore === undefined ? "muted"
@@ -331,7 +333,7 @@ export function ScoreHero({
             <div className="hidden sm:flex">
               <StatPill
                 icon={AlertTriangle}
-                label="Flags"
+                label={t("scoreHero.stats.flags")}
                 value={`${redFlagsCount}`}
                 status={redFlagsCount === 0 ? "success" : redFlagsCount <= 2 ? "warning" : "destructive"}
               />

@@ -558,5 +558,52 @@
     "switchPrompt": "Switch site language to {{language}}?",
     "switchButton": "Switch to {{language}}",
     "dismiss": "Keep {{current}}"
+  },
+  "scoreHero": {
+    "showingSaved": "Showing saved results",
+    "reanalyze": "Re-analyse",
+    "analysisComplete": "Analysis Complete",
+    "eliteSignal_one": "{{count}} elite signal",
+    "eliteSignal_other": "{{count}} elite signals",
+    "greeting": "{{name}}, here's your score",
+    "defaultTitle": "Your CV Score",
+    "currentRole": "Current Role:",
+    "noRedFlags": "No red flags",
+    "issue_one": "{{count}} issue",
+    "issue_other": "{{count}} issues",
+    "quickFix_one": "{{count}} quick fix",
+    "quickFix_other": "{{count}} quick fixes",
+    "experienceLevel": {
+      "entry": "Entry Level",
+      "mid": "Mid Level",
+      "senior": "Senior",
+      "executive": "Executive"
+    },
+    "stats": {
+      "format": "Format",
+      "keywords": "Keywords",
+      "metrics": "Metrics",
+      "impact": "Impact",
+      "flags": "Flags"
+    },
+    "filterPhrase": {
+      "compliance": "rigid, compliance-style ATS screens",
+      "credential": "credential-focused applicant tracking systems",
+      "recruiterScreen": "automated filters before a recruiter ever sees it",
+      "volume": "ATS systems screening hundreds of applicants per role",
+      "generic": "automated ATS screens"
+    },
+    "outcome": {
+      "strong": "Strong candidate for clearing {{filterPhrase}}",
+      "likely": "Likely to clear most {{filterPhrase}}",
+      "atRisk": "At risk of being filtered by {{filterPhrase}}",
+      "highRisk": "High risk of being filtered by {{filterPhrase}} before a human sees it"
+    },
+    "gauge": {
+      "excellent": "Excellent",
+      "good": "Good",
+      "needsImprovement": "Needs Improvement",
+      "poor": "Poor"
+    }
   }
 }

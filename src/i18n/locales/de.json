@@ -558,5 +558,52 @@
     "switchPrompt": "Seitensprache auf {{language}} wechseln?",
     "switchButton": "Zu {{language}} wechseln",
     "dismiss": "{{current}} beibehalten"
+  },
+  "scoreHero": {
+    "showingSaved": "Gespeicherte Ergebnisse werden angezeigt",
+    "reanalyze": "Neu analysieren",
+    "analysisComplete": "Analyse abgeschlossen",
+    "eliteSignal_one": "{{count}} Spitzensignal",
+    "eliteSignal_other": "{{count}} Spitzensignale",
+    "greeting": "{{name}}, hier ist deine Punktzahl",
+    "defaultTitle": "Deine Lebenslauf-Punktzahl",
+    "currentRole": "Aktuelle Position:",
+    "noRedFlags": "Keine Warnsignale",
+    "issue_one": "{{count}} Problem",
+    "issue_other": "{{count}} Probleme",
+    "quickFix_one": "{{count}} schnelle Korrektur",
+    "quickFix_other": "{{count}} schnelle Korrekturen",
+    "experienceLevel": {
+      "entry": "Einstiegsniveau",
+      "mid": "Mittleres Niveau",
+      "senior": "Senior",
+      "executive": "Führungsebene"
+    },
+    "stats": {
+      "format": "Format",
+      "keywords": "Schlüsselwörter",
+      "metrics": "Kennzahlen",
+      "impact": "Wirkung",
+      "flags": "Warnsignale"
+    },
+    "filterPhrase": {
+      "compliance": "starre, compliance-orientierte ATS-Filter",
+      "credential": "qualifikationsorientierte Bewerbermanagement-Systeme",
+      "recruiterScreen": "automatisierte Filter, bevor ein Recruiter ihn überhaupt sieht",
+      "volume": "ATS-Systeme, die Hunderte von Bewerbern pro Stelle filtern",
+      "generic": "automatisierte ATS-Filter"
+    },
+    "outcome": {
+      "strong": "Starker Kandidat, um {{filterPhrase}} zu bestehen",
+      "likely": "Wird voraussichtlich die meisten {{filterPhrase}} bestehen",
+      "atRisk": "Risiko, von {{filterPhrase}} herausgefiltert zu werden",
+      "highRisk": "Hohes Risiko, von {{filterPhrase}} herausgefiltert zu werden, bevor ein Mensch ihn sieht"
+    },
+    "gauge": {
+      "excellent": "Ausgezeichnet",
+      "good": "Gut",
+      "needsImprovement": "Verbesserungswürdig",
+      "poor": "Schwach"
+    }
   }
 }
