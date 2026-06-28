@@ -198,10 +198,11 @@ serve(async (req) => {
 
     // Extract text using mammoth. mammoth's extractRawText() passes its input
     // straight to unzip.openZip(), which only recognizes a `buffer`, `path`, or
-    // `file` key — never `arrayBuffer` (confirmed against mammoth@1.6.0's source).
-    // Passing { arrayBuffer } here always failed with "Could not find file in
-    // options", meaning every .docx upload through this function was failing.
-    const result = await mammoth.extractRawText({ buffer: arrayBuffer });
+    // `file` key — and the `buffer` value must be a Node Buffer or Uint8Array,
+    // NOT a raw ArrayBuffer (JSZip's isNode/Buffer.isBuffer check rejects plain
+    // ArrayBuffers, which surfaces as "Could not find file in options").
+    const docxBuffer = new Uint8Array(arrayBuffer);
+    const result = await mammoth.extractRawText({ buffer: docxBuffer });
     const text = result.value.trim();
 
     if (result.messages && result.messages.length > 0) {
