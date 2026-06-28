@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Flame, MessageSquare, TrendingUp, ArrowRight, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ interface AddOnsShowcaseProps {
 }
 
 export function AddOnsShowcase({ variant = 'compact', sessionId, className }: AddOnsShowcaseProps) {
+  const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
 
@@ -31,14 +33,14 @@ export function AddOnsShowcase({ variant = 'compact', sessionId, className }: Ad
       <div className={cn("rounded-2xl bg-gradient-to-br from-accent/10 to-primary/5 border border-accent/30 p-5", className)}>
         <div className="flex items-center gap-2 mb-1">
           <Sparkles className="w-4 h-4 text-primary" />
-          <h4 className="font-bold text-foreground">Power-Up Add-Ons</h4>
-          <Badge variant="secondary" className="text-xs">$5 each</Badge>
+          <h4 className="font-bold text-foreground">{t('addOnsShowcase.powerUpAddOns')}</h4>
+          <Badge variant="secondary" className="text-xs">{t('addOnsShowcase.fiveDollarsEach')}</Badge>
         </div>
         <p className="text-xs text-muted-foreground mb-1">
-          <Flame className="w-3 h-3 inline text-destructive" /> <strong>Resume Roast</strong> is included free with your scan!
+          <Flame className="w-3 h-3 inline text-destructive" /> <strong>{t('addOnsShowcase.resumeRoastName')}</strong> {t('addOnsShowcase.includedFree')}
         </p>
         <p className="text-sm text-muted-foreground mb-4">
-          Get targeted insights to level up specific areas of your job search.
+          {t('addOnsShowcase.targetedInsights')}
         </p>
         
         <div className="grid gap-3">
@@ -77,7 +79,7 @@ export function AddOnsShowcase({ variant = 'compact', sessionId, className }: Ad
           onClick={() => window.scrollTo(0, 0)}
           className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-3"
         >
-          View all products <ArrowRight className="w-3 h-3" />
+          {t('addOnsShowcase.viewAllProducts')} <ArrowRight className="w-3 h-3" />
         </Link>
       </div>
     );
@@ -89,11 +91,11 @@ export function AddOnsShowcase({ variant = 'compact', sessionId, className }: Ad
       <div className="text-center mb-8">
         <Badge variant="outline" className="mb-3 border-primary/30 text-primary">
           <Sparkles className="w-3 h-3 mr-1" />
-          $5 Each
+          {t('addOnsShowcase.fiveDollarsEach')}
         </Badge>
-        <h2 className="text-2xl md:text-3xl font-bold mb-2">Quick Add-Ons</h2>
+        <h2 className="text-2xl md:text-3xl font-bold mb-2">{t('addOnsShowcase.quickAddOns')}</h2>
         <p className="text-muted-foreground max-w-lg mx-auto">
-          Targeted tools to boost specific areas of your job search. Mix and match for your needs.
+          {t('addOnsShowcase.mixAndMatch')}
         </p>
       </div>
       
@@ -135,7 +137,7 @@ export function AddOnsShowcase({ variant = 'compact', sessionId, className }: Ad
                 size="sm"
                 className="w-full gap-2"
               >
-                {isLoadingThis ? 'Processing...' : `Get for $${product.priceUsd}`}
+                {isLoadingThis ? t('addOnsShowcase.processing') : t('addOnsShowcase.getForPrice', { price: product.priceUsd })}
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </div>

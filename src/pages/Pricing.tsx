@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -42,6 +43,7 @@ const productOrder: ProductId[] = [
 ];
 
 export default function Pricing() {
+  const { t } = useTranslation();
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
   const { formatPrice, isLocalCurrency } = useCurrency();
   
@@ -64,22 +66,22 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEO title="Pricing — Resume Booster" description="Plans from $1 Keyword Fix to $25 Career Snapshot. Pay once, no subscription. Recruiter-grade resume rewrites." path="/pricing" />
+      <SEO title={t('pricingPage.metaTitle')} description={t('pricingPage.metaDescription')} path="/pricing" />
       <Header />
-      
+
       <main className="pt-32 pb-20">
         <div className="container max-w-6xl">
           {/* Hero */}
           <div className="text-center mb-16">
             <Badge variant="secondary" className="mb-4">
               <Star className="w-3 h-3 mr-1" />
-              One-time payments • No subscriptions
+              {t('pricingPage.noSubscriptions')}
             </Badge>
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Choose Your <span className="text-primary">Resume Boost</span>
+              {t('pricingPage.titlePrefix')} <span className="text-primary">{t('pricingPage.titleHighlight')}</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              From quick fixes to complete career packages. Pay once, use forever.
+              {t('pricingPage.subtitle')}
             </p>
           </div>
 
@@ -87,15 +89,15 @@ export default function Pricing() {
           <div className="flex flex-wrap justify-center gap-6 mb-12 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-success" />
-              <span>Secure checkout</span>
+              <span>{t('pricingPage.secureCheckout')}</span>
             </div>
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-warning" />
-              <span>Instant access</span>
+              <span>{t('pricingPage.instantAccess')}</span>
             </div>
             <div className="flex items-center gap-2">
               <Check className="w-4 h-4 text-primary" />
-              <span>Stripe protected</span>
+              <span>{t('pricingPage.stripeProtected')}</span>
             </div>
           </div>
 
@@ -104,8 +106,8 @@ export default function Pricing() {
 
           {/* Premium Products Grid */}
           <div className="text-center mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">Premium Packages</h2>
-            <p className="text-muted-foreground">Complete career transformation tools</p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">{t('pricingPage.premiumPackages')}</h2>
+            <p className="text-muted-foreground">{t('pricingPage.premiumSubtitle')}</p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
             {productOrder.map((key) => {
@@ -153,7 +155,7 @@ export default function Pricing() {
                   <div className="mb-4">
                     <div className="flex items-baseline gap-2">
                       <span className="text-4xl font-bold">${product.priceUsd}</span>
-                      <span className="text-muted-foreground">one-time</span>
+                      <span className="text-muted-foreground">{t('pricingPage.oneTime')}</span>
                       {'savings' in product && product.savings && (
                         <Badge variant="secondary" className="ml-auto">
                           {product.savings}
@@ -190,25 +192,25 @@ export default function Pricing() {
                     {isLoadingThis ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Processing...
+                        {t('pricingPage.processing')}
                       </>
                     ) : 'useMainCheckout' in product && product.useMainCheckout ? (
                       <>
-                        Upload Resume First
+                        {t('pricingPage.uploadResumeFirst')}
                         <ArrowRight className="w-4 h-4" />
                       </>
                     ) : (
                       <>
-                        Get {product.name.split(' ')[0]}
+                        {t('pricingPage.getProduct', { name: product.name.split(' ')[0] })}
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
                   </Button>
-                  
+
                   {/* Info text for products requiring resume upload */}
                   {'useMainCheckout' in product && product.useMainCheckout && (
                     <p className="text-xs text-muted-foreground text-center mt-2">
-                      Requires uploading your resume to analyze
+                      {t('pricingPage.requiresUpload')}
                     </p>
                   )}
                 </div>
@@ -219,21 +221,21 @@ export default function Pricing() {
           {/* Value Comparison */}
           <div className="max-w-2xl mx-auto mb-16">
             <h2 className="text-2xl font-bold text-center mb-6">
-              Why Resume Booster?
+              {t('pricingPage.whyResumeBooster')}
             </h2>
             <ValueComparison />
           </div>
 
           {/* FAQ Section */}
           <div className="max-w-2xl mx-auto text-center">
-            <h2 className="text-2xl font-bold mb-4">Questions?</h2>
+            <h2 className="text-2xl font-bold mb-4">{t('pricingPage.questions')}</h2>
             <p className="text-muted-foreground mb-6">
-              All products are one-time purchases with instant access. 
-              Start with a <Link to="/" className="text-primary hover:underline">free scan</Link> to see your score first.
+              {t('pricingPage.allProductsOneTime')}{' '}
+              <Link to="/" className="text-primary hover:underline">{t('pricingPage.freeScanLink')}</Link> {t('pricingPage.seeScoreFirst')}
             </p>
             <Button variant="outline" asChild>
               <Link to="/">
-                Try Free Scan First
+                {t('pricingPage.tryFreeScanFirst')}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
             </Button>

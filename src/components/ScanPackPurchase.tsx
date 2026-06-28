@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Coins, CheckCircle2, Mail, Plus, Minus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,6 +23,7 @@ export interface ScanPackPurchaseProps {
 const PRESET_AMOUNTS = [5, 10, 20, 50];
 
 export function ScanPackPurchase({ onClose, className, open, onOpenChange }: ScanPackPurchaseProps) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [creditAmount, setCreditAmount] = useState(10);
   const { purchaseCredits, isLoading, pricePerCredit } = useScanCredits();
@@ -59,8 +61,8 @@ export function ScanPackPurchase({ onClose, className, open, onOpenChange }: Sca
           <Coins className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h3 className="font-semibold text-lg">Top Up Credits</h3>
-          <p className="text-sm text-muted-foreground">{formatLocalPrice(pricePerCredit)} per credit • Use anytime</p>
+          <h3 className="font-semibold text-lg">{t('scanPackPurchase.topUpCredits')}</h3>
+          <p className="text-sm text-muted-foreground">{t('scanPackPurchase.perCreditUseAnytime', { price: formatLocalPrice(pricePerCredit) })}</p>
         </div>
       </div>
 
@@ -68,7 +70,7 @@ export function ScanPackPurchase({ onClose, className, open, onOpenChange }: Sca
         {/* Credit amount selector */}
         <div className="bg-secondary/30 rounded-xl p-4">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-medium">Credits to buy</span>
+            <span className="text-sm font-medium">{t('scanPackPurchase.creditsToBuy')}</span>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -115,7 +117,7 @@ export function ScanPackPurchase({ onClose, className, open, onOpenChange }: Sca
           </div>
           
           <div className="flex items-center justify-between pt-3 border-t border-border/50">
-            <span className="text-sm text-muted-foreground">Total</span>
+            <span className="text-sm text-muted-foreground">{t('scanPackPurchase.total')}</span>
             <div className="text-right">
               <span className="text-2xl font-bold">${totalPrice.toFixed(2)}</span>
               {isLocalCurrency && (
@@ -129,15 +131,15 @@ export function ScanPackPurchase({ onClose, className, open, onOpenChange }: Sca
         <ul className="space-y-2">
           <li className="flex items-center gap-2 text-sm">
             <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-            <span><strong>{creditAmount} resume scan{creditAmount !== 1 ? 's' : ''}</strong></span>
+            <span><strong>{t('scanPackPurchase.resumeScans', { count: creditAmount })}</strong></span>
           </li>
           <li className="flex items-center gap-2 text-sm">
             <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-            <span>Unlimited job description comparisons</span>
+            <span>{t('scanPackPurchase.unlimitedComparisons')}</span>
           </li>
           <li className="flex items-center gap-2 text-sm">
             <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-            <span>Credits never expire</span>
+            <span>{t('scanPackPurchase.creditsNeverExpire')}</span>
           </li>
         </ul>
 
@@ -145,17 +147,17 @@ export function ScanPackPurchase({ onClose, className, open, onOpenChange }: Sca
         <div className="space-y-2">
           <label className="text-sm font-medium flex items-center gap-2">
             <Mail className="w-4 h-4" />
-            Email to receive credits
+            {t('scanPackPurchase.emailToReceive')}
           </label>
           <Input
             type="email"
-            placeholder="your@email.com"
+            placeholder={t('scanPackPurchase.emailPlaceholder')}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="h-11"
           />
           <p className="text-xs text-muted-foreground">
-            Credits are tied to your email address
+            {t('scanPackPurchase.creditsTiedToEmail')}
           </p>
         </div>
 
@@ -167,11 +169,11 @@ export function ScanPackPurchase({ onClose, className, open, onOpenChange }: Sca
           size="lg"
         >
           {isLoading ? (
-            "Processing..."
+            t('scanPackPurchase.processing')
           ) : (
             <>
               <Coins className="w-4 h-4 mr-2" />
-              Buy {creditAmount} Credit{creditAmount !== 1 ? 's' : ''} for {formatLocalPrice(totalPrice)}
+              {t('scanPackPurchase.buyCreditsFor', { count: creditAmount, price: formatLocalPrice(totalPrice) })}
             </>
           )}
         </Button>
@@ -182,7 +184,7 @@ export function ScanPackPurchase({ onClose, className, open, onOpenChange }: Sca
             onClick={onClose}
             className="w-full"
           >
-            Maybe later
+            {t('scanPackPurchase.maybeLater')}
           </Button>
         )}
       </div>
@@ -195,7 +197,7 @@ export function ScanPackPurchase({ onClose, className, open, onOpenChange }: Sca
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md p-0 border-0 bg-transparent">
           <DialogHeader className="sr-only">
-            <DialogTitle>Buy Scan Credits</DialogTitle>
+            <DialogTitle>{t('scanPackPurchase.dialogTitle')}</DialogTitle>
           </DialogHeader>
           {content}
         </DialogContent>
