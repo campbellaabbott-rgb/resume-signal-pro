@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Coins, Zap, X, Mail, CheckCircle2, Plus, Minus, Clock, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useScanCredits } from "@/hooks/use-scan-credits";
@@ -13,6 +14,7 @@ interface RateLimitUpselProps {
 const PRESET_AMOUNTS = [5, 10, 20];
 
 export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [creditAmount, setCreditAmount] = useState(10);
   const { purchaseCredits, isLoading, pricePerCredit } = useScanCredits();
@@ -59,9 +61,9 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
               <AlertCircle className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-bold text-lg">Daily Scan Limit Reached</h2>
+              <h2 className="font-bold text-lg">{t('rateLimitUpsell.title')}</h2>
               <p className="text-white/90 text-sm mt-1">
-                You've used all 7 free scans for today. Don't worry – you can continue scanning right now!
+                {t('rateLimitUpsell.subtitle')}
               </p>
             </div>
           </div>
@@ -72,7 +74,7 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-colors"
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -81,7 +83,7 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6 bg-secondary/50 rounded-lg px-4 py-3">
             <Clock className="w-4 h-4 shrink-0" />
             <span>
-              Free scans reset in approximately <strong className="text-foreground">{hoursUntilReset} hour{hoursUntilReset !== 1 ? 's' : ''}</strong>
+              {t('rateLimitUpsell.resetIn')} <strong className="text-foreground">{t('rateLimitUpsell.hour', { count: hoursUntilReset })}</strong>
             </span>
           </div>
 

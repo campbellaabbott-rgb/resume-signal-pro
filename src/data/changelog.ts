@@ -14,6 +14,27 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-06-28",
+    title: "Your reports now speak your language",
+    description:
+      "All of our paid reports — Resume Score, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator, and Apply Assistant — now generate their AI content and on-screen text in whichever of our 9 supported languages you've selected, instead of always defaulting to English. Tailored resumes and cover letters you submit to employers still stay in their original language by design, since translating an actual job application without asking could do more harm than good.",
+    tags: ["improved"],
+  },
+  {
+    date: "2026-06-28",
+    title: "Translated the homepage and core scan flow",
+    description:
+      "The homepage, upload flow, pricing comparisons, and the full free-scan results page are now translated across all 9 supported languages — previously much of this only displayed in English regardless of your language setting.",
+    tags: ["improved"],
+  },
+  {
+    date: "2026-06-28",
+    title: "Fixed ATS Defense report delivery",
+    description:
+      "Fixed a bug where ATS Defense reports could fail to generate automatically after purchase. If this affected you, your report should now generate correctly — please reach out if you still don't see it.",
+    tags: ["fixed"],
+  },
+  {
+    date: "2026-06-28",
     title: "More reliable PDF and Word downloads",
     description:
       "Fixed an issue where a name with certain special characters could produce a broken download filename. Also added a clear heads-up if your resume or report contains characters our PDF export can't fully render yet (mainly non-Latin scripts), instead of silently leaving them out.",
