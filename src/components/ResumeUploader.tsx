@@ -24,6 +24,7 @@ interface StepIndicatorProps {
 }
 
 function StepIndicator({ number, label, isComplete, isOptional, isFree }: StepIndicatorProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-3 mb-4">
       <div className={cn(
@@ -37,24 +38,24 @@ function StepIndicator({ number, label, isComplete, isOptional, isFree }: StepIn
       <div className="flex items-center gap-2">
         <span className="font-semibold text-foreground">{label}</span>
         {isFree && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">Free</span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">{t('uploader.badges.free')}</span>
         )}
         {isOptional && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Optional</span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{t('uploader.badges.optional')}</span>
         )}
       </div>
     </div>
   );
 }
-const ANALYSIS_STEPS = [
-  "Parsing resume content...",
-  "Running AI-ATS simulation...",
-  "Evaluating formatting...",
-  "Scanning keywords...",
-  "Detecting industry...",
-  "Calculating metrics...",
-  "Generating insights...",
-  "Finalizing report..."
+const ANALYSIS_STEP_KEYS = [
+  "uploader.analysisSteps.step1",
+  "uploader.analysisSteps.step2",
+  "uploader.analysisSteps.step3",
+  "uploader.analysisSteps.step4",
+  "uploader.analysisSteps.step5",
+  "uploader.analysisSteps.step6",
+  "uploader.analysisSteps.step7",
+  "uploader.analysisSteps.step8"
 ];
 
 const ESTIMATED_TIME_SECONDS = 90; // 1.5 minutes
@@ -68,13 +69,14 @@ interface FreeScanProgressProps {
 }
 
 function FreeScanProgress({ streamingProgress }: FreeScanProgressProps) {
+  const { t } = useTranslation();
   const [fallbackProgress, setFallbackProgress] = useState(0);
   const [stepIndex, setStepIndex] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   // Use streaming progress if available, otherwise use fallback timer-based progress
   const progress = streamingProgress?.progress ?? fallbackProgress;
-  const currentMessage = streamingProgress?.message ?? ANALYSIS_STEPS[stepIndex];
+  const currentMessage = streamingProgress?.message ?? t(ANALYSIS_STEP_KEYS[stepIndex]);
 
   useEffect(() => {
     // Only run fallback timer if no streaming progress
@@ -92,8 +94,8 @@ function FreeScanProgress({ streamingProgress }: FreeScanProgressProps) {
       
       // Cycle through steps based on progress
       const newStepIndex = Math.min(
-        ANALYSIS_STEPS.length - 1,
-        Math.floor((newProgress / 100) * ANALYSIS_STEPS.length)
+        ANALYSIS_STEP_KEYS.length - 1,
+        Math.floor((newProgress / 100) * ANALYSIS_STEP_KEYS.length)
       );
       setStepIndex(newStepIndex);
     }, 500);
@@ -109,7 +111,7 @@ function FreeScanProgress({ streamingProgress }: FreeScanProgressProps) {
     <div className="min-w-[320px] p-6 rounded-2xl border border-success/30 bg-success/5 space-y-4">
       <div className="flex items-center justify-center gap-3">
         <Loader2 className="w-5 h-5 text-success animate-spin" />
-        <span className="text-sm font-medium text-foreground">Analyzing your resume...</span>
+        <span className="text-sm font-medium text-foreground">{t('uploader.scanProgress.analyzing')}</span>
       </div>
       
       {/* Progress bar */}
@@ -121,14 +123,14 @@ function FreeScanProgress({ streamingProgress }: FreeScanProgressProps) {
           />
         </div>
         <div className="flex justify-between text-xs text-muted-foreground">
-          <span>{Math.round(progress)}% complete</span>
+          <span>{t('uploader.scanProgress.percentComplete', { percent: Math.round(progress) })}</span>
           {!streamingProgress && (
             <span>
-              ~{remainingMinutes > 0 ? `${remainingMinutes}m ` : ''}{remainingSecondsDisplay}s remaining
+              {t('uploader.scanProgress.remaining', { time: `${remainingMinutes > 0 ? `${remainingMinutes}m ` : ''}${remainingSecondsDisplay}s` })}
             </span>
           )}
           {streamingProgress && (
-            <span className="text-success">Live updates</span>
+            <span className="text-success">{t('uploader.scanProgress.liveUpdates')}</span>
           )}
         </div>
       </div>
@@ -396,7 +398,7 @@ export function ResumeUploader({
           description: result.error.description,
           variant: "destructive",
         });
-        setLocalJobDescriptionText("Failed to import from Google Sheets. Please try again.");
+        setLocalJobDescriptionText(t('uploader.gsheetsImportFailed'));
         return;
       }
       
@@ -413,7 +415,7 @@ export function ResumeUploader({
       }
     } catch (error) {
       console.error("Google Sheets import error:", error);
-      setLocalJobDescriptionText("Failed to import from Google Sheets. Make sure the sheet is shared with 'Anyone with the link'.");
+      setLocalJobDescriptionText(t('uploader.gsheetsImportFailedShared'));
     } finally {
       setIsLoadingGoogleSheet(false);
     }
@@ -459,7 +461,7 @@ export function ResumeUploader({
             <div className="sm:hidden mb-4">
               <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success text-sm font-medium">
                 <Sparkles className="w-4 h-4" />
-                Start here — it's free!
+                {t('uploader.startHereFree')}
               </span>
             </div>
             <h2 id="upload-heading" className="text-2xl md:text-3xl font-bold mb-3">
@@ -470,7 +472,7 @@ export function ResumeUploader({
             </p>
             {/* Quick instruction - more prominent on mobile */}
             <p className="mt-3 text-sm text-muted-foreground/80 bg-muted/50 rounded-lg px-4 py-2 inline-block">
-              <span className="font-medium text-foreground">Only your resume is needed</span> — job description & LinkedIn are optional
+              <span className="font-medium text-foreground">{t('uploader.onlyResumeNeeded')}</span> {t('uploader.jobLinkedinOptional')}
             </p>
           </div>
 
@@ -482,9 +484,9 @@ export function ResumeUploader({
               isComplete={canProceed}
               isFree
             />
-            <p className="text-xs text-muted-foreground ml-11 -mt-2 mb-3">Required</p>
+            <p className="text-xs text-muted-foreground ml-11 -mt-2 mb-3">{t('uploader.requiredLabel')}</p>
 
-            <div className="flex justify-start mb-4" role="tablist" aria-label="Resume input method">
+            <div className="flex justify-start mb-4" role="tablist" aria-label={t('uploader.resumeInputAriaLabel')}>
               <div className="inline-flex rounded-xl bg-card border border-border p-1 shadow-sm">
                 <button
                   id="resume-upload-tab"
@@ -542,7 +544,7 @@ export function ResumeUploader({
                     <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-success/10">
                       <CheckCircle2 className="w-7 h-7 text-success" />
                     </div>
-                    <p className="text-base font-medium text-success">Resume uploaded!</p>
+                    <p className="text-base font-medium text-success">{t('uploader.resumeUploadedToast')}</p>
                     <div className="inline-flex items-center gap-3 px-4 py-3 rounded-xl bg-card border border-border max-w-full">
                       <FileText className="w-5 h-5 text-primary shrink-0" />
                       <span className="text-sm font-medium truncate">{selectedFile.name}</span>
@@ -552,7 +554,7 @@ export function ResumeUploader({
                           clearFile();
                         }}
                         className="p-2 hover:bg-muted rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
-                        aria-label="Remove file"
+                        aria-label={t('uploader.removeFileAriaLabel')}
                       >
                         <X className="w-5 h-5 text-muted-foreground" />
                       </button>
@@ -562,11 +564,11 @@ export function ResumeUploader({
                     <div className="mt-4 p-4 rounded-xl bg-success/10 border border-success/30 animate-fade-in">
                       <p className="text-sm font-semibold text-success flex items-center justify-center gap-2 mb-3">
                         <Zap className="w-4 h-4" />
-                        Resume ready! Now scan it below
+                        {t('uploader.readyScanBelow')}
                       </p>
                       <div className="flex items-center justify-center gap-2 text-success">
                         <ArrowDown className="w-5 h-5 animate-bounce" />
-                        <span className="text-xs font-medium uppercase tracking-wide">Scroll to scan button</span>
+                        <span className="text-xs font-medium uppercase tracking-wide">{t('uploader.scrollToScanButton')}</span>
                         <ArrowDown className="w-5 h-5 animate-bounce" />
                       </div>
                     </div>
@@ -583,14 +585,14 @@ export function ResumeUploader({
                       <Upload className="w-8 h-8 sm:w-7 sm:h-7 text-primary" />
                     </div>
                     <p className="text-lg sm:text-xl font-semibold mb-2">
-                      Tap to upload resume
+                      {t('uploader.tapToUpload')}
                     </p>
                     <p className="text-sm text-muted-foreground mb-4">
                       {t('uploader.resume.fileTypes')}
                     </p>
                     <div className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-primary/10 border border-primary/30 text-primary font-medium min-h-[48px] touch-manipulation active:bg-primary/20 transition-colors">
                       <FileText className="w-5 h-5" />
-                      <span>Choose File</span>
+                      <span>{t('uploader.chooseFile')}</span>
                     </div>
                   </label>
                 )}
@@ -619,11 +621,11 @@ export function ResumeUploader({
                   <div className="p-4 rounded-xl bg-success/10 border border-success/30 animate-fade-in">
                     <p className="text-sm font-semibold text-success flex items-center justify-center gap-2 mb-3">
                       <Zap className="w-4 h-4" />
-                      Resume ready! Now verify it below
+                      {t('uploader.readyVerifyBelow')}
                     </p>
                     <div className="flex items-center justify-center gap-2 text-success">
                       <ArrowDown className="w-5 h-5 animate-bounce" />
-                      <span className="text-xs font-medium uppercase tracking-wide">Scroll to verify & scan</span>
+                      <span className="text-xs font-medium uppercase tracking-wide">{t('uploader.scrollToVerify')}</span>
                       <ArrowDown className="w-5 h-5 animate-bounce" />
                     </div>
                   </div>
@@ -639,7 +641,7 @@ export function ResumeUploader({
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                    <span className="text-sm font-medium text-success">Resume loaded ({resumeText.length.toLocaleString()} characters)</span>
+                    <span className="text-sm font-medium text-success">{t('uploader.resumeLoaded', { chars: resumeText.length.toLocaleString() })}</span>
                   </div>
                   {onClearResume && (
                     <button
@@ -647,7 +649,7 @@ export function ResumeUploader({
                       className="text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
                     >
                       <X className="w-3 h-3" />
-                      Clear
+                      {t('uploader.clear')}
                     </button>
                   )}
                 </div>
@@ -656,7 +658,7 @@ export function ResumeUploader({
                   <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card/50 to-transparent pointer-events-none" />
                 </div>
                 <p className="text-xs text-muted-foreground/70 mt-2">
-                  👆 This is what will be scanned. Wrong resume? Click "Clear" above.
+                  {t('uploader.scannedHint')}
                 </p>
               </div>
               
@@ -664,7 +666,7 @@ export function ResumeUploader({
               <div className="flex flex-col items-center py-2 animate-fade-in">
                 <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-success/10 border border-success/30">
                   <ArrowDown className="w-4 h-4 text-success animate-bounce" />
-                  <span className="text-sm font-semibold text-success">Now tap the green button below!</span>
+                  <span className="text-sm font-semibold text-success">{t('uploader.tapGreenButton')}</span>
                   <ArrowDown className="w-4 h-4 text-success animate-bounce" />
                 </div>
               </div>
@@ -688,8 +690,8 @@ export function ResumeUploader({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-foreground">{t('uploader.jobDescription.title')}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">Free</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Optional</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium">{t('uploader.badges.free')}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{t('uploader.badges.optional')}</span>
                 </div>
               </div>
               {showJobDescription ? (
@@ -702,7 +704,7 @@ export function ResumeUploader({
             {showJobDescription && (
               <div className="mt-4 rounded-2xl bg-card/30 border border-border/30 p-5 space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Add a job description to get <span className="text-foreground font-medium">match score & tailored tips</span>
+                  {t('uploader.jdAddHintPrefix')} <span className="text-foreground font-medium">{t('uploader.jdAddHintHighlight')}</span>
                 </p>
 
                 {/* Mode Tabs */}
@@ -718,7 +720,7 @@ export function ResumeUploader({
                       )}
                     >
                       <FileText className="w-4 h-4" />
-                      Paste Text
+                      {t('uploader.modeTabs.pasteText')}
                     </button>
                     <button
                       onClick={() => setJobDescriptionMode("url")}
@@ -730,7 +732,7 @@ export function ResumeUploader({
                       )}
                     >
                       <Link className="w-4 h-4" />
-                      Job URL
+                      {t('uploader.modeTabs.jobUrl')}
                     </button>
                     <button
                       onClick={() => setJobDescriptionMode("spreadsheet")}
@@ -742,7 +744,7 @@ export function ResumeUploader({
                       )}
                     >
                       <Table2 className="w-4 h-4" />
-                      Excel/CSV
+                      {t('uploader.modeTabs.excelCsv')}
                     </button>
                     <button
                       onClick={() => setJobDescriptionMode("gsheets")}
@@ -754,7 +756,7 @@ export function ResumeUploader({
                       )}
                     >
                       <Table2 className="w-4 h-4" />
-                      Google Sheets
+                      {t('uploader.modeTabs.googleSheets')}
                     </button>
                   </div>
                 </div>
@@ -785,18 +787,18 @@ export function ResumeUploader({
                         type="url"
                         value={jobDescriptionUrl}
                         onChange={(e) => setJobDescriptionUrl(e.target.value)}
-                        placeholder="https://linkedin.com/jobs/... or company career page URL"
+                        placeholder={t('uploader.jobUrlPlaceholder')}
                         className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 text-sm transition-all"
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      💡 Paste the job listing URL from LinkedIn, Indeed, Glassdoor, or any company career page
+                      {t('uploader.jobUrlTip')}
                     </p>
                     {/* Optional: additional notes textarea */}
                     <textarea
                       value={localJobDescriptionText}
                       onChange={(e) => setLocalJobDescriptionText(e.target.value)}
-                      placeholder="Optional: Add any additional notes about the role..."
+                      placeholder={t('uploader.jobUrlNotesPlaceholder')}
                       className="w-full h-24 p-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 resize-none text-sm leading-relaxed transition-all"
                     />
                   </div>
@@ -840,7 +842,7 @@ export function ResumeUploader({
                         </div>
                         {parsedJobs.length > 1 && (
                           <p className="text-xs text-muted-foreground">
-                            {parsedJobs.length - 1} other job{parsedJobs.length > 2 ? 's' : ''} available • <button onClick={() => setSelectedJob(null)} className="text-primary hover:underline">change selection</button>
+                            {t('uploader.otherJobsAvailable', { count: parsedJobs.length - 1 })} • <button onClick={() => setSelectedJob(null)} className="text-primary hover:underline">{t('uploader.changeSelection')}</button>
                           </p>
                         )}
                       </div>
@@ -876,15 +878,15 @@ export function ResumeUploader({
                         {isParsingJobDescription ? (
                           <>
                             <Loader2 className="w-6 h-6 text-success animate-spin mb-2" />
-                            <span className="text-sm text-muted-foreground">Processing spreadsheet...</span>
+                            <span className="text-sm text-muted-foreground">{t('uploader.processingSpreadsheet')}</span>
                           </>
                         ) : (
                           <>
                             <Table2 className="w-6 h-6 text-success mb-2" />
-                            <span className="text-sm font-medium text-foreground">Upload job listing spreadsheet</span>
-                            <span className="text-xs text-muted-foreground mt-1">Excel (.xlsx, .xls) or CSV files</span>
+                            <span className="text-sm font-medium text-foreground">{t('uploader.uploadSpreadsheet')}</span>
+                            <span className="text-xs text-muted-foreground mt-1">{t('uploader.spreadsheetTypes')}</span>
                             <span className="text-xs text-muted-foreground mt-2 text-center max-w-[280px]">
-                              Include columns: Title, Company, Description
+                              {t('uploader.includeColumns')}
                             </span>
                             <a
                               href="/sample-jobs.csv"
@@ -893,7 +895,7 @@ export function ResumeUploader({
                               className="mt-3 inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 hover:underline transition-colors"
                             >
                               <Download className="w-3 h-3" />
-                              Download sample CSV
+                              {t('uploader.downloadSampleCsv')}
                             </a>
                           </>
                         )}
@@ -940,7 +942,7 @@ export function ResumeUploader({
                         </div>
                         {parsedJobs.length > 1 && (
                           <p className="text-xs text-muted-foreground">
-                            {parsedJobs.length - 1} other job{parsedJobs.length > 2 ? 's' : ''} available • <button onClick={() => setSelectedJob(null)} className="text-primary hover:underline">change selection</button>
+                            {t('uploader.otherJobsAvailable', { count: parsedJobs.length - 1 })} • <button onClick={() => setSelectedJob(null)} className="text-primary hover:underline">{t('uploader.changeSelection')}</button>
                           </p>
                         )}
                       </div>
@@ -954,7 +956,7 @@ export function ResumeUploader({
                             type="url"
                             value={googleSheetsUrl}
                             onChange={(e) => setGoogleSheetsUrl(e.target.value)}
-                            placeholder="https://docs.google.com/spreadsheets/d/..."
+                            placeholder={t('uploader.gsheetsUrlPlaceholder')}
                             className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 text-sm transition-all"
                             disabled={isLoadingGoogleSheet}
                           />
@@ -968,26 +970,26 @@ export function ResumeUploader({
                           {isLoadingGoogleSheet ? (
                             <>
                               <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                              Importing...
+                              {t('uploader.importing')}
                             </>
                           ) : (
                             <>
                               <Table2 className="w-4 h-4 mr-2" />
-                              Import from Google Sheets
+                              {t('uploader.importFromGoogleSheets')}
                             </>
                           )}
                         </Button>
                         <div className="p-3 rounded-xl bg-muted/50 border border-border/50">
                           <p className="text-xs text-muted-foreground mb-2">
-                            <span className="font-medium text-foreground">📋 How to use:</span>
+                            <span className="font-medium text-foreground">{t('uploader.howToUse')}</span>
                           </p>
                           <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-                            <li>Open your Google Sheet with job listings</li>
-                            <li>Click <span className="font-medium">Share</span> → <span className="font-medium">Anyone with the link</span></li>
-                            <li>Copy the URL and paste above</li>
+                            <li>{t('uploader.gsheetsStep1')}</li>
+                            <li>{t('uploader.gsheetsStep2Prefix')} <span className="font-medium">{t('uploader.gsheetsStep2Share')}</span> → <span className="font-medium">{t('uploader.gsheetsStep2Anyone')}</span></li>
+                            <li>{t('uploader.gsheetsStep3')}</li>
                           </ol>
                           <p className="text-xs text-muted-foreground mt-2">
-                            Include columns: <span className="font-medium">Title, Company, Description</span>
+                            {t('uploader.includeColumns')}
                           </p>
                         </div>
                       </div>
@@ -999,7 +1001,7 @@ export function ResumeUploader({
                 {hasJobDescriptionContent && jobDescriptionMode === "paste" && localJobDescriptionText.trim() && (
                   <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                    <span className="text-sm text-success">Job description added</span>
+                    <span className="text-sm text-success">{t('uploader.jdAdded')}</span>
                     <button
                       onClick={() => setLocalJobDescriptionText("")}
                       className="ml-auto p-1 hover:bg-success/10 rounded-lg transition-colors"
@@ -1012,7 +1014,7 @@ export function ResumeUploader({
                 {jobDescriptionMode === "url" && jobDescriptionUrl.trim() && (
                   <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                    <span className="text-sm text-success">Job URL added</span>
+                    <span className="text-sm text-success">{t('uploader.jobUrlAdded')}</span>
                     <button
                       onClick={() => setJobDescriptionUrl("")}
                       className="ml-auto p-1 hover:bg-success/10 rounded-lg transition-colors"
@@ -1042,8 +1044,8 @@ export function ResumeUploader({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-foreground">{t('uploader.linkedin.title')}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-[#0A66C2]/10 text-[#0A66C2] font-medium">Paid</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Optional</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-[#0A66C2]/10 text-[#0A66C2] font-medium">{t('uploader.badges.paid')}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{t('uploader.badges.optional')}</span>
                 </div>
               </div>
               {showLinkedIn ? (
@@ -1056,7 +1058,7 @@ export function ResumeUploader({
             {showLinkedIn && (
               <div className="mt-4 rounded-2xl bg-card/30 border border-border/30 p-5 space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Add LinkedIn for <span className="text-foreground font-medium">skill gap analysis & profile tips</span>
+                  {t('uploader.linkedinAddHintPrefix')} <span className="text-foreground font-medium">{t('uploader.linkedinAddHintHighlight')}</span>
                 </p>
 
                 <div className="flex justify-start">
@@ -1198,19 +1200,19 @@ export function ResumeUploader({
                       className="w-full sm:w-auto sm:min-w-[340px] h-16 text-lg gap-3 border-2 border-success bg-success hover:bg-success/90 text-success-foreground font-bold shadow-[0_0_25px_rgba(34,197,94,0.4)] hover:shadow-[0_0_35px_rgba(34,197,94,0.5)] transition-all touch-manipulation active:scale-[0.98]"
                     >
                       <Zap className="w-5 h-5 fill-current" />
-                      <span>Get Free Resume Analysis</span>
-                      <span className="px-2.5 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wide">FREE</span>
+                      <span>{t('uploader.getFreeAnalysis')}</span>
+                      <span className="px-2.5 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wide">{t('hero.freeBadge')}</span>
                     </Button>
-                    
+
                     <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> ATS Score</span>
-                      <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Keywords</span>
-                      <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Red Flags</span>
-                      <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> +12 more</span>
+                      <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> {t('uploader.scanChips.atsScore')}</span>
+                      <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> {t('uploader.scanChips.keywords')}</span>
+                      <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> {t('uploader.scanChips.redFlags')}</span>
+                      <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> {t('uploader.scanChips.plusMore')}</span>
                     </div>
-                    
+
                     <p className="text-xs text-muted-foreground/70">
-                      Results in ~90 seconds • 7 free scans per day
+                      {t('uploader.scanFooter')}
                     </p>
                   </div>
                 )}
@@ -1225,10 +1227,10 @@ export function ResumeUploader({
                     {isLoading ? (
                       <span className="flex items-center gap-2 justify-center">
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Processing...
+                        {t('uploader.actions.processing')}
                       </span>
                     ) : (
-                      <>Or get the complete analysis for ${PRODUCTS.fullAnalysis.priceUsd}{isLocalCurrency && ` (≈${formatPrice(PRODUCTS.fullAnalysis.priceUsd)})`}</>
+                      <>{t('uploader.orGetCompleteAnalysis')} ${PRODUCTS.fullAnalysis.priceUsd}{isLocalCurrency && ` (≈${formatPrice(PRODUCTS.fullAnalysis.priceUsd)})`}</>
                     )}
                   </button>
                 )}
@@ -1261,7 +1263,7 @@ export function ResumeUploader({
                       <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1.5">
                           <CreditCard className="w-3.5 h-3.5" />
-                          <span>Secure payment via Stripe</span>
+                          <span>{t('uploader.securePaymentStripe')}</span>
                         </div>
                       </div>
                       <WalletPaymentBadge />
