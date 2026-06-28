@@ -201,7 +201,13 @@ serve(async (req) => {
             } else if (delivery.product_type === 'career_snapshot') {
               endpoint = 'generate-career-snapshot';
             } else if (delivery.product_type === 'ats_defense') {
+              // generate-ats-defense independently re-verifies payment via a
+              // real Stripe checkout session lookup, so it requires
+              // sessionId in the body — unlike every other product here.
+              // Without it, this call always 401s.
               endpoint = 'generate-ats-defense';
+              body.sessionId = delivery.stripe_session_id;
+              body.targetRoles = [];
             } else if (delivery.product_type === 'interview_coach') {
               endpoint = 'generate-interview-coach';
               body.isPremium = true;

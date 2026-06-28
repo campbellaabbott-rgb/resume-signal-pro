@@ -22,7 +22,8 @@ function buildGenerationRequest(
   jobDescriptionText: string,
   jobTitle: string,
   jobCompany: string,
-  language: string
+  language: string,
+  sessionId: string
 ): { endpoint: string; body: Record<string, unknown> } | null {
   switch (productType) {
     case 'basic_keyword_fix':
@@ -36,7 +37,11 @@ function buildGenerationRequest(
     case 'career_snapshot':
       return { endpoint: 'generate-career-snapshot', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany, language } };
     case 'ats_defense':
-      return { endpoint: 'generate-ats-defense', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany, language } };
+      // generate-ats-defense independently re-verifies payment via a real
+      // Stripe checkout session lookup, so it requires sessionId in the
+      // body — unlike every other product here, which trusts this caller
+      // implicitly. Without it, this call always 401s.
+      return { endpoint: 'generate-ats-defense', body: { sessionId, resumeText, jobDescription: jobDescriptionText, targetRoles: [], language } };
     case 'interview_coach':
       return { endpoint: 'generate-interview-coach', body: { resumeText, isPremium: true, language } };
     case 'career_path_simulator':
@@ -239,7 +244,7 @@ serve(async (req) => {
           }
         } else {
           const request = resume_text
-            ? buildGenerationRequest(productType, resume_text, job_description_text || '', jobTitle, jobCompany, language)
+            ? buildGenerationRequest(productType, resume_text, job_description_text || '', jobTitle, jobCompany, language, sessionId)
             : null;
 
           if (request) {

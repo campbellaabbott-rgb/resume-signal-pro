@@ -248,7 +248,13 @@ async function triggerProductDelivery(
         case 'premium_package': endpoint = 'generate-premium-package'; break;
         case 'graduate_gameplan': endpoint = 'generate-graduate-gameplan'; break;
         case 'career_snapshot': endpoint = 'generate-career-snapshot'; break;
-        case 'ats_defense': endpoint = 'generate-ats-defense'; break;
+        // generate-ats-defense independently re-verifies payment via a real
+        // Stripe checkout session lookup (it's also callable directly from
+        // the browser), so it requires sessionId in the body — unlike every
+        // other product here, which trusts this webhook call implicitly.
+        // Without it, this call always 401s and silently falls through to
+        // the frontend's manual recovery flow on the success page instead.
+        case 'ats_defense': endpoint = 'generate-ats-defense'; body.sessionId = sessionId; body.targetRoles = []; break;
         case 'interview_coach': endpoint = 'generate-interview-coach'; body.isPremium = true; break;
         case 'career_path_simulator': endpoint = 'generate-career-path'; body.isPremium = true; break;
         default: throw new Error(`Unknown product type: ${productType}`);
