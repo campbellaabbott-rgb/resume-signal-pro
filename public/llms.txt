@@ -1,0 +1,20 @@
+# Resume Booster
+
+> AI-powered resume optimization with recruiter-trained feedback. Free ATS scan plus paid deep-dive packages that rewrite resumes, generate cover letters, and prep candidates for interviews.
+
+Resume Booster scans resumes against ATS (Applicant Tracking System) rules and recruiter heuristics, returning a score, missing keywords, red flags, and recommended fixes. Free scans run instantly; paid products ($1–$25) deliver tailored resume rewrites, cover letters, interview prep, and career-path simulations.
+
+## Pages
+
+- [Home](/): Free resume scan, ATS score, keyword matching, and red-flag detection.
+- [Pricing](/pricing): Product tiers from Keyword Fix to Career Snapshot premium package.
+- [Resume Builder](/builder): Free guided resume builder with PDF export.
+- [Methodology](/methodology): How the ATS scoring and recruiter-feedback engine works.
+- [Trust](/trust): Security, privacy, and data-handling practices.
+- [Changelog](/changelog): Product updates and new features.
+- [Affiliates](/affiliates): 20% commission affiliate program.
+
+## Optional
+
+- [Privacy Policy](/privacy): Data retention and privacy practices.
+- [Terms of Service](/terms): Terms governing use of the service.
