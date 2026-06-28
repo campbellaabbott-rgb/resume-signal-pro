@@ -735,5 +735,24 @@
       "exportFailed": "Export failed",
       "exportFailedDescription": "Could not generate the PDF. Please try again."
     }
+  },
+  "careerPathSimulator": {
+    "badge": "See your career's future",
+    "descriptionPremium": "AI projects 3 possible career paths with salary ranges, key moves, a concrete 90-day action plan for each, and a downloadable roadmap.",
+    "descriptionFree": "AI projects 3 possible career paths based on your resume — ambitious, steady, and pivot — with salary ranges and key moves.",
+    "mapping": "Mapping your future...",
+    "simulateButton": "Simulate Career Paths",
+    "error": "Error",
+    "generateFailed": "Failed to generate",
+    "exportRoadmap": "Export Roadmap",
+    "risk": "Risk: {{level}}",
+    "actionPlan90Days": "90-Day Action Plan for This Path",
+    "doThisWeek": "⚡ Do This Week (Any Path)",
+    "toast": {
+      "headsUp": "Heads up",
+      "pdfCharWarning": "Some characters may not display correctly in the PDF (limited font support for non-Latin text).",
+      "exportFailed": "Export failed",
+      "exportFailedDescription": "Could not generate the PDF. Please try again."
+    }
   }
 }

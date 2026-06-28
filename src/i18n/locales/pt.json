@@ -735,5 +735,24 @@
       "exportFailed": "Falha na exportação",
       "exportFailedDescription": "Não foi possível gerar o PDF. Tente novamente."
     }
+  },
+  "careerPathSimulator": {
+    "badge": "Veja o futuro da sua carreira",
+    "descriptionPremium": "A IA projeta 3 possíveis trajetórias de carreira com faixas salariais, movimentos-chave, um plano de ação concreto de 90 dias para cada uma e um roteiro para download.",
+    "descriptionFree": "A IA projeta 3 possíveis trajetórias de carreira com base no seu currículo — ambiciosa, estável e de mudança — com faixas salariais e movimentos-chave.",
+    "mapping": "Mapeando seu futuro...",
+    "simulateButton": "Simular Trajetórias de Carreira",
+    "error": "Erro",
+    "generateFailed": "Falha ao gerar",
+    "exportRoadmap": "Exportar Roteiro",
+    "risk": "Risco: {{level}}",
+    "actionPlan90Days": "Plano de Ação de 90 Dias para Esta Trajetória",
+    "doThisWeek": "⚡ Faça Isso Esta Semana (Qualquer Trajetória)",
+    "toast": {
+      "headsUp": "Atenção",
+      "pdfCharWarning": "Alguns caracteres podem não ser exibidos corretamente no PDF (suporte limitado de fonte para texto não latino).",
+      "exportFailed": "Falha na exportação",
+      "exportFailedDescription": "Não foi possível gerar o PDF. Tente novamente."
+    }
   }
 }

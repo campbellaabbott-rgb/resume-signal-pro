@@ -735,5 +735,24 @@
       "exportFailed": "Échec de l'export",
       "exportFailedDescription": "Impossible de générer le PDF. Veuillez réessayer."
     }
+  },
+  "careerPathSimulator": {
+    "badge": "Découvrez l'avenir de votre carrière",
+    "descriptionPremium": "L'IA projette 3 trajectoires de carrière possibles avec des fourchettes salariales, des actions clés, un plan d'action concret sur 90 jours pour chacune, et une feuille de route téléchargeable.",
+    "descriptionFree": "L'IA projette 3 trajectoires de carrière possibles selon votre CV — ambitieuse, stable et de reconversion — avec fourchettes salariales et actions clés.",
+    "mapping": "Cartographie de votre avenir...",
+    "simulateButton": "Simuler des trajectoires de carrière",
+    "error": "Erreur",
+    "generateFailed": "Échec de la génération",
+    "exportRoadmap": "Exporter la feuille de route",
+    "risk": "Risque : {{level}}",
+    "actionPlan90Days": "Plan d'action sur 90 jours pour cette trajectoire",
+    "doThisWeek": "⚡ À faire cette semaine (quelle que soit la trajectoire)",
+    "toast": {
+      "headsUp": "À noter",
+      "pdfCharWarning": "Certains caractères pourraient ne pas s'afficher correctement dans le PDF (prise en charge limitée des polices pour les textes non latins).",
+      "exportFailed": "Échec de l'export",
+      "exportFailedDescription": "Impossible de générer le PDF. Veuillez réessayer."
+    }
   }
 }

@@ -735,5 +735,24 @@
       "exportFailed": "Exporteren mislukt",
       "exportFailedDescription": "De PDF kon niet worden gegenereerd. Probeer het opnieuw."
     }
+  },
+  "careerPathSimulator": {
+    "badge": "Bekijk de toekomst van je carrière",
+    "descriptionPremium": "AI projecteert 3 mogelijke carrièrepaden met salarisrange, belangrijke stappen, een concreet 90-dagenactieplan voor elk pad en een downloadbare roadmap.",
+    "descriptionFree": "AI projecteert 3 mogelijke carrièrepaden op basis van je cv — ambitieus, stabiel en koerswijziging — met salarisranges en belangrijke stappen.",
+    "mapping": "Je toekomst wordt in kaart gebracht...",
+    "simulateButton": "Simuleer carrièrepaden",
+    "error": "Fout",
+    "generateFailed": "Genereren mislukt",
+    "exportRoadmap": "Roadmap exporteren",
+    "risk": "Risico: {{level}}",
+    "actionPlan90Days": "90-dagenactieplan voor dit pad",
+    "doThisWeek": "⚡ Doe dit deze week (welk pad ook)",
+    "toast": {
+      "headsUp": "Let op",
+      "pdfCharWarning": "Sommige tekens worden mogelijk niet correct weergegeven in de PDF (beperkte lettertypeondersteuning voor niet-Latijnse tekst).",
+      "exportFailed": "Exporteren mislukt",
+      "exportFailedDescription": "De PDF kon niet worden gegenereerd. Probeer het opnieuw."
+    }
   }
 }

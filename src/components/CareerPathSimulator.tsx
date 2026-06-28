@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, Loader2, ChevronRight, DollarSign, AlertTriangle, Zap, Download, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -59,6 +60,7 @@ const pathColors: Record<string, { bg: string; border: string; accent: string }>
 };
 
 export function CareerPathSimulator({ resumeText, industry, currentRole, isPremium }: CareerPathSimulatorProps) {
+  const { t } = useTranslation();
   const [data, setData] = useState<CareerData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activePath, setActivePath] = useState<string | null>(null);
@@ -76,7 +78,7 @@ export function CareerPathSimulator({ resumeText, industry, currentRole, isPremi
       setData(result.data);
       if (result.data.paths?.length > 0) setActivePath(result.data.paths[0].id);
     } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to generate", variant: "destructive" });
+      toast({ title: t('careerPathSimulator.error'), description: err.message || t('careerPathSimulator.generateFailed'), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -90,13 +92,13 @@ export function CareerPathSimulator({ resumeText, industry, currentRole, isPremi
       // punctuation — content in other scripts would otherwise render as
       // blank/missing glyphs with no explanation.
       if (hasUnsupportedPdfCharacters(JSON.stringify(data))) {
-        toast({ title: "Heads up", description: "Some characters may not display correctly in the PDF (limited font support for non-Latin text)." });
+        toast({ title: t('careerPathSimulator.toast.headsUp'), description: t('careerPathSimulator.toast.pdfCharWarning') });
       }
       const { exportCareerPathPDF } = await import("@/lib/career-tools-export");
       await exportCareerPathPDF(data);
     } catch (err) {
       console.error("[CareerPathSimulator] PDF export failed:", err);
-      toast({ title: "Export failed", description: "Could not generate the PDF. Please try again.", variant: "destructive" });
+      toast({ title: t('careerPathSimulator.toast.exportFailed'), description: t('careerPathSimulator.toast.exportFailedDescription'), variant: "destructive" });
     } finally {
       setIsExportingPdf(false);
     }
@@ -107,16 +109,14 @@ export function CareerPathSimulator({ resumeText, industry, currentRole, isPremi
       <div className="text-center py-6 space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 text-muted-foreground text-xs mb-2">
           <TrendingUp className="w-3.5 h-3.5" />
-          See your career's future
+          {t('careerPathSimulator.badge')}
         </div>
         <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-          {isPremium
-            ? "AI projects 3 possible career paths with salary ranges, key moves, a concrete 90-day action plan for each, and a downloadable roadmap."
-            : "AI projects 3 possible career paths based on your resume — ambitious, steady, and pivot — with salary ranges and key moves."}
+          {isPremium ? t('careerPathSimulator.descriptionPremium') : t('careerPathSimulator.descriptionFree')}
         </p>
         <Button onClick={generate} disabled={isLoading} size="sm" className="gap-2">
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4" />}
-          {isLoading ? "Mapping your future..." : "Simulate Career Paths"}
+          {isLoading ? t('careerPathSimulator.mapping') : t('careerPathSimulator.simulateButton')}
         </Button>
       </div>
     );
@@ -143,7 +143,7 @@ export function CareerPathSimulator({ resumeText, industry, currentRole, isPremi
               onClick={handleExportPdf}
             >
               {isExportingPdf ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
-              Export Roadmap
+              {t('careerPathSimulator.exportRoadmap')}
             </Button>
           )}
         </div>
@@ -219,7 +219,7 @@ export function CareerPathSimulator({ resumeText, industry, currentRole, isPremi
           {/* Path details */}
           <div className="mt-3 pt-3 border-t border-border/30 flex items-center gap-3 flex-wrap">
             <span className={cn("text-[10px] font-semibold", riskColors[activePathData.riskLevel] || "text-muted-foreground")}>
-              Risk: {activePathData.riskLevel}
+              {t('careerPathSimulator.risk', { level: activePathData.riskLevel })}
             </span>
             <div className="flex gap-1 flex-wrap">
               {activePathData.requiredSkills?.map((s, i) => (
@@ -231,7 +231,7 @@ export function CareerPathSimulator({ resumeText, industry, currentRole, isPremi
           {isPremium && activePathData.actionPlan90Days && activePathData.actionPlan90Days.length > 0 && (
             <div className="mt-3 pt-3 border-t border-border/30">
               <p className="text-[10px] font-semibold text-foreground mb-1.5 flex items-center gap-1">
-                <ListChecks className="w-3 h-3 text-primary" /> 90-Day Action Plan for This Path
+                <ListChecks className="w-3 h-3 text-primary" /> {t('careerPathSimulator.actionPlan90Days')}
               </p>
               <div className="space-y-1">
                 {activePathData.actionPlan90Days.map((step, i) => (
@@ -248,7 +248,7 @@ export function CareerPathSimulator({ resumeText, industry, currentRole, isPremi
 
       {/* Immediate Next Step */}
       <div className="rounded-xl bg-primary/5 border border-primary/20 p-3">
-        <p className="text-xs font-semibold text-primary mb-1">⚡ Do This Week (Any Path)</p>
+        <p className="text-xs font-semibold text-primary mb-1">{t('careerPathSimulator.doThisWeek')}</p>
         <p className="text-xs text-foreground">{data.immediateNextStep}</p>
       </div>
     </div>

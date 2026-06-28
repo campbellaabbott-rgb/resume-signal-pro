@@ -735,5 +735,24 @@
       "exportFailed": "Export fehlgeschlagen",
       "exportFailedDescription": "Das PDF konnte nicht erstellt werden. Bitte versuche es erneut."
     }
+  },
+  "careerPathSimulator": {
+    "badge": "Sieh die Zukunft deiner Karriere",
+    "descriptionPremium": "Die KI projiziert 3 mögliche Karrierewege mit Gehaltsspannen, wichtigen Schritten, einem konkreten 90-Tage-Aktionsplan für jeden und einer herunterladbaren Roadmap.",
+    "descriptionFree": "Die KI projiziert 3 mögliche Karrierewege basierend auf deinem Lebenslauf — ambitioniert, stetig und Kurswechsel — mit Gehaltsspannen und wichtigen Schritten.",
+    "mapping": "Deine Zukunft wird kartiert...",
+    "simulateButton": "Karrierewege simulieren",
+    "error": "Fehler",
+    "generateFailed": "Generierung fehlgeschlagen",
+    "exportRoadmap": "Roadmap exportieren",
+    "risk": "Risiko: {{level}}",
+    "actionPlan90Days": "90-Tage-Aktionsplan für diesen Weg",
+    "doThisWeek": "⚡ Diese Woche tun (egal welcher Weg)",
+    "toast": {
+      "headsUp": "Hinweis",
+      "pdfCharWarning": "Einige Zeichen werden im PDF möglicherweise nicht korrekt angezeigt (eingeschränkte Schriftunterstützung für nicht-lateinische Schriftzeichen).",
+      "exportFailed": "Export fehlgeschlagen",
+      "exportFailedDescription": "Das PDF konnte nicht erstellt werden. Bitte versuche es erneut."
+    }
   }
 }

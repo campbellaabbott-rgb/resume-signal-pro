@@ -735,5 +735,24 @@
       "exportFailed": "Hindi na-export",
       "exportFailedDescription": "Hindi magawa ang PDF. Pakisubukan ulit."
     }
+  },
+  "careerPathSimulator": {
+    "badge": "Tingnan ang kinabukasan ng iyong karera",
+    "descriptionPremium": "Pinoprodyekto ng AI ang 3 posibleng career path na may salary range, mahahalagang hakbang, kongkretong 90-day action plan para sa bawat isa, at downloadable na roadmap.",
+    "descriptionFree": "Pinoprodyekto ng AI ang 3 posibleng career path base sa iyong resume — matapang, matatag, at pagbabago — may salary range at mahahalagang hakbang.",
+    "mapping": "Inimamapa ang iyong kinabukasan...",
+    "simulateButton": "I-simulate ang mga Career Path",
+    "error": "Error",
+    "generateFailed": "Hindi nagawa",
+    "exportRoadmap": "I-export ang Roadmap",
+    "risk": "Panganib: {{level}}",
+    "actionPlan90Days": "90-Day Action Plan para sa Path na Ito",
+    "doThisWeek": "⚡ Gawin Ito Ngayong Linggo (Anumang Path)",
+    "toast": {
+      "headsUp": "Paalala",
+      "pdfCharWarning": "May mga character na posibleng hindi maipakita nang tama sa PDF (limitadong font support para sa non-Latin na teksto).",
+      "exportFailed": "Hindi na-export",
+      "exportFailedDescription": "Hindi magawa ang PDF. Pakisubukan ulit."
+    }
   }
 }
