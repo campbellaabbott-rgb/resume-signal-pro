@@ -82,7 +82,41 @@
       "secure": "Sicher & Privat",
       "results": "Ergebnisse in 30 Sekunden",
       "approved": "Recruiter-geprüft"
-    }
+    },
+    "socialFirst": {
+      "joinThousands": "Schließe dich Tausenden von Jobsuchenden an, die Vorstellungsgespräche bekommen haben",
+      "subheading": "Erfahre, warum 89 % unserer Nutzer nach der Nutzung unseres Scanners Rückrufe für Vorstellungsgespräche erhielten.",
+      "recentActivityCount": "{{count}} Personen",
+      "recentActivityText": "haben in der letzten Stunde ihren Lebenslauf gescannt"
+    },
+    "benefitLed": {
+      "painBadge": "Der Hauptgrund, warum qualifizierte Kandidaten abgelehnt werden",
+      "painHeadingPrefix": "85 % der Lebensläufe werden",
+      "painHeadingHighlight": "von ATS-Bots abgelehnt",
+      "painSubheading": "Bevor ein Mensch sie je sieht. Ist deiner einer davon?",
+      "solutionLabel": "Die Lösung",
+      "solutionHeadingHighlight": "sofortige ATS-sichere Korrekturen",
+      "solutionHeadingSuffix": "in 60 Sekunden",
+      "solutionSubheading": "Unser KI-Scanner findet genau, was deinen Lebenslauf blockiert, und zeigt dir, wie du es behebst."
+    },
+    "ultraCompactDescription": "ATS-optimierte Umformulierungen • Warnsignal-Hinweise • Schlüsselwort-Verbesserungen",
+    "worksOnAllAts": "Funktioniert mit allen ATS",
+    "atsExplainerToggle": "85 % der Lebensläufe werden von ATS-Bots abgelehnt, bevor ein Mensch sie sieht",
+    "atsExplainerBoldLead": "ATS (Applicant Tracking Systems)",
+    "atsExplainerRest": "sind KI-Bots, die Lebensläufe scannen und filtern, bevor ein Mensch sie je sieht. Über 98 % der Fortune-500-Unternehmen nutzen sie.",
+    "atsExplainerSystems": "Wir analysieren gegen Workday, Greenhouse, Lever, Taleo, iCIMS & 50+ weitere.",
+    "seeMethodology": "Unsere Methodik ansehen",
+    "packagesTeaserPrefix": "Brauchst du mehr als einen Scan?",
+    "packagesTeaserHighlight": "Lebenslauf-Pakete entdecken",
+    "scrollToUpload": "Zum Hochladen scrollen",
+    "viewAllPackages": "Alle Pakete ansehen",
+    "preview": {
+      "atsScore": "ATS-Score",
+      "found": "{{count}} gefunden",
+      "ready": "{{count}} bereit"
+    },
+    "testimonialQuote": "Habe meinen Lebenslauf in 10 Minuten korrigiert. Hatte in derselben Woche 3 Vorstellungsgespräche.",
+    "testimonialAuthorName": "— Sarah K., Softwareentwicklerin"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle Rechte vorbehalten.",
@@ -477,7 +511,8 @@
   },
   "common": {
     "backToHome": "Zurück zur Startseite",
-    "lastUpdated": "Zuletzt aktualisiert"
+    "lastUpdated": "Zuletzt aktualisiert",
+    "close": "Schließen"
   },
   "privacy": {
     "title": "Datenschutzrichtlinie"

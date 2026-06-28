@@ -82,7 +82,41 @@
       "secure": "Secure at Private",
       "results": "Resulta sa 30 segundo",
       "approved": "Recruiter-approved"
-    }
+    },
+    "socialFirst": {
+      "joinThousands": "Sumali sa libo-libong job seeker na nakakuha ng interview",
+      "subheading": "Alamin kung bakit 89% ng aming mga user ang nakatanggap ng interview callback matapos gamitin ang aming scanner.",
+      "recentActivityCount": "{{count}} katao",
+      "recentActivityText": "ang nag-scan ng kanilang resume sa huling oras"
+    },
+    "benefitLed": {
+      "painBadge": "Ang #1 dahilan kung bakit na-reject ang mga kwalipikadong kandidato",
+      "painHeadingPrefix": "85% ng mga resume ay",
+      "painHeadingHighlight": "na-reject ng mga ATS bot",
+      "painSubheading": "Bago pa man makita ng tao. Isa ba ang iyo sa mga ito?",
+      "solutionLabel": "Ang solusyon",
+      "solutionHeadingHighlight": "instant na ATS-proof na ayos",
+      "solutionHeadingSuffix": "sa 60 segundo",
+      "solutionSubheading": "Hinahanap ng aming AI scanner ang eksaktong sumasala sa iyong resume at ipinapakita kung paano ito ayusin."
+    },
+    "ultraCompactDescription": "ATS-optimized na rewrites • Red-flag warnings • Keyword improvements",
+    "worksOnAllAts": "Gumagana sa lahat ng ATS",
+    "atsExplainerToggle": "85% ng mga resume ay na-reject ng mga ATS bot bago pa makita ng tao",
+    "atsExplainerBoldLead": "ATS (Applicant Tracking Systems)",
+    "atsExplainerRest": "ay mga AI bot na sumasala at nag-scan ng mga resume bago pa makita ng tao. Mahigit 98% ng mga Fortune 500 company ang gumagamit nito.",
+    "atsExplainerSystems": "Sinusuri namin laban sa Workday, Greenhouse, Lever, Taleo, iCIMS at 50+ pa.",
+    "seeMethodology": "Tingnan ang aming methodology",
+    "packagesTeaserPrefix": "Kailangan ng higit pa sa scan?",
+    "packagesTeaserHighlight": "I-explore ang mga Resume Package",
+    "scrollToUpload": "I-scroll para mag-upload",
+    "viewAllPackages": "Tingnan Lahat ng Package",
+    "preview": {
+      "atsScore": "ATS Score",
+      "found": "{{count}} natagpuan",
+      "ready": "{{count}} handa"
+    },
+    "testimonialQuote": "Naayos ang resume ko sa loob ng 10 minuto. Nakakuha ng 3 interview call sa parehong linggo.",
+    "testimonialAuthorName": "— Sarah K., Software Engineer"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Lahat ng karapatan ay nakalaan.",
@@ -477,7 +511,8 @@
   },
   "common": {
     "backToHome": "Bumalik sa Home",
-    "lastUpdated": "Huling na-update"
+    "lastUpdated": "Huling na-update",
+    "close": "Isara"
   },
   "privacy": {
     "title": "Patakaran sa Privacy"

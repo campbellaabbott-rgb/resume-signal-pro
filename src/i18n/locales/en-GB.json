@@ -82,7 +82,41 @@
       "secure": "Secure & Private",
       "results": "Results in 30 seconds",
       "approved": "Recruiter-approved"
-    }
+    },
+    "socialFirst": {
+      "joinThousands": "Join thousands of job seekers who landed interviews",
+      "subheading": "See why 89% of our users got interview callbacks after using our scanner.",
+      "recentActivityCount": "{{count}} people",
+      "recentActivityText": "scanned their CV in the last hour"
+    },
+    "benefitLed": {
+      "painBadge": "The #1 reason qualified candidates get rejected",
+      "painHeadingPrefix": "85% of CVs are",
+      "painHeadingHighlight": "rejected by ATS bots",
+      "painSubheading": "Before a human ever sees them. Is yours one of them?",
+      "solutionLabel": "The solution",
+      "solutionHeadingHighlight": "instant ATS-proof fixes",
+      "solutionHeadingSuffix": "in 60 seconds",
+      "solutionSubheading": "Our AI scanner finds exactly what's blocking your CV and shows you how to fix it."
+    },
+    "ultraCompactDescription": "ATS-optimised rewrites • Red-flag warnings • Keyword improvements",
+    "worksOnAllAts": "Works on all ATS",
+    "atsExplainerToggle": "85% of CVs are rejected by ATS bots before a human sees them",
+    "atsExplainerBoldLead": "ATS (Applicant Tracking Systems)",
+    "atsExplainerRest": "are AI bots that scan and filter CVs before a human ever sees them. Over 98% of Fortune 500 companies use them.",
+    "atsExplainerSystems": "We analyse against Workday, Greenhouse, Lever, Taleo, iCIMS & 50+ more.",
+    "seeMethodology": "See our methodology",
+    "packagesTeaserPrefix": "Need more than a scan?",
+    "packagesTeaserHighlight": "Explore CV Packages",
+    "scrollToUpload": "Scroll to upload",
+    "viewAllPackages": "View All Packages",
+    "preview": {
+      "atsScore": "ATS Score",
+      "found": "{{count}} found",
+      "ready": "{{count}} ready"
+    },
+    "testimonialQuote": "Fixed my CV in 10 minutes. Got 3 interview calls the same week.",
+    "testimonialAuthorName": "— Sarah K., Software Engineer"
   },
   "footer": {
     "copyright": "© {{year}} CV Booster. All rights reserved.",
@@ -477,7 +511,8 @@
   },
   "common": {
     "backToHome": "Back to Home",
-    "lastUpdated": "Last updated"
+    "lastUpdated": "Last updated",
+    "close": "Close"
   },
   "privacy": {
     "title": "Privacy Policy"

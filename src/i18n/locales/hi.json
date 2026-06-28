@@ -82,7 +82,41 @@
       "secure": "सुरक्षित और निजी",
       "results": "30 सेकंड में परिणाम",
       "approved": "रिक्रूटर-अनुमोदित"
-    }
+    },
+    "socialFirst": {
+      "joinThousands": "उन हज़ारों नौकरी-तलाशकर्ताओं से जुड़ें जिन्होंने इंटरव्यू हासिल किए",
+      "subheading": "जानें कि हमारे स्कैनर का उपयोग करने के बाद हमारे 89% उपयोगकर्ताओं को इंटरव्यू कॉलबैक क्यों मिले।",
+      "recentActivityCount": "{{count}} लोगों ने",
+      "recentActivityText": "पिछले एक घंटे में अपना रिज़्यूमे स्कैन किया"
+    },
+    "benefitLed": {
+      "painBadge": "योग्य उम्मीदवारों के अस्वीकृत होने का #1 कारण",
+      "painHeadingPrefix": "85% रिज़्यूमे",
+      "painHeadingHighlight": "ATS बॉट्स द्वारा अस्वीकृत होते हैं",
+      "painSubheading": "किसी इंसान के देखने से पहले ही। क्या आपका भी उनमें से एक है?",
+      "solutionLabel": "समाधान",
+      "solutionHeadingHighlight": "त्वरित ATS-प्रूफ सुधार",
+      "solutionHeadingSuffix": "60 सेकंड में",
+      "solutionSubheading": "हमारा AI स्कैनर ठीक वही ढूंढता है जो आपके रिज़्यूमे को रोक रहा है और दिखाता है कि इसे कैसे ठीक करें।"
+    },
+    "ultraCompactDescription": "ATS-अनुकूलित पुनर्लेखन • चेतावनी संकेत अलर्ट • कीवर्ड सुधार",
+    "worksOnAllAts": "सभी ATS पर काम करता है",
+    "atsExplainerToggle": "85% रिज़्यूमे किसी इंसान के देखने से पहले ही ATS बॉट्स द्वारा अस्वीकृत हो जाते हैं",
+    "atsExplainerBoldLead": "ATS (एप्लिकेंट ट्रैकिंग सिस्टम)",
+    "atsExplainerRest": "AI बॉट्स हैं जो किसी इंसान के देखने से पहले रिज़्यूमे को स्कैन और फ़िल्टर करते हैं। 98% से अधिक फॉर्च्यून 500 कंपनियां इनका उपयोग करती हैं।",
+    "atsExplainerSystems": "हम Workday, Greenhouse, Lever, Taleo, iCIMS और 50+ अन्य के विरुद्ध विश्लेषण करते हैं।",
+    "seeMethodology": "हमारी पद्धति देखें",
+    "packagesTeaserPrefix": "स्कैन से ज़्यादा कुछ चाहिए?",
+    "packagesTeaserHighlight": "रिज़्यूमे पैकेज देखें",
+    "scrollToUpload": "अपलोड करने के लिए स्क्रॉल करें",
+    "viewAllPackages": "सभी पैकेज देखें",
+    "preview": {
+      "atsScore": "ATS स्कोर",
+      "found": "{{count}} मिले",
+      "ready": "{{count}} तैयार"
+    },
+    "testimonialQuote": "10 मिनट में अपना रिज़्यूमे ठीक किया। उसी हफ्ते 3 इंटरव्यू कॉल मिले।",
+    "testimonialAuthorName": "— सारा के., सॉफ्टवेयर इंजीनियर"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. सर्वाधिकार सुरक्षित।",
@@ -477,7 +511,8 @@
   },
   "common": {
     "backToHome": "होम पर वापस जाएं",
-    "lastUpdated": "अंतिम अपडेट"
+    "lastUpdated": "अंतिम अपडेट",
+    "close": "बंद करें"
   },
   "privacy": {
     "title": "गोपनीयता नीति"

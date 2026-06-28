@@ -12,11 +12,12 @@ import { useTodayScanCount } from "@/hooks/use-shared-data";
 
 // Animated result preview component - shows what users get
 function AnimatedResultPreview() {
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
   const steps = [
-    { label: "ATS Score", value: "72%", color: "text-warning" },
-    { label: "Missing Keywords", value: "8 found", color: "text-destructive" },
-    { label: "Quick Fixes", value: "5 ready", color: "text-success" },
+    { label: t('hero.preview.atsScore'), value: "72%", color: "text-warning" },
+    { label: t('hero.reveal.keywords'), value: t('hero.preview.found', { count: 8 }), color: "text-destructive" },
+    { label: t('hero.reveal.quickFixes'), value: t('hero.preview.ready', { count: 5 }), color: "text-success" },
   ];
 
   useEffect(() => {
@@ -226,7 +227,7 @@ export function Hero() {
       <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
       <span className="flex items-center gap-1">
         <Check className={compact ? "w-2.5 h-2.5 text-success" : "w-3 h-3 sm:w-4 sm:h-4 text-success"} />
-        100% private
+        {t('hero.private')}
       </span>
     </div>
   );
@@ -249,7 +250,7 @@ export function Hero() {
             <div className="mb-5 animate-fade-in">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/30 mb-4">
                 <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                <span className="text-sm font-medium text-success">Join thousands of job seekers who landed interviews</span>
+                <span className="text-sm font-medium text-success">{t('hero.socialFirst.joinThousands')}</span>
               </div>
               <HeroStatsBar />
             </div>
@@ -264,7 +265,7 @@ export function Hero() {
                 {t('hero.headline.feedback', 'Resume Feedback in 60 Seconds')}
               </h1>
               <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
-                See why 89% of our users got interview callbacks after using our scanner.
+                {t('hero.socialFirst.subheading')}
               </p>
             </div>
 
@@ -285,7 +286,7 @@ export function Hero() {
                   ))}
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground">142 people</span> scanned their resume in the last hour
+                  <span className="font-semibold text-foreground">{t('hero.socialFirst.recentActivityCount', { count: 142 })}</span> {t('hero.socialFirst.recentActivityText')}
                 </span>
               </div>
             </div>
@@ -314,13 +315,13 @@ export function Hero() {
             <div className="mb-4 animate-fade-in">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-destructive/10 border border-destructive/30 mb-3">
                 <AlertTriangle className="w-4 h-4 text-destructive" />
-                <span className="text-sm font-medium text-destructive">The #1 reason qualified candidates get rejected</span>
+                <span className="text-sm font-medium text-destructive">{t('hero.benefitLed.painBadge')}</span>
               </div>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-2">
-                85% of resumes are <span className="text-destructive">rejected by ATS bots</span>
+                {t('hero.benefitLed.painHeadingPrefix')} <span className="text-destructive">{t('hero.benefitLed.painHeadingHighlight')}</span>
               </h2>
               <p className="text-sm sm:text-base text-muted-foreground">
-                Before a human ever sees them. Is yours one of them?
+                {t('hero.benefitLed.painSubheading')}
               </p>
             </div>
 
@@ -328,18 +329,18 @@ export function Hero() {
             <div className="mb-4 animate-fade-in" style={{ animationDelay: "0.05s" }}>
               <div className="inline-flex items-center gap-2 mb-3">
                 <div className="w-8 h-[2px] bg-muted-foreground/30" />
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">The solution</span>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">{t('hero.benefitLed.solutionLabel')}</span>
                 <div className="w-8 h-[2px] bg-muted-foreground/30" />
               </div>
               <h1 id="hero-heading" className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight mb-2 leading-tight">
-                Get{" "}
+                {t('hero.headline.get', 'Get')}{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
-                  instant ATS-proof fixes
+                  {t('hero.benefitLed.solutionHeadingHighlight')}
                 </span>{" "}
-                in 60 seconds
+                {t('hero.benefitLed.solutionHeadingSuffix')}
               </h1>
               <p className="text-xs sm:text-sm text-muted-foreground max-w-lg mx-auto">
-                Our AI scanner finds exactly what's blocking your resume and shows you how to fix it.
+                {t('hero.benefitLed.solutionSubheading')}
               </p>
             </div>
 
@@ -406,7 +407,7 @@ export function Hero() {
             {/* Description - shorter for ultra-compact */}
             {isUltraCompact ? (
               <p className="text-xs sm:text-sm text-muted-foreground max-w-xl mx-auto">
-                ATS-optimized rewrites • Red-flag warnings • Keyword improvements
+                {t('hero.ultraCompactDescription')}
               </p>
             ) : (
               <p className={`text-muted-foreground max-w-2xl mx-auto leading-relaxed ${isCompactLayout ? 'text-sm sm:text-base md:text-lg mb-4' : 'text-base sm:text-lg mb-6'}`}>
@@ -442,11 +443,11 @@ export function Hero() {
                     <div className="flex sm:hidden flex-wrap justify-center gap-x-4 gap-y-1 mb-3 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Check className="w-3 h-3 text-success" />
-                        Works on all ATS
+                        {t('hero.worksOnAllAts')}
                       </span>
                       <span className="flex items-center gap-1">
                         <Check className="w-3 h-3 text-success" />
-                        100% private
+                        {t('hero.private')}
                       </span>
                     </div>
                   </>
@@ -531,10 +532,10 @@ export function Hero() {
                 </div>
                 <div className="text-left">
                   <p className="text-sm text-foreground italic leading-relaxed">
-                    "Fixed my resume in 10 minutes. Got 3 interview calls the same week."
+                    "{t('hero.testimonialQuote')}"
                   </p>
                   <div className="flex items-center gap-2 mt-2">
-                    <p className="text-xs text-muted-foreground">— Sarah K., Software Engineer</p>
+                    <p className="text-xs text-muted-foreground">{t('hero.testimonialAuthorName')}</p>
                     <div className="flex items-center gap-0.5">
                       {[...Array(5)].map((_, i) => (
                         <Star key={i} className="w-3 h-3 text-warning fill-warning" />
@@ -553,30 +554,30 @@ export function Hero() {
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <AlertTriangle className="w-4 h-4 text-destructive/70" />
-              <span>85% of resumes are rejected by ATS bots before a human sees them</span>
+              <span>{t('hero.atsExplainerToggle')}</span>
               <Info className="w-4 h-4" />
             </button>
-            
+
             {showAtsInfo && (
               <div className="mt-3 p-4 rounded-xl bg-card border border-border text-left max-w-lg mx-auto animate-fade-in relative">
-                <button 
+                <button
                   onClick={() => setShowAtsInfo(false)}
                   className="absolute top-2 right-2 p-1 text-muted-foreground hover:text-foreground"
-                  aria-label="Close"
+                  aria-label={t('common.close')}
                 >
                   <X className="w-4 h-4" />
                 </button>
                 <p className="text-sm text-foreground pr-6">
-                  <span className="font-semibold">ATS (Applicant Tracking Systems)</span> are AI bots that scan and filter resumes before a human ever sees them. Over 98% of Fortune 500 companies use them.
+                  <span className="font-semibold">{t('hero.atsExplainerBoldLead')}</span> {t('hero.atsExplainerRest')}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  We analyze against Workday, Greenhouse, Lever, Taleo, iCIMS & 50+ more.
+                  {t('hero.atsExplainerSystems')}
                 </p>
-                <Link 
-                  to="/methodology" 
+                <Link
+                  to="/methodology"
                   className="inline-flex items-center gap-1 mt-3 text-xs text-primary hover:underline"
                 >
-                  See our methodology
+                  {t('hero.seeMethodology')}
                   <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
@@ -585,7 +586,7 @@ export function Hero() {
 
           {/* Trusted by companies - desktop only */}
           <div className="animate-fade-in hidden sm:block" style={{ animationDelay: "0.35s" }}>
-            <p className="text-xs text-muted-foreground/60 mb-4">Trusted by professionals at</p>
+            <p className="text-xs text-muted-foreground/60 mb-4">{t('hero.trustedBy')}</p>
             <div className="flex flex-wrap justify-center items-center gap-x-6 sm:gap-x-8 gap-y-3">
               <span className="text-sm sm:text-base font-semibold text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">Google</span>
               <span className="text-sm sm:text-base font-semibold text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">Microsoft</span>
@@ -609,7 +610,7 @@ export function Hero() {
             >
               <Package className="w-5 h-5 text-primary" />
               <span className="text-sm font-medium text-foreground">
-                Need more than a scan? <span className="text-primary">Explore Resume Packages</span>
+                {t('hero.packagesTeaserPrefix')} <span className="text-primary">{t('hero.packagesTeaserHighlight')}</span>
               </span>
               <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
             </Link>
@@ -621,7 +622,7 @@ export function Hero() {
               onClick={handleFreeScanClick}
               className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mx-auto"
             >
-              <span>Scroll to upload</span>
+              <span>{t('hero.scrollToUpload')}</span>
               <svg className="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
               </svg>
@@ -634,7 +635,7 @@ export function Hero() {
             >
               <Package className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-foreground">
-                View All Packages
+                {t('hero.viewAllPackages')}
               </span>
               <ArrowRight className="w-4 h-4 text-primary" />
             </Link>

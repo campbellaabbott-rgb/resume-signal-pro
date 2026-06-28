@@ -82,7 +82,41 @@
       "secure": "Seguro e Privado",
       "results": "Resultados em 30 segundos",
       "approved": "Aprovado por recrutadores"
-    }
+    },
+    "socialFirst": {
+      "joinThousands": "Junte-se a milhares de candidatos que conseguiram entrevistas",
+      "subheading": "Veja por que 89% dos nossos usuários receberam retornos de entrevista após usar o nosso scanner.",
+      "recentActivityCount": "{{count}} pessoas",
+      "recentActivityText": "verificaram o currículo na última hora"
+    },
+    "benefitLed": {
+      "painBadge": "O motivo nº 1 pelo qual candidatos qualificados são rejeitados",
+      "painHeadingPrefix": "85% dos currículos são",
+      "painHeadingHighlight": "rejeitados por bots de ATS",
+      "painSubheading": "Antes de um humano sequer vê-los. O seu é um deles?",
+      "solutionLabel": "A solução",
+      "solutionHeadingHighlight": "correções instantâneas à prova de ATS",
+      "solutionHeadingSuffix": "em 60 segundos",
+      "solutionSubheading": "O nosso scanner de IA encontra exatamente o que está bloqueando o seu currículo e mostra como corrigir."
+    },
+    "ultraCompactDescription": "Reescritas otimizadas para ATS • Alertas de sinais de risco • Melhorias de palavras-chave",
+    "worksOnAllAts": "Funciona com todos os ATS",
+    "atsExplainerToggle": "85% dos currículos são rejeitados por bots de ATS antes de um humano vê-los",
+    "atsExplainerBoldLead": "ATS (Sistemas de Rastreamento de Candidatos)",
+    "atsExplainerRest": "são bots de IA que escaneiam e filtram currículos antes de um humano vê-los. Mais de 98% das empresas Fortune 500 os usam.",
+    "atsExplainerSystems": "Analisamos com base em Workday, Greenhouse, Lever, Taleo, iCIMS e mais de 50 outros sistemas.",
+    "seeMethodology": "Ver a nossa metodologia",
+    "packagesTeaserPrefix": "Precisa de mais do que uma verificação?",
+    "packagesTeaserHighlight": "Explore os Pacotes de Currículo",
+    "scrollToUpload": "Role para enviar",
+    "viewAllPackages": "Ver Todos os Pacotes",
+    "preview": {
+      "atsScore": "Pontuação ATS",
+      "found": "{{count}} encontradas",
+      "ready": "{{count}} prontas"
+    },
+    "testimonialQuote": "Corrigi o meu currículo em 10 minutos. Recebi 3 chamadas de entrevista na mesma semana.",
+    "testimonialAuthorName": "— Sarah K., Engenheira de Software"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Todos os direitos reservados.",
@@ -477,7 +511,8 @@
   },
   "common": {
     "backToHome": "Voltar ao Início",
-    "lastUpdated": "Última atualização"
+    "lastUpdated": "Última atualização",
+    "close": "Fechar"
   },
   "privacy": {
     "title": "Política de Privacidade"

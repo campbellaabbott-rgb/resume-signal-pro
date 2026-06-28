@@ -82,7 +82,41 @@
       "secure": "Sécurisé et privé",
       "results": "Résultats en 30 secondes",
       "approved": "Approuvé par les recruteurs"
-    }
+    },
+    "socialFirst": {
+      "joinThousands": "Rejoignez des milliers de candidats qui ont décroché des entretiens",
+      "subheading": "Découvrez pourquoi 89 % de nos utilisateurs ont reçu des rappels d'entretien après avoir utilisé notre scanner.",
+      "recentActivityCount": "{{count}} personnes",
+      "recentActivityText": "ont scanné leur CV dans la dernière heure"
+    },
+    "benefitLed": {
+      "painBadge": "La raison n°1 pour laquelle des candidats qualifiés sont rejetés",
+      "painHeadingPrefix": "85 % des CV sont",
+      "painHeadingHighlight": "rejetés par des robots ATS",
+      "painSubheading": "Avant même qu'un humain ne les voie. Le vôtre en fait-il partie ?",
+      "solutionLabel": "La solution",
+      "solutionHeadingHighlight": "des corrections instantanées à l'épreuve des ATS",
+      "solutionHeadingSuffix": "en 60 secondes",
+      "solutionSubheading": "Notre scanner IA trouve exactement ce qui bloque votre CV et vous montre comment le corriger."
+    },
+    "ultraCompactDescription": "Réécritures optimisées ATS • Alertes de signaux d'alarme • Améliorations de mots-clés",
+    "worksOnAllAts": "Fonctionne avec tous les ATS",
+    "atsExplainerToggle": "85 % des CV sont rejetés par des robots ATS avant qu'un humain ne les voie",
+    "atsExplainerBoldLead": "ATS (Applicant Tracking Systems)",
+    "atsExplainerRest": "sont des robots IA qui analysent et filtrent les CV avant qu'un humain ne les voie. Plus de 98 % des entreprises du Fortune 500 les utilisent.",
+    "atsExplainerSystems": "Nous analysons par rapport à Workday, Greenhouse, Lever, Taleo, iCIMS et plus de 50 autres.",
+    "seeMethodology": "Voir notre méthodologie",
+    "packagesTeaserPrefix": "Besoin de plus qu'un scan ?",
+    "packagesTeaserHighlight": "Découvrir les forfaits CV",
+    "scrollToUpload": "Défiler pour téléverser",
+    "viewAllPackages": "Voir tous les forfaits",
+    "preview": {
+      "atsScore": "Score ATS",
+      "found": "{{count}} trouvés",
+      "ready": "{{count}} prêts"
+    },
+    "testimonialQuote": "J'ai corrigé mon CV en 10 minutes. J'ai eu 3 appels d'entretien la même semaine.",
+    "testimonialAuthorName": "— Sarah K., Ingénieure logiciel"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Tous droits réservés.",
@@ -477,7 +511,8 @@
   },
   "common": {
     "backToHome": "Retour à l'accueil",
-    "lastUpdated": "Dernière mise à jour"
+    "lastUpdated": "Dernière mise à jour",
+    "close": "Fermer"
   },
   "privacy": {
     "title": "Politique de confidentialité"

@@ -82,7 +82,41 @@
       "secure": "Veilig & Privé",
       "results": "Resultaten in 30 seconden",
       "approved": "Recruiter-goedgekeurd"
-    }
+    },
+    "socialFirst": {
+      "joinThousands": "Sluit je aan bij duizenden sollicitanten die sollicitatiegesprekken hebben gekregen",
+      "subheading": "Ontdek waarom 89% van onze gebruikers terugbelteractie kreeg na het gebruik van onze scanner.",
+      "recentActivityCount": "{{count}} mensen",
+      "recentActivityText": "hebben hun cv in het afgelopen uur gescand"
+    },
+    "benefitLed": {
+      "painBadge": "De #1 reden waarom gekwalificeerde kandidaten worden afgewezen",
+      "painHeadingPrefix": "85% van de cv's wordt",
+      "painHeadingHighlight": "afgewezen door ATS-bots",
+      "painSubheading": "Voordat een mens ze ooit ziet. Is jouw cv er een van?",
+      "solutionLabel": "De oplossing",
+      "solutionHeadingHighlight": "directe ATS-bestendige verbeteringen",
+      "solutionHeadingSuffix": "in 60 seconden",
+      "solutionSubheading": "Onze AI-scanner vindt precies wat je cv blokkeert en laat je zien hoe je het oplost."
+    },
+    "ultraCompactDescription": "ATS-geoptimaliseerde herschrijvingen • Waarschuwingssignalen • Zoekwoordverbeteringen",
+    "worksOnAllAts": "Werkt met alle ATS",
+    "atsExplainerToggle": "85% van de cv's wordt afgewezen door ATS-bots voordat een mens ze ziet",
+    "atsExplainerBoldLead": "ATS (Applicant Tracking Systems)",
+    "atsExplainerRest": "zijn AI-bots die cv's scannen en filteren voordat een mens ze ooit ziet. Meer dan 98% van de Fortune 500-bedrijven gebruikt ze.",
+    "atsExplainerSystems": "We analyseren tegen Workday, Greenhouse, Lever, Taleo, iCIMS en 50+ meer.",
+    "seeMethodology": "Bekijk onze methodologie",
+    "packagesTeaserPrefix": "Meer nodig dan een scan?",
+    "packagesTeaserHighlight": "Ontdek cv-pakketten",
+    "scrollToUpload": "Scroll om te uploaden",
+    "viewAllPackages": "Bekijk alle pakketten",
+    "preview": {
+      "atsScore": "ATS-score",
+      "found": "{{count}} gevonden",
+      "ready": "{{count}} gereed"
+    },
+    "testimonialQuote": "Mijn cv binnen 10 minuten opgelost. Diezelfde week 3 gesprekken gekregen.",
+    "testimonialAuthorName": "— Sarah K., Software-engineer"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle rechten voorbehouden.",
@@ -477,7 +511,8 @@
   },
   "common": {
     "backToHome": "Terug naar home",
-    "lastUpdated": "Laatst bijgewerkt"
+    "lastUpdated": "Laatst bijgewerkt",
+    "close": "Sluiten"
   },
   "privacy": {
     "title": "Privacybeleid"
