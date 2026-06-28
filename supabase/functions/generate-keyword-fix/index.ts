@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,16 +102,8 @@ Provide a comprehensive keyword analysis with actionable suggestions.`;
       }),
     });
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited, please try again shortly." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errorText = await response.text();
-      logStep("AI API error", { status: response.status, error: errorText });
-      throw new Error(`AI API error: ${response.status}`);
-    }
+    const rateLimitResponse = await checkAiGatewayResponse(response, corsHeaders);
+    if (rateLimitResponse) return rateLimitResponse;
 
     const aiResponse = await response.json();
     logStep("AI response received");

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -110,20 +111,8 @@ Give them a roast they'll remember AND learn from.`;
       }),
     });
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited, please try again shortly." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Service temporarily unavailable." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errorText = await response.text();
-      throw new Error(`AI API error: ${response.status} - ${errorText}`);
-    }
+    const rateLimitResponse = await checkAiGatewayResponse(response, corsHeaders);
+    if (rateLimitResponse) return rateLimitResponse;
 
     const result = await response.json();
     const content = result.choices?.[0]?.message?.content;

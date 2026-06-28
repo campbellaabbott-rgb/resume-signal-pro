@@ -178,10 +178,8 @@ async function handleEvaluate(req: Request, apiKey: string, resumeText: string) 
     }),
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`AI API error: ${response.status} - ${errorText}`);
-  }
+  const rateLimitResponse = await checkAiGatewayResponse(response, corsHeaders);
+  if (rateLimitResponse) return rateLimitResponse;
 
   const result = await response.json();
   const content = result.choices?.[0]?.message?.content;
