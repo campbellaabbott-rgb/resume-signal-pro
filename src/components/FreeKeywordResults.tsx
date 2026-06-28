@@ -62,119 +62,58 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// Tooltip explanations for each metric
-const metricTooltips = {
-  atsScore: {
-    title: "AI-ATS Score",
-    description: "Our AI simulates how modern AI-powered Applicant Tracking Systems scan your resume—the same technology 98% of Fortune 500 companies use.",
-    whyMatters: "A low score means your resume may never reach a human recruiter."
-  },
-  format: {
-    title: "Format Grade",
-    description: "Evaluates your resume's structure, layout, and AI-ATS readability.",
-    whyMatters: "Poor formatting causes AI-ATS parsing errors, losing your key information."
-  },
-  metrics: {
-    title: "Quantification Score",
-    description: "Measures how many of your achievements include numbers, percentages, or metrics.",
-    whyMatters: "Recruiters spend 6 seconds scanning—numbers catch their eye first."
-  },
-  verbs: {
-    title: "Action Verb Grade",
-    description: "Rates the strength and variety of action verbs starting your bullet points.",
-    whyMatters: "Strong verbs like 'Spearheaded' beat weak ones like 'Helped' or 'Assisted'."
-  },
-  pages: {
-    title: "Resume Length",
-    description: "Checks if your resume length matches industry standards for your experience level.",
-    whyMatters: "Too long = skipped. Too short = lacking substance."
-  },
-  words: {
-    title: "Word Count",
-    description: "Measures if you have enough content to showcase your value.",
-    whyMatters: "The sweet spot varies by experience—too few words signals inexperience."
-  },
-  sections: {
-    title: "Section Check",
-    description: "Verifies all essential resume sections are present (Summary, Experience, Education, Skills).",
-    whyMatters: "Missing sections are immediate red flags for recruiters."
-  },
-  contact: {
-    title: "Contact Info",
-    description: "Checks for email, phone, and LinkedIn presence.",
-    whyMatters: "Recruiters can't hire you if they can't contact you."
-  },
-  readability: {
-    title: "Readability Score",
-    description: "Measures how easy your resume is to scan quickly.",
-    whyMatters: "Recruiters average 6-7 seconds per resume—make every word count."
-  },
-  bulletImpact: {
-    title: "Bullet Impact",
-    description: "Analyzes if your bullets focus on achievements vs. just listing responsibilities.",
-    whyMatters: "Achievement-focused bullets prove value; responsibility lists don't."
-  },
-  keywordDensity: {
-    title: "Keyword Density",
-    description: "Measures industry-relevant keyword presence for AI-ATS matching.",
-    whyMatters: "Too few keywords = no AI-ATS match. Too many = keyword stuffing penalty."
-  },
-  improvementPotential: {
-    title: "Improvement Potential",
-    description: "Estimated score increase possible with optimization.",
-    whyMatters: "Shows how much room you have to outcompete other candidates."
-  },
-  industryBenchmark: {
-    title: "Industry Benchmark",
-    description: "Compares your score against others in your field.",
-    whyMatters: "Know where you stand against your direct competition."
-  },
-  timeline: {
-    title: "Career Timeline",
-    description: "Analyzes job tenure, gaps, and career progression patterns.",
-    whyMatters: "Recruiters look for stability and growth—gaps need explanation."
-  },
-  atsCompatibility: {
-    title: "AI-ATS System Compatibility",
-    description: "Shows how well your resume parses across major AI-powered Applicant Tracking Systems like Workday, Greenhouse, and Taleo.",
-    whyMatters: "Different companies use different AI-ATS systems—know which ones will read your resume correctly."
-  }
-};
+// Tooltip explanations for each metric — built from translation keys since this
+// is consumed by the standalone MetricTooltip component below, which doesn't
+// otherwise have a t() in scope at module-evaluation time.
+const METRIC_TOOLTIP_KEYS = [
+  "atsScore", "format", "metrics", "verbs", "pages", "words", "sections",
+  "contact", "readability", "bulletImpact", "keywordDensity",
+  "improvementPotential", "industryBenchmark", "timeline", "atsCompatibility"
+] as const;
 
-// A/B Test copy variants for product CTAs - now accepts formatLocalPrice function
+type MetricTooltipKey = typeof METRIC_TOOLTIP_KEYS[number];
+
+const getMetricTooltip = (t: (key: string) => string, metricKey: MetricTooltipKey) => ({
+  title: t(`freeResults.metricTooltips.${metricKey}.title`),
+  description: t(`freeResults.metricTooltips.${metricKey}.description`),
+  whyMatters: t(`freeResults.metricTooltips.${metricKey}.whyMatters`),
+});
+
+// A/B Test copy variants for product CTAs - reads from translation keys so
+// every variant is localized; the variant key itself maps to a camelCase
+// translation sub-key (benefit_focused -> benefitFocused).
 const getProductCtaCopy = (
   variant: 'control' | 'benefit_focused' | 'scarcity',
+  t: (key: string, options?: Record<string, unknown>) => string,
   formatLocalPrice: (usd: number) => string,
   isLocal: boolean
 ) => {
-  const coverLetterPrice = isLocal 
+  const variantKey = variant === 'benefit_focused' ? 'benefitFocused' : variant;
+  const coverLetterPrice = isLocal
     ? `$${PRODUCTS.coverLetter.priceUsd} ≈ ${formatLocalPrice(PRODUCTS.coverLetter.priceUsd)}`
     : `$${PRODUCTS.coverLetter.priceUsd}`;
-  const premiumPrice = isLocal 
+  const premiumPrice = isLocal
     ? `$${PRODUCTS.premiumPackage.priceUsd} ≈ ${formatLocalPrice(PRODUCTS.premiumPackage.priceUsd)}`
     : `$${PRODUCTS.premiumPackage.priceUsd}`;
-    
+
   return {
     coverLetter: {
-      control: { button: `Generate Cover Letter — ${coverLetterPrice}`, description: 'AI-generated cover letter tailored to your resume and target job. Ready to send in minutes.' },
-      benefit_focused: { button: 'Get Your Interview-Winning Letter', description: 'Stand out from 100+ applicants with a personalized cover letter that gets recruiters excited.' },
-      scarcity: { button: `Create Cover Letter Now — ${coverLetterPrice}`, description: 'Most applicants skip cover letters. Get ahead of the competition with a custom letter in 2 minutes.' },
-    }[variant],
+      button: t(`freeResults.ctaCopy.coverLetter.${variantKey}.button`, { price: coverLetterPrice }),
+      description: t(`freeResults.ctaCopy.coverLetter.${variantKey}.description`),
+    },
     keywordFix: {
-      control: { button: 'Get Full Keyword Report', headline: 'Want 50+ Industry Keywords?' },
-      benefit_focused: { button: 'Unlock Hidden Keywords', headline: 'Get Past the ATS Filter' },
-      scarcity: { button: 'Get Keywords Before Others Do', headline: 'Beat 87% of Applicants' },
-    }[variant],
+      button: t(`freeResults.ctaCopy.keywordFix.${variantKey}.button`),
+      headline: t(`freeResults.ctaCopy.keywordFix.${variantKey}.headline`),
+    },
     premiumPackage: {
-      control: { button: `Buy Premium Package — ${premiumPrice}`, headline: 'Premium Resume Package', subtext: 'Everything you need to land interviews' },
-      benefit_focused: { button: 'Get Interview-Ready Now', headline: 'Land Your Dream Job Faster', subtext: '3x more interview callbacks with our complete package' },
-      scarcity: { button: 'Claim Your Package — Limited', headline: 'Premium Resume Package', subtext: 'Join 10,000+ who landed interviews this month' },
-    }[variant],
+      button: t(`freeResults.ctaCopy.premiumPackage.${variantKey}.button`, { price: premiumPrice }),
+      headline: t(`freeResults.ctaCopy.premiumPackage.${variantKey}.headline`),
+      subtext: t(`freeResults.ctaCopy.premiumPackage.${variantKey}.subtext`),
+    },
     tailoredResume: {
-      control: { button: 'Preview Tailored Resume', description: 'Preview for free, then unlock the full Premium Package with tailored resume + cover letter' },
-      benefit_focused: { button: 'See Your Improved Resume', description: 'See exactly how your resume will look when optimized for your target role' },
-      scarcity: { button: 'Generate Before It Closes', description: 'Limited preview available — see your tailored resume before upgrading' },
-    }[variant],
+      button: t(`freeResults.ctaCopy.tailoredResume.${variantKey}.button`),
+      description: t(`freeResults.ctaCopy.tailoredResume.${variantKey}.description`),
+    },
   };
 };
 
@@ -188,20 +127,21 @@ const CoverLetterButton = ({
   variant: 'control' | 'benefit_focused' | 'scarcity';
   section?: string;
 }) => {
+  const { t } = useTranslation();
   const { purchaseProduct, isLoading, currentProduct, checkoutPrefetchProps } = useProductCheckout();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const isPurchasing = isLoading && currentProduct === 'coverLetter';
-  const copy = getProductCtaCopy(variant, formatPrice, isLocalCurrency).coverLetter;
-  
+  const copy = getProductCtaCopy(variant, t, formatPrice, isLocalCurrency).coverLetter;
+
   if (!hasJobDescription) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Lock className="w-4 h-4" />
-        <span>Add a job description above to unlock</span>
+        <span>{t('freeResults.addJobDescriptionToUnlock')}</span>
       </div>
     );
   }
-  
+
   return (
     <Button
       onClick={() => purchaseProduct('coverLetter', { ctaSection: section })}
@@ -213,7 +153,7 @@ const CoverLetterButton = ({
       {isPurchasing ? (
         <>
           <Loader2 className="w-4 h-4 animate-spin" />
-          Processing...
+          {t('freeResults.processing')}
         </>
       ) : (
         <>
@@ -233,11 +173,12 @@ const KeywordFixButton = ({
   variant: 'control' | 'benefit_focused' | 'scarcity';
   section?: string;
 }) => {
+  const { t } = useTranslation();
   const { purchaseProduct, isLoading, currentProduct, checkoutPrefetchProps } = useProductCheckout();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const isPurchasing = isLoading && currentProduct === 'basicKeywordFix';
-  const copy = getProductCtaCopy(variant, formatPrice, isLocalCurrency).keywordFix;
-  
+  const copy = getProductCtaCopy(variant, t, formatPrice, isLocalCurrency).keywordFix;
+
   return (
     <Button
       onClick={() => purchaseProduct('basicKeywordFix', { ctaSection: section })}
@@ -249,7 +190,7 @@ const KeywordFixButton = ({
       {isPurchasing ? (
         <>
           <Loader2 className="w-4 h-4 animate-spin" />
-          Processing...
+          {t('freeResults.processing')}
         </>
       ) : (
         <>
@@ -270,6 +211,7 @@ const ApplyAssistantButton = ({
   hasJobDescription: boolean;
   section?: string;
 }) => {
+  const { t } = useTranslation();
   const { purchaseProduct, isLoading, currentProduct, checkoutPrefetchProps } = useProductCheckout();
   const isPurchasing = isLoading && currentProduct === 'applyAssistant';
 
@@ -277,7 +219,7 @@ const ApplyAssistantButton = ({
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Lock className="w-4 h-4" />
-        <span>Add a job description above to unlock</span>
+        <span>{t('freeResults.addJobDescriptionToUnlock')}</span>
       </div>
     );
   }
@@ -293,12 +235,12 @@ const ApplyAssistantButton = ({
       {isPurchasing ? (
         <>
           <Loader2 className="w-4 h-4 animate-spin" />
-          Processing...
+          {t('freeResults.processing')}
         </>
       ) : (
         <>
           <Send className="w-4 h-4" />
-          Build My Application Package — $7
+          {t('freeResults.buildApplicationPackage', { price: PRODUCTS.applyAssistant.priceUsd })}
         </>
       )}
     </Button>
@@ -315,15 +257,16 @@ const PremiumPackageButton = ({
   isPrimary?: boolean;
   section?: string;
 }) => {
+  const { t } = useTranslation();
   const { purchaseProduct, isLoading, currentProduct, checkoutPrefetchProps } = useProductCheckout();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const isPurchasing = isLoading && currentProduct === 'premiumPackage';
-  const copy = getProductCtaCopy(variant, formatPrice, isLocalCurrency).premiumPackage;
-  
+  const copy = getProductCtaCopy(variant, t, formatPrice, isLocalCurrency).premiumPackage;
+
   const handleClick = () => {
     purchaseProduct('premiumPackage', { ctaSection: section });
   };
-  
+
   if (isPrimary) {
     return (
       <Button
@@ -336,7 +279,7 @@ const PremiumPackageButton = ({
         {isPurchasing ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Processing...
+            {t('freeResults.processing')}
           </>
         ) : (
           <>
@@ -347,7 +290,7 @@ const PremiumPackageButton = ({
       </Button>
     );
   }
-  
+
   return (
     <Button
       onClick={handleClick}
@@ -360,7 +303,7 @@ const PremiumPackageButton = ({
       {isPurchasing ? (
         <>
           <Loader2 className="w-5 h-5 animate-spin" />
-          Processing...
+          {t('freeResults.processing')}
         </>
       ) : (
         <>
@@ -373,27 +316,28 @@ const PremiumPackageButton = ({
 };
 
 // Reusable tooltip component for metrics - works on mobile with tap
-const MetricTooltip = ({ metricKey }: { metricKey: keyof typeof metricTooltips }) => {
+const MetricTooltip = ({ metricKey }: { metricKey: MetricTooltipKey }) => {
+  const { t } = useTranslation();
   const [showMobileTooltip, setShowMobileTooltip] = useState(false);
   const isMobile = useIsMobile();
-  const tooltip = metricTooltips[metricKey];
-  
+  const tooltip = getMetricTooltip(t, metricKey);
+
   if (isMobile) {
     return (
       <div className="relative inline-block">
         <button
           onClick={() => setShowMobileTooltip(!showMobileTooltip)}
           className="p-1 -m-1 touch-manipulation"
-          aria-label={`Learn about ${tooltip.title}`}
+          aria-label={t('freeResults.learnAboutMetric', { metric: tooltip.title })}
         >
           <HelpCircle className="w-3 h-3 text-muted-foreground/50" />
         </button>
         {showMobileTooltip && (
           <div className="absolute z-50 left-0 top-6 w-64 p-3 rounded-xl bg-card border border-border shadow-lg animate-fade-in">
-            <button 
+            <button
               onClick={() => setShowMobileTooltip(false)}
               className="absolute top-2 right-2 p-1 text-muted-foreground"
-              aria-label="Close"
+              aria-label={t('common.close')}
             >
               <X className="w-3 h-3" />
             </button>
@@ -879,8 +823,8 @@ export function FreeKeywordResults({
     setCorrectedIndustry(newIndustry);
     onIndustryChange?.(newIndustry);
     toast({
-      title: "Industry Updated",
-      description: `Keyword recommendations will now be tailored for ${newIndustry.replace(/_/g, ' ')}.`,
+      title: t('freeResults.industryUpdated'),
+      description: t('freeResults.industryUpdatedDescription', { industry: newIndustry.replace(/_/g, ' ') }),
     });
   };
   
@@ -1218,10 +1162,10 @@ export function FreeKeywordResults({
   };
 
   const getExperienceLevelLabel = (level: string) => {
-    if (level === "entry") return "Entry Level";
-    if (level === "mid") return "Mid Level";
-    if (level === "senior") return "Senior";
-    return "Executive";
+    if (level === "entry") return t('scoreHero.experienceLevel.entry');
+    if (level === "mid") return t('scoreHero.experienceLevel.mid');
+    if (level === "senior") return t('scoreHero.experienceLevel.senior');
+    return t('scoreHero.experienceLevel.executive');
   };
 
   const getQuantificationColor = (verdict: string) => {
@@ -1287,8 +1231,8 @@ export function FreeKeywordResults({
 
     if (!emailSchema.safeParse(email).success) {
       toast({
-        title: "Invalid email",
-        description: "Please enter a valid email address.",
+        title: t('freeResults.toast.invalidEmail'),
+        description: t('freeResults.toast.invalidEmailDescription'),
         variant: "destructive",
       });
       return;
@@ -1313,8 +1257,8 @@ export function FreeKeywordResults({
           try {
             const parsed = typeof errorBody === 'string' ? JSON.parse(errorBody) : errorBody;
             toast({
-              title: "Couldn't save email",
-              description: parsed.error || "Please try again.",
+              title: t('freeResults.toast.couldntSaveEmail'),
+              description: parsed.error || t('freeResults.toast.tryAgain'),
               variant: "destructive",
             });
             return;
@@ -1327,7 +1271,7 @@ export function FreeKeywordResults({
 
       if (data?.error) {
         toast({
-          title: "Couldn't save email",
+          title: t('freeResults.toast.couldntSaveEmail'),
           description: data.error,
           variant: "destructive",
         });
@@ -1338,14 +1282,14 @@ export function FreeKeywordResults({
       // Also save email to scan history for returning user tracking
       setUserEmail(email);
       toast({
-        title: "You're on the list!",
-        description: "We'll send you resume tips to help you land more interviews.",
+        title: t('freeResults.toast.onTheList'),
+        description: t('freeResults.toast.onTheListDescription'),
       });
     } catch (error: unknown) {
       console.error("Email capture error:", error);
       toast({
-        title: "Something went wrong",
-        description: "Please try again.",
+        title: t('freeResults.toast.somethingWrong'),
+        description: t('freeResults.toast.tryAgain'),
         variant: "destructive",
       });
     } finally {
@@ -1403,19 +1347,19 @@ export function FreeKeywordResults({
 
   const navSections = useMemo(() => {
     const sections = [
-      { id: "section-overview", label: "Overview", icon: "📊" },
-      { id: "section-metrics", label: "Metrics", icon: "📈" },
-      { id: "section-issues", label: "Issues", icon: "⚠️" },
+      { id: "section-overview", label: t('freeResults.nav.overview'), icon: "📊" },
+      { id: "section-metrics", label: t('freeResults.nav.metrics'), icon: "📈" },
+      { id: "section-issues", label: t('freeResults.nav.issues'), icon: "⚠️" },
     ];
     if (jobMatchScore !== undefined) {
-      sections.push({ id: "section-job-match", label: "Job Match", icon: "🎯" });
+      sections.push({ id: "section-job-match", label: t('freeResults.nav.jobMatch'), icon: "🎯" });
     }
     sections.push(
-      { id: "section-insights", label: "Insights", icon: "💡" },
-      { id: "section-upgrade", label: "Next Steps", icon: "🚀" },
+      { id: "section-insights", label: t('freeResults.nav.insights'), icon: "💡" },
+      { id: "section-upgrade", label: t('freeResults.nav.nextSteps'), icon: "🚀" },
     );
     return sections;
-  }, [jobMatchScore]);
+  }, [jobMatchScore, t]);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -1426,15 +1370,15 @@ export function FreeKeywordResults({
             <button
               onClick={() => setShowExitOffer(false)}
               className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Close"
+              aria-label={t('common.close')}
             >
               <X className="w-4 h-4" />
             </button>
-            <h3 className="text-lg font-bold mb-1">Before you go —</h3>
+            <h3 className="text-lg font-bold mb-1">{t('freeResults.exitOffer.title')}</h3>
             <p className="text-sm text-muted-foreground mb-4">
               {realKeywordGapStats && realKeywordGapStats.totalMissing > 0
-                ? `You're missing ${realKeywordGapStats.totalMissing} keywords common in ${effectiveIndustry.replace(/_/g, ' ')} roles. Get the fix list for the price of a coffee.`
-                : "Get your top missing keywords identified and a fix list, for the price of a coffee."}
+                ? t('freeResults.exitOffer.withStats', { count: realKeywordGapStats.totalMissing, industry: effectiveIndustry.replace(/_/g, ' ') })
+                : t('freeResults.exitOffer.noStats')}
             </p>
             <KeywordFixButton variant="benefit_focused" section="exit_intent" />
           </div>
@@ -1534,8 +1478,8 @@ export function FreeKeywordResults({
       {/* Industry & Role Keyword Suggestions */}
       <CollapsibleSection
         id="keywords-suggestions"
-        title="Industry & Role Keywords"
-        subtitle="Keywords relevant to your field and target role"
+        title={t('freeResults.industryKeywordsSection.title')}
+        subtitle={t('freeResults.industryKeywordsSection.subtitle')}
         icon={<Search className="w-4 h-4" />}
         defaultOpen={false}
       >
@@ -1682,7 +1626,7 @@ export function FreeKeywordResults({
                 <p className={cn("text-lg font-bold capitalize", 
                   experienceFit === "good_fit" ? "text-success" : "text-warning"
                 )}>
-                  {experienceFit === "good_fit" ? "Good Fit" : experienceFit === "overqualified" ? "Over" : "Under"}
+                  {experienceFit === "good_fit" ? t('freeResults.experienceFit.goodFit') : experienceFit === "overqualified" ? t('freeResults.experienceFit.over') : t('freeResults.experienceFit.under')}
                 </p>
               </div>
             )}
@@ -1789,7 +1733,7 @@ export function FreeKeywordResults({
                       action.priority === "should_have" ? "bg-warning/20 text-warning" :
                       "bg-muted text-muted-foreground"
                     )}>
-                      {action.priority === "must_have" ? "Must" : action.priority === "should_have" ? "Should" : "Nice"}
+                      {action.priority === "must_have" ? t('freeResults.priority.must') : action.priority === "should_have" ? t('freeResults.priority.should') : t('freeResults.priority.nice')}
                     </div>
                     <div className="flex-1">
                       <p className="text-sm text-foreground">{action.action}</p>
@@ -1896,7 +1840,7 @@ export function FreeKeywordResults({
               <AlertTriangle className={cn("w-4 h-4", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")} />
               <div>
                 <p className={cn("text-sm font-semibold", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")}>
-                  {atsScoreEstimate < 60 ? "At risk of being filtered out" : "Needs improvement to compete"}
+                  {atsScoreEstimate < 60 ? t('freeResults.atRiskOrNeedsImprovement.atRisk') : t('freeResults.atRiskOrNeedsImprovement.needsImprovement')}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {atsScoreEstimate < 60 ? "Most ATS require 60+ to pass" : "75+ increases callback rate"}
@@ -1911,8 +1855,8 @@ export function FreeKeywordResults({
       {/* Personalized Insights */}
       <CollapsibleSection
         id="personalized-tips"
-        title="Personalized Tips"
-        subtitle="Tailored insights for your profile"
+        title={t('freeResults.personalizedTipsSection.title')}
+        subtitle={t('freeResults.personalizedTipsSection.subtitle')}
         icon={<Lightbulb className="w-4 h-4" />}
         defaultOpen={false}
       >
@@ -1931,13 +1875,13 @@ export function FreeKeywordResults({
       {resumeText && (
         <CollapsibleSection
           id="elevator-pitch"
-          title="60-Second Elevator Pitch"
-          subtitle="AI-generated pitch from your resume"
+          title={t('freeResults.elevatorPitchSection.title')}
+          subtitle={t('freeResults.elevatorPitchSection.subtitle')}
           icon={<Rocket className="w-4 h-4" />}
           defaultOpen={false}
           badge={
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-              Free
+              {t('uploader.badges.free')}
             </span>
           }
         >
@@ -1955,13 +1899,13 @@ export function FreeKeywordResults({
       {resumeText && (
         <CollapsibleSection
           id="recruiter-view"
-          title="Recruiter View Mode"
-          subtitle="See exactly what recruiters see"
+          title={t('freeResults.recruiterViewSection.title')}
+          subtitle={t('freeResults.recruiterViewSection.subtitle')}
           icon={<Eye className="w-4 h-4" />}
           defaultOpen={false}
           badge={
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-              Free
+              {t('uploader.badges.free')}
             </span>
           }
         >
@@ -1977,13 +1921,13 @@ export function FreeKeywordResults({
       {resumeText && (
         <CollapsibleSection
           id="resume-roast"
-          title="Resume Roast 🔥"
-          subtitle="Brutally honest, hilariously specific"
+          title={t('freeResults.resumeRoastSection.title')}
+          subtitle={t('freeResults.resumeRoastSection.subtitle')}
           icon={<Flame className="w-4 h-4" />}
           defaultOpen={false}
           badge={
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">
-              Free
+              {t('uploader.badges.free')}
             </span>
           }
         >
@@ -1999,13 +1943,13 @@ export function FreeKeywordResults({
       {resumeText && (
         <CollapsibleSection
           id="interview-coach"
-          title="Interview Coach"
-          subtitle="Practice with AI-generated questions"
+          title={t('freeResults.interviewCoachSection.title')}
+          subtitle={t('freeResults.interviewCoachSection.subtitle')}
           icon={<MessageSquare className="w-4 h-4" />}
           defaultOpen={false}
           badge={
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-              Free
+              {t('uploader.badges.free')}
             </span>
           }
         >
@@ -2021,13 +1965,13 @@ export function FreeKeywordResults({
       {resumeText && (
         <CollapsibleSection
           id="career-path"
-          title="Career Path Simulator"
-          subtitle="3 possible futures based on your resume"
+          title={t('freeResults.careerPathSection.title')}
+          subtitle={t('freeResults.careerPathSection.subtitle')}
           icon={<TrendingUp className="w-4 h-4" />}
           defaultOpen={false}
           badge={
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-              Free
+              {t('uploader.badges.free')}
             </span>
           }
         >
@@ -2042,13 +1986,13 @@ export function FreeKeywordResults({
       {currentScan && currentScan.checklist && currentScan.checklist.length > 0 && (
         <CollapsibleSection
           id="fix-checklist"
-          title="Fix Checklist"
-          subtitle={`${currentScan.checklist.filter((i) => i.completed).length}/${currentScan.checklist.length} completed`}
+          title={t('freeResults.fixChecklistTitle')}
+          subtitle={t('freeResults.checklistCompleted', { completed: currentScan.checklist.filter((i) => i.completed).length, total: currentScan.checklist.length })}
           icon={<CheckCircle2 className="w-4 h-4" />}
           defaultOpen={false}
           badge={
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-              Track progress
+              {t('freeResults.trackProgress')}
             </span>
           }
         >
@@ -2147,8 +2091,8 @@ export function FreeKeywordResults({
                 onClick={() => {
                   navigator.clipboard.writeText(topSkipReasons.map((r, i) => `${i + 1}. ${r}`).join('\n'));
                   toast({
-                    title: "Copied to clipboard",
-                    description: "Share this with a friend or mentor for feedback"
+                    title: t('freeResults.toast.copiedToClipboard'),
+                    description: t('freeResults.toast.shareWithFriend')
                   });
                 }}
                 className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
@@ -2229,7 +2173,7 @@ export function FreeKeywordResults({
             const isAt = industryBenchmark.comparison === "at";
             const displayPercentile = industryBenchmark.percentile.includes("%") || industryBenchmark.percentile.toLowerCase().includes("top") || industryBenchmark.percentile.toLowerCase().includes("bottom")
               ? industryBenchmark.percentile
-              : isTop ? "Above average" : isAt ? "Around average" : "Below average";
+              : isTop ? t('freeResults.peerBenchmark.above') : isAt ? t('freeResults.peerBenchmark.at') : t('freeResults.peerBenchmark.below');
 
             return (
               <div className={cn(
@@ -2242,7 +2186,7 @@ export function FreeKeywordResults({
                   {displayPercentile}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  for ATS readiness among {cohortLabel}
+                  {t('freeResults.peerBenchmark.forAtsReadinessAmong', { cohort: cohortLabel })}
                 </p>
               </div>
             );
@@ -2251,18 +2195,18 @@ export function FreeKeywordResults({
           {/* What This Means - Clear, non-contradictory guidance */}
           <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
             <p className="text-xs font-medium text-foreground mb-1">
-              {industryBenchmark.comparison === "above" 
-                ? "✓ Strong position in your industry" 
-                : industryBenchmark.comparison === "at" 
-                  ? "→ Room for improvement"
-                  : "⚠ Below industry average"}
+              {industryBenchmark.comparison === "above"
+                ? t('freeResults.peerBenchmark.strongPosition')
+                : industryBenchmark.comparison === "at"
+                  ? t('freeResults.peerBenchmark.roomForImprovement')
+                  : t('freeResults.peerBenchmark.belowAverage')}
             </p>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              {industryBenchmark.comparison === "above" 
-                ? "Your resume scores well against peers. Focus on tailoring to specific roles for best results."
-                : industryBenchmark.comparison === "at" 
-                  ? "Your resume is competitive but could be stronger. The suggestions below will help you stand out."
-                : "Other candidates in your field are scoring higher. Apply the fixes below to improve your chances."}
+              {industryBenchmark.comparison === "above"
+                ? t('freeResults.peerBenchmark.strongResult')
+                : industryBenchmark.comparison === "at"
+                  ? t('freeResults.peerBenchmark.competitiveResult')
+                : t('freeResults.peerBenchmark.weakResult')}
             </p>
           </div>
           
@@ -2335,31 +2279,31 @@ export function FreeKeywordResults({
                   timelineAnalysis.progression === "steady" ? "text-success" :
                   timelineAnalysis.progression === "stagnant" ? "text-warning" : "text-muted-foreground"
                 )}>
-                  {timelineAnalysis.progression === "rapid" ? "🚀 Rapid" :
-                   timelineAnalysis.progression === "steady" ? "📈 Steady" :
-                   timelineAnalysis.progression === "stagnant" ? "📊 Flat" : "❓ Unclear"}
+                  {timelineAnalysis.progression === "rapid" ? t('freeResults.timelineProgression.rapidLabel') :
+                   timelineAnalysis.progression === "steady" ? t('freeResults.timelineProgression.steadyLabel') :
+                   timelineAnalysis.progression === "stagnant" ? t('freeResults.timelineProgression.stagnantLabel') : t('freeResults.timelineProgression.unclearLabel')}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                {timelineAnalysis.progression === "rapid" 
-                  ? "Great! Shows strong advancement and increasing responsibility"
+                {timelineAnalysis.progression === "rapid"
+                  ? t('freeResults.timelineProgression.rapid')
                   : timelineAnalysis.progression === "steady"
-                    ? "Shows consistent growth — employers like this pattern"
+                    ? t('freeResults.timelineProgression.steady')
                     : timelineAnalysis.progression === "stagnant"
-                      ? "Consider highlighting promotions or new responsibilities"
-                      : "Add clearer job titles to show your career path"}
+                      ? t('freeResults.timelineProgression.stagnant')
+                      : t('freeResults.timelineProgression.unclear')}
               </p>
             </div>
-            
+
             {/* Employment Gaps Warning */}
             {timelineAnalysis.hasGaps && (
               <div className="p-3 rounded-lg bg-warning/10 border border-warning/20">
                 <div className="flex items-center gap-2 mb-1">
                   <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
-                  <span className="text-sm font-medium text-warning">Employment Gap Detected</span>
+                  <span className="text-sm font-medium text-warning">{t('freeResults.timelineProgression.gapDetected')}</span>
                 </div>
                 <p className="text-xs text-warning/80">
-                  {timelineAnalysis.gapNote || "Gaps are common — just be ready to explain them in interviews"}
+                  {timelineAnalysis.gapNote || t('freeResults.timelineProgression.gapNoteDefault')}
                 </p>
               </div>
             )}
@@ -2383,17 +2327,17 @@ export function FreeKeywordResults({
             {careerSituation.situation === "military_transition" && <Target className="w-4 h-4 text-primary" />}
             {careerSituation.situation === "recent_grad" && <Trophy className="w-4 h-4 text-primary" />}
             <h4 className="font-semibold flex-1">
-              {careerSituation.situation === "career_changer" && "Career Changer Detected"}
-              {careerSituation.situation === "returning_to_workforce" && "Returning to Workforce"}
-              {careerSituation.situation === "military_transition" && "Military Transition"}
-              {careerSituation.situation === "recent_grad" && "Recent Graduate"}
+              {careerSituation.situation === "career_changer" && t('freeResults.careerSituationLabel.careerChanger')}
+              {careerSituation.situation === "returning_to_workforce" && t('freeResults.careerSituationLabel.returningToWorkforce')}
+              {careerSituation.situation === "military_transition" && t('freeResults.careerSituationLabel.militaryTransition')}
+              {careerSituation.situation === "recent_grad" && t('freeResults.careerSituationLabel.recentGrad')}
             </h4>
             <span className={cn(
               "text-xs px-2 py-0.5 rounded-full",
               careerSituation.confidence === "high" ? "bg-success/20 text-success" :
               careerSituation.confidence === "medium" ? "bg-warning/20 text-warning" : "bg-muted text-muted-foreground"
             )}>
-              {careerSituation.confidence} confidence
+              {t('freeResults.confidencePercent', { confidence: careerSituation.confidence })}
             </span>
           </div>
           
@@ -2456,11 +2400,11 @@ export function FreeKeywordResults({
       {personalizedCareerInsights && (
         <CollapsibleSection
           id="career-insights"
-          title="Personalized Career Insights"
-          subtitle={`Tailored for ${candidateName || 'you'}`}
+          title={t('freeResults.personalizedCareerInsightsTitle')}
+          subtitle={t('freeResults.tailoredForYou', { name: candidateName || t('freeResults.you') })}
           icon={<Sparkles className="w-4 h-4" />}
           defaultOpen={false}
-          badge={<span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">AI-powered</span>}
+          badge={<span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{t('freeResults.aiPowered')}</span>}
         >
         <div className="rounded-xl bg-gradient-to-br from-primary/5 via-card to-card border border-primary/20 p-4 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.08),transparent_50%)] pointer-events-none" />
@@ -2522,8 +2466,8 @@ export function FreeKeywordResults({
                             role.fit === "lateral_move" ? "bg-primary/20 text-primary" :
                             "bg-warning/20 text-warning"
                           )}>
-                            {role.fit === "natural_progression" ? "Natural next step" :
-                             role.fit === "lateral_move" ? "Lateral move" : "Stretch goal"}
+                            {role.fit === "natural_progression" ? t('freeResults.roleFit.naturalProgression') :
+                             role.fit === "lateral_move" ? t('freeResults.roleFit.lateralMove') : t('freeResults.roleFit.stretchGoal')}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground">{role.gapToClose}</p>
@@ -2564,8 +2508,8 @@ export function FreeKeywordResults({
                     personalizedCareerInsights.salaryInsight.marketPosition === "at_market" ? "bg-primary/20 text-primary" :
                     "bg-warning/20 text-warning"
                   )}>
-                    {personalizedCareerInsights.salaryInsight.marketPosition === "above_market" ? "Above Market" :
-                     personalizedCareerInsights.salaryInsight.marketPosition === "at_market" ? "At Market" : "Below Market"}
+                    {personalizedCareerInsights.salaryInsight.marketPosition === "above_market" ? t('freeResults.marketPosition.aboveMarket') :
+                     personalizedCareerInsights.salaryInsight.marketPosition === "at_market" ? t('freeResults.marketPosition.atMarket') : t('freeResults.marketPosition.belowMarket')}
                   </span>
                 </div>
                 <div className="flex items-baseline gap-2 mb-2">
@@ -2640,8 +2584,8 @@ export function FreeKeywordResults({
       {formatRecommendation && (
         <CollapsibleSection
           id="format-recommendation"
-          title="Resume Format Recommendation"
-          subtitle={`${formatRecommendation.recommendedStyle} style recommended for ${industry}`}
+          title={t('freeResults.formatRecommendationSection.title')}
+          subtitle={t('freeResults.formatRecommendationSection.subtitle', { style: formatRecommendation.recommendedStyle, industry })}
           icon={<LayoutList className="w-4 h-4" />}
           defaultOpen={false}
           badge={
@@ -2655,7 +2599,7 @@ export function FreeKeywordResults({
         >
         <div className="rounded-xl bg-card border border-border p-4">
           <p className="text-xs text-muted-foreground mb-4">
-            Based on {industry} industry standards and your experience level
+            {t('freeResults.formatRecommendationSection.basedOnStandards', { industry })}
           </p>
 
           {/* Current Format Assessment */}
@@ -2676,9 +2620,9 @@ export function FreeKeywordResults({
                   "font-medium",
                   formatRecommendation.currentFormatAssessment.isAppropriate ? "text-success" : "text-warning"
                 )}>
-                  {formatRecommendation.currentFormatAssessment.isAppropriate 
-                    ? "Your format fits your industry!" 
-                    : "Format needs adjustment"}
+                  {formatRecommendation.currentFormatAssessment.isAppropriate
+                    ? t('freeResults.formatRecommendationSection.fitsIndustry')
+                    : t('freeResults.formatRecommendationSection.needsAdjustment')}
                 </p>
                 {!formatRecommendation.currentFormatAssessment.isAppropriate && (
                   <p className="text-sm text-muted-foreground mt-1">
@@ -2686,7 +2630,7 @@ export function FreeKeywordResults({
                   </p>
                 )}
                 <p className="text-sm font-medium text-primary mt-2">
-                  Quick fix: {formatRecommendation.currentFormatAssessment.quickFix}
+                  {t('freeResults.formatRecommendationSection.quickFixLabel', { fix: formatRecommendation.currentFormatAssessment.quickFix })}
                 </p>
               </div>
             </div>
@@ -2695,25 +2639,25 @@ export function FreeKeywordResults({
           {/* Layout Advice */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div className="p-3 rounded-lg bg-muted/50 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Layout</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('freeResults.formatRecommendationSection.layoutLabel')}</p>
               <p className="text-sm font-semibold capitalize">
-                {formatRecommendation.layoutAdvice.columns === "one_column" ? "Single Column" : "Two Column"}
+                {formatRecommendation.layoutAdvice.columns === "one_column" ? t('freeResults.columns.oneColumn') : t('freeResults.columns.twoColumn')}
               </p>
             </div>
             <div className="p-3 rounded-lg bg-muted/50 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Color</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('freeResults.formatRecommendationSection.colorLabel')}</p>
               <p className="text-sm font-semibold">
-                {formatRecommendation.layoutAdvice.useColor ? "✓ Acceptable" : "✗ Avoid"}
+                {formatRecommendation.layoutAdvice.useColor ? t('freeResults.formatRecommendationSection.colorAcceptable') : t('freeResults.formatRecommendationSection.colorAvoid')}
               </p>
             </div>
             <div className="p-3 rounded-lg bg-muted/50 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Visuals</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('freeResults.formatRecommendationSection.visualsLabel')}</p>
               <p className="text-sm font-semibold capitalize">
                 {formatRecommendation.layoutAdvice.visualElements}
               </p>
             </div>
             <div className="p-3 rounded-lg bg-muted/50 text-center col-span-2 md:col-span-1">
-              <p className="text-xs text-muted-foreground mb-1">Style</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('freeResults.formatRecommendationSection.styleLabel')}</p>
               <p className="text-sm font-semibold capitalize">
                 {formatRecommendation.recommendedStyle}
               </p>
@@ -2723,7 +2667,7 @@ export function FreeKeywordResults({
           {/* Industry Norms */}
           {formatRecommendation.industryNorms && formatRecommendation.industryNorms.length > 0 && (
             <div className="mb-4">
-              <p className="text-sm font-semibold mb-3">What top {industry} resumes do:</p>
+              <p className="text-sm font-semibold mb-3">{t('freeResults.formatRecommendationSection.whatTopResumesDo', { industry })}</p>
               <div className="space-y-2">
                 {formatRecommendation.industryNorms.map((norm, index) => (
                   <div key={index} className="flex items-start gap-2">
@@ -2733,7 +2677,7 @@ export function FreeKeywordResults({
                       norm.importance === "recommended" ? "bg-primary/20 text-primary" :
                       "bg-muted text-muted-foreground"
                     )}>
-                      {norm.importance === "must_have" ? "Must" : norm.importance === "recommended" ? "Rec" : "Opt"}
+                      {norm.importance === "must_have" ? t('freeResults.formatRecommendationSection.importance.must') : norm.importance === "recommended" ? t('freeResults.formatRecommendationSection.importance.rec') : t('freeResults.formatRecommendationSection.importance.opt')}
                     </span>
                     <p className="text-sm text-foreground">{norm.norm}</p>
                   </div>
@@ -2745,7 +2689,7 @@ export function FreeKeywordResults({
           {/* Things to Avoid */}
           {formatRecommendation.avoidList && formatRecommendation.avoidList.length > 0 && (
             <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20 mb-4">
-              <p className="text-xs font-semibold text-destructive mb-2">Avoid for {industry}:</p>
+              <p className="text-xs font-semibold text-destructive mb-2">{t('freeResults.formatRecommendationSection.avoidForIndustry', { industry })}</p>
               <div className="flex flex-wrap gap-2">
                 {formatRecommendation.avoidList.map((item, index) => (
                   <span key={index} className="text-xs px-2 py-1 rounded-full bg-destructive/10 text-destructive">
@@ -2759,7 +2703,7 @@ export function FreeKeywordResults({
           {/* Template Suggestion */}
           <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
             <p className="text-sm">
-              <span className="font-semibold text-primary">Ideal template: </span>
+              <span className="font-semibold text-primary">{t('freeResults.formatRecommendationSection.idealTemplate')}</span>
               <span className="text-muted-foreground">{formatRecommendation.templateSuggestion}</span>
             </p>
           </div>
@@ -2770,8 +2714,8 @@ export function FreeKeywordResults({
       {/* ATS System Compatibility */}
       <CollapsibleSection
         id="ats-compatibility"
-        title="ATS Parsing Compatibility"
-        subtitle="How well different ATS systems can read your resume"
+        title={t('freeResults.atsParsingSection.title')}
+        subtitle={t('freeResults.atsParsingSection.subtitle')}
         icon={<FileCheck className="w-4 h-4" />}
         defaultOpen={false}
       >
@@ -2789,18 +2733,18 @@ export function FreeKeywordResults({
             atsSystemCompatibility.overallRating === "good" ? "text-success" :
             atsSystemCompatibility.overallRating === "fair" ? "text-warning" : "text-destructive"
           )}>
-            {atsSystemCompatibility.overallRating === "excellent" ? "✓ Excellent Compatibility" :
-             atsSystemCompatibility.overallRating === "good" ? "✓ Good Compatibility" :
-             atsSystemCompatibility.overallRating === "fair" ? "⚠ Fair Compatibility" : "✗ Poor Compatibility"}
+            {atsSystemCompatibility.overallRating === "excellent" ? t('freeResults.atsParsingSection.excellentRating') :
+             atsSystemCompatibility.overallRating === "good" ? t('freeResults.atsParsingSection.goodRating') :
+             atsSystemCompatibility.overallRating === "fair" ? t('freeResults.atsParsingSection.fairRating') : t('freeResults.atsParsingSection.poorRating')}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            {atsSystemCompatibility.overallRating === "excellent" 
-              ? "Your resume should parse correctly on most ATS platforms" 
+            {atsSystemCompatibility.overallRating === "excellent"
+              ? t('freeResults.atsParsingSection.excellent')
               : atsSystemCompatibility.overallRating === "good"
-                ? "Most ATS will read your resume correctly"
+                ? t('freeResults.atsParsingSection.good')
                 : atsSystemCompatibility.overallRating === "fair"
-                  ? "Some ATS may have trouble parsing your resume"
-                  : "Many ATS will struggle to read your resume properly"}
+                  ? t('freeResults.atsParsingSection.fair')
+                  : t('freeResults.atsParsingSection.poor')}
           </p>
         </div>
 
@@ -2810,7 +2754,7 @@ export function FreeKeywordResults({
           <div className="p-4 rounded-xl bg-success/5 border border-success/20">
             <div className="flex items-center gap-2 mb-3">
               <CheckCircle className="w-4 h-4 text-success" />
-              <span className="text-sm font-semibold text-success">Works Best With</span>
+              <span className="text-sm font-semibold text-success">{t('freeResults.atsParsingSection.worksBestWith')}</span>
             </div>
             <div className="space-y-2">
               {(atsSystemCompatibility.bestSystems || []).map((system, index) => (
@@ -2822,10 +2766,10 @@ export function FreeKeywordResults({
                     <span className="text-xs text-muted-foreground">{system.reason}</span>
                     <span className={cn(
                       "text-xs font-bold px-2 py-0.5 rounded",
-                      system.score >= 80 ? "bg-success/20 text-success" : 
+                      system.score >= 80 ? "bg-success/20 text-success" :
                       system.score >= 60 ? "bg-warning/20 text-warning" : "bg-destructive/20 text-destructive"
                     )}>
-                      {system.score >= 80 ? "High" : system.score >= 60 ? "Medium" : "Low"}
+                      {system.score >= 80 ? t('freeResults.confidenceLevel.high') : system.score >= 60 ? t('freeResults.confidenceLevel.medium') : t('freeResults.confidenceLevel.low')}
                     </span>
                   </div>
                 </div>
@@ -2837,7 +2781,7 @@ export function FreeKeywordResults({
           <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20">
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle className="w-4 h-4 text-destructive" />
-              <span className="text-sm font-semibold text-destructive">May Have Issues</span>
+              <span className="text-sm font-semibold text-destructive">{t('freeResults.atsParsingSection.mayHaveIssues')}</span>
             </div>
             <div className="space-y-2">
               {(atsSystemCompatibility.worstSystems || []).map((system, index) => (
@@ -2851,7 +2795,7 @@ export function FreeKeywordResults({
                       "text-xs font-bold px-2 py-0.5 rounded",
                       system.score >= 70 ? "bg-warning/20 text-warning" : "bg-destructive/20 text-destructive"
                     )}>
-                      {system.score >= 70 ? "Medium" : "Low"}
+                      {system.score >= 70 ? t('freeResults.confidenceLevel.medium') : t('freeResults.confidenceLevel.low')}
                     </span>
                   </div>
                 </div>
@@ -2882,7 +2826,7 @@ export function FreeKeywordResults({
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="flex-1 text-center sm:text-left">
               <p className="font-semibold text-foreground">
-                {getProductCtaCopy('control', formatPrice, isLocalCurrency).premiumPackage.headline}
+                {getProductCtaCopy('control', t, formatPrice, isLocalCurrency).premiumPackage.headline}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Get an AI-rewritten resume that's optimized for ALL major ATS systems
@@ -3050,8 +2994,8 @@ export function FreeKeywordResults({
       {/* Score-Gated Premium Insights */}
       <div className="space-y-4 mb-6">
         <LockedPremiumInsight
-          title="AI-Rewritten Bullet Points"
-          description="Get every bullet point rewritten with measurable impact and power verbs"
+          title={t('freeResults.bulletRewriteSection.title')}
+          description={t('freeResults.bulletRewriteSection.description')}
           previewLines={
             realWeakBullets && realWeakBullets.weakCount > 0
               ? [
@@ -3075,7 +3019,7 @@ export function FreeKeywordResults({
         />
 
         <LockedPremiumInsight
-          title="Complete Keyword Gap Analysis"
+          title={t('freeResults.keywordGapSection.title')}
           description={
             realKeywordGapStats && realKeywordGapStats.totalMissing > 0
               ? `${realKeywordGapStats.totalMissing} missing keywords found specific to ${effectiveIndustry.replace(/_/g, ' ')} that ATS systems look for`
@@ -3115,7 +3059,7 @@ export function FreeKeywordResults({
         />
 
         <LockedPremiumInsight
-          title="Personalized Career Strategy"
+          title={t('freeResults.careerStrategySection.title')}
           description={
             currentRole
               ? `Salary negotiation guidance, next-role paths, and interview talking points for your ${currentRole} background`
@@ -3142,15 +3086,15 @@ export function FreeKeywordResults({
       <div className="rounded-2xl bg-card border border-border p-5 mb-5">
         <div className="flex items-center gap-2 mb-4">
           <LayoutList className="w-4 h-4 text-primary" />
-          <h4 className="font-semibold">Section Checklist</h4>
+          <h4 className="font-semibold">{t('freeResults.sectionChecklistTitle')}</h4>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           {[
-            { label: "Contact", has: sectionCheck.hasContact },
-            { label: "Summary", has: sectionCheck.hasSummary },
-            { label: "Experience", has: sectionCheck.hasExperience },
-            { label: "Education", has: sectionCheck.hasEducation },
-            { label: "Skills", has: sectionCheck.hasSkills },
+            { label: t('freeResults.sectionLabels.contact'), has: sectionCheck.hasContact },
+            { label: t('freeResults.sectionLabels.summary'), has: sectionCheck.hasSummary },
+            { label: t('freeResults.sectionLabels.experience'), has: sectionCheck.hasExperience },
+            { label: t('freeResults.sectionLabels.education'), has: sectionCheck.hasEducation },
+            { label: t('freeResults.sectionLabels.skills'), has: sectionCheck.hasSkills },
           ].map((item) => (
             <div key={item.label} className={cn(
               "flex items-center gap-2 p-2 rounded-xl border",
@@ -3244,7 +3188,7 @@ export function FreeKeywordResults({
         keywords={keywords}
         industry={effectiveIndustry}
         keywordFixButton={<KeywordFixButton variant="control" section="keyword_suggestions" />}
-        keywordFixHeadline={getProductCtaCopy('control', formatPrice, isLocalCurrency).keywordFix.headline}
+        keywordFixHeadline={getProductCtaCopy('control', t, formatPrice, isLocalCurrency).keywordFix.headline}
         keywordFixPrice={isLocalCurrency ? `$${PRODUCTS.basicKeywordFix.priceUsd} ≈ ${formatPrice(PRODUCTS.basicKeywordFix.priceUsd)}` : `$${PRODUCTS.basicKeywordFix.priceUsd}`}
       />
 
@@ -3310,7 +3254,7 @@ export function FreeKeywordResults({
               </span>
             </div>
             <p className="text-sm text-muted-foreground mb-3">
-              {getProductCtaCopy('control', formatPrice, isLocalCurrency).coverLetter.description}
+              {getProductCtaCopy('control', t, formatPrice, isLocalCurrency).coverLetter.description}
             </p>
             <div className="flex flex-wrap gap-2 mb-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Personalized opening</span>
@@ -3329,23 +3273,23 @@ export function FreeKeywordResults({
         <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
         <div className="relative">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-primary-foreground/80">Best Value</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-primary-foreground/80">{t('freeResults.bestValue')}</span>
             <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-primary-foreground font-bold">{PRODUCTS.premiumPackage.savings}</span>
           </div>
           <h3 className="text-2xl font-bold text-primary-foreground mb-2">
-            {getProductCtaCopy('control', formatPrice, isLocalCurrency).premiumPackage.headline}
+            {getProductCtaCopy('control', t, formatPrice, isLocalCurrency).premiumPackage.headline}
           </h3>
           <p className="text-sm text-primary-foreground/80 mb-4">
-            {getProductCtaCopy('control', formatPrice, isLocalCurrency).premiumPackage.subtext}: full analysis + AI-rewritten resume + custom cover letter.
+            {t('freeResults.premiumIncludesDetail', { subtext: getProductCtaCopy('control', t, formatPrice, isLocalCurrency).premiumPackage.subtext })}
           </p>
           <div className="grid grid-cols-2 gap-2 mb-4">
             {[
-              "Complete ATS analysis",
-              "AI-rewritten resume",
-              "Custom cover letter",
-              "Before/after comparison",
-              "Keyword optimization",
-              "Priority processing"
+              t('freeResults.premiumFeatures.completeAtsAnalysis'),
+              t('freeResults.premiumFeatures.aiRewrittenResume'),
+              t('freeResults.premiumFeatures.customCoverLetter'),
+              t('freeResults.premiumFeatures.beforeAfterComparison'),
+              t('freeResults.premiumFeatures.keywordOptimization'),
+              t('freeResults.premiumFeatures.priorityProcessing')
             ].map((feature, i) => (
               <div key={i} className="flex items-center gap-2 text-xs text-primary-foreground/90">
                 <CheckCircle2 className="w-3 h-3 text-primary-foreground shrink-0" />
@@ -3371,20 +3315,20 @@ export function FreeKeywordResults({
       <div className="rounded-2xl bg-muted/30 border border-border/50 p-5 mb-6">
         <div className="flex items-center gap-2 mb-3">
           <Lock className="w-4 h-4 text-muted-foreground" />
-          <h4 className="font-medium text-muted-foreground">Unlock with Full Analysis</h4>
+          <h4 className="font-medium text-muted-foreground">{t('freeResults.unlockWithFullAnalysis')}</h4>
         </div>
         <div className="grid grid-cols-2 gap-2 text-sm">
           {[
-            "Full ATS score breakdown",
-            "Bullet point rewrites",
-            "Detailed red flag fixes",
-            "LinkedIn optimization",
-            "Action verb replacements",
-            "Quantification suggestions",
-            "Skills gap analysis",
-            "Industry-specific insights",
-            "Summary/headline rewrites",
-            "Prioritized action plan"
+            t('freeResults.keywordFixFeatures.fullAtsBreakdown'),
+            t('freeResults.keywordFixFeatures.bulletPointRewrites'),
+            t('freeResults.keywordFixFeatures.redFlagFixes'),
+            t('freeResults.keywordFixFeatures.linkedinOptimization'),
+            t('freeResults.keywordFixFeatures.actionVerbReplacements'),
+            t('freeResults.keywordFixFeatures.quantificationSuggestions'),
+            t('freeResults.keywordFixFeatures.skillsGapAnalysis'),
+            t('freeResults.keywordFixFeatures.industryInsights'),
+            t('freeResults.keywordFixFeatures.summaryRewrites'),
+            t('freeResults.keywordFixFeatures.prioritizedActionPlan')
           ].map((feature, i) => (
             <div key={i} className="flex items-center gap-2 text-muted-foreground">
               <div className="w-1 h-1 rounded-full bg-muted-foreground/50" />
@@ -3399,7 +3343,7 @@ export function FreeKeywordResults({
         <div className="p-5 rounded-2xl border border-success/30 bg-gradient-to-br from-success/5 via-background to-success/10 mb-6">
           <div className="flex items-center gap-2 mb-3">
             <Target className="w-4 h-4 text-success" />
-            <h4 className="font-medium text-foreground">Want to see how you compare for <span className="text-primary">{uploadedJobs[0]?.title}</span> at <span className="text-primary">{uploadedJobs[0]?.company}</span>?</h4>
+            <h4 className="font-medium text-foreground">{t('freeResults.wantToCompareFor')} <span className="text-primary">{uploadedJobs[0]?.title}</span> {t('freeResults.atCompany')} <span className="text-primary">{uploadedJobs[0]?.company}</span>?</h4>
           </div>
           <div className="flex flex-wrap gap-2">
             {uploadedJobs.slice(0, 3).map((job, index) => (
@@ -3412,13 +3356,13 @@ export function FreeKeywordResults({
                 className="group border-success/30 hover:border-success hover:bg-success/10 transition-all"
               >
                 <Target className="w-3.5 h-3.5 mr-1.5 text-success" />
-                <span className="truncate max-w-[180px]">Get Job-Specific Analysis</span>
+                <span className="truncate max-w-[180px]">{t('freeResults.getJobSpecificAnalysis')}</span>
                 <ArrowRight className="w-3.5 h-3.5 ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-success" />
               </Button>
             ))}
           </div>
           <p className="text-xs text-muted-foreground mt-3">
-            Get personalized insights for your target role
+            {t('freeResults.personalizedInsightsForRole')}
           </p>
         </div>
       )}
@@ -3427,7 +3371,7 @@ export function FreeKeywordResults({
       <div className="text-center p-6 rounded-2xl bg-gradient-to-br from-primary/10 via-background to-primary/5 border border-primary/20">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-success/10 text-success text-xs font-medium mb-3">
           <CheckCircle2 className="w-3 h-3" />
-          One-time payment • Instant access
+          {t('freeResults.oneTimePaymentInstantAccess')}
         </div>
         <Button 
           size="lg" 
@@ -3440,7 +3384,7 @@ export function FreeKeywordResults({
         </Button>
         <WalletPaymentBadge className="mt-3" />
         <p className="text-sm text-muted-foreground mt-2">
-          <span className="text-success font-medium">One interview = {priceDisplay} paid for itself</span>
+          <span className="text-success font-medium">{t('freeResults.oneInterviewPaidForItself', { price: priceDisplay })}</span>
         </p>
       </div>
 

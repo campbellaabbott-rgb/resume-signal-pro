@@ -954,5 +954,160 @@
     "subheading": "Mula sa mabilis na ayos hanggang kumpletong career package",
     "viewDetails": "Tingnan ang detalye",
     "compareAll": "Ikumpara lahat ng package"
+  },
+  "freeResults": {
+    "metricTooltips": {
+      "atsScore": { "title": "AI-ATS Score", "description": "Sinisimulate ng aming AI kung paano ni-scan ang iyong resume ng mga modernong AI-powered Applicant Tracking System — ang parehong teknolohiyang ginagamit ng 98% ng Fortune 500 companies.", "whyMatters": "Ang mababang score ay nangangahulugan na ang iyong resume ay posibleng hindi makarating sa isang tao na recruiter." },
+      "format": { "title": "Format Grade", "description": "Sinusuri ang istruktura, layout, at AI-ATS readability ng iyong resume.", "whyMatters": "Ang masamang format ay nagdudulot ng AI-ATS parsing error, na nawawala ang iyong mahahalagang impormasyon." },
+      "metrics": { "title": "Quantification Score", "description": "Sinusukat kung gaano karaming achievement mo ang may numero, porsyento, o metrics.", "whyMatters": "6 segundo lang ang ginugol ng mga recruiter sa pag-scan — ang mga numero ang unang nakakuha ng atensyon." },
+      "verbs": { "title": "Action Verb Grade", "description": "Sinusukat ang lakas at pagkakaiba-iba ng mga action verb na nagsisimula sa iyong bullet point.", "whyMatters": "Mas mabuti ang malakas na verb tulad ng 'Pinangunahan' kaysa sa mahina tulad ng 'Tumulong' o 'Nag-assist'." },
+      "pages": { "title": "Haba ng Resume", "description": "Sinusuri kung ang haba ng iyong resume ay tugma sa industry standard para sa iyong experience level.", "whyMatters": "Sobrang haba = nalaktawan. Sobrang ikli = kulang sa substance." },
+      "words": { "title": "Bilang ng Salita", "description": "Sinusukat kung sapat ang content mo para ipakita ang iyong halaga.", "whyMatters": "Ang sweet spot ay nagbabago depende sa experience — kaunting salita ay senyales ng kawalan ng karanasan." },
+      "sections": { "title": "Section Check", "description": "Tinitiyak na naroon ang lahat ng mahalagang section ng resume (Summary, Experience, Education, Skills).", "whyMatters": "Ang mga nawawalang section ay agarang red flag para sa mga recruiter." },
+      "contact": { "title": "Contact Info", "description": "Sinusuri ang presensya ng email, telepono, at LinkedIn.", "whyMatters": "Hindi ka maaaring kunin ng mga recruiter kung hindi ka nila makontak." },
+      "readability": { "title": "Readability Score", "description": "Sinusukat kung gaano madaling i-scan ang iyong resume.", "whyMatters": "Karaniwang 6-7 segundo lang ang ginugol ng recruiter kada resume — pahalagahan ang bawat salita." },
+      "bulletImpact": { "title": "Bullet Impact", "description": "Sinusuri kung ang iyong mga bullet ay nakatuon sa achievement kumpara sa pag-lista lang ng responsibilidad.", "whyMatters": "Ang mga bullet na nakatuon sa achievement ay nagpapakita ng halaga; ang listahan ng responsibilidad ay hindi." },
+      "keywordDensity": { "title": "Keyword Density", "description": "Sinusukat ang presensya ng mga keyword na may kaugnayan sa industriya para sa AI-ATS matching.", "whyMatters": "Kaunting keyword = walang AI-ATS match. Sobrang dami = parusa sa keyword stuffing." },
+      "improvementPotential": { "title": "Potensyal sa Pagpapabuti", "description": "Tinatayang posibleng pagtaas ng score sa pamamagitan ng optimization.", "whyMatters": "Ipinapakita kung gaano karaming puwang ka para malampasan ang ibang kandidato." },
+      "industryBenchmark": { "title": "Industry Benchmark", "description": "Ikinukumpara ang iyong score sa iba sa iyong larangan.", "whyMatters": "Alamin kung saan ka nakatayo laban sa iyong direktang kompetisyon." },
+      "timeline": { "title": "Career Timeline", "description": "Sinusuri ang tagal ng trabaho, mga gaps, at pattern ng career progression.", "whyMatters": "Hinahanap ng mga recruiter ang stability at growth — kailangang ipaliwanag ang mga gap." },
+      "atsCompatibility": { "title": "AI-ATS System Compatibility", "description": "Ipinapakita kung gaano maayos na nababasa ang iyong resume sa mga pangunahing AI-powered Applicant Tracking System tulad ng Workday, Greenhouse, at Taleo.", "whyMatters": "Iba-iba ang AI-ATS system na ginagamit ng mga kumpanya — alamin kung alin ang tama ang pagbasa sa iyong resume." }
+    },
+    "ctaCopy": {
+      "coverLetter": {
+        "control": { "button": "Gawin ang Cover Letter — {{price}}", "description": "AI-generated cover letter na naangkop sa iyong resume at target na trabaho. Handa nang ipadala sa ilang minuto." },
+        "benefitFocused": { "button": "Kunin ang Interview-Winning Letter Mo", "description": "Mag-stand out sa 100+ aplikante gamit ang personalized cover letter na pumupukaw sa interes ng mga recruiter." },
+        "scarcity": { "button": "Gawin Na ang Cover Letter — {{price}}", "description": "Karamihan sa mga aplikante ay nililaktawan ang cover letter. Manguna sa kompetisyon gamit ang custom na letter sa 2 minuto." }
+      },
+      "keywordFix": {
+        "control": { "button": "Kunin ang Buong Keyword Report", "headline": "Gusto mo ng 50+ Industry Keywords?" },
+        "benefitFocused": { "button": "I-unlock ang Mga Hidden Keyword", "headline": "Makalampas sa ATS Filter" },
+        "scarcity": { "button": "Kunin ang Keywords Bago ang Iba", "headline": "Talunin ang 87% ng Aplikante" }
+      },
+      "premiumPackage": {
+        "control": { "button": "Bilhin ang Premium Package — {{price}}", "headline": "Premium Resume Package", "subtext": "Lahat ng kailangan mo para makakuha ng interview" },
+        "benefitFocused": { "button": "Maging Handa sa Interview Ngayon", "headline": "Mas Mabilis na Makuha ang Dream Job Mo", "subtext": "3x mas marami pang interview callback sa aming kumpletong package" },
+        "scarcity": { "button": "I-claim ang Package Mo — Limitado", "headline": "Premium Resume Package", "subtext": "Sumali sa 10,000+ na nakakuha ng interview ngayong buwan" }
+      },
+      "tailoredResume": {
+        "control": { "button": "I-preview ang Naangkop na Resume", "description": "Libreng preview, pagkatapos i-unlock ang buong Premium Package na may naangkop na resume + cover letter" },
+        "benefitFocused": { "button": "Tingnan ang Pinabuting Resume Mo", "description": "Tingnan kung paano talaga magmumukha ang resume mo kapag na-optimize para sa target role mo" },
+        "scarcity": { "button": "I-generate Bago Magsara", "description": "Limitadong preview available — tingnan ang naangkop na resume mo bago mag-upgrade" }
+      }
+    },
+    "addJobDescriptionToUnlock": "Magdagdag ng job description sa itaas para mai-unlock",
+    "processing": "Pinoproseso...",
+    "buildApplicationPackage": "Gawin ang Application Package Ko — ${{price}}",
+    "learnAboutMetric": "Alamin ang tungkol sa {{metric}}",
+    "industryUpdated": "Na-update ang Industriya",
+    "industryUpdatedDescription": "Ang mga rekomendasyon ng keyword ay gagawing angkop na para sa {{industry}}.",
+    "toast": {
+      "invalidEmail": "Hindi valid ang email",
+      "invalidEmailDescription": "Pakilagay ang valid na email address.",
+      "couldntSaveEmail": "Hindi na-save ang email",
+      "tryAgain": "Pakisubukan ulit.",
+      "onTheList": "Nasa listahan ka na!",
+      "onTheListDescription": "Magpapadala kami ng mga resume tip para tulungan kang makakuha ng mas maraming interview.",
+      "somethingWrong": "May nangyaring mali",
+      "copiedToClipboard": "Na-copy sa clipboard",
+      "shareWithFriend": "Ibahagi ito sa kaibigan o mentor para sa feedback"
+    },
+    "nav": { "overview": "Overview", "metrics": "Metrics", "issues": "Mga Isyu", "jobMatch": "Job Match", "insights": "Mga Insight", "nextSteps": "Susunod na Hakbang" },
+    "exitOffer": {
+      "title": "Bago ka umalis —",
+      "withStats": "Kulang ka ng {{count}} karaniwang keyword sa mga role ng {{industry}}. Kunin ang fix list sa halaga ng isang kape.",
+      "noStats": "Tukuyin ang iyong mga nawawalang keyword at kunin ang fix list, sa halaga ng isang kape."
+    },
+    "industryKeywordsSection": { "title": "Mga Keyword sa Industriya at Role", "subtitle": "Mga keyword na may kaugnayan sa iyong larangan at target role" },
+    "experienceFit": { "goodFit": "Bagay", "over": "Sobra", "under": "Kulang" },
+    "priority": { "must": "Dapat", "should": "Maganda", "nice": "Bonus" },
+    "atRiskOrNeedsImprovement": { "atRisk": "May panganib na ma-filter out", "needsImprovement": "Kailangan ng pagpapabuti para makompetensya" },
+    "personalizedTipsSection": { "title": "Mga Personalized na Tip", "subtitle": "Mga insight na naangkop sa iyong profile" },
+    "elevatorPitchSection": { "title": "60-Segundong Elevator Pitch", "subtitle": "AI-generated na pitch mula sa iyong resume" },
+    "recruiterViewSection": { "title": "Recruiter View Mode", "subtitle": "Tingnan mismo ang nakikita ng mga recruiter" },
+    "resumeRoastSection": { "title": "Resume Roast 🔥", "subtitle": "Tapat na tapat, nakakatawang specific" },
+    "interviewCoachSection": { "title": "Interview Coach", "subtitle": "Mag-practice gamit ang AI-generated na mga tanong" },
+    "careerPathSection": { "title": "Career Path Simulator", "subtitle": "3 posibleng kinabukasan base sa iyong resume" },
+    "fixChecklistTitle": "Fix Checklist",
+    "checklistCompleted": "{{completed}}/{{total}} natapos",
+    "trackProgress": "I-track ang progress",
+    "peerBenchmark": {
+      "above": "Mas mataas sa average", "at": "Katumbas ng average", "below": "Mas mababa sa average",
+      "forAtsReadinessAmong": "para sa ATS readiness sa gitna ng {{cohort}}",
+      "strongPosition": "✓ Malakas na posisyon sa iyong industriya",
+      "roomForImprovement": "→ May puwang para sa pagpapabuti",
+      "belowAverage": "⚠ Mas mababa sa industry average",
+      "strongResult": "Mahusay ang score ng iyong resume kumpara sa mga peers. Magtuon sa pag-angkop sa specific na role para sa pinakamagandang resulta.",
+      "competitiveResult": "Competitive ang iyong resume pero maaari pang mas patibayin. Tutulong ang mga suhestyon sa baba para makatayo ka.",
+      "weakResult": "Mas mataas ang score ng ibang kandidato sa iyong larangan. Gamitin ang mga fix sa baba para mapabuti ang iyong tsansa."
+    },
+    "timelineProgression": {
+      "rapidLabel": "🚀 Mabilis", "steadyLabel": "📈 Matatag", "stagnantLabel": "📊 Patag", "unclearLabel": "❓ Hindi Malinaw",
+      "rapid": "Magaling! Nagpapakita ng malakas na pag-unlad at lumalaking responsibilidad",
+      "steady": "Nagpapakita ng tuloy-tuloy na paglago — gusto ng mga employer ang pattern na ito",
+      "stagnant": "Isaalang-alang ang paghighlight ng mga promotion o bagong responsibilidad",
+      "unclear": "Magdagdag ng mas malinaw na job title para ipakita ang iyong career path",
+      "gapDetected": "Natukoy ang Employment Gap",
+      "gapNoteDefault": "Karaniwan ang mga gap — maghanda lang na ipaliwanag ito sa interview"
+    },
+    "confidencePercent": "{{confidence}} confidence",
+    "careerSituationLabel": { "careerChanger": "Natukoy na Career Changer", "returningToWorkforce": "Bumabalik sa Workforce", "militaryTransition": "Military Transition", "recentGrad": "Bagong Graduate" },
+    "personalizedCareerInsightsTitle": "Personalized na Career Insights",
+    "tailoredForYou": "Naangkop para kay {{name}}",
+    "you": "ikaw",
+    "aiPowered": "AI-powered",
+    "roleFit": { "naturalProgression": "Natural na susunod na hakbang", "lateralMove": "Lateral na paglipat", "stretchGoal": "Mapanghamong layunin" },
+    "marketPosition": { "aboveMarket": "Mas Mataas sa Market", "atMarket": "Katumbas ng Market", "belowMarket": "Mas Mababa sa Market" },
+    "formatRecommendationSection": {
+      "title": "Rekomendasyon sa Format ng Resume",
+      "subtitle": "{{style}} style na rekomendado para sa {{industry}}",
+      "basedOnStandards": "Base sa industry standard ng {{industry}} at iyong experience level",
+      "fitsIndustry": "Bagay ang format mo sa iyong industriya!",
+      "needsAdjustment": "Kailangan ng ayos ang format",
+      "quickFixLabel": "Mabilis na ayos: {{fix}}",
+      "layoutLabel": "Layout", "colorLabel": "Kulay", "visualsLabel": "Visuals", "styleLabel": "Style",
+      "colorAcceptable": "✓ Katanggap-tanggap", "colorAvoid": "✗ Iwasan",
+      "whatTopResumesDo": "Ano ang ginagawa ng mga top resume sa {{industry}}:",
+      "importance": { "must": "Dapat", "rec": "Rekomendado", "opt": "Opsyonal" },
+      "avoidForIndustry": "Iwasan para sa {{industry}}:",
+      "idealTemplate": "Idyal na template: "
+    },
+    "columns": { "oneColumn": "Isang Column", "twoColumn": "Dalawang Column" },
+    "atsParsingSection": {
+      "title": "ATS Parsing Compatibility",
+      "subtitle": "Kung gaano maayos na mababasa ng iba't ibang ATS system ang iyong resume",
+      "excellentRating": "✓ Mahusay na Compatibility", "goodRating": "✓ Magandang Compatibility", "fairRating": "⚠ Katamtamang Compatibility", "poorRating": "✗ Mahinang Compatibility",
+      "excellent": "Dapat tamang mabasa ang iyong resume sa karamihan ng ATS platform",
+      "good": "Karamihan ng ATS ay tamang mababasa ang iyong resume",
+      "fair": "Maaaring may problema ang ilang ATS sa pagbasa ng iyong resume",
+      "poor": "Marami sa ATS ay mahihirapan na tamang mabasa ang iyong resume",
+      "worksBestWith": "Pinaka-maayos na gumagana sa",
+      "mayHaveIssues": "Posibleng may problema sa"
+    },
+    "confidenceLevel": { "high": "Mataas", "medium": "Katamtaman", "low": "Mababa" },
+    "bulletRewriteSection": { "title": "AI-Rewritten na Bullet Point", "description": "Ipa-rewrite ang bawat bullet point gamit ang masusukat na impact at malalakas na verb" },
+    "keywordGapSection": { "title": "Kumpletong Keyword Gap Analysis" },
+    "careerStrategySection": { "title": "Personalized na Career Strategy" },
+    "sectionChecklistTitle": "Section Checklist",
+    "sectionLabels": { "contact": "Contact", "summary": "Summary", "experience": "Experience", "education": "Edukasyon", "skills": "Kasanayan" },
+    "bestValue": "Pinakamahusay na Halaga",
+    "wantToCompareFor": "Gusto mong makita kung paano ka ihahambing para sa",
+    "atCompany": "sa",
+    "getJobSpecificAnalysis": "Kunin ang Job-Specific na Analysis",
+    "personalizedInsightsForRole": "Kumuha ng personalized na insight para sa target role mo",
+    "oneTimePaymentInstantAccess": "Isang-beses na bayad • Agarang access",
+    "oneInterviewPaidForItself": "Isang interview = {{price}} ay nabayaran na",
+    "unlockWithFullAnalysis": "I-unlock sa Full Analysis",
+    "premiumFeatures": {
+      "completeAtsAnalysis": "Kumpletong ATS analysis", "aiRewrittenResume": "AI-rewritten na resume", "customCoverLetter": "Custom na cover letter",
+      "beforeAfterComparison": "Before/after comparison", "keywordOptimization": "Keyword optimization", "priorityProcessing": "Priority processing"
+    },
+    "keywordFixFeatures": {
+      "fullAtsBreakdown": "Buong breakdown ng ATS score", "bulletPointRewrites": "Bullet point rewrites", "redFlagFixes": "Detalyadong ayos sa red flag",
+      "linkedinOptimization": "LinkedIn optimization", "actionVerbReplacements": "Pagpalit ng action verb", "quantificationSuggestions": "Mga suhestyon sa quantification",
+      "skillsGapAnalysis": "Skills gap analysis", "industryInsights": "Industry-specific na insight", "summaryRewrites": "Summary/headline rewrites",
+      "prioritizedActionPlan": "Pinaunahang action plan"
+    },
+    "premiumIncludesDetail": "{{subtext}}: buong analysis + AI-rewritten na resume + custom na cover letter."
   }
 }
