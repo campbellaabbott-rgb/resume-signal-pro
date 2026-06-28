@@ -1147,6 +1147,137 @@
     "viewAllProducts": "Alle Produkte ansehen",
     "addOnNames": { "resumeRoast": "Lebenslauf-Roast", "interviewCoach": "Interview-Coach", "careerPath": "Karriereweg" }
   },
+  "trustPage": {
+    "metaTitle": "Vertrauen & Sicherheit — Resume Booster",
+    "metaDescription": "256-Bit-Verschlüsselung, keine dauerhafte Speicherung des Lebenslaufs, DSGVO-konforme Datenverarbeitung. So schützen wir deine Daten.",
+    "privacyMatters": "Deine Privatsphäre ist uns wichtig",
+    "titlePrefix": "Dein Lebenslauf ist",
+    "titleHighlight": "bei uns sicher",
+    "heroSubtitle": "Wir haben Resume Booster nach dem Prinzip „Sicherheit zuerst“ entwickelt. Deine Karrieredokumente verdienen Schutz auf Bankniveau – genau das bieten wir.",
+    "badges": {
+      "ssl": "256-Bit-SSL",
+      "zeroStorage": "Keine Speicherung",
+      "gdpr": "DSGVO-konform"
+    },
+    "stats": {
+      "resumesAnalyzed": "Analysierte Lebensläufe",
+      "betterResults": "Berichten von besseren Ergebnissen",
+      "avgDelivery": "Durchschnittliche Lieferzeit",
+      "dataBreaches": "Datenschutzverletzungen"
+    },
+    "security": {
+      "ssl": {
+        "title": "256-Bit-SSL-Verschlüsselung",
+        "description": "Dein Lebenslauf wird während des Uploads und der Verarbeitung mit Verschlüsselung auf Bankniveau geschützt. Wir nutzen den gleichen Sicherheitsstandard wie große Finanzinstitute."
+      },
+      "zeroStorage": {
+        "title": "Keine-Speicherung-Richtlinie",
+        "description": "Wir speichern deinen Lebenslauf niemals auf unseren Servern. Dein Dokument wird im Arbeitsspeicher verarbeitet und nach der Analyse sofort verworfen."
+      },
+      "autoDelete": {
+        "title": "Automatische Löschung nach 24 Stunden",
+        "description": "Alle während der Verarbeitung erstellten temporären Daten werden automatisch innerhalb von 24 Stunden gelöscht. Deine Daten, deine Kontrolle."
+      },
+      "gdpr": {
+        "title": "DSGVO-konform",
+        "description": "Wir halten uns an strenge europäische Datenschutzstandards. Du kannst jederzeit die Löschung deiner Daten beantragen."
+      },
+      "noSharing": {
+        "title": "Keine Weitergabe an Dritte",
+        "description": "Der Inhalt deines Lebenslaufs wird niemals an Recruiter, Arbeitgeber oder Dritte weitergegeben. Er wird ausschließlich analysiert, um dir zu helfen."
+      },
+      "transparent": {
+        "title": "Transparente Verarbeitung",
+        "description": "Wir zeigen dir genau, was unsere KI analysiert und warum. Keine Black Box – volle Transparenz in unserer Methodik."
+      }
+    },
+    "protectDataTitle": "Wie wir deine Daten schützen",
+    "protectDataSubtitle": "Jeder Aspekt von Resume Booster ist mit Blick auf deine Privatsphäre und Sicherheit gestaltet.",
+    "transparentScoringTitle": "Transparente KI-Bewertung",
+    "transparentScoringSubtitle": "Wir glauben an vollständige Transparenz. Sieh genau, wie unsere KI Lebensläufe analysiert, welche Faktoren wir berücksichtigen und wie Punktzahlen berechnet werden.",
+    "viewMethodology": "Unsere Methodik ansehen",
+    "realResultsTitle": "Echte Ergebnisse, echte Verbesserungen",
+    "realResultsSubtitle": "Sieh, wie unsere KI vage Aufzählungspunkte in aussagekräftige, quantifizierte Erfolge verwandelt.",
+    "trustedByTitle": "Vertraut von Bewerbern bei Top-Unternehmen",
+    "trustedBySubtitle": "Fachkräfte führender Unternehmen nutzen Resume Booster, um ihre Traumjobs zu bekommen.",
+    "ctaTitle": "Bereit, deinen Lebenslauf zu verbessern?",
+    "ctaSubtitle": "Schließe dich Tausenden von Bewerbern an, die ihre Lebensläufe mit unserer KI-gestützten Analyse verbessert haben.",
+    "ctaButton": "Hol dir deinen kostenlosen Scan"
+  },
+  "methodologyPage": {
+    "metaTitle": "Methodik — Wie Resume Booster Lebensläufe bewertet",
+    "metaDescription": "Einblick in die ATS-Bewertungsrichtlinien, Recruiter-Heuristiken und die KI-Pipeline hinter jedem Resume-Booster-Scan.",
+    "transparentResearchBased": "Transparent & forschungsbasiert",
+    "titlePrefix": "Unsere ATS-Analyse-",
+    "titleHighlight": "Methodik",
+    "heroSubtitle": "Wir haben zurückentwickelt, wie über 50 Bewerbermanagementsysteme (ATS) Lebensläufe analysieren und bewerten. So funktioniert unsere Analyse genau.",
+    "platformsAnalyzed": "50+ ATS-Plattformen analysiert",
+    "resumesProcessed": "10.000+ Lebensläufe verarbeitet",
+    "updatedMonthly": "Monatlich aktualisiert",
+    "howAnalysisWorks": "Wie unsere Analyse funktioniert",
+    "step": "SCHRITT {{number}}",
+    "steps": {
+      "parsing": {
+        "title": "Dokumentenanalyse",
+        "description": "Wir extrahieren Text unter Beibehaltung der Struktur und verarbeiten PDF- und DOCX-Dateien mit der gleichen Parsing-Logik, die große ATS-Plattformen verwenden."
+      },
+      "aiAnalysis": {
+        "title": "KI-Analyse",
+        "description": "Unsere KI simuliert, wie jedes ATS deinen Lebenslauf liest, und identifiziert Abschnitte, Schlüsselwörter und Formatierungen, die zu Parsing-Fehlern führen könnten."
+      },
+      "keywordMatching": {
+        "title": "Schlüsselwort-Abgleich",
+        "description": "Wir vergleichen deinen Lebenslauf mit branchenspezifischen Schlüsselwort-Datenbanken und Stellenanforderungen, um Lücken zu identifizieren."
+      },
+      "scoringAlgorithm": {
+        "title": "Bewertungsalgorithmus",
+        "description": "Dein ATS-Score wird basierend auf über 50 Faktoren berechnet, darunter Schlüsselwortdichte, Formatierung, Vollständigkeit der Abschnitte und Warnsignale."
+      }
+    },
+    "atsPlatforms": {
+      "0": { "description": "Analyse von Abschnittsüberschriften, Schlüsselwortextraktion, Validierung des Datumsformats", "marketShare": "Große Unternehmen" },
+      "1": { "description": "Algorithmen zum Skill-Abgleich, Bewertung der Erfahrungsstufe, Indikatoren für kulturelle Passung", "marketShare": "Tech & Start-ups" },
+      "2": { "description": "Validierung der Kontaktdaten, Formatierungskonsistenz, Abschnittsorganisation", "marketShare": "Mittelstand" },
+      "3": { "description": "Analyse der Schlüsselwortdichte, Abgleich der Jobtitel, Bewertung der Qualifikationen", "marketShare": "Fortune 500" },
+      "4": { "description": "Analyse von Bildungsangaben, Zertifikatserkennung, Abgleich der Skill-Taxonomie", "marketShare": "Gesundheitswesen & Einzelhandel" },
+      "5": { "description": "Analyse der Lebenslaufstruktur, Validierung der Erfahrungschronologie", "marketShare": "KMU" },
+      "6": { "description": "Schlüsselwortoptimierung, Algorithmen zur Bewerber-Rangfolge", "marketShare": "Kleinunternehmen" },
+      "7": { "description": "Integration von Social-Profilen, Empfehlungs-Tracking, Skill-Bewertung", "marketShare": "Großunternehmen" },
+      "8": { "description": "KI-gestützter Abgleich, Diversitätsindikatoren, globale Compliance", "marketShare": "Globale Großunternehmen" },
+      "9": { "description": "Personalvermittlungsspezifische Analyse, Erkennung von Auftragnehmern, Verfügbarkeitsbewertung", "marketShare": "Personalvermittlungsagenturen" }
+    },
+    "atsPlatformsTitle": "ATS-Plattformen, gegen die wir analysieren",
+    "atsPlatformsSubtitle": "Unsere Analyse basiert auf den Parsing-Regeln und Bewertungsalgorithmen dieser großen ATS-Plattformen, die über 90 % des Arbeitsmarkts abdecken.",
+    "moreAtsPlatforms": "+ 40 weitere regionale und branchenspezifische ATS-Plattformen",
+    "scoreCalculatedTitle": "Wie dein ATS-Score berechnet wird",
+    "scoreCalculatedSubtitle": "Dein Score ist eine gewichtete Kombination mehrerer Faktoren, die bestimmen, wie gut dein Lebenslauf in ATS-Systemen abschneidet.",
+    "scoringFactors": {
+      "keywordOptimization": { "factor": "Schlüsselwortoptimierung", "description": "Erwähnte branchenrelevante Schlüsselwörter und Fähigkeiten" },
+      "formatCompatibility": { "factor": "Formatkompatibilität", "description": "Saubere Struktur, die ATS korrekt analysieren kann" },
+      "sectionCompleteness": { "factor": "Vollständigkeit der Abschnitte", "description": "Alle erwarteten Abschnitte vorhanden und korrekt benannt" },
+      "experienceClarity": { "factor": "Klarheit der Erfahrung", "description": "Klare Jobtitel, Daten und Erfolge" },
+      "actionVerbUsage": { "factor": "Verwendung von Aktionsverben", "description": "Starke Aktionsverben, die Wirkung zeigen" },
+      "quantifiedAchievements": { "factor": "Quantifizierte Erfolge", "description": "Zahlen und Kennzahlen, die Ergebnisse belegen" },
+      "redFlagAbsence": { "factor": "Abwesenheit von Warnsignalen", "description": "Keine Formatierungs- oder Inhaltsprobleme" }
+    },
+    "continuousResearchTitle": "Kontinuierliche Forschung",
+    "continuousResearchSubtitle": "Wir analysieren kontinuierlich Stellenausschreibungen, ATS-Updates und Einstellungstrends, um unsere Analyse genau und aktuell zu halten.",
+    "continuousResearch": {
+      "monthlyUpdates": "Monatliche Algorithmus-Updates",
+      "keywordDatabases": "Branchenspezifische Schlüsselwort-Datenbanken",
+      "recruiterFeedback": "Integration von echtem Recruiter-Feedback"
+    },
+    "validatedByResultsTitle": "Durch Ergebnisse validiert",
+    "validatedByResultsSubtitle": "Unsere Methodik wird durch echte Ergebnisse von Tausenden von Bewerbern validiert, die ihre Lebensläufe mit unserer Analyse verbessert haben.",
+    "validatedByResults": {
+      "interviewRates": "89 % berichten von besseren Vorstellungsgesprächsraten",
+      "resumesAnalyzed": "10.000+ Lebensläufe analysiert",
+      "scoreImprovement": "Durchschnittliche Verbesserung um 23 Punkte"
+    },
+    "ctaTitle": "Bereit, deinen ATS-Score zu sehen?",
+    "ctaSubtitle": "Erhalte eine kostenlose Analyse deines Lebenslaufs mit unserer bewährten Methodik.",
+    "ctaButton": "Meinen Lebenslauf kostenlos analysieren"
+  },
   "pricingPage": {
     "metaTitle": "Preise — Resume Booster",
     "metaDescription": "Pläne vom 1-$-Keyword-Fix bis zum 25-$-Career-Snapshot. Einmalzahlung, kein Abo. Lebenslauf-Überarbeitungen auf Recruiter-Niveau.",

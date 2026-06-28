@@ -1331,6 +1331,137 @@
       "careerPath": "Career Path"
     }
   },
+  "trustPage": {
+    "metaTitle": "Trust & Security — Resume Booster",
+    "metaDescription": "256-bit encryption, no permanent resume storage, GDPR-aligned data handling. See how we keep your data safe.",
+    "privacyMatters": "Your Privacy Matters",
+    "titlePrefix": "Your Resume Is",
+    "titleHighlight": "Safe With Us",
+    "heroSubtitle": "We built Resume Booster with security-first principles. Your career documents deserve bank-level protection, and that's exactly what we provide.",
+    "badges": {
+      "ssl": "256-bit SSL",
+      "zeroStorage": "Zero Storage",
+      "gdpr": "GDPR Compliant"
+    },
+    "stats": {
+      "resumesAnalyzed": "Resumes Analyzed",
+      "betterResults": "Report Better Results",
+      "avgDelivery": "Average Delivery Time",
+      "dataBreaches": "Data Breaches"
+    },
+    "security": {
+      "ssl": {
+        "title": "256-bit SSL Encryption",
+        "description": "Your resume is protected with bank-level encryption during upload and processing. We use the same security standard as major financial institutions."
+      },
+      "zeroStorage": {
+        "title": "Zero Storage Policy",
+        "description": "We never store your resume on our servers. Your document is processed in memory and immediately discarded after analysis."
+      },
+      "autoDelete": {
+        "title": "Auto-Delete in 24 Hours",
+        "description": "Any temporary data created during processing is automatically deleted within 24 hours. Your data, your control."
+      },
+      "gdpr": {
+        "title": "GDPR Compliant",
+        "description": "We follow strict European data protection standards. You can request deletion of any data at any time."
+      },
+      "noSharing": {
+        "title": "No Third-Party Sharing",
+        "description": "Your resume content is never shared with recruiters, employers, or any third parties. It's analyzed solely to help you."
+      },
+      "transparent": {
+        "title": "Transparent Processing",
+        "description": "We show you exactly what our AI analyzes and why. No black boxes—full transparency in our methodology."
+      }
+    },
+    "protectDataTitle": "How We Protect Your Data",
+    "protectDataSubtitle": "Every aspect of Resume Booster is designed with your privacy and security in mind.",
+    "transparentScoringTitle": "Transparent AI Scoring",
+    "transparentScoringSubtitle": "We believe in complete transparency. See exactly how our AI analyzes resumes, what factors we consider, and how scores are calculated.",
+    "viewMethodology": "View Our Methodology",
+    "realResultsTitle": "Real Results, Real Improvements",
+    "realResultsSubtitle": "See how our AI transforms vague bullet points into powerful, quantified achievements.",
+    "trustedByTitle": "Trusted by Job Seekers at Top Companies",
+    "trustedBySubtitle": "Professionals from leading companies use Resume Booster to land their dream roles.",
+    "ctaTitle": "Ready to Boost Your Resume?",
+    "ctaSubtitle": "Join thousands of job seekers who've improved their resumes with our AI-powered analysis.",
+    "ctaButton": "Get Your Free Scan"
+  },
+  "methodologyPage": {
+    "metaTitle": "Methodology — How Resume Booster Scores Resumes",
+    "metaDescription": "Inside the ATS scoring rubric, recruiter heuristics, and AI pipeline behind every Resume Booster scan.",
+    "transparentResearchBased": "Transparent & Research-Based",
+    "titlePrefix": "Our ATS Analysis",
+    "titleHighlight": "Methodology",
+    "heroSubtitle": "We've reverse-engineered how 50+ Applicant Tracking Systems parse and score resumes. Here's exactly how our analysis works.",
+    "platformsAnalyzed": "50+ ATS platforms analyzed",
+    "resumesProcessed": "10,000+ resumes processed",
+    "updatedMonthly": "Updated monthly",
+    "howAnalysisWorks": "How Our Analysis Works",
+    "step": "STEP {{number}}",
+    "steps": {
+      "parsing": {
+        "title": "Document Parsing",
+        "description": "We extract text while preserving structure, handling PDFs and DOCX files with the same parsing logic used by major ATS platforms."
+      },
+      "aiAnalysis": {
+        "title": "AI Analysis",
+        "description": "Our AI simulates how each ATS reads your resume, identifying sections, keywords, and formatting that may cause parsing failures."
+      },
+      "keywordMatching": {
+        "title": "Keyword Matching",
+        "description": "We compare your resume against industry-specific keyword databases and job description requirements to identify gaps."
+      },
+      "scoringAlgorithm": {
+        "title": "Scoring Algorithm",
+        "description": "Your ATS score is calculated based on 50+ factors including keyword density, formatting, section completeness, and red flags."
+      }
+    },
+    "atsPlatforms": {
+      "0": { "description": "Section header parsing, keyword extraction, date format validation", "marketShare": "Major enterprise" },
+      "1": { "description": "Skills matching algorithms, experience level scoring, cultural fit indicators", "marketShare": "Tech & startups" },
+      "2": { "description": "Contact info validation, formatting consistency, section organization", "marketShare": "Mid-market" },
+      "3": { "description": "Keyword density analysis, job title matching, qualification scoring", "marketShare": "Fortune 500" },
+      "4": { "description": "Education parsing, certification detection, skills taxonomy matching", "marketShare": "Healthcare & retail" },
+      "5": { "description": "Resume structure analysis, experience timeline validation", "marketShare": "SMB" },
+      "6": { "description": "Keyword optimization, applicant ranking algorithms", "marketShare": "Small business" },
+      "7": { "description": "Social profile integration, referral tracking, skills assessment", "marketShare": "Enterprise" },
+      "8": { "description": "AI-powered matching, diversity indicators, global compliance", "marketShare": "Global enterprise" },
+      "9": { "description": "Staffing-specific parsing, contractor detection, availability scoring", "marketShare": "Staffing agencies" }
+    },
+    "atsPlatformsTitle": "ATS Platforms We Analyze Against",
+    "atsPlatformsSubtitle": "Our analysis is based on parsing rules and scoring algorithms from these major ATS platforms, covering over 90% of the job market.",
+    "moreAtsPlatforms": "+ 40 more regional and industry-specific ATS platforms",
+    "scoreCalculatedTitle": "How Your ATS Score Is Calculated",
+    "scoreCalculatedSubtitle": "Your score is a weighted combination of multiple factors that determine how well your resume will perform in ATS systems.",
+    "scoringFactors": {
+      "keywordOptimization": { "factor": "Keyword Optimization", "description": "Industry-relevant keywords and skills mentioned" },
+      "formatCompatibility": { "factor": "Format Compatibility", "description": "Clean structure that ATS can parse correctly" },
+      "sectionCompleteness": { "factor": "Section Completeness", "description": "All expected sections present and properly labeled" },
+      "experienceClarity": { "factor": "Experience Clarity", "description": "Clear job titles, dates, and achievements" },
+      "actionVerbUsage": { "factor": "Action Verb Usage", "description": "Strong action verbs that demonstrate impact" },
+      "quantifiedAchievements": { "factor": "Quantified Achievements", "description": "Numbers and metrics that prove results" },
+      "redFlagAbsence": { "factor": "Red Flag Absence", "description": "No formatting issues or content problems" }
+    },
+    "continuousResearchTitle": "Continuous Research",
+    "continuousResearchSubtitle": "We continuously analyze job postings, ATS updates, and hiring trends to keep our analysis accurate and up-to-date.",
+    "continuousResearch": {
+      "monthlyUpdates": "Monthly algorithm updates",
+      "keywordDatabases": "Industry-specific keyword databases",
+      "recruiterFeedback": "Real recruiter feedback integration"
+    },
+    "validatedByResultsTitle": "Validated by Results",
+    "validatedByResultsSubtitle": "Our methodology is validated by real outcomes from thousands of job seekers who improved their resumes using our analysis.",
+    "validatedByResults": {
+      "interviewRates": "89% report better interview rates",
+      "resumesAnalyzed": "10,000+ resumes analyzed",
+      "scoreImprovement": "Average 23-point score improvement"
+    },
+    "ctaTitle": "Ready to See Your ATS Score?",
+    "ctaSubtitle": "Get a free analysis of your resume using our proven methodology.",
+    "ctaButton": "Analyze My Resume Free"
+  },
   "pricingPage": {
     "metaTitle": "Pricing — Resume Booster",
     "metaDescription": "Plans from $1 Keyword Fix to $25 Career Snapshot. Pay once, no subscription. Recruiter-grade resume rewrites.",

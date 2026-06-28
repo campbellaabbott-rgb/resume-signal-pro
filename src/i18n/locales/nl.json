@@ -1147,6 +1147,137 @@
     "viewAllProducts": "Bekijk alle producten",
     "addOnNames": { "resumeRoast": "Cv-Roast", "interviewCoach": "Interviewcoach", "careerPath": "Carrièrepad" }
   },
+  "trustPage": {
+    "metaTitle": "Vertrouwen & Beveiliging — Resume Booster",
+    "metaDescription": "256-bit versleuteling, geen permanente opslag van je cv, AVG-conforme gegevensverwerking. Ontdek hoe we jouw gegevens veilig houden.",
+    "privacyMatters": "Jouw privacy is belangrijk",
+    "titlePrefix": "Jouw cv is",
+    "titleHighlight": "veilig bij ons",
+    "heroSubtitle": "We hebben Resume Booster gebouwd met security-first-principes. Jouw carrièredocumenten verdienen beveiliging op bankniveau, en dat is precies wat we bieden.",
+    "badges": {
+      "ssl": "256-bit SSL",
+      "zeroStorage": "Geen opslag",
+      "gdpr": "AVG-conform"
+    },
+    "stats": {
+      "resumesAnalyzed": "Geanalyseerde cv's",
+      "betterResults": "Melden betere resultaten",
+      "avgDelivery": "Gemiddelde levertijd",
+      "dataBreaches": "Datalekken"
+    },
+    "security": {
+      "ssl": {
+        "title": "256-bit SSL-versleuteling",
+        "description": "Je cv wordt beschermd met versleuteling op bankniveau tijdens het uploaden en verwerken. We gebruiken dezelfde beveiligingsstandaard als grote financiële instellingen."
+      },
+      "zeroStorage": {
+        "title": "Geen-opslagbeleid",
+        "description": "We slaan je cv nooit op onze servers op. Je document wordt in het geheugen verwerkt en direct na de analyse verwijderd."
+      },
+      "autoDelete": {
+        "title": "Automatisch verwijderd binnen 24 uur",
+        "description": "Alle tijdelijke gegevens die tijdens de verwerking worden gemaakt, worden automatisch binnen 24 uur verwijderd. Jouw gegevens, jouw controle."
+      },
+      "gdpr": {
+        "title": "AVG-conform",
+        "description": "We houden ons aan strikte Europese gegevensbeschermingsnormen. Je kunt op elk moment verwijdering van je gegevens aanvragen."
+      },
+      "noSharing": {
+        "title": "Geen delen met derden",
+        "description": "De inhoud van je cv wordt nooit gedeeld met recruiters, werkgevers of derden. Het wordt uitsluitend geanalyseerd om je te helpen."
+      },
+      "transparent": {
+        "title": "Transparante verwerking",
+        "description": "We laten je precies zien wat onze AI analyseert en waarom. Geen black box — volledige transparantie in onze methodologie."
+      }
+    },
+    "protectDataTitle": "Hoe we jouw gegevens beschermen",
+    "protectDataSubtitle": "Elk aspect van Resume Booster is ontworpen met jouw privacy en veiligheid in gedachten.",
+    "transparentScoringTitle": "Transparante AI-scoring",
+    "transparentScoringSubtitle": "Wij geloven in volledige transparantie. Bekijk precies hoe onze AI cv's analyseert, welke factoren we meenemen en hoe scores worden berekend.",
+    "viewMethodology": "Bekijk onze methodologie",
+    "realResultsTitle": "Echte resultaten, echte verbeteringen",
+    "realResultsSubtitle": "Zie hoe onze AI vage bulletpoints omzet in krachtige, gekwantificeerde prestaties.",
+    "trustedByTitle": "Vertrouwd door werkzoekenden bij topbedrijven",
+    "trustedBySubtitle": "Professionals van toonaangevende bedrijven gebruiken Resume Booster om hun droombaan te bemachtigen.",
+    "ctaTitle": "Klaar om je cv te verbeteren?",
+    "ctaSubtitle": "Sluit je aan bij duizenden werkzoekenden die hun cv hebben verbeterd met onze AI-gestuurde analyse.",
+    "ctaButton": "Krijg je gratis scan"
+  },
+  "methodologyPage": {
+    "metaTitle": "Methodologie — Hoe Resume Booster cv's scoort",
+    "metaDescription": "Een kijkje in de ATS-scoringscriteria, recruiter-heuristieken en de AI-pipeline achter elke Resume Booster-scan.",
+    "transparentResearchBased": "Transparant & onderzoeksgebaseerd",
+    "titlePrefix": "Onze ATS-analyse",
+    "titleHighlight": "methodologie",
+    "heroSubtitle": "We hebben gereverse-engineerd hoe meer dan 50 Applicant Tracking Systems (ATS) cv's verwerken en scoren. Zo werkt onze analyse precies.",
+    "platformsAnalyzed": "50+ ATS-platforms geanalyseerd",
+    "resumesProcessed": "10.000+ cv's verwerkt",
+    "updatedMonthly": "Maandelijks bijgewerkt",
+    "howAnalysisWorks": "Hoe onze analyse werkt",
+    "step": "STAP {{number}}",
+    "steps": {
+      "parsing": {
+        "title": "Documentverwerking",
+        "description": "We halen tekst eruit met behoud van structuur, en verwerken PDF- en DOCX-bestanden met dezelfde verwerkingslogica die grote ATS-platforms gebruiken."
+      },
+      "aiAnalysis": {
+        "title": "AI-analyse",
+        "description": "Onze AI simuleert hoe elk ATS je cv leest, waarbij secties, zoekwoorden en opmaak worden geïdentificeerd die verwerkingsfouten kunnen veroorzaken."
+      },
+      "keywordMatching": {
+        "title": "Zoekwoordmatching",
+        "description": "We vergelijken je cv met branchespecifieke zoekwoorddatabases en functie-eisen om hiaten te identificeren."
+      },
+      "scoringAlgorithm": {
+        "title": "Scoringalgoritme",
+        "description": "Je ATS-score wordt berekend op basis van 50+ factoren, waaronder zoekwoorddichtheid, opmaak, volledigheid van secties en waarschuwingssignalen."
+      }
+    },
+    "atsPlatforms": {
+      "0": { "description": "Verwerking van sectiekoppen, zoekwoordextractie, validatie van datumformaat", "marketShare": "Grote ondernemingen" },
+      "1": { "description": "Algoritmen voor vaardighedenmatching, scoring van ervaringsniveau, indicatoren voor culturele fit", "marketShare": "Tech & start-ups" },
+      "2": { "description": "Validatie van contactgegevens, consistentie van opmaak, sectie-organisatie", "marketShare": "Middenmarkt" },
+      "3": { "description": "Analyse van zoekwoorddichtheid, matching van functietitels, scoring van kwalificaties", "marketShare": "Fortune 500" },
+      "4": { "description": "Verwerking van opleidingsgegevens, detectie van certificeringen, matching van vaardighedentaxonomie", "marketShare": "Zorg & retail" },
+      "5": { "description": "Analyse van cv-structuur, validatie van ervaringstijdlijn", "marketShare": "MKB" },
+      "6": { "description": "Zoekwoordoptimalisatie, algoritmen voor sollicitantenrangschikking", "marketShare": "Kleine bedrijven" },
+      "7": { "description": "Integratie van social profiles, referral tracking, vaardighedenbeoordeling", "marketShare": "Enterprise" },
+      "8": { "description": "AI-gestuurde matching, diversiteitsindicatoren, wereldwijde compliance", "marketShare": "Wereldwijde ondernemingen" },
+      "9": { "description": "Uitzendbureauspecifieke verwerking, detectie van zzp'ers, beschikbaarheidsscoring", "marketShare": "Uitzendbureaus" }
+    },
+    "atsPlatformsTitle": "ATS-platforms waarop we analyseren",
+    "atsPlatformsSubtitle": "Onze analyse is gebaseerd op verwerkingsregels en scoringalgoritmen van deze grote ATS-platforms, die meer dan 90% van de arbeidsmarkt dekken.",
+    "moreAtsPlatforms": "+ 40 meer regionale en branchespecifieke ATS-platforms",
+    "scoreCalculatedTitle": "Hoe je ATS-score wordt berekend",
+    "scoreCalculatedSubtitle": "Je score is een gewogen combinatie van meerdere factoren die bepalen hoe goed je cv presteert in ATS-systemen.",
+    "scoringFactors": {
+      "keywordOptimization": { "factor": "Zoekwoordoptimalisatie", "description": "Genoemde branche-relevante zoekwoorden en vaardigheden" },
+      "formatCompatibility": { "factor": "Formaatcompatibiliteit", "description": "Schone structuur die ATS correct kan verwerken" },
+      "sectionCompleteness": { "factor": "Volledigheid van secties", "description": "Alle verwachte secties aanwezig en correct gelabeld" },
+      "experienceClarity": { "factor": "Duidelijkheid van ervaring", "description": "Duidelijke functietitels, datums en prestaties" },
+      "actionVerbUsage": { "factor": "Gebruik van actiewerkwoorden", "description": "Sterke actiewerkwoorden die impact aantonen" },
+      "quantifiedAchievements": { "factor": "Gekwantificeerde prestaties", "description": "Cijfers en statistieken die resultaten bewijzen" },
+      "redFlagAbsence": { "factor": "Afwezigheid van waarschuwingssignalen", "description": "Geen opmaak- of inhoudsproblemen" }
+    },
+    "continuousResearchTitle": "Continu onderzoek",
+    "continuousResearchSubtitle": "We analyseren voortdurend vacatures, ATS-updates en wervingstrends om onze analyse nauwkeurig en actueel te houden.",
+    "continuousResearch": {
+      "monthlyUpdates": "Maandelijkse algoritme-updates",
+      "keywordDatabases": "Branchespecifieke zoekwoorddatabases",
+      "recruiterFeedback": "Integratie van echte recruiter-feedback"
+    },
+    "validatedByResultsTitle": "Gevalideerd door resultaten",
+    "validatedByResultsSubtitle": "Onze methodologie is gevalideerd door echte resultaten van duizenden werkzoekenden die hun cv hebben verbeterd met onze analyse.",
+    "validatedByResults": {
+      "interviewRates": "89% meldt betere interviewpercentages",
+      "resumesAnalyzed": "10.000+ cv's geanalyseerd",
+      "scoreImprovement": "Gemiddelde scoreverbetering van 23 punten"
+    },
+    "ctaTitle": "Klaar om je ATS-score te zien?",
+    "ctaSubtitle": "Krijg een gratis analyse van je cv met onze bewezen methodologie.",
+    "ctaButton": "Analyseer mijn cv gratis"
+  },
   "pricingPage": {
     "metaTitle": "Prijzen — Resume Booster",
     "metaDescription": "Pakketten vanaf $1 voor de Keyword Fix tot $25 voor Career Snapshot. Eenmalige betaling, geen abonnement. Cv-herschrijvingen op recruiterniveau.",

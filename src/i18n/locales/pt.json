@@ -1147,6 +1147,137 @@
     "viewAllProducts": "Ver todos os produtos",
     "addOnNames": { "resumeRoast": "Crítica de Currículo", "interviewCoach": "Coach de Entrevista", "careerPath": "Percurso de Carreira" }
   },
+  "trustPage": {
+    "metaTitle": "Confiança e Segurança — Resume Booster",
+    "metaDescription": "Encriptação de 256 bits, sem armazenamento permanente do currículo, tratamento de dados alinhado com o RGPD. Veja como mantemos os seus dados seguros.",
+    "privacyMatters": "A sua privacidade importa",
+    "titlePrefix": "O seu currículo está",
+    "titleHighlight": "seguro connosco",
+    "heroSubtitle": "Construímos o Resume Booster com princípios de segurança em primeiro lugar. Os seus documentos de carreira merecem proteção ao nível bancário, e é exatamente isso que oferecemos.",
+    "badges": {
+      "ssl": "SSL de 256 bits",
+      "zeroStorage": "Sem armazenamento",
+      "gdpr": "Conforme com o RGPD"
+    },
+    "stats": {
+      "resumesAnalyzed": "Currículos analisados",
+      "betterResults": "Reportam melhores resultados",
+      "avgDelivery": "Tempo médio de entrega",
+      "dataBreaches": "Violações de dados"
+    },
+    "security": {
+      "ssl": {
+        "title": "Encriptação SSL de 256 bits",
+        "description": "O seu currículo é protegido com encriptação ao nível bancário durante o carregamento e processamento. Usamos o mesmo padrão de segurança das principais instituições financeiras."
+      },
+      "zeroStorage": {
+        "title": "Política de armazenamento zero",
+        "description": "Nunca armazenamos o seu currículo nos nossos servidores. O seu documento é processado em memória e imediatamente descartado após a análise."
+      },
+      "autoDelete": {
+        "title": "Eliminação automática em 24 horas",
+        "description": "Quaisquer dados temporários criados durante o processamento são automaticamente eliminados dentro de 24 horas. Os seus dados, o seu controlo."
+      },
+      "gdpr": {
+        "title": "Conforme com o RGPD",
+        "description": "Seguimos padrões europeus rigorosos de proteção de dados. Pode solicitar a eliminação de quaisquer dados em qualquer momento."
+      },
+      "noSharing": {
+        "title": "Sem partilha com terceiros",
+        "description": "O conteúdo do seu currículo nunca é partilhado com recrutadores, empregadores ou terceiros. É analisado exclusivamente para o ajudar."
+      },
+      "transparent": {
+        "title": "Processamento transparente",
+        "description": "Mostramos-lhe exatamente o que a nossa IA analisa e porquê. Sem caixas negras — total transparência na nossa metodologia."
+      }
+    },
+    "protectDataTitle": "Como protegemos os seus dados",
+    "protectDataSubtitle": "Todos os aspetos do Resume Booster são concebidos com a sua privacidade e segurança em mente.",
+    "transparentScoringTitle": "Pontuação de IA transparente",
+    "transparentScoringSubtitle": "Acreditamos em total transparência. Veja exatamente como a nossa IA analisa currículos, que fatores consideramos e como as pontuações são calculadas.",
+    "viewMethodology": "Ver a nossa metodologia",
+    "realResultsTitle": "Resultados reais, melhorias reais",
+    "realResultsSubtitle": "Veja como a nossa IA transforma tópicos vagos em conquistas poderosas e quantificadas.",
+    "trustedByTitle": "A confiança de candidatos nas melhores empresas",
+    "trustedBySubtitle": "Profissionais de empresas líderes usam o Resume Booster para conseguir os seus empregos de sonho.",
+    "ctaTitle": "Pronto para melhorar o seu currículo?",
+    "ctaSubtitle": "Junte-se a milhares de candidatos que melhoraram os seus currículos com a nossa análise alimentada por IA.",
+    "ctaButton": "Obtenha a sua verificação gratuita"
+  },
+  "methodologyPage": {
+    "metaTitle": "Metodologia — Como o Resume Booster pontua currículos",
+    "metaDescription": "Por dentro da grelha de pontuação ATS, das heurísticas de recrutamento e do pipeline de IA por detrás de cada verificação do Resume Booster.",
+    "transparentResearchBased": "Transparente e baseado em investigação",
+    "titlePrefix": "A nossa metodologia de",
+    "titleHighlight": "análise ATS",
+    "heroSubtitle": "Fizemos engenharia inversa de como mais de 50 Sistemas de Acompanhamento de Candidatos (ATS) analisam e pontuam currículos. Eis exatamente como funciona a nossa análise.",
+    "platformsAnalyzed": "Mais de 50 plataformas ATS analisadas",
+    "resumesProcessed": "Mais de 10.000 currículos processados",
+    "updatedMonthly": "Atualizado mensalmente",
+    "howAnalysisWorks": "Como funciona a nossa análise",
+    "step": "PASSO {{number}}",
+    "steps": {
+      "parsing": {
+        "title": "Análise do documento",
+        "description": "Extraímos o texto preservando a estrutura, processando ficheiros PDF e DOCX com a mesma lógica de análise usada pelas principais plataformas ATS."
+      },
+      "aiAnalysis": {
+        "title": "Análise por IA",
+        "description": "A nossa IA simula como cada ATS lê o seu currículo, identificando secções, palavras-chave e formatação que podem causar falhas de análise."
+      },
+      "keywordMatching": {
+        "title": "Correspondência de palavras-chave",
+        "description": "Comparamos o seu currículo com bases de dados de palavras-chave específicas da indústria e requisitos da descrição da vaga para identificar lacunas."
+      },
+      "scoringAlgorithm": {
+        "title": "Algoritmo de pontuação",
+        "description": "A sua pontuação ATS é calculada com base em mais de 50 fatores, incluindo densidade de palavras-chave, formatação, integridade das secções e sinais de alerta."
+      }
+    },
+    "atsPlatforms": {
+      "0": { "description": "Análise de cabeçalhos de secção, extração de palavras-chave, validação do formato de data", "marketShare": "Grandes empresas" },
+      "1": { "description": "Algoritmos de correspondência de competências, pontuação do nível de experiência, indicadores de adequação cultural", "marketShare": "Tecnologia e startups" },
+      "2": { "description": "Validação de informações de contacto, consistência de formatação, organização de secções", "marketShare": "Mercado intermédio" },
+      "3": { "description": "Análise de densidade de palavras-chave, correspondência de cargos, pontuação de qualificações", "marketShare": "Fortune 500" },
+      "4": { "description": "Análise de formação académica, deteção de certificações, correspondência de taxonomia de competências", "marketShare": "Saúde e retalho" },
+      "5": { "description": "Análise da estrutura do currículo, validação da linha temporal de experiência", "marketShare": "PME" },
+      "6": { "description": "Otimização de palavras-chave, algoritmos de classificação de candidatos", "marketShare": "Pequenas empresas" },
+      "7": { "description": "Integração de perfis sociais, acompanhamento de referências, avaliação de competências", "marketShare": "Empresas grandes" },
+      "8": { "description": "Correspondência alimentada por IA, indicadores de diversidade, conformidade global", "marketShare": "Empresas globais" },
+      "9": { "description": "Análise específica para recrutamento, deteção de contratados, pontuação de disponibilidade", "marketShare": "Agências de recrutamento" }
+    },
+    "atsPlatformsTitle": "Plataformas ATS contra as quais analisamos",
+    "atsPlatformsSubtitle": "A nossa análise baseia-se nas regras de análise e algoritmos de pontuação destas grandes plataformas ATS, cobrindo mais de 90% do mercado de trabalho.",
+    "moreAtsPlatforms": "+ 40 plataformas ATS regionais e específicas da indústria",
+    "scoreCalculatedTitle": "Como a sua pontuação ATS é calculada",
+    "scoreCalculatedSubtitle": "A sua pontuação é uma combinação ponderada de múltiplos fatores que determinam o desempenho do seu currículo em sistemas ATS.",
+    "scoringFactors": {
+      "keywordOptimization": { "factor": "Otimização de palavras-chave", "description": "Palavras-chave e competências relevantes para a indústria mencionadas" },
+      "formatCompatibility": { "factor": "Compatibilidade de formato", "description": "Estrutura limpa que o ATS consegue analisar corretamente" },
+      "sectionCompleteness": { "factor": "Integridade das secções", "description": "Todas as secções esperadas presentes e devidamente rotuladas" },
+      "experienceClarity": { "factor": "Clareza da experiência", "description": "Cargos, datas e conquistas claras" },
+      "actionVerbUsage": { "factor": "Uso de verbos de ação", "description": "Verbos de ação fortes que demonstram impacto" },
+      "quantifiedAchievements": { "factor": "Conquistas quantificadas", "description": "Números e métricas que comprovam resultados" },
+      "redFlagAbsence": { "factor": "Ausência de sinais de alerta", "description": "Sem problemas de formatação ou conteúdo" }
+    },
+    "continuousResearchTitle": "Investigação contínua",
+    "continuousResearchSubtitle": "Analisamos continuamente ofertas de emprego, atualizações de ATS e tendências de contratação para manter a nossa análise precisa e atualizada.",
+    "continuousResearch": {
+      "monthlyUpdates": "Atualizações mensais do algoritmo",
+      "keywordDatabases": "Bases de dados de palavras-chave específicas da indústria",
+      "recruiterFeedback": "Integração de feedback real de recrutadores"
+    },
+    "validatedByResultsTitle": "Validado por resultados",
+    "validatedByResultsSubtitle": "A nossa metodologia é validada por resultados reais de milhares de candidatos que melhoraram os seus currículos usando a nossa análise.",
+    "validatedByResults": {
+      "interviewRates": "89% reportam melhores taxas de entrevista",
+      "resumesAnalyzed": "Mais de 10.000 currículos analisados",
+      "scoreImprovement": "Melhoria média de 23 pontos na pontuação"
+    },
+    "ctaTitle": "Pronto para ver a sua pontuação ATS?",
+    "ctaSubtitle": "Obtenha uma análise gratuita do seu currículo usando a nossa metodologia comprovada.",
+    "ctaButton": "Analisar o meu currículo gratuitamente"
+  },
   "pricingPage": {
     "metaTitle": "Preços — Resume Booster",
     "metaDescription": "Planos desde $1 para a Correção de Palavras-chave até $25 para o Career Snapshot. Pagamento único, sem subscrição. Reescritas de currículo ao nível de recrutador.",

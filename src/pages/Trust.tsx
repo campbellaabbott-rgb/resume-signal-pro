@@ -18,41 +18,41 @@ export default function Trust() {
   const securityFeatures = [
     {
       icon: Lock,
-      title: "256-bit SSL Encryption",
-      description: "Your resume is protected with bank-level encryption during upload and processing. We use the same security standard as major financial institutions."
+      title: t('trustPage.security.ssl.title'),
+      description: t('trustPage.security.ssl.description')
     },
     {
       icon: CloudOff,
-      title: "Zero Storage Policy",
-      description: "We never store your resume on our servers. Your document is processed in memory and immediately discarded after analysis."
+      title: t('trustPage.security.zeroStorage.title'),
+      description: t('trustPage.security.zeroStorage.description')
     },
     {
       icon: Clock,
-      title: "Auto-Delete in 24 Hours",
-      description: "Any temporary data created during processing is automatically deleted within 24 hours. Your data, your control."
+      title: t('trustPage.security.autoDelete.title'),
+      description: t('trustPage.security.autoDelete.description')
     },
     {
       icon: Shield,
-      title: "GDPR Compliant",
-      description: "We follow strict European data protection standards. You can request deletion of any data at any time."
+      title: t('trustPage.security.gdpr.title'),
+      description: t('trustPage.security.gdpr.description')
     },
     {
       icon: Server,
-      title: "No Third-Party Sharing",
-      description: "Your resume content is never shared with recruiters, employers, or any third parties. It's analyzed solely to help you."
+      title: t('trustPage.security.noSharing.title'),
+      description: t('trustPage.security.noSharing.description')
     },
     {
       icon: Eye,
-      title: "Transparent Processing",
-      description: "We show you exactly what our AI analyzes and why. No black boxes—full transparency in our methodology."
+      title: t('trustPage.security.transparent.title'),
+      description: t('trustPage.security.transparent.description')
     }
   ];
 
   const trustStats = [
-    { value: "10,000+", label: "Resumes Analyzed", icon: FileCheck },
-    { value: "89%", label: "Report Better Results", icon: Award },
-    { value: "30s", label: "Average Delivery Time", icon: Zap },
-    { value: "0", label: "Data Breaches", icon: Shield },
+    { value: "10,000+", label: t('trustPage.stats.resumesAnalyzed'), icon: FileCheck },
+    { value: "89%", label: t('trustPage.stats.betterResults'), icon: Award },
+    { value: "30s", label: t('trustPage.stats.avgDelivery'), icon: Zap },
+    { value: "0", label: t('trustPage.stats.dataBreaches'), icon: Shield },
   ];
 
   const companyLogos = [
@@ -62,9 +62,9 @@ export default function Trust() {
   return (
     <>
       
-      <SEO title="Trust & Security — Resume Booster" description="256-bit encryption, no permanent resume storage, GDPR-aligned data handling. See how we keep your data safe." path="/trust" />
+      <SEO title={t('trustPage.metaTitle')} description={t('trustPage.metaDescription')} path="/trust" />
       <Header />
-      
+
       <main className="min-h-screen pt-28">
         {/* Hero Section */}
         <section className="py-16 md:py-24 bg-gradient-to-b from-primary/5 via-background to-background">
@@ -72,30 +72,29 @@ export default function Trust() {
             <div className="max-w-3xl mx-auto text-center">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
                 <Shield className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium text-primary">Your Privacy Matters</span>
+                <span className="text-sm font-medium text-primary">{t('trustPage.privacyMatters')}</span>
               </div>
-              
+
               <h1 className="text-4xl md:text-5xl font-bold mb-6">
-                Your Resume Is <span className="text-primary">Safe With Us</span>
+                {t('trustPage.titlePrefix')} <span className="text-primary">{t('trustPage.titleHighlight')}</span>
               </h1>
-              
+
               <p className="text-xl text-muted-foreground mb-8">
-                We built Resume Booster with security-first principles. Your career documents 
-                deserve bank-level protection, and that's exactly what we provide.
+                {t('trustPage.heroSubtitle')}
               </p>
 
               <div className="flex flex-wrap justify-center gap-4">
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border">
                   <Lock className="w-4 h-4 text-primary" />
-                  <span className="text-sm">256-bit SSL</span>
+                  <span className="text-sm">{t('trustPage.badges.ssl')}</span>
                 </div>
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border">
                   <CloudOff className="w-4 h-4 text-primary" />
-                  <span className="text-sm">Zero Storage</span>
+                  <span className="text-sm">{t('trustPage.badges.zeroStorage')}</span>
                 </div>
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border">
                   <Shield className="w-4 h-4 text-primary" />
-                  <span className="text-sm">GDPR Compliant</span>
+                  <span className="text-sm">{t('trustPage.badges.gdpr')}</span>
                 </div>
               </div>
             </div>
@@ -124,9 +123,9 @@ export default function Trust() {
         <section className="py-20">
           <div className="container">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">How We Protect Your Data</h2>
+              <h2 className="text-3xl font-bold mb-4">{t('trustPage.protectDataTitle')}</h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                Every aspect of Resume Booster is designed with your privacy and security in mind.
+                {t('trustPage.protectDataSubtitle')}
               </p>
             </div>
 
@@ -155,17 +154,16 @@ export default function Trust() {
           <div className="container">
             <div className="max-w-3xl mx-auto text-center">
               <BookOpen className="w-12 h-12 text-primary mx-auto mb-4" />
-              <h2 className="text-2xl font-bold mb-4">Transparent AI Scoring</h2>
+              <h2 className="text-2xl font-bold mb-4">{t('trustPage.transparentScoringTitle')}</h2>
               <p className="text-muted-foreground mb-6">
-                We believe in complete transparency. See exactly how our AI analyzes resumes, 
-                what factors we consider, and how scores are calculated.
+                {t('trustPage.transparentScoringSubtitle')}
               </p>
-              <Link 
+              <Link
                 to="/methodology"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
               >
                 <BookOpen className="w-4 h-4" />
-                View Our Methodology
+                {t('trustPage.viewMethodology')}
               </Link>
             </div>
           </div>
@@ -176,9 +174,9 @@ export default function Trust() {
           <div className="container">
             <div className="max-w-3xl mx-auto">
               <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold mb-4">Real Results, Real Improvements</h2>
+                <h2 className="text-3xl font-bold mb-4">{t('trustPage.realResultsTitle')}</h2>
                 <p className="text-muted-foreground">
-                  See how our AI transforms vague bullet points into powerful, quantified achievements.
+                  {t('trustPage.realResultsSubtitle')}
                 </p>
               </div>
               
@@ -191,9 +189,9 @@ export default function Trust() {
         <section className="py-16 border-t border-border">
           <div className="container">
             <div className="text-center mb-12">
-              <h2 className="text-2xl font-bold mb-4">Trusted by Job Seekers at Top Companies</h2>
+              <h2 className="text-2xl font-bold mb-4">{t('trustPage.trustedByTitle')}</h2>
               <p className="text-muted-foreground">
-                Professionals from leading companies use Resume Booster to land their dream roles.
+                {t('trustPage.trustedBySubtitle')}
               </p>
             </div>
             
@@ -218,16 +216,16 @@ export default function Trust() {
           <div className="container">
             <div className="max-w-2xl mx-auto text-center">
               <Sparkles className="w-12 h-12 text-primary mx-auto mb-6" />
-              <h2 className="text-3xl font-bold mb-4">Ready to Boost Your Resume?</h2>
+              <h2 className="text-3xl font-bold mb-4">{t('trustPage.ctaTitle')}</h2>
               <p className="text-muted-foreground mb-8">
-                Join thousands of job seekers who've improved their resumes with our AI-powered analysis.
+                {t('trustPage.ctaSubtitle')}
               </p>
-              <Link 
+              <Link
                 to="/"
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
               >
                 <Sparkles className="w-5 h-5" />
-                Get Your Free Scan
+                {t('trustPage.ctaButton')}
               </Link>
             </div>
           </div>

@@ -1147,6 +1147,137 @@
     "viewAllProducts": "Voir tous les produits",
     "addOnNames": { "resumeRoast": "Critique de CV", "interviewCoach": "Coach d'entretien", "careerPath": "Parcours de carrière" }
   },
+  "trustPage": {
+    "metaTitle": "Confiance et sécurité — Resume Booster",
+    "metaDescription": "Chiffrement 256 bits, aucun stockage permanent du CV, traitement des données conforme au RGPD. Découvrez comment nous protégeons vos données.",
+    "privacyMatters": "Votre vie privée compte",
+    "titlePrefix": "Votre CV est",
+    "titleHighlight": "en sécurité avec nous",
+    "heroSubtitle": "Nous avons conçu Resume Booster selon des principes de sécurité avant tout. Vos documents de carrière méritent une protection de niveau bancaire, et c'est exactement ce que nous offrons.",
+    "badges": {
+      "ssl": "SSL 256 bits",
+      "zeroStorage": "Aucun stockage",
+      "gdpr": "Conforme RGPD"
+    },
+    "stats": {
+      "resumesAnalyzed": "CV analysés",
+      "betterResults": "Signalent de meilleurs résultats",
+      "avgDelivery": "Délai de livraison moyen",
+      "dataBreaches": "Violations de données"
+    },
+    "security": {
+      "ssl": {
+        "title": "Chiffrement SSL 256 bits",
+        "description": "Votre CV est protégé par un chiffrement de niveau bancaire pendant le téléversement et le traitement. Nous utilisons la même norme de sécurité que les grandes institutions financières."
+      },
+      "zeroStorage": {
+        "title": "Politique de zéro stockage",
+        "description": "Nous ne stockons jamais votre CV sur nos serveurs. Votre document est traité en mémoire et immédiatement supprimé après l'analyse."
+      },
+      "autoDelete": {
+        "title": "Suppression automatique en 24 heures",
+        "description": "Toute donnée temporaire créée pendant le traitement est automatiquement supprimée dans les 24 heures. Vos données, votre contrôle."
+      },
+      "gdpr": {
+        "title": "Conforme au RGPD",
+        "description": "Nous respectons des normes européennes strictes de protection des données. Vous pouvez demander la suppression de toute donnée à tout moment."
+      },
+      "noSharing": {
+        "title": "Aucun partage avec des tiers",
+        "description": "Le contenu de votre CV n'est jamais partagé avec des recruteurs, des employeurs ou des tiers. Il est analysé uniquement pour vous aider."
+      },
+      "transparent": {
+        "title": "Traitement transparent",
+        "description": "Nous vous montrons exactement ce que notre IA analyse et pourquoi. Pas de boîte noire — transparence totale dans notre méthodologie."
+      }
+    },
+    "protectDataTitle": "Comment nous protégeons vos données",
+    "protectDataSubtitle": "Chaque aspect de Resume Booster est conçu en pensant à votre vie privée et à votre sécurité.",
+    "transparentScoringTitle": "Notation IA transparente",
+    "transparentScoringSubtitle": "Nous croyons en une transparence totale. Découvrez exactement comment notre IA analyse les CV, quels facteurs nous prenons en compte et comment les scores sont calculés.",
+    "viewMethodology": "Voir notre méthodologie",
+    "realResultsTitle": "Des résultats réels, des améliorations réelles",
+    "realResultsSubtitle": "Découvrez comment notre IA transforme des puces vagues en réalisations puissantes et quantifiées.",
+    "trustedByTitle": "La confiance des candidats des plus grandes entreprises",
+    "trustedBySubtitle": "Les professionnels des grandes entreprises utilisent Resume Booster pour décrocher le poste de leurs rêves.",
+    "ctaTitle": "Prêt à améliorer votre CV ?",
+    "ctaSubtitle": "Rejoignez des milliers de candidats qui ont amélioré leur CV grâce à notre analyse alimentée par l'IA.",
+    "ctaButton": "Obtenez votre scan gratuit"
+  },
+  "methodologyPage": {
+    "metaTitle": "Méthodologie — Comment Resume Booster note les CV",
+    "metaDescription": "Découvrez la grille de notation ATS, les heuristiques de recrutement et le pipeline d'IA derrière chaque scan Resume Booster.",
+    "transparentResearchBased": "Transparent et basé sur la recherche",
+    "titlePrefix": "Notre méthodologie d'",
+    "titleHighlight": "analyse ATS",
+    "heroSubtitle": "Nous avons fait de l'ingénierie inverse sur la façon dont plus de 50 systèmes de suivi des candidatures (ATS) analysent et notent les CV. Voici exactement comment fonctionne notre analyse.",
+    "platformsAnalyzed": "Plus de 50 plateformes ATS analysées",
+    "resumesProcessed": "Plus de 10 000 CV traités",
+    "updatedMonthly": "Mis à jour chaque mois",
+    "howAnalysisWorks": "Comment fonctionne notre analyse",
+    "step": "ÉTAPE {{number}}",
+    "steps": {
+      "parsing": {
+        "title": "Analyse du document",
+        "description": "Nous extrayons le texte en préservant la structure, en traitant les fichiers PDF et DOCX avec la même logique d'analyse que celle utilisée par les grandes plateformes ATS."
+      },
+      "aiAnalysis": {
+        "title": "Analyse par IA",
+        "description": "Notre IA simule la façon dont chaque ATS lit votre CV, en identifiant les sections, les mots-clés et la mise en forme susceptibles de provoquer des erreurs d'analyse."
+      },
+      "keywordMatching": {
+        "title": "Correspondance des mots-clés",
+        "description": "Nous comparons votre CV à des bases de données de mots-clés spécifiques à l'industrie et aux exigences de l'offre d'emploi pour identifier les lacunes."
+      },
+      "scoringAlgorithm": {
+        "title": "Algorithme de notation",
+        "description": "Votre score ATS est calculé sur la base de plus de 50 facteurs, notamment la densité des mots-clés, la mise en forme, l'exhaustivité des sections et les signaux d'alerte."
+      }
+    },
+    "atsPlatforms": {
+      "0": { "description": "Analyse des en-têtes de section, extraction de mots-clés, validation du format de date", "marketShare": "Grandes entreprises" },
+      "1": { "description": "Algorithmes de correspondance des compétences, notation du niveau d'expérience, indicateurs d'adéquation culturelle", "marketShare": "Tech et startups" },
+      "2": { "description": "Validation des coordonnées, cohérence de mise en forme, organisation des sections", "marketShare": "Marché intermédiaire" },
+      "3": { "description": "Analyse de la densité des mots-clés, correspondance des intitulés de poste, notation des qualifications", "marketShare": "Fortune 500" },
+      "4": { "description": "Analyse de la formation, détection des certifications, correspondance de la taxonomie des compétences", "marketShare": "Santé et commerce de détail" },
+      "5": { "description": "Analyse de la structure du CV, validation de la chronologie de l'expérience", "marketShare": "PME" },
+      "6": { "description": "Optimisation des mots-clés, algorithmes de classement des candidats", "marketShare": "Petites entreprises" },
+      "7": { "description": "Intégration des profils sociaux, suivi des recommandations, évaluation des compétences", "marketShare": "Grandes entreprises" },
+      "8": { "description": "Correspondance alimentée par l'IA, indicateurs de diversité, conformité mondiale", "marketShare": "Grandes entreprises mondiales" },
+      "9": { "description": "Analyse spécifique au recrutement, détection des contractuels, notation de la disponibilité", "marketShare": "Agences de recrutement" }
+    },
+    "atsPlatformsTitle": "Plateformes ATS face auxquelles nous analysons",
+    "atsPlatformsSubtitle": "Notre analyse est basée sur les règles d'analyse et les algorithmes de notation de ces grandes plateformes ATS, couvrant plus de 90 % du marché du travail.",
+    "moreAtsPlatforms": "+ 40 plateformes ATS régionales et spécifiques à l'industrie",
+    "scoreCalculatedTitle": "Comment votre score ATS est calculé",
+    "scoreCalculatedSubtitle": "Votre score est une combinaison pondérée de plusieurs facteurs qui déterminent la performance de votre CV dans les systèmes ATS.",
+    "scoringFactors": {
+      "keywordOptimization": { "factor": "Optimisation des mots-clés", "description": "Mots-clés et compétences pertinents pour l'industrie mentionnés" },
+      "formatCompatibility": { "factor": "Compatibilité de format", "description": "Structure propre que l'ATS peut analyser correctement" },
+      "sectionCompleteness": { "factor": "Exhaustivité des sections", "description": "Toutes les sections attendues présentes et correctement étiquetées" },
+      "experienceClarity": { "factor": "Clarté de l'expérience", "description": "Intitulés de poste, dates et réalisations clairs" },
+      "actionVerbUsage": { "factor": "Utilisation de verbes d'action", "description": "Verbes d'action forts démontrant l'impact" },
+      "quantifiedAchievements": { "factor": "Réalisations quantifiées", "description": "Chiffres et indicateurs prouvant les résultats" },
+      "redFlagAbsence": { "factor": "Absence de signaux d'alerte", "description": "Aucun problème de mise en forme ou de contenu" }
+    },
+    "continuousResearchTitle": "Recherche continue",
+    "continuousResearchSubtitle": "Nous analysons en continu les offres d'emploi, les mises à jour des ATS et les tendances de recrutement pour garder notre analyse précise et à jour.",
+    "continuousResearch": {
+      "monthlyUpdates": "Mises à jour mensuelles de l'algorithme",
+      "keywordDatabases": "Bases de données de mots-clés spécifiques à l'industrie",
+      "recruiterFeedback": "Intégration de retours réels de recruteurs"
+    },
+    "validatedByResultsTitle": "Validé par les résultats",
+    "validatedByResultsSubtitle": "Notre méthodologie est validée par les résultats réels de milliers de candidats qui ont amélioré leur CV grâce à notre analyse.",
+    "validatedByResults": {
+      "interviewRates": "89 % signalent de meilleurs taux d'entretien",
+      "resumesAnalyzed": "Plus de 10 000 CV analysés",
+      "scoreImprovement": "Amélioration moyenne du score de 23 points"
+    },
+    "ctaTitle": "Prêt à découvrir votre score ATS ?",
+    "ctaSubtitle": "Obtenez une analyse gratuite de votre CV grâce à notre méthodologie éprouvée.",
+    "ctaButton": "Analyser mon CV gratuitement"
+  },
   "pricingPage": {
     "metaTitle": "Tarifs — Resume Booster",
     "metaDescription": "Formules de 1$ pour la correction de mots-clés à 25$ pour Career Snapshot. Paiement unique, sans abonnement. Réécritures de CV au niveau recruteur.",

@@ -2,13 +2,14 @@ import { Header } from "@/components/Header";
 import { SEO } from "@/components/seo/SEO";
 import { Footer } from "@/components/Footer";
 import { Link } from "react-router-dom";
-import { 
-  FileSearch, 
-  Brain, 
-  Target, 
-  CheckCircle2, 
-  ArrowRight, 
-  Shield, 
+import { useTranslation } from "react-i18next";
+import {
+  FileSearch,
+  Brain,
+  Target,
+  CheckCircle2,
+  ArrowRight,
+  Shield,
   Zap,
   BarChart3,
   FileText,
@@ -18,94 +19,93 @@ import {
   Sparkles
 } from "lucide-react";
 
-const atsPlaftorms = [
-  { name: "Workday", description: "Section header parsing, keyword extraction, date format validation", marketShare: "Major enterprise" },
-  { name: "Greenhouse", description: "Skills matching algorithms, experience level scoring, cultural fit indicators", marketShare: "Tech & startups" },
-  { name: "Lever", description: "Contact info validation, formatting consistency, section organization", marketShare: "Mid-market" },
-  { name: "Taleo", description: "Keyword density analysis, job title matching, qualification scoring", marketShare: "Fortune 500" },
-  { name: "iCIMS", description: "Education parsing, certification detection, skills taxonomy matching", marketShare: "Healthcare & retail" },
-  { name: "BambooHR", description: "Resume structure analysis, experience timeline validation", marketShare: "SMB" },
-  { name: "JazzHR", description: "Keyword optimization, applicant ranking algorithms", marketShare: "Small business" },
-  { name: "Jobvite", description: "Social profile integration, referral tracking, skills assessment", marketShare: "Enterprise" },
-  { name: "SmartRecruiters", description: "AI-powered matching, diversity indicators, global compliance", marketShare: "Global enterprise" },
-  { name: "Bullhorn", description: "Staffing-specific parsing, contractor detection, availability scoring", marketShare: "Staffing agencies" },
-];
-
-const analysisSteps = [
-  {
-    icon: FileSearch,
-    title: "Document Parsing",
-    description: "We extract text while preserving structure, handling PDFs and DOCX files with the same parsing logic used by major ATS platforms."
-  },
-  {
-    icon: Brain,
-    title: "AI Analysis",
-    description: "Our AI simulates how each ATS reads your resume, identifying sections, keywords, and formatting that may cause parsing failures."
-  },
-  {
-    icon: Target,
-    title: "Keyword Matching",
-    description: "We compare your resume against industry-specific keyword databases and job description requirements to identify gaps."
-  },
-  {
-    icon: BarChart3,
-    title: "Scoring Algorithm",
-    description: "Your ATS score is calculated based on 50+ factors including keyword density, formatting, section completeness, and red flags."
-  },
-];
-
-const scoringFactors = [
-  { factor: "Keyword Optimization", weight: "25%", description: "Industry-relevant keywords and skills mentioned" },
-  { factor: "Format Compatibility", weight: "20%", description: "Clean structure that ATS can parse correctly" },
-  { factor: "Section Completeness", weight: "15%", description: "All expected sections present and properly labeled" },
-  { factor: "Experience Clarity", weight: "15%", description: "Clear job titles, dates, and achievements" },
-  { factor: "Action Verb Usage", weight: "10%", description: "Strong action verbs that demonstrate impact" },
-  { factor: "Quantified Achievements", weight: "10%", description: "Numbers and metrics that prove results" },
-  { factor: "Red Flag Absence", weight: "5%", description: "No formatting issues or content problems" },
+const atsPlatformNames = [
+  "Workday", "Greenhouse", "Lever", "Taleo", "iCIMS",
+  "BambooHR", "JazzHR", "Jobvite", "SmartRecruiters", "Bullhorn",
 ];
 
 export default function Methodology() {
+  const { t } = useTranslation();
+
+  const atsPlaftorms = atsPlatformNames.map((name, i) => ({
+    name,
+    description: t(`methodologyPage.atsPlatforms.${i}.description`),
+    marketShare: t(`methodologyPage.atsPlatforms.${i}.marketShare`),
+  }));
+
+  const analysisSteps = [
+    {
+      icon: FileSearch,
+      title: t('methodologyPage.steps.parsing.title'),
+      description: t('methodologyPage.steps.parsing.description')
+    },
+    {
+      icon: Brain,
+      title: t('methodologyPage.steps.aiAnalysis.title'),
+      description: t('methodologyPage.steps.aiAnalysis.description')
+    },
+    {
+      icon: Target,
+      title: t('methodologyPage.steps.keywordMatching.title'),
+      description: t('methodologyPage.steps.keywordMatching.description')
+    },
+    {
+      icon: BarChart3,
+      title: t('methodologyPage.steps.scoringAlgorithm.title'),
+      description: t('methodologyPage.steps.scoringAlgorithm.description')
+    },
+  ];
+
+  const scoringFactors = [
+    { factor: t('methodologyPage.scoringFactors.keywordOptimization.factor'), weight: "25%", description: t('methodologyPage.scoringFactors.keywordOptimization.description') },
+    { factor: t('methodologyPage.scoringFactors.formatCompatibility.factor'), weight: "20%", description: t('methodologyPage.scoringFactors.formatCompatibility.description') },
+    { factor: t('methodologyPage.scoringFactors.sectionCompleteness.factor'), weight: "15%", description: t('methodologyPage.scoringFactors.sectionCompleteness.description') },
+    { factor: t('methodologyPage.scoringFactors.experienceClarity.factor'), weight: "15%", description: t('methodologyPage.scoringFactors.experienceClarity.description') },
+    { factor: t('methodologyPage.scoringFactors.actionVerbUsage.factor'), weight: "10%", description: t('methodologyPage.scoringFactors.actionVerbUsage.description') },
+    { factor: t('methodologyPage.scoringFactors.quantifiedAchievements.factor'), weight: "10%", description: t('methodologyPage.scoringFactors.quantifiedAchievements.description') },
+    { factor: t('methodologyPage.scoringFactors.redFlagAbsence.factor'), weight: "5%", description: t('methodologyPage.scoringFactors.redFlagAbsence.description') },
+  ];
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <SEO title="Methodology — How Resume Booster Scores Resumes" description="Inside the ATS scoring rubric, recruiter heuristics, and AI pipeline behind every Resume Booster scan." path="/methodology" />
+      <SEO title={t('methodologyPage.metaTitle')} description={t('methodologyPage.metaDescription')} path="/methodology" />
       <Header />
-      
+
       <main className="pt-20">
         {/* Hero Section */}
         <section className="py-16 sm:py-24 relative overflow-hidden">
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px]" />
           </div>
-          
+
           <div className="container relative">
             <div className="max-w-3xl mx-auto text-center">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-6">
                 <Shield className="w-4 h-4" />
-                <span>Transparent & Research-Based</span>
+                <span>{t('methodologyPage.transparentResearchBased')}</span>
               </div>
-              
+
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-6">
-                Our ATS Analysis{" "}
-                <span className="text-primary">Methodology</span>
+                {t('methodologyPage.titlePrefix')}{" "}
+                <span className="text-primary">{t('methodologyPage.titleHighlight')}</span>
               </h1>
-              
+
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
-                We've reverse-engineered how 50+ Applicant Tracking Systems parse and score resumes. 
-                Here's exactly how our analysis works.
+                {t('methodologyPage.heroSubtitle')}
               </p>
 
               <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
                 <span className="flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-primary" />
-                  50+ ATS platforms analyzed
+                  {t('methodologyPage.platformsAnalyzed')}
                 </span>
                 <span className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-primary" />
-                  10,000+ resumes processed
+                  {t('methodologyPage.resumesProcessed')}
                 </span>
                 <span className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-primary" />
-                  Updated monthly
+                  {t('methodologyPage.updatedMonthly')}
                 </span>
               </div>
             </div>
@@ -117,7 +117,7 @@ export default function Methodology() {
           <div className="container">
             <div className="max-w-4xl mx-auto">
               <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12">
-                How Our Analysis Works
+                {t('methodologyPage.howAnalysisWorks')}
               </h2>
               
               <div className="grid sm:grid-cols-2 gap-6">
@@ -132,7 +132,7 @@ export default function Methodology() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs font-bold text-primary">STEP {index + 1}</span>
+                          <span className="text-xs font-bold text-primary">{t('methodologyPage.step', { number: index + 1 })}</span>
                         </div>
                         <h3 className="font-semibold text-lg mb-2">{step.title}</h3>
                         <p className="text-sm text-muted-foreground">{step.description}</p>
@@ -151,11 +151,10 @@ export default function Methodology() {
             <div className="max-w-5xl mx-auto">
               <div className="text-center mb-12">
                 <h2 className="text-2xl sm:text-3xl font-bold mb-4">
-                  ATS Platforms We Analyze Against
+                  {t('methodologyPage.atsPlatformsTitle')}
                 </h2>
                 <p className="text-muted-foreground max-w-2xl mx-auto">
-                  Our analysis is based on parsing rules and scoring algorithms from these major ATS platforms, 
-                  covering over 90% of the job market.
+                  {t('methodologyPage.atsPlatformsSubtitle')}
                 </p>
               </div>
               
@@ -177,7 +176,7 @@ export default function Methodology() {
               </div>
               
               <p className="text-center text-sm text-muted-foreground mt-8">
-                + 40 more regional and industry-specific ATS platforms
+                {t('methodologyPage.moreAtsPlatforms')}
               </p>
             </div>
           </div>
@@ -189,11 +188,10 @@ export default function Methodology() {
             <div className="max-w-4xl mx-auto">
               <div className="text-center mb-12">
                 <h2 className="text-2xl sm:text-3xl font-bold mb-4">
-                  How Your ATS Score Is Calculated
+                  {t('methodologyPage.scoreCalculatedTitle')}
                 </h2>
                 <p className="text-muted-foreground max-w-2xl mx-auto">
-                  Your score is a weighted combination of multiple factors that determine how well 
-                  your resume will perform in ATS systems.
+                  {t('methodologyPage.scoreCalculatedSubtitle')}
                 </p>
               </div>
               
@@ -234,48 +232,46 @@ export default function Methodology() {
                   <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center mb-4">
                     <Zap className="w-6 h-6 text-success" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-3">Continuous Research</h3>
+                  <h3 className="text-xl font-semibold mb-3">{t('methodologyPage.continuousResearchTitle')}</h3>
                   <p className="text-muted-foreground text-sm mb-4">
-                    We continuously analyze job postings, ATS updates, and hiring trends to keep 
-                    our analysis accurate and up-to-date.
+                    {t('methodologyPage.continuousResearchSubtitle')}
                   </p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-success" />
-                      <span>Monthly algorithm updates</span>
+                      <span>{t('methodologyPage.continuousResearch.monthlyUpdates')}</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-success" />
-                      <span>Industry-specific keyword databases</span>
+                      <span>{t('methodologyPage.continuousResearch.keywordDatabases')}</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-success" />
-                      <span>Real recruiter feedback integration</span>
+                      <span>{t('methodologyPage.continuousResearch.recruiterFeedback')}</span>
                     </li>
                   </ul>
                 </div>
-                
+
                 <div className="p-6 rounded-2xl bg-card border border-border">
                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
                     <Users className="w-6 h-6 text-primary" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-3">Validated by Results</h3>
+                  <h3 className="text-xl font-semibold mb-3">{t('methodologyPage.validatedByResultsTitle')}</h3>
                   <p className="text-muted-foreground text-sm mb-4">
-                    Our methodology is validated by real outcomes from thousands of job seekers 
-                    who improved their resumes using our analysis.
+                    {t('methodologyPage.validatedByResultsSubtitle')}
                   </p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-primary" />
-                      <span>89% report better interview rates</span>
+                      <span>{t('methodologyPage.validatedByResults.interviewRates')}</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-primary" />
-                      <span>10,000+ resumes analyzed</span>
+                      <span>{t('methodologyPage.validatedByResults.resumesAnalyzed')}</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-primary" />
-                      <span>Average 23-point score improvement</span>
+                      <span>{t('methodologyPage.validatedByResults.scoreImprovement')}</span>
                     </li>
                   </ul>
                 </div>
@@ -290,16 +286,16 @@ export default function Methodology() {
             <div className="max-w-2xl mx-auto text-center">
               <Sparkles className="w-10 h-10 text-primary mx-auto mb-4" />
               <h2 className="text-2xl sm:text-3xl font-bold mb-4">
-                Ready to See Your ATS Score?
+                {t('methodologyPage.ctaTitle')}
               </h2>
               <p className="text-muted-foreground mb-8">
-                Get a free analysis of your resume using our proven methodology.
+                {t('methodologyPage.ctaSubtitle')}
               </p>
               <Link
                 to="/"
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
               >
-                Analyze My Resume Free
+                {t('methodologyPage.ctaButton')}
                 <ArrowRight className="w-5 h-5" />
               </Link>
             </div>

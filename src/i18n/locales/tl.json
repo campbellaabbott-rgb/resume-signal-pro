@@ -1147,6 +1147,137 @@
     "viewAllProducts": "Tingnan lahat ng produkto",
     "addOnNames": { "resumeRoast": "Resume Roast", "interviewCoach": "Interview Coach", "careerPath": "Career Path" }
   },
+  "trustPage": {
+    "metaTitle": "Tiwala at Seguridad — Resume Booster",
+    "metaDescription": "256-bit na encryption, walang permanenteng storage ng resume, GDPR-aligned na paghawak ng data. Tingnan kung paano namin pinapanatiling ligtas ang iyong data.",
+    "privacyMatters": "Mahalaga ang Iyong Privacy",
+    "titlePrefix": "Ang Iyong Resume ay",
+    "titleHighlight": "Ligtas Sa Amin",
+    "heroSubtitle": "Binuo namin ang Resume Booster gamit ang mga prinsipyong security-first. Ang iyong mga dokumento sa karera ay karapat-dapat sa proteksyon sa antas ng bangko, at ito mismo ang ibinibigay namin.",
+    "badges": {
+      "ssl": "256-bit SSL",
+      "zeroStorage": "Zero Storage",
+      "gdpr": "GDPR Compliant"
+    },
+    "stats": {
+      "resumesAnalyzed": "Na-analyze na Resume",
+      "betterResults": "Nag-report ng Mas Magandang Resulta",
+      "avgDelivery": "Average na Oras ng Paghahatid",
+      "dataBreaches": "Data Breach"
+    },
+    "security": {
+      "ssl": {
+        "title": "256-bit SSL Encryption",
+        "description": "Protektado ang iyong resume gamit ang encryption sa antas ng bangko habang nag-upload at nagproseso. Ginagamit namin ang parehong security standard ng mga malalaking institusyong pinansyal."
+      },
+      "zeroStorage": {
+        "title": "Zero Storage Policy",
+        "description": "Hindi namin kailanman itinatabi ang iyong resume sa aming mga server. Ang iyong dokumento ay pinoproseso sa memory at agad na itinatapon pagkatapos ng pagsusuri."
+      },
+      "autoDelete": {
+        "title": "Auto-Delete sa loob ng 24 Oras",
+        "description": "Anumang pansamantalang data na ginawa habang nagproseso ay awtomatikong tinatanggal sa loob ng 24 oras. Ang iyong data, ang iyong kontrol."
+      },
+      "gdpr": {
+        "title": "GDPR Compliant",
+        "description": "Sinusunod namin ang mahigpit na European data protection standard. Maaari kang humiling ng pagtanggal ng anumang data anumang oras."
+      },
+      "noSharing": {
+        "title": "Walang Pagbabahagi sa Third-Party",
+        "description": "Ang content ng iyong resume ay hindi kailanman ibinabahagi sa mga recruiter, employer, o anumang third party. Sinusuri ito nang eksklusibo upang tulungan ka."
+      },
+      "transparent": {
+        "title": "Transparent na Pagproseso",
+        "description": "Ipinapakita namin sa iyo nang eksakto kung ano ang sinusuri ng aming AI at bakit. Walang black box—buong transparency sa aming methodology."
+      }
+    },
+    "protectDataTitle": "Paano Namin Pinoprotektahan ang Iyong Data",
+    "protectDataSubtitle": "Ang bawat aspeto ng Resume Booster ay idinisenyo nang isinasaalang-alang ang iyong privacy at seguridad.",
+    "transparentScoringTitle": "Transparent na AI Scoring",
+    "transparentScoringSubtitle": "Naniniwala kami sa kumpletong transparency. Tingnan nang eksakto kung paano sinusuri ng aming AI ang mga resume, anong mga factor namin isinasaalang-alang, at paano kinakalkula ang mga score.",
+    "viewMethodology": "Tingnan ang Aming Methodology",
+    "realResultsTitle": "Tunay na Resulta, Tunay na Pagpapahusay",
+    "realResultsSubtitle": "Tingnan kung paano binabago ng aming AI ang malabo na bullet point patungo sa makapangyarihan, may sukat na mga tagumpay.",
+    "trustedByTitle": "Pinagkakatiwalaan ng mga Job Seeker sa Nangungunang Kumpanya",
+    "trustedBySubtitle": "Ginagamit ng mga propesyonal mula sa nangungunang kumpanya ang Resume Booster upang makuha ang trabahong kanilang pinangarap.",
+    "ctaTitle": "Handa na Pahusayin ang Iyong Resume?",
+    "ctaSubtitle": "Sumali sa libu-libong job seeker na nagpahusay ng kanilang resume gamit ang aming AI-powered analysis.",
+    "ctaButton": "Kunin ang Iyong Libreng Scan"
+  },
+  "methodologyPage": {
+    "metaTitle": "Methodology — Paano Sino-score ng Resume Booster ang mga Resume",
+    "metaDescription": "Sa loob ng ATS scoring rubric, recruiter heuristics, at AI pipeline sa likod ng bawat Resume Booster scan.",
+    "transparentResearchBased": "Transparent at Batay sa Pananaliksik",
+    "titlePrefix": "Ang Aming ATS Analysis",
+    "titleHighlight": "Methodology",
+    "heroSubtitle": "Aming nireverse-engineer kung paano nina-parse at sino-score ng 50+ Applicant Tracking System (ATS) ang mga resume. Ito mismo ang eksaktong paggana ng aming pagsusuri.",
+    "platformsAnalyzed": "50+ ATS platform na na-analyze",
+    "resumesProcessed": "10,000+ resume na naproseso",
+    "updatedMonthly": "Buwanang in-update",
+    "howAnalysisWorks": "Paano Gumagana ang Aming Pagsusuri",
+    "step": "HAKBANG {{number}}",
+    "steps": {
+      "parsing": {
+        "title": "Pag-parse ng Dokumento",
+        "description": "Kinukuha namin ang teksto habang pinapanatili ang structure, hinahandle ang mga PDF at DOCX file gamit ang parehong parsing logic na ginagamit ng mga malalaking ATS platform."
+      },
+      "aiAnalysis": {
+        "title": "AI Analysis",
+        "description": "Ginagaya ng aming AI kung paano babasahin ng bawat ATS ang iyong resume, tinutukoy ang mga section, keyword, at formatting na posibleng maging dahilan ng parsing failure."
+      },
+      "keywordMatching": {
+        "title": "Keyword Matching",
+        "description": "Ikinukumpara namin ang iyong resume sa mga industry-specific keyword database at mga kinakailangan ng job description upang matukoy ang mga gap."
+      },
+      "scoringAlgorithm": {
+        "title": "Scoring Algorithm",
+        "description": "Ang iyong ATS score ay kinakalkula base sa 50+ na factor kabilang ang keyword density, formatting, kumpletuhan ng section, at mga red flag."
+      }
+    },
+    "atsPlatforms": {
+      "0": { "description": "Pag-parse ng section header, keyword extraction, validation ng date format", "marketShare": "Malalaking enterprise" },
+      "1": { "description": "Mga algorithm sa pagtugma ng skill, scoring ng antas ng karanasan, mga indicator ng cultural fit", "marketShare": "Tech at startup" },
+      "2": { "description": "Validation ng contact info, consistency ng formatting, organisasyon ng section", "marketShare": "Mid-market" },
+      "3": { "description": "Pagsusuri ng keyword density, pagtugma ng job title, scoring ng kwalipikasyon", "marketShare": "Fortune 500" },
+      "4": { "description": "Pag-parse ng edukasyon, detection ng certification, pagtugma ng skills taxonomy", "marketShare": "Healthcare at retail" },
+      "5": { "description": "Pagsusuri ng structure ng resume, validation ng timeline ng karanasan", "marketShare": "SMB" },
+      "6": { "description": "Keyword optimization, mga algorithm sa ranking ng applicant", "marketShare": "Maliit na negosyo" },
+      "7": { "description": "Integration ng social profile, referral tracking, skills assessment", "marketShare": "Enterprise" },
+      "8": { "description": "AI-powered matching, mga indicator ng diversity, global compliance", "marketShare": "Pandaigdigang enterprise" },
+      "9": { "description": "Staffing-specific parsing, detection ng contractor, scoring ng availability", "marketShare": "Mga staffing agency" }
+    },
+    "atsPlatformsTitle": "Mga ATS Platform na Aming Sinusuri",
+    "atsPlatformsSubtitle": "Ang aming pagsusuri ay batay sa mga parsing rule at scoring algorithm mula sa mga malalaking ATS platform na ito, sumasaklaw sa mahigit 90% ng job market.",
+    "moreAtsPlatforms": "+ 40 pang regional at industry-specific na ATS platform",
+    "scoreCalculatedTitle": "Paano Kinakalkula ang Iyong ATS Score",
+    "scoreCalculatedSubtitle": "Ang iyong score ay isang weighted na kombinasyon ng maramihang factor na tumutukoy kung gaano kahusay magpepresenta ang iyong resume sa mga ATS system.",
+    "scoringFactors": {
+      "keywordOptimization": { "factor": "Keyword Optimization", "description": "Mga binanggit na keyword at skill na kaugnay sa industriya" },
+      "formatCompatibility": { "factor": "Format Compatibility", "description": "Malinis na structure na maayos na mai-parse ng ATS" },
+      "sectionCompleteness": { "factor": "Kumpletuhan ng Section", "description": "Lahat ng inaasahang section ay naroroon at maayos na nakalagyan ng label" },
+      "experienceClarity": { "factor": "Kalinawan ng Karanasan", "description": "Malinaw na job title, petsa, at tagumpay" },
+      "actionVerbUsage": { "factor": "Paggamit ng Action Verb", "description": "Malakas na mga action verb na nagpapakita ng epekto" },
+      "quantifiedAchievements": { "factor": "May Sukat na Tagumpay", "description": "Mga numero at metric na nagpapatunay ng resulta" },
+      "redFlagAbsence": { "factor": "Walang Red Flag", "description": "Walang isyu sa formatting o content" }
+    },
+    "continuousResearchTitle": "Tuloy-tuloy na Pananaliksik",
+    "continuousResearchSubtitle": "Patuloy namin sinusuri ang mga job posting, ATS update, at trend sa hiring upang mapanatili ang katumpakan at pagiging up-to-date ng aming pagsusuri.",
+    "continuousResearch": {
+      "monthlyUpdates": "Buwanang algorithm update",
+      "keywordDatabases": "Industry-specific na keyword database",
+      "recruiterFeedback": "Integration ng tunay na recruiter feedback"
+    },
+    "validatedByResultsTitle": "Pinagtibay ng mga Resulta",
+    "validatedByResultsSubtitle": "Ang aming methodology ay pinagtibay ng tunay na resulta mula sa libu-libong job seeker na nagpahusay ng kanilang resume gamit ang aming pagsusuri.",
+    "validatedByResults": {
+      "interviewRates": "89% ay nag-report ng mas magandang interview rate",
+      "resumesAnalyzed": "10,000+ resume na na-analyze",
+      "scoreImprovement": "Average na 23-puntos na pagpapahusay sa score"
+    },
+    "ctaTitle": "Handa na Makita ang Iyong ATS Score?",
+    "ctaSubtitle": "Kumuha ng libreng pagsusuri ng iyong resume gamit ang aming napatunayang methodology.",
+    "ctaButton": "Suriin ang Aking Resume nang Libre"
+  },
   "pricingPage": {
     "metaTitle": "Pagpepresyo — Resume Booster",
     "metaDescription": "Mga plano mula $1 Keyword Fix hanggang $25 Career Snapshot. Magbayad isang beses, walang subscription. Mga resume rewrite sa antas ng recruiter.",
