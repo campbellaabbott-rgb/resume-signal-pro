@@ -697,5 +697,43 @@
       "title": "30-Tage-Aktionsplan",
       "badge": "Woche für Woche"
     }
+  },
+  "interviewCoach": {
+    "badge": "Übe mit einem KI-Interviewcoach",
+    "descriptionPremium": "14 ausführliche Fragen in jeder Kategorie, vollständige Musterantworten nach der STAR-Methode und ein herunterladbarer Vorbereitungsleitfaden — übe deine Antworten und erhalte sofortiges KI-Feedback.",
+    "descriptionFree": "Erhalte personalisierte Interviewfragen basierend auf deinem Lebenslauf, übe deine Antworten und erhalte sofortiges KI-Feedback.",
+    "preparing": "Dein Interview wird vorbereitet...",
+    "startButton": "Probeinterview starten",
+    "error": "Fehler",
+    "generateFailed": "Generierung fehlgeschlagen",
+    "evaluateFailed": "Bewertung fehlgeschlagen",
+    "exportPrepGuide": "Vorbereitungsleitfaden exportieren",
+    "hideTips": "Tipps ausblenden",
+    "showTips": "Interviewtipps",
+    "tips": {
+      "before": "Vorher",
+      "during": "Während",
+      "questionsToAsk": "Fragen zum Stellen"
+    },
+    "whyTheyAsk": "Warum sie das fragen:",
+    "answerPlaceholder": "Gib hier deine Antwort ein... (oder nutze die Tipps unten zur Vorbereitung)",
+    "evaluating": "Wird bewertet...",
+    "submitAnswer": "Antwort einreichen",
+    "strongOpener": "💡 Starker Einstieg:",
+    "fullModelAnswer": "Vollständige Musterantwort (STAR-Methode):",
+    "strengths": "Stärken",
+    "improve": "Verbessern",
+    "strongerVersion": "✨ Stärkere Version:",
+    "tryAgain": "Erneut versuchen",
+    "tipsForStrongAnswer": "Tipps für eine starke Antwort",
+    "redFlagsToAvoid": "Zu vermeidende Warnsignale",
+    "questionsAnswered": "Beantwortete Fragen: {{answered}}/{{total}}",
+    "avgScore": "Durchschnittsbewertung: {{score}}/10",
+    "toast": {
+      "headsUp": "Hinweis",
+      "pdfCharWarning": "Einige Zeichen werden im PDF möglicherweise nicht korrekt angezeigt (eingeschränkte Schriftunterstützung für nicht-lateinische Schriftzeichen).",
+      "exportFailed": "Export fehlgeschlagen",
+      "exportFailedDescription": "Das PDF konnte nicht erstellt werden. Bitte versuche es erneut."
+    }
   }
 }

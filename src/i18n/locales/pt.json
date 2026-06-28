@@ -697,5 +697,43 @@
       "title": "Plano de Ação de 30 Dias",
       "badge": "Semana a semana"
     }
+  },
+  "interviewCoach": {
+    "badge": "Pratique com um coach de entrevistas de IA",
+    "descriptionPremium": "14 perguntas detalhadas em cada categoria, respostas-modelo completas com o método STAR e um guia de preparação para download — pratique suas respostas e receba feedback instantâneo da IA.",
+    "descriptionFree": "Receba perguntas de entrevista personalizadas com base no seu currículo, pratique suas respostas e receba feedback instantâneo da IA.",
+    "preparing": "Preparando sua entrevista...",
+    "startButton": "Iniciar entrevista simulada",
+    "error": "Erro",
+    "generateFailed": "Falha ao gerar",
+    "evaluateFailed": "Falha ao avaliar",
+    "exportPrepGuide": "Exportar guia de preparação",
+    "hideTips": "Ocultar dicas",
+    "showTips": "Dicas de entrevista",
+    "tips": {
+      "before": "Antes",
+      "during": "Durante",
+      "questionsToAsk": "Perguntas a fazer"
+    },
+    "whyTheyAsk": "Por que perguntam isso:",
+    "answerPlaceholder": "Digite sua resposta aqui... (ou use as dicas abaixo para se preparar)",
+    "evaluating": "Avaliando...",
+    "submitAnswer": "Enviar resposta",
+    "strongOpener": "💡 Abertura forte:",
+    "fullModelAnswer": "Resposta-modelo completa (método STAR):",
+    "strengths": "Pontos fortes",
+    "improve": "A melhorar",
+    "strongerVersion": "✨ Versão mais forte:",
+    "tryAgain": "Tentar novamente",
+    "tipsForStrongAnswer": "Dicas para uma resposta forte",
+    "redFlagsToAvoid": "Sinais de alerta a evitar",
+    "questionsAnswered": "Perguntas respondidas: {{answered}}/{{total}}",
+    "avgScore": "Pontuação média: {{score}}/10",
+    "toast": {
+      "headsUp": "Atenção",
+      "pdfCharWarning": "Alguns caracteres podem não ser exibidos corretamente no PDF (suporte limitado de fonte para texto não latino).",
+      "exportFailed": "Falha na exportação",
+      "exportFailedDescription": "Não foi possível gerar o PDF. Tente novamente."
+    }
   }
 }

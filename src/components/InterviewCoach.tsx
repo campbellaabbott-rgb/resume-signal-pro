@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   MessageSquare, Loader2, ChevronRight, CheckCircle, AlertTriangle,
@@ -69,6 +70,7 @@ const categoryColors: Record<string, string> = {
 };
 
 export function InterviewCoach({ resumeText, industry, currentRole, isPremium }: InterviewCoachProps) {
+  const { t } = useTranslation();
   const [data, setData] = useState<InterviewData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeQuestion, setActiveQuestion] = useState<number | null>(null);
@@ -89,7 +91,7 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
       if (!result?.success) throw new Error(result?.error || "Generation failed");
       setData(result.data);
     } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to generate", variant: "destructive" });
+      toast({ title: t('interviewCoach.error'), description: err.message || t('interviewCoach.generateFailed'), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -103,13 +105,13 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
       // punctuation — content in other scripts would otherwise render as
       // blank/missing glyphs with no explanation.
       if (hasUnsupportedPdfCharacters(JSON.stringify(data))) {
-        toast({ title: "Heads up", description: "Some characters may not display correctly in the PDF (limited font support for non-Latin text)." });
+        toast({ title: t('interviewCoach.toast.headsUp'), description: t('interviewCoach.toast.pdfCharWarning') });
       }
       const { exportInterviewPrepPDF } = await import("@/lib/career-tools-export");
       await exportInterviewPrepPDF(data);
     } catch (err) {
       console.error("[InterviewCoach] PDF export failed:", err);
-      toast({ title: "Export failed", description: "Could not generate the PDF. Please try again.", variant: "destructive" });
+      toast({ title: t('interviewCoach.toast.exportFailed'), description: t('interviewCoach.toast.exportFailedDescription'), variant: "destructive" });
     } finally {
       setIsExportingPdf(false);
     }
@@ -127,7 +129,7 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
       setEvaluations(prev => ({ ...prev, [q.id]: result.data }));
       setAnswer("");
     } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to evaluate", variant: "destructive" });
+      toast({ title: t('interviewCoach.error'), description: err.message || t('interviewCoach.evaluateFailed'), variant: "destructive" });
     } finally {
       setEvaluatingId(null);
     }
@@ -138,16 +140,14 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
       <div className="text-center py-6 space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 text-muted-foreground text-xs mb-2">
           <MessageSquare className="w-3.5 h-3.5" />
-          Practice with an AI interview coach
+          {t('interviewCoach.badge')}
         </div>
         <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-          {isPremium
-            ? "14 in-depth questions across every category, full STAR-method model answers, and a downloadable prep guide — practice your answers and get instant AI feedback."
-            : "Get personalized interview questions based on your resume, practice your answers, and get instant AI feedback."}
+          {isPremium ? t('interviewCoach.descriptionPremium') : t('interviewCoach.descriptionFree')}
         </p>
         <Button onClick={generate} disabled={isLoading} size="sm" className="gap-2">
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
-          {isLoading ? "Preparing your interview..." : "Start Mock Interview"}
+          {isLoading ? t('interviewCoach.preparing') : t('interviewCoach.startButton')}
         </Button>
       </div>
     );
@@ -173,11 +173,11 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
             onClick={handleExportPdf}
           >
             {isExportingPdf ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
-            Export Prep Guide
+            {t('interviewCoach.exportPrepGuide')}
           </Button>
         )}
         <button onClick={() => setShowTips(!showTips)} className={cn("text-[10px] text-primary hover:underline", !isPremium && "ml-auto")}>
-          {showTips ? "Hide tips" : "Interview tips"}
+          {showTips ? t('interviewCoach.hideTips') : t('interviewCoach.showTips')}
         </button>
       </div>
 
@@ -185,21 +185,21 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
       {showTips && data.interviewTips && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-3 rounded-xl bg-muted/20 border border-border/50">
           <div>
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Before</p>
-            {data.interviewTips.beforeInterview?.map((t, i) => (
-              <p key={i} className="text-[11px] text-foreground">• {t}</p>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">{t('interviewCoach.tips.before')}</p>
+            {data.interviewTips.beforeInterview?.map((tip, i) => (
+              <p key={i} className="text-[11px] text-foreground">• {tip}</p>
             ))}
           </div>
           <div>
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">During</p>
-            {data.interviewTips.duringInterview?.map((t, i) => (
-              <p key={i} className="text-[11px] text-foreground">• {t}</p>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">{t('interviewCoach.tips.during')}</p>
+            {data.interviewTips.duringInterview?.map((tip, i) => (
+              <p key={i} className="text-[11px] text-foreground">• {tip}</p>
             ))}
           </div>
           <div>
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Questions to Ask</p>
-            {data.interviewTips.closingQuestions?.map((t, i) => (
-              <p key={i} className="text-[11px] text-foreground">• {t}</p>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">{t('interviewCoach.tips.questionsToAsk')}</p>
+            {data.interviewTips.closingQuestions?.map((tip, i) => (
+              <p key={i} className="text-[11px] text-foreground">• {tip}</p>
             ))}
           </div>
         </div>
@@ -238,7 +238,7 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
               {isActive && (
                 <div className="px-3 pb-3 space-y-3 border-t border-border/30 pt-3">
                   <div className="text-[11px] text-muted-foreground">
-                    <span className="font-semibold">Why they ask:</span> {q.whyAsked}
+                    <span className="font-semibold">{t('interviewCoach.whyTheyAsk')}</span> {q.whyAsked}
                   </div>
 
                   {/* Answer input */}
@@ -247,24 +247,24 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
                       <textarea
                         value={answer}
                         onChange={(e) => setAnswer(e.target.value)}
-                        placeholder="Type your answer here... (or use the tips below to prepare)"
+                        placeholder={t('interviewCoach.answerPlaceholder')}
                         className="w-full text-xs p-2 rounded-lg border border-border/50 bg-background min-h-[80px] resize-none focus:outline-none focus:ring-1 focus:ring-primary/30"
                       />
                       <div className="flex items-center gap-2">
                         <Button size="sm" className="gap-1 text-xs h-7" onClick={() => submitAnswer(q)} disabled={!answer.trim() || evaluatingId === q.id}>
                           {evaluatingId === q.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                          {evaluatingId === q.id ? "Evaluating..." : "Submit Answer"}
+                          {evaluatingId === q.id ? t('interviewCoach.evaluating') : t('interviewCoach.submitAnswer')}
                         </Button>
                         <span className="text-[10px] text-muted-foreground">⏱ {q.timeLimit}</span>
                       </div>
                       <div className="p-2 rounded-lg bg-muted/20">
-                        <p className="text-[10px] font-semibold text-muted-foreground mb-1">💡 Strong opener:</p>
+                        <p className="text-[10px] font-semibold text-muted-foreground mb-1">{t('interviewCoach.strongOpener')}</p>
                         <p className="text-[11px] text-foreground italic">"{q.sampleOpener}"</p>
                       </div>
                       {isPremium && q.modelAnswer && (
                         <div className="p-2 rounded-lg bg-primary/5 border border-primary/20">
                           <p className="text-[10px] font-semibold text-primary mb-1 flex items-center gap-1">
-                            <Lightbulb className="w-3 h-3" /> Full model answer (STAR method):
+                            <Lightbulb className="w-3 h-3" /> {t('interviewCoach.fullModelAnswer')}
                           </p>
                           <p className="text-[11px] text-foreground whitespace-pre-wrap">{q.modelAnswer}</p>
                         </div>
@@ -283,7 +283,7 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <p className="text-[10px] font-semibold text-green-700 mb-0.5">Strengths</p>
+                          <p className="text-[10px] font-semibold text-green-700 mb-0.5">{t('interviewCoach.strengths')}</p>
                           {evaluation.strengths?.map((s, i) => (
                             <div key={i} className="flex items-start gap-1 text-[11px]">
                               <CheckCircle className="w-3 h-3 text-green-600 shrink-0 mt-0.5" />
@@ -292,7 +292,7 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
                           ))}
                         </div>
                         <div>
-                          <p className="text-[10px] font-semibold text-orange-700 mb-0.5">Improve</p>
+                          <p className="text-[10px] font-semibold text-orange-700 mb-0.5">{t('interviewCoach.improve')}</p>
                           {evaluation.improvements?.map((s, i) => (
                             <div key={i} className="flex items-start gap-1 text-[11px]">
                               <AlertTriangle className="w-3 h-3 text-orange-600 shrink-0 mt-0.5" />
@@ -302,14 +302,14 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
                         </div>
                       </div>
                       <div className="p-2 rounded-lg bg-primary/5 border border-primary/20">
-                        <p className="text-[10px] font-semibold text-primary mb-0.5">✨ Stronger version:</p>
+                        <p className="text-[10px] font-semibold text-primary mb-0.5">{t('interviewCoach.strongerVersion')}</p>
                         <p className="text-[11px] text-foreground">{evaluation.revisedAnswer}</p>
                       </div>
                       <Button size="sm" variant="ghost" className="text-xs h-6 gap-1" onClick={() => {
                         setEvaluations(prev => { const n = {...prev}; delete n[q.id]; return n; });
                         setAnswer("");
                       }}>
-                        <RotateCcw className="w-3 h-3" /> Try Again
+                        <RotateCcw className="w-3 h-3" /> {t('interviewCoach.tryAgain')}
                       </Button>
                     </div>
                   )}
@@ -318,15 +318,15 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
                   {!evaluation && (
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <p className="text-[10px] font-semibold text-green-700 mb-0.5">Tips for a strong answer</p>
-                        {q.strongAnswerTips?.map((t, i) => (
-                          <p key={i} className="text-[11px] text-foreground">✓ {t}</p>
+                        <p className="text-[10px] font-semibold text-green-700 mb-0.5">{t('interviewCoach.tipsForStrongAnswer')}</p>
+                        {q.strongAnswerTips?.map((tip, i) => (
+                          <p key={i} className="text-[11px] text-foreground">✓ {tip}</p>
                         ))}
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold text-red-700 mb-0.5">Red flags to avoid</p>
-                        {q.redFlags?.map((t, i) => (
-                          <p key={i} className="text-[11px] text-foreground">✗ {t}</p>
+                        <p className="text-[10px] font-semibold text-red-700 mb-0.5">{t('interviewCoach.redFlagsToAvoid')}</p>
+                        {q.redFlags?.map((tip, i) => (
+                          <p key={i} className="text-[11px] text-foreground">✗ {tip}</p>
                         ))}
                       </div>
                     </div>
@@ -341,9 +341,9 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
       {/* Score summary */}
       {Object.keys(evaluations).length > 0 && (
         <div className="rounded-xl bg-muted/20 border border-border/50 p-3 text-center">
-          <p className="text-xs text-muted-foreground mb-1">Questions answered: {Object.keys(evaluations).length}/{data.questions?.length}</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('interviewCoach.questionsAnswered', { answered: Object.keys(evaluations).length, total: data.questions?.length })}</p>
           <p className="text-lg font-bold text-foreground">
-            Avg Score: {(Object.values(evaluations).reduce((sum, e) => sum + e.score, 0) / Object.keys(evaluations).length).toFixed(1)}/10
+            {t('interviewCoach.avgScore', { score: (Object.values(evaluations).reduce((sum, e) => sum + e.score, 0) / Object.keys(evaluations).length).toFixed(1) })}
           </p>
         </div>
       )}

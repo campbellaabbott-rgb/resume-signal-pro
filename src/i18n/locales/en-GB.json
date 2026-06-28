@@ -697,5 +697,43 @@
       "title": "30-Day Action Plan",
       "badge": "Week-by-week"
     }
+  },
+  "interviewCoach": {
+    "badge": "Practice with an AI interview coach",
+    "descriptionPremium": "14 in-depth questions across every category, full STAR-method model answers, and a downloadable prep guide — practice your answers and get instant AI feedback.",
+    "descriptionFree": "Get personalised interview questions based on your CV, practise your answers, and get instant AI feedback.",
+    "preparing": "Preparing your interview...",
+    "startButton": "Start Mock Interview",
+    "error": "Error",
+    "generateFailed": "Failed to generate",
+    "evaluateFailed": "Failed to evaluate",
+    "exportPrepGuide": "Export Prep Guide",
+    "hideTips": "Hide tips",
+    "showTips": "Interview tips",
+    "tips": {
+      "before": "Before",
+      "during": "During",
+      "questionsToAsk": "Questions to Ask"
+    },
+    "whyTheyAsk": "Why they ask:",
+    "answerPlaceholder": "Type your answer here... (or use the tips below to prepare)",
+    "evaluating": "Evaluating...",
+    "submitAnswer": "Submit Answer",
+    "strongOpener": "💡 Strong opener:",
+    "fullModelAnswer": "Full model answer (STAR method):",
+    "strengths": "Strengths",
+    "improve": "Improve",
+    "strongerVersion": "✨ Stronger version:",
+    "tryAgain": "Try Again",
+    "tipsForStrongAnswer": "Tips for a strong answer",
+    "redFlagsToAvoid": "Red flags to avoid",
+    "questionsAnswered": "Questions answered: {{answered}}/{{total}}",
+    "avgScore": "Avg Score: {{score}}/10",
+    "toast": {
+      "headsUp": "Heads up",
+      "pdfCharWarning": "Some characters may not display correctly in the PDF (limited font support for non-Latin text).",
+      "exportFailed": "Export failed",
+      "exportFailedDescription": "Could not generate the PDF. Please try again."
+    }
   }
 }

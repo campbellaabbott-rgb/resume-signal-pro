@@ -697,5 +697,43 @@
       "title": "Plan d'action sur 30 jours",
       "badge": "Semaine par semaine"
     }
+  },
+  "interviewCoach": {
+    "badge": "Entraînez-vous avec un coach d'entretien IA",
+    "descriptionPremium": "14 questions approfondies dans chaque catégorie, des réponses modèles complètes selon la méthode STAR et un guide de préparation téléchargeable — entraînez-vous et recevez un retour instantané de l'IA.",
+    "descriptionFree": "Obtenez des questions d'entretien personnalisées selon votre CV, entraînez-vous et recevez un retour instantané de l'IA.",
+    "preparing": "Préparation de votre entretien...",
+    "startButton": "Démarrer l'entretien simulé",
+    "error": "Erreur",
+    "generateFailed": "Échec de la génération",
+    "evaluateFailed": "Échec de l'évaluation",
+    "exportPrepGuide": "Exporter le guide de préparation",
+    "hideTips": "Masquer les conseils",
+    "showTips": "Conseils d'entretien",
+    "tips": {
+      "before": "Avant",
+      "during": "Pendant",
+      "questionsToAsk": "Questions à poser"
+    },
+    "whyTheyAsk": "Pourquoi ils la posent :",
+    "answerPlaceholder": "Tapez votre réponse ici... (ou utilisez les conseils ci-dessous pour vous préparer)",
+    "evaluating": "Évaluation en cours...",
+    "submitAnswer": "Soumettre la réponse",
+    "strongOpener": "💡 Bonne accroche :",
+    "fullModelAnswer": "Réponse modèle complète (méthode STAR) :",
+    "strengths": "Points forts",
+    "improve": "À améliorer",
+    "strongerVersion": "✨ Version plus solide :",
+    "tryAgain": "Réessayer",
+    "tipsForStrongAnswer": "Conseils pour une réponse solide",
+    "redFlagsToAvoid": "Signaux d'alerte à éviter",
+    "questionsAnswered": "Questions répondues : {{answered}}/{{total}}",
+    "avgScore": "Score moyen : {{score}}/10",
+    "toast": {
+      "headsUp": "À noter",
+      "pdfCharWarning": "Certains caractères pourraient ne pas s'afficher correctement dans le PDF (prise en charge limitée des polices pour les textes non latins).",
+      "exportFailed": "Échec de l'export",
+      "exportFailedDescription": "Impossible de générer le PDF. Veuillez réessayer."
+    }
   }
 }

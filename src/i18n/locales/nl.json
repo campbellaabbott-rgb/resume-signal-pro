@@ -697,5 +697,43 @@
       "title": "30-dagenactieplan",
       "badge": "Week voor week"
     }
+  },
+  "interviewCoach": {
+    "badge": "Oefen met een AI-interviewcoach",
+    "descriptionPremium": "14 diepgaande vragen in elke categorie, volledige modelantwoorden volgens de STAR-methode en een downloadbare voorbereidingsgids — oefen je antwoorden en krijg direct AI-feedback.",
+    "descriptionFree": "Krijg gepersonaliseerde sollicitatievragen op basis van je cv, oefen je antwoorden en krijg direct AI-feedback.",
+    "preparing": "Je interview wordt voorbereid...",
+    "startButton": "Start proefinterview",
+    "error": "Fout",
+    "generateFailed": "Genereren mislukt",
+    "evaluateFailed": "Evalueren mislukt",
+    "exportPrepGuide": "Voorbereidingsgids exporteren",
+    "hideTips": "Tips verbergen",
+    "showTips": "Interviewtips",
+    "tips": {
+      "before": "Vooraf",
+      "during": "Tijdens",
+      "questionsToAsk": "Vragen om te stellen"
+    },
+    "whyTheyAsk": "Waarom ze dit vragen:",
+    "answerPlaceholder": "Typ hier je antwoord... (of gebruik de tips hieronder om je voor te bereiden)",
+    "evaluating": "Aan het evalueren...",
+    "submitAnswer": "Antwoord indienen",
+    "strongOpener": "💡 Sterke opening:",
+    "fullModelAnswer": "Volledig modelantwoord (STAR-methode):",
+    "strengths": "Sterke punten",
+    "improve": "Te verbeteren",
+    "strongerVersion": "✨ Sterkere versie:",
+    "tryAgain": "Opnieuw proberen",
+    "tipsForStrongAnswer": "Tips voor een sterk antwoord",
+    "redFlagsToAvoid": "Te vermijden waarschuwingssignalen",
+    "questionsAnswered": "Beantwoorde vragen: {{answered}}/{{total}}",
+    "avgScore": "Gem. score: {{score}}/10",
+    "toast": {
+      "headsUp": "Let op",
+      "pdfCharWarning": "Sommige tekens worden mogelijk niet correct weergegeven in de PDF (beperkte lettertypeondersteuning voor niet-Latijnse tekst).",
+      "exportFailed": "Exporteren mislukt",
+      "exportFailedDescription": "De PDF kon niet worden gegenereerd. Probeer het opnieuw."
+    }
   }
 }

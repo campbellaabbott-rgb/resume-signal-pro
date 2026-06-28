@@ -697,5 +697,43 @@
       "title": "Plan de acción de 30 días",
       "badge": "Semana a semana"
     }
+  },
+  "interviewCoach": {
+    "badge": "Practica con un coach de entrevistas de IA",
+    "descriptionPremium": "14 preguntas detalladas en cada categoría, respuestas modelo completas con el método STAR y una guía de preparación descargable: practica tus respuestas y recibe comentarios instantáneos de la IA.",
+    "descriptionFree": "Obtén preguntas de entrevista personalizadas según tu currículum, practica tus respuestas y recibe comentarios instantáneos de la IA.",
+    "preparing": "Preparando tu entrevista...",
+    "startButton": "Iniciar entrevista simulada",
+    "error": "Error",
+    "generateFailed": "No se pudo generar",
+    "evaluateFailed": "No se pudo evaluar",
+    "exportPrepGuide": "Exportar guía de preparación",
+    "hideTips": "Ocultar consejos",
+    "showTips": "Consejos para la entrevista",
+    "tips": {
+      "before": "Antes",
+      "during": "Durante",
+      "questionsToAsk": "Preguntas para hacer"
+    },
+    "whyTheyAsk": "Por qué la preguntan:",
+    "answerPlaceholder": "Escribe tu respuesta aquí... (o usa los consejos de abajo para prepararte)",
+    "evaluating": "Evaluando...",
+    "submitAnswer": "Enviar respuesta",
+    "strongOpener": "💡 Apertura sólida:",
+    "fullModelAnswer": "Respuesta modelo completa (método STAR):",
+    "strengths": "Fortalezas",
+    "improve": "A mejorar",
+    "strongerVersion": "✨ Versión más sólida:",
+    "tryAgain": "Intentar de nuevo",
+    "tipsForStrongAnswer": "Consejos para una respuesta sólida",
+    "redFlagsToAvoid": "Señales de alerta a evitar",
+    "questionsAnswered": "Preguntas respondidas: {{answered}}/{{total}}",
+    "avgScore": "Puntuación media: {{score}}/10",
+    "toast": {
+      "headsUp": "Aviso",
+      "pdfCharWarning": "Algunos caracteres podrían no mostrarse correctamente en el PDF (soporte de fuente limitado para texto no latino).",
+      "exportFailed": "Error al exportar",
+      "exportFailedDescription": "No se pudo generar el PDF. Inténtalo de nuevo."
+    }
   }
 }
