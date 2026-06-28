@@ -754,5 +754,32 @@
       "exportFailed": "Exporteren mislukt",
       "exportFailedDescription": "De PDF kon niet worden gegenereerd. Probeer het opnieuw."
     }
+  },
+  "applyAssistant": {
+    "prepBanner": {
+      "title": "Dit is voorbereidend werk, geen automatische verzending",
+      "description": "We dienen nooit iets namens jou in. Bekijk alles hieronder en solliciteer dan zelf op de site van de werkgever — precies alsof je deze voorbereiding zelf handmatig had gedaan."
+    },
+    "unknownCompany": "Onbekend bedrijf",
+    "unknownRole": "Functie",
+    "nextSteps": "Jouw volgende stappen",
+    "honestGaps": {
+      "title": "Eerlijke tekortkomingen (niet toegevoegd aan je cv)",
+      "description": "Deze functie vraagt om het volgende, en je cv ondersteunt deze claim niet echt — we verzinnen geen ervaring die je niet hebt."
+    },
+    "tailoredResume": "Aangepast cv",
+    "exportDocx": "DOCX exporteren",
+    "exportPdf": "PDF exporteren",
+    "coverLetter": "Motivatiebrief",
+    "copyText": "Tekst kopiëren",
+    "toast": {
+      "headsUp": "Let op",
+      "pdfCharWarning": "Sommige tekens in dit cv worden mogelijk niet correct weergegeven in de PDF (beperkte lettertypeondersteuning voor niet-Latijnse tekst).",
+      "exportFailed": "Exporteren mislukt",
+      "exportPdfFailedDescription": "De PDF kon niet worden gegenereerd. Probeer het opnieuw.",
+      "exportDocxFailedDescription": "Het Word-document kon niet worden gegenereerd. Probeer het opnieuw.",
+      "copied": "Gekopieerd",
+      "copiedDescription": "Motivatiebrief gekopieerd naar klembord."
+    }
   }
 }

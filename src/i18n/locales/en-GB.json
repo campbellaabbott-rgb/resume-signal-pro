@@ -754,5 +754,32 @@
       "exportFailed": "Export failed",
       "exportFailedDescription": "Could not generate the PDF. Please try again."
     }
+  },
+  "applyAssistant": {
+    "prepBanner": {
+      "title": "This is prep work, not auto-submission",
+      "description": "We never submit anything on your behalf. Review everything below, then apply yourself on the employer's site — exactly as if you'd done all this preparation manually."
+    },
+    "unknownCompany": "Unknown company",
+    "unknownRole": "Role",
+    "nextSteps": "Your Next Steps",
+    "honestGaps": {
+      "title": "Honest Gaps (Not Added to Your CV)",
+      "description": "This job wants the following, and your CV doesn't genuinely support claiming them — we won't fabricate experience you don't have."
+    },
+    "tailoredResume": "Tailored CV",
+    "exportDocx": "Export DOCX",
+    "exportPdf": "Export PDF",
+    "coverLetter": "Cover Letter",
+    "copyText": "Copy Text",
+    "toast": {
+      "headsUp": "Heads up",
+      "pdfCharWarning": "Some characters in this CV may not display correctly in the PDF (limited font support for non-Latin text).",
+      "exportFailed": "Export failed",
+      "exportPdfFailedDescription": "Could not generate the PDF. Please try again.",
+      "exportDocxFailedDescription": "Could not generate the Word document. Please try again.",
+      "copied": "Copied",
+      "copiedDescription": "Cover letter copied to clipboard."
+    }
   }
 }

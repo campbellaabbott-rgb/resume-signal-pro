@@ -754,5 +754,32 @@
       "exportFailed": "Falha na exportação",
       "exportFailedDescription": "Não foi possível gerar o PDF. Tente novamente."
     }
+  },
+  "applyAssistant": {
+    "prepBanner": {
+      "title": "Isto é trabalho de preparação, não envio automático",
+      "description": "Nunca enviamos nada em seu nome. Revise tudo abaixo e depois candidate-se você mesmo no site do empregador — exatamente como se tivesse feito toda essa preparação manualmente."
+    },
+    "unknownCompany": "Empresa desconhecida",
+    "unknownRole": "Cargo",
+    "nextSteps": "Seus Próximos Passos",
+    "honestGaps": {
+      "title": "Lacunas Honestas (Não Adicionadas ao Seu Currículo)",
+      "description": "Esta vaga exige o seguinte, e seu currículo não sustenta genuinamente essa afirmação — não vamos inventar experiência que você não tem."
+    },
+    "tailoredResume": "Currículo Personalizado",
+    "exportDocx": "Exportar DOCX",
+    "exportPdf": "Exportar PDF",
+    "coverLetter": "Carta de Apresentação",
+    "copyText": "Copiar Texto",
+    "toast": {
+      "headsUp": "Atenção",
+      "pdfCharWarning": "Alguns caracteres neste currículo podem não ser exibidos corretamente no PDF (suporte limitado de fonte para texto não latino).",
+      "exportFailed": "Falha na exportação",
+      "exportPdfFailedDescription": "Não foi possível gerar o PDF. Tente novamente.",
+      "exportDocxFailedDescription": "Não foi possível gerar o documento Word. Tente novamente.",
+      "copied": "Copiado",
+      "copiedDescription": "Carta de apresentação copiada para a área de transferência."
+    }
   }
 }

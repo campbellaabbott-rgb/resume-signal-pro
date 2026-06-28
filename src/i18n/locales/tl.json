@@ -754,5 +754,32 @@
       "exportFailed": "Hindi na-export",
       "exportFailedDescription": "Hindi magawa ang PDF. Pakisubukan ulit."
     }
+  },
+  "applyAssistant": {
+    "prepBanner": {
+      "title": "Ito ay paghahanda lang, hindi auto-submission",
+      "description": "Hindi namin kailanman isusumite ang anuman para sa iyo. Suriin ang lahat sa baba, tapos mag-apply ka mismo sa site ng employer — eksaktong kung paano mo gagawin ang lahat ng paghahandang ito nang manu-mano."
+    },
+    "unknownCompany": "Hindi kilalang kumpanya",
+    "unknownRole": "Role",
+    "nextSteps": "Ang Iyong Susunod na Hakbang",
+    "honestGaps": {
+      "title": "Tapat na Kakulangan (Hindi Idinagdag sa Iyong Resume)",
+      "description": "Kailangan ng trabahong ito ang mga sumusunod, at hindi talaga ito suportado ng iyong resume — hindi kami gagawa-gawa ng karanasang wala ka."
+    },
+    "tailoredResume": "Naangkop na Resume",
+    "exportDocx": "I-export ang DOCX",
+    "exportPdf": "I-export ang PDF",
+    "coverLetter": "Cover Letter",
+    "copyText": "Kopyahin ang Teksto",
+    "toast": {
+      "headsUp": "Paalala",
+      "pdfCharWarning": "May mga character sa resume na ito na posibleng hindi maipakita nang tama sa PDF (limitadong font support para sa non-Latin na teksto).",
+      "exportFailed": "Hindi na-export",
+      "exportPdfFailedDescription": "Hindi magawa ang PDF. Pakisubukan ulit.",
+      "exportDocxFailedDescription": "Hindi magawa ang Word document. Pakisubukan ulit.",
+      "copied": "Na-copy",
+      "copiedDescription": "Na-copy ang cover letter sa clipboard."
+    }
   }
 }

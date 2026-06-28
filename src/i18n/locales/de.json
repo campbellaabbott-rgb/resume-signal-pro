@@ -754,5 +754,32 @@
       "exportFailed": "Export fehlgeschlagen",
       "exportFailedDescription": "Das PDF konnte nicht erstellt werden. Bitte versuche es erneut."
     }
+  },
+  "applyAssistant": {
+    "prepBanner": {
+      "title": "Dies ist Vorbereitungsarbeit, keine automatische Einreichung",
+      "description": "Wir reichen niemals etwas in deinem Namen ein. Überprüfe alles unten und bewirb dich dann selbst auf der Website des Arbeitgebers — genau so, als hättest du diese Vorbereitung manuell erledigt."
+    },
+    "unknownCompany": "Unbekanntes Unternehmen",
+    "unknownRole": "Rolle",
+    "nextSteps": "Deine nächsten Schritte",
+    "honestGaps": {
+      "title": "Ehrliche Lücken (nicht zu deinem Lebenslauf hinzugefügt)",
+      "description": "Diese Stelle erfordert Folgendes, und dein Lebenslauf unterstützt diese Behauptung nicht wirklich — wir erfinden keine Erfahrung, die du nicht hast."
+    },
+    "tailoredResume": "Angepasster Lebenslauf",
+    "exportDocx": "DOCX exportieren",
+    "exportPdf": "PDF exportieren",
+    "coverLetter": "Anschreiben",
+    "copyText": "Text kopieren",
+    "toast": {
+      "headsUp": "Hinweis",
+      "pdfCharWarning": "Einige Zeichen in diesem Lebenslauf werden im PDF möglicherweise nicht korrekt angezeigt (eingeschränkte Schriftunterstützung für nicht-lateinische Schriftzeichen).",
+      "exportFailed": "Export fehlgeschlagen",
+      "exportPdfFailedDescription": "Das PDF konnte nicht erstellt werden. Bitte versuche es erneut.",
+      "exportDocxFailedDescription": "Das Word-Dokument konnte nicht erstellt werden. Bitte versuche es erneut.",
+      "copied": "Kopiert",
+      "copiedDescription": "Anschreiben in die Zwischenablage kopiert."
+    }
   }
 }

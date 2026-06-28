@@ -754,5 +754,32 @@
       "exportFailed": "Échec de l'export",
       "exportFailedDescription": "Impossible de générer le PDF. Veuillez réessayer."
     }
+  },
+  "applyAssistant": {
+    "prepBanner": {
+      "title": "Ceci est un travail de préparation, pas une soumission automatique",
+      "description": "Nous ne soumettons jamais rien en votre nom. Vérifiez tout ce qui suit, puis postulez vous-même sur le site de l'employeur — exactement comme si vous aviez fait toute cette préparation manuellement."
+    },
+    "unknownCompany": "Entreprise inconnue",
+    "unknownRole": "Poste",
+    "nextSteps": "Vos prochaines étapes",
+    "honestGaps": {
+      "title": "Lacunes honnêtes (non ajoutées à votre CV)",
+      "description": "Ce poste exige ce qui suit, et votre CV ne permet pas réellement de le revendiquer — nous n'inventerons pas d'expérience que vous n'avez pas."
+    },
+    "tailoredResume": "CV personnalisé",
+    "exportDocx": "Exporter en DOCX",
+    "exportPdf": "Exporter en PDF",
+    "coverLetter": "Lettre de motivation",
+    "copyText": "Copier le texte",
+    "toast": {
+      "headsUp": "À noter",
+      "pdfCharWarning": "Certains caractères de ce CV pourraient ne pas s'afficher correctement dans le PDF (prise en charge limitée des polices pour les textes non latins).",
+      "exportFailed": "Échec de l'export",
+      "exportPdfFailedDescription": "Impossible de générer le PDF. Veuillez réessayer.",
+      "exportDocxFailedDescription": "Impossible de générer le document Word. Veuillez réessayer.",
+      "copied": "Copié",
+      "copiedDescription": "Lettre de motivation copiée dans le presse-papiers."
+    }
   }
 }

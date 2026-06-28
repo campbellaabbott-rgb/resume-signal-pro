@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Download, FileText, Send, AlertTriangle, CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,7 @@ interface ApplyAssistantResultsProps {
 }
 
 export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResultsProps) {
+  const { t } = useTranslation();
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const { toast } = useToast();
@@ -35,13 +37,13 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
       // punctuation — a non-English resume would otherwise render with
       // blank/missing glyphs and no explanation.
       if (hasUnsupportedPdfCharacters(JSON.stringify(data.tailoredResume))) {
-        toast({ title: "Heads up", description: "Some characters in this resume may not display correctly in the PDF (limited font support for non-Latin text)." });
+        toast({ title: t('applyAssistant.toast.headsUp'), description: t('applyAssistant.toast.pdfCharWarning') });
       }
       const { exportResumeBuilderPDF } = await import("@/lib/resume-builder-export");
       await exportResumeBuilderPDF(data.tailoredResume);
     } catch (err) {
       console.error("[ApplyAssistantResults] PDF export failed:", err);
-      toast({ title: "Export failed", description: "Could not generate the PDF. Please try again.", variant: "destructive" });
+      toast({ title: t('applyAssistant.toast.exportFailed'), description: t('applyAssistant.toast.exportPdfFailedDescription'), variant: "destructive" });
     } finally {
       setIsExportingPdf(false);
     }
@@ -54,7 +56,7 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
       await exportResumeBuilderDocx(data.tailoredResume);
     } catch (err) {
       console.error("[ApplyAssistantResults] DOCX export failed:", err);
-      toast({ title: "Export failed", description: "Could not generate the Word document. Please try again.", variant: "destructive" });
+      toast({ title: t('applyAssistant.toast.exportFailed'), description: t('applyAssistant.toast.exportDocxFailedDescription'), variant: "destructive" });
     } finally {
       setIsExportingDocx(false);
     }
@@ -63,7 +65,7 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
   const handleCopyCoverLetter = async () => {
     if (!coverLetter) return;
     await navigator.clipboard.writeText(coverLetter);
-    toast({ title: "Copied", description: "Cover letter copied to clipboard." });
+    toast({ title: t('applyAssistant.toast.copied'), description: t('applyAssistant.toast.copiedDescription') });
   };
 
   return (
@@ -72,10 +74,9 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
       <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
         <Send className="w-5 h-5 text-primary shrink-0 mt-0.5" />
         <div>
-          <p className="font-semibold text-sm">This is prep work, not auto-submission</p>
+          <p className="font-semibold text-sm">{t('applyAssistant.prepBanner.title')}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            We never submit anything on your behalf. Review everything below, then apply yourself on the
-            employer's site — exactly as if you'd done all this preparation manually.
+            {t('applyAssistant.prepBanner.description')}
           </p>
         </div>
       </div>
@@ -83,8 +84,8 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
       {/* Job metadata */}
       <div className="p-4 rounded-xl border border-border bg-card">
         <div className="flex items-center gap-2 mb-1">
-          <Badge variant="secondary">{data.jobMetadata.company || "Unknown company"}</Badge>
-          <span className="text-sm font-semibold">{data.jobMetadata.roleTitle || "Role"}</span>
+          <Badge variant="secondary">{data.jobMetadata.company || t('applyAssistant.unknownCompany')}</Badge>
+          <span className="text-sm font-semibold">{data.jobMetadata.roleTitle || t('applyAssistant.unknownRole')}</span>
         </div>
         {data.jobMetadata.applyMethodHint && (
           <p className="text-xs text-muted-foreground mt-2 flex items-start gap-1.5">
@@ -98,7 +99,7 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
       <div className="p-4 rounded-xl border border-border bg-card">
         <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-success" />
-          Your Next Steps
+          {t('applyAssistant.nextSteps')}
         </h3>
         <ol className="space-y-2">
           {data.checklist.map((step, i) => (
@@ -117,11 +118,10 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
         <div className="p-4 rounded-xl border border-warning/30 bg-warning/5">
           <h3 className="font-semibold text-sm mb-2 flex items-center gap-2 text-warning">
             <AlertTriangle className="w-4 h-4" />
-            Honest Gaps (Not Added to Your Resume)
+            {t('applyAssistant.honestGaps.title')}
           </h3>
           <p className="text-xs text-muted-foreground mb-2">
-            This job wants the following, and your resume doesn't genuinely support claiming them — we won't
-            fabricate experience you don't have.
+            {t('applyAssistant.honestGaps.description')}
           </p>
           <div className="flex flex-wrap gap-1.5">
             {data.skillGaps.map((gap, i) => (
@@ -136,15 +136,15 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
       {/* Tailored resume preview + export */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-sm">Tailored Resume</h3>
+          <h3 className="font-semibold text-sm">{t('applyAssistant.tailoredResume')}</h3>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" className="gap-1.5" disabled={isExportingDocx} onClick={handleExportDocx}>
               {isExportingDocx ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
-              Export DOCX
+              {t('applyAssistant.exportDocx')}
             </Button>
             <Button size="sm" className="gap-1.5" disabled={isExportingPdf} onClick={handleExportPdf}>
               {isExportingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-              Export PDF
+              {t('applyAssistant.exportPdf')}
             </Button>
           </div>
         </div>
@@ -155,8 +155,8 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
       {coverLetter && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-sm">Cover Letter</h3>
-            <Button variant="outline" size="sm" onClick={handleCopyCoverLetter}>Copy Text</Button>
+            <h3 className="font-semibold text-sm">{t('applyAssistant.coverLetter')}</h3>
+            <Button variant="outline" size="sm" onClick={handleCopyCoverLetter}>{t('applyAssistant.copyText')}</Button>
           </div>
           <div className="p-5 rounded-lg bg-white text-neutral-900 border border-border whitespace-pre-wrap text-sm leading-relaxed font-serif">
             {coverLetter}
