@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
+import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,7 +17,7 @@ serve(async (req) => {
   }
 
   try {
-    const { resumeText, jobDescription, jobTitle, jobCompany } = await req.json();
+    const { resumeText, jobDescription, jobTitle, jobCompany, language } = await req.json();
 
     if (!resumeText) {
       return new Response(
@@ -204,7 +205,7 @@ You MUST output a valid JSON object with this exact structure:
 - Week 2: Active application + first outreach
 - Week 3: Follow-ups + interview prep
 - Week 4: Adjust strategy based on results
-- Keep tasks specific and achievable`;
+- Keep tasks specific and achievable${buildLanguageInstruction(language)}`;
 
     const userPrompt = `Generate a Graduate Game Plan for this resume:
 

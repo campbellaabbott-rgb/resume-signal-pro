@@ -95,7 +95,7 @@ serve(async (req) => {
       );
     }
 
-    const { email, productId, sessionId, jobTitle, jobCompany, referralCode } = body;
+    const { email, productId, sessionId, jobTitle, jobCompany, referralCode, language } = body;
 
     // Validate product ID (fast sync check)
     const product = PRODUCTS[productId];
@@ -115,6 +115,12 @@ serve(async (req) => {
     const sanitizedJobTitle = typeof jobTitle === 'string' ? jobTitle.slice(0, 100).replace(/[<>]/g, '') : '';
     const sanitizedJobCompany = typeof jobCompany === 'string' ? jobCompany.slice(0, 100).replace(/[<>]/g, '') : '';
     const sanitizedReferralCode = typeof referralCode === 'string' ? referralCode.slice(0, 20).replace(/[^a-f0-9]/gi, '') : '';
+    // Allowlist against the site's actual supported languages — this flows
+    // into an AI prompt server-side later (generation happens from the
+    // webhook, which has no access to the browser's i18n state), so it must
+    // be captured at checkout time, not assumed.
+    const SUPPORTED_LANGUAGES = ['en', 'en-GB', 'es', 'hi', 'tl', 'de', 'fr', 'fr-CA', 'nl', 'pt'];
+    const sanitizedLanguage = typeof language === 'string' && SUPPORTED_LANGUAGES.includes(language) ? language : 'en';
 
     // Create Stripe session - THE ONLY blocking call
     const session = await stripe.checkout.sessions.create({
@@ -146,6 +152,7 @@ serve(async (req) => {
         job_title: sanitizedJobTitle,
         job_company: sanitizedJobCompany,
         referral_code: sanitizedReferralCode,
+        language: sanitizedLanguage,
       },
     });
 

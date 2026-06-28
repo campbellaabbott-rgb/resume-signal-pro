@@ -106,6 +106,11 @@ serve(async (req) => {
   }
 
   try {
+    // Deliberately not applying the site's UI language to the letter itself —
+    // same reasoning as generate-apply-package: this is an externally-facing
+    // application document submitted to an employer, not advisory content for
+    // the candidate to read. The `language` field may still arrive in the
+    // request body from shared call sites, but it's intentionally unused here.
     const { resumeText, jobDescription, jobTitle, jobCompany, tone = "professional", personalizationContext } = await req.json();
 
     if (!resumeText) {

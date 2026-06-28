@@ -50,12 +50,15 @@ export function useProductCheckout() {
 
     try {
       const { data, error } = await supabase.functions.invoke('create-product-checkout', {
-        body: { 
+        body: {
           productId: productId,
           sessionId: opts.sessionId,
           jobTitle: opts.jobTitle,
           jobCompany: opts.jobCompany,
-          referralCode: getStoredReferralCode()
+          referralCode: getStoredReferralCode(),
+          // Generation happens server-side from the webhook, which has no
+          // access to the browser's i18n state — has to be captured now.
+          language: localStorage.getItem('i18nextLng') || 'en'
         }
       });
 

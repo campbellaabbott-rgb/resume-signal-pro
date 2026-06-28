@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -273,7 +274,7 @@ serve(async (req) => {
       );
     }
 
-    const { sessionId, resumeText, targetRoles, allowRegeneration, jobDescription } = requestBody;
+    const { sessionId, resumeText, targetRoles, allowRegeneration, jobDescription, language } = requestBody;
 
     // Validate session ID
     if (!sessionId || typeof sessionId !== 'string' || sessionId.length < 10) {
@@ -440,7 +441,7 @@ KEY ANALYSIS AREAS:
 
 8. **Action Plan**: Prioritized list of exactly what to do, with time estimates
 
-BE SPECIFIC AND ACTIONABLE. Every recommendation should be something the candidate can immediately implement.`;
+BE SPECIFIC AND ACTIONABLE. Every recommendation should be something the candidate can immediately implement.${buildLanguageInstruction(language)}`;
 
     const userMessage = `<resume>
 ${escapedResume}

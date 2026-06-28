@@ -69,7 +69,7 @@ export function CareerPathSimulator({ resumeText, industry, currentRole, isPremi
     setIsLoading(true);
     try {
       const { data: result, error } = await supabase.functions.invoke("generate-career-path", {
-        body: { resumeText, industry, currentRole, isPremium },
+        body: { resumeText, industry, currentRole, isPremium, language: localStorage.getItem('i18nextLng') },
       });
       if (error) throw error;
       if (!result?.success) throw new Error(result?.error || "Generation failed");

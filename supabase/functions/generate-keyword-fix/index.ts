@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
+import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,7 +18,7 @@ serve(async (req) => {
   }
 
   try {
-    const { resumeText, jobDescription, jobTitle, jobCompany, personalizationContext } = await req.json();
+    const { resumeText, jobDescription, jobTitle, jobCompany, personalizationContext, language } = await req.json();
 
     if (!resumeText) {
       return new Response(
@@ -68,7 +69,7 @@ Focus on:
 2. Action verbs that demonstrate impact
 3. Technical skills and certifications relevant to their experience level
 4. Industry-specific terminology for their target role
-5. Soft skills keywords that ATS systems look for`;
+5. Soft skills keywords that ATS systems look for${buildLanguageInstruction(language)}`;
 
     const userPrompt = `Analyze this resume for missing ATS keywords:
 

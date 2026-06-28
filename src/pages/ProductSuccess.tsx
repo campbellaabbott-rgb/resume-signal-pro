@@ -383,10 +383,10 @@ export default function ProductSuccess() {
       try {
         const [packageResult, coverLetterResult] = await Promise.all([
           supabase.functions.invoke('generate-apply-package', {
-            body: { resumeText, jobPostingText: jobDescription }
+            body: { resumeText, jobPostingText: jobDescription, language: localStorage.getItem('i18nextLng') }
           }),
           supabase.functions.invoke('generate-cover-letter', {
-            body: { resumeText, jobDescription, jobTitle: 'Target Position', tone: 'professional' }
+            body: { resumeText, jobDescription, jobTitle: 'Target Position', tone: 'professional', language: localStorage.getItem('i18nextLng') }
           })
         ]);
 
@@ -858,7 +858,8 @@ export default function ProductSuccess() {
               body: {
                 sessionId,
                 resumeText: sessionData.resumeText,
-                targetRoles: []
+                targetRoles: [],
+                language: localStorage.getItem('i18nextLng')
               }
             });
 
@@ -889,9 +890,10 @@ export default function ProductSuccess() {
           const sessionData = getResumeFromSession();
           if (sessionData.resumeText) {
             const { data: snapshotData, error: snapshotError } = await supabase.functions.invoke('generate-career-snapshot', {
-              body: { 
+              body: {
                 resumeText: sessionData.resumeText,
-                jobDescription: sessionData.jobDescriptionText || undefined
+                jobDescription: sessionData.jobDescriptionText || undefined,
+                language: localStorage.getItem('i18nextLng')
               }
             });
             
@@ -928,6 +930,7 @@ export default function ProductSuccess() {
                 body: {
                   resumeText: sessionData.resumeText,
                   jobPostingText: sessionData.jobDescriptionText,
+                  language: localStorage.getItem('i18nextLng')
                 }
               }),
               supabase.functions.invoke('generate-cover-letter', {
@@ -936,6 +939,7 @@ export default function ProductSuccess() {
                   jobDescription: sessionData.jobDescriptionText,
                   jobTitle: 'Target Position',
                   tone: 'professional',
+                  language: localStorage.getItem('i18nextLng')
                 }
               })
             ]);
@@ -969,9 +973,10 @@ export default function ProductSuccess() {
           const sessionData = getResumeFromSession();
           if (sessionData.resumeText) {
             const { data: gameplanData, error: gameplanError } = await supabase.functions.invoke('generate-graduate-gameplan', {
-              body: { 
+              body: {
                 resumeText: sessionData.resumeText,
-                jobDescription: sessionData.jobDescriptionText || undefined
+                jobDescription: sessionData.jobDescriptionText || undefined,
+                language: localStorage.getItem('i18nextLng')
               }
             });
             

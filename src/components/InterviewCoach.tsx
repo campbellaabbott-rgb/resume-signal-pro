@@ -83,7 +83,7 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
     setIsLoading(true);
     try {
       const { data: result, error } = await supabase.functions.invoke("generate-interview-coach", {
-        body: { resumeText, industry, currentRole, targetRole: currentRole, isPremium },
+        body: { resumeText, industry, currentRole, targetRole: currentRole, isPremium, language: localStorage.getItem('i18nextLng') },
       });
       if (error) throw error;
       if (!result?.success) throw new Error(result?.error || "Generation failed");
@@ -120,7 +120,7 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
     setEvaluatingId(q.id);
     try {
       const { data: result, error } = await supabase.functions.invoke("generate-interview-coach", {
-        body: { resumeText, question: q.question, answer, category: q.category, mode: "evaluate" },
+        body: { resumeText, question: q.question, answer, category: q.category, mode: "evaluate", language: localStorage.getItem('i18nextLng') },
       });
       if (error) throw error;
       if (!result?.success) throw new Error(result?.error || "Evaluation failed");

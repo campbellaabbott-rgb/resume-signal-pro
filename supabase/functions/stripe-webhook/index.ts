@@ -121,7 +121,8 @@ async function triggerProductDelivery(
       resume_session_id: resumeSessionId,
       job_title: session.metadata?.job_title,
       job_company: session.metadata?.job_company,
-      referral_code: session.metadata?.referral_code
+      referral_code: session.metadata?.referral_code,
+      language: session.metadata?.language
     }
   }).select().single();
 
@@ -176,6 +177,9 @@ async function triggerProductDelivery(
   const { resume_text, job_description_text } = resumeData[0];
   const jobTitle = session.metadata?.job_title || 'Target Position';
   const jobCompany = session.metadata?.job_company || '';
+  // Captured at checkout time (create-product-checkout) since this runs
+  // server-side with no access to the browser's i18n state.
+  const language = session.metadata?.language || 'en';
 
   // Update status to generating (background)
   EdgeRuntime.waitUntil(
@@ -203,12 +207,12 @@ async function triggerProductDelivery(
         fetch(`${supabaseUrl}/functions/v1/generate-apply-package`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
-          body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text })
+          body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text, language })
         }),
         fetch(`${supabaseUrl}/functions/v1/generate-cover-letter`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
-          body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional' })
+          body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional', language })
         })
       ]);
 
@@ -234,7 +238,8 @@ async function triggerProductDelivery(
         resumeText: resume_text,
         jobDescription: job_description_text || '',
         jobTitle,
-        jobCompany
+        jobCompany,
+        language
       };
 
       switch (productType) {

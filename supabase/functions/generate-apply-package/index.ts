@@ -104,6 +104,14 @@ serve(async (req) => {
       }
     }
 
+    // Deliberately NOT applying the site's UI language here, unlike the other
+    // generate-* functions — this product's output is the candidate's actual
+    // job application material (a tailored resume + cover letter to submit to
+    // an employer), not advisory content for the candidate to read. Forcing
+    // it into the UI's language regardless of what language the candidate is
+    // actually applying in could quietly damage their real application. The
+    // AI naturally preserves the input resume's own language by default,
+    // which is the safer behavior here.
     const { resumeText, jobPostingText, jobTitle, jobCompany } = await req.json();
 
     if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length < 50) {

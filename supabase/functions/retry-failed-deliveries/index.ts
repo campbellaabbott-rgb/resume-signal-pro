@@ -142,6 +142,7 @@ serve(async (req) => {
           const { resume_text, job_description_text } = resumeData[0];
           const jobTitle = (metadata.job_title as string) || 'Target Position';
           const jobCompany = (metadata.job_company as string) || '';
+          const language = (metadata.language as string) || 'en';
 
           let generatedContent: unknown;
 
@@ -153,12 +154,12 @@ serve(async (req) => {
               fetch(`${supabaseUrl}/functions/v1/generate-apply-package`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
-                body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text })
+                body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text, language })
               }),
               fetch(`${supabaseUrl}/functions/v1/generate-cover-letter`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
-                body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional' })
+                body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional', language })
               })
             ]);
 
@@ -184,7 +185,8 @@ serve(async (req) => {
               resumeText: resume_text,
               jobDescription: job_description_text || '',
               jobTitle,
-              jobCompany
+              jobCompany,
+              language
             };
 
             if (delivery.product_type === 'basic_keyword_fix') {

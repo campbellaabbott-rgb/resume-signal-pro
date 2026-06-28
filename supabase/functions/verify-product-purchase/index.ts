@@ -21,25 +21,26 @@ function buildGenerationRequest(
   resumeText: string,
   jobDescriptionText: string,
   jobTitle: string,
-  jobCompany: string
+  jobCompany: string,
+  language: string
 ): { endpoint: string; body: Record<string, unknown> } | null {
   switch (productType) {
     case 'basic_keyword_fix':
-      return { endpoint: 'generate-keyword-fix', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany } };
+      return { endpoint: 'generate-keyword-fix', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany, language } };
     case 'cover_letter':
-      return { endpoint: 'generate-cover-letter', body: { resumeText, jobDescription: jobDescriptionText, jobTitle: jobTitle || 'Professional Position', jobCompany, tone: 'professional' } };
+      return { endpoint: 'generate-cover-letter', body: { resumeText, jobDescription: jobDescriptionText, jobTitle: jobTitle || 'Professional Position', jobCompany, tone: 'professional', language } };
     case 'premium_package':
-      return { endpoint: 'generate-premium-package', body: { resumeText, jobDescription: jobDescriptionText, jobTitle: jobTitle || 'Target Position', jobCompany } };
+      return { endpoint: 'generate-premium-package', body: { resumeText, jobDescription: jobDescriptionText, jobTitle: jobTitle || 'Target Position', jobCompany, language } };
     case 'graduate_gameplan':
-      return { endpoint: 'generate-graduate-gameplan', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany } };
+      return { endpoint: 'generate-graduate-gameplan', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany, language } };
     case 'career_snapshot':
-      return { endpoint: 'generate-career-snapshot', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany } };
+      return { endpoint: 'generate-career-snapshot', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany, language } };
     case 'ats_defense':
-      return { endpoint: 'generate-ats-defense', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany } };
+      return { endpoint: 'generate-ats-defense', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany, language } };
     case 'interview_coach':
-      return { endpoint: 'generate-interview-coach', body: { resumeText, isPremium: true } };
+      return { endpoint: 'generate-interview-coach', body: { resumeText, isPremium: true, language } };
     case 'career_path_simulator':
-      return { endpoint: 'generate-career-path', body: { resumeText, isPremium: true } };
+      return { endpoint: 'generate-career-path', body: { resumeText, isPremium: true, language } };
     default:
       return null;
   }
@@ -174,6 +175,9 @@ serve(async (req) => {
         // This ensures content generators have proper context
         const jobTitle = session.metadata?.job_title || 'Target Position';
         const jobCompany = session.metadata?.job_company || '';
+        // Captured at checkout time (create-product-checkout) since this
+        // runs server-side with no access to the browser's i18n state.
+        const language = session.metadata?.language || 'en';
 
         // Generate content based on product type
         if (productType === 'apply_assistant' && resume_text && job_description_text) {
@@ -182,12 +186,12 @@ serve(async (req) => {
             fetch(`${supabaseUrl}/functions/v1/generate-apply-package`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
-              body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text })
+              body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text, language })
             }),
             fetch(`${supabaseUrl}/functions/v1/generate-cover-letter`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
-              body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional' })
+              body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional', language })
             })
           ]);
 
@@ -235,7 +239,7 @@ serve(async (req) => {
           }
         } else {
           const request = resume_text
-            ? buildGenerationRequest(productType, resume_text, job_description_text || '', jobTitle, jobCompany)
+            ? buildGenerationRequest(productType, resume_text, job_description_text || '', jobTitle, jobCompany, language)
             : null;
 
           if (request) {

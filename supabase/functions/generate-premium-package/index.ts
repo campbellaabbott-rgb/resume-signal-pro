@@ -347,6 +347,12 @@ serve(async (req) => {
   }
 
   try {
+    // Deliberately not applying the site's UI language here — this product's
+    // core output (rewrittenResume) is an externally-facing document the
+    // candidate would actually submit to employers, same reasoning as
+    // generate-apply-package and generate-cover-letter. Translating it into
+    // the UI's language regardless of the candidate's actual job-search
+    // language could quietly damage their real resume.
     const { resumeText, jobDescription, jobTitle, jobCompany } = await req.json();
 
     if (!resumeText) {
