@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { hasUnsupportedPdfCharacters } from "@/lib/pdf-text-support";
 import { supabase } from "@/integrations/supabase/client";
 import { getResumeFromSession } from "@/hooks/use-session-resume";
 import {
@@ -95,6 +96,12 @@ export default function ResumeBuilder() {
   const handleExportPdf = async () => {
     setIsExportingPdf(true);
     try {
+      // The PDF export's standard font only supports Latin-1 + common
+      // punctuation — a non-English resume would otherwise render with
+      // blank/missing glyphs and no explanation.
+      if (hasUnsupportedPdfCharacters(JSON.stringify(resume))) {
+        toast({ title: "Heads up", description: "Some characters in your resume may not display correctly in the PDF (limited font support for non-Latin text)." });
+      }
       const { exportResumeBuilderPDF } = await import("@/lib/resume-builder-export");
       await exportResumeBuilderPDF(resume);
     } catch (err) {

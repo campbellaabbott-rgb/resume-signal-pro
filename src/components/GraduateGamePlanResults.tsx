@@ -25,6 +25,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { exportGraduateGamePlanPDF } from '@/lib/pdf-export';
+import { hasUnsupportedPdfCharacters } from '@/lib/pdf-text-support';
 
 interface ResumeReadinessGate {
   verdict: 'Ready to Apply' | 'Fix These First';
@@ -211,6 +212,12 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
 
   const handleExportPDF = () => {
     try {
+      // The PDF export's standard font only supports Latin-1 + common
+      // punctuation — content in other scripts would otherwise render as
+      // blank/missing glyphs with no explanation.
+      if (hasUnsupportedPdfCharacters(JSON.stringify(data))) {
+        toast.warning('Some characters in this report may not display correctly in the PDF (limited font support for non-Latin text).');
+      }
       exportGraduateGamePlanPDF(data);
       toast.success('PDF downloaded successfully!');
     } catch (error) {

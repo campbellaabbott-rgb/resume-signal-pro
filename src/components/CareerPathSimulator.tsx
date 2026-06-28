@@ -4,6 +4,7 @@ import { TrendingUp, Loader2, ChevronRight, DollarSign, AlertTriangle, Zap, Down
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { hasUnsupportedPdfCharacters } from "@/lib/pdf-text-support";
 
 interface CareerPathSimulatorProps {
   resumeText: string;
@@ -85,6 +86,12 @@ export function CareerPathSimulator({ resumeText, industry, currentRole, isPremi
     if (!data) return;
     setIsExportingPdf(true);
     try {
+      // The PDF export's standard font only supports Latin-1 + common
+      // punctuation — content in other scripts would otherwise render as
+      // blank/missing glyphs with no explanation.
+      if (hasUnsupportedPdfCharacters(JSON.stringify(data))) {
+        toast({ title: "Heads up", description: "Some characters may not display correctly in the PDF (limited font support for non-Latin text)." });
+      }
       const { exportCareerPathPDF } = await import("@/lib/career-tools-export");
       await exportCareerPathPDF(data);
     } catch (err) {

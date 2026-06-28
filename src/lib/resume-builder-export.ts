@@ -4,6 +4,22 @@ import type { BuilderResume } from "@/types/resume-builder";
 // statically here, so the Resume Builder page's own chunk doesn't carry ~550KB of
 // export libraries until the user actually clicks an export button.
 
+// Previously only replaced whitespace with underscores, leaving characters
+// invalid on Windows/macOS/Linux filesystems (/ \ : * ? " < > |) untouched —
+// a name like "Mary/Jane O'Brien" would produce a filename the OS either
+// rejects outright or silently mangles. Strips those, collapses repeated
+// underscores from adjacent stripped characters, and trims leading/trailing
+// underscores so "  / Mary / " doesn't become "_Mary_".
+export function sanitizeFilename(name: string): string {
+  const sanitized = name
+    .trim()
+    .replace(/[/\\:*?"<>|]/g, "")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return sanitized || "resume";
+}
+
 function formatDateRange(startDate: string, endDate: string): string {
   if (!startDate && !endDate) return "";
   if (!startDate) return endDate;
@@ -156,7 +172,7 @@ export async function exportResumeBuilderPDF(resume: BuilderResume): Promise<voi
     addWrappedText(resume.certifications.join("  •  "), 9.5, 4.8);
   }
 
-  const fileName = `${(resume.contact.fullName || "resume").replace(/\s+/g, "_")}.pdf`;
+  const fileName = `${sanitizeFilename(resume.contact.fullName || "resume")}.pdf`;
   pdf.save(fileName);
 }
 
@@ -257,7 +273,7 @@ export async function exportResumeBuilderDocx(resume: BuilderResume): Promise<vo
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${(resume.contact.fullName || "resume").replace(/\s+/g, "_")}.docx`;
+  link.download = `${sanitizeFilename(resume.contact.fullName || "resume")}.docx`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

@@ -23,6 +23,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { exportCareerSnapshotPDF } from '@/lib/pdf-export';
+import { hasUnsupportedPdfCharacters } from '@/lib/pdf-text-support';
 
 interface CareerSignalScore {
   overall: 'Strong' | 'Mixed' | 'Risky';
@@ -185,6 +186,12 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
 
   const handleExportPDF = () => {
     try {
+      // The PDF export's standard font only supports Latin-1 + common
+      // punctuation — content in other scripts (e.g. a non-English resume)
+      // would otherwise render as blank/missing glyphs with no explanation.
+      if (hasUnsupportedPdfCharacters(JSON.stringify(data))) {
+        toast.warning('Some characters in this report may not display correctly in the PDF (limited font support for non-Latin text).');
+      }
       exportCareerSnapshotPDF(data);
       toast.success('PDF downloaded successfully!');
     } catch (error) {

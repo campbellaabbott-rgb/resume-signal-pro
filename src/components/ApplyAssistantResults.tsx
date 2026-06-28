@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ResumePreview } from "@/components/builder/ResumePreview";
 import { BuilderResume } from "@/types/resume-builder";
 import { useToast } from "@/hooks/use-toast";
+import { hasUnsupportedPdfCharacters } from "@/lib/pdf-text-support";
 
 export interface ApplyPackageData {
   jobMetadata: {
@@ -30,6 +31,12 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
   const handleExportPdf = async () => {
     setIsExportingPdf(true);
     try {
+      // The PDF export's standard font only supports Latin-1 + common
+      // punctuation — a non-English resume would otherwise render with
+      // blank/missing glyphs and no explanation.
+      if (hasUnsupportedPdfCharacters(JSON.stringify(data.tailoredResume))) {
+        toast({ title: "Heads up", description: "Some characters in this resume may not display correctly in the PDF (limited font support for non-Latin text)." });
+      }
       const { exportResumeBuilderPDF } = await import("@/lib/resume-builder-export");
       await exportResumeBuilderPDF(data.tailoredResume);
     } catch (err) {
