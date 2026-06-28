@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO title={"Pricing "} description={" Resume Booster"} path={"Plans from $1 Keyword Fix to $25 Career Snapshot. Pay once, no subscription. Recruiter-grade resume rewrites and cover letters.|/pricing"} />
       <Header />
       
       <main className="pt-32 pb-20">

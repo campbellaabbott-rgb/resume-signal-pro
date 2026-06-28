@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { SEO } from "@/components/seo/SEO";
 import { useSearchParams } from "react-router-dom";
 import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
@@ -1243,6 +1244,7 @@ const Index = () => {
         onRetry={checkoutError && !checkoutUrl ? handleRetryCheckout : undefined}
         onClose={handleCloseCheckout}
       />
+      <SEO title={"Resume Booster "} description={" Free ATS Resume Scan"} path={"Free AI resume scan: ATS score, missing keywords, red flags, and recruiter-grade fixes in under 30 seconds.|/"} />
       <Header />
 
       <main id="main-content" className="pt-[88px]" role="main">

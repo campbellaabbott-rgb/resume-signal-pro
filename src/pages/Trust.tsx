@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { SEO } from "@/components/seo/SEO";
 import { 
   Shield, Lock, Clock, CloudOff, Zap, Users, 
   CheckCircle2, BookOpen, Award, FileCheck, 
@@ -61,6 +62,7 @@ export default function Trust() {
   return (
     <>
       
+      <SEO title={"Trust & Security "} description={" Resume Booster"} path={"256-bit encryption, no permanent resume storage, GDPR-aligned data handling. See how Resume Booster keeps your data safe.|/trust"} />
       <Header />
       
       <main className="min-h-screen pt-28">
