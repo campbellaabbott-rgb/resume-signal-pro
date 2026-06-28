@@ -1147,6 +1147,28 @@
     "viewAllProducts": "Alle Produkte ansehen",
     "addOnNames": { "resumeRoast": "Lebenslauf-Roast", "interviewCoach": "Interview-Coach", "careerPath": "Karriereweg" }
   },
+  "rateLimitUpsell": {
+    "title": "Tägliches Scan-Limit erreicht",
+    "subtitle": "Du hast alle 7 kostenlosen Scans für heute verwendet. Keine Sorge – du kannst jetzt sofort weiterscannen!",
+    "resetIn": "Kostenlose Scans werden zurückgesetzt in etwa",
+    "hour_one": "{{count}} Stunde",
+    "hour_other": "{{count}} Stunden",
+    "getMoreScans": "Sofort mehr Scans erhalten",
+    "howManyCredits": "Wie viele Credits?",
+    "total": "Gesamt ({{price}}/Credit)",
+    "credits_one": "{{count}} Lebenslauf-Scan",
+    "credits_other": "{{count}} Lebenslauf-Scans",
+    "useAnytime": "– jederzeit nutzbar",
+    "neverExpirePrefix": "Credits",
+    "neverExpire": "verfallen nie",
+    "fullAtsEachScan": "Vollständige ATS-Analyse bei jedem Scan",
+    "emailPlaceholder": "deine@email.de",
+    "creditsLinkedToEmail": "Credits werden mit dieser E-Mail verknüpft",
+    "processing": "Verarbeitung läuft...",
+    "getCreditsFor_one": "{{count}} Credit für {{price}} erhalten",
+    "getCreditsFor_other": "{{count}} Credits für {{price}} erhalten",
+    "noThanks": "Nein danke, ich warte, bis meine kostenlosen Scans zurückgesetzt werden"
+  },
   "changelogPage": {
     "metaTitle": "Änderungsprotokoll — Resume Booster",
     "metaDescription": "Neue Funktionen, Verbesserungen und Fehlerbehebungen, die bei Resume Booster veröffentlicht wurden. Wöchentlich aktualisiert.",

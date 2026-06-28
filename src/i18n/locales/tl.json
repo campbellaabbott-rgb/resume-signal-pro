@@ -1147,6 +1147,28 @@
     "viewAllProducts": "Tingnan lahat ng produkto",
     "addOnNames": { "resumeRoast": "Resume Roast", "interviewCoach": "Interview Coach", "careerPath": "Career Path" }
   },
+  "rateLimitUpsell": {
+    "title": "Naabot ang Limitasyon ng Pang-araw-araw na Scan",
+    "subtitle": "Nagamit mo na ang lahat ng 7 libreng scan mo ngayong araw. Walang problema – maaari kang magpatuloy sa pag-scan ngayon din!",
+    "resetIn": "Mag-reset ang libreng scan sa humigit-kumulang",
+    "hour_one": "{{count}} oras",
+    "hour_other": "{{count}} oras",
+    "getMoreScans": "Kumuha ng Mas Maraming Scan Agad",
+    "howManyCredits": "Ilang credit?",
+    "total": "Kabuuan ({{price}}/credit)",
+    "credits_one": "{{count}} resume scan",
+    "credits_other": "{{count}} resume scan",
+    "useAnytime": "– gamitin kapag gusto mo",
+    "neverExpirePrefix": "Ang mga credit",
+    "neverExpire": "ay hindi nag-expire",
+    "fullAtsEachScan": "Buong ATS analysis sa bawat scan",
+    "emailPlaceholder": "iyong@email.com",
+    "creditsLinkedToEmail": "Ang mga credit ay ikakabit sa email na ito",
+    "processing": "Pinoproseso...",
+    "getCreditsFor_one": "Kunin ang {{count}} Credit para sa {{price}}",
+    "getCreditsFor_other": "Kunin ang {{count}} Credits para sa {{price}}",
+    "noThanks": "Salamat na lang, hihintayin ko ang pag-reset ng aking libreng scan"
+  },
   "changelogPage": {
     "metaTitle": "Changelog — Resume Booster",
     "metaDescription": "Mga bagong feature, pagpapahusay, at fix na na-release sa Resume Booster. In-update kada linggo.",

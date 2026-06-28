@@ -1147,6 +1147,28 @@
     "viewAllProducts": "Bekijk alle producten",
     "addOnNames": { "resumeRoast": "Cv-Roast", "interviewCoach": "Interviewcoach", "careerPath": "Carrièrepad" }
   },
+  "rateLimitUpsell": {
+    "title": "Dagelijkse scanlimiet bereikt",
+    "subtitle": "Je hebt al je 7 gratis scans voor vandaag gebruikt. Geen zorgen – je kunt nu direct verder scannen!",
+    "resetIn": "Gratis scans worden gereset binnen ongeveer",
+    "hour_one": "{{count}} uur",
+    "hour_other": "{{count}} uur",
+    "getMoreScans": "Direct meer scans krijgen",
+    "howManyCredits": "Hoeveel credits?",
+    "total": "Totaal ({{price}}/credit)",
+    "credits_one": "{{count}} cv-scan",
+    "credits_other": "{{count}} cv-scans",
+    "useAnytime": "– altijd te gebruiken",
+    "neverExpirePrefix": "Credits",
+    "neverExpire": "verlopen nooit",
+    "fullAtsEachScan": "Volledige ATS-analyse bij elke scan",
+    "emailPlaceholder": "jouw@email.nl",
+    "creditsLinkedToEmail": "Credits worden aan dit e-mailadres gekoppeld",
+    "processing": "Verwerken...",
+    "getCreditsFor_one": "Krijg {{count}} credit voor {{price}}",
+    "getCreditsFor_other": "Krijg {{count}} credits voor {{price}}",
+    "noThanks": "Nee, bedankt, ik wacht tot mijn gratis scans worden gereset"
+  },
   "changelogPage": {
     "metaTitle": "Wijzigingslogboek — Resume Booster",
     "metaDescription": "Nieuwe functies, verbeteringen en oplossingen uitgebracht voor Resume Booster. Wekelijks bijgewerkt.",

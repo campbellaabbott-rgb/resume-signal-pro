@@ -1147,6 +1147,28 @@
     "viewAllProducts": "Ver todos os produtos",
     "addOnNames": { "resumeRoast": "Crítica de Currículo", "interviewCoach": "Coach de Entrevista", "careerPath": "Percurso de Carreira" }
   },
+  "rateLimitUpsell": {
+    "title": "Limite diário de verificações atingido",
+    "subtitle": "Já usou os seus 7 verificações gratuitas de hoje. Não se preocupe – pode continuar a verificar agora mesmo!",
+    "resetIn": "As verificações gratuitas são reiniciadas em aproximadamente",
+    "hour_one": "{{count}} hora",
+    "hour_other": "{{count}} horas",
+    "getMoreScans": "Obtenha mais verificações instantaneamente",
+    "howManyCredits": "Quantos créditos?",
+    "total": "Total ({{price}}/crédito)",
+    "credits_one": "{{count}} verificação de currículo",
+    "credits_other": "{{count}} verificações de currículo",
+    "useAnytime": "– use quando quiser",
+    "neverExpirePrefix": "Os créditos",
+    "neverExpire": "nunca expiram",
+    "fullAtsEachScan": "Análise ATS completa em cada verificação",
+    "emailPlaceholder": "seu@email.com",
+    "creditsLinkedToEmail": "Os créditos serão vinculados a este e-mail",
+    "processing": "A processar...",
+    "getCreditsFor_one": "Obter {{count}} crédito por {{price}}",
+    "getCreditsFor_other": "Obter {{count}} créditos por {{price}}",
+    "noThanks": "Não, obrigado, vou esperar pela reinicialização das minhas verificações gratuitas"
+  },
   "changelogPage": {
     "metaTitle": "Registo de alterações — Resume Booster",
     "metaDescription": "Novas funcionalidades, melhorias e correções lançadas no Resume Booster. Atualizado semanalmente.",

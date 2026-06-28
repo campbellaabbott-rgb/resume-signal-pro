@@ -1147,6 +1147,28 @@
     "viewAllProducts": "Voir tous les produits",
     "addOnNames": { "resumeRoast": "Critique de CV", "interviewCoach": "Coach d'entretien", "careerPath": "Parcours de carrière" }
   },
+  "rateLimitUpsell": {
+    "title": "Limite quotidienne de scans atteinte",
+    "subtitle": "Vous avez utilisé vos 7 scans gratuits du jour. Pas de panique – vous pouvez continuer à scanner dès maintenant !",
+    "resetIn": "Les scans gratuits se réinitialisent dans environ",
+    "hour_one": "{{count}} heure",
+    "hour_other": "{{count}} heures",
+    "getMoreScans": "Obtenez plus de scans instantanément",
+    "howManyCredits": "Combien de crédits ?",
+    "total": "Total ({{price}}/crédit)",
+    "credits_one": "{{count}} scan de CV",
+    "credits_other": "{{count}} scans de CV",
+    "useAnytime": "– utilisable à tout moment",
+    "neverExpirePrefix": "Les crédits",
+    "neverExpire": "n'expirent jamais",
+    "fullAtsEachScan": "Analyse ATS complète à chaque scan",
+    "emailPlaceholder": "votre@email.com",
+    "creditsLinkedToEmail": "Les crédits seront liés à cet e-mail",
+    "processing": "Traitement en cours...",
+    "getCreditsFor_one": "Obtenir {{count}} crédit pour {{price}}",
+    "getCreditsFor_other": "Obtenir {{count}} crédits pour {{price}}",
+    "noThanks": "Non merci, j'attendrai la réinitialisation de mes scans gratuits"
+  },
   "changelogPage": {
     "metaTitle": "Journal des modifications — Resume Booster",
     "metaDescription": "Nouvelles fonctionnalités, améliorations et corrections déployées sur Resume Booster. Mise à jour hebdomadaire.",

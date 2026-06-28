@@ -91,11 +91,11 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
           <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl p-4 mb-6 border border-primary/20">
             <div className="flex items-center gap-2 mb-3">
               <Coins className="w-5 h-5 text-primary" />
-              <span className="font-semibold">Get More Scans Instantly</span>
+              <span className="font-semibold">{t('rateLimitUpsell.getMoreScans')}</span>
             </div>
-            
+
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-muted-foreground">How many credits?</span>
+              <span className="text-sm text-muted-foreground">{t('rateLimitUpsell.howManyCredits')}</span>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -142,7 +142,7 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-border/50">
-              <span className="text-sm text-muted-foreground">Total ({formatLocalPrice(pricePerCredit)}/credit)</span>
+              <span className="text-sm text-muted-foreground">{t('rateLimitUpsell.total', { price: formatLocalPrice(pricePerCredit) })}</span>
               <div className="text-right">
                 <span className="text-2xl font-bold">${totalPrice.toFixed(2)}</span>
                 {isLocalCurrency && (
@@ -156,15 +156,15 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
           <ul className="space-y-2 mb-4">
             <li className="flex items-center gap-2 text-sm">
               <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-              <span><strong>{creditAmount} resume scan{creditAmount !== 1 ? 's' : ''}</strong> – use anytime</span>
+              <span><strong>{t('rateLimitUpsell.credits', { count: creditAmount })}</strong> {t('rateLimitUpsell.useAnytime')}</span>
             </li>
             <li className="flex items-center gap-2 text-sm">
               <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-              <span>Credits <strong>never expire</strong></span>
+              <span>{t('rateLimitUpsell.neverExpirePrefix')} <strong>{t('rateLimitUpsell.neverExpire')}</strong></span>
             </li>
             <li className="flex items-center gap-2 text-sm">
               <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-              <span>Full ATS analysis with each scan</span>
+              <span>{t('rateLimitUpsell.fullAtsEachScan')}</span>
             </li>
           </ul>
 
@@ -174,13 +174,13 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="email"
-                placeholder="your@email.com"
+                placeholder={t('rateLimitUpsell.emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-10 h-12"
               />
             </div>
-            <p className="text-xs text-muted-foreground">Credits will be linked to this email</p>
+            <p className="text-xs text-muted-foreground">{t('rateLimitUpsell.creditsLinkedToEmail')}</p>
           </div>
 
           {/* Purchase button */}
@@ -191,22 +191,22 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
             size="lg"
           >
             {isLoading ? (
-              "Processing..."
+              t('rateLimitUpsell.processing')
             ) : (
               <>
                 <Zap className="w-4 h-4 mr-2" />
-                Get {creditAmount} Credit{creditAmount !== 1 ? 's' : ''} for {formatLocalPrice(totalPrice)}
+                {t('rateLimitUpsell.getCreditsFor', { count: creditAmount, price: formatLocalPrice(totalPrice) })}
               </>
             )}
           </Button>
 
           {/* Alternative */}
           <div className="text-center mt-4 pt-4 border-t border-border/50">
-            <button 
+            <button
               onClick={onClose}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              No thanks, I'll wait for my free scans to reset
+              {t('rateLimitUpsell.noThanks')}
             </button>
           </div>
         </div>

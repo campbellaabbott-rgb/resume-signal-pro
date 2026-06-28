@@ -1147,6 +1147,28 @@
     "viewAllProducts": "Ver todos los productos",
     "addOnNames": { "resumeRoast": "Crítica de Currículum", "interviewCoach": "Coach de Entrevistas", "careerPath": "Trayectoria Profesional" }
   },
+  "rateLimitUpsell": {
+    "title": "Límite diario de escaneos alcanzado",
+    "subtitle": "Has usado tus 7 escaneos gratuitos de hoy. No te preocupes – ¡puedes seguir escaneando ahora mismo!",
+    "resetIn": "Los escaneos gratuitos se reinician en aproximadamente",
+    "hour_one": "{{count}} hora",
+    "hour_other": "{{count}} horas",
+    "getMoreScans": "Obtén más escaneos al instante",
+    "howManyCredits": "¿Cuántos créditos?",
+    "total": "Total ({{price}}/crédito)",
+    "credits_one": "{{count}} escaneo de currículum",
+    "credits_other": "{{count}} escaneos de currículum",
+    "useAnytime": "– usa en cualquier momento",
+    "neverExpirePrefix": "Los créditos",
+    "neverExpire": "nunca caducan",
+    "fullAtsEachScan": "Análisis ATS completo con cada escaneo",
+    "emailPlaceholder": "tu@email.com",
+    "creditsLinkedToEmail": "Los créditos se vincularán a este correo",
+    "processing": "Procesando...",
+    "getCreditsFor_one": "Obtener {{count}} crédito por {{price}}",
+    "getCreditsFor_other": "Obtener {{count}} créditos por {{price}}",
+    "noThanks": "No gracias, esperaré a que se reinicien mis escaneos gratuitos"
+  },
   "changelogPage": {
     "metaTitle": "Registro de cambios — Resume Booster",
     "metaDescription": "Nuevas funciones, mejoras y correcciones publicadas en Resume Booster. Actualizado semanalmente.",

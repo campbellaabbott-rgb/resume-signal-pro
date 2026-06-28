@@ -1147,6 +1147,28 @@
     "viewAllProducts": "View all products",
     "addOnNames": { "resumeRoast": "CV Roast", "interviewCoach": "Interview Coach", "careerPath": "Career Path" }
   },
+  "rateLimitUpsell": {
+    "title": "Daily Scan Limit Reached",
+    "subtitle": "You've used all 7 free scans for today. Don't worry – you can continue scanning right now!",
+    "resetIn": "Free scans reset in approximately",
+    "hour_one": "{{count}} hour",
+    "hour_other": "{{count}} hours",
+    "getMoreScans": "Get More Scans Instantly",
+    "howManyCredits": "How many credits?",
+    "total": "Total ({{price}}/credit)",
+    "credits_one": "{{count}} CV scan",
+    "credits_other": "{{count}} CV scans",
+    "useAnytime": "– use anytime",
+    "neverExpirePrefix": "Credits",
+    "neverExpire": "never expire",
+    "fullAtsEachScan": "Full ATS analysis with each scan",
+    "emailPlaceholder": "your@email.com",
+    "creditsLinkedToEmail": "Credits will be linked to this email",
+    "processing": "Processing...",
+    "getCreditsFor_one": "Get {{count}} Credit for {{price}}",
+    "getCreditsFor_other": "Get {{count}} Credits for {{price}}",
+    "noThanks": "No thanks, I'll wait for my free scans to reset"
+  },
   "changelogPage": {
     "metaTitle": "Changelog — Resume Booster",
     "metaDescription": "New features, improvements, and fixes shipped to Resume Booster. Updated weekly.",

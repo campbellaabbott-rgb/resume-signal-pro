@@ -1147,6 +1147,28 @@
     "viewAllProducts": "सभी प्रोडक्ट देखें",
     "addOnNames": { "resumeRoast": "रिज़्यूमे रोस्ट", "interviewCoach": "इंटरव्यू कोच", "careerPath": "करियर पथ" }
   },
+  "rateLimitUpsell": {
+    "title": "दैनिक स्कैन सीमा समाप्त हो गई",
+    "subtitle": "आपने आज के अपने सभी 7 फ्री स्कैन उपयोग कर लिए हैं। चिंता न करें – आप अभी स्कैनिंग जारी रख सकते हैं!",
+    "resetIn": "फ्री स्कैन लगभग इतने समय में रीसेट होंगे",
+    "hour_one": "{{count}} घंटा",
+    "hour_other": "{{count}} घंटे",
+    "getMoreScans": "अभी और स्कैन प्राप्त करें",
+    "howManyCredits": "कितने क्रेडिट?",
+    "total": "कुल ({{price}}/क्रेडिट)",
+    "credits_one": "{{count}} रिज़्यूमे स्कैन",
+    "credits_other": "{{count}} रिज़्यूमे स्कैन",
+    "useAnytime": "– कभी भी उपयोग करें",
+    "neverExpirePrefix": "क्रेडिट",
+    "neverExpire": "कभी समाप्त नहीं होते",
+    "fullAtsEachScan": "हर स्कैन के साथ पूर्ण ATS विश्लेषण",
+    "emailPlaceholder": "your@email.com",
+    "creditsLinkedToEmail": "क्रेडिट इस ईमेल से जुड़े होंगे",
+    "processing": "प्रोसेसिंग हो रही है...",
+    "getCreditsFor_one": "{{price}} में {{count}} क्रेडिट प्राप्त करें",
+    "getCreditsFor_other": "{{price}} में {{count}} क्रेडिट प्राप्त करें",
+    "noThanks": "नहीं धन्यवाद, मैं अपने फ्री स्कैन के रीसेट होने का इंतज़ार करूँगा"
+  },
   "changelogPage": {
     "metaTitle": "चेंजलॉग — Resume Booster",
     "metaDescription": "Resume Booster में जारी की गई नई सुविधाएं, सुधार और बग फिक्स। साप्ताहिक रूप से अपडेट किया जाता है।",
