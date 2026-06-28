@@ -605,5 +605,53 @@
       "needsImprovement": "À améliorer",
       "poor": "Faible"
     }
+  },
+  "careerSnapshot": {
+    "downloadPdf": "Télécharger le rapport PDF",
+    "signalScore": {
+      "title": "Score de signal de carrière",
+      "subtitle": "Comment les recruteurs perçoivent votre carrière",
+      "performance": "Signal de performance",
+      "trajectory": "Signal de trajectoire",
+      "credibility": "Signal de crédibilité",
+      "seniorityAlignment": "Alignement de séniorité",
+      "currentLevel": "Actuel : {{level}} • {{summary}}"
+    },
+    "recruiterPerception": "Perception du recruteur",
+    "copy": {
+      "default": "Copier",
+      "summary": "Copier le résumé",
+      "response": "Copier la réponse",
+      "story": "Copier le récit"
+    },
+    "topStrengths": {
+      "title": "Principaux atouts",
+      "identified_one": "{{count}} identifié",
+      "identified_other": "{{count}} identifiés"
+    },
+    "careerRisks": {
+      "title": "Risques de carrière et questions",
+      "count_one": "{{count}} risque",
+      "count_other": "{{count}} risques",
+      "recruiterWillAsk": "Le recruteur demandera :",
+      "howToAddress": "Comment y répondre :"
+    },
+    "positioning": {
+      "title": "Guide de positionnement",
+      "rolesToTarget": "Postes à cibler",
+      "rolesToAvoid": "Postes à éviter",
+      "companyStages": "Stades d'entreprise idéaux",
+      "storyFraming": "Cadrage du récit"
+    },
+    "priorityFixes": {
+      "title": "Corrections prioritaires",
+      "badge": "Actions à mener"
+    },
+    "toast": {
+      "copied": "Copié dans le presse-papiers !",
+      "pdfCharWarning": "Certains caractères de ce rapport pourraient ne pas s'afficher correctement dans le PDF (prise en charge limitée des polices pour les textes non latins).",
+      "pdfSuccess": "PDF téléchargé avec succès !",
+      "pdfError": "Impossible de générer le PDF"
+    }
   }
 }

@@ -605,5 +605,53 @@
       "needsImprovement": "Verbesserungswürdig",
       "poor": "Schwach"
     }
+  },
+  "careerSnapshot": {
+    "downloadPdf": "PDF-Bericht herunterladen",
+    "signalScore": {
+      "title": "Karriere-Signal-Score",
+      "subtitle": "Wie Recruiter Ihre Karriere wahrnehmen",
+      "performance": "Leistungssignal",
+      "trajectory": "Verlaufssignal",
+      "credibility": "Glaubwürdigkeitssignal",
+      "seniorityAlignment": "Senioritäts-Abgleich",
+      "currentLevel": "Aktuell: {{level}} • {{summary}}"
+    },
+    "recruiterPerception": "Wahrnehmung durch Recruiter",
+    "copy": {
+      "default": "Kopieren",
+      "summary": "Zusammenfassung kopieren",
+      "response": "Antwort kopieren",
+      "story": "Story kopieren"
+    },
+    "topStrengths": {
+      "title": "Top-Stärken",
+      "identified_one": "{{count}} identifiziert",
+      "identified_other": "{{count}} identifiziert"
+    },
+    "careerRisks": {
+      "title": "Karriererisiken & Fragen",
+      "count_one": "{{count}} Risiko",
+      "count_other": "{{count}} Risiken",
+      "recruiterWillAsk": "Der Recruiter wird fragen:",
+      "howToAddress": "So gehen Sie damit um:"
+    },
+    "positioning": {
+      "title": "Positionierungsleitfaden",
+      "rolesToTarget": "Zielpositionen",
+      "rolesToAvoid": "Zu vermeidende Positionen",
+      "companyStages": "Ideale Unternehmensphasen",
+      "storyFraming": "Story-Rahmung"
+    },
+    "priorityFixes": {
+      "title": "Prioritäre Korrekturen",
+      "badge": "Maßnahmen"
+    },
+    "toast": {
+      "copied": "In die Zwischenablage kopiert!",
+      "pdfCharWarning": "Einige Zeichen in diesem Bericht werden im PDF möglicherweise nicht korrekt angezeigt (eingeschränkte Schriftunterstützung für nicht-lateinische Schriftzeichen).",
+      "pdfSuccess": "PDF erfolgreich heruntergeladen!",
+      "pdfError": "PDF konnte nicht erstellt werden"
+    }
   }
 }

@@ -605,5 +605,53 @@
       "needsImprovement": "Kailangan ng Pagpapabuti",
       "poor": "Mahina"
     }
+  },
+  "careerSnapshot": {
+    "downloadPdf": "I-download ang PDF Report",
+    "signalScore": {
+      "title": "Career Signal Score",
+      "subtitle": "Kung paano nakikita ng mga recruiter ang iyong karera",
+      "performance": "Performance Signal",
+      "trajectory": "Trajectory Signal",
+      "credibility": "Credibility Signal",
+      "seniorityAlignment": "Seniority Alignment",
+      "currentLevel": "Kasalukuyan: {{level}} • {{summary}}"
+    },
+    "recruiterPerception": "Pananaw ng Recruiter",
+    "copy": {
+      "default": "Kopyahin",
+      "summary": "Kopyahin ang buod",
+      "response": "Kopyahin ang sagot",
+      "story": "Kopyahin ang kwento"
+    },
+    "topStrengths": {
+      "title": "Pangunahing Lakas",
+      "identified_one": "{{count}} natukoy",
+      "identified_other": "{{count}} natukoy"
+    },
+    "careerRisks": {
+      "title": "Mga Panganib sa Karera at Tanong",
+      "count_one": "{{count}} panganib",
+      "count_other": "{{count}} panganib",
+      "recruiterWillAsk": "Itatanong ng recruiter:",
+      "howToAddress": "Paano harapin:"
+    },
+    "positioning": {
+      "title": "Gabay sa Positioning",
+      "rolesToTarget": "Mga Tutugisin na Role",
+      "rolesToAvoid": "Mga Iiwasang Role",
+      "companyStages": "Mga Idyal na Stage ng Kumpanya",
+      "storyFraming": "Pag-frame ng Kwento"
+    },
+    "priorityFixes": {
+      "title": "Mga Prayoridad na Ayusin",
+      "badge": "Mga Action Item"
+    },
+    "toast": {
+      "copied": "Na-copy sa clipboard!",
+      "pdfCharWarning": "May mga character sa report na ito na posibleng hindi maipakita nang tama sa PDF (limitadong font support para sa non-Latin na teksto).",
+      "pdfSuccess": "Matagumpay na na-download ang PDF!",
+      "pdfError": "Hindi magawa ang PDF"
+    }
   }
 }

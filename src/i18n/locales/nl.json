@@ -605,5 +605,53 @@
       "needsImprovement": "Voor verbetering vatbaar",
       "poor": "Zwak"
     }
+  },
+  "careerSnapshot": {
+    "downloadPdf": "PDF-rapport downloaden",
+    "signalScore": {
+      "title": "Carrièresignaalscore",
+      "subtitle": "Hoe recruiters jouw carrière waarnemen",
+      "performance": "Prestatiesignaal",
+      "trajectory": "Trajectsignaal",
+      "credibility": "Geloofwaardigheidssignaal",
+      "seniorityAlignment": "Senioriteitsafstemming",
+      "currentLevel": "Huidig: {{level}} • {{summary}}"
+    },
+    "recruiterPerception": "Perceptie van de recruiter",
+    "copy": {
+      "default": "Kopiëren",
+      "summary": "Samenvatting kopiëren",
+      "response": "Antwoord kopiëren",
+      "story": "Verhaal kopiëren"
+    },
+    "topStrengths": {
+      "title": "Belangrijkste sterke punten",
+      "identified_one": "{{count}} geïdentificeerd",
+      "identified_other": "{{count}} geïdentificeerd"
+    },
+    "careerRisks": {
+      "title": "Carrièrerisico's & vragen",
+      "count_one": "{{count}} risico",
+      "count_other": "{{count}} risico's",
+      "recruiterWillAsk": "De recruiter zal vragen:",
+      "howToAddress": "Hoe ermee om te gaan:"
+    },
+    "positioning": {
+      "title": "Positioneringsadvies",
+      "rolesToTarget": "Functies om op te richten",
+      "rolesToAvoid": "Functies om te vermijden",
+      "companyStages": "Ideale bedrijfsfasen",
+      "storyFraming": "Verhaalkadering"
+    },
+    "priorityFixes": {
+      "title": "Prioritaire verbeteringen",
+      "badge": "Actiepunten"
+    },
+    "toast": {
+      "copied": "Gekopieerd naar klembord!",
+      "pdfCharWarning": "Sommige tekens in dit rapport worden mogelijk niet correct weergegeven in de PDF (beperkte lettertypeondersteuning voor niet-Latijnse tekst).",
+      "pdfSuccess": "PDF succesvol gedownload!",
+      "pdfError": "PDF genereren mislukt"
+    }
   }
 }

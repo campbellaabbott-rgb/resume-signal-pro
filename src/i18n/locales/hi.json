@@ -605,5 +605,53 @@
       "needsImprovement": "सुधार की आवश्यकता है",
       "poor": "कमज़ोर"
     }
+  },
+  "careerSnapshot": {
+    "downloadPdf": "PDF रिपोर्ट डाउनलोड करें",
+    "signalScore": {
+      "title": "करियर सिग्नल स्कोर",
+      "subtitle": "रिक्रूटर्स आपके करियर को कैसे देखते हैं",
+      "performance": "परफॉर्मेंस सिग्नल",
+      "trajectory": "ट्रैजेक्टरी सिग्नल",
+      "credibility": "क्रेडिबिलिटी सिग्नल",
+      "seniorityAlignment": "वरिष्ठता संरेखण",
+      "currentLevel": "वर्तमान: {{level}} • {{summary}}"
+    },
+    "recruiterPerception": "रिक्रूटर की धारणा",
+    "copy": {
+      "default": "कॉपी करें",
+      "summary": "सारांश कॉपी करें",
+      "response": "जवाब कॉपी करें",
+      "story": "कहानी कॉपी करें"
+    },
+    "topStrengths": {
+      "title": "मुख्य ताकतें",
+      "identified_one": "{{count}} पहचानी गई",
+      "identified_other": "{{count}} पहचानी गईं"
+    },
+    "careerRisks": {
+      "title": "करियर जोखिम और प्रश्न",
+      "count_one": "{{count}} जोखिम",
+      "count_other": "{{count}} जोखिम",
+      "recruiterWillAsk": "रिक्रूटर पूछेगा:",
+      "howToAddress": "कैसे संभालें:"
+    },
+    "positioning": {
+      "title": "पोजिशनिंग गाइडेंस",
+      "rolesToTarget": "लक्षित भूमिकाएँ",
+      "rolesToAvoid": "टालने योग्य भूमिकाएँ",
+      "companyStages": "आदर्श कंपनी चरण",
+      "storyFraming": "कहानी प्रस्तुति"
+    },
+    "priorityFixes": {
+      "title": "प्राथमिकता सुधार",
+      "badge": "एक्शन आइटम"
+    },
+    "toast": {
+      "copied": "क्लिपबोर्ड पर कॉपी हो गया!",
+      "pdfCharWarning": "इस रिपोर्ट में कुछ अक्षर PDF में सही ढंग से प्रदर्शित नहीं हो सकते (नॉन-लैटिन टेक्स्ट के लिए सीमित फ़ॉन्ट समर्थन)।",
+      "pdfSuccess": "PDF सफलतापूर्वक डाउनलोड हो गया!",
+      "pdfError": "PDF बनाने में विफल"
+    }
   }
 }

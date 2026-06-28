@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   ChevronDown, 
   ChevronUp, 
@@ -151,12 +152,13 @@ const ExpandableSection = ({
 };
 
 const CopyButton = ({ text, label }: { text: string; label?: string }) => {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(text);
     setCopied(true);
-    toast.success('Copied to clipboard!');
+    toast.success(t('careerSnapshot.toast.copied'));
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -172,12 +174,13 @@ const CopyButton = ({ text, label }: { text: string; label?: string }) => {
       ) : (
         <Copy className="w-3 h-3 mr-1" />
       )}
-      {label || 'Copy'}
+      {label || t('careerSnapshot.copy.default')}
     </Button>
   );
 };
 
 export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
+  const { t } = useTranslation();
   const getOverallColor = (overall: string) => {
     if (overall === 'Strong') return 'bg-success/20 text-success border-success/30';
     if (overall === 'Mixed') return 'bg-warning/20 text-warning border-warning/30';
@@ -190,12 +193,12 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
       // punctuation — content in other scripts (e.g. a non-English resume)
       // would otherwise render as blank/missing glyphs with no explanation.
       if (hasUnsupportedPdfCharacters(JSON.stringify(data))) {
-        toast.warning('Some characters in this report may not display correctly in the PDF (limited font support for non-Latin text).');
+        toast.warning(t('careerSnapshot.toast.pdfCharWarning'));
       }
       exportCareerSnapshotPDF(data);
-      toast.success('PDF downloaded successfully!');
+      toast.success(t('careerSnapshot.toast.pdfSuccess'));
     } catch (error) {
-      toast.error('Failed to generate PDF');
+      toast.error(t('careerSnapshot.toast.pdfError'));
     }
   };
 
@@ -205,7 +208,7 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
       <div className="flex justify-end">
         <Button onClick={handleExportPDF} variant="outline" className="gap-2">
           <Download className="w-4 h-4" />
-          Download PDF Report
+          {t('careerSnapshot.downloadPdf')}
         </Button>
       </div>
 
@@ -218,8 +221,8 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
                 <Target className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-xl">Career Signal Score</CardTitle>
-                <p className="text-sm text-muted-foreground">How recruiters perceive your career</p>
+                <CardTitle className="text-xl">{t('careerSnapshot.signalScore.title')}</CardTitle>
+                <p className="text-sm text-muted-foreground">{t('careerSnapshot.signalScore.subtitle')}</p>
               </div>
             </div>
             <Badge className={cn("text-lg px-4 py-1 border", getOverallColor(data.careerSignalScore.overall))}>
@@ -228,52 +231,55 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <SignalGauge 
-            label="Performance Signal" 
+          <SignalGauge
+            label={t('careerSnapshot.signalScore.performance')}
             score={data.careerSignalScore.performanceSignal.score}
             icon={TrendingUp}
           />
           <p className="text-sm text-muted-foreground pl-6">{data.careerSignalScore.performanceSignal.summary}</p>
-          
-          <SignalGauge 
-            label="Trajectory Signal" 
+
+          <SignalGauge
+            label={t('careerSnapshot.signalScore.trajectory')}
             score={data.careerSignalScore.trajectorySignal.score}
             icon={TrendingUp}
           />
           <p className="text-sm text-muted-foreground pl-6">{data.careerSignalScore.trajectorySignal.summary}</p>
-          
-          <SignalGauge 
-            label="Credibility Signal" 
+
+          <SignalGauge
+            label={t('careerSnapshot.signalScore.credibility')}
             score={data.careerSignalScore.credibilitySignal.score}
             icon={Shield}
           />
           <p className="text-sm text-muted-foreground pl-6">{data.careerSignalScore.credibilitySignal.summary}</p>
-          
-          <SignalGauge 
-            label="Seniority Alignment" 
+
+          <SignalGauge
+            label={t('careerSnapshot.signalScore.seniorityAlignment')}
             score={data.careerSignalScore.seniorityAlignment.targetFit}
             icon={Award}
           />
           <p className="text-sm text-muted-foreground pl-6">
-            Current: {data.careerSignalScore.seniorityAlignment.currentLevel} • {data.careerSignalScore.seniorityAlignment.summary}
+            {t('careerSnapshot.signalScore.currentLevel', {
+              level: data.careerSignalScore.seniorityAlignment.currentLevel,
+              summary: data.careerSignalScore.seniorityAlignment.summary,
+            })}
           </p>
         </CardContent>
       </Card>
 
       {/* Recruiter Perception */}
-      <ExpandableSection title="Recruiter Perception" icon={Briefcase} defaultOpen>
+      <ExpandableSection title={t('careerSnapshot.recruiterPerception')} icon={Briefcase} defaultOpen>
         <div className="bg-accent/50 rounded-lg p-4 border border-border/50">
           <p className="text-foreground leading-relaxed italic">
             "{data.recruiterPerception.summary}"
           </p>
         </div>
         <div className="flex justify-end mt-2">
-          <CopyButton text={data.recruiterPerception.summary} label="Copy summary" />
+          <CopyButton text={data.recruiterPerception.summary} label={t('careerSnapshot.copy.summary')} />
         </div>
       </ExpandableSection>
 
       {/* Top Strengths */}
-      <ExpandableSection title="Top Strengths" icon={Award} badge={`${data.topStrengths.length} identified`}>
+      <ExpandableSection title={t('careerSnapshot.topStrengths.title')} icon={Award} badge={t('careerSnapshot.topStrengths.identified', { count: data.topStrengths.length })}>
         <div className="space-y-4">
           {data.topStrengths.map((strength, index) => (
             <div key={index} className="flex gap-3 p-3 rounded-lg bg-success/5 border border-success/20">
@@ -288,7 +294,7 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
       </ExpandableSection>
 
       {/* Career Risks */}
-      <ExpandableSection title="Career Risks & Questions" icon={AlertTriangle} badge={`${data.careerRisks.length} risks`}>
+      <ExpandableSection title={t('careerSnapshot.careerRisks.title')} icon={AlertTriangle} badge={t('careerSnapshot.careerRisks.count', { count: data.careerRisks.length })}>
         <div className="space-y-4">
           {data.careerRisks.map((risk, index) => (
             <div key={index} className="p-4 rounded-lg bg-destructive/5 border border-destructive/20 space-y-3">
@@ -298,15 +304,15 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
               </div>
               <div className="ml-6 space-y-2">
                 <div className="bg-card p-3 rounded border border-border/50">
-                  <p className="text-xs text-muted-foreground mb-1">Recruiter will ask:</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t('careerSnapshot.careerRisks.recruiterWillAsk')}</p>
                   <p className="text-sm italic">"{risk.recruiterQuestion}"</p>
                 </div>
                 <div className="bg-success/5 p-3 rounded border border-success/20">
-                  <p className="text-xs text-muted-foreground mb-1">How to address:</p>
+                  <p className="text-xs text-muted-foreground mb-1">{t('careerSnapshot.careerRisks.howToAddress')}</p>
                   <p className="text-sm">{risk.mitigation}</p>
                 </div>
                 <div className="flex justify-end">
-                  <CopyButton text={risk.mitigation} label="Copy response" />
+                  <CopyButton text={risk.mitigation} label={t('careerSnapshot.copy.response')} />
                 </div>
               </div>
             </div>
@@ -315,7 +321,7 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
       </ExpandableSection>
 
       {/* Positioning Guidance */}
-      <ExpandableSection title="Positioning Guidance" icon={Target}>
+      <ExpandableSection title={t('careerSnapshot.positioning.title')} icon={Target}>
         <div className="space-y-6">
           <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
             <p className="font-medium text-foreground">{data.positioningGuidance.idealPositioning}</p>
@@ -325,7 +331,7 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
             <div>
               <h4 className="font-medium text-sm text-foreground mb-2 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-success" />
-                Roles to Target
+                {t('careerSnapshot.positioning.rolesToTarget')}
               </h4>
               <ul className="space-y-1">
                 {data.positioningGuidance.rolesToTarget.map((role, i) => (
@@ -339,7 +345,7 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
             <div>
               <h4 className="font-medium text-sm text-foreground mb-2 flex items-center gap-2">
                 <TrendingDown className="w-4 h-4 text-destructive" />
-                Roles to Avoid
+                {t('careerSnapshot.positioning.rolesToAvoid')}
               </h4>
               <ul className="space-y-1">
                 {data.positioningGuidance.rolesToAvoid.map((role, i) => (
@@ -353,7 +359,7 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
           </div>
 
           <div>
-            <h4 className="font-medium text-sm text-foreground mb-2">Ideal Company Stages</h4>
+            <h4 className="font-medium text-sm text-foreground mb-2">{t('careerSnapshot.positioning.companyStages')}</h4>
             <div className="flex flex-wrap gap-2">
               {data.positioningGuidance.companyStages.map((stage, i) => (
                 <Badge key={i} variant="secondary">{stage}</Badge>
@@ -362,17 +368,17 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
           </div>
 
           <div className="bg-accent/50 p-4 rounded-lg border border-border/50">
-            <h4 className="font-medium text-sm text-foreground mb-2">Story Framing</h4>
+            <h4 className="font-medium text-sm text-foreground mb-2">{t('careerSnapshot.positioning.storyFraming')}</h4>
             <p className="text-sm text-muted-foreground">{data.positioningGuidance.storyFraming}</p>
             <div className="flex justify-end mt-2">
-              <CopyButton text={data.positioningGuidance.storyFraming} label="Copy story" />
+              <CopyButton text={data.positioningGuidance.storyFraming} label={t('careerSnapshot.copy.story')} />
             </div>
           </div>
         </div>
       </ExpandableSection>
 
       {/* Priority Fixes */}
-      <ExpandableSection title="Priority Fixes" icon={Clock} badge="Action items">
+      <ExpandableSection title={t('careerSnapshot.priorityFixes.title')} icon={Clock} badge={t('careerSnapshot.priorityFixes.badge')}>
         <div className="space-y-3">
           {data.priorityFixes.map((fix, index) => (
             <div key={index} className="flex items-start gap-4 p-4 rounded-lg bg-accent/50 border border-border/50">

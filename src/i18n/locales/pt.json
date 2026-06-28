@@ -605,5 +605,53 @@
       "needsImprovement": "Precisa melhorar",
       "poor": "Fraco"
     }
+  },
+  "careerSnapshot": {
+    "downloadPdf": "Baixar relatório em PDF",
+    "signalScore": {
+      "title": "Pontuação de Sinal de Carreira",
+      "subtitle": "Como os recrutadores percebem a sua carreira",
+      "performance": "Sinal de Desempenho",
+      "trajectory": "Sinal de Trajetória",
+      "credibility": "Sinal de Credibilidade",
+      "seniorityAlignment": "Alinhamento de Senioridade",
+      "currentLevel": "Atual: {{level}} • {{summary}}"
+    },
+    "recruiterPerception": "Percepção do Recrutador",
+    "copy": {
+      "default": "Copiar",
+      "summary": "Copiar resumo",
+      "response": "Copiar resposta",
+      "story": "Copiar história"
+    },
+    "topStrengths": {
+      "title": "Principais Pontos Fortes",
+      "identified_one": "{{count}} identificado",
+      "identified_other": "{{count}} identificados"
+    },
+    "careerRisks": {
+      "title": "Riscos de Carreira e Perguntas",
+      "count_one": "{{count}} risco",
+      "count_other": "{{count}} riscos",
+      "recruiterWillAsk": "O recrutador vai perguntar:",
+      "howToAddress": "Como abordar:"
+    },
+    "positioning": {
+      "title": "Orientação de Posicionamento",
+      "rolesToTarget": "Cargos a Buscar",
+      "rolesToAvoid": "Cargos a Evitar",
+      "companyStages": "Estágios de Empresa Ideais",
+      "storyFraming": "Enquadramento da História"
+    },
+    "priorityFixes": {
+      "title": "Correções Prioritárias",
+      "badge": "Itens de Ação"
+    },
+    "toast": {
+      "copied": "Copiado para a área de transferência!",
+      "pdfCharWarning": "Alguns caracteres neste relatório podem não ser exibidos corretamente no PDF (suporte limitado de fonte para texto não latino).",
+      "pdfSuccess": "PDF baixado com sucesso!",
+      "pdfError": "Falha ao gerar o PDF"
+    }
   }
 }

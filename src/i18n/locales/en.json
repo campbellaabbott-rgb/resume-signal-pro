@@ -605,5 +605,53 @@
       "needsImprovement": "Needs Improvement",
       "poor": "Poor"
     }
+  },
+  "careerSnapshot": {
+    "downloadPdf": "Download PDF Report",
+    "signalScore": {
+      "title": "Career Signal Score",
+      "subtitle": "How recruiters perceive your career",
+      "performance": "Performance Signal",
+      "trajectory": "Trajectory Signal",
+      "credibility": "Credibility Signal",
+      "seniorityAlignment": "Seniority Alignment",
+      "currentLevel": "Current: {{level}} • {{summary}}"
+    },
+    "recruiterPerception": "Recruiter Perception",
+    "copy": {
+      "default": "Copy",
+      "summary": "Copy summary",
+      "response": "Copy response",
+      "story": "Copy story"
+    },
+    "topStrengths": {
+      "title": "Top Strengths",
+      "identified_one": "{{count}} identified",
+      "identified_other": "{{count}} identified"
+    },
+    "careerRisks": {
+      "title": "Career Risks & Questions",
+      "count_one": "{{count}} risk",
+      "count_other": "{{count}} risks",
+      "recruiterWillAsk": "Recruiter will ask:",
+      "howToAddress": "How to address:"
+    },
+    "positioning": {
+      "title": "Positioning Guidance",
+      "rolesToTarget": "Roles to Target",
+      "rolesToAvoid": "Roles to Avoid",
+      "companyStages": "Ideal Company Stages",
+      "storyFraming": "Story Framing"
+    },
+    "priorityFixes": {
+      "title": "Priority Fixes",
+      "badge": "Action items"
+    },
+    "toast": {
+      "copied": "Copied to clipboard!",
+      "pdfCharWarning": "Some characters in this report may not display correctly in the PDF (limited font support for non-Latin text).",
+      "pdfSuccess": "PDF downloaded successfully!",
+      "pdfError": "Failed to generate PDF"
+    }
   }
 }
