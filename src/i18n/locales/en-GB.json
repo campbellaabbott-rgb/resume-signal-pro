@@ -7,7 +7,10 @@
     "howItWorks": "How It Works",
     "pricing": "Pricing",
     "trust": "Trust",
-    "changelog": "What's New"
+    "changelog": "What's New",
+    "homeAriaLabel": "Resume Booster - Home",
+    "getStartedAriaLabel": "Get started - scroll to upload section",
+    "mainNavAriaLabel": "Main navigation"
   },
   "hero": {
     "badge": "AI-Powered CV Analysis",
@@ -125,7 +128,8 @@
     "contact": "Contact",
     "questions": "Questions or feedback?",
     "pricing": "Pricing",
-    "changelog": "What's New"
+    "changelog": "What's New",
+    "navAriaLabel": "Footer navigation"
   },
   "howItWorks": {
     "badge": "AI-Powered Analysis",

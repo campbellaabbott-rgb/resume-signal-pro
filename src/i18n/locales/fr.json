@@ -7,7 +7,10 @@
     "howItWorks": "Comment ça marche",
     "pricing": "Tarifs",
     "trust": "Confiance",
-    "changelog": "Nouveautés"
+    "changelog": "Nouveautés",
+    "homeAriaLabel": "Resume Booster - Accueil",
+    "getStartedAriaLabel": "Commencer - défiler vers la section de téléversement",
+    "mainNavAriaLabel": "Navigation principale"
   },
   "hero": {
     "badge": "Analyse de CV par IA",
@@ -125,7 +128,8 @@
     "contact": "Contact",
     "questions": "Questions ou commentaires ?",
     "pricing": "Tarifs",
-    "changelog": "Nouveautés"
+    "changelog": "Nouveautés",
+    "navAriaLabel": "Navigation du pied de page"
   },
   "howItWorks": {
     "badge": "Analyse par IA",

@@ -7,7 +7,10 @@
     "howItWorks": "Hoe het werkt",
     "pricing": "Prijzen",
     "trust": "Vertrouwen",
-    "changelog": "Nieuw"
+    "changelog": "Nieuw",
+    "homeAriaLabel": "Resume Booster - Home",
+    "getStartedAriaLabel": "Aan de slag - scroll naar de uploadsectie",
+    "mainNavAriaLabel": "Hoofdnavigatie"
   },
   "hero": {
     "badge": "AI-gestuurde CV-analyse",
@@ -125,7 +128,8 @@
     "contact": "Contact",
     "questions": "Vragen of feedback?",
     "pricing": "Prijzen",
-    "changelog": "Nieuw"
+    "changelog": "Nieuw",
+    "navAriaLabel": "Footer-navigatie"
   },
   "howItWorks": {
     "badge": "AI-gestuurde Analyse",

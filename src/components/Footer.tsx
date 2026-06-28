@@ -23,7 +23,7 @@ export function Footer() {
         
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground px-2 sm:px-0">
           <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
-          <nav className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center" aria-label="Footer navigation">
+          <nav className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center" aria-label={t('footer.navAriaLabel')}>
             <Link
               to="/pricing"
               className="hover:text-foreground transition-colors focus-visible:outline-none focus-visible:text-primary min-h-[44px] flex items-center touch-manipulation font-medium"

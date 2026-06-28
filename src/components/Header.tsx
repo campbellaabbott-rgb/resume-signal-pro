@@ -43,7 +43,7 @@ export function Header() {
         </div>
         <header className="bg-background border-b border-border/50" role="banner">
         <div className="container">
-        <nav className="flex items-center justify-between h-16" aria-label="Main navigation">
+        <nav className="flex items-center justify-between h-16" aria-label={t('header.mainNavAriaLabel')}>
           {/* Left: Logo + Nav Links */}
           <div className="flex items-center gap-1 sm:gap-2">
             <Link 
@@ -55,7 +55,7 @@ export function Header() {
                 }
               }}
               className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
-              aria-label="Resume Booster - Home"
+              aria-label={t('header.homeAriaLabel')}
             >
               <Logo className="w-8 h-8" />
               <span className="font-bold text-lg tracking-tight">
@@ -114,7 +114,7 @@ export function Header() {
               size="sm" 
               onClick={scrollToUpload}
               className="gap-2 shadow-lg shadow-primary/20 min-h-[44px] min-w-[44px] touch-manipulation"
-              aria-label="Get started - scroll to upload section"
+              aria-label={t('header.getStartedAriaLabel')}
             >
               <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
               <span className="hidden sm:inline">{t('header.getStarted')}</span>

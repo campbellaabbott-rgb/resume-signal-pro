@@ -7,7 +7,10 @@
     "howItWorks": "यह कैसे काम करता है",
     "pricing": "मूल्य",
     "trust": "विश्वास",
-    "changelog": "नया क्या है"
+    "changelog": "नया क्या है",
+    "homeAriaLabel": "Resume Booster - होम",
+    "getStartedAriaLabel": "शुरू करें - अपलोड सेक्शन पर स्क्रॉल करें",
+    "mainNavAriaLabel": "मुख्य नेविगेशन"
   },
   "hero": {
     "badge": "AI-संचालित रिज़्यूमे विश्लेषण",
@@ -125,7 +128,8 @@
     "contact": "संपर्क करें",
     "questions": "प्रश्न या प्रतिक्रिया?",
     "pricing": "मूल्य",
-    "changelog": "नया क्या है"
+    "changelog": "नया क्या है",
+    "navAriaLabel": "फ़ुटर नेविगेशन"
   },
   "howItWorks": {
     "badge": "AI-संचालित विश्लेषण",

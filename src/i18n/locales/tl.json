@@ -7,7 +7,10 @@
     "howItWorks": "Paano Ito Gumagana",
     "pricing": "Presyo",
     "trust": "Tiwala",
-    "changelog": "Bago"
+    "changelog": "Bago",
+    "homeAriaLabel": "Resume Booster - Home",
+    "getStartedAriaLabel": "Magsimula - mag-scroll sa upload section",
+    "mainNavAriaLabel": "Main navigation"
   },
   "hero": {
     "badge": "AI-Powered Resume Analysis",
@@ -125,7 +128,8 @@
     "contact": "Makipag-ugnayan",
     "questions": "May tanong o feedback?",
     "pricing": "Presyo",
-    "changelog": "Bago"
+    "changelog": "Bago",
+    "navAriaLabel": "Footer navigation"
   },
   "howItWorks": {
     "badge": "AI-Powered Analysis",

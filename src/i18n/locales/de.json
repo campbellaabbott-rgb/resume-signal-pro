@@ -7,7 +7,10 @@
     "howItWorks": "So funktioniert's",
     "pricing": "Preise",
     "trust": "Vertrauen",
-    "changelog": "Neuigkeiten"
+    "changelog": "Neuigkeiten",
+    "homeAriaLabel": "Resume Booster - Startseite",
+    "getStartedAriaLabel": "Jetzt starten - zum Upload-Bereich scrollen",
+    "mainNavAriaLabel": "Hauptnavigation"
   },
   "hero": {
     "badge": "KI-gestützte Lebenslauf-Analyse",
@@ -125,7 +128,8 @@
     "contact": "Kontakt",
     "questions": "Fragen oder Feedback?",
     "pricing": "Preise",
-    "changelog": "Neuigkeiten"
+    "changelog": "Neuigkeiten",
+    "navAriaLabel": "Footer-Navigation"
   },
   "howItWorks": {
     "badge": "KI-gestützte Analyse",
