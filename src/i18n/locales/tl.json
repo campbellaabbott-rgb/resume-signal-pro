@@ -1109,5 +1109,35 @@
       "prioritizedActionPlan": "Pinaunahang action plan"
     },
     "premiumIncludesDetail": "{{subtext}}: buong analysis + AI-rewritten na resume + custom na cover letter."
+  },
+  "analysisPreviewSample": {
+    "breakdown": { "jobTitleMatch": "Pagtugma sa Job Title", "skillsMatch": "Pagtugma sa Skills", "actionVerbUsage": "Paggamit ng Action Verb", "keywordCoverage": "Saklaw ng Keyword", "formattingScore": "Score sa Format" },
+    "matchingSkills": ["Product Management", "Agile/Scrum", "Stakeholder Management", "Data Analysis"],
+    "missingKeywords": ["OKRs", "Product Roadmap", "A/B Testing"],
+    "alignmentSuggestion": "Magdagdag ng specific na metrics tungkol sa product launch at banggitin ang experience sa OKRs para mas patibayin ang alignment sa Senior PM role na ito.",
+    "detectedIssues": ["Posibleng hindi mabasa ang contact info sa mas lumang ATS", "Hindi nasa preferred na format ang mga petsa ng trabaho", "Nahihirapan mag-scan dahil sa special bullets"],
+    "criticalFixes": ["Gamitin ang Month Year na format (hal., Jan 2020 - Kasalukuyan)", "Palitan ang fancy bullets ng standard na hyphen o dots", "Ilagay ang email at telepono sa isang linya"],
+    "bulletOriginal": "Responsable sa pamamahala ng sales team",
+    "bulletImproved": "Pinangunahan ang 12-katao na sales team para malampasan ang quarterly target ng 34%, na nagdulot ng $2.1M na bagong revenue",
+    "bulletReason": "Idinagdag ang laki ng team, masusukat na resulta, at specific na revenue impact",
+    "resumeLengthReasoning": "Sa 8 taon ng karanasan, ideal ang 2-page na resume. Isaalang-alang ang pag-condense ng mga lumang role.",
+    "actionPlan": ["Magdagdag ng 3-5 na quantified achievement sa pinakabagong role mo", "Palitan ang passive na pananalita ng malakas na action verbs", "Isama ang mga keyword na 'cross-functional' at 'stakeholder management'", "Ayusin ang date formatting para sa ATS compatibility"],
+    "redFlags": ["8 buwang employment gap na hindi naipaliwanag", "Generic na objective statement sa halip na targeted summary"],
+    "linkedinHeadline": "Senior Product Manager | B2B SaaS | Nagdudulot ng 40% Revenue Growth",
+    "linkedinAboutImprovement": "Kulang sa quantified achievement ang About section mo. Magdagdag ng metrics tulad ng laki ng team, revenue impact, o user growth.",
+    "linkedinRecommendations": ["Magdagdag ng featured section na nagpapakita ng key project", "Humingi ng 2-3 recommendation mula sa mga kasamahan", "Isama ang industry-specific na keyword sa headline"]
+  },
+  "valueComparison": {
+    "feature": "Feature",
+    "us": "Resume Booster",
+    "them": "Traditional Writer",
+    "rows": {
+      "timeToResults": { "feature": "Oras bago makuha ang resulta", "us": "Mas mababa sa 60 segundo", "them": "3-7 araw ng trabaho" },
+      "cost": { "feature": "Gastos", "us": "$5 – $25 isang-beses", "them": "$150 – $500+" },
+      "atsOptimization": { "feature": "ATS optimization", "them": "Depende sa writer" },
+      "keywordAnalysis": { "feature": "Keyword analysis", "us": "Industry-specific na AI", "them": "Manual na research" },
+      "revisions": { "feature": "Kasama ang mga revision", "us": "Walang limitasyong pag-retry", "them": "1-2 round" },
+      "jobTailoring": { "feature": "Job-specific na pag-angkop", "them": "Karagdagang $50-100" }
+    }
   }
 }

@@ -1109,5 +1109,35 @@
       "prioritizedActionPlan": "Plan d'action prioritaire"
     },
     "premiumIncludesDetail": "{{subtext}} : analyse complète + CV réécrit par IA + lettre de motivation personnalisée."
+  },
+  "analysisPreviewSample": {
+    "breakdown": { "jobTitleMatch": "Correspondance du titre de poste", "skillsMatch": "Correspondance des compétences", "actionVerbUsage": "Utilisation des verbes d'action", "keywordCoverage": "Couverture des mots-clés", "formattingScore": "Score de mise en forme" },
+    "matchingSkills": ["Gestion de produit", "Agile/Scrum", "Gestion des parties prenantes", "Analyse de données"],
+    "missingKeywords": ["OKR", "Feuille de route produit", "Tests A/B"],
+    "alignmentSuggestion": "Ajoutez des indicateurs précis sur les lancements de produits et mentionnez votre expérience des OKR pour renforcer l'adéquation avec ce poste de PM senior.",
+    "detectedIssues": ["Les coordonnées pourraient ne pas être analysées par les anciens ATS", "Les dates des postes ne sont pas dans le format préféré", "Les puces spéciales gênent l'analyse"],
+    "criticalFixes": ["Utilisez le format Mois Année (ex. janv. 2020 - aujourd'hui)", "Remplacez les puces fantaisistes par des tirets ou des points standards", "Mettez l'e-mail et le téléphone sur une seule ligne"],
+    "bulletOriginal": "Responsable de la gestion de l'équipe commerciale",
+    "bulletImproved": "A dirigé une équipe commerciale de 12 personnes pour dépasser les objectifs trimestriels de 34 %, générant 1,9 M€ de nouveaux revenus",
+    "bulletReason": "Ajout de la taille de l'équipe, d'un résultat mesurable et d'un impact précis sur les revenus",
+    "resumeLengthReasoning": "Avec 8 ans d'expérience, un CV de 2 pages est optimal. Envisagez de condenser les postes plus anciens.",
+    "actionPlan": ["Ajoutez 3 à 5 réalisations chiffrées à votre poste le plus récent", "Remplacez les formulations passives par des verbes d'action forts", "Incluez les mots-clés « transversal » et « gestion des parties prenantes »", "Corrigez le format des dates pour la compatibilité ATS"],
+    "redFlags": ["Écart d'emploi de 8 mois non expliqué", "Énoncé d'objectif générique au lieu d'un résumé ciblé"],
+    "linkedinHeadline": "Chef de Produit Senior | SaaS B2B | Croissance des revenus de 40 %",
+    "linkedinAboutImprovement": "Votre section « À propos » manque de réalisations chiffrées. Ajoutez des indicateurs comme la taille de l'équipe, l'impact sur les revenus ou la croissance des utilisateurs.",
+    "linkedinRecommendations": ["Ajoutez une section en vedette présentant des projets clés", "Demandez 2-3 recommandations à des collègues", "Incluez des mots-clés spécifiques au secteur dans le titre"]
+  },
+  "valueComparison": {
+    "feature": "Caractéristique",
+    "us": "Resume Booster",
+    "them": "Rédacteur traditionnel",
+    "rows": {
+      "timeToResults": { "feature": "Délai d'obtention des résultats", "us": "Moins de 60 secondes", "them": "3 à 7 jours ouvrables" },
+      "cost": { "feature": "Coût", "us": "5 à 25 $ paiement unique", "them": "150 à 500 $+" },
+      "atsOptimization": { "feature": "Optimisation ATS", "them": "Varie selon le rédacteur" },
+      "keywordAnalysis": { "feature": "Analyse des mots-clés", "us": "IA spécifique au secteur", "them": "Recherche manuelle" },
+      "revisions": { "feature": "Révisions incluses", "us": "Tentatives illimitées", "them": "1 à 2 cycles" },
+      "jobTailoring": { "feature": "Adaptation spécifique au poste", "them": "50-100 $ supplémentaires" }
+    }
   }
 }

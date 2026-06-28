@@ -1109,5 +1109,35 @@
       "prioritizedActionPlan": "Prioritised action plan"
     },
     "premiumIncludesDetail": "{{subtext}}: full analysis + AI-rewritten CV + custom cover letter."
+  },
+  "analysisPreviewSample": {
+    "breakdown": { "jobTitleMatch": "Job Title Match", "skillsMatch": "Skills Match", "actionVerbUsage": "Action Verb Usage", "keywordCoverage": "Keyword Coverage", "formattingScore": "Formatting Score" },
+    "matchingSkills": ["Product Management", "Agile/Scrum", "Stakeholder Management", "Data Analysis"],
+    "missingKeywords": ["OKRs", "Product Roadmap", "A/B Testing"],
+    "alignmentSuggestion": "Add specific metrics around product launches and mention experience with OKRs to strengthen alignment with this Senior PM role.",
+    "detectedIssues": ["Contact info may not parse in older ATS", "Job dates are not in preferred structure", "Special bullets hinder scanning"],
+    "criticalFixes": ["Use Month Year format (e.g., Jan 2020 - Present)", "Replace fancy bullets with standard hyphens or dots", "Move email and phone to a single line"],
+    "bulletOriginal": "Responsible for managing the sales team",
+    "bulletImproved": "Led a 12-person sales team to exceed quarterly targets by 34%, generating £1.7M in new revenue",
+    "bulletReason": "Added team size, measurable outcome, and specific revenue impact",
+    "resumeLengthReasoning": "With 8 years of experience, a 2-page CV is optimal. Consider condensing older roles.",
+    "actionPlan": ["Add 3-5 quantified achievements to your most recent role", "Replace passive phrases with strong action verbs", "Include 'cross-functional' and 'stakeholder management' keywords", "Fix date formatting for ATS compatibility"],
+    "redFlags": ["Employment gap of 8 months not addressed", "Generic objective statement instead of targeted summary"],
+    "linkedinHeadline": "Senior Product Manager | B2B SaaS | Driving 40% Revenue Growth",
+    "linkedinAboutImprovement": "Your About section lacks quantified achievements. Add metrics like team size, revenue impact, or user growth.",
+    "linkedinRecommendations": ["Add featured section showcasing key projects", "Request 2-3 recommendations from colleagues", "Include industry-specific keywords in headline"]
+  },
+  "valueComparison": {
+    "feature": "Feature",
+    "us": "CV Booster",
+    "them": "Traditional Writer",
+    "rows": {
+      "timeToResults": { "feature": "Time to results", "us": "Under 60 seconds", "them": "3-7 business days" },
+      "cost": { "feature": "Cost", "us": "£5 – £25 one-time", "them": "£120 – £400+" },
+      "atsOptimization": { "feature": "ATS optimisation", "them": "Varies by writer" },
+      "keywordAnalysis": { "feature": "Keyword analysis", "us": "Industry-specific AI", "them": "Manual research" },
+      "revisions": { "feature": "Revisions included", "us": "Unlimited retries", "them": "1-2 rounds" },
+      "jobTailoring": { "feature": "Job-specific tailoring", "them": "Extra £40-80" }
+    }
   }
 }

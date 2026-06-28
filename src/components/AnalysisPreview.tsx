@@ -6,71 +6,27 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const sampleATSScore = {
+const sampleATSScoreBase = {
   overall: 72,
   breakdown: [
-    { nameKey: "Job Title Match", score: 12, max: 15 },
-    { nameKey: "Skills Match", score: 22, max: 30 },
-    { nameKey: "Action Verb Usage", score: 11, max: 15 },
-    { nameKey: "Keyword Coverage", score: 14, max: 20 },
-    { nameKey: "Formatting Score", score: 13, max: 20 },
+    { key: "jobTitleMatch", score: 12, max: 15 },
+    { key: "skillsMatch", score: 22, max: 30 },
+    { key: "actionVerbUsage", score: 11, max: 15 },
+    { key: "keywordCoverage", score: 14, max: 20 },
+    { key: "formattingScore", score: 13, max: 20 },
   ]
 };
 
-const sampleJDMatch = {
-  matchPercentage: 78,
-  matchingSkills: ["Product Management", "Agile/Scrum", "Stakeholder Management", "Data Analysis"],
-  missingKeywords: ["OKRs", "Product Roadmap", "A/B Testing"],
-  alignmentSuggestion: "Add specific metrics around product launches and mention experience with OKRs to strengthen alignment with this Senior PM role."
-};
+const sampleJDMatchBase = { matchPercentage: 78 };
 
-const sampleParsingIssues = {
-  detectedIssues: [
-    "Contact info may not parse in older ATS",
-    "Job dates are not in preferred structure",
-    "Special bullets hinder scanning"
-  ],
-  criticalFixes: [
-    "Use Month Year format (e.g., Jan 2020 - Present)",
-    "Replace fancy bullets with standard hyphens or dots",
-    "Move email and phone to a single line"
-  ]
-};
-
-const sampleBullet = {
-  original: "Responsible for managing the sales team",
-  improved: "Led 12-person sales team to exceed quarterly targets by 34%, generating $2.1M in new revenue",
-  reason: "Added team size, measurable outcome, and specific revenue impact"
-};
+const sampleBulletBase = {};
 
 const sampleResumeLength = {
   currentPages: 3,
   recommendedPages: 2,
-  reasoning: "With 8 years of experience, a 2-page resume is optimal. Consider condensing older roles."
 };
 
-const sampleActionPlan = [
-  "Add 3-5 quantified achievements to your most recent role",
-  "Replace passive phrases with strong action verbs",
-  "Include 'cross-functional' and 'stakeholder management' keywords",
-  "Fix date formatting for ATS compatibility"
-];
-
-const sampleRedFlags = [
-  "Employment gap of 8 months not addressed",
-  "Generic objective statement instead of targeted summary"
-];
-
-const sampleLinkedIn = {
-  headlineSuggestion: "Senior Product Manager | B2B SaaS | Driving 40% Revenue Growth",
-  aboutImprovement: "Your About section lacks quantified achievements. Add metrics like team size, revenue impact, or user growth.",
-  profileStrength: 78,
-  recommendations: [
-    "Add featured section showcasing key projects",
-    "Request 2-3 recommendations from colleagues",
-    "Include industry-specific keywords in headline"
-  ]
-};
+const sampleLinkedInBase = { profileStrength: 78 };
 
 function getScoreColor(score: number, max: number) {
   const pct = (score / max) * 100;
@@ -93,6 +49,39 @@ function getMatchBgColor(pct: number) {
 
 export function AnalysisPreview() {
   const { t } = useTranslation();
+
+  const sampleATSScore = {
+    ...sampleATSScoreBase,
+    breakdown: sampleATSScoreBase.breakdown.map((item) => ({
+      ...item,
+      nameKey: t(`analysisPreviewSample.breakdown.${item.key}`),
+    })),
+  };
+  const sampleJDMatch = {
+    ...sampleJDMatchBase,
+    matchingSkills: t('analysisPreviewSample.matchingSkills', { returnObjects: true }) as string[],
+    missingKeywords: t('analysisPreviewSample.missingKeywords', { returnObjects: true }) as string[],
+    alignmentSuggestion: t('analysisPreviewSample.alignmentSuggestion'),
+  };
+  const sampleParsingIssues = {
+    detectedIssues: t('analysisPreviewSample.detectedIssues', { returnObjects: true }) as string[],
+    criticalFixes: t('analysisPreviewSample.criticalFixes', { returnObjects: true }) as string[],
+  };
+  const sampleBullet = {
+    ...sampleBulletBase,
+    original: t('analysisPreviewSample.bulletOriginal'),
+    improved: t('analysisPreviewSample.bulletImproved'),
+    reason: t('analysisPreviewSample.bulletReason'),
+  };
+  const sampleActionPlan = t('analysisPreviewSample.actionPlan', { returnObjects: true }) as string[];
+  const sampleRedFlags = t('analysisPreviewSample.redFlags', { returnObjects: true }) as string[];
+  const sampleLinkedIn = {
+    ...sampleLinkedInBase,
+    headlineSuggestion: t('analysisPreviewSample.linkedinHeadline'),
+    aboutImprovement: t('analysisPreviewSample.linkedinAboutImprovement'),
+    recommendations: t('analysisPreviewSample.linkedinRecommendations', { returnObjects: true }) as string[],
+  };
+  const resumeLengthReasoning = t('analysisPreviewSample.resumeLengthReasoning');
 
   return (
     <section className="py-20 relative overflow-hidden" id="preview">
@@ -267,7 +256,7 @@ export function AnalysisPreview() {
                 <span className="text-2xl font-bold text-success">{sampleResumeLength.recommendedPages}</span>
                 <span className="text-xs text-muted-foreground">{t('preview.pages')}</span>
               </div>
-              <p className="text-xs text-muted-foreground">{sampleResumeLength.reasoning}</p>
+              <p className="text-xs text-muted-foreground">{resumeLengthReasoning}</p>
             </div>
 
             {/* Action Plan */}

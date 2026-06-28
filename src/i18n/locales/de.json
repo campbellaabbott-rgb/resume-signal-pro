@@ -1109,5 +1109,35 @@
       "prioritizedActionPlan": "Priorisierter Aktionsplan"
     },
     "premiumIncludesDetail": "{{subtext}}: vollständige Analyse + KI-umgeschriebener Lebenslauf + individuelles Anschreiben."
+  },
+  "analysisPreviewSample": {
+    "breakdown": { "jobTitleMatch": "Jobtitel-Übereinstimmung", "skillsMatch": "Fähigkeiten-Übereinstimmung", "actionVerbUsage": "Aktionsverb-Nutzung", "keywordCoverage": "Schlüsselwortabdeckung", "formattingScore": "Formatierungs-Score" },
+    "matchingSkills": ["Produktmanagement", "Agile/Scrum", "Stakeholder-Management", "Datenanalyse"],
+    "missingKeywords": ["OKRs", "Produkt-Roadmap", "A/B-Testing"],
+    "alignmentSuggestion": "Füge konkrete Kennzahlen rund um Produkteinführungen hinzu und erwähne Erfahrung mit OKRs, um die Übereinstimmung mit dieser Senior-PM-Rolle zu stärken.",
+    "detectedIssues": ["Kontaktinformationen werden in älteren ATS möglicherweise nicht erkannt", "Jobdaten sind nicht im bevorzugten Format", "Spezielle Aufzählungszeichen erschweren das Scannen"],
+    "criticalFixes": ["Verwende das Format Monat Jahr (z.B. Jan 2020 - Heute)", "Ersetze ausgefallene Aufzählungszeichen durch Standard-Bindestriche oder Punkte", "Verschiebe E-Mail und Telefon auf eine einzige Zeile"],
+    "bulletOriginal": "Verantwortlich für die Leitung des Vertriebsteams",
+    "bulletImproved": "Leitete ein 12-köpfiges Vertriebsteam, übertraf die Quartalsziele um 34 % und generierte 2,1 Mio. € neuen Umsatz",
+    "bulletReason": "Teamgröße, messbares Ergebnis und konkrete Umsatzwirkung hinzugefügt",
+    "resumeLengthReasoning": "Mit 8 Jahren Erfahrung ist ein 2-seitiger Lebenslauf optimal. Erwäge, ältere Positionen zu kürzen.",
+    "actionPlan": ["Füge deiner aktuellsten Position 3-5 quantifizierte Erfolge hinzu", "Ersetze passive Formulierungen durch starke Aktionsverben", "Füge die Schlüsselwörter „funktionsübergreifend“ und „Stakeholder-Management“ hinzu", "Korrigiere die Datumsformatierung für ATS-Kompatibilität"],
+    "redFlags": ["8-monatige Beschäftigungslücke nicht erklärt", "Allgemeine Zielaussage statt gezielter Zusammenfassung"],
+    "linkedinHeadline": "Senior Product Manager | B2B SaaS | Treibt 40 % Umsatzwachstum voran",
+    "linkedinAboutImprovement": "Deinem Über-mich-Abschnitt fehlen quantifizierte Erfolge. Füge Kennzahlen wie Teamgröße, Umsatzwirkung oder Nutzerwachstum hinzu.",
+    "linkedinRecommendations": ["Featured-Bereich mit wichtigen Projekten hinzufügen", "2-3 Empfehlungen von Kollegen anfordern", "Branchenspezifische Schlüsselwörter in der Überschrift verwenden"]
+  },
+  "valueComparison": {
+    "feature": "Funktion",
+    "us": "Resume Booster",
+    "them": "Traditioneller Texter",
+    "rows": {
+      "timeToResults": { "feature": "Zeit bis zum Ergebnis", "us": "Unter 60 Sekunden", "them": "3-7 Werktage" },
+      "cost": { "feature": "Kosten", "us": "5 € – 25 € einmalig", "them": "150 € – 500 €+" },
+      "atsOptimization": { "feature": "ATS-Optimierung", "them": "Variiert je nach Texter" },
+      "keywordAnalysis": { "feature": "Schlüsselwortanalyse", "us": "Branchenspezifische KI", "them": "Manuelle Recherche" },
+      "revisions": { "feature": "Inklusive Überarbeitungen", "us": "Unbegrenzte Versuche", "them": "1-2 Runden" },
+      "jobTailoring": { "feature": "Jobspezifische Anpassung", "them": "Zusätzlich 50-100 €" }
+    }
   }
 }

@@ -1,4 +1,5 @@
 import { Check, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 interface ComparisonRow {
@@ -8,36 +9,37 @@ interface ComparisonRow {
 }
 
 export function ValueComparison() {
+  const { t } = useTranslation();
   const comparisons: ComparisonRow[] = [
     {
-      feature: "Time to results",
-      us: "Under 60 seconds",
-      them: "3-7 business days",
+      feature: t('valueComparison.rows.timeToResults.feature'),
+      us: t('valueComparison.rows.timeToResults.us'),
+      them: t('valueComparison.rows.timeToResults.them'),
     },
     {
-      feature: "Cost",
-      us: "$5 – $25 one-time",
-      them: "$150 – $500+",
+      feature: t('valueComparison.rows.cost.feature'),
+      us: t('valueComparison.rows.cost.us'),
+      them: t('valueComparison.rows.cost.them'),
     },
     {
-      feature: "ATS optimization",
+      feature: t('valueComparison.rows.atsOptimization.feature'),
       us: true,
-      them: "Varies by writer",
+      them: t('valueComparison.rows.atsOptimization.them'),
     },
     {
-      feature: "Keyword analysis",
-      us: "Industry-specific AI",
-      them: "Manual research",
+      feature: t('valueComparison.rows.keywordAnalysis.feature'),
+      us: t('valueComparison.rows.keywordAnalysis.us'),
+      them: t('valueComparison.rows.keywordAnalysis.them'),
     },
     {
-      feature: "Revisions included",
-      us: "Unlimited retries",
-      them: "1-2 rounds",
+      feature: t('valueComparison.rows.revisions.feature'),
+      us: t('valueComparison.rows.revisions.us'),
+      them: t('valueComparison.rows.revisions.them'),
     },
     {
-      feature: "Job-specific tailoring",
+      feature: t('valueComparison.rows.jobTailoring.feature'),
       us: true,
-      them: "Extra $50-100",
+      them: t('valueComparison.rows.jobTailoring.them'),
     },
   ];
 
@@ -57,14 +59,14 @@ export function ValueComparison() {
       {/* Header */}
       <div className="grid grid-cols-3 bg-muted/30 border-b border-border">
         <div className="p-3 md:p-4 font-medium text-sm text-muted-foreground">
-          Feature
+          {t('valueComparison.feature')}
         </div>
         <div className="p-3 md:p-4 text-center">
-          <span className="font-bold text-primary text-sm md:text-base">Resume Booster</span>
+          <span className="font-bold text-primary text-sm md:text-base">{t('valueComparison.us')}</span>
         </div>
         <div className="p-3 md:p-4 text-center">
           <span className="font-medium text-muted-foreground text-sm md:text-base">
-            Traditional Writer
+            {t('valueComparison.them')}
           </span>
         </div>
       </div>

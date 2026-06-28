@@ -1109,5 +1109,35 @@
       "prioritizedActionPlan": "Geprioriteerd actieplan"
     },
     "premiumIncludesDetail": "{{subtext}}: volledige analyse + door AI herschreven cv + aangepaste motivatiebrief."
+  },
+  "analysisPreviewSample": {
+    "breakdown": { "jobTitleMatch": "Functietitel-match", "skillsMatch": "Vaardigheden-match", "actionVerbUsage": "Gebruik van actiewerkwoorden", "keywordCoverage": "Zoekwoorddekking", "formattingScore": "Opmaakscore" },
+    "matchingSkills": ["Productmanagement", "Agile/Scrum", "Stakeholdermanagement", "Data-analyse"],
+    "missingKeywords": ["OKR's", "Productroadmap", "A/B-testen"],
+    "alignmentSuggestion": "Voeg specifieke statistieken toe over productlanceringen en vermeld ervaring met OKR's om de afstemming met deze Senior PM-functie te versterken.",
+    "detectedIssues": ["Contactgegevens worden mogelijk niet verwerkt in oudere ATS", "Functiedata staan niet in de gewenste structuur", "Speciale bulletpoints belemmeren het scannen"],
+    "criticalFixes": ["Gebruik het formaat Maand Jaar (bijv. jan 2020 - heden)", "Vervang fancy bulletpoints door standaard streepjes of punten", "Plaats e-mail en telefoon op één regel"],
+    "bulletOriginal": "Verantwoordelijk voor het beheren van het verkoopteam",
+    "bulletImproved": "Leidde een verkoopteam van 12 personen om kwartaaldoelen met 34% te overtreffen, wat €1,9 miljoen aan nieuwe omzet genereerde",
+    "bulletReason": "Teamgrootte, meetbaar resultaat en specifieke omzetimpact toegevoegd",
+    "resumeLengthReasoning": "Met 8 jaar ervaring is een cv van 2 pagina's optimaal. Overweeg om oudere functies in te korten.",
+    "actionPlan": ["Voeg 3-5 gekwantificeerde prestaties toe aan je meest recente functie", "Vervang passieve formuleringen door sterke actiewerkwoorden", "Voeg de zoekwoorden 'cross-functioneel' en 'stakeholdermanagement' toe", "Corrigeer de datumnotatie voor ATS-compatibiliteit"],
+    "redFlags": ["Werkonderbreking van 8 maanden niet toegelicht", "Generieke doelstelling in plaats van gerichte samenvatting"],
+    "linkedinHeadline": "Senior Productmanager | B2B SaaS | 40% omzetgroei realiseren",
+    "linkedinAboutImprovement": "Je Over-sectie mist gekwantificeerde prestaties. Voeg statistieken toe zoals teamgrootte, omzetimpact of gebruikersgroei.",
+    "linkedinRecommendations": ["Voeg een uitgelichte sectie toe met belangrijke projecten", "Vraag 2-3 aanbevelingen van collega's aan", "Voeg branchespecifieke zoekwoorden toe aan je functietitel"]
+  },
+  "valueComparison": {
+    "feature": "Kenmerk",
+    "us": "Resume Booster",
+    "them": "Traditionele schrijver",
+    "rows": {
+      "timeToResults": { "feature": "Tijd tot resultaten", "us": "Minder dan 60 seconden", "them": "3-7 werkdagen" },
+      "cost": { "feature": "Kosten", "us": "€5 – €25 eenmalig", "them": "€140 – €450+" },
+      "atsOptimization": { "feature": "ATS-optimalisatie", "them": "Varieert per schrijver" },
+      "keywordAnalysis": { "feature": "Zoekwoordanalyse", "us": "Branchespecifieke AI", "them": "Handmatig onderzoek" },
+      "revisions": { "feature": "Inclusief revisies", "us": "Onbeperkte pogingen", "them": "1-2 rondes" },
+      "jobTailoring": { "feature": "Functiespecifieke aanpassing", "them": "Extra €45-90" }
+    }
   }
 }

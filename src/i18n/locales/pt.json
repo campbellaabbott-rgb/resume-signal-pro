@@ -1109,5 +1109,35 @@
       "prioritizedActionPlan": "Plano de ação priorizado"
     },
     "premiumIncludesDetail": "{{subtext}}: análise completa + currículo reescrito por IA + carta de apresentação personalizada."
+  },
+  "analysisPreviewSample": {
+    "breakdown": { "jobTitleMatch": "Correspondência de Título de Cargo", "skillsMatch": "Correspondência de Competências", "actionVerbUsage": "Uso de Verbos de Ação", "keywordCoverage": "Cobertura de Palavras-chave", "formattingScore": "Pontuação de Formatação" },
+    "matchingSkills": ["Gestão de Produto", "Agile/Scrum", "Gestão de Stakeholders", "Análise de Dados"],
+    "missingKeywords": ["OKRs", "Roteiro de Produto", "Testes A/B"],
+    "alignmentSuggestion": "Adicione métricas específicas sobre lançamentos de produtos e mencione experiência com OKRs para fortalecer o alinhamento com esta função de PM Senior.",
+    "detectedIssues": ["As informações de contacto podem não ser analisadas em ATS mais antigos", "As datas de emprego não estão na estrutura preferida", "Tópicos especiais dificultam a leitura"],
+    "criticalFixes": ["Use o formato Mês Ano (ex.: Jan 2020 - Presente)", "Substitua tópicos elaborados por hífenes ou pontos padrão", "Coloque o e-mail e o telefone numa única linha"],
+    "bulletOriginal": "Responsável pela gestão da equipa de vendas",
+    "bulletImproved": "Liderou uma equipa de vendas de 12 pessoas para superar metas trimestrais em 34%, gerando 2,1 milhões de dólares em nova receita",
+    "bulletReason": "Adicionado o tamanho da equipa, resultado mensurável e impacto específico na receita",
+    "resumeLengthReasoning": "Com 8 anos de experiência, um currículo de 2 páginas é o ideal. Considere condensar funções mais antigas.",
+    "actionPlan": ["Adicione 3-5 conquistas quantificadas à sua função mais recente", "Substitua frases passivas por verbos de ação fortes", "Inclua as palavras-chave 'multifuncional' e 'gestão de stakeholders'", "Corrija a formatação de datas para compatibilidade com ATS"],
+    "redFlags": ["Lacuna de emprego de 8 meses não explicada", "Declaração de objetivo genérica em vez de um resumo direcionado"],
+    "linkedinHeadline": "Gestor de Produto Senior | SaaS B2B | Impulsionando 40% de Crescimento de Receita",
+    "linkedinAboutImprovement": "A sua secção Acerca de carece de conquistas quantificadas. Adicione métricas como o tamanho da equipa, impacto na receita ou crescimento de utilizadores.",
+    "linkedinRecommendations": ["Adicione uma secção destacada com projetos importantes", "Solicite 2-3 recomendações de colegas", "Inclua palavras-chave específicas da indústria no título"]
+  },
+  "valueComparison": {
+    "feature": "Funcionalidade",
+    "us": "Resume Booster",
+    "them": "Redator Tradicional",
+    "rows": {
+      "timeToResults": { "feature": "Tempo até aos resultados", "us": "Menos de 60 segundos", "them": "3-7 dias úteis" },
+      "cost": { "feature": "Custo", "us": "$5 – $25 pagamento único", "them": "$150 – $500+" },
+      "atsOptimization": { "feature": "Otimização ATS", "them": "Varia conforme o redator" },
+      "keywordAnalysis": { "feature": "Análise de palavras-chave", "us": "IA específica da indústria", "them": "Pesquisa manual" },
+      "revisions": { "feature": "Revisões incluídas", "us": "Tentativas ilimitadas", "them": "1-2 rondas" },
+      "jobTailoring": { "feature": "Adaptação específica à vaga", "them": "Extra de $50-100" }
+    }
   }
 }
