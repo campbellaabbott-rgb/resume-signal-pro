@@ -9,12 +9,8 @@ interface SEOProps {
   image?: string;
 }
 
-/**
- * Per-route head metadata. Sets <title>, meta description,
- * canonical, and og:*/twitter:* tags scoped to a specific route.
- *
- * Keep title ≤ 60 chars and description ≤ 160 chars.
- */
+// Per-route head metadata: title, description, canonical, og:* and twitter:* tags.
+// Keep title ≤ 60 chars and description ≤ 160 chars.
 export function SEO({ title, description, path, image }: SEOProps) {
   const url = `${SITE}${path}`;
   const ogImage = image ?? `${SITE}/og-image.png`;
