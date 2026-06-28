@@ -947,5 +947,12 @@
       "serviceTemporarilyUnavailable": "Dienst vorübergehend nicht verfügbar",
       "serviceTemporarilyUnavailableDescription": "Unser Zahlungsdienst ist vorübergehend nicht verfügbar. Bitte versuche es in ein paar Minuten erneut."
     }
+  },
+  "miniPricingCards": {
+    "oneTimePayments": "Einmalzahlungen",
+    "heading": "Wähle deinen Lebenslauf-Boost",
+    "subheading": "Von schnellen Korrekturen bis zu kompletten Karrierepaketen",
+    "viewDetails": "Details ansehen",
+    "compareAll": "Alle Pakete vergleichen"
   }
 }

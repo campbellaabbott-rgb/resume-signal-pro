@@ -947,5 +947,12 @@
       "serviceTemporarilyUnavailable": "Pansamantalang hindi available ang serbisyo",
       "serviceTemporarilyUnavailableDescription": "Pansamantalang down ang aming payment service. Pakisubukan ulit sa ilang minuto."
     }
+  },
+  "miniPricingCards": {
+    "oneTimePayments": "Isang-beses na bayad",
+    "heading": "Piliin ang Iyong Resume Boost",
+    "subheading": "Mula sa mabilis na ayos hanggang kumpletong career package",
+    "viewDetails": "Tingnan ang detalye",
+    "compareAll": "Ikumpara lahat ng package"
   }
 }

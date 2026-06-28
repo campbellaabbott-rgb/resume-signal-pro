@@ -947,5 +947,12 @@
       "serviceTemporarilyUnavailable": "Servicio temporalmente no disponible",
       "serviceTemporarilyUnavailableDescription": "Nuestro servicio de pago está temporalmente caído. Por favor, inténtalo de nuevo en unos minutos."
     }
+  },
+  "miniPricingCards": {
+    "oneTimePayments": "Pagos únicos",
+    "heading": "Elige tu impulso de currículum",
+    "subheading": "Desde correcciones rápidas hasta paquetes completos de carrera",
+    "viewDetails": "Ver detalles",
+    "compareAll": "Comparar todos los paquetes"
   }
 }

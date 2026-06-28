@@ -947,5 +947,12 @@
       "serviceTemporarilyUnavailable": "Service temporarily unavailable",
       "serviceTemporarilyUnavailableDescription": "Our payment service is temporarily down. Please try again in a few minutes."
     }
+  },
+  "miniPricingCards": {
+    "oneTimePayments": "One-time payments",
+    "heading": "Choose Your Resume Boost",
+    "subheading": "From quick fixes to complete career packages",
+    "viewDetails": "View details",
+    "compareAll": "Compare all packages"
   }
 }

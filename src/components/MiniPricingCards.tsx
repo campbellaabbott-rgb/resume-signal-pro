@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Crown, FileText, Package, ArrowRight, Sparkles, ShieldCheck } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PRODUCTS, ProductId } from "@/config/products";
@@ -18,6 +19,7 @@ const productIcons: Record<string, React.ElementType> = {
 };
 
 export function MiniPricingCards() {
+  const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
 
   return (
@@ -26,13 +28,13 @@ export function MiniPricingCards() {
         <div className="text-center mb-10">
           <Badge variant="outline" className="mb-3 text-xs px-3 py-1 rounded-full border-primary/30 text-primary">
             <Sparkles className="w-3 h-3 mr-1" />
-            One-time payments
+            {t('miniPricingCards.oneTimePayments')}
           </Badge>
           <h2 className="text-2xl md:text-3xl font-bold mb-2">
-            Choose Your Resume Boost
+            {t('miniPricingCards.heading')}
           </h2>
           <p className="text-muted-foreground">
-            From quick fixes to complete career packages
+            {t('miniPricingCards.subheading')}
           </p>
         </div>
 
@@ -88,7 +90,7 @@ export function MiniPricingCards() {
                     )}
                   </div>
                   <span className="text-xs text-primary group-hover:translate-x-1 transition-transform flex items-center gap-1">
-                    View details <ArrowRight className="w-3 h-3" />
+                    {t('miniPricingCards.viewDetails')} <ArrowRight className="w-3 h-3" />
                   </span>
                 </div>
               </Link>
@@ -102,7 +104,7 @@ export function MiniPricingCards() {
             onClick={() => window.scrollTo(0, 0)}
             className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
           >
-            Compare all packages
+            {t('miniPricingCards.compareAll')}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

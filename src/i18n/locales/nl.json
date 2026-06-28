@@ -947,5 +947,12 @@
       "serviceTemporarilyUnavailable": "Service tijdelijk niet beschikbaar",
       "serviceTemporarilyUnavailableDescription": "Onze betaalservice is tijdelijk niet beschikbaar. Probeer het over een paar minuten opnieuw."
     }
+  },
+  "miniPricingCards": {
+    "oneTimePayments": "Eenmalige betalingen",
+    "heading": "Kies je cv-boost",
+    "subheading": "Van snelle verbeteringen tot complete carrièrepakketten",
+    "viewDetails": "Bekijk details",
+    "compareAll": "Vergelijk alle pakketten"
   }
 }

@@ -947,5 +947,12 @@
       "serviceTemporarilyUnavailable": "Service temporairement indisponible",
       "serviceTemporarilyUnavailableDescription": "Notre service de paiement est temporairement hors service. Veuillez réessayer dans quelques minutes."
     }
+  },
+  "miniPricingCards": {
+    "oneTimePayments": "Paiements uniques",
+    "heading": "Choisissez votre boost de CV",
+    "subheading": "Des corrections rapides aux forfaits carrière complets",
+    "viewDetails": "Voir les détails",
+    "compareAll": "Comparer tous les forfaits"
   }
 }

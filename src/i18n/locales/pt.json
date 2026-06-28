@@ -947,5 +947,12 @@
       "serviceTemporarilyUnavailable": "Serviço temporariamente indisponível",
       "serviceTemporarilyUnavailableDescription": "O nosso serviço de pagamento está temporariamente fora do ar. Tente novamente em alguns minutos."
     }
+  },
+  "miniPricingCards": {
+    "oneTimePayments": "Pagamentos únicos",
+    "heading": "Escolha o seu impulso de currículo",
+    "subheading": "De correções rápidas a pacotes completos de carreira",
+    "viewDetails": "Ver detalhes",
+    "compareAll": "Comparar todos os pacotes"
   }
 }

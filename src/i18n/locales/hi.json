@@ -947,5 +947,12 @@
       "serviceTemporarilyUnavailable": "सेवा अस्थायी रूप से उपलब्ध नहीं है",
       "serviceTemporarilyUnavailableDescription": "हमारी भुगतान सेवा अस्थायी रूप से बंद है। कृपया कुछ मिनटों में फिर से प्रयास करें।"
     }
+  },
+  "miniPricingCards": {
+    "oneTimePayments": "एक बार भुगतान",
+    "heading": "अपना रिज़्यूमे बूस्ट चुनें",
+    "subheading": "त्वरित सुधार से लेकर पूर्ण करियर पैकेज तक",
+    "viewDetails": "विवरण देखें",
+    "compareAll": "सभी पैकेजों की तुलना करें"
   }
 }
