@@ -64,7 +64,7 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEO title={"Pricing "} description={" Resume Booster"} path={"Plans from $1 Keyword Fix to $25 Career Snapshot. Pay once, no subscription. Recruiter-grade resume rewrites and cover letters.|/pricing"} />
+      <SEO title="Pricing — Resume Booster" description="Plans from $1 Keyword Fix to $25 Career Snapshot. Pay once, no subscription. Recruiter-grade resume rewrites." path="/pricing" />
       <Header />
       
       <main className="pt-32 pb-20">

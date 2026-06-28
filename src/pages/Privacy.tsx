@@ -11,7 +11,7 @@ export default function Privacy() {
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <SEO title={"Privacy Policy "} description={" Resume Booster"} path={"How Resume Booster handles your resume data, retention windows, and your privacy rights.|/privacy"} />
+      <SEO title="Privacy Policy — Resume Booster" description="How Resume Booster handles your resume data, retention windows, and your privacy rights." path="/privacy" />
       <Header />
       <main className="flex-1 py-16">
         <div className="container max-w-4xl">

@@ -13,7 +13,7 @@ export default function Terms() {
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <SEO title={"Terms of Service "} description={" Resume Booster"} path={"Read the Resume Booster terms governing use of the resume analysis, rewrite, and career tools.|/terms"} />
+      <SEO title="Terms of Service — Resume Booster" description="Read the Resume Booster terms governing use of the resume analysis, rewrite, and career tools." path="/terms" />
       <Header />
       <main className="flex-1 py-16">
         <div className="container max-w-4xl">

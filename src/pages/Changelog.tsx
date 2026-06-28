@@ -22,7 +22,7 @@ function formatEntryDate(iso: string): string {
 export default function Changelog() {
   return (
     <div className="min-h-screen bg-background">
-      <SEO title={"Changelog "} description={" Resume Booster"} path={"New features, improvements, and fixes shipped to Resume Booster. Updated weekly.|/changelog"} />
+      <SEO title="Changelog — Resume Booster" description="New features, improvements, and fixes shipped to Resume Booster. Updated weekly." path="/changelog" />
       <Header />
       <main className="pt-28 pb-20">
         <div className="container max-w-2xl">

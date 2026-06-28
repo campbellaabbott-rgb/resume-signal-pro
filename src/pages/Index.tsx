@@ -1244,7 +1244,7 @@ const Index = () => {
         onRetry={checkoutError && !checkoutUrl ? handleRetryCheckout : undefined}
         onClose={handleCloseCheckout}
       />
-      <SEO title={"Resume Booster "} description={" Free ATS Resume Scan"} path={"Free AI resume scan: ATS score, missing keywords, red flags, and recruiter-grade fixes in under 30 seconds.|/"} />
+      <SEO title="Resume Booster: Free ATS Resume Scan" description="Free AI resume scan: ATS score, missing keywords, red flags, and recruiter-grade fixes in under 30 seconds." path="/" />
       <Header />
 
       <main id="main-content" className="pt-[88px]" role="main">

@@ -120,7 +120,7 @@ export default function ResumeBuilder() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEO title={"Free Resume Builder "} description={" Resume Booster"} path={"Build an ATS-friendly resume in minutes with our free guided builder. Export to PDF, no signup required.|/builder"} />
+      <SEO title="Free Resume Builder — Resume Booster" description="Build an ATS-friendly resume in minutes with our free guided builder. Export to PDF, no signup required." path="/builder" />
       <Header />
       <main className="pt-24 pb-20">
         <div className="container max-w-6xl">

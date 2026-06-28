@@ -67,7 +67,7 @@ const scoringFactors = [
 export default function Methodology() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <SEO title={"Methodology "} description={" How Resume Booster Scores Resumes"} path={"Inside the ATS scoring rubric, recruiter heuristics, and AI pipeline behind every Resume Booster scan.|/methodology"} />
+      <SEO title="Methodology — How Resume Booster Scores Resumes" description="Inside the ATS scoring rubric, recruiter heuristics, and AI pipeline behind every Resume Booster scan." path="/methodology" />
       <Header />
       
       <main className="pt-20">

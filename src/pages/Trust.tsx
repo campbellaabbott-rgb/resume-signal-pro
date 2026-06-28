@@ -62,7 +62,7 @@ export default function Trust() {
   return (
     <>
       
-      <SEO title={"Trust & Security "} description={" Resume Booster"} path={"256-bit encryption, no permanent resume storage, GDPR-aligned data handling. See how Resume Booster keeps your data safe.|/trust"} />
+      <SEO title="Trust & Security — Resume Booster" description="256-bit encryption, no permanent resume storage, GDPR-aligned data handling. See how we keep your data safe." path="/trust" />
       <Header />
       
       <main className="min-h-screen pt-28">
