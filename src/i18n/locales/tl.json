@@ -1147,6 +1147,87 @@
     "viewAllProducts": "Tingnan lahat ng produkto",
     "addOnNames": { "resumeRoast": "Resume Roast", "interviewCoach": "Interview Coach", "careerPath": "Career Path" }
   },
+  "personalization": {
+    "experience": {
+      "entry": {
+        "focusAreas": ["Edukasyon at mga kaugnay na kurso", "Internship at karanasan sa proyekto", "Mga skill na maitransfer mula sa anumang trabaho", "Mga natutunang teknikal na skill at tool"],
+        "avoidAreas": ["Mga objective statement (gumamit ng summary sa halip)", "Impormasyon sa high school (maliban sa kakatapos lang)", "Hindi kaugnay na trabaho na walang maitransfer na skill"],
+        "keyMessage": "Ipakita ang potensyal at pagnanais na matuto",
+        "quantificationTip": "Kahit ang entry-level na trabaho ay may numero: bilang ng kliyenteng naasikaso, natapos na proyekto, oras ng boluntaryong serbisyo"
+      },
+      "mid": {
+        "focusAreas": ["Konkretong tagumpay na may sukat", "Lumalaking responsibilidad at pamumuno", "Pagpapaunlad ng espesyalisadong kasanayan", "Cross-functional na pakikipagtulungan"],
+        "avoidAreas": ["Mga gawain sa entry-level (focus sa paglago)", "Sobrang detalye sa lumang trabaho", "Mga skill na inaasahan na ngayon (basic software)"],
+        "keyMessage": "Ipakita ang tuloy-tuloy na paglago at epekto",
+        "quantificationTip": "Ipakita ang progresyon: dumagdag na responsibilidad, mas malaking proyekto, mas malaking badyet"
+      },
+      "senior": {
+        "focusAreas": ["Pamumuno at pagpapaunlad ng koponan", "Mga estratehikong inisyatiba at resulta", "Epekto sa iba't ibang departamento", "Mentoring at paglilipat ng kaalaman"],
+        "avoidAreas": ["Mga taktikal na detalye (focus sa estratehiya)", "Mga trabaho 15+ taon na ang nakalipas sa detalye", "Mga skill na dapat ipalagay na nasa antas mo na"],
+        "keyMessage": "Ipakita ang estratehikong pag-iisip at epekto ng pamumuno",
+        "quantificationTip": "Focus sa laki ng koponan, badyet na pinangasiwaan, kita na naiimpluwensyahan, epekto sa buong organisasyon"
+      },
+      "executive": {
+        "focusAreas": ["Responsibilidad sa P&L at resulta ng negosyo", "Pagbabago at pamumuno sa transformasyon", "Pangangasiwa sa board at stakeholder", "Pagtatakda ng visyon at pagbuo ng kultura"],
+        "avoidAreas": ["Mga taktikal na detalye ng pagpapatupad", "Listahan ng skill (ipinapalagay sa C-level)", "Mga detalye ng unang karera maliban sa titulo"],
+        "keyMessage": "Ipakita ang transformasyon ng negosyo at visyon",
+        "quantificationTip": "Kita, market share, valuation, M&A deal, sukat ng organisasyon"
+      }
+    },
+    "geographic": {
+      "us": { "name": "Estados Unidos" },
+      "uk": { "name": "United Kingdom" },
+      "eu": { "name": "European Union" },
+      "de": { "name": "Germany" },
+      "au": { "name": "Australia" },
+      "in": { "name": "India" },
+      "ca": { "name": "Canada" },
+      "latam": { "name": "Latin America" },
+      "br": { "name": "Brazil" },
+      "mx": { "name": "Mexico" }
+    }
+  },
+  "personalizedInsights": {
+    "personalizedForYou": "Naangkop Para Sa Iyo",
+    "in": "bilang",
+    "formatSuffix": "format",
+    "autoDetected": "Awtomatikong Natukoy",
+    "levels": {
+      "entry": "Entry Level",
+      "mid": "Mid-Level",
+      "senior": "Senior",
+      "executive": "Executive",
+      "professional": "Propesyonal"
+    },
+    "resumeTipsFor": "Mga Tip sa Resume para sa {{name}}",
+    "mustHaveKeywordsFor": "Mga mahalagang keyword para sa {{name}}:",
+    "bulletExampleFor": "Halimbawa ng bullet point para sa {{name}}:",
+    "weak": "Mahina",
+    "strong": "Malakas",
+    "keyMetricsToInclude": "Mga mahalagang sukatan na isama:",
+    "commonMistakesFor": "Karaniwang mga pagkakamali sa {{name}}:",
+    "howYouCompareIn": "Paano Ka Naihahambing sa {{name}}",
+    "yourScore": "Ang Iyong Score",
+    "industryAverage": "Average ng {{name}}",
+    "topPerformers": "Mga Nangungunang Kandidato",
+    "benchmarkTop": "Higit sa karaniwang kahandaan sa ATS para sa iyong industriya.",
+    "benchmarkAverage": "Malapit sa average ng ATS para sa iyong industriya.",
+    "benchmarkBelow": "Mas mababa sa average ng ATS para sa iyong industriya (maaayos).",
+    "yourTopPriorities": "Ang Iyong Mga Pangunahing Prayoridad",
+    "commonIndustryMistakes": "Karaniwang Pagkakamali sa Resume sa {{name}}",
+    "industryBulletExamples": "Mga Halimbawa ng Bullet Point sa {{name}}",
+    "industryResumeTips": "Mga Tip sa Resume para sa {{name}}",
+    "keyMetricsFor": "Mga Mahalagang Sukatan para sa {{name}}",
+    "includeNumbersHelper": "Isama ang mga numerong ito sa iyong bullet point:",
+    "powerVerbsFor": "Mga Makapangyarihang Pandiwa para sa {{name}}",
+    "focusAreasFor": "Mga Pokus na Lugar para sa {{level}}",
+    "emphasize": "Bigyang-diin",
+    "minimize": "Bawasan",
+    "industryKeywordsToInclude": "Mga Keyword sa Industriya na Isama",
+    "valuableCertifications": "Mahalagang sertipikasyon:",
+    "recommendedLength_one": "Inirerekomendang haba ng resume: {{count}} pahina para sa mga propesyonal na {{level}}",
+    "recommendedLength_other": "Inirerekomendang haba ng resume: {{count}} pahina para sa mga propesyonal na {{level}}"
+  },
   "trustPage": {
     "metaTitle": "Tiwala at Seguridad — Resume Booster",
     "metaDescription": "256-bit na encryption, walang permanenteng storage ng resume, GDPR-aligned na paghawak ng data. Tingnan kung paano namin pinapanatiling ligtas ang iyong data.",

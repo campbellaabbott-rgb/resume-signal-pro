@@ -1147,6 +1147,87 @@
     "viewAllProducts": "Ver todos los productos",
     "addOnNames": { "resumeRoast": "Crítica de Currículum", "interviewCoach": "Coach de Entrevistas", "careerPath": "Trayectoria Profesional" }
   },
+  "personalization": {
+    "experience": {
+      "entry": {
+        "focusAreas": ["Educación y cursos relevantes", "Prácticas y experiencia en proyectos", "Habilidades transferibles de cualquier trabajo", "Habilidades técnicas y herramientas aprendidas"],
+        "avoidAreas": ["Declaraciones de objetivos (usa un resumen en su lugar)", "Información de secundaria (a menos que seas un graduado reciente)", "Trabajos no relacionados sin habilidades transferibles"],
+        "keyMessage": "Muestra potencial y entusiasmo por aprender",
+        "quantificationTip": "Incluso el trabajo de nivel inicial tiene números: clientes atendidos, proyectos completados, horas de voluntariado"
+      },
+      "mid": {
+        "focusAreas": ["Logros concretos con métricas", "Responsabilidad y liderazgo crecientes", "Desarrollo de habilidades especializadas", "Colaboración multifuncional"],
+        "avoidAreas": ["Tareas de nivel inicial (enfócate en el crecimiento)", "Demasiado detalle en roles antiguos", "Habilidades que ya se esperan (software básico)"],
+        "keyMessage": "Demuestra crecimiento e impacto constantes",
+        "quantificationTip": "Muestra progresión: mayor responsabilidad, proyectos más grandes, presupuestos más grandes"
+      },
+      "senior": {
+        "focusAreas": ["Liderazgo y desarrollo de equipos", "Iniciativas estratégicas y resultados", "Impacto interdepartamental", "Mentoría y transferencia de conocimiento"],
+        "avoidAreas": ["Detalles tácticos (enfócate en la estrategia)", "Roles de hace 15+ años en detalle", "Habilidades que deberían asumirse en tu nivel"],
+        "keyMessage": "Muestra pensamiento estratégico e impacto de liderazgo",
+        "quantificationTip": "Enfócate en el tamaño del equipo, presupuesto gestionado, ingresos influenciados, impacto en toda la organización"
+      },
+      "executive": {
+        "focusAreas": ["Responsabilidad de pérdidas y ganancias y resultados de negocio", "Liderazgo de transformación y cambio", "Gestión de la junta directiva y partes interesadas", "Definición de visión y construcción de cultura"],
+        "avoidAreas": ["Detalles de ejecución táctica", "Listas de habilidades (asumidas a nivel C)", "Detalles de carrera temprana más allá de los títulos"],
+        "keyMessage": "Muestra transformación empresarial y visión",
+        "quantificationTip": "Ingresos, cuota de mercado, valoración, acuerdos de fusiones y adquisiciones, escala organizacional"
+      }
+    },
+    "geographic": {
+      "us": { "name": "Estados Unidos" },
+      "uk": { "name": "Reino Unido" },
+      "eu": { "name": "Unión Europea" },
+      "de": { "name": "Alemania" },
+      "au": { "name": "Australia" },
+      "in": { "name": "India" },
+      "ca": { "name": "Canadá" },
+      "latam": { "name": "América Latina" },
+      "br": { "name": "Brasil" },
+      "mx": { "name": "México" }
+    }
+  },
+  "personalizedInsights": {
+    "personalizedForYou": "Personalizado para ti",
+    "in": "en",
+    "formatSuffix": "formato",
+    "autoDetected": "Detectado automáticamente",
+    "levels": {
+      "entry": "Nivel inicial",
+      "mid": "Nivel medio",
+      "senior": "Senior",
+      "executive": "Ejecutivo",
+      "professional": "Profesional"
+    },
+    "resumeTipsFor": "Consejos de currículum para {{name}}",
+    "mustHaveKeywordsFor": "Palabras clave imprescindibles para {{name}}:",
+    "bulletExampleFor": "Ejemplo de viñeta para {{name}}:",
+    "weak": "Débil",
+    "strong": "Fuerte",
+    "keyMetricsToInclude": "Métricas clave a incluir:",
+    "commonMistakesFor": "Errores comunes de {{name}}:",
+    "howYouCompareIn": "Cómo te comparas en {{name}}",
+    "yourScore": "Tu puntuación",
+    "industryAverage": "Promedio de {{name}}",
+    "topPerformers": "Mejores candidatos",
+    "benchmarkTop": "Preparación ATS superior al promedio para tu industria.",
+    "benchmarkAverage": "Alrededor del promedio ATS para tu industria.",
+    "benchmarkBelow": "Por debajo del promedio ATS para tu industria (solucionable).",
+    "yourTopPriorities": "Tus principales prioridades",
+    "commonIndustryMistakes": "Errores comunes de currículum en {{name}}",
+    "industryBulletExamples": "Ejemplos de viñetas de {{name}}",
+    "industryResumeTips": "Consejos de currículum para {{name}}",
+    "keyMetricsFor": "Métricas clave para {{name}}",
+    "includeNumbersHelper": "Incluye estos números en tus viñetas:",
+    "powerVerbsFor": "Verbos potentes para {{name}}",
+    "focusAreasFor": "Áreas de enfoque para {{level}}",
+    "emphasize": "Enfatizar",
+    "minimize": "Minimizar",
+    "industryKeywordsToInclude": "Palabras clave de la industria a incluir",
+    "valuableCertifications": "Certificaciones valiosas:",
+    "recommendedLength_one": "Longitud de currículum recomendada: {{count}} página para profesionales de nivel {{level}}",
+    "recommendedLength_other": "Longitud de currículum recomendada: {{count}} páginas para profesionales de nivel {{level}}"
+  },
   "trustPage": {
     "metaTitle": "Confianza y Seguridad — Resume Booster",
     "metaDescription": "Cifrado de 256 bits, sin almacenamiento permanente del currículum, manejo de datos alineado con el RGPD. Descubre cómo protegemos tus datos.",

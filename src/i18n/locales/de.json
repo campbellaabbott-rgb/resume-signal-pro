@@ -1147,6 +1147,87 @@
     "viewAllProducts": "Alle Produkte ansehen",
     "addOnNames": { "resumeRoast": "Lebenslauf-Roast", "interviewCoach": "Interview-Coach", "careerPath": "Karriereweg" }
   },
+  "personalization": {
+    "experience": {
+      "entry": {
+        "focusAreas": ["Ausbildung und relevante Kurse", "Praktika und Projekterfahrung", "Übertragbare Fähigkeiten aus jeder Tätigkeit", "Erlernte technische Fähigkeiten und Tools"],
+        "avoidAreas": ["Zielaussagen (stattdessen eine Zusammenfassung verwenden)", "Schulinformationen (außer bei aktuellen Absolventen)", "Unrelevante Jobs ohne übertragbare Fähigkeiten"],
+        "keyMessage": "Zeige Potenzial und Lernbereitschaft",
+        "quantificationTip": "Auch Einstiegsjobs haben Zahlen: betreute Kunden, abgeschlossene Projekte, geleistete Freiwilligenstunden"
+      },
+      "mid": {
+        "focusAreas": ["Konkrete Erfolge mit Kennzahlen", "Wachsende Verantwortung und Führung", "Entwicklung spezialisierter Fähigkeiten", "Funktionsübergreifende Zusammenarbeit"],
+        "avoidAreas": ["Einstiegsaufgaben (Fokus auf Wachstum)", "Zu viele Details zu älteren Positionen", "Fähigkeiten, die mittlerweile vorausgesetzt werden (Basis-Software)"],
+        "keyMessage": "Zeige konsistentes Wachstum und Wirkung",
+        "quantificationTip": "Zeige Entwicklung: gestiegene Verantwortung, größere Projekte, größere Budgets"
+      },
+      "senior": {
+        "focusAreas": ["Führung und Teamentwicklung", "Strategische Initiativen und Ergebnisse", "Abteilungsübergreifende Wirkung", "Mentoring und Wissensvermittlung"],
+        "avoidAreas": ["Taktische Details (Fokus auf Strategie)", "Detaillierte Rollen von vor 15+ Jahren", "Fähigkeiten, die auf deiner Ebene vorausgesetzt werden sollten"],
+        "keyMessage": "Zeige strategisches Denken und Führungswirkung",
+        "quantificationTip": "Fokus auf Teamgröße, verwaltetes Budget, beeinflussten Umsatz, unternehmensweite Wirkung"
+      },
+      "executive": {
+        "focusAreas": ["GuV-Verantwortung und Geschäftsergebnisse", "Transformation und Change-Leadership", "Vorstands- und Stakeholder-Management", "Visionsentwicklung und Kulturaufbau"],
+        "avoidAreas": ["Taktische Ausführungsdetails", "Skill-Listen (auf C-Level vorausgesetzt)", "Frühe Karrieredetails über Titel hinaus"],
+        "keyMessage": "Zeige Unternehmenstransformation und Vision",
+        "quantificationTip": "Umsatz, Marktanteil, Bewertung, M&A-Deals, organisatorische Größenordnung"
+      }
+    },
+    "geographic": {
+      "us": { "name": "Vereinigte Staaten" },
+      "uk": { "name": "Vereinigtes Königreich" },
+      "eu": { "name": "Europäische Union" },
+      "de": { "name": "Deutschland" },
+      "au": { "name": "Australien" },
+      "in": { "name": "Indien" },
+      "ca": { "name": "Kanada" },
+      "latam": { "name": "Lateinamerika" },
+      "br": { "name": "Brasilien" },
+      "mx": { "name": "Mexiko" }
+    }
+  },
+  "personalizedInsights": {
+    "personalizedForYou": "Für dich personalisiert",
+    "in": "als",
+    "formatSuffix": "Format",
+    "autoDetected": "Automatisch erkannt",
+    "levels": {
+      "entry": "Einstiegslevel",
+      "mid": "Mittlere Ebene",
+      "senior": "Senior",
+      "executive": "Führungsebene",
+      "professional": "Fachkraft"
+    },
+    "resumeTipsFor": "Lebenslauf-Tipps für {{name}}",
+    "mustHaveKeywordsFor": "Unverzichtbare Schlüsselwörter für {{name}}:",
+    "bulletExampleFor": "{{name}} Beispielpunkt:",
+    "weak": "Schwach",
+    "strong": "Stark",
+    "keyMetricsToInclude": "Wichtige Kennzahlen zum Einbeziehen:",
+    "commonMistakesFor": "Häufige {{name}}-Fehler:",
+    "howYouCompareIn": "Wie du in {{name}} abschneidest",
+    "yourScore": "Dein Score",
+    "industryAverage": "{{name}}-Durchschnitt",
+    "topPerformers": "Top-Performer",
+    "benchmarkTop": "Überdurchschnittliche ATS-Bereitschaft für deine Branche.",
+    "benchmarkAverage": "Im ATS-Durchschnitt für deine Branche.",
+    "benchmarkBelow": "Unter dem ATS-Durchschnitt für deine Branche (behebbar).",
+    "yourTopPriorities": "Deine wichtigsten Prioritäten",
+    "commonIndustryMistakes": "Häufige Lebenslauffehler in {{name}}",
+    "industryBulletExamples": "{{name}}-Beispielpunkte",
+    "industryResumeTips": "Lebenslauf-Tipps für {{name}}",
+    "keyMetricsFor": "Wichtige Kennzahlen für {{name}}",
+    "includeNumbersHelper": "Füge diese Zahlen in deine Aufzählungspunkte ein:",
+    "powerVerbsFor": "Starke Verben für {{name}}",
+    "focusAreasFor": "{{level}}-Schwerpunkte",
+    "emphasize": "Hervorheben",
+    "minimize": "Minimieren",
+    "industryKeywordsToInclude": "Branchenkeywords zum Einbeziehen",
+    "valuableCertifications": "Wertvolle Zertifizierungen:",
+    "recommendedLength_one": "Empfohlene Lebenslauflänge: {{count}} Seite für {{level}} Fachkräfte",
+    "recommendedLength_other": "Empfohlene Lebenslauflänge: {{count}} Seiten für {{level}} Fachkräfte"
+  },
   "trustPage": {
     "metaTitle": "Vertrauen & Sicherheit — Resume Booster",
     "metaDescription": "256-Bit-Verschlüsselung, keine dauerhafte Speicherung des Lebenslaufs, DSGVO-konforme Datenverarbeitung. So schützen wir deine Daten.",

@@ -28,6 +28,7 @@ import {
   type GeographicConfig,
   type RoleConfig
 } from "@/config/personalization";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { SkillsGapAnalysis } from "./SkillsGapAnalysis";
 import { CompetitorBenchmark } from "./CompetitorBenchmark";
@@ -60,9 +61,10 @@ export function PersonalizedInsights({
   userHasMetrics = false,
   userBulletCount = 3
 }: PersonalizedInsightsProps) {
+  const { t } = useTranslation();
   const industryConfig = getIndustryAdvice(industry);
-  const expConfig = getExperienceAdvice(experienceLevel?.level || 'mid');
-  const geoConfig = getGeographicAdvice();
+  const expConfig = getExperienceAdvice(experienceLevel?.level || 'mid', t);
+  const geoConfig = getGeographicAdvice(undefined, t);
   const roleConfig = getRoleAdvice(currentRole || '');
   const priorities = getPersonalizedPriorities(
     industry, 
@@ -72,11 +74,11 @@ export function PersonalizedInsights({
   );
   
   const levelLabel = {
-    entry: 'Entry Level',
-    mid: 'Mid-Level',
-    senior: 'Senior',
-    executive: 'Executive'
-  }[expConfig.level] || 'Professional';
+    entry: t('personalizedInsights.levels.entry'),
+    mid: t('personalizedInsights.levels.mid'),
+    senior: t('personalizedInsights.levels.senior'),
+    executive: t('personalizedInsights.levels.executive')
+  }[expConfig.level] || t('personalizedInsights.levels.professional');
 
   // Calculate where user stands vs industry benchmarks
   const benchmarkComparison = industryConfig.industryBenchmarks 
@@ -96,15 +98,15 @@ export function PersonalizedInsights({
             <Sparkles className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">Personalized for You</h3>
+            <h3 className="font-semibold text-foreground">{t('personalizedInsights.personalizedForYou')}</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              {roleConfig && <><span className="font-medium text-primary">{roleConfig.name}</span> in </>}
+              {roleConfig && <><span className="font-medium text-primary">{roleConfig.name}</span> {t('personalizedInsights.in')} </>}
               <span className="font-medium text-primary">{industryConfig.name}</span>
               {' • '}<span className="font-medium text-primary">{levelLabel}</span>
               {experienceLevel?.yearsEstimate && ` (${experienceLevel.yearsEstimate})`}
-              {' • '}<span className="font-medium text-primary">{geoConfig.name}</span> format
+              {' • '}<span className="font-medium text-primary">{geoConfig.name}</span> {t('personalizedInsights.formatSuffix')}
               <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground">
-                Auto-detected
+                {t('personalizedInsights.autoDetected')}
               </span>
             </p>
           </div>
@@ -116,13 +118,13 @@ export function PersonalizedInsights({
         <div className="p-4 rounded-lg bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20">
           <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
             <Briefcase className="w-4 h-4 text-amber-500" />
-            {roleConfig.name} Resume Tips
+            {t('personalizedInsights.resumeTipsFor', { name: roleConfig.name })}
           </h4>
-          
+
           <div className="space-y-4">
             {/* Must-have keywords */}
             <div>
-              <p className="text-xs font-medium text-foreground mb-2">Must-have keywords for {roleConfig.name}:</p>
+              <p className="text-xs font-medium text-foreground mb-2">{t('personalizedInsights.mustHaveKeywordsFor', { name: roleConfig.name })}</p>
               <div className="flex flex-wrap gap-1">
                 {roleConfig.mustHaveKeywords.map((keyword, i) => (
                   <span key={i} className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 text-xs font-medium">
@@ -145,14 +147,14 @@ export function PersonalizedInsights({
             {/* Role-specific bullet examples */}
             {roleConfig.bulletExamples.length > 0 && (
               <div className="pt-2 border-t border-border">
-                <p className="text-xs font-medium text-foreground mb-2">{roleConfig.name} bullet example:</p>
+                <p className="text-xs font-medium text-foreground mb-2">{t('personalizedInsights.bulletExampleFor', { name: roleConfig.name })}</p>
                 <div className="p-3 rounded-lg bg-card border border-border space-y-2">
                   <div className="flex items-start gap-2">
-                    <span className="text-xs font-medium text-destructive bg-destructive/10 px-2 py-0.5 rounded">Weak</span>
+                    <span className="text-xs font-medium text-destructive bg-destructive/10 px-2 py-0.5 rounded">{t('personalizedInsights.weak')}</span>
                     <p className="text-xs text-muted-foreground line-through">{roleConfig.bulletExamples[0].weak}</p>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="text-xs font-medium text-success bg-success/10 px-2 py-0.5 rounded">Strong</span>
+                    <span className="text-xs font-medium text-success bg-success/10 px-2 py-0.5 rounded">{t('personalizedInsights.strong')}</span>
                     <p className="text-xs text-foreground">{roleConfig.bulletExamples[0].strong}</p>
                   </div>
                 </div>
@@ -161,7 +163,7 @@ export function PersonalizedInsights({
 
             {/* Key metrics for role */}
             <div className="pt-2 border-t border-border">
-              <p className="text-xs font-medium text-foreground mb-2">Key metrics to include:</p>
+              <p className="text-xs font-medium text-foreground mb-2">{t('personalizedInsights.keyMetricsToInclude')}</p>
               <div className="flex flex-wrap gap-1">
                 {roleConfig.keyMetrics.map((metric, i) => (
                   <span key={i} className="px-2 py-0.5 rounded bg-success/10 text-success text-xs">
@@ -173,7 +175,7 @@ export function PersonalizedInsights({
 
             {/* Common mistakes for role */}
             <div className="pt-2 border-t border-border">
-              <p className="text-xs font-medium text-destructive mb-2">Common {roleConfig.name} mistakes:</p>
+              <p className="text-xs font-medium text-destructive mb-2">{t('personalizedInsights.commonMistakesFor', { name: roleConfig.name })}</p>
               <div className="space-y-1">
                 {roleConfig.commonMistakes.slice(0, 2).map((mistake, i) => (
                   <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -213,22 +215,22 @@ export function PersonalizedInsights({
         <div className="p-4 rounded-lg bg-card border border-border">
           <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
             <BarChart3 className="w-4 h-4 text-primary" />
-            How You Compare in {industryConfig.name}
+            {t('personalizedInsights.howYouCompareIn', { name: industryConfig.name })}
           </h4>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Your Score</span>
+              <span className="text-muted-foreground">{t('personalizedInsights.yourScore')}</span>
               <span className={cn(
                 "font-bold",
                 atsScore >= 70 ? "text-success" : atsScore >= 50 ? "text-amber-500" : "text-destructive"
               )}>{atsScore}%</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{industryConfig.name} Average</span>
+              <span className="text-muted-foreground">{t('personalizedInsights.industryAverage', { name: industryConfig.name })}</span>
               <span className="font-medium text-foreground">{industryConfig.industryBenchmarks.avgScore}%</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Top Performers</span>
+              <span className="text-muted-foreground">{t('personalizedInsights.topPerformers')}</span>
               <span className="font-medium text-success">{industryConfig.industryBenchmarks.topScore}%</span>
             </div>
             <div className={cn(
@@ -237,9 +239,9 @@ export function PersonalizedInsights({
               benchmarkComparison === 'average' ? "bg-amber-500/10 text-amber-600" :
               "bg-destructive/10 text-destructive"
             )}>
-              {benchmarkComparison === 'top' && "Above-average ATS readiness for your industry."}
-              {benchmarkComparison === 'average' && "Around the ATS average for your industry."}
-              {benchmarkComparison === 'below' && "Below the ATS average for your industry (fixable)."}
+              {benchmarkComparison === 'top' && t('personalizedInsights.benchmarkTop')}
+              {benchmarkComparison === 'average' && t('personalizedInsights.benchmarkAverage')}
+              {benchmarkComparison === 'below' && t('personalizedInsights.benchmarkBelow')}
             </div>
           </div>
         </div>
@@ -249,7 +251,7 @@ export function PersonalizedInsights({
       <div className="space-y-3">
         <h4 className="font-semibold text-foreground flex items-center gap-2">
           <Target className="w-4 h-4 text-primary" />
-          Your Top Priorities
+          {t('personalizedInsights.yourTopPriorities')}
         </h4>
         <div className="space-y-2">
           {priorities.map((priority, i) => (
@@ -280,7 +282,7 @@ export function PersonalizedInsights({
         <div className="space-y-3">
           <h4 className="font-semibold text-foreground flex items-center gap-2">
             <XCircle className="w-4 h-4 text-destructive" />
-            Common {industryConfig.name} Resume Mistakes
+            {t('personalizedInsights.commonIndustryMistakes', { name: industryConfig.name })}
           </h4>
           <div className="grid gap-2">
             {industryConfig.commonMistakes.slice(0, 3).map((mistake, i) => (
@@ -298,17 +300,17 @@ export function PersonalizedInsights({
         <div className="space-y-3">
           <h4 className="font-semibold text-foreground flex items-center gap-2">
             <ArrowRight className="w-4 h-4 text-primary" />
-            {industryConfig.name} Bullet Examples
+            {t('personalizedInsights.industryBulletExamples', { name: industryConfig.name })}
           </h4>
           <div className="space-y-3">
             {industryConfig.bulletExamples.slice(0, 2).map((example, i) => (
               <div key={i} className="p-3 rounded-lg bg-card border border-border space-y-2">
                 <div className="flex items-start gap-2">
-                  <span className="text-xs font-medium text-destructive bg-destructive/10 px-2 py-0.5 rounded">Weak</span>
+                  <span className="text-xs font-medium text-destructive bg-destructive/10 px-2 py-0.5 rounded">{t('personalizedInsights.weak')}</span>
                   <p className="text-sm text-muted-foreground line-through">{example.weak}</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-xs font-medium text-success bg-success/10 px-2 py-0.5 rounded">Strong</span>
+                  <span className="text-xs font-medium text-success bg-success/10 px-2 py-0.5 rounded">{t('personalizedInsights.strong')}</span>
                   <p className="text-sm text-foreground">{example.strong}</p>
                 </div>
               </div>
@@ -321,7 +323,7 @@ export function PersonalizedInsights({
       <div className="space-y-3">
         <h4 className="font-semibold text-foreground flex items-center gap-2">
           <Briefcase className="w-4 h-4 text-primary" />
-          {industryConfig.name} Resume Tips
+          {t('personalizedInsights.industryResumeTips', { name: industryConfig.name })}
         </h4>
         <div className="grid gap-2">
           {industryConfig.resumeTips.slice(0, 3).map((tip, i) => (
@@ -341,9 +343,9 @@ export function PersonalizedInsights({
         <div className="space-y-3">
           <h4 className="font-semibold text-foreground flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-primary" />
-            Key Metrics for {industryConfig.name}
+            {t('personalizedInsights.keyMetricsFor', { name: industryConfig.name })}
           </h4>
-          <p className="text-xs text-muted-foreground">Include these numbers in your bullets:</p>
+          <p className="text-xs text-muted-foreground">{t('personalizedInsights.includeNumbersHelper')}</p>
           <div className="flex flex-wrap gap-2">
             {industryConfig.keyMetrics.map((metric, i) => (
               <span 
@@ -362,7 +364,7 @@ export function PersonalizedInsights({
         <div className="space-y-3">
           <h4 className="font-semibold text-foreground flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-primary" />
-            Power Verbs for {industryConfig.name}
+            {t('personalizedInsights.powerVerbsFor', { name: industryConfig.name })}
           </h4>
           <div className="flex flex-wrap gap-2">
             {industryConfig.strongActionVerbs.map((verb, i) => (
@@ -381,7 +383,7 @@ export function PersonalizedInsights({
       <div className="space-y-3">
         <h4 className="font-semibold text-foreground flex items-center gap-2">
           <GraduationCap className="w-4 h-4 text-primary" />
-          {levelLabel} Focus Areas
+          {t('personalizedInsights.focusAreasFor', { level: levelLabel })}
         </h4>
         <div className="p-3 rounded-lg bg-card border border-border">
           <p className="text-sm font-medium text-foreground mb-2">
@@ -389,7 +391,7 @@ export function PersonalizedInsights({
           </p>
           <div className="grid sm:grid-cols-2 gap-2 mt-3">
             <div>
-              <p className="text-xs font-medium text-success mb-1">✓ Emphasize</p>
+              <p className="text-xs font-medium text-success mb-1">✓ {t('personalizedInsights.emphasize')}</p>
               <ul className="text-xs text-muted-foreground space-y-1">
                 {expConfig.focusAreas.slice(0, 3).map((area, i) => (
                   <li key={i}>• {area}</li>
@@ -397,7 +399,7 @@ export function PersonalizedInsights({
               </ul>
             </div>
             <div>
-              <p className="text-xs font-medium text-destructive mb-1">✗ Minimize</p>
+              <p className="text-xs font-medium text-destructive mb-1">✗ {t('personalizedInsights.minimize')}</p>
               <ul className="text-xs text-muted-foreground space-y-1">
                 {expConfig.avoidAreas.slice(0, 3).map((area, i) => (
                   <li key={i}>• {area}</li>
@@ -415,7 +417,7 @@ export function PersonalizedInsights({
       <div className="space-y-3">
         <h4 className="font-semibold text-foreground flex items-center gap-2">
           <BookOpen className="w-4 h-4 text-primary" />
-          Industry Keywords to Include
+          {t('personalizedInsights.industryKeywordsToInclude')}
         </h4>
         <div className="flex flex-wrap gap-2">
           {industryConfig.keywords.slice(0, 8).map((keyword, i) => (
@@ -429,7 +431,7 @@ export function PersonalizedInsights({
         </div>
         {industryConfig.certifications.length > 0 && industryConfig.certifications[0] !== 'Varies by field' && (
           <div className="mt-2">
-            <p className="text-xs text-muted-foreground mb-1">Valuable certifications:</p>
+            <p className="text-xs text-muted-foreground mb-1">{t('personalizedInsights.valuableCertifications')}</p>
             <div className="flex flex-wrap gap-1">
               {industryConfig.certifications.slice(0, 4).map((cert, i) => (
                 <span 
@@ -449,7 +451,7 @@ export function PersonalizedInsights({
         <div className="flex items-center gap-2 text-sm">
           <TrendingUp className="w-4 h-4 text-primary" />
           <span className="text-muted-foreground">
-            Recommended resume length: <span className="font-medium text-foreground">{expConfig.resumeLengthPages} page{expConfig.resumeLengthPages > 1 ? 's' : ''}</span> for {levelLabel.toLowerCase()} professionals
+            {t('personalizedInsights.recommendedLength', { count: expConfig.resumeLengthPages, level: levelLabel.toLowerCase() })}
           </span>
         </div>
       </div>

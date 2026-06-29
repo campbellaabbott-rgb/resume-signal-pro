@@ -1331,6 +1331,87 @@
       "careerPath": "Career Path"
     }
   },
+  "personalization": {
+    "experience": {
+      "entry": {
+        "focusAreas": ["Education and relevant coursework", "Internships and project experience", "Transferable skills from any work", "Technical skills and tools learned"],
+        "avoidAreas": ["Objective statements (use summary instead)", "High school information (unless recent grad)", "Unrelated jobs without transferable skills"],
+        "keyMessage": "Show potential and eagerness to learn",
+        "quantificationTip": "Even entry-level work has numbers: customers served, projects completed, hours volunteered"
+      },
+      "mid": {
+        "focusAreas": ["Concrete achievements with metrics", "Growing responsibility and leadership", "Specialized skills development", "Cross-functional collaboration"],
+        "avoidAreas": ["Entry-level tasks (focus on growth)", "Too much detail on older roles", "Skills that are now expected (basic software)"],
+        "keyMessage": "Demonstrate consistent growth and impact",
+        "quantificationTip": "Show progression: increased responsibilities, bigger projects, larger budgets"
+      },
+      "senior": {
+        "focusAreas": ["Leadership and team development", "Strategic initiatives and outcomes", "Cross-departmental impact", "Mentoring and knowledge transfer"],
+        "avoidAreas": ["Tactical details (focus on strategy)", "Roles from 15+ years ago in detail", "Skills that should be assumed at your level"],
+        "keyMessage": "Show strategic thinking and leadership impact",
+        "quantificationTip": "Focus on team size, budget managed, revenue influenced, org-wide impact"
+      },
+      "executive": {
+        "focusAreas": ["P&L responsibility and business outcomes", "Transformation and change leadership", "Board and stakeholder management", "Vision setting and culture building"],
+        "avoidAreas": ["Tactical execution details", "Skills lists (assumed at C-level)", "Early career details beyond titles"],
+        "keyMessage": "Show business transformation and vision",
+        "quantificationTip": "Revenue, market share, valuation, M&A deals, organizational scale"
+      }
+    },
+    "geographic": {
+      "us": { "name": "United States" },
+      "uk": { "name": "United Kingdom" },
+      "eu": { "name": "European Union" },
+      "de": { "name": "Germany" },
+      "au": { "name": "Australia" },
+      "in": { "name": "India" },
+      "ca": { "name": "Canada" },
+      "latam": { "name": "Latin America" },
+      "br": { "name": "Brazil" },
+      "mx": { "name": "Mexico" }
+    }
+  },
+  "personalizedInsights": {
+    "personalizedForYou": "Personalized for You",
+    "in": "in",
+    "formatSuffix": "format",
+    "autoDetected": "Auto-detected",
+    "levels": {
+      "entry": "Entry Level",
+      "mid": "Mid-Level",
+      "senior": "Senior",
+      "executive": "Executive",
+      "professional": "Professional"
+    },
+    "resumeTipsFor": "{{name}} Resume Tips",
+    "mustHaveKeywordsFor": "Must-have keywords for {{name}}:",
+    "bulletExampleFor": "{{name}} bullet example:",
+    "weak": "Weak",
+    "strong": "Strong",
+    "keyMetricsToInclude": "Key metrics to include:",
+    "commonMistakesFor": "Common {{name}} mistakes:",
+    "howYouCompareIn": "How You Compare in {{name}}",
+    "yourScore": "Your Score",
+    "industryAverage": "{{name}} Average",
+    "topPerformers": "Top Performers",
+    "benchmarkTop": "Above-average ATS readiness for your industry.",
+    "benchmarkAverage": "Around the ATS average for your industry.",
+    "benchmarkBelow": "Below the ATS average for your industry (fixable).",
+    "yourTopPriorities": "Your Top Priorities",
+    "commonIndustryMistakes": "Common {{name}} Resume Mistakes",
+    "industryBulletExamples": "{{name}} Bullet Examples",
+    "industryResumeTips": "{{name}} Resume Tips",
+    "keyMetricsFor": "Key Metrics for {{name}}",
+    "includeNumbersHelper": "Include these numbers in your bullets:",
+    "powerVerbsFor": "Power Verbs for {{name}}",
+    "focusAreasFor": "{{level}} Focus Areas",
+    "emphasize": "Emphasize",
+    "minimize": "Minimize",
+    "industryKeywordsToInclude": "Industry Keywords to Include",
+    "valuableCertifications": "Valuable certifications:",
+    "recommendedLength_one": "Recommended resume length: {{count}} page for {{level}} professionals",
+    "recommendedLength_other": "Recommended resume length: {{count}} pages for {{level}} professionals"
+  },
   "trustPage": {
     "metaTitle": "Trust & Security — Resume Booster",
     "metaDescription": "256-bit encryption, no permanent resume storage, GDPR-aligned data handling. See how we keep your data safe.",

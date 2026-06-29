@@ -1,4 +1,15 @@
 // Personalization configuration for industry-specific and experience-level advice
+//
+// Translation note: the bulk of this file (INDUSTRY_CONFIGS, ROLE_CONFIGS) is
+// still English-only by design — it's a very large dataset (15 industries,
+// 92 roles) and translating it is tracked as a separate, phased effort.
+// EXPERIENCE_CONFIGS and the GeographicConfig.name field ARE translated: the
+// getExperienceAdvice/getGeographicAdvice getters accept an optional i18next
+// `t` function and look up `personalization.experience.<level>.<field>` /
+// `personalization.geographic.<region>.name`, falling back to the English
+// literal below via `defaultValue` when no `t` is passed or a key is missing.
+
+type TFn = (key: string, options?: Record<string, unknown>) => unknown;
 
 export interface IndustryConfig {
   name: string;
@@ -592,23 +603,31 @@ export function getIndustryAdvice(industry: string): IndustryConfig {
 }
 
 // Get personalized advice based on experience level
-export function getExperienceAdvice(level: string): ExperienceLevelConfig {
+export function getExperienceAdvice(level: string, t?: TFn): ExperienceLevelConfig {
   const normalizedLevel = level.toLowerCase();
-  
+
+  let config: ExperienceLevelConfig;
   if (normalizedLevel.includes('entry') || normalizedLevel.includes('junior') || normalizedLevel.includes('0-2')) {
-    return EXPERIENCE_CONFIGS.entry;
+    config = EXPERIENCE_CONFIGS.entry;
+  } else if (normalizedLevel.includes('mid') || normalizedLevel.includes('3-')) {
+    config = EXPERIENCE_CONFIGS.mid;
+  } else if (normalizedLevel.includes('senior') || normalizedLevel.includes('7-') || normalizedLevel.includes('8-')) {
+    config = EXPERIENCE_CONFIGS.senior;
+  } else if (normalizedLevel.includes('executive') || normalizedLevel.includes('director') || normalizedLevel.includes('vp') || normalizedLevel.includes('c-level')) {
+    config = EXPERIENCE_CONFIGS.executive;
+  } else {
+    config = EXPERIENCE_CONFIGS.mid; // Default to mid if unclear
   }
-  if (normalizedLevel.includes('mid') || normalizedLevel.includes('3-')) {
-    return EXPERIENCE_CONFIGS.mid;
-  }
-  if (normalizedLevel.includes('senior') || normalizedLevel.includes('7-') || normalizedLevel.includes('8-')) {
-    return EXPERIENCE_CONFIGS.senior;
-  }
-  if (normalizedLevel.includes('executive') || normalizedLevel.includes('director') || normalizedLevel.includes('vp') || normalizedLevel.includes('c-level')) {
-    return EXPERIENCE_CONFIGS.executive;
-  }
-  
-  return EXPERIENCE_CONFIGS.mid; // Default to mid if unclear
+
+  if (!t) return config;
+
+  return {
+    ...config,
+    focusAreas: t(`personalization.experience.${config.level}.focusAreas`, { returnObjects: true, defaultValue: config.focusAreas }) as string[],
+    avoidAreas: t(`personalization.experience.${config.level}.avoidAreas`, { returnObjects: true, defaultValue: config.avoidAreas }) as string[],
+    keyMessage: t(`personalization.experience.${config.level}.keyMessage`, { defaultValue: config.keyMessage }) as string,
+    quantificationTip: t(`personalization.experience.${config.level}.quantificationTip`, { defaultValue: config.quantificationTip }) as string,
+  };
 }
 
 // Generate personalized improvement priorities
@@ -3684,7 +3703,14 @@ export function detectUserRegion(): string {
 }
 
 // Get geographic advice based on region
-export function getGeographicAdvice(region?: string): GeographicConfig {
+export function getGeographicAdvice(region?: string, t?: TFn): GeographicConfig {
   const detectedRegion = region || detectUserRegion();
-  return GEOGRAPHIC_CONFIGS[detectedRegion] || GEOGRAPHIC_CONFIGS.us;
+  const config = GEOGRAPHIC_CONFIGS[detectedRegion] || GEOGRAPHIC_CONFIGS.us;
+
+  if (!t) return config;
+
+  return {
+    ...config,
+    name: t(`personalization.geographic.${config.region}.name`, { defaultValue: config.name }) as string,
+  };
 }

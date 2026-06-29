@@ -1147,6 +1147,87 @@
     "viewAllProducts": "Bekijk alle producten",
     "addOnNames": { "resumeRoast": "Cv-Roast", "interviewCoach": "Interviewcoach", "careerPath": "Carrièrepad" }
   },
+  "personalization": {
+    "experience": {
+      "entry": {
+        "focusAreas": ["Opleiding en relevante vakken", "Stages en projectervaring", "Overdraagbare vaardigheden uit elk werk", "Geleerde technische vaardigheden en tools"],
+        "avoidAreas": ["Doelstellingen (gebruik in plaats daarvan een samenvatting)", "Middelbare school-informatie (tenzij recent afgestudeerd)", "Niet-gerelateerde banen zonder overdraagbare vaardigheden"],
+        "keyMessage": "Toon potentieel en leergierigheid",
+        "quantificationTip": "Zelfs starterswerk heeft cijfers: bediende klanten, afgeronde projecten, vrijwilligersuren"
+      },
+      "mid": {
+        "focusAreas": ["Concrete prestaties met statistieken", "Groeiende verantwoordelijkheid en leiderschap", "Ontwikkeling van gespecialiseerde vaardigheden", "Cross-functionele samenwerking"],
+        "avoidAreas": ["Taken op startersniveau (focus op groei)", "Te veel details over oudere functies", "Vaardigheden die nu verwacht worden (basissoftware)"],
+        "keyMessage": "Toon consistente groei en impact",
+        "quantificationTip": "Toon progressie: toegenomen verantwoordelijkheden, grotere projecten, grotere budgetten"
+      },
+      "senior": {
+        "focusAreas": ["Leiderschap en teamontwikkeling", "Strategische initiatieven en resultaten", "Afdelingsoverschrijdende impact", "Mentorschap en kennisoverdracht"],
+        "avoidAreas": ["Tactische details (focus op strategie)", "Functies van 15+ jaar geleden in detail", "Vaardigheden die op jouw niveau verondersteld zouden moeten worden"],
+        "keyMessage": "Toon strategisch denken en leiderschapsimpact",
+        "quantificationTip": "Focus op teamgrootte, beheerd budget, beïnvloede omzet, organisatiebrede impact"
+      },
+      "executive": {
+        "focusAreas": ["P&L-verantwoordelijkheid en bedrijfsresultaten", "Transformatie en verandermanagement", "Bestuurs- en stakeholdermanagement", "Visie bepalen en cultuur opbouwen"],
+        "avoidAreas": ["Tactische uitvoeringsdetails", "Vaardighedenlijsten (verondersteld op C-niveau)", "Vroege carrièredetails buiten functietitels"],
+        "keyMessage": "Toon bedrijfstransformatie en visie",
+        "quantificationTip": "Omzet, marktaandeel, waardering, fusies en overnames, organisatieschaal"
+      }
+    },
+    "geographic": {
+      "us": { "name": "Verenigde Staten" },
+      "uk": { "name": "Verenigd Koninkrijk" },
+      "eu": { "name": "Europese Unie" },
+      "de": { "name": "Duitsland" },
+      "au": { "name": "Australië" },
+      "in": { "name": "India" },
+      "ca": { "name": "Canada" },
+      "latam": { "name": "Latijns-Amerika" },
+      "br": { "name": "Brazilië" },
+      "mx": { "name": "Mexico" }
+    }
+  },
+  "personalizedInsights": {
+    "personalizedForYou": "Voor jou gepersonaliseerd",
+    "in": "als",
+    "formatSuffix": "formaat",
+    "autoDetected": "Automatisch gedetecteerd",
+    "levels": {
+      "entry": "Startersniveau",
+      "mid": "Middenniveau",
+      "senior": "Senior",
+      "executive": "Directieniveau",
+      "professional": "Professional"
+    },
+    "resumeTipsFor": "Cv-tips voor {{name}}",
+    "mustHaveKeywordsFor": "Onmisbare zoekwoorden voor {{name}}:",
+    "bulletExampleFor": "{{name}} bulletpoint-voorbeeld:",
+    "weak": "Zwak",
+    "strong": "Sterk",
+    "keyMetricsToInclude": "Belangrijke statistieken om te vermelden:",
+    "commonMistakesFor": "Veelvoorkomende {{name}}-fouten:",
+    "howYouCompareIn": "Hoe je scoort in {{name}}",
+    "yourScore": "Jouw score",
+    "industryAverage": "{{name}}-gemiddelde",
+    "topPerformers": "Topkandidaten",
+    "benchmarkTop": "Bovengemiddelde ATS-paraatheid voor jouw branche.",
+    "benchmarkAverage": "Rond het ATS-gemiddelde voor jouw branche.",
+    "benchmarkBelow": "Onder het ATS-gemiddelde voor jouw branche (oplosbaar).",
+    "yourTopPriorities": "Jouw belangrijkste prioriteiten",
+    "commonIndustryMistakes": "Veelvoorkomende cv-fouten in {{name}}",
+    "industryBulletExamples": "{{name}} bulletpoint-voorbeelden",
+    "industryResumeTips": "Cv-tips voor {{name}}",
+    "keyMetricsFor": "Belangrijke statistieken voor {{name}}",
+    "includeNumbersHelper": "Vermeld deze cijfers in je bulletpoints:",
+    "powerVerbsFor": "Krachtige werkwoorden voor {{name}}",
+    "focusAreasFor": "Focusgebieden voor {{level}}",
+    "emphasize": "Benadrukken",
+    "minimize": "Minimaliseren",
+    "industryKeywordsToInclude": "Branchezoekwoorden om te vermelden",
+    "valuableCertifications": "Waardevolle certificeringen:",
+    "recommendedLength_one": "Aanbevolen cv-lengte: {{count}} pagina voor {{level}} professionals",
+    "recommendedLength_other": "Aanbevolen cv-lengte: {{count}} pagina's voor {{level}} professionals"
+  },
   "trustPage": {
     "metaTitle": "Vertrouwen & Beveiliging — Resume Booster",
     "metaDescription": "256-bit versleuteling, geen permanente opslag van je cv, AVG-conforme gegevensverwerking. Ontdek hoe we jouw gegevens veilig houden.",

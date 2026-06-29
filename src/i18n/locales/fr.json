@@ -1147,6 +1147,87 @@
     "viewAllProducts": "Voir tous les produits",
     "addOnNames": { "resumeRoast": "Critique de CV", "interviewCoach": "Coach d'entretien", "careerPath": "Parcours de carrière" }
   },
+  "personalization": {
+    "experience": {
+      "entry": {
+        "focusAreas": ["Formation et cours pertinents", "Stages et expérience de projet", "Compétences transférables de tout emploi", "Compétences techniques et outils appris"],
+        "avoidAreas": ["Déclarations d'objectifs (utilisez plutôt un résumé)", "Informations sur le lycée (sauf diplômé récent)", "Emplois non liés sans compétences transférables"],
+        "keyMessage": "Montrez votre potentiel et votre envie d'apprendre",
+        "quantificationTip": "Même un poste de débutant a des chiffres : clients servis, projets terminés, heures de bénévolat"
+      },
+      "mid": {
+        "focusAreas": ["Réalisations concrètes avec des indicateurs", "Responsabilité et leadership croissants", "Développement de compétences spécialisées", "Collaboration interfonctionnelle"],
+        "avoidAreas": ["Tâches de niveau débutant (concentrez-vous sur la croissance)", "Trop de détails sur les anciens postes", "Compétences désormais attendues (logiciels de base)"],
+        "keyMessage": "Démontrez une croissance et un impact constants",
+        "quantificationTip": "Montrez la progression : responsabilités accrues, projets plus importants, budgets plus importants"
+      },
+      "senior": {
+        "focusAreas": ["Leadership et développement d'équipe", "Initiatives stratégiques et résultats", "Impact interdépartemental", "Mentorat et transfert de connaissances"],
+        "avoidAreas": ["Détails tactiques (concentrez-vous sur la stratégie)", "Postes datant de 15+ ans en détail", "Compétences qui devraient être présumées à votre niveau"],
+        "keyMessage": "Montrez une réflexion stratégique et un impact de leadership",
+        "quantificationTip": "Concentrez-vous sur la taille de l'équipe, le budget géré, le chiffre d'affaires influencé, l'impact à l'échelle de l'organisation"
+      },
+      "executive": {
+        "focusAreas": ["Responsabilité du P&L et résultats commerciaux", "Transformation et conduite du changement", "Gestion du conseil d'administration et des parties prenantes", "Définition de la vision et construction de la culture"],
+        "avoidAreas": ["Détails d'exécution tactique", "Listes de compétences (présumées au niveau C)", "Détails de début de carrière au-delà des titres"],
+        "keyMessage": "Montrez la transformation commerciale et la vision",
+        "quantificationTip": "Chiffre d'affaires, part de marché, valorisation, transactions M&A, échelle organisationnelle"
+      }
+    },
+    "geographic": {
+      "us": { "name": "États-Unis" },
+      "uk": { "name": "Royaume-Uni" },
+      "eu": { "name": "Union européenne" },
+      "de": { "name": "Allemagne" },
+      "au": { "name": "Australie" },
+      "in": { "name": "Inde" },
+      "ca": { "name": "Canada" },
+      "latam": { "name": "Amérique latine" },
+      "br": { "name": "Brésil" },
+      "mx": { "name": "Mexique" }
+    }
+  },
+  "personalizedInsights": {
+    "personalizedForYou": "Personnalisé pour vous",
+    "in": "en tant que",
+    "formatSuffix": "format",
+    "autoDetected": "Détecté automatiquement",
+    "levels": {
+      "entry": "Niveau débutant",
+      "mid": "Niveau intermédiaire",
+      "senior": "Senior",
+      "executive": "Cadre dirigeant",
+      "professional": "Professionnel"
+    },
+    "resumeTipsFor": "Conseils de CV pour {{name}}",
+    "mustHaveKeywordsFor": "Mots-clés indispensables pour {{name}} :",
+    "bulletExampleFor": "Exemple de puce pour {{name}} :",
+    "weak": "Faible",
+    "strong": "Fort",
+    "keyMetricsToInclude": "Indicateurs clés à inclure :",
+    "commonMistakesFor": "Erreurs courantes pour {{name}} :",
+    "howYouCompareIn": "Comment vous vous comparez en {{name}}",
+    "yourScore": "Votre score",
+    "industryAverage": "Moyenne {{name}}",
+    "topPerformers": "Meilleurs candidats",
+    "benchmarkTop": "Préparation ATS supérieure à la moyenne pour votre secteur.",
+    "benchmarkAverage": "Autour de la moyenne ATS pour votre secteur.",
+    "benchmarkBelow": "En dessous de la moyenne ATS pour votre secteur (corrigible).",
+    "yourTopPriorities": "Vos principales priorités",
+    "commonIndustryMistakes": "Erreurs courantes de CV en {{name}}",
+    "industryBulletExamples": "Exemples de puces pour {{name}}",
+    "industryResumeTips": "Conseils de CV pour {{name}}",
+    "keyMetricsFor": "Indicateurs clés pour {{name}}",
+    "includeNumbersHelper": "Incluez ces chiffres dans vos puces :",
+    "powerVerbsFor": "Verbes percutants pour {{name}}",
+    "focusAreasFor": "Domaines d'attention pour {{level}}",
+    "emphasize": "Mettre l'accent sur",
+    "minimize": "Minimiser",
+    "industryKeywordsToInclude": "Mots-clés sectoriels à inclure",
+    "valuableCertifications": "Certifications précieuses :",
+    "recommendedLength_one": "Longueur de CV recommandée : {{count}} page pour les professionnels de niveau {{level}}",
+    "recommendedLength_other": "Longueur de CV recommandée : {{count}} pages pour les professionnels de niveau {{level}}"
+  },
   "trustPage": {
     "metaTitle": "Confiance et sécurité — Resume Booster",
     "metaDescription": "Chiffrement 256 bits, aucun stockage permanent du CV, traitement des données conforme au RGPD. Découvrez comment nous protégeons vos données.",
