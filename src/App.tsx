@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { FloatingHelpButton } from "./components/FloatingHelpButton";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { LanguageDebugBanner } from "./components/LanguageDebugBanner";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 // Index is the landing page almost every visitor hits first, so it stays eagerly
 // imported. Every other route is lazy-loaded so visitors to "/" aren't downloading
@@ -34,6 +35,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const queryClient = new QueryClient();
 
 const App = () => (
+  <ErrorBoundary>
   <QueryClientProvider client={queryClient}>
     <Toaster />
     <Sonner />
@@ -68,6 +70,7 @@ const App = () => (
       <LanguageDebugBanner />
     </BrowserRouter>
   </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

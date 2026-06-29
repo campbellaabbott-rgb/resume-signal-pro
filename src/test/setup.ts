@@ -1,5 +1,22 @@
 import "@testing-library/jest-dom/vitest";
 import { afterAll, afterEach } from "vitest";
+
+// The Claude Code harness passes --localstorage-file without a valid path,
+// which causes jsdom to replace window.localStorage with a broken stub that
+// lacks standard methods (clear, key, length). Install a working in-memory
+// implementation unconditionally so all tests get a reliable localStorage.
+if (typeof window !== "undefined") {
+  const store: Record<string, string> = {};
+  const localStorageMock: Storage = {
+    getItem: (k) => store[k] ?? null,
+    setItem: (k, v) => { store[k] = String(v); },
+    removeItem: (k) => { delete store[k]; },
+    clear: () => { Object.keys(store).forEach((k) => delete store[k]); },
+    get length() { return Object.keys(store).length; },
+    key: (i) => Object.keys(store)[i] ?? null,
+  };
+  Object.defineProperty(window, "localStorage", { value: localStorageMock, writable: true });
+}
 import { readdirSync, unlinkSync } from "fs";
 
 // jsdom doesn't implement window.matchMedia at all — any component using the
