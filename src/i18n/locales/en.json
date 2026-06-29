@@ -706,13 +706,34 @@
     "live": "Live",
     "securityNote": "Your resume is analyzed securely and never stored",
     "stages": {
-      "parsing": { "label": "Parsing Resume", "description": "Extracting text and structure" },
-      "industry": { "label": "Detecting Industry", "description": "Identifying your field & role" },
-      "ats": { "label": "Running ATS Simulation", "description": "Testing against 50+ ATS systems" },
-      "keywords": { "label": "Analyzing Keywords", "description": "Matching industry-specific terms" },
-      "scoring": { "label": "Scoring & Benchmarking", "description": "Comparing against top candidates" },
-      "ai": { "label": "AI Deep Analysis", "description": "Generating personalized insights" },
-      "report": { "label": "Building Your Report", "description": "Compiling actionable recommendations" }
+      "parsing": {
+        "label": "Parsing Resume",
+        "description": "Extracting text and structure"
+      },
+      "industry": {
+        "label": "Detecting Industry",
+        "description": "Identifying your field & role"
+      },
+      "ats": {
+        "label": "Running ATS Simulation",
+        "description": "Testing against 50+ ATS systems"
+      },
+      "keywords": {
+        "label": "Analyzing Keywords",
+        "description": "Matching industry-specific terms"
+      },
+      "scoring": {
+        "label": "Scoring & Benchmarking",
+        "description": "Comparing against top candidates"
+      },
+      "ai": {
+        "label": "AI Deep Analysis",
+        "description": "Generating personalized insights"
+      },
+      "report": {
+        "label": "Building Your Report",
+        "description": "Compiling actionable recommendations"
+      }
     },
     "tips": {
       "numbers": "💡 Tip: Resumes with numbers get 40% more callbacks",
@@ -1087,24 +1108,63 @@
     },
     "ctaCopy": {
       "coverLetter": {
-        "control": { "button": "Generate Cover Letter — {{price}}", "description": "AI-generated cover letter tailored to your resume and target job. Ready to send in minutes." },
-        "benefitFocused": { "button": "Get Your Interview-Winning Letter", "description": "Stand out from 100+ applicants with a personalized cover letter that gets recruiters excited." },
-        "scarcity": { "button": "Create Cover Letter Now — {{price}}", "description": "Most applicants skip cover letters. Get ahead of the competition with a custom letter in 2 minutes." }
+        "control": {
+          "button": "Generate Cover Letter — {{price}}",
+          "description": "AI-generated cover letter tailored to your resume and target job. Ready to send in minutes."
+        },
+        "benefitFocused": {
+          "button": "Get Your Interview-Winning Letter",
+          "description": "Stand out from 100+ applicants with a personalized cover letter that gets recruiters excited."
+        },
+        "scarcity": {
+          "button": "Create Cover Letter Now — {{price}}",
+          "description": "Most applicants skip cover letters. Get ahead of the competition with a custom letter in 2 minutes."
+        }
       },
       "keywordFix": {
-        "control": { "button": "Get Full Keyword Report", "headline": "Want 50+ Industry Keywords?" },
-        "benefitFocused": { "button": "Unlock Hidden Keywords", "headline": "Get Past the ATS Filter" },
-        "scarcity": { "button": "Get Keywords Before Others Do", "headline": "Beat 87% of Applicants" }
+        "control": {
+          "button": "Get Full Keyword Report",
+          "headline": "Want 50+ Industry Keywords?"
+        },
+        "benefitFocused": {
+          "button": "Unlock Hidden Keywords",
+          "headline": "Get Past the ATS Filter"
+        },
+        "scarcity": {
+          "button": "Get Keywords Before Others Do",
+          "headline": "Beat 87% of Applicants"
+        }
       },
       "premiumPackage": {
-        "control": { "button": "Buy Premium Package — {{price}}", "headline": "Premium Resume Package", "subtext": "Everything you need to land interviews" },
-        "benefitFocused": { "button": "Get Interview-Ready Now", "headline": "Land Your Dream Job Faster", "subtext": "3x more interview callbacks with our complete package" },
-        "scarcity": { "button": "Claim Your Package — Limited", "headline": "Premium Resume Package", "subtext": "Join 10,000+ who landed interviews this month" }
+        "control": {
+          "button": "Buy Premium Package — {{price}}",
+          "headline": "Premium Resume Package",
+          "subtext": "Everything you need to land interviews"
+        },
+        "benefitFocused": {
+          "button": "Get Interview-Ready Now",
+          "headline": "Land Your Dream Job Faster",
+          "subtext": "3x more interview callbacks with our complete package"
+        },
+        "scarcity": {
+          "button": "Claim Your Package — Limited",
+          "headline": "Premium Resume Package",
+          "subtext": "Join 10,000+ who landed interviews this month"
+        }
       },
       "tailoredResume": {
-        "control": { "button": "Preview Tailored Resume", "description": "Preview for free, then unlock the full Premium Package with tailored resume + cover letter" },
-        "benefitFocused": { "button": "See Your Improved Resume", "description": "See exactly how your resume will look when optimized for your target role" },
-        "scarcity": { "button": "Generate Before It Closes", "description": "Limited preview available — see your tailored resume before upgrading" }
+        "control": {
+          "button": "Preview Tailored Resume",
+          "description": "Preview for free, then unlock the full Premium Package with tailored resume + cover letter"
+        },
+        "benefitFocused": {
+          "button": "See Your Improved Resume",
+          "description": "See exactly how your resume will look when optimized for your target role"
+        },
+        "scarcity": {
+          "button": "Generate Before It Closes",
+          "description": "Limited preview available — see your tailored resume before upgrading"
+        }
       }
     },
     "addJobDescriptionToUnlock": "Add a job description above to unlock",
@@ -1241,7 +1301,11 @@
       "colorAcceptable": "✓ Acceptable",
       "colorAvoid": "✗ Avoid",
       "whatTopResumesDo": "What top {{industry}} resumes do:",
-      "importance": { "must": "Must", "rec": "Rec", "opt": "Opt" },
+      "importance": {
+        "must": "Must",
+        "rec": "Rec",
+        "opt": "Opt"
+      },
       "avoidForIndustry": "Avoid for {{industry}}:",
       "idealTemplate": "Ideal template: "
     },
@@ -1324,8 +1388,17 @@
       "keywordCoverage": "Keyword Coverage",
       "formattingScore": "Formatting Score"
     },
-    "matchingSkills": ["Product Management", "Agile/Scrum", "Stakeholder Management", "Data Analysis"],
-    "missingKeywords": ["OKRs", "Product Roadmap", "A/B Testing"],
+    "matchingSkills": [
+      "Product Management",
+      "Agile/Scrum",
+      "Stakeholder Management",
+      "Data Analysis"
+    ],
+    "missingKeywords": [
+      "OKRs",
+      "Product Roadmap",
+      "A/B Testing"
+    ],
     "alignmentSuggestion": "Add specific metrics around product launches and mention experience with OKRs to strengthen alignment with this Senior PM role.",
     "detectedIssues": [
       "Contact info may not parse in older ATS",
@@ -1364,12 +1437,34 @@
     "us": "Resume Booster",
     "them": "Traditional Writer",
     "rows": {
-      "timeToResults": { "feature": "Time to results", "us": "Under 60 seconds", "them": "3-7 business days" },
-      "cost": { "feature": "Cost", "us": "$5 – $25 one-time", "them": "$150 – $500+" },
-      "atsOptimization": { "feature": "ATS optimization", "them": "Varies by writer" },
-      "keywordAnalysis": { "feature": "Keyword analysis", "us": "Industry-specific AI", "them": "Manual research" },
-      "revisions": { "feature": "Revisions included", "us": "Unlimited retries", "them": "1-2 rounds" },
-      "jobTailoring": { "feature": "Job-specific tailoring", "them": "Extra $50-100" }
+      "timeToResults": {
+        "feature": "Time to results",
+        "us": "Under 60 seconds",
+        "them": "3-7 business days"
+      },
+      "cost": {
+        "feature": "Cost",
+        "us": "$5 – $25 one-time",
+        "them": "$150 – $500+"
+      },
+      "atsOptimization": {
+        "feature": "ATS optimization",
+        "them": "Varies by writer"
+      },
+      "keywordAnalysis": {
+        "feature": "Keyword analysis",
+        "us": "Industry-specific AI",
+        "them": "Manual research"
+      },
+      "revisions": {
+        "feature": "Revisions included",
+        "us": "Unlimited retries",
+        "them": "1-2 rounds"
+      },
+      "jobTailoring": {
+        "feature": "Job-specific tailoring",
+        "them": "Extra $50-100"
+      }
     }
   },
   "finalCtaExtra": {
@@ -1528,9 +1623,18 @@
           "Re-upload to check your improved ATS score"
         ],
         "nextSteps": [
-          { "title": "Review Keywords", "description": "Check the missing keywords analysis below" },
-          { "title": "Update Resume", "description": "Add the suggested keywords to your resume" },
-          { "title": "Verify Improvement", "description": "Re-scan to see your new ATS score" }
+          {
+            "title": "Review Keywords",
+            "description": "Check the missing keywords analysis below"
+          },
+          {
+            "title": "Update Resume",
+            "description": "Add the suggested keywords to your resume"
+          },
+          {
+            "title": "Verify Improvement",
+            "description": "Re-scan to see your new ATS score"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "On This Page"
@@ -1543,9 +1647,18 @@
           "Customize the greeting and company-specific details"
         ],
         "nextSteps": [
-          { "title": "Review Letter", "description": "Read through your generated cover letter below" },
-          { "title": "Copy or Download", "description": "Get your letter in the format you need" },
-          { "title": "Submit Application", "description": "Send with your resume to apply" }
+          {
+            "title": "Review Letter",
+            "description": "Read through your generated cover letter below"
+          },
+          {
+            "title": "Copy or Download",
+            "description": "Get your letter in the format you need"
+          },
+          {
+            "title": "Submit Application",
+            "description": "Send with your resume to apply"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "On This Page"
@@ -1559,9 +1672,18 @@
           "Copy or download your new documents"
         ],
         "nextSteps": [
-          { "title": "Review Documents", "description": "Check your new resume and cover letter below" },
-          { "title": "Copy & Download", "description": "Get your documents in the format you need" },
-          { "title": "Apply Now", "description": "Submit your optimized application" }
+          {
+            "title": "Review Documents",
+            "description": "Check your new resume and cover letter below"
+          },
+          {
+            "title": "Copy & Download",
+            "description": "Get your documents in the format you need"
+          },
+          {
+            "title": "Apply Now",
+            "description": "Submit your optimized application"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "On This Page"
@@ -1575,9 +1697,18 @@
           "LinkedIn alignment tips included"
         ],
         "nextSteps": [
-          { "title": "Review Audit", "description": "Check your before/after ATS scores" },
-          { "title": "Apply Keywords", "description": "Use the keyword bank for your industry" },
-          { "title": "Copy Sections", "description": "Use the optimized resume sections" }
+          {
+            "title": "Review Audit",
+            "description": "Check your before/after ATS scores"
+          },
+          {
+            "title": "Apply Keywords",
+            "description": "Use the keyword bank for your industry"
+          },
+          {
+            "title": "Copy Sections",
+            "description": "Use the optimized resume sections"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "On This Page"
@@ -1591,9 +1722,18 @@
           "Share with friends or family if you'd like"
         ],
         "nextSteps": [
-          { "title": "Start Using Credits", "description": "Upload a resume to use your first credit" },
-          { "title": "Track Your Credits", "description": "Check 'My Credits' in the header to see your balance" },
-          { "title": "Apply to More Jobs", "description": "Use credits for each job application you target" }
+          {
+            "title": "Start Using Credits",
+            "description": "Upload a resume to use your first credit"
+          },
+          {
+            "title": "Track Your Credits",
+            "description": "Check 'My Credits' in the header to see your balance"
+          },
+          {
+            "title": "Apply to More Jobs",
+            "description": "Use credits for each job application you target"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "Credits Added to Account"
@@ -1606,9 +1746,18 @@
           "Credits never expire"
         ],
         "nextSteps": [
-          { "title": "Upload Your Resume", "description": "Go to the home page to start scanning" },
-          { "title": "Use Your Credits", "description": "Each scan uses one credit from your balance" },
-          { "title": "Check Balance", "description": "View remaining credits in 'My Credits'" }
+          {
+            "title": "Upload Your Resume",
+            "description": "Go to the home page to start scanning"
+          },
+          {
+            "title": "Use Your Credits",
+            "description": "Each scan uses one credit from your balance"
+          },
+          {
+            "title": "Check Balance",
+            "description": "View remaining credits in 'My Credits'"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "Credits Added to Account"
@@ -1622,9 +1771,18 @@
           "Created actionable priority fixes you can implement today"
         ],
         "nextSteps": [
-          { "title": "Review Your Score", "description": "See your Career Signal Score breakdown" },
-          { "title": "Understand Perception", "description": "Learn how recruiters see your career" },
-          { "title": "Apply Fixes", "description": "Implement the priority recommendations" }
+          {
+            "title": "Review Your Score",
+            "description": "See your Career Signal Score breakdown"
+          },
+          {
+            "title": "Understand Perception",
+            "description": "Learn how recruiters see your career"
+          },
+          {
+            "title": "Apply Fixes",
+            "description": "Implement the priority recommendations"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "On This Page"
@@ -1638,9 +1796,18 @@
           "Built a 30-day action plan to land your first role"
         ],
         "nextSteps": [
-          { "title": "Check Readiness", "description": "See if your resume is ready to apply" },
-          { "title": "Target Roles", "description": "Review roles that fit your background" },
-          { "title": "Follow the Plan", "description": "Execute the 30-day action plan" }
+          {
+            "title": "Check Readiness",
+            "description": "See if your resume is ready to apply"
+          },
+          {
+            "title": "Target Roles",
+            "description": "Review roles that fit your background"
+          },
+          {
+            "title": "Follow the Plan",
+            "description": "Execute the 30-day action plan"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "On This Page"
@@ -1653,9 +1820,18 @@
           "Practice these to prepare for your next interview"
         ],
         "nextSteps": [
-          { "title": "Review Questions", "description": "Go through each personalized question" },
-          { "title": "Practice Answers", "description": "Use the STAR method frameworks provided" },
-          { "title": "Build Confidence", "description": "Rehearse until you feel ready" }
+          {
+            "title": "Review Questions",
+            "description": "Go through each personalized question"
+          },
+          {
+            "title": "Practice Answers",
+            "description": "Use the STAR method frameworks provided"
+          },
+          {
+            "title": "Build Confidence",
+            "description": "Rehearse until you feel ready"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "On This Page"
@@ -1668,9 +1844,18 @@
           "Use the action steps to pursue your preferred direction"
         ],
         "nextSteps": [
-          { "title": "Explore Paths", "description": "Review your 3 career trajectory options" },
-          { "title": "Identify Gaps", "description": "See what skills you need for each path" },
-          { "title": "Plan Ahead", "description": "Follow the timeline for your chosen path" }
+          {
+            "title": "Explore Paths",
+            "description": "Review your 3 career trajectory options"
+          },
+          {
+            "title": "Identify Gaps",
+            "description": "See what skills you need for each path"
+          },
+          {
+            "title": "Plan Ahead",
+            "description": "Follow the timeline for your chosen path"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "On This Page"
@@ -1683,9 +1868,18 @@
           "You review everything and submit it yourself — nothing is sent automatically"
         ],
         "nextSteps": [
-          { "title": "Review Your Tailored Resume", "description": "Check the AI's rewrite for accuracy" },
-          { "title": "Follow the Checklist", "description": "We tell you exactly what to do next — you do the submitting" },
-          { "title": "Export & Apply", "description": "Download the resume and cover letter, then apply on the employer's site" }
+          {
+            "title": "Review Your Tailored Resume",
+            "description": "Check the AI's rewrite for accuracy"
+          },
+          {
+            "title": "Follow the Checklist",
+            "description": "We tell you exactly what to do next — you do the submitting"
+          },
+          {
+            "title": "Export & Apply",
+            "description": "Download the resume and cover letter, then apply on the employer's site"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "On This Page"
@@ -1886,41 +2080,97 @@
   "personalization": {
     "experience": {
       "entry": {
-        "focusAreas": ["Education and relevant coursework", "Internships and project experience", "Transferable skills from any work", "Technical skills and tools learned"],
-        "avoidAreas": ["Objective statements (use summary instead)", "High school information (unless recent grad)", "Unrelated jobs without transferable skills"],
+        "focusAreas": [
+          "Education and relevant coursework",
+          "Internships and project experience",
+          "Transferable skills from any work",
+          "Technical skills and tools learned"
+        ],
+        "avoidAreas": [
+          "Objective statements (use summary instead)",
+          "High school information (unless recent grad)",
+          "Unrelated jobs without transferable skills"
+        ],
         "keyMessage": "Show potential and eagerness to learn",
         "quantificationTip": "Even entry-level work has numbers: customers served, projects completed, hours volunteered"
       },
       "mid": {
-        "focusAreas": ["Concrete achievements with metrics", "Growing responsibility and leadership", "Specialized skills development", "Cross-functional collaboration"],
-        "avoidAreas": ["Entry-level tasks (focus on growth)", "Too much detail on older roles", "Skills that are now expected (basic software)"],
+        "focusAreas": [
+          "Concrete achievements with metrics",
+          "Growing responsibility and leadership",
+          "Specialized skills development",
+          "Cross-functional collaboration"
+        ],
+        "avoidAreas": [
+          "Entry-level tasks (focus on growth)",
+          "Too much detail on older roles",
+          "Skills that are now expected (basic software)"
+        ],
         "keyMessage": "Demonstrate consistent growth and impact",
         "quantificationTip": "Show progression: increased responsibilities, bigger projects, larger budgets"
       },
       "senior": {
-        "focusAreas": ["Leadership and team development", "Strategic initiatives and outcomes", "Cross-departmental impact", "Mentoring and knowledge transfer"],
-        "avoidAreas": ["Tactical details (focus on strategy)", "Roles from 15+ years ago in detail", "Skills that should be assumed at your level"],
+        "focusAreas": [
+          "Leadership and team development",
+          "Strategic initiatives and outcomes",
+          "Cross-departmental impact",
+          "Mentoring and knowledge transfer"
+        ],
+        "avoidAreas": [
+          "Tactical details (focus on strategy)",
+          "Roles from 15+ years ago in detail",
+          "Skills that should be assumed at your level"
+        ],
         "keyMessage": "Show strategic thinking and leadership impact",
         "quantificationTip": "Focus on team size, budget managed, revenue influenced, org-wide impact"
       },
       "executive": {
-        "focusAreas": ["P&L responsibility and business outcomes", "Transformation and change leadership", "Board and stakeholder management", "Vision setting and culture building"],
-        "avoidAreas": ["Tactical execution details", "Skills lists (assumed at C-level)", "Early career details beyond titles"],
+        "focusAreas": [
+          "P&L responsibility and business outcomes",
+          "Transformation and change leadership",
+          "Board and stakeholder management",
+          "Vision setting and culture building"
+        ],
+        "avoidAreas": [
+          "Tactical execution details",
+          "Skills lists (assumed at C-level)",
+          "Early career details beyond titles"
+        ],
         "keyMessage": "Show business transformation and vision",
         "quantificationTip": "Revenue, market share, valuation, M&A deals, organizational scale"
       }
     },
     "geographic": {
-      "us": { "name": "United States" },
-      "uk": { "name": "United Kingdom" },
-      "eu": { "name": "European Union" },
-      "de": { "name": "Germany" },
-      "au": { "name": "Australia" },
-      "in": { "name": "India" },
-      "ca": { "name": "Canada" },
-      "latam": { "name": "Latin America" },
-      "br": { "name": "Brazil" },
-      "mx": { "name": "Mexico" }
+      "us": {
+        "name": "United States"
+      },
+      "uk": {
+        "name": "United Kingdom"
+      },
+      "eu": {
+        "name": "European Union"
+      },
+      "de": {
+        "name": "Germany"
+      },
+      "au": {
+        "name": "Australia"
+      },
+      "in": {
+        "name": "India"
+      },
+      "ca": {
+        "name": "Canada"
+      },
+      "latam": {
+        "name": "Latin America"
+      },
+      "br": {
+        "name": "Brazil"
+      },
+      "mx": {
+        "name": "Mexico"
+      }
     }
   },
   "personalizedInsights": {
@@ -2052,16 +2302,46 @@
       }
     },
     "atsPlatforms": {
-      "0": { "description": "Section header parsing, keyword extraction, date format validation", "marketShare": "Major enterprise" },
-      "1": { "description": "Skills matching algorithms, experience level scoring, cultural fit indicators", "marketShare": "Tech & startups" },
-      "2": { "description": "Contact info validation, formatting consistency, section organization", "marketShare": "Mid-market" },
-      "3": { "description": "Keyword density analysis, job title matching, qualification scoring", "marketShare": "Fortune 500" },
-      "4": { "description": "Education parsing, certification detection, skills taxonomy matching", "marketShare": "Healthcare & retail" },
-      "5": { "description": "Resume structure analysis, experience timeline validation", "marketShare": "SMB" },
-      "6": { "description": "Keyword optimization, applicant ranking algorithms", "marketShare": "Small business" },
-      "7": { "description": "Social profile integration, referral tracking, skills assessment", "marketShare": "Enterprise" },
-      "8": { "description": "AI-powered matching, diversity indicators, global compliance", "marketShare": "Global enterprise" },
-      "9": { "description": "Staffing-specific parsing, contractor detection, availability scoring", "marketShare": "Staffing agencies" }
+      "0": {
+        "description": "Section header parsing, keyword extraction, date format validation",
+        "marketShare": "Major enterprise"
+      },
+      "1": {
+        "description": "Skills matching algorithms, experience level scoring, cultural fit indicators",
+        "marketShare": "Tech & startups"
+      },
+      "2": {
+        "description": "Contact info validation, formatting consistency, section organization",
+        "marketShare": "Mid-market"
+      },
+      "3": {
+        "description": "Keyword density analysis, job title matching, qualification scoring",
+        "marketShare": "Fortune 500"
+      },
+      "4": {
+        "description": "Education parsing, certification detection, skills taxonomy matching",
+        "marketShare": "Healthcare & retail"
+      },
+      "5": {
+        "description": "Resume structure analysis, experience timeline validation",
+        "marketShare": "SMB"
+      },
+      "6": {
+        "description": "Keyword optimization, applicant ranking algorithms",
+        "marketShare": "Small business"
+      },
+      "7": {
+        "description": "Social profile integration, referral tracking, skills assessment",
+        "marketShare": "Enterprise"
+      },
+      "8": {
+        "description": "AI-powered matching, diversity indicators, global compliance",
+        "marketShare": "Global enterprise"
+      },
+      "9": {
+        "description": "Staffing-specific parsing, contractor detection, availability scoring",
+        "marketShare": "Staffing agencies"
+      }
     },
     "atsPlatformsTitle": "ATS Platforms We Analyze Against",
     "atsPlatformsSubtitle": "Our analysis is based on parsing rules and scoring algorithms from these major ATS platforms, covering over 90% of the job market.",
@@ -2069,13 +2349,34 @@
     "scoreCalculatedTitle": "How Your ATS Score Is Calculated",
     "scoreCalculatedSubtitle": "Your score is a weighted combination of multiple factors that determine how well your resume will perform in ATS systems.",
     "scoringFactors": {
-      "keywordOptimization": { "factor": "Keyword Optimization", "description": "Industry-relevant keywords and skills mentioned" },
-      "formatCompatibility": { "factor": "Format Compatibility", "description": "Clean structure that ATS can parse correctly" },
-      "sectionCompleteness": { "factor": "Section Completeness", "description": "All expected sections present and properly labeled" },
-      "experienceClarity": { "factor": "Experience Clarity", "description": "Clear job titles, dates, and achievements" },
-      "actionVerbUsage": { "factor": "Action Verb Usage", "description": "Strong action verbs that demonstrate impact" },
-      "quantifiedAchievements": { "factor": "Quantified Achievements", "description": "Numbers and metrics that prove results" },
-      "redFlagAbsence": { "factor": "Red Flag Absence", "description": "No formatting issues or content problems" }
+      "keywordOptimization": {
+        "factor": "Keyword Optimization",
+        "description": "Industry-relevant keywords and skills mentioned"
+      },
+      "formatCompatibility": {
+        "factor": "Format Compatibility",
+        "description": "Clean structure that ATS can parse correctly"
+      },
+      "sectionCompleteness": {
+        "factor": "Section Completeness",
+        "description": "All expected sections present and properly labeled"
+      },
+      "experienceClarity": {
+        "factor": "Experience Clarity",
+        "description": "Clear job titles, dates, and achievements"
+      },
+      "actionVerbUsage": {
+        "factor": "Action Verb Usage",
+        "description": "Strong action verbs that demonstrate impact"
+      },
+      "quantifiedAchievements": {
+        "factor": "Quantified Achievements",
+        "description": "Numbers and metrics that prove results"
+      },
+      "redFlagAbsence": {
+        "factor": "Red Flag Absence",
+        "description": "No formatting issues or content problems"
+      }
     },
     "continuousResearchTitle": "Continuous Research",
     "continuousResearchSubtitle": "We continuously analyze job postings, ATS updates, and hiring trends to keep our analysis accurate and up-to-date.",
@@ -2340,5 +2641,184 @@
       "title": "Scanned PDF detection",
       "description": "If you upload a scanned image-based PDF with no selectable text, we now tell you immediately instead of silently analyzing blank content — with a clear suggestion to upload a text-based version or paste your resume directly."
     }
+  },
+  "sampleReportPreview": {
+    "exploring": "Exploring sample report",
+    "hereIsWhat": "Here's what you'll see after upload",
+    "sampleReport": "Sample Report",
+    "collapse": "Collapse",
+    "clickToExplore": "Click to explore",
+    "atsScore": "ATS Compatibility Score",
+    "needsImprovement": "Needs Improvement",
+    "filteredOut": "Your resume may be filtered out by 73% of ATS systems",
+    "missingKeywords": "Missing Keywords",
+    "plusMore": "+8 more",
+    "atsParsing": "ATS Parsing Issues Found",
+    "prioritizedImprovements": "Prioritized Improvements",
+    "scoreBreakdown": "Score Breakdown",
+    "aiPoweredFixes": "AI-Powered Fixes Included",
+    "moreSuggestions": "+ more personalized suggestions",
+    "readyToSeeScore": "Ready to see your real score?",
+    "uploadAbove": "Upload your resume above to get personalized insights",
+    "sampleData": "This is sample data — your report will be unique to your resume",
+    "personalizedReport": "Your actual report will be personalized to your resume",
+    "sections": {
+      "contactInfo": "Contact Info",
+      "keywords": "Keywords",
+      "experience": "Experience",
+      "education": "Education"
+    },
+    "sectionDetails": {
+      "properlyFormatted": "Properly formatted",
+      "missing12": "Missing 12 critical terms",
+      "weakActionVerbs": "Weak action verbs",
+      "correctlyParsed": "Correctly parsed"
+    },
+    "atsIssues": {
+      "tablesDetected": "Tables detected",
+      "tablesImpact": "May break parsing in 60% of ATS systems",
+      "graphicsUsed": "Graphics/icons used",
+      "graphicsImpact": "Will be ignored or cause errors",
+      "nonStandardHeaders": "Non-standard section headers",
+      "headersImpact": "Skills section may not be recognized"
+    },
+    "fixes": {
+      "impactMetrics": "Impact Metrics",
+      "impactMetricsFix": "Add 3-5 quantified results (e.g., 'Increased sales by 23%')",
+      "actionVerbs": "Action Verbs",
+      "actionVerbsFix": "Replace passive phrases like 'responsible for' with 'Led', 'Drove', 'Achieved'",
+      "keywords": "Keywords",
+      "keywordsFix": "Add missing industry terms: 'stakeholder management', 'Agile methodology'",
+      "formatting": "Formatting",
+      "formattingFix": "Use consistent date format (MM/YYYY) throughout",
+      "summary": "Summary",
+      "summaryFix": "Add a 2-3 line professional summary at the top"
+    },
+    "priority": {
+      "high": "high",
+      "medium": "medium",
+      "low": "low"
+    },
+    "scoreLabels": {
+      "keywordMatch": "Keyword Match",
+      "formatting": "Formatting",
+      "experienceRelevance": "Experience Relevance",
+      "education": "Education"
+    },
+    "quickFixes": {
+      "fix1": "Add quantified achievements (numbers, %, $)",
+      "fix2": "Replace 'responsible for' with action verbs",
+      "fix3": "Include 3 more industry keywords"
+    }
+  },
+  "peerBenchmark": {
+    "howYouCompare": "How You Compare",
+    "percentile": "percentile",
+    "industryAverage": "Industry Average: {{score}}",
+    "topPerformers": "Top Performers: {{score}}+",
+    "toAverage": "To Average",
+    "toTopTier": "To Top Tier",
+    "topPerformer": "You're a Top Performer!",
+    "levelTip": "{{level}} Level Tip",
+    "benchmarkedAgainst": "Benchmarked against other {{role}} candidates",
+    "topPct": "Top {{pct}}% for ATS readiness among {{cohort}}",
+    "aroundAverage": "Around average ATS readiness among {{cohort}}",
+    "belowAverage": "Below average ATS readiness among {{cohort}} (fixable)"
+  },
+  "skillsGapAnalysis": {
+    "title": "Skills Gap Analysis for {{role}}",
+    "roleMatchScore": "Role Match Score",
+    "strongMatch": "Strong Match",
+    "partialMatch": "Partial Match",
+    "needsImprovement": "Needs Improvement",
+    "keySkills": "Key Skills",
+    "matched": "{{present}}/{{total}} matched",
+    "missingSkills": "Missing skills to add:",
+    "atsKeywords": "ATS Keywords",
+    "found": "{{present}}/{{total}} found",
+    "addKeywords": "Add these keywords to boost ATS score:",
+    "priorityActions": "Priority Actions:",
+    "addSkill": "Add \"{{skill}}\" to your skills section or demonstrate it in your experience bullets",
+    "includeKeyword": "Include \"{{keyword}}\" in your achievement bullets with specific metrics"
+  },
+  "resumeBeforeAfter": {
+    "title": "See the AI Difference",
+    "before": "Before",
+    "after": "After",
+    "tagline": "Your entire resume gets this transformation"
+  },
+  "profileQuizModal": {
+    "title": "Quick Profile Setup",
+    "description": "Help us personalize your analysis (takes 30 seconds)",
+    "step1of3": "Step 1 of 3",
+    "step2of3": "Step 2 of 3",
+    "step3of3": "Step 3 of 3",
+    "whichIndustry": "What industry are you in?",
+    "experienceLevel": "What's your experience level?",
+    "targetRole": "What role are you targeting?",
+    "skipForNow": "Skip for now",
+    "next": "Next",
+    "back": "Back",
+    "typeYourRole": "Or type your target role...",
+    "getPersonalized": "Get Personalized Analysis",
+    "industries": {
+      "technology": "Technology",
+      "healthcare": "Healthcare",
+      "finance": "Finance & Banking",
+      "marketing": "Marketing",
+      "sales": "Sales",
+      "engineering": "Engineering",
+      "education": "Education",
+      "hr": "Human Resources",
+      "consulting": "Consulting",
+      "legal": "Legal",
+      "retail": "Retail & E-commerce",
+      "other": "Other"
+    },
+    "levels": {
+      "entry": "Entry Level",
+      "entryDesc": "0-2 years",
+      "mid": "Mid Level",
+      "midDesc": "3-5 years",
+      "senior": "Senior Level",
+      "seniorDesc": "6-10 years",
+      "executive": "Executive",
+      "executiveDesc": "10+ years"
+    }
+  },
+  "competitorBenchmark": {
+    "title": "How Top {{role}}s Stand Out",
+    "basedOnAnalysis": "Based on analysis of successful {{role}} resumes that get interviews",
+    "competitiveStanding": "Your Competitive Standing",
+    "topElements": "You have elements that top candidates include!",
+    "addFewMore": "Add a few more elements to compete with top candidates",
+    "addElements": "Add these elements to match top performers",
+    "sectionsAlwaysInclude": "Sections top {{role}}s always include:",
+    "whatMakesStandOut": "What makes top resumes stand out:",
+    "pctTopCandidates": "What % of top candidates include:",
+    "avgBullets": "Avg bullets per role:",
+    "youBullets": "You: {{count}}",
+    "topBullets": "Top: {{count}}",
+    "quickWins": "Quick wins to compete:",
+    "addPortfolio": "Add portfolio/GitHub links ({{pct}}% of top candidates include them)",
+    "addCerts": "List relevant certifications ({{pct}}% of top candidates have them)",
+    "addMetrics": "Add metrics to your bullets ({{pct}}% of top resumes quantify achievements)",
+    "addBullets": "Add {{count}} more bullet points per role",
+    "checklistItems": {
+      "portfolio": "Portfolio/GitHub links",
+      "certifications": "Certifications",
+      "quantifiedAchievements": "Quantified achievements"
+    }
+  },
+  "jobComparisonCTA": {
+    "compareToRoles": "See how you compare to your target roles:"
+  },
+  "floatingHelpButton": {
+    "needHelp": "Need Help?",
+    "questionsOrFeedback": "Questions or feedback? Email us:"
+  },
+  "atsParseSimulator": {
+    "title": "ATS Parse Simulation",
+    "subtitle": "Mechanical checks against the same text an ATS would extract — not an AI estimate"
   }
 }

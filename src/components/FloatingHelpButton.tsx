@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { HelpCircle, Mail, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
 
 export function FloatingHelpButton() {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -10,7 +12,7 @@ export function FloatingHelpButton() {
       {isOpen && (
         <div className="bg-card border border-border rounded-lg shadow-lg p-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
           <div className="flex items-center justify-between gap-4 mb-2">
-            <span className="text-sm font-medium">Need Help?</span>
+            <span className="text-sm font-medium">{t('floatingHelpButton.needHelp')}</span>
             <button
               onClick={() => setIsOpen(false)}
               className="text-muted-foreground hover:text-foreground transition-colors"
@@ -20,7 +22,7 @@ export function FloatingHelpButton() {
             </button>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Questions or feedback? Email us:
+            {t('floatingHelpButton.questionsOrFeedback')}
           </p>
           <a
             href="mailto:resumeboostersupp@gmail.com"

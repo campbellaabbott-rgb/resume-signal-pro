@@ -3,6 +3,7 @@ import { Award, BarChart3, CheckCircle2, FileText, Link, Trophy, Users } from "l
 import { cn } from "@/lib/utils";
 import { type RoleConfig } from "@/config/personalization";
 import { Progress } from "@/components/ui/progress";
+import { useTranslation } from "react-i18next";
 
 interface CompetitorBenchmarkProps {
   roleConfig: RoleConfig;
@@ -13,37 +14,38 @@ interface CompetitorBenchmarkProps {
   className?: string;
 }
 
-export function CompetitorBenchmark({ 
-  roleConfig, 
+export function CompetitorBenchmark({
+  roleConfig,
   userHasPortfolio = false,
   userHasCertifications = false,
   userHasMetrics = false,
   userBulletCount = 3,
-  className 
+  className
 }: CompetitorBenchmarkProps) {
+  const { t } = useTranslation();
   const benchmark = roleConfig.topResumeElements;
-  
+
   if (!benchmark) {
     return null;
   }
 
   // Calculate user's competitive standing
   const checklistItems = [
-    { 
-      label: 'Portfolio/GitHub links', 
-      userHas: userHasPortfolio, 
+    {
+      label: t('competitorBenchmark.checklistItems.portfolio'),
+      userHas: userHasPortfolio,
       topRate: benchmark.portfolioRate,
       icon: Link
     },
-    { 
-      label: 'Certifications', 
-      userHas: userHasCertifications, 
+    {
+      label: t('competitorBenchmark.checklistItems.certifications'),
+      userHas: userHasCertifications,
       topRate: benchmark.certificationRate,
       icon: Award
     },
-    { 
-      label: 'Quantified achievements', 
-      userHas: userHasMetrics, 
+    {
+      label: t('competitorBenchmark.checklistItems.quantifiedAchievements'),
+      userHas: userHasMetrics,
       topRate: benchmark.metricsRate,
       icon: BarChart3
     },
@@ -62,17 +64,17 @@ export function CompetitorBenchmark({
     <div className={cn("p-4 rounded-xl bg-gradient-to-br from-primary/5 via-background to-background border border-primary/20", className)}>
       <h4 className="font-semibold text-foreground flex items-center gap-2 mb-4">
         <Trophy className="w-5 h-5 text-amber-500" />
-        How Top {roleConfig.name}s Stand Out
+        {t('competitorBenchmark.title', { role: roleConfig.name })}
       </h4>
-      
+
       <p className="text-xs text-muted-foreground mb-4">
-        Based on analysis of successful {roleConfig.name} resumes that get interviews
+        {t('competitorBenchmark.basedOnAnalysis', { role: roleConfig.name })}
       </p>
-      
+
       {/* Competitive Score */}
       <div className="p-3 rounded-lg bg-card border border-border mb-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium">Your Competitive Standing</span>
+          <span className="text-sm font-medium">{t('competitorBenchmark.competitiveStanding')}</span>
           <span className={cn(
             "text-lg font-bold",
             competitiveScore >= 67 ? "text-success" : 
@@ -87,11 +89,11 @@ export function CompetitorBenchmark({
           className="h-2" 
         />
         <p className="text-xs text-muted-foreground mt-2">
-          {competitiveScore >= 67 
-            ? "🏆 You have elements that top candidates include!" 
-            : competitiveScore >= 34 
-              ? "📊 Add a few more elements to compete with top candidates"
-              : "⚡ Add these elements to match top performers"}
+          {competitiveScore >= 67
+            ? `🏆 ${t('competitorBenchmark.topElements')}`
+            : competitiveScore >= 34
+              ? `📊 ${t('competitorBenchmark.addFewMore')}`
+              : `⚡ ${t('competitorBenchmark.addElements')}`}
         </p>
       </div>
       
@@ -101,7 +103,7 @@ export function CompetitorBenchmark({
         <div>
           <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
             <FileText className="w-3.5 h-3.5" />
-            Sections top {roleConfig.name}s always include:
+            {t('competitorBenchmark.sectionsAlwaysInclude', { role: roleConfig.name })}
           </p>
           <div className="flex flex-wrap gap-1.5">
             {benchmark.sections.map((section, i) => (
@@ -119,7 +121,7 @@ export function CompetitorBenchmark({
         <div>
           <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
             <Trophy className="w-3.5 h-3.5 text-amber-500" />
-            What makes top resumes stand out:
+            {t('competitorBenchmark.whatMakesStandOut')}
           </p>
           <div className="space-y-1.5">
             {benchmark.differentiators.map((diff, i) => (
@@ -135,7 +137,7 @@ export function CompetitorBenchmark({
         <div className="pt-3 border-t border-border">
           <p className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
             <Users className="w-3.5 h-3.5" />
-            What % of top candidates include:
+            {t('competitorBenchmark.pctTopCandidates')}
           </p>
           <div className="space-y-3">
             {checklistItems.map((item, i) => {
@@ -166,7 +168,7 @@ export function CompetitorBenchmark({
         {/* Bullet Count Benchmark */}
         <div className="pt-3 border-t border-border">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Avg bullets per role:</span>
+            <span className="text-xs text-muted-foreground">{t('competitorBenchmark.avgBullets')}</span>
             <div className="flex items-center gap-2">
               <span className={cn(
                 "text-xs font-medium",
@@ -174,11 +176,11 @@ export function CompetitorBenchmark({
                 bulletStatus === 'close' ? "text-amber-500" :
                 "text-destructive"
               )}>
-                You: {userBulletCount}
+                {t('competitorBenchmark.youBullets', { count: userBulletCount })}
               </span>
               <span className="text-xs text-muted-foreground">•</span>
               <span className="text-xs font-medium text-primary">
-                Top: {benchmark.avgBulletCount}
+                {t('competitorBenchmark.topBullets', { count: benchmark.avgBulletCount })}
               </span>
             </div>
           </div>
@@ -188,26 +190,26 @@ export function CompetitorBenchmark({
       {/* Action Items */}
       {competitiveScore < 100 && (
         <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-          <p className="text-xs font-semibold text-amber-600 mb-1.5">💡 Quick wins to compete:</p>
+          <p className="text-xs font-semibold text-amber-600 mb-1.5">💡 {t('competitorBenchmark.quickWins')}</p>
           <div className="space-y-1">
             {!userHasPortfolio && benchmark.portfolioRate >= 50 && (
               <p className="text-xs text-muted-foreground">
-                • Add portfolio/GitHub links ({benchmark.portfolioRate}% of top candidates include them)
+                • {t('competitorBenchmark.addPortfolio', { pct: benchmark.portfolioRate })}
               </p>
             )}
             {!userHasCertifications && benchmark.certificationRate >= 40 && (
               <p className="text-xs text-muted-foreground">
-                • List relevant certifications ({benchmark.certificationRate}% of top candidates have them)
+                • {t('competitorBenchmark.addCerts', { pct: benchmark.certificationRate })}
               </p>
             )}
             {!userHasMetrics && (
               <p className="text-xs text-muted-foreground">
-                • Add metrics to your bullets ({benchmark.metricsRate}% of top resumes quantify achievements)
+                • {t('competitorBenchmark.addMetrics', { pct: benchmark.metricsRate })}
               </p>
             )}
             {bulletStatus !== 'optimal' && (
               <p className="text-xs text-muted-foreground">
-                • Add {benchmark.avgBulletCount - userBulletCount} more bullet points per role
+                • {t('competitorBenchmark.addBullets', { count: benchmark.avgBulletCount - userBulletCount })}
               </p>
             )}
           </div>

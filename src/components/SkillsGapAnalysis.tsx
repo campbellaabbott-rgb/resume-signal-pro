@@ -2,6 +2,7 @@
 import { AlertTriangle, CheckCircle2, Target, TrendingUp, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type RoleConfig } from "@/config/personalization";
+import { useTranslation } from "react-i18next";
 
 interface SkillsGapAnalysisProps {
   roleConfig: RoleConfig;
@@ -49,24 +50,26 @@ export function SkillsGapAnalysis({
     return "text-destructive";
   };
   
+  const { t } = useTranslation();
+
   const getScoreLabel = (rate: number) => {
-    if (rate >= 75) return "Strong Match";
-    if (rate >= 50) return "Partial Match";
-    return "Needs Improvement";
+    if (rate >= 75) return t('skillsGapAnalysis.strongMatch');
+    if (rate >= 50) return t('skillsGapAnalysis.partialMatch');
+    return t('skillsGapAnalysis.needsImprovement');
   };
 
   return (
     <div className={cn("p-4 rounded-xl bg-card border border-border", className)}>
       <h4 className="font-semibold text-foreground flex items-center gap-2 mb-4">
         <Target className="w-5 h-5 text-primary" />
-        Skills Gap Analysis for {roleConfig.name}
+        {t('skillsGapAnalysis.title', { role: roleConfig.name })}
       </h4>
       
       {/* Overall Score */}
       <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 mb-4">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Role Match Score</span>
+          <span className="text-sm font-medium">{t('skillsGapAnalysis.roleMatchScore')}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className={cn("text-xl font-bold", getScoreColor(overallMatchRate))}>
@@ -87,9 +90,9 @@ export function SkillsGapAnalysis({
         {/* Key Skills Section */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-foreground">Key Skills</span>
+            <span className="text-sm font-medium text-foreground">{t('skillsGapAnalysis.keySkills')}</span>
             <span className={cn("text-xs font-medium", getScoreColor(skillMatchRate))}>
-              {presentSkills.length}/{skillAnalysis.length} matched
+              {t('skillsGapAnalysis.matched', { present: presentSkills.length, total: skillAnalysis.length })}
             </span>
           </div>
           
@@ -115,7 +118,7 @@ export function SkillsGapAnalysis({
             <div>
               <p className="text-xs text-destructive font-medium mb-1.5 flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />
-                Missing skills to add:
+                {t('skillsGapAnalysis.missingSkills')}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {missingSkills.map(({ skill }, i) => (
@@ -134,9 +137,9 @@ export function SkillsGapAnalysis({
         {/* Keywords Section */}
         <div className="pt-3 border-t border-border">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-foreground">ATS Keywords</span>
+            <span className="text-sm font-medium text-foreground">{t('skillsGapAnalysis.atsKeywords')}</span>
             <span className={cn("text-xs font-medium", getScoreColor(keywordMatchRate))}>
-              {presentKeywords.length}/{keywordAnalysis.length} found
+              {t('skillsGapAnalysis.found', { present: presentKeywords.length, total: keywordAnalysis.length })}
             </span>
           </div>
           
@@ -161,7 +164,7 @@ export function SkillsGapAnalysis({
             <div>
               <p className="text-xs text-amber-600 font-medium mb-1.5 flex items-center gap-1">
                 <Zap className="w-3 h-3" />
-                Add these keywords to boost ATS score:
+                {t('skillsGapAnalysis.addKeywords')}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {missingKeywords.map(({ keyword }, i) => (
@@ -181,16 +184,16 @@ export function SkillsGapAnalysis({
       {/* Priority Actions */}
       {(missingSkills.length > 0 || missingKeywords.length > 0) && (
         <div className="mt-4 pt-3 border-t border-border">
-          <p className="text-xs font-semibold text-foreground mb-2">🎯 Priority Actions:</p>
+          <p className="text-xs font-semibold text-foreground mb-2">🎯 {t('skillsGapAnalysis.priorityActions')}</p>
           <div className="space-y-1.5">
             {missingSkills.slice(0, 2).map(({ skill }, i) => (
               <p key={i} className="text-xs text-muted-foreground">
-                • Add "{skill}" to your skills section or demonstrate it in your experience bullets
+                • {t('skillsGapAnalysis.addSkill', { skill })}
               </p>
             ))}
             {missingKeywords.slice(0, 2).map(({ keyword }, i) => (
               <p key={i} className="text-xs text-muted-foreground">
-                • Include "{keyword}" in your achievement bullets with specific metrics
+                • {t('skillsGapAnalysis.includeKeyword', { keyword })}
               </p>
             ))}
           </div>

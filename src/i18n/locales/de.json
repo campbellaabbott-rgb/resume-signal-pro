@@ -706,13 +706,34 @@
     "live": "Live",
     "securityNote": "Ihr Lebenslauf wird sicher analysiert und nie gespeichert",
     "stages": {
-      "parsing": { "label": "Lebenslauf wird geparst", "description": "Text und Struktur werden extrahiert" },
-      "industry": { "label": "Branche wird erkannt", "description": "Ihr Bereich und Ihre Rolle werden identifiziert" },
-      "ats": { "label": "ATS-Simulation läuft", "description": "Test gegen 50+ ATS-Systeme" },
-      "keywords": { "label": "Keywords werden analysiert", "description": "Branchenspezifische Begriffe werden abgeglichen" },
-      "scoring": { "label": "Bewertung & Benchmark", "description": "Vergleich mit Top-Kandidaten" },
-      "ai": { "label": "KI-Tiefenanalyse", "description": "Personalisierte Einblicke werden generiert" },
-      "report": { "label": "Bericht wird erstellt", "description": "Umsetzbare Empfehlungen werden zusammengestellt" }
+      "parsing": {
+        "label": "Lebenslauf wird geparst",
+        "description": "Text und Struktur werden extrahiert"
+      },
+      "industry": {
+        "label": "Branche wird erkannt",
+        "description": "Ihr Bereich und Ihre Rolle werden identifiziert"
+      },
+      "ats": {
+        "label": "ATS-Simulation läuft",
+        "description": "Test gegen 50+ ATS-Systeme"
+      },
+      "keywords": {
+        "label": "Keywords werden analysiert",
+        "description": "Branchenspezifische Begriffe werden abgeglichen"
+      },
+      "scoring": {
+        "label": "Bewertung & Benchmark",
+        "description": "Vergleich mit Top-Kandidaten"
+      },
+      "ai": {
+        "label": "KI-Tiefenanalyse",
+        "description": "Personalisierte Einblicke werden generiert"
+      },
+      "report": {
+        "label": "Bericht wird erstellt",
+        "description": "Umsetzbare Empfehlungen werden zusammengestellt"
+      }
     },
     "tips": {
       "numbers": "💡 Tipp: Lebensläufe mit Zahlen erhalten 40% mehr Rückrufe",
@@ -1009,42 +1030,141 @@
   },
   "freeResults": {
     "metricTooltips": {
-      "atsScore": { "title": "AI-ATS-Score", "description": "Unsere KI simuliert, wie moderne KI-gestützte Bewerbermanagementsysteme deinen Lebenslauf scannen — dieselbe Technologie, die 98 % der Fortune-500-Unternehmen verwenden.", "whyMatters": "Ein niedriger Score bedeutet, dass dein Lebenslauf möglicherweise nie einen menschlichen Recruiter erreicht." },
-      "format": { "title": "Format-Note", "description": "Bewertet die Struktur, das Layout und die KI-ATS-Lesbarkeit deines Lebenslaufs.", "whyMatters": "Schlechte Formatierung verursacht KI-ATS-Parsingfehler und lässt wichtige Informationen verloren gehen." },
-      "metrics": { "title": "Quantifizierungs-Score", "description": "Misst, wie viele deiner Erfolge Zahlen, Prozentsätze oder Kennzahlen enthalten.", "whyMatters": "Recruiter scannen 6 Sekunden lang — Zahlen fallen ihnen zuerst ins Auge." },
-      "verbs": { "title": "Aktionsverb-Note", "description": "Bewertet die Stärke und Vielfalt der Aktionsverben am Anfang deiner Stichpunkte.", "whyMatters": "Starke Verben wie „Leitete“ schlagen schwache wie „Half bei“ oder „Unterstützte“." },
-      "pages": { "title": "Lebenslauflänge", "description": "Prüft, ob die Länge deines Lebenslaufs den Branchenstandards für deine Erfahrungsstufe entspricht.", "whyMatters": "Zu lang = übersprungen. Zu kurz = fehlende Substanz." },
-      "words": { "title": "Wortanzahl", "description": "Misst, ob du genug Inhalt hast, um deinen Wert zu zeigen.", "whyMatters": "Der Sweet Spot variiert je nach Erfahrung — zu wenige Wörter signalisieren Unerfahrenheit." },
-      "sections": { "title": "Abschnittsprüfung", "description": "Überprüft, ob alle wesentlichen Lebenslaufabschnitte vorhanden sind (Zusammenfassung, Erfahrung, Ausbildung, Kenntnisse).", "whyMatters": "Fehlende Abschnitte sind sofortige Warnsignale für Recruiter." },
-      "contact": { "title": "Kontaktinformationen", "description": "Prüft auf E-Mail, Telefon und LinkedIn-Präsenz.", "whyMatters": "Recruiter können dich nicht einstellen, wenn sie dich nicht kontaktieren können." },
-      "readability": { "title": "Lesbarkeits-Score", "description": "Misst, wie leicht dein Lebenslauf schnell zu überblicken ist.", "whyMatters": "Recruiter brauchen im Durchschnitt 6-7 Sekunden pro Lebenslauf — jedes Wort muss zählen." },
-      "bulletImpact": { "title": "Stichpunkt-Wirkung", "description": "Analysiert, ob sich deine Stichpunkte auf Erfolge statt nur auf Aufzählung von Verantwortlichkeiten konzentrieren.", "whyMatters": "Erfolgsorientierte Stichpunkte belegen Wert; Verantwortlichkeitslisten nicht." },
-      "keywordDensity": { "title": "Schlüsselwortdichte", "description": "Misst das Vorhandensein branchenrelevanter Schlüsselwörter für den KI-ATS-Abgleich.", "whyMatters": "Zu wenige Schlüsselwörter = kein KI-ATS-Treffer. Zu viele = Strafe für Keyword-Stuffing." },
-      "improvementPotential": { "title": "Verbesserungspotenzial", "description": "Geschätzte mögliche Score-Steigerung durch Optimierung.", "whyMatters": "Zeigt, wie viel Spielraum du hast, um andere Kandidaten zu übertreffen." },
-      "industryBenchmark": { "title": "Branchenvergleich", "description": "Vergleicht deinen Score mit anderen in deinem Bereich.", "whyMatters": "Wisse, wo du im Vergleich zu deiner direkten Konkurrenz stehst." },
-      "timeline": { "title": "Karriereverlauf", "description": "Analysiert Betriebszugehörigkeit, Lücken und Karriereentwicklungsmuster.", "whyMatters": "Recruiter suchen nach Stabilität und Wachstum — Lücken müssen erklärt werden." },
-      "atsCompatibility": { "title": "KI-ATS-Systemkompatibilität", "description": "Zeigt, wie gut dein Lebenslauf von wichtigen KI-gestützten Bewerbermanagementsystemen wie Workday, Greenhouse und Taleo gelesen wird.", "whyMatters": "Verschiedene Unternehmen nutzen unterschiedliche KI-ATS-Systeme — wisse, welche deinen Lebenslauf korrekt lesen." }
+      "atsScore": {
+        "title": "AI-ATS-Score",
+        "description": "Unsere KI simuliert, wie moderne KI-gestützte Bewerbermanagementsysteme deinen Lebenslauf scannen — dieselbe Technologie, die 98 % der Fortune-500-Unternehmen verwenden.",
+        "whyMatters": "Ein niedriger Score bedeutet, dass dein Lebenslauf möglicherweise nie einen menschlichen Recruiter erreicht."
+      },
+      "format": {
+        "title": "Format-Note",
+        "description": "Bewertet die Struktur, das Layout und die KI-ATS-Lesbarkeit deines Lebenslaufs.",
+        "whyMatters": "Schlechte Formatierung verursacht KI-ATS-Parsingfehler und lässt wichtige Informationen verloren gehen."
+      },
+      "metrics": {
+        "title": "Quantifizierungs-Score",
+        "description": "Misst, wie viele deiner Erfolge Zahlen, Prozentsätze oder Kennzahlen enthalten.",
+        "whyMatters": "Recruiter scannen 6 Sekunden lang — Zahlen fallen ihnen zuerst ins Auge."
+      },
+      "verbs": {
+        "title": "Aktionsverb-Note",
+        "description": "Bewertet die Stärke und Vielfalt der Aktionsverben am Anfang deiner Stichpunkte.",
+        "whyMatters": "Starke Verben wie „Leitete“ schlagen schwache wie „Half bei“ oder „Unterstützte“."
+      },
+      "pages": {
+        "title": "Lebenslauflänge",
+        "description": "Prüft, ob die Länge deines Lebenslaufs den Branchenstandards für deine Erfahrungsstufe entspricht.",
+        "whyMatters": "Zu lang = übersprungen. Zu kurz = fehlende Substanz."
+      },
+      "words": {
+        "title": "Wortanzahl",
+        "description": "Misst, ob du genug Inhalt hast, um deinen Wert zu zeigen.",
+        "whyMatters": "Der Sweet Spot variiert je nach Erfahrung — zu wenige Wörter signalisieren Unerfahrenheit."
+      },
+      "sections": {
+        "title": "Abschnittsprüfung",
+        "description": "Überprüft, ob alle wesentlichen Lebenslaufabschnitte vorhanden sind (Zusammenfassung, Erfahrung, Ausbildung, Kenntnisse).",
+        "whyMatters": "Fehlende Abschnitte sind sofortige Warnsignale für Recruiter."
+      },
+      "contact": {
+        "title": "Kontaktinformationen",
+        "description": "Prüft auf E-Mail, Telefon und LinkedIn-Präsenz.",
+        "whyMatters": "Recruiter können dich nicht einstellen, wenn sie dich nicht kontaktieren können."
+      },
+      "readability": {
+        "title": "Lesbarkeits-Score",
+        "description": "Misst, wie leicht dein Lebenslauf schnell zu überblicken ist.",
+        "whyMatters": "Recruiter brauchen im Durchschnitt 6-7 Sekunden pro Lebenslauf — jedes Wort muss zählen."
+      },
+      "bulletImpact": {
+        "title": "Stichpunkt-Wirkung",
+        "description": "Analysiert, ob sich deine Stichpunkte auf Erfolge statt nur auf Aufzählung von Verantwortlichkeiten konzentrieren.",
+        "whyMatters": "Erfolgsorientierte Stichpunkte belegen Wert; Verantwortlichkeitslisten nicht."
+      },
+      "keywordDensity": {
+        "title": "Schlüsselwortdichte",
+        "description": "Misst das Vorhandensein branchenrelevanter Schlüsselwörter für den KI-ATS-Abgleich.",
+        "whyMatters": "Zu wenige Schlüsselwörter = kein KI-ATS-Treffer. Zu viele = Strafe für Keyword-Stuffing."
+      },
+      "improvementPotential": {
+        "title": "Verbesserungspotenzial",
+        "description": "Geschätzte mögliche Score-Steigerung durch Optimierung.",
+        "whyMatters": "Zeigt, wie viel Spielraum du hast, um andere Kandidaten zu übertreffen."
+      },
+      "industryBenchmark": {
+        "title": "Branchenvergleich",
+        "description": "Vergleicht deinen Score mit anderen in deinem Bereich.",
+        "whyMatters": "Wisse, wo du im Vergleich zu deiner direkten Konkurrenz stehst."
+      },
+      "timeline": {
+        "title": "Karriereverlauf",
+        "description": "Analysiert Betriebszugehörigkeit, Lücken und Karriereentwicklungsmuster.",
+        "whyMatters": "Recruiter suchen nach Stabilität und Wachstum — Lücken müssen erklärt werden."
+      },
+      "atsCompatibility": {
+        "title": "KI-ATS-Systemkompatibilität",
+        "description": "Zeigt, wie gut dein Lebenslauf von wichtigen KI-gestützten Bewerbermanagementsystemen wie Workday, Greenhouse und Taleo gelesen wird.",
+        "whyMatters": "Verschiedene Unternehmen nutzen unterschiedliche KI-ATS-Systeme — wisse, welche deinen Lebenslauf korrekt lesen."
+      }
     },
     "ctaCopy": {
       "coverLetter": {
-        "control": { "button": "Anschreiben erstellen — {{price}}", "description": "KI-generiertes Anschreiben, abgestimmt auf deinen Lebenslauf und die Zielstelle. In Minuten versandfertig." },
-        "benefitFocused": { "button": "Hol dir dein Interview-gewinnendes Anschreiben", "description": "Hebe dich von über 100 Bewerbern ab mit einem personalisierten Anschreiben, das Recruiter begeistert." },
-        "scarcity": { "button": "Jetzt Anschreiben erstellen — {{price}}", "description": "Die meisten Bewerber überspringen Anschreiben. Verschaffe dir einen Vorteil mit einem individuellen Anschreiben in 2 Minuten." }
+        "control": {
+          "button": "Anschreiben erstellen — {{price}}",
+          "description": "KI-generiertes Anschreiben, abgestimmt auf deinen Lebenslauf und die Zielstelle. In Minuten versandfertig."
+        },
+        "benefitFocused": {
+          "button": "Hol dir dein Interview-gewinnendes Anschreiben",
+          "description": "Hebe dich von über 100 Bewerbern ab mit einem personalisierten Anschreiben, das Recruiter begeistert."
+        },
+        "scarcity": {
+          "button": "Jetzt Anschreiben erstellen — {{price}}",
+          "description": "Die meisten Bewerber überspringen Anschreiben. Verschaffe dir einen Vorteil mit einem individuellen Anschreiben in 2 Minuten."
+        }
       },
       "keywordFix": {
-        "control": { "button": "Vollständigen Keyword-Bericht erhalten", "headline": "50+ Branchen-Keywords gewünscht?" },
-        "benefitFocused": { "button": "Versteckte Keywords freischalten", "headline": "Komm am ATS-Filter vorbei" },
-        "scarcity": { "button": "Hol dir Keywords vor anderen", "headline": "Schlage 87 % der Bewerber" }
+        "control": {
+          "button": "Vollständigen Keyword-Bericht erhalten",
+          "headline": "50+ Branchen-Keywords gewünscht?"
+        },
+        "benefitFocused": {
+          "button": "Versteckte Keywords freischalten",
+          "headline": "Komm am ATS-Filter vorbei"
+        },
+        "scarcity": {
+          "button": "Hol dir Keywords vor anderen",
+          "headline": "Schlage 87 % der Bewerber"
+        }
       },
       "premiumPackage": {
-        "control": { "button": "Premium-Paket kaufen — {{price}}", "headline": "Premium-Lebenslaufpaket", "subtext": "Alles, was du brauchst, um Vorstellungsgespräche zu bekommen" },
-        "benefitFocused": { "button": "Jetzt interviewbereit werden", "headline": "Lande deinen Traumjob schneller", "subtext": "3x mehr Interview-Rückrufe mit unserem Komplettpaket" },
-        "scarcity": { "button": "Sichere dir dein Paket — begrenzt", "headline": "Premium-Lebenslaufpaket", "subtext": "Schließe dich 10.000+ an, die diesen Monat Vorstellungsgespräche bekommen haben" }
+        "control": {
+          "button": "Premium-Paket kaufen — {{price}}",
+          "headline": "Premium-Lebenslaufpaket",
+          "subtext": "Alles, was du brauchst, um Vorstellungsgespräche zu bekommen"
+        },
+        "benefitFocused": {
+          "button": "Jetzt interviewbereit werden",
+          "headline": "Lande deinen Traumjob schneller",
+          "subtext": "3x mehr Interview-Rückrufe mit unserem Komplettpaket"
+        },
+        "scarcity": {
+          "button": "Sichere dir dein Paket — begrenzt",
+          "headline": "Premium-Lebenslaufpaket",
+          "subtext": "Schließe dich 10.000+ an, die diesen Monat Vorstellungsgespräche bekommen haben"
+        }
       },
       "tailoredResume": {
-        "control": { "button": "Angepassten Lebenslauf ansehen", "description": "Kostenlose Vorschau, dann das vollständige Premium-Paket mit angepasstem Lebenslauf + Anschreiben freischalten" },
-        "benefitFocused": { "button": "Sieh deinen verbesserten Lebenslauf", "description": "Sieh genau, wie dein Lebenslauf aussehen wird, wenn er für deine Zielrolle optimiert ist" },
-        "scarcity": { "button": "Jetzt generieren, bevor es endet", "description": "Begrenzte Vorschau verfügbar — sieh deinen angepassten Lebenslauf, bevor du upgradest" }
+        "control": {
+          "button": "Angepassten Lebenslauf ansehen",
+          "description": "Kostenlose Vorschau, dann das vollständige Premium-Paket mit angepasstem Lebenslauf + Anschreiben freischalten"
+        },
+        "benefitFocused": {
+          "button": "Sieh deinen verbesserten Lebenslauf",
+          "description": "Sieh genau, wie dein Lebenslauf aussehen wird, wenn er für deine Zielrolle optimiert ist"
+        },
+        "scarcity": {
+          "button": "Jetzt generieren, bevor es endet",
+          "description": "Begrenzte Vorschau verfügbar — sieh deinen angepassten Lebenslauf, bevor du upgradest"
+        }
       }
     },
     "addJobDescriptionToUnlock": "Füge oben eine Stellenbeschreibung hinzu, um freizuschalten",
@@ -1064,27 +1184,68 @@
       "copiedToClipboard": "In die Zwischenablage kopiert",
       "shareWithFriend": "Teile dies mit einem Freund oder Mentor für Feedback"
     },
-    "nav": { "overview": "Übersicht", "metrics": "Kennzahlen", "issues": "Probleme", "jobMatch": "Job-Match", "insights": "Einblicke", "nextSteps": "Nächste Schritte" },
+    "nav": {
+      "overview": "Übersicht",
+      "metrics": "Kennzahlen",
+      "issues": "Probleme",
+      "jobMatch": "Job-Match",
+      "insights": "Einblicke",
+      "nextSteps": "Nächste Schritte"
+    },
     "exitOffer": {
       "title": "Bevor du gehst —",
       "withStats": "Dir fehlen {{count}} Schlüsselwörter, die in {{industry}}-Rollen üblich sind. Hol dir die Korrekturliste für den Preis eines Kaffees.",
       "noStats": "Lass deine wichtigsten fehlenden Schlüsselwörter identifizieren und erhalte eine Korrekturliste — für den Preis eines Kaffees."
     },
-    "industryKeywordsSection": { "title": "Branchen- & Rollen-Keywords", "subtitle": "Keywords relevant für dein Feld und deine Zielrolle" },
-    "experienceFit": { "goodFit": "Passend", "over": "Überqualifiziert", "under": "Unterqualifiziert" },
-    "priority": { "must": "Muss", "should": "Sollte", "nice": "Nett" },
-    "atRiskOrNeedsImprovement": { "atRisk": "Risiko, herausgefiltert zu werden", "needsImprovement": "Verbesserung nötig, um wettbewerbsfähig zu sein" },
-    "personalizedTipsSection": { "title": "Personalisierte Tipps", "subtitle": "Maßgeschneiderte Einblicke für dein Profil" },
-    "elevatorPitchSection": { "title": "60-Sekunden-Elevator-Pitch", "subtitle": "KI-generierter Pitch aus deinem Lebenslauf" },
-    "recruiterViewSection": { "title": "Recruiter-Ansichtsmodus", "subtitle": "Sieh genau, was Recruiter sehen" },
-    "resumeRoastSection": { "title": "Lebenslauf-Roast 🔥", "subtitle": "Brutal ehrlich, urkomisch spezifisch" },
-    "interviewCoachSection": { "title": "Interview-Coach", "subtitle": "Übe mit KI-generierten Fragen" },
-    "careerPathSection": { "title": "Karriereweg-Simulator", "subtitle": "3 mögliche Zukünfte basierend auf deinem Lebenslauf" },
+    "industryKeywordsSection": {
+      "title": "Branchen- & Rollen-Keywords",
+      "subtitle": "Keywords relevant für dein Feld und deine Zielrolle"
+    },
+    "experienceFit": {
+      "goodFit": "Passend",
+      "over": "Überqualifiziert",
+      "under": "Unterqualifiziert"
+    },
+    "priority": {
+      "must": "Muss",
+      "should": "Sollte",
+      "nice": "Nett"
+    },
+    "atRiskOrNeedsImprovement": {
+      "atRisk": "Risiko, herausgefiltert zu werden",
+      "needsImprovement": "Verbesserung nötig, um wettbewerbsfähig zu sein"
+    },
+    "personalizedTipsSection": {
+      "title": "Personalisierte Tipps",
+      "subtitle": "Maßgeschneiderte Einblicke für dein Profil"
+    },
+    "elevatorPitchSection": {
+      "title": "60-Sekunden-Elevator-Pitch",
+      "subtitle": "KI-generierter Pitch aus deinem Lebenslauf"
+    },
+    "recruiterViewSection": {
+      "title": "Recruiter-Ansichtsmodus",
+      "subtitle": "Sieh genau, was Recruiter sehen"
+    },
+    "resumeRoastSection": {
+      "title": "Lebenslauf-Roast 🔥",
+      "subtitle": "Brutal ehrlich, urkomisch spezifisch"
+    },
+    "interviewCoachSection": {
+      "title": "Interview-Coach",
+      "subtitle": "Übe mit KI-generierten Fragen"
+    },
+    "careerPathSection": {
+      "title": "Karriereweg-Simulator",
+      "subtitle": "3 mögliche Zukünfte basierend auf deinem Lebenslauf"
+    },
     "fixChecklistTitle": "Korrektur-Checkliste",
     "checklistCompleted": "{{completed}}/{{total}} abgeschlossen",
     "trackProgress": "Fortschritt verfolgen",
     "peerBenchmark": {
-      "above": "Überdurchschnittlich", "at": "Durchschnittlich", "below": "Unterdurchschnittlich",
+      "above": "Überdurchschnittlich",
+      "at": "Durchschnittlich",
+      "below": "Unterdurchschnittlich",
       "forAtsReadinessAmong": "für ATS-Bereitschaft unter {{cohort}}",
       "strongPosition": "✓ Starke Position in deiner Branche",
       "roomForImprovement": "→ Verbesserungspotenzial",
@@ -1094,7 +1255,10 @@
       "weakResult": "Andere Kandidaten in deinem Bereich erzielen höhere Werte. Wende die folgenden Korrekturen an, um deine Chancen zu verbessern."
     },
     "timelineProgression": {
-      "rapidLabel": "🚀 Schnell", "steadyLabel": "📈 Stetig", "stagnantLabel": "📊 Flach", "unclearLabel": "❓ Unklar",
+      "rapidLabel": "🚀 Schnell",
+      "steadyLabel": "📈 Stetig",
+      "stagnantLabel": "📊 Flach",
+      "unclearLabel": "❓ Unklar",
       "rapid": "Großartig! Zeigt starken Aufstieg und zunehmende Verantwortung",
       "steady": "Zeigt konstantes Wachstum — Arbeitgeber mögen dieses Muster",
       "stagnant": "Erwäge, Beförderungen oder neue Verantwortlichkeiten hervorzuheben",
@@ -1103,13 +1267,26 @@
       "gapNoteDefault": "Lücken sind üblich — sei einfach bereit, sie in Vorstellungsgesprächen zu erklären"
     },
     "confidencePercent": "{{confidence}} Konfidenz",
-    "careerSituationLabel": { "careerChanger": "Berufswechsler erkannt", "returningToWorkforce": "Rückkehr ins Berufsleben", "militaryTransition": "Militärübergang", "recentGrad": "Hochschulabsolvent" },
+    "careerSituationLabel": {
+      "careerChanger": "Berufswechsler erkannt",
+      "returningToWorkforce": "Rückkehr ins Berufsleben",
+      "militaryTransition": "Militärübergang",
+      "recentGrad": "Hochschulabsolvent"
+    },
     "personalizedCareerInsightsTitle": "Personalisierte Karriereeinblicke",
     "tailoredForYou": "Maßgeschneidert für {{name}}",
     "you": "dich",
     "aiPowered": "KI-gestützt",
-    "roleFit": { "naturalProgression": "Natürlicher nächster Schritt", "lateralMove": "Seitlicher Wechsel", "stretchGoal": "Ambitioniertes Ziel" },
-    "marketPosition": { "aboveMarket": "Über dem Markt", "atMarket": "Auf Marktniveau", "belowMarket": "Unter dem Markt" },
+    "roleFit": {
+      "naturalProgression": "Natürlicher nächster Schritt",
+      "lateralMove": "Seitlicher Wechsel",
+      "stretchGoal": "Ambitioniertes Ziel"
+    },
+    "marketPosition": {
+      "aboveMarket": "Über dem Markt",
+      "atMarket": "Auf Marktniveau",
+      "belowMarket": "Unter dem Markt"
+    },
     "formatRecommendationSection": {
       "title": "Lebenslaufformat-Empfehlung",
       "subtitle": "{{style}}-Stil für {{industry}} empfohlen",
@@ -1117,18 +1294,32 @@
       "fitsIndustry": "Dein Format passt zu deiner Branche!",
       "needsAdjustment": "Format muss angepasst werden",
       "quickFixLabel": "Schnelle Korrektur: {{fix}}",
-      "layoutLabel": "Layout", "colorLabel": "Farbe", "visualsLabel": "Visuelle Elemente", "styleLabel": "Stil",
-      "colorAcceptable": "✓ Akzeptabel", "colorAvoid": "✗ Vermeiden",
+      "layoutLabel": "Layout",
+      "colorLabel": "Farbe",
+      "visualsLabel": "Visuelle Elemente",
+      "styleLabel": "Stil",
+      "colorAcceptable": "✓ Akzeptabel",
+      "colorAvoid": "✗ Vermeiden",
       "whatTopResumesDo": "Was Top-Lebensläufe in {{industry}} tun:",
-      "importance": { "must": "Muss", "rec": "Empf", "opt": "Opt" },
+      "importance": {
+        "must": "Muss",
+        "rec": "Empf",
+        "opt": "Opt"
+      },
       "avoidForIndustry": "Vermeiden für {{industry}}:",
       "idealTemplate": "Ideale Vorlage: "
     },
-    "columns": { "oneColumn": "Einspaltig", "twoColumn": "Zweispaltig" },
+    "columns": {
+      "oneColumn": "Einspaltig",
+      "twoColumn": "Zweispaltig"
+    },
     "atsParsingSection": {
       "title": "ATS-Parsing-Kompatibilität",
       "subtitle": "Wie gut verschiedene ATS-Systeme deinen Lebenslauf lesen können",
-      "excellentRating": "✓ Ausgezeichnete Kompatibilität", "goodRating": "✓ Gute Kompatibilität", "fairRating": "⚠ Mäßige Kompatibilität", "poorRating": "✗ Schlechte Kompatibilität",
+      "excellentRating": "✓ Ausgezeichnete Kompatibilität",
+      "goodRating": "✓ Gute Kompatibilität",
+      "fairRating": "⚠ Mäßige Kompatibilität",
+      "poorRating": "✗ Schlechte Kompatibilität",
       "excellent": "Dein Lebenslauf sollte auf den meisten ATS-Plattformen korrekt verarbeitet werden",
       "good": "Die meisten ATS lesen deinen Lebenslauf korrekt",
       "fair": "Einige ATS könnten Probleme beim Verarbeiten deines Lebenslaufs haben",
@@ -1136,12 +1327,29 @@
       "worksBestWith": "Funktioniert am besten mit",
       "mayHaveIssues": "Könnte Probleme haben mit"
     },
-    "confidenceLevel": { "high": "Hoch", "medium": "Mittel", "low": "Niedrig" },
-    "bulletRewriteSection": { "title": "KI-umgeschriebene Stichpunkte", "description": "Lass jeden Stichpunkt mit messbarer Wirkung und starken Verben umschreiben" },
-    "keywordGapSection": { "title": "Vollständige Keyword-Lückenanalyse" },
-    "careerStrategySection": { "title": "Personalisierte Karrierestrategie" },
+    "confidenceLevel": {
+      "high": "Hoch",
+      "medium": "Mittel",
+      "low": "Niedrig"
+    },
+    "bulletRewriteSection": {
+      "title": "KI-umgeschriebene Stichpunkte",
+      "description": "Lass jeden Stichpunkt mit messbarer Wirkung und starken Verben umschreiben"
+    },
+    "keywordGapSection": {
+      "title": "Vollständige Keyword-Lückenanalyse"
+    },
+    "careerStrategySection": {
+      "title": "Personalisierte Karrierestrategie"
+    },
     "sectionChecklistTitle": "Abschnitts-Checkliste",
-    "sectionLabels": { "contact": "Kontakt", "summary": "Zusammenfassung", "experience": "Erfahrung", "education": "Ausbildung", "skills": "Kenntnisse" },
+    "sectionLabels": {
+      "contact": "Kontakt",
+      "summary": "Zusammenfassung",
+      "experience": "Erfahrung",
+      "education": "Ausbildung",
+      "skills": "Kenntnisse"
+    },
     "bestValue": "Bestes Angebot",
     "wantToCompareFor": "Möchtest du sehen, wie du abschneidest für",
     "atCompany": "bei",
@@ -1151,52 +1359,123 @@
     "oneInterviewPaidForItself": "Ein Vorstellungsgespräch = {{price}} hat sich gelohnt",
     "unlockWithFullAnalysis": "Mit Vollanalyse freischalten",
     "premiumFeatures": {
-      "completeAtsAnalysis": "Vollständige ATS-Analyse", "aiRewrittenResume": "KI-umgeschriebener Lebenslauf", "customCoverLetter": "Individuelles Anschreiben",
-      "beforeAfterComparison": "Vorher/Nachher-Vergleich", "keywordOptimization": "Keyword-Optimierung", "priorityProcessing": "Bevorzugte Bearbeitung"
+      "completeAtsAnalysis": "Vollständige ATS-Analyse",
+      "aiRewrittenResume": "KI-umgeschriebener Lebenslauf",
+      "customCoverLetter": "Individuelles Anschreiben",
+      "beforeAfterComparison": "Vorher/Nachher-Vergleich",
+      "keywordOptimization": "Keyword-Optimierung",
+      "priorityProcessing": "Bevorzugte Bearbeitung"
     },
     "keywordFixFeatures": {
-      "fullAtsBreakdown": "Vollständige ATS-Score-Aufschlüsselung", "bulletPointRewrites": "Stichpunkt-Umschreibungen", "redFlagFixes": "Detaillierte Korrekturen von Warnsignalen",
-      "linkedinOptimization": "LinkedIn-Optimierung", "actionVerbReplacements": "Ersatz von Aktionsverben", "quantificationSuggestions": "Quantifizierungsvorschläge",
-      "skillsGapAnalysis": "Kompetenzlücken-Analyse", "industryInsights": "Branchenspezifische Einblicke", "summaryRewrites": "Zusammenfassungs-/Headline-Umschreibungen",
+      "fullAtsBreakdown": "Vollständige ATS-Score-Aufschlüsselung",
+      "bulletPointRewrites": "Stichpunkt-Umschreibungen",
+      "redFlagFixes": "Detaillierte Korrekturen von Warnsignalen",
+      "linkedinOptimization": "LinkedIn-Optimierung",
+      "actionVerbReplacements": "Ersatz von Aktionsverben",
+      "quantificationSuggestions": "Quantifizierungsvorschläge",
+      "skillsGapAnalysis": "Kompetenzlücken-Analyse",
+      "industryInsights": "Branchenspezifische Einblicke",
+      "summaryRewrites": "Zusammenfassungs-/Headline-Umschreibungen",
       "prioritizedActionPlan": "Priorisierter Aktionsplan"
     },
     "premiumIncludesDetail": "{{subtext}}: vollständige Analyse + KI-umgeschriebener Lebenslauf + individuelles Anschreiben."
   },
   "analysisPreviewSample": {
-    "breakdown": { "jobTitleMatch": "Jobtitel-Übereinstimmung", "skillsMatch": "Fähigkeiten-Übereinstimmung", "actionVerbUsage": "Aktionsverb-Nutzung", "keywordCoverage": "Schlüsselwortabdeckung", "formattingScore": "Formatierungs-Score" },
-    "matchingSkills": ["Produktmanagement", "Agile/Scrum", "Stakeholder-Management", "Datenanalyse"],
-    "missingKeywords": ["OKRs", "Produkt-Roadmap", "A/B-Testing"],
+    "breakdown": {
+      "jobTitleMatch": "Jobtitel-Übereinstimmung",
+      "skillsMatch": "Fähigkeiten-Übereinstimmung",
+      "actionVerbUsage": "Aktionsverb-Nutzung",
+      "keywordCoverage": "Schlüsselwortabdeckung",
+      "formattingScore": "Formatierungs-Score"
+    },
+    "matchingSkills": [
+      "Produktmanagement",
+      "Agile/Scrum",
+      "Stakeholder-Management",
+      "Datenanalyse"
+    ],
+    "missingKeywords": [
+      "OKRs",
+      "Produkt-Roadmap",
+      "A/B-Testing"
+    ],
     "alignmentSuggestion": "Füge konkrete Kennzahlen rund um Produkteinführungen hinzu und erwähne Erfahrung mit OKRs, um die Übereinstimmung mit dieser Senior-PM-Rolle zu stärken.",
-    "detectedIssues": ["Kontaktinformationen werden in älteren ATS möglicherweise nicht erkannt", "Jobdaten sind nicht im bevorzugten Format", "Spezielle Aufzählungszeichen erschweren das Scannen"],
-    "criticalFixes": ["Verwende das Format Monat Jahr (z.B. Jan 2020 - Heute)", "Ersetze ausgefallene Aufzählungszeichen durch Standard-Bindestriche oder Punkte", "Verschiebe E-Mail und Telefon auf eine einzige Zeile"],
+    "detectedIssues": [
+      "Kontaktinformationen werden in älteren ATS möglicherweise nicht erkannt",
+      "Jobdaten sind nicht im bevorzugten Format",
+      "Spezielle Aufzählungszeichen erschweren das Scannen"
+    ],
+    "criticalFixes": [
+      "Verwende das Format Monat Jahr (z.B. Jan 2020 - Heute)",
+      "Ersetze ausgefallene Aufzählungszeichen durch Standard-Bindestriche oder Punkte",
+      "Verschiebe E-Mail und Telefon auf eine einzige Zeile"
+    ],
     "bulletOriginal": "Verantwortlich für die Leitung des Vertriebsteams",
     "bulletImproved": "Leitete ein 12-köpfiges Vertriebsteam, übertraf die Quartalsziele um 34 % und generierte 2,1 Mio. € neuen Umsatz",
     "bulletReason": "Teamgröße, messbares Ergebnis und konkrete Umsatzwirkung hinzugefügt",
     "resumeLengthReasoning": "Mit 8 Jahren Erfahrung ist ein 2-seitiger Lebenslauf optimal. Erwäge, ältere Positionen zu kürzen.",
-    "actionPlan": ["Füge deiner aktuellsten Position 3-5 quantifizierte Erfolge hinzu", "Ersetze passive Formulierungen durch starke Aktionsverben", "Füge die Schlüsselwörter „funktionsübergreifend“ und „Stakeholder-Management“ hinzu", "Korrigiere die Datumsformatierung für ATS-Kompatibilität"],
-    "redFlags": ["8-monatige Beschäftigungslücke nicht erklärt", "Allgemeine Zielaussage statt gezielter Zusammenfassung"],
+    "actionPlan": [
+      "Füge deiner aktuellsten Position 3-5 quantifizierte Erfolge hinzu",
+      "Ersetze passive Formulierungen durch starke Aktionsverben",
+      "Füge die Schlüsselwörter „funktionsübergreifend“ und „Stakeholder-Management“ hinzu",
+      "Korrigiere die Datumsformatierung für ATS-Kompatibilität"
+    ],
+    "redFlags": [
+      "8-monatige Beschäftigungslücke nicht erklärt",
+      "Allgemeine Zielaussage statt gezielter Zusammenfassung"
+    ],
     "linkedinHeadline": "Senior Product Manager | B2B SaaS | Treibt 40 % Umsatzwachstum voran",
     "linkedinAboutImprovement": "Deinem Über-mich-Abschnitt fehlen quantifizierte Erfolge. Füge Kennzahlen wie Teamgröße, Umsatzwirkung oder Nutzerwachstum hinzu.",
-    "linkedinRecommendations": ["Featured-Bereich mit wichtigen Projekten hinzufügen", "2-3 Empfehlungen von Kollegen anfordern", "Branchenspezifische Schlüsselwörter in der Überschrift verwenden"]
+    "linkedinRecommendations": [
+      "Featured-Bereich mit wichtigen Projekten hinzufügen",
+      "2-3 Empfehlungen von Kollegen anfordern",
+      "Branchenspezifische Schlüsselwörter in der Überschrift verwenden"
+    ]
   },
   "valueComparison": {
     "feature": "Funktion",
     "us": "Resume Booster",
     "them": "Traditioneller Texter",
     "rows": {
-      "timeToResults": { "feature": "Zeit bis zum Ergebnis", "us": "Unter 60 Sekunden", "them": "3-7 Werktage" },
-      "cost": { "feature": "Kosten", "us": "5 € – 25 € einmalig", "them": "150 € – 500 €+" },
-      "atsOptimization": { "feature": "ATS-Optimierung", "them": "Variiert je nach Texter" },
-      "keywordAnalysis": { "feature": "Schlüsselwortanalyse", "us": "Branchenspezifische KI", "them": "Manuelle Recherche" },
-      "revisions": { "feature": "Inklusive Überarbeitungen", "us": "Unbegrenzte Versuche", "them": "1-2 Runden" },
-      "jobTailoring": { "feature": "Jobspezifische Anpassung", "them": "Zusätzlich 50-100 €" }
+      "timeToResults": {
+        "feature": "Zeit bis zum Ergebnis",
+        "us": "Unter 60 Sekunden",
+        "them": "3-7 Werktage"
+      },
+      "cost": {
+        "feature": "Kosten",
+        "us": "5 € – 25 € einmalig",
+        "them": "150 € – 500 €+"
+      },
+      "atsOptimization": {
+        "feature": "ATS-Optimierung",
+        "them": "Variiert je nach Texter"
+      },
+      "keywordAnalysis": {
+        "feature": "Schlüsselwortanalyse",
+        "us": "Branchenspezifische KI",
+        "them": "Manuelle Recherche"
+      },
+      "revisions": {
+        "feature": "Inklusive Überarbeitungen",
+        "us": "Unbegrenzte Versuche",
+        "them": "1-2 Runden"
+      },
+      "jobTailoring": {
+        "feature": "Jobspezifische Anpassung",
+        "them": "Zusätzlich 50-100 €"
+      }
     }
   },
   "finalCtaExtra": {
     "powerUpAddOns": "Power-Up-Erweiterungen",
     "resumeRoastFree": "Lebenslauf-Roast KOSTENLOS",
     "viewAllProducts": "Alle Produkte ansehen",
-    "addOnNames": { "resumeRoast": "Lebenslauf-Roast", "interviewCoach": "Interview-Coach", "careerPath": "Karriereweg" }
+    "addOnNames": {
+      "resumeRoast": "Lebenslauf-Roast",
+      "interviewCoach": "Interview-Coach",
+      "careerPath": "Karriereweg"
+    }
   },
   "productSuccess": {
     "verifyingPurchase": "Dein Kauf wird überprüft...",
@@ -1344,9 +1623,18 @@
           "Lade ihn erneut hoch, um deinen verbesserten ATS-Score zu prüfen"
         ],
         "nextSteps": [
-          { "title": "Keywords prüfen", "description": "Sieh dir die Analyse der fehlenden Keywords unten an" },
-          { "title": "Lebenslauf aktualisieren", "description": "Füge die vorgeschlagenen Keywords zu deinem Lebenslauf hinzu" },
-          { "title": "Verbesserung prüfen", "description": "Erneut scannen, um deinen neuen ATS-Score zu sehen" }
+          {
+            "title": "Keywords prüfen",
+            "description": "Sieh dir die Analyse der fehlenden Keywords unten an"
+          },
+          {
+            "title": "Lebenslauf aktualisieren",
+            "description": "Füge die vorgeschlagenen Keywords zu deinem Lebenslauf hinzu"
+          },
+          {
+            "title": "Verbesserung prüfen",
+            "description": "Erneut scannen, um deinen neuen ATS-Score zu sehen"
+          }
         ],
         "deliveryTime": "Sofort",
         "deliveryMethod": "Auf dieser Seite"
@@ -1359,9 +1647,18 @@
           "Passe die Anrede und unternehmensspezifische Details an"
         ],
         "nextSteps": [
-          { "title": "Anschreiben prüfen", "description": "Lies dein generiertes Anschreiben unten durch" },
-          { "title": "Kopieren oder herunterladen", "description": "Erhalte dein Anschreiben im benötigten Format" },
-          { "title": "Bewerbung einreichen", "description": "Zusammen mit deinem Lebenslauf bewerben" }
+          {
+            "title": "Anschreiben prüfen",
+            "description": "Lies dein generiertes Anschreiben unten durch"
+          },
+          {
+            "title": "Kopieren oder herunterladen",
+            "description": "Erhalte dein Anschreiben im benötigten Format"
+          },
+          {
+            "title": "Bewerbung einreichen",
+            "description": "Zusammen mit deinem Lebenslauf bewerben"
+          }
         ],
         "deliveryTime": "Sofort",
         "deliveryMethod": "Auf dieser Seite"
@@ -1375,9 +1672,18 @@
           "Kopiere oder lade deine neuen Dokumente herunter"
         ],
         "nextSteps": [
-          { "title": "Dokumente prüfen", "description": "Sieh dir deinen neuen Lebenslauf und dein Anschreiben unten an" },
-          { "title": "Kopieren & herunterladen", "description": "Erhalte deine Dokumente im benötigten Format" },
-          { "title": "Jetzt bewerben", "description": "Reiche deine optimierte Bewerbung ein" }
+          {
+            "title": "Dokumente prüfen",
+            "description": "Sieh dir deinen neuen Lebenslauf und dein Anschreiben unten an"
+          },
+          {
+            "title": "Kopieren & herunterladen",
+            "description": "Erhalte deine Dokumente im benötigten Format"
+          },
+          {
+            "title": "Jetzt bewerben",
+            "description": "Reiche deine optimierte Bewerbung ein"
+          }
         ],
         "deliveryTime": "Sofort",
         "deliveryMethod": "Auf dieser Seite"
@@ -1391,9 +1697,18 @@
           "LinkedIn-Abstimmungstipps enthalten"
         ],
         "nextSteps": [
-          { "title": "Audit prüfen", "description": "Sieh dir deine ATS-Scores vorher/nachher an" },
-          { "title": "Keywords anwenden", "description": "Nutze die Keyword-Bank für deine Branche" },
-          { "title": "Abschnitte kopieren", "description": "Nutze die optimierten Lebenslaufabschnitte" }
+          {
+            "title": "Audit prüfen",
+            "description": "Sieh dir deine ATS-Scores vorher/nachher an"
+          },
+          {
+            "title": "Keywords anwenden",
+            "description": "Nutze die Keyword-Bank für deine Branche"
+          },
+          {
+            "title": "Abschnitte kopieren",
+            "description": "Nutze die optimierten Lebenslaufabschnitte"
+          }
         ],
         "deliveryTime": "Sofort",
         "deliveryMethod": "Auf dieser Seite"
@@ -1407,9 +1722,18 @@
           "Teile sie gerne mit Freunden oder Familie"
         ],
         "nextSteps": [
-          { "title": "Credits nutzen", "description": "Lade einen Lebenslauf hoch, um deinen ersten Credit zu nutzen" },
-          { "title": "Credits im Blick behalten", "description": "Prüfe „Meine Credits“ in der Kopfzeile, um dein Guthaben zu sehen" },
-          { "title": "Für mehr Jobs bewerben", "description": "Nutze Credits für jede Bewerbung, die du anstrebst" }
+          {
+            "title": "Credits nutzen",
+            "description": "Lade einen Lebenslauf hoch, um deinen ersten Credit zu nutzen"
+          },
+          {
+            "title": "Credits im Blick behalten",
+            "description": "Prüfe „Meine Credits“ in der Kopfzeile, um dein Guthaben zu sehen"
+          },
+          {
+            "title": "Für mehr Jobs bewerben",
+            "description": "Nutze Credits für jede Bewerbung, die du anstrebst"
+          }
         ],
         "deliveryTime": "Sofort",
         "deliveryMethod": "Credits dem Konto gutgeschrieben"
@@ -1422,9 +1746,18 @@
           "Credits verfallen nie"
         ],
         "nextSteps": [
-          { "title": "Lebenslauf hochladen", "description": "Gehe zur Startseite, um mit dem Scannen zu beginnen" },
-          { "title": "Credits nutzen", "description": "Jeder Scan verbraucht einen Credit von deinem Guthaben" },
-          { "title": "Guthaben prüfen", "description": "Verbleibende Credits unter „Meine Credits“ einsehen" }
+          {
+            "title": "Lebenslauf hochladen",
+            "description": "Gehe zur Startseite, um mit dem Scannen zu beginnen"
+          },
+          {
+            "title": "Credits nutzen",
+            "description": "Jeder Scan verbraucht einen Credit von deinem Guthaben"
+          },
+          {
+            "title": "Guthaben prüfen",
+            "description": "Verbleibende Credits unter „Meine Credits“ einsehen"
+          }
         ],
         "deliveryTime": "Sofort",
         "deliveryMethod": "Credits dem Konto gutgeschrieben"
@@ -1438,9 +1771,18 @@
           "Umsetzbare Prioritätskorrekturen erstellt, die du heute anwenden kannst"
         ],
         "nextSteps": [
-          { "title": "Score prüfen", "description": "Sieh dir die Aufschlüsselung deines Career Signal Score an" },
-          { "title": "Wahrnehmung verstehen", "description": "Lerne, wie Recruiter deine Karriere sehen" },
-          { "title": "Korrekturen anwenden", "description": "Setze die Prioritätsempfehlungen um" }
+          {
+            "title": "Score prüfen",
+            "description": "Sieh dir die Aufschlüsselung deines Career Signal Score an"
+          },
+          {
+            "title": "Wahrnehmung verstehen",
+            "description": "Lerne, wie Recruiter deine Karriere sehen"
+          },
+          {
+            "title": "Korrekturen anwenden",
+            "description": "Setze die Prioritätsempfehlungen um"
+          }
         ],
         "deliveryTime": "Sofort",
         "deliveryMethod": "Auf dieser Seite"
@@ -1454,9 +1796,18 @@
           "Einen 30-Tage-Aktionsplan erstellt, um deine erste Stelle zu bekommen"
         ],
         "nextSteps": [
-          { "title": "Bereitschaft prüfen", "description": "Sieh, ob dein Lebenslauf bewerbungsfähig ist" },
-          { "title": "Zielpositionen", "description": "Sieh dir Positionen an, die zu deinem Hintergrund passen" },
-          { "title": "Plan befolgen", "description": "Setze den 30-Tage-Aktionsplan um" }
+          {
+            "title": "Bereitschaft prüfen",
+            "description": "Sieh, ob dein Lebenslauf bewerbungsfähig ist"
+          },
+          {
+            "title": "Zielpositionen",
+            "description": "Sieh dir Positionen an, die zu deinem Hintergrund passen"
+          },
+          {
+            "title": "Plan befolgen",
+            "description": "Setze den 30-Tage-Aktionsplan um"
+          }
         ],
         "deliveryTime": "Sofort",
         "deliveryMethod": "Auf dieser Seite"
@@ -1469,9 +1820,18 @@
           "Übe diese, um dich auf dein nächstes Interview vorzubereiten"
         ],
         "nextSteps": [
-          { "title": "Fragen durchgehen", "description": "Gehe jede personalisierte Frage durch" },
-          { "title": "Antworten üben", "description": "Nutze die bereitgestellten STAR-Methoden-Rahmen" },
-          { "title": "Selbstvertrauen aufbauen", "description": "Übe, bis du dich bereit fühlst" }
+          {
+            "title": "Fragen durchgehen",
+            "description": "Gehe jede personalisierte Frage durch"
+          },
+          {
+            "title": "Antworten üben",
+            "description": "Nutze die bereitgestellten STAR-Methoden-Rahmen"
+          },
+          {
+            "title": "Selbstvertrauen aufbauen",
+            "description": "Übe, bis du dich bereit fühlst"
+          }
         ],
         "deliveryTime": "Sofort",
         "deliveryMethod": "Auf dieser Seite"
@@ -1484,9 +1844,18 @@
           "Nutze die Handlungsschritte, um deine bevorzugte Richtung zu verfolgen"
         ],
         "nextSteps": [
-          { "title": "Wege erkunden", "description": "Sieh dir deine 3 Karrierewege an" },
-          { "title": "Lücken identifizieren", "description": "Sieh, welche Fähigkeiten du für jeden Weg brauchst" },
-          { "title": "Vorausplanen", "description": "Folge dem Zeitplan für deinen gewählten Weg" }
+          {
+            "title": "Wege erkunden",
+            "description": "Sieh dir deine 3 Karrierewege an"
+          },
+          {
+            "title": "Lücken identifizieren",
+            "description": "Sieh, welche Fähigkeiten du für jeden Weg brauchst"
+          },
+          {
+            "title": "Vorausplanen",
+            "description": "Folge dem Zeitplan für deinen gewählten Weg"
+          }
         ],
         "deliveryTime": "Sofort",
         "deliveryMethod": "Auf dieser Seite"
@@ -1499,9 +1868,18 @@
           "Du prüfst alles und reichst es selbst ein — nichts wird automatisch gesendet"
         ],
         "nextSteps": [
-          { "title": "Angepassten Lebenslauf prüfen", "description": "Prüfe die KI-Überarbeitung auf Genauigkeit" },
-          { "title": "Checkliste befolgen", "description": "Wir sagen dir genau, was als Nächstes zu tun ist — du reichst es ein" },
-          { "title": "Exportieren & bewerben", "description": "Lade Lebenslauf und Anschreiben herunter und bewerbe dich auf der Website des Arbeitgebers" }
+          {
+            "title": "Angepassten Lebenslauf prüfen",
+            "description": "Prüfe die KI-Überarbeitung auf Genauigkeit"
+          },
+          {
+            "title": "Checkliste befolgen",
+            "description": "Wir sagen dir genau, was als Nächstes zu tun ist — du reichst es ein"
+          },
+          {
+            "title": "Exportieren & bewerben",
+            "description": "Lade Lebenslauf und Anschreiben herunter und bewerbe dich auf der Website des Arbeitgebers"
+          }
         ],
         "deliveryTime": "Sofort",
         "deliveryMethod": "Auf dieser Seite"
@@ -1702,41 +2080,97 @@
   "personalization": {
     "experience": {
       "entry": {
-        "focusAreas": ["Ausbildung und relevante Kurse", "Praktika und Projekterfahrung", "Übertragbare Fähigkeiten aus jeder Tätigkeit", "Erlernte technische Fähigkeiten und Tools"],
-        "avoidAreas": ["Zielaussagen (stattdessen eine Zusammenfassung verwenden)", "Schulinformationen (außer bei aktuellen Absolventen)", "Unrelevante Jobs ohne übertragbare Fähigkeiten"],
+        "focusAreas": [
+          "Ausbildung und relevante Kurse",
+          "Praktika und Projekterfahrung",
+          "Übertragbare Fähigkeiten aus jeder Tätigkeit",
+          "Erlernte technische Fähigkeiten und Tools"
+        ],
+        "avoidAreas": [
+          "Zielaussagen (stattdessen eine Zusammenfassung verwenden)",
+          "Schulinformationen (außer bei aktuellen Absolventen)",
+          "Unrelevante Jobs ohne übertragbare Fähigkeiten"
+        ],
         "keyMessage": "Zeige Potenzial und Lernbereitschaft",
         "quantificationTip": "Auch Einstiegsjobs haben Zahlen: betreute Kunden, abgeschlossene Projekte, geleistete Freiwilligenstunden"
       },
       "mid": {
-        "focusAreas": ["Konkrete Erfolge mit Kennzahlen", "Wachsende Verantwortung und Führung", "Entwicklung spezialisierter Fähigkeiten", "Funktionsübergreifende Zusammenarbeit"],
-        "avoidAreas": ["Einstiegsaufgaben (Fokus auf Wachstum)", "Zu viele Details zu älteren Positionen", "Fähigkeiten, die mittlerweile vorausgesetzt werden (Basis-Software)"],
+        "focusAreas": [
+          "Konkrete Erfolge mit Kennzahlen",
+          "Wachsende Verantwortung und Führung",
+          "Entwicklung spezialisierter Fähigkeiten",
+          "Funktionsübergreifende Zusammenarbeit"
+        ],
+        "avoidAreas": [
+          "Einstiegsaufgaben (Fokus auf Wachstum)",
+          "Zu viele Details zu älteren Positionen",
+          "Fähigkeiten, die mittlerweile vorausgesetzt werden (Basis-Software)"
+        ],
         "keyMessage": "Zeige konsistentes Wachstum und Wirkung",
         "quantificationTip": "Zeige Entwicklung: gestiegene Verantwortung, größere Projekte, größere Budgets"
       },
       "senior": {
-        "focusAreas": ["Führung und Teamentwicklung", "Strategische Initiativen und Ergebnisse", "Abteilungsübergreifende Wirkung", "Mentoring und Wissensvermittlung"],
-        "avoidAreas": ["Taktische Details (Fokus auf Strategie)", "Detaillierte Rollen von vor 15+ Jahren", "Fähigkeiten, die auf deiner Ebene vorausgesetzt werden sollten"],
+        "focusAreas": [
+          "Führung und Teamentwicklung",
+          "Strategische Initiativen und Ergebnisse",
+          "Abteilungsübergreifende Wirkung",
+          "Mentoring und Wissensvermittlung"
+        ],
+        "avoidAreas": [
+          "Taktische Details (Fokus auf Strategie)",
+          "Detaillierte Rollen von vor 15+ Jahren",
+          "Fähigkeiten, die auf deiner Ebene vorausgesetzt werden sollten"
+        ],
         "keyMessage": "Zeige strategisches Denken und Führungswirkung",
         "quantificationTip": "Fokus auf Teamgröße, verwaltetes Budget, beeinflussten Umsatz, unternehmensweite Wirkung"
       },
       "executive": {
-        "focusAreas": ["GuV-Verantwortung und Geschäftsergebnisse", "Transformation und Change-Leadership", "Vorstands- und Stakeholder-Management", "Visionsentwicklung und Kulturaufbau"],
-        "avoidAreas": ["Taktische Ausführungsdetails", "Skill-Listen (auf C-Level vorausgesetzt)", "Frühe Karrieredetails über Titel hinaus"],
+        "focusAreas": [
+          "GuV-Verantwortung und Geschäftsergebnisse",
+          "Transformation und Change-Leadership",
+          "Vorstands- und Stakeholder-Management",
+          "Visionsentwicklung und Kulturaufbau"
+        ],
+        "avoidAreas": [
+          "Taktische Ausführungsdetails",
+          "Skill-Listen (auf C-Level vorausgesetzt)",
+          "Frühe Karrieredetails über Titel hinaus"
+        ],
         "keyMessage": "Zeige Unternehmenstransformation und Vision",
         "quantificationTip": "Umsatz, Marktanteil, Bewertung, M&A-Deals, organisatorische Größenordnung"
       }
     },
     "geographic": {
-      "us": { "name": "Vereinigte Staaten" },
-      "uk": { "name": "Vereinigtes Königreich" },
-      "eu": { "name": "Europäische Union" },
-      "de": { "name": "Deutschland" },
-      "au": { "name": "Australien" },
-      "in": { "name": "Indien" },
-      "ca": { "name": "Kanada" },
-      "latam": { "name": "Lateinamerika" },
-      "br": { "name": "Brasilien" },
-      "mx": { "name": "Mexiko" }
+      "us": {
+        "name": "Vereinigte Staaten"
+      },
+      "uk": {
+        "name": "Vereinigtes Königreich"
+      },
+      "eu": {
+        "name": "Europäische Union"
+      },
+      "de": {
+        "name": "Deutschland"
+      },
+      "au": {
+        "name": "Australien"
+      },
+      "in": {
+        "name": "Indien"
+      },
+      "ca": {
+        "name": "Kanada"
+      },
+      "latam": {
+        "name": "Lateinamerika"
+      },
+      "br": {
+        "name": "Brasilien"
+      },
+      "mx": {
+        "name": "Mexiko"
+      }
     }
   },
   "personalizedInsights": {
@@ -1868,16 +2302,46 @@
       }
     },
     "atsPlatforms": {
-      "0": { "description": "Analyse von Abschnittsüberschriften, Schlüsselwortextraktion, Validierung des Datumsformats", "marketShare": "Große Unternehmen" },
-      "1": { "description": "Algorithmen zum Skill-Abgleich, Bewertung der Erfahrungsstufe, Indikatoren für kulturelle Passung", "marketShare": "Tech & Start-ups" },
-      "2": { "description": "Validierung der Kontaktdaten, Formatierungskonsistenz, Abschnittsorganisation", "marketShare": "Mittelstand" },
-      "3": { "description": "Analyse der Schlüsselwortdichte, Abgleich der Jobtitel, Bewertung der Qualifikationen", "marketShare": "Fortune 500" },
-      "4": { "description": "Analyse von Bildungsangaben, Zertifikatserkennung, Abgleich der Skill-Taxonomie", "marketShare": "Gesundheitswesen & Einzelhandel" },
-      "5": { "description": "Analyse der Lebenslaufstruktur, Validierung der Erfahrungschronologie", "marketShare": "KMU" },
-      "6": { "description": "Schlüsselwortoptimierung, Algorithmen zur Bewerber-Rangfolge", "marketShare": "Kleinunternehmen" },
-      "7": { "description": "Integration von Social-Profilen, Empfehlungs-Tracking, Skill-Bewertung", "marketShare": "Großunternehmen" },
-      "8": { "description": "KI-gestützter Abgleich, Diversitätsindikatoren, globale Compliance", "marketShare": "Globale Großunternehmen" },
-      "9": { "description": "Personalvermittlungsspezifische Analyse, Erkennung von Auftragnehmern, Verfügbarkeitsbewertung", "marketShare": "Personalvermittlungsagenturen" }
+      "0": {
+        "description": "Analyse von Abschnittsüberschriften, Schlüsselwortextraktion, Validierung des Datumsformats",
+        "marketShare": "Große Unternehmen"
+      },
+      "1": {
+        "description": "Algorithmen zum Skill-Abgleich, Bewertung der Erfahrungsstufe, Indikatoren für kulturelle Passung",
+        "marketShare": "Tech & Start-ups"
+      },
+      "2": {
+        "description": "Validierung der Kontaktdaten, Formatierungskonsistenz, Abschnittsorganisation",
+        "marketShare": "Mittelstand"
+      },
+      "3": {
+        "description": "Analyse der Schlüsselwortdichte, Abgleich der Jobtitel, Bewertung der Qualifikationen",
+        "marketShare": "Fortune 500"
+      },
+      "4": {
+        "description": "Analyse von Bildungsangaben, Zertifikatserkennung, Abgleich der Skill-Taxonomie",
+        "marketShare": "Gesundheitswesen & Einzelhandel"
+      },
+      "5": {
+        "description": "Analyse der Lebenslaufstruktur, Validierung der Erfahrungschronologie",
+        "marketShare": "KMU"
+      },
+      "6": {
+        "description": "Schlüsselwortoptimierung, Algorithmen zur Bewerber-Rangfolge",
+        "marketShare": "Kleinunternehmen"
+      },
+      "7": {
+        "description": "Integration von Social-Profilen, Empfehlungs-Tracking, Skill-Bewertung",
+        "marketShare": "Großunternehmen"
+      },
+      "8": {
+        "description": "KI-gestützter Abgleich, Diversitätsindikatoren, globale Compliance",
+        "marketShare": "Globale Großunternehmen"
+      },
+      "9": {
+        "description": "Personalvermittlungsspezifische Analyse, Erkennung von Auftragnehmern, Verfügbarkeitsbewertung",
+        "marketShare": "Personalvermittlungsagenturen"
+      }
     },
     "atsPlatformsTitle": "ATS-Plattformen, gegen die wir analysieren",
     "atsPlatformsSubtitle": "Unsere Analyse basiert auf den Parsing-Regeln und Bewertungsalgorithmen dieser großen ATS-Plattformen, die über 90 % des Arbeitsmarkts abdecken.",
@@ -1885,13 +2349,34 @@
     "scoreCalculatedTitle": "Wie dein ATS-Score berechnet wird",
     "scoreCalculatedSubtitle": "Dein Score ist eine gewichtete Kombination mehrerer Faktoren, die bestimmen, wie gut dein Lebenslauf in ATS-Systemen abschneidet.",
     "scoringFactors": {
-      "keywordOptimization": { "factor": "Schlüsselwortoptimierung", "description": "Erwähnte branchenrelevante Schlüsselwörter und Fähigkeiten" },
-      "formatCompatibility": { "factor": "Formatkompatibilität", "description": "Saubere Struktur, die ATS korrekt analysieren kann" },
-      "sectionCompleteness": { "factor": "Vollständigkeit der Abschnitte", "description": "Alle erwarteten Abschnitte vorhanden und korrekt benannt" },
-      "experienceClarity": { "factor": "Klarheit der Erfahrung", "description": "Klare Jobtitel, Daten und Erfolge" },
-      "actionVerbUsage": { "factor": "Verwendung von Aktionsverben", "description": "Starke Aktionsverben, die Wirkung zeigen" },
-      "quantifiedAchievements": { "factor": "Quantifizierte Erfolge", "description": "Zahlen und Kennzahlen, die Ergebnisse belegen" },
-      "redFlagAbsence": { "factor": "Abwesenheit von Warnsignalen", "description": "Keine Formatierungs- oder Inhaltsprobleme" }
+      "keywordOptimization": {
+        "factor": "Schlüsselwortoptimierung",
+        "description": "Erwähnte branchenrelevante Schlüsselwörter und Fähigkeiten"
+      },
+      "formatCompatibility": {
+        "factor": "Formatkompatibilität",
+        "description": "Saubere Struktur, die ATS korrekt analysieren kann"
+      },
+      "sectionCompleteness": {
+        "factor": "Vollständigkeit der Abschnitte",
+        "description": "Alle erwarteten Abschnitte vorhanden und korrekt benannt"
+      },
+      "experienceClarity": {
+        "factor": "Klarheit der Erfahrung",
+        "description": "Klare Jobtitel, Daten und Erfolge"
+      },
+      "actionVerbUsage": {
+        "factor": "Verwendung von Aktionsverben",
+        "description": "Starke Aktionsverben, die Wirkung zeigen"
+      },
+      "quantifiedAchievements": {
+        "factor": "Quantifizierte Erfolge",
+        "description": "Zahlen und Kennzahlen, die Ergebnisse belegen"
+      },
+      "redFlagAbsence": {
+        "factor": "Abwesenheit von Warnsignalen",
+        "description": "Keine Formatierungs- oder Inhaltsprobleme"
+      }
     },
     "continuousResearchTitle": "Kontinuierliche Forschung",
     "continuousResearchSubtitle": "Wir analysieren kontinuierlich Stellenausschreibungen, ATS-Updates und Einstellungstrends, um unsere Analyse genau und aktuell zu halten.",
@@ -2065,7 +2550,11 @@
     "metaDescription": "Neue Funktionen, Verbesserungen und Fehlerbehebungen, die bei Resume Booster veröffentlicht wurden. Wöchentlich aktualisiert.",
     "title": "Neuigkeiten",
     "subtitle": "Wir veröffentlichen ständig Verbesserungen. Hier ist, was sich zuletzt geändert hat.",
-    "tags": { "new": "Neu", "improved": "Verbessert", "fixed": "Behoben" }
+    "tags": {
+      "new": "Neu",
+      "improved": "Verbessert",
+      "fixed": "Behoben"
+    }
   },
   "changelogEntries": {
     "yourReportsSpeakYourLanguage": {
@@ -2152,5 +2641,184 @@
       "title": "Erkennung gescannter PDFs",
       "description": "Wenn du ein gescanntes, bildbasiertes PDF ohne auswählbaren Text hochlädst, sagen wir dir das jetzt sofort, statt stillschweigend leeren Inhalt zu analysieren — mit einem klaren Vorschlag, eine textbasierte Version hochzuladen oder deinen Lebenslauf direkt einzufügen."
     }
+  },
+  "sampleReportPreview": {
+    "exploring": "Beispielbericht wird erkundet",
+    "hereIsWhat": "Das siehst du nach dem Hochladen",
+    "sampleReport": "Beispielbericht",
+    "collapse": "Einklappen",
+    "clickToExplore": "Zum Erkunden klicken",
+    "atsScore": "ATS-Kompatibilitätspunktzahl",
+    "needsImprovement": "Verbesserungsbedarf",
+    "filteredOut": "Dein Lebenslauf könnte von 73 % der ATS-Systeme herausgefiltert werden",
+    "missingKeywords": "Fehlende Schlüsselwörter",
+    "plusMore": "+8 weitere",
+    "atsParsing": "ATS-Parsing-Probleme gefunden",
+    "prioritizedImprovements": "Priorisierte Verbesserungen",
+    "scoreBreakdown": "Punkteaufschlüsselung",
+    "aiPoweredFixes": "KI-gestützte Korrekturen enthalten",
+    "moreSuggestions": "+ weitere personalisierte Vorschläge",
+    "readyToSeeScore": "Bereit, deine echte Punktzahl zu sehen?",
+    "uploadAbove": "Lade deinen Lebenslauf oben hoch für personalisierte Einblicke",
+    "sampleData": "Dies sind Beispieldaten — dein Bericht wird einzigartig für deinen Lebenslauf sein",
+    "personalizedReport": "Dein tatsächlicher Bericht wird auf deinen Lebenslauf zugeschnitten",
+    "sections": {
+      "contactInfo": "Kontaktinfo",
+      "keywords": "Schlüsselwörter",
+      "experience": "Erfahrung",
+      "education": "Ausbildung"
+    },
+    "sectionDetails": {
+      "properlyFormatted": "Korrekt formatiert",
+      "missing12": "Fehlende 12 kritische Begriffe",
+      "weakActionVerbs": "Schwache Aktionsverben",
+      "correctlyParsed": "Korrekt geparst"
+    },
+    "atsIssues": {
+      "tablesDetected": "Tabellen erkannt",
+      "tablesImpact": "Kann das Parsing in 60 % der ATS-Systeme beeinträchtigen",
+      "graphicsUsed": "Grafiken/Symbole verwendet",
+      "graphicsImpact": "Werden ignoriert oder verursachen Fehler",
+      "nonStandardHeaders": "Nicht standardmäßige Abschnittsüberschriften",
+      "headersImpact": "Fähigkeitenabschnitt wird möglicherweise nicht erkannt"
+    },
+    "fixes": {
+      "impactMetrics": "Leistungskennzahlen",
+      "impactMetricsFix": "3–5 quantifizierte Ergebnisse hinzufügen (z. B. ‘Umsatz um 23 % gesteigert’)",
+      "actionVerbs": "Aktionsverben",
+      "actionVerbsFix": "Passive Formulierungen wie ‘verantwortlich für’ durch ‘Geleitet’, ‘Vorangetrieben’, ‘Erreicht’ ersetzen",
+      "keywords": "Schlüsselwörter",
+      "keywordsFix": "Fehlende Branchenbegriffe hinzufügen: ‘Stakeholder-Management’, ‘Agile-Methodik’",
+      "formatting": "Formatierung",
+      "formattingFix": "Einheitliches Datumsformat (MM/JJJJ) verwenden",
+      "summary": "Zusammenfassung",
+      "summaryFix": "2–3-zeilige professionelle Zusammenfassung oben hinzufügen"
+    },
+    "priority": {
+      "high": "hoch",
+      "medium": "mittel",
+      "low": "niedrig"
+    },
+    "scoreLabels": {
+      "keywordMatch": "Schlüsselwortübereinstimmung",
+      "formatting": "Formatierung",
+      "experienceRelevance": "Erfahrungsrelevanz",
+      "education": "Ausbildung"
+    },
+    "quickFixes": {
+      "fix1": "Quantifizierte Leistungen hinzufügen (Zahlen, %, $)",
+      "fix2": "‘Verantwortlich für’ durch Aktionsverben ersetzen",
+      "fix3": "3 weitere Branchenbegriffe einfügen"
+    }
+  },
+  "peerBenchmark": {
+    "howYouCompare": "Wie du abschneidest",
+    "percentile": "Perzentil",
+    "industryAverage": "Branchendurchschnitt: {{score}}",
+    "topPerformers": "Spitzenreiter: {{score}}+",
+    "toAverage": "Zum Durchschnitt",
+    "toTopTier": "Zur Spitzengruppe",
+    "topPerformer": "Du bist ein Spitzenkandidat!",
+    "levelTip": "Tipp für {{level}}",
+    "benchmarkedAgainst": "Verglichen mit anderen {{role}}-Kandidaten",
+    "topPct": "Top {{pct}} % bei ATS-Bereitschaft unter {{cohort}}",
+    "aroundAverage": "Durchschnittliche ATS-Bereitschaft unter {{cohort}}",
+    "belowAverage": "Unterdurchschnittliche ATS-Bereitschaft unter {{cohort}} (behebbar)"
+  },
+  "skillsGapAnalysis": {
+    "title": "Kompetenzlückenanalyse für {{role}}",
+    "roleMatchScore": "Rollenübereinstimmungswert",
+    "strongMatch": "Starke Übereinstimmung",
+    "partialMatch": "Teilweise Übereinstimmung",
+    "needsImprovement": "Verbesserungsbedarf",
+    "keySkills": "Kernkompetenzen",
+    "matched": "{{present}}/{{total}} übereinstimmend",
+    "missingSkills": "Fehlende Fähigkeiten hinzufügen:",
+    "atsKeywords": "ATS-Schlüsselwörter",
+    "found": "{{present}}/{{total}} gefunden",
+    "addKeywords": "Diese Schlüsselwörter hinzufügen, um die ATS-Punktzahl zu steigern:",
+    "priorityActions": "Prioritätsmaßnahmen:",
+    "addSkill": "Füge „{{skill}}“ in deinen Fähigkeitenabschnitt ein oder demonstriere es in deinen Erfahrungspunkten",
+    "includeKeyword": "Füge „{{keyword}}“ in deine Leistungspunkte mit konkreten Kennzahlen ein"
+  },
+  "resumeBeforeAfter": {
+    "title": "Sieh den KI-Unterschied",
+    "before": "Vorher",
+    "after": "Nachher",
+    "tagline": "Dein gesamter Lebenslauf wird so transformiert"
+  },
+  "profileQuizModal": {
+    "title": "Schnelles Profil-Setup",
+    "description": "Hilf uns, deine Analyse zu personalisieren (dauert 30 Sekunden)",
+    "step1of3": "Schritt 1 von 3",
+    "step2of3": "Schritt 2 von 3",
+    "step3of3": "Schritt 3 von 3",
+    "whichIndustry": "In welcher Branche bist du tätig?",
+    "experienceLevel": "Wie ist dein Erfahrungsniveau?",
+    "targetRole": "Auf welche Stelle zielst du ab?",
+    "skipForNow": "Vorärst überspringen",
+    "next": "Weiter",
+    "back": "Zurück",
+    "typeYourRole": "Oder gib deine Zielstelle ein...",
+    "getPersonalized": "Personalisierte Analyse erhalten",
+    "industries": {
+      "technology": "Technologie",
+      "healthcare": "Gesundheitswesen",
+      "finance": "Finanzen & Bankwesen",
+      "marketing": "Marketing",
+      "sales": "Vertrieb",
+      "engineering": "Ingenieurwesen",
+      "education": "Bildung",
+      "hr": "Personalwesen",
+      "consulting": "Beratung",
+      "legal": "Recht",
+      "retail": "Einzelhandel & E-Commerce",
+      "other": "Sonstiges"
+    },
+    "levels": {
+      "entry": "Berufseinsteiger",
+      "entryDesc": "0–2 Jahre",
+      "mid": "Mittlere Ebene",
+      "midDesc": "3–5 Jahre",
+      "senior": "Senior-Ebene",
+      "seniorDesc": "6–10 Jahre",
+      "executive": "Führungsebene",
+      "executiveDesc": "10+ Jahre"
+    }
+  },
+  "competitorBenchmark": {
+    "title": "So stechen Top-{{role}}s hervor",
+    "basedOnAnalysis": "Basierend auf der Analyse erfolgreicher {{role}}-Lebensläufe, die Vorstellungsgespräche erhalten",
+    "competitiveStanding": "Deine Wettbewerbsposition",
+    "topElements": "Du hast Elemente, die Top-Kandidaten enthalten!",
+    "addFewMore": "Füge einige weitere Elemente hinzu, um mit Spitzenkandidaten zu konkurrieren",
+    "addElements": "Füge diese Elemente hinzu, um mit Spitzenreitern mithalten zu können",
+    "sectionsAlwaysInclude": "Abschnitte, die Top-{{role}}s immer enthalten:",
+    "whatMakesStandOut": "Was Top-Lebensläufe auszeichnet:",
+    "pctTopCandidates": "Wie viel % der Top-Kandidaten enthalten:",
+    "avgBullets": "Durchschn. Aufzählungspunkte pro Stelle:",
+    "youBullets": "Du: {{count}}",
+    "topBullets": "Top: {{count}}",
+    "quickWins": "Schnelle Erfolge im Wettbewerb:",
+    "addPortfolio": "Portfolio/GitHub-Links hinzufügen ({{pct}} % der Top-Kandidaten haben sie)",
+    "addCerts": "Relevante Zertifizierungen auflisten ({{pct}} % der Top-Kandidaten haben sie)",
+    "addMetrics": "Kennzahlen zu deinen Aufzählungspunkten hinzufügen ({{pct}} % der Top-Lebensläufe quantifizieren Leistungen)",
+    "addBullets": "{{count}} weitere Aufzählungspunkte pro Stelle hinzufügen",
+    "checklistItems": {
+      "portfolio": "Portfolio/GitHub-Links",
+      "certifications": "Zertifizierungen",
+      "quantifiedAchievements": "Quantifizierte Leistungen"
+    }
+  },
+  "jobComparisonCTA": {
+    "compareToRoles": "Sieh, wie du im Vergleich zu deinen Zielstellen abschneidest:"
+  },
+  "floatingHelpButton": {
+    "needHelp": "Brauchst du Hilfe?",
+    "questionsOrFeedback": "Fragen oder Feedback? Schreib uns:"
+  },
+  "atsParseSimulator": {
+    "title": "ATS-Parse-Simulation",
+    "subtitle": "Mechanische Prüfungen am selben Text, den ein ATS extrahieren würde — keine KI-Schätzung"
   }
 }

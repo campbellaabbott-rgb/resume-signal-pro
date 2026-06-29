@@ -706,13 +706,34 @@
     "live": "Live",
     "securityNote": "Je cv wordt veilig geanalyseerd en nooit opgeslagen",
     "stages": {
-      "parsing": { "label": "CV wordt geparsed", "description": "Tekst en structuur worden geëxtraheerd" },
-      "industry": { "label": "Branche wordt gedetecteerd", "description": "Je vakgebied en rol worden geïdentificeerd" },
-      "ats": { "label": "ATS-simulatie draait", "description": "Test tegen 50+ ATS-systemen" },
-      "keywords": { "label": "Keywords worden geanalyseerd", "description": "Branchespecifieke termen worden gematcht" },
-      "scoring": { "label": "Scoring en benchmark", "description": "Vergelijking met topcandidaten" },
-      "ai": { "label": "AI diepte-analyse", "description": "Gepersonaliseerde inzichten worden gegenereerd" },
-      "report": { "label": "Rapport wordt opgebouwd", "description": "Actiegerichte aanbevelingen worden samengesteld" }
+      "parsing": {
+        "label": "CV wordt geparsed",
+        "description": "Tekst en structuur worden geëxtraheerd"
+      },
+      "industry": {
+        "label": "Branche wordt gedetecteerd",
+        "description": "Je vakgebied en rol worden geïdentificeerd"
+      },
+      "ats": {
+        "label": "ATS-simulatie draait",
+        "description": "Test tegen 50+ ATS-systemen"
+      },
+      "keywords": {
+        "label": "Keywords worden geanalyseerd",
+        "description": "Branchespecifieke termen worden gematcht"
+      },
+      "scoring": {
+        "label": "Scoring en benchmark",
+        "description": "Vergelijking met topcandidaten"
+      },
+      "ai": {
+        "label": "AI diepte-analyse",
+        "description": "Gepersonaliseerde inzichten worden gegenereerd"
+      },
+      "report": {
+        "label": "Rapport wordt opgebouwd",
+        "description": "Actiegerichte aanbevelingen worden samengesteld"
+      }
     },
     "tips": {
       "numbers": "💡 Tip: CV's met cijfers krijgen 40% meer reacties",
@@ -1009,42 +1030,141 @@
   },
   "freeResults": {
     "metricTooltips": {
-      "atsScore": { "title": "AI-ATS-score", "description": "Onze AI simuleert hoe moderne AI-gestuurde sollicitantvolgsystemen je cv scannen — dezelfde technologie die 98% van de Fortune 500-bedrijven gebruikt.", "whyMatters": "Een lage score betekent dat je cv mogelijk nooit een menselijke recruiter bereikt." },
-      "format": { "title": "Opmaakcijfer", "description": "Beoordeelt de structuur, lay-out en AI-ATS-leesbaarheid van je cv.", "whyMatters": "Slechte opmaak veroorzaakt AI-ATS-verwerkingsfouten, waardoor belangrijke informatie verloren gaat." },
-      "metrics": { "title": "Kwantificeringsscore", "description": "Meet hoeveel van je prestaties cijfers, percentages of statistieken bevatten.", "whyMatters": "Recruiters scannen 6 seconden — cijfers trekken het eerst hun aandacht." },
-      "verbs": { "title": "Actiewerkwoordcijfer", "description": "Beoordeelt de kracht en variatie van actiewerkwoorden die je bulletpoints starten.", "whyMatters": "Sterke werkwoorden zoals 'Leidde' verslaan zwakke zoals 'Hielp bij' of 'Assisteerde'." },
-      "pages": { "title": "Cv-lengte", "description": "Controleert of de lengte van je cv overeenkomt met de branchenormen voor je ervaringsniveau.", "whyMatters": "Te lang = overgeslagen. Te kort = mist inhoud." },
-      "words": { "title": "Woordenaantal", "description": "Meet of je genoeg inhoud hebt om je waarde te laten zien.", "whyMatters": "Het ideale aantal varieert per ervaring — te weinig woorden duidt op onervarenheid." },
-      "sections": { "title": "Sectiecontrole", "description": "Controleert of alle essentiële cv-secties aanwezig zijn (Samenvatting, Ervaring, Opleiding, Vaardigheden).", "whyMatters": "Ontbrekende secties zijn directe waarschuwingssignalen voor recruiters." },
-      "contact": { "title": "Contactgegevens", "description": "Controleert op aanwezigheid van e-mail, telefoon en LinkedIn.", "whyMatters": "Recruiters kunnen je niet aannemen als ze je niet kunnen bereiken." },
-      "readability": { "title": "Leesbaarheidsscore", "description": "Meet hoe gemakkelijk je cv snel te scannen is.", "whyMatters": "Recruiters besteden gemiddeld 6-7 seconden per cv — elk woord moet tellen." },
-      "bulletImpact": { "title": "Impact van bulletpoints", "description": "Analyseert of je bulletpoints gericht zijn op prestaties versus alleen het opsommen van verantwoordelijkheden.", "whyMatters": "Prestatiegerichte bulletpoints bewijzen waarde; verantwoordelijkheidslijsten niet." },
-      "keywordDensity": { "title": "Zoekwoorddichtheid", "description": "Meet de aanwezigheid van branche-relevante zoekwoorden voor AI-ATS-matching.", "whyMatters": "Te weinig zoekwoorden = geen AI-ATS-match. Te veel = straf voor keyword stuffing." },
-      "improvementPotential": { "title": "Verbeterpotentieel", "description": "Geschatte mogelijke scoreverhoging door optimalisatie.", "whyMatters": "Laat zien hoeveel ruimte je hebt om andere kandidaten te overtreffen." },
-      "industryBenchmark": { "title": "Branchebenchmark", "description": "Vergelijkt je score met anderen in jouw vakgebied.", "whyMatters": "Weet hoe je ervoor staat tegenover je directe concurrentie." },
-      "timeline": { "title": "Carrièretijdlijn", "description": "Analyseert dienstverband, hiaten en loopbaanontwikkelingspatronen.", "whyMatters": "Recruiters zoeken naar stabiliteit en groei — hiaten moeten worden verklaard." },
-      "atsCompatibility": { "title": "AI-ATS-systeemcompatibiliteit", "description": "Laat zien hoe goed je cv wordt verwerkt door belangrijke AI-gestuurde sollicitantvolgsystemen zoals Workday, Greenhouse en Taleo.", "whyMatters": "Verschillende bedrijven gebruiken verschillende AI-ATS-systemen — weet welke je cv correct zullen lezen." }
+      "atsScore": {
+        "title": "AI-ATS-score",
+        "description": "Onze AI simuleert hoe moderne AI-gestuurde sollicitantvolgsystemen je cv scannen — dezelfde technologie die 98% van de Fortune 500-bedrijven gebruikt.",
+        "whyMatters": "Een lage score betekent dat je cv mogelijk nooit een menselijke recruiter bereikt."
+      },
+      "format": {
+        "title": "Opmaakcijfer",
+        "description": "Beoordeelt de structuur, lay-out en AI-ATS-leesbaarheid van je cv.",
+        "whyMatters": "Slechte opmaak veroorzaakt AI-ATS-verwerkingsfouten, waardoor belangrijke informatie verloren gaat."
+      },
+      "metrics": {
+        "title": "Kwantificeringsscore",
+        "description": "Meet hoeveel van je prestaties cijfers, percentages of statistieken bevatten.",
+        "whyMatters": "Recruiters scannen 6 seconden — cijfers trekken het eerst hun aandacht."
+      },
+      "verbs": {
+        "title": "Actiewerkwoordcijfer",
+        "description": "Beoordeelt de kracht en variatie van actiewerkwoorden die je bulletpoints starten.",
+        "whyMatters": "Sterke werkwoorden zoals 'Leidde' verslaan zwakke zoals 'Hielp bij' of 'Assisteerde'."
+      },
+      "pages": {
+        "title": "Cv-lengte",
+        "description": "Controleert of de lengte van je cv overeenkomt met de branchenormen voor je ervaringsniveau.",
+        "whyMatters": "Te lang = overgeslagen. Te kort = mist inhoud."
+      },
+      "words": {
+        "title": "Woordenaantal",
+        "description": "Meet of je genoeg inhoud hebt om je waarde te laten zien.",
+        "whyMatters": "Het ideale aantal varieert per ervaring — te weinig woorden duidt op onervarenheid."
+      },
+      "sections": {
+        "title": "Sectiecontrole",
+        "description": "Controleert of alle essentiële cv-secties aanwezig zijn (Samenvatting, Ervaring, Opleiding, Vaardigheden).",
+        "whyMatters": "Ontbrekende secties zijn directe waarschuwingssignalen voor recruiters."
+      },
+      "contact": {
+        "title": "Contactgegevens",
+        "description": "Controleert op aanwezigheid van e-mail, telefoon en LinkedIn.",
+        "whyMatters": "Recruiters kunnen je niet aannemen als ze je niet kunnen bereiken."
+      },
+      "readability": {
+        "title": "Leesbaarheidsscore",
+        "description": "Meet hoe gemakkelijk je cv snel te scannen is.",
+        "whyMatters": "Recruiters besteden gemiddeld 6-7 seconden per cv — elk woord moet tellen."
+      },
+      "bulletImpact": {
+        "title": "Impact van bulletpoints",
+        "description": "Analyseert of je bulletpoints gericht zijn op prestaties versus alleen het opsommen van verantwoordelijkheden.",
+        "whyMatters": "Prestatiegerichte bulletpoints bewijzen waarde; verantwoordelijkheidslijsten niet."
+      },
+      "keywordDensity": {
+        "title": "Zoekwoorddichtheid",
+        "description": "Meet de aanwezigheid van branche-relevante zoekwoorden voor AI-ATS-matching.",
+        "whyMatters": "Te weinig zoekwoorden = geen AI-ATS-match. Te veel = straf voor keyword stuffing."
+      },
+      "improvementPotential": {
+        "title": "Verbeterpotentieel",
+        "description": "Geschatte mogelijke scoreverhoging door optimalisatie.",
+        "whyMatters": "Laat zien hoeveel ruimte je hebt om andere kandidaten te overtreffen."
+      },
+      "industryBenchmark": {
+        "title": "Branchebenchmark",
+        "description": "Vergelijkt je score met anderen in jouw vakgebied.",
+        "whyMatters": "Weet hoe je ervoor staat tegenover je directe concurrentie."
+      },
+      "timeline": {
+        "title": "Carrièretijdlijn",
+        "description": "Analyseert dienstverband, hiaten en loopbaanontwikkelingspatronen.",
+        "whyMatters": "Recruiters zoeken naar stabiliteit en groei — hiaten moeten worden verklaard."
+      },
+      "atsCompatibility": {
+        "title": "AI-ATS-systeemcompatibiliteit",
+        "description": "Laat zien hoe goed je cv wordt verwerkt door belangrijke AI-gestuurde sollicitantvolgsystemen zoals Workday, Greenhouse en Taleo.",
+        "whyMatters": "Verschillende bedrijven gebruiken verschillende AI-ATS-systemen — weet welke je cv correct zullen lezen."
+      }
     },
     "ctaCopy": {
       "coverLetter": {
-        "control": { "button": "Motivatiebrief genereren — {{price}}", "description": "Door AI gegenereerde motivatiebrief, afgestemd op je cv en doelfunctie. Binnen minuten verzendklaar." },
-        "benefitFocused": { "button": "Krijg je interview-winnende brief", "description": "Onderscheid je van 100+ sollicitanten met een gepersonaliseerde motivatiebrief die recruiters enthousiast maakt." },
-        "scarcity": { "button": "Nu motivatiebrief maken — {{price}}", "description": "De meeste sollicitanten slaan motivatiebrieven over. Loop voor op de concurrentie met een aangepaste brief in 2 minuten." }
+        "control": {
+          "button": "Motivatiebrief genereren — {{price}}",
+          "description": "Door AI gegenereerde motivatiebrief, afgestemd op je cv en doelfunctie. Binnen minuten verzendklaar."
+        },
+        "benefitFocused": {
+          "button": "Krijg je interview-winnende brief",
+          "description": "Onderscheid je van 100+ sollicitanten met een gepersonaliseerde motivatiebrief die recruiters enthousiast maakt."
+        },
+        "scarcity": {
+          "button": "Nu motivatiebrief maken — {{price}}",
+          "description": "De meeste sollicitanten slaan motivatiebrieven over. Loop voor op de concurrentie met een aangepaste brief in 2 minuten."
+        }
       },
       "keywordFix": {
-        "control": { "button": "Volledig zoekwoordrapport ontvangen", "headline": "Wil je 50+ branchezoekwoorden?" },
-        "benefitFocused": { "button": "Verborgen zoekwoorden ontgrendelen", "headline": "Kom door het ATS-filter" },
-        "scarcity": { "button": "Krijg zoekwoorden vóór anderen", "headline": "Versla 87% van de sollicitanten" }
+        "control": {
+          "button": "Volledig zoekwoordrapport ontvangen",
+          "headline": "Wil je 50+ branchezoekwoorden?"
+        },
+        "benefitFocused": {
+          "button": "Verborgen zoekwoorden ontgrendelen",
+          "headline": "Kom door het ATS-filter"
+        },
+        "scarcity": {
+          "button": "Krijg zoekwoorden vóór anderen",
+          "headline": "Versla 87% van de sollicitanten"
+        }
       },
       "premiumPackage": {
-        "control": { "button": "Premiumpakket kopen — {{price}}", "headline": "Premium Cv-pakket", "subtext": "Alles wat je nodig hebt om sollicitatiegesprekken te krijgen" },
-        "benefitFocused": { "button": "Word nu gespreksklaar", "headline": "Land je droombaan sneller", "subtext": "3x meer terugbelacties voor gesprekken met ons complete pakket" },
-        "scarcity": { "button": "Claim je pakket — Beperkt", "headline": "Premium Cv-pakket", "subtext": "Sluit je aan bij 10.000+ mensen die deze maand een gesprek kregen" }
+        "control": {
+          "button": "Premiumpakket kopen — {{price}}",
+          "headline": "Premium Cv-pakket",
+          "subtext": "Alles wat je nodig hebt om sollicitatiegesprekken te krijgen"
+        },
+        "benefitFocused": {
+          "button": "Word nu gespreksklaar",
+          "headline": "Land je droombaan sneller",
+          "subtext": "3x meer terugbelacties voor gesprekken met ons complete pakket"
+        },
+        "scarcity": {
+          "button": "Claim je pakket — Beperkt",
+          "headline": "Premium Cv-pakket",
+          "subtext": "Sluit je aan bij 10.000+ mensen die deze maand een gesprek kregen"
+        }
       },
       "tailoredResume": {
-        "control": { "button": "Voorbeeld aangepast cv bekijken", "description": "Gratis voorbeeld, ontgrendel daarna het volledige Premiumpakket met aangepast cv + motivatiebrief" },
-        "benefitFocused": { "button": "Bekijk je verbeterde cv", "description": "Zie precies hoe je cv eruitziet wanneer het is geoptimaliseerd voor je doelfunctie" },
-        "scarcity": { "button": "Genereer voordat het sluit", "description": "Beperkte preview beschikbaar — bekijk je aangepaste cv voordat je upgradet" }
+        "control": {
+          "button": "Voorbeeld aangepast cv bekijken",
+          "description": "Gratis voorbeeld, ontgrendel daarna het volledige Premiumpakket met aangepast cv + motivatiebrief"
+        },
+        "benefitFocused": {
+          "button": "Bekijk je verbeterde cv",
+          "description": "Zie precies hoe je cv eruitziet wanneer het is geoptimaliseerd voor je doelfunctie"
+        },
+        "scarcity": {
+          "button": "Genereer voordat het sluit",
+          "description": "Beperkte preview beschikbaar — bekijk je aangepaste cv voordat je upgradet"
+        }
       }
     },
     "addJobDescriptionToUnlock": "Voeg hierboven een functiebeschrijving toe om te ontgrendelen",
@@ -1064,27 +1184,68 @@
       "copiedToClipboard": "Gekopieerd naar klembord",
       "shareWithFriend": "Deel dit met een vriend of mentor voor feedback"
     },
-    "nav": { "overview": "Overzicht", "metrics": "Statistieken", "issues": "Problemen", "jobMatch": "Functiematch", "insights": "Inzichten", "nextSteps": "Volgende stappen" },
+    "nav": {
+      "overview": "Overzicht",
+      "metrics": "Statistieken",
+      "issues": "Problemen",
+      "jobMatch": "Functiematch",
+      "insights": "Inzichten",
+      "nextSteps": "Volgende stappen"
+    },
     "exitOffer": {
       "title": "Voordat je gaat —",
       "withStats": "Je mist {{count}} zoekwoorden die gangbaar zijn in {{industry}}-functies. Krijg de oplossingslijst voor de prijs van een kop koffie.",
       "noStats": "Laat je belangrijkste ontbrekende zoekwoorden identificeren en krijg een oplossingslijst, voor de prijs van een kop koffie."
     },
-    "industryKeywordsSection": { "title": "Branche- en functiezoekwoorden", "subtitle": "Zoekwoorden relevant voor jouw vakgebied en doelfunctie" },
-    "experienceFit": { "goodFit": "Goede match", "over": "Overgekwalificeerd", "under": "Ondergekwalificeerd" },
-    "priority": { "must": "Moet", "should": "Zou moeten", "nice": "Leuk" },
-    "atRiskOrNeedsImprovement": { "atRisk": "Risico om uitgefilterd te worden", "needsImprovement": "Moet beter om te kunnen concurreren" },
-    "personalizedTipsSection": { "title": "Gepersonaliseerde tips", "subtitle": "Op maat gemaakte inzichten voor jouw profiel" },
-    "elevatorPitchSection": { "title": "60-secondenpitch", "subtitle": "AI-gegenereerde pitch op basis van je cv" },
-    "recruiterViewSection": { "title": "Recruiter-weergavemodus", "subtitle": "Zie precies wat recruiters zien" },
-    "resumeRoastSection": { "title": "Cv-roast 🔥", "subtitle": "Bot eerlijk, hilarisch specifiek" },
-    "interviewCoachSection": { "title": "Interviewcoach", "subtitle": "Oefen met AI-gegenereerde vragen" },
-    "careerPathSection": { "title": "Carrièrepad-simulator", "subtitle": "3 mogelijke toekomsten gebaseerd op je cv" },
+    "industryKeywordsSection": {
+      "title": "Branche- en functiezoekwoorden",
+      "subtitle": "Zoekwoorden relevant voor jouw vakgebied en doelfunctie"
+    },
+    "experienceFit": {
+      "goodFit": "Goede match",
+      "over": "Overgekwalificeerd",
+      "under": "Ondergekwalificeerd"
+    },
+    "priority": {
+      "must": "Moet",
+      "should": "Zou moeten",
+      "nice": "Leuk"
+    },
+    "atRiskOrNeedsImprovement": {
+      "atRisk": "Risico om uitgefilterd te worden",
+      "needsImprovement": "Moet beter om te kunnen concurreren"
+    },
+    "personalizedTipsSection": {
+      "title": "Gepersonaliseerde tips",
+      "subtitle": "Op maat gemaakte inzichten voor jouw profiel"
+    },
+    "elevatorPitchSection": {
+      "title": "60-secondenpitch",
+      "subtitle": "AI-gegenereerde pitch op basis van je cv"
+    },
+    "recruiterViewSection": {
+      "title": "Recruiter-weergavemodus",
+      "subtitle": "Zie precies wat recruiters zien"
+    },
+    "resumeRoastSection": {
+      "title": "Cv-roast 🔥",
+      "subtitle": "Bot eerlijk, hilarisch specifiek"
+    },
+    "interviewCoachSection": {
+      "title": "Interviewcoach",
+      "subtitle": "Oefen met AI-gegenereerde vragen"
+    },
+    "careerPathSection": {
+      "title": "Carrièrepad-simulator",
+      "subtitle": "3 mogelijke toekomsten gebaseerd op je cv"
+    },
     "fixChecklistTitle": "Verbeterchecklist",
     "checklistCompleted": "{{completed}}/{{total}} voltooid",
     "trackProgress": "Voortgang volgen",
     "peerBenchmark": {
-      "above": "Boven gemiddeld", "at": "Gemiddeld", "below": "Onder gemiddeld",
+      "above": "Boven gemiddeld",
+      "at": "Gemiddeld",
+      "below": "Onder gemiddeld",
       "forAtsReadinessAmong": "voor ATS-gereedheid onder {{cohort}}",
       "strongPosition": "✓ Sterke positie in jouw branche",
       "roomForImprovement": "→ Ruimte voor verbetering",
@@ -1094,7 +1255,10 @@
       "weakResult": "Andere kandidaten in jouw vakgebied scoren hoger. Pas de oplossingen hieronder toe om je kansen te verbeteren."
     },
     "timelineProgression": {
-      "rapidLabel": "🚀 Snel", "steadyLabel": "📈 Stabiel", "stagnantLabel": "📊 Vlak", "unclearLabel": "❓ Onduidelijk",
+      "rapidLabel": "🚀 Snel",
+      "steadyLabel": "📈 Stabiel",
+      "stagnantLabel": "📊 Vlak",
+      "unclearLabel": "❓ Onduidelijk",
       "rapid": "Geweldig! Toont sterke vooruitgang en toenemende verantwoordelijkheid",
       "steady": "Toont consistente groei — werkgevers waarderen dit patroon",
       "stagnant": "Overweeg promoties of nieuwe verantwoordelijkheden te benadrukken",
@@ -1103,13 +1267,26 @@
       "gapNoteDefault": "Gaten zijn gebruikelijk — wees gewoon klaar om ze toe te lichten in gesprekken"
     },
     "confidencePercent": "{{confidence}} vertrouwen",
-    "careerSituationLabel": { "careerChanger": "Carrièreswitch gedetecteerd", "returningToWorkforce": "Terugkeer naar de arbeidsmarkt", "militaryTransition": "Overgang vanuit het leger", "recentGrad": "Recent afgestudeerd" },
+    "careerSituationLabel": {
+      "careerChanger": "Carrièreswitch gedetecteerd",
+      "returningToWorkforce": "Terugkeer naar de arbeidsmarkt",
+      "militaryTransition": "Overgang vanuit het leger",
+      "recentGrad": "Recent afgestudeerd"
+    },
     "personalizedCareerInsightsTitle": "Gepersonaliseerde carrière-inzichten",
     "tailoredForYou": "Op maat gemaakt voor {{name}}",
     "you": "jou",
     "aiPowered": "AI-aangedreven",
-    "roleFit": { "naturalProgression": "Natuurlijke volgende stap", "lateralMove": "Zijwaartse stap", "stretchGoal": "Ambitieus doel" },
-    "marketPosition": { "aboveMarket": "Boven de markt", "atMarket": "Op marktniveau", "belowMarket": "Onder de markt" },
+    "roleFit": {
+      "naturalProgression": "Natuurlijke volgende stap",
+      "lateralMove": "Zijwaartse stap",
+      "stretchGoal": "Ambitieus doel"
+    },
+    "marketPosition": {
+      "aboveMarket": "Boven de markt",
+      "atMarket": "Op marktniveau",
+      "belowMarket": "Onder de markt"
+    },
     "formatRecommendationSection": {
       "title": "Cv-formaataanbeveling",
       "subtitle": "{{style}}-stijl aanbevolen voor {{industry}}",
@@ -1117,18 +1294,32 @@
       "fitsIndustry": "Je formaat past bij je branche!",
       "needsAdjustment": "Formaat moet worden aangepast",
       "quickFixLabel": "Snelle oplossing: {{fix}}",
-      "layoutLabel": "Lay-out", "colorLabel": "Kleur", "visualsLabel": "Visuele elementen", "styleLabel": "Stijl",
-      "colorAcceptable": "✓ Acceptabel", "colorAvoid": "✗ Vermijden",
+      "layoutLabel": "Lay-out",
+      "colorLabel": "Kleur",
+      "visualsLabel": "Visuele elementen",
+      "styleLabel": "Stijl",
+      "colorAcceptable": "✓ Acceptabel",
+      "colorAvoid": "✗ Vermijden",
       "whatTopResumesDo": "Wat top-cv's in {{industry}} doen:",
-      "importance": { "must": "Moet", "rec": "Aanb", "opt": "Opt" },
+      "importance": {
+        "must": "Moet",
+        "rec": "Aanb",
+        "opt": "Opt"
+      },
       "avoidForIndustry": "Vermijden voor {{industry}}:",
       "idealTemplate": "Ideale sjabloon: "
     },
-    "columns": { "oneColumn": "Eén kolom", "twoColumn": "Twee kolommen" },
+    "columns": {
+      "oneColumn": "Eén kolom",
+      "twoColumn": "Twee kolommen"
+    },
     "atsParsingSection": {
       "title": "ATS-verwerkingscompatibiliteit",
       "subtitle": "Hoe goed verschillende ATS-systemen je cv kunnen lezen",
-      "excellentRating": "✓ Uitstekende compatibiliteit", "goodRating": "✓ Goede compatibiliteit", "fairRating": "⚠ Redelijke compatibiliteit", "poorRating": "✗ Slechte compatibiliteit",
+      "excellentRating": "✓ Uitstekende compatibiliteit",
+      "goodRating": "✓ Goede compatibiliteit",
+      "fairRating": "⚠ Redelijke compatibiliteit",
+      "poorRating": "✗ Slechte compatibiliteit",
       "excellent": "Je cv zou correct moeten worden verwerkt op de meeste ATS-platforms",
       "good": "De meeste ATS lezen je cv correct",
       "fair": "Sommige ATS kunnen moeite hebben met het verwerken van je cv",
@@ -1136,12 +1327,29 @@
       "worksBestWith": "Werkt het beste met",
       "mayHaveIssues": "Kan problemen hebben met"
     },
-    "confidenceLevel": { "high": "Hoog", "medium": "Gemiddeld", "low": "Laag" },
-    "bulletRewriteSection": { "title": "Door AI herschreven bulletpoints", "description": "Laat elk bulletpoint herschrijven met meetbare impact en krachtige werkwoorden" },
-    "keywordGapSection": { "title": "Volledige zoekwoordhiaatanalyse" },
-    "careerStrategySection": { "title": "Gepersonaliseerde carrièrestrategie" },
+    "confidenceLevel": {
+      "high": "Hoog",
+      "medium": "Gemiddeld",
+      "low": "Laag"
+    },
+    "bulletRewriteSection": {
+      "title": "Door AI herschreven bulletpoints",
+      "description": "Laat elk bulletpoint herschrijven met meetbare impact en krachtige werkwoorden"
+    },
+    "keywordGapSection": {
+      "title": "Volledige zoekwoordhiaatanalyse"
+    },
+    "careerStrategySection": {
+      "title": "Gepersonaliseerde carrièrestrategie"
+    },
     "sectionChecklistTitle": "Sectiechecklist",
-    "sectionLabels": { "contact": "Contact", "summary": "Samenvatting", "experience": "Ervaring", "education": "Opleiding", "skills": "Vaardigheden" },
+    "sectionLabels": {
+      "contact": "Contact",
+      "summary": "Samenvatting",
+      "experience": "Ervaring",
+      "education": "Opleiding",
+      "skills": "Vaardigheden"
+    },
     "bestValue": "Beste waarde",
     "wantToCompareFor": "Wil je zien hoe je het doet voor",
     "atCompany": "bij",
@@ -1151,52 +1359,123 @@
     "oneInterviewPaidForItself": "Eén sollicitatiegesprek = {{price}} terugverdiend",
     "unlockWithFullAnalysis": "Ontgrendel met volledige analyse",
     "premiumFeatures": {
-      "completeAtsAnalysis": "Volledige ATS-analyse", "aiRewrittenResume": "Door AI herschreven cv", "customCoverLetter": "Aangepaste motivatiebrief",
-      "beforeAfterComparison": "Voor/na-vergelijking", "keywordOptimization": "Zoekwoordoptimalisatie", "priorityProcessing": "Prioriteitsverwerking"
+      "completeAtsAnalysis": "Volledige ATS-analyse",
+      "aiRewrittenResume": "Door AI herschreven cv",
+      "customCoverLetter": "Aangepaste motivatiebrief",
+      "beforeAfterComparison": "Voor/na-vergelijking",
+      "keywordOptimization": "Zoekwoordoptimalisatie",
+      "priorityProcessing": "Prioriteitsverwerking"
     },
     "keywordFixFeatures": {
-      "fullAtsBreakdown": "Volledige uitsplitsing van ATS-score", "bulletPointRewrites": "Herschrijven van bulletpoints", "redFlagFixes": "Gedetailleerde oplossingen voor waarschuwingssignalen",
-      "linkedinOptimization": "LinkedIn-optimalisatie", "actionVerbReplacements": "Vervanging van actiewerkwoorden", "quantificationSuggestions": "Kwantificeringssuggesties",
-      "skillsGapAnalysis": "Analyse van vaardighedenhiaten", "industryInsights": "Branchespecifieke inzichten", "summaryRewrites": "Herschrijven van samenvatting/titel",
+      "fullAtsBreakdown": "Volledige uitsplitsing van ATS-score",
+      "bulletPointRewrites": "Herschrijven van bulletpoints",
+      "redFlagFixes": "Gedetailleerde oplossingen voor waarschuwingssignalen",
+      "linkedinOptimization": "LinkedIn-optimalisatie",
+      "actionVerbReplacements": "Vervanging van actiewerkwoorden",
+      "quantificationSuggestions": "Kwantificeringssuggesties",
+      "skillsGapAnalysis": "Analyse van vaardighedenhiaten",
+      "industryInsights": "Branchespecifieke inzichten",
+      "summaryRewrites": "Herschrijven van samenvatting/titel",
       "prioritizedActionPlan": "Geprioriteerd actieplan"
     },
     "premiumIncludesDetail": "{{subtext}}: volledige analyse + door AI herschreven cv + aangepaste motivatiebrief."
   },
   "analysisPreviewSample": {
-    "breakdown": { "jobTitleMatch": "Functietitel-match", "skillsMatch": "Vaardigheden-match", "actionVerbUsage": "Gebruik van actiewerkwoorden", "keywordCoverage": "Zoekwoorddekking", "formattingScore": "Opmaakscore" },
-    "matchingSkills": ["Productmanagement", "Agile/Scrum", "Stakeholdermanagement", "Data-analyse"],
-    "missingKeywords": ["OKR's", "Productroadmap", "A/B-testen"],
+    "breakdown": {
+      "jobTitleMatch": "Functietitel-match",
+      "skillsMatch": "Vaardigheden-match",
+      "actionVerbUsage": "Gebruik van actiewerkwoorden",
+      "keywordCoverage": "Zoekwoorddekking",
+      "formattingScore": "Opmaakscore"
+    },
+    "matchingSkills": [
+      "Productmanagement",
+      "Agile/Scrum",
+      "Stakeholdermanagement",
+      "Data-analyse"
+    ],
+    "missingKeywords": [
+      "OKR's",
+      "Productroadmap",
+      "A/B-testen"
+    ],
     "alignmentSuggestion": "Voeg specifieke statistieken toe over productlanceringen en vermeld ervaring met OKR's om de afstemming met deze Senior PM-functie te versterken.",
-    "detectedIssues": ["Contactgegevens worden mogelijk niet verwerkt in oudere ATS", "Functiedata staan niet in de gewenste structuur", "Speciale bulletpoints belemmeren het scannen"],
-    "criticalFixes": ["Gebruik het formaat Maand Jaar (bijv. jan 2020 - heden)", "Vervang fancy bulletpoints door standaard streepjes of punten", "Plaats e-mail en telefoon op één regel"],
+    "detectedIssues": [
+      "Contactgegevens worden mogelijk niet verwerkt in oudere ATS",
+      "Functiedata staan niet in de gewenste structuur",
+      "Speciale bulletpoints belemmeren het scannen"
+    ],
+    "criticalFixes": [
+      "Gebruik het formaat Maand Jaar (bijv. jan 2020 - heden)",
+      "Vervang fancy bulletpoints door standaard streepjes of punten",
+      "Plaats e-mail en telefoon op één regel"
+    ],
     "bulletOriginal": "Verantwoordelijk voor het beheren van het verkoopteam",
     "bulletImproved": "Leidde een verkoopteam van 12 personen om kwartaaldoelen met 34% te overtreffen, wat €1,9 miljoen aan nieuwe omzet genereerde",
     "bulletReason": "Teamgrootte, meetbaar resultaat en specifieke omzetimpact toegevoegd",
     "resumeLengthReasoning": "Met 8 jaar ervaring is een cv van 2 pagina's optimaal. Overweeg om oudere functies in te korten.",
-    "actionPlan": ["Voeg 3-5 gekwantificeerde prestaties toe aan je meest recente functie", "Vervang passieve formuleringen door sterke actiewerkwoorden", "Voeg de zoekwoorden 'cross-functioneel' en 'stakeholdermanagement' toe", "Corrigeer de datumnotatie voor ATS-compatibiliteit"],
-    "redFlags": ["Werkonderbreking van 8 maanden niet toegelicht", "Generieke doelstelling in plaats van gerichte samenvatting"],
+    "actionPlan": [
+      "Voeg 3-5 gekwantificeerde prestaties toe aan je meest recente functie",
+      "Vervang passieve formuleringen door sterke actiewerkwoorden",
+      "Voeg de zoekwoorden 'cross-functioneel' en 'stakeholdermanagement' toe",
+      "Corrigeer de datumnotatie voor ATS-compatibiliteit"
+    ],
+    "redFlags": [
+      "Werkonderbreking van 8 maanden niet toegelicht",
+      "Generieke doelstelling in plaats van gerichte samenvatting"
+    ],
     "linkedinHeadline": "Senior Productmanager | B2B SaaS | 40% omzetgroei realiseren",
     "linkedinAboutImprovement": "Je Over-sectie mist gekwantificeerde prestaties. Voeg statistieken toe zoals teamgrootte, omzetimpact of gebruikersgroei.",
-    "linkedinRecommendations": ["Voeg een uitgelichte sectie toe met belangrijke projecten", "Vraag 2-3 aanbevelingen van collega's aan", "Voeg branchespecifieke zoekwoorden toe aan je functietitel"]
+    "linkedinRecommendations": [
+      "Voeg een uitgelichte sectie toe met belangrijke projecten",
+      "Vraag 2-3 aanbevelingen van collega's aan",
+      "Voeg branchespecifieke zoekwoorden toe aan je functietitel"
+    ]
   },
   "valueComparison": {
     "feature": "Kenmerk",
     "us": "Resume Booster",
     "them": "Traditionele schrijver",
     "rows": {
-      "timeToResults": { "feature": "Tijd tot resultaten", "us": "Minder dan 60 seconden", "them": "3-7 werkdagen" },
-      "cost": { "feature": "Kosten", "us": "€5 – €25 eenmalig", "them": "€140 – €450+" },
-      "atsOptimization": { "feature": "ATS-optimalisatie", "them": "Varieert per schrijver" },
-      "keywordAnalysis": { "feature": "Zoekwoordanalyse", "us": "Branchespecifieke AI", "them": "Handmatig onderzoek" },
-      "revisions": { "feature": "Inclusief revisies", "us": "Onbeperkte pogingen", "them": "1-2 rondes" },
-      "jobTailoring": { "feature": "Functiespecifieke aanpassing", "them": "Extra €45-90" }
+      "timeToResults": {
+        "feature": "Tijd tot resultaten",
+        "us": "Minder dan 60 seconden",
+        "them": "3-7 werkdagen"
+      },
+      "cost": {
+        "feature": "Kosten",
+        "us": "€5 – €25 eenmalig",
+        "them": "€140 – €450+"
+      },
+      "atsOptimization": {
+        "feature": "ATS-optimalisatie",
+        "them": "Varieert per schrijver"
+      },
+      "keywordAnalysis": {
+        "feature": "Zoekwoordanalyse",
+        "us": "Branchespecifieke AI",
+        "them": "Handmatig onderzoek"
+      },
+      "revisions": {
+        "feature": "Inclusief revisies",
+        "us": "Onbeperkte pogingen",
+        "them": "1-2 rondes"
+      },
+      "jobTailoring": {
+        "feature": "Functiespecifieke aanpassing",
+        "them": "Extra €45-90"
+      }
     }
   },
   "finalCtaExtra": {
     "powerUpAddOns": "Power-Up Add-ons",
     "resumeRoastFree": "Cv-Roast GRATIS",
     "viewAllProducts": "Bekijk alle producten",
-    "addOnNames": { "resumeRoast": "Cv-Roast", "interviewCoach": "Interviewcoach", "careerPath": "Carrièrepad" }
+    "addOnNames": {
+      "resumeRoast": "Cv-Roast",
+      "interviewCoach": "Interviewcoach",
+      "careerPath": "Carrièrepad"
+    }
   },
   "productSuccess": {
     "verifyingPurchase": "Je aankoop wordt verifieerd...",
@@ -1344,9 +1623,18 @@
           "Upload opnieuw om je verbeterde ATS-score te controleren"
         ],
         "nextSteps": [
-          { "title": "Zoekwoorden bekijken", "description": "Bekijk de analyse van ontbrekende zoekwoorden hieronder" },
-          { "title": "Cv bijwerken", "description": "Voeg de voorgestelde zoekwoorden toe aan je cv" },
-          { "title": "Verbetering controleren", "description": "Scan opnieuw om je nieuwe ATS-score te zien" }
+          {
+            "title": "Zoekwoorden bekijken",
+            "description": "Bekijk de analyse van ontbrekende zoekwoorden hieronder"
+          },
+          {
+            "title": "Cv bijwerken",
+            "description": "Voeg de voorgestelde zoekwoorden toe aan je cv"
+          },
+          {
+            "title": "Verbetering controleren",
+            "description": "Scan opnieuw om je nieuwe ATS-score te zien"
+          }
         ],
         "deliveryTime": "Direct",
         "deliveryMethod": "Op deze pagina"
@@ -1359,9 +1647,18 @@
           "Pas de aanhef en bedrijfsspecifieke details aan"
         ],
         "nextSteps": [
-          { "title": "Brief bekijken", "description": "Lees je gegenereerde motivatiebrief hieronder" },
-          { "title": "Kopiëren of downloaden", "description": "Krijg je brief in het formaat dat je nodig hebt" },
-          { "title": "Sollicitatie versturen", "description": "Verstuur samen met je cv om te solliciteren" }
+          {
+            "title": "Brief bekijken",
+            "description": "Lees je gegenereerde motivatiebrief hieronder"
+          },
+          {
+            "title": "Kopiëren of downloaden",
+            "description": "Krijg je brief in het formaat dat je nodig hebt"
+          },
+          {
+            "title": "Sollicitatie versturen",
+            "description": "Verstuur samen met je cv om te solliciteren"
+          }
         ],
         "deliveryTime": "Direct",
         "deliveryMethod": "Op deze pagina"
@@ -1375,9 +1672,18 @@
           "Kopieer of download je nieuwe documenten"
         ],
         "nextSteps": [
-          { "title": "Documenten bekijken", "description": "Bekijk je nieuwe cv en motivatiebrief hieronder" },
-          { "title": "Kopiëren & downloaden", "description": "Krijg je documenten in het formaat dat je nodig hebt" },
-          { "title": "Nu solliciteren", "description": "Verstuur je geoptimaliseerde sollicitatie" }
+          {
+            "title": "Documenten bekijken",
+            "description": "Bekijk je nieuwe cv en motivatiebrief hieronder"
+          },
+          {
+            "title": "Kopiëren & downloaden",
+            "description": "Krijg je documenten in het formaat dat je nodig hebt"
+          },
+          {
+            "title": "Nu solliciteren",
+            "description": "Verstuur je geoptimaliseerde sollicitatie"
+          }
         ],
         "deliveryTime": "Direct",
         "deliveryMethod": "Op deze pagina"
@@ -1391,9 +1697,18 @@
           "LinkedIn-afstemmingstips inbegrepen"
         ],
         "nextSteps": [
-          { "title": "Audit bekijken", "description": "Bekijk je ATS-scores voor/na" },
-          { "title": "Zoekwoorden toepassen", "description": "Gebruik de zoekwoordenbank voor jouw branche" },
-          { "title": "Secties kopiëren", "description": "Gebruik de geoptimaliseerde cv-secties" }
+          {
+            "title": "Audit bekijken",
+            "description": "Bekijk je ATS-scores voor/na"
+          },
+          {
+            "title": "Zoekwoorden toepassen",
+            "description": "Gebruik de zoekwoordenbank voor jouw branche"
+          },
+          {
+            "title": "Secties kopiëren",
+            "description": "Gebruik de geoptimaliseerde cv-secties"
+          }
         ],
         "deliveryTime": "Direct",
         "deliveryMethod": "Op deze pagina"
@@ -1407,9 +1722,18 @@
           "Deel ze gerust met vrienden of familie"
         ],
         "nextSteps": [
-          { "title": "Begin met je credits", "description": "Upload een cv om je eerste credit te gebruiken" },
-          { "title": "Volg je credits", "description": "Controleer 'Mijn credits' in de header om je saldo te zien" },
-          { "title": "Solliciteer op meer vacatures", "description": "Gebruik credits voor elke sollicitatie die je nastreeft" }
+          {
+            "title": "Begin met je credits",
+            "description": "Upload een cv om je eerste credit te gebruiken"
+          },
+          {
+            "title": "Volg je credits",
+            "description": "Controleer 'Mijn credits' in de header om je saldo te zien"
+          },
+          {
+            "title": "Solliciteer op meer vacatures",
+            "description": "Gebruik credits voor elke sollicitatie die je nastreeft"
+          }
         ],
         "deliveryTime": "Direct",
         "deliveryMethod": "Credits toegevoegd aan account"
@@ -1422,9 +1746,18 @@
           "Credits verlopen nooit"
         ],
         "nextSteps": [
-          { "title": "Upload je cv", "description": "Ga naar de homepage om te beginnen met scannen" },
-          { "title": "Gebruik je credits", "description": "Elke scan gebruikt één credit van je saldo" },
-          { "title": "Saldo controleren", "description": "Bekijk resterende credits in 'Mijn credits'" }
+          {
+            "title": "Upload je cv",
+            "description": "Ga naar de homepage om te beginnen met scannen"
+          },
+          {
+            "title": "Gebruik je credits",
+            "description": "Elke scan gebruikt één credit van je saldo"
+          },
+          {
+            "title": "Saldo controleren",
+            "description": "Bekijk resterende credits in 'Mijn credits'"
+          }
         ],
         "deliveryTime": "Direct",
         "deliveryMethod": "Credits toegevoegd aan account"
@@ -1438,9 +1771,18 @@
           "Creëerden praktische prioriteitscorrecties die je vandaag kunt toepassen"
         ],
         "nextSteps": [
-          { "title": "Bekijk je score", "description": "Zie de uitsplitsing van je Career Signal Score" },
-          { "title": "Perceptie begrijpen", "description": "Leer hoe recruiters jouw carrière zien" },
-          { "title": "Correcties toepassen", "description": "Pas de prioriteitsaanbevelingen toe" }
+          {
+            "title": "Bekijk je score",
+            "description": "Zie de uitsplitsing van je Career Signal Score"
+          },
+          {
+            "title": "Perceptie begrijpen",
+            "description": "Leer hoe recruiters jouw carrière zien"
+          },
+          {
+            "title": "Correcties toepassen",
+            "description": "Pas de prioriteitsaanbevelingen toe"
+          }
         ],
         "deliveryTime": "Direct",
         "deliveryMethod": "Op deze pagina"
@@ -1454,9 +1796,18 @@
           "Bouwden een 30-dagen-actieplan om je eerste functie te bemachtigen"
         ],
         "nextSteps": [
-          { "title": "Gereedheid controleren", "description": "Zie of je cv klaar is om te versturen" },
-          { "title": "Doelfuncties", "description": "Bekijk functies die passen bij jouw achtergrond" },
-          { "title": "Volg het plan", "description": "Voer het 30-dagen-actieplan uit" }
+          {
+            "title": "Gereedheid controleren",
+            "description": "Zie of je cv klaar is om te versturen"
+          },
+          {
+            "title": "Doelfuncties",
+            "description": "Bekijk functies die passen bij jouw achtergrond"
+          },
+          {
+            "title": "Volg het plan",
+            "description": "Voer het 30-dagen-actieplan uit"
+          }
         ],
         "deliveryTime": "Direct",
         "deliveryMethod": "Op deze pagina"
@@ -1469,9 +1820,18 @@
           "Oefen deze om je voor te bereiden op je volgende interview"
         ],
         "nextSteps": [
-          { "title": "Vragen doornemen", "description": "Doorloop elke gepersonaliseerde vraag" },
-          { "title": "Antwoorden oefenen", "description": "Gebruik de aangeboden STAR-methodekaders" },
-          { "title": "Vertrouwen opbouwen", "description": "Oefen tot je je klaar voelt" }
+          {
+            "title": "Vragen doornemen",
+            "description": "Doorloop elke gepersonaliseerde vraag"
+          },
+          {
+            "title": "Antwoorden oefenen",
+            "description": "Gebruik de aangeboden STAR-methodekaders"
+          },
+          {
+            "title": "Vertrouwen opbouwen",
+            "description": "Oefen tot je je klaar voelt"
+          }
         ],
         "deliveryTime": "Direct",
         "deliveryMethod": "Op deze pagina"
@@ -1484,9 +1844,18 @@
           "Gebruik de actiestappen om de richting van jouw voorkeur te volgen"
         ],
         "nextSteps": [
-          { "title": "Paden verkennen", "description": "Bekijk je 3 carrièretrajectopties" },
-          { "title": "Hiaten identificeren", "description": "Zie welke vaardigheden je nodig hebt voor elk pad" },
-          { "title": "Vooruit plannen", "description": "Volg de tijdlijn voor jouw gekozen pad" }
+          {
+            "title": "Paden verkennen",
+            "description": "Bekijk je 3 carrièretrajectopties"
+          },
+          {
+            "title": "Hiaten identificeren",
+            "description": "Zie welke vaardigheden je nodig hebt voor elk pad"
+          },
+          {
+            "title": "Vooruit plannen",
+            "description": "Volg de tijdlijn voor jouw gekozen pad"
+          }
         ],
         "deliveryTime": "Direct",
         "deliveryMethod": "Op deze pagina"
@@ -1499,9 +1868,18 @@
           "Jij beoordeelt alles en dient het zelf in — niets wordt automatisch verstuurd"
         ],
         "nextSteps": [
-          { "title": "Bekijk je afgestemde cv", "description": "Controleer de herschrijving van de AI op nauwkeurigheid" },
-          { "title": "Volg de checklist", "description": "We vertellen je precies wat je hierna moet doen — jij doet het indienen" },
-          { "title": "Exporteren & solliciteren", "description": "Download het cv en de motivatiebrief en solliciteer dan op de site van de werkgever" }
+          {
+            "title": "Bekijk je afgestemde cv",
+            "description": "Controleer de herschrijving van de AI op nauwkeurigheid"
+          },
+          {
+            "title": "Volg de checklist",
+            "description": "We vertellen je precies wat je hierna moet doen — jij doet het indienen"
+          },
+          {
+            "title": "Exporteren & solliciteren",
+            "description": "Download het cv en de motivatiebrief en solliciteer dan op de site van de werkgever"
+          }
         ],
         "deliveryTime": "Direct",
         "deliveryMethod": "Op deze pagina"
@@ -1702,41 +2080,97 @@
   "personalization": {
     "experience": {
       "entry": {
-        "focusAreas": ["Opleiding en relevante vakken", "Stages en projectervaring", "Overdraagbare vaardigheden uit elk werk", "Geleerde technische vaardigheden en tools"],
-        "avoidAreas": ["Doelstellingen (gebruik in plaats daarvan een samenvatting)", "Middelbare school-informatie (tenzij recent afgestudeerd)", "Niet-gerelateerde banen zonder overdraagbare vaardigheden"],
+        "focusAreas": [
+          "Opleiding en relevante vakken",
+          "Stages en projectervaring",
+          "Overdraagbare vaardigheden uit elk werk",
+          "Geleerde technische vaardigheden en tools"
+        ],
+        "avoidAreas": [
+          "Doelstellingen (gebruik in plaats daarvan een samenvatting)",
+          "Middelbare school-informatie (tenzij recent afgestudeerd)",
+          "Niet-gerelateerde banen zonder overdraagbare vaardigheden"
+        ],
         "keyMessage": "Toon potentieel en leergierigheid",
         "quantificationTip": "Zelfs starterswerk heeft cijfers: bediende klanten, afgeronde projecten, vrijwilligersuren"
       },
       "mid": {
-        "focusAreas": ["Concrete prestaties met statistieken", "Groeiende verantwoordelijkheid en leiderschap", "Ontwikkeling van gespecialiseerde vaardigheden", "Cross-functionele samenwerking"],
-        "avoidAreas": ["Taken op startersniveau (focus op groei)", "Te veel details over oudere functies", "Vaardigheden die nu verwacht worden (basissoftware)"],
+        "focusAreas": [
+          "Concrete prestaties met statistieken",
+          "Groeiende verantwoordelijkheid en leiderschap",
+          "Ontwikkeling van gespecialiseerde vaardigheden",
+          "Cross-functionele samenwerking"
+        ],
+        "avoidAreas": [
+          "Taken op startersniveau (focus op groei)",
+          "Te veel details over oudere functies",
+          "Vaardigheden die nu verwacht worden (basissoftware)"
+        ],
         "keyMessage": "Toon consistente groei en impact",
         "quantificationTip": "Toon progressie: toegenomen verantwoordelijkheden, grotere projecten, grotere budgetten"
       },
       "senior": {
-        "focusAreas": ["Leiderschap en teamontwikkeling", "Strategische initiatieven en resultaten", "Afdelingsoverschrijdende impact", "Mentorschap en kennisoverdracht"],
-        "avoidAreas": ["Tactische details (focus op strategie)", "Functies van 15+ jaar geleden in detail", "Vaardigheden die op jouw niveau verondersteld zouden moeten worden"],
+        "focusAreas": [
+          "Leiderschap en teamontwikkeling",
+          "Strategische initiatieven en resultaten",
+          "Afdelingsoverschrijdende impact",
+          "Mentorschap en kennisoverdracht"
+        ],
+        "avoidAreas": [
+          "Tactische details (focus op strategie)",
+          "Functies van 15+ jaar geleden in detail",
+          "Vaardigheden die op jouw niveau verondersteld zouden moeten worden"
+        ],
         "keyMessage": "Toon strategisch denken en leiderschapsimpact",
         "quantificationTip": "Focus op teamgrootte, beheerd budget, beïnvloede omzet, organisatiebrede impact"
       },
       "executive": {
-        "focusAreas": ["P&L-verantwoordelijkheid en bedrijfsresultaten", "Transformatie en verandermanagement", "Bestuurs- en stakeholdermanagement", "Visie bepalen en cultuur opbouwen"],
-        "avoidAreas": ["Tactische uitvoeringsdetails", "Vaardighedenlijsten (verondersteld op C-niveau)", "Vroege carrièredetails buiten functietitels"],
+        "focusAreas": [
+          "P&L-verantwoordelijkheid en bedrijfsresultaten",
+          "Transformatie en verandermanagement",
+          "Bestuurs- en stakeholdermanagement",
+          "Visie bepalen en cultuur opbouwen"
+        ],
+        "avoidAreas": [
+          "Tactische uitvoeringsdetails",
+          "Vaardighedenlijsten (verondersteld op C-niveau)",
+          "Vroege carrièredetails buiten functietitels"
+        ],
         "keyMessage": "Toon bedrijfstransformatie en visie",
         "quantificationTip": "Omzet, marktaandeel, waardering, fusies en overnames, organisatieschaal"
       }
     },
     "geographic": {
-      "us": { "name": "Verenigde Staten" },
-      "uk": { "name": "Verenigd Koninkrijk" },
-      "eu": { "name": "Europese Unie" },
-      "de": { "name": "Duitsland" },
-      "au": { "name": "Australië" },
-      "in": { "name": "India" },
-      "ca": { "name": "Canada" },
-      "latam": { "name": "Latijns-Amerika" },
-      "br": { "name": "Brazilië" },
-      "mx": { "name": "Mexico" }
+      "us": {
+        "name": "Verenigde Staten"
+      },
+      "uk": {
+        "name": "Verenigd Koninkrijk"
+      },
+      "eu": {
+        "name": "Europese Unie"
+      },
+      "de": {
+        "name": "Duitsland"
+      },
+      "au": {
+        "name": "Australië"
+      },
+      "in": {
+        "name": "India"
+      },
+      "ca": {
+        "name": "Canada"
+      },
+      "latam": {
+        "name": "Latijns-Amerika"
+      },
+      "br": {
+        "name": "Brazilië"
+      },
+      "mx": {
+        "name": "Mexico"
+      }
     }
   },
   "personalizedInsights": {
@@ -1868,16 +2302,46 @@
       }
     },
     "atsPlatforms": {
-      "0": { "description": "Verwerking van sectiekoppen, zoekwoordextractie, validatie van datumformaat", "marketShare": "Grote ondernemingen" },
-      "1": { "description": "Algoritmen voor vaardighedenmatching, scoring van ervaringsniveau, indicatoren voor culturele fit", "marketShare": "Tech & start-ups" },
-      "2": { "description": "Validatie van contactgegevens, consistentie van opmaak, sectie-organisatie", "marketShare": "Middenmarkt" },
-      "3": { "description": "Analyse van zoekwoorddichtheid, matching van functietitels, scoring van kwalificaties", "marketShare": "Fortune 500" },
-      "4": { "description": "Verwerking van opleidingsgegevens, detectie van certificeringen, matching van vaardighedentaxonomie", "marketShare": "Zorg & retail" },
-      "5": { "description": "Analyse van cv-structuur, validatie van ervaringstijdlijn", "marketShare": "MKB" },
-      "6": { "description": "Zoekwoordoptimalisatie, algoritmen voor sollicitantenrangschikking", "marketShare": "Kleine bedrijven" },
-      "7": { "description": "Integratie van social profiles, referral tracking, vaardighedenbeoordeling", "marketShare": "Enterprise" },
-      "8": { "description": "AI-gestuurde matching, diversiteitsindicatoren, wereldwijde compliance", "marketShare": "Wereldwijde ondernemingen" },
-      "9": { "description": "Uitzendbureauspecifieke verwerking, detectie van zzp'ers, beschikbaarheidsscoring", "marketShare": "Uitzendbureaus" }
+      "0": {
+        "description": "Verwerking van sectiekoppen, zoekwoordextractie, validatie van datumformaat",
+        "marketShare": "Grote ondernemingen"
+      },
+      "1": {
+        "description": "Algoritmen voor vaardighedenmatching, scoring van ervaringsniveau, indicatoren voor culturele fit",
+        "marketShare": "Tech & start-ups"
+      },
+      "2": {
+        "description": "Validatie van contactgegevens, consistentie van opmaak, sectie-organisatie",
+        "marketShare": "Middenmarkt"
+      },
+      "3": {
+        "description": "Analyse van zoekwoorddichtheid, matching van functietitels, scoring van kwalificaties",
+        "marketShare": "Fortune 500"
+      },
+      "4": {
+        "description": "Verwerking van opleidingsgegevens, detectie van certificeringen, matching van vaardighedentaxonomie",
+        "marketShare": "Zorg & retail"
+      },
+      "5": {
+        "description": "Analyse van cv-structuur, validatie van ervaringstijdlijn",
+        "marketShare": "MKB"
+      },
+      "6": {
+        "description": "Zoekwoordoptimalisatie, algoritmen voor sollicitantenrangschikking",
+        "marketShare": "Kleine bedrijven"
+      },
+      "7": {
+        "description": "Integratie van social profiles, referral tracking, vaardighedenbeoordeling",
+        "marketShare": "Enterprise"
+      },
+      "8": {
+        "description": "AI-gestuurde matching, diversiteitsindicatoren, wereldwijde compliance",
+        "marketShare": "Wereldwijde ondernemingen"
+      },
+      "9": {
+        "description": "Uitzendbureauspecifieke verwerking, detectie van zzp'ers, beschikbaarheidsscoring",
+        "marketShare": "Uitzendbureaus"
+      }
     },
     "atsPlatformsTitle": "ATS-platforms waarop we analyseren",
     "atsPlatformsSubtitle": "Onze analyse is gebaseerd op verwerkingsregels en scoringalgoritmen van deze grote ATS-platforms, die meer dan 90% van de arbeidsmarkt dekken.",
@@ -1885,13 +2349,34 @@
     "scoreCalculatedTitle": "Hoe je ATS-score wordt berekend",
     "scoreCalculatedSubtitle": "Je score is een gewogen combinatie van meerdere factoren die bepalen hoe goed je cv presteert in ATS-systemen.",
     "scoringFactors": {
-      "keywordOptimization": { "factor": "Zoekwoordoptimalisatie", "description": "Genoemde branche-relevante zoekwoorden en vaardigheden" },
-      "formatCompatibility": { "factor": "Formaatcompatibiliteit", "description": "Schone structuur die ATS correct kan verwerken" },
-      "sectionCompleteness": { "factor": "Volledigheid van secties", "description": "Alle verwachte secties aanwezig en correct gelabeld" },
-      "experienceClarity": { "factor": "Duidelijkheid van ervaring", "description": "Duidelijke functietitels, datums en prestaties" },
-      "actionVerbUsage": { "factor": "Gebruik van actiewerkwoorden", "description": "Sterke actiewerkwoorden die impact aantonen" },
-      "quantifiedAchievements": { "factor": "Gekwantificeerde prestaties", "description": "Cijfers en statistieken die resultaten bewijzen" },
-      "redFlagAbsence": { "factor": "Afwezigheid van waarschuwingssignalen", "description": "Geen opmaak- of inhoudsproblemen" }
+      "keywordOptimization": {
+        "factor": "Zoekwoordoptimalisatie",
+        "description": "Genoemde branche-relevante zoekwoorden en vaardigheden"
+      },
+      "formatCompatibility": {
+        "factor": "Formaatcompatibiliteit",
+        "description": "Schone structuur die ATS correct kan verwerken"
+      },
+      "sectionCompleteness": {
+        "factor": "Volledigheid van secties",
+        "description": "Alle verwachte secties aanwezig en correct gelabeld"
+      },
+      "experienceClarity": {
+        "factor": "Duidelijkheid van ervaring",
+        "description": "Duidelijke functietitels, datums en prestaties"
+      },
+      "actionVerbUsage": {
+        "factor": "Gebruik van actiewerkwoorden",
+        "description": "Sterke actiewerkwoorden die impact aantonen"
+      },
+      "quantifiedAchievements": {
+        "factor": "Gekwantificeerde prestaties",
+        "description": "Cijfers en statistieken die resultaten bewijzen"
+      },
+      "redFlagAbsence": {
+        "factor": "Afwezigheid van waarschuwingssignalen",
+        "description": "Geen opmaak- of inhoudsproblemen"
+      }
     },
     "continuousResearchTitle": "Continu onderzoek",
     "continuousResearchSubtitle": "We analyseren voortdurend vacatures, ATS-updates en wervingstrends om onze analyse nauwkeurig en actueel te houden.",
@@ -2065,7 +2550,11 @@
     "metaDescription": "Nieuwe functies, verbeteringen en oplossingen uitgebracht voor Resume Booster. Wekelijks bijgewerkt.",
     "title": "Wat is er nieuw",
     "subtitle": "We brengen voortdurend verbeteringen uit. Hier is wat er recent is veranderd.",
-    "tags": { "new": "Nieuw", "improved": "Verbeterd", "fixed": "Opgelost" }
+    "tags": {
+      "new": "Nieuw",
+      "improved": "Verbeterd",
+      "fixed": "Opgelost"
+    }
   },
   "changelogEntries": {
     "yourReportsSpeakYourLanguage": {
@@ -2152,5 +2641,184 @@
       "title": "Detectie van gescande pdf's",
       "description": "Als je een gescande, op afbeeldingen gebaseerde PDF zonder selecteerbare tekst uploadt, laten we dit nu direct weten in plaats van stilzwijgend lege inhoud te analyseren — met een duidelijke suggestie om een tekstgebaseerde versie te uploaden of je cv direct te plakken."
     }
+  },
+  "sampleReportPreview": {
+    "exploring": "Voorbeeldrapport verkennen",
+    "hereIsWhat": "Dit zie je na het uploaden",
+    "sampleReport": "Voorbeeldrapport",
+    "collapse": "Inklappen",
+    "clickToExplore": "Klik om te verkennen",
+    "atsScore": "ATS-compatibiliteitsscore",
+    "needsImprovement": "Vereist verbetering",
+    "filteredOut": "Je cv kan door 73 % van de ATS-systemen worden gefilterd",
+    "missingKeywords": "Ontbrekende zoekwoorden",
+    "plusMore": "+8 meer",
+    "atsParsing": "ATS-parseproblemen gevonden",
+    "prioritizedImprovements": "Geprioriteerde verbeteringen",
+    "scoreBreakdown": "Score-uitsplitsing",
+    "aiPoweredFixes": "AI-gestuurde verbeteringen inbegrepen",
+    "moreSuggestions": "+ meer gepersonaliseerde suggesties",
+    "readyToSeeScore": "Klaar om je echte score te zien?",
+    "uploadAbove": "Upload je cv hierboven voor gepersonaliseerde inzichten",
+    "sampleData": "Dit zijn voorbeeldgegevens — jouw rapport is uniek voor jouw cv",
+    "personalizedReport": "Je werkelijke rapport wordt gepersonaliseerd op basis van je cv",
+    "sections": {
+      "contactInfo": "Contactgegevens",
+      "keywords": "Zoekwoorden",
+      "experience": "Ervaring",
+      "education": "Opleiding"
+    },
+    "sectionDetails": {
+      "properlyFormatted": "Correct opgemaakt",
+      "missing12": "12 kritieke termen ontbreken",
+      "weakActionVerbs": "Zwakke werkwoorden",
+      "correctlyParsed": "Correct geparst"
+    },
+    "atsIssues": {
+      "tablesDetected": "Tabellen gedetecteerd",
+      "tablesImpact": "Kan parsing verstoren in 60 % van de ATS-systemen",
+      "graphicsUsed": "Afbeeldingen/pictogrammen gebruikt",
+      "graphicsImpact": "Worden genegeerd of veroorzaken fouten",
+      "nonStandardHeaders": "Niet-standaard sectiekoppen",
+      "headersImpact": "Vaardighedensectie wordt mogelijk niet herkend"
+    },
+    "fixes": {
+      "impactMetrics": "Impact-metrics",
+      "impactMetricsFix": "Voeg 3-5 gekwantificeerde resultaten toe (bijv. ‘Verkoop met 23 % verhoogd’)",
+      "actionVerbs": "Werkwoorden",
+      "actionVerbsFix": "Vervang passieve zinnen als ‘verantwoordelijk voor’ door ‘Geleid’, ‘Aangedreven’, ‘Bereikt’",
+      "keywords": "Zoekwoorden",
+      "keywordsFix": "Voeg ontbrekende brancheterminologie toe: ‘stakeholderbeheer’, ‘Agile-methodologie’",
+      "formatting": "Opmaak",
+      "formattingFix": "Gebruik een consistent datumformaat (MM/JJJJ) in het hele document",
+      "summary": "Samenvatting",
+      "summaryFix": "Voeg bovenaan een professionele samenvatting van 2-3 regels toe"
+    },
+    "priority": {
+      "high": "hoog",
+      "medium": "gemiddeld",
+      "low": "laag"
+    },
+    "scoreLabels": {
+      "keywordMatch": "Zoekwoordmatch",
+      "formatting": "Opmaak",
+      "experienceRelevance": "Ervaringsrelevantie",
+      "education": "Opleiding"
+    },
+    "quickFixes": {
+      "fix1": "Voeg gekwantificeerde prestaties toe (cijfers, %, $)",
+      "fix2": "Vervang ‘verantwoordelijk voor’ door werkwoorden",
+      "fix3": "Voeg 3 extra branchezoekwoorden toe"
+    }
+  },
+  "peerBenchmark": {
+    "howYouCompare": "Hoe je vergelijkt",
+    "percentile": "percentiel",
+    "industryAverage": "Branchegemiddelde: {{score}}",
+    "topPerformers": "Toppresteerders: {{score}}+",
+    "toAverage": "Naar gemiddeld",
+    "toTopTier": "Naar topniveau",
+    "topPerformer": "Je bent een toppresteerder!",
+    "levelTip": "Tip voor {{level}}",
+    "benchmarkedAgainst": "Vergeleken met andere {{role}}-kandidaten",
+    "topPct": "Top {{pct}} % voor ATS-gereedheid onder {{cohort}}",
+    "aroundAverage": "Gemiddelde ATS-gereedheid onder {{cohort}}",
+    "belowAverage": "Onder gemiddelde ATS-gereedheid onder {{cohort}} (oplosbaar)"
+  },
+  "skillsGapAnalysis": {
+    "title": "Vaardigheidskloof-analyse voor {{role}}",
+    "roleMatchScore": "Functie-matchscore",
+    "strongMatch": "Sterke match",
+    "partialMatch": "Gedeeltelijke match",
+    "needsImprovement": "Vereist verbetering",
+    "keySkills": "Kernvaardigheden",
+    "matched": "{{present}}/{{total}} gematcht",
+    "missingSkills": "Ontbrekende vaardigheden toe te voegen:",
+    "atsKeywords": "ATS-zoekwoorden",
+    "found": "{{present}}/{{total}} gevonden",
+    "addKeywords": "Voeg deze zoekwoorden toe om de ATS-score te verbeteren:",
+    "priorityActions": "Prioriteitsacties:",
+    "addSkill": "Voeg „{{skill}}“ toe aan je vaardighedensectie of toon het in je ervaringspunten",
+    "includeKeyword": "Neem „{{keyword}}“ op in je prestatiepunten met specifieke statistieken"
+  },
+  "resumeBeforeAfter": {
+    "title": "Zie het AI-verschil",
+    "before": "Voor",
+    "after": "Na",
+    "tagline": "Je hele cv ondergaat deze transformatie"
+  },
+  "profileQuizModal": {
+    "title": "Snelle profielinstelling",
+    "description": "Help ons je analyse te personaliseren (duurt 30 seconden)",
+    "step1of3": "Stap 1 van 3",
+    "step2of3": "Stap 2 van 3",
+    "step3of3": "Stap 3 van 3",
+    "whichIndustry": "In welke branche werk je?",
+    "experienceLevel": "Wat is je ervaringsniveau?",
+    "targetRole": "Op welke functie richt je je?",
+    "skipForNow": "Nu overslaan",
+    "next": "Volgende",
+    "back": "Terug",
+    "typeYourRole": "Of typ je doelfunctie...",
+    "getPersonalized": "Gepersonaliseerde analyse ontvangen",
+    "industries": {
+      "technology": "Technologie",
+      "healthcare": "Gezondheidszorg",
+      "finance": "Financiën en bankwezen",
+      "marketing": "Marketing",
+      "sales": "Verkoop",
+      "engineering": "Engineering",
+      "education": "Onderwijs",
+      "hr": "Human Resources",
+      "consulting": "Consultancy",
+      "legal": "Juridisch",
+      "retail": "Detailhandel en e-commerce",
+      "other": "Anders"
+    },
+    "levels": {
+      "entry": "Startniveau",
+      "entryDesc": "0-2 jaar",
+      "mid": "Middenniveau",
+      "midDesc": "3-5 jaar",
+      "senior": "Seniorniveau",
+      "seniorDesc": "6-10 jaar",
+      "executive": "Directieniveau",
+      "executiveDesc": "10+ jaar"
+    }
+  },
+  "competitorBenchmark": {
+    "title": "Hoe top-{{role}}s opvallen",
+    "basedOnAnalysis": "Gebaseerd op analyse van succesvolle {{role}}-cv’s die interviews krijgen",
+    "competitiveStanding": "Jouw concurrentiepositie",
+    "topElements": "Je hebt elementen die topkandidaten opnemen!",
+    "addFewMore": "Voeg nog een paar elementen toe om te concurreren met topkandidaten",
+    "addElements": "Voeg deze elementen toe om gelijk te zijn aan toppresteerders",
+    "sectionsAlwaysInclude": "Secties die top-{{role}}s altijd opnemen:",
+    "whatMakesStandOut": "Wat topcv’s onderscheidt:",
+    "pctTopCandidates": "Welk % van topkandidaten opneemt:",
+    "avgBullets": "Gemiddeld aantal punten per functie:",
+    "youBullets": "Jij: {{count}}",
+    "topBullets": "Top: {{count}}",
+    "quickWins": "Snelle winsten om te concurreren:",
+    "addPortfolio": "Voeg portfolio/GitHub-links toe ({{pct}} % van topkandidaten heeft ze)",
+    "addCerts": "Vermeld relevante certificeringen ({{pct}} % van topkandidaten heeft ze)",
+    "addMetrics": "Voeg statistieken toe aan je punten ({{pct}} % van topcv’s kwantificeert prestaties)",
+    "addBullets": "Voeg {{count}} extra punten per functie toe",
+    "checklistItems": {
+      "portfolio": "Portfolio/GitHub-links",
+      "certifications": "Certificeringen",
+      "quantifiedAchievements": "Gekwantificeerde prestaties"
+    }
+  },
+  "jobComparisonCTA": {
+    "compareToRoles": "Zie hoe je vergelijkt met je doelfuncties:"
+  },
+  "floatingHelpButton": {
+    "needHelp": "Hulp nodig?",
+    "questionsOrFeedback": "Vragen of feedback? Stuur ons een e-mail:"
+  },
+  "atsParseSimulator": {
+    "title": "ATS-parsesimulatie",
+    "subtitle": "Mechanische controles op dezelfde tekst die een ATS zou extraheren — geen AI-schatting"
   }
 }

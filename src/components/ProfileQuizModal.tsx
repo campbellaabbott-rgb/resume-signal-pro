@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Briefcase, Clock, Target, ArrowRight, Sparkles, ChevronLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export interface ProfileQuizData {
   industry: string;
@@ -17,25 +18,25 @@ interface ProfileQuizModalProps {
 }
 
 const INDUSTRIES = [
-  { id: "technology", label: "Technology", icon: "💻" },
-  { id: "healthcare", label: "Healthcare", icon: "🏥" },
-  { id: "finance", label: "Finance & Banking", icon: "💰" },
-  { id: "marketing", label: "Marketing", icon: "📢" },
-  { id: "sales", label: "Sales", icon: "🎯" },
-  { id: "engineering", label: "Engineering", icon: "⚙️" },
-  { id: "education", label: "Education", icon: "📚" },
-  { id: "hr", label: "Human Resources", icon: "👥" },
-  { id: "consulting", label: "Consulting", icon: "📊" },
-  { id: "legal", label: "Legal", icon: "⚖️" },
-  { id: "retail", label: "Retail & E-commerce", icon: "🛒" },
-  { id: "other", label: "Other", icon: "🌐" },
+  { id: "technology", icon: "💻" },
+  { id: "healthcare", icon: "🏥" },
+  { id: "finance", icon: "💰" },
+  { id: "marketing", icon: "📢" },
+  { id: "sales", icon: "🎯" },
+  { id: "engineering", icon: "⚙️" },
+  { id: "education", icon: "📚" },
+  { id: "hr", icon: "👥" },
+  { id: "consulting", icon: "📊" },
+  { id: "legal", icon: "⚖️" },
+  { id: "retail", icon: "🛒" },
+  { id: "other", icon: "🌐" },
 ];
 
 const EXPERIENCE_LEVELS = [
-  { id: "entry", label: "Entry Level", description: "0-2 years", icon: "🌱" },
-  { id: "mid", label: "Mid Level", description: "3-5 years", icon: "📈" },
-  { id: "senior", label: "Senior Level", description: "6-10 years", icon: "⭐" },
-  { id: "executive", label: "Executive", description: "10+ years", icon: "👔" },
+  { id: "entry", icon: "🌱" },
+  { id: "mid", icon: "📈" },
+  { id: "senior", icon: "⭐" },
+  { id: "executive", icon: "👔" },
 ];
 
 const COMMON_ROLES = [
@@ -54,6 +55,7 @@ const COMMON_ROLES = [
 ];
 
 export function ProfileQuizModal({ open, onClose, onComplete }: ProfileQuizModalProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState(1);
   const [industry, setIndustry] = useState("");
   const [experienceLevel, setExperienceLevel] = useState("");
@@ -66,7 +68,6 @@ export function ProfileQuizModal({ open, onClose, onComplete }: ProfileQuizModal
       experienceLevel,
       targetRole: targetRole === "custom" ? customRole : targetRole,
     });
-    // Reset for next use
     setStep(1);
     setIndustry("");
     setExperienceLevel("");
@@ -97,10 +98,10 @@ export function ProfileQuizModal({ open, onClose, onComplete }: ProfileQuizModal
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Sparkles className="w-5 h-5 text-primary" />
-            Quick Profile Setup
+            {t('profileQuizModal.title')}
           </DialogTitle>
           <DialogDescription>
-            Help us personalize your analysis (takes 30 seconds)
+            {t('profileQuizModal.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -122,9 +123,9 @@ export function ProfileQuizModal({ open, onClose, onComplete }: ProfileQuizModal
           <div className="space-y-4 animate-fade-in">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Briefcase className="w-4 h-4" />
-              Step 1 of 3
+              {t('profileQuizModal.step1of3')}
             </div>
-            <h3 className="text-lg font-semibold">What industry are you in?</h3>
+            <h3 className="text-lg font-semibold">{t('profileQuizModal.whichIndustry')}</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {INDUSTRIES.map((ind) => (
                 <button
@@ -138,16 +139,16 @@ export function ProfileQuizModal({ open, onClose, onComplete }: ProfileQuizModal
                   )}
                 >
                   <span className="text-lg">{ind.icon}</span>
-                  <span className="truncate">{ind.label}</span>
+                  <span className="truncate">{t(`profileQuizModal.industries.${ind.id}`)}</span>
                 </button>
               ))}
             </div>
             <div className="flex justify-between pt-4">
               <Button variant="ghost" size="sm" onClick={handleSkip}>
-                Skip for now
+                {t('profileQuizModal.skipForNow')}
               </Button>
               <Button onClick={() => setStep(2)} disabled={!canProceedStep1}>
-                Next
+                {t('profileQuizModal.next')}
                 <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
@@ -159,9 +160,9 @@ export function ProfileQuizModal({ open, onClose, onComplete }: ProfileQuizModal
           <div className="space-y-4 animate-fade-in">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="w-4 h-4" />
-              Step 2 of 3
+              {t('profileQuizModal.step2of3')}
             </div>
-            <h3 className="text-lg font-semibold">What's your experience level?</h3>
+            <h3 className="text-lg font-semibold">{t('profileQuizModal.experienceLevel')}</h3>
             <div className="grid grid-cols-2 gap-3">
               {EXPERIENCE_LEVELS.map((exp) => (
                 <button
@@ -176,19 +177,19 @@ export function ProfileQuizModal({ open, onClose, onComplete }: ProfileQuizModal
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{exp.icon}</span>
-                    <span className="font-semibold">{exp.label}</span>
+                    <span className="font-semibold">{t(`profileQuizModal.levels.${exp.id}`)}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">{exp.description}</span>
+                  <span className="text-xs text-muted-foreground">{t(`profileQuizModal.levels.${exp.id}Desc`)}</span>
                 </button>
               ))}
             </div>
             <div className="flex justify-between pt-4">
               <Button variant="ghost" size="sm" onClick={() => setStep(1)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
-                Back
+                {t('profileQuizModal.back')}
               </Button>
               <Button onClick={() => setStep(3)} disabled={!canProceedStep2}>
-                Next
+                {t('profileQuizModal.next')}
                 <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
@@ -200,9 +201,9 @@ export function ProfileQuizModal({ open, onClose, onComplete }: ProfileQuizModal
           <div className="space-y-4 animate-fade-in">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Target className="w-4 h-4" />
-              Step 3 of 3
+              {t('profileQuizModal.step3of3')}
             </div>
-            <h3 className="text-lg font-semibold">What role are you targeting?</h3>
+            <h3 className="text-lg font-semibold">{t('profileQuizModal.targetRole')}</h3>
             <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto">
               {COMMON_ROLES.map((role) => (
                 <button
@@ -225,7 +226,7 @@ export function ProfileQuizModal({ open, onClose, onComplete }: ProfileQuizModal
             <div className="relative">
               <input
                 type="text"
-                placeholder="Or type your target role..."
+                placeholder={t('profileQuizModal.typeYourRole')}
                 value={customRole}
                 onChange={(e) => {
                   setCustomRole(e.target.value);
@@ -243,11 +244,11 @@ export function ProfileQuizModal({ open, onClose, onComplete }: ProfileQuizModal
             <div className="flex justify-between pt-4">
               <Button variant="ghost" size="sm" onClick={() => setStep(2)}>
                 <ChevronLeft className="w-4 h-4 mr-1" />
-                Back
+                {t('profileQuizModal.back')}
               </Button>
               <Button onClick={handleComplete} disabled={!canProceedStep3} className="gap-2">
                 <Sparkles className="w-4 h-4" />
-                Get Personalized Analysis
+                {t('profileQuizModal.getPersonalized')}
               </Button>
             </div>
           </div>

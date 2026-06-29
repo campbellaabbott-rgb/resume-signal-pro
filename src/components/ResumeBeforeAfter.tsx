@@ -1,4 +1,5 @@
 import { ArrowRight, Sparkles, XCircle, CheckCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const examples = [
   {
@@ -19,11 +20,12 @@ const examples = [
 ];
 
 export const ResumeBeforeAfter = () => {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-2">
         <Sparkles className="w-4 h-4 text-primary" />
-        <h5 className="font-semibold text-sm text-foreground">See the AI Difference</h5>
+        <h5 className="font-semibold text-sm text-foreground">{t('resumeBeforeAfter.title')}</h5>
       </div>
       
       <div className="space-y-3">
@@ -33,7 +35,7 @@ export const ResumeBeforeAfter = () => {
             <div className="flex items-start gap-2">
               <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
               <div className="flex-1">
-                <span className="text-[10px] uppercase tracking-wider text-destructive/70 font-medium">Before</span>
+                <span className="text-[10px] uppercase tracking-wider text-destructive/70 font-medium">{t('resumeBeforeAfter.before')}</span>
                 <p className="text-xs text-muted-foreground line-through decoration-destructive/30">{example.before}</p>
               </div>
             </div>
@@ -47,7 +49,7 @@ export const ResumeBeforeAfter = () => {
             <div className="flex items-start gap-2">
               <CheckCircle className="w-4 h-4 text-success shrink-0 mt-0.5" />
               <div className="flex-1">
-                <span className="text-[10px] uppercase tracking-wider text-success/70 font-medium">After</span>
+                <span className="text-[10px] uppercase tracking-wider text-success/70 font-medium">{t('resumeBeforeAfter.after')}</span>
                 <p className="text-xs text-foreground font-medium">{example.after}</p>
               </div>
             </div>
@@ -63,7 +65,7 @@ export const ResumeBeforeAfter = () => {
       </div>
       
       <p className="text-xs text-center text-muted-foreground">
-        Your entire resume gets this transformation
+        {t('resumeBeforeAfter.tagline')}
       </p>
     </div>
   );

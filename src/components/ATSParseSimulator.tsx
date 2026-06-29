@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, AlertTriangle, XCircle, ChevronDown, ChevronUp, ScanLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { simulateAtsParse, type ParseCheckStatus } from "@/lib/ats-parse-simulator";
+import { useTranslation } from "react-i18next";
 
 interface ATSParseSimulatorProps {
   resumeText: string;
@@ -18,6 +19,7 @@ const statusConfig: Record<ParseCheckStatus, { icon: typeof CheckCircle2; classN
 // on the page — it's showing mechanical, reproducible findings (the same
 // extracted text every check runs against), not a model's holistic judgment.
 export function ATSParseSimulator({ resumeText, multiColumnDetected }: ATSParseSimulatorProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(true);
 
   const result = useMemo(
@@ -39,9 +41,9 @@ export function ATSParseSimulator({ resumeText, multiColumnDetected }: ATSParseS
             <ScanLine className="w-4 h-4 text-foreground" />
           </div>
           <div>
-            <h3 className="font-bold text-foreground">ATS Parse Simulation</h3>
+            <h3 className="font-bold text-foreground">{t('atsParseSimulator.title')}</h3>
             <p className="text-xs text-muted-foreground">
-              Mechanical checks against the same text an ATS would extract — not an AI estimate
+              {t('atsParseSimulator.subtitle')}
             </p>
           </div>
         </div>

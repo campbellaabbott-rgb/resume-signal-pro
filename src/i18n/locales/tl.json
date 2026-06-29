@@ -706,13 +706,34 @@
     "live": "Live",
     "securityNote": "Ang iyong resume ay sinusuri nang ligtas at hindi naka-store",
     "stages": {
-      "parsing": { "label": "Pina-parse ang Resume", "description": "Kinukuha ang text at istruktura" },
-      "industry": { "label": "Tine-detect ang Industriya", "description": "Tinutukoy ang iyong larangan at role" },
-      "ats": { "label": "Pinapatakbo ang ATS Simulation", "description": "Sinusubok laban sa 50+ ATS systems" },
-      "keywords": { "label": "Sinusuri ang mga Keyword", "description": "Tinatapat ang mga industry-specific na termino" },
-      "scoring": { "label": "Scoring at Benchmarking", "description": "Ikinocompare sa mga top candidates" },
-      "ai": { "label": "AI Deep Analysis", "description": "Gumagawa ng personalized insights" },
-      "report": { "label": "Ginagawa ang Iyong Report", "description": "Kinocompile ang mga actionable recommendations" }
+      "parsing": {
+        "label": "Pina-parse ang Resume",
+        "description": "Kinukuha ang text at istruktura"
+      },
+      "industry": {
+        "label": "Tine-detect ang Industriya",
+        "description": "Tinutukoy ang iyong larangan at role"
+      },
+      "ats": {
+        "label": "Pinapatakbo ang ATS Simulation",
+        "description": "Sinusubok laban sa 50+ ATS systems"
+      },
+      "keywords": {
+        "label": "Sinusuri ang mga Keyword",
+        "description": "Tinatapat ang mga industry-specific na termino"
+      },
+      "scoring": {
+        "label": "Scoring at Benchmarking",
+        "description": "Ikinocompare sa mga top candidates"
+      },
+      "ai": {
+        "label": "AI Deep Analysis",
+        "description": "Gumagawa ng personalized insights"
+      },
+      "report": {
+        "label": "Ginagawa ang Iyong Report",
+        "description": "Kinocompile ang mga actionable recommendations"
+      }
     },
     "tips": {
       "numbers": "💡 Tip: Ang mga resume na may numero ay nakakakuha ng 40% mas maraming callbacks",
@@ -1009,42 +1030,141 @@
   },
   "freeResults": {
     "metricTooltips": {
-      "atsScore": { "title": "AI-ATS Score", "description": "Sinisimulate ng aming AI kung paano ni-scan ang iyong resume ng mga modernong AI-powered Applicant Tracking System — ang parehong teknolohiyang ginagamit ng 98% ng Fortune 500 companies.", "whyMatters": "Ang mababang score ay nangangahulugan na ang iyong resume ay posibleng hindi makarating sa isang tao na recruiter." },
-      "format": { "title": "Format Grade", "description": "Sinusuri ang istruktura, layout, at AI-ATS readability ng iyong resume.", "whyMatters": "Ang masamang format ay nagdudulot ng AI-ATS parsing error, na nawawala ang iyong mahahalagang impormasyon." },
-      "metrics": { "title": "Quantification Score", "description": "Sinusukat kung gaano karaming achievement mo ang may numero, porsyento, o metrics.", "whyMatters": "6 segundo lang ang ginugol ng mga recruiter sa pag-scan — ang mga numero ang unang nakakuha ng atensyon." },
-      "verbs": { "title": "Action Verb Grade", "description": "Sinusukat ang lakas at pagkakaiba-iba ng mga action verb na nagsisimula sa iyong bullet point.", "whyMatters": "Mas mabuti ang malakas na verb tulad ng 'Pinangunahan' kaysa sa mahina tulad ng 'Tumulong' o 'Nag-assist'." },
-      "pages": { "title": "Haba ng Resume", "description": "Sinusuri kung ang haba ng iyong resume ay tugma sa industry standard para sa iyong experience level.", "whyMatters": "Sobrang haba = nalaktawan. Sobrang ikli = kulang sa substance." },
-      "words": { "title": "Bilang ng Salita", "description": "Sinusukat kung sapat ang content mo para ipakita ang iyong halaga.", "whyMatters": "Ang sweet spot ay nagbabago depende sa experience — kaunting salita ay senyales ng kawalan ng karanasan." },
-      "sections": { "title": "Section Check", "description": "Tinitiyak na naroon ang lahat ng mahalagang section ng resume (Summary, Experience, Education, Skills).", "whyMatters": "Ang mga nawawalang section ay agarang red flag para sa mga recruiter." },
-      "contact": { "title": "Contact Info", "description": "Sinusuri ang presensya ng email, telepono, at LinkedIn.", "whyMatters": "Hindi ka maaaring kunin ng mga recruiter kung hindi ka nila makontak." },
-      "readability": { "title": "Readability Score", "description": "Sinusukat kung gaano madaling i-scan ang iyong resume.", "whyMatters": "Karaniwang 6-7 segundo lang ang ginugol ng recruiter kada resume — pahalagahan ang bawat salita." },
-      "bulletImpact": { "title": "Bullet Impact", "description": "Sinusuri kung ang iyong mga bullet ay nakatuon sa achievement kumpara sa pag-lista lang ng responsibilidad.", "whyMatters": "Ang mga bullet na nakatuon sa achievement ay nagpapakita ng halaga; ang listahan ng responsibilidad ay hindi." },
-      "keywordDensity": { "title": "Keyword Density", "description": "Sinusukat ang presensya ng mga keyword na may kaugnayan sa industriya para sa AI-ATS matching.", "whyMatters": "Kaunting keyword = walang AI-ATS match. Sobrang dami = parusa sa keyword stuffing." },
-      "improvementPotential": { "title": "Potensyal sa Pagpapabuti", "description": "Tinatayang posibleng pagtaas ng score sa pamamagitan ng optimization.", "whyMatters": "Ipinapakita kung gaano karaming puwang ka para malampasan ang ibang kandidato." },
-      "industryBenchmark": { "title": "Industry Benchmark", "description": "Ikinukumpara ang iyong score sa iba sa iyong larangan.", "whyMatters": "Alamin kung saan ka nakatayo laban sa iyong direktang kompetisyon." },
-      "timeline": { "title": "Career Timeline", "description": "Sinusuri ang tagal ng trabaho, mga gaps, at pattern ng career progression.", "whyMatters": "Hinahanap ng mga recruiter ang stability at growth — kailangang ipaliwanag ang mga gap." },
-      "atsCompatibility": { "title": "AI-ATS System Compatibility", "description": "Ipinapakita kung gaano maayos na nababasa ang iyong resume sa mga pangunahing AI-powered Applicant Tracking System tulad ng Workday, Greenhouse, at Taleo.", "whyMatters": "Iba-iba ang AI-ATS system na ginagamit ng mga kumpanya — alamin kung alin ang tama ang pagbasa sa iyong resume." }
+      "atsScore": {
+        "title": "AI-ATS Score",
+        "description": "Sinisimulate ng aming AI kung paano ni-scan ang iyong resume ng mga modernong AI-powered Applicant Tracking System — ang parehong teknolohiyang ginagamit ng 98% ng Fortune 500 companies.",
+        "whyMatters": "Ang mababang score ay nangangahulugan na ang iyong resume ay posibleng hindi makarating sa isang tao na recruiter."
+      },
+      "format": {
+        "title": "Format Grade",
+        "description": "Sinusuri ang istruktura, layout, at AI-ATS readability ng iyong resume.",
+        "whyMatters": "Ang masamang format ay nagdudulot ng AI-ATS parsing error, na nawawala ang iyong mahahalagang impormasyon."
+      },
+      "metrics": {
+        "title": "Quantification Score",
+        "description": "Sinusukat kung gaano karaming achievement mo ang may numero, porsyento, o metrics.",
+        "whyMatters": "6 segundo lang ang ginugol ng mga recruiter sa pag-scan — ang mga numero ang unang nakakuha ng atensyon."
+      },
+      "verbs": {
+        "title": "Action Verb Grade",
+        "description": "Sinusukat ang lakas at pagkakaiba-iba ng mga action verb na nagsisimula sa iyong bullet point.",
+        "whyMatters": "Mas mabuti ang malakas na verb tulad ng 'Pinangunahan' kaysa sa mahina tulad ng 'Tumulong' o 'Nag-assist'."
+      },
+      "pages": {
+        "title": "Haba ng Resume",
+        "description": "Sinusuri kung ang haba ng iyong resume ay tugma sa industry standard para sa iyong experience level.",
+        "whyMatters": "Sobrang haba = nalaktawan. Sobrang ikli = kulang sa substance."
+      },
+      "words": {
+        "title": "Bilang ng Salita",
+        "description": "Sinusukat kung sapat ang content mo para ipakita ang iyong halaga.",
+        "whyMatters": "Ang sweet spot ay nagbabago depende sa experience — kaunting salita ay senyales ng kawalan ng karanasan."
+      },
+      "sections": {
+        "title": "Section Check",
+        "description": "Tinitiyak na naroon ang lahat ng mahalagang section ng resume (Summary, Experience, Education, Skills).",
+        "whyMatters": "Ang mga nawawalang section ay agarang red flag para sa mga recruiter."
+      },
+      "contact": {
+        "title": "Contact Info",
+        "description": "Sinusuri ang presensya ng email, telepono, at LinkedIn.",
+        "whyMatters": "Hindi ka maaaring kunin ng mga recruiter kung hindi ka nila makontak."
+      },
+      "readability": {
+        "title": "Readability Score",
+        "description": "Sinusukat kung gaano madaling i-scan ang iyong resume.",
+        "whyMatters": "Karaniwang 6-7 segundo lang ang ginugol ng recruiter kada resume — pahalagahan ang bawat salita."
+      },
+      "bulletImpact": {
+        "title": "Bullet Impact",
+        "description": "Sinusuri kung ang iyong mga bullet ay nakatuon sa achievement kumpara sa pag-lista lang ng responsibilidad.",
+        "whyMatters": "Ang mga bullet na nakatuon sa achievement ay nagpapakita ng halaga; ang listahan ng responsibilidad ay hindi."
+      },
+      "keywordDensity": {
+        "title": "Keyword Density",
+        "description": "Sinusukat ang presensya ng mga keyword na may kaugnayan sa industriya para sa AI-ATS matching.",
+        "whyMatters": "Kaunting keyword = walang AI-ATS match. Sobrang dami = parusa sa keyword stuffing."
+      },
+      "improvementPotential": {
+        "title": "Potensyal sa Pagpapabuti",
+        "description": "Tinatayang posibleng pagtaas ng score sa pamamagitan ng optimization.",
+        "whyMatters": "Ipinapakita kung gaano karaming puwang ka para malampasan ang ibang kandidato."
+      },
+      "industryBenchmark": {
+        "title": "Industry Benchmark",
+        "description": "Ikinukumpara ang iyong score sa iba sa iyong larangan.",
+        "whyMatters": "Alamin kung saan ka nakatayo laban sa iyong direktang kompetisyon."
+      },
+      "timeline": {
+        "title": "Career Timeline",
+        "description": "Sinusuri ang tagal ng trabaho, mga gaps, at pattern ng career progression.",
+        "whyMatters": "Hinahanap ng mga recruiter ang stability at growth — kailangang ipaliwanag ang mga gap."
+      },
+      "atsCompatibility": {
+        "title": "AI-ATS System Compatibility",
+        "description": "Ipinapakita kung gaano maayos na nababasa ang iyong resume sa mga pangunahing AI-powered Applicant Tracking System tulad ng Workday, Greenhouse, at Taleo.",
+        "whyMatters": "Iba-iba ang AI-ATS system na ginagamit ng mga kumpanya — alamin kung alin ang tama ang pagbasa sa iyong resume."
+      }
     },
     "ctaCopy": {
       "coverLetter": {
-        "control": { "button": "Gawin ang Cover Letter — {{price}}", "description": "AI-generated cover letter na naangkop sa iyong resume at target na trabaho. Handa nang ipadala sa ilang minuto." },
-        "benefitFocused": { "button": "Kunin ang Interview-Winning Letter Mo", "description": "Mag-stand out sa 100+ aplikante gamit ang personalized cover letter na pumupukaw sa interes ng mga recruiter." },
-        "scarcity": { "button": "Gawin Na ang Cover Letter — {{price}}", "description": "Karamihan sa mga aplikante ay nililaktawan ang cover letter. Manguna sa kompetisyon gamit ang custom na letter sa 2 minuto." }
+        "control": {
+          "button": "Gawin ang Cover Letter — {{price}}",
+          "description": "AI-generated cover letter na naangkop sa iyong resume at target na trabaho. Handa nang ipadala sa ilang minuto."
+        },
+        "benefitFocused": {
+          "button": "Kunin ang Interview-Winning Letter Mo",
+          "description": "Mag-stand out sa 100+ aplikante gamit ang personalized cover letter na pumupukaw sa interes ng mga recruiter."
+        },
+        "scarcity": {
+          "button": "Gawin Na ang Cover Letter — {{price}}",
+          "description": "Karamihan sa mga aplikante ay nililaktawan ang cover letter. Manguna sa kompetisyon gamit ang custom na letter sa 2 minuto."
+        }
       },
       "keywordFix": {
-        "control": { "button": "Kunin ang Buong Keyword Report", "headline": "Gusto mo ng 50+ Industry Keywords?" },
-        "benefitFocused": { "button": "I-unlock ang Mga Hidden Keyword", "headline": "Makalampas sa ATS Filter" },
-        "scarcity": { "button": "Kunin ang Keywords Bago ang Iba", "headline": "Talunin ang 87% ng Aplikante" }
+        "control": {
+          "button": "Kunin ang Buong Keyword Report",
+          "headline": "Gusto mo ng 50+ Industry Keywords?"
+        },
+        "benefitFocused": {
+          "button": "I-unlock ang Mga Hidden Keyword",
+          "headline": "Makalampas sa ATS Filter"
+        },
+        "scarcity": {
+          "button": "Kunin ang Keywords Bago ang Iba",
+          "headline": "Talunin ang 87% ng Aplikante"
+        }
       },
       "premiumPackage": {
-        "control": { "button": "Bilhin ang Premium Package — {{price}}", "headline": "Premium Resume Package", "subtext": "Lahat ng kailangan mo para makakuha ng interview" },
-        "benefitFocused": { "button": "Maging Handa sa Interview Ngayon", "headline": "Mas Mabilis na Makuha ang Dream Job Mo", "subtext": "3x mas marami pang interview callback sa aming kumpletong package" },
-        "scarcity": { "button": "I-claim ang Package Mo — Limitado", "headline": "Premium Resume Package", "subtext": "Sumali sa 10,000+ na nakakuha ng interview ngayong buwan" }
+        "control": {
+          "button": "Bilhin ang Premium Package — {{price}}",
+          "headline": "Premium Resume Package",
+          "subtext": "Lahat ng kailangan mo para makakuha ng interview"
+        },
+        "benefitFocused": {
+          "button": "Maging Handa sa Interview Ngayon",
+          "headline": "Mas Mabilis na Makuha ang Dream Job Mo",
+          "subtext": "3x mas marami pang interview callback sa aming kumpletong package"
+        },
+        "scarcity": {
+          "button": "I-claim ang Package Mo — Limitado",
+          "headline": "Premium Resume Package",
+          "subtext": "Sumali sa 10,000+ na nakakuha ng interview ngayong buwan"
+        }
       },
       "tailoredResume": {
-        "control": { "button": "I-preview ang Naangkop na Resume", "description": "Libreng preview, pagkatapos i-unlock ang buong Premium Package na may naangkop na resume + cover letter" },
-        "benefitFocused": { "button": "Tingnan ang Pinabuting Resume Mo", "description": "Tingnan kung paano talaga magmumukha ang resume mo kapag na-optimize para sa target role mo" },
-        "scarcity": { "button": "I-generate Bago Magsara", "description": "Limitadong preview available — tingnan ang naangkop na resume mo bago mag-upgrade" }
+        "control": {
+          "button": "I-preview ang Naangkop na Resume",
+          "description": "Libreng preview, pagkatapos i-unlock ang buong Premium Package na may naangkop na resume + cover letter"
+        },
+        "benefitFocused": {
+          "button": "Tingnan ang Pinabuting Resume Mo",
+          "description": "Tingnan kung paano talaga magmumukha ang resume mo kapag na-optimize para sa target role mo"
+        },
+        "scarcity": {
+          "button": "I-generate Bago Magsara",
+          "description": "Limitadong preview available — tingnan ang naangkop na resume mo bago mag-upgrade"
+        }
       }
     },
     "addJobDescriptionToUnlock": "Magdagdag ng job description sa itaas para mai-unlock",
@@ -1064,27 +1184,68 @@
       "copiedToClipboard": "Na-copy sa clipboard",
       "shareWithFriend": "Ibahagi ito sa kaibigan o mentor para sa feedback"
     },
-    "nav": { "overview": "Overview", "metrics": "Metrics", "issues": "Mga Isyu", "jobMatch": "Job Match", "insights": "Mga Insight", "nextSteps": "Susunod na Hakbang" },
+    "nav": {
+      "overview": "Overview",
+      "metrics": "Metrics",
+      "issues": "Mga Isyu",
+      "jobMatch": "Job Match",
+      "insights": "Mga Insight",
+      "nextSteps": "Susunod na Hakbang"
+    },
     "exitOffer": {
       "title": "Bago ka umalis —",
       "withStats": "Kulang ka ng {{count}} karaniwang keyword sa mga role ng {{industry}}. Kunin ang fix list sa halaga ng isang kape.",
       "noStats": "Tukuyin ang iyong mga nawawalang keyword at kunin ang fix list, sa halaga ng isang kape."
     },
-    "industryKeywordsSection": { "title": "Mga Keyword sa Industriya at Role", "subtitle": "Mga keyword na may kaugnayan sa iyong larangan at target role" },
-    "experienceFit": { "goodFit": "Bagay", "over": "Sobra", "under": "Kulang" },
-    "priority": { "must": "Dapat", "should": "Maganda", "nice": "Bonus" },
-    "atRiskOrNeedsImprovement": { "atRisk": "May panganib na ma-filter out", "needsImprovement": "Kailangan ng pagpapabuti para makompetensya" },
-    "personalizedTipsSection": { "title": "Mga Personalized na Tip", "subtitle": "Mga insight na naangkop sa iyong profile" },
-    "elevatorPitchSection": { "title": "60-Segundong Elevator Pitch", "subtitle": "AI-generated na pitch mula sa iyong resume" },
-    "recruiterViewSection": { "title": "Recruiter View Mode", "subtitle": "Tingnan mismo ang nakikita ng mga recruiter" },
-    "resumeRoastSection": { "title": "Resume Roast 🔥", "subtitle": "Tapat na tapat, nakakatawang specific" },
-    "interviewCoachSection": { "title": "Interview Coach", "subtitle": "Mag-practice gamit ang AI-generated na mga tanong" },
-    "careerPathSection": { "title": "Career Path Simulator", "subtitle": "3 posibleng kinabukasan base sa iyong resume" },
+    "industryKeywordsSection": {
+      "title": "Mga Keyword sa Industriya at Role",
+      "subtitle": "Mga keyword na may kaugnayan sa iyong larangan at target role"
+    },
+    "experienceFit": {
+      "goodFit": "Bagay",
+      "over": "Sobra",
+      "under": "Kulang"
+    },
+    "priority": {
+      "must": "Dapat",
+      "should": "Maganda",
+      "nice": "Bonus"
+    },
+    "atRiskOrNeedsImprovement": {
+      "atRisk": "May panganib na ma-filter out",
+      "needsImprovement": "Kailangan ng pagpapabuti para makompetensya"
+    },
+    "personalizedTipsSection": {
+      "title": "Mga Personalized na Tip",
+      "subtitle": "Mga insight na naangkop sa iyong profile"
+    },
+    "elevatorPitchSection": {
+      "title": "60-Segundong Elevator Pitch",
+      "subtitle": "AI-generated na pitch mula sa iyong resume"
+    },
+    "recruiterViewSection": {
+      "title": "Recruiter View Mode",
+      "subtitle": "Tingnan mismo ang nakikita ng mga recruiter"
+    },
+    "resumeRoastSection": {
+      "title": "Resume Roast 🔥",
+      "subtitle": "Tapat na tapat, nakakatawang specific"
+    },
+    "interviewCoachSection": {
+      "title": "Interview Coach",
+      "subtitle": "Mag-practice gamit ang AI-generated na mga tanong"
+    },
+    "careerPathSection": {
+      "title": "Career Path Simulator",
+      "subtitle": "3 posibleng kinabukasan base sa iyong resume"
+    },
     "fixChecklistTitle": "Fix Checklist",
     "checklistCompleted": "{{completed}}/{{total}} natapos",
     "trackProgress": "I-track ang progress",
     "peerBenchmark": {
-      "above": "Mas mataas sa average", "at": "Katumbas ng average", "below": "Mas mababa sa average",
+      "above": "Mas mataas sa average",
+      "at": "Katumbas ng average",
+      "below": "Mas mababa sa average",
       "forAtsReadinessAmong": "para sa ATS readiness sa gitna ng {{cohort}}",
       "strongPosition": "✓ Malakas na posisyon sa iyong industriya",
       "roomForImprovement": "→ May puwang para sa pagpapabuti",
@@ -1094,7 +1255,10 @@
       "weakResult": "Mas mataas ang score ng ibang kandidato sa iyong larangan. Gamitin ang mga fix sa baba para mapabuti ang iyong tsansa."
     },
     "timelineProgression": {
-      "rapidLabel": "🚀 Mabilis", "steadyLabel": "📈 Matatag", "stagnantLabel": "📊 Patag", "unclearLabel": "❓ Hindi Malinaw",
+      "rapidLabel": "🚀 Mabilis",
+      "steadyLabel": "📈 Matatag",
+      "stagnantLabel": "📊 Patag",
+      "unclearLabel": "❓ Hindi Malinaw",
       "rapid": "Magaling! Nagpapakita ng malakas na pag-unlad at lumalaking responsibilidad",
       "steady": "Nagpapakita ng tuloy-tuloy na paglago — gusto ng mga employer ang pattern na ito",
       "stagnant": "Isaalang-alang ang paghighlight ng mga promotion o bagong responsibilidad",
@@ -1103,13 +1267,26 @@
       "gapNoteDefault": "Karaniwan ang mga gap — maghanda lang na ipaliwanag ito sa interview"
     },
     "confidencePercent": "{{confidence}} confidence",
-    "careerSituationLabel": { "careerChanger": "Natukoy na Career Changer", "returningToWorkforce": "Bumabalik sa Workforce", "militaryTransition": "Military Transition", "recentGrad": "Bagong Graduate" },
+    "careerSituationLabel": {
+      "careerChanger": "Natukoy na Career Changer",
+      "returningToWorkforce": "Bumabalik sa Workforce",
+      "militaryTransition": "Military Transition",
+      "recentGrad": "Bagong Graduate"
+    },
     "personalizedCareerInsightsTitle": "Personalized na Career Insights",
     "tailoredForYou": "Naangkop para kay {{name}}",
     "you": "ikaw",
     "aiPowered": "AI-powered",
-    "roleFit": { "naturalProgression": "Natural na susunod na hakbang", "lateralMove": "Lateral na paglipat", "stretchGoal": "Mapanghamong layunin" },
-    "marketPosition": { "aboveMarket": "Mas Mataas sa Market", "atMarket": "Katumbas ng Market", "belowMarket": "Mas Mababa sa Market" },
+    "roleFit": {
+      "naturalProgression": "Natural na susunod na hakbang",
+      "lateralMove": "Lateral na paglipat",
+      "stretchGoal": "Mapanghamong layunin"
+    },
+    "marketPosition": {
+      "aboveMarket": "Mas Mataas sa Market",
+      "atMarket": "Katumbas ng Market",
+      "belowMarket": "Mas Mababa sa Market"
+    },
     "formatRecommendationSection": {
       "title": "Rekomendasyon sa Format ng Resume",
       "subtitle": "{{style}} style na rekomendado para sa {{industry}}",
@@ -1117,18 +1294,32 @@
       "fitsIndustry": "Bagay ang format mo sa iyong industriya!",
       "needsAdjustment": "Kailangan ng ayos ang format",
       "quickFixLabel": "Mabilis na ayos: {{fix}}",
-      "layoutLabel": "Layout", "colorLabel": "Kulay", "visualsLabel": "Visuals", "styleLabel": "Style",
-      "colorAcceptable": "✓ Katanggap-tanggap", "colorAvoid": "✗ Iwasan",
+      "layoutLabel": "Layout",
+      "colorLabel": "Kulay",
+      "visualsLabel": "Visuals",
+      "styleLabel": "Style",
+      "colorAcceptable": "✓ Katanggap-tanggap",
+      "colorAvoid": "✗ Iwasan",
       "whatTopResumesDo": "Ano ang ginagawa ng mga top resume sa {{industry}}:",
-      "importance": { "must": "Dapat", "rec": "Rekomendado", "opt": "Opsyonal" },
+      "importance": {
+        "must": "Dapat",
+        "rec": "Rekomendado",
+        "opt": "Opsyonal"
+      },
       "avoidForIndustry": "Iwasan para sa {{industry}}:",
       "idealTemplate": "Idyal na template: "
     },
-    "columns": { "oneColumn": "Isang Column", "twoColumn": "Dalawang Column" },
+    "columns": {
+      "oneColumn": "Isang Column",
+      "twoColumn": "Dalawang Column"
+    },
     "atsParsingSection": {
       "title": "ATS Parsing Compatibility",
       "subtitle": "Kung gaano maayos na mababasa ng iba't ibang ATS system ang iyong resume",
-      "excellentRating": "✓ Mahusay na Compatibility", "goodRating": "✓ Magandang Compatibility", "fairRating": "⚠ Katamtamang Compatibility", "poorRating": "✗ Mahinang Compatibility",
+      "excellentRating": "✓ Mahusay na Compatibility",
+      "goodRating": "✓ Magandang Compatibility",
+      "fairRating": "⚠ Katamtamang Compatibility",
+      "poorRating": "✗ Mahinang Compatibility",
       "excellent": "Dapat tamang mabasa ang iyong resume sa karamihan ng ATS platform",
       "good": "Karamihan ng ATS ay tamang mababasa ang iyong resume",
       "fair": "Maaaring may problema ang ilang ATS sa pagbasa ng iyong resume",
@@ -1136,12 +1327,29 @@
       "worksBestWith": "Pinaka-maayos na gumagana sa",
       "mayHaveIssues": "Posibleng may problema sa"
     },
-    "confidenceLevel": { "high": "Mataas", "medium": "Katamtaman", "low": "Mababa" },
-    "bulletRewriteSection": { "title": "AI-Rewritten na Bullet Point", "description": "Ipa-rewrite ang bawat bullet point gamit ang masusukat na impact at malalakas na verb" },
-    "keywordGapSection": { "title": "Kumpletong Keyword Gap Analysis" },
-    "careerStrategySection": { "title": "Personalized na Career Strategy" },
+    "confidenceLevel": {
+      "high": "Mataas",
+      "medium": "Katamtaman",
+      "low": "Mababa"
+    },
+    "bulletRewriteSection": {
+      "title": "AI-Rewritten na Bullet Point",
+      "description": "Ipa-rewrite ang bawat bullet point gamit ang masusukat na impact at malalakas na verb"
+    },
+    "keywordGapSection": {
+      "title": "Kumpletong Keyword Gap Analysis"
+    },
+    "careerStrategySection": {
+      "title": "Personalized na Career Strategy"
+    },
     "sectionChecklistTitle": "Section Checklist",
-    "sectionLabels": { "contact": "Contact", "summary": "Summary", "experience": "Experience", "education": "Edukasyon", "skills": "Kasanayan" },
+    "sectionLabels": {
+      "contact": "Contact",
+      "summary": "Summary",
+      "experience": "Experience",
+      "education": "Edukasyon",
+      "skills": "Kasanayan"
+    },
     "bestValue": "Pinakamahusay na Halaga",
     "wantToCompareFor": "Gusto mong makita kung paano ka ihahambing para sa",
     "atCompany": "sa",
@@ -1151,52 +1359,123 @@
     "oneInterviewPaidForItself": "Isang interview = {{price}} ay nabayaran na",
     "unlockWithFullAnalysis": "I-unlock sa Full Analysis",
     "premiumFeatures": {
-      "completeAtsAnalysis": "Kumpletong ATS analysis", "aiRewrittenResume": "AI-rewritten na resume", "customCoverLetter": "Custom na cover letter",
-      "beforeAfterComparison": "Before/after comparison", "keywordOptimization": "Keyword optimization", "priorityProcessing": "Priority processing"
+      "completeAtsAnalysis": "Kumpletong ATS analysis",
+      "aiRewrittenResume": "AI-rewritten na resume",
+      "customCoverLetter": "Custom na cover letter",
+      "beforeAfterComparison": "Before/after comparison",
+      "keywordOptimization": "Keyword optimization",
+      "priorityProcessing": "Priority processing"
     },
     "keywordFixFeatures": {
-      "fullAtsBreakdown": "Buong breakdown ng ATS score", "bulletPointRewrites": "Bullet point rewrites", "redFlagFixes": "Detalyadong ayos sa red flag",
-      "linkedinOptimization": "LinkedIn optimization", "actionVerbReplacements": "Pagpalit ng action verb", "quantificationSuggestions": "Mga suhestyon sa quantification",
-      "skillsGapAnalysis": "Skills gap analysis", "industryInsights": "Industry-specific na insight", "summaryRewrites": "Summary/headline rewrites",
+      "fullAtsBreakdown": "Buong breakdown ng ATS score",
+      "bulletPointRewrites": "Bullet point rewrites",
+      "redFlagFixes": "Detalyadong ayos sa red flag",
+      "linkedinOptimization": "LinkedIn optimization",
+      "actionVerbReplacements": "Pagpalit ng action verb",
+      "quantificationSuggestions": "Mga suhestyon sa quantification",
+      "skillsGapAnalysis": "Skills gap analysis",
+      "industryInsights": "Industry-specific na insight",
+      "summaryRewrites": "Summary/headline rewrites",
       "prioritizedActionPlan": "Pinaunahang action plan"
     },
     "premiumIncludesDetail": "{{subtext}}: buong analysis + AI-rewritten na resume + custom na cover letter."
   },
   "analysisPreviewSample": {
-    "breakdown": { "jobTitleMatch": "Pagtugma sa Job Title", "skillsMatch": "Pagtugma sa Skills", "actionVerbUsage": "Paggamit ng Action Verb", "keywordCoverage": "Saklaw ng Keyword", "formattingScore": "Score sa Format" },
-    "matchingSkills": ["Product Management", "Agile/Scrum", "Stakeholder Management", "Data Analysis"],
-    "missingKeywords": ["OKRs", "Product Roadmap", "A/B Testing"],
+    "breakdown": {
+      "jobTitleMatch": "Pagtugma sa Job Title",
+      "skillsMatch": "Pagtugma sa Skills",
+      "actionVerbUsage": "Paggamit ng Action Verb",
+      "keywordCoverage": "Saklaw ng Keyword",
+      "formattingScore": "Score sa Format"
+    },
+    "matchingSkills": [
+      "Product Management",
+      "Agile/Scrum",
+      "Stakeholder Management",
+      "Data Analysis"
+    ],
+    "missingKeywords": [
+      "OKRs",
+      "Product Roadmap",
+      "A/B Testing"
+    ],
     "alignmentSuggestion": "Magdagdag ng specific na metrics tungkol sa product launch at banggitin ang experience sa OKRs para mas patibayin ang alignment sa Senior PM role na ito.",
-    "detectedIssues": ["Posibleng hindi mabasa ang contact info sa mas lumang ATS", "Hindi nasa preferred na format ang mga petsa ng trabaho", "Nahihirapan mag-scan dahil sa special bullets"],
-    "criticalFixes": ["Gamitin ang Month Year na format (hal., Jan 2020 - Kasalukuyan)", "Palitan ang fancy bullets ng standard na hyphen o dots", "Ilagay ang email at telepono sa isang linya"],
+    "detectedIssues": [
+      "Posibleng hindi mabasa ang contact info sa mas lumang ATS",
+      "Hindi nasa preferred na format ang mga petsa ng trabaho",
+      "Nahihirapan mag-scan dahil sa special bullets"
+    ],
+    "criticalFixes": [
+      "Gamitin ang Month Year na format (hal., Jan 2020 - Kasalukuyan)",
+      "Palitan ang fancy bullets ng standard na hyphen o dots",
+      "Ilagay ang email at telepono sa isang linya"
+    ],
     "bulletOriginal": "Responsable sa pamamahala ng sales team",
     "bulletImproved": "Pinangunahan ang 12-katao na sales team para malampasan ang quarterly target ng 34%, na nagdulot ng $2.1M na bagong revenue",
     "bulletReason": "Idinagdag ang laki ng team, masusukat na resulta, at specific na revenue impact",
     "resumeLengthReasoning": "Sa 8 taon ng karanasan, ideal ang 2-page na resume. Isaalang-alang ang pag-condense ng mga lumang role.",
-    "actionPlan": ["Magdagdag ng 3-5 na quantified achievement sa pinakabagong role mo", "Palitan ang passive na pananalita ng malakas na action verbs", "Isama ang mga keyword na 'cross-functional' at 'stakeholder management'", "Ayusin ang date formatting para sa ATS compatibility"],
-    "redFlags": ["8 buwang employment gap na hindi naipaliwanag", "Generic na objective statement sa halip na targeted summary"],
+    "actionPlan": [
+      "Magdagdag ng 3-5 na quantified achievement sa pinakabagong role mo",
+      "Palitan ang passive na pananalita ng malakas na action verbs",
+      "Isama ang mga keyword na 'cross-functional' at 'stakeholder management'",
+      "Ayusin ang date formatting para sa ATS compatibility"
+    ],
+    "redFlags": [
+      "8 buwang employment gap na hindi naipaliwanag",
+      "Generic na objective statement sa halip na targeted summary"
+    ],
     "linkedinHeadline": "Senior Product Manager | B2B SaaS | Nagdudulot ng 40% Revenue Growth",
     "linkedinAboutImprovement": "Kulang sa quantified achievement ang About section mo. Magdagdag ng metrics tulad ng laki ng team, revenue impact, o user growth.",
-    "linkedinRecommendations": ["Magdagdag ng featured section na nagpapakita ng key project", "Humingi ng 2-3 recommendation mula sa mga kasamahan", "Isama ang industry-specific na keyword sa headline"]
+    "linkedinRecommendations": [
+      "Magdagdag ng featured section na nagpapakita ng key project",
+      "Humingi ng 2-3 recommendation mula sa mga kasamahan",
+      "Isama ang industry-specific na keyword sa headline"
+    ]
   },
   "valueComparison": {
     "feature": "Feature",
     "us": "Resume Booster",
     "them": "Traditional Writer",
     "rows": {
-      "timeToResults": { "feature": "Oras bago makuha ang resulta", "us": "Mas mababa sa 60 segundo", "them": "3-7 araw ng trabaho" },
-      "cost": { "feature": "Gastos", "us": "$5 – $25 isang-beses", "them": "$150 – $500+" },
-      "atsOptimization": { "feature": "ATS optimization", "them": "Depende sa writer" },
-      "keywordAnalysis": { "feature": "Keyword analysis", "us": "Industry-specific na AI", "them": "Manual na research" },
-      "revisions": { "feature": "Kasama ang mga revision", "us": "Walang limitasyong pag-retry", "them": "1-2 round" },
-      "jobTailoring": { "feature": "Job-specific na pag-angkop", "them": "Karagdagang $50-100" }
+      "timeToResults": {
+        "feature": "Oras bago makuha ang resulta",
+        "us": "Mas mababa sa 60 segundo",
+        "them": "3-7 araw ng trabaho"
+      },
+      "cost": {
+        "feature": "Gastos",
+        "us": "$5 – $25 isang-beses",
+        "them": "$150 – $500+"
+      },
+      "atsOptimization": {
+        "feature": "ATS optimization",
+        "them": "Depende sa writer"
+      },
+      "keywordAnalysis": {
+        "feature": "Keyword analysis",
+        "us": "Industry-specific na AI",
+        "them": "Manual na research"
+      },
+      "revisions": {
+        "feature": "Kasama ang mga revision",
+        "us": "Walang limitasyong pag-retry",
+        "them": "1-2 round"
+      },
+      "jobTailoring": {
+        "feature": "Job-specific na pag-angkop",
+        "them": "Karagdagang $50-100"
+      }
     }
   },
   "finalCtaExtra": {
     "powerUpAddOns": "Power-Up Add-Ons",
     "resumeRoastFree": "Resume Roast LIBRE",
     "viewAllProducts": "Tingnan lahat ng produkto",
-    "addOnNames": { "resumeRoast": "Resume Roast", "interviewCoach": "Interview Coach", "careerPath": "Career Path" }
+    "addOnNames": {
+      "resumeRoast": "Resume Roast",
+      "interviewCoach": "Interview Coach",
+      "careerPath": "Career Path"
+    }
   },
   "productSuccess": {
     "verifyingPurchase": "Nagberipika ng iyong pagbili...",
@@ -1344,9 +1623,18 @@
           "I-upload ulit para tingnan ang iyong napahusay na ATS score"
         ],
         "nextSteps": [
-          { "title": "Suriin ang mga Keyword", "description": "Tingnan ang pagsusuri ng mga kulang na keyword sa ibaba" },
-          { "title": "I-update ang Resume", "description": "Idagdag ang mga iminumungkahing keyword sa iyong resume" },
-          { "title": "Bumerify ang Pagpapahusay", "description": "Mag-scan ulit para makita ang iyong bagong ATS score" }
+          {
+            "title": "Suriin ang mga Keyword",
+            "description": "Tingnan ang pagsusuri ng mga kulang na keyword sa ibaba"
+          },
+          {
+            "title": "I-update ang Resume",
+            "description": "Idagdag ang mga iminumungkahing keyword sa iyong resume"
+          },
+          {
+            "title": "Bumerify ang Pagpapahusay",
+            "description": "Mag-scan ulit para makita ang iyong bagong ATS score"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "Sa Pahinang Ito"
@@ -1359,9 +1647,18 @@
           "I-customize ang pagbati at mga detalyeng partikular sa kumpanya"
         ],
         "nextSteps": [
-          { "title": "Suriin ang Letter", "description": "Basahin ang iyong nagawang cover letter sa ibaba" },
-          { "title": "Kopyahin o I-download", "description": "Kunin ang iyong letter sa format na kailangan mo" },
-          { "title": "Isumite ang Application", "description": "Ipadala kasama ang iyong resume para mag-apply" }
+          {
+            "title": "Suriin ang Letter",
+            "description": "Basahin ang iyong nagawang cover letter sa ibaba"
+          },
+          {
+            "title": "Kopyahin o I-download",
+            "description": "Kunin ang iyong letter sa format na kailangan mo"
+          },
+          {
+            "title": "Isumite ang Application",
+            "description": "Ipadala kasama ang iyong resume para mag-apply"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "Sa Pahinang Ito"
@@ -1375,9 +1672,18 @@
           "Kopyahin o i-download ang iyong bagong mga dokumento"
         ],
         "nextSteps": [
-          { "title": "Suriin ang mga Dokumento", "description": "Tingnan ang iyong bagong resume at cover letter sa ibaba" },
-          { "title": "Kopyahin at I-download", "description": "Kunin ang iyong mga dokumento sa format na kailangan mo" },
-          { "title": "Mag-apply Na", "description": "Isumite ang iyong na-optimize na application" }
+          {
+            "title": "Suriin ang mga Dokumento",
+            "description": "Tingnan ang iyong bagong resume at cover letter sa ibaba"
+          },
+          {
+            "title": "Kopyahin at I-download",
+            "description": "Kunin ang iyong mga dokumento sa format na kailangan mo"
+          },
+          {
+            "title": "Mag-apply Na",
+            "description": "Isumite ang iyong na-optimize na application"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "Sa Pahinang Ito"
@@ -1391,9 +1697,18 @@
           "Kasama ang mga tip sa LinkedIn alignment"
         ],
         "nextSteps": [
-          { "title": "Suriin ang Audit", "description": "Tingnan ang iyong before/after ATS scores" },
-          { "title": "Ilapat ang mga Keyword", "description": "Gamitin ang keyword bank para sa iyong industriya" },
-          { "title": "Kopyahin ang mga Seksyon", "description": "Gamitin ang na-optimize na mga seksyon ng resume" }
+          {
+            "title": "Suriin ang Audit",
+            "description": "Tingnan ang iyong before/after ATS scores"
+          },
+          {
+            "title": "Ilapat ang mga Keyword",
+            "description": "Gamitin ang keyword bank para sa iyong industriya"
+          },
+          {
+            "title": "Kopyahin ang mga Seksyon",
+            "description": "Gamitin ang na-optimize na mga seksyon ng resume"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "Sa Pahinang Ito"
@@ -1407,9 +1722,18 @@
           "Ibahagi sa mga kaibigan o pamilya kung nais mo"
         ],
         "nextSteps": [
-          { "title": "Simulan ang Paggamit ng Credits", "description": "Mag-upload ng resume para gamitin ang iyong unang credit" },
-          { "title": "Subaybayan ang Iyong mga Credit", "description": "Tingnan ang 'Aking Credits' sa header para makita ang iyong balanse" },
-          { "title": "Mag-apply sa Higit Pang Trabaho", "description": "Gamitin ang mga credit para sa bawat job application na iyong tinatarget" }
+          {
+            "title": "Simulan ang Paggamit ng Credits",
+            "description": "Mag-upload ng resume para gamitin ang iyong unang credit"
+          },
+          {
+            "title": "Subaybayan ang Iyong mga Credit",
+            "description": "Tingnan ang 'Aking Credits' sa header para makita ang iyong balanse"
+          },
+          {
+            "title": "Mag-apply sa Higit Pang Trabaho",
+            "description": "Gamitin ang mga credit para sa bawat job application na iyong tinatarget"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "Idinagdag ang Credits sa Account"
@@ -1422,9 +1746,18 @@
           "Hindi nag-expire ang mga credit"
         ],
         "nextSteps": [
-          { "title": "I-upload ang Iyong Resume", "description": "Pumunta sa home page para magsimula ng scanning" },
-          { "title": "Gamitin ang Iyong Credits", "description": "Bawat scan ay gumagamit ng isang credit mula sa iyong balanse" },
-          { "title": "Suriin ang Balanse", "description": "Tingnan ang natitirang credits sa 'Aking Credits'" }
+          {
+            "title": "I-upload ang Iyong Resume",
+            "description": "Pumunta sa home page para magsimula ng scanning"
+          },
+          {
+            "title": "Gamitin ang Iyong Credits",
+            "description": "Bawat scan ay gumagamit ng isang credit mula sa iyong balanse"
+          },
+          {
+            "title": "Suriin ang Balanse",
+            "description": "Tingnan ang natitirang credits sa 'Aking Credits'"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "Idinagdag ang Credits sa Account"
@@ -1438,9 +1771,18 @@
           "Ginawa ang mga maaaring isagawang priority fix na puwede mong i-implement ngayon"
         ],
         "nextSteps": [
-          { "title": "Suriin ang Iyong Score", "description": "Tingnan ang breakdown ng iyong Career Signal Score" },
-          { "title": "Unawain ang Perception", "description": "Alamin kung paano nakikita ng mga recruiter ang iyong karera" },
-          { "title": "Ilapat ang mga Fix", "description": "Ipatupad ang mga priority recommendation" }
+          {
+            "title": "Suriin ang Iyong Score",
+            "description": "Tingnan ang breakdown ng iyong Career Signal Score"
+          },
+          {
+            "title": "Unawain ang Perception",
+            "description": "Alamin kung paano nakikita ng mga recruiter ang iyong karera"
+          },
+          {
+            "title": "Ilapat ang mga Fix",
+            "description": "Ipatupad ang mga priority recommendation"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "Sa Pahinang Ito"
@@ -1454,9 +1796,18 @@
           "Binuo ang 30-araw na action plan para makuha ang iyong unang role"
         ],
         "nextSteps": [
-          { "title": "Suriin ang Kahandaan", "description": "Tingnan kung handa nang mag-apply ang iyong resume" },
-          { "title": "Mga Target Role", "description": "Suriin ang mga role na tumutugma sa iyong background" },
-          { "title": "Sundin ang Plano", "description": "Isagawa ang 30-araw na action plan" }
+          {
+            "title": "Suriin ang Kahandaan",
+            "description": "Tingnan kung handa nang mag-apply ang iyong resume"
+          },
+          {
+            "title": "Mga Target Role",
+            "description": "Suriin ang mga role na tumutugma sa iyong background"
+          },
+          {
+            "title": "Sundin ang Plano",
+            "description": "Isagawa ang 30-araw na action plan"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "Sa Pahinang Ito"
@@ -1469,9 +1820,18 @@
           "Magpraktis gamit ang mga ito para maghanda sa iyong susunod na interview"
         ],
         "nextSteps": [
-          { "title": "Suriin ang mga Tanong", "description": "Pagdaanan ang bawat personalized na tanong" },
-          { "title": "Magpraktis ng mga Sagot", "description": "Gamitin ang ibinigay na STAR method framework" },
-          { "title": "Bumuo ng Kumpiyansa", "description": "Mag-rehearse hanggang maramdaman mong handa ka" }
+          {
+            "title": "Suriin ang mga Tanong",
+            "description": "Pagdaanan ang bawat personalized na tanong"
+          },
+          {
+            "title": "Magpraktis ng mga Sagot",
+            "description": "Gamitin ang ibinigay na STAR method framework"
+          },
+          {
+            "title": "Bumuo ng Kumpiyansa",
+            "description": "Mag-rehearse hanggang maramdaman mong handa ka"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "Sa Pahinang Ito"
@@ -1484,9 +1844,18 @@
           "Gamitin ang mga action step para tahakin ang iyong nais na direksyon"
         ],
         "nextSteps": [
-          { "title": "Tuklasin ang mga Path", "description": "Suriin ang iyong 3 opsyon ng career trajectory" },
-          { "title": "Tukuyin ang mga Gap", "description": "Tingnan ang mga skill na kailangan mo sa bawat path" },
-          { "title": "Magplano nang Maaga", "description": "Sundin ang timeline para sa iyong piniling path" }
+          {
+            "title": "Tuklasin ang mga Path",
+            "description": "Suriin ang iyong 3 opsyon ng career trajectory"
+          },
+          {
+            "title": "Tukuyin ang mga Gap",
+            "description": "Tingnan ang mga skill na kailangan mo sa bawat path"
+          },
+          {
+            "title": "Magplano nang Maaga",
+            "description": "Sundin ang timeline para sa iyong piniling path"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "Sa Pahinang Ito"
@@ -1499,9 +1868,18 @@
           "Sinusuri mo ang lahat at isinusumite mo mismo ito — walang automatikong ipinapadala"
         ],
         "nextSteps": [
-          { "title": "Suriin ang Iyong Naangkop na Resume", "description": "Suriin ang katumpakan ng rewrite ng AI" },
-          { "title": "Sundin ang Checklist", "description": "Sasabihin namin sa iyo nang eksakto kung ano ang gagawin — ikaw ang magsusumite" },
-          { "title": "I-export at Mag-apply", "description": "I-download ang resume at cover letter, tapos mag-apply sa site ng employer" }
+          {
+            "title": "Suriin ang Iyong Naangkop na Resume",
+            "description": "Suriin ang katumpakan ng rewrite ng AI"
+          },
+          {
+            "title": "Sundin ang Checklist",
+            "description": "Sasabihin namin sa iyo nang eksakto kung ano ang gagawin — ikaw ang magsusumite"
+          },
+          {
+            "title": "I-export at Mag-apply",
+            "description": "I-download ang resume at cover letter, tapos mag-apply sa site ng employer"
+          }
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "Sa Pahinang Ito"
@@ -1702,41 +2080,97 @@
   "personalization": {
     "experience": {
       "entry": {
-        "focusAreas": ["Edukasyon at mga kaugnay na kurso", "Internship at karanasan sa proyekto", "Mga skill na maitransfer mula sa anumang trabaho", "Mga natutunang teknikal na skill at tool"],
-        "avoidAreas": ["Mga objective statement (gumamit ng summary sa halip)", "Impormasyon sa high school (maliban sa kakatapos lang)", "Hindi kaugnay na trabaho na walang maitransfer na skill"],
+        "focusAreas": [
+          "Edukasyon at mga kaugnay na kurso",
+          "Internship at karanasan sa proyekto",
+          "Mga skill na maitransfer mula sa anumang trabaho",
+          "Mga natutunang teknikal na skill at tool"
+        ],
+        "avoidAreas": [
+          "Mga objective statement (gumamit ng summary sa halip)",
+          "Impormasyon sa high school (maliban sa kakatapos lang)",
+          "Hindi kaugnay na trabaho na walang maitransfer na skill"
+        ],
         "keyMessage": "Ipakita ang potensyal at pagnanais na matuto",
         "quantificationTip": "Kahit ang entry-level na trabaho ay may numero: bilang ng kliyenteng naasikaso, natapos na proyekto, oras ng boluntaryong serbisyo"
       },
       "mid": {
-        "focusAreas": ["Konkretong tagumpay na may sukat", "Lumalaking responsibilidad at pamumuno", "Pagpapaunlad ng espesyalisadong kasanayan", "Cross-functional na pakikipagtulungan"],
-        "avoidAreas": ["Mga gawain sa entry-level (focus sa paglago)", "Sobrang detalye sa lumang trabaho", "Mga skill na inaasahan na ngayon (basic software)"],
+        "focusAreas": [
+          "Konkretong tagumpay na may sukat",
+          "Lumalaking responsibilidad at pamumuno",
+          "Pagpapaunlad ng espesyalisadong kasanayan",
+          "Cross-functional na pakikipagtulungan"
+        ],
+        "avoidAreas": [
+          "Mga gawain sa entry-level (focus sa paglago)",
+          "Sobrang detalye sa lumang trabaho",
+          "Mga skill na inaasahan na ngayon (basic software)"
+        ],
         "keyMessage": "Ipakita ang tuloy-tuloy na paglago at epekto",
         "quantificationTip": "Ipakita ang progresyon: dumagdag na responsibilidad, mas malaking proyekto, mas malaking badyet"
       },
       "senior": {
-        "focusAreas": ["Pamumuno at pagpapaunlad ng koponan", "Mga estratehikong inisyatiba at resulta", "Epekto sa iba't ibang departamento", "Mentoring at paglilipat ng kaalaman"],
-        "avoidAreas": ["Mga taktikal na detalye (focus sa estratehiya)", "Mga trabaho 15+ taon na ang nakalipas sa detalye", "Mga skill na dapat ipalagay na nasa antas mo na"],
+        "focusAreas": [
+          "Pamumuno at pagpapaunlad ng koponan",
+          "Mga estratehikong inisyatiba at resulta",
+          "Epekto sa iba't ibang departamento",
+          "Mentoring at paglilipat ng kaalaman"
+        ],
+        "avoidAreas": [
+          "Mga taktikal na detalye (focus sa estratehiya)",
+          "Mga trabaho 15+ taon na ang nakalipas sa detalye",
+          "Mga skill na dapat ipalagay na nasa antas mo na"
+        ],
         "keyMessage": "Ipakita ang estratehikong pag-iisip at epekto ng pamumuno",
         "quantificationTip": "Focus sa laki ng koponan, badyet na pinangasiwaan, kita na naiimpluwensyahan, epekto sa buong organisasyon"
       },
       "executive": {
-        "focusAreas": ["Responsibilidad sa P&L at resulta ng negosyo", "Pagbabago at pamumuno sa transformasyon", "Pangangasiwa sa board at stakeholder", "Pagtatakda ng visyon at pagbuo ng kultura"],
-        "avoidAreas": ["Mga taktikal na detalye ng pagpapatupad", "Listahan ng skill (ipinapalagay sa C-level)", "Mga detalye ng unang karera maliban sa titulo"],
+        "focusAreas": [
+          "Responsibilidad sa P&L at resulta ng negosyo",
+          "Pagbabago at pamumuno sa transformasyon",
+          "Pangangasiwa sa board at stakeholder",
+          "Pagtatakda ng visyon at pagbuo ng kultura"
+        ],
+        "avoidAreas": [
+          "Mga taktikal na detalye ng pagpapatupad",
+          "Listahan ng skill (ipinapalagay sa C-level)",
+          "Mga detalye ng unang karera maliban sa titulo"
+        ],
         "keyMessage": "Ipakita ang transformasyon ng negosyo at visyon",
         "quantificationTip": "Kita, market share, valuation, M&A deal, sukat ng organisasyon"
       }
     },
     "geographic": {
-      "us": { "name": "Estados Unidos" },
-      "uk": { "name": "United Kingdom" },
-      "eu": { "name": "European Union" },
-      "de": { "name": "Germany" },
-      "au": { "name": "Australia" },
-      "in": { "name": "India" },
-      "ca": { "name": "Canada" },
-      "latam": { "name": "Latin America" },
-      "br": { "name": "Brazil" },
-      "mx": { "name": "Mexico" }
+      "us": {
+        "name": "Estados Unidos"
+      },
+      "uk": {
+        "name": "United Kingdom"
+      },
+      "eu": {
+        "name": "European Union"
+      },
+      "de": {
+        "name": "Germany"
+      },
+      "au": {
+        "name": "Australia"
+      },
+      "in": {
+        "name": "India"
+      },
+      "ca": {
+        "name": "Canada"
+      },
+      "latam": {
+        "name": "Latin America"
+      },
+      "br": {
+        "name": "Brazil"
+      },
+      "mx": {
+        "name": "Mexico"
+      }
     }
   },
   "personalizedInsights": {
@@ -1868,16 +2302,46 @@
       }
     },
     "atsPlatforms": {
-      "0": { "description": "Pag-parse ng section header, keyword extraction, validation ng date format", "marketShare": "Malalaking enterprise" },
-      "1": { "description": "Mga algorithm sa pagtugma ng skill, scoring ng antas ng karanasan, mga indicator ng cultural fit", "marketShare": "Tech at startup" },
-      "2": { "description": "Validation ng contact info, consistency ng formatting, organisasyon ng section", "marketShare": "Mid-market" },
-      "3": { "description": "Pagsusuri ng keyword density, pagtugma ng job title, scoring ng kwalipikasyon", "marketShare": "Fortune 500" },
-      "4": { "description": "Pag-parse ng edukasyon, detection ng certification, pagtugma ng skills taxonomy", "marketShare": "Healthcare at retail" },
-      "5": { "description": "Pagsusuri ng structure ng resume, validation ng timeline ng karanasan", "marketShare": "SMB" },
-      "6": { "description": "Keyword optimization, mga algorithm sa ranking ng applicant", "marketShare": "Maliit na negosyo" },
-      "7": { "description": "Integration ng social profile, referral tracking, skills assessment", "marketShare": "Enterprise" },
-      "8": { "description": "AI-powered matching, mga indicator ng diversity, global compliance", "marketShare": "Pandaigdigang enterprise" },
-      "9": { "description": "Staffing-specific parsing, detection ng contractor, scoring ng availability", "marketShare": "Mga staffing agency" }
+      "0": {
+        "description": "Pag-parse ng section header, keyword extraction, validation ng date format",
+        "marketShare": "Malalaking enterprise"
+      },
+      "1": {
+        "description": "Mga algorithm sa pagtugma ng skill, scoring ng antas ng karanasan, mga indicator ng cultural fit",
+        "marketShare": "Tech at startup"
+      },
+      "2": {
+        "description": "Validation ng contact info, consistency ng formatting, organisasyon ng section",
+        "marketShare": "Mid-market"
+      },
+      "3": {
+        "description": "Pagsusuri ng keyword density, pagtugma ng job title, scoring ng kwalipikasyon",
+        "marketShare": "Fortune 500"
+      },
+      "4": {
+        "description": "Pag-parse ng edukasyon, detection ng certification, pagtugma ng skills taxonomy",
+        "marketShare": "Healthcare at retail"
+      },
+      "5": {
+        "description": "Pagsusuri ng structure ng resume, validation ng timeline ng karanasan",
+        "marketShare": "SMB"
+      },
+      "6": {
+        "description": "Keyword optimization, mga algorithm sa ranking ng applicant",
+        "marketShare": "Maliit na negosyo"
+      },
+      "7": {
+        "description": "Integration ng social profile, referral tracking, skills assessment",
+        "marketShare": "Enterprise"
+      },
+      "8": {
+        "description": "AI-powered matching, mga indicator ng diversity, global compliance",
+        "marketShare": "Pandaigdigang enterprise"
+      },
+      "9": {
+        "description": "Staffing-specific parsing, detection ng contractor, scoring ng availability",
+        "marketShare": "Mga staffing agency"
+      }
     },
     "atsPlatformsTitle": "Mga ATS Platform na Aming Sinusuri",
     "atsPlatformsSubtitle": "Ang aming pagsusuri ay batay sa mga parsing rule at scoring algorithm mula sa mga malalaking ATS platform na ito, sumasaklaw sa mahigit 90% ng job market.",
@@ -1885,13 +2349,34 @@
     "scoreCalculatedTitle": "Paano Kinakalkula ang Iyong ATS Score",
     "scoreCalculatedSubtitle": "Ang iyong score ay isang weighted na kombinasyon ng maramihang factor na tumutukoy kung gaano kahusay magpepresenta ang iyong resume sa mga ATS system.",
     "scoringFactors": {
-      "keywordOptimization": { "factor": "Keyword Optimization", "description": "Mga binanggit na keyword at skill na kaugnay sa industriya" },
-      "formatCompatibility": { "factor": "Format Compatibility", "description": "Malinis na structure na maayos na mai-parse ng ATS" },
-      "sectionCompleteness": { "factor": "Kumpletuhan ng Section", "description": "Lahat ng inaasahang section ay naroroon at maayos na nakalagyan ng label" },
-      "experienceClarity": { "factor": "Kalinawan ng Karanasan", "description": "Malinaw na job title, petsa, at tagumpay" },
-      "actionVerbUsage": { "factor": "Paggamit ng Action Verb", "description": "Malakas na mga action verb na nagpapakita ng epekto" },
-      "quantifiedAchievements": { "factor": "May Sukat na Tagumpay", "description": "Mga numero at metric na nagpapatunay ng resulta" },
-      "redFlagAbsence": { "factor": "Walang Red Flag", "description": "Walang isyu sa formatting o content" }
+      "keywordOptimization": {
+        "factor": "Keyword Optimization",
+        "description": "Mga binanggit na keyword at skill na kaugnay sa industriya"
+      },
+      "formatCompatibility": {
+        "factor": "Format Compatibility",
+        "description": "Malinis na structure na maayos na mai-parse ng ATS"
+      },
+      "sectionCompleteness": {
+        "factor": "Kumpletuhan ng Section",
+        "description": "Lahat ng inaasahang section ay naroroon at maayos na nakalagyan ng label"
+      },
+      "experienceClarity": {
+        "factor": "Kalinawan ng Karanasan",
+        "description": "Malinaw na job title, petsa, at tagumpay"
+      },
+      "actionVerbUsage": {
+        "factor": "Paggamit ng Action Verb",
+        "description": "Malakas na mga action verb na nagpapakita ng epekto"
+      },
+      "quantifiedAchievements": {
+        "factor": "May Sukat na Tagumpay",
+        "description": "Mga numero at metric na nagpapatunay ng resulta"
+      },
+      "redFlagAbsence": {
+        "factor": "Walang Red Flag",
+        "description": "Walang isyu sa formatting o content"
+      }
     },
     "continuousResearchTitle": "Tuloy-tuloy na Pananaliksik",
     "continuousResearchSubtitle": "Patuloy namin sinusuri ang mga job posting, ATS update, at trend sa hiring upang mapanatili ang katumpakan at pagiging up-to-date ng aming pagsusuri.",
@@ -2065,7 +2550,11 @@
     "metaDescription": "Mga bagong feature, pagpapahusay, at fix na na-release sa Resume Booster. In-update kada linggo.",
     "title": "Ano ang Bago",
     "subtitle": "Palagi kaming naglalabas ng mga pagpapahusay. Ito ang mga bagong pagbabago.",
-    "tags": { "new": "Bago", "improved": "Pinahusay", "fixed": "Na-ayos" }
+    "tags": {
+      "new": "Bago",
+      "improved": "Pinahusay",
+      "fixed": "Na-ayos"
+    }
   },
   "changelogEntries": {
     "yourReportsSpeakYourLanguage": {
@@ -2152,5 +2641,184 @@
       "title": "Pagtukoy ng na-scan na PDF",
       "description": "Kung mag-upload ka ng image-based na na-scan na PDF na walang napipiling teksto, agad ka na namin sasabihan sa halip na tahimik na suriin ang walang lamang content — may malinaw na suhestiyon na mag-upload ng text-based na bersyon o i-paste mismo ang iyong resume."
     }
+  },
+  "sampleReportPreview": {
+    "exploring": "Sinisiyasat ang halimbawang ulat",
+    "hereIsWhat": "Ito ang makikita mo pagkatapos mag-upload",
+    "sampleReport": "Halimbawang Ulat",
+    "collapse": "I-collapse",
+    "clickToExplore": "I-click para tuklasin",
+    "atsScore": "Marka ng ATS Compatibility",
+    "needsImprovement": "Kailangan ng Pagpapabuti",
+    "filteredOut": "Ang iyong resume ay maaaring i-filter ng 73% ng mga ATS system",
+    "missingKeywords": "Mga Nawawalang Keyword",
+    "plusMore": "+8 pa",
+    "atsParsing": "Nahanap na mga Isyu sa ATS Parsing",
+    "prioritizedImprovements": "Mga Priyoritadong Pagpapabuti",
+    "scoreBreakdown": "Breakdown ng Marka",
+    "aiPoweredFixes": "Kasama ang mga AI-Powered na Pag-aayos",
+    "moreSuggestions": "+ higit pang mga personalisadong mungkahi",
+    "readyToSeeScore": "Handa na bang makita ang iyong tunay na marka?",
+    "uploadAbove": "I-upload ang iyong resume sa itaas para sa mga personalisadong insight",
+    "sampleData": "Ito ay sample na data — ang iyong ulat ay magiging natatangi sa iyong resume",
+    "personalizedReport": "Ang iyong tunay na ulat ay magiging personalisado para sa iyong resume",
+    "sections": {
+      "contactInfo": "Impormasyon sa Pakikipag-ugnayan",
+      "keywords": "Mga Keyword",
+      "experience": "Karanasan",
+      "education": "Edukasyon"
+    },
+    "sectionDetails": {
+      "properlyFormatted": "Maayos na na-format",
+      "missing12": "Nawawala ang 12 kritikal na termino",
+      "weakActionVerbs": "Mahinang mga action verb",
+      "correctlyParsed": "Tama ang na-parse"
+    },
+    "atsIssues": {
+      "tablesDetected": "Nadetektahan ang mga talahanayan",
+      "tablesImpact": "Maaaring makaabala sa pag-parse sa 60% ng mga ATS system",
+      "graphicsUsed": "Ginagamit ang mga graphics/icon",
+      "graphicsImpact": "Maaaring balewalain o magdulot ng mga error",
+      "nonStandardHeaders": "Hindi pamantayang mga header ng seksyon",
+      "headersImpact": "Maaaring hindi makilala ang seksyon ng kasanayan"
+    },
+    "fixes": {
+      "impactMetrics": "Mga Sukatan ng Epekto",
+      "impactMetricsFix": "Magdagdag ng 3-5 na nasusukat na resulta (hal., 'Nadagdagan ang benta ng 23%')",
+      "actionVerbs": "Mga Action Verb",
+      "actionVerbsFix": "Palitan ang mga passive na parirala tulad ng 'responsable sa' ng 'Namuno', 'Nagmaneho', 'Nakamit'",
+      "keywords": "Mga Keyword",
+      "keywordsFix": "Magdagdag ng mga nawawalang termino sa industriya: 'pamamahala ng stakeholder', 'metodolohiya ng Agile'",
+      "formatting": "Pag-format",
+      "formattingFix": "Gumamit ng pare-parehong format ng petsa (MM/YYYY) sa buong dokumento",
+      "summary": "Buod",
+      "summaryFix": "Magdagdag ng 2-3 linya ng propesyonal na buod sa itaas"
+    },
+    "priority": {
+      "high": "mataas",
+      "medium": "katamtaman",
+      "low": "mababa"
+    },
+    "scoreLabels": {
+      "keywordMatch": "Pagtutugma ng Keyword",
+      "formatting": "Pag-format",
+      "experienceRelevance": "Kaugnayan ng Karanasan",
+      "education": "Edukasyon"
+    },
+    "quickFixes": {
+      "fix1": "Magdagdag ng nasusukat na mga tagumpay (mga numero, %, $)",
+      "fix2": "Palitan ang 'responsable sa' ng mga action verb",
+      "fix3": "Magsama ng 3 pang keyword sa industriya"
+    }
+  },
+  "peerBenchmark": {
+    "howYouCompare": "Kung Paano Ka Nagkukumpara",
+    "percentile": "porsyentil",
+    "industryAverage": "Average ng Industriya: {{score}}",
+    "topPerformers": "Mga Nangungunang Kandidato: {{score}}+",
+    "toAverage": "Sa Average",
+    "toTopTier": "Sa Nangungunang Antas",
+    "topPerformer": "Ikaw ay isang Nangungunang Kandidato!",
+    "levelTip": "Tip sa Antas na {{level}}",
+    "benchmarkedAgainst": "Kinukumpara sa ibang mga kandidatong {{role}}",
+    "topPct": "Nangungunang {{pct}}% sa kahandaan ng ATS sa {{cohort}}",
+    "aroundAverage": "Average na kahandaan ng ATS sa {{cohort}}",
+    "belowAverage": "Mas mababa sa average na kahandaan ng ATS sa {{cohort}} (maaaring ayusin)"
+  },
+  "skillsGapAnalysis": {
+    "title": "Pagsusuri ng Pagitan ng Kasanayan para sa {{role}}",
+    "roleMatchScore": "Marka ng Pagtutugma sa Papel",
+    "strongMatch": "Malakas na Pagtutugma",
+    "partialMatch": "Bahagyang Pagtutugma",
+    "needsImprovement": "Kailangan ng Pagpapabuti",
+    "keySkills": "Mga Pangunahing Kasanayan",
+    "matched": "{{present}}/{{total}} na nagtutugma",
+    "missingSkills": "Mga nawawalang kasanayan na idadagdag:",
+    "atsKeywords": "Mga ATS Keyword",
+    "found": "{{present}}/{{total}} na nahanap",
+    "addKeywords": "Idagdag ang mga keyword na ito para mapabuti ang ATS score:",
+    "priorityActions": "Mga Priyoritadong Aksyon:",
+    "addSkill": "Idagdag ang \"{{skill}}\" sa iyong seksyon ng kasanayan o ipakita ito sa iyong mga punto ng karanasan",
+    "includeKeyword": "Isama ang \"{{keyword}}\" sa iyong mga bullet ng tagumpay na may mga tiyak na sukatan"
+  },
+  "resumeBeforeAfter": {
+    "title": "Tingnan ang Pagkakaiba ng AI",
+    "before": "Bago",
+    "after": "Pagkatapos",
+    "tagline": "Ang iyong buong resume ay dadaan sa pagbabagong ito"
+  },
+  "profileQuizModal": {
+    "title": "Mabilis na Pag-setup ng Profile",
+    "description": "Tulungan kaming i-personalize ang iyong pagsusuri (tumatagal ng 30 segundo)",
+    "step1of3": "Hakbang 1 ng 3",
+    "step2of3": "Hakbang 2 ng 3",
+    "step3of3": "Hakbang 3 ng 3",
+    "whichIndustry": "Anong industriya ka nasa?",
+    "experienceLevel": "Ano ang iyong antas ng karanasan?",
+    "targetRole": "Anong posisyon ang iyong tinutukoy?",
+    "skipForNow": "Laktawan muna",
+    "next": "Susunod",
+    "back": "Bumalik",
+    "typeYourRole": "O i-type ang iyong target na posisyon...",
+    "getPersonalized": "Kumuha ng Personalisadong Pagsusuri",
+    "industries": {
+      "technology": "Teknolohiya",
+      "healthcare": "Pangangalagang Pangkalusugan",
+      "finance": "Pananalapi at Pagbabangko",
+      "marketing": "Marketing",
+      "sales": "Benta",
+      "engineering": "Inhinyeriya",
+      "education": "Edukasyon",
+      "hr": "Human Resources",
+      "consulting": "Konsultasyon",
+      "legal": "Legal",
+      "retail": "Retail at E-commerce",
+      "other": "Iba pa"
+    },
+    "levels": {
+      "entry": "Entry Level",
+      "entryDesc": "0-2 taon",
+      "mid": "Mid Level",
+      "midDesc": "3-5 taon",
+      "senior": "Senior Level",
+      "seniorDesc": "6-10 taon",
+      "executive": "Executive",
+      "executiveDesc": "10+ taon"
+    }
+  },
+  "competitorBenchmark": {
+    "title": "Paano Nangunguna ang mga Nangungunang {{role}}",
+    "basedOnAnalysis": "Batay sa pagsusuri ng mga matagumpay na resume ng {{role}} na nakakakuha ng mga interbyu",
+    "competitiveStanding": "Ang Iyong Posisyon sa Kompetisyon",
+    "topElements": "Mayroon kang mga elementong kasama ng mga nangungunang kandidato!",
+    "addFewMore": "Magdagdag ng ilang elemento pa para makipagkumpitensya sa mga nangungunang kandidato",
+    "addElements": "Idagdag ang mga elementong ito para makatugma sa mga nangungunang kandidato",
+    "sectionsAlwaysInclude": "Mga seksyon na palaging isinasama ng mga nangungunang {{role}}:",
+    "whatMakesStandOut": "Ano ang nagpapakilala sa mga nangungunang resume:",
+    "pctTopCandidates": "Anong % ng mga nangungunang kandidato ang nagsasama:",
+    "avgBullets": "Average na mga bullet bawat papel:",
+    "youBullets": "Ikaw: {{count}}",
+    "topBullets": "Nangungunang: {{count}}",
+    "quickWins": "Mabilis na tagumpay para makipagkumpitensya:",
+    "addPortfolio": "Magdagdag ng mga link sa portfolio/GitHub ({{pct}}% ng mga nangungunang kandidato ay may mga ito)",
+    "addCerts": "Ilista ang mga kaugnay na sertipikasyon ({{pct}}% ng mga nangungunang kandidato ay may mga ito)",
+    "addMetrics": "Magdagdag ng mga sukatan sa iyong mga bullet ({{pct}}% ng mga nangungunang resume ay nagkukuantipika ng mga tagumpay)",
+    "addBullets": "Magdagdag ng {{count}} pang bullet bawat papel",
+    "checklistItems": {
+      "portfolio": "Mga Link sa Portfolio/GitHub",
+      "certifications": "Mga Sertipikasyon",
+      "quantifiedAchievements": "Mga Nasusukat na Tagumpay"
+    }
+  },
+  "jobComparisonCTA": {
+    "compareToRoles": "Tingnan kung paano ka nagkukumpara sa iyong mga target na papel:"
+  },
+  "floatingHelpButton": {
+    "needHelp": "Kailangan ng Tulong?",
+    "questionsOrFeedback": "Mga tanong o feedback? Mag-email sa amin:"
+  },
+  "atsParseSimulator": {
+    "title": "Simulation ng ATS Parse",
+    "subtitle": "Mga mekanikal na pagsusuri sa parehong teksto na i-e-extract ng ATS — hindi isang pagtatantya ng AI"
   }
 }

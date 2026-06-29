@@ -706,13 +706,34 @@
     "live": "Ao vivo",
     "securityNote": "O seu currículo é analisado com segurança e nunca armazenado",
     "stages": {
-      "parsing": { "label": "A processar currículo", "description": "A extrair texto e estrutura" },
-      "industry": { "label": "A detetar indústria", "description": "A identificar o seu campo e função" },
-      "ats": { "label": "Simulação ATS em curso", "description": "A testar contra 50+ sistemas ATS" },
-      "keywords": { "label": "A analisar palavras-chave", "description": "A corresponder termos do setor" },
-      "scoring": { "label": "Pontuação e benchmark", "description": "A comparar com os melhores candidatos" },
-      "ai": { "label": "Análise IA profunda", "description": "A gerar insights personalizados" },
-      "report": { "label": "A construir o relatório", "description": "A compilar recomendações práticas" }
+      "parsing": {
+        "label": "A processar currículo",
+        "description": "A extrair texto e estrutura"
+      },
+      "industry": {
+        "label": "A detetar indústria",
+        "description": "A identificar o seu campo e função"
+      },
+      "ats": {
+        "label": "Simulação ATS em curso",
+        "description": "A testar contra 50+ sistemas ATS"
+      },
+      "keywords": {
+        "label": "A analisar palavras-chave",
+        "description": "A corresponder termos do setor"
+      },
+      "scoring": {
+        "label": "Pontuação e benchmark",
+        "description": "A comparar com os melhores candidatos"
+      },
+      "ai": {
+        "label": "Análise IA profunda",
+        "description": "A gerar insights personalizados"
+      },
+      "report": {
+        "label": "A construir o relatório",
+        "description": "A compilar recomendações práticas"
+      }
     },
     "tips": {
       "numbers": "💡 Dica: Currículos com números recebem 40% mais respostas",
@@ -1009,42 +1030,141 @@
   },
   "freeResults": {
     "metricTooltips": {
-      "atsScore": { "title": "Pontuação de IA-ATS", "description": "A nossa IA simula como os sistemas modernos de rastreamento de candidatos com IA analisam o seu currículo — a mesma tecnologia usada por 98% das empresas da Fortune 500.", "whyMatters": "Uma pontuação baixa significa que o seu currículo pode nunca chegar a um recrutador humano." },
-      "format": { "title": "Nota de Formato", "description": "Avalia a estrutura, o layout e a legibilidade de IA-ATS do seu currículo.", "whyMatters": "Uma formatação deficiente causa erros de análise de IA-ATS, perdendo informações importantes." },
-      "metrics": { "title": "Pontuação de Quantificação", "description": "Mede quantos dos seus feitos incluem números, percentagens ou métricas.", "whyMatters": "Os recrutadores passam 6 segundos a analisar — os números chamam a atenção primeiro." },
-      "verbs": { "title": "Nota de Verbos de Ação", "description": "Avalia a força e a variedade dos verbos de ação que iniciam os seus tópicos.", "whyMatters": "Verbos fortes como 'Liderou' superam verbos fracos como 'Ajudou' ou 'Assistiu'." },
-      "pages": { "title": "Comprimento do Currículo", "description": "Verifica se o comprimento do seu currículo corresponde aos padrões da indústria para o seu nível de experiência.", "whyMatters": "Muito longo = ignorado. Muito curto = falta de substância." },
-      "words": { "title": "Contagem de Palavras", "description": "Mede se tem conteúdo suficiente para mostrar o seu valor.", "whyMatters": "O ponto ideal varia conforme a experiência — poucas palavras sinalizam inexperiência." },
-      "sections": { "title": "Verificação de Secções", "description": "Verifica se todas as secções essenciais do currículo estão presentes (Resumo, Experiência, Formação, Competências).", "whyMatters": "Secções em falta são sinais de alerta imediatos para os recrutadores." },
-      "contact": { "title": "Informações de Contacto", "description": "Verifica a presença de e-mail, telefone e LinkedIn.", "whyMatters": "Os recrutadores não conseguem contratá-lo se não conseguirem contactá-lo." },
-      "readability": { "title": "Pontuação de Legibilidade", "description": "Mede a facilidade com que o seu currículo pode ser lido rapidamente.", "whyMatters": "Os recrutadores demoram em média 6-7 segundos por currículo — cada palavra deve contar." },
-      "bulletImpact": { "title": "Impacto dos Tópicos", "description": "Analisa se os seus tópicos se concentram em conquistas em vez de apenas listar responsabilidades.", "whyMatters": "Tópicos focados em conquistas comprovam valor; listas de responsabilidades não." },
-      "keywordDensity": { "title": "Densidade de Palavras-chave", "description": "Mede a presença de palavras-chave relevantes para a indústria para correspondência com IA-ATS.", "whyMatters": "Poucas palavras-chave = sem correspondência com IA-ATS. Demasiadas = penalização por excesso de palavras-chave." },
-      "improvementPotential": { "title": "Potencial de Melhoria", "description": "Aumento de pontuação estimado possível com a otimização.", "whyMatters": "Mostra quanta margem tem para superar outros candidatos." },
-      "industryBenchmark": { "title": "Referência da Indústria", "description": "Compara a sua pontuação com outros na sua área.", "whyMatters": "Saiba onde está em relação à sua concorrência direta." },
-      "timeline": { "title": "Cronologia de Carreira", "description": "Analisa permanência no cargo, lacunas e padrões de progressão de carreira.", "whyMatters": "Os recrutadores procuram estabilidade e crescimento — as lacunas precisam de explicação." },
-      "atsCompatibility": { "title": "Compatibilidade com Sistemas IA-ATS", "description": "Mostra o quão bem o seu currículo é analisado pelos principais sistemas de rastreamento de candidatos com IA, como Workday, Greenhouse e Taleo.", "whyMatters": "Empresas diferentes usam sistemas IA-ATS diferentes — saiba quais lerão o seu currículo corretamente." }
+      "atsScore": {
+        "title": "Pontuação de IA-ATS",
+        "description": "A nossa IA simula como os sistemas modernos de rastreamento de candidatos com IA analisam o seu currículo — a mesma tecnologia usada por 98% das empresas da Fortune 500.",
+        "whyMatters": "Uma pontuação baixa significa que o seu currículo pode nunca chegar a um recrutador humano."
+      },
+      "format": {
+        "title": "Nota de Formato",
+        "description": "Avalia a estrutura, o layout e a legibilidade de IA-ATS do seu currículo.",
+        "whyMatters": "Uma formatação deficiente causa erros de análise de IA-ATS, perdendo informações importantes."
+      },
+      "metrics": {
+        "title": "Pontuação de Quantificação",
+        "description": "Mede quantos dos seus feitos incluem números, percentagens ou métricas.",
+        "whyMatters": "Os recrutadores passam 6 segundos a analisar — os números chamam a atenção primeiro."
+      },
+      "verbs": {
+        "title": "Nota de Verbos de Ação",
+        "description": "Avalia a força e a variedade dos verbos de ação que iniciam os seus tópicos.",
+        "whyMatters": "Verbos fortes como 'Liderou' superam verbos fracos como 'Ajudou' ou 'Assistiu'."
+      },
+      "pages": {
+        "title": "Comprimento do Currículo",
+        "description": "Verifica se o comprimento do seu currículo corresponde aos padrões da indústria para o seu nível de experiência.",
+        "whyMatters": "Muito longo = ignorado. Muito curto = falta de substância."
+      },
+      "words": {
+        "title": "Contagem de Palavras",
+        "description": "Mede se tem conteúdo suficiente para mostrar o seu valor.",
+        "whyMatters": "O ponto ideal varia conforme a experiência — poucas palavras sinalizam inexperiência."
+      },
+      "sections": {
+        "title": "Verificação de Secções",
+        "description": "Verifica se todas as secções essenciais do currículo estão presentes (Resumo, Experiência, Formação, Competências).",
+        "whyMatters": "Secções em falta são sinais de alerta imediatos para os recrutadores."
+      },
+      "contact": {
+        "title": "Informações de Contacto",
+        "description": "Verifica a presença de e-mail, telefone e LinkedIn.",
+        "whyMatters": "Os recrutadores não conseguem contratá-lo se não conseguirem contactá-lo."
+      },
+      "readability": {
+        "title": "Pontuação de Legibilidade",
+        "description": "Mede a facilidade com que o seu currículo pode ser lido rapidamente.",
+        "whyMatters": "Os recrutadores demoram em média 6-7 segundos por currículo — cada palavra deve contar."
+      },
+      "bulletImpact": {
+        "title": "Impacto dos Tópicos",
+        "description": "Analisa se os seus tópicos se concentram em conquistas em vez de apenas listar responsabilidades.",
+        "whyMatters": "Tópicos focados em conquistas comprovam valor; listas de responsabilidades não."
+      },
+      "keywordDensity": {
+        "title": "Densidade de Palavras-chave",
+        "description": "Mede a presença de palavras-chave relevantes para a indústria para correspondência com IA-ATS.",
+        "whyMatters": "Poucas palavras-chave = sem correspondência com IA-ATS. Demasiadas = penalização por excesso de palavras-chave."
+      },
+      "improvementPotential": {
+        "title": "Potencial de Melhoria",
+        "description": "Aumento de pontuação estimado possível com a otimização.",
+        "whyMatters": "Mostra quanta margem tem para superar outros candidatos."
+      },
+      "industryBenchmark": {
+        "title": "Referência da Indústria",
+        "description": "Compara a sua pontuação com outros na sua área.",
+        "whyMatters": "Saiba onde está em relação à sua concorrência direta."
+      },
+      "timeline": {
+        "title": "Cronologia de Carreira",
+        "description": "Analisa permanência no cargo, lacunas e padrões de progressão de carreira.",
+        "whyMatters": "Os recrutadores procuram estabilidade e crescimento — as lacunas precisam de explicação."
+      },
+      "atsCompatibility": {
+        "title": "Compatibilidade com Sistemas IA-ATS",
+        "description": "Mostra o quão bem o seu currículo é analisado pelos principais sistemas de rastreamento de candidatos com IA, como Workday, Greenhouse e Taleo.",
+        "whyMatters": "Empresas diferentes usam sistemas IA-ATS diferentes — saiba quais lerão o seu currículo corretamente."
+      }
     },
     "ctaCopy": {
       "coverLetter": {
-        "control": { "button": "Gerar Carta de Apresentação — {{price}}", "description": "Carta de apresentação gerada por IA, adaptada ao seu currículo e vaga pretendida. Pronta para enviar em minutos." },
-        "benefitFocused": { "button": "Obtenha a Sua Carta que Conquista Entrevistas", "description": "Destaque-se de mais de 100 candidatos com uma carta de apresentação personalizada que entusiasma os recrutadores." },
-        "scarcity": { "button": "Criar Carta de Apresentação Agora — {{price}}", "description": "A maioria dos candidatos ignora as cartas de apresentação. Fique à frente da concorrência com uma carta personalizada em 2 minutos." }
+        "control": {
+          "button": "Gerar Carta de Apresentação — {{price}}",
+          "description": "Carta de apresentação gerada por IA, adaptada ao seu currículo e vaga pretendida. Pronta para enviar em minutos."
+        },
+        "benefitFocused": {
+          "button": "Obtenha a Sua Carta que Conquista Entrevistas",
+          "description": "Destaque-se de mais de 100 candidatos com uma carta de apresentação personalizada que entusiasma os recrutadores."
+        },
+        "scarcity": {
+          "button": "Criar Carta de Apresentação Agora — {{price}}",
+          "description": "A maioria dos candidatos ignora as cartas de apresentação. Fique à frente da concorrência com uma carta personalizada em 2 minutos."
+        }
       },
       "keywordFix": {
-        "control": { "button": "Obter Relatório Completo de Palavras-chave", "headline": "Quer mais de 50 Palavras-chave da Indústria?" },
-        "benefitFocused": { "button": "Desbloquear Palavras-chave Ocultas", "headline": "Passe pelo Filtro do ATS" },
-        "scarcity": { "button": "Obtenha Palavras-chave Antes de Outros", "headline": "Supere 87% dos Candidatos" }
+        "control": {
+          "button": "Obter Relatório Completo de Palavras-chave",
+          "headline": "Quer mais de 50 Palavras-chave da Indústria?"
+        },
+        "benefitFocused": {
+          "button": "Desbloquear Palavras-chave Ocultas",
+          "headline": "Passe pelo Filtro do ATS"
+        },
+        "scarcity": {
+          "button": "Obtenha Palavras-chave Antes de Outros",
+          "headline": "Supere 87% dos Candidatos"
+        }
       },
       "premiumPackage": {
-        "control": { "button": "Comprar Pacote Premium — {{price}}", "headline": "Pacote Premium de Currículo", "subtext": "Tudo o que precisa para conseguir entrevistas" },
-        "benefitFocused": { "button": "Fique Pronto para Entrevistas Agora", "headline": "Conquiste o Emprego dos Seus Sonhos Mais Rápido", "subtext": "3x mais retornos de entrevista com o nosso pacote completo" },
-        "scarcity": { "button": "Reivindique o Seu Pacote — Limitado", "headline": "Pacote Premium de Currículo", "subtext": "Junte-se a mais de 10.000 pessoas que conseguiram entrevistas este mês" }
+        "control": {
+          "button": "Comprar Pacote Premium — {{price}}",
+          "headline": "Pacote Premium de Currículo",
+          "subtext": "Tudo o que precisa para conseguir entrevistas"
+        },
+        "benefitFocused": {
+          "button": "Fique Pronto para Entrevistas Agora",
+          "headline": "Conquiste o Emprego dos Seus Sonhos Mais Rápido",
+          "subtext": "3x mais retornos de entrevista com o nosso pacote completo"
+        },
+        "scarcity": {
+          "button": "Reivindique o Seu Pacote — Limitado",
+          "headline": "Pacote Premium de Currículo",
+          "subtext": "Junte-se a mais de 10.000 pessoas que conseguiram entrevistas este mês"
+        }
       },
       "tailoredResume": {
-        "control": { "button": "Pré-visualizar Currículo Personalizado", "description": "Pré-visualização gratuita, depois desbloqueie o Pacote Premium completo com currículo personalizado + carta de apresentação" },
-        "benefitFocused": { "button": "Veja o Seu Currículo Melhorado", "description": "Veja exatamente como o seu currículo ficará quando otimizado para a vaga pretendida" },
-        "scarcity": { "button": "Gerar Antes de Encerrar", "description": "Pré-visualização limitada disponível — veja o seu currículo personalizado antes de atualizar" }
+        "control": {
+          "button": "Pré-visualizar Currículo Personalizado",
+          "description": "Pré-visualização gratuita, depois desbloqueie o Pacote Premium completo com currículo personalizado + carta de apresentação"
+        },
+        "benefitFocused": {
+          "button": "Veja o Seu Currículo Melhorado",
+          "description": "Veja exatamente como o seu currículo ficará quando otimizado para a vaga pretendida"
+        },
+        "scarcity": {
+          "button": "Gerar Antes de Encerrar",
+          "description": "Pré-visualização limitada disponível — veja o seu currículo personalizado antes de atualizar"
+        }
       }
     },
     "addJobDescriptionToUnlock": "Adicione uma descrição da vaga acima para desbloquear",
@@ -1064,27 +1184,68 @@
       "copiedToClipboard": "Copiado para a área de transferência",
       "shareWithFriend": "Partilhe isto com um amigo ou mentor para obter feedback"
     },
-    "nav": { "overview": "Visão Geral", "metrics": "Métricas", "issues": "Problemas", "jobMatch": "Correspondência de Vaga", "insights": "Informações", "nextSteps": "Próximos Passos" },
+    "nav": {
+      "overview": "Visão Geral",
+      "metrics": "Métricas",
+      "issues": "Problemas",
+      "jobMatch": "Correspondência de Vaga",
+      "insights": "Informações",
+      "nextSteps": "Próximos Passos"
+    },
     "exitOffer": {
       "title": "Antes de ir —",
       "withStats": "Faltam-lhe {{count}} palavras-chave comuns em vagas de {{industry}}. Obtenha a lista de correções pelo preço de um café.",
       "noStats": "Identifique as suas principais palavras-chave em falta e obtenha uma lista de correções, pelo preço de um café."
     },
-    "industryKeywordsSection": { "title": "Palavras-chave de Indústria e Função", "subtitle": "Palavras-chave relevantes para a sua área e função pretendida" },
-    "experienceFit": { "goodFit": "Boa Adequação", "over": "Sobrequalificado", "under": "Subqualificado" },
-    "priority": { "must": "Obrigatório", "should": "Recomendado", "nice": "Desejável" },
-    "atRiskOrNeedsImprovement": { "atRisk": "Em risco de ser filtrado", "needsImprovement": "Precisa de melhorar para competir" },
-    "personalizedTipsSection": { "title": "Dicas Personalizadas", "subtitle": "Informações adaptadas ao seu perfil" },
-    "elevatorPitchSection": { "title": "Discurso de Elevador de 60 Segundos", "subtitle": "Discurso gerado por IA a partir do seu currículo" },
-    "recruiterViewSection": { "title": "Modo de Vista do Recrutador", "subtitle": "Veja exatamente o que os recrutadores veem" },
-    "resumeRoastSection": { "title": "Crítica ao Currículo 🔥", "subtitle": "Brutalmente honesta, hilariantemente específica" },
-    "interviewCoachSection": { "title": "Coach de Entrevista", "subtitle": "Pratique com perguntas geradas por IA" },
-    "careerPathSection": { "title": "Simulador de Percurso de Carreira", "subtitle": "3 futuros possíveis com base no seu currículo" },
+    "industryKeywordsSection": {
+      "title": "Palavras-chave de Indústria e Função",
+      "subtitle": "Palavras-chave relevantes para a sua área e função pretendida"
+    },
+    "experienceFit": {
+      "goodFit": "Boa Adequação",
+      "over": "Sobrequalificado",
+      "under": "Subqualificado"
+    },
+    "priority": {
+      "must": "Obrigatório",
+      "should": "Recomendado",
+      "nice": "Desejável"
+    },
+    "atRiskOrNeedsImprovement": {
+      "atRisk": "Em risco de ser filtrado",
+      "needsImprovement": "Precisa de melhorar para competir"
+    },
+    "personalizedTipsSection": {
+      "title": "Dicas Personalizadas",
+      "subtitle": "Informações adaptadas ao seu perfil"
+    },
+    "elevatorPitchSection": {
+      "title": "Discurso de Elevador de 60 Segundos",
+      "subtitle": "Discurso gerado por IA a partir do seu currículo"
+    },
+    "recruiterViewSection": {
+      "title": "Modo de Vista do Recrutador",
+      "subtitle": "Veja exatamente o que os recrutadores veem"
+    },
+    "resumeRoastSection": {
+      "title": "Crítica ao Currículo 🔥",
+      "subtitle": "Brutalmente honesta, hilariantemente específica"
+    },
+    "interviewCoachSection": {
+      "title": "Coach de Entrevista",
+      "subtitle": "Pratique com perguntas geradas por IA"
+    },
+    "careerPathSection": {
+      "title": "Simulador de Percurso de Carreira",
+      "subtitle": "3 futuros possíveis com base no seu currículo"
+    },
     "fixChecklistTitle": "Lista de Correções",
     "checklistCompleted": "{{completed}}/{{total}} concluído",
     "trackProgress": "Acompanhar progresso",
     "peerBenchmark": {
-      "above": "Acima da média", "at": "Na média", "below": "Abaixo da média",
+      "above": "Acima da média",
+      "at": "Na média",
+      "below": "Abaixo da média",
       "forAtsReadinessAmong": "para preparação ATS entre {{cohort}}",
       "strongPosition": "✓ Posição forte na sua indústria",
       "roomForImprovement": "→ Margem para melhoria",
@@ -1094,7 +1255,10 @@
       "weakResult": "Outros candidatos na sua área estão a pontuar mais alto. Aplique as correções abaixo para melhorar as suas hipóteses."
     },
     "timelineProgression": {
-      "rapidLabel": "🚀 Rápido", "steadyLabel": "📈 Estável", "stagnantLabel": "📊 Estagnado", "unclearLabel": "❓ Pouco claro",
+      "rapidLabel": "🚀 Rápido",
+      "steadyLabel": "📈 Estável",
+      "stagnantLabel": "📊 Estagnado",
+      "unclearLabel": "❓ Pouco claro",
       "rapid": "Excelente! Mostra forte avanço e crescente responsabilidade",
       "steady": "Mostra crescimento consistente — os empregadores gostam deste padrão",
       "stagnant": "Considere destacar promoções ou novas responsabilidades",
@@ -1103,13 +1267,26 @@
       "gapNoteDefault": "Lacunas são comuns — esteja apenas preparado para as explicar em entrevistas"
     },
     "confidencePercent": "Confiança {{confidence}}",
-    "careerSituationLabel": { "careerChanger": "Mudança de Carreira Detetada", "returningToWorkforce": "Regresso ao Mercado de Trabalho", "militaryTransition": "Transição Militar", "recentGrad": "Recém-Licenciado" },
+    "careerSituationLabel": {
+      "careerChanger": "Mudança de Carreira Detetada",
+      "returningToWorkforce": "Regresso ao Mercado de Trabalho",
+      "militaryTransition": "Transição Militar",
+      "recentGrad": "Recém-Licenciado"
+    },
     "personalizedCareerInsightsTitle": "Informações de Carreira Personalizadas",
     "tailoredForYou": "Adaptado para {{name}}",
     "you": "você",
     "aiPowered": "Potenciado por IA",
-    "roleFit": { "naturalProgression": "Próximo passo natural", "lateralMove": "Movimento lateral", "stretchGoal": "Objetivo ambicioso" },
-    "marketPosition": { "aboveMarket": "Acima do Mercado", "atMarket": "No Mercado", "belowMarket": "Abaixo do Mercado" },
+    "roleFit": {
+      "naturalProgression": "Próximo passo natural",
+      "lateralMove": "Movimento lateral",
+      "stretchGoal": "Objetivo ambicioso"
+    },
+    "marketPosition": {
+      "aboveMarket": "Acima do Mercado",
+      "atMarket": "No Mercado",
+      "belowMarket": "Abaixo do Mercado"
+    },
     "formatRecommendationSection": {
       "title": "Recomendação de Formato de Currículo",
       "subtitle": "Estilo {{style}} recomendado para {{industry}}",
@@ -1117,18 +1294,32 @@
       "fitsIndustry": "O seu formato adequa-se à sua indústria!",
       "needsAdjustment": "O formato precisa de ajustes",
       "quickFixLabel": "Correção rápida: {{fix}}",
-      "layoutLabel": "Layout", "colorLabel": "Cor", "visualsLabel": "Elementos Visuais", "styleLabel": "Estilo",
-      "colorAcceptable": "✓ Aceitável", "colorAvoid": "✗ Evitar",
+      "layoutLabel": "Layout",
+      "colorLabel": "Cor",
+      "visualsLabel": "Elementos Visuais",
+      "styleLabel": "Estilo",
+      "colorAcceptable": "✓ Aceitável",
+      "colorAvoid": "✗ Evitar",
       "whatTopResumesDo": "O que os melhores currículos de {{industry}} fazem:",
-      "importance": { "must": "Obrigatório", "rec": "Rec", "opt": "Opc" },
+      "importance": {
+        "must": "Obrigatório",
+        "rec": "Rec",
+        "opt": "Opc"
+      },
       "avoidForIndustry": "Evitar para {{industry}}:",
       "idealTemplate": "Modelo ideal: "
     },
-    "columns": { "oneColumn": "Coluna Única", "twoColumn": "Duas Colunas" },
+    "columns": {
+      "oneColumn": "Coluna Única",
+      "twoColumn": "Duas Colunas"
+    },
     "atsParsingSection": {
       "title": "Compatibilidade de Análise ATS",
       "subtitle": "O quão bem diferentes sistemas ATS conseguem ler o seu currículo",
-      "excellentRating": "✓ Compatibilidade Excelente", "goodRating": "✓ Boa Compatibilidade", "fairRating": "⚠ Compatibilidade Razoável", "poorRating": "✗ Compatibilidade Fraca",
+      "excellentRating": "✓ Compatibilidade Excelente",
+      "goodRating": "✓ Boa Compatibilidade",
+      "fairRating": "⚠ Compatibilidade Razoável",
+      "poorRating": "✗ Compatibilidade Fraca",
       "excellent": "O seu currículo deve ser analisado corretamente na maioria das plataformas ATS",
       "good": "A maioria dos ATS lerá o seu currículo corretamente",
       "fair": "Alguns ATS podem ter dificuldade em analisar o seu currículo",
@@ -1136,12 +1327,29 @@
       "worksBestWith": "Funciona melhor com",
       "mayHaveIssues": "Pode ter problemas com"
     },
-    "confidenceLevel": { "high": "Alta", "medium": "Média", "low": "Baixa" },
-    "bulletRewriteSection": { "title": "Tópicos Reescritos por IA", "description": "Faça com que cada tópico seja reescrito com impacto mensurável e verbos fortes" },
-    "keywordGapSection": { "title": "Análise Completa de Lacunas de Palavras-chave" },
-    "careerStrategySection": { "title": "Estratégia de Carreira Personalizada" },
+    "confidenceLevel": {
+      "high": "Alta",
+      "medium": "Média",
+      "low": "Baixa"
+    },
+    "bulletRewriteSection": {
+      "title": "Tópicos Reescritos por IA",
+      "description": "Faça com que cada tópico seja reescrito com impacto mensurável e verbos fortes"
+    },
+    "keywordGapSection": {
+      "title": "Análise Completa de Lacunas de Palavras-chave"
+    },
+    "careerStrategySection": {
+      "title": "Estratégia de Carreira Personalizada"
+    },
     "sectionChecklistTitle": "Lista de Verificação de Secções",
-    "sectionLabels": { "contact": "Contacto", "summary": "Resumo", "experience": "Experiência", "education": "Formação", "skills": "Competências" },
+    "sectionLabels": {
+      "contact": "Contacto",
+      "summary": "Resumo",
+      "experience": "Experiência",
+      "education": "Formação",
+      "skills": "Competências"
+    },
     "bestValue": "Melhor Valor",
     "wantToCompareFor": "Quer ver como se compara para",
     "atCompany": "na",
@@ -1151,52 +1359,123 @@
     "oneInterviewPaidForItself": "Uma entrevista = {{price}} amortizado",
     "unlockWithFullAnalysis": "Desbloquear com Análise Completa",
     "premiumFeatures": {
-      "completeAtsAnalysis": "Análise ATS completa", "aiRewrittenResume": "Currículo reescrito por IA", "customCoverLetter": "Carta de apresentação personalizada",
-      "beforeAfterComparison": "Comparação antes/depois", "keywordOptimization": "Otimização de palavras-chave", "priorityProcessing": "Processamento prioritário"
+      "completeAtsAnalysis": "Análise ATS completa",
+      "aiRewrittenResume": "Currículo reescrito por IA",
+      "customCoverLetter": "Carta de apresentação personalizada",
+      "beforeAfterComparison": "Comparação antes/depois",
+      "keywordOptimization": "Otimização de palavras-chave",
+      "priorityProcessing": "Processamento prioritário"
     },
     "keywordFixFeatures": {
-      "fullAtsBreakdown": "Análise completa da pontuação ATS", "bulletPointRewrites": "Reescrita de tópicos", "redFlagFixes": "Correções detalhadas de sinais de alerta",
-      "linkedinOptimization": "Otimização do LinkedIn", "actionVerbReplacements": "Substituição de verbos de ação", "quantificationSuggestions": "Sugestões de quantificação",
-      "skillsGapAnalysis": "Análise de lacunas de competências", "industryInsights": "Informações específicas da indústria", "summaryRewrites": "Reescrita de resumo/título",
+      "fullAtsBreakdown": "Análise completa da pontuação ATS",
+      "bulletPointRewrites": "Reescrita de tópicos",
+      "redFlagFixes": "Correções detalhadas de sinais de alerta",
+      "linkedinOptimization": "Otimização do LinkedIn",
+      "actionVerbReplacements": "Substituição de verbos de ação",
+      "quantificationSuggestions": "Sugestões de quantificação",
+      "skillsGapAnalysis": "Análise de lacunas de competências",
+      "industryInsights": "Informações específicas da indústria",
+      "summaryRewrites": "Reescrita de resumo/título",
       "prioritizedActionPlan": "Plano de ação priorizado"
     },
     "premiumIncludesDetail": "{{subtext}}: análise completa + currículo reescrito por IA + carta de apresentação personalizada."
   },
   "analysisPreviewSample": {
-    "breakdown": { "jobTitleMatch": "Correspondência de Título de Cargo", "skillsMatch": "Correspondência de Competências", "actionVerbUsage": "Uso de Verbos de Ação", "keywordCoverage": "Cobertura de Palavras-chave", "formattingScore": "Pontuação de Formatação" },
-    "matchingSkills": ["Gestão de Produto", "Agile/Scrum", "Gestão de Stakeholders", "Análise de Dados"],
-    "missingKeywords": ["OKRs", "Roteiro de Produto", "Testes A/B"],
+    "breakdown": {
+      "jobTitleMatch": "Correspondência de Título de Cargo",
+      "skillsMatch": "Correspondência de Competências",
+      "actionVerbUsage": "Uso de Verbos de Ação",
+      "keywordCoverage": "Cobertura de Palavras-chave",
+      "formattingScore": "Pontuação de Formatação"
+    },
+    "matchingSkills": [
+      "Gestão de Produto",
+      "Agile/Scrum",
+      "Gestão de Stakeholders",
+      "Análise de Dados"
+    ],
+    "missingKeywords": [
+      "OKRs",
+      "Roteiro de Produto",
+      "Testes A/B"
+    ],
     "alignmentSuggestion": "Adicione métricas específicas sobre lançamentos de produtos e mencione experiência com OKRs para fortalecer o alinhamento com esta função de PM Senior.",
-    "detectedIssues": ["As informações de contacto podem não ser analisadas em ATS mais antigos", "As datas de emprego não estão na estrutura preferida", "Tópicos especiais dificultam a leitura"],
-    "criticalFixes": ["Use o formato Mês Ano (ex.: Jan 2020 - Presente)", "Substitua tópicos elaborados por hífenes ou pontos padrão", "Coloque o e-mail e o telefone numa única linha"],
+    "detectedIssues": [
+      "As informações de contacto podem não ser analisadas em ATS mais antigos",
+      "As datas de emprego não estão na estrutura preferida",
+      "Tópicos especiais dificultam a leitura"
+    ],
+    "criticalFixes": [
+      "Use o formato Mês Ano (ex.: Jan 2020 - Presente)",
+      "Substitua tópicos elaborados por hífenes ou pontos padrão",
+      "Coloque o e-mail e o telefone numa única linha"
+    ],
     "bulletOriginal": "Responsável pela gestão da equipa de vendas",
     "bulletImproved": "Liderou uma equipa de vendas de 12 pessoas para superar metas trimestrais em 34%, gerando 2,1 milhões de dólares em nova receita",
     "bulletReason": "Adicionado o tamanho da equipa, resultado mensurável e impacto específico na receita",
     "resumeLengthReasoning": "Com 8 anos de experiência, um currículo de 2 páginas é o ideal. Considere condensar funções mais antigas.",
-    "actionPlan": ["Adicione 3-5 conquistas quantificadas à sua função mais recente", "Substitua frases passivas por verbos de ação fortes", "Inclua as palavras-chave 'multifuncional' e 'gestão de stakeholders'", "Corrija a formatação de datas para compatibilidade com ATS"],
-    "redFlags": ["Lacuna de emprego de 8 meses não explicada", "Declaração de objetivo genérica em vez de um resumo direcionado"],
+    "actionPlan": [
+      "Adicione 3-5 conquistas quantificadas à sua função mais recente",
+      "Substitua frases passivas por verbos de ação fortes",
+      "Inclua as palavras-chave 'multifuncional' e 'gestão de stakeholders'",
+      "Corrija a formatação de datas para compatibilidade com ATS"
+    ],
+    "redFlags": [
+      "Lacuna de emprego de 8 meses não explicada",
+      "Declaração de objetivo genérica em vez de um resumo direcionado"
+    ],
     "linkedinHeadline": "Gestor de Produto Senior | SaaS B2B | Impulsionando 40% de Crescimento de Receita",
     "linkedinAboutImprovement": "A sua secção Acerca de carece de conquistas quantificadas. Adicione métricas como o tamanho da equipa, impacto na receita ou crescimento de utilizadores.",
-    "linkedinRecommendations": ["Adicione uma secção destacada com projetos importantes", "Solicite 2-3 recomendações de colegas", "Inclua palavras-chave específicas da indústria no título"]
+    "linkedinRecommendations": [
+      "Adicione uma secção destacada com projetos importantes",
+      "Solicite 2-3 recomendações de colegas",
+      "Inclua palavras-chave específicas da indústria no título"
+    ]
   },
   "valueComparison": {
     "feature": "Funcionalidade",
     "us": "Resume Booster",
     "them": "Redator Tradicional",
     "rows": {
-      "timeToResults": { "feature": "Tempo até aos resultados", "us": "Menos de 60 segundos", "them": "3-7 dias úteis" },
-      "cost": { "feature": "Custo", "us": "$5 – $25 pagamento único", "them": "$150 – $500+" },
-      "atsOptimization": { "feature": "Otimização ATS", "them": "Varia conforme o redator" },
-      "keywordAnalysis": { "feature": "Análise de palavras-chave", "us": "IA específica da indústria", "them": "Pesquisa manual" },
-      "revisions": { "feature": "Revisões incluídas", "us": "Tentativas ilimitadas", "them": "1-2 rondas" },
-      "jobTailoring": { "feature": "Adaptação específica à vaga", "them": "Extra de $50-100" }
+      "timeToResults": {
+        "feature": "Tempo até aos resultados",
+        "us": "Menos de 60 segundos",
+        "them": "3-7 dias úteis"
+      },
+      "cost": {
+        "feature": "Custo",
+        "us": "$5 – $25 pagamento único",
+        "them": "$150 – $500+"
+      },
+      "atsOptimization": {
+        "feature": "Otimização ATS",
+        "them": "Varia conforme o redator"
+      },
+      "keywordAnalysis": {
+        "feature": "Análise de palavras-chave",
+        "us": "IA específica da indústria",
+        "them": "Pesquisa manual"
+      },
+      "revisions": {
+        "feature": "Revisões incluídas",
+        "us": "Tentativas ilimitadas",
+        "them": "1-2 rondas"
+      },
+      "jobTailoring": {
+        "feature": "Adaptação específica à vaga",
+        "them": "Extra de $50-100"
+      }
     }
   },
   "finalCtaExtra": {
     "powerUpAddOns": "Complementos de Potencialização",
     "resumeRoastFree": "Crítica de Currículo GRATUITA",
     "viewAllProducts": "Ver todos os produtos",
-    "addOnNames": { "resumeRoast": "Crítica de Currículo", "interviewCoach": "Coach de Entrevista", "careerPath": "Percurso de Carreira" }
+    "addOnNames": {
+      "resumeRoast": "Crítica de Currículo",
+      "interviewCoach": "Coach de Entrevista",
+      "careerPath": "Percurso de Carreira"
+    }
   },
   "productSuccess": {
     "verifyingPurchase": "A verificar a sua compra...",
@@ -1344,9 +1623,18 @@
           "Carregue novamente para verificar a sua pontuação ATS melhorada"
         ],
         "nextSteps": [
-          { "title": "Revisar palavras-chave", "description": "Verifique a análise de palavras-chave em falta abaixo" },
-          { "title": "Atualizar currículo", "description": "Adicione as palavras-chave sugeridas ao seu currículo" },
-          { "title": "Verificar melhoria", "description": "Volte a analisar para ver a sua nova pontuação ATS" }
+          {
+            "title": "Revisar palavras-chave",
+            "description": "Verifique a análise de palavras-chave em falta abaixo"
+          },
+          {
+            "title": "Atualizar currículo",
+            "description": "Adicione as palavras-chave sugeridas ao seu currículo"
+          },
+          {
+            "title": "Verificar melhoria",
+            "description": "Volte a analisar para ver a sua nova pontuação ATS"
+          }
         ],
         "deliveryTime": "Instantâneo",
         "deliveryMethod": "Nesta página"
@@ -1359,9 +1647,18 @@
           "Personalize a saudação e os detalhes específicos da empresa"
         ],
         "nextSteps": [
-          { "title": "Revisar carta", "description": "Leia a sua carta de apresentação gerada abaixo" },
-          { "title": "Copiar ou descarregar", "description": "Obtenha a sua carta no formato de que precisa" },
-          { "title": "Submeter candidatura", "description": "Envie junto com o seu currículo para se candidatar" }
+          {
+            "title": "Revisar carta",
+            "description": "Leia a sua carta de apresentação gerada abaixo"
+          },
+          {
+            "title": "Copiar ou descarregar",
+            "description": "Obtenha a sua carta no formato de que precisa"
+          },
+          {
+            "title": "Submeter candidatura",
+            "description": "Envie junto com o seu currículo para se candidatar"
+          }
         ],
         "deliveryTime": "Instantâneo",
         "deliveryMethod": "Nesta página"
@@ -1375,9 +1672,18 @@
           "Copie ou descarregue os seus novos documentos"
         ],
         "nextSteps": [
-          { "title": "Revisar documentos", "description": "Verifique o seu novo currículo e carta de apresentação abaixo" },
-          { "title": "Copiar e descarregar", "description": "Obtenha os seus documentos no formato de que precisa" },
-          { "title": "Candidatar-se agora", "description": "Submeta a sua candidatura otimizada" }
+          {
+            "title": "Revisar documentos",
+            "description": "Verifique o seu novo currículo e carta de apresentação abaixo"
+          },
+          {
+            "title": "Copiar e descarregar",
+            "description": "Obtenha os seus documentos no formato de que precisa"
+          },
+          {
+            "title": "Candidatar-se agora",
+            "description": "Submeta a sua candidatura otimizada"
+          }
         ],
         "deliveryTime": "Instantâneo",
         "deliveryMethod": "Nesta página"
@@ -1391,9 +1697,18 @@
           "Inclui dicas de alinhamento com o LinkedIn"
         ],
         "nextSteps": [
-          { "title": "Revisar auditoria", "description": "Verifique as suas pontuações ATS antes/depois" },
-          { "title": "Aplicar palavras-chave", "description": "Use o banco de palavras-chave da sua indústria" },
-          { "title": "Copiar secções", "description": "Use as secções otimizadas do currículo" }
+          {
+            "title": "Revisar auditoria",
+            "description": "Verifique as suas pontuações ATS antes/depois"
+          },
+          {
+            "title": "Aplicar palavras-chave",
+            "description": "Use o banco de palavras-chave da sua indústria"
+          },
+          {
+            "title": "Copiar secções",
+            "description": "Use as secções otimizadas do currículo"
+          }
         ],
         "deliveryTime": "Instantâneo",
         "deliveryMethod": "Nesta página"
@@ -1407,9 +1722,18 @@
           "Partilhe com amigos ou família, se desejar"
         ],
         "nextSteps": [
-          { "title": "Começar a usar créditos", "description": "Carregue um currículo para usar o seu primeiro crédito" },
-          { "title": "Acompanhar os seus créditos", "description": "Verifique 'Os Meus Créditos' no cabeçalho para ver o seu saldo" },
-          { "title": "Candidatar-se a mais empregos", "description": "Use créditos para cada candidatura que pretenda" }
+          {
+            "title": "Começar a usar créditos",
+            "description": "Carregue um currículo para usar o seu primeiro crédito"
+          },
+          {
+            "title": "Acompanhar os seus créditos",
+            "description": "Verifique 'Os Meus Créditos' no cabeçalho para ver o seu saldo"
+          },
+          {
+            "title": "Candidatar-se a mais empregos",
+            "description": "Use créditos para cada candidatura que pretenda"
+          }
         ],
         "deliveryTime": "Instantâneo",
         "deliveryMethod": "Créditos adicionados à conta"
@@ -1422,9 +1746,18 @@
           "Os créditos nunca expiram"
         ],
         "nextSteps": [
-          { "title": "Carregue o seu currículo", "description": "Vá à página inicial para começar a verificar" },
-          { "title": "Use os seus créditos", "description": "Cada verificação usa um crédito do seu saldo" },
-          { "title": "Verificar saldo", "description": "Veja os créditos restantes em 'Os Meus Créditos'" }
+          {
+            "title": "Carregue o seu currículo",
+            "description": "Vá à página inicial para começar a verificar"
+          },
+          {
+            "title": "Use os seus créditos",
+            "description": "Cada verificação usa um crédito do seu saldo"
+          },
+          {
+            "title": "Verificar saldo",
+            "description": "Veja os créditos restantes em 'Os Meus Créditos'"
+          }
         ],
         "deliveryTime": "Instantâneo",
         "deliveryMethod": "Créditos adicionados à conta"
@@ -1438,9 +1771,18 @@
           "Criámos correções prioritárias práticas que pode implementar hoje"
         ],
         "nextSteps": [
-          { "title": "Reveja a sua pontuação", "description": "Veja o detalhe do seu Career Signal Score" },
-          { "title": "Compreender a perceção", "description": "Saiba como os recrutadores veem a sua carreira" },
-          { "title": "Aplicar correções", "description": "Implemente as recomendações prioritárias" }
+          {
+            "title": "Reveja a sua pontuação",
+            "description": "Veja o detalhe do seu Career Signal Score"
+          },
+          {
+            "title": "Compreender a perceção",
+            "description": "Saiba como os recrutadores veem a sua carreira"
+          },
+          {
+            "title": "Aplicar correções",
+            "description": "Implemente as recomendações prioritárias"
+          }
         ],
         "deliveryTime": "Instantâneo",
         "deliveryMethod": "Nesta página"
@@ -1454,9 +1796,18 @@
           "Construímos um plano de ação de 30 dias para conseguir a sua primeira função"
         ],
         "nextSteps": [
-          { "title": "Verificar preparação", "description": "Veja se o seu currículo está pronto para se candidatar" },
-          { "title": "Vagas pretendidas", "description": "Reveja vagas que correspondem ao seu percurso" },
-          { "title": "Seguir o plano", "description": "Execute o plano de ação de 30 dias" }
+          {
+            "title": "Verificar preparação",
+            "description": "Veja se o seu currículo está pronto para se candidatar"
+          },
+          {
+            "title": "Vagas pretendidas",
+            "description": "Reveja vagas que correspondem ao seu percurso"
+          },
+          {
+            "title": "Seguir o plano",
+            "description": "Execute o plano de ação de 30 dias"
+          }
         ],
         "deliveryTime": "Instantâneo",
         "deliveryMethod": "Nesta página"
@@ -1469,9 +1820,18 @@
           "Pratique-as para se preparar para a sua próxima entrevista"
         ],
         "nextSteps": [
-          { "title": "Revisar perguntas", "description": "Percorra cada pergunta personalizada" },
-          { "title": "Praticar respostas", "description": "Use os enquadramentos do método STAR fornecidos" },
-          { "title": "Construir confiança", "description": "Ensaie até se sentir preparado" }
+          {
+            "title": "Revisar perguntas",
+            "description": "Percorra cada pergunta personalizada"
+          },
+          {
+            "title": "Praticar respostas",
+            "description": "Use os enquadramentos do método STAR fornecidos"
+          },
+          {
+            "title": "Construir confiança",
+            "description": "Ensaie até se sentir preparado"
+          }
         ],
         "deliveryTime": "Instantâneo",
         "deliveryMethod": "Nesta página"
@@ -1484,9 +1844,18 @@
           "Use os passos de ação para seguir a direção da sua preferência"
         ],
         "nextSteps": [
-          { "title": "Explorar trajetórias", "description": "Reveja as suas 3 opções de trajetória de carreira" },
-          { "title": "Identificar lacunas", "description": "Veja que competências precisa para cada trajetória" },
-          { "title": "Planear com antecedência", "description": "Siga o cronograma da trajetória escolhida" }
+          {
+            "title": "Explorar trajetórias",
+            "description": "Reveja as suas 3 opções de trajetória de carreira"
+          },
+          {
+            "title": "Identificar lacunas",
+            "description": "Veja que competências precisa para cada trajetória"
+          },
+          {
+            "title": "Planear com antecedência",
+            "description": "Siga o cronograma da trajetória escolhida"
+          }
         ],
         "deliveryTime": "Instantâneo",
         "deliveryMethod": "Nesta página"
@@ -1499,9 +1868,18 @@
           "Você revê tudo e submete-o você mesmo — nada é enviado automaticamente"
         ],
         "nextSteps": [
-          { "title": "Revise o seu currículo adaptado", "description": "Verifique a precisão da reescrita da IA" },
-          { "title": "Siga a checklist", "description": "Dizemos-lhe exatamente o que fazer a seguir — você faz a submissão" },
-          { "title": "Exportar e candidatar-se", "description": "Descarregue o currículo e a carta de apresentação, depois candidate-se no site do empregador" }
+          {
+            "title": "Revise o seu currículo adaptado",
+            "description": "Verifique a precisão da reescrita da IA"
+          },
+          {
+            "title": "Siga a checklist",
+            "description": "Dizemos-lhe exatamente o que fazer a seguir — você faz a submissão"
+          },
+          {
+            "title": "Exportar e candidatar-se",
+            "description": "Descarregue o currículo e a carta de apresentação, depois candidate-se no site do empregador"
+          }
         ],
         "deliveryTime": "Instantâneo",
         "deliveryMethod": "Nesta página"
@@ -1702,41 +2080,97 @@
   "personalization": {
     "experience": {
       "entry": {
-        "focusAreas": ["Formação académica e cursos relevantes", "Estágios e experiência em projetos", "Competências transferíveis de qualquer trabalho", "Competências técnicas e ferramentas aprendidas"],
-        "avoidAreas": ["Declarações de objetivo (use um resumo em vez disso)", "Informações do ensino secundário (a menos que seja um recém-formado)", "Empregos não relacionados sem competências transferíveis"],
+        "focusAreas": [
+          "Formação académica e cursos relevantes",
+          "Estágios e experiência em projetos",
+          "Competências transferíveis de qualquer trabalho",
+          "Competências técnicas e ferramentas aprendidas"
+        ],
+        "avoidAreas": [
+          "Declarações de objetivo (use um resumo em vez disso)",
+          "Informações do ensino secundário (a menos que seja um recém-formado)",
+          "Empregos não relacionados sem competências transferíveis"
+        ],
         "keyMessage": "Mostre potencial e entusiasmo para aprender",
         "quantificationTip": "Mesmo o trabalho de nível inicial tem números: clientes atendidos, projetos concluídos, horas de voluntariado"
       },
       "mid": {
-        "focusAreas": ["Conquistas concretas com métricas", "Responsabilidade e liderança crescentes", "Desenvolvimento de competências especializadas", "Colaboração multifuncional"],
-        "avoidAreas": ["Tarefas de nível inicial (foque no crescimento)", "Demasiado detalhe em funções antigas", "Competências agora esperadas (software básico)"],
+        "focusAreas": [
+          "Conquistas concretas com métricas",
+          "Responsabilidade e liderança crescentes",
+          "Desenvolvimento de competências especializadas",
+          "Colaboração multifuncional"
+        ],
+        "avoidAreas": [
+          "Tarefas de nível inicial (foque no crescimento)",
+          "Demasiado detalhe em funções antigas",
+          "Competências agora esperadas (software básico)"
+        ],
         "keyMessage": "Demonstre crescimento e impacto consistentes",
         "quantificationTip": "Mostre progressão: maior responsabilidade, projetos maiores, orçamentos maiores"
       },
       "senior": {
-        "focusAreas": ["Liderança e desenvolvimento de equipas", "Iniciativas estratégicas e resultados", "Impacto interdepartamental", "Mentoria e transferência de conhecimento"],
-        "avoidAreas": ["Detalhes táticos (foque na estratégia)", "Funções de há 15+ anos em detalhe", "Competências que deveriam ser assumidas no seu nível"],
+        "focusAreas": [
+          "Liderança e desenvolvimento de equipas",
+          "Iniciativas estratégicas e resultados",
+          "Impacto interdepartamental",
+          "Mentoria e transferência de conhecimento"
+        ],
+        "avoidAreas": [
+          "Detalhes táticos (foque na estratégia)",
+          "Funções de há 15+ anos em detalhe",
+          "Competências que deveriam ser assumidas no seu nível"
+        ],
         "keyMessage": "Mostre pensamento estratégico e impacto de liderança",
         "quantificationTip": "Foque no tamanho da equipa, orçamento gerido, receita influenciada, impacto em toda a organização"
       },
       "executive": {
-        "focusAreas": ["Responsabilidade por resultados financeiros e desempenho empresarial", "Liderança de transformação e mudança", "Gestão do conselho de administração e partes interessadas", "Definição de visão e construção de cultura"],
-        "avoidAreas": ["Detalhes de execução tática", "Listas de competências (assumidas ao nível executivo)", "Detalhes de início de carreira além dos cargos"],
+        "focusAreas": [
+          "Responsabilidade por resultados financeiros e desempenho empresarial",
+          "Liderança de transformação e mudança",
+          "Gestão do conselho de administração e partes interessadas",
+          "Definição de visão e construção de cultura"
+        ],
+        "avoidAreas": [
+          "Detalhes de execução tática",
+          "Listas de competências (assumidas ao nível executivo)",
+          "Detalhes de início de carreira além dos cargos"
+        ],
         "keyMessage": "Mostre transformação empresarial e visão",
         "quantificationTip": "Receita, quota de mercado, avaliação, negócios de fusões e aquisições, escala organizacional"
       }
     },
     "geographic": {
-      "us": { "name": "Estados Unidos" },
-      "uk": { "name": "Reino Unido" },
-      "eu": { "name": "União Europeia" },
-      "de": { "name": "Alemanha" },
-      "au": { "name": "Austrália" },
-      "in": { "name": "Índia" },
-      "ca": { "name": "Canadá" },
-      "latam": { "name": "América Latina" },
-      "br": { "name": "Brasil" },
-      "mx": { "name": "México" }
+      "us": {
+        "name": "Estados Unidos"
+      },
+      "uk": {
+        "name": "Reino Unido"
+      },
+      "eu": {
+        "name": "União Europeia"
+      },
+      "de": {
+        "name": "Alemanha"
+      },
+      "au": {
+        "name": "Austrália"
+      },
+      "in": {
+        "name": "Índia"
+      },
+      "ca": {
+        "name": "Canadá"
+      },
+      "latam": {
+        "name": "América Latina"
+      },
+      "br": {
+        "name": "Brasil"
+      },
+      "mx": {
+        "name": "México"
+      }
     }
   },
   "personalizedInsights": {
@@ -1868,16 +2302,46 @@
       }
     },
     "atsPlatforms": {
-      "0": { "description": "Análise de cabeçalhos de secção, extração de palavras-chave, validação do formato de data", "marketShare": "Grandes empresas" },
-      "1": { "description": "Algoritmos de correspondência de competências, pontuação do nível de experiência, indicadores de adequação cultural", "marketShare": "Tecnologia e startups" },
-      "2": { "description": "Validação de informações de contacto, consistência de formatação, organização de secções", "marketShare": "Mercado intermédio" },
-      "3": { "description": "Análise de densidade de palavras-chave, correspondência de cargos, pontuação de qualificações", "marketShare": "Fortune 500" },
-      "4": { "description": "Análise de formação académica, deteção de certificações, correspondência de taxonomia de competências", "marketShare": "Saúde e retalho" },
-      "5": { "description": "Análise da estrutura do currículo, validação da linha temporal de experiência", "marketShare": "PME" },
-      "6": { "description": "Otimização de palavras-chave, algoritmos de classificação de candidatos", "marketShare": "Pequenas empresas" },
-      "7": { "description": "Integração de perfis sociais, acompanhamento de referências, avaliação de competências", "marketShare": "Empresas grandes" },
-      "8": { "description": "Correspondência alimentada por IA, indicadores de diversidade, conformidade global", "marketShare": "Empresas globais" },
-      "9": { "description": "Análise específica para recrutamento, deteção de contratados, pontuação de disponibilidade", "marketShare": "Agências de recrutamento" }
+      "0": {
+        "description": "Análise de cabeçalhos de secção, extração de palavras-chave, validação do formato de data",
+        "marketShare": "Grandes empresas"
+      },
+      "1": {
+        "description": "Algoritmos de correspondência de competências, pontuação do nível de experiência, indicadores de adequação cultural",
+        "marketShare": "Tecnologia e startups"
+      },
+      "2": {
+        "description": "Validação de informações de contacto, consistência de formatação, organização de secções",
+        "marketShare": "Mercado intermédio"
+      },
+      "3": {
+        "description": "Análise de densidade de palavras-chave, correspondência de cargos, pontuação de qualificações",
+        "marketShare": "Fortune 500"
+      },
+      "4": {
+        "description": "Análise de formação académica, deteção de certificações, correspondência de taxonomia de competências",
+        "marketShare": "Saúde e retalho"
+      },
+      "5": {
+        "description": "Análise da estrutura do currículo, validação da linha temporal de experiência",
+        "marketShare": "PME"
+      },
+      "6": {
+        "description": "Otimização de palavras-chave, algoritmos de classificação de candidatos",
+        "marketShare": "Pequenas empresas"
+      },
+      "7": {
+        "description": "Integração de perfis sociais, acompanhamento de referências, avaliação de competências",
+        "marketShare": "Empresas grandes"
+      },
+      "8": {
+        "description": "Correspondência alimentada por IA, indicadores de diversidade, conformidade global",
+        "marketShare": "Empresas globais"
+      },
+      "9": {
+        "description": "Análise específica para recrutamento, deteção de contratados, pontuação de disponibilidade",
+        "marketShare": "Agências de recrutamento"
+      }
     },
     "atsPlatformsTitle": "Plataformas ATS contra as quais analisamos",
     "atsPlatformsSubtitle": "A nossa análise baseia-se nas regras de análise e algoritmos de pontuação destas grandes plataformas ATS, cobrindo mais de 90% do mercado de trabalho.",
@@ -1885,13 +2349,34 @@
     "scoreCalculatedTitle": "Como a sua pontuação ATS é calculada",
     "scoreCalculatedSubtitle": "A sua pontuação é uma combinação ponderada de múltiplos fatores que determinam o desempenho do seu currículo em sistemas ATS.",
     "scoringFactors": {
-      "keywordOptimization": { "factor": "Otimização de palavras-chave", "description": "Palavras-chave e competências relevantes para a indústria mencionadas" },
-      "formatCompatibility": { "factor": "Compatibilidade de formato", "description": "Estrutura limpa que o ATS consegue analisar corretamente" },
-      "sectionCompleteness": { "factor": "Integridade das secções", "description": "Todas as secções esperadas presentes e devidamente rotuladas" },
-      "experienceClarity": { "factor": "Clareza da experiência", "description": "Cargos, datas e conquistas claras" },
-      "actionVerbUsage": { "factor": "Uso de verbos de ação", "description": "Verbos de ação fortes que demonstram impacto" },
-      "quantifiedAchievements": { "factor": "Conquistas quantificadas", "description": "Números e métricas que comprovam resultados" },
-      "redFlagAbsence": { "factor": "Ausência de sinais de alerta", "description": "Sem problemas de formatação ou conteúdo" }
+      "keywordOptimization": {
+        "factor": "Otimização de palavras-chave",
+        "description": "Palavras-chave e competências relevantes para a indústria mencionadas"
+      },
+      "formatCompatibility": {
+        "factor": "Compatibilidade de formato",
+        "description": "Estrutura limpa que o ATS consegue analisar corretamente"
+      },
+      "sectionCompleteness": {
+        "factor": "Integridade das secções",
+        "description": "Todas as secções esperadas presentes e devidamente rotuladas"
+      },
+      "experienceClarity": {
+        "factor": "Clareza da experiência",
+        "description": "Cargos, datas e conquistas claras"
+      },
+      "actionVerbUsage": {
+        "factor": "Uso de verbos de ação",
+        "description": "Verbos de ação fortes que demonstram impacto"
+      },
+      "quantifiedAchievements": {
+        "factor": "Conquistas quantificadas",
+        "description": "Números e métricas que comprovam resultados"
+      },
+      "redFlagAbsence": {
+        "factor": "Ausência de sinais de alerta",
+        "description": "Sem problemas de formatação ou conteúdo"
+      }
     },
     "continuousResearchTitle": "Investigação contínua",
     "continuousResearchSubtitle": "Analisamos continuamente ofertas de emprego, atualizações de ATS e tendências de contratação para manter a nossa análise precisa e atualizada.",
@@ -2065,7 +2550,11 @@
     "metaDescription": "Novas funcionalidades, melhorias e correções lançadas no Resume Booster. Atualizado semanalmente.",
     "title": "Novidades",
     "subtitle": "Lançamos melhorias constantemente. Aqui está o que mudou recentemente.",
-    "tags": { "new": "Novo", "improved": "Melhorado", "fixed": "Corrigido" }
+    "tags": {
+      "new": "Novo",
+      "improved": "Melhorado",
+      "fixed": "Corrigido"
+    }
   },
   "changelogEntries": {
     "yourReportsSpeakYourLanguage": {
@@ -2152,5 +2641,184 @@
       "title": "Deteção de PDF digitalizados",
       "description": "Se enviar um PDF digitalizado baseado em imagem sem texto selecionável, agora avisamo-lo imediatamente em vez de analisar silenciosamente conteúdo vazio — com uma sugestão clara para enviar uma versão baseada em texto ou colar o seu currículo diretamente."
     }
+  },
+  "sampleReportPreview": {
+    "exploring": "Explorando relatório de amostra",
+    "hereIsWhat": "Veja o que você verá após o upload",
+    "sampleReport": "Relatório de amostra",
+    "collapse": "Recolher",
+    "clickToExplore": "Clique para explorar",
+    "atsScore": "Pontuação de compatibilidade ATS",
+    "needsImprovement": "Precisa de melhorias",
+    "filteredOut": "Seu currículo pode ser filtrado por 73 % dos sistemas ATS",
+    "missingKeywords": "Palavras-chave ausentes",
+    "plusMore": "+8 mais",
+    "atsParsing": "Problemas de análise ATS encontrados",
+    "prioritizedImprovements": "Melhorias priorizadas",
+    "scoreBreakdown": "Detalhamento da pontuação",
+    "aiPoweredFixes": "Correções com IA incluídas",
+    "moreSuggestions": "+ mais sugestões personalizadas",
+    "readyToSeeScore": "Pronto para ver sua pontuação real?",
+    "uploadAbove": "Envie seu currículo acima para obter insights personalizados",
+    "sampleData": "Estes são dados de amostra — seu relatório será único para seu currículo",
+    "personalizedReport": "Seu relatório real será personalizado para seu currículo",
+    "sections": {
+      "contactInfo": "Informações de contato",
+      "keywords": "Palavras-chave",
+      "experience": "Experiência",
+      "education": "Formação"
+    },
+    "sectionDetails": {
+      "properlyFormatted": "Formatado corretamente",
+      "missing12": "Faltam 12 termos críticos",
+      "weakActionVerbs": "Verbos de ação fracos",
+      "correctlyParsed": "Analisado corretamente"
+    },
+    "atsIssues": {
+      "tablesDetected": "Tabelas detectadas",
+      "tablesImpact": "Pode interromper a análise em 60 % dos sistemas ATS",
+      "graphicsUsed": "Gráficos/ícones utilizados",
+      "graphicsImpact": "Serão ignorados ou causarão erros",
+      "nonStandardHeaders": "Cabeçalhos de seção não padronizados",
+      "headersImpact": "A seção de habilidades pode não ser reconhecida"
+    },
+    "fixes": {
+      "impactMetrics": "Métricas de impacto",
+      "impactMetricsFix": "Adicione 3-5 resultados quantificados (ex.: ‘Aumentei as vendas em 23 %’)",
+      "actionVerbs": "Verbos de ação",
+      "actionVerbsFix": "Substitua frases passivas como ‘responsável por’ por ‘Liderei’, ‘Impulsionei’, ‘Alcançei’",
+      "keywords": "Palavras-chave",
+      "keywordsFix": "Adicione termos do setor ausentes: ‘gestão de partes interessadas’, ‘metodologia Agile’",
+      "formatting": "Formatação",
+      "formattingFix": "Use formato de data consistente (MM/AAAA) em todo o documento",
+      "summary": "Resumo",
+      "summaryFix": "Adicione um resumo profissional de 2-3 linhas no topo"
+    },
+    "priority": {
+      "high": "alta",
+      "medium": "média",
+      "low": "baixa"
+    },
+    "scoreLabels": {
+      "keywordMatch": "Correspondência de palavras-chave",
+      "formatting": "Formatação",
+      "experienceRelevance": "Relevância da experiência",
+      "education": "Formação"
+    },
+    "quickFixes": {
+      "fix1": "Adicione conquistas quantificadas (números, %, $)",
+      "fix2": "Substitua ‘responsável por’ por verbos de ação",
+      "fix3": "Inclua mais 3 palavras-chave do setor"
+    }
+  },
+  "peerBenchmark": {
+    "howYouCompare": "Como você se compara",
+    "percentile": "percentil",
+    "industryAverage": "Média do setor: {{score}}",
+    "topPerformers": "Melhores candidatos: {{score}}+",
+    "toAverage": "Para a média",
+    "toTopTier": "Para o nível máximo",
+    "topPerformer": "Você é um candidato de destaque!",
+    "levelTip": "Dica nível {{level}}",
+    "benchmarkedAgainst": "Comparado a outros candidatos de {{role}}",
+    "topPct": "Top {{pct}} % em prontidão ATS entre {{cohort}}",
+    "aroundAverage": "Prontidão ATS média entre {{cohort}}",
+    "belowAverage": "Prontidão ATS abaixo da média entre {{cohort}} (corrigível)"
+  },
+  "skillsGapAnalysis": {
+    "title": "Análise de lacunas de habilidades para {{role}}",
+    "roleMatchScore": "Pontuação de correspondência à função",
+    "strongMatch": "Forte correspondência",
+    "partialMatch": "Correspondência parcial",
+    "needsImprovement": "Precisa de melhorias",
+    "keySkills": "Habilidades principais",
+    "matched": "{{present}}/{{total}} correspondentes",
+    "missingSkills": "Habilidades ausentes a adicionar:",
+    "atsKeywords": "Palavras-chave ATS",
+    "found": "{{present}}/{{total}} encontradas",
+    "addKeywords": "Adicione estas palavras-chave para melhorar a pontuação ATS:",
+    "priorityActions": "Ações prioritárias:",
+    "addSkill": "Adicione “{{skill}}” à sua seção de habilidades ou demonstre-o em seus pontos de experiência",
+    "includeKeyword": "Inclua “{{keyword}}” em seus pontos de conquistas com métricas específicas"
+  },
+  "resumeBeforeAfter": {
+    "title": "Veja a diferença com IA",
+    "before": "Antes",
+    "after": "Depois",
+    "tagline": "Todo o seu currículo passa por essa transformação"
+  },
+  "profileQuizModal": {
+    "title": "Configuração rápida de perfil",
+    "description": "Ajude-nos a personalizar sua análise (leva 30 segundos)",
+    "step1of3": "Passo 1 de 3",
+    "step2of3": "Passo 2 de 3",
+    "step3of3": "Passo 3 de 3",
+    "whichIndustry": "Em qual setor você trabalha?",
+    "experienceLevel": "Qual é seu nível de experiência?",
+    "targetRole": "Qual cargo você está buscando?",
+    "skipForNow": "Pular por agora",
+    "next": "Próximo",
+    "back": "Voltar",
+    "typeYourRole": "Ou digite seu cargo desejado...",
+    "getPersonalized": "Obter análise personalizada",
+    "industries": {
+      "technology": "Tecnologia",
+      "healthcare": "Saúde",
+      "finance": "Finanças e bancos",
+      "marketing": "Marketing",
+      "sales": "Vendas",
+      "engineering": "Engenharia",
+      "education": "Educação",
+      "hr": "Recursos Humanos",
+      "consulting": "Consultoria",
+      "legal": "Jurídico",
+      "retail": "Varejo e e-commerce",
+      "other": "Outro"
+    },
+    "levels": {
+      "entry": "Nível inicial",
+      "entryDesc": "0-2 anos",
+      "mid": "Nível médio",
+      "midDesc": "3-5 anos",
+      "senior": "Nível sênior",
+      "seniorDesc": "6-10 anos",
+      "executive": "Executivo",
+      "executiveDesc": "10+ anos"
+    }
+  },
+  "competitorBenchmark": {
+    "title": "Como os melhores {{role}}s se destacam",
+    "basedOnAnalysis": "Baseado na análise de currículos bem-sucedidos de {{role}} que conseguem entrevistas",
+    "competitiveStanding": "Sua posição competitiva",
+    "topElements": "Você tem elementos que os melhores candidatos incluem!",
+    "addFewMore": "Adicione mais alguns elementos para competir com os melhores candidatos",
+    "addElements": "Adicione estes elementos para igualar os melhores candidatos",
+    "sectionsAlwaysInclude": "Seções que os melhores {{role}}s sempre incluem:",
+    "whatMakesStandOut": "O que faz os melhores currículos se destacarem:",
+    "pctTopCandidates": "Que % dos melhores candidatos inclui:",
+    "avgBullets": "Média de pontos por cargo:",
+    "youBullets": "Você: {{count}}",
+    "topBullets": "Top: {{count}}",
+    "quickWins": "Vitórias rápidas para competir:",
+    "addPortfolio": "Adicione links de portfólio/GitHub ({{pct}} % dos melhores candidatos os incluem)",
+    "addCerts": "Liste certificações relevantes ({{pct}} % dos melhores candidatos as têm)",
+    "addMetrics": "Adicione métricas aos seus pontos ({{pct}} % dos melhores currículos quantificam conquistas)",
+    "addBullets": "Adicione {{count}} pontos por cargo",
+    "checklistItems": {
+      "portfolio": "Links de portfólio/GitHub",
+      "certifications": "Certificações",
+      "quantifiedAchievements": "Conquistas quantificadas"
+    }
+  },
+  "jobComparisonCTA": {
+    "compareToRoles": "Veja como você se compara às suas funções-alvo:"
+  },
+  "floatingHelpButton": {
+    "needHelp": "Precisa de ajuda?",
+    "questionsOrFeedback": "Perguntas ou comentários? Envie-nos um e-mail:"
+  },
+  "atsParseSimulator": {
+    "title": "Simulação de análise ATS",
+    "subtitle": "Verificações mecânicas no mesmo texto que um ATS extrairia — não uma estimativa de IA"
   }
 }

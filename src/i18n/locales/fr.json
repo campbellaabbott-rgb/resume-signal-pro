@@ -706,13 +706,34 @@
     "live": "En direct",
     "securityNote": "Votre CV est analysé en toute sécurité et jamais stocké",
     "stages": {
-      "parsing": { "label": "Analyse du CV", "description": "Extraction du texte et de la structure" },
-      "industry": { "label": "Détection du secteur", "description": "Identification de votre domaine et rôle" },
-      "ats": { "label": "Simulation ATS", "description": "Test sur 50+ systèmes ATS" },
-      "keywords": { "label": "Analyse des mots-clés", "description": "Correspondance des termes sectoriels" },
-      "scoring": { "label": "Scoring et benchmark", "description": "Comparaison avec les meilleurs candidats" },
-      "ai": { "label": "Analyse IA approfondie", "description": "Génération d'insights personnalisés" },
-      "report": { "label": "Construction du rapport", "description": "Compilation des recommandations" }
+      "parsing": {
+        "label": "Analyse du CV",
+        "description": "Extraction du texte et de la structure"
+      },
+      "industry": {
+        "label": "Détection du secteur",
+        "description": "Identification de votre domaine et rôle"
+      },
+      "ats": {
+        "label": "Simulation ATS",
+        "description": "Test sur 50+ systèmes ATS"
+      },
+      "keywords": {
+        "label": "Analyse des mots-clés",
+        "description": "Correspondance des termes sectoriels"
+      },
+      "scoring": {
+        "label": "Scoring et benchmark",
+        "description": "Comparaison avec les meilleurs candidats"
+      },
+      "ai": {
+        "label": "Analyse IA approfondie",
+        "description": "Génération d'insights personnalisés"
+      },
+      "report": {
+        "label": "Construction du rapport",
+        "description": "Compilation des recommandations"
+      }
     },
     "tips": {
       "numbers": "💡 Astuce : Les CV avec des chiffres reçoivent 40% plus de rappels",
@@ -1009,42 +1030,141 @@
   },
   "freeResults": {
     "metricTooltips": {
-      "atsScore": { "title": "Score IA-ATS", "description": "Notre IA simule comment les systèmes modernes de suivi des candidatures alimentés par l'IA analysent votre CV — la même technologie utilisée par 98 % des entreprises du Fortune 500.", "whyMatters": "Un score faible signifie que votre CV pourrait ne jamais atteindre un recruteur humain." },
-      "format": { "title": "Note de mise en forme", "description": "Évalue la structure, la mise en page et la lisibilité IA-ATS de votre CV.", "whyMatters": "Une mauvaise mise en forme provoque des erreurs d'analyse IA-ATS, faisant perdre vos informations clés." },
-      "metrics": { "title": "Score de quantification", "description": "Mesure combien de vos réalisations incluent des chiffres, des pourcentages ou des indicateurs.", "whyMatters": "Les recruteurs passent 6 secondes à parcourir — les chiffres attirent leur attention en premier." },
-      "verbs": { "title": "Note des verbes d'action", "description": "Évalue la force et la variété des verbes d'action qui commencent vos puces.", "whyMatters": "Des verbes forts comme « Dirigé » l'emportent sur des verbes faibles comme « Aidé » ou « Assisté »." },
-      "pages": { "title": "Longueur du CV", "description": "Vérifie si la longueur de votre CV correspond aux normes du secteur pour votre niveau d'expérience.", "whyMatters": "Trop long = ignoré. Trop court = manque de substance." },
-      "words": { "title": "Nombre de mots", "description": "Mesure si vous avez assez de contenu pour mettre en valeur votre profil.", "whyMatters": "Le juste milieu varie selon l'expérience — trop peu de mots signale un manque d'expérience." },
-      "sections": { "title": "Vérification des sections", "description": "Vérifie que toutes les sections essentielles du CV sont présentes (Résumé, Expérience, Formation, Compétences).", "whyMatters": "Les sections manquantes sont des signaux d'alarme immédiats pour les recruteurs." },
-      "contact": { "title": "Coordonnées", "description": "Vérifie la présence d'un e-mail, d'un téléphone et d'un profil LinkedIn.", "whyMatters": "Les recruteurs ne peuvent pas vous embaucher s'ils ne peuvent pas vous contacter." },
-      "readability": { "title": "Score de lisibilité", "description": "Mesure la facilité avec laquelle votre CV peut être parcouru rapidement.", "whyMatters": "Les recruteurs passent en moyenne 6 à 7 secondes par CV — chaque mot doit compter." },
-      "bulletImpact": { "title": "Impact des puces", "description": "Analyse si vos puces se concentrent sur les réalisations plutôt que sur une simple liste de responsabilités.", "whyMatters": "Les puces axées sur les réalisations prouvent la valeur ; les listes de responsabilités non." },
-      "keywordDensity": { "title": "Densité des mots-clés", "description": "Mesure la présence de mots-clés pertinents pour le secteur en vue de la correspondance IA-ATS.", "whyMatters": "Trop peu de mots-clés = pas de correspondance IA-ATS. Trop = pénalité pour bourrage de mots-clés." },
-      "improvementPotential": { "title": "Potentiel d'amélioration", "description": "Augmentation de score estimée possible grâce à l'optimisation.", "whyMatters": "Montre la marge de progression pour surpasser les autres candidats." },
-      "industryBenchmark": { "title": "Référence du secteur", "description": "Compare votre score à celui des autres dans votre domaine.", "whyMatters": "Sachez où vous vous situez par rapport à votre concurrence directe." },
-      "timeline": { "title": "Chronologie de carrière", "description": "Analyse l'ancienneté dans les postes, les écarts et les schémas de progression de carrière.", "whyMatters": "Les recruteurs recherchent la stabilité et la croissance — les écarts doivent être expliqués." },
-      "atsCompatibility": { "title": "Compatibilité avec les systèmes IA-ATS", "description": "Montre à quel point votre CV est correctement analysé par les principaux systèmes de suivi des candidatures alimentés par l'IA comme Workday, Greenhouse et Taleo.", "whyMatters": "Différentes entreprises utilisent différents systèmes IA-ATS — sachez lesquels liront correctement votre CV." }
+      "atsScore": {
+        "title": "Score IA-ATS",
+        "description": "Notre IA simule comment les systèmes modernes de suivi des candidatures alimentés par l'IA analysent votre CV — la même technologie utilisée par 98 % des entreprises du Fortune 500.",
+        "whyMatters": "Un score faible signifie que votre CV pourrait ne jamais atteindre un recruteur humain."
+      },
+      "format": {
+        "title": "Note de mise en forme",
+        "description": "Évalue la structure, la mise en page et la lisibilité IA-ATS de votre CV.",
+        "whyMatters": "Une mauvaise mise en forme provoque des erreurs d'analyse IA-ATS, faisant perdre vos informations clés."
+      },
+      "metrics": {
+        "title": "Score de quantification",
+        "description": "Mesure combien de vos réalisations incluent des chiffres, des pourcentages ou des indicateurs.",
+        "whyMatters": "Les recruteurs passent 6 secondes à parcourir — les chiffres attirent leur attention en premier."
+      },
+      "verbs": {
+        "title": "Note des verbes d'action",
+        "description": "Évalue la force et la variété des verbes d'action qui commencent vos puces.",
+        "whyMatters": "Des verbes forts comme « Dirigé » l'emportent sur des verbes faibles comme « Aidé » ou « Assisté »."
+      },
+      "pages": {
+        "title": "Longueur du CV",
+        "description": "Vérifie si la longueur de votre CV correspond aux normes du secteur pour votre niveau d'expérience.",
+        "whyMatters": "Trop long = ignoré. Trop court = manque de substance."
+      },
+      "words": {
+        "title": "Nombre de mots",
+        "description": "Mesure si vous avez assez de contenu pour mettre en valeur votre profil.",
+        "whyMatters": "Le juste milieu varie selon l'expérience — trop peu de mots signale un manque d'expérience."
+      },
+      "sections": {
+        "title": "Vérification des sections",
+        "description": "Vérifie que toutes les sections essentielles du CV sont présentes (Résumé, Expérience, Formation, Compétences).",
+        "whyMatters": "Les sections manquantes sont des signaux d'alarme immédiats pour les recruteurs."
+      },
+      "contact": {
+        "title": "Coordonnées",
+        "description": "Vérifie la présence d'un e-mail, d'un téléphone et d'un profil LinkedIn.",
+        "whyMatters": "Les recruteurs ne peuvent pas vous embaucher s'ils ne peuvent pas vous contacter."
+      },
+      "readability": {
+        "title": "Score de lisibilité",
+        "description": "Mesure la facilité avec laquelle votre CV peut être parcouru rapidement.",
+        "whyMatters": "Les recruteurs passent en moyenne 6 à 7 secondes par CV — chaque mot doit compter."
+      },
+      "bulletImpact": {
+        "title": "Impact des puces",
+        "description": "Analyse si vos puces se concentrent sur les réalisations plutôt que sur une simple liste de responsabilités.",
+        "whyMatters": "Les puces axées sur les réalisations prouvent la valeur ; les listes de responsabilités non."
+      },
+      "keywordDensity": {
+        "title": "Densité des mots-clés",
+        "description": "Mesure la présence de mots-clés pertinents pour le secteur en vue de la correspondance IA-ATS.",
+        "whyMatters": "Trop peu de mots-clés = pas de correspondance IA-ATS. Trop = pénalité pour bourrage de mots-clés."
+      },
+      "improvementPotential": {
+        "title": "Potentiel d'amélioration",
+        "description": "Augmentation de score estimée possible grâce à l'optimisation.",
+        "whyMatters": "Montre la marge de progression pour surpasser les autres candidats."
+      },
+      "industryBenchmark": {
+        "title": "Référence du secteur",
+        "description": "Compare votre score à celui des autres dans votre domaine.",
+        "whyMatters": "Sachez où vous vous situez par rapport à votre concurrence directe."
+      },
+      "timeline": {
+        "title": "Chronologie de carrière",
+        "description": "Analyse l'ancienneté dans les postes, les écarts et les schémas de progression de carrière.",
+        "whyMatters": "Les recruteurs recherchent la stabilité et la croissance — les écarts doivent être expliqués."
+      },
+      "atsCompatibility": {
+        "title": "Compatibilité avec les systèmes IA-ATS",
+        "description": "Montre à quel point votre CV est correctement analysé par les principaux systèmes de suivi des candidatures alimentés par l'IA comme Workday, Greenhouse et Taleo.",
+        "whyMatters": "Différentes entreprises utilisent différents systèmes IA-ATS — sachez lesquels liront correctement votre CV."
+      }
     },
     "ctaCopy": {
       "coverLetter": {
-        "control": { "button": "Générer une lettre de motivation — {{price}}", "description": "Lettre de motivation générée par IA, adaptée à votre CV et au poste visé. Prête à envoyer en quelques minutes." },
-        "benefitFocused": { "button": "Obtenez votre lettre qui décroche des entretiens", "description": "Démarquez-vous parmi plus de 100 candidats avec une lettre de motivation personnalisée qui enthousiasme les recruteurs." },
-        "scarcity": { "button": "Créer une lettre de motivation maintenant — {{price}}", "description": "La plupart des candidats négligent les lettres de motivation. Prenez l'avantage avec une lettre personnalisée en 2 minutes." }
+        "control": {
+          "button": "Générer une lettre de motivation — {{price}}",
+          "description": "Lettre de motivation générée par IA, adaptée à votre CV et au poste visé. Prête à envoyer en quelques minutes."
+        },
+        "benefitFocused": {
+          "button": "Obtenez votre lettre qui décroche des entretiens",
+          "description": "Démarquez-vous parmi plus de 100 candidats avec une lettre de motivation personnalisée qui enthousiasme les recruteurs."
+        },
+        "scarcity": {
+          "button": "Créer une lettre de motivation maintenant — {{price}}",
+          "description": "La plupart des candidats négligent les lettres de motivation. Prenez l'avantage avec une lettre personnalisée en 2 minutes."
+        }
       },
       "keywordFix": {
-        "control": { "button": "Obtenir le rapport complet de mots-clés", "headline": "Envie de plus de 50 mots-clés du secteur ?" },
-        "benefitFocused": { "button": "Débloquer les mots-clés cachés", "headline": "Passez le filtre ATS" },
-        "scarcity": { "button": "Obtenez les mots-clés avant les autres", "headline": "Devancez 87 % des candidats" }
+        "control": {
+          "button": "Obtenir le rapport complet de mots-clés",
+          "headline": "Envie de plus de 50 mots-clés du secteur ?"
+        },
+        "benefitFocused": {
+          "button": "Débloquer les mots-clés cachés",
+          "headline": "Passez le filtre ATS"
+        },
+        "scarcity": {
+          "button": "Obtenez les mots-clés avant les autres",
+          "headline": "Devancez 87 % des candidats"
+        }
       },
       "premiumPackage": {
-        "control": { "button": "Acheter le forfait Premium — {{price}}", "headline": "Forfait CV Premium", "subtext": "Tout ce dont vous avez besoin pour décrocher des entretiens" },
-        "benefitFocused": { "button": "Soyez prêt pour l'entretien dès maintenant", "headline": "Décrochez le poste de vos rêves plus vite", "subtext": "3 fois plus de rappels pour entretien avec notre forfait complet" },
-        "scarcity": { "button": "Réservez votre forfait — Offre limitée", "headline": "Forfait CV Premium", "subtext": "Rejoignez plus de 10 000 personnes ayant décroché un entretien ce mois-ci" }
+        "control": {
+          "button": "Acheter le forfait Premium — {{price}}",
+          "headline": "Forfait CV Premium",
+          "subtext": "Tout ce dont vous avez besoin pour décrocher des entretiens"
+        },
+        "benefitFocused": {
+          "button": "Soyez prêt pour l'entretien dès maintenant",
+          "headline": "Décrochez le poste de vos rêves plus vite",
+          "subtext": "3 fois plus de rappels pour entretien avec notre forfait complet"
+        },
+        "scarcity": {
+          "button": "Réservez votre forfait — Offre limitée",
+          "headline": "Forfait CV Premium",
+          "subtext": "Rejoignez plus de 10 000 personnes ayant décroché un entretien ce mois-ci"
+        }
       },
       "tailoredResume": {
-        "control": { "button": "Aperçu du CV personnalisé", "description": "Aperçu gratuit, puis débloquez le forfait Premium complet avec CV personnalisé + lettre de motivation" },
-        "benefitFocused": { "button": "Voyez votre CV amélioré", "description": "Voyez exactement à quoi ressemblera votre CV une fois optimisé pour le poste visé" },
-        "scarcity": { "button": "Générer avant la fermeture", "description": "Aperçu limité disponible — voyez votre CV personnalisé avant de passer à la version supérieure" }
+        "control": {
+          "button": "Aperçu du CV personnalisé",
+          "description": "Aperçu gratuit, puis débloquez le forfait Premium complet avec CV personnalisé + lettre de motivation"
+        },
+        "benefitFocused": {
+          "button": "Voyez votre CV amélioré",
+          "description": "Voyez exactement à quoi ressemblera votre CV une fois optimisé pour le poste visé"
+        },
+        "scarcity": {
+          "button": "Générer avant la fermeture",
+          "description": "Aperçu limité disponible — voyez votre CV personnalisé avant de passer à la version supérieure"
+        }
       }
     },
     "addJobDescriptionToUnlock": "Ajoutez une description de poste ci-dessus pour débloquer",
@@ -1064,27 +1184,68 @@
       "copiedToClipboard": "Copié dans le presse-papiers",
       "shareWithFriend": "Partagez ceci avec un ami ou un mentor pour obtenir des commentaires"
     },
-    "nav": { "overview": "Aperçu", "metrics": "Indicateurs", "issues": "Problèmes", "jobMatch": "Correspondance emploi", "insights": "Analyses", "nextSteps": "Prochaines étapes" },
+    "nav": {
+      "overview": "Aperçu",
+      "metrics": "Indicateurs",
+      "issues": "Problèmes",
+      "jobMatch": "Correspondance emploi",
+      "insights": "Analyses",
+      "nextSteps": "Prochaines étapes"
+    },
     "exitOffer": {
       "title": "Avant de partir —",
       "withStats": "Il vous manque {{count}} mots-clés courants dans les postes de {{industry}}. Obtenez la liste de corrections pour le prix d'un café.",
       "noStats": "Identifiez vos principaux mots-clés manquants et obtenez une liste de corrections, pour le prix d'un café."
     },
-    "industryKeywordsSection": { "title": "Mots-clés du secteur et du poste", "subtitle": "Mots-clés pertinents pour votre domaine et le poste visé" },
-    "experienceFit": { "goodFit": "Bonne adéquation", "over": "Surqualifié", "under": "Sous-qualifié" },
-    "priority": { "must": "Indispensable", "should": "Recommandé", "nice": "Agréable" },
-    "atRiskOrNeedsImprovement": { "atRisk": "Risque d'être filtré", "needsImprovement": "Doit être amélioré pour être compétitif" },
-    "personalizedTipsSection": { "title": "Conseils personnalisés", "subtitle": "Analyses adaptées à votre profil" },
-    "elevatorPitchSection": { "title": "Pitch éclair de 60 secondes", "subtitle": "Pitch généré par IA à partir de votre CV" },
-    "recruiterViewSection": { "title": "Mode Vue du recruteur", "subtitle": "Voyez exactement ce que voient les recruteurs" },
-    "resumeRoastSection": { "title": "Critique du CV 🔥", "subtitle": "Brutalement honnête, hilarante et précise" },
-    "interviewCoachSection": { "title": "Coach d'entretien", "subtitle": "Entraînez-vous avec des questions générées par IA" },
-    "careerPathSection": { "title": "Simulateur de parcours de carrière", "subtitle": "3 avenirs possibles basés sur votre CV" },
+    "industryKeywordsSection": {
+      "title": "Mots-clés du secteur et du poste",
+      "subtitle": "Mots-clés pertinents pour votre domaine et le poste visé"
+    },
+    "experienceFit": {
+      "goodFit": "Bonne adéquation",
+      "over": "Surqualifié",
+      "under": "Sous-qualifié"
+    },
+    "priority": {
+      "must": "Indispensable",
+      "should": "Recommandé",
+      "nice": "Agréable"
+    },
+    "atRiskOrNeedsImprovement": {
+      "atRisk": "Risque d'être filtré",
+      "needsImprovement": "Doit être amélioré pour être compétitif"
+    },
+    "personalizedTipsSection": {
+      "title": "Conseils personnalisés",
+      "subtitle": "Analyses adaptées à votre profil"
+    },
+    "elevatorPitchSection": {
+      "title": "Pitch éclair de 60 secondes",
+      "subtitle": "Pitch généré par IA à partir de votre CV"
+    },
+    "recruiterViewSection": {
+      "title": "Mode Vue du recruteur",
+      "subtitle": "Voyez exactement ce que voient les recruteurs"
+    },
+    "resumeRoastSection": {
+      "title": "Critique du CV 🔥",
+      "subtitle": "Brutalement honnête, hilarante et précise"
+    },
+    "interviewCoachSection": {
+      "title": "Coach d'entretien",
+      "subtitle": "Entraînez-vous avec des questions générées par IA"
+    },
+    "careerPathSection": {
+      "title": "Simulateur de parcours de carrière",
+      "subtitle": "3 avenirs possibles basés sur votre CV"
+    },
     "fixChecklistTitle": "Liste de corrections",
     "checklistCompleted": "{{completed}}/{{total}} terminé(s)",
     "trackProgress": "Suivre la progression",
     "peerBenchmark": {
-      "above": "Au-dessus de la moyenne", "at": "Dans la moyenne", "below": "En dessous de la moyenne",
+      "above": "Au-dessus de la moyenne",
+      "at": "Dans la moyenne",
+      "below": "En dessous de la moyenne",
       "forAtsReadinessAmong": "pour la préparation ATS parmi {{cohort}}",
       "strongPosition": "✓ Position solide dans votre secteur",
       "roomForImprovement": "→ Marge d'amélioration",
@@ -1094,7 +1255,10 @@
       "weakResult": "D'autres candidats de votre domaine obtiennent de meilleurs scores. Appliquez les corrections ci-dessous pour améliorer vos chances."
     },
     "timelineProgression": {
-      "rapidLabel": "🚀 Rapide", "steadyLabel": "📈 Constant", "stagnantLabel": "📊 Stable", "unclearLabel": "❓ Incertain",
+      "rapidLabel": "🚀 Rapide",
+      "steadyLabel": "📈 Constant",
+      "stagnantLabel": "📊 Stable",
+      "unclearLabel": "❓ Incertain",
       "rapid": "Excellent ! Montre une forte progression et une responsabilité croissante",
       "steady": "Montre une croissance constante — les employeurs apprécient ce schéma",
       "stagnant": "Envisagez de mettre en avant des promotions ou de nouvelles responsabilités",
@@ -1103,13 +1267,26 @@
       "gapNoteDefault": "Les écarts sont fréquents — soyez simplement prêt à les expliquer en entretien"
     },
     "confidencePercent": "Confiance {{confidence}}",
-    "careerSituationLabel": { "careerChanger": "Changement de carrière détecté", "returningToWorkforce": "Retour sur le marché du travail", "militaryTransition": "Transition militaire", "recentGrad": "Jeune diplômé" },
+    "careerSituationLabel": {
+      "careerChanger": "Changement de carrière détecté",
+      "returningToWorkforce": "Retour sur le marché du travail",
+      "militaryTransition": "Transition militaire",
+      "recentGrad": "Jeune diplômé"
+    },
     "personalizedCareerInsightsTitle": "Analyses de carrière personnalisées",
     "tailoredForYou": "Adapté pour {{name}}",
     "you": "vous",
     "aiPowered": "Alimenté par l'IA",
-    "roleFit": { "naturalProgression": "Prochaine étape naturelle", "lateralMove": "Mouvement latéral", "stretchGoal": "Objectif ambitieux" },
-    "marketPosition": { "aboveMarket": "Au-dessus du marché", "atMarket": "Au niveau du marché", "belowMarket": "En dessous du marché" },
+    "roleFit": {
+      "naturalProgression": "Prochaine étape naturelle",
+      "lateralMove": "Mouvement latéral",
+      "stretchGoal": "Objectif ambitieux"
+    },
+    "marketPosition": {
+      "aboveMarket": "Au-dessus du marché",
+      "atMarket": "Au niveau du marché",
+      "belowMarket": "En dessous du marché"
+    },
     "formatRecommendationSection": {
       "title": "Recommandation de format de CV",
       "subtitle": "Style {{style}} recommandé pour {{industry}}",
@@ -1117,18 +1294,32 @@
       "fitsIndustry": "Votre format convient à votre secteur !",
       "needsAdjustment": "Le format doit être ajusté",
       "quickFixLabel": "Correction rapide : {{fix}}",
-      "layoutLabel": "Mise en page", "colorLabel": "Couleur", "visualsLabel": "Éléments visuels", "styleLabel": "Style",
-      "colorAcceptable": "✓ Acceptable", "colorAvoid": "✗ À éviter",
+      "layoutLabel": "Mise en page",
+      "colorLabel": "Couleur",
+      "visualsLabel": "Éléments visuels",
+      "styleLabel": "Style",
+      "colorAcceptable": "✓ Acceptable",
+      "colorAvoid": "✗ À éviter",
       "whatTopResumesDo": "Ce que font les meilleurs CV en {{industry}} :",
-      "importance": { "must": "Indispensable", "rec": "Recommandé", "opt": "Optionnel" },
+      "importance": {
+        "must": "Indispensable",
+        "rec": "Recommandé",
+        "opt": "Optionnel"
+      },
       "avoidForIndustry": "À éviter pour {{industry}} :",
       "idealTemplate": "Modèle idéal : "
     },
-    "columns": { "oneColumn": "Une colonne", "twoColumn": "Deux colonnes" },
+    "columns": {
+      "oneColumn": "Une colonne",
+      "twoColumn": "Deux colonnes"
+    },
     "atsParsingSection": {
       "title": "Compatibilité d'analyse ATS",
       "subtitle": "À quel point différents systèmes ATS peuvent lire votre CV",
-      "excellentRating": "✓ Excellente compatibilité", "goodRating": "✓ Bonne compatibilité", "fairRating": "⚠ Compatibilité correcte", "poorRating": "✗ Compatibilité faible",
+      "excellentRating": "✓ Excellente compatibilité",
+      "goodRating": "✓ Bonne compatibilité",
+      "fairRating": "⚠ Compatibilité correcte",
+      "poorRating": "✗ Compatibilité faible",
       "excellent": "Votre CV devrait être analysé correctement sur la plupart des plateformes ATS",
       "good": "La plupart des ATS liront correctement votre CV",
       "fair": "Certains ATS pourraient avoir du mal à analyser votre CV",
@@ -1136,12 +1327,29 @@
       "worksBestWith": "Fonctionne le mieux avec",
       "mayHaveIssues": "Pourrait avoir des problèmes avec"
     },
-    "confidenceLevel": { "high": "Élevée", "medium": "Moyenne", "low": "Faible" },
-    "bulletRewriteSection": { "title": "Puces réécrites par IA", "description": "Faites réécrire chaque puce avec un impact mesurable et des verbes percutants" },
-    "keywordGapSection": { "title": "Analyse complète des écarts de mots-clés" },
-    "careerStrategySection": { "title": "Stratégie de carrière personnalisée" },
+    "confidenceLevel": {
+      "high": "Élevée",
+      "medium": "Moyenne",
+      "low": "Faible"
+    },
+    "bulletRewriteSection": {
+      "title": "Puces réécrites par IA",
+      "description": "Faites réécrire chaque puce avec un impact mesurable et des verbes percutants"
+    },
+    "keywordGapSection": {
+      "title": "Analyse complète des écarts de mots-clés"
+    },
+    "careerStrategySection": {
+      "title": "Stratégie de carrière personnalisée"
+    },
     "sectionChecklistTitle": "Liste de vérification des sections",
-    "sectionLabels": { "contact": "Contact", "summary": "Résumé", "experience": "Expérience", "education": "Formation", "skills": "Compétences" },
+    "sectionLabels": {
+      "contact": "Contact",
+      "summary": "Résumé",
+      "experience": "Expérience",
+      "education": "Formation",
+      "skills": "Compétences"
+    },
     "bestValue": "Meilleur rapport qualité-prix",
     "wantToCompareFor": "Voulez-vous voir comment vous vous situez pour",
     "atCompany": "chez",
@@ -1151,52 +1359,123 @@
     "oneInterviewPaidForItself": "Un entretien = {{price}} amorti",
     "unlockWithFullAnalysis": "Débloquer avec l'analyse complète",
     "premiumFeatures": {
-      "completeAtsAnalysis": "Analyse ATS complète", "aiRewrittenResume": "CV réécrit par IA", "customCoverLetter": "Lettre de motivation personnalisée",
-      "beforeAfterComparison": "Comparaison avant/après", "keywordOptimization": "Optimisation des mots-clés", "priorityProcessing": "Traitement prioritaire"
+      "completeAtsAnalysis": "Analyse ATS complète",
+      "aiRewrittenResume": "CV réécrit par IA",
+      "customCoverLetter": "Lettre de motivation personnalisée",
+      "beforeAfterComparison": "Comparaison avant/après",
+      "keywordOptimization": "Optimisation des mots-clés",
+      "priorityProcessing": "Traitement prioritaire"
     },
     "keywordFixFeatures": {
-      "fullAtsBreakdown": "Analyse détaillée complète du score ATS", "bulletPointRewrites": "Réécriture des puces", "redFlagFixes": "Corrections détaillées des signaux d'alarme",
-      "linkedinOptimization": "Optimisation LinkedIn", "actionVerbReplacements": "Remplacement des verbes d'action", "quantificationSuggestions": "Suggestions de quantification",
-      "skillsGapAnalysis": "Analyse des écarts de compétences", "industryInsights": "Analyses spécifiques au secteur", "summaryRewrites": "Réécriture du résumé/titre",
+      "fullAtsBreakdown": "Analyse détaillée complète du score ATS",
+      "bulletPointRewrites": "Réécriture des puces",
+      "redFlagFixes": "Corrections détaillées des signaux d'alarme",
+      "linkedinOptimization": "Optimisation LinkedIn",
+      "actionVerbReplacements": "Remplacement des verbes d'action",
+      "quantificationSuggestions": "Suggestions de quantification",
+      "skillsGapAnalysis": "Analyse des écarts de compétences",
+      "industryInsights": "Analyses spécifiques au secteur",
+      "summaryRewrites": "Réécriture du résumé/titre",
       "prioritizedActionPlan": "Plan d'action prioritaire"
     },
     "premiumIncludesDetail": "{{subtext}} : analyse complète + CV réécrit par IA + lettre de motivation personnalisée."
   },
   "analysisPreviewSample": {
-    "breakdown": { "jobTitleMatch": "Correspondance du titre de poste", "skillsMatch": "Correspondance des compétences", "actionVerbUsage": "Utilisation des verbes d'action", "keywordCoverage": "Couverture des mots-clés", "formattingScore": "Score de mise en forme" },
-    "matchingSkills": ["Gestion de produit", "Agile/Scrum", "Gestion des parties prenantes", "Analyse de données"],
-    "missingKeywords": ["OKR", "Feuille de route produit", "Tests A/B"],
+    "breakdown": {
+      "jobTitleMatch": "Correspondance du titre de poste",
+      "skillsMatch": "Correspondance des compétences",
+      "actionVerbUsage": "Utilisation des verbes d'action",
+      "keywordCoverage": "Couverture des mots-clés",
+      "formattingScore": "Score de mise en forme"
+    },
+    "matchingSkills": [
+      "Gestion de produit",
+      "Agile/Scrum",
+      "Gestion des parties prenantes",
+      "Analyse de données"
+    ],
+    "missingKeywords": [
+      "OKR",
+      "Feuille de route produit",
+      "Tests A/B"
+    ],
     "alignmentSuggestion": "Ajoutez des indicateurs précis sur les lancements de produits et mentionnez votre expérience des OKR pour renforcer l'adéquation avec ce poste de PM senior.",
-    "detectedIssues": ["Les coordonnées pourraient ne pas être analysées par les anciens ATS", "Les dates des postes ne sont pas dans le format préféré", "Les puces spéciales gênent l'analyse"],
-    "criticalFixes": ["Utilisez le format Mois Année (ex. janv. 2020 - aujourd'hui)", "Remplacez les puces fantaisistes par des tirets ou des points standards", "Mettez l'e-mail et le téléphone sur une seule ligne"],
+    "detectedIssues": [
+      "Les coordonnées pourraient ne pas être analysées par les anciens ATS",
+      "Les dates des postes ne sont pas dans le format préféré",
+      "Les puces spéciales gênent l'analyse"
+    ],
+    "criticalFixes": [
+      "Utilisez le format Mois Année (ex. janv. 2020 - aujourd'hui)",
+      "Remplacez les puces fantaisistes par des tirets ou des points standards",
+      "Mettez l'e-mail et le téléphone sur une seule ligne"
+    ],
     "bulletOriginal": "Responsable de la gestion de l'équipe commerciale",
     "bulletImproved": "A dirigé une équipe commerciale de 12 personnes pour dépasser les objectifs trimestriels de 34 %, générant 1,9 M€ de nouveaux revenus",
     "bulletReason": "Ajout de la taille de l'équipe, d'un résultat mesurable et d'un impact précis sur les revenus",
     "resumeLengthReasoning": "Avec 8 ans d'expérience, un CV de 2 pages est optimal. Envisagez de condenser les postes plus anciens.",
-    "actionPlan": ["Ajoutez 3 à 5 réalisations chiffrées à votre poste le plus récent", "Remplacez les formulations passives par des verbes d'action forts", "Incluez les mots-clés « transversal » et « gestion des parties prenantes »", "Corrigez le format des dates pour la compatibilité ATS"],
-    "redFlags": ["Écart d'emploi de 8 mois non expliqué", "Énoncé d'objectif générique au lieu d'un résumé ciblé"],
+    "actionPlan": [
+      "Ajoutez 3 à 5 réalisations chiffrées à votre poste le plus récent",
+      "Remplacez les formulations passives par des verbes d'action forts",
+      "Incluez les mots-clés « transversal » et « gestion des parties prenantes »",
+      "Corrigez le format des dates pour la compatibilité ATS"
+    ],
+    "redFlags": [
+      "Écart d'emploi de 8 mois non expliqué",
+      "Énoncé d'objectif générique au lieu d'un résumé ciblé"
+    ],
     "linkedinHeadline": "Chef de Produit Senior | SaaS B2B | Croissance des revenus de 40 %",
     "linkedinAboutImprovement": "Votre section « À propos » manque de réalisations chiffrées. Ajoutez des indicateurs comme la taille de l'équipe, l'impact sur les revenus ou la croissance des utilisateurs.",
-    "linkedinRecommendations": ["Ajoutez une section en vedette présentant des projets clés", "Demandez 2-3 recommandations à des collègues", "Incluez des mots-clés spécifiques au secteur dans le titre"]
+    "linkedinRecommendations": [
+      "Ajoutez une section en vedette présentant des projets clés",
+      "Demandez 2-3 recommandations à des collègues",
+      "Incluez des mots-clés spécifiques au secteur dans le titre"
+    ]
   },
   "valueComparison": {
     "feature": "Caractéristique",
     "us": "Resume Booster",
     "them": "Rédacteur traditionnel",
     "rows": {
-      "timeToResults": { "feature": "Délai d'obtention des résultats", "us": "Moins de 60 secondes", "them": "3 à 7 jours ouvrables" },
-      "cost": { "feature": "Coût", "us": "5 à 25 $ paiement unique", "them": "150 à 500 $+" },
-      "atsOptimization": { "feature": "Optimisation ATS", "them": "Varie selon le rédacteur" },
-      "keywordAnalysis": { "feature": "Analyse des mots-clés", "us": "IA spécifique au secteur", "them": "Recherche manuelle" },
-      "revisions": { "feature": "Révisions incluses", "us": "Tentatives illimitées", "them": "1 à 2 cycles" },
-      "jobTailoring": { "feature": "Adaptation spécifique au poste", "them": "50-100 $ supplémentaires" }
+      "timeToResults": {
+        "feature": "Délai d'obtention des résultats",
+        "us": "Moins de 60 secondes",
+        "them": "3 à 7 jours ouvrables"
+      },
+      "cost": {
+        "feature": "Coût",
+        "us": "5 à 25 $ paiement unique",
+        "them": "150 à 500 $+"
+      },
+      "atsOptimization": {
+        "feature": "Optimisation ATS",
+        "them": "Varie selon le rédacteur"
+      },
+      "keywordAnalysis": {
+        "feature": "Analyse des mots-clés",
+        "us": "IA spécifique au secteur",
+        "them": "Recherche manuelle"
+      },
+      "revisions": {
+        "feature": "Révisions incluses",
+        "us": "Tentatives illimitées",
+        "them": "1 à 2 cycles"
+      },
+      "jobTailoring": {
+        "feature": "Adaptation spécifique au poste",
+        "them": "50-100 $ supplémentaires"
+      }
     }
   },
   "finalCtaExtra": {
     "powerUpAddOns": "Modules complémentaires boost",
     "resumeRoastFree": "Critique de CV GRATUITE",
     "viewAllProducts": "Voir tous les produits",
-    "addOnNames": { "resumeRoast": "Critique de CV", "interviewCoach": "Coach d'entretien", "careerPath": "Parcours de carrière" }
+    "addOnNames": {
+      "resumeRoast": "Critique de CV",
+      "interviewCoach": "Coach d'entretien",
+      "careerPath": "Parcours de carrière"
+    }
   },
   "productSuccess": {
     "verifyingPurchase": "Vérification de votre achat...",
@@ -1344,9 +1623,18 @@
           "Téléversez-le à nouveau pour vérifier votre score ATS amélioré"
         ],
         "nextSteps": [
-          { "title": "Revoir les mots-clés", "description": "Consultez l'analyse des mots-clés manquants ci-dessous" },
-          { "title": "Mettre à jour le CV", "description": "Ajoutez les mots-clés suggérés à votre CV" },
-          { "title": "Vérifier l'amélioration", "description": "Rescannez pour voir votre nouveau score ATS" }
+          {
+            "title": "Revoir les mots-clés",
+            "description": "Consultez l'analyse des mots-clés manquants ci-dessous"
+          },
+          {
+            "title": "Mettre à jour le CV",
+            "description": "Ajoutez les mots-clés suggérés à votre CV"
+          },
+          {
+            "title": "Vérifier l'amélioration",
+            "description": "Rescannez pour voir votre nouveau score ATS"
+          }
         ],
         "deliveryTime": "Instantané",
         "deliveryMethod": "Sur cette page"
@@ -1359,9 +1647,18 @@
           "Personnalisez la formule de salutation et les détails spécifiques à l'entreprise"
         ],
         "nextSteps": [
-          { "title": "Relire la lettre", "description": "Lisez votre lettre de motivation générée ci-dessous" },
-          { "title": "Copier ou télécharger", "description": "Obtenez votre lettre dans le format dont vous avez besoin" },
-          { "title": "Soumettre la candidature", "description": "Envoyez-la avec votre CV pour postuler" }
+          {
+            "title": "Relire la lettre",
+            "description": "Lisez votre lettre de motivation générée ci-dessous"
+          },
+          {
+            "title": "Copier ou télécharger",
+            "description": "Obtenez votre lettre dans le format dont vous avez besoin"
+          },
+          {
+            "title": "Soumettre la candidature",
+            "description": "Envoyez-la avec votre CV pour postuler"
+          }
         ],
         "deliveryTime": "Instantané",
         "deliveryMethod": "Sur cette page"
@@ -1375,9 +1672,18 @@
           "Copiez ou téléchargez vos nouveaux documents"
         ],
         "nextSteps": [
-          { "title": "Relire les documents", "description": "Consultez votre nouveau CV et votre lettre de motivation ci-dessous" },
-          { "title": "Copier et télécharger", "description": "Obtenez vos documents dans le format dont vous avez besoin" },
-          { "title": "Postuler maintenant", "description": "Soumettez votre candidature optimisée" }
+          {
+            "title": "Relire les documents",
+            "description": "Consultez votre nouveau CV et votre lettre de motivation ci-dessous"
+          },
+          {
+            "title": "Copier et télécharger",
+            "description": "Obtenez vos documents dans le format dont vous avez besoin"
+          },
+          {
+            "title": "Postuler maintenant",
+            "description": "Soumettez votre candidature optimisée"
+          }
         ],
         "deliveryTime": "Instantané",
         "deliveryMethod": "Sur cette page"
@@ -1391,9 +1697,18 @@
           "Conseils d'alignement LinkedIn inclus"
         ],
         "nextSteps": [
-          { "title": "Revoir l'audit", "description": "Consultez vos scores ATS avant/après" },
-          { "title": "Appliquer les mots-clés", "description": "Utilisez la banque de mots-clés de votre secteur" },
-          { "title": "Copier les sections", "description": "Utilisez les sections de CV optimisées" }
+          {
+            "title": "Revoir l'audit",
+            "description": "Consultez vos scores ATS avant/après"
+          },
+          {
+            "title": "Appliquer les mots-clés",
+            "description": "Utilisez la banque de mots-clés de votre secteur"
+          },
+          {
+            "title": "Copier les sections",
+            "description": "Utilisez les sections de CV optimisées"
+          }
         ],
         "deliveryTime": "Instantané",
         "deliveryMethod": "Sur cette page"
@@ -1407,9 +1722,18 @@
           "Partagez-les avec des amis ou de la famille si vous le souhaitez"
         ],
         "nextSteps": [
-          { "title": "Commencer à utiliser les crédits", "description": "Téléversez un CV pour utiliser votre premier crédit" },
-          { "title": "Suivre vos crédits", "description": "Consultez « Mes crédits » dans l'en-tête pour voir votre solde" },
-          { "title": "Postuler à plus d'offres", "description": "Utilisez des crédits pour chaque candidature visée" }
+          {
+            "title": "Commencer à utiliser les crédits",
+            "description": "Téléversez un CV pour utiliser votre premier crédit"
+          },
+          {
+            "title": "Suivre vos crédits",
+            "description": "Consultez « Mes crédits » dans l'en-tête pour voir votre solde"
+          },
+          {
+            "title": "Postuler à plus d'offres",
+            "description": "Utilisez des crédits pour chaque candidature visée"
+          }
         ],
         "deliveryTime": "Instantané",
         "deliveryMethod": "Crédits ajoutés au compte"
@@ -1422,9 +1746,18 @@
           "Les crédits n'expirent jamais"
         ],
         "nextSteps": [
-          { "title": "Téléversez votre CV", "description": "Allez sur la page d'accueil pour commencer à scanner" },
-          { "title": "Utilisez vos crédits", "description": "Chaque scan utilise un crédit de votre solde" },
-          { "title": "Vérifiez votre solde", "description": "Consultez les crédits restants dans « Mes crédits »" }
+          {
+            "title": "Téléversez votre CV",
+            "description": "Allez sur la page d'accueil pour commencer à scanner"
+          },
+          {
+            "title": "Utilisez vos crédits",
+            "description": "Chaque scan utilise un crédit de votre solde"
+          },
+          {
+            "title": "Vérifiez votre solde",
+            "description": "Consultez les crédits restants dans « Mes crédits »"
+          }
         ],
         "deliveryTime": "Instantané",
         "deliveryMethod": "Crédits ajoutés au compte"
@@ -1438,9 +1771,18 @@
           "Créé des correctifs prioritaires concrets que vous pouvez mettre en œuvre dès aujourd'hui"
         ],
         "nextSteps": [
-          { "title": "Consultez votre score", "description": "Voyez la décomposition de votre Career Signal Score" },
-          { "title": "Comprenez la perception", "description": "Découvrez comment les recruteurs voient votre carrière" },
-          { "title": "Appliquez les correctifs", "description": "Mettez en œuvre les recommandations prioritaires" }
+          {
+            "title": "Consultez votre score",
+            "description": "Voyez la décomposition de votre Career Signal Score"
+          },
+          {
+            "title": "Comprenez la perception",
+            "description": "Découvrez comment les recruteurs voient votre carrière"
+          },
+          {
+            "title": "Appliquez les correctifs",
+            "description": "Mettez en œuvre les recommandations prioritaires"
+          }
         ],
         "deliveryTime": "Instantané",
         "deliveryMethod": "Sur cette page"
@@ -1454,9 +1796,18 @@
           "Élaboré un plan d'action de 30 jours pour décrocher votre premier poste"
         ],
         "nextSteps": [
-          { "title": "Vérifiez votre préparation", "description": "Voyez si votre CV est prêt à être envoyé" },
-          { "title": "Postes cibles", "description": "Consultez les postes correspondant à votre profil" },
-          { "title": "Suivez le plan", "description": "Exécutez le plan d'action de 30 jours" }
+          {
+            "title": "Vérifiez votre préparation",
+            "description": "Voyez si votre CV est prêt à être envoyé"
+          },
+          {
+            "title": "Postes cibles",
+            "description": "Consultez les postes correspondant à votre profil"
+          },
+          {
+            "title": "Suivez le plan",
+            "description": "Exécutez le plan d'action de 30 jours"
+          }
         ],
         "deliveryTime": "Instantané",
         "deliveryMethod": "Sur cette page"
@@ -1469,9 +1820,18 @@
           "Entraînez-vous avec ces questions pour préparer votre prochain entretien"
         ],
         "nextSteps": [
-          { "title": "Revoir les questions", "description": "Parcourez chaque question personnalisée" },
-          { "title": "Pratiquer les réponses", "description": "Utilisez les structures de la méthode STAR fournies" },
-          { "title": "Renforcer la confiance", "description": "Répétez jusqu'à vous sentir prêt" }
+          {
+            "title": "Revoir les questions",
+            "description": "Parcourez chaque question personnalisée"
+          },
+          {
+            "title": "Pratiquer les réponses",
+            "description": "Utilisez les structures de la méthode STAR fournies"
+          },
+          {
+            "title": "Renforcer la confiance",
+            "description": "Répétez jusqu'à vous sentir prêt"
+          }
         ],
         "deliveryTime": "Instantané",
         "deliveryMethod": "Sur cette page"
@@ -1484,9 +1844,18 @@
           "Utilisez les étapes d'action pour poursuivre la direction de votre choix"
         ],
         "nextSteps": [
-          { "title": "Explorer les parcours", "description": "Consultez vos 3 options de trajectoire de carrière" },
-          { "title": "Identifier les écarts", "description": "Découvrez les compétences nécessaires pour chaque parcours" },
-          { "title": "Planifier à l'avance", "description": "Suivez le calendrier de votre parcours choisi" }
+          {
+            "title": "Explorer les parcours",
+            "description": "Consultez vos 3 options de trajectoire de carrière"
+          },
+          {
+            "title": "Identifier les écarts",
+            "description": "Découvrez les compétences nécessaires pour chaque parcours"
+          },
+          {
+            "title": "Planifier à l'avance",
+            "description": "Suivez le calendrier de votre parcours choisi"
+          }
         ],
         "deliveryTime": "Instantané",
         "deliveryMethod": "Sur cette page"
@@ -1499,9 +1868,18 @@
           "Vous vérifiez tout et le soumettez vous-même — rien n'est envoyé automatiquement"
         ],
         "nextSteps": [
-          { "title": "Revoir votre CV adapté", "description": "Vérifiez l'exactitude de la réécriture de l'IA" },
-          { "title": "Suivre la liste de vérification", "description": "Nous vous indiquons exactement quoi faire ensuite — c'est vous qui soumettez" },
-          { "title": "Exporter et postuler", "description": "Téléchargez le CV et la lettre de motivation, puis postulez sur le site de l'employeur" }
+          {
+            "title": "Revoir votre CV adapté",
+            "description": "Vérifiez l'exactitude de la réécriture de l'IA"
+          },
+          {
+            "title": "Suivre la liste de vérification",
+            "description": "Nous vous indiquons exactement quoi faire ensuite — c'est vous qui soumettez"
+          },
+          {
+            "title": "Exporter et postuler",
+            "description": "Téléchargez le CV et la lettre de motivation, puis postulez sur le site de l'employeur"
+          }
         ],
         "deliveryTime": "Instantané",
         "deliveryMethod": "Sur cette page"
@@ -1702,41 +2080,97 @@
   "personalization": {
     "experience": {
       "entry": {
-        "focusAreas": ["Formation et cours pertinents", "Stages et expérience de projet", "Compétences transférables de tout emploi", "Compétences techniques et outils appris"],
-        "avoidAreas": ["Déclarations d'objectifs (utilisez plutôt un résumé)", "Informations sur le lycée (sauf diplômé récent)", "Emplois non liés sans compétences transférables"],
+        "focusAreas": [
+          "Formation et cours pertinents",
+          "Stages et expérience de projet",
+          "Compétences transférables de tout emploi",
+          "Compétences techniques et outils appris"
+        ],
+        "avoidAreas": [
+          "Déclarations d'objectifs (utilisez plutôt un résumé)",
+          "Informations sur le lycée (sauf diplômé récent)",
+          "Emplois non liés sans compétences transférables"
+        ],
         "keyMessage": "Montrez votre potentiel et votre envie d'apprendre",
         "quantificationTip": "Même un poste de débutant a des chiffres : clients servis, projets terminés, heures de bénévolat"
       },
       "mid": {
-        "focusAreas": ["Réalisations concrètes avec des indicateurs", "Responsabilité et leadership croissants", "Développement de compétences spécialisées", "Collaboration interfonctionnelle"],
-        "avoidAreas": ["Tâches de niveau débutant (concentrez-vous sur la croissance)", "Trop de détails sur les anciens postes", "Compétences désormais attendues (logiciels de base)"],
+        "focusAreas": [
+          "Réalisations concrètes avec des indicateurs",
+          "Responsabilité et leadership croissants",
+          "Développement de compétences spécialisées",
+          "Collaboration interfonctionnelle"
+        ],
+        "avoidAreas": [
+          "Tâches de niveau débutant (concentrez-vous sur la croissance)",
+          "Trop de détails sur les anciens postes",
+          "Compétences désormais attendues (logiciels de base)"
+        ],
         "keyMessage": "Démontrez une croissance et un impact constants",
         "quantificationTip": "Montrez la progression : responsabilités accrues, projets plus importants, budgets plus importants"
       },
       "senior": {
-        "focusAreas": ["Leadership et développement d'équipe", "Initiatives stratégiques et résultats", "Impact interdépartemental", "Mentorat et transfert de connaissances"],
-        "avoidAreas": ["Détails tactiques (concentrez-vous sur la stratégie)", "Postes datant de 15+ ans en détail", "Compétences qui devraient être présumées à votre niveau"],
+        "focusAreas": [
+          "Leadership et développement d'équipe",
+          "Initiatives stratégiques et résultats",
+          "Impact interdépartemental",
+          "Mentorat et transfert de connaissances"
+        ],
+        "avoidAreas": [
+          "Détails tactiques (concentrez-vous sur la stratégie)",
+          "Postes datant de 15+ ans en détail",
+          "Compétences qui devraient être présumées à votre niveau"
+        ],
         "keyMessage": "Montrez une réflexion stratégique et un impact de leadership",
         "quantificationTip": "Concentrez-vous sur la taille de l'équipe, le budget géré, le chiffre d'affaires influencé, l'impact à l'échelle de l'organisation"
       },
       "executive": {
-        "focusAreas": ["Responsabilité du P&L et résultats commerciaux", "Transformation et conduite du changement", "Gestion du conseil d'administration et des parties prenantes", "Définition de la vision et construction de la culture"],
-        "avoidAreas": ["Détails d'exécution tactique", "Listes de compétences (présumées au niveau C)", "Détails de début de carrière au-delà des titres"],
+        "focusAreas": [
+          "Responsabilité du P&L et résultats commerciaux",
+          "Transformation et conduite du changement",
+          "Gestion du conseil d'administration et des parties prenantes",
+          "Définition de la vision et construction de la culture"
+        ],
+        "avoidAreas": [
+          "Détails d'exécution tactique",
+          "Listes de compétences (présumées au niveau C)",
+          "Détails de début de carrière au-delà des titres"
+        ],
         "keyMessage": "Montrez la transformation commerciale et la vision",
         "quantificationTip": "Chiffre d'affaires, part de marché, valorisation, transactions M&A, échelle organisationnelle"
       }
     },
     "geographic": {
-      "us": { "name": "États-Unis" },
-      "uk": { "name": "Royaume-Uni" },
-      "eu": { "name": "Union européenne" },
-      "de": { "name": "Allemagne" },
-      "au": { "name": "Australie" },
-      "in": { "name": "Inde" },
-      "ca": { "name": "Canada" },
-      "latam": { "name": "Amérique latine" },
-      "br": { "name": "Brésil" },
-      "mx": { "name": "Mexique" }
+      "us": {
+        "name": "États-Unis"
+      },
+      "uk": {
+        "name": "Royaume-Uni"
+      },
+      "eu": {
+        "name": "Union européenne"
+      },
+      "de": {
+        "name": "Allemagne"
+      },
+      "au": {
+        "name": "Australie"
+      },
+      "in": {
+        "name": "Inde"
+      },
+      "ca": {
+        "name": "Canada"
+      },
+      "latam": {
+        "name": "Amérique latine"
+      },
+      "br": {
+        "name": "Brésil"
+      },
+      "mx": {
+        "name": "Mexique"
+      }
     }
   },
   "personalizedInsights": {
@@ -1868,16 +2302,46 @@
       }
     },
     "atsPlatforms": {
-      "0": { "description": "Analyse des en-têtes de section, extraction de mots-clés, validation du format de date", "marketShare": "Grandes entreprises" },
-      "1": { "description": "Algorithmes de correspondance des compétences, notation du niveau d'expérience, indicateurs d'adéquation culturelle", "marketShare": "Tech et startups" },
-      "2": { "description": "Validation des coordonnées, cohérence de mise en forme, organisation des sections", "marketShare": "Marché intermédiaire" },
-      "3": { "description": "Analyse de la densité des mots-clés, correspondance des intitulés de poste, notation des qualifications", "marketShare": "Fortune 500" },
-      "4": { "description": "Analyse de la formation, détection des certifications, correspondance de la taxonomie des compétences", "marketShare": "Santé et commerce de détail" },
-      "5": { "description": "Analyse de la structure du CV, validation de la chronologie de l'expérience", "marketShare": "PME" },
-      "6": { "description": "Optimisation des mots-clés, algorithmes de classement des candidats", "marketShare": "Petites entreprises" },
-      "7": { "description": "Intégration des profils sociaux, suivi des recommandations, évaluation des compétences", "marketShare": "Grandes entreprises" },
-      "8": { "description": "Correspondance alimentée par l'IA, indicateurs de diversité, conformité mondiale", "marketShare": "Grandes entreprises mondiales" },
-      "9": { "description": "Analyse spécifique au recrutement, détection des contractuels, notation de la disponibilité", "marketShare": "Agences de recrutement" }
+      "0": {
+        "description": "Analyse des en-têtes de section, extraction de mots-clés, validation du format de date",
+        "marketShare": "Grandes entreprises"
+      },
+      "1": {
+        "description": "Algorithmes de correspondance des compétences, notation du niveau d'expérience, indicateurs d'adéquation culturelle",
+        "marketShare": "Tech et startups"
+      },
+      "2": {
+        "description": "Validation des coordonnées, cohérence de mise en forme, organisation des sections",
+        "marketShare": "Marché intermédiaire"
+      },
+      "3": {
+        "description": "Analyse de la densité des mots-clés, correspondance des intitulés de poste, notation des qualifications",
+        "marketShare": "Fortune 500"
+      },
+      "4": {
+        "description": "Analyse de la formation, détection des certifications, correspondance de la taxonomie des compétences",
+        "marketShare": "Santé et commerce de détail"
+      },
+      "5": {
+        "description": "Analyse de la structure du CV, validation de la chronologie de l'expérience",
+        "marketShare": "PME"
+      },
+      "6": {
+        "description": "Optimisation des mots-clés, algorithmes de classement des candidats",
+        "marketShare": "Petites entreprises"
+      },
+      "7": {
+        "description": "Intégration des profils sociaux, suivi des recommandations, évaluation des compétences",
+        "marketShare": "Grandes entreprises"
+      },
+      "8": {
+        "description": "Correspondance alimentée par l'IA, indicateurs de diversité, conformité mondiale",
+        "marketShare": "Grandes entreprises mondiales"
+      },
+      "9": {
+        "description": "Analyse spécifique au recrutement, détection des contractuels, notation de la disponibilité",
+        "marketShare": "Agences de recrutement"
+      }
     },
     "atsPlatformsTitle": "Plateformes ATS face auxquelles nous analysons",
     "atsPlatformsSubtitle": "Notre analyse est basée sur les règles d'analyse et les algorithmes de notation de ces grandes plateformes ATS, couvrant plus de 90 % du marché du travail.",
@@ -1885,13 +2349,34 @@
     "scoreCalculatedTitle": "Comment votre score ATS est calculé",
     "scoreCalculatedSubtitle": "Votre score est une combinaison pondérée de plusieurs facteurs qui déterminent la performance de votre CV dans les systèmes ATS.",
     "scoringFactors": {
-      "keywordOptimization": { "factor": "Optimisation des mots-clés", "description": "Mots-clés et compétences pertinents pour l'industrie mentionnés" },
-      "formatCompatibility": { "factor": "Compatibilité de format", "description": "Structure propre que l'ATS peut analyser correctement" },
-      "sectionCompleteness": { "factor": "Exhaustivité des sections", "description": "Toutes les sections attendues présentes et correctement étiquetées" },
-      "experienceClarity": { "factor": "Clarté de l'expérience", "description": "Intitulés de poste, dates et réalisations clairs" },
-      "actionVerbUsage": { "factor": "Utilisation de verbes d'action", "description": "Verbes d'action forts démontrant l'impact" },
-      "quantifiedAchievements": { "factor": "Réalisations quantifiées", "description": "Chiffres et indicateurs prouvant les résultats" },
-      "redFlagAbsence": { "factor": "Absence de signaux d'alerte", "description": "Aucun problème de mise en forme ou de contenu" }
+      "keywordOptimization": {
+        "factor": "Optimisation des mots-clés",
+        "description": "Mots-clés et compétences pertinents pour l'industrie mentionnés"
+      },
+      "formatCompatibility": {
+        "factor": "Compatibilité de format",
+        "description": "Structure propre que l'ATS peut analyser correctement"
+      },
+      "sectionCompleteness": {
+        "factor": "Exhaustivité des sections",
+        "description": "Toutes les sections attendues présentes et correctement étiquetées"
+      },
+      "experienceClarity": {
+        "factor": "Clarté de l'expérience",
+        "description": "Intitulés de poste, dates et réalisations clairs"
+      },
+      "actionVerbUsage": {
+        "factor": "Utilisation de verbes d'action",
+        "description": "Verbes d'action forts démontrant l'impact"
+      },
+      "quantifiedAchievements": {
+        "factor": "Réalisations quantifiées",
+        "description": "Chiffres et indicateurs prouvant les résultats"
+      },
+      "redFlagAbsence": {
+        "factor": "Absence de signaux d'alerte",
+        "description": "Aucun problème de mise en forme ou de contenu"
+      }
     },
     "continuousResearchTitle": "Recherche continue",
     "continuousResearchSubtitle": "Nous analysons en continu les offres d'emploi, les mises à jour des ATS et les tendances de recrutement pour garder notre analyse précise et à jour.",
@@ -2065,7 +2550,11 @@
     "metaDescription": "Nouvelles fonctionnalités, améliorations et corrections déployées sur Resume Booster. Mise à jour hebdomadaire.",
     "title": "Nouveautés",
     "subtitle": "Nous déployons des améliorations en continu. Voici ce qui a récemment changé.",
-    "tags": { "new": "Nouveau", "improved": "Amélioré", "fixed": "Corrigé" }
+    "tags": {
+      "new": "Nouveau",
+      "improved": "Amélioré",
+      "fixed": "Corrigé"
+    }
   },
   "changelogEntries": {
     "yourReportsSpeakYourLanguage": {
@@ -2152,5 +2641,184 @@
       "title": "Détection des PDF scannés",
       "description": "Si vous téléversez un PDF scanné basé sur une image sans texte sélectionnable, nous vous en informons désormais immédiatement au lieu d'analyser silencieusement un contenu vide — avec une suggestion claire de téléverser une version basée sur du texte ou de coller votre CV directement."
     }
+  },
+  "sampleReportPreview": {
+    "exploring": "Exploration du rapport d’exemple",
+    "hereIsWhat": "Voici ce que vous verrez après le téléchargement",
+    "sampleReport": "Rapport d’exemple",
+    "collapse": "Réduire",
+    "clickToExplore": "Cliquer pour explorer",
+    "atsScore": "Score de compatibilité ATS",
+    "needsImprovement": "Nécessite des améliorations",
+    "filteredOut": "Votre CV pourrait être filtré par 73 % des systèmes ATS",
+    "missingKeywords": "Mots-clés manquants",
+    "plusMore": "+8 autres",
+    "atsParsing": "Problèmes d’analyse ATS détectés",
+    "prioritizedImprovements": "Améliorations prioritaires",
+    "scoreBreakdown": "Décomposition du score",
+    "aiPoweredFixes": "Corrections alimentées par l’IA incluses",
+    "moreSuggestions": "+ autres suggestions personnalisées",
+    "readyToSeeScore": "Prêt à voir votre vrai score ?",
+    "uploadAbove": "Téléchargez votre CV ci-dessus pour obtenir des informations personnalisées",
+    "sampleData": "Ce sont des données d’exemple — votre rapport sera unique à votre CV",
+    "personalizedReport": "Votre rapport réel sera personnalisé selon votre CV",
+    "sections": {
+      "contactInfo": "Coordonnées",
+      "keywords": "Mots-clés",
+      "experience": "Expérience",
+      "education": "Formation"
+    },
+    "sectionDetails": {
+      "properlyFormatted": "Correctement formaté",
+      "missing12": "12 termes critiques manquants",
+      "weakActionVerbs": "Verbes d’action faibles",
+      "correctlyParsed": "Analysé correctement"
+    },
+    "atsIssues": {
+      "tablesDetected": "Tableaux détectés",
+      "tablesImpact": "Peut perturber l’analyse dans 60 % des systèmes ATS",
+      "graphicsUsed": "Graphiques/icônes utilisés",
+      "graphicsImpact": "Seront ignorés ou causeront des erreurs",
+      "nonStandardHeaders": "En-têtes de section non standard",
+      "headersImpact": "La section compétences pourrait ne pas être reconnue"
+    },
+    "fixes": {
+      "impactMetrics": "Indicateurs d’impact",
+      "impactMetricsFix": "Ajoutez 3 à 5 résultats quantifiés (p. ex., « Augmentation des ventes de 23 % »)",
+      "actionVerbs": "Verbes d’action",
+      "actionVerbsFix": "Remplacez les formulations passives comme « responsable de » par « Dirigé », « Propulsé », « Atteint »",
+      "keywords": "Mots-clés",
+      "keywordsFix": "Ajoutez les termes sectoriels manquants : « gestion des parties prenantes », « méthodologie Agile »",
+      "formatting": "Mise en forme",
+      "formattingFix": "Utilisez un format de date cohérent (MM/AAAA) dans tout le document",
+      "summary": "Résumé",
+      "summaryFix": "Ajoutez un résumé professionnel de 2 à 3 lignes en haut"
+    },
+    "priority": {
+      "high": "haute",
+      "medium": "moyenne",
+      "low": "faible"
+    },
+    "scoreLabels": {
+      "keywordMatch": "Correspondance des mots-clés",
+      "formatting": "Mise en forme",
+      "experienceRelevance": "Pertinence de l’expérience",
+      "education": "Formation"
+    },
+    "quickFixes": {
+      "fix1": "Ajoutez des réalisations quantifiées (chiffres, %, $)",
+      "fix2": "Remplacez « responsable de » par des verbes d’action",
+      "fix3": "Incluez 3 mots-clés sectoriels supplémentaires"
+    }
+  },
+  "peerBenchmark": {
+    "howYouCompare": "Comment vous vous comparez",
+    "percentile": "percentile",
+    "industryAverage": "Moyenne du secteur : {{score}}",
+    "topPerformers": "Meilleurs candidats : {{score}}+",
+    "toAverage": "Vers la moyenne",
+    "toTopTier": "Vers le niveau supérieur",
+    "topPerformer": "Vous êtes un candidat d’élite !",
+    "levelTip": "Conseil niveau {{level}}",
+    "benchmarkedAgainst": "Comparé aux autres candidats {{role}}",
+    "topPct": "Top {{pct}} % pour la préparation ATS parmi {{cohort}}",
+    "aroundAverage": "Préparation ATS dans la moyenne parmi {{cohort}}",
+    "belowAverage": "Préparation ATS en dessous de la moyenne parmi {{cohort}} (corrigeable)"
+  },
+  "skillsGapAnalysis": {
+    "title": "Analyse des lacunes de compétences pour {{role}}",
+    "roleMatchScore": "Score de correspondance au poste",
+    "strongMatch": "Forte correspondance",
+    "partialMatch": "Correspondance partielle",
+    "needsImprovement": "Nécessite des améliorations",
+    "keySkills": "Compétences clés",
+    "matched": "{{present}}/{{total}} correspondantes",
+    "missingSkills": "Compétences manquantes à ajouter :",
+    "atsKeywords": "Mots-clés ATS",
+    "found": "{{present}}/{{total}} trouvés",
+    "addKeywords": "Ajoutez ces mots-clés pour améliorer le score ATS :",
+    "priorityActions": "Actions prioritaires :",
+    "addSkill": "Ajoutez « {{skill}} » dans votre section compétences ou démontrez-le dans vos points d’expérience",
+    "includeKeyword": "Incluez « {{keyword}} » dans vos points de réalisations avec des métriques spécifiques"
+  },
+  "resumeBeforeAfter": {
+    "title": "Voyez la différence avec l’IA",
+    "before": "Avant",
+    "after": "Après",
+    "tagline": "Tout votre CV subit cette transformation"
+  },
+  "profileQuizModal": {
+    "title": "Configuration rapide du profil",
+    "description": "Aidez-nous à personnaliser votre analyse (30 secondes)",
+    "step1of3": "Étape 1 sur 3",
+    "step2of3": "Étape 2 sur 3",
+    "step3of3": "Étape 3 sur 3",
+    "whichIndustry": "Dans quel secteur travaillez-vous ?",
+    "experienceLevel": "Quel est votre niveau d’expérience ?",
+    "targetRole": "Quel poste visez-vous ?",
+    "skipForNow": "Passer pour l’instant",
+    "next": "Suivant",
+    "back": "Retour",
+    "typeYourRole": "Ou saisissez votre poste cible...",
+    "getPersonalized": "Obtenir une analyse personnalisée",
+    "industries": {
+      "technology": "Technologie",
+      "healthcare": "Santé",
+      "finance": "Finance et banque",
+      "marketing": "Marketing",
+      "sales": "Ventes",
+      "engineering": "Ingénierie",
+      "education": "Éducation",
+      "hr": "Ressources humaines",
+      "consulting": "Conseil",
+      "legal": "Juridique",
+      "retail": "Commerce de détail et e-commerce",
+      "other": "Autre"
+    },
+    "levels": {
+      "entry": "Niveau débutant",
+      "entryDesc": "0-2 ans",
+      "mid": "Niveau intermédiaire",
+      "midDesc": "3-5 ans",
+      "senior": "Niveau senior",
+      "seniorDesc": "6-10 ans",
+      "executive": "Direction",
+      "executiveDesc": "10+ ans"
+    }
+  },
+  "competitorBenchmark": {
+    "title": "Comment les meilleurs {{role}}s se démarquent",
+    "basedOnAnalysis": "Basé sur l’analyse de CV réussis de {{role}} qui obtiennent des entretiens",
+    "competitiveStanding": "Votre positionnement concurrentiel",
+    "topElements": "Vous avez les éléments que les meilleurs candidats incluent !",
+    "addFewMore": "Ajoutez quelques éléments pour rivaliser avec les meilleurs candidats",
+    "addElements": "Ajoutez ces éléments pour égaler les meilleurs candidats",
+    "sectionsAlwaysInclude": "Sections que les meilleurs {{role}}s incluent toujours :",
+    "whatMakesStandOut": "Ce qui fait se démarquer les meilleurs CV :",
+    "pctTopCandidates": "Quel % des meilleurs candidats incluent :",
+    "avgBullets": "Nombre moyen de points par poste :",
+    "youBullets": "Vous : {{count}}",
+    "topBullets": "Top : {{count}}",
+    "quickWins": "Gains rapides pour concurrencer :",
+    "addPortfolio": "Ajoutez des liens portfolio/GitHub ({{pct}} % des meilleurs candidats en ont)",
+    "addCerts": "Listez les certifications pertinentes ({{pct}} % des meilleurs candidats en ont)",
+    "addMetrics": "Ajoutez des métriques à vos points ({{pct}} % des meilleurs CV quantifient leurs réalisations)",
+    "addBullets": "Ajoutez {{count}} points supplémentaires par poste",
+    "checklistItems": {
+      "portfolio": "Liens portfolio/GitHub",
+      "certifications": "Certifications",
+      "quantifiedAchievements": "Réalisations quantifiées"
+    }
+  },
+  "jobComparisonCTA": {
+    "compareToRoles": "Voyez comment vous vous comparez à vos postes cibles :"
+  },
+  "floatingHelpButton": {
+    "needHelp": "Besoin d’aide ?",
+    "questionsOrFeedback": "Des questions ou des commentaires ? Écrivez-nous :"
+  },
+  "atsParseSimulator": {
+    "title": "Simulation d’analyse ATS",
+    "subtitle": "Vérifications mécaniques sur le même texte qu’un ATS extrairait — pas une estimation de l’IA"
   }
 }

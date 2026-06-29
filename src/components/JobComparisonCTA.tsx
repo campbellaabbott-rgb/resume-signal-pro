@@ -1,6 +1,7 @@
 import { ArrowRight, Briefcase, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface JobComparisonCTAProps {
   jobTitles: string[];
@@ -15,6 +16,7 @@ export function JobComparisonCTA({
   isLoading,
   className 
 }: JobComparisonCTAProps) {
+  const { t } = useTranslation();
   if (!jobTitles.length) return null;
 
   // Show up to 3 job CTAs
@@ -25,7 +27,7 @@ export function JobComparisonCTA({
     <div className={cn("space-y-4", className)}>
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Sparkles className="w-4 h-4 text-primary" />
-        <span>See how you compare to your target roles:</span>
+        <span>{t('jobComparisonCTA.compareToRoles')}</span>
       </div>
       
       <div className="flex flex-wrap gap-2">
