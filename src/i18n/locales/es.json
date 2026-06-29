@@ -602,10 +602,61 @@
     "dismiss": "Descartar"
   },
   "privacy": {
-    "title": "Política de Privacidad"
+    "title": "Política de Privacidad",
+    "legalNotice": "Esta política se proporciona únicamente en inglés. La versión en inglés es la versión autorizada y legalmente vinculante; las traducciones de la navegación de esta página se proporcionan solo por comodidad.",
+    "sections": {
+      "introduction": "1. Introducción",
+      "infoCollected": "2. Información que recopilamos",
+      "infoProvide": "2.1 Información que proporcionas",
+      "infoAuto": "2.2 Información recopilada automáticamente",
+      "legalBasis": "3. Base legal para el procesamiento (RGPD)",
+      "howWeUse": "4. Cómo usamos tu información",
+      "sharing": "5. Compartición y divulgación de datos",
+      "retention": "6. Retención de datos",
+      "rights": "7. Tus derechos y opciones",
+      "rightsAll": "7.1 Todos los usuarios",
+      "rightsGdpr": "7.2 Usuarios del EEE/Reino Unido (Derechos RGPD)",
+      "rightsCcpa": "7.3 Residentes de California (Derechos CCPA)",
+      "security": "8. Seguridad de los datos",
+      "cookies": "9. Cookies y tecnologías de seguimiento",
+      "international": "10. Transferencias internacionales de datos",
+      "thirdParty": "11. Servicios de terceros",
+      "children": "12. Privacidad de los menores",
+      "doNotTrack": "13. Señales de No Rastrear",
+      "changes": "14. Cambios a esta Política de Privacidad",
+      "dpo": "15. Responsable de Protección de Datos",
+      "jurisdictions": "16. Información adicional para jurisdicciones específicas",
+      "jurisdictionsEea": "16.1 Espacio Económico Europeo",
+      "jurisdictionsCa": "16.2 California",
+      "jurisdictionsNv": "16.3 Nevada",
+      "contactUs": "17. Contáctanos"
+    }
   },
   "terms": {
-    "title": "Términos de Servicio"
+    "title": "Términos de Servicio",
+    "legalNotice": "Estos términos se proporcionan únicamente en inglés. La versión en inglés es la versión autorizada y legalmente vinculante; las traducciones de la navegación de esta página se proporcionan solo por comodidad.",
+    "sections": {
+      "acceptance": "1. Aceptación de los términos",
+      "eligibility": "2. Elegibilidad",
+      "description": "3. Descripción del servicio",
+      "payment": "4. Condiciones de pago y política de reembolso",
+      "conduct": "5. Responsabilidades del usuario y conducta prohibida",
+      "ip": "6. Derechos de propiedad intelectual",
+      "warranties": "7. Exención de garantías",
+      "liability": "8. Limitación de responsabilidad",
+      "indemnification": "9. Indemnización",
+      "disputes": "10. Resolución de disputas y arbitraje",
+      "governingLaw": "11. Ley aplicable y jurisdicción",
+      "termination": "12. Terminación",
+      "forceMajeure": "13. Fuerza mayor",
+      "severability": "14. Divisibilidad",
+      "entireAgreement": "15. Acuerdo completo",
+      "waiver": "16. Renuncia",
+      "assignment": "17. Cesión",
+      "modifications": "18. Modificaciones a los términos",
+      "privacy": "19. Privacidad",
+      "contact": "20. Información de contacto"
+    }
   },
   "stickyCta": {
     "title": "¿Listo para conseguir más entrevistas?",

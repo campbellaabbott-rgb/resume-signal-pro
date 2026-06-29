@@ -602,10 +602,61 @@
     "dismiss": "Dismiss"
   },
   "privacy": {
-    "title": "Privacy Policy"
+    "title": "Privacy Policy",
+    "legalNotice": "This policy is provided in English only. The English version is the authoritative and legally binding version; translations of this page's navigation are provided for convenience only.",
+    "sections": {
+      "introduction": "1. Introduction",
+      "infoCollected": "2. Information We Collect",
+      "infoProvide": "2.1 Information You Provide",
+      "infoAuto": "2.2 Automatically Collected Information",
+      "legalBasis": "3. Legal Basis for Processing (GDPR)",
+      "howWeUse": "4. How We Use Your Information",
+      "sharing": "5. Data Sharing and Disclosure",
+      "retention": "6. Data Retention",
+      "rights": "7. Your Rights and Choices",
+      "rightsAll": "7.1 All Users",
+      "rightsGdpr": "7.2 EEA/UK Users (GDPR Rights)",
+      "rightsCcpa": "7.3 California Residents (CCPA Rights)",
+      "security": "8. Data Security",
+      "cookies": "9. Cookies and Tracking Technologies",
+      "international": "10. International Data Transfers",
+      "thirdParty": "11. Third-Party Services",
+      "children": "12. Children's Privacy",
+      "doNotTrack": "13. Do Not Track Signals",
+      "changes": "14. Changes to This Privacy Policy",
+      "dpo": "15. Data Protection Officer",
+      "jurisdictions": "16. Additional Information for Specific Jurisdictions",
+      "jurisdictionsEea": "16.1 European Economic Area",
+      "jurisdictionsCa": "16.2 California",
+      "jurisdictionsNv": "16.3 Nevada",
+      "contactUs": "17. Contact Us"
+    }
   },
   "terms": {
-    "title": "Terms of Service"
+    "title": "Terms of Service",
+    "legalNotice": "These terms are provided in English only. The English version is the authoritative and legally binding version; translations of this page's navigation are provided for convenience only.",
+    "sections": {
+      "acceptance": "1. Acceptance of Terms",
+      "eligibility": "2. Eligibility",
+      "description": "3. Description of Service",
+      "payment": "4. Payment Terms and Refund Policy",
+      "conduct": "5. User Responsibilities and Prohibited Conduct",
+      "ip": "6. Intellectual Property Rights",
+      "warranties": "7. Disclaimer of Warranties",
+      "liability": "8. Limitation of Liability",
+      "indemnification": "9. Indemnification",
+      "disputes": "10. Dispute Resolution and Arbitration",
+      "governingLaw": "11. Governing Law and Jurisdiction",
+      "termination": "12. Termination",
+      "forceMajeure": "13. Force Majeure",
+      "severability": "14. Severability",
+      "entireAgreement": "15. Entire Agreement",
+      "waiver": "16. Waiver",
+      "assignment": "17. Assignment",
+      "modifications": "18. Modifications to Terms",
+      "privacy": "19. Privacy",
+      "contact": "20. Contact Information"
+    }
   },
   "stickyCta": {
     "title": "Ready to land more interviews?",

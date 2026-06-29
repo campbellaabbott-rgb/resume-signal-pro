@@ -24,21 +24,22 @@ export default function Privacy() {
           </Link>
           
           <h1 className="text-4xl font-bold mb-8">{t('privacy.title')}</h1>
-          <p className="text-muted-foreground mb-8">{t('common.lastUpdated')}: {new Date().toLocaleDateString(dateLocale, { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-          
+          <p className="text-muted-foreground mb-4">{t('common.lastUpdated')}: {new Date().toLocaleDateString(dateLocale, { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+          <p className="text-sm text-muted-foreground/80 mb-8 italic">{t('privacy.legalNotice')}</p>
+
           <div className="prose prose-invert max-w-none space-y-8">
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">1. Introduction</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.introduction')}</h2>
               <p className="text-muted-foreground leading-relaxed">
                 Resume Booster ("we," "us," or "our") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our resume analysis service ("Service"). By using the Service, you consent to the data practices described in this policy. If you do not agree with our policies and practices, please do not use the Service.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">2. Information We Collect</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.infoCollected')}</h2>
               <p className="text-muted-foreground leading-relaxed mb-4">We collect the following categories of information:</p>
               
-              <h3 className="text-xl font-medium mb-3 text-foreground">2.1 Information You Provide</h3>
+              <h3 className="text-xl font-medium mb-3 text-foreground">{t('privacy.sections.infoProvide')}</h3>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2 mb-4">
                 <li><strong className="text-foreground">Resume Content:</strong> The text and information contained in resumes you upload (PDF, DOCX, or text format). <strong className="text-primary">Important: We do not store your resume content.</strong> Your resume is processed in real-time to generate your analysis and is immediately discarded afterward.</li>
                 <li><strong className="text-foreground">LinkedIn Profile Data:</strong> Professional information you provide via URL scraping or direct text input. This data is also processed in real-time and not stored.</li>
@@ -46,7 +47,7 @@ export default function Privacy() {
                 <li><strong className="text-foreground">Payment Information:</strong> Processed by Stripe; we receive confirmation of payment but do not store full credit card numbers</li>
               </ul>
 
-              <h3 className="text-xl font-medium mb-3 text-foreground">2.2 Automatically Collected Information</h3>
+              <h3 className="text-xl font-medium mb-3 text-foreground">{t('privacy.sections.infoAuto')}</h3>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                 <li><strong className="text-foreground">Device Information:</strong> Browser type, operating system, device identifiers</li>
                 <li><strong className="text-foreground">Usage Data:</strong> Pages visited, time spent, features used, click patterns</li>
@@ -56,7 +57,7 @@ export default function Privacy() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">3. Legal Basis for Processing (GDPR)</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.legalBasis')}</h2>
               <p className="text-muted-foreground leading-relaxed mb-4">For users in the European Economic Area (EEA), we process your data based on:</p>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                 <li><strong className="text-foreground">Contract Performance:</strong> Processing necessary to provide the Service you purchased</li>
@@ -67,7 +68,7 @@ export default function Privacy() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">4. How We Use Your Information</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.howWeUse')}</h2>
               <p className="text-muted-foreground leading-relaxed mb-4">We use collected information for:</p>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                 <li>Providing and delivering resume analysis services</li>
@@ -82,7 +83,7 @@ export default function Privacy() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">5. Data Sharing and Disclosure</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.sharing')}</h2>
               <p className="text-muted-foreground leading-relaxed mb-4">
                 <strong className="text-foreground">We do not sell your personal information.</strong> We may share data with:
               </p>
@@ -103,7 +104,7 @@ export default function Privacy() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">6. Data Retention</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.retention')}</h2>
               <p className="text-muted-foreground leading-relaxed mb-4">We retain your information as follows:</p>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                 <li><strong className="text-foreground">Resume and LinkedIn Content:</strong> <strong className="text-primary">Not retained.</strong> Your resume and LinkedIn data are processed in real-time and immediately discarded. We do not store your original resume content.</li>
@@ -115,9 +116,9 @@ export default function Privacy() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">7. Your Rights and Choices</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.rights')}</h2>
               
-              <h3 className="text-xl font-medium mb-3 text-foreground">7.1 All Users</h3>
+              <h3 className="text-xl font-medium mb-3 text-foreground">{t('privacy.sections.rightsAll')}</h3>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2 mb-4">
                 <li>Access your personal data</li>
                 <li>Request deletion of your data</li>
@@ -125,7 +126,7 @@ export default function Privacy() {
                 <li>Request a copy of your data in portable format</li>
               </ul>
 
-              <h3 className="text-xl font-medium mb-3 text-foreground">7.2 EEA/UK Users (GDPR Rights)</h3>
+              <h3 className="text-xl font-medium mb-3 text-foreground">{t('privacy.sections.rightsGdpr')}</h3>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2 mb-4">
                 <li><strong className="text-foreground">Right to Access:</strong> Request copies of your personal data</li>
                 <li><strong className="text-foreground">Right to Rectification:</strong> Request correction of inaccurate data</li>
@@ -137,7 +138,7 @@ export default function Privacy() {
                 <li><strong className="text-foreground">Right to Lodge a Complaint:</strong> File a complaint with a supervisory authority</li>
               </ul>
 
-              <h3 className="text-xl font-medium mb-3 text-foreground">7.3 California Residents (CCPA Rights)</h3>
+              <h3 className="text-xl font-medium mb-3 text-foreground">{t('privacy.sections.rightsCcpa')}</h3>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                 <li><strong className="text-foreground">Right to Know:</strong> Request disclosure of personal information collected</li>
                 <li><strong className="text-foreground">Right to Delete:</strong> Request deletion of personal information</li>
@@ -147,7 +148,7 @@ export default function Privacy() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">8. Data Security</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.security')}</h2>
               <p className="text-muted-foreground leading-relaxed mb-4">
                 We implement appropriate technical and organizational security measures to protect your information, including:
               </p>
@@ -163,7 +164,7 @@ export default function Privacy() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">9. Cookies and Tracking Technologies</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.cookies')}</h2>
               <p className="text-muted-foreground leading-relaxed mb-4">We use cookies and similar technologies for:</p>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                 <li><strong className="text-foreground">Essential Cookies:</strong> Required for Service functionality (session management, security)</li>
@@ -176,14 +177,14 @@ export default function Privacy() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">10. International Data Transfers</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.international')}</h2>
               <p className="text-muted-foreground leading-relaxed">
                 Your information may be transferred to and processed in countries other than your country of residence, including the United States. These countries may have different data protection laws. We ensure appropriate safeguards are in place for such transfers, including Standard Contractual Clauses approved by the European Commission where applicable.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">11. Third-Party Services</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.thirdParty')}</h2>
               <p className="text-muted-foreground leading-relaxed mb-4">Our Service integrates with third-party services with their own privacy policies:</p>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                 <li><strong className="text-foreground">Stripe:</strong> <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">stripe.com/privacy</a></li>
@@ -195,54 +196,54 @@ export default function Privacy() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">12. Children's Privacy</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.children')}</h2>
               <p className="text-muted-foreground leading-relaxed">
                 Our Service is not intended for individuals under 18 years of age. We do not knowingly collect personal information from children. If you are a parent or guardian and believe your child has provided us with personal information, please contact us immediately. If we become aware that we have collected personal information from a child without parental consent, we will take steps to delete that information.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">13. Do Not Track Signals</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.doNotTrack')}</h2>
               <p className="text-muted-foreground leading-relaxed">
                 Some browsers have a "Do Not Track" feature that signals websites not to track browsing activity. Our Service does not currently respond to Do Not Track signals, as there is no consistent industry standard for compliance.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">14. Changes to This Privacy Policy</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.changes')}</h2>
               <p className="text-muted-foreground leading-relaxed">
                 We may update this Privacy Policy from time to time. We will notify you of material changes by posting the new policy on this page and updating the "Last updated" date. For significant changes, we may provide additional notice (such as email notification). Your continued use of the Service after changes constitutes acceptance of the updated policy.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">15. Data Protection Officer</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.dpo')}</h2>
               <p className="text-muted-foreground leading-relaxed">
                 For questions about this Privacy Policy, to exercise your data rights, or for privacy-related concerns, please contact our Data Protection team at: <a href="mailto:resumeboostersupp@gmail.com" className="text-primary hover:underline">resumeboostersupp@gmail.com</a>
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">16. Additional Information for Specific Jurisdictions</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.jurisdictions')}</h2>
               
-              <h3 className="text-xl font-medium mb-3 text-foreground">16.1 European Economic Area</h3>
+              <h3 className="text-xl font-medium mb-3 text-foreground">{t('privacy.sections.jurisdictionsEea')}</h3>
               <p className="text-muted-foreground leading-relaxed mb-4">
                 If you are located in the EEA, our legal basis for collecting and using personal information depends on the data concerned and the context. We will only process personal data where we have a valid legal basis.
               </p>
 
-              <h3 className="text-xl font-medium mb-3 text-foreground">16.2 California</h3>
+              <h3 className="text-xl font-medium mb-3 text-foreground">{t('privacy.sections.jurisdictionsCa')}</h3>
               <p className="text-muted-foreground leading-relaxed mb-4">
                 California Civil Code Section 1798.83 permits California residents to request information regarding disclosure of personal information to third parties for direct marketing purposes. We do not disclose personal information to third parties for their direct marketing purposes.
               </p>
 
-              <h3 className="text-xl font-medium mb-3 text-foreground">16.3 Nevada</h3>
+              <h3 className="text-xl font-medium mb-3 text-foreground">{t('privacy.sections.jurisdictionsNv')}</h3>
               <p className="text-muted-foreground leading-relaxed">
                 Nevada residents may opt out of the sale of personal information. We do not currently sell personal information as defined under Nevada law.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">17. Contact Us</h2>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.contactUs')}</h2>
               <p className="text-muted-foreground leading-relaxed">
                 For any questions or concerns regarding this Privacy Policy or our data practices, please contact us at:
               </p>

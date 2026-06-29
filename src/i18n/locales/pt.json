@@ -602,10 +602,61 @@
     "dismiss": "Dispensar"
   },
   "privacy": {
-    "title": "Política de Privacidade"
+    "title": "Política de Privacidade",
+    "legalNotice": "Esta política é fornecida apenas em inglês. A versão em inglês é a versão autorizada e juridicamente vinculativa; as traduções da navegação desta página são fornecidas apenas por conveniência.",
+    "sections": {
+      "introduction": "1. Introdução",
+      "infoCollected": "2. Informações que recolhemos",
+      "infoProvide": "2.1 Informações que fornece",
+      "infoAuto": "2.2 Informações recolhidas automaticamente",
+      "legalBasis": "3. Base legal para o processamento (RGPD)",
+      "howWeUse": "4. Como usamos as suas informações",
+      "sharing": "5. Partilha e divulgação de dados",
+      "retention": "6. Retenção de dados",
+      "rights": "7. Os seus direitos e opções",
+      "rightsAll": "7.1 Todos os utilizadores",
+      "rightsGdpr": "7.2 Utilizadores do EEE/Reino Unido (Direitos RGPD)",
+      "rightsCcpa": "7.3 Residentes da Califórnia (Direitos CCPA)",
+      "security": "8. Segurança dos dados",
+      "cookies": "9. Cookies e tecnologias de rastreamento",
+      "international": "10. Transferências internacionais de dados",
+      "thirdParty": "11. Serviços de terceiros",
+      "children": "12. Privacidade das crianças",
+      "doNotTrack": "13. Sinais Não Rastrear",
+      "changes": "14. Alterações a esta Política de Privacidade",
+      "dpo": "15. Encarregado de Proteção de Dados",
+      "jurisdictions": "16. Informações adicionais para jurisdições específicas",
+      "jurisdictionsEea": "16.1 Espaço Económico Europeu",
+      "jurisdictionsCa": "16.2 Califórnia",
+      "jurisdictionsNv": "16.3 Nevada",
+      "contactUs": "17. Contacte-nos"
+    }
   },
   "terms": {
-    "title": "Termos de Serviço"
+    "title": "Termos de Serviço",
+    "legalNotice": "Estes termos são fornecidos apenas em inglês. A versão em inglês é a versão autorizada e juridicamente vinculativa; as traduções da navegação desta página são fornecidas apenas por conveniência.",
+    "sections": {
+      "acceptance": "1. Aceitação dos termos",
+      "eligibility": "2. Elegibilidade",
+      "description": "3. Descrição do serviço",
+      "payment": "4. Condições de pagamento e política de reembolso",
+      "conduct": "5. Responsabilidades do utilizador e conduta proibida",
+      "ip": "6. Direitos de propriedade intelectual",
+      "warranties": "7. Isenção de garantias",
+      "liability": "8. Limitação de responsabilidade",
+      "indemnification": "9. Indemnização",
+      "disputes": "10. Resolução de disputas e arbitragem",
+      "governingLaw": "11. Lei aplicável e jurisdição",
+      "termination": "12. Rescisão",
+      "forceMajeure": "13. Força maior",
+      "severability": "14. Divisibilidade",
+      "entireAgreement": "15. Acordo integral",
+      "waiver": "16. Renúncia",
+      "assignment": "17. Cessão",
+      "modifications": "18. Modificações aos termos",
+      "privacy": "19. Privacidade",
+      "contact": "20. Informações de contacto"
+    }
   },
   "stickyCta": {
     "title": "Pronto para conseguir mais entrevistas?",

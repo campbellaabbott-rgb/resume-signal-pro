@@ -602,10 +602,61 @@
     "dismiss": "Schließen"
   },
   "privacy": {
-    "title": "Datenschutzrichtlinie"
+    "title": "Datenschutzrichtlinie",
+    "legalNotice": "Diese Richtlinie wird nur in englischer Sprache bereitgestellt. Die englische Version ist die maßgebliche und rechtlich verbindliche Version; Übersetzungen der Navigation dieser Seite dienen nur der Bequemlichkeit.",
+    "sections": {
+      "introduction": "1. Einleitung",
+      "infoCollected": "2. Welche Informationen wir sammeln",
+      "infoProvide": "2.1 Von dir bereitgestellte Informationen",
+      "infoAuto": "2.2 Automatisch erfasste Informationen",
+      "legalBasis": "3. Rechtsgrundlage für die Verarbeitung (DSGVO)",
+      "howWeUse": "4. Wie wir deine Informationen verwenden",
+      "sharing": "5. Datenweitergabe und Offenlegung",
+      "retention": "6. Datenspeicherung",
+      "rights": "7. Deine Rechte und Wahlmöglichkeiten",
+      "rightsAll": "7.1 Alle Nutzer",
+      "rightsGdpr": "7.2 EWR/UK-Nutzer (DSGVO-Rechte)",
+      "rightsCcpa": "7.3 Einwohner Kaliforniens (CCPA-Rechte)",
+      "security": "8. Datensicherheit",
+      "cookies": "9. Cookies und Tracking-Technologien",
+      "international": "10. Internationale Datenübertragungen",
+      "thirdParty": "11. Dienste von Drittanbietern",
+      "children": "12. Datenschutz für Kinder",
+      "doNotTrack": "13. Do-Not-Track-Signale",
+      "changes": "14. Änderungen dieser Datenschutzrichtlinie",
+      "dpo": "15. Datenschutzbeauftragter",
+      "jurisdictions": "16. Zusätzliche Informationen für bestimmte Rechtsordnungen",
+      "jurisdictionsEea": "16.1 Europäischer Wirtschaftsraum",
+      "jurisdictionsCa": "16.2 Kalifornien",
+      "jurisdictionsNv": "16.3 Nevada",
+      "contactUs": "17. Kontaktiere uns"
+    }
   },
   "terms": {
-    "title": "Nutzungsbedingungen"
+    "title": "Nutzungsbedingungen",
+    "legalNotice": "Diese Bedingungen werden nur in englischer Sprache bereitgestellt. Die englische Version ist die maßgebliche und rechtlich verbindliche Version; Übersetzungen der Navigation dieser Seite dienen nur der Bequemlichkeit.",
+    "sections": {
+      "acceptance": "1. Annahme der Bedingungen",
+      "eligibility": "2. Berechtigung",
+      "description": "3. Beschreibung des Dienstes",
+      "payment": "4. Zahlungsbedingungen und Rückerstattungsrichtlinie",
+      "conduct": "5. Nutzerverantwortlichkeiten und untersagtes Verhalten",
+      "ip": "6. Rechte am geistigen Eigentum",
+      "warranties": "7. Gewährleistungsausschluss",
+      "liability": "8. Haftungsbeschränkung",
+      "indemnification": "9. Freistellung",
+      "disputes": "10. Streitbeilegung und Schiedsverfahren",
+      "governingLaw": "11. Anwendbares Recht und Gerichtsstand",
+      "termination": "12. Kündigung",
+      "forceMajeure": "13. Höhere Gewalt",
+      "severability": "14. Salvatorische Klausel",
+      "entireAgreement": "15. Gesamte Vereinbarung",
+      "waiver": "16. Verzicht",
+      "assignment": "17. Abtretung",
+      "modifications": "18. Änderungen der Bedingungen",
+      "privacy": "19. Datenschutz",
+      "contact": "20. Kontaktinformationen"
+    }
   },
   "stickyCta": {
     "title": "Bereit für mehr Vorstellungsgespräche?",

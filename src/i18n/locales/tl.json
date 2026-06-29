@@ -602,10 +602,61 @@
     "dismiss": "I-dismiss"
   },
   "privacy": {
-    "title": "Patakaran sa Privacy"
+    "title": "Patakaran sa Privacy",
+    "legalNotice": "Available lamang ang patakarang ito sa Ingles. Ang bersyong Ingles ay ang opisyal at legal na may-bisang bersyon; ang mga pagsasalin ng navigation ng pahinang ito ay para lamang sa kaginhawaan.",
+    "sections": {
+      "introduction": "1. Panimula",
+      "infoCollected": "2. Impormasyong Kinokolekta Namin",
+      "infoProvide": "2.1 Impormasyong Ibinibigay Mo",
+      "infoAuto": "2.2 Awtomatikong Nakokolektang Impormasyon",
+      "legalBasis": "3. Legal na Batayan para sa Pagproseso (GDPR)",
+      "howWeUse": "4. Paano Namin Ginagamit ang Iyong Impormasyon",
+      "sharing": "5. Pagbabahagi at Pagsisiwalat ng Data",
+      "retention": "6. Pagpapanatili ng Data",
+      "rights": "7. Ang Iyong mga Karapatan at Pagpipilian",
+      "rightsAll": "7.1 Lahat ng Gumagamit",
+      "rightsGdpr": "7.2 Mga Gumagamit sa EEA/UK (Karapatan sa GDPR)",
+      "rightsCcpa": "7.3 Mga Residente ng California (Karapatan sa CCPA)",
+      "security": "8. Seguridad ng Data",
+      "cookies": "9. Cookies at Teknolohiya ng Pagsubaybay",
+      "international": "10. Internasyonal na Paglipat ng Data",
+      "thirdParty": "11. Mga Serbisyo ng Third-Party",
+      "children": "12. Privacy ng mga Bata",
+      "doNotTrack": "13. Mga Signal na 'Do Not Track'",
+      "changes": "14. Mga Pagbabago sa Patakarang ito sa Privacy",
+      "dpo": "15. Opisyal sa Proteksyon ng Data",
+      "jurisdictions": "16. Karagdagang Impormasyon para sa Tukoy na Hurisdiksyon",
+      "jurisdictionsEea": "16.1 European Economic Area",
+      "jurisdictionsCa": "16.2 California",
+      "jurisdictionsNv": "16.3 Nevada",
+      "contactUs": "17. Makipag-ugnayan sa Amin"
+    }
   },
   "terms": {
-    "title": "Mga Tuntunin ng Serbisyo"
+    "title": "Mga Tuntunin ng Serbisyo",
+    "legalNotice": "Available lamang ang mga tuntuning ito sa Ingles. Ang bersyong Ingles ay ang opisyal at legal na may-bisang bersyon; ang mga pagsasalin ng navigation ng pahinang ito ay para lamang sa kaginhawaan.",
+    "sections": {
+      "acceptance": "1. Pagtanggap ng mga Tuntunin",
+      "eligibility": "2. Pagiging Kwalipikado",
+      "description": "3. Paglalarawan ng Serbisyo",
+      "payment": "4. Mga Tuntunin sa Pagbabayad at Patakaran sa Refund",
+      "conduct": "5. Mga Responsibilidad ng Gumagamit at Ipinagbabawal na Gawi",
+      "ip": "6. Mga Karapatan sa Intellectual Property",
+      "warranties": "7. Disclaimer ng mga Warranty",
+      "liability": "8. Limitasyon ng Pananagutan",
+      "indemnification": "9. Indemnification",
+      "disputes": "10. Resolusyon ng Hidwaan at Arbitrasyon",
+      "governingLaw": "11. Namamahalang Batas at Hurisdiksyon",
+      "termination": "12. Pagwakas",
+      "forceMajeure": "13. Force Majeure",
+      "severability": "14. Severability",
+      "entireAgreement": "15. Kabuuang Kasunduan",
+      "waiver": "16. Pagwawaiver",
+      "assignment": "17. Pagtatalaga",
+      "modifications": "18. Mga Pagbabago sa Tuntunin",
+      "privacy": "19. Privacy",
+      "contact": "20. Impormasyon sa Pag-Contact"
+    }
   },
   "stickyCta": {
     "title": "Handa nang makakuha ng mas maraming interview?",

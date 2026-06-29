@@ -602,10 +602,61 @@
     "dismiss": "Ignorer"
   },
   "privacy": {
-    "title": "Politique de confidentialité"
+    "title": "Politique de confidentialité",
+    "legalNotice": "Cette politique est fournie uniquement en anglais. La version anglaise est la version officielle et juridiquement contraignante ; les traductions de la navigation de cette page sont fournies uniquement à titre de commodité.",
+    "sections": {
+      "introduction": "1. Introduction",
+      "infoCollected": "2. Informations que nous collectons",
+      "infoProvide": "2.1 Informations que vous fournissez",
+      "infoAuto": "2.2 Informations collectées automatiquement",
+      "legalBasis": "3. Base légale du traitement (RGPD)",
+      "howWeUse": "4. Comment nous utilisons vos informations",
+      "sharing": "5. Partage et divulgation des données",
+      "retention": "6. Conservation des données",
+      "rights": "7. Vos droits et choix",
+      "rightsAll": "7.1 Tous les utilisateurs",
+      "rightsGdpr": "7.2 Utilisateurs de l'EEE/Royaume-Uni (droits RGPD)",
+      "rightsCcpa": "7.3 Résidents de Californie (droits CCPA)",
+      "security": "8. Sécurité des données",
+      "cookies": "9. Cookies et technologies de suivi",
+      "international": "10. Transferts internationaux de données",
+      "thirdParty": "11. Services tiers",
+      "children": "12. Confidentialité des enfants",
+      "doNotTrack": "13. Signaux Ne pas suivre",
+      "changes": "14. Modifications de cette politique de confidentialité",
+      "dpo": "15. Délégué à la protection des données",
+      "jurisdictions": "16. Informations supplémentaires pour certaines juridictions",
+      "jurisdictionsEea": "16.1 Espace économique européen",
+      "jurisdictionsCa": "16.2 Californie",
+      "jurisdictionsNv": "16.3 Nevada",
+      "contactUs": "17. Nous contacter"
+    }
   },
   "terms": {
-    "title": "Conditions d'utilisation"
+    "title": "Conditions d'utilisation",
+    "legalNotice": "Ces conditions sont fournies uniquement en anglais. La version anglaise est la version officielle et juridiquement contraignante ; les traductions de la navigation de cette page sont fournies uniquement à titre de commodité.",
+    "sections": {
+      "acceptance": "1. Acceptation des conditions",
+      "eligibility": "2. Admissibilité",
+      "description": "3. Description du service",
+      "payment": "4. Conditions de paiement et politique de remboursement",
+      "conduct": "5. Responsabilités de l'utilisateur et conduite interdite",
+      "ip": "6. Droits de propriété intellectuelle",
+      "warranties": "7. Exclusion de garanties",
+      "liability": "8. Limitation de responsabilité",
+      "indemnification": "9. Indemnisation",
+      "disputes": "10. Résolution des litiges et arbitrage",
+      "governingLaw": "11. Droit applicable et juridiction",
+      "termination": "12. Résiliation",
+      "forceMajeure": "13. Force majeure",
+      "severability": "14. Divisibilité",
+      "entireAgreement": "15. Intégralité de l'accord",
+      "waiver": "16. Renonciation",
+      "assignment": "17. Cession",
+      "modifications": "18. Modifications des conditions",
+      "privacy": "19. Confidentialité",
+      "contact": "20. Coordonnées"
+    }
   },
   "stickyCta": {
     "title": "Prêt à décrocher plus d'entretiens ?",

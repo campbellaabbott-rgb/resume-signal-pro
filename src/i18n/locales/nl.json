@@ -602,10 +602,61 @@
     "dismiss": "Negeren"
   },
   "privacy": {
-    "title": "Privacybeleid"
+    "title": "Privacybeleid",
+    "legalNotice": "Dit beleid wordt alleen in het Engels aangeboden. De Engelse versie is de gezaghebbende en juridisch bindende versie; vertalingen van de navigatie op deze pagina worden alleen voor het gemak aangeboden.",
+    "sections": {
+      "introduction": "1. Inleiding",
+      "infoCollected": "2. Informatie die we verzamelen",
+      "infoProvide": "2.1 Informatie die je verstrekt",
+      "infoAuto": "2.2 Automatisch verzamelde informatie",
+      "legalBasis": "3. Rechtsgrondslag voor verwerking (AVG)",
+      "howWeUse": "4. Hoe we jouw informatie gebruiken",
+      "sharing": "5. Delen en openbaarmaking van gegevens",
+      "retention": "6. Gegevensbewaring",
+      "rights": "7. Jouw rechten en keuzes",
+      "rightsAll": "7.1 Alle gebruikers",
+      "rightsGdpr": "7.2 EER/VK-gebruikers (AVG-rechten)",
+      "rightsCcpa": "7.3 Inwoners van Californië (CCPA-rechten)",
+      "security": "8. Gegevensbeveiliging",
+      "cookies": "9. Cookies en trackingtechnologieën",
+      "international": "10. Internationale gegevensoverdrachten",
+      "thirdParty": "11. Diensten van derden",
+      "children": "12. Privacy van kinderen",
+      "doNotTrack": "13. Niet-volgen-signalen",
+      "changes": "14. Wijzigingen in dit privacybeleid",
+      "dpo": "15. Functionaris voor gegevensbescherming",
+      "jurisdictions": "16. Extra informatie voor specifieke rechtsgebieden",
+      "jurisdictionsEea": "16.1 Europese Economische Ruimte",
+      "jurisdictionsCa": "16.2 Californië",
+      "jurisdictionsNv": "16.3 Nevada",
+      "contactUs": "17. Neem contact met ons op"
+    }
   },
   "terms": {
-    "title": "Servicevoorwaarden"
+    "title": "Servicevoorwaarden",
+    "legalNotice": "Deze voorwaarden worden alleen in het Engels aangeboden. De Engelse versie is de gezaghebbende en juridisch bindende versie; vertalingen van de navigatie op deze pagina worden alleen voor het gemak aangeboden.",
+    "sections": {
+      "acceptance": "1. Aanvaarding van de voorwaarden",
+      "eligibility": "2. Geschiktheid",
+      "description": "3. Beschrijving van de dienst",
+      "payment": "4. Betalingsvoorwaarden en terugbetalingsbeleid",
+      "conduct": "5. Verantwoordelijkheden van de gebruiker en verboden gedrag",
+      "ip": "6. Intellectuele-eigendomsrechten",
+      "warranties": "7. Disclaimer van garanties",
+      "liability": "8. Beperking van aansprakelijkheid",
+      "indemnification": "9. Vrijwaring",
+      "disputes": "10. Geschillenbeslechting en arbitrage",
+      "governingLaw": "11. Toepasselijk recht en jurisdictie",
+      "termination": "12. Beëindiging",
+      "forceMajeure": "13. Overmacht",
+      "severability": "14. Scheidbaarheid",
+      "entireAgreement": "15. Volledige overeenkomst",
+      "waiver": "16. Verklaring van afstand",
+      "assignment": "17. Overdracht",
+      "modifications": "18. Wijzigingen van de voorwaarden",
+      "privacy": "19. Privacy",
+      "contact": "20. Contactgegevens"
+    }
   },
   "stickyCta": {
     "title": "Klaar voor meer sollicitatiegesprekken?",
