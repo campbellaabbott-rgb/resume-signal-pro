@@ -4,6 +4,7 @@ import {
   Linkedin, Eye, Search, Star, MessageSquare, Sparkles, FileText, BookOpen, Layout, FileStack,
   ChevronUp, Menu, FileWarning, ListChecks, Users, Hash, Clock, Calendar, Link, Award, Image, Camera
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
@@ -222,16 +223,16 @@ function calculateResumeScore(data: AnalysisData): { score: number; label: strin
   let color: string;
   
   if (score >= 85) {
-    label = "Excellent";
+    label = "excellent";
     color = "text-success";
   } else if (score >= 70) {
-    label = "Good";
+    label = "good";
     color = "text-success";
   } else if (score >= 50) {
-    label = "Needs Improvement";
+    label = "needsImprovement";
     color = "text-warning";
   } else {
-    label = "Poor";
+    label = "poor";
     color = "text-destructive";
   }
   
@@ -239,6 +240,7 @@ function calculateResumeScore(data: AnalysisData): { score: number; label: strin
 }
 
 function CopyButton({ text, label }: { text: string; label: string }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   
   const handleCopy = async () => {
@@ -267,7 +269,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
       {copied ? (
         <>
           <Check className="w-3 h-3" />
-          Copied!
+          {t('analysisResults.copied')}
         </>
       ) : (
         <>
@@ -281,6 +283,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
 
 // Section Navigation Component
 function SectionNav({ sections, activeSection }: { sections: { id: string; label: string; icon: React.ElementType }[]; activeSection: string }) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   
   const scrollToSection = (id: string) => {
@@ -297,11 +300,11 @@ function SectionNav({ sections, activeSection }: { sections: { id: string; label
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="md:hidden p-3 rounded-full bg-card border border-border shadow-lg hover:shadow-xl transition-all duration-200"
-        aria-label="Toggle navigation"
+        aria-label={t('analysisResults.toggleNavigation')}
       >
         <Menu className="w-5 h-5 text-foreground" />
       </button>
-      
+
       {/* Navigation panel */}
       <div className={cn(
         "absolute bottom-full right-0 mb-3 p-2 rounded-xl bg-card/95 backdrop-blur-md border border-border shadow-xl transition-all duration-300",
@@ -310,7 +313,7 @@ function SectionNav({ sections, activeSection }: { sections: { id: string; label
       )}>
         <div className="flex flex-col gap-1 min-w-[180px]">
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground px-3 py-1.5">
-            Jump to Section
+            {t('analysisResults.jumpToSection')}
           </span>
           {sections.map((section) => {
             const Icon = section.icon;
@@ -338,6 +341,7 @@ function SectionNav({ sections, activeSection }: { sections: { id: string; label
 
 // Back to top button
 function BackToTop() {
+  const { t } = useTranslation();
   const [show, setShow] = useState(false);
   
   useEffect(() => {
@@ -354,7 +358,7 @@ function BackToTop() {
     <button
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
       className="fixed bottom-6 left-6 z-50 p-3 rounded-full bg-card border border-border shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 no-print"
-      aria-label="Back to top"
+      aria-label={t('analysisResults.backToTop')}
     >
       <ChevronUp className="w-5 h-5 text-foreground" />
     </button>
@@ -362,6 +366,7 @@ function BackToTop() {
 }
 
 export function AnalysisResults({ data }: AnalysisResultsProps) {
+  const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState("overview");
   
   // Safe array access
@@ -373,29 +378,29 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
   const linkedIn = data.linkedInAnalysis;
   
   const stats = [
-    { label: "Bullets Improved", value: optimizedBullets.length, icon: TrendingUp },
-    { label: "Verb Upgrades", value: actionVerbs.length, icon: Zap },
-    { label: "Keywords Added", value: keywords.length, icon: Lightbulb },
-    { label: "Issues Found", value: redFlags.length, icon: AlertTriangle },
+    { label: t('analysisResults.stats.bulletsImproved'), value: optimizedBullets.length, icon: TrendingUp },
+    { label: t('analysisResults.stats.verbUpgrades'), value: actionVerbs.length, icon: Zap },
+    { label: t('analysisResults.stats.keywordsAdded'), value: keywords.length, icon: Lightbulb },
+    { label: t('analysisResults.stats.issuesFound'), value: redFlags.length, icon: AlertTriangle },
   ];
 
   const resumeScore = calculateResumeScore(data);
   
   // Build sections for navigation
   const sections = [
-    { id: "overview", label: "Overview", icon: Gauge },
-    ...(data.jobDescriptionAlignment ? [{ id: "jdalignment", label: "JD Match", icon: Target }] : []),
-    ...(linkedIn ? [{ id: "linkedin", label: "LinkedIn", icon: Linkedin }] : []),
-    ...(data.atsParsingIssues && safeArray(data.atsParsingIssues.detectedIssues).length > 0 ? [{ id: "parsing", label: "Parsing Issues", icon: FileWarning }] : []),
-    ...(data.summaryRewrite?.professionalSummary ? [{ id: "summary", label: "Summary", icon: User }] : []),
-    ...(data.industryInsights?.whatRecruitersLookFor ? [{ id: "industry", label: "Industry", icon: Target }] : []),
-    ...(data.skillsGap && (safeArray(data.skillsGap.missingTechnical).length > 0 || safeArray(data.skillsGap.missingSoft).length > 0) ? [{ id: "skills", label: "Skills Gap", icon: Brain }] : []),
-    ...(data.achievementMetrics ? [{ id: "metrics", label: "Metrics Guide", icon: TrendingUp }] : []),
-    ...(optimizedBullets.length > 0 ? [{ id: "bullets", label: "Bullets", icon: CheckCircle2 }] : []),
-    ...(actionVerbs.length > 0 ? [{ id: "verbs", label: "Verbs", icon: Zap }] : []),
-    ...(keywords.length > 0 ? [{ id: "keywords", label: "Keywords", icon: Lightbulb }] : []),
-    ...(redFlags.length > 0 ? [{ id: "redflags", label: "Red Flags", icon: AlertTriangle }] : []),
-    ...(actionPlan.length > 0 ? [{ id: "actionplan", label: "Action Plan", icon: ListChecks }] : []),
+    { id: "overview", label: t('analysisResults.nav.overview'), icon: Gauge },
+    ...(data.jobDescriptionAlignment ? [{ id: "jdalignment", label: t('analysisResults.nav.jdMatch'), icon: Target }] : []),
+    ...(linkedIn ? [{ id: "linkedin", label: t('analysisResults.nav.linkedin'), icon: Linkedin }] : []),
+    ...(data.atsParsingIssues && safeArray(data.atsParsingIssues.detectedIssues).length > 0 ? [{ id: "parsing", label: t('analysisResults.nav.parsingIssues'), icon: FileWarning }] : []),
+    ...(data.summaryRewrite?.professionalSummary ? [{ id: "summary", label: t('analysisResults.nav.summary'), icon: User }] : []),
+    ...(data.industryInsights?.whatRecruitersLookFor ? [{ id: "industry", label: t('analysisResults.nav.industry'), icon: Target }] : []),
+    ...(data.skillsGap && (safeArray(data.skillsGap.missingTechnical).length > 0 || safeArray(data.skillsGap.missingSoft).length > 0) ? [{ id: "skills", label: t('analysisResults.nav.skillsGap'), icon: Brain }] : []),
+    ...(data.achievementMetrics ? [{ id: "metrics", label: t('analysisResults.nav.metricsGuide'), icon: TrendingUp }] : []),
+    ...(optimizedBullets.length > 0 ? [{ id: "bullets", label: t('analysisResults.nav.bullets'), icon: CheckCircle2 }] : []),
+    ...(actionVerbs.length > 0 ? [{ id: "verbs", label: t('analysisResults.nav.verbs'), icon: Zap }] : []),
+    ...(keywords.length > 0 ? [{ id: "keywords", label: t('analysisResults.nav.keywords'), icon: Lightbulb }] : []),
+    ...(redFlags.length > 0 ? [{ id: "redflags", label: t('analysisResults.nav.redFlags'), icon: AlertTriangle }] : []),
+    ...(actionPlan.length > 0 ? [{ id: "actionplan", label: t('analysisResults.nav.actionPlan'), icon: ListChecks }] : []),
   ];
   
   // Track active section on scroll
@@ -425,8 +430,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
         <div className="max-w-4xl mx-auto space-y-10">
           {/* Print-only header */}
           <div className="hidden print:block print-header">
-            <h1 className="text-2xl font-bold mb-2">Resume Booster Analysis</h1>
-            <p className="text-sm text-gray-600">Generated on {new Date().toLocaleDateString()}</p>
+            <h1 className="text-2xl font-bold mb-2">{t('analysisResults.printTitle')}</h1>
+            <p className="text-sm text-gray-600">{t('analysisResults.generatedOn', { date: new Date().toLocaleDateString() })}</p>
           </div>
 
           {/* Header with stats */}
@@ -434,13 +439,13 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             <div className="no-print">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/20 text-sm text-success mb-4 animate-fade-in">
                 <CheckCircle2 className="w-4 h-4" />
-                Analysis Complete {data.hasLinkedIn && "+ LinkedIn"}
+                {data.hasLinkedIn ? t('analysisResults.analysisCompleteWithLinkedIn') : t('analysisResults.analysisComplete')}
               </div>
               <h2 className="text-3xl md:text-4xl font-bold animate-fade-in" style={{ animationDelay: "0.1s" }}>
-                Your {data.hasLinkedIn ? "Full Profile" : "Resume"} Breakdown
+                {data.hasLinkedIn ? t('analysisResults.fullProfileBreakdown') : t('analysisResults.resumeBreakdown')}
               </h2>
               <p className="text-muted-foreground mt-3 max-w-lg mx-auto animate-fade-in" style={{ animationDelay: "0.2s" }}>
-                Here is what we found and how to fix it. Apply these changes to increase your interview chances.
+                {t('analysisResults.heroSubtitle')}
               </p>
               
               {/* Industry & Experience Badge */}
@@ -455,26 +460,26 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   {data.experienceLevel && (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs font-medium capitalize">
                       <User className="w-3 h-3" />
-                      {data.experienceLevel} level
+                      {t('analysisResults.experienceLevel', { level: data.experienceLevel })}
                     </span>
                   )}
                   {data.hasLinkedIn && (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0A66C2]/10 text-[#0A66C2] text-xs font-medium">
                       <Linkedin className="w-3 h-3" />
-                      LinkedIn included
+                      {t('analysisResults.linkedInIncluded')}
                     </span>
                   )}
                   {data.jobDescriptionAlignment && (
                     <span className={cn(
                       "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold",
-                      data.jobDescriptionAlignment.matchScore >= 70 
-                        ? "bg-success/10 text-success border border-success/20" 
-                        : data.jobDescriptionAlignment.matchScore >= 50 
+                      data.jobDescriptionAlignment.matchScore >= 70
+                        ? "bg-success/10 text-success border border-success/20"
+                        : data.jobDescriptionAlignment.matchScore >= 50
                           ? "bg-warning/10 text-warning border border-warning/20"
                           : "bg-destructive/10 text-destructive border border-destructive/20"
                     )}>
                       <Target className="w-3.5 h-3.5" />
-                      {data.jobDescriptionAlignment.matchScore}% JD Match
+                      {t('analysisResults.jdMatchPercent', { score: data.jobDescriptionAlignment.matchScore })}
                     </span>
                   )}
                 </div>
@@ -487,7 +492,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Gauge className="w-5 h-5 text-primary" />
-                    <span className="text-sm font-medium text-muted-foreground">Resume Strength</span>
+                    <span className="text-sm font-medium text-muted-foreground">{t('analysisResults.resumeStrength')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={cn("text-2xl font-bold tabular-nums", resumeScore.color)}>
@@ -496,18 +501,18 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     <span className="text-muted-foreground">/100</span>
                   </div>
                 </div>
-                <Progress 
-                  value={resumeScore.score} 
+                <Progress
+                  value={resumeScore.score}
                   className="h-3 bg-muted"
                 />
                 <div className="flex justify-between items-center mt-3">
                   <span className={cn("text-sm font-medium", resumeScore.color)}>
-                    {resumeScore.label}
+                    {t(`analysisResults.scoreLabels.${resumeScore.label}`)}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {resumeScore.score >= 70
-                      ? "Above average for your industry"
-                      : "Apply our suggestions to improve"}
+                      ? t('analysisResults.aboveAverage')
+                      : t('analysisResults.applySuggestions')}
                   </span>
                 </div>
               </div>
@@ -534,7 +539,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                             ? "text-warning"
                             : "text-destructive"
                       )} />
-                      <span className="text-sm font-medium text-muted-foreground">Job Description Match</span>
+                      <span className="text-sm font-medium text-muted-foreground">{t('analysisResults.jobDescriptionMatch')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={cn(
@@ -561,11 +566,11 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     )}
                   />
                   <p className="text-xs text-muted-foreground mt-3">
-                    {data.jobDescriptionAlignment.matchScore >= 70 
-                      ? "Strong alignment with job requirements" 
-                      : data.jobDescriptionAlignment.matchScore >= 50 
-                        ? "Moderate alignment - see suggestions below"
-                        : "Low alignment - significant gaps identified"}
+                    {data.jobDescriptionAlignment.matchScore >= 70
+                      ? t('analysisResults.strongAlignment')
+                      : data.jobDescriptionAlignment.matchScore >= 50
+                        ? t('analysisResults.moderateAlignment')
+                        : t('analysisResults.lowAlignment')}
                   </p>
                 </div>
               </div>
@@ -578,7 +583,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <BarChart3 className="w-5 h-5 text-primary" />
-                      <span className="text-sm font-medium text-muted-foreground">ATS Compatibility Score</span>
+                      <span className="text-sm font-medium text-muted-foreground">{t('analysisResults.atsCompatibilityScore')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={cn("text-2xl font-bold tabular-nums", data.atsScore.score >= 70 ? "text-success" : data.atsScore.score >= 50 ? "text-warning" : "text-destructive")}>
@@ -592,11 +597,11 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   {data.atsScore.breakdown && (
                     <div className="space-y-2 mb-4">
                       {[
-                        { key: 'jobTitleMatch', label: 'Job Title Match', max: 15, value: data.atsScore.breakdown.jobTitleMatch },
-                        { key: 'skillsMatch', label: 'Skills Match', max: 30, value: data.atsScore.breakdown.skillsMatch },
-                        { key: 'actionVerbUsage', label: 'Action Verb Usage', max: 15, value: data.atsScore.breakdown.actionVerbUsage },
-                        { key: 'keywordCoverage', label: 'Keyword Coverage', max: 20, value: data.atsScore.breakdown.keywordCoverage },
-                        { key: 'formattingScore', label: 'Formatting/Parsing', max: 20, value: data.atsScore.breakdown.formattingScore },
+                        { key: 'jobTitleMatch', label: t('analysisResults.breakdown.jobTitleMatch'), max: 15, value: data.atsScore.breakdown.jobTitleMatch },
+                        { key: 'skillsMatch', label: t('analysisResults.breakdown.skillsMatch'), max: 30, value: data.atsScore.breakdown.skillsMatch },
+                        { key: 'actionVerbUsage', label: t('analysisResults.breakdown.actionVerbUsage'), max: 15, value: data.atsScore.breakdown.actionVerbUsage },
+                        { key: 'keywordCoverage', label: t('analysisResults.breakdown.keywordCoverage'), max: 20, value: data.atsScore.breakdown.keywordCoverage },
+                        { key: 'formattingScore', label: t('analysisResults.breakdown.formattingScore'), max: 20, value: data.atsScore.breakdown.formattingScore },
                       ].map(({ key, label, max, value }) => (
                         <div key={key} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                           <span className="text-sm text-muted-foreground">{label}</span>
@@ -616,7 +621,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   
                   {safeArray(data.atsScore.improvements).length > 0 && (
                     <div className="space-y-2">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top Improvements</span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('analysisResults.topImprovements')}</span>
                       <ul className="space-y-1">
                         {data.atsScore.improvements.slice(0, 3).map((item, i) => (
                           <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
@@ -638,7 +643,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <Target className="w-5 h-5 text-success" />
-                      <span className="text-sm font-medium">Job Description Match</span>
+                      <span className="text-sm font-medium">{t('analysisResults.jobDescriptionMatch')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={cn("text-2xl font-bold tabular-nums", data.jobDescriptionAlignment.matchScore >= 70 ? "text-success" : data.jobDescriptionAlignment.matchScore >= 50 ? "text-warning" : "text-destructive")}>
@@ -654,7 +659,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   {/* Extracted Keywords */}
                   {safeArray(data.jobDescriptionAlignment.extractedKeywords).length > 0 && (
                     <div className="mb-4">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">JD Keywords Found</span>
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('analysisResults.jdKeywordsFound')}</span>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {safeArray(data.jobDescriptionAlignment.extractedKeywords).map((kw, i) => (
                           <span key={i} className="px-2 py-1 rounded-lg bg-success/10 text-success text-xs font-medium">{kw}</span>
@@ -666,7 +671,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   {/* Missing Keywords */}
                   {safeArray(data.jobDescriptionAlignment.missingKeywords).length > 0 && (
                     <div className="mb-4">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Missing from Resume</span>
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('analysisResults.missingFromResume')}</span>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {safeArray(data.jobDescriptionAlignment.missingKeywords).map((kw, i) => (
                           <span key={i} className="px-2 py-1 rounded-lg bg-warning/10 text-warning text-xs font-medium">{kw}</span>
@@ -678,7 +683,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   {/* Suggested Edits */}
                   {safeArray(data.jobDescriptionAlignment.suggestedEdits).length > 0 && (
                     <div className="space-y-3 mt-4">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Suggested Edits</span>
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('analysisResults.suggestedEdits')}</span>
                       {safeArray(data.jobDescriptionAlignment.suggestedEdits).map((edit, i) => (
                         <div key={i} className="p-3 rounded-xl bg-muted/30 space-y-2">
                           <div className="flex items-center gap-2">
@@ -687,7 +692,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                           </div>
                           <p className="text-xs text-destructive line-through">{edit.currentText}</p>
                           <p className="text-xs text-success">{edit.suggestedText}</p>
-                          <CopyButton text={edit.suggestedText} label="Copy" />
+                          <CopyButton text={edit.suggestedText} label={t('analysisResults.copy')} />
                         </div>
                       ))}
                     </div>
@@ -696,7 +701,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   {/* Gap Analysis */}
                   {data.jobDescriptionAlignment.gapAnalysis && (
                     <div className="mt-4 p-3 rounded-xl bg-warning/5 border border-warning/20">
-                      <span className="text-xs font-medium text-warning">Gap Analysis</span>
+                      <span className="text-xs font-medium text-warning">{t('analysisResults.gapAnalysis')}</span>
                       <p className="text-sm text-muted-foreground mt-1">{data.jobDescriptionAlignment.gapAnalysis}</p>
                     </div>
                   )}
@@ -706,25 +711,25 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     <div className="mt-6 p-4 rounded-xl bg-primary/5 border border-primary/20">
                       <div className="flex items-center gap-2 mb-3">
                         <MessageSquare className="w-4 h-4 text-primary" />
-                        <span className="text-sm font-semibold text-foreground">Voice & Tone Match</span>
+                        <span className="text-sm font-semibold text-foreground">{t('analysisResults.voiceToneMatch')}</span>
                         {data.jobDescriptionAlignment.toneAnalysis.toneMatch ? (
                           <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-bold bg-success/20 text-success">
-                            ✓ Good Match
+                            ✓ {t('analysisResults.goodMatch')}
                           </span>
                         ) : (
                           <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-bold bg-warning/20 text-warning">
-                            Needs Adjustment
+                            {t('analysisResults.needsAdjustment')}
                           </span>
                         )}
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-3 mb-3">
                         <div className="p-2 rounded-lg bg-muted/30 text-center">
-                          <span className="text-xs text-muted-foreground block">JD Tone</span>
+                          <span className="text-xs text-muted-foreground block">{t('analysisResults.jdTone')}</span>
                           <span className="text-sm font-semibold capitalize">{data.jobDescriptionAlignment.toneAnalysis.jdTone}</span>
                         </div>
                         <div className="p-2 rounded-lg bg-muted/30 text-center">
-                          <span className="text-xs text-muted-foreground block">Resume Tone</span>
+                          <span className="text-xs text-muted-foreground block">{t('analysisResults.resumeTone')}</span>
                           <span className="text-sm font-semibold capitalize">{data.jobDescriptionAlignment.toneAnalysis.resumeTone}</span>
                         </div>
                       </div>
@@ -734,7 +739,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       {/* Phrase Swaps */}
                       {safeArray(data.jobDescriptionAlignment.toneAnalysis.phraseSwaps).length > 0 && (
                         <div className="space-y-2">
-                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Phrase Adjustments</span>
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('analysisResults.phraseAdjustments')}</span>
                           {safeArray(data.jobDescriptionAlignment.toneAnalysis.phraseSwaps).map((swap, i) => (
                             <div key={i} className="p-2 rounded-lg bg-muted/20 space-y-1">
                               <div className="flex items-center gap-2">
@@ -756,9 +761,9 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       <div className="flex items-center gap-2 mb-3">
                         <Briefcase className="w-4 h-4 text-accent-foreground" />
                         <span className="text-sm font-semibold text-foreground">
-                          {data.jobDescriptionAlignment.companyInsights.companyName !== 'Unknown' 
-                            ? `${data.jobDescriptionAlignment.companyInsights.companyName} Culture Fit`
-                            : 'Company Culture Fit'}
+                          {data.jobDescriptionAlignment.companyInsights.companyName !== 'Unknown'
+                            ? t('analysisResults.companyCultureFit', { company: data.jobDescriptionAlignment.companyInsights.companyName })
+                            : t('analysisResults.genericCultureFit')}
                         </span>
                         <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium bg-muted capitalize">
                           {data.jobDescriptionAlignment.companyInsights.companyType}
@@ -768,7 +773,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       {/* Culture Signals */}
                       {safeArray(data.jobDescriptionAlignment.companyInsights.cultureSignals).length > 0 && (
                         <div className="mb-3">
-                          <span className="text-xs text-muted-foreground">Culture Signals Detected:</span>
+                          <span className="text-xs text-muted-foreground">{t('analysisResults.cultureSignalsDetected')}</span>
                           <div className="flex flex-wrap gap-1.5 mt-1">
                             {safeArray(data.jobDescriptionAlignment.companyInsights.cultureSignals).map((signal, i) => (
                               <span key={i} className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs">
@@ -782,7 +787,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       {/* Value Keywords to Mirror */}
                       {safeArray(data.jobDescriptionAlignment.companyInsights.valueKeywords).length > 0 && (
                         <div className="mb-3">
-                          <span className="text-xs text-muted-foreground">Keywords to Mirror:</span>
+                          <span className="text-xs text-muted-foreground">{t('analysisResults.keywordsToMirror')}</span>
                           <div className="flex flex-wrap gap-1.5 mt-1">
                             {safeArray(data.jobDescriptionAlignment.companyInsights.valueKeywords).map((kw, i) => (
                               <span key={i} className="px-2 py-0.5 rounded-full bg-success/10 text-success text-xs font-medium">
@@ -796,7 +801,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       {/* How to Show Company Values */}
                       {safeArray(data.jobDescriptionAlignment.companyInsights.languageToUse).length > 0 && (
                         <div className="space-y-2 mb-3">
-                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Show These Values in Your Resume</span>
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('analysisResults.showTheseValues')}</span>
                           {safeArray(data.jobDescriptionAlignment.companyInsights.languageToUse).map((item, i) => (
                             <div key={i} className="p-2 rounded-lg bg-success/5 border border-success/10">
                               <div className="flex items-center gap-2 mb-1">
@@ -804,7 +809,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                                 <span className="text-xs text-muted-foreground">→ {item.resumeLanguage}</span>
                               </div>
                               <p className="text-xs text-success italic">"{item.bulletExample}"</p>
-                              <CopyButton text={item.bulletExample} label="Copy" />
+                              <CopyButton text={item.bulletExample} label={t('analysisResults.copy')} />
                             </div>
                           ))}
                         </div>
@@ -815,7 +820,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                         <div className="p-2 rounded-lg bg-destructive/5 border border-destructive/10">
                           <span className="text-xs font-medium text-destructive flex items-center gap-1">
                             <AlertTriangle className="w-3 h-3" />
-                            May Not Resonate With This Company
+                            {t('analysisResults.mayNotResonate')}
                           </span>
                           <ul className="mt-1 space-y-0.5">
                             {safeArray(data.jobDescriptionAlignment.companyInsights.redFlagsForThisCompany).map((flag, i) => (
@@ -840,7 +845,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <FileWarning className="w-5 h-5 text-warning" />
-                      <span className="text-sm font-medium">Formatting & Parsing Issues</span>
+                      <span className="text-sm font-medium">{t('analysisResults.formattingParsingIssues')}</span>
                     </div>
                     <span className={cn(
                       "px-2 py-0.5 rounded-full text-xs font-bold uppercase",
@@ -848,20 +853,20 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       data.atsParsingIssues.severity === "medium" ? "bg-warning/20 text-warning" :
                       "bg-success/20 text-success"
                     )}>
-                      {data.atsParsingIssues.severity} severity
+                      {t('analysisResults.severitySuffix', { severity: data.atsParsingIssues.severity })}
                     </span>
                   </div>
-                  
+
                   <p className="text-xs text-muted-foreground mb-4">
-                    These formatting issues may cause ATS systems to incorrectly parse or reject your resume.
+                    {t('analysisResults.formattingIssuesWarning')}
                   </p>
-                  
+
                   <div className="space-y-4">
                     {/* Detected Issues */}
                     <div className="p-4 rounded-xl bg-warning/5 border border-warning/20">
                       <span className="text-xs font-semibold uppercase tracking-wide text-warning flex items-center gap-1.5 mb-2">
                         <AlertTriangle className="w-3 h-3" />
-                        Detected Issues
+                        {t('analysisResults.detectedIssues')}
                       </span>
                       <ul className="space-y-2">
                         {data.atsParsingIssues.detectedIssues.map((issue, i) => (
@@ -878,7 +883,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       <div className="p-4 rounded-xl bg-success/5 border border-success/20">
                         <span className="text-xs font-semibold uppercase tracking-wide text-success flex items-center gap-1.5 mb-2">
                           <CheckCircle2 className="w-3 h-3" />
-                          Critical Fixes
+                          {t('analysisResults.criticalFixes')}
                         </span>
                         <ul className="space-y-2">
                           {data.atsParsingIssues.criticalFixes.map((fix, i) => (
@@ -900,20 +905,20 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 <div className="p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300">
                   <div className="flex items-center gap-2 mb-4">
                     <FileStack className="w-5 h-5 text-primary" />
-                    <span className="text-sm font-medium">Recommended Resume Length</span>
+                    <span className="text-sm font-medium">{t('analysisResults.recommendedLength')}</span>
                     <span className="ml-auto px-3 py-1 rounded-full bg-primary/10 text-primary text-lg font-bold tabular-nums">
-                      {data.resumeLength.recommendedPages} {data.resumeLength.recommendedPages === 1 ? 'Page' : 'Pages'}
+                      {t('analysisResults.pageCount', { count: data.resumeLength.recommendedPages })}
                     </span>
                   </div>
-                  
+
                   <div className="space-y-3">
                     <div>
-                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current Assessment</span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('analysisResults.currentAssessment')}</span>
                       <p className="text-sm text-foreground mt-1">{data.resumeLength.currentAssessment}</p>
                     </div>
-                    
+
                     <div>
-                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Why This Length?</span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('analysisResults.whyThisLength')}</span>
                       <p className="text-sm text-muted-foreground mt-1">{data.resumeLength.reasoning}</p>
                     </div>
                   </div>
@@ -929,7 +934,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300 animate-fade-in">
                     <div className="flex items-center gap-2 mb-4">
                       <BookOpen className="w-5 h-5 text-primary" />
-                      <span className="text-sm font-medium">Readability</span>
+                      <span className="text-sm font-medium">{t('analysisResults.readability')}</span>
                       <span className={cn(
                         "ml-auto px-2 py-0.5 rounded-full text-xs font-bold",
                         data.readabilityMetrics.grade === "A" ? "bg-success/20 text-success" :
@@ -937,13 +942,13 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                         data.readabilityMetrics.grade === "C" ? "bg-warning/20 text-warning" :
                         "bg-destructive/20 text-destructive"
                       )}>
-                        Grade {data.readabilityMetrics.grade}
+                        {t('analysisResults.gradeSuffix', { grade: data.readabilityMetrics.grade })}
                       </span>
                     </div>
-                    
+
                     <div className="space-y-3 mb-4">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Jargon Level</span>
+                        <span className="text-muted-foreground">{t('analysisResults.jargonLevel')}</span>
                         <span className={cn(
                           "font-medium capitalize",
                           data.readabilityMetrics.jargonLevel === "low" ? "text-success" :
@@ -978,12 +983,12 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300 animate-fade-in">
                     <div className="flex items-center gap-2 mb-4">
                       <Layout className="w-5 h-5 text-primary" />
-                      <span className="text-sm font-medium">Format & Structure</span>
+                      <span className="text-sm font-medium">{t('analysisResults.formatStructure')}</span>
                     </div>
-                    
+
                     {safeArray(data.formatRecommendations.currentIssues).length > 0 && (
                       <div className="mb-3">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-destructive">Issues</span>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-destructive">{t('analysisResults.issues')}</span>
                         <ul className="mt-1.5 space-y-1">
                           {data.formatRecommendations.currentIssues.slice(0, 2).map((issue, i) => (
                             <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -997,7 +1002,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     
                     {safeArray(data.formatRecommendations.recommendations).length > 0 && (
                       <div className="mb-3">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-success">Recommendations</span>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-success">{t('analysisResults.recommendations')}</span>
                         <ul className="mt-1.5 space-y-1">
                           {data.formatRecommendations.recommendations.slice(0, 2).map((rec, i) => (
                             <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -1011,7 +1016,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     
                     {safeArray(data.formatRecommendations.sectionOrder).length > 0 && (
                       <div>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recommended Section Order</span>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('analysisResults.recommendedSectionOrder')}</span>
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                           {data.formatRecommendations.sectionOrder.map((section, i) => (
                             <span key={i} className="px-2 py-0.5 rounded-full bg-muted text-xs">
@@ -1054,8 +1059,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   <Linkedin className="w-6 h-6 text-[#0A66C2]" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold">LinkedIn Profile Optimization</h3>
-                  <p className="text-sm text-muted-foreground">Personalized recommendations to boost your profile visibility</p>
+                  <h3 className="text-xl font-bold">{t('analysisResults.linkedInProfileOptimization')}</h3>
+                  <p className="text-sm text-muted-foreground">{t('analysisResults.linkedInOptimizationSubtitle')}</p>
                 </div>
               </div>
 
@@ -1065,7 +1070,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <Gauge className="w-5 h-5 text-[#0A66C2]" />
-                      <span className="font-semibold">LinkedIn Profile Score</span>
+                      <span className="font-semibold">{t('analysisResults.linkedInProfileScore')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={cn(
@@ -1101,20 +1106,20 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               {linkedIn.completenessChecklist && (
                 <ResultCard
                   icon={ListChecks}
-                  title="Profile Completeness"
-                  subtitle="Essential elements for a complete LinkedIn profile"
+                  title={t('analysisResults.profileCompleteness')}
+                  subtitle={t('analysisResults.profileCompletenessSubtitle')}
                   iconColor="text-[#0A66C2]"
                   bgColor="bg-[#0A66C2]/10"
                   borderColor="border-[#0A66C2]/20"
                 >
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
                     {[
-                      { key: "hasPhoto", label: "Profile Photo", icon: Camera },
-                      { key: "hasBanner", label: "Banner Image", icon: Image },
-                      { key: "hasCustomUrl", label: "Custom URL", icon: Link },
-                      { key: "hasCertifications", label: "Certifications", icon: Award },
-                      { key: "hasRecommendations", label: "Recommendations", icon: MessageSquare },
-                      { key: "hasProjects", label: "Projects", icon: FileStack },
+                      { key: "hasPhoto", label: t('analysisResults.checklist.profilePhoto'), icon: Camera },
+                      { key: "hasBanner", label: t('analysisResults.checklist.bannerImage'), icon: Image },
+                      { key: "hasCustomUrl", label: t('analysisResults.checklist.customUrl'), icon: Link },
+                      { key: "hasCertifications", label: t('analysisResults.checklist.certifications'), icon: Award },
+                      { key: "hasRecommendations", label: t('analysisResults.checklist.recommendations'), icon: MessageSquare },
+                      { key: "hasProjects", label: t('analysisResults.checklist.projects'), icon: FileStack },
                     ].map(({ key, label, icon: Icon }) => {
                       const hasItem = linkedIn.completenessChecklist?.[key as keyof typeof linkedIn.completenessChecklist];
                       return (
@@ -1137,7 +1142,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   </div>
                   {safeArray(linkedIn.completenessChecklist.missingItems).length > 0 && (
                     <div className="space-y-2">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">What's Missing</span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('analysisResults.whatsMissing')}</span>
                       {linkedIn.completenessChecklist.missingItems.map((item, i) => (
                         <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-warning/5 border border-warning/20">
                           <AlertTriangle className="w-3 h-3 text-warning mt-0.5 shrink-0" />
@@ -1153,8 +1158,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               {linkedIn.contentStrategy && (
                 <ResultCard
                   icon={FileText}
-                  title="Content Strategy"
-                  subtitle="What to post and when to maximize your reach"
+                  title={t('analysisResults.contentStrategy')}
+                  subtitle={t('analysisResults.contentStrategySubtitle')}
                   iconColor="text-[#0A66C2]"
                   bgColor="bg-[#0A66C2]/10"
                   borderColor="border-[#0A66C2]/20"
@@ -1165,14 +1170,14 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       <div className="p-3 rounded-lg bg-muted/30">
                         <div className="flex items-center gap-2 mb-2">
                           <Calendar className="w-4 h-4 text-[#0A66C2]" />
-                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Frequency</span>
+                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('analysisResults.frequency')}</span>
                         </div>
                         <p className="text-sm text-foreground">{linkedIn.contentStrategy.postingFrequency}</p>
                       </div>
                       <div className="p-3 rounded-lg bg-muted/30">
                         <div className="flex items-center gap-2 mb-2">
                           <Clock className="w-4 h-4 text-[#0A66C2]" />
-                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Best Times</span>
+                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('analysisResults.bestTimes')}</span>
                         </div>
                         <p className="text-sm text-foreground">{linkedIn.contentStrategy.bestTimes}</p>
                       </div>
@@ -1181,7 +1186,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     {/* Post Ideas */}
                     {safeArray(linkedIn.contentStrategy.postIdeas).length > 0 && (
                       <div>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 block">Content Ideas</span>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 block">{t('analysisResults.contentIdeas')}</span>
                         <div className="space-y-3">
                           {linkedIn.contentStrategy.postIdeas.map((idea, i) => (
                             <div key={i} className="p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
@@ -1213,7 +1218,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       <div>
                         <div className="flex items-center gap-2 mb-3">
                           <Hash className="w-4 h-4 text-[#0A66C2]" />
-                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Hashtags to Use</span>
+                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('analysisResults.hashtagsToUse')}</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {linkedIn.contentStrategy.hashtagStrategy.map((tag, i) => (
@@ -1228,7 +1233,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     {/* Engagement Tips */}
                     {safeArray(linkedIn.contentStrategy.engagementTips).length > 0 && (
                       <div>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 block">Engagement Tips</span>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 block">{t('analysisResults.engagementTips')}</span>
                         <ul className="space-y-2">
                           {linkedIn.contentStrategy.engagementTips.map((tip, i) => (
                             <li key={i} className="flex items-start gap-2 text-sm text-foreground">
@@ -1247,8 +1252,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               {linkedIn.connectionStrategy && (
                 <ResultCard
                   icon={Users}
-                  title="Connection Strategy"
-                  subtitle="Grow your network strategically"
+                  title={t('analysisResults.connectionStrategy')}
+                  subtitle={t('analysisResults.connectionStrategySubtitle')}
                   iconColor="text-[#0A66C2]"
                   bgColor="bg-[#0A66C2]/10"
                   borderColor="border-[#0A66C2]/20"
@@ -1257,7 +1262,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     {/* Target Connections */}
                     {safeArray(linkedIn.connectionStrategy.targetConnections).length > 0 && (
                       <div>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 block">Who to Connect With</span>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 block">{t('analysisResults.whoToConnectWith')}</span>
                         <div className="flex flex-wrap gap-2">
                           {linkedIn.connectionStrategy.targetConnections.map((target, i) => (
                             <span key={i} className="px-3 py-1.5 rounded-full bg-success/10 border border-success/20 text-sm text-success">
@@ -1272,8 +1277,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     {linkedIn.connectionStrategy.connectionMessageTemplate && (
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Connection Request Template</span>
-                          <CopyButton text={linkedIn.connectionStrategy.connectionMessageTemplate} label="Copy Template" />
+                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('analysisResults.connectionRequestTemplate')}</span>
+                          <CopyButton text={linkedIn.connectionStrategy.connectionMessageTemplate} label={t('analysisResults.copyTemplate')} />
                         </div>
                         <div className="p-4 rounded-xl bg-muted/30 border border-border">
                           <p className="text-sm text-foreground whitespace-pre-line">{linkedIn.connectionStrategy.connectionMessageTemplate}</p>
@@ -1284,7 +1289,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     {/* Groups to Join */}
                     {safeArray(linkedIn.connectionStrategy.groupsToJoin).length > 0 && (
                       <div>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 block">LinkedIn Groups to Join</span>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 block">{t('analysisResults.groupsToJoin')}</span>
                         <div className="space-y-2">
                           {linkedIn.connectionStrategy.groupsToJoin.map((group, i) => (
                             <div key={i} className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
@@ -1299,7 +1304,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     {/* Networking Tips */}
                     {safeArray(linkedIn.connectionStrategy.networkingTips).length > 0 && (
                       <div>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 block">Networking Tips</span>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 block">{t('analysisResults.networkingTips')}</span>
                         <ul className="space-y-2">
                           {linkedIn.connectionStrategy.networkingTips.map((tip, i) => (
                             <li key={i} className="flex items-start gap-2 text-sm text-foreground">
@@ -1318,8 +1323,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               {linkedIn.headlineOptimization && (
                 <ResultCard
                   icon={User}
-                  title="Headline Optimization"
-                  subtitle="Your headline is prime real estate - make it count"
+                  title={t('analysisResults.headlineOptimization')}
+                  subtitle={t('analysisResults.headlineOptimizationSubtitle')}
                   iconColor="text-[#0A66C2]"
                   bgColor="bg-[#0A66C2]/10"
                   borderColor="border-[#0A66C2]/20"
@@ -1327,15 +1332,15 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   <div className="space-y-4">
                     <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-destructive">Current</span>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-destructive">{t('analysisResults.current')}</span>
                       </div>
-                      <p className="text-sm text-foreground">{linkedIn.headlineOptimization.current || "No headline found"}</p>
+                      <p className="text-sm text-foreground">{linkedIn.headlineOptimization.current || t('analysisResults.noHeadlineFound')}</p>
                     </div>
-                    
+
                     <div className="p-4 rounded-xl bg-success/5 border border-success/20">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-success">Improved</span>
-                        <CopyButton text={linkedIn.headlineOptimization.improved} label="Copy Headline" />
+                        <span className="text-xs font-semibold uppercase tracking-wide text-success">{t('analysisResults.improved')}</span>
+                        <CopyButton text={linkedIn.headlineOptimization.improved} label={t('analysisResults.copyHeadline')} />
                       </div>
                       <p className="text-sm font-medium text-foreground">{linkedIn.headlineOptimization.improved}</p>
                     </div>
@@ -1354,16 +1359,16 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               {linkedIn.aboutSectionRewrite && (
                 <ResultCard
                   icon={FileText}
-                  title="About Section Rewrite"
-                  subtitle="A compelling About section that tells your professional story"
+                  title={t('analysisResults.aboutSectionRewrite')}
+                  subtitle={t('analysisResults.aboutSectionRewriteSubtitle')}
                   iconColor="text-[#0A66C2]"
                   bgColor="bg-[#0A66C2]/10"
                   borderColor="border-[#0A66C2]/20"
                 >
                   <div className="p-4 rounded-xl bg-muted/30">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your New About Section</span>
-                      <CopyButton text={linkedIn.aboutSectionRewrite} label="Copy About" />
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('analysisResults.yourNewAboutSection')}</span>
+                      <CopyButton text={linkedIn.aboutSectionRewrite} label={t('analysisResults.copyAbout')} />
                     </div>
                     <p className="text-sm leading-relaxed text-foreground whitespace-pre-line">
                       {linkedIn.aboutSectionRewrite}
@@ -1376,8 +1381,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               {safeArray(linkedIn.experienceOptimization).length > 0 && (
                 <ResultCard
                   icon={Briefcase}
-                  title="Experience Descriptions"
-                  subtitle="Optimize your role descriptions for maximum impact"
+                  title={t('analysisResults.experienceDescriptions')}
+                  subtitle={t('analysisResults.experienceDescriptionsSubtitle')}
                   iconColor="text-[#0A66C2]"
                   bgColor="bg-[#0A66C2]/10"
                   borderColor="border-[#0A66C2]/20"
@@ -1387,7 +1392,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       <div key={index} className="p-4 rounded-xl bg-muted/30">
                         <div className="flex items-center justify-between mb-3">
                           <span className="text-sm font-semibold text-foreground">{exp.role}</span>
-                          <CopyButton text={exp.improved} label="Copy" />
+                          <CopyButton text={exp.improved} label={t('analysisResults.copy')} />
                         </div>
                         {exp.issue && (
                           <div className="flex items-start gap-2 mb-3 p-2 rounded-lg bg-warning/5 border border-warning/20">
@@ -1396,7 +1401,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                           </div>
                         )}
                         <div className="p-3 rounded-lg bg-success/5 border border-success/20">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-success">Improved</span>
+                          <span className="text-xs font-semibold uppercase tracking-wide text-success">{t('analysisResults.improved')}</span>
                           <p className="text-sm text-foreground mt-1">{exp.improved}</p>
                         </div>
                       </div>
@@ -1409,8 +1414,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               {(safeArray(linkedIn.skillsToAdd).length > 0 || safeArray(linkedIn.skillsToRemove).length > 0) && (
                 <ResultCard
                   icon={Star}
-                  title="Skills Optimization"
-                  subtitle="Update your skills to match what recruiters search for"
+                  title={t('analysisResults.skillsOptimization')}
+                  subtitle={t('analysisResults.skillsOptimizationSubtitle')}
                   iconColor="text-[#0A66C2]"
                   bgColor="bg-[#0A66C2]/10"
                   borderColor="border-[#0A66C2]/20"
@@ -1420,7 +1425,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       <div>
                         <h4 className="text-xs font-semibold uppercase tracking-wide text-success mb-3 flex items-center gap-2">
                           <CheckCircle2 className="w-3 h-3" />
-                          Skills to Add
+                          {t('analysisResults.skillsToAdd')}
                         </h4>
                         <div className="flex flex-wrap gap-2">
                           {linkedIn.skillsToAdd!.map((skill, index) => (
@@ -1435,7 +1440,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       <div>
                         <h4 className="text-xs font-semibold uppercase tracking-wide text-destructive mb-3 flex items-center gap-2">
                           <AlertCircle className="w-3 h-3" />
-                          Consider Removing
+                          {t('analysisResults.considerRemoving')}
                         </h4>
                         <div className="flex flex-wrap gap-2">
                           {linkedIn.skillsToRemove!.map((skill, index) => (
@@ -1454,8 +1459,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               {safeArray(linkedIn.seoKeywords).length > 0 && (
                 <ResultCard
                   icon={Search}
-                  title="SEO Keywords"
-                  subtitle="Keywords recruiters use to find candidates like you"
+                  title={t('analysisResults.seoKeywords')}
+                  subtitle={t('analysisResults.seoKeywordsSubtitle')}
                   iconColor="text-[#0A66C2]"
                   bgColor="bg-[#0A66C2]/10"
                   borderColor="border-[#0A66C2]/20"
@@ -1468,7 +1473,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     ))}
                   </div>
                   <p className="text-xs text-muted-foreground mt-4">
-                    Tip: Sprinkle these keywords naturally throughout your headline, about, and experience sections.
+                    {t('analysisResults.seoKeywordsTip')}
                   </p>
                 </ResultCard>
               )}
@@ -1477,8 +1482,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               {safeArray(linkedIn.profileVisibilityTips).length > 0 && (
                 <ResultCard
                   icon={Eye}
-                  title="Profile Visibility Tips"
-                  subtitle="Actionable steps to increase your profile views"
+                  title={t('analysisResults.profileVisibilityTips')}
+                  subtitle={t('analysisResults.profileVisibilityTipsSubtitle')}
                   iconColor="text-[#0A66C2]"
                   bgColor="bg-[#0A66C2]/10"
                   borderColor="border-[#0A66C2]/20"
@@ -1500,8 +1505,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               {safeArray(linkedIn.featuredSectionIdeas).length > 0 && (
                 <ResultCard
                   icon={Star}
-                  title="Featured Section Ideas"
-                  subtitle="Content to showcase at the top of your profile"
+                  title={t('analysisResults.featuredSectionIdeas')}
+                  subtitle={t('analysisResults.featuredSectionIdeasSubtitle')}
                   iconColor="text-[#0A66C2]"
                   bgColor="bg-[#0A66C2]/10"
                   borderColor="border-[#0A66C2]/20"
@@ -1521,8 +1526,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               {linkedIn.recommendationStrategy && (
                 <ResultCard
                   icon={MessageSquare}
-                  title="Recommendation Strategy"
-                  subtitle="How to get quality recommendations that matter"
+                  title={t('analysisResults.recommendationStrategy')}
+                  subtitle={t('analysisResults.recommendationStrategySubtitle')}
                   iconColor="text-[#0A66C2]"
                   bgColor="bg-[#0A66C2]/10"
                   borderColor="border-[#0A66C2]/20"
@@ -1539,7 +1544,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
           {linkedIn && (
             <div className="flex items-center gap-4 py-4">
               <div className="flex-1 h-px bg-border" />
-              <span className="text-sm font-medium text-muted-foreground">Resume Analysis</span>
+              <span className="text-sm font-medium text-muted-foreground">{t('analysisResults.resumeAnalysis')}</span>
               <div className="flex-1 h-px bg-border" />
             </div>
           )}
@@ -1549,8 +1554,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             <div id="summary">
               <ResultCard
                 icon={User}
-                title="Professional Summary & LinkedIn"
-                subtitle="Ready-to-use summary and headline optimized for your profile"
+                title={t('analysisResults.professionalSummaryLinkedIn')}
+                subtitle={t('analysisResults.professionalSummaryLinkedInSubtitle')}
                 iconColor="text-primary"
                 bgColor="bg-primary/10"
                 borderColor="border-primary/20"
@@ -1559,22 +1564,22 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   <div className="p-4 rounded-xl bg-muted/30">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Professional Summary
+                        {t('analysisResults.professionalSummary')}
                       </span>
-                      <CopyButton text={data.summaryRewrite.professionalSummary} label="Copy Summary" />
+                      <CopyButton text={data.summaryRewrite.professionalSummary} label={t('analysisResults.copySummary')} />
                     </div>
                     <p className="text-sm leading-relaxed text-foreground">
                       {data.summaryRewrite.professionalSummary}
                     </p>
                   </div>
-                  
+
                   {data.summaryRewrite.linkedInHeadline && (
                     <div className="p-4 rounded-xl bg-muted/30">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          LinkedIn Headline
+                          {t('analysisResults.linkedInHeadline')}
                         </span>
-                        <CopyButton text={data.summaryRewrite.linkedInHeadline} label="Copy Headline" />
+                        <CopyButton text={data.summaryRewrite.linkedInHeadline} label={t('analysisResults.copyHeadline')} />
                       </div>
                       <p className="text-sm font-medium text-foreground">
                         {data.summaryRewrite.linkedInHeadline}
@@ -1591,8 +1596,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             <div id="industry">
               <ResultCard
                 icon={Target}
-                title={`${data.industry || "Industry"} Insights`}
-                subtitle="Tailored advice based on what recruiters in your field prioritize"
+                title={t('analysisResults.industryInsightsTitle', { industry: data.industry || t('analysisResults.industryFallback') })}
+                subtitle={t('analysisResults.industryInsightsSubtitle')}
                 iconColor="text-cyan-500"
                 bgColor="bg-cyan-500/10"
                 borderColor="border-cyan-500/20"
@@ -1600,28 +1605,28 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                 <div className="space-y-4">
                   <div className="p-4 rounded-xl bg-muted/30">
                     <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                      What Recruiters Look For
+                      {t('analysisResults.whatRecruitersLookFor')}
                     </h4>
                     <p className="text-sm text-foreground leading-relaxed">
                       {data.industryInsights.whatRecruitersLookFor}
                     </p>
                   </div>
-                  
+
                   {data.industryInsights.competitiveAdvantage && (
                     <div className="p-4 rounded-xl bg-success/5 border border-success/20">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-success mb-2">
-                        Your Competitive Edge
+                        {t('analysisResults.yourCompetitiveEdge')}
                       </h4>
                       <p className="text-sm text-foreground leading-relaxed">
                         {data.industryInsights.competitiveAdvantage}
                       </p>
                     </div>
                   )}
-                  
+
                   {data.industryInsights.commonMistakes && (
                     <div className="p-4 rounded-xl bg-warning/5 border border-warning/20">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-warning mb-2">
-                        Common Mistakes to Avoid
+                        {t('analysisResults.commonMistakesToAvoid')}
                       </h4>
                       <p className="text-sm text-foreground leading-relaxed">
                         {data.industryInsights.commonMistakes}
@@ -1638,8 +1643,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             <div id="skills">
               <ResultCard
                 icon={Brain}
-                title="Skills Gap Analysis"
-                subtitle="Key skills missing from your resume that recruiters expect"
+                title={t('analysisResults.skillsGapAnalysis')}
+                subtitle={t('analysisResults.skillsGapAnalysisSubtitle')}
                 iconColor="text-violet-500"
                 bgColor="bg-violet-500/10"
                 borderColor="border-violet-500/20"
@@ -1648,7 +1653,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   {safeArray(data.skillsGap.missingTechnical).length > 0 && (
                     <div>
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-                        Technical Skills to Add
+                        {t('analysisResults.technicalSkillsToAdd')}
                       </h4>
                       <div className="flex flex-wrap gap-2">
                         {data.skillsGap.missingTechnical.map((skill, index) => (
@@ -1662,11 +1667,11 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       </div>
                     </div>
                   )}
-                  
+
                   {safeArray(data.skillsGap.missingSoft).length > 0 && (
                     <div>
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-                        Soft Skills to Highlight
+                        {t('analysisResults.softSkillsToHighlight')}
                       </h4>
                       <div className="flex flex-wrap gap-2">
                         {data.skillsGap.missingSoft.map((skill, index) => (
@@ -1700,8 +1705,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
           {safeArray(data.quantificationOpportunities).length > 0 && (
             <ResultCard
               icon={BarChart3}
-              title="Quantification Opportunities"
-              subtitle="Turn vague statements into impressive metrics"
+              title={t('analysisResults.quantificationOpportunities')}
+              subtitle={t('analysisResults.quantificationOpportunitiesSubtitle')}
               iconColor="text-emerald-500"
               bgColor="bg-emerald-500/10"
               borderColor="border-emerald-500/20"
@@ -1716,7 +1721,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       → {opp.suggestion}
                     </p>
                     <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-emerald-500">Example</span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-emerald-500">{t('analysisResults.example')}</span>
                       <p className="text-sm font-medium text-foreground mt-1">{opp.example}</p>
                     </div>
                   </div>
@@ -1730,8 +1735,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             <div id="metrics">
               <ResultCard
                 icon={TrendingUp}
-                title={`Metrics for ${data.achievementMetrics.roleType}`}
-                subtitle="Role-specific numbers that make your resume stand out"
+                title={t('analysisResults.metricsForRole', { role: data.achievementMetrics.roleType })}
+                subtitle={t('analysisResults.metricsForRoleSubtitle')}
                 iconColor="text-violet-500"
                 bgColor="bg-violet-500/10"
                 borderColor="border-violet-500/20"
@@ -1742,7 +1747,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     <div className="p-4 rounded-xl bg-success/10 border border-success/30">
                       <div className="flex items-center gap-2 mb-2">
                         <Zap className="w-4 h-4 text-success" />
-                        <span className="text-sm font-semibold text-success">Quick Wins - Add These Today</span>
+                        <span className="text-sm font-semibold text-success">{t('analysisResults.quickWinsTitle')}</span>
                       </div>
                       <ul className="space-y-1.5">
                         {safeArray(data.achievementMetrics.quickWins).map((win, i) => (
@@ -1754,13 +1759,13 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       </ul>
                     </div>
                   )}
-                  
+
                   {/* Missing Metrics */}
                   {safeArray(data.achievementMetrics.missingFromResume).length > 0 && (
                     <div className="p-4 rounded-xl bg-warning/10 border border-warning/30">
                       <div className="flex items-center gap-2 mb-2">
                         <AlertCircle className="w-4 h-4 text-warning" />
-                        <span className="text-sm font-semibold text-warning">Missing From Your Resume</span>
+                        <span className="text-sm font-semibold text-warning">{t('analysisResults.missingFromResumeTitle')}</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {safeArray(data.achievementMetrics.missingFromResume).map((metric, i) => (
@@ -1771,12 +1776,12 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Typical Metrics for Role */}
                   {safeArray(data.achievementMetrics.typicalMetrics).length > 0 && (
                     <div className="space-y-3">
                       <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Key Metrics for {data.achievementMetrics.roleType}s
+                        {t('analysisResults.keyMetricsForRole', { role: data.achievementMetrics.roleType })}
                       </span>
                       {safeArray(data.achievementMetrics.typicalMetrics).map((metric, i) => (
                         <div key={i} className="p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
@@ -1790,12 +1795,12 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                             <span className="text-xs text-muted-foreground">{metric.exampleRange}</span>
                           </div>
                           <p className="text-xs text-muted-foreground mb-2">
-                            <span className="font-medium">How to measure:</span> {metric.howToMeasure}
+                            <span className="font-medium">{t('analysisResults.howToMeasure')}</span> {metric.howToMeasure}
                           </p>
                           <div className="p-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
                             <p className="text-sm text-foreground">{metric.bulletExample}</p>
                             <div className="mt-2">
-                              <CopyButton text={metric.bulletExample} label="Copy Example" />
+                              <CopyButton text={metric.bulletExample} label={t('analysisResults.copyExample')} />
                             </div>
                           </div>
                         </div>
@@ -1812,8 +1817,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             <div id="bullets">
               <ResultCard
                 icon={CheckCircle2}
-                title="ATS-Optimized Bullet Points"
-                subtitle="These rewrites add metrics and action verbs that ATS systems love"
+                title={t('analysisResults.atsOptimizedBullets')}
+                subtitle={t('analysisResults.atsOptimizedBulletsSubtitle')}
                 iconColor="text-success"
                 bgColor="bg-success/10"
                 borderColor="border-success/20"
@@ -1825,20 +1830,20 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <span className="px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">
-                              BEFORE
+                              {t('analysisResults.before')}
                             </span>
                           </div>
                           <p className="text-sm text-muted-foreground leading-relaxed">
                             {bullet.original}
                           </p>
                         </div>
-                        
+
                         <div className="space-y-2">
                           <div className="flex items-center justify-between gap-2">
                             <span className="px-2 py-0.5 rounded text-xs font-medium bg-success/20 text-success">
-                              AFTER
+                              {t('analysisResults.after')}
                             </span>
-                            <CopyButton text={bullet.improved} label="Copy" />
+                            <CopyButton text={bullet.improved} label={t('analysisResults.copy')} />
                           </div>
                           <p className="text-sm text-foreground leading-relaxed font-medium">
                             {bullet.improved}
@@ -1866,8 +1871,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             <div id="verbs">
               <ResultCard
                 icon={Zap}
-                title="Stronger Action Verbs"
-                subtitle="Replace weak verbs with powerful alternatives that grab attention"
+                title={t('analysisResults.strongerActionVerbs')}
+                subtitle={t('analysisResults.strongerActionVerbsSubtitle')}
                 iconColor="text-warning"
                 bgColor="bg-warning/10"
                 borderColor="border-warning/20"
@@ -1897,8 +1902,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             <div id="keywords">
               <ResultCard
                 icon={Lightbulb}
-                title="Recommended Keywords"
-                subtitle="Add these keywords to improve ATS matching and recruiter interest"
+                title={t('analysisResults.recommendedKeywords')}
+                subtitle={t('analysisResults.recommendedKeywordsSubtitle')}
                 iconColor="text-primary"
                 bgColor="bg-primary/10"
                 borderColor="border-primary/20"
@@ -1914,7 +1919,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground mt-4">
-                  Tip: Naturally incorporate these keywords into your experience bullets and skills section.
+                  {t('analysisResults.recommendedKeywordsTip')}
                 </p>
               </ResultCard>
             </div>
@@ -1925,8 +1930,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             <div id="redflags">
               <ResultCard
                 icon={AlertTriangle}
-                title="Red Flags to Fix"
-                subtitle="Address these issues to prevent recruiters from passing on your resume"
+                title={t('analysisResults.redFlagsToFix')}
+                subtitle={t('analysisResults.redFlagsToFixSubtitle')}
                 iconColor="text-destructive"
                 bgColor="bg-destructive/10"
                 borderColor="border-destructive/20"
@@ -1951,8 +1956,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             <div id="actionplan">
               <ResultCard
                 icon={ListChecks}
-                title="Action Plan"
-                subtitle="Your prioritized to-do list - tackle these in order for maximum impact"
+                title={t('analysisResults.actionPlan')}
+                subtitle={t('analysisResults.actionPlanSubtitle')}
                 iconColor="text-success"
                 bgColor="bg-success/10"
                 borderColor="border-success/20"
@@ -1971,7 +1976,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground mt-4">
-                  Tip: Complete these tasks in order. Each one builds on the previous to maximize your resume's impact.
+                  {t('analysisResults.actionPlanTip')}
                 </p>
               </ResultCard>
             </div>
@@ -1981,9 +1986,9 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
           {optimizedBullets.length === 0 && actionVerbs.length === 0 && keywords.length === 0 && redFlags.length === 0 && !data.summaryRewrite?.professionalSummary && (
             <div className="text-center py-12 px-6 rounded-2xl bg-card/50 border border-border/50">
               <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Analysis Processing</h3>
+              <h3 className="text-lg font-semibold mb-2">{t('analysisResults.analysisProcessing')}</h3>
               <p className="text-muted-foreground max-w-md mx-auto">
-                We could not extract detailed recommendations from your resume. This might happen if the resume format is unusual or if there was an issue during processing.
+                {t('analysisResults.analysisProcessingDescription')}
               </p>
             </div>
           )}
@@ -1991,11 +1996,11 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
           {/* Bottom CTA */}
           <div className="text-center pt-8 space-y-4">
             <p className="text-muted-foreground">
-              Apply these changes to your resume {data.hasLinkedIn && "and LinkedIn profile "}and watch your interview rate improve!
+              {data.hasLinkedIn ? t('analysisResults.bottomCtaWithLinkedIn') : t('analysisResults.bottomCta')}
             </p>
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <CheckCircle2 className="w-4 h-4 text-success" />
-              <span>This analysis has been saved. Use the share link above to access it anytime.</span>
+              <span>{t('analysisResults.analysisSaved')}</span>
             </div>
           </div>
         </div>
