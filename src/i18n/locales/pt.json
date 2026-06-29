@@ -1198,6 +1198,316 @@
     "viewAllProducts": "Ver todos os produtos",
     "addOnNames": { "resumeRoast": "Crítica de Currículo", "interviewCoach": "Coach de Entrevista", "careerPath": "Percurso de Carreira" }
   },
+  "productSuccess": {
+    "verifyingPurchase": "A verificar a sua compra...",
+    "confirmingPayment": "Um momento enquanto confirmamos o seu pagamento",
+    "purchaseNotFound": "Detalhes da compra não encontrados",
+    "purchaseNotFoundDescription": "Não conseguimos encontrar os detalhes da sua compra. Se concluiu um pagamento, verifique o seu e-mail para a confirmação.",
+    "goToHome": "Ir para a Página Inicial",
+    "creditsAdded_one": "{{count}} crédito adicionado!",
+    "creditsAdded_other": "{{count}} créditos adicionados!",
+    "creditsLiveOn": "Os seus créditos já estão ativos na conta de",
+    "creditsBalancePrefix": "Verá o seu saldo no botão",
+    "myCredits": "Os Meus Créditos",
+    "creditsBalanceSuffix": "no cabeçalho neste dispositivo — não precisa de introduzir o seu e-mail novamente.",
+    "resultsReady": "Os seus resultados estão prontos",
+    "keywordAnalysisResults": "Resultados da análise de palavras-chave",
+    "currentKeywordScore": "Pontuação atual de otimização de palavras-chave",
+    "coverLetterReady": "A sua carta de apresentação está pronta",
+    "personalizedCoverLetter": "A sua carta de apresentação personalizada",
+    "suggestedSubject": "Assunto sugerido:",
+    "keySkillsHighlighted": "Competências-chave destacadas",
+    "alternativeOpeningLines": "Linhas de abertura alternativas",
+    "premiumPackageReady": "Pacote Premium pronto",
+    "optimizedDocuments": "Os seus documentos otimizados",
+    "tailoredFor": "Adaptado para {{role}}",
+    "yourTargetRole": "a sua vaga pretendida",
+    "atCompany": "na {{company}}",
+    "before": "Antes",
+    "after": "Depois",
+    "keywordsAdded": "Palavras-chave adicionadas",
+    "copyResume": "Copiar currículo",
+    "yourOptimizedResume": "O seu currículo otimizado",
+    "copyLetter": "Copiar carta",
+    "atsDefenseReady": "Relatório ATS Defense pronto",
+    "atsDefenseCompleteReport": "O seu relatório completo de ATS Defense",
+    "atsDefenseSubtitle": "Otimização ATS completa com análise antes/depois",
+    "careerIntelligenceReady": "Relatório de Career Intelligence pronto",
+    "yourCareerSnapshot": "O seu Career Snapshot",
+    "careerSnapshotSubtitle": "Inteligência de carreira ao estilo de recrutador, mostrando como a sua carreira se apresenta de imediato",
+    "gamePlanReady": "O seu plano de jogo está pronto",
+    "graduateGamePlan": "Graduate Game Plan",
+    "gamePlanSubtitle": "Um guia claro e passo a passo sobre o que fazer a seguir",
+    "applicationPackageReady": "O seu pacote de candidatura está pronto",
+    "applyAssistant": "Apply Assistant",
+    "applyAssistantSubtitle": "Adaptado, revisto por si, submetido por si",
+    "sessionReady": "A sua sessão está pronta",
+    "interviewCoach": "Interview Coach",
+    "careerPathSimulator": "Career Path Simulator",
+    "interviewCoachSubtitle": "Gere perguntas de entrevista personalizadas e receba feedback sobre as suas respostas",
+    "careerPathSimulatorSubtitle": "Explore possíveis trajetórias de carreira com base no seu currículo",
+    "yourContent": "o seu conteúdo",
+    "couldNotVerify": "Ainda não conseguimos verificar a sua compra",
+    "couldNotVerifyDescription": "O seu pagamento pode ainda estar a ser processado — isto pode demorar um minuto. Se foi cobrado, a sua compra está segura e tê-la-emos pronta em breve.",
+    "tryAgain": "Tentar novamente",
+    "contactSupport": "Contactar suporte",
+    "howItWorksTitle": "Como funciona",
+    "howItWorksSubtitle": "Eis o que acontece a seguir com a sua compra",
+    "nextStepsTitle": "Os seus próximos passos",
+    "nextStepsSubtitle": "Comece a usar a sua compra de imediato",
+    "whatsIncluded": "O que está incluído",
+    "everythingYouGet": "Tudo o que recebe com {{name}}",
+    "needHelp": "Precisa de ajuda?",
+    "needHelpDescription": "Se tiver alguma dúvida sobre a sua compra ou precisar de assistência, a nossa equipa de suporte está aqui para ajudar.",
+    "recovery": {
+      "titleCareerSnapshot": "Complete o seu Career Snapshot",
+      "titleGraduateGamePlan": "Complete o seu Graduate Game Plan",
+      "titleAtsDefense": "Complete o seu relatório ATS Defense",
+      "titlePremiumPackage": "Complete o seu Pacote Premium",
+      "titleCoverLetter": "Complete a sua carta de apresentação",
+      "titleInterviewCoach": "Inicie a sua sessão de Interview Coach",
+      "titleCareerPathSimulator": "Execute o seu Career Path Simulator",
+      "titleApplyAssistant": "Crie o seu pacote de candidatura",
+      "titleKeywordFix": "Complete a sua análise de palavras-chave",
+      "descCareerSnapshot": "Carregue o seu currículo para obter o seu relatório de inteligência de carreira.",
+      "descGraduateGamePlan": "Carregue o seu currículo para obter o seu plano de jogo personalizado para conseguir a sua primeira função.",
+      "descAtsDefense": "Carregue o seu currículo e, opcionalmente, adicione vagas pretendidas e descrição da vaga para uma otimização personalizada.",
+      "descPremiumPackage": "Carregue o seu currículo e adicione uma descrição da vaga para obter o seu currículo otimizado e carta de apresentação.",
+      "descCoverLetter": "Carregue o seu currículo e adicione os detalhes da vaga para gerar uma carta de apresentação à medida.",
+      "descInterviewCoach": "Carregue o seu currículo para gerar perguntas de entrevista personalizadas.",
+      "descCareerPathSimulator": "Carregue o seu currículo para ver possíveis trajetórias de carreira.",
+      "descApplyAssistant": "Carregue o seu currículo e cole a oferta de emprego à qual está a candidatar-se — ambos são necessários para podermos adaptar a sua candidatura.",
+      "descKeywordFix": "Carregue o seu currículo para obter sugestões de otimização de palavras-chave.",
+      "alreadyPurchased": "Já comprou e fechou o separador?",
+      "recoverResultsLink": "Recupere os seus resultados →",
+      "recoverPreviousPurchase": "Recuperar compra anterior",
+      "cancel": "Cancelar",
+      "pasteLinkHelper": "Cole o link de compra ou o ID de sessão do seu e-mail de confirmação — para sua segurança, já não podemos procurar compras apenas pelo e-mail.",
+      "sessionIdPlaceholder": "cs_live_... ou o link do seu e-mail de confirmação",
+      "contentRecoveredTitle": "Conteúdo recuperado!",
+      "contentRecoveredDescription": "O seu conteúdo gerado anteriormente foi restaurado.",
+      "noMatchingContentTitle": "Nenhum conteúdo correspondente encontrado",
+      "noMatchingContentDescription": "Encontrámos compras mas nenhum conteúdo para este tipo de produto.",
+      "noPurchasesFoundTitle": "Nenhuma compra encontrada",
+      "noPurchasesFoundDescription": "Nenhuma compra encontrada para esse ID de sessão. Por favor, verifique o link do seu e-mail de confirmação.",
+      "recoveryFailedTitle": "Recuperação falhou",
+      "recoveryFailedDescription": "Não foi possível recuperar a sua compra. Por favor, tente novamente.",
+      "lookingUp": "A procurar...",
+      "recoverMyResults": "Recuperar os meus resultados",
+      "whatYouNeed": "O que vai precisar para este pacote:",
+      "resumeLabel": "Currículo",
+      "required": "Obrigatório",
+      "jobDescriptionLabel": "Descrição da vaga",
+      "recommended": "Recomendado",
+      "targetRolesLabel": "Vagas pretendidas (1-3)",
+      "optional": "Opcional",
+      "yourResume": "O seu currículo",
+      "parsingFile": "A processar ficheiro...",
+      "dropOrUpload": "Largue o seu currículo ou clique para carregar",
+      "fileTypes": "PDF, DOCX ou TXT",
+      "orPasteText": "ou cole o texto",
+      "pasteResumePlaceholder": "Cole aqui o texto do seu currículo...",
+      "targetJobTitles": "Cargos pretendidos",
+      "upToThree": "(até 3)",
+      "multiRoleOptimization": "Otimização multifunção",
+      "roleExample1": "ex.: Engenheiro de Software",
+      "roleExample2": "ex.: Desenvolvedor Full Stack",
+      "roleExample3": "ex.: Engenheiro Backend",
+      "removeRole": "Remover função",
+      "addAnotherTargetRole": "+ Adicionar outra vaga pretendida",
+      "targetRolesHelper": "Adicione até 3 cargos para otimizar o seu currículo para várias funções simultaneamente.",
+      "jobPosting": "Oferta de emprego",
+      "targetJobDescription": "Descrição da vaga pretendida",
+      "jobPostingPlaceholder": "Cole a oferta de emprego completa à qual está a candidatar-se — precisamos disto para adaptar o seu currículo e carta de apresentação.",
+      "jobDescriptionPlaceholder": "Cole a descrição da vaga que pretende para obter recomendações otimizadas com palavras-chave...",
+      "jobPostingHelper": "O Apply Assistant adapta o seu currículo e carta de apresentação exatamente a esta oferta — sem ela, não podemos gerar o seu pacote de candidatura.",
+      "jobDescriptionHelper": "Adicionar uma descrição da vaga ajuda-nos a otimizar o seu currículo para palavras-chave e requisitos específicos.",
+      "generating": "A gerar...",
+      "generate": "Gerar {{item}}",
+      "itemKeywordAnalysis": "Análise de Palavras-chave",
+      "itemPremiumPackage": "Pacote Premium",
+      "itemAtsDefenseReport": "Relatório ATS Defense",
+      "itemCareerSnapshotReport": "Relatório Career Snapshot",
+      "itemGraduateGamePlanReport": "Relatório Graduate Game Plan",
+      "itemInterviewQuestions": "Perguntas de Entrevista",
+      "itemCareerPaths": "Trajetórias de Carreira",
+      "itemApplicationPackage": "Pacote de Candidatura",
+      "itemCoverLetter": "Carta de Apresentação",
+      "resumeTooShort": "O texto do currículo é demasiado curto. Por favor, forneça mais conteúdo."
+    },
+    "info": {
+      "basicKeywordFix": {
+        "howItWorks": [
+          "A nossa IA analisou o seu currículo em relação aos requisitos do ATS",
+          "Identificámos palavras-chave em falta que poderiam melhorar a sua pontuação",
+          "Reveja as sugestões abaixo e adicione-as ao seu currículo",
+          "Carregue novamente para verificar a sua pontuação ATS melhorada"
+        ],
+        "nextSteps": [
+          { "title": "Revisar palavras-chave", "description": "Verifique a análise de palavras-chave em falta abaixo" },
+          { "title": "Atualizar currículo", "description": "Adicione as palavras-chave sugeridas ao seu currículo" },
+          { "title": "Verificar melhoria", "description": "Volte a analisar para ver a sua nova pontuação ATS" }
+        ],
+        "deliveryTime": "Instantâneo",
+        "deliveryMethod": "Nesta página"
+      },
+      "coverLetter": {
+        "howItWorks": [
+          "A nossa IA analisou o seu currículo e os requisitos da vaga",
+          "Elaborámos uma carta de apresentação personalizada que corresponde à sua experiência",
+          "Copie a carta abaixo ou descarregue-a como documento",
+          "Personalize a saudação e os detalhes específicos da empresa"
+        ],
+        "nextSteps": [
+          { "title": "Revisar carta", "description": "Leia a sua carta de apresentação gerada abaixo" },
+          { "title": "Copiar ou descarregar", "description": "Obtenha a sua carta no formato de que precisa" },
+          { "title": "Submeter candidatura", "description": "Envie junto com o seu currículo para se candidatar" }
+        ],
+        "deliveryTime": "Instantâneo",
+        "deliveryMethod": "Nesta página"
+      },
+      "premiumPackage": {
+        "howItWorks": [
+          "A nossa IA reescreveu completamente o seu currículo para otimização ATS",
+          "Adicionámos palavras-chave em falta e verbos de ação mais fortes",
+          "A sua carta de apresentação está personalizada para a vaga pretendida",
+          "Reveja a comparação antes/depois abaixo",
+          "Copie ou descarregue os seus novos documentos"
+        ],
+        "nextSteps": [
+          { "title": "Revisar documentos", "description": "Verifique o seu novo currículo e carta de apresentação abaixo" },
+          { "title": "Copiar e descarregar", "description": "Obtenha os seus documentos no formato de que precisa" },
+          { "title": "Candidatar-se agora", "description": "Submeta a sua candidatura otimizada" }
+        ],
+        "deliveryTime": "Instantâneo",
+        "deliveryMethod": "Nesta página"
+      },
+      "atsDefense": {
+        "howItWorks": [
+          "A nossa IA realizou uma auditoria completa de compatibilidade com ATS",
+          "Analisámos o seu currículo em relação a mais de 50 plataformas ATS",
+          "Palavras-chave otimizadas para até 3 vagas pretendidas",
+          "Formato reestruturado para máxima capacidade de análise",
+          "Inclui dicas de alinhamento com o LinkedIn"
+        ],
+        "nextSteps": [
+          { "title": "Revisar auditoria", "description": "Verifique as suas pontuações ATS antes/depois" },
+          { "title": "Aplicar palavras-chave", "description": "Use o banco de palavras-chave da sua indústria" },
+          { "title": "Copiar secções", "description": "Use as secções otimizadas do currículo" }
+        ],
+        "deliveryTime": "Instantâneo",
+        "deliveryMethod": "Nesta página"
+      },
+      "careerBundle": {
+        "howItWorks": [
+          "Agora tem 75 análises completas de currículo na sua conta",
+          "Cada análise inclui pontuação ATS e otimização completas",
+          "Use-as em várias candidaturas a emprego",
+          "Os créditos nunca expiram - use ao seu próprio ritmo",
+          "Partilhe com amigos ou família, se desejar"
+        ],
+        "nextSteps": [
+          { "title": "Começar a usar créditos", "description": "Carregue um currículo para usar o seu primeiro crédito" },
+          { "title": "Acompanhar os seus créditos", "description": "Verifique 'Os Meus Créditos' no cabeçalho para ver o seu saldo" },
+          { "title": "Candidatar-se a mais empregos", "description": "Use créditos para cada candidatura que pretenda" }
+        ],
+        "deliveryTime": "Instantâneo",
+        "deliveryMethod": "Créditos adicionados à conta"
+      },
+      "scanPack": {
+        "howItWorks": [
+          "Foram adicionados 10 créditos de verificação à sua conta",
+          "Cada verificação analisa o seu currículo em relação a uma vaga específica",
+          "Compare descrições de vagas ilimitadas com os seus créditos",
+          "Os créditos nunca expiram"
+        ],
+        "nextSteps": [
+          { "title": "Carregue o seu currículo", "description": "Vá à página inicial para começar a verificar" },
+          { "title": "Use os seus créditos", "description": "Cada verificação usa um crédito do seu saldo" },
+          { "title": "Verificar saldo", "description": "Veja os créditos restantes em 'Os Meus Créditos'" }
+        ],
+        "deliveryTime": "Instantâneo",
+        "deliveryMethod": "Créditos adicionados à conta"
+      },
+      "careerSnapshot": {
+        "howItWorks": [
+          "A nossa IA analisou a sua carreira a partir da perspetiva de um recrutador sénior",
+          "Avaliámos o seu desempenho, trajetória e sinais de credibilidade",
+          "Identificámos como os recrutadores irão perceber o seu percurso",
+          "Geramos recomendações estratégicas de posicionamento",
+          "Criámos correções prioritárias práticas que pode implementar hoje"
+        ],
+        "nextSteps": [
+          { "title": "Reveja a sua pontuação", "description": "Veja o detalhe do seu Career Signal Score" },
+          { "title": "Compreender a perceção", "description": "Saiba como os recrutadores veem a sua carreira" },
+          { "title": "Aplicar correções", "description": "Implemente as recomendações prioritárias" }
+        ],
+        "deliveryTime": "Instantâneo",
+        "deliveryMethod": "Nesta página"
+      },
+      "graduateGamePlan": {
+        "howItWorks": [
+          "A nossa IA avaliou a preparação do seu currículo para o mercado de trabalho",
+          "Identificámos vagas que correspondem ao seu percurso e experiência",
+          "Criámos uma estratégia de candidatura direcionada para recém-formados",
+          "Geramos scripts de networking que pode usar imediatamente",
+          "Construímos um plano de ação de 30 dias para conseguir a sua primeira função"
+        ],
+        "nextSteps": [
+          { "title": "Verificar preparação", "description": "Veja se o seu currículo está pronto para se candidatar" },
+          { "title": "Vagas pretendidas", "description": "Reveja vagas que correspondem ao seu percurso" },
+          { "title": "Seguir o plano", "description": "Execute o plano de ação de 30 dias" }
+        ],
+        "deliveryTime": "Instantâneo",
+        "deliveryMethod": "Nesta página"
+      },
+      "interviewCoach": {
+        "howItWorks": [
+          "A nossa IA analisou o seu currículo para identificar experiências-chave",
+          "Geramos perguntas de entrevista personalizadas com base no seu percurso",
+          "Cada pergunta inclui orientação pelo método STAR para respostas sólidas",
+          "Pratique-as para se preparar para a sua próxima entrevista"
+        ],
+        "nextSteps": [
+          { "title": "Revisar perguntas", "description": "Percorra cada pergunta personalizada" },
+          { "title": "Praticar respostas", "description": "Use os enquadramentos do método STAR fornecidos" },
+          { "title": "Construir confiança", "description": "Ensaie até se sentir preparado" }
+        ],
+        "deliveryTime": "Instantâneo",
+        "deliveryMethod": "Nesta página"
+      },
+      "careerPathSimulator": {
+        "howItWorks": [
+          "A nossa IA analisou as suas competências, experiência e trajetória de carreira",
+          "Identificámos 3 trajetórias de carreira realistas com base no seu percurso",
+          "Cada trajetória inclui lacunas de competências e projeções de cronograma",
+          "Use os passos de ação para seguir a direção da sua preferência"
+        ],
+        "nextSteps": [
+          { "title": "Explorar trajetórias", "description": "Reveja as suas 3 opções de trajetória de carreira" },
+          { "title": "Identificar lacunas", "description": "Veja que competências precisa para cada trajetória" },
+          { "title": "Planear com antecedência", "description": "Siga o cronograma da trajetória escolhida" }
+        ],
+        "deliveryTime": "Instantâneo",
+        "deliveryMethod": "Nesta página"
+      },
+      "applyAssistant": {
+        "howItWorks": [
+          "Cole a oferta de emprego à qual está a candidatar-se",
+          "A nossa IA adaptou o seu currículo a essa função específica, usando apenas a sua experiência real",
+          "Gerou uma carta de apresentação correspondente e uma checklist de submissão passo a passo",
+          "Você revê tudo e submete-o você mesmo — nada é enviado automaticamente"
+        ],
+        "nextSteps": [
+          { "title": "Revise o seu currículo adaptado", "description": "Verifique a precisão da reescrita da IA" },
+          { "title": "Siga a checklist", "description": "Dizemos-lhe exatamente o que fazer a seguir — você faz a submissão" },
+          { "title": "Exportar e candidatar-se", "description": "Descarregue o currículo e a carta de apresentação, depois candidate-se no site do empregador" }
+        ],
+        "deliveryTime": "Instantâneo",
+        "deliveryMethod": "Nesta página"
+      }
+    }
+  },
   "analysisResults": {
     "copied": "Copiado!",
     "copy": "Copiar",

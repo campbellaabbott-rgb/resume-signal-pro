@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { 
   CheckCircle2, 
   Loader2, 
@@ -72,184 +73,37 @@ const productIcons: Record<string, React.ElementType> = {
   applyAssistant: Send,
 };
 
-// Product-specific next steps and how-it-works info
-const productInfo: Record<string, {
-  howItWorks: string[];
-  nextSteps: { icon: React.ElementType; title: string; description: string }[];
-  deliveryTime: string;
-  deliveryMethod: string;
-}> = {
-  basicKeywordFix: {
-    howItWorks: [
-      "Our AI analyzed your resume against ATS requirements",
-      "We identified missing keywords that could boost your score",
-      "Review the suggestions below and add them to your resume",
-      "Re-upload to check your improved ATS score"
-    ],
-    nextSteps: [
-      { icon: Target, title: "Review Keywords", description: "Check the missing keywords analysis below" },
-      { icon: FileText, title: "Update Resume", description: "Add the suggested keywords to your resume" },
-      { icon: TrendingUp, title: "Verify Improvement", description: "Re-scan to see your new ATS score" }
-    ],
-    deliveryTime: "Instant",
-    deliveryMethod: "On This Page"
-  },
-  coverLetter: {
-    howItWorks: [
-      "Our AI analyzed your resume and the job requirements",
-      "We crafted a personalized cover letter matching your experience",
-      "Copy the letter below or download as a document",
-      "Customize the greeting and company-specific details"
-    ],
-    nextSteps: [
-      { icon: FileText, title: "Review Letter", description: "Read through your generated cover letter below" },
-      { icon: Copy, title: "Copy or Download", description: "Get your letter in the format you need" },
-      { icon: Mail, title: "Submit Application", description: "Send with your resume to apply" }
-    ],
-    deliveryTime: "Instant",
-    deliveryMethod: "On This Page"
-  },
-  premiumPackage: {
-    howItWorks: [
-      "Our AI completely rewrote your resume for ATS optimization",
-      "We added missing keywords and stronger action verbs",
-      "Your cover letter is personalized to the target role",
-      "Review the before/after comparison below",
-      "Copy or download your new documents"
-    ],
-    nextSteps: [
-      { icon: FileText, title: "Review Documents", description: "Check your new resume and cover letter below" },
-      { icon: Copy, title: "Copy & Download", description: "Get your documents in the format you need" },
-      { icon: Mail, title: "Apply Now", description: "Submit your optimized application" }
-    ],
-    deliveryTime: "Instant",
-    deliveryMethod: "On This Page"
-  },
-  atsDefense: {
-    howItWorks: [
-      "Our AI performed a comprehensive ATS compatibility audit",
-      "We analyzed your resume against 50+ ATS platforms",
-      "Keywords optimized for up to 3 target roles",
-      "Format restructured for maximum parseability",
-      "LinkedIn alignment tips included"
-    ],
-    nextSteps: [
-      { icon: ShieldCheck, title: "Review Audit", description: "Check your before/after ATS scores" },
-      { icon: Target, title: "Apply Keywords", description: "Use the keyword bank for your industry" },
-      { icon: FileText, title: "Copy Sections", description: "Use the optimized resume sections" }
-    ],
-    deliveryTime: "Instant",
-    deliveryMethod: "On This Page"
-  },
-  careerBundle: {
-    howItWorks: [
-      "You now have 75 full resume analyses in your account",
-      "Each analysis includes complete ATS scoring and optimization",
-      "Use them across multiple job applications",
-      "Credits never expire - use at your own pace",
-      "Share with friends or family if you'd like"
-    ],
-    nextSteps: [
-      { icon: Upload, title: "Start Using Credits", description: "Upload a resume to use your first credit" },
-      { icon: Mail, title: "Track Your Credits", description: "Check 'My Credits' in the header to see your balance" },
-      { icon: Zap, title: "Apply to More Jobs", description: "Use credits for each job application you target" }
-    ],
-    deliveryTime: "Instant",
-    deliveryMethod: "Credits Added to Account"
-  },
-  scanPack: {
-    howItWorks: [
-      "10 scan credits have been added to your account",
-      "Each scan analyzes your resume against a specific job",
-      "Compare unlimited job descriptions with your credits",
-      "Credits never expire"
-    ],
-    nextSteps: [
-      { icon: Upload, title: "Upload Your Resume", description: "Go to the home page to start scanning" },
-      { icon: Zap, title: "Use Your Credits", description: "Each scan uses one credit from your balance" },
-      { icon: Mail, title: "Check Balance", description: "View remaining credits in 'My Credits'" }
-    ],
-    deliveryTime: "Instant",
-    deliveryMethod: "Credits Added to Account"
-  },
-  careerSnapshot: {
-    howItWorks: [
-      "Our AI analyzed your career from a senior recruiter's perspective",
-      "We evaluated your performance, trajectory, and credibility signals",
-      "Identified how recruiters will perceive your background",
-      "Generated strategic positioning recommendations",
-      "Created actionable priority fixes you can implement today"
-    ],
-    nextSteps: [
-      { icon: Target, title: "Review Your Score", description: "See your Career Signal Score breakdown" },
-      { icon: Brain, title: "Understand Perception", description: "Learn how recruiters see your career" },
-      { icon: FileText, title: "Apply Fixes", description: "Implement the priority recommendations" }
-    ],
-    deliveryTime: "Instant",
-    deliveryMethod: "On This Page"
-  },
-  graduateGamePlan: {
-    howItWorks: [
-      "Our AI evaluated your resume readiness for the job market",
-      "We identified roles that match your background and experience",
-      "Created a targeted application strategy for new grads",
-      "Generated networking scripts you can use immediately",
-      "Built a 30-day action plan to land your first role"
-    ],
-    nextSteps: [
-      { icon: CheckCircle2, title: "Check Readiness", description: "See if your resume is ready to apply" },
-      { icon: Target, title: "Target Roles", description: "Review roles that fit your background" },
-      { icon: Calendar, title: "Follow the Plan", description: "Execute the 30-day action plan" }
-    ],
-    deliveryTime: "Instant",
-    deliveryMethod: "On This Page"
-  },
-  interviewCoach: {
-    howItWorks: [
-      "Our AI analyzed your resume to identify key experiences",
-      "We generated personalized interview questions based on your background",
-      "Each question includes STAR method guidance for strong answers",
-      "Practice these to prepare for your next interview"
-    ],
-    nextSteps: [
-      { icon: MessageSquare, title: "Review Questions", description: "Go through each personalized question" },
-      { icon: Target, title: "Practice Answers", description: "Use the STAR method frameworks provided" },
-      { icon: TrendingUp, title: "Build Confidence", description: "Rehearse until you feel ready" }
-    ],
-    deliveryTime: "Instant",
-    deliveryMethod: "On This Page"
-  },
-  careerPathSimulator: {
-    howItWorks: [
-      "Our AI analyzed your skills, experience, and career trajectory",
-      "We identified 3 realistic career paths based on your background",
-      "Each path includes skills gaps and timeline projections",
-      "Use the action steps to pursue your preferred direction"
-    ],
-    nextSteps: [
-      { icon: TrendingUp, title: "Explore Paths", description: "Review your 3 career trajectory options" },
-      { icon: Target, title: "Identify Gaps", description: "See what skills you need for each path" },
-      { icon: Calendar, title: "Plan Ahead", description: "Follow the timeline for your chosen path" }
-    ],
-    deliveryTime: "Instant",
-    deliveryMethod: "On This Page"
-  },
-  applyAssistant: {
-    howItWorks: [
-      "Paste the job posting you're applying to",
-      "Our AI tailored your resume to that specific role, using only your real experience",
-      "Generated a matching cover letter and a step-by-step submission checklist",
-      "You review everything and submit it yourself — nothing is sent automatically"
-    ],
-    nextSteps: [
-      { icon: FileText, title: "Review Your Tailored Resume", description: "Check the AI's rewrite for accuracy" },
-      { icon: Send, title: "Follow the Checklist", description: "We tell you exactly what to do next — you do the submitting" },
-      { icon: Download, title: "Export & Apply", description: "Download the resume and cover letter, then apply on the employer's site" }
-    ],
-    deliveryTime: "Instant",
-    deliveryMethod: "On This Page"
-  }
+// Product-specific next steps and how-it-works info. Title/description text lives in
+// src/i18n/locales/*.json under productSuccess.info.<key>.* — only the icons and the
+// step count live here. See getProductInfo() below.
+const productInfoIcons: Record<string, { nextSteps: React.ElementType[] }> = {
+  basicKeywordFix: { nextSteps: [Target, FileText, TrendingUp] },
+  coverLetter: { nextSteps: [FileText, Copy, Mail] },
+  premiumPackage: { nextSteps: [FileText, Copy, Mail] },
+  atsDefense: { nextSteps: [ShieldCheck, Target, FileText] },
+  careerBundle: { nextSteps: [Upload, Mail, Zap] },
+  scanPack: { nextSteps: [Upload, Zap, Mail] },
+  careerSnapshot: { nextSteps: [Target, Brain, FileText] },
+  graduateGamePlan: { nextSteps: [CheckCircle2, Target, Calendar] },
+  interviewCoach: { nextSteps: [MessageSquare, Target, TrendingUp] },
+  careerPathSimulator: { nextSteps: [TrendingUp, Target, Calendar] },
+  applyAssistant: { nextSteps: [FileText, Send, Download] }
 };
+
+function getProductInfo(t: (key: string, options?: Record<string, unknown>) => unknown, key: string) {
+  const icons = productInfoIcons[key];
+  if (!icons) return null;
+  return {
+    howItWorks: t(`productSuccess.info.${key}.howItWorks`, { returnObjects: true }) as string[],
+    nextSteps: icons.nextSteps.map((icon, i) => ({
+      icon,
+      title: t(`productSuccess.info.${key}.nextSteps.${i}.title`) as string,
+      description: t(`productSuccess.info.${key}.nextSteps.${i}.description`) as string,
+    })),
+    deliveryTime: t(`productSuccess.info.${key}.deliveryTime`) as string,
+    deliveryMethod: t(`productSuccess.info.${key}.deliveryMethod`) as string,
+  };
+}
 
 interface KeywordData {
   missingKeywords: Array<{ keyword: string; importance: string; category: string; suggestion: string }>;
@@ -289,6 +143,7 @@ interface PremiumPackageData {
 }
 
 export default function ProductSuccess() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [isVerifying, setIsVerifying] = useState(true);
   const [verificationError, setVerificationError] = useState<string | null>(null);
@@ -340,7 +195,7 @@ export default function ProductSuccess() {
   // Get product details
   const product = productKey && PRODUCTS[productKey] ? PRODUCTS[productKey] : null;
   const Icon = productKey ? productIcons[productKey] || Sparkles : Sparkles;
-  const info = productKey ? productInfo[productKey] : null;
+  const info = productKey ? getProductInfo(t, productKey) : null;
 
   // Try to recover resume from session storage
   const attemptSessionRecovery = useCallback(async () => {
@@ -1104,7 +959,7 @@ export default function ProductSuccess() {
           <Header />
           <AIGenerationProgress 
             isVisible={true} 
-            productName={product?.name || "your content"}
+            productName={product?.name || t('productSuccess.yourContent')}
           />
           <Footer />
         </div>
@@ -1123,9 +978,9 @@ export default function ProductSuccess() {
                 <div className="absolute w-20 h-20 rounded-full border-2 border-transparent border-t-primary animate-spin" />
                 <CheckCircle2 className="w-8 h-8 text-primary" />
               </div>
-              <h1 className="text-2xl font-bold">Verifying your purchase...</h1>
+              <h1 className="text-2xl font-bold">{t('productSuccess.verifyingPurchase')}</h1>
               <p className="text-muted-foreground">
-                Just a moment while we confirm your payment
+                {t('productSuccess.confirmingPayment')}
               </p>
             </div>
           </div>
@@ -1145,15 +1000,14 @@ export default function ProductSuccess() {
               <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-muted border border-border">
                 <HelpCircle className="w-10 h-10 text-muted-foreground" />
               </div>
-              <h1 className="text-3xl font-bold">Purchase Details Not Found</h1>
+              <h1 className="text-3xl font-bold">{t('productSuccess.purchaseNotFound')}</h1>
               <p className="text-muted-foreground">
-                We couldn't find details about your purchase. If you completed a payment, 
-                please check your email for confirmation.
+                {t('productSuccess.purchaseNotFoundDescription')}
               </p>
               <Button asChild size="lg">
                 <Link to="/">
                   <Home className="w-4 h-4 mr-2" />
-                  Go to Home
+                  {t('productSuccess.goToHome')}
                 </Link>
               </Button>
             </div>
@@ -1237,14 +1091,13 @@ export default function ProductSuccess() {
                   <div className="flex items-center gap-2 mb-2">
                     <Coins className="w-5 h-5 text-success" />
                     <h3 className="font-bold text-lg text-success">
-                      {scanCreditsResult.credits} Credits Added!
+                      {t('productSuccess.creditsAdded', { count: scanCreditsResult.credits })}
                     </h3>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Your credits are now live on the account for{" "}
-                    <span className="font-medium text-foreground">{scanCreditsResult.email}</span>.
-                    You'll see your balance in the <strong>My Credits</strong> button in the
-                    header on this device — no need to enter your email again.
+                    {t('productSuccess.creditsLiveOn')}{" "}
+                    <span className="font-medium text-foreground">{scanCreditsResult.email}</span>.{" "}
+                    {t('productSuccess.creditsBalancePrefix')} <strong>{t('productSuccess.myCredits')}</strong> {t('productSuccess.creditsBalanceSuffix')}
                   </p>
                 </div>
               )}
@@ -1259,16 +1112,16 @@ export default function ProductSuccess() {
               <div className="text-center mb-8">
                 <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
                   <Sparkles className="w-3 h-3 mr-1" />
-                  Your Results Are Ready
+                  {t('productSuccess.resultsReady')}
                 </Badge>
-                <h2 className="text-2xl font-bold mb-2">Keyword Analysis Results</h2>
+                <h2 className="text-2xl font-bold mb-2">{t('productSuccess.keywordAnalysisResults')}</h2>
                 <p className="text-muted-foreground">{keywordData.summary}</p>
               </div>
 
               {/* Score */}
               <div className="max-w-sm mx-auto mb-8 p-6 rounded-2xl bg-card border border-border text-center">
                 <div className="text-5xl font-bold text-primary mb-2">{keywordData.overallScore}%</div>
-                <div className="text-sm text-muted-foreground">Current Keyword Optimization Score</div>
+                <div className="text-sm text-muted-foreground">{t('productSuccess.currentKeywordScore')}</div>
               </div>
 
               {/* Missing Keywords */}
@@ -1354,12 +1207,12 @@ export default function ProductSuccess() {
               <div className="text-center mb-8">
                 <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
                   <Sparkles className="w-3 h-3 mr-1" />
-                  Your Cover Letter Is Ready
+                  {t('productSuccess.coverLetterReady')}
                 </Badge>
-                <h2 className="text-2xl font-bold mb-2">Your Personalized Cover Letter</h2>
+                <h2 className="text-2xl font-bold mb-2">{t('productSuccess.personalizedCoverLetter')}</h2>
                 {coverLetterData.suggestedSubjectLine && (
                   <p className="text-muted-foreground">
-                    Suggested subject: <span className="text-foreground">{coverLetterData.suggestedSubjectLine}</span>
+                    {t('productSuccess.suggestedSubject')} <span className="text-foreground">{coverLetterData.suggestedSubjectLine}</span>
                   </p>
                 )}
               </div>
@@ -1374,7 +1227,7 @@ export default function ProductSuccess() {
                     className="gap-2"
                   >
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    {copied ? 'Copied!' : 'Copy'}
+                    {copied ? t('analysisResults.copied') : t('analysisResults.copy')}
                   </Button>
                 </div>
                 <div className="p-6 md:p-8 rounded-2xl bg-card border border-border">
@@ -1387,7 +1240,7 @@ export default function ProductSuccess() {
               {/* Key Skills Highlighted */}
               {coverLetterData.keySkillsHighlighted?.length > 0 && (
                 <div className="mt-6">
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-3">Key Skills Highlighted</h3>
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-3">{t('productSuccess.keySkillsHighlighted')}</h3>
                   <div className="flex flex-wrap gap-2">
                     {coverLetterData.keySkillsHighlighted.map((skill, i) => (
                       <Badge key={i} variant="secondary">{skill}</Badge>
@@ -1399,7 +1252,7 @@ export default function ProductSuccess() {
               {/* Alternate Openings */}
               {coverLetterData.alternateOpenings?.length > 0 && (
                 <div className="mt-6 p-4 rounded-xl bg-muted/50 border border-border">
-                  <h3 className="text-sm font-semibold mb-3">Alternative Opening Lines</h3>
+                  <h3 className="text-sm font-semibold mb-3">{t('productSuccess.alternativeOpeningLines')}</h3>
                   <ul className="space-y-2">
                     {coverLetterData.alternateOpenings.map((opening, i) => (
                       <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
@@ -1421,12 +1274,12 @@ export default function ProductSuccess() {
               <div className="text-center mb-8">
                 <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
                   <Crown className="w-3 h-3 mr-1" />
-                  Premium Package Ready
+                  {t('productSuccess.premiumPackageReady')}
                 </Badge>
-                <h2 className="text-2xl font-bold mb-2">Your Optimized Documents</h2>
+                <h2 className="text-2xl font-bold mb-2">{t('productSuccess.optimizedDocuments')}</h2>
                 <p className="text-muted-foreground">
-                  Tailored for {premiumData.jobDetails?.title || 'your target role'}
-                  {premiumData.jobDetails?.company ? ` at ${premiumData.jobDetails.company}` : ''}
+                  {t('productSuccess.tailoredFor', { role: premiumData.jobDetails?.title || t('productSuccess.yourTargetRole') })}
+                  {premiumData.jobDetails?.company ? ` ${t('productSuccess.atCompany', { company: premiumData.jobDetails.company })}` : ''}
                 </p>
               </div>
 
@@ -1436,12 +1289,12 @@ export default function ProductSuccess() {
                   <div className="flex items-center justify-center gap-6">
                     <div className="text-center">
                       <div className="text-3xl font-bold text-muted-foreground">{premiumData.resume.atsScore.before}%</div>
-                      <div className="text-xs text-muted-foreground">Before</div>
+                      <div className="text-xs text-muted-foreground">{t('productSuccess.before')}</div>
                     </div>
                     <ArrowRight className="w-6 h-6 text-primary" />
                     <div className="text-center">
                       <div className="text-5xl font-bold text-success">{premiumData.resume.atsScore.after}%</div>
-                      <div className="text-xs text-muted-foreground">After</div>
+                      <div className="text-xs text-muted-foreground">{t('productSuccess.after')}</div>
                     </div>
                   </div>
                   <p className="text-sm text-center text-muted-foreground mt-4">{premiumData.resume.atsScore.improvement}</p>
@@ -1504,7 +1357,7 @@ export default function ProductSuccess() {
                   {/* Added Keywords */}
                   {premiumData.resume.addedKeywords?.length > 0 && (
                     <div className="mb-6">
-                      <h3 className="text-sm font-semibold text-muted-foreground mb-3">Keywords Added</h3>
+                      <h3 className="text-sm font-semibold text-muted-foreground mb-3">{t('productSuccess.keywordsAdded')}</h3>
                       <div className="flex flex-wrap gap-2">
                         {premiumData.resume.addedKeywords.map((kw, i) => (
                           <Badge key={i} variant="secondary" className="bg-success/10 text-success border-success/30">{kw}</Badge>
@@ -1523,11 +1376,11 @@ export default function ProductSuccess() {
                         className="gap-2"
                       >
                         {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                        {copied ? 'Copied!' : 'Copy Resume'}
+                        {copied ? t('analysisResults.copied') : t('productSuccess.copyResume')}
                       </Button>
                     </div>
                     <div className="p-6 md:p-8 rounded-2xl bg-card border border-border">
-                      <h3 className="font-semibold mb-4 text-primary">Your Optimized Resume</h3>
+                      <h3 className="font-semibold mb-4 text-primary">{t('productSuccess.yourOptimizedResume')}</h3>
                       <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap font-mono text-sm">
                         {premiumData.resume.rewrittenResume}
                       </div>
@@ -1541,20 +1394,20 @@ export default function ProductSuccess() {
                 <div className="space-y-6">
                   {premiumData.coverLetter.suggestedSubjectLine && (
                     <p className="text-center text-muted-foreground">
-                      Suggested subject: <span className="text-foreground">{premiumData.coverLetter.suggestedSubjectLine}</span>
+                      {t('productSuccess.suggestedSubject')} <span className="text-foreground">{premiumData.coverLetter.suggestedSubjectLine}</span>
                     </p>
                   )}
 
                   <div className="relative">
                     <div className="absolute top-4 right-4 z-10">
-                      <Button 
-                        variant="secondary" 
+                      <Button
+                        variant="secondary"
                         size="sm"
                         onClick={() => copyToClipboard(premiumData.coverLetter.coverLetter)}
                         className="gap-2"
                       >
                         {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                        {copied ? 'Copied!' : 'Copy Letter'}
+                        {copied ? t('analysisResults.copied') : t('productSuccess.copyLetter')}
                       </Button>
                     </div>
                     <div className="p-6 md:p-8 rounded-2xl bg-card border border-border">
@@ -1566,7 +1419,7 @@ export default function ProductSuccess() {
 
                   {premiumData.coverLetter.keySkillsHighlighted?.length > 0 && (
                     <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground mb-3">Key Skills Highlighted</h3>
+                      <h3 className="text-sm font-semibold text-muted-foreground mb-3">{t('productSuccess.keySkillsHighlighted')}</h3>
                       <div className="flex flex-wrap gap-2">
                         {premiumData.coverLetter.keySkillsHighlighted.map((skill, i) => (
                           <Badge key={i} variant="secondary">{skill}</Badge>
@@ -1587,11 +1440,11 @@ export default function ProductSuccess() {
               <div className="text-center mb-8">
                 <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
                   <ShieldCheck className="w-3 h-3 mr-1" />
-                  ATS Defense Report Ready
+                  {t('productSuccess.atsDefenseReady')}
                 </Badge>
-                <h2 className="text-2xl font-bold mb-2">Your ATS Defense Complete Report</h2>
+                <h2 className="text-2xl font-bold mb-2">{t('productSuccess.atsDefenseCompleteReport')}</h2>
                 <p className="text-muted-foreground">
-                  Comprehensive ATS optimization with before/after analysis
+                  {t('productSuccess.atsDefenseSubtitle')}
                 </p>
               </div>
 
@@ -1611,11 +1464,11 @@ export default function ProductSuccess() {
               <div className="text-center mb-8">
                 <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
                   <Brain className="w-3 h-3 mr-1" />
-                  Career Intelligence Report Ready
+                  {t('productSuccess.careerIntelligenceReady')}
                 </Badge>
-                <h2 className="text-2xl font-bold mb-2">Your Career Snapshot</h2>
+                <h2 className="text-2xl font-bold mb-2">{t('productSuccess.yourCareerSnapshot')}</h2>
                 <p className="text-muted-foreground">
-                  Recruiter-style career intelligence showing how your career looks at a glance
+                  {t('productSuccess.careerSnapshotSubtitle')}
                 </p>
               </div>
 
@@ -1631,11 +1484,11 @@ export default function ProductSuccess() {
               <div className="text-center mb-8">
                 <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
                   <Target className="w-3 h-3 mr-1" />
-                  Your Game Plan is Ready
+                  {t('productSuccess.gamePlanReady')}
                 </Badge>
-                <h2 className="text-2xl font-bold mb-2">Graduate Game Plan</h2>
+                <h2 className="text-2xl font-bold mb-2">{t('productSuccess.graduateGamePlan')}</h2>
                 <p className="text-muted-foreground">
-                  A clear, step-by-step playbook for what to do next
+                  {t('productSuccess.gamePlanSubtitle')}
                 </p>
               </div>
 
@@ -1651,11 +1504,11 @@ export default function ProductSuccess() {
               <div className="text-center mb-8">
                 <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
                   <Send className="w-3 h-3 mr-1" />
-                  Your Application Package is Ready
+                  {t('productSuccess.applicationPackageReady')}
                 </Badge>
-                <h2 className="text-2xl font-bold mb-2">Apply Assistant</h2>
+                <h2 className="text-2xl font-bold mb-2">{t('productSuccess.applyAssistant')}</h2>
                 <p className="text-muted-foreground">
-                  Tailored, reviewed by you, submitted by you
+                  {t('productSuccess.applyAssistantSubtitle')}
                 </p>
               </div>
 
@@ -1671,15 +1524,15 @@ export default function ProductSuccess() {
               <div className="text-center mb-8">
                 <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
                   <Sparkles className="w-3 h-3 mr-1" />
-                  Your Session is Ready
+                  {t('productSuccess.sessionReady')}
                 </Badge>
                 <h2 className="text-2xl font-bold mb-2">
-                  {isInterviewCoach ? "Interview Coach" : "Career Path Simulator"}
+                  {isInterviewCoach ? t('productSuccess.interviewCoach') : t('productSuccess.careerPathSimulator')}
                 </h2>
                 <p className="text-muted-foreground">
                   {isInterviewCoach
-                    ? "Generate personalized interview questions and get feedback on your answers"
-                    : "Explore possible career trajectories based on your resume"}
+                    ? t('productSuccess.interviewCoachSubtitle')
+                    : t('productSuccess.careerPathSimulatorSubtitle')}
                 </p>
               </div>
 
@@ -1695,7 +1548,7 @@ export default function ProductSuccess() {
         {/* AI Generation Progress Overlay for Recovery Mode */}
         <AIGenerationProgress 
           isVisible={isRegenerating} 
-          productName={product?.name || "your content"}
+          productName={product?.name || t('productSuccess.yourContent')}
         />
 
         {/* Verification Failed - don't leave the user on a blank page */}
@@ -1704,15 +1557,14 @@ export default function ProductSuccess() {
             <div className="container max-w-2xl">
               <div className="p-8 rounded-2xl bg-muted/50 border border-border text-center">
                 <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">We Couldn't Verify Your Purchase Yet</h3>
+                <h3 className="text-xl font-semibold mb-2">{t('productSuccess.couldNotVerify')}</h3>
                 <p className="text-muted-foreground mb-6">
-                  Your payment may still be processing — this can take a minute. If you were charged,
-                  your purchase is safe and we'll have it ready shortly.
+                  {t('productSuccess.couldNotVerifyDescription')}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button onClick={() => window.location.reload()}>Try Again</Button>
+                  <Button onClick={() => window.location.reload()}>{t('productSuccess.tryAgain')}</Button>
                   <Button variant="outline" asChild>
-                    <a href="mailto:resumeboostersupp@gmail.com">Contact Support</a>
+                    <a href="mailto:resumeboostersupp@gmail.com">{t('productSuccess.contactSupport')}</a>
                   </Button>
                 </div>
               </div>
@@ -1728,34 +1580,34 @@ export default function ProductSuccess() {
                     <div className="text-center mb-6">
                       <Upload className="w-12 h-12 text-primary mx-auto mb-4" />
                       <h3 className="text-xl font-semibold mb-2">
-                        {isCareerSnapshot ? 'Complete Your Career Snapshot' :
-                         isGraduateGamePlan ? 'Complete Your Graduate Game Plan' :
-                         isAtsDefense ? 'Complete Your ATS Defense Report' :
-                         isPremiumPackage ? 'Complete Your Premium Package' :
-                         isCoverLetter ? 'Complete Your Cover Letter' :
-                         isInterviewCoach ? 'Start Your Interview Coach Session' :
-                         isCareerPathSimulator ? 'Run Your Career Path Simulator' :
-                         isApplyAssistant ? 'Build Your Application Package' :
-                         'Complete Your Keyword Analysis'}
+                        {isCareerSnapshot ? t('productSuccess.recovery.titleCareerSnapshot') :
+                         isGraduateGamePlan ? t('productSuccess.recovery.titleGraduateGamePlan') :
+                         isAtsDefense ? t('productSuccess.recovery.titleAtsDefense') :
+                         isPremiumPackage ? t('productSuccess.recovery.titlePremiumPackage') :
+                         isCoverLetter ? t('productSuccess.recovery.titleCoverLetter') :
+                         isInterviewCoach ? t('productSuccess.recovery.titleInterviewCoach') :
+                         isCareerPathSimulator ? t('productSuccess.recovery.titleCareerPathSimulator') :
+                         isApplyAssistant ? t('productSuccess.recovery.titleApplyAssistant') :
+                         t('productSuccess.recovery.titleKeywordFix')}
                       </h3>
                       <p className="text-muted-foreground">
                         {isCareerSnapshot ?
-                          'Upload your resume to get your career intelligence report.' :
+                          t('productSuccess.recovery.descCareerSnapshot') :
                          isGraduateGamePlan ?
-                          'Upload your resume to get your personalized game plan for landing your first role.' :
+                          t('productSuccess.recovery.descGraduateGamePlan') :
                          isAtsDefense ?
-                          'Upload your resume and optionally add target roles and job description for personalized optimization.' :
+                          t('productSuccess.recovery.descAtsDefense') :
                          isPremiumPackage ?
-                          'Upload your resume and add a job description to get your optimized resume and cover letter.' :
+                          t('productSuccess.recovery.descPremiumPackage') :
                          isCoverLetter ?
-                          'Upload your resume and add the job details to generate a tailored cover letter.' :
+                          t('productSuccess.recovery.descCoverLetter') :
                          isInterviewCoach ?
-                          'Upload your resume to generate personalized interview questions.' :
+                          t('productSuccess.recovery.descInterviewCoach') :
                          isCareerPathSimulator ?
-                          'Upload your resume to see possible career trajectories.' :
+                          t('productSuccess.recovery.descCareerPathSimulator') :
                          isApplyAssistant ?
-                          'Upload your resume and paste the job posting you\'re applying to — both are required so we can tailor your application.' :
-                          'Upload your resume to get keyword optimization suggestions.'}
+                          t('productSuccess.recovery.descApplyAssistant') :
+                          t('productSuccess.recovery.descKeywordFix')}
                       </p>
                     </div>
 
@@ -1763,14 +1615,14 @@ export default function ProductSuccess() {
                     {!showEmailRecovery ? (
                       <div className="text-center mb-6 p-4 rounded-xl bg-primary/5 border border-primary/20">
                         <p className="text-sm text-muted-foreground mb-2">
-                          Already purchased and closed the tab? 
+                          {t('productSuccess.recovery.alreadyPurchased')}
                         </p>
-                        <Button 
-                          variant="link" 
+                        <Button
+                          variant="link"
                           className="text-primary p-0 h-auto"
                           onClick={() => setShowEmailRecovery(true)}
                         >
-                          Recover your results →
+                          {t('productSuccess.recovery.recoverResultsLink')}
                         </Button>
                       </div>
                     ) : (
@@ -1778,24 +1630,23 @@ export default function ProductSuccess() {
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="font-medium flex items-center gap-2">
                             <Mail className="w-4 h-4" />
-                            Recover Previous Purchase
+                            {t('productSuccess.recovery.recoverPreviousPurchase')}
                           </h4>
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={() => setShowEmailRecovery(false)}
                           >
-                            Cancel
+                            {t('productSuccess.recovery.cancel')}
                           </Button>
                         </div>
                         <p className="text-sm text-muted-foreground mb-3">
-                          Paste the purchase link or session ID from your confirmation email — for
-                          your security, we can no longer look purchases up by email alone.
+                          {t('productSuccess.recovery.pasteLinkHelper')}
                         </p>
                         <div className="space-y-3">
                           <Input
                             type="text"
-                            placeholder="cs_live_... or the link from your confirmation email"
+                            placeholder={t('productSuccess.recovery.sessionIdPlaceholder')}
                             value={recoveryEmail}
                             onChange={(e) => setRecoveryEmail(e.target.value)}
                           />
@@ -1856,28 +1707,28 @@ export default function ProductSuccess() {
                                     }
                                     setShowEmailRecovery(false);
                                     toast({
-                                      title: "Content Recovered!",
-                                      description: "Your previously generated content has been restored.",
+                                      title: t('productSuccess.recovery.contentRecoveredTitle'),
+                                      description: t('productSuccess.recovery.contentRecoveredDescription'),
                                     });
                                   } else {
                                     toast({
-                                      title: "No matching content found",
-                                      description: "We found purchases but no content for this product type.",
+                                      title: t('productSuccess.recovery.noMatchingContentTitle'),
+                                      description: t('productSuccess.recovery.noMatchingContentDescription'),
                                       variant: "destructive"
                                     });
                                   }
                                 } else {
                                   toast({
-                                    title: "No purchases found",
-                                    description: "No purchase found for that session ID. Please check the link from your confirmation email.",
+                                    title: t('productSuccess.recovery.noPurchasesFoundTitle'),
+                                    description: t('productSuccess.recovery.noPurchasesFoundDescription'),
                                     variant: "destructive"
                                   });
                                 }
                               } catch (err) {
                                 console.error('Recovery error:', err);
                                 toast({
-                                  title: "Recovery failed",
-                                  description: "Could not recover your purchase. Please try again.",
+                                  title: t('productSuccess.recovery.recoveryFailedTitle'),
+                                  description: t('productSuccess.recovery.recoveryFailedDescription'),
                                   variant: "destructive"
                                 });
                               } finally {
@@ -1888,12 +1739,12 @@ export default function ProductSuccess() {
                             {isRecoveringByEmail ? (
                               <>
                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                Looking up...
+                                {t('productSuccess.recovery.lookingUp')}
                               </>
                             ) : (
                               <>
                                 <Mail className="w-4 h-4" />
-                                Recover My Results
+                                {t('productSuccess.recovery.recoverMyResults')}
                               </>
                             )}
                           </Button>
@@ -1905,7 +1756,7 @@ export default function ProductSuccess() {
                     <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 mb-4">
                       <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                         <FileText className="w-4 h-4 text-primary" />
-                        What you'll need for this package:
+                        {t('productSuccess.recovery.whatYouNeed')}
                       </h4>
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm">
@@ -1916,7 +1767,7 @@ export default function ProductSuccess() {
                             {recoveryResumeText.length >= 50 ? <Check className="w-3 h-3" /> : '1'}
                           </div>
                           <span className={recoveryResumeText.length >= 50 ? "text-success" : ""}>
-                            Resume <Badge variant="destructive" className="text-[10px] ml-1">Required</Badge>
+                            {t('productSuccess.recovery.resumeLabel')} <Badge variant="destructive" className="text-[10px] ml-1">{t('productSuccess.recovery.required')}</Badge>
                           </span>
                         </div>
                         {(isCoverLetter || isPremiumPackage || isAtsDefense) && (
@@ -1928,7 +1779,7 @@ export default function ProductSuccess() {
                               {recoveryJobDescription.length > 50 ? <Check className="w-3 h-3" /> : '2'}
                             </div>
                             <span className={recoveryJobDescription.length > 50 ? "text-success" : ""}>
-                              Job Description <Badge variant="secondary" className="text-[10px] ml-1">Recommended</Badge>
+                              {t('productSuccess.recovery.jobDescriptionLabel')} <Badge variant="secondary" className="text-[10px] ml-1">{t('productSuccess.recovery.recommended')}</Badge>
                             </span>
                           </div>
                         )}
@@ -1941,7 +1792,7 @@ export default function ProductSuccess() {
                               {recoveryTargetRoles.some(r => r.trim().length > 0) ? <Check className="w-3 h-3" /> : '3'}
                             </div>
                             <span className={recoveryTargetRoles.some(r => r.trim().length > 0) ? "text-success" : ""}>
-                              Target Roles (1-3) <Badge variant="secondary" className="text-[10px] ml-1">Optional</Badge>
+                              {t('productSuccess.recovery.targetRolesLabel')} <Badge variant="secondary" className="text-[10px] ml-1">{t('productSuccess.recovery.optional')}</Badge>
                             </span>
                           </div>
                         )}
@@ -1952,8 +1803,8 @@ export default function ProductSuccess() {
                     <div className="space-y-4">
                       <label className="text-sm font-medium text-foreground flex items-center gap-2">
                         <FileText className="w-4 h-4" />
-                        Your Resume
-                        <Badge variant="destructive" className="text-[10px]">Required</Badge>
+                        {t('productSuccess.recovery.yourResume')}
+                        <Badge variant="destructive" className="text-[10px]">{t('productSuccess.recovery.required')}</Badge>
                       </label>
                       <div 
                         className={cn(
@@ -1975,7 +1826,7 @@ export default function ProductSuccess() {
                         {isParsingFile ? (
                           <div className="flex items-center justify-center gap-2">
                             <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                            <span>Parsing file...</span>
+                            <span>{t('productSuccess.recovery.parsingFile')}</span>
                           </div>
                         ) : recoveryFile ? (
                           <div className="flex items-center justify-center gap-2 text-success">
@@ -1985,8 +1836,8 @@ export default function ProductSuccess() {
                         ) : (
                           <div>
                             <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                            <p className="font-medium">Drop your resume or click to upload</p>
-                            <p className="text-sm text-muted-foreground">PDF, DOCX, or TXT</p>
+                            <p className="font-medium">{t('productSuccess.recovery.dropOrUpload')}</p>
+                            <p className="text-sm text-muted-foreground">{t('productSuccess.recovery.fileTypes')}</p>
                           </div>
                         )}
                       </div>
@@ -1996,12 +1847,12 @@ export default function ProductSuccess() {
                           <div className="w-full border-t border-border" />
                         </div>
                         <div className="relative flex justify-center text-xs uppercase">
-                          <span className="bg-muted/50 px-2 text-muted-foreground">or paste text</span>
+                          <span className="bg-muted/50 px-2 text-muted-foreground">{t('productSuccess.recovery.orPasteText')}</span>
                         </div>
                       </div>
 
                       <Textarea
-                        placeholder="Paste your resume text here..."
+                        placeholder={t('productSuccess.recovery.pasteResumePlaceholder')}
                         value={recoveryResumeText}
                         onChange={(e) => setRecoveryResumeText(e.target.value)}
                         className="min-h-[150px] resize-none"
@@ -2012,18 +1863,18 @@ export default function ProductSuccess() {
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <label className="text-sm font-medium text-foreground">
-                              Target Job Titles
-                              <span className="text-muted-foreground font-normal ml-1">(up to 3)</span>
+                              {t('productSuccess.recovery.targetJobTitles')}
+                              <span className="text-muted-foreground font-normal ml-1">{t('productSuccess.recovery.upToThree')}</span>
                             </label>
                             <Badge variant="secondary" className="text-xs">
-                              Multi-role optimization
+                              {t('productSuccess.recovery.multiRoleOptimization')}
                             </Badge>
                           </div>
                           <div className="space-y-2">
                             {recoveryTargetRoles.map((role, index) => (
                               <div key={index} className="flex gap-2">
                                 <Input
-                                  placeholder={index === 0 ? "e.g., Software Engineer" : index === 1 ? "e.g., Full Stack Developer" : "e.g., Backend Engineer"}
+                                  placeholder={index === 0 ? t('productSuccess.recovery.roleExample1') : index === 1 ? t('productSuccess.recovery.roleExample2') : t('productSuccess.recovery.roleExample3')}
                                   value={role}
                                   onChange={(e) => {
                                     const newRoles = [...recoveryTargetRoles];
@@ -2040,7 +1891,7 @@ export default function ProductSuccess() {
                                     }}
                                     className="shrink-0"
                                   >
-                                    <span className="sr-only">Remove role</span>
+                                    <span className="sr-only">{t('productSuccess.recovery.removeRole')}</span>
                                     ×
                                   </Button>
                                 )}
@@ -2053,12 +1904,12 @@ export default function ProductSuccess() {
                                 onClick={() => setRecoveryTargetRoles([...recoveryTargetRoles, ''])}
                                 className="w-full"
                               >
-                                + Add Another Target Role
+                                {t('productSuccess.recovery.addAnotherTargetRole')}
                               </Button>
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            Add up to 3 job titles to optimize your resume for multiple roles simultaneously.
+                            {t('productSuccess.recovery.targetRolesHelper')}
                           </p>
                         </div>
                       )}
@@ -2069,24 +1920,24 @@ export default function ProductSuccess() {
                           <div className="flex items-center justify-between">
                             <label className="text-sm font-medium text-foreground flex items-center gap-2">
                               <Target className="w-4 h-4" />
-                              {isApplyAssistant ? 'Job Posting' : 'Target Job Description'}
+                              {isApplyAssistant ? t('productSuccess.recovery.jobPosting') : t('productSuccess.recovery.targetJobDescription')}
                               <Badge variant={isApplyAssistant ? 'destructive' : 'secondary'} className="text-[10px]">
-                                {isApplyAssistant ? 'Required' : isCoverLetter || isPremiumPackage ? 'Recommended' : 'Optional'}
+                                {isApplyAssistant ? t('productSuccess.recovery.required') : isCoverLetter || isPremiumPackage ? t('productSuccess.recovery.recommended') : t('productSuccess.recovery.optional')}
                               </Badge>
                             </label>
                           </div>
                           <Textarea
                             placeholder={isApplyAssistant
-                              ? "Paste the full job posting you're applying to — we need this to tailor your resume and cover letter."
-                              : "Paste the job description you're targeting to get keyword-optimized recommendations..."}
+                              ? t('productSuccess.recovery.jobPostingPlaceholder')
+                              : t('productSuccess.recovery.jobDescriptionPlaceholder')}
                             value={recoveryJobDescription}
                             onChange={(e) => setRecoveryJobDescription(e.target.value)}
                             className="min-h-[100px] resize-none"
                           />
                           <p className="text-xs text-muted-foreground">
                             {isApplyAssistant
-                              ? 'Apply Assistant tailors your resume and cover letter to this exact posting — without it, we can\'t generate your application package.'
-                              : 'Adding a job description helps us optimize your resume for specific keywords and requirements.'}
+                              ? t('productSuccess.recovery.jobPostingHelper')
+                              : t('productSuccess.recovery.jobDescriptionHelper')}
                           </p>
                         </div>
                       )}
@@ -2118,27 +1969,27 @@ export default function ProductSuccess() {
                         {isRegenerating || isStreaming ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            Generating...
+                            {t('productSuccess.recovery.generating')}
                           </>
                         ) : (
                           <>
                             <Sparkles className="w-4 h-4" />
-                            Generate {isKeywordFix ? 'Keyword Analysis' :
-                                      isPremiumPackage ? 'Premium Package' :
-                                      isAtsDefense ? 'ATS Defense Report' :
-                                      isCareerSnapshot ? 'Career Snapshot Report' :
-                                      isGraduateGamePlan ? 'Graduate Game Plan Report' :
-                                      isInterviewCoach ? 'Interview Questions' :
-                                      isCareerPathSimulator ? 'Career Paths' :
-                                      isApplyAssistant ? 'Application Package' :
-                                      'Cover Letter'}
+                            {t('productSuccess.recovery.generate', { item: isKeywordFix ? t('productSuccess.recovery.itemKeywordAnalysis') :
+                                      isPremiumPackage ? t('productSuccess.recovery.itemPremiumPackage') :
+                                      isAtsDefense ? t('productSuccess.recovery.itemAtsDefenseReport') :
+                                      isCareerSnapshot ? t('productSuccess.recovery.itemCareerSnapshotReport') :
+                                      isGraduateGamePlan ? t('productSuccess.recovery.itemGraduateGamePlanReport') :
+                                      isInterviewCoach ? t('productSuccess.recovery.itemInterviewQuestions') :
+                                      isCareerPathSimulator ? t('productSuccess.recovery.itemCareerPaths') :
+                                      isApplyAssistant ? t('productSuccess.recovery.itemApplicationPackage') :
+                                      t('productSuccess.recovery.itemCoverLetter') })}
                           </>
                         )}
                       </Button>
 
                       {recoveryResumeText && recoveryResumeText.length < 50 && (
                         <p className="text-sm text-destructive text-center">
-                          Resume text is too short. Please provide more content.
+                          {t('productSuccess.recovery.resumeTooShort')}
                         </p>
                       )}
                     </div>
@@ -2151,8 +2002,8 @@ export default function ProductSuccess() {
         <section className="py-12 border-t border-border/50">
           <div className="container max-w-3xl">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold mb-2">How It Works</h2>
-              <p className="text-muted-foreground">Here's what happens next with your purchase</p>
+              <h2 className="text-2xl font-bold mb-2">{t('productSuccess.howItWorksTitle')}</h2>
+              <p className="text-muted-foreground">{t('productSuccess.howItWorksSubtitle')}</p>
             </div>
 
             <div className="space-y-4">
@@ -2175,8 +2026,8 @@ export default function ProductSuccess() {
         <section className="py-12 border-t border-border/50">
           <div className="container max-w-3xl">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold mb-2">Your Next Steps</h2>
-              <p className="text-muted-foreground">Get started with your purchase right away</p>
+              <h2 className="text-2xl font-bold mb-2">{t('productSuccess.nextStepsTitle')}</h2>
+              <p className="text-muted-foreground">{t('productSuccess.nextStepsSubtitle')}</p>
             </div>
 
             <div className="grid md:grid-cols-3 gap-4 mb-8">
@@ -2233,8 +2084,8 @@ export default function ProductSuccess() {
         <section className="py-12 border-t border-border/50">
           <div className="container max-w-3xl">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold mb-2">What's Included</h2>
-              <p className="text-muted-foreground">Everything you get with {product.name}</p>
+              <h2 className="text-2xl font-bold mb-2">{t('productSuccess.whatsIncluded')}</h2>
+              <p className="text-muted-foreground">{t('productSuccess.everythingYouGet', { name: product.name })}</p>
             </div>
 
             <div className="grid sm:grid-cols-2 gap-3">
@@ -2256,15 +2107,14 @@ export default function ProductSuccess() {
           <div className="container max-w-2xl text-center">
             <div className="p-6 rounded-2xl bg-card border border-border">
               <HelpCircle className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-              <h3 className="font-semibold mb-2">Need Help?</h3>
+              <h3 className="font-semibold mb-2">{t('productSuccess.needHelp')}</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                If you have any questions about your purchase or need assistance, 
-                our support team is here to help.
+                {t('productSuccess.needHelpDescription')}
               </p>
               <Button variant="outline" asChild>
                 <a href="mailto:support@resumebooster.com">
                   <Mail className="w-4 h-4 mr-2" />
-                  Contact Support
+                  {t('productSuccess.contactSupport')}
                 </a>
               </Button>
             </div>

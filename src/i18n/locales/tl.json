@@ -1198,6 +1198,316 @@
     "viewAllProducts": "Tingnan lahat ng produkto",
     "addOnNames": { "resumeRoast": "Resume Roast", "interviewCoach": "Interview Coach", "careerPath": "Career Path" }
   },
+  "productSuccess": {
+    "verifyingPurchase": "Nagberipika ng iyong pagbili...",
+    "confirmingPayment": "Sandali lang habang kinukumpirma namin ang iyong bayad",
+    "purchaseNotFound": "Hindi Nahanap ang Detalye ng Pagbili",
+    "purchaseNotFoundDescription": "Hindi namin nahanap ang mga detalye ng iyong pagbili. Kung nakumpleto mo ang isang bayad, mangyaring tingnan ang iyong email para sa kumpirmasyon.",
+    "goToHome": "Pumunta sa Home",
+    "creditsAdded_one": "{{count}} Credit Idinagdag!",
+    "creditsAdded_other": "{{count}} Credits Idinagdag!",
+    "creditsLiveOn": "Aktibo na ang iyong mga credit sa account para sa",
+    "creditsBalancePrefix": "Makikita mo ang iyong balanse sa",
+    "myCredits": "Aking Credits",
+    "creditsBalanceSuffix": "button sa header sa device na ito — hindi na kailangang ilagay ulit ang iyong email.",
+    "resultsReady": "Handa na ang Iyong mga Resulta",
+    "keywordAnalysisResults": "Mga Resulta ng Keyword Analysis",
+    "currentKeywordScore": "Kasalukuyang Keyword Optimization Score",
+    "coverLetterReady": "Handa na ang Iyong Cover Letter",
+    "personalizedCoverLetter": "Ang Iyong Personalized na Cover Letter",
+    "suggestedSubject": "Iminumungkahing subject:",
+    "keySkillsHighlighted": "Mga Itinampok na Mahalagang Skill",
+    "alternativeOpeningLines": "Mga Alternatibong Opening Line",
+    "premiumPackageReady": "Handa na ang Premium Package",
+    "optimizedDocuments": "Ang Iyong mga Na-optimize na Dokumento",
+    "tailoredFor": "Naangkop para sa {{role}}",
+    "yourTargetRole": "ang iyong target na role",
+    "atCompany": "sa {{company}}",
+    "before": "Bago",
+    "after": "Pagkatapos",
+    "keywordsAdded": "Mga Idinagdag na Keyword",
+    "copyResume": "Kopyahin ang Resume",
+    "yourOptimizedResume": "Ang Iyong Na-optimize na Resume",
+    "copyLetter": "Kopyahin ang Letter",
+    "atsDefenseReady": "Handa na ang ATS Defense Report",
+    "atsDefenseCompleteReport": "Ang Iyong Kumpletong ATS Defense Report",
+    "atsDefenseSubtitle": "Komprehensibong ATS optimization na may before/after analysis",
+    "careerIntelligenceReady": "Handa na ang Career Intelligence Report",
+    "yourCareerSnapshot": "Ang Iyong Career Snapshot",
+    "careerSnapshotSubtitle": "Recruiter-style na career intelligence na nagpapakita kung paano mukhang ang iyong karera sa isang tingin",
+    "gamePlanReady": "Handa na ang Iyong Game Plan",
+    "graduateGamePlan": "Graduate Game Plan",
+    "gamePlanSubtitle": "Isang malinaw, step-by-step na playbook para sa susunod na gagawin",
+    "applicationPackageReady": "Handa na ang Iyong Application Package",
+    "applyAssistant": "Apply Assistant",
+    "applyAssistantSubtitle": "Naangkop, sinuri mo, isinumite mo",
+    "sessionReady": "Handa na ang Iyong Session",
+    "interviewCoach": "Interview Coach",
+    "careerPathSimulator": "Career Path Simulator",
+    "interviewCoachSubtitle": "Gumawa ng personalized na mga tanong sa interview at kumuha ng feedback sa iyong mga sagot",
+    "careerPathSimulatorSubtitle": "Tuklasin ang mga posibleng career trajectory batay sa iyong resume",
+    "yourContent": "ang iyong content",
+    "couldNotVerify": "Hindi Pa Namin Naberipika ang Iyong Pagbili",
+    "couldNotVerifyDescription": "Maaaring proseso pa ang iyong bayad — maaari itong tumagal ng isang minuto. Kung sinisingil ka, ligtas ang iyong pagbili at ihahanda namin ito sa lalong madaling panahon.",
+    "tryAgain": "Subukan Ulit",
+    "contactSupport": "Makipag-ugnayan sa Support",
+    "howItWorksTitle": "Paano Ito Gumagana",
+    "howItWorksSubtitle": "Ito ang mangyayari sa susunod kasunod ng iyong pagbili",
+    "nextStepsTitle": "Ang Iyong Susunod na Hakbang",
+    "nextStepsSubtitle": "Simulan ang paggamit ng iyong pagbili agad",
+    "whatsIncluded": "Ano ang Kasama",
+    "everythingYouGet": "Lahat ng makukuha mo kasama ang {{name}}",
+    "needHelp": "Kailangan ng Tulong?",
+    "needHelpDescription": "Kung may mga tanong ka tungkol sa iyong pagbili o kailangan ng tulong, nandito ang aming support team para tulungan ka.",
+    "recovery": {
+      "titleCareerSnapshot": "Kumpletuhin ang Iyong Career Snapshot",
+      "titleGraduateGamePlan": "Kumpletuhin ang Iyong Graduate Game Plan",
+      "titleAtsDefense": "Kumpletuhin ang Iyong ATS Defense Report",
+      "titlePremiumPackage": "Kumpletuhin ang Iyong Premium Package",
+      "titleCoverLetter": "Kumpletuhin ang Iyong Cover Letter",
+      "titleInterviewCoach": "Simulan ang Iyong Interview Coach Session",
+      "titleCareerPathSimulator": "Patakbuhin ang Iyong Career Path Simulator",
+      "titleApplyAssistant": "Buuin ang Iyong Application Package",
+      "titleKeywordFix": "Kumpletuhin ang Iyong Keyword Analysis",
+      "descCareerSnapshot": "I-upload ang iyong resume para makuha ang iyong career intelligence report.",
+      "descGraduateGamePlan": "I-upload ang iyong resume para makuha ang iyong personalized na game plan para makakuha ng iyong unang role.",
+      "descAtsDefense": "I-upload ang iyong resume at opsyonal na magdagdag ng target role at job description para sa personalized na optimization.",
+      "descPremiumPackage": "I-upload ang iyong resume at magdagdag ng job description para makuha ang iyong na-optimize na resume at cover letter.",
+      "descCoverLetter": "I-upload ang iyong resume at idagdag ang mga detalye ng trabaho para makagawa ng naangkop na cover letter.",
+      "descInterviewCoach": "I-upload ang iyong resume para makagawa ng personalized na mga tanong sa interview.",
+      "descCareerPathSimulator": "I-upload ang iyong resume para makita ang mga posibleng career trajectory.",
+      "descApplyAssistant": "I-upload ang iyong resume at i-paste ang job posting na iyong aplayan — kinakailangan ang dalawa upang maangkop namin ang iyong application.",
+      "descKeywordFix": "I-upload ang iyong resume para makakuha ng mga mungkahi sa keyword optimization.",
+      "alreadyPurchased": "Nakabili na at naisara na ang tab?",
+      "recoverResultsLink": "Bawiin ang iyong mga resulta →",
+      "recoverPreviousPurchase": "Bawiin ang Naunang Pagbili",
+      "cancel": "Kanselahin",
+      "pasteLinkHelper": "I-paste ang link ng pagbili o session ID mula sa iyong confirmation email — para sa iyong seguridad, hindi na namin mahahanap ang mga pagbili gamit lamang ang email.",
+      "sessionIdPlaceholder": "cs_live_... o ang link mula sa iyong confirmation email",
+      "contentRecoveredTitle": "Nabawi ang Content!",
+      "contentRecoveredDescription": "Naibalik ang iyong dati nang nagawang content.",
+      "noMatchingContentTitle": "Walang nahanap na tumutugmang content",
+      "noMatchingContentDescription": "Nakahanap kami ng mga pagbili pero walang content para sa ganitong produkto.",
+      "noPurchasesFoundTitle": "Walang nahanap na pagbili",
+      "noPurchasesFoundDescription": "Walang nahanap na pagbili para sa session ID na iyon. Mangyaring suriin ang link mula sa iyong confirmation email.",
+      "recoveryFailedTitle": "Nabigo ang pagbawi",
+      "recoveryFailedDescription": "Hindi nabawi ang iyong pagbili. Mangyaring subukan ulit.",
+      "lookingUp": "Hinahanap...",
+      "recoverMyResults": "Bawiin ang Aking mga Resulta",
+      "whatYouNeed": "Ang kakailanganin mo para sa package na ito:",
+      "resumeLabel": "Resume",
+      "required": "Kinakailangan",
+      "jobDescriptionLabel": "Job Description",
+      "recommended": "Inirerekomenda",
+      "targetRolesLabel": "Mga Target Role (1-3)",
+      "optional": "Opsyonal",
+      "yourResume": "Ang Iyong Resume",
+      "parsingFile": "Pinoproseso ang file...",
+      "dropOrUpload": "I-drop ang iyong resume o i-click para mag-upload",
+      "fileTypes": "PDF, DOCX, o TXT",
+      "orPasteText": "o i-paste ang text",
+      "pasteResumePlaceholder": "I-paste ang text ng iyong resume dito...",
+      "targetJobTitles": "Mga Target Job Title",
+      "upToThree": "(hanggang 3)",
+      "multiRoleOptimization": "Multi-role optimization",
+      "roleExample1": "hal., Software Engineer",
+      "roleExample2": "hal., Full Stack Developer",
+      "roleExample3": "hal., Backend Engineer",
+      "removeRole": "Alisin ang role",
+      "addAnotherTargetRole": "+ Magdagdag ng Isa Pang Target Role",
+      "targetRolesHelper": "Magdagdag ng hanggang 3 job title para i-optimize ang iyong resume para sa maramihang role nang sabay.",
+      "jobPosting": "Job Posting",
+      "targetJobDescription": "Target Job Description",
+      "jobPostingPlaceholder": "I-paste ang buong job posting na iyong aplayan — kailangan namin ito upang maangkop ang iyong resume at cover letter.",
+      "jobDescriptionPlaceholder": "I-paste ang job description na iyong tinatarget para makakuha ng keyword-optimized na rekomendasyon...",
+      "jobPostingHelper": "Iaangkop ng Apply Assistant ang iyong resume at cover letter sa eksaktong posting na ito — kung wala ito, hindi namin magagawa ang iyong application package.",
+      "jobDescriptionHelper": "Ang pagdagdag ng job description ay tumutulong sa amin na i-optimize ang iyong resume para sa partikular na keyword at kinakailangan.",
+      "generating": "Ginagawa...",
+      "generate": "Gumawa ng {{item}}",
+      "itemKeywordAnalysis": "Keyword Analysis",
+      "itemPremiumPackage": "Premium Package",
+      "itemAtsDefenseReport": "ATS Defense Report",
+      "itemCareerSnapshotReport": "Career Snapshot Report",
+      "itemGraduateGamePlanReport": "Graduate Game Plan Report",
+      "itemInterviewQuestions": "Mga Tanong sa Interview",
+      "itemCareerPaths": "Mga Career Path",
+      "itemApplicationPackage": "Application Package",
+      "itemCoverLetter": "Cover Letter",
+      "resumeTooShort": "Masyadong maikli ang teksto ng resume. Mangyaring maglagay ng mas maraming content."
+    },
+    "info": {
+      "basicKeywordFix": {
+        "howItWorks": [
+          "Sinuri ng aming AI ang iyong resume laban sa mga kinakailangan ng ATS",
+          "Natukoy namin ang mga kulang na keyword na maaaring pataasin ang iyong score",
+          "Suriin ang mga mungkahi sa ibaba at idagdag ito sa iyong resume",
+          "I-upload ulit para tingnan ang iyong napahusay na ATS score"
+        ],
+        "nextSteps": [
+          { "title": "Suriin ang mga Keyword", "description": "Tingnan ang pagsusuri ng mga kulang na keyword sa ibaba" },
+          { "title": "I-update ang Resume", "description": "Idagdag ang mga iminumungkahing keyword sa iyong resume" },
+          { "title": "Bumerify ang Pagpapahusay", "description": "Mag-scan ulit para makita ang iyong bagong ATS score" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "Sa Pahinang Ito"
+      },
+      "coverLetter": {
+        "howItWorks": [
+          "Sinuri ng aming AI ang iyong resume at ang mga kinakailangan sa trabaho",
+          "Ginawa namin ang isang personalized na cover letter na tumutugma sa iyong karanasan",
+          "Kopyahin ang letter sa ibaba o i-download bilang dokumento",
+          "I-customize ang pagbati at mga detalyeng partikular sa kumpanya"
+        ],
+        "nextSteps": [
+          { "title": "Suriin ang Letter", "description": "Basahin ang iyong nagawang cover letter sa ibaba" },
+          { "title": "Kopyahin o I-download", "description": "Kunin ang iyong letter sa format na kailangan mo" },
+          { "title": "Isumite ang Application", "description": "Ipadala kasama ang iyong resume para mag-apply" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "Sa Pahinang Ito"
+      },
+      "premiumPackage": {
+        "howItWorks": [
+          "Buong na-rewrite ng aming AI ang iyong resume para sa ATS optimization",
+          "Idinagdag namin ang mga kulang na keyword at mas malakas na action verb",
+          "Naka-personalize ang iyong cover letter sa target role",
+          "Suriin ang before/after comparison sa ibaba",
+          "Kopyahin o i-download ang iyong bagong mga dokumento"
+        ],
+        "nextSteps": [
+          { "title": "Suriin ang mga Dokumento", "description": "Tingnan ang iyong bagong resume at cover letter sa ibaba" },
+          { "title": "Kopyahin at I-download", "description": "Kunin ang iyong mga dokumento sa format na kailangan mo" },
+          { "title": "Mag-apply Na", "description": "Isumite ang iyong na-optimize na application" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "Sa Pahinang Ito"
+      },
+      "atsDefense": {
+        "howItWorks": [
+          "Nagsagawa ang aming AI ng komprehensibong ATS compatibility audit",
+          "Sinuri namin ang iyong resume laban sa 50+ ATS platform",
+          "Na-optimize ang mga keyword para sa hanggang 3 target role",
+          "Na-restructure ang format para sa maximum na parseability",
+          "Kasama ang mga tip sa LinkedIn alignment"
+        ],
+        "nextSteps": [
+          { "title": "Suriin ang Audit", "description": "Tingnan ang iyong before/after ATS scores" },
+          { "title": "Ilapat ang mga Keyword", "description": "Gamitin ang keyword bank para sa iyong industriya" },
+          { "title": "Kopyahin ang mga Seksyon", "description": "Gamitin ang na-optimize na mga seksyon ng resume" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "Sa Pahinang Ito"
+      },
+      "careerBundle": {
+        "howItWorks": [
+          "May 75 kumpletong resume analysis ka na ngayon sa iyong account",
+          "Bawat pagsusuri ay may kumpletong ATS scoring at optimization",
+          "Gamitin ang mga ito sa maraming job application",
+          "Hindi nag-expire ang mga credit - gamitin sa iyong sariling bilis",
+          "Ibahagi sa mga kaibigan o pamilya kung nais mo"
+        ],
+        "nextSteps": [
+          { "title": "Simulan ang Paggamit ng Credits", "description": "Mag-upload ng resume para gamitin ang iyong unang credit" },
+          { "title": "Subaybayan ang Iyong mga Credit", "description": "Tingnan ang 'Aking Credits' sa header para makita ang iyong balanse" },
+          { "title": "Mag-apply sa Higit Pang Trabaho", "description": "Gamitin ang mga credit para sa bawat job application na iyong tinatarget" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "Idinagdag ang Credits sa Account"
+      },
+      "scanPack": {
+        "howItWorks": [
+          "10 scan credit ang naidagdag sa iyong account",
+          "Bawat scan ay sinusuri ang iyong resume laban sa isang partikular na trabaho",
+          "Ikumpara ang walang limitasyong job description gamit ang iyong mga credit",
+          "Hindi nag-expire ang mga credit"
+        ],
+        "nextSteps": [
+          { "title": "I-upload ang Iyong Resume", "description": "Pumunta sa home page para magsimula ng scanning" },
+          { "title": "Gamitin ang Iyong Credits", "description": "Bawat scan ay gumagamit ng isang credit mula sa iyong balanse" },
+          { "title": "Suriin ang Balanse", "description": "Tingnan ang natitirang credits sa 'Aking Credits'" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "Idinagdag ang Credits sa Account"
+      },
+      "careerSnapshot": {
+        "howItWorks": [
+          "Sinuri ng aming AI ang iyong karera mula sa perspektibo ng isang senior recruiter",
+          "Sinuri namin ang iyong performance, trajectory, at mga senyales ng kredibilidad",
+          "Natukoy kung paano makikita ng mga recruiter ang iyong background",
+          "Ginawa ang mga estratehikong rekomendasyon sa positioning",
+          "Ginawa ang mga maaaring isagawang priority fix na puwede mong i-implement ngayon"
+        ],
+        "nextSteps": [
+          { "title": "Suriin ang Iyong Score", "description": "Tingnan ang breakdown ng iyong Career Signal Score" },
+          { "title": "Unawain ang Perception", "description": "Alamin kung paano nakikita ng mga recruiter ang iyong karera" },
+          { "title": "Ilapat ang mga Fix", "description": "Ipatupad ang mga priority recommendation" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "Sa Pahinang Ito"
+      },
+      "graduateGamePlan": {
+        "howItWorks": [
+          "Sinuri ng aming AI ang kahandaan ng iyong resume para sa job market",
+          "Natukoy namin ang mga role na tumutugma sa iyong background at karanasan",
+          "Ginawa ang isang naka-target na application strategy para sa mga bagong graduate",
+          "Ginawa ang mga networking script na maaari mong gamitin agad",
+          "Binuo ang 30-araw na action plan para makuha ang iyong unang role"
+        ],
+        "nextSteps": [
+          { "title": "Suriin ang Kahandaan", "description": "Tingnan kung handa nang mag-apply ang iyong resume" },
+          { "title": "Mga Target Role", "description": "Suriin ang mga role na tumutugma sa iyong background" },
+          { "title": "Sundin ang Plano", "description": "Isagawa ang 30-araw na action plan" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "Sa Pahinang Ito"
+      },
+      "interviewCoach": {
+        "howItWorks": [
+          "Sinuri ng aming AI ang iyong resume para tukuyin ang mahahalagang karanasan",
+          "Ginawa namin ang personalized na mga tanong sa interview batay sa iyong background",
+          "Bawat tanong ay may STAR method guidance para sa malakas na sagot",
+          "Magpraktis gamit ang mga ito para maghanda sa iyong susunod na interview"
+        ],
+        "nextSteps": [
+          { "title": "Suriin ang mga Tanong", "description": "Pagdaanan ang bawat personalized na tanong" },
+          { "title": "Magpraktis ng mga Sagot", "description": "Gamitin ang ibinigay na STAR method framework" },
+          { "title": "Bumuo ng Kumpiyansa", "description": "Mag-rehearse hanggang maramdaman mong handa ka" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "Sa Pahinang Ito"
+      },
+      "careerPathSimulator": {
+        "howItWorks": [
+          "Sinuri ng aming AI ang iyong mga skill, karanasan, at career trajectory",
+          "Natukoy namin ang 3 makatotohanang career path batay sa iyong background",
+          "May kasamang skills gap at timeline projection ang bawat path",
+          "Gamitin ang mga action step para tahakin ang iyong nais na direksyon"
+        ],
+        "nextSteps": [
+          { "title": "Tuklasin ang mga Path", "description": "Suriin ang iyong 3 opsyon ng career trajectory" },
+          { "title": "Tukuyin ang mga Gap", "description": "Tingnan ang mga skill na kailangan mo sa bawat path" },
+          { "title": "Magplano nang Maaga", "description": "Sundin ang timeline para sa iyong piniling path" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "Sa Pahinang Ito"
+      },
+      "applyAssistant": {
+        "howItWorks": [
+          "I-paste ang job posting na iyong aplayan",
+          "Inangkop ng aming AI ang iyong resume sa partikular na role na ito, gamit lamang ang iyong tunay na karanasan",
+          "Gumawa ng tumutugmang cover letter at isang step-by-step na submission checklist",
+          "Sinusuri mo ang lahat at isinusumite mo mismo ito — walang automatikong ipinapadala"
+        ],
+        "nextSteps": [
+          { "title": "Suriin ang Iyong Naangkop na Resume", "description": "Suriin ang katumpakan ng rewrite ng AI" },
+          { "title": "Sundin ang Checklist", "description": "Sasabihin namin sa iyo nang eksakto kung ano ang gagawin — ikaw ang magsusumite" },
+          { "title": "I-export at Mag-apply", "description": "I-download ang resume at cover letter, tapos mag-apply sa site ng employer" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "Sa Pahinang Ito"
+      }
+    }
+  },
   "analysisResults": {
     "copied": "Na-copy!",
     "copy": "Kopyahin",

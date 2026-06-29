@@ -1198,6 +1198,316 @@
     "viewAllProducts": "Bekijk alle producten",
     "addOnNames": { "resumeRoast": "Cv-Roast", "interviewCoach": "Interviewcoach", "careerPath": "Carrièrepad" }
   },
+  "productSuccess": {
+    "verifyingPurchase": "Je aankoop wordt verifieerd...",
+    "confirmingPayment": "Een moment terwijl we je betaling bevestigen",
+    "purchaseNotFound": "Aankoopgegevens niet gevonden",
+    "purchaseNotFoundDescription": "We konden geen gegevens over je aankoop vinden. Als je een betaling hebt gedaan, controleer dan je e-mail voor een bevestiging.",
+    "goToHome": "Naar de startpagina",
+    "creditsAdded_one": "{{count}} credit toegevoegd!",
+    "creditsAdded_other": "{{count}} credits toegevoegd!",
+    "creditsLiveOn": "Je credits zijn nu actief op het account voor",
+    "creditsBalancePrefix": "Je ziet je saldo bij de knop",
+    "myCredits": "Mijn credits",
+    "creditsBalanceSuffix": "in de header op dit apparaat — je hoeft je e-mailadres niet opnieuw in te voeren.",
+    "resultsReady": "Je resultaten zijn klaar",
+    "keywordAnalysisResults": "Resultaten van de zoekwoordanalyse",
+    "currentKeywordScore": "Huidige zoekwoordoptimalisatiescore",
+    "coverLetterReady": "Je motivatiebrief is klaar",
+    "personalizedCoverLetter": "Jouw gepersonaliseerde motivatiebrief",
+    "suggestedSubject": "Voorgestelde onderwerpregel:",
+    "keySkillsHighlighted": "Belangrijke uitgelichte vaardigheden",
+    "alternativeOpeningLines": "Alternatieve openingszinnen",
+    "premiumPackageReady": "Premiumpakket klaar",
+    "optimizedDocuments": "Jouw geoptimaliseerde documenten",
+    "tailoredFor": "Afgestemd op {{role}}",
+    "yourTargetRole": "jouw doelfunctie",
+    "atCompany": "bij {{company}}",
+    "before": "Voor",
+    "after": "Na",
+    "keywordsAdded": "Toegevoegde zoekwoorden",
+    "copyResume": "Cv kopiëren",
+    "yourOptimizedResume": "Jouw geoptimaliseerde cv",
+    "copyLetter": "Brief kopiëren",
+    "atsDefenseReady": "ATS Defense-rapport klaar",
+    "atsDefenseCompleteReport": "Jouw volledige ATS Defense-rapport",
+    "atsDefenseSubtitle": "Uitgebreide ATS-optimalisatie met voor/na-analyse",
+    "careerIntelligenceReady": "Career Intelligence-rapport klaar",
+    "yourCareerSnapshot": "Jouw Career Snapshot",
+    "careerSnapshotSubtitle": "Recruiterachtige carrière-inzichten die in één oogopslag laten zien hoe jouw carrière eruitziet",
+    "gamePlanReady": "Jouw spelplan is klaar",
+    "graduateGamePlan": "Graduate Game Plan",
+    "gamePlanSubtitle": "Een duidelijk, stapsgewijs draaiboek voor wat je nu moet doen",
+    "applicationPackageReady": "Jouw sollicitatiepakket is klaar",
+    "applyAssistant": "Apply Assistant",
+    "applyAssistantSubtitle": "Afgestemd, door jou gecontroleerd, door jou ingediend",
+    "sessionReady": "Jouw sessie is klaar",
+    "interviewCoach": "Interview Coach",
+    "careerPathSimulator": "Career Path Simulator",
+    "interviewCoachSubtitle": "Genereer gepersonaliseerde interviewvragen en krijg feedback op je antwoorden",
+    "careerPathSimulatorSubtitle": "Verkenn mogelijke carrièrepaden op basis van je cv",
+    "yourContent": "jouw content",
+    "couldNotVerify": "We konden je aankoop nog niet verifiëren",
+    "couldNotVerifyDescription": "Je betaling wordt mogelijk nog verwerkt — dit kan een minuut duren. Als er bij je is afgeschreven, is je aankoop veilig en maken we deze binnenkort gereed.",
+    "tryAgain": "Opnieuw proberen",
+    "contactSupport": "Contact opnemen met support",
+    "howItWorksTitle": "Hoe het werkt",
+    "howItWorksSubtitle": "Dit gebeurt er na je aankoop",
+    "nextStepsTitle": "Jouw volgende stappen",
+    "nextStepsSubtitle": "Ga direct aan de slag met je aankoop",
+    "whatsIncluded": "Wat is inbegrepen",
+    "everythingYouGet": "Alles wat je krijgt met {{name}}",
+    "needHelp": "Hulp nodig?",
+    "needHelpDescription": "Heb je vragen over je aankoop of heb je hulp nodig? Ons supportteam staat voor je klaar.",
+    "recovery": {
+      "titleCareerSnapshot": "Voltooi je Career Snapshot",
+      "titleGraduateGamePlan": "Voltooi je Graduate Game Plan",
+      "titleAtsDefense": "Voltooi je ATS Defense-rapport",
+      "titlePremiumPackage": "Voltooi je Premiumpakket",
+      "titleCoverLetter": "Voltooi je motivatiebrief",
+      "titleInterviewCoach": "Start je Interview Coach-sessie",
+      "titleCareerPathSimulator": "Start je Career Path Simulator",
+      "titleApplyAssistant": "Stel je sollicitatiepakket samen",
+      "titleKeywordFix": "Voltooi je zoekwoordanalyse",
+      "descCareerSnapshot": "Upload je cv om je Career Intelligence-rapport te ontvangen.",
+      "descGraduateGamePlan": "Upload je cv om je gepersonaliseerde spelplan te krijgen voor het bemachtigen van je eerste functie.",
+      "descAtsDefense": "Upload je cv en voeg eventueel doelfuncties en een functiebeschrijving toe voor een gepersonaliseerde optimalisatie.",
+      "descPremiumPackage": "Upload je cv en voeg een functiebeschrijving toe om je geoptimaliseerde cv en motivatiebrief te krijgen.",
+      "descCoverLetter": "Upload je cv en voeg de functiedetails toe om een afgestemde motivatiebrief te genereren.",
+      "descInterviewCoach": "Upload je cv om gepersonaliseerde interviewvragen te genereren.",
+      "descCareerPathSimulator": "Upload je cv om mogelijke carrièrepaden te zien.",
+      "descApplyAssistant": "Upload je cv en plak de vacature waarop je solliciteert — beide zijn nodig zodat we je sollicitatie kunnen afstemmen.",
+      "descKeywordFix": "Upload je cv om suggesties voor zoekwoordoptimalisatie te krijgen.",
+      "alreadyPurchased": "Al gekocht en het tabblad gesloten?",
+      "recoverResultsLink": "Herstel je resultaten →",
+      "recoverPreviousPurchase": "Eerdere aankoop herstellen",
+      "cancel": "Annuleren",
+      "pasteLinkHelper": "Plak de aankooplink of sessie-ID uit je bevestigingsmail — voor je veiligheid kunnen we aankopen niet meer alleen op e-mailadres opzoeken.",
+      "sessionIdPlaceholder": "cs_live_... of de link uit je bevestigingsmail",
+      "contentRecoveredTitle": "Content herstelt!",
+      "contentRecoveredDescription": "Je eerder gegenereerde content is herstelt.",
+      "noMatchingContentTitle": "Geen overeenkomende content gevonden",
+      "noMatchingContentDescription": "We vonden aankopen, maar geen content voor dit producttype.",
+      "noPurchasesFoundTitle": "Geen aankopen gevonden",
+      "noPurchasesFoundDescription": "Geen aankoop gevonden voor die sessie-ID. Controleer de link uit je bevestigingsmail.",
+      "recoveryFailedTitle": "Herstellen mislukt",
+      "recoveryFailedDescription": "Kon je aankoop niet herstellen. Probeer het opnieuw.",
+      "lookingUp": "Bezig met opzoeken...",
+      "recoverMyResults": "Mijn resultaten herstellen",
+      "whatYouNeed": "Wat je nodig hebt voor dit pakket:",
+      "resumeLabel": "Cv",
+      "required": "Verplicht",
+      "jobDescriptionLabel": "Functiebeschrijving",
+      "recommended": "Aanbevolen",
+      "targetRolesLabel": "Doelfuncties (1-3)",
+      "optional": "Optioneel",
+      "yourResume": "Jouw cv",
+      "parsingFile": "Bestand wordt verwerkt...",
+      "dropOrUpload": "Sleep je cv hierheen of klik om te uploaden",
+      "fileTypes": "PDF, DOCX of TXT",
+      "orPasteText": "of plak tekst",
+      "pasteResumePlaceholder": "Plak hier de tekst van je cv...",
+      "targetJobTitles": "Doelfunctietitels",
+      "upToThree": "(tot 3)",
+      "multiRoleOptimization": "Multi-functie-optimalisatie",
+      "roleExample1": "bijv. Software-ontwikkelaar",
+      "roleExample2": "bijv. Full Stack-ontwikkelaar",
+      "roleExample3": "bijv. Backend-ontwikkelaar",
+      "removeRole": "Functie verwijderen",
+      "addAnotherTargetRole": "+ Nog een doelfunctie toevoegen",
+      "targetRolesHelper": "Voeg tot 3 functietitels toe om je cv tegelijk voor meerdere functies te optimaliseren.",
+      "jobPosting": "Vacature",
+      "targetJobDescription": "Doelfunctiebeschrijving",
+      "jobPostingPlaceholder": "Plak de volledige vacature waarop je solliciteert — we hebben dit nodig om je cv en motivatiebrief af te stemmen.",
+      "jobDescriptionPlaceholder": "Plak de functiebeschrijving waarop je je richt om zoekwoord-geoptimaliseerde aanbevelingen te krijgen...",
+      "jobPostingHelper": "Apply Assistant stemt je cv en motivatiebrief precies af op deze vacature — zonder deze kunnen we je sollicitatiepakket niet genereren.",
+      "jobDescriptionHelper": "Het toevoegen van een functiebeschrijving helpt ons je cv te optimaliseren voor specifieke zoekwoorden en vereisten.",
+      "generating": "Wordt gegenereerd...",
+      "generate": "{{item}} genereren",
+      "itemKeywordAnalysis": "Zoekwoordanalyse",
+      "itemPremiumPackage": "Premiumpakket",
+      "itemAtsDefenseReport": "ATS Defense-rapport",
+      "itemCareerSnapshotReport": "Career Snapshot-rapport",
+      "itemGraduateGamePlanReport": "Graduate Game Plan-rapport",
+      "itemInterviewQuestions": "Interviewvragen",
+      "itemCareerPaths": "Carrièrepaden",
+      "itemApplicationPackage": "Sollicitatiepakket",
+      "itemCoverLetter": "Motivatiebrief",
+      "resumeTooShort": "De cv-tekst is te kort. Geef meer inhoud op."
+    },
+    "info": {
+      "basicKeywordFix": {
+        "howItWorks": [
+          "Onze AI analyseerde je cv aan de hand van ATS-vereisten",
+          "We identificeerden ontbrekende zoekwoorden die je score konden verbeteren",
+          "Bekijk de suggesties hieronder en voeg ze toe aan je cv",
+          "Upload opnieuw om je verbeterde ATS-score te controleren"
+        ],
+        "nextSteps": [
+          { "title": "Zoekwoorden bekijken", "description": "Bekijk de analyse van ontbrekende zoekwoorden hieronder" },
+          { "title": "Cv bijwerken", "description": "Voeg de voorgestelde zoekwoorden toe aan je cv" },
+          { "title": "Verbetering controleren", "description": "Scan opnieuw om je nieuwe ATS-score te zien" }
+        ],
+        "deliveryTime": "Direct",
+        "deliveryMethod": "Op deze pagina"
+      },
+      "coverLetter": {
+        "howItWorks": [
+          "Onze AI analyseerde je cv en de functie-eisen",
+          "We schreven een gepersonaliseerde motivatiebrief die past bij jouw ervaring",
+          "Kopieer de brief hieronder of download als document",
+          "Pas de aanhef en bedrijfsspecifieke details aan"
+        ],
+        "nextSteps": [
+          { "title": "Brief bekijken", "description": "Lees je gegenereerde motivatiebrief hieronder" },
+          { "title": "Kopiëren of downloaden", "description": "Krijg je brief in het formaat dat je nodig hebt" },
+          { "title": "Sollicitatie versturen", "description": "Verstuur samen met je cv om te solliciteren" }
+        ],
+        "deliveryTime": "Direct",
+        "deliveryMethod": "Op deze pagina"
+      },
+      "premiumPackage": {
+        "howItWorks": [
+          "Onze AI herschreef je cv volledig voor ATS-optimalisatie",
+          "We voegden ontbrekende zoekwoorden en sterkere actiewerkwoorden toe",
+          "Je motivatiebrief is gepersonaliseerd voor de doelfunctie",
+          "Bekijk de voor/na-vergelijking hieronder",
+          "Kopieer of download je nieuwe documenten"
+        ],
+        "nextSteps": [
+          { "title": "Documenten bekijken", "description": "Bekijk je nieuwe cv en motivatiebrief hieronder" },
+          { "title": "Kopiëren & downloaden", "description": "Krijg je documenten in het formaat dat je nodig hebt" },
+          { "title": "Nu solliciteren", "description": "Verstuur je geoptimaliseerde sollicitatie" }
+        ],
+        "deliveryTime": "Direct",
+        "deliveryMethod": "Op deze pagina"
+      },
+      "atsDefense": {
+        "howItWorks": [
+          "Onze AI voerde een uitgebreide ATS-compatibiliteitsaudit uit",
+          "We analyseerden je cv tegen 50+ ATS-platforms",
+          "Zoekwoorden geoptimaliseerd voor tot 3 doelfuncties",
+          "Formaat geherstructureerd voor maximale verwerkbaarheid",
+          "LinkedIn-afstemmingstips inbegrepen"
+        ],
+        "nextSteps": [
+          { "title": "Audit bekijken", "description": "Bekijk je ATS-scores voor/na" },
+          { "title": "Zoekwoorden toepassen", "description": "Gebruik de zoekwoordenbank voor jouw branche" },
+          { "title": "Secties kopiëren", "description": "Gebruik de geoptimaliseerde cv-secties" }
+        ],
+        "deliveryTime": "Direct",
+        "deliveryMethod": "Op deze pagina"
+      },
+      "careerBundle": {
+        "howItWorks": [
+          "Je hebt nu 75 volledige cv-analyses op je account",
+          "Elke analyse omvat volledige ATS-scoring en -optimalisatie",
+          "Gebruik ze voor meerdere sollicitaties",
+          "Credits verlopen nooit — gebruik ze in je eigen tempo",
+          "Deel ze gerust met vrienden of familie"
+        ],
+        "nextSteps": [
+          { "title": "Begin met je credits", "description": "Upload een cv om je eerste credit te gebruiken" },
+          { "title": "Volg je credits", "description": "Controleer 'Mijn credits' in de header om je saldo te zien" },
+          { "title": "Solliciteer op meer vacatures", "description": "Gebruik credits voor elke sollicitatie die je nastreeft" }
+        ],
+        "deliveryTime": "Direct",
+        "deliveryMethod": "Credits toegevoegd aan account"
+      },
+      "scanPack": {
+        "howItWorks": [
+          "10 scancredits zijn toegevoegd aan je account",
+          "Elke scan analyseert je cv tegen een specifieke functie",
+          "Vergelijk onbeperkt functiebeschrijvingen met je credits",
+          "Credits verlopen nooit"
+        ],
+        "nextSteps": [
+          { "title": "Upload je cv", "description": "Ga naar de homepage om te beginnen met scannen" },
+          { "title": "Gebruik je credits", "description": "Elke scan gebruikt één credit van je saldo" },
+          { "title": "Saldo controleren", "description": "Bekijk resterende credits in 'Mijn credits'" }
+        ],
+        "deliveryTime": "Direct",
+        "deliveryMethod": "Credits toegevoegd aan account"
+      },
+      "careerSnapshot": {
+        "howItWorks": [
+          "Onze AI analyseerde je carrière vanuit het perspectief van een senior recruiter",
+          "We evalueerden je prestaties, traject en geloofwaardigheidssignalen",
+          "Identificeerden hoe recruiters jouw achtergrond zullen waarnemen",
+          "Genereerden strategische positioneringsaanbevelingen",
+          "Creëerden praktische prioriteitscorrecties die je vandaag kunt toepassen"
+        ],
+        "nextSteps": [
+          { "title": "Bekijk je score", "description": "Zie de uitsplitsing van je Career Signal Score" },
+          { "title": "Perceptie begrijpen", "description": "Leer hoe recruiters jouw carrière zien" },
+          { "title": "Correcties toepassen", "description": "Pas de prioriteitsaanbevelingen toe" }
+        ],
+        "deliveryTime": "Direct",
+        "deliveryMethod": "Op deze pagina"
+      },
+      "graduateGamePlan": {
+        "howItWorks": [
+          "Onze AI beoordeelde de marktklaarheid van je cv",
+          "We identificeerden functies die passen bij jouw achtergrond en ervaring",
+          "Creëerden een gerichte sollicitatiestrategie voor afgestudeerden",
+          "Genereerden netwerkscripts die je direct kunt gebruiken",
+          "Bouwden een 30-dagen-actieplan om je eerste functie te bemachtigen"
+        ],
+        "nextSteps": [
+          { "title": "Gereedheid controleren", "description": "Zie of je cv klaar is om te versturen" },
+          { "title": "Doelfuncties", "description": "Bekijk functies die passen bij jouw achtergrond" },
+          { "title": "Volg het plan", "description": "Voer het 30-dagen-actieplan uit" }
+        ],
+        "deliveryTime": "Direct",
+        "deliveryMethod": "Op deze pagina"
+      },
+      "interviewCoach": {
+        "howItWorks": [
+          "Onze AI analyseerde je cv om belangrijke ervaringen te identificeren",
+          "We genereerden gepersonaliseerde interviewvragen op basis van jouw achtergrond",
+          "Elke vraag bevat STAR-methode-richtlijnen voor sterke antwoorden",
+          "Oefen deze om je voor te bereiden op je volgende interview"
+        ],
+        "nextSteps": [
+          { "title": "Vragen doornemen", "description": "Doorloop elke gepersonaliseerde vraag" },
+          { "title": "Antwoorden oefenen", "description": "Gebruik de aangeboden STAR-methodekaders" },
+          { "title": "Vertrouwen opbouwen", "description": "Oefen tot je je klaar voelt" }
+        ],
+        "deliveryTime": "Direct",
+        "deliveryMethod": "Op deze pagina"
+      },
+      "careerPathSimulator": {
+        "howItWorks": [
+          "Onze AI analyseerde je vaardigheden, ervaring en carrièretraject",
+          "We identificeerden 3 realistische carrièrepaden op basis van jouw achtergrond",
+          "Elk pad omvat vaardighedenkloven en tijdlijnprojecties",
+          "Gebruik de actiestappen om de richting van jouw voorkeur te volgen"
+        ],
+        "nextSteps": [
+          { "title": "Paden verkennen", "description": "Bekijk je 3 carrièretrajectopties" },
+          { "title": "Hiaten identificeren", "description": "Zie welke vaardigheden je nodig hebt voor elk pad" },
+          { "title": "Vooruit plannen", "description": "Volg de tijdlijn voor jouw gekozen pad" }
+        ],
+        "deliveryTime": "Direct",
+        "deliveryMethod": "Op deze pagina"
+      },
+      "applyAssistant": {
+        "howItWorks": [
+          "Plak de vacature waarop je solliciteert",
+          "Onze AI stemde je cv af op die specifieke functie, uitsluitend op basis van je echte ervaring",
+          "Genereerde een bijpassende motivatiebrief en een stapsgewijze indieningschecklist",
+          "Jij beoordeelt alles en dient het zelf in — niets wordt automatisch verstuurd"
+        ],
+        "nextSteps": [
+          { "title": "Bekijk je afgestemde cv", "description": "Controleer de herschrijving van de AI op nauwkeurigheid" },
+          { "title": "Volg de checklist", "description": "We vertellen je precies wat je hierna moet doen — jij doet het indienen" },
+          { "title": "Exporteren & solliciteren", "description": "Download het cv en de motivatiebrief en solliciteer dan op de site van de werkgever" }
+        ],
+        "deliveryTime": "Direct",
+        "deliveryMethod": "Op deze pagina"
+      }
+    }
+  },
   "analysisResults": {
     "copied": "Gekopieerd!",
     "copy": "Kopiëren",

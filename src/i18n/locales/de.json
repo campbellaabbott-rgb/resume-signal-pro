@@ -1198,6 +1198,316 @@
     "viewAllProducts": "Alle Produkte ansehen",
     "addOnNames": { "resumeRoast": "Lebenslauf-Roast", "interviewCoach": "Interview-Coach", "careerPath": "Karriereweg" }
   },
+  "productSuccess": {
+    "verifyingPurchase": "Dein Kauf wird überprüft...",
+    "confirmingPayment": "Einen Moment, während wir deine Zahlung bestätigen",
+    "purchaseNotFound": "Kaufdetails nicht gefunden",
+    "purchaseNotFoundDescription": "Wir konnten keine Details zu deinem Kauf finden. Falls du eine Zahlung abgeschlossen hast, prüfe bitte deine E-Mails auf eine Bestätigung.",
+    "goToHome": "Zur Startseite",
+    "creditsAdded_one": "{{count}} Credit hinzugefügt!",
+    "creditsAdded_other": "{{count}} Credits hinzugefügt!",
+    "creditsLiveOn": "Deine Credits sind jetzt aktiv für das Konto",
+    "creditsBalancePrefix": "Dein Guthaben siehst du über den Button",
+    "myCredits": "Meine Credits",
+    "creditsBalanceSuffix": "in der Kopfzeile auf diesem Gerät — du musst deine E-Mail nicht erneut eingeben.",
+    "resultsReady": "Deine Ergebnisse sind fertig",
+    "keywordAnalysisResults": "Keyword-Analyse-Ergebnisse",
+    "currentKeywordScore": "Aktueller Keyword-Optimierungs-Score",
+    "coverLetterReady": "Dein Anschreiben ist fertig",
+    "personalizedCoverLetter": "Dein personalisiertes Anschreiben",
+    "suggestedSubject": "Vorgeschlagener Betreff:",
+    "keySkillsHighlighted": "Hervorgehobene Schlüsselkompetenzen",
+    "alternativeOpeningLines": "Alternative Einleitungssätze",
+    "premiumPackageReady": "Premium-Paket fertig",
+    "optimizedDocuments": "Deine optimierten Dokumente",
+    "tailoredFor": "Angepasst für {{role}}",
+    "yourTargetRole": "deine Zielposition",
+    "atCompany": "bei {{company}}",
+    "before": "Vorher",
+    "after": "Nachher",
+    "keywordsAdded": "Hinzugefügte Keywords",
+    "copyResume": "Lebenslauf kopieren",
+    "yourOptimizedResume": "Dein optimierter Lebenslauf",
+    "copyLetter": "Anschreiben kopieren",
+    "atsDefenseReady": "ATS-Defense-Bericht fertig",
+    "atsDefenseCompleteReport": "Dein vollständiger ATS-Defense-Bericht",
+    "atsDefenseSubtitle": "Umfassende ATS-Optimierung mit Vorher/Nachher-Analyse",
+    "careerIntelligenceReady": "Career-Intelligence-Bericht fertig",
+    "yourCareerSnapshot": "Dein Career Snapshot",
+    "careerSnapshotSubtitle": "Recruiter-ähnliche Karriereanalyse, die zeigt, wie deine Karriere auf den ersten Blick wirkt",
+    "gamePlanReady": "Dein Spielplan ist fertig",
+    "graduateGamePlan": "Graduate Game Plan",
+    "gamePlanSubtitle": "Ein klarer, schrittweiser Leitfaden für die nächsten Schritte",
+    "applicationPackageReady": "Dein Bewerbungspaket ist fertig",
+    "applyAssistant": "Apply Assistant",
+    "applyAssistantSubtitle": "Maßgeschneidert, von dir geprüft, von dir eingereicht",
+    "sessionReady": "Deine Sitzung ist fertig",
+    "interviewCoach": "Interview Coach",
+    "careerPathSimulator": "Career Path Simulator",
+    "interviewCoachSubtitle": "Generiere personalisierte Interviewfragen und erhalte Feedback zu deinen Antworten",
+    "careerPathSimulatorSubtitle": "Entdecke mögliche Karrierewege basierend auf deinem Lebenslauf",
+    "yourContent": "deinen Inhalt",
+    "couldNotVerify": "Wir konnten deinen Kauf noch nicht verifizieren",
+    "couldNotVerifyDescription": "Deine Zahlung wird möglicherweise noch verarbeitet — das kann eine Minute dauern. Falls du belastet wurdest, ist dein Kauf sicher und wird in Kürze bereit sein.",
+    "tryAgain": "Erneut versuchen",
+    "contactSupport": "Support kontaktieren",
+    "howItWorksTitle": "So funktioniert's",
+    "howItWorksSubtitle": "So geht es nach deinem Kauf weiter",
+    "nextStepsTitle": "Deine nächsten Schritte",
+    "nextStepsSubtitle": "Starte sofort mit deinem Kauf",
+    "whatsIncluded": "Das ist enthalten",
+    "everythingYouGet": "Alles, was du mit {{name}} bekommst",
+    "needHelp": "Brauchst du Hilfe?",
+    "needHelpDescription": "Wenn du Fragen zu deinem Kauf hast oder Unterstützung benötigst, ist unser Support-Team für dich da.",
+    "recovery": {
+      "titleCareerSnapshot": "Vervollständige deinen Career Snapshot",
+      "titleGraduateGamePlan": "Vervollständige deinen Graduate Game Plan",
+      "titleAtsDefense": "Vervollständige deinen ATS-Defense-Bericht",
+      "titlePremiumPackage": "Vervollständige dein Premium-Paket",
+      "titleCoverLetter": "Vervollständige dein Anschreiben",
+      "titleInterviewCoach": "Starte deine Interview-Coach-Sitzung",
+      "titleCareerPathSimulator": "Starte deinen Career Path Simulator",
+      "titleApplyAssistant": "Erstelle dein Bewerbungspaket",
+      "titleKeywordFix": "Vervollständige deine Keyword-Analyse",
+      "descCareerSnapshot": "Lade deinen Lebenslauf hoch, um deinen Career-Intelligence-Bericht zu erhalten.",
+      "descGraduateGamePlan": "Lade deinen Lebenslauf hoch, um deinen personalisierten Spielplan für deine erste Stelle zu erhalten.",
+      "descAtsDefense": "Lade deinen Lebenslauf hoch und füge optional Zielpositionen und eine Stellenbeschreibung für eine personalisierte Optimierung hinzu.",
+      "descPremiumPackage": "Lade deinen Lebenslauf hoch und füge eine Stellenbeschreibung hinzu, um deinen optimierten Lebenslauf und dein Anschreiben zu erhalten.",
+      "descCoverLetter": "Lade deinen Lebenslauf hoch und füge die Stellendetails hinzu, um ein maßgeschneidertes Anschreiben zu generieren.",
+      "descInterviewCoach": "Lade deinen Lebenslauf hoch, um personalisierte Interviewfragen zu generieren.",
+      "descCareerPathSimulator": "Lade deinen Lebenslauf hoch, um mögliche Karrierewege zu sehen.",
+      "descApplyAssistant": "Lade deinen Lebenslauf hoch und füge die Stellenausschreibung ein, auf die du dich bewirbst — beides wird benötigt, damit wir deine Bewerbung anpassen können.",
+      "descKeywordFix": "Lade deinen Lebenslauf hoch, um Vorschläge zur Keyword-Optimierung zu erhalten.",
+      "alreadyPurchased": "Schon gekauft und den Tab geschlossen?",
+      "recoverResultsLink": "Ergebnisse wiederherstellen →",
+      "recoverPreviousPurchase": "Vorherigen Kauf wiederherstellen",
+      "cancel": "Abbrechen",
+      "pasteLinkHelper": "Füge den Kauflink oder die Sitzungs-ID aus deiner Bestätigungs-E-Mail ein — aus Sicherheitsgründen können wir Käufe nicht mehr allein per E-Mail nachschlagen.",
+      "sessionIdPlaceholder": "cs_live_... oder der Link aus deiner Bestätigungs-E-Mail",
+      "contentRecoveredTitle": "Inhalt wiederhergestellt!",
+      "contentRecoveredDescription": "Dein zuvor generierter Inhalt wurde wiederhergestellt.",
+      "noMatchingContentTitle": "Kein passender Inhalt gefunden",
+      "noMatchingContentDescription": "Wir haben Käufe gefunden, aber keinen Inhalt für diesen Produkttyp.",
+      "noPurchasesFoundTitle": "Keine Käufe gefunden",
+      "noPurchasesFoundDescription": "Für diese Sitzungs-ID wurde kein Kauf gefunden. Bitte überprüfe den Link aus deiner Bestätigungs-E-Mail.",
+      "recoveryFailedTitle": "Wiederherstellung fehlgeschlagen",
+      "recoveryFailedDescription": "Dein Kauf konnte nicht wiederhergestellt werden. Bitte versuche es erneut.",
+      "lookingUp": "Wird gesucht...",
+      "recoverMyResults": "Meine Ergebnisse wiederherstellen",
+      "whatYouNeed": "Das benötigst du für dieses Paket:",
+      "resumeLabel": "Lebenslauf",
+      "required": "Erforderlich",
+      "jobDescriptionLabel": "Stellenbeschreibung",
+      "recommended": "Empfohlen",
+      "targetRolesLabel": "Zielpositionen (1-3)",
+      "optional": "Optional",
+      "yourResume": "Dein Lebenslauf",
+      "parsingFile": "Datei wird verarbeitet...",
+      "dropOrUpload": "Lebenslauf ablegen oder zum Hochladen klicken",
+      "fileTypes": "PDF, DOCX oder TXT",
+      "orPasteText": "oder Text einfügen",
+      "pasteResumePlaceholder": "Füge hier deinen Lebenslauf-Text ein...",
+      "targetJobTitles": "Zielberufsbezeichnungen",
+      "upToThree": "(bis zu 3)",
+      "multiRoleOptimization": "Multi-Rollen-Optimierung",
+      "roleExample1": "z. B. Software-Entwickler",
+      "roleExample2": "z. B. Full-Stack-Entwickler",
+      "roleExample3": "z. B. Backend-Entwickler",
+      "removeRole": "Rolle entfernen",
+      "addAnotherTargetRole": "+ Weitere Zielposition hinzufügen",
+      "targetRolesHelper": "Füge bis zu 3 Berufsbezeichnungen hinzu, um deinen Lebenslauf für mehrere Rollen gleichzeitig zu optimieren.",
+      "jobPosting": "Stellenausschreibung",
+      "targetJobDescription": "Ziel-Stellenbeschreibung",
+      "jobPostingPlaceholder": "Füge die vollständige Stellenausschreibung ein, auf die du dich bewirbst — wir brauchen das, um deinen Lebenslauf und dein Anschreiben anzupassen.",
+      "jobDescriptionPlaceholder": "Füge die Stellenbeschreibung ein, auf die du zielst, um keyword-optimierte Empfehlungen zu erhalten...",
+      "jobPostingHelper": "Apply Assistant passt deinen Lebenslauf und dein Anschreiben genau an diese Ausschreibung an — ohne sie können wir dein Bewerbungspaket nicht erstellen.",
+      "jobDescriptionHelper": "Eine Stellenbeschreibung hilft uns, deinen Lebenslauf für bestimmte Keywords und Anforderungen zu optimieren.",
+      "generating": "Wird generiert...",
+      "generate": "{{item}} generieren",
+      "itemKeywordAnalysis": "Keyword-Analyse",
+      "itemPremiumPackage": "Premium-Paket",
+      "itemAtsDefenseReport": "ATS-Defense-Bericht",
+      "itemCareerSnapshotReport": "Career-Snapshot-Bericht",
+      "itemGraduateGamePlanReport": "Graduate-Game-Plan-Bericht",
+      "itemInterviewQuestions": "Interviewfragen",
+      "itemCareerPaths": "Karrierewege",
+      "itemApplicationPackage": "Bewerbungspaket",
+      "itemCoverLetter": "Anschreiben",
+      "resumeTooShort": "Der Lebenslauftext ist zu kurz. Bitte gib mehr Inhalt an."
+    },
+    "info": {
+      "basicKeywordFix": {
+        "howItWorks": [
+          "Unsere KI hat deinen Lebenslauf gegen ATS-Anforderungen analysiert",
+          "Wir haben fehlende Keywords identifiziert, die deinen Score verbessern könnten",
+          "Sieh dir die Vorschläge unten an und füge sie deinem Lebenslauf hinzu",
+          "Lade ihn erneut hoch, um deinen verbesserten ATS-Score zu prüfen"
+        ],
+        "nextSteps": [
+          { "title": "Keywords prüfen", "description": "Sieh dir die Analyse der fehlenden Keywords unten an" },
+          { "title": "Lebenslauf aktualisieren", "description": "Füge die vorgeschlagenen Keywords zu deinem Lebenslauf hinzu" },
+          { "title": "Verbesserung prüfen", "description": "Erneut scannen, um deinen neuen ATS-Score zu sehen" }
+        ],
+        "deliveryTime": "Sofort",
+        "deliveryMethod": "Auf dieser Seite"
+      },
+      "coverLetter": {
+        "howItWorks": [
+          "Unsere KI hat deinen Lebenslauf und die Stellenanforderungen analysiert",
+          "Wir haben ein personalisiertes Anschreiben passend zu deiner Erfahrung erstellt",
+          "Kopiere das Anschreiben unten oder lade es als Dokument herunter",
+          "Passe die Anrede und unternehmensspezifische Details an"
+        ],
+        "nextSteps": [
+          { "title": "Anschreiben prüfen", "description": "Lies dein generiertes Anschreiben unten durch" },
+          { "title": "Kopieren oder herunterladen", "description": "Erhalte dein Anschreiben im benötigten Format" },
+          { "title": "Bewerbung einreichen", "description": "Zusammen mit deinem Lebenslauf bewerben" }
+        ],
+        "deliveryTime": "Sofort",
+        "deliveryMethod": "Auf dieser Seite"
+      },
+      "premiumPackage": {
+        "howItWorks": [
+          "Unsere KI hat deinen Lebenslauf vollständig für ATS-Optimierung umgeschrieben",
+          "Wir haben fehlende Keywords und stärkere Aktionsverben hinzugefügt",
+          "Dein Anschreiben ist auf die Zielposition personalisiert",
+          "Sieh dir den Vorher/Nachher-Vergleich unten an",
+          "Kopiere oder lade deine neuen Dokumente herunter"
+        ],
+        "nextSteps": [
+          { "title": "Dokumente prüfen", "description": "Sieh dir deinen neuen Lebenslauf und dein Anschreiben unten an" },
+          { "title": "Kopieren & herunterladen", "description": "Erhalte deine Dokumente im benötigten Format" },
+          { "title": "Jetzt bewerben", "description": "Reiche deine optimierte Bewerbung ein" }
+        ],
+        "deliveryTime": "Sofort",
+        "deliveryMethod": "Auf dieser Seite"
+      },
+      "atsDefense": {
+        "howItWorks": [
+          "Unsere KI hat ein umfassendes ATS-Kompatibilitäts-Audit durchgeführt",
+          "Wir haben deinen Lebenslauf gegen über 50 ATS-Plattformen analysiert",
+          "Keywords für bis zu 3 Zielpositionen optimiert",
+          "Format für maximale Verarbeitbarkeit umstrukturiert",
+          "LinkedIn-Abstimmungstipps enthalten"
+        ],
+        "nextSteps": [
+          { "title": "Audit prüfen", "description": "Sieh dir deine ATS-Scores vorher/nachher an" },
+          { "title": "Keywords anwenden", "description": "Nutze die Keyword-Bank für deine Branche" },
+          { "title": "Abschnitte kopieren", "description": "Nutze die optimierten Lebenslaufabschnitte" }
+        ],
+        "deliveryTime": "Sofort",
+        "deliveryMethod": "Auf dieser Seite"
+      },
+      "careerBundle": {
+        "howItWorks": [
+          "Du hast jetzt 75 vollständige Lebenslaufanalysen in deinem Konto",
+          "Jede Analyse umfasst vollständiges ATS-Scoring und -Optimierung",
+          "Nutze sie für mehrere Bewerbungen",
+          "Credits verfallen nie — nutze sie in deinem eigenen Tempo",
+          "Teile sie gerne mit Freunden oder Familie"
+        ],
+        "nextSteps": [
+          { "title": "Credits nutzen", "description": "Lade einen Lebenslauf hoch, um deinen ersten Credit zu nutzen" },
+          { "title": "Credits im Blick behalten", "description": "Prüfe „Meine Credits“ in der Kopfzeile, um dein Guthaben zu sehen" },
+          { "title": "Für mehr Jobs bewerben", "description": "Nutze Credits für jede Bewerbung, die du anstrebst" }
+        ],
+        "deliveryTime": "Sofort",
+        "deliveryMethod": "Credits dem Konto gutgeschrieben"
+      },
+      "scanPack": {
+        "howItWorks": [
+          "10 Scan-Credits wurden deinem Konto gutgeschrieben",
+          "Jeder Scan analysiert deinen Lebenslauf gegen eine bestimmte Stelle",
+          "Vergleiche unbegrenzt Stellenbeschreibungen mit deinen Credits",
+          "Credits verfallen nie"
+        ],
+        "nextSteps": [
+          { "title": "Lebenslauf hochladen", "description": "Gehe zur Startseite, um mit dem Scannen zu beginnen" },
+          { "title": "Credits nutzen", "description": "Jeder Scan verbraucht einen Credit von deinem Guthaben" },
+          { "title": "Guthaben prüfen", "description": "Verbleibende Credits unter „Meine Credits“ einsehen" }
+        ],
+        "deliveryTime": "Sofort",
+        "deliveryMethod": "Credits dem Konto gutgeschrieben"
+      },
+      "careerSnapshot": {
+        "howItWorks": [
+          "Unsere KI hat deine Karriere aus der Perspektive eines erfahrenen Recruiters analysiert",
+          "Wir haben deine Leistung, Entwicklung und Glaubwürdigkeitssignale bewertet",
+          "Identifiziert, wie Recruiter deinen Hintergrund wahrnehmen werden",
+          "Strategische Positionierungsempfehlungen generiert",
+          "Umsetzbare Prioritätskorrekturen erstellt, die du heute anwenden kannst"
+        ],
+        "nextSteps": [
+          { "title": "Score prüfen", "description": "Sieh dir die Aufschlüsselung deines Career Signal Score an" },
+          { "title": "Wahrnehmung verstehen", "description": "Lerne, wie Recruiter deine Karriere sehen" },
+          { "title": "Korrekturen anwenden", "description": "Setze die Prioritätsempfehlungen um" }
+        ],
+        "deliveryTime": "Sofort",
+        "deliveryMethod": "Auf dieser Seite"
+      },
+      "graduateGamePlan": {
+        "howItWorks": [
+          "Unsere KI hat die Marktreife deines Lebenslaufs bewertet",
+          "Wir haben Positionen identifiziert, die zu deinem Hintergrund und deiner Erfahrung passen",
+          "Eine gezielte Bewerbungsstrategie für Absolventen erstellt",
+          "Networking-Skripte generiert, die du sofort nutzen kannst",
+          "Einen 30-Tage-Aktionsplan erstellt, um deine erste Stelle zu bekommen"
+        ],
+        "nextSteps": [
+          { "title": "Bereitschaft prüfen", "description": "Sieh, ob dein Lebenslauf bewerbungsfähig ist" },
+          { "title": "Zielpositionen", "description": "Sieh dir Positionen an, die zu deinem Hintergrund passen" },
+          { "title": "Plan befolgen", "description": "Setze den 30-Tage-Aktionsplan um" }
+        ],
+        "deliveryTime": "Sofort",
+        "deliveryMethod": "Auf dieser Seite"
+      },
+      "interviewCoach": {
+        "howItWorks": [
+          "Unsere KI hat deinen Lebenslauf analysiert, um wichtige Erfahrungen zu identifizieren",
+          "Wir haben personalisierte Interviewfragen basierend auf deinem Hintergrund generiert",
+          "Jede Frage enthält STAR-Methoden-Hinweise für starke Antworten",
+          "Übe diese, um dich auf dein nächstes Interview vorzubereiten"
+        ],
+        "nextSteps": [
+          { "title": "Fragen durchgehen", "description": "Gehe jede personalisierte Frage durch" },
+          { "title": "Antworten üben", "description": "Nutze die bereitgestellten STAR-Methoden-Rahmen" },
+          { "title": "Selbstvertrauen aufbauen", "description": "Übe, bis du dich bereit fühlst" }
+        ],
+        "deliveryTime": "Sofort",
+        "deliveryMethod": "Auf dieser Seite"
+      },
+      "careerPathSimulator": {
+        "howItWorks": [
+          "Unsere KI hat deine Fähigkeiten, Erfahrung und Karriereentwicklung analysiert",
+          "Wir haben 3 realistische Karrierewege basierend auf deinem Hintergrund identifiziert",
+          "Jeder Weg enthält Skill-Lücken und Zeitplanprojektionen",
+          "Nutze die Handlungsschritte, um deine bevorzugte Richtung zu verfolgen"
+        ],
+        "nextSteps": [
+          { "title": "Wege erkunden", "description": "Sieh dir deine 3 Karrierewege an" },
+          { "title": "Lücken identifizieren", "description": "Sieh, welche Fähigkeiten du für jeden Weg brauchst" },
+          { "title": "Vorausplanen", "description": "Folge dem Zeitplan für deinen gewählten Weg" }
+        ],
+        "deliveryTime": "Sofort",
+        "deliveryMethod": "Auf dieser Seite"
+      },
+      "applyAssistant": {
+        "howItWorks": [
+          "Füge die Stellenausschreibung ein, auf die du dich bewirbst",
+          "Unsere KI hat deinen Lebenslauf an diese spezifische Rolle angepasst, basierend nur auf deiner echten Erfahrung",
+          "Ein passendes Anschreiben und eine schrittweise Einreichungs-Checkliste generiert",
+          "Du prüfst alles und reichst es selbst ein — nichts wird automatisch gesendet"
+        ],
+        "nextSteps": [
+          { "title": "Angepassten Lebenslauf prüfen", "description": "Prüfe die KI-Überarbeitung auf Genauigkeit" },
+          { "title": "Checkliste befolgen", "description": "Wir sagen dir genau, was als Nächstes zu tun ist — du reichst es ein" },
+          { "title": "Exportieren & bewerben", "description": "Lade Lebenslauf und Anschreiben herunter und bewerbe dich auf der Website des Arbeitgebers" }
+        ],
+        "deliveryTime": "Sofort",
+        "deliveryMethod": "Auf dieser Seite"
+      }
+    }
+  },
   "analysisResults": {
     "copied": "Kopiert!",
     "copy": "Kopieren",

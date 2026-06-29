@@ -1198,6 +1198,316 @@
     "viewAllProducts": "View all products",
     "addOnNames": { "resumeRoast": "CV Roast", "interviewCoach": "Interview Coach", "careerPath": "Career Path" }
   },
+  "productSuccess": {
+    "verifyingPurchase": "Verifying your purchase...",
+    "confirmingPayment": "Just a moment while we confirm your payment",
+    "purchaseNotFound": "Purchase Details Not Found",
+    "purchaseNotFoundDescription": "We couldn't find details about your purchase. If you completed a payment, please check your email for confirmation.",
+    "goToHome": "Go to Home",
+    "creditsAdded_one": "{{count}} Credit Added!",
+    "creditsAdded_other": "{{count}} Credits Added!",
+    "creditsLiveOn": "Your credits are now live on the account for",
+    "creditsBalancePrefix": "You'll see your balance in the",
+    "myCredits": "My Credits",
+    "creditsBalanceSuffix": "button in the header on this device — no need to enter your email again.",
+    "resultsReady": "Your Results Are Ready",
+    "keywordAnalysisResults": "Keyword Analysis Results",
+    "currentKeywordScore": "Current Keyword Optimisation Score",
+    "coverLetterReady": "Your Cover Letter Is Ready",
+    "personalizedCoverLetter": "Your Personalised Cover Letter",
+    "suggestedSubject": "Suggested subject:",
+    "keySkillsHighlighted": "Key Skills Highlighted",
+    "alternativeOpeningLines": "Alternative Opening Lines",
+    "premiumPackageReady": "Premium Package Ready",
+    "optimizedDocuments": "Your Optimised Documents",
+    "tailoredFor": "Tailored for {{role}}",
+    "yourTargetRole": "your target role",
+    "atCompany": "at {{company}}",
+    "before": "Before",
+    "after": "After",
+    "keywordsAdded": "Keywords Added",
+    "copyResume": "Copy CV",
+    "yourOptimizedResume": "Your Optimised CV",
+    "copyLetter": "Copy Letter",
+    "atsDefenseReady": "ATS Defense Report Ready",
+    "atsDefenseCompleteReport": "Your ATS Defense Complete Report",
+    "atsDefenseSubtitle": "Comprehensive ATS optimisation with before/after analysis",
+    "careerIntelligenceReady": "Career Intelligence Report Ready",
+    "yourCareerSnapshot": "Your Career Snapshot",
+    "careerSnapshotSubtitle": "Recruiter-style career intelligence showing how your career looks at a glance",
+    "gamePlanReady": "Your Game Plan is Ready",
+    "graduateGamePlan": "Graduate Game Plan",
+    "gamePlanSubtitle": "A clear, step-by-step playbook for what to do next",
+    "applicationPackageReady": "Your Application Package is Ready",
+    "applyAssistant": "Apply Assistant",
+    "applyAssistantSubtitle": "Tailored, reviewed by you, submitted by you",
+    "sessionReady": "Your Session is Ready",
+    "interviewCoach": "Interview Coach",
+    "careerPathSimulator": "Career Path Simulator",
+    "interviewCoachSubtitle": "Generate personalised interview questions and get feedback on your answers",
+    "careerPathSimulatorSubtitle": "Explore possible career trajectories based on your CV",
+    "yourContent": "your content",
+    "couldNotVerify": "We Couldn't Verify Your Purchase Yet",
+    "couldNotVerifyDescription": "Your payment may still be processing — this can take a minute. If you were charged, your purchase is safe and we'll have it ready shortly.",
+    "tryAgain": "Try Again",
+    "contactSupport": "Contact Support",
+    "howItWorksTitle": "How It Works",
+    "howItWorksSubtitle": "Here's what happens next with your purchase",
+    "nextStepsTitle": "Your Next Steps",
+    "nextStepsSubtitle": "Get started with your purchase right away",
+    "whatsIncluded": "What's Included",
+    "everythingYouGet": "Everything you get with {{name}}",
+    "needHelp": "Need Help?",
+    "needHelpDescription": "If you have any questions about your purchase or need assistance, our support team is here to help.",
+    "recovery": {
+      "titleCareerSnapshot": "Complete Your Career Snapshot",
+      "titleGraduateGamePlan": "Complete Your Graduate Game Plan",
+      "titleAtsDefense": "Complete Your ATS Defense Report",
+      "titlePremiumPackage": "Complete Your Premium Package",
+      "titleCoverLetter": "Complete Your Cover Letter",
+      "titleInterviewCoach": "Start Your Interview Coach Session",
+      "titleCareerPathSimulator": "Run Your Career Path Simulator",
+      "titleApplyAssistant": "Build Your Application Package",
+      "titleKeywordFix": "Complete Your Keyword Analysis",
+      "descCareerSnapshot": "Upload your CV to get your career intelligence report.",
+      "descGraduateGamePlan": "Upload your CV to get your personalised game plan for landing your first role.",
+      "descAtsDefense": "Upload your CV and optionally add target roles and job description for personalised optimisation.",
+      "descPremiumPackage": "Upload your CV and add a job description to get your optimised CV and cover letter.",
+      "descCoverLetter": "Upload your CV and add the job details to generate a tailored cover letter.",
+      "descInterviewCoach": "Upload your CV to generate personalised interview questions.",
+      "descCareerPathSimulator": "Upload your CV to see possible career trajectories.",
+      "descApplyAssistant": "Upload your CV and paste the job posting you're applying to — both are required so we can tailor your application.",
+      "descKeywordFix": "Upload your CV to get keyword optimisation suggestions.",
+      "alreadyPurchased": "Already purchased and closed the tab?",
+      "recoverResultsLink": "Recover your results →",
+      "recoverPreviousPurchase": "Recover Previous Purchase",
+      "cancel": "Cancel",
+      "pasteLinkHelper": "Paste the purchase link or session ID from your confirmation email — for your security, we can no longer look purchases up by email alone.",
+      "sessionIdPlaceholder": "cs_live_... or the link from your confirmation email",
+      "contentRecoveredTitle": "Content Recovered!",
+      "contentRecoveredDescription": "Your previously generated content has been restored.",
+      "noMatchingContentTitle": "No matching content found",
+      "noMatchingContentDescription": "We found purchases but no content for this product type.",
+      "noPurchasesFoundTitle": "No purchases found",
+      "noPurchasesFoundDescription": "No purchase found for that session ID. Please check the link from your confirmation email.",
+      "recoveryFailedTitle": "Recovery failed",
+      "recoveryFailedDescription": "Could not recover your purchase. Please try again.",
+      "lookingUp": "Looking up...",
+      "recoverMyResults": "Recover My Results",
+      "whatYouNeed": "What you'll need for this package:",
+      "resumeLabel": "CV",
+      "required": "Required",
+      "jobDescriptionLabel": "Job Description",
+      "recommended": "Recommended",
+      "targetRolesLabel": "Target Roles (1-3)",
+      "optional": "Optional",
+      "yourResume": "Your CV",
+      "parsingFile": "Parsing file...",
+      "dropOrUpload": "Drop your CV or click to upload",
+      "fileTypes": "PDF, DOCX, or TXT",
+      "orPasteText": "or paste text",
+      "pasteResumePlaceholder": "Paste your CV text here...",
+      "targetJobTitles": "Target Job Titles",
+      "upToThree": "(up to 3)",
+      "multiRoleOptimization": "Multi-role optimisation",
+      "roleExample1": "e.g., Software Engineer",
+      "roleExample2": "e.g., Full Stack Developer",
+      "roleExample3": "e.g., Backend Engineer",
+      "removeRole": "Remove role",
+      "addAnotherTargetRole": "+ Add Another Target Role",
+      "targetRolesHelper": "Add up to 3 job titles to optimise your CV for multiple roles simultaneously.",
+      "jobPosting": "Job Posting",
+      "targetJobDescription": "Target Job Description",
+      "jobPostingPlaceholder": "Paste the full job posting you're applying to — we need this to tailor your CV and cover letter.",
+      "jobDescriptionPlaceholder": "Paste the job description you're targeting to get keyword-optimised recommendations...",
+      "jobPostingHelper": "Apply Assistant tailors your CV and cover letter to this exact posting — without it, we can't generate your application package.",
+      "jobDescriptionHelper": "Adding a job description helps us optimise your CV for specific keywords and requirements.",
+      "generating": "Generating...",
+      "generate": "Generate {{item}}",
+      "itemKeywordAnalysis": "Keyword Analysis",
+      "itemPremiumPackage": "Premium Package",
+      "itemAtsDefenseReport": "ATS Defense Report",
+      "itemCareerSnapshotReport": "Career Snapshot Report",
+      "itemGraduateGamePlanReport": "Graduate Game Plan Report",
+      "itemInterviewQuestions": "Interview Questions",
+      "itemCareerPaths": "Career Paths",
+      "itemApplicationPackage": "Application Package",
+      "itemCoverLetter": "Cover Letter",
+      "resumeTooShort": "CV text is too short. Please provide more content."
+    },
+    "info": {
+      "basicKeywordFix": {
+        "howItWorks": [
+          "Our AI analysed your CV against ATS requirements",
+          "We identified missing keywords that could boost your score",
+          "Review the suggestions below and add them to your CV",
+          "Re-upload to check your improved ATS score"
+        ],
+        "nextSteps": [
+          { "title": "Review Keywords", "description": "Check the missing keywords analysis below" },
+          { "title": "Update CV", "description": "Add the suggested keywords to your CV" },
+          { "title": "Verify Improvement", "description": "Re-scan to see your new ATS score" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "On This Page"
+      },
+      "coverLetter": {
+        "howItWorks": [
+          "Our AI analysed your CV and the job requirements",
+          "We crafted a personalised cover letter matching your experience",
+          "Copy the letter below or download as a document",
+          "Customise the greeting and company-specific details"
+        ],
+        "nextSteps": [
+          { "title": "Review Letter", "description": "Read through your generated cover letter below" },
+          { "title": "Copy or Download", "description": "Get your letter in the format you need" },
+          { "title": "Submit Application", "description": "Send with your CV to apply" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "On This Page"
+      },
+      "premiumPackage": {
+        "howItWorks": [
+          "Our AI completely rewrote your CV for ATS optimisation",
+          "We added missing keywords and stronger action verbs",
+          "Your cover letter is personalised to the target role",
+          "Review the before/after comparison below",
+          "Copy or download your new documents"
+        ],
+        "nextSteps": [
+          { "title": "Review Documents", "description": "Check your new CV and cover letter below" },
+          { "title": "Copy & Download", "description": "Get your documents in the format you need" },
+          { "title": "Apply Now", "description": "Submit your optimised application" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "On This Page"
+      },
+      "atsDefense": {
+        "howItWorks": [
+          "Our AI performed a comprehensive ATS compatibility audit",
+          "We analysed your CV against 50+ ATS platforms",
+          "Keywords optimised for up to 3 target roles",
+          "Format restructured for maximum parseability",
+          "LinkedIn alignment tips included"
+        ],
+        "nextSteps": [
+          { "title": "Review Audit", "description": "Check your before/after ATS scores" },
+          { "title": "Apply Keywords", "description": "Use the keyword bank for your industry" },
+          { "title": "Copy Sections", "description": "Use the optimised CV sections" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "On This Page"
+      },
+      "careerBundle": {
+        "howItWorks": [
+          "You now have 75 full CV analyses in your account",
+          "Each analysis includes complete ATS scoring and optimisation",
+          "Use them across multiple job applications",
+          "Credits never expire - use at your own pace",
+          "Share with friends or family if you'd like"
+        ],
+        "nextSteps": [
+          { "title": "Start Using Credits", "description": "Upload a CV to use your first credit" },
+          { "title": "Track Your Credits", "description": "Check 'My Credits' in the header to see your balance" },
+          { "title": "Apply to More Jobs", "description": "Use credits for each job application you target" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "Credits Added to Account"
+      },
+      "scanPack": {
+        "howItWorks": [
+          "10 scan credits have been added to your account",
+          "Each scan analyses your CV against a specific job",
+          "Compare unlimited job descriptions with your credits",
+          "Credits never expire"
+        ],
+        "nextSteps": [
+          { "title": "Upload Your CV", "description": "Go to the home page to start scanning" },
+          { "title": "Use Your Credits", "description": "Each scan uses one credit from your balance" },
+          { "title": "Check Balance", "description": "View remaining credits in 'My Credits'" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "Credits Added to Account"
+      },
+      "careerSnapshot": {
+        "howItWorks": [
+          "Our AI analysed your career from a senior recruiter's perspective",
+          "We evaluated your performance, trajectory, and credibility signals",
+          "Identified how recruiters will perceive your background",
+          "Generated strategic positioning recommendations",
+          "Created actionable priority fixes you can implement today"
+        ],
+        "nextSteps": [
+          { "title": "Review Your Score", "description": "See your Career Signal Score breakdown" },
+          { "title": "Understand Perception", "description": "Learn how recruiters see your career" },
+          { "title": "Apply Fixes", "description": "Implement the priority recommendations" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "On This Page"
+      },
+      "graduateGamePlan": {
+        "howItWorks": [
+          "Our AI evaluated your CV readiness for the job market",
+          "We identified roles that match your background and experience",
+          "Created a targeted application strategy for new grads",
+          "Generated networking scripts you can use immediately",
+          "Built a 30-day action plan to land your first role"
+        ],
+        "nextSteps": [
+          { "title": "Check Readiness", "description": "See if your CV is ready to apply" },
+          { "title": "Target Roles", "description": "Review roles that fit your background" },
+          { "title": "Follow the Plan", "description": "Execute the 30-day action plan" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "On This Page"
+      },
+      "interviewCoach": {
+        "howItWorks": [
+          "Our AI analysed your CV to identify key experiences",
+          "We generated personalised interview questions based on your background",
+          "Each question includes STAR method guidance for strong answers",
+          "Practice these to prepare for your next interview"
+        ],
+        "nextSteps": [
+          { "title": "Review Questions", "description": "Go through each personalised question" },
+          { "title": "Practice Answers", "description": "Use the STAR method frameworks provided" },
+          { "title": "Build Confidence", "description": "Rehearse until you feel ready" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "On This Page"
+      },
+      "careerPathSimulator": {
+        "howItWorks": [
+          "Our AI analysed your skills, experience, and career trajectory",
+          "We identified 3 realistic career paths based on your background",
+          "Each path includes skills gaps and timeline projections",
+          "Use the action steps to pursue your preferred direction"
+        ],
+        "nextSteps": [
+          { "title": "Explore Paths", "description": "Review your 3 career trajectory options" },
+          { "title": "Identify Gaps", "description": "See what skills you need for each path" },
+          { "title": "Plan Ahead", "description": "Follow the timeline for your chosen path" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "On This Page"
+      },
+      "applyAssistant": {
+        "howItWorks": [
+          "Paste the job posting you're applying to",
+          "Our AI tailored your CV to that specific role, using only your real experience",
+          "Generated a matching cover letter and a step-by-step submission checklist",
+          "You review everything and submit it yourself — nothing is sent automatically"
+        ],
+        "nextSteps": [
+          { "title": "Review Your Tailored CV", "description": "Check the AI's rewrite for accuracy" },
+          { "title": "Follow the Checklist", "description": "We tell you exactly what to do next — you do the submitting" },
+          { "title": "Export & Apply", "description": "Download the CV and cover letter, then apply on the employer's site" }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "On This Page"
+      }
+    }
+  },
   "analysisResults": {
     "copied": "Copied!",
     "copy": "Copy",
