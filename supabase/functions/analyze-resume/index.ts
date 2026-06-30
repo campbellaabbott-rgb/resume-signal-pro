@@ -723,7 +723,7 @@ serve(async (req) => {
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    const clientIp = getClientIp(req);
+    // clientIp already declared at line 666 — do not redeclare here
 
     // Check global rate limit (100 req/hr across ALL functions)
     const { data: globalAllowed, error: globalRlError } = await supabase.rpc('check_global_rate_limit', {

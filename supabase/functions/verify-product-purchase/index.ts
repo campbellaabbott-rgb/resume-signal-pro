@@ -357,7 +357,7 @@ serve(async (req) => {
       // applyAssistant is $7 — without being in this list it defaulted to the $5
       // premium-tier commission, leaving only ~$2 to cover the Stripe fee and two
       // AI generation calls on every affiliate-referred sale.
-      const lowCommissionProducts = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
+      const lowCommissionProducts = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'career_bundle', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
       const commissionCents = lowCommissionProducts.includes(productType || '') ? 100 : 500;
       logStep("Recording affiliate conversion", { 
         referralCode, 

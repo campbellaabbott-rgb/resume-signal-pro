@@ -137,9 +137,11 @@ async function triggerProductDelivery(
       let credits = parseInt(session.metadata?.credits || "10");
       if (productType === 'career_bundle') credits = parseInt(session.metadata?.credits || "75");
       
+      const clippedCredits = Math.min(credits, 500);
+      if (clippedCredits !== credits) logStep("Credit cap applied", { intended: credits, applied: clippedCredits });
       const { error: creditError } = await supabase.rpc('add_scan_credits', {
         p_email: customerEmail,
-        p_credits: Math.min(credits, 100)
+        p_credits: clippedCredits
       });
 
       if (creditError) {
@@ -419,7 +421,7 @@ serve(async (req) => {
               // this one had drifted out of sync (missing interview_coach/
               // career_path_simulator entirely, and would have defaulted
               // apply_assistant to the $5 tier on a $7 sale).
-              const lowCommission = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
+              const lowCommission = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'career_bundle', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
               const commissionCents = lowCommission.includes(productType || '') ? 100 : 500;
               
               // verify-product-purchase (triggered from the success page) can also

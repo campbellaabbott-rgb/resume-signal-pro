@@ -293,7 +293,7 @@ export function useStreamingScan() {
             jobDescriptionText: options?.jobDescriptionText,
             honeypot: options?.honeypot,
             skipCache: options?.skipCache,
-            language: localStorage.getItem('i18nextLng') || 'en',
+            language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })(),
           }),
           signal: controllerForThisAttempt.signal,
         });
