@@ -2744,6 +2744,14 @@
     }
   },
   "changelogEntries": {
+    "industryDetectionAccuracy": {
+      "title": "Sharper, more accurate industry detection",
+      "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."
+    },
+    "dataAiIndustrySplit": {
+      "title": "Data Engineering, Data Science, and AI/ML are now separate industries",
+      "description": "Previously, data engineers, data scientists, and machine learning engineers all received the same generic feedback under a single Technology category. We have split these into three distinct industry tracks with their own ATS scoring weights, keyword gap analysis, and resume tips tailored to each role."
+    },
     "everythingTranslated": {
       "title": "हर स्क्रीन अब अनुवादित है",
       "description": "सभी 9 समर्थित भाषाओं में पूर्ण अनुवाद कवरेज पूरा हुआ। हर उपयोगकर्ता-दृश्य स्क्रीन — रिज़्यूमे बिल्डर, उद्योग और भूमिका कीवर्ड पैनल, जॉब मैच विश्लेषण, भर्तीकर्ता सिमुलेशन, स्कोर कार्ड, एलीवेटर पिच जनरेटर, रिज़्यूमे रोस्ट, लाइव गतिविधि संकेतक, स्कैन क्रेडिट काउंटर और अधिक — अब आपकी चुनी भाषा में प्रदर्शित होती है। पहले, कई स्क्रीन भाषा सेटिंग के बावजूद अंग्रेजी में प्रदर्शित होती थीं।"

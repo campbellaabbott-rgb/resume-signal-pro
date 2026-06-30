@@ -2744,6 +2744,14 @@
     }
   },
   "changelogEntries": {
+    "industryDetectionAccuracy": {
+      "title": "Sharper, more accurate industry detection",
+      "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."
+    },
+    "dataAiIndustrySplit": {
+      "title": "Data Engineering, Data Science, and AI/ML are now separate industries",
+      "description": "Previously, data engineers, data scientists, and machine learning engineers all received the same generic feedback under a single Technology category. We have split these into three distinct industry tracks with their own ATS scoring weights, keyword gap analysis, and resume tips tailored to each role."
+    },
     "everythingTranslated": {
       "title": "Lahat ng screen ay isinalin na ngayon",
       "description": "Nakumpleto ang buong saklaw ng pagsasalin sa lahat ng 9 suportadong wika. Bawat screen na nakikita ng gumagamit — ang resume builder, mga panel ng keyword ng industriya at papel, pagsusuri ng job match, simulasyon ng recruiter, mga score card, generator ng elevator pitch, resume roast, mga tagapagpahiwatig ng live na aktibidad, counter ng scan credit at marami pa — ay ipinapakita na ngayon sa iyong piniling wika. Dati, marami sa mga screen na ito ay nagpapakita sa Ingles anuman ang iyong setting ng wika."

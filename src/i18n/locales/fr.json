@@ -2744,6 +2744,14 @@
     }
   },
   "changelogEntries": {
+    "industryDetectionAccuracy": {
+      "title": "Sharper, more accurate industry detection",
+      "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."
+    },
+    "dataAiIndustrySplit": {
+      "title": "Data Engineering, Data Science, and AI/ML are now separate industries",
+      "description": "Previously, data engineers, data scientists, and machine learning engineers all received the same generic feedback under a single Technology category. We have split these into three distinct industry tracks with their own ATS scoring weights, keyword gap analysis, and resume tips tailored to each role."
+    },
     "everythingTranslated": {
       "title": "Chaque écran est maintenant traduit",
       "description": "Couverture de traduction complète achevée dans les 9 langues prises en charge. Chaque écran visible par l'utilisateur — le générateur de CV, les panneaux de mots-clés sectoriels et par rôle, l'analyse de correspondance d'emploi, la simulation de recruteur, les cartes de score, le générateur de pitch d'ascenseur, la critique de CV, les indicateurs d'activité en direct, le compteur de crédits de scan et plus encore — s'affiche désormais dans la langue choisie. Auparavant, de nombreux écrans s'affichaient en anglais quelle que soit la langue sélectionnée."

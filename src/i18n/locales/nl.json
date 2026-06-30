@@ -2744,6 +2744,14 @@
     }
   },
   "changelogEntries": {
+    "industryDetectionAccuracy": {
+      "title": "Sharper, more accurate industry detection",
+      "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."
+    },
+    "dataAiIndustrySplit": {
+      "title": "Data Engineering, Data Science, and AI/ML are now separate industries",
+      "description": "Previously, data engineers, data scientists, and machine learning engineers all received the same generic feedback under a single Technology category. We have split these into three distinct industry tracks with their own ATS scoring weights, keyword gap analysis, and resume tips tailored to each role."
+    },
     "everythingTranslated": {
       "title": "Elk scherm is nu vertaald",
       "description": "Volledige vertaaldekking voltooid voor alle 9 ondersteunde talen. Elk gebruikersscherm — de cv-builder, branche- en rolkeywordpanelen, vacatureovereenkomstanalyse, recruitersimulatie, scorekaarten, elevator-pitchgenerator, cv-roast, live-activiteitsindicatoren, scancreditteller en meer — wordt nu weergegeven in de gekozen taal. Voorheen werden veel van deze schermen in het Engels weergegeven, ongeacht de taalinstelling."

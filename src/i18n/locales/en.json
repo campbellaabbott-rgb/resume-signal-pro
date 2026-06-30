@@ -2744,6 +2744,14 @@
     }
   },
   "changelogEntries": {
+    "industryDetectionAccuracy": {
+      "title": "Sharper, more accurate industry detection",
+      "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker (was incorrectly scoring as Data Science), Salesforce Administrator (was scoring as Sales), Quantitative Researcher at a hedge fund (was scoring as Data Science), and Software Engineers working at AI companies (were incorrectly scoring as ML Engineers). We also fixed a scoring logic bug where keyword co-occurrence patterns could fire before any industry signal was established — the main cause of false positives for DevOps engineers and SREs. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that actually match your role."
+    },
+    "dataAiIndustrySplit": {
+      "title": "Data Engineering, Data Science, and AI/ML are now separate industries",
+      "description": "Previously, data engineers, data scientists, and machine learning engineers all received the same generic feedback under a single 'Technology' category. We've split these into three distinct industry tracks. Data Engineers now get feedback focused on pipeline tools (Airflow, dbt, Snowflake, Kafka), modeling approaches, and data volume metrics. Data Scientists get guidance on statistical rigor, A/B testing methodology, and business impact quantification. ML and AI Engineers get feedback specific to production deployment, inference optimization, LLM frameworks (LangChain, vLLM, Hugging Face), and modern techniques like RAG, fine-tuning, and QLoRA. Each track has its own ATS scoring weights, keyword gap analysis, and resume tips."
+    },
     "everythingTranslated": {
       "title": "Every screen is now translated",
       "description": "Completed full translation coverage across all 9 supported languages. Every user-facing screen — the resume builder, industry and role keyword panels, job match analysis, recruiter simulation, score cards, elevator pitch generator, resume roast, live activity indicators, scan credit counter, and more — now displays in your chosen language. Previously, many of these screens defaulted to English regardless of your language setting."
