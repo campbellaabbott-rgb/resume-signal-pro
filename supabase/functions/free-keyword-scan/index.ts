@@ -715,8 +715,14 @@ INDUSTRY-SPECIFIC SCORING WEIGHTS:
   * Critical: BLS/ACLS/PALS certifications; DEA number for prescribers; JCAHO/Joint Commission compliance; specific unit or care setting named
   
 - FINANCE/BANKING: Quantification (35%), Certifications (25%), Keywords (20%), Education (15%), Format (5%)
-  * Must-haves: CFA, CPA, Series licenses, regulatory knowledge (SOX, Basel, Dodd-Frank)
-  * Critical: Revenue/AUM numbers, percentage improvements
+  * First detect sub-specialization and apply these specific must-haves:
+    - FP&A: Named financial model (3-statement, DCF, scenario analysis), headcount/opex numbers managed, board/exec deck experience, variance analysis, Hyperion/Anaplan/Adaptive
+    - Investment Banking: Deal type + size (M&A advisory, IPO, LBO), named banks or clients, league table rankings, modeling (DCF, LBO, comparable company), hours/year throughput
+    - Hedge Fund / Asset Management: Strategy named (long/short, quant, macro), AUM managed or supported, Sharpe ratio / drawdown / alpha vs benchmark, Bloomberg Terminal, FactSet, Capital IQ
+    - Accounting / Audit: GL reconciliation, period-end close cycle time, SOX controls, Big 4 experience, CPA license + state, audit findings/clean opinions
+    - Risk Management: VaR, stress testing, Basel III/IV, credit risk models, regulatory capital
+  * Shared must-haves: Numbers (portfolio size, budget, deal value, AUM $, cost savings $, variance %); credentials named with issuing body (CFA Level I/II/III, CPA, FRM, Series 63/79)
+  * Critical: Vague "financial modeling" without naming the model type scores low; "built 3-statement model for $50M acquisition" scores high
   
 - LEGAL: Education/Bar (35%), Keywords (25%), Experience (20%), Writing Quality (15%), Format (5%)
   * Must-haves: Bar admission + jurisdiction(s), law school name + JD year, practice area(s) stated explicitly (litigation, corporate, IP, employment, securities, real estate), billable hours target or actual, matter outcomes (settlement value, case result, deal size)
@@ -765,8 +771,9 @@ INDUSTRY-SPECIFIC SCORING WEIGHTS:
   * Critical: Federal resumes need hours-per-week and GS-level equivalents; match job announcement keywords exactly
 
 - DATA ENGINEERING: Technical Tools (40%), Pipeline Architecture (25%), Quantification (20%), Format (10%), Experience (5%)
-  * Must-haves: Orchestration tool named (Airflow, Dagster, Prefect), transformation tool (dbt), warehousing platform (Snowflake/BigQuery/Redshift/Databricks), streaming tech if relevant (Kafka/Flink); data volume/scale quantified (TB/PB processed, pipeline count, latency SLA)
-  * Critical: Modeling approach named (dimensional, star schema, medallion); data quality tooling; cost or reliability improvement metric; specific ingestion tools (Fivetran, Airbyte, custom)
+  * Must-haves: Orchestration tool named (Airflow, Dagster, Prefect), transformation tool (dbt Core or dbt Cloud), warehousing platform (Snowflake/BigQuery/Redshift/Databricks), streaming tech if relevant (Kafka/Flink/Kinesis); data volume/scale quantified (TB/PB processed, pipeline count, latency SLA)
+  * Critical: Modeling approach named (dimensional, star schema, medallion); data quality tooling (Great Expectations, Monte Carlo, dbt tests); cost or reliability improvement metric; specific ingestion tools (Fivetran, Airbyte, custom)
+  * IMPORTANT — avoid false positives: A DevOps/SRE resume mentioning Kafka or Spark for infrastructure purposes (log routing, event streaming for ops) is NOT a data engineering resume. A true data engineering resume will have dbt, Airflow/Dagster, a data warehouse platform, AND ETL/pipeline language. If Kafka/Spark appear without these pipeline anchors, score lower and note the gap.
   * Heavy penalty for missing tool specifics — "built ETL pipelines" scores very low; "built Airflow DAGs processing 500GB/day on Snowflake, reducing load time 40%" scores high
 
 - DATA SCIENCE: Methodology Rigor (30%), Quantified Business Impact (30%), Tools & Skills (25%), Format (10%), Education (5%)
@@ -776,8 +783,10 @@ INDUSTRY-SPECIFIC SCORING WEIGHTS:
 
 - MACHINE LEARNING / AI: Production Deployment (30%), Technical Depth (30%), Quantified Impact (25%), Modern Stack (10%), Format (5%)
   * Must-haves: Model in production (state scale: QPS, users, latency SLA); training framework (PyTorch/TensorFlow/JAX); at least one of: fine-tuning, RAG, inference optimization, or model evaluation pipeline; measurable improvement (accuracy %, latency reduction %, cost per inference)
-  * For LLM/GenAI roles specifically: LLM framework (LangChain/LlamaIndex/DSPy), vector DB (Pinecone/Weaviate/Qdrant/Chroma), RAG pipeline or agent architecture, eval methodology (RAGAS, human eval, benchmarks)
-  * Critical: MLOps/experiment tracking (MLflow, W&B, Neptune); GPU/infrastructure experience; model quantization or serving optimization; heavy penalty if no production deployment is mentioned for senior roles
+  * For LLM/GenAI roles specifically: LLM framework (LangChain/LlamaIndex/DSPy/Semantic Kernel), vector DB (Pinecone/Weaviate/Qdrant/Chroma), RAG pipeline or agent architecture, eval methodology (RAGAS, human eval, benchmarks), deployment platform (vLLM/TGI/Triton/SageMaker/Vertex AI/Bedrock)
+  * For optimization/efficiency roles: Quantization method named (LoRA, QLoRA, GPTQ, AWQ, bitsandbytes), inference speedup metrics (latency ms before/after, cost per 1K tokens, GPU utilization %)
+  * PRODUCTION PENALTY: A resume with only "trained models," "experimented with," or "fine-tuned" without any production deployment or inference serving context should score 35-40 points lower for senior ML engineer roles. "Deployed to production serving 5K QPS" signals 2+ levels higher than "trained models with PyTorch." Apply this penalty explicitly.
+  * Critical: MLOps/experiment tracking (MLflow, W&B, Neptune); reproducibility; model serving infrastructure
 
 - GENERAL/OTHER: Keywords (25%), Experience (25%), Quantification (20%), Format (15%), Education (10%), Skills (5%)
 

@@ -61,7 +61,12 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'client relationship', 'land and expand', 'white space',
       'apollo', 'rb2b', 'outbound motions',
       'consultative selling', 'objection handling',
-      'cold call', 'lead generation'
+      'cold call', 'lead generation',
+      // PLG / modern SaaS sales
+      'product-led growth', 'plg', 'freemium', 'free trial', 'trial conversion',
+      'self-serve', 'product adoption', 'activation', 'activation funnel',
+      'inbound sales', 'inbound motion', 'viral loop', 'user expansion',
+      'usage-based', 'consumption-based', 'seat expansion'
     ],
     certifications: [
       'meddpicc', 'meddic', 'bant', 'spin selling', 'challenger sale',
@@ -137,7 +142,7 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
     secondary: [
       'snowflake', 'bigquery', 'redshift', 'databricks', 'delta lake',
       'flink', 'apache flink', 'fivetran', 'stitch', 'airbyte',
-      'dbt cloud', 'great expectations', 'monte carlo',
+      'dbt core', 'dbt cloud', 'great expectations', 'monte carlo',
       'pyspark', 'hadoop', 'hive', 'presto', 'trino', 'athena',
       'dagster', 'prefect', 'luigi', 'mwaa',
       'parquet', 'avro', 'iceberg', 'hudi',
@@ -154,11 +159,13 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
     titles: [
       'data scientist', 'senior data scientist', 'staff data scientist', 'principal data scientist',
       'data analyst', 'senior data analyst', 'analytics manager', 'head of analytics',
-      'business intelligence analyst', 'bi analyst', 'business analyst',
       'quantitative analyst', 'quant analyst', 'research scientist',
       'applied scientist', 'decision scientist', 'growth analyst',
       'product analyst', 'marketing analyst', 'operations analyst',
-      'statistician', 'biostatistician', 'clinical data scientist'
+      'statistician', 'biostatistician', 'clinical data scientist',
+      // BI roles that use analytics tools — included only when co-occurring with analytics keywords
+      'business intelligence analyst', 'bi analyst'
+      // NOTE: 'business analyst' intentionally excluded — too generic, routes to finance/consulting
     ],
     primary: [
       'statistical analysis', 'statistics', 'hypothesis testing', 'a/b testing',
@@ -166,7 +173,10 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'clustering', 'predictive modeling', 'machine learning', 'model building',
       'feature engineering', 'exploratory data analysis', 'eda',
       'data visualization', 'insights', 'dashboards', 'reporting',
-      'business intelligence', 'kpi', 'metrics', 'forecasting'
+      'business intelligence', 'kpi', 'metrics', 'forecasting',
+      'causal inference', 'causal analysis', 'treatment effect',
+      'time series', 'time series forecasting', 'survival analysis',
+      'bayesian', 'bayesian inference', 'probabilistic modeling'
     ],
     secondary: [
       'python', 'r', 'sql', 'pandas', 'numpy', 'scikit-learn', 'sklearn',
@@ -174,7 +184,10 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'tableau', 'power bi', 'looker', 'metabase', 'domo',
       'statsmodels', 'scipy', 'xgboost', 'lightgbm', 'catboost',
       'excel', 'google analytics', 'mixpanel', 'amplitude', 'segment',
-      'spss', 'sas', 'stata'
+      'spss', 'sas', 'stata',
+      'arima', 'prophet', 'sarima', 'exponential smoothing',
+      'kaplan-meier', 'cox regression', 'dowhy', 'causalml',
+      'nltk', 'spacy', 'text analysis', 'sentiment analysis', 'topic modeling'
     ],
     certifications: [
       'google data analytics', 'ibm data science', 'tableau certified',
@@ -213,7 +226,7 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'openai', 'openai api', 'anthropic', 'claude',
       'vllm', 'triton', 'torchserve', 'bentoml', 'ray serve',
       'pinecone', 'weaviate', 'milvus', 'qdrant', 'chroma',
-      'lora', 'qlora', 'peft', 'adapter',
+      'lora', 'qlora', 'peft', 'bitsandbytes', 'gptq', 'awq', 'quantization',
       'mlflow', 'weights & biases', 'wandb', 'neptune',
       'sagemaker', 'vertex ai', 'azure ml', 'databricks ml',
       'cuda', 'gpu', 'a100', 'h100', 'tensor cores',
@@ -528,7 +541,11 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'it consultant', 'technology consultant', 'operations consultant',
       'hr consultant', 'financial consultant', 'risk consultant',
       'transformation lead', 'change management lead', 'implementation lead',
-      'business transformation', 'organizational effectiveness'
+      'business transformation', 'organizational effectiveness',
+      // Pre-sales and client-facing architects who consult rather than build
+      'solutions architect', 'presales architect', 'presales engineer',
+      'pre-sales architect', 'pre-sales engineer', 'customer success architect',
+      'enterprise architect' // when co-occurring with client/engagement signals
     ],
     primary: [
       'consulting', 'advisory', 'client', 'clients', 'engagement',
@@ -839,10 +856,16 @@ const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleS
     { negativeFor: 'marketing', requiredTitleSignal: true },
     { negativeFor: 'creative', requiredTitleSignal: true }
   ],
-  // If someone has tech titles, consulting keywords shouldn't reclassify them
+  // If someone has tech titles, consulting/sales keywords shouldn't reclassify.
+  // Note: "solutions architect" at a consulting firm should NOT be caught here —
+  // the consulting industry's title list also includes solutions architect; if
+  // consulting co-occurrence patterns fire (client, engagement, advisory, presales),
+  // consulting should win via higher title+co-occurrence combined score.
   technology: [
     { negativeFor: 'consulting', requiredTitleSignal: true },
-    { negativeFor: 'sales', requiredTitleSignal: true }
+    { negativeFor: 'sales', requiredTitleSignal: true },
+    { negativeFor: 'data_engineering', requiredTitleSignal: true },
+    { negativeFor: 'machine_learning', requiredTitleSignal: true }
   ],
   // If someone has marketing titles, sales keywords shouldn't reclassify
   marketing: [
@@ -884,7 +907,9 @@ const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleS
   creative: [
     { negativeFor: 'marketing', requiredTitleSignal: true }
   ],
-  // Data engineering titles shouldn't reclassify to generic tech or data science
+  // Data engineering titles shouldn't reclassify to generic tech or data science.
+  // Also: Kafka/Spark mention alone (from DevOps/SRE infra work) must NOT score data_engineering
+  // unless accompanied by dbt, Airflow, or a data warehouse platform — enforced in scoring weights.
   data_engineering: [
     { negativeFor: 'technology', requiredTitleSignal: true },
     { negativeFor: 'data_science', requiredTitleSignal: true }
