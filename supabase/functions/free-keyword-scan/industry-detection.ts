@@ -301,7 +301,7 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'cac', 'customer acquisition cost', 'ltv', 'cltv', 'roas', 'roi',
       'ctr', 'click-through', 'conversion rate', 'attribution', 'funnel',
       'a/b testing', 'ab testing', 'landing page', 'lead generation',
-      'mql', 'sql', 'pipeline generation', 'inbound marketing'
+      'mql', 'sales qualified lead', 'sql lead', 'pipeline generation', 'inbound marketing'
     ],
     certifications: [
       'google ads certified', 'facebook blueprint', 'hubspot certified',
@@ -347,8 +347,8 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'excel', 'financial modeling', 'bloomberg', 'factset', 'capital iq',
       'quickbooks', 'netsuite', 'sap', 'oracle financials', 'hyperion',
       'tax', 'taxation', 'deferred tax', 'depreciation', 'amortization',
-      'accounts payable', 'accounts receivable', 'ap', 'ar', 'gl',
-      'general ledger', 'journal entry', 'reconciliation', 'accrual'
+      'accounts payable', 'accounts receivable', 'general ledger',
+      'journal entry', 'reconciliation', 'accrual'
     ],
     certifications: [
       'cpa', 'cfa', 'cma', 'cfp', 'series 7', 'series 63', 'series 65',
@@ -455,7 +455,8 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
     secondary: [
       'westlaw', 'lexisnexis', 'practical law', 'contract lifecycle',
       'clm', 'docusign', 'ironclad', 'matter management',
-      'board', 'sec', 'ip', 'patent', 'trademark', 'copyright',
+      'board of directors', 'sec filing', 'sec compliance', 'sec regulation',
+      'intellectual property', 'patent', 'trademark', 'copyright',
       'm&a', 'due diligence', 'labor law', 'billable hours',
       'matter', 'docket', 'filing', 'privilege', 'confidentiality',
       'indemnification', 'liability', 'damages', 'injunction', 'arbitration'
@@ -663,7 +664,7 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'department manager', 'team lead', 'shift supervisor', 'floor manager'
     ],
     primary: [
-      'sales floor', 'point of sale', 'pos', 'inventory', 'merchandise', 'merchandising',
+      'sales floor', 'point of sale', 'pos system', 'pos terminal', 'inventory', 'merchandise', 'merchandising',
       'customer service', 'upselling', 'cross-selling', 'shrink', 'loss prevention',
       'store operations', 'planogram', 'visual display', 'retail sales',
       'foot traffic', 'conversion rate', 'basket size', 'units per transaction'
@@ -802,7 +803,11 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
   healthcare: [
     ['patient', 'clinical', 'hospital'],
     ['nursing', 'care', 'medication'],
-    ['hipaa', 'emr', 'charting']
+    ['hipaa', 'emr', 'charting'],
+    ['epic', 'ehr', 'charting'],
+    ['icu', 'patient', 'bedside'],
+    ['medication', 'vital signs', 'clinical'],
+    ['diagnosis', 'treatment', 'patient care']
   ],
   hr: [
     ['recruiting', 'hiring', 'talent'],
@@ -813,13 +818,17 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['litigation', 'court', 'contract'],
     ['counsel', 'compliance', 'legal'],
     ['westlaw', 'bar', 'attorney'],
-    ['securities', 'ip', 'corporate'],
+    ['securities', 'intellectual property', 'corporate'],
     ['billable', 'matter', 'docket'],
     ['contract', 'draft', 'review']
   ],
   education: [
     ['teaching', 'students', 'curriculum'],
-    ['classroom', 'instruction', 'lesson']
+    ['classroom', 'instruction', 'lesson'],
+    ['iep', 'special education', 'students'],
+    ['k-12', 'curriculum', 'instruction'],
+    ['grading', 'assessment', 'academic'],
+    ['lesson plan', 'differentiated', 'students']
   ],
   engineering: [
     ['design', 'manufacturing', 'specifications'],
@@ -843,7 +852,10 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
   ],
   creative: [
     ['design', 'portfolio', 'visual'],
-    ['figma', 'photoshop', 'branding']
+    ['figma', 'photoshop', 'branding'],
+    ['user research', 'usability testing', 'wireframe'],
+    ['ux', 'prototype', 'figma'],
+    ['typography', 'layout', 'brand identity']
   ],
   product_management: [
     ['roadmap', 'stakeholder', 'prioritization'],
@@ -876,7 +888,7 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['jupyter', 'pandas', 'scikit'],
     ['tableau', 'power bi', 'dashboard'],
     ['regression', 'classification', 'prediction'],
-    ['sql', 'python', 'analysis']
+    ['database', 'python', 'analysis']
   ],
   machine_learning: [
     ['llm', 'fine-tuning', 'inference'],
@@ -890,7 +902,7 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
   ],
   retail: [
     ['sales floor', 'inventory', 'customer service'],
-    ['pos', 'cashier', 'upselling'],
+    ['point of sale', 'cashier', 'upselling'],
     ['store', 'shrink', 'loss prevention'],
     ['merchandising', 'planogram', 'visual display']
   ],
@@ -996,11 +1008,6 @@ const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleS
     { negativeFor: 'technology', requiredTitleSignal: true },
     { negativeFor: 'data_engineering', requiredTitleSignal: true }
   ],
-  // ML engineers shouldn't reclassify to generic technology
-  machine_learning: [
-    { negativeFor: 'technology', requiredTitleSignal: true },
-    { negativeFor: 'data_science', requiredTitleSignal: true }
-  ],
   // If someone has PM titles, technology/consulting keywords shouldn't reclassify
   product_management: [
     { negativeFor: 'technology', requiredTitleSignal: true },
@@ -1008,6 +1015,27 @@ const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleS
     { negativeFor: 'machine_learning', requiredTitleSignal: true },
     { negativeFor: 'consulting', requiredTitleSignal: true },
     { negativeFor: 'sales', requiredTitleSignal: true }
+  ],
+  // Government: policy analyst uses strategy/stakeholder/analysis — all consulting primary.
+  // Require consulting title signals before reclassifying away from government.
+  government: [
+    { negativeFor: 'consulting', requiredTitleSignal: true },
+    { negativeFor: 'finance', requiredTitleSignal: true }
+  ],
+  // Retail: buyer/manager uses vendor/negotiation/transactions — overlaps with finance.
+  retail: [
+    { negativeFor: 'finance', requiredTitleSignal: true },
+    { negativeFor: 'consulting', requiredTitleSignal: true }
+  ],
+  // Hospitality: hotel/F&B roles share 'care', 'management', 'operations' with healthcare.
+  hospitality: [
+    { negativeFor: 'healthcare', requiredTitleSignal: true },
+    { negativeFor: 'consulting', requiredTitleSignal: true }
+  ],
+  // Manufacturing: production roles share engineering/design/quality with engineering.
+  manufacturing: [
+    { negativeFor: 'engineering', requiredTitleSignal: true },
+    { negativeFor: 'consulting', requiredTitleSignal: true }
   ]
 };
 
@@ -1057,6 +1085,10 @@ function extractSections(resumeText: string): {
     'product owner', 'scrum master', 'product manager',
     'partner', 'superintendent', 'physician', 'doctor', 'pharmacist', 'paralegal',
     'buyer', 'planner', 'underwriter', 'actuary', 'appraiser', 'auditor',
+    // Healthcare credential abbreviations used as standalone titles
+    'rn', 'np', 'lpn', 'lvn', 'cna', 'emt', 'md', 'do', 'dpt', 'pa-c',
+    // Hospitality service roles
+    'chef', 'cook', 'bartender', 'cashier', 'concierge', 'server', 'sommelier',
   ];
   
   for (const line of lines) {
@@ -1412,7 +1444,7 @@ function fallbackKeywordPass(text: string): { industry: string; score: number; s
     { industry: 'legal', keywords: ['legal', 'law', 'contract', 'compliance', 'court', 'litigation', 'attorney', 'counsel', 'regulation', 'statute'], minMatches: 3 },
     { industry: 'consulting', keywords: ['client', 'engagement', 'strategy', 'advisory', 'deliverable', 'stakeholder', 'recommendation', 'transformation', 'consulting'], minMatches: 3 },
     { industry: 'product_management', keywords: ['product manager', 'roadmap', 'backlog', 'sprint planning', 'user stories', 'prioritization', 'product strategy', 'product launch', 'cross-functional', 'stakeholder alignment', 'okr', 'product requirements'], minMatches: 3 },
-    { industry: 'retail', keywords: ['store', 'retail', 'inventory', 'merchandise', 'customer service', 'pos', 'sales floor', 'upselling', 'loss prevention', 'shrink', 'cashier', 'planogram'], minMatches: 3 },
+    { industry: 'retail', keywords: ['store', 'retail', 'inventory', 'merchandise', 'customer service', 'point of sale', 'sales floor', 'upselling', 'loss prevention', 'shrink', 'cashier', 'planogram'], minMatches: 3 },
     { industry: 'hospitality', keywords: ['hotel', 'guest', 'reservations', 'hospitality', 'food and beverage', 'banquet', 'catering', 'front desk', 'occupancy', 'revpar', 'restaurant', 'concierge'], minMatches: 3 },
     { industry: 'manufacturing', keywords: ['production', 'manufacturing', 'assembly', 'quality control', 'lean', 'six sigma', 'oee', 'fabrication', 'machining', 'inspection', 'safety', 'osha'], minMatches: 3 },
     { industry: 'government', keywords: ['policy', 'government', 'federal', 'regulation', 'compliance', 'grant', 'public sector', 'procurement', 'legislation', 'constituent', 'agency', 'security clearance'], minMatches: 3 },

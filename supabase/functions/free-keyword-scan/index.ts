@@ -1472,7 +1472,7 @@ ${resumeText.substring(0, 15000)}
       // Now: AI must match a 2nd-place that's genuinely close (within 30% of top score).
       const secondPlace = industryDetection.alternativeIndustries[0];
       const secondIsClose = secondPlace &&
-        secondPlace.score >= industryDetection.score * 0.7 &&
+        secondPlace.score >= industryDetection.score * 0.8 &&
         secondPlace.industry === normalizedAIIndustry;
 
       if (serverAIMatch) {
@@ -1498,7 +1498,9 @@ ${resumeText.substring(0, 15000)}
     // Guard: "general" is a valid server fallback but should never be the final industry
     // surfaced to the user when a more specific detection exists. If AI returned "general"
     // on a low-confidence override, fall back to the server's best guess instead.
-    if (finalIndustry === 'general' && industryDetection.industry !== 'general') {
+    // Only fall back to server's guess if it has meaningful signal (score >= 5).
+    // Below that threshold, 'general' is more honest than a 1-2pt guess.
+    if (finalIndustry === 'general' && industryDetection.industry !== 'general' && industryDetection.score >= 5) {
       finalIndustry = industryDetection.industry;
       detectionSource = 'server_general_fallback';
     }
