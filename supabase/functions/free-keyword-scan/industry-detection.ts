@@ -213,7 +213,7 @@ const SECTION_WEIGHTS = {
 };
 
 // Industry-specific keyword dictionaries with weights
-const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]; certifications: string[]; titles: string[] }> = {
+export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]; certifications: string[]; titles: string[] }> = {
   sales: {
     titles: [
       'account executive', 'sales representative', 'sales rep', 'sales manager',
