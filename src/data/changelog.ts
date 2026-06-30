@@ -18,6 +18,9 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "scanFeedback", date: "2026-06-30", tags: ["new"] },
+  { id: "sectionAwareAnalysis", date: "2026-06-30", tags: ["improved"] },
+  { id: "sparseResumeDetection", date: "2026-06-30", tags: ["improved"] },
   { id: "fasterPremiumGeneration", date: "2026-06-30", tags: ["improved"] },
   { id: "employerAwareIndustryDetection", date: "2026-06-30", tags: ["improved"] },
   { id: "scanAiReliability", date: "2026-06-30", tags: ["improved"] },

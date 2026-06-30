@@ -2744,6 +2744,18 @@
     }
   },
   "changelogEntries": {
+    "scanFeedback": {
+      "title": "Teilen Sie uns mit, ob Ihre Analyse hilfreich war",
+      "description": "Am Ende jeder kostenlosen Analyse erscheint nun ein schnelles Daumen-hoch / Daumen-runter. Ihre Antworten fließen direkt in unsere Verbesserungspipeline ein — wir nutzen sie, um systematisch fehlerhafte Empfehlungstypen zu identifizieren und in zukünftigen Updates zu korrigieren."
+    },
+    "sectionAwareAnalysis": {
+      "title": "Intelligentere Abschnittsanalyse",
+      "description": "Der kostenlose Scan analysiert nun Ihren Lebenslauf vorab in beschriftete Abschnitte (Erfahrung, Ausbildung, Fähigkeiten usw.), bevor er an die KI gesendet wird. Dadurch kann die Beratung auf bestimmte Abschnitte abzielen, anstatt Ihren Lebenslauf als unstrukturierten Textblock zu behandeln."
+    },
+    "sparseResumeDetection": {
+      "title": "Bessere Ratschläge für kurze oder dünne Lebensläufe",
+      "description": "Lebensläufe mit weniger als 300 Wörtern oder 5 Aufzählungspunkten erhalten jetzt zunächst erweiterungsfokussierte Ratschläge — welche Abschnitte fehlen, wie man Details hinzufügt — anstatt Keyword-Optimierungsvorschläge, die noch nicht zutreffen."
+    },
     "fasterPremiumGeneration": {
       "title": "Premium-Lebenslauf + Anschreiben wird doppelt so schnell erstellt",
       "description": "Wir haben die beiden KI-Aufrufe, die Ihren überarbeiteten Lebenslauf und Ihr Anschreiben erstellen, parallelisiert, sodass sie gleichzeitig statt nacheinander ausgeführt werden. Die meisten Premium-Pakete sind jetzt in 15–25 Sekunden fertig statt in 30–50 Sekunden."

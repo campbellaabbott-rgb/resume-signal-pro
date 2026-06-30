@@ -2744,6 +2744,18 @@
     }
   },
   "changelogEntries": {
+    "scanFeedback": {
+      "title": "Díganos si su análisis fue útil",
+      "description": "Ahora aparece un rápido pulgar arriba / abajo al final de cada análisis gratuito. Sus respuestas van directamente a nuestra línea de mejora — las usamos para identificar qué tipos de recomendaciones son sistemáticamente incorrectos y corregirlos en futuras actualizaciones."
+    },
+    "sectionAwareAnalysis": {
+      "title": "Análisis por secciones más inteligente",
+      "description": "El análisis gratuito ahora pre-analiza su currículum en secciones etiquetadas (Experiencia, Educación, Habilidades, etc.) antes de enviarlo a la IA. Esto significa que los consejos pueden dirigirse a secciones específicas en lugar de tratar su currículum como un bloque de texto indiferenciado."
+    },
+    "sparseResumeDetection": {
+      "title": "Mejores consejos para currículums cortos o escasos",
+      "description": "Los currículums con menos de 300 palabras o 5 viñetas ahora reciben primero consejos centrados en la expansión — qué secciones faltan, cómo agregar detalles — en lugar de sugerencias de optimización de palabras clave que aún no aplican."
+    },
     "fasterPremiumGeneration": {
       "title": "El paquete premium de currículum + carta de presentación se genera el doble de rápido",
       "description": "Paralelizamos las dos llamadas de IA que generan tu currículum reescrito y tu carta de presentación para que se ejecuten simultáneamente en lugar de una tras otra. La mayoría de los paquetes premium ahora se completan en 15–25 segundos en lugar de 30–50 segundos."

@@ -2744,6 +2744,18 @@
     }
   },
   "changelogEntries": {
+    "scanFeedback": {
+      "title": "Tell us if your scan was helpful",
+      "description": "A quick thumbs up / thumbs down now appears at the bottom of every free scan. Your responses go directly into our improvement pipeline — we use them to identify which recommendation types are systematically off and fix them in future updates."
+    },
+    "sectionAwareAnalysis": {
+      "title": "Smarter section-by-section analysis",
+      "description": "The free scan now pre-parses your CV into labelled sections (Experience, Education, Skills, etc.) before sending it to the AI. This means advice can target specific sections — \"add this keyword to your Skills section\" — instead of treating your CV as an undifferentiated block of text."
+    },
+    "sparseResumeDetection": {
+      "title": "Better advice for short or sparse CVs",
+      "description": "CVs with fewer than 300 words or 5 bullet points now get expansion-focused advice first — what sections are missing, how to add detail, and how to quantify experience — rather than keyword optimisation suggestions that don't apply until there's enough content to work with."
+    },
     "fasterPremiumGeneration": {
       "title": "Premium resume + cover letter generates twice as fast",
       "description": "We parallelised the two AI calls that build your rewritten resume and cover letter so they run simultaneously instead of back-to-back. Most premium packages now complete in 15–25 seconds instead of 30–50 seconds."

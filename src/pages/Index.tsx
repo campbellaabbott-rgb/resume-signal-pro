@@ -59,6 +59,7 @@ import { useErrorTracking } from "@/hooks/use-error-tracking";
 import { useAffiliateTracking, getStoredReferralCode } from "@/hooks/use-affiliate-auth";
 import { useStreamingScan, type StreamProgress, clearAllClientScanCaches } from "@/hooks/use-streaming-scan";
 import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
+import { ScanFeedback } from "@/components/ScanFeedback";
 
 interface FreeKeywordResult {
   detectedLanguage?: { code: string; name: string } | null;
@@ -1366,6 +1367,16 @@ const Index = () => {
               
               {/* Score-based package recommendation */}
               <ScoreBasedPackageRecommendation atsScore={freeKeywordResult.atsScoreEstimate} />
+
+              {/* Feedback */}
+              <div className="flex justify-center">
+                <ScanFeedback
+                  industry={freeKeywordResult.industry || ""}
+                  atsScore={freeKeywordResult.atsScoreEstimate || 0}
+                  hadJobDescription={!!jobDescriptionText}
+                  resumeWordCount={freeKeywordResult.wordCount}
+                />
+              </div>
             </div>
           </section>
         )}

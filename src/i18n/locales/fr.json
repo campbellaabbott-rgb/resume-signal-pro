@@ -2744,6 +2744,18 @@
     }
   },
   "changelogEntries": {
+    "scanFeedback": {
+      "title": "Dites-nous si votre analyse a été utile",
+      "description": "Un rapide pouce en haut / bas apparaît désormais au bas de chaque analyse gratuite. Vos réponses alimentent directement notre pipeline d'amélioration — nous les utilisons pour identifier les types de recommandations systématiquement erronés et les corriger dans les futures mises à jour."
+    },
+    "sectionAwareAnalysis": {
+      "title": "Analyse section par section plus intelligente",
+      "description": "L'analyse gratuite pré-analyse maintenant votre CV en sections étiquetées (Expérience, Formation, Compétences, etc.) avant de l'envoyer à l'IA. Cela permet aux conseils de cibler des sections spécifiques plutôt que de traiter votre CV comme un bloc de texte indifférencié."
+    },
+    "sparseResumeDetection": {
+      "title": "Meilleurs conseils pour les CV courts ou peu fournis",
+      "description": "Les CV de moins de 300 mots ou 5 puces reçoivent désormais des conseils axés sur l'expansion en premier — quelles sections manquent, comment ajouter des détails — plutôt que des suggestions d'optimisation de mots-clés qui ne s'appliquent pas encore."
+    },
     "fasterPremiumGeneration": {
       "title": "Le package premium CV + lettre de motivation se génère deux fois plus vite",
       "description": "Nous avons parallélisé les deux appels IA qui génèrent votre CV réécrit et votre lettre de motivation pour qu'ils s'exécutent simultanément plutôt que l'un après l'autre. La plupart des packages premium sont maintenant prêts en 15 à 25 secondes au lieu de 30 à 50 secondes."

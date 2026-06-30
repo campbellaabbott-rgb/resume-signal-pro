@@ -2744,6 +2744,18 @@
     }
   },
   "changelogEntries": {
+    "scanFeedback": {
+      "title": "Vertel ons of uw scan nuttig was",
+      "description": "Er verschijnt nu een snelle duim omhoog / omlaag onderaan elke gratis scan. Uw antwoorden gaan rechtstreeks naar onze verbeteringspijplijn — we gebruiken ze om te identificeren welke aanbevelingstypes systematisch onjuist zijn en ze te corrigeren in toekomstige updates."
+    },
+    "sectionAwareAnalysis": {
+      "title": "Slimmere sectie-voor-sectie analyse",
+      "description": "De gratis scan parseert nu eerst uw cv in gelabelde secties (Ervaring, Opleiding, Vaardigheden, enz.) voordat het naar de AI wordt gestuurd. Dit betekent dat advies specifieke secties kan targeten in plaats van uw cv als een ongedifferentieerd tekstblok te behandelen."
+    },
+    "sparseResumeDetection": {
+      "title": "Betere adviezen voor korte of dunne cv's",
+      "description": "Cv's met minder dan 300 woorden of 5 opsommingstekens krijgen nu eerst uitbreidingsgericht advies — welke secties ontbreken, hoe details toe te voegen — in plaats van zoekwoordoptimalisatiesuggesties die nog niet van toepassing zijn."
+    },
     "fasterPremiumGeneration": {
       "title": "Premium cv + sollicitatiebrief wordt twee keer zo snel gegenereerd",
       "description": "We hebben de twee AI-aanroepen die uw herschreven cv en sollicitatiebrief genereren geparallelliseerd zodat ze tegelijkertijd worden uitgevoerd in plaats van achter elkaar. De meeste premiumpakketten zijn nu klaar in 15–25 seconden in plaats van 30–50 seconden."

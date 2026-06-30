@@ -2744,6 +2744,18 @@
     }
   },
   "changelogEntries": {
+    "scanFeedback": {
+      "title": "Sabihin sa amin kung ang iyong scan ay nakatulong",
+      "description": "Ang mabilis na thumb up / thumb down ay lilitaw na sa ibaba ng bawat libreng scan. Ang iyong mga tugon ay direktang napupunta sa aming improvement pipeline — ginagamit namin ang mga ito upang matukoy kung aling mga uri ng rekomendasyon ang sistematikong mali at ayusin ang mga ito sa mga susunod na update."
+    },
+    "sectionAwareAnalysis": {
+      "title": "Mas matalinong pagsusuri sa bawat seksyon",
+      "description": "Ang libreng scan ay ngayon ay nagpa-parse ng iyong resume sa mga may label na seksyon (Karanasan, Edukasyon, Kasanayan, atbp.) bago ipadala sa AI. Nangangahulugan ito na ang payo ay maaaring magtarget ng mga tiyak na seksyon sa halip na ituring ang iyong resume bilang isang hindi naiiba na bloke ng teksto."
+    },
+    "sparseResumeDetection": {
+      "title": "Mas mahusay na payo para sa maikling o manipis na mga resume",
+      "description": "Ang mga resume na may mas mababa sa 300 salita o 5 bullet point ay ngayon ay nakakakuha muna ng payo na nakatuon sa pagpapalawak — kung anong mga seksyon ang nawawala, kung paano magdagdag ng detalye — sa halip na mga mungkahi sa pag-optimize ng keyword na hindi pa naaangkop."
+    },
     "fasterPremiumGeneration": {
       "title": "Ang premium na resume + cover letter ay nabubuo nang dalawang beses na mas mabilis",
       "description": "Pinagsabay namin ang dalawang AI na tawag na bumubuo ng iyong binagong resume at cover letter para magsabay ang mga ito sa halip na sunud-sunod. Karamihan sa mga premium package ay natapos na ngayon sa 15–25 segundo sa halip na 30–50 segundo."
