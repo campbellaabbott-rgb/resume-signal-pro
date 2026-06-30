@@ -289,8 +289,8 @@ const getAnalysisTools = (hasLinkedIn: boolean, hasJobDescription: boolean) => [
       properties: {
         industry: {
           type: "string",
-          enum: ["technology", "healthcare", "finance", "marketing", "sales", "engineering", "education", "hr", "consulting", "legal", "retail", "hospitality", "manufacturing", "government", "general"],
-          description: "Detected industry. Pick the single best-matching value. Use 'technology' for software/IT/SaaS/cloud/data. Use 'engineering' only for non-software engineering (civil, mechanical, electrical, chemical). Use 'hr' for human resources/recruiting/talent. Use 'hospitality' for hotels/restaurants/travel/tourism. Use 'general' only when no other category fits."
+          enum: ["technology", "healthcare", "finance", "marketing", "sales", "engineering", "education", "hr", "consulting", "legal", "retail", "hospitality", "manufacturing", "government", "product_management", "creative", "general"],
+          description: "Detected industry. Pick the single best-matching value. Use 'technology' for software/IT/SaaS/cloud/data engineers. Use 'product_management' for PMs, TPMs, product owners, scrum masters. Use 'creative' for designers, UX, art directors, animators, photographers, copywriters. Use 'engineering' only for non-software engineering (civil, mechanical, electrical, chemical). Use 'hr' for human resources/recruiting/talent. Use 'hospitality' for hotels/restaurants/travel/tourism. Use 'general' only when no other category fits."
         },
         experienceLevel: { type: "string", enum: ["entry", "mid", "senior", "executive"], description: "Career experience level" },
         atsScore: {

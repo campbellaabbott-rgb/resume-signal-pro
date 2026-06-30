@@ -450,6 +450,60 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     keyMetrics: ['Budget managed', 'Constituents served', 'Compliance rate', 'Program outcomes', 'Cost savings achieved'],
     industryBenchmarks: { avgScore: 62, topScore: 86 }
   },
+  product_management: {
+    name: 'Product Management',
+    keywords: ['Product Roadmap', 'Agile', 'Scrum', 'OKRs', 'User Stories', 'Backlog', 'Go-to-Market', 'Stakeholder Management', 'A/B Testing', 'Product Strategy'],
+    resumeTips: [
+      'Lead with business outcomes, not features shipped',
+      'Quantify impact: revenue, users, engagement, conversion',
+      'Show data-driven decision making with A/B tests and OKRs',
+      'Highlight cross-functional leadership and technical credibility'
+    ],
+    preferredFormat: 'Hybrid format with outcomes front and center',
+    atsNotes: 'PM roles use Greenhouse, Lever. Include exact PM frameworks (OKR, Agile, etc.).',
+    topSkills: ['Product Strategy', 'Roadmap Planning', 'User Research', 'Data Analysis', 'Stakeholder Management'],
+    certifications: ['CSPO', 'PSPO', 'CSM', 'PSM', 'PMP', 'Pragmatic Marketing'],
+    commonMistakes: [
+      'Listing features shipped without business outcomes',
+      'Not quantifying user or revenue impact',
+      'Focusing on process instead of results',
+      'Missing data-driven decision examples'
+    ],
+    strongActionVerbs: ['Launched', 'Prioritized', 'Defined', 'Shipped', 'Drove', 'Increased', 'Reduced', 'Owned'],
+    bulletExamples: [
+      { weak: 'Managed product roadmap', strong: 'Owned roadmap for $50M revenue line, launching 12 features that drove 35% increase in engagement and $8M ARR growth' },
+      { weak: 'Worked with engineering on features', strong: 'Led cross-functional team of 15 to ship checkout redesign, improving conversion 22% and reducing cart abandonment 40%' }
+    ],
+    keyMetrics: ['Revenue/ARR impact', 'User growth', 'Engagement improvements', 'Conversion rate changes', 'NPS/satisfaction scores', 'OKR achievement'],
+    industryBenchmarks: { avgScore: 70, topScore: 93 }
+  },
+  creative: {
+    name: 'Creative & Design',
+    keywords: ['Brand Identity', 'Typography', 'UI/UX', 'Visual Design', 'Figma', 'Adobe Creative Suite', 'Art Direction', 'Wireframing', 'Prototyping', 'Motion Design'],
+    resumeTips: [
+      'Always include a portfolio link — it is your most important credential',
+      'Show measurable impact: conversion uplift, engagement increase, brand metrics',
+      'Highlight collaboration with product and engineering teams',
+      'Quantify scale: users impacted, designs shipped, campaigns run'
+    ],
+    preferredFormat: 'Hybrid with prominent portfolio link; clean visual formatting',
+    atsNotes: 'Creative roles vary widely. Keep ATS version plain-text; submit PDF portfolio separately.',
+    topSkills: ['Figma', 'Adobe Creative Suite', 'Visual Design', 'UX Research', 'Brand Design'],
+    certifications: ['Adobe Certified', 'Google UX Design Certificate', 'Interaction Design Foundation'],
+    commonMistakes: [
+      'Not linking to a portfolio with case studies',
+      'Missing measurable impact of design decisions',
+      'Focusing on tools used instead of problems solved',
+      'Not showing end-to-end design process'
+    ],
+    strongActionVerbs: ['Designed', 'Conceptualized', 'Illustrated', 'Animated', 'Directed', 'Crafted', 'Produced', 'Launched'],
+    bulletExamples: [
+      { weak: 'Created marketing materials', strong: 'Designed rebrand system across 200+ assets, increasing brand recognition scores by 34% in post-campaign survey' },
+      { weak: 'Made wireframes and prototypes', strong: 'Led UX redesign of checkout flow, reducing cart abandonment by 28% and increasing mobile conversion by 22%' }
+    ],
+    keyMetrics: ['Conversion improvement', 'User satisfaction (SUS/NPS)', 'Brand metric changes', 'Assets produced', 'Projects shipped', 'Accessibility score'],
+    industryBenchmarks: { avgScore: 63, topScore: 88 }
+  },
   general: {
     name: 'General / Other',
     keywords: ['Leadership', 'Communication', 'Problem Solving', 'Team Collaboration', 'Project Management', 'Customer Service'],

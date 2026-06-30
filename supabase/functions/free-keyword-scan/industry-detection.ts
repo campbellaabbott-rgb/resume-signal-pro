@@ -417,6 +417,113 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
     certifications: [
       'adobe certified', 'google ux', 'uxcel'
     ]
+  },
+
+  retail: {
+    titles: [
+      'store manager', 'assistant store manager', 'retail manager', 'district manager',
+      'sales associate', 'retail associate', 'cashier', 'customer service representative',
+      'visual merchandiser', 'loss prevention', 'inventory specialist',
+      'buyer', 'merchandise planner', 'category manager', 'brand ambassador',
+      'department manager', 'team lead', 'shift supervisor', 'floor manager'
+    ],
+    primary: [
+      'sales floor', 'point of sale', 'pos', 'inventory', 'merchandise', 'merchandising',
+      'customer service', 'upselling', 'cross-selling', 'shrink', 'loss prevention',
+      'store operations', 'planogram', 'visual display', 'retail sales',
+      'foot traffic', 'conversion rate', 'basket size', 'units per transaction'
+    ],
+    secondary: [
+      'store', 'retail', 'shop', 'boutique', 'mall', 'outlet',
+      'shopify', 'square', 'lightspeed', 'netsuite retail', 'revel',
+      'seasonal', 'holiday', 'promotional', 'markdown', 'clearance',
+      'kpi', 'sales target', 'comp sales', 'same-store sales', 'revenue per square foot'
+    ],
+    certifications: [
+      'retail management certificate', 'customer service certification', 'loss prevention certified'
+    ]
+  },
+
+  hospitality: {
+    titles: [
+      'hotel manager', 'general manager', 'front desk agent', 'front desk manager',
+      'concierge', 'guest services manager', 'housekeeping manager', 'executive housekeeper',
+      'food and beverage manager', 'f&b manager', 'restaurant manager', 'chef',
+      'executive chef', 'sous chef', 'line cook', 'server', 'bartender',
+      'event coordinator', 'banquet manager', 'catering manager', 'revenue manager',
+      'reservations manager', 'director of operations', 'hospitality manager'
+    ],
+    primary: [
+      'guest satisfaction', 'guest experience', 'check-in', 'check-out',
+      'reservations', 'occupancy', 'revpar', 'adr', 'front of house', 'back of house',
+      'food and beverage', 'banquet', 'catering', 'event', 'hospitality',
+      'hotel', 'resort', 'restaurant', 'dining', 'menu', 'service standards'
+    ],
+    secondary: [
+      'opera', 'pms', 'property management system', 'folio', 'tripadvisor',
+      'yelp', 'expedia', 'booking.com', 'ota', 'loyalty program',
+      'spa', 'amenities', 'upsell', 'room upgrade', 'turndown service',
+      'servsafe', 'tips certification', 'liquor license', 'health inspection'
+    ],
+    certifications: [
+      'cha', 'chia', 'servsafe', 'tips certified', 'chha', 'crde'
+    ]
+  },
+
+  manufacturing: {
+    titles: [
+      'production manager', 'plant manager', 'operations manager', 'manufacturing engineer',
+      'process engineer', 'quality engineer', 'quality manager', 'quality control',
+      'production supervisor', 'shift supervisor', 'line supervisor', 'team leader',
+      'maintenance technician', 'maintenance manager', 'industrial engineer',
+      'supply chain manager', 'logistics coordinator', 'warehouse manager',
+      'assembly technician', 'machine operator', 'cnc operator'
+    ],
+    primary: [
+      'production', 'manufacturing', 'assembly', 'fabrication', 'machining',
+      'quality control', 'quality assurance', 'inspection', 'oee', 'throughput',
+      'cycle time', 'downtime', 'scrap', 'yield', 'defect rate',
+      'lean', 'six sigma', 'kaizen', 'continuous improvement', '5s',
+      'safety', 'osha', 'ehs', 'incident rate', 'near miss'
+    ],
+    secondary: [
+      'sap', 'erp', 'mes', 'cmms', 'plc', 'scada', 'hmi',
+      'iso 9001', 'as9100', 'iatf', 'ts16949', 'fda', 'gmp',
+      'bom', 'bill of materials', 'work order', 'preventive maintenance',
+      'supply chain', 'procurement', 'inventory', 'kanban', 'jit', 'just-in-time'
+    ],
+    certifications: [
+      'six sigma black belt', 'six sigma green belt', 'lean certified',
+      'osha 30', 'osha 10', 'pmp', 'apics cpim', 'apics cscp', 'cqe'
+    ]
+  },
+
+  government: {
+    titles: [
+      'policy analyst', 'program manager', 'program director', 'government analyst',
+      'public administrator', 'city manager', 'county administrator',
+      'federal employee', 'civil servant', 'government contractor',
+      'grant manager', 'grant writer', 'budget analyst', 'legislative analyst',
+      'compliance officer', 'regulatory affairs', 'public affairs officer',
+      'military officer', 'military enlisted', 'veteran', 'law enforcement',
+      'firefighter', 'emergency manager', 'public health official'
+    ],
+    primary: [
+      'policy', 'regulation', 'compliance', 'public sector', 'government',
+      'federal', 'state', 'municipal', 'grant', 'funding', 'appropriation',
+      'budget', 'fiscal', 'taxpayer', 'constituent', 'stakeholder',
+      'procurement', 'rfp', 'rfq', 'contract', 'far', 'dfar',
+      'program', 'initiative', 'legislation', 'ordinance', 'statute'
+    ],
+    secondary: [
+      'usajobs', 'gs level', 'gs-', 'security clearance', 'top secret',
+      'secret clearance', 'ts/sci', 'dod', 'department of', 'agency',
+      'foia', 'apa', 'administrative procedure', 'public comment',
+      'interagency', 'cross-agency', 'oversight', 'audit', 'inspector general'
+    ],
+    certifications: [
+      'pmp', 'cfe', 'cgfm', 'cpa', 'security clearance', 'dau', 'fac-c'
+    ]
   }
 };
 
@@ -502,6 +609,30 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['stakeholders', 'requirements', 'roadmap'],
     ['prd', 'product', 'feature'],
     ['mvp', 'product', 'launch']
+  ],
+  retail: [
+    ['sales floor', 'inventory', 'customer service'],
+    ['pos', 'cashier', 'upselling'],
+    ['store', 'shrink', 'loss prevention'],
+    ['merchandising', 'planogram', 'visual display']
+  ],
+  hospitality: [
+    ['guest', 'hotel', 'reservations'],
+    ['food and beverage', 'banquet', 'catering'],
+    ['revpar', 'occupancy', 'adr'],
+    ['front desk', 'check-in', 'concierge']
+  ],
+  manufacturing: [
+    ['production', 'quality control', 'oee'],
+    ['lean', 'six sigma', 'kaizen'],
+    ['assembly', 'fabrication', 'inspection'],
+    ['plc', 'scada', 'maintenance']
+  ],
+  government: [
+    ['policy', 'regulation', 'compliance'],
+    ['federal', 'grant', 'procurement'],
+    ['security clearance', 'dod', 'agency'],
+    ['constituent', 'public sector', 'legislation']
   ]
 };
 
@@ -951,6 +1082,10 @@ function fallbackKeywordPass(text: string): { industry: string; score: number; s
     { industry: 'legal', keywords: ['legal', 'law', 'contract', 'compliance', 'court', 'litigation', 'attorney', 'counsel', 'regulation', 'statute'], minMatches: 3 },
     { industry: 'consulting', keywords: ['client', 'engagement', 'strategy', 'advisory', 'deliverable', 'stakeholder', 'recommendation', 'transformation', 'consulting'], minMatches: 3 },
     { industry: 'product_management', keywords: ['product manager', 'roadmap', 'backlog', 'sprint planning', 'user stories', 'prioritization', 'product strategy', 'product launch', 'cross-functional', 'stakeholder alignment', 'okr', 'product requirements'], minMatches: 3 },
+    { industry: 'retail', keywords: ['store', 'retail', 'inventory', 'merchandise', 'customer service', 'pos', 'sales floor', 'upselling', 'loss prevention', 'shrink', 'cashier', 'planogram'], minMatches: 3 },
+    { industry: 'hospitality', keywords: ['hotel', 'guest', 'reservations', 'hospitality', 'food and beverage', 'banquet', 'catering', 'front desk', 'occupancy', 'revpar', 'restaurant', 'concierge'], minMatches: 3 },
+    { industry: 'manufacturing', keywords: ['production', 'manufacturing', 'assembly', 'quality control', 'lean', 'six sigma', 'oee', 'fabrication', 'machining', 'inspection', 'safety', 'osha'], minMatches: 3 },
+    { industry: 'government', keywords: ['policy', 'government', 'federal', 'regulation', 'compliance', 'grant', 'public sector', 'procurement', 'legislation', 'constituent', 'agency', 'security clearance'], minMatches: 3 },
   ];
   
   let bestMatch: { industry: string; score: number; signals: string[] } | null = null;
