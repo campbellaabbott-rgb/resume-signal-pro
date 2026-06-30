@@ -31,11 +31,11 @@ const categoryLabels: Record<string, string> = {
 };
 
 export function IndustryKeywordSuggestions({
-  const { t } = useTranslation(); 
   industry, 
   resumeText,
   className 
 }: IndustryKeywordSuggestionsProps) {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   
   const config = findIndustryConfig(industry);

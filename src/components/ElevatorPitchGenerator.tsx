@@ -24,7 +24,6 @@ interface PitchData {
 }
 
 export function ElevatorPitchGenerator({
-  const { t } = useTranslation();
   resumeText,
   industry,
   currentRole,
@@ -32,6 +31,7 @@ export function ElevatorPitchGenerator({
   candidateName,
   className
 }: ElevatorPitchGeneratorProps) {
+  const { t } = useTranslation();
   const [pitchData, setPitchData] = useState<PitchData | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -169,7 +169,7 @@ export function ElevatorPitchGenerator({
             <button
               onClick={copyPitch}
               className="absolute top-3 right-3 p-1.5 rounded-md hover:bg-muted transition-colors"
-              title=t('elevatorPitch.copy')
+              title={t('elevatorPitch.copy')}
             >
               {copied ? (
                 <Check className="w-4 h-4 text-success" />

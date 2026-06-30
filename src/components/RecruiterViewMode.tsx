@@ -87,8 +87,8 @@ const decisionStyles = {
   REJECT: { bg: "bg-red-500/10 border-red-500/30", text: "text-red-700", icon: XCircle, label: t('recruiterView.screenedOut') },
 };
 
-export function RecruiterViewMode({
-  const { t } = useTranslation(); resumeText, industry, currentRole }: RecruiterViewModeProps) {
+export function RecruiterViewMode({ resumeText, industry, currentRole }: RecruiterViewModeProps) {
+  const { t } = useTranslation();
   const [data, setData] = useState<RecruiterViewData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();

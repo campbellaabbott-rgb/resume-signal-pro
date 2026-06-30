@@ -21,12 +21,12 @@ const categoryConfig = {
 };
 
 export function RoleKeywordSuggestions({
-  const { t } = useTranslation(); 
   currentRole,
   targetRole,
   resumeText,
   className 
 }: RoleKeywordSuggestionsProps) {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   
   // Use target role if available, otherwise current role

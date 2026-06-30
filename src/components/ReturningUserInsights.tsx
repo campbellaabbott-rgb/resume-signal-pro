@@ -15,11 +15,11 @@ interface ReturningUserInsightsProps {
 }
 
 export function ReturningUserInsights({
-  const { t } = useTranslation(); 
   currentScore, 
   currentIndustry,
   className 
 }: ReturningUserInsightsProps) {
+  const { t } = useTranslation();
   const { 
     isReturningUser, 
     getScoreTrend, 

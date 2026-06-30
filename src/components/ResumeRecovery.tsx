@@ -61,7 +61,7 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
             setExtractedText(data.text);
             toast({
               title: t("resumeRecovery.toastPdfParsed"),
-              description: t("resumeRecovery.toastPdfParsedDesc", { pages: data.pages ?? "" }),`,
+              description: t("resumeRecovery.toastPdfParsedDesc", { pages: data.pages ?? "" }),
             });
             return;
           }

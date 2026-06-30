@@ -17,7 +17,6 @@ interface StreamingContentDisplayProps {
 }
 
 export function StreamingContentDisplay({
-  const { t } = useTranslation();
   content,
   isStreaming,
   isComplete,
@@ -27,6 +26,7 @@ export function StreamingContentDisplay({
   showCopyButton = true,
   className,
 }: StreamingContentDisplayProps) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);

@@ -187,8 +187,8 @@ function ScoreComparison({ before, after, label }: { before: number; after: numb
   );
 }
 
-export function ATSDefenseResults({
-  const { t } = useTranslation(); data, resumeText, multiColumnDetected }: ATSDefenseResultsProps) {
+export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATSDefenseResultsProps) {
+  const { t } = useTranslation();
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const scoreImprovement = data.afterScore.overall - data.beforeScore.overall;
 
@@ -427,7 +427,7 @@ export function ATSDefenseResults({
       )}
 
       {/* Priority Action Plan */}
-      <CollapsibleSection title=t('atsDefenseResults.priorityActionPlan') icon={ListChecks} defaultOpen={true} badge={<Badge variant="destructive">{data.actionPlan.filter(a => a.impact === 'critical').length} Critical</Badge>}>
+      <CollapsibleSection title={t('atsDefenseResults.priorityActionPlan')} icon={ListChecks} defaultOpen={true} badge={<Badge variant="destructive">{data.actionPlan.filter(a => a.impact === 'critical').length} Critical</Badge>}>
         <div className="space-y-3">
           {data.actionPlan.sort((a, b) => a.priority - b.priority).map((item, i) => (
             <div key={i} className={cn(
@@ -457,7 +457,7 @@ export function ATSDefenseResults({
       </CollapsibleSection>
 
       {/* ATS Compatibility Audit */}
-      <CollapsibleSection title=t('atsDefenseResults.compatibilityAudit') icon={ShieldCheck} badge={<Badge variant={data.compatibilityAudit.overallGrade === 'A' || data.compatibilityAudit.overallGrade === 'B' ? 'default' : 'destructive'}>Grade: {data.compatibilityAudit.overallGrade}</Badge>}>
+      <CollapsibleSection title={t('atsDefenseResults.compatibilityAudit')} icon={ShieldCheck} badge={<Badge variant={data.compatibilityAudit.overallGrade === 'A' || data.compatibilityAudit.overallGrade === 'B' ? 'default' : 'destructive'}>Grade: {data.compatibilityAudit.overallGrade}</Badge>}>
         {/* Critical Issues */}
         {data.compatibilityAudit.criticalIssues.length > 0 && (
           <div className="mb-4">
@@ -500,7 +500,7 @@ export function ATSDefenseResults({
       </CollapsibleSection>
 
       {/* Keyword Optimization */}
-      <CollapsibleSection title=t('atsDefenseResults.keywordOpt') icon={Target} badge={<Badge variant="secondary">{data.keywordOptimization.primaryRole.roleName}</Badge>}>
+      <CollapsibleSection title={t('atsDefenseResults.keywordOpt')} icon={Target} badge={<Badge variant="secondary">{data.keywordOptimization.primaryRole.roleName}</Badge>}>
         <div className="space-y-4">
           {/* Primary Role */}
           <div>
@@ -558,7 +558,7 @@ export function ATSDefenseResults({
       </CollapsibleSection>
 
       {/* Industry Keyword Bank */}
-      <CollapsibleSection title=t('atsDefenseResults.industryBank') icon={BookOpen} badge={<Badge variant="secondary">{data.industryKeywordBank.industry}</Badge>}>
+      <CollapsibleSection title={t('atsDefenseResults.industryBank')} icon={BookOpen} badge={<Badge variant="secondary">{data.industryKeywordBank.industry}</Badge>}>
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <h4 className="font-medium text-sm mb-2">Hard Skills</h4>
@@ -606,13 +606,13 @@ export function ATSDefenseResults({
       </CollapsibleSection>
 
       {/* Optimized Resume Sections */}
-      <CollapsibleSection title=t('atsDefenseResults.optimizedSections') icon={FileText}>
+      <CollapsibleSection title={t('atsDefenseResults.optimizedSections')} icon={FileText}>
         <div className="space-y-4">
           {/* Professional Summary */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-medium">Professional Summary</h4>
-              <CopyButton text={data.optimizedResumeSections.professionalSummary} label=t('atsDefenseResults.copy') />
+              <CopyButton text={data.optimizedResumeSections.professionalSummary} label={t('atsDefenseResults.copy')} />
             </div>
             <div className="p-4 rounded-lg bg-success/5 border border-success/20">
               <p className="text-sm whitespace-pre-wrap">{data.optimizedResumeSections.professionalSummary}</p>
@@ -658,12 +658,12 @@ export function ATSDefenseResults({
       </CollapsibleSection>
 
       {/* LinkedIn Alignment */}
-      <CollapsibleSection title=t('atsDefenseResults.linkedIn') icon={Linkedin}>
+      <CollapsibleSection title={t('atsDefenseResults.linkedIn')} icon={Linkedin}>
         <div className="space-y-4">
           <div>
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-medium">Recommended Headline</h4>
-              <CopyButton text={data.linkedInAlignment.headlineRecommendation} label=t('atsDefenseResults.copy') />
+              <CopyButton text={data.linkedInAlignment.headlineRecommendation} label={t('atsDefenseResults.copy')} />
             </div>
             <div className="p-3 rounded-lg bg-[#0A66C2]/10 border border-[#0A66C2]/20">
               <p className="text-sm font-medium">{data.linkedInAlignment.headlineRecommendation}</p>
@@ -700,7 +700,7 @@ export function ATSDefenseResults({
 
       {/* Red Flags */}
       {data.redFlagsSummary.length > 0 && (
-        <CollapsibleSection title=t('atsDefenseResults.redFlags') icon={AlertTriangle} badge={<Badge variant="destructive">{data.redFlagsSummary.length}</Badge>}>
+        <CollapsibleSection title={t('atsDefenseResults.redFlags')} icon={AlertTriangle} badge={<Badge variant="destructive">{data.redFlagsSummary.length}</Badge>}>
           <div className="space-y-3">
             {data.redFlagsSummary.map((item, i) => (
               <div key={i} className="p-4 rounded-lg bg-destructive/5 border border-destructive/20">
@@ -722,7 +722,7 @@ export function ATSDefenseResults({
       )}
 
       {/* Format Restructuring */}
-      <CollapsibleSection title=t('atsDefenseResults.formatRecs') icon={FileText}>
+      <CollapsibleSection title={t('atsDefenseResults.formatRecs')} icon={FileText}>
         <div className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
             <div className="p-3 rounded-lg bg-muted/50">

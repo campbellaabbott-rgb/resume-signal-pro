@@ -51,8 +51,8 @@ const impactColors = {
   Low: "bg-green-500/10 text-green-700",
 };
 
-export function ResumeRoast({
-  const { t } = useTranslation(); resumeText, industry, currentRole }: ResumeRoastProps) {
+export function ResumeRoast({ resumeText, industry, currentRole }: ResumeRoastProps) {
+  const { t } = useTranslation();
   const [data, setData] = useState<RoastData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [copiedTweet, setCopiedTweet] = useState(false);
