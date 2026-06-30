@@ -146,21 +146,30 @@ const INDUSTRY_ALIASES: Record<string, string> = {
 function normalizeIndustry(raw: string | undefined | null): string {
   if (!raw) return 'general';
   const normalized = raw.toLowerCase().trim();
-  
-  // Direct match
+
+  // Direct match (e.g., "data_engineering")
   if (VALID_INDUSTRIES.includes(normalized)) return normalized;
-  
-  // Check aliases
+
+  // Underscore variant (e.g., "data engineering" → "data_engineering")
+  const underscored = normalized.replace(/\s+/g, '_');
+  if (VALID_INDUSTRIES.includes(underscored)) return underscored;
+
+  // Space variant (e.g., "data_engineering" → "data engineering")
+  const spaced = normalized.replace(/_/g, ' ');
+  if (VALID_INDUSTRIES.includes(spaced as string)) return spaced; // won't hit, but symmetry
+
+  // Check aliases (handles "machine learning" → "machine_learning", etc.)
   if (INDUSTRY_ALIASES[normalized]) return INDUSTRY_ALIASES[normalized];
-  
-  // Partial match check
+  if (INDUSTRY_ALIASES[underscored]) return INDUSTRY_ALIASES[underscored];
+  if (INDUSTRY_ALIASES[spaced]) return INDUSTRY_ALIASES[spaced];
+
+  // Partial match check (substring)
   for (const [alias, industry] of Object.entries(INDUSTRY_ALIASES)) {
     if (normalized.includes(alias) || alias.includes(normalized)) {
       return industry;
     }
   }
-  
-  // Fallback
+
   return 'general';
 }
 
@@ -1401,19 +1410,29 @@ ${resumeText.substring(0, 15000)}
         console.log(`[FREE-KEYWORD-SCAN] OVERRULED AI: Server HIGH confidence "${industryDetection.industry}" beats AI "${normalizedAIIndustry}"`);
       }
     } else if (industryDetection.confidence === 'medium') {
-      // MEDIUM confidence — AI can override only if it picked a plausible alternative
+      // MEDIUM confidence — AI can override only if server's 2nd-place is a CLOSE runner-up
+      // Bug fix: previously serverAIParentMatch fired whenever AI matched ANY alternative,
+      // including a distant 2nd-place (e.g., server scores data_eng:12, data_sci:5 and AI
+      // says data_sci — data_sci is "in alternativeIndustries" so AI won despite clear gap).
+      // Now: AI must match a 2nd-place that's genuinely close (within 30% of top score).
+      const secondPlace = industryDetection.alternativeIndustries[0];
+      const secondIsClose = secondPlace &&
+        secondPlace.score >= industryDetection.score * 0.7 &&
+        secondPlace.industry === normalizedAIIndustry;
+
       if (serverAIMatch) {
         finalIndustry = industryDetection.industry;
         detectionSource = 'server_medium_ai_agree';
-      } else if (serverAIParentMatch) {
-        // AI picked a related/alternative industry — use AI since server wasn't sure
+      } else if (secondIsClose) {
+        // AI agrees with a genuinely close 2nd-place — use AI to break the tie
         finalIndustry = normalizedAIIndustry;
-        detectionSource = 'ai_override_medium_parent';
+        detectionSource = 'ai_override_medium_close_second';
+        console.log(`[FREE-KEYWORD-SCAN] AI broke tie: server MEDIUM "${industryDetection.industry}" (${industryDetection.score}) vs AI "${normalizedAIIndustry}" (2nd: ${secondPlace.score})`);
       } else {
-        // AI picked something completely different — trust server (medium > random AI)
+        // AI picked something different or a distant 2nd — trust server
         finalIndustry = industryDetection.industry;
         detectionSource = 'server_medium_ai_unrelated';
-        console.log(`[FREE-KEYWORD-SCAN] Kept server MEDIUM "${industryDetection.industry}" — AI "${normalizedAIIndustry}" was unrelated`);
+        console.log(`[FREE-KEYWORD-SCAN] Kept server MEDIUM "${industryDetection.industry}" — AI "${normalizedAIIndustry}" was unrelated or distant 2nd`);
       }
     } else {
       // LOW confidence — AI takes precedence

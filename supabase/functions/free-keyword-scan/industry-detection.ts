@@ -1239,11 +1239,16 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
     }
   }
   
-  // Co-occurrence bonus
-  const coOccurrenceScore = checkCoOccurrence(sections.fullText, industry);
-  if (coOccurrenceScore > 0) {
-    score += coOccurrenceScore;
-    signals.push(`Co-occurrence patterns detected`);
+  // Co-occurrence bonus — ONLY fires after minimum keyword/title score is established.
+  // Without this gate, DevOps resumes mentioning [kafka, spark, data warehouse] could
+  // score as data_engineering with zero matching titles or primary keywords.
+  // Threshold: at least one solid keyword match (score >= 4) before co-occurrence adds weight.
+  if (score >= 4) {
+    const coOccurrenceScore = checkCoOccurrence(sections.fullText, industry);
+    if (coOccurrenceScore > 0) {
+      score += coOccurrenceScore;
+      signals.push(`Co-occurrence patterns detected`);
+    }
   }
 
   return { score, signals };
@@ -1350,6 +1355,14 @@ function fallbackKeywordPass(text: string): { industry: string; score: number; s
     { industry: 'hospitality', keywords: ['hotel', 'guest', 'reservations', 'hospitality', 'food and beverage', 'banquet', 'catering', 'front desk', 'occupancy', 'revpar', 'restaurant', 'concierge'], minMatches: 3 },
     { industry: 'manufacturing', keywords: ['production', 'manufacturing', 'assembly', 'quality control', 'lean', 'six sigma', 'oee', 'fabrication', 'machining', 'inspection', 'safety', 'osha'], minMatches: 3 },
     { industry: 'government', keywords: ['policy', 'government', 'federal', 'regulation', 'compliance', 'grant', 'public sector', 'procurement', 'legislation', 'constituent', 'agency', 'security clearance'], minMatches: 3 },
+    // Data/AI fallback clusters — required so these industries survive when primary scoring
+    // returns LOW confidence. Without these, data engineers / data scientists / ML engineers
+    // fall through to generic 'technology' via the technology cluster above.
+    { industry: 'data_engineering', keywords: ['dbt', 'airflow', 'snowflake', 'bigquery', 'databricks', 'etl', 'data pipeline', 'data warehouse', 'kafka', 'spark', 'fivetran', 'dagster'], minMatches: 2 },
+    { industry: 'data_science', keywords: ['statistical', 'hypothesis testing', 'a/b test', 'experiment', 'scikit-learn', 'tableau', 'power bi', 'looker', 'regression', 'classification', 'predictive', 'forecasting'], minMatches: 2 },
+    { industry: 'machine_learning', keywords: ['pytorch', 'tensorflow', 'llm', 'fine-tuning', 'inference', 'embedding', 'vector database', 'langchain', 'hugging face', 'model deployment', 'mlflow', 'wandb'], minMatches: 2 },
+    { industry: 'creative', keywords: ['figma', 'adobe', 'photoshop', 'illustrator', 'ux design', 'ui design', 'brand design', 'visual design', 'portfolio', 'typography', 'motion design'], minMatches: 2 },
+    { industry: 'product_management', keywords: ['product roadmap', 'backlog', 'user stories', 'sprint planning', 'product strategy', 'okr', 'product launch', 'cross-functional', 'product requirements', 'go-to-market'], minMatches: 2 },
   ];
   
   let bestMatch: { industry: string; score: number; signals: string[] } | null = null;
@@ -1550,11 +1563,20 @@ export function detectIndustry(
   
   if (hasTitles && adjustedTop.score >= 10) {
     confidence = 'high';
-  } else if (adjustedTop.score >= 15 && (adjustedTop.score / (adjustedSecond?.score || 1)) >= 1.5) {
+  } else if (hasTitles && adjustedTop.score >= 7 && adjustedSecond && (adjustedTop.score / adjustedSecond.score) >= 1.4) {
+    // Title match + clear lead over second place — still high confidence
     confidence = 'high';
-  } else if (adjustedTop.score >= 8) {
+  } else if (adjustedTop.score >= 18 && (adjustedTop.score / (adjustedSecond?.score || 1)) >= 1.6) {
+    // Very high keyword score with clear margin — high confidence even without title
+    confidence = 'high';
+  } else if (adjustedTop.score >= 11 && (adjustedTop.score / (adjustedSecond?.score || 1)) >= 1.3) {
+    // Solid keyword score with reasonable margin — medium confidence
+    confidence = 'medium';
+  } else if (hasTitles && adjustedTop.score >= 5) {
+    // Title match but weak keyword support — medium confidence
     confidence = 'medium';
   } else {
+    // Weak or no title, marginal keyword score — low confidence, trust AI
     confidence = 'low';
   }
   
