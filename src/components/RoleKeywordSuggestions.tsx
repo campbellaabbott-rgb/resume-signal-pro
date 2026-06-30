@@ -24,7 +24,7 @@ export function RoleKeywordSuggestions({
   currentRole,
   targetRole,
   resumeText,
-  className 
+  className
 }: RoleKeywordSuggestionsProps) {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
