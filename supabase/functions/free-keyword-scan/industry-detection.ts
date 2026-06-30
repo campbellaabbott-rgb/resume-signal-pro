@@ -322,7 +322,9 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'credit analyst', 'risk analyst', 'compliance officer', 'actuary',
       'financial advisor', 'wealth advisor', 'investment advisor', 'financial planner',
       'registered investment advisor', 'ria', 'wealth manager', 'private wealth manager',
-      'cfp', 'certified financial planner', 'financial consultant', 'retirement planner'
+      'cfp', 'certified financial planner', 'financial consultant', 'retirement planner',
+      'head of operations', 'vp operations', 'director of operations', 'chief operating officer',
+      'investment operations', 'fund operations', 'trade operations', 'securities operations'
     ],
     primary: [
       'financial statements', 'balance sheet', 'income statement', 'cash flow',
@@ -332,6 +334,10 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'gaap', 'ifrs', 'financial reporting', 'consolidation',
       'valuation', 'dcf', 'discounted cash flow', 'lbo', 'merger', 'm&a',
       'due diligence', 'deal', 'transaction', 'portfolio', 'aum',
+      'trade settlement', 'trade operations', 'fund operations', 'investment operations',
+      'prime brokerage', 'fund accounting', 'custodian', 'sec compliance',
+      'fixed income portfolio', 'equity portfolio', 'asset management',
+      'securities lending', 'derivatives trading', 'swap', 'futures', 'options trading',
       // Quant/hedge fund signals — these must beat data_science scoring
       'backtest', 'backtested', 'backtesting', 'alpha', 'alpha generation',
       'signal', 'trading signal', 'factor', 'risk-adjusted', 'sharpe',
@@ -614,7 +620,7 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'deck', 'slide', 'executive presentation', 'c-suite', 'board presentation'
     ],
     certifications: [
-      'pmp', 'prince2', 'mba', 'cmc', 'six sigma', 'lean', 'prosci'
+      'pmp', 'prince2', 'mba', 'cmc', 'prosci'
     ]
   },
   
@@ -624,13 +630,19 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'product designer', 'web designer', 'art director', 'creative director',
       'brand designer', 'motion designer', 'animator', 'illustrator',
       'photographer', 'videographer', 'video editor', 'copywriter',
-      'content creator', 'social media creator'
+      'content creator', 'social media creator',
+      'ux researcher', 'user researcher', 'ux research lead', 'design researcher',
+      'interaction designer', 'experience designer', 'service designer',
+      'design lead', 'design manager', 'head of design', 'vp of design'
     ],
     primary: [
       'design', 'creative', 'visual', 'branding', 'brand identity',
       'layout', 'typography', 'color', 'composition', 'aesthetic',
       'user experience', 'user interface', 'wireframe', 'mockup',
-      'prototype', 'portfolio', 'concept', 'ideation'
+      'prototype', 'portfolio', 'concept', 'ideation',
+      'user research', 'usability testing', 'usability test', 'design thinking',
+      'journey map', 'persona', 'information architecture', 'interaction design',
+      'accessibility', 'a11y', 'heuristic evaluation', 'affinity mapping'
     ],
     secondary: [
       'photoshop', 'illustrator', 'indesign', 'figma', 'sketch', 'xd',
@@ -1267,7 +1279,12 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
   // CPA without being in accounting. Weight it above job titles, not level with
   // the much noisier summary section.
   for (const cert of keywords.certifications) {
-    if (sections.fullText.includes(cert)) {
+    // Short abbreviations (≤4 chars) require word boundaries to prevent
+    // substring matches — e.g. 'cha' inside 'Charles River', 'ca' inside 'Chicago'
+    const certMatches = cert.length <= 4
+      ? new RegExp(`(?<![a-z])${cert.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z])`, 'i').test(sections.fullText)
+      : sections.fullText.includes(cert);
+    if (certMatches) {
       score += SECTION_WEIGHTS.jobTitle * 1.5;
       if (signals.length < 10) signals.push(`Certification: "${cert}"`);
     }
