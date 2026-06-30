@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "bulletQualityAnalysis": {
+      "title": "Quick wins now target your actual weak bullets",
+      "description": "Before calling the AI, the scanner now pre-reads every bullet point and identifies which ones start with weak, passive phrases ("Responsible for", "Helped with", "Assisted in") and which ones have no measurable metric. Those specific bullets are handed directly to the AI — so the rewrite suggestions and quick wins in your report are now based on your actual words, not generic advice."
+    },
     "industryDetectionSweep2": {
       "title": "Sharper industry detection across 20+ roles",
       "description": "Second-pass bug sweep of the industry detection engine: removed generic false-positive keywords that caused supply chain, operations, and analytics roles to mis-classify; added 30+ missing role-specific keywords for manufacturing, HR, creative, and consulting; expanded the employer lookup table with 30 new companies (fintech, GenAI, Asian tech, collab tools); lowered the secondary industry threshold so cross-functional roles surface their second industry more reliably; and added 15 new co-occurrence patterns to disambiguate analytics engineers, ML engineers, and product designers."

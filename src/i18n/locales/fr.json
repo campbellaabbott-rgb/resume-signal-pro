@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "bulletQualityAnalysis": {
+      "title": "Les améliorations rapides ciblent maintenant vos vraies faiblesses",
+      "description": "Avant d'appeler l'IA, le scanner pré-lit chaque point et identifie ceux qui commencent par des phrases passives faibles et ceux qui n'ont pas de métrique mesurable. Ces points spécifiques sont transmis directement à l'IA."
+    },
     "industryDetectionSweep2": {
       "title": "Détection d'industrie plus précise pour 20+ rôles",
       "description": "Deuxième passage de correction du moteur de détection d'industrie: suppression des mots-clés faux positifs génériques, ajout de 30+ mots-clés manquants pour la fabrication, RH, créatif et conseil, expansion de la table des employeurs avec 30 nouvelles entreprises, et ajout de 15 nouveaux patterns de co-occurrence."

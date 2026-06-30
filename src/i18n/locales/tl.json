@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "bulletQualityAnalysis": {
+      "title": "Ang mga mabilis na pagpapabuti ay nagtutukoy na sa iyong totoong mahihinang mga bullet",
+      "description": "Bago tawagan ang AI, binabasa ng scanner ang bawat bullet point at tinutukoy kung alin ang nagsisimula sa mahina, passive na parirala at kung alin ang walang nasusukat na sukatan. Ang mga partikular na bullet ay direktang ibinibigay sa AI."
+    },
     "industryDetectionSweep2": {
       "title": "Mas tumpak na pagtukoy ng industriya para sa 20+ na papel",
       "description": "Ikalawang bug sweep ng industry detection engine: tinanggal ang mga generic na false-positive na keyword, nagdagdag ng 30+ nawawalang keyword para sa manufacturing, HR, creative, at consulting, pinalawak ang employer lookup table ng 30 bagong kumpanya, at nagdagdag ng 15 bagong co-occurrence pattern."

@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "bulletQualityAnalysis": {
+      "title": "Las mejoras rápidas ahora apuntan a tus puntos débiles reales",
+      "description": "Antes de llamar a la IA, el escáner pre-lee cada punto e identifica cuáles comienzan con frases pasivas débiles y cuáles no tienen métricas medibles. Esos puntos específicos se entregan directamente a la IA."
+    },
     "industryDetectionSweep2": {
       "title": "Detección de industria más precisa para 20+ roles",
       "description": "Segunda pasada de corrección de errores del motor de detección de industrias: eliminadas palabras clave falsas positivas genéricas, añadidas 30+ palabras clave faltantes para manufactura, RRHH, creativos y consultoría, ampliada la tabla de empleadores con 30 nuevas empresas, y añadidos 15 nuevos patrones de co-ocurrencia."

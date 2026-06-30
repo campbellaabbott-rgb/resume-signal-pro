@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "bulletQualityAnalysis": {
+      "title": "Melhorias rápidas agora visam seus pontos fracos reais",
+      "description": "Antes de chamar a IA, o scanner pré-lê cada ponto e identifica quais começam com frases passivas fracas e quais não têm métricas mensuráveis. Esses pontos específicos são entregues diretamente à IA."
+    },
     "industryDetectionSweep2": {
       "title": "Detecção de indústria mais precisa para 20+ funções",
       "description": "Segunda varredura de bugs do motor de detecção de indústrias: remoção de palavras-chave falsas positivas genéricas, adição de 30+ palavras-chave ausentes para manufatura, RH, criativo e consultoria, expansão da tabela de empregadores com 30 novas empresas, e adição de 15 novos padrões de co-ocorrência."
