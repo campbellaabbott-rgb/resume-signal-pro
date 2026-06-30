@@ -102,7 +102,7 @@ export function ScoreBasedPackageRecommendation({ atsScore }: ScoreBasedPackageR
                 {recommendation.urgencyBadge}
               </span>
               <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Fix before your next application
+                <Clock className="w-3 h-3" /> {t('scorePackage.fixBefore')}
               </span>
             </div>
             <p className="text-sm text-foreground font-medium">
@@ -163,7 +163,7 @@ export function ScoreBasedPackageRecommendation({ atsScore }: ScoreBasedPackageR
             isHighUrgency ? "text-destructive" : "text-primary"
           )}>
             <TrendingUp className="w-3 h-3" />
-            Estimated gain: {recommendation.recommended.estimatedGain}
+            {t('scorePackage.estimatedGain', { gain: recommendation.recommended.estimatedGain })}
           </span>
           <span className={cn(
             "text-sm flex items-center gap-1",
@@ -196,7 +196,7 @@ export function ScoreBasedPackageRecommendation({ atsScore }: ScoreBasedPackageR
           onClick={() => window.scrollTo(0, 0)}
           className="text-sm text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
         >
-          Compare all packages <ArrowRight className="w-3 h-3" />
+          {t('scorePackage.compareAll')} <ArrowRight className="w-3 h-3" />
         </Link>
       </div>
     </div>

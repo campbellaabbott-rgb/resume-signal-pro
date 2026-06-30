@@ -111,7 +111,7 @@ export function ScanCreditsCounter() {
               className="w-full gap-2"
             >
               <Plus className="w-4 h-4" />
-              Top Up Credits
+              {t("scanCredits.topUpCredits")}
             </Button>
             
             <Button
@@ -124,7 +124,7 @@ export function ScanCreditsCounter() {
                 setIsOpen(false);
               }}
             >
-              Use different email
+              {t("scanCredits.useDifferentEmail")}
             </Button>
           </div>
           
@@ -203,7 +203,7 @@ export function ScanCreditsCounter() {
               className="w-full gap-2"
             >
               <Plus className="w-4 h-4" />
-              Buy Credits — {formatLocalPrice(pricePerCredit)} each
+              {t("scanCredits.buyCredits", { price: formatLocalPrice(pricePerCredit) })}
             </Button>
           </div>
         </div>

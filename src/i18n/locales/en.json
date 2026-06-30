@@ -1378,7 +1378,188 @@
       "summaryRewrites": "Summary/headline rewrites",
       "prioritizedActionPlan": "Prioritized action plan"
     },
-    "premiumIncludesDetail": "{{subtext}}: full analysis + AI-rewritten resume + custom cover letter."
+    "premiumIncludesDetail": "{{subtext}}: full analysis + AI-rewritten resume + custom cover letter.",
+    "resumeBuilderCta": {
+      "title": "Build a clean, structured version of this resume",
+      "subtitle": "Editable sections, live preview, export to PDF or Word"
+    },
+    "actionBanner": {
+      "issuesFound": "{{count}} issues found — fix them now",
+      "keyImprovements": "Key improvements available",
+      "withRole": "{{industry}}-specific fixes for your {{role}} resume",
+      "withoutRole": "Industry-specific fixes with rewritten bullet points",
+      "criticalImprovements": "Critical improvements available"
+    },
+    "jobMatch": {
+      "title": "Job Match Analysis",
+      "badge": "Free & Unlimited",
+      "subtitle": "Compare your resume against any job — no limits!",
+      "matchScore": "Match Score",
+      "matchGrade": "Match Grade",
+      "experienceFit": "Experience Fit",
+      "titleMatch": "Title Match",
+      "howYouCompare": "How You Compare to Other Applicants",
+      "skillsYouHave": "Skills You Have",
+      "skillsToAdd": "Skills to Add",
+      "whatYouNeedToDo": "What You Need to Do to Be Considered",
+      "summary": "💡 Summary:",
+      "confidence": "Confidence:",
+      "readyToApply": {
+        "title": "Ready to Apply?",
+        "subtitle": "Generate a resume tailored specifically for this role",
+        "generating": "Generating Tailored Resume...",
+        "button": "Generate Tailored Resume & PDF",
+        "footnote": "✨ AI rewrites your resume for this specific job + downloadable PDF"
+      },
+      "completePackage": {
+        "title": "Want the Complete Package?",
+        "subtitle": "Full tailored resume, cover letter, honest skill-gap callouts, and a submission checklist — you review and apply yourself, nothing is auto-submitted"
+      }
+    },
+    "appRecommendation": {
+      "strongApply": "✓ Strong Match — Apply Now!",
+      "applyWithChanges": "⚡ Good Fit — Apply After Quick Fixes",
+      "applyAsStretch": "🎯 Stretch Role — Apply as Reach",
+      "doNotApply": "✗ Poor Fit — Consider Other Roles"
+    },
+    "atsBanner": {
+      "require60": "Most ATS require 60+ to pass",
+      "require75": "75+ increases callback rate",
+      "targetScore": "75+"
+    },
+    "eliteSignals": {
+      "title": "Recruiter-Attracting Signals"
+    },
+    "shareResults": {
+      "title": "Share Your Results",
+      "badge": "Free",
+      "subtitle": "Download your score card or share it on LinkedIn to stand out to recruiters"
+    },
+    "topSkipReasons": {
+      "title": "Top 5 Reasons Your Resume Is Being Skipped",
+      "copyButton": "Copy",
+      "whyLabel": "Why:",
+      "whyNote": "People want clarity first — reasons matter more than solutions."
+    },
+    "howYouCompare": {
+      "title": "How You Compare",
+      "subtitle": "See how your resume stacks up against other {{industry}} professionals",
+      "you": "You",
+      "others": "Others",
+      "getJobSpecific": "Get Job-Specific Analysis"
+    },
+    "careerTimeline": {
+      "title": "Career Timeline",
+      "totalExp": "Total Experience",
+      "totalExpDesc": "How long you've been working in your field",
+      "avgTenure": "Avg Time at Each Job",
+      "tenureGood": "✓ Good stability — recruiters like 2+ years per role",
+      "tenureWarning": "⚠ Short tenure may raise questions",
+      "tenurePoor": "⚠ Very short — may be seen as job hopping",
+      "careerGrowth": "Career Growth"
+    },
+    "careerSituationDetected": {
+      "whatDetected": "What we detected:",
+      "tailoredAdvice": "Tailored advice for your situation:"
+    },
+    "personalizedCareerInsights": {
+      "headlineTitle": "Your Professional Headline",
+      "headlineTip": "Use this on LinkedIn and your resume header",
+      "uniqueValue": "Your Unique Value",
+      "nextMoves": "Your Next Career Moves",
+      "interviewStories": "Interview Story Ideas",
+      "salaryInsightTitle": "Salary Insight",
+      "estimatedRange": "estimated range",
+      "negotiationLeverage": "Your negotiation leverage:",
+      "hiddenStrengths": "Hidden Strengths You're Underselling",
+      "personalBrand": "Your Personal Brand",
+      "currentLabel": "Current:",
+      "idealLabel": "Ideal:",
+      "gapLabel": "Gap:"
+    },
+    "atsCompat": {
+      "ctaSubtext": "Get an AI-rewritten resume that's optimized for ALL major ATS systems",
+      "disclaimer": "* Compatibility ratings are estimates based on format analysis. Actual results may vary by company configuration.",
+      "topIssueLabel": "💡 Top ATS Issue to Fix"
+    },
+    "powerWords": {
+      "title": "Strong Words You're Using",
+      "keepUsing": "Keep using these! Recruiters love them."
+    },
+    "weakPhrases": {
+      "title": "Weak Phrases to Eliminate"
+    },
+    "quickWins": {
+      "title": "Quick Wins (5 min or less)",
+      "impact": "{{level}} impact",
+      "wantAllDone": "Want all your quick wins done for you?",
+      "premiumIncludes": "Our Premium Package includes an AI-rewritten resume with all fixes applied"
+    },
+    "sampleRewrite": {
+      "title": "Sample Rewrite Preview",
+      "badge": "Free teaser",
+      "before": "❌ BEFORE (from your resume)",
+      "after": "✅ AFTER (optimized)",
+      "whyBetter": "Why it's better:",
+      "cta": "Get all your bullet points rewritten in the full {{price}} analysis"
+    },
+    "lockedInsights": {
+      "bulletLine1": "• Replace 'Responsible for managing team of 5' → 'Led cross-functional team of 5, driving 32% efficiency gain'",
+      "bulletLine2": "• Replace 'Helped with customer support' → 'Resolved 150+ customer tickets/week, achieving 98% satisfaction'",
+      "bulletLine3": "• Add metrics to bullet points that currently lack quantification",
+      "bulletLine4": "• Restructure responsibility-focused bullets into achievement statements",
+      "bulletWithData1": "• From your resume: \"{{bullet}}\" — no measurable impact stated",
+      "bulletWithData2": "• {{weak}} of your {{total}} bullet points lack quantification",
+      "bulletWithData3": "• Get each one rewritten with metrics and a stronger power verb",
+      "kwHard": "• {{count}} critical hard skill{{plural}} missing from your resume",
+      "kwCerts": "• {{count}} industry certification{{plural}} to mention (even in progress)",
+      "kwTools": "• {{count}} tool{{plural}} commonly listed in your field that you're missing",
+      "kwMethodology": "• {{count}} methodology keyword{{plural}} your competitors are using",
+      "kwPlacement": "• Where to place your strongest keywords for maximum ATS weight",
+      "kwVerbs": "• Action verbs that outperform your current word choices",
+      "kwDensity": "• How your keyword density compares to top resumes in your field",
+      "kwHardDefault": "• Critical hard skills missing from your resume",
+      "kwCertsDefault": "• Industry certifications to mention (even in progress)",
+      "kwVerbsDefault": "• Action verbs that outperform your current word choices",
+      "kwMethodDefault": "• Methodology keywords your competitors are using",
+      "careerSalary": "• Salary negotiation guidance based on your actual role and experience level",
+      "careerNextRole": "• Next-role progression paths with a gap analysis for each",
+      "careerInterview": "• Interview talking points derived from your strongest achievements",
+      "careerBrand": "• Personal brand assessment: current vs ideal positioning",
+      "careerDescWithRole": "Salary negotiation guidance, next-role paths, and interview talking points for your {{role}} background",
+      "careerDescDefault": "Salary negotiation guidance, next-role paths, and interview talking points for {{industry}}",
+      "kwDescWithStats": "{{count}} missing keywords found specific to {{industry}} that ATS systems look for",
+      "kwDescGood": "Strong keyword coverage for {{industry}} — get phrasing and placement tips to make them count even more",
+      "kwDescDefault": "Missing keywords specific to {{industry}} that ATS systems look for"
+    },
+    "premiumCta": {
+      "package": "Premium Package",
+      "title": "🎯 Get Your ATS-Optimized Resume + Cover Letter",
+      "subtitle": "Our AI rewrites your entire resume to match your target role, plus generates a tailored cover letter — download both as PDFs.",
+      "aiResume": "AI-rewritten resume",
+      "customCoverLetter": "Custom cover letter",
+      "pdfDownload": "PDF download",
+      "seeAll": "See all packages",
+      "footnote": "Complete package: ATS-optimized resume + personalized cover letter ready to send to employers"
+    },
+    "emailCapture": {
+      "joinMessage": "Join 10,000+ job seekers getting weekly tips to beat the ATS and land interviews.",
+      "noSpam": "No spam. Unsubscribe anytime."
+    },
+    "coverLetterCta": {
+      "title": "Custom Cover Letter",
+      "personalizedOpening": "Personalized opening",
+      "skillsHighlighted": "Skills highlighted",
+      "instantDownload": "Instant download"
+    },
+    "competitivePosition": {
+      "top": "🏆 Top Candidate",
+      "competitive": "💪 Competitive",
+      "middle": "📊 Middle of Pack",
+      "unlikely": "⚠️ Unlikely to Advance",
+      "yourAdvantage": "Your Advantage",
+      "yourGap": "Your Gap"
+    }
   },
   "analysisPreviewSample": {
     "breakdown": {

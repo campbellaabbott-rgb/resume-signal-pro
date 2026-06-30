@@ -1378,7 +1378,188 @@
       "summaryRewrites": "Zusammenfassungs-/Headline-Umschreibungen",
       "prioritizedActionPlan": "Priorisierter Aktionsplan"
     },
-    "premiumIncludesDetail": "{{subtext}}: vollständige Analyse + KI-umgeschriebener Lebenslauf + individuelles Anschreiben."
+    "premiumIncludesDetail": "{{subtext}}: vollständige Analyse + KI-umgeschriebener Lebenslauf + individuelles Anschreiben.",
+    "resumeBuilderCta": {
+      "title": "Erstelle eine saubere, strukturierte Version dieses Lebenslaufs",
+      "subtitle": "Bearbeitbare Abschnitte, Live-Vorschau, Export als PDF oder Word"
+    },
+    "actionBanner": {
+      "issuesFound": "{{count}} Probleme gefunden — jetzt beheben",
+      "keyImprovements": "Wichtige Verbesserungen verfügbar",
+      "withRole": "{{industry}}-spezifische Korrekturen für deinen {{role}}-Lebenslauf",
+      "withoutRole": "Branchenspezifische Korrekturen mit neu formulierten Stichpunkten",
+      "criticalImprovements": "Kritische Verbesserungen verfügbar"
+    },
+    "jobMatch": {
+      "title": "Jobübereinstimmungsanalyse",
+      "badge": "Kostenlos & Unbegrenzt",
+      "subtitle": "Vergleiche deinen Lebenslauf mit einer Stelle — keine Limits!",
+      "matchScore": "Übereinstimmungswert",
+      "matchGrade": "Übereinstimmungsnote",
+      "experienceFit": "Erfahrungspassung",
+      "titleMatch": "Titelübereinstimmung",
+      "howYouCompare": "Wie du im Vergleich zu anderen Bewerbern abschneidest",
+      "skillsYouHave": "Fähigkeiten, die du hast",
+      "skillsToAdd": "Fähigkeiten, die du hinzufügen solltest",
+      "whatYouNeedToDo": "Was du tun musst, um berücksichtigt zu werden",
+      "summary": "💡 Zusammenfassung:",
+      "confidence": "Vertrauen:",
+      "readyToApply": {
+        "title": "Bereit zur Bewerbung?",
+        "subtitle": "Generiere einen Lebenslauf, der speziell auf diese Stelle zugeschnitten ist",
+        "generating": "Maßgeschneiderter Lebenslauf wird erstellt...",
+        "button": "Maßgeschneiderten Lebenslauf & PDF erstellen",
+        "footnote": "✨ KI schreibt deinen Lebenslauf für diesen Job neu + herunterladbares PDF"
+      },
+      "completePackage": {
+        "title": "Möchtest du das komplette Paket?",
+        "subtitle": "Vollständig zugeschnittener Lebenslauf, Anschreiben, ehrliche Kompetenzlücken-Hinweise und eine Einreichungscheckliste — du prüfst und bewirbst dich selbst"
+      }
+    },
+    "appRecommendation": {
+      "strongApply": "✓ Starke Übereinstimmung — Jetzt bewerben!",
+      "applyWithChanges": "⚡ Gut geeignet — Nach schnellen Korrekturen bewerben",
+      "applyAsStretch": "🎯 Herausfordernde Stelle — Als ambitionierte Bewerbung einreichen",
+      "doNotApply": "✗ Schlechte Eignung — Andere Stellen in Betracht ziehen"
+    },
+    "atsBanner": {
+      "require60": "Die meisten ATS-Systeme erfordern 60+ zum Bestehen",
+      "require75": "75+ erhöht die Rückrufquote",
+      "targetScore": "75+"
+    },
+    "eliteSignals": {
+      "title": "Recruiter-anziehende Signale"
+    },
+    "shareResults": {
+      "title": "Ergebnisse teilen",
+      "badge": "Kostenlos",
+      "subtitle": "Lade deine Scorekarte herunter oder teile sie auf LinkedIn, um bei Recruitern aufzufallen"
+    },
+    "topSkipReasons": {
+      "title": "Top 5 Gründe, warum dein Lebenslauf übergangen wird",
+      "copyButton": "Kopieren",
+      "whyLabel": "Warum:",
+      "whyNote": "Menschen wollen zuerst Klarheit — Gründe sind wichtiger als Lösungen."
+    },
+    "howYouCompare": {
+      "title": "Wie du abschneidest",
+      "subtitle": "Sieh, wie dein Lebenslauf im Vergleich zu anderen {{industry}}-Fachleuten abschneidet",
+      "you": "Du",
+      "others": "Andere",
+      "getJobSpecific": "Jobspezifische Analyse erhalten"
+    },
+    "careerTimeline": {
+      "title": "Karrierezeitstrahl",
+      "totalExp": "Gesamterfahrung",
+      "totalExpDesc": "Wie lange du in deinem Bereich gearbeitet hast",
+      "avgTenure": "Durchschn. Zeit pro Job",
+      "tenureGood": "✓ Gute Stabilität — Recruiter bevorzugen 2+ Jahre pro Stelle",
+      "tenureWarning": "⚠ Kurze Beschäftigungsdauer könnte Fragen aufwerfen",
+      "tenurePoor": "⚠ Sehr kurz — könnte als Job-Hopping gesehen werden",
+      "careerGrowth": "Karrierewachstum"
+    },
+    "careerSituationDetected": {
+      "whatDetected": "Was wir erkannt haben:",
+      "tailoredAdvice": "Maßgeschneiderte Ratschläge für deine Situation:"
+    },
+    "personalizedCareerInsights": {
+      "headlineTitle": "Deine professionelle Überschrift",
+      "headlineTip": "Verwende dies auf LinkedIn und in deiner Lebenslaufüberschrift",
+      "uniqueValue": "Dein einzigartiger Wert",
+      "nextMoves": "Deine nächsten Karriereschritte",
+      "interviewStories": "Interview-Story-Ideen",
+      "salaryInsightTitle": "Gehaltseinblick",
+      "estimatedRange": "geschätzte Spanne",
+      "negotiationLeverage": "Deine Verhandlungshebel:",
+      "hiddenStrengths": "Verstärkte Stärken, die du unterschätzt",
+      "personalBrand": "Deine persönliche Marke",
+      "currentLabel": "Aktuell:",
+      "idealLabel": "Ideal:",
+      "gapLabel": "Lücke:"
+    },
+    "atsCompat": {
+      "ctaSubtext": "Erhalte einen KI-umgeschriebenen Lebenslauf, der für ALLE wichtigen ATS-Systeme optimiert ist",
+      "disclaimer": "* Kompatibilitätsbewertungen sind Schätzungen basierend auf Formatanalyse. Tatsächliche Ergebnisse können variieren.",
+      "topIssueLabel": "💡 Wichtigstes ATS-Problem zu beheben"
+    },
+    "powerWords": {
+      "title": "Starke Wörter, die du verwendest",
+      "keepUsing": "Weiter verwenden! Recruiter lieben sie."
+    },
+    "weakPhrases": {
+      "title": "Schwache Phrasen, die zu eliminieren sind"
+    },
+    "quickWins": {
+      "title": "Schnelle Erfolge (5 Min. oder weniger)",
+      "impact": "{{level}} Wirkung",
+      "wantAllDone": "Möchtest du, dass alle schnellen Erfolge für dich erledigt werden?",
+      "premiumIncludes": "Unser Premium-Paket enthält einen KI-umgeschriebenen Lebenslauf mit allen angewendeten Korrekturen"
+    },
+    "sampleRewrite": {
+      "title": "Beispiel-Umschreibungsvorschau",
+      "badge": "Kostenlose Vorschau",
+      "before": "❌ VORHER (aus deinem Lebenslauf)",
+      "after": "✅ NACHHER (optimiert)",
+      "whyBetter": "Warum es besser ist:",
+      "cta": "Alle deine Stichpunkte in der vollständigen {{price}}-Analyse neu geschrieben bekommen"
+    },
+    "lockedInsights": {
+      "bulletLine1": "• Ersetze 'Verantwortlich für das Management eines Teams von 5' → 'Führte funktionsübergreifendes Team von 5, steigerte Effizienz um 32%'",
+      "bulletLine2": "• Ersetze 'Half beim Kundensupport' → 'Bearbeitete 150+ Kundentickets/Woche, erreichte 98% Zufriedenheit'",
+      "bulletLine3": "• Füge Kennzahlen zu Stichpunkten hinzu, denen derzeit Quantifizierung fehlt",
+      "bulletLine4": "• Strukturiere verantwortlichkeitsorientierte Stichpunkte in Leistungsaussagen um",
+      "bulletWithData1": "• Aus deinem Lebenslauf: \"{{bullet}}\" — kein messbarer Einfluss angegeben",
+      "bulletWithData2": "• {{weak}} von deinen {{total}} Stichpunkten fehlt Quantifizierung",
+      "bulletWithData3": "• Lass jeden einzelnen mit Kennzahlen und einem stärkeren Kraftverb neu schreiben",
+      "kwHard": "• {{count}} kritische Hard Skill{{plural}} fehlen in deinem Lebenslauf",
+      "kwCerts": "• {{count}} Branchenzertifizierung{{plural}} zu erwähnen (auch in Bearbeitung)",
+      "kwTools": "• {{count}} Tool{{plural}}, die in deinem Bereich häufig aufgeführt werden, fehlen",
+      "kwMethodology": "• {{count}} Methodik-Keyword{{plural}}, die deine Konkurrenten verwenden",
+      "kwPlacement": "• Wo du deine stärksten Keywords für maximales ATS-Gewicht platzierst",
+      "kwVerbs": "• Aktionsverben, die deine aktuellen Wortentscheidungen übertreffen",
+      "kwDensity": "• Wie deine Keyword-Dichte mit Top-Lebensläufen in deinem Bereich verglichen wird",
+      "kwHardDefault": "• Kritische Hard Skills fehlen in deinem Lebenslauf",
+      "kwCertsDefault": "• Branchenzertifizierungen zu erwähnen (auch in Bearbeitung)",
+      "kwVerbsDefault": "• Aktionsverben, die deine aktuellen Wortentscheidungen übertreffen",
+      "kwMethodDefault": "• Methodik-Keywords, die deine Konkurrenten verwenden",
+      "careerSalary": "• Gehaltsverhandlungsführung basierend auf deiner tatsächlichen Rolle und Erfahrung",
+      "careerNextRole": "• Nächste Karriereschritte mit Lückenanalyse für jeden",
+      "careerInterview": "• Interview-Gesprächspunkte aus deinen stärksten Leistungen",
+      "careerBrand": "• Persönliche Markenbewertung: aktuell vs. ideal",
+      "careerDescWithRole": "Gehaltsverhandlungsführung, nächste Karriereschritte und Interview-Gesprächspunkte für deinen {{role}}-Hintergrund",
+      "careerDescDefault": "Gehaltsverhandlungsführung, nächste Karriereschritte und Interview-Gesprächspunkte für {{industry}}",
+      "kwDescWithStats": "{{count}} fehlende Keywords gefunden, die spezifisch für {{industry}} sind und von ATS-Systemen gesucht werden",
+      "kwDescGood": "Starke Keyword-Abdeckung für {{industry}} — erhalte Formulierungs- und Platzierungstipps, um sie noch wirkungsvoller zu machen",
+      "kwDescDefault": "Fehlende Keywords spezifisch für {{industry}}, die von ATS-Systemen gesucht werden"
+    },
+    "premiumCta": {
+      "package": "Premium-Paket",
+      "title": "🎯 Erhalte deinen ATS-optimierten Lebenslauf + Anschreiben",
+      "subtitle": "Unsere KI schreibt deinen gesamten Lebenslauf für deine Zielrolle neu und erstellt ein maßgeschneidertes Anschreiben — beide als PDFs herunterladen.",
+      "aiResume": "KI-umgeschriebener Lebenslauf",
+      "customCoverLetter": "Benutzerdefiniertes Anschreiben",
+      "pdfDownload": "PDF-Download",
+      "seeAll": "Alle Pakete ansehen",
+      "footnote": "Komplettes Paket: ATS-optimierter Lebenslauf + personalisiertes Anschreiben, bereit zum Versenden"
+    },
+    "emailCapture": {
+      "joinMessage": "Schließe dich 10.000+ Jobsuchenden an, die wöchentliche Tipps bekommen, um ATS zu schlagen und Vorstellungsgespräche zu landen.",
+      "noSpam": "Kein Spam. Jederzeit abbestellen."
+    },
+    "coverLetterCta": {
+      "title": "Individuelles Anschreiben",
+      "personalizedOpening": "Personalisierte Eröffnung",
+      "skillsHighlighted": "Fähigkeiten hervorgehoben",
+      "instantDownload": "Sofort-Download"
+    },
+    "competitivePosition": {
+      "top": "🏆 Topkandidat",
+      "competitive": "💪 Wettbewerbsfähig",
+      "middle": "📊 Mittelfeld",
+      "unlikely": "⚠️ Kaum Chancen",
+      "yourAdvantage": "Dein Vorteil",
+      "yourGap": "Deine Lücke"
+    }
   },
   "analysisPreviewSample": {
     "breakdown": {

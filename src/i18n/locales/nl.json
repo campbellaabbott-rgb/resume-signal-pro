@@ -1378,7 +1378,188 @@
       "summaryRewrites": "Herschrijven van samenvatting/titel",
       "prioritizedActionPlan": "Geprioriteerd actieplan"
     },
-    "premiumIncludesDetail": "{{subtext}}: volledige analyse + door AI herschreven cv + aangepaste motivatiebrief."
+    "premiumIncludesDetail": "{{subtext}}: volledige analyse + door AI herschreven cv + aangepaste motivatiebrief.",
+    "resumeBuilderCta": {
+      "title": "Maak een schone, gestructureerde versie van dit cv",
+      "subtitle": "Bewerkbare secties, live preview, exporteer naar PDF of Word"
+    },
+    "actionBanner": {
+      "issuesFound": "{{count}} problemen gevonden — los ze nu op",
+      "keyImprovements": "Belangrijke verbeteringen beschikbaar",
+      "withRole": "{{industry}}-specifieke fixes voor jouw {{role}} cv",
+      "withoutRole": "Branchespecifieke fixes met herschreven bullets",
+      "criticalImprovements": "Kritieke verbeteringen beschikbaar"
+    },
+    "jobMatch": {
+      "title": "Vacature-matchanalyse",
+      "badge": "Gratis & Onbeperkt",
+      "subtitle": "Vergelijk jouw cv met elke vacature — geen limieten!",
+      "matchScore": "Matchscore",
+      "matchGrade": "Matchcijfer",
+      "experienceFit": "Ervaringsfit",
+      "titleMatch": "Titelovereenkomst",
+      "howYouCompare": "Hoe jij je verhoudt tot andere sollicitanten",
+      "skillsYouHave": "Vaardigheden die je hebt",
+      "skillsToAdd": "Vaardigheden toe te voegen",
+      "whatYouNeedToDo": "Wat je moet doen om in aanmerking te komen",
+      "summary": "💡 Samenvatting:",
+      "confidence": "Vertrouwen:",
+      "readyToApply": {
+        "title": "Klaar om te solliciteren?",
+        "subtitle": "Genereer een cv dat speciaal op deze functie is afgestemd",
+        "generating": "Gepersonaliseerd cv genereren...",
+        "button": "Gepersonaliseerd cv & PDF genereren",
+        "footnote": "✨ AI herschrijft jouw cv voor deze specifieke baan + downloadbare PDF"
+      },
+      "completePackage": {
+        "title": "Wil je het complete pakket?",
+        "subtitle": "Volledig gepersonaliseerd cv, begeleidingsbrief, eerlijke vaardigheidskloof-opmerkingen en een inzendingenlijst"
+      }
+    },
+    "appRecommendation": {
+      "strongApply": "✓ Sterke match — Solliciteer nu!",
+      "applyWithChanges": "⚡ Goede fit — Solliciteer na snelle fixes",
+      "applyAsStretch": "🎯 Uitdagende rol — Solliciteer als ambitieuze keuze",
+      "doNotApply": "✗ Slechte fit — Overweeg andere rollen"
+    },
+    "atsBanner": {
+      "require60": "De meeste ATS-systemen vereisen 60+ om door te komen",
+      "require75": "75+ verhoogt de terugbelratio",
+      "targetScore": "75+"
+    },
+    "eliteSignals": {
+      "title": "Signalen die recruiters aantrekken"
+    },
+    "shareResults": {
+      "title": "Deel jouw resultaten",
+      "badge": "Gratis",
+      "subtitle": "Download jouw scorekaart of deel deze op LinkedIn om op te vallen bij recruiters"
+    },
+    "topSkipReasons": {
+      "title": "Top 5 redenen waarom jouw cv wordt overgeslagen",
+      "copyButton": "Kopiëren",
+      "whyLabel": "Waarom:",
+      "whyNote": "Mensen willen eerst duidelijkheid — redenen zijn belangrijker dan oplossingen."
+    },
+    "howYouCompare": {
+      "title": "Hoe jij je verhoudt",
+      "subtitle": "Zie hoe jouw cv zich verhoudt tot andere {{industry}}-professionals",
+      "you": "Jij",
+      "others": "Anderen",
+      "getJobSpecific": "Vacatiespecifieke analyse ophalen"
+    },
+    "careerTimeline": {
+      "title": "Carrièretijdlijn",
+      "totalExp": "Totale ervaring",
+      "totalExpDesc": "Hoe lang je al in jouw vakgebied werkt",
+      "avgTenure": "Gem. tijd per baan",
+      "tenureGood": "✓ Goede stabiliteit — recruiters houden van 2+ jaar per rol",
+      "tenureWarning": "⚠ Korte diensttijd kan vragen oproepen",
+      "tenurePoor": "⚠ Zeer kort — kan worden gezien als job-hopping",
+      "careerGrowth": "Carrièregroei"
+    },
+    "careerSituationDetected": {
+      "whatDetected": "Wat we hebben gedetecteerd:",
+      "tailoredAdvice": "Advies op maat voor jouw situatie:"
+    },
+    "personalizedCareerInsights": {
+      "headlineTitle": "Jouw professionele koptekst",
+      "headlineTip": "Gebruik dit op LinkedIn en in jouw cv-koptekst",
+      "uniqueValue": "Jouw unieke waarde",
+      "nextMoves": "Jouw volgende carrièrestappen",
+      "interviewStories": "Ideeën voor interviewverhalen",
+      "salaryInsightTitle": "Salarisoverzicht",
+      "estimatedRange": "geschatte bandbreedte",
+      "negotiationLeverage": "Jouw onderhandelingsvoordeel:",
+      "hiddenStrengths": "Verborgen krachten die je onderschat",
+      "personalBrand": "Jouw persoonlijk merk",
+      "currentLabel": "Huidig:",
+      "idealLabel": "Ideaal:",
+      "gapLabel": "Kloof:"
+    },
+    "atsCompat": {
+      "ctaSubtext": "Ontvang een door AI herschreven cv dat geoptimaliseerd is voor ALLE grote ATS-systemen",
+      "disclaimer": "* Compatibiliteitscijfers zijn schattingen op basis van formaatanalyse. Werkelijke resultaten kunnen variëren.",
+      "topIssueLabel": "💡 Belangrijkste ATS-probleem om op te lossen"
+    },
+    "powerWords": {
+      "title": "Sterke woorden die je gebruikt",
+      "keepUsing": "Blijf ze gebruiken! Recruiters zijn er dol op."
+    },
+    "weakPhrases": {
+      "title": "Zwakke zinnen om te elimineren"
+    },
+    "quickWins": {
+      "title": "Snelle winsten (5 min of minder)",
+      "impact": "{{level}} impact",
+      "wantAllDone": "Wil je dat al jouw snelle winsten voor je worden gedaan?",
+      "premiumIncludes": "Ons Premium Pakket bevat een door AI herschreven cv met alle toegepaste fixes"
+    },
+    "sampleRewrite": {
+      "title": "Voorbeeld herschrijfpreview",
+      "badge": "Gratis voorproefje",
+      "before": "❌ VOOR (uit jouw cv)",
+      "after": "✅ NA (geoptimaliseerd)",
+      "whyBetter": "Waarom het beter is:",
+      "cta": "Laat al jouw bullets herschrijven in de volledige {{price}} analyse"
+    },
+    "lockedInsights": {
+      "bulletLine1": "• Vervang 'Verantwoordelijk voor het managen van een team van 5' → 'Leidde een cross-functioneel team van 5, met 32% efficiëntieverbetering'",
+      "bulletLine2": "• Vervang 'Hielp met klantenservice' → 'Oploste 150+ klantentickets/week, met 98% tevredenheid'",
+      "bulletLine3": "• Voeg statistieken toe aan bullets die momenteel kwantificering missen",
+      "bulletLine4": "• Herstructureer op verantwoordelijkheid gerichte bullets in prestatiestatements",
+      "bulletWithData1": "• Uit jouw cv: \"{{bullet}}\" — geen meetbare impact vermeld",
+      "bulletWithData2": "• {{weak}} van jouw {{total}} bullets missen kwantificering",
+      "bulletWithData3": "• Laat elk herschrijven met statistieken en een sterkere werkwoord",
+      "kwHard": "• {{count}} kritische harde vaardigheid{{plural}} ontbreekt/ontbreken in jouw cv",
+      "kwCerts": "• {{count}} branchecertificering{{plural}} te vermelden (ook als het in uitvoering is)",
+      "kwTools": "• {{count}} tool{{plural}} die gewoonlijk in jouw vakgebied wordt/worden vermeld",
+      "kwMethodology": "• {{count}} methodologietrefwoord{{plural}} die jouw concurrenten gebruiken",
+      "kwPlacement": "• Waar je jouw sterkste trefwoorden plaatst voor maximaal ATS-gewicht",
+      "kwVerbs": "• Werkwoorden die jouw huidige woordkeuzes overtreffen",
+      "kwDensity": "• Hoe jouw trefwoorddichtheid zich verhoudt tot de beste cv's in jouw vakgebied",
+      "kwHardDefault": "• Kritische harde vaardigheden ontbreken in jouw cv",
+      "kwCertsDefault": "• Branchecertificeringen te vermelden (ook als het in uitvoering is)",
+      "kwVerbsDefault": "• Werkwoorden die jouw huidige woordkeuzes overtreffen",
+      "kwMethodDefault": "• Methodologietrefwoorden die jouw concurrenten gebruiken",
+      "careerSalary": "• Salarisonderhandelingsgids op basis van jouw feitelijke rol en ervaringsniveau",
+      "careerNextRole": "• Progressiepaden voor de volgende rol met kloof-analyse voor elk",
+      "careerInterview": "• Gespreksonderwerpen voor interviews afgeleid van jouw sterkste prestaties",
+      "careerBrand": "• Persoonlijk merkbeoordeling: huidige vs. ideale positionering",
+      "careerDescWithRole": "Salarisonderhandelingsgids, progressiepaden voor de volgende rol en gespreksonderwerpen voor jouw {{role}} achtergrond",
+      "careerDescDefault": "Salarisonderhandelingsgids, progressiepaden voor de volgende rol en gespreksonderwerpen voor {{industry}}",
+      "kwDescWithStats": "{{count}} ontbrekende trefwoorden gevonden die specifiek zijn voor {{industry}} en waarnaar ATS-systemen zoeken",
+      "kwDescGood": "Sterke trefwoorddekking voor {{industry}} — ontvang tips voor formulering en plaatsing om ze nog meer impact te geven",
+      "kwDescDefault": "Ontbrekende trefwoorden specifiek voor {{industry}} waarnaar ATS-systemen zoeken"
+    },
+    "premiumCta": {
+      "package": "Premium Pakket",
+      "title": "🎯 Ontvang jouw ATS-geoptimaliseerd cv + begeleidingsbrief",
+      "subtitle": "Onze AI herschrijft jouw hele cv om te passen bij jouw doelrol, plus genereert een gepersonaliseerde begeleidingsbrief — download beide als PDF's.",
+      "aiResume": "Door AI herschreven cv",
+      "customCoverLetter": "Aangepaste begeleidingsbrief",
+      "pdfDownload": "PDF-download",
+      "seeAll": "Bekijk alle pakketten",
+      "footnote": "Compleet pakket: ATS-geoptimaliseerd cv + gepersonaliseerde begeleidingsbrief klaar om naar werkgevers te sturen"
+    },
+    "emailCapture": {
+      "joinMessage": "Sluit je aan bij 10.000+ werkzoekers die wekelijkse tips ontvangen om de ATS te verslaan en interviews te landen.",
+      "noSpam": "Geen spam. Altijd afmelden mogelijk."
+    },
+    "coverLetterCta": {
+      "title": "Aangepaste begeleidingsbrief",
+      "personalizedOpening": "Gepersonaliseerde opening",
+      "skillsHighlighted": "Vaardigheden uitgelicht",
+      "instantDownload": "Direct downloaden"
+    },
+    "competitivePosition": {
+      "top": "🏆 Topper",
+      "competitive": "💪 Competitief",
+      "middle": "📊 In het midden",
+      "unlikely": "⚠️ Weinig kans",
+      "yourAdvantage": "Jouw voordeel",
+      "yourGap": "Jouw kloof"
+    }
   },
   "analysisPreviewSample": {
     "breakdown": {

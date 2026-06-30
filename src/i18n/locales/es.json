@@ -1378,7 +1378,188 @@
       "summaryRewrites": "Reescritura de resumen/titular",
       "prioritizedActionPlan": "Plan de acción priorizado"
     },
-    "premiumIncludesDetail": "{{subtext}}: análisis completo + currículum reescrito por IA + carta de presentación personalizada."
+    "premiumIncludesDetail": "{{subtext}}: análisis completo + currículum reescrito por IA + carta de presentación personalizada.",
+    "resumeBuilderCta": {
+      "title": "Crea una versión limpia y estructurada de este currículum",
+      "subtitle": "Secciones editables, vista previa en vivo, exportar a PDF o Word"
+    },
+    "actionBanner": {
+      "issuesFound": "{{count}} problemas encontrados — corrígelos ahora",
+      "keyImprovements": "Mejoras clave disponibles",
+      "withRole": "Correcciones específicas de {{industry}} para tu currículum de {{role}}",
+      "withoutRole": "Correcciones específicas de la industria con puntos reescritos",
+      "criticalImprovements": "Mejoras críticas disponibles"
+    },
+    "jobMatch": {
+      "title": "Análisis de compatibilidad laboral",
+      "badge": "Gratis e ilimitado",
+      "subtitle": "¡Compara tu currículum con cualquier trabajo — sin límites!",
+      "matchScore": "Puntuación de compatibilidad",
+      "matchGrade": "Calificación de compatibilidad",
+      "experienceFit": "Ajuste de experiencia",
+      "titleMatch": "Coincidencia de título",
+      "howYouCompare": "Cómo te comparas con otros candidatos",
+      "skillsYouHave": "Habilidades que tienes",
+      "skillsToAdd": "Habilidades que agregar",
+      "whatYouNeedToDo": "Qué necesitas hacer para ser considerado",
+      "summary": "💡 Resumen:",
+      "confidence": "Confianza:",
+      "readyToApply": {
+        "title": "¿Listo para aplicar?",
+        "subtitle": "Genera un currículum adaptado específicamente para este puesto",
+        "generating": "Generando currículum personalizado...",
+        "button": "Generar currículum personalizado y PDF",
+        "footnote": "✨ La IA reescribe tu currículum para este trabajo específico + PDF descargable"
+      },
+      "completePackage": {
+        "title": "¿Quieres el paquete completo?",
+        "subtitle": "Currículum completo personalizado, carta de presentación, señalamientos honestos de brechas de habilidades y una lista de verificación de envío"
+      }
+    },
+    "appRecommendation": {
+      "strongApply": "✓ Excelente coincidencia — ¡Aplica ahora!",
+      "applyWithChanges": "⚡ Buen candidato — Aplica después de correcciones rápidas",
+      "applyAsStretch": "🎯 Rol desafiante — Aplica como ambicioso",
+      "doNotApply": "✗ Mala compatibilidad — Considera otros puestos"
+    },
+    "atsBanner": {
+      "require60": "La mayoría de los ATS requieren 60+ para pasar",
+      "require75": "75+ aumenta la tasa de devolución de llamada",
+      "targetScore": "75+"
+    },
+    "eliteSignals": {
+      "title": "Señales que atraen a reclutadores"
+    },
+    "shareResults": {
+      "title": "Comparte tus resultados",
+      "badge": "Gratis",
+      "subtitle": "Descarga tu tarjeta de puntuación o compártela en LinkedIn para destacar ante los reclutadores"
+    },
+    "topSkipReasons": {
+      "title": "Las 5 principales razones por las que se omite tu currículum",
+      "copyButton": "Copiar",
+      "whyLabel": "Por qué:",
+      "whyNote": "Las personas quieren claridad primero — las razones importan más que las soluciones."
+    },
+    "howYouCompare": {
+      "title": "Cómo te comparas",
+      "subtitle": "Ve cómo tu currículum se compara con otros profesionales de {{industry}}",
+      "you": "Tú",
+      "others": "Otros",
+      "getJobSpecific": "Obtener análisis específico del trabajo"
+    },
+    "careerTimeline": {
+      "title": "Línea de tiempo de carrera",
+      "totalExp": "Experiencia total",
+      "totalExpDesc": "Cuánto tiempo has trabajado en tu campo",
+      "avgTenure": "Tiempo prom. en cada trabajo",
+      "tenureGood": "✓ Buena estabilidad — a los reclutadores les gustan 2+ años por puesto",
+      "tenureWarning": "⚠ La permanencia corta puede generar preguntas",
+      "tenurePoor": "⚠ Muy corto — puede verse como saltar de trabajo en trabajo",
+      "careerGrowth": "Crecimiento profesional"
+    },
+    "careerSituationDetected": {
+      "whatDetected": "Lo que detectamos:",
+      "tailoredAdvice": "Consejos adaptados para tu situación:"
+    },
+    "personalizedCareerInsights": {
+      "headlineTitle": "Tu título profesional",
+      "headlineTip": "Úsalo en LinkedIn y en el encabezado de tu currículum",
+      "uniqueValue": "Tu valor único",
+      "nextMoves": "Tus próximos movimientos de carrera",
+      "interviewStories": "Ideas para historias de entrevista",
+      "salaryInsightTitle": "Perspectiva salarial",
+      "estimatedRange": "rango estimado",
+      "negotiationLeverage": "Tu ventaja en la negociación:",
+      "hiddenStrengths": "Fortalezas ocultas que estás subestimando",
+      "personalBrand": "Tu marca personal",
+      "currentLabel": "Actual:",
+      "idealLabel": "Ideal:",
+      "gapLabel": "Brecha:"
+    },
+    "atsCompat": {
+      "ctaSubtext": "Obtén un currículum reescrito por IA optimizado para TODOS los principales sistemas ATS",
+      "disclaimer": "* Las calificaciones de compatibilidad son estimaciones basadas en el análisis de formato. Los resultados reales pueden variar.",
+      "topIssueLabel": "💡 Problema ATS principal a corregir"
+    },
+    "powerWords": {
+      "title": "Palabras poderosas que estás usando",
+      "keepUsing": "¡Sigue usándolas! A los reclutadores les encantan."
+    },
+    "weakPhrases": {
+      "title": "Frases débiles que eliminar"
+    },
+    "quickWins": {
+      "title": "Victorias rápidas (5 min o menos)",
+      "impact": "impacto {{level}}",
+      "wantAllDone": "¿Quieres que se hagan todas tus victorias rápidas por ti?",
+      "premiumIncludes": "Nuestro paquete Premium incluye un currículum reescrito por IA con todas las correcciones aplicadas"
+    },
+    "sampleRewrite": {
+      "title": "Vista previa de reescritura de muestra",
+      "badge": "Muestra gratuita",
+      "before": "❌ ANTES (de tu currículum)",
+      "after": "✅ DESPUÉS (optimizado)",
+      "whyBetter": "Por qué es mejor:",
+      "cta": "Obtén todos tus puntos reescritos en el análisis completo de {{price}}"
+    },
+    "lockedInsights": {
+      "bulletLine1": "• Reemplaza 'Responsable de gestionar un equipo de 5' → 'Lideré un equipo multifuncional de 5, generando un aumento de eficiencia del 32%'",
+      "bulletLine2": "• Reemplaza 'Ayudé con soporte al cliente' → 'Resolví 150+ tickets de clientes/semana, logrando 98% de satisfacción'",
+      "bulletLine3": "• Agrega métricas a los puntos que actualmente carecen de cuantificación",
+      "bulletLine4": "• Reestructura los puntos orientados a responsabilidades en declaraciones de logros",
+      "bulletWithData1": "• De tu currículum: \"{{bullet}}\" — sin impacto medible declarado",
+      "bulletWithData2": "• {{weak}} de tus {{total}} puntos carecen de cuantificación",
+      "bulletWithData3": "• Haz que cada uno se reescriba con métricas y un verbo de acción más fuerte",
+      "kwHard": "• {{count}} habilidad{{plural}} técnica{{plural}} crítica{{plural}} faltante{{plural}} en tu currículum",
+      "kwCerts": "• {{count}} certificación{{plural}} de la industria que mencionar (incluso en progreso)",
+      "kwTools": "• {{count}} herramienta{{plural}} comúnmente listada{{plural}} en tu campo que te faltan",
+      "kwMethodology": "• {{count}} palabra{{plural}} clave de metodología que usan tus competidores",
+      "kwPlacement": "• Dónde colocar tus palabras clave más fuertes para máximo peso ATS",
+      "kwVerbs": "• Verbos de acción que superan tus elecciones de palabras actuales",
+      "kwDensity": "• Cómo se compara tu densidad de palabras clave con los mejores currículums de tu campo",
+      "kwHardDefault": "• Habilidades técnicas críticas que faltan en tu currículum",
+      "kwCertsDefault": "• Certificaciones de la industria que mencionar (incluso en progreso)",
+      "kwVerbsDefault": "• Verbos de acción que superan tus elecciones de palabras actuales",
+      "kwMethodDefault": "• Palabras clave de metodología que usan tus competidores",
+      "careerSalary": "• Orientación para negociación salarial basada en tu rol y nivel de experiencia reales",
+      "careerNextRole": "• Rutas de progresión de siguiente rol con análisis de brechas para cada uno",
+      "careerInterview": "• Puntos de conversación para entrevistas derivados de tus logros más fuertes",
+      "careerBrand": "• Evaluación de marca personal: posicionamiento actual vs. ideal",
+      "careerDescWithRole": "Orientación para negociación salarial, rutas de siguiente rol y puntos de conversación para entrevistas para tu background de {{role}}",
+      "careerDescDefault": "Orientación para negociación salarial, rutas de siguiente rol y puntos de conversación para entrevistas para {{industry}}",
+      "kwDescWithStats": "{{count}} palabras clave faltantes encontradas específicas de {{industry}} que los sistemas ATS buscan",
+      "kwDescGood": "Fuerte cobertura de palabras clave para {{industry}} — obtén consejos de fraseología y colocación para que cuenten aún más",
+      "kwDescDefault": "Palabras clave faltantes específicas de {{industry}} que los sistemas ATS buscan"
+    },
+    "premiumCta": {
+      "package": "Paquete Premium",
+      "title": "🎯 Obtén tu currículum optimizado para ATS + carta de presentación",
+      "subtitle": "Nuestra IA reescribe todo tu currículum para que coincida con tu rol objetivo, además genera una carta de presentación personalizada — descarga ambos como PDFs.",
+      "aiResume": "Currículum reescrito por IA",
+      "customCoverLetter": "Carta de presentación personalizada",
+      "pdfDownload": "Descarga PDF",
+      "seeAll": "Ver todos los paquetes",
+      "footnote": "Paquete completo: currículum optimizado para ATS + carta de presentación personalizada lista para enviar a los empleadores"
+    },
+    "emailCapture": {
+      "joinMessage": "Únete a más de 10.000 buscadores de empleo que reciben consejos semanales para superar el ATS y conseguir entrevistas.",
+      "noSpam": "Sin spam. Cancela la suscripción en cualquier momento."
+    },
+    "coverLetterCta": {
+      "title": "Carta de presentación personalizada",
+      "personalizedOpening": "Apertura personalizada",
+      "skillsHighlighted": "Habilidades destacadas",
+      "instantDownload": "Descarga instantánea"
+    },
+    "competitivePosition": {
+      "top": "🏆 Candidato principal",
+      "competitive": "💪 Competitivo",
+      "middle": "📊 En el pelotón",
+      "unlikely": "⚠️ Pocas probabilidades",
+      "yourAdvantage": "Tu ventaja",
+      "yourGap": "Tu brecha"
+    }
   },
   "analysisPreviewSample": {
     "breakdown": {

@@ -1378,7 +1378,188 @@
       "summaryRewrites": "Summary/headline rewrites",
       "prioritizedActionPlan": "Pinaunahang action plan"
     },
-    "premiumIncludesDetail": "{{subtext}}: buong analysis + AI-rewritten na resume + custom na cover letter."
+    "premiumIncludesDetail": "{{subtext}}: buong analysis + AI-rewritten na resume + custom na cover letter.",
+    "resumeBuilderCta": {
+      "title": "Gumawa ng malinis at nakaayos na bersyon ng resume na ito",
+      "subtitle": "Mga nae-edit na seksyon, live preview, i-export sa PDF o Word"
+    },
+    "actionBanner": {
+      "issuesFound": "{{count}} mga isyu ang natuklasan — ayusin ngayon",
+      "keyImprovements": "Mga pangunahing pagpapabuti na available",
+      "withRole": "Mga {{industry}}-specific na pag-aayos para sa iyong {{role}} resume",
+      "withoutRole": "Mga pag-aayos na tukoy sa industriya na may muling isinulat na mga bullet",
+      "criticalImprovements": "Mga kritikal na pagpapabuti na available"
+    },
+    "jobMatch": {
+      "title": "Pagsusuri ng Pagtutugma sa Trabaho",
+      "badge": "Libre at Walang Limitasyon",
+      "subtitle": "Ikumpara ang iyong resume sa anumang trabaho — walang limitasyon!",
+      "matchScore": "Score ng Pagtutugma",
+      "matchGrade": "Grado ng Pagtutugma",
+      "experienceFit": "Angkop na Karanasan",
+      "titleMatch": "Pagtutugma ng Pamagat",
+      "howYouCompare": "Paano Ka Nagkukumpara sa Ibang mga Aplikante",
+      "skillsYouHave": "Mga Kasanayan na Mayroon Ka",
+      "skillsToAdd": "Mga Kasanayan na Idadagdag",
+      "whatYouNeedToDo": "Ano ang Kailangan Mong Gawin para Mapag-isipan",
+      "summary": "💡 Buod:",
+      "confidence": "Kumpiyansa:",
+      "readyToApply": {
+        "title": "Handa na Mag-apply?",
+        "subtitle": "Bumuo ng resume na espesyal na iniayon para sa posisyon na ito",
+        "generating": "Ginagawa ang Tailored Resume...",
+        "button": "Bumuo ng Tailored Resume at PDF",
+        "footnote": "✨ Inisulat ng AI ang iyong resume para sa partikular na trabahong ito + nada-download na PDF"
+      },
+      "completePackage": {
+        "title": "Gusto mo ba ang Kumpletong Package?",
+        "subtitle": "Kumpletong tailored resume, cover letter, tapat na mga tala sa skill gap, at submission checklist"
+      }
+    },
+    "appRecommendation": {
+      "strongApply": "✓ Malakas na Pagtutugma — Mag-apply Ngayon!",
+      "applyWithChanges": "⚡ Magandang Angkop — Mag-apply Pagkatapos ng Mabilis na Pag-aayos",
+      "applyAsStretch": "🎯 Mahirap na Papel — Mag-apply Bilang Ambisyoso",
+      "doNotApply": "✗ Mahinang Angkop — Isaalang-alang ang Iba pang mga Papel"
+    },
+    "atsBanner": {
+      "require60": "Karamihan sa ATS ay nangangailangan ng 60+ para pumasa",
+      "require75": "Ang 75+ ay nagpapataas ng callback rate",
+      "targetScore": "75+"
+    },
+    "eliteSignals": {
+      "title": "Mga Senyales na Nakakaakit ng mga Recruiter"
+    },
+    "shareResults": {
+      "title": "Ibahagi ang Iyong mga Resulta",
+      "badge": "Libre",
+      "subtitle": "I-download ang iyong score card o ibahagi ito sa LinkedIn para mapansin ng mga recruiter"
+    },
+    "topSkipReasons": {
+      "title": "Nangungunang 5 Dahilan kung Bakit Nilalaktawan ang Iyong Resume",
+      "copyButton": "Kopyahin",
+      "whyLabel": "Bakit:",
+      "whyNote": "Nais ng mga tao ang kalinawan muna — ang mga dahilan ay mas mahalaga kaysa sa mga solusyon."
+    },
+    "howYouCompare": {
+      "title": "Paano Ka Nagkukumpara",
+      "subtitle": "Tingnan kung paano nagkukumpara ang iyong resume sa ibang mga propesyonal sa {{industry}}",
+      "you": "Ikaw",
+      "others": "Iba",
+      "getJobSpecific": "Kumuha ng Trabaho-Specific na Pagsusuri"
+    },
+    "careerTimeline": {
+      "title": "Career Timeline",
+      "totalExp": "Kabuuang Karanasan",
+      "totalExpDesc": "Gaano katagal ka nang nagtatrabaho sa iyong larangan",
+      "avgTenure": "Avg na Oras sa Bawat Trabaho",
+      "tenureGood": "✓ Magandang katatagan — gusto ng mga recruiter ang 2+ taon bawat papel",
+      "tenureWarning": "⚠ Maikling pagtatrabaho ay maaaring magdulot ng mga katanungan",
+      "tenurePoor": "⚠ Napakaikli — maaaring makita bilang paglipat ng trabaho",
+      "careerGrowth": "Pag-unlad ng Karera"
+    },
+    "careerSituationDetected": {
+      "whatDetected": "Ano ang aming natukoy:",
+      "tailoredAdvice": "Iniayon na payo para sa iyong sitwasyon:"
+    },
+    "personalizedCareerInsights": {
+      "headlineTitle": "Ang Iyong Propesyonal na Headline",
+      "headlineTip": "Gamitin ito sa LinkedIn at sa iyong resume header",
+      "uniqueValue": "Ang Iyong Natatanging Halaga",
+      "nextMoves": "Ang Iyong Susunod na mga Hakbang sa Karera",
+      "interviewStories": "Mga Ideya para sa Interview na Kwento",
+      "salaryInsightTitle": "Kaalaman sa Suweldo",
+      "estimatedRange": "tinatayang hanay",
+      "negotiationLeverage": "Ang iyong kapangyarihan sa negosasyon:",
+      "hiddenStrengths": "Mga Nakatagong Lakas na Iyong Pinababa ng Halaga",
+      "personalBrand": "Ang Iyong Personal na Brand",
+      "currentLabel": "Kasalukuyan:",
+      "idealLabel": "Ideal:",
+      "gapLabel": "Agwat:"
+    },
+    "atsCompat": {
+      "ctaSubtext": "Kumuha ng resume na muling isinulat ng AI na na-optimize para sa LAHAT ng pangunahing ATS system",
+      "disclaimer": "* Ang mga rating ng compatibility ay mga tinantya batay sa pagsusuri ng format. Ang mga aktwal na resulta ay maaaring mag-iba.",
+      "topIssueLabel": "💡 Nangungunang Isyu ng ATS na Ayusin"
+    },
+    "powerWords": {
+      "title": "Mga Malakas na Salita na Iyong Ginagamit",
+      "keepUsing": "Patuloy na gamitin ang mga ito! Minamahal ng mga recruiter ang mga ito."
+    },
+    "weakPhrases": {
+      "title": "Mga Mahinang Parirala na Aalisin"
+    },
+    "quickWins": {
+      "title": "Mabilis na Tagumpay (5 minuto o mas kaunti)",
+      "impact": "{{level}} na epekto",
+      "wantAllDone": "Gusto mo bang gawin para sa iyo ang lahat ng iyong mabilis na tagumpay?",
+      "premiumIncludes": "Ang aming Premium Package ay nagsasama ng resume na muling isinulat ng AI na may lahat ng inilapat na pag-aayos"
+    },
+    "sampleRewrite": {
+      "title": "Sample na Preview ng Muling Pagsulat",
+      "badge": "Libreng halimbawa",
+      "before": "❌ BAGO (mula sa iyong resume)",
+      "after": "✅ PAGKATAPOS (na-optimize)",
+      "whyBetter": "Bakit mas maganda:",
+      "cta": "Ipasulat ang lahat ng iyong mga bullet sa kumpletong {{price}} na pagsusuri"
+    },
+    "lockedInsights": {
+      "bulletLine1": "• Palitan ang 'Responsable sa pamamahala ng team ng 5' → 'Nanguna sa cross-functional team ng 5, nagdulot ng 32% na pagtaas ng kahusayan'",
+      "bulletLine2": "• Palitan ang 'Tumulong sa customer support' → 'Nalutas ng 150+ customer ticket/linggo, nakamit ang 98% na kasiyahan'",
+      "bulletLine3": "• Magdagdag ng mga sukatan sa mga bullet na kasalukuyang kulang sa quantification",
+      "bulletLine4": "• Muling ayusin ang mga bullet na nakatuon sa responsibilidad sa mga pahayag ng tagumpay",
+      "bulletWithData1": "• Mula sa iyong resume: \"{{bullet}}\" — walang nasusukat na epekto na nakasaad",
+      "bulletWithData2": "• {{weak}} sa iyong {{total}} na mga bullet ay kulang ng quantification",
+      "bulletWithData3": "• Ipasulat ang bawat isa na may mga sukatan at mas malakas na power verb",
+      "kwHard": "• {{count}} kritikal na hard skill ang nawawala sa iyong resume",
+      "kwCerts": "• {{count}} sertipikasyon sa industriya na banggitin (kahit nasa proseso pa)",
+      "kwTools": "• {{count}} tool na karaniwang nakalista sa iyong larangan na nawawala sa iyo",
+      "kwMethodology": "• {{count}} keyword ng metodolohiya na ginagamit ng iyong mga kakumpitensya",
+      "kwPlacement": "• Saan ilalagay ang iyong pinakamalakas na mga keyword para sa maximum na timbang ng ATS",
+      "kwVerbs": "• Mga action verb na mas mahusay kaysa sa iyong kasalukuyang mga pagpipilian ng salita",
+      "kwDensity": "• Paano nagkukumpara ang iyong keyword density sa mga nangungunang resume sa iyong larangan",
+      "kwHardDefault": "• Mga kritikal na hard skill na nawawala sa iyong resume",
+      "kwCertsDefault": "• Mga sertipikasyon sa industriya na banggitin (kahit nasa proseso pa)",
+      "kwVerbsDefault": "• Mga action verb na mas mahusay kaysa sa iyong kasalukuyang mga pagpipilian ng salita",
+      "kwMethodDefault": "• Mga keyword ng metodolohiya na ginagamit ng iyong mga kakumpitensya",
+      "careerSalary": "• Gabay sa negosasyon ng suweldo batay sa iyong aktwal na papel at antas ng karanasan",
+      "careerNextRole": "• Mga landas ng pag-unlad para sa susunod na papel na may pagsusuri ng agwat para sa bawat isa",
+      "careerInterview": "• Mga punto ng pakikipag-usap sa interview na nagmula sa iyong pinakamalakas na mga tagumpay",
+      "careerBrand": "• Pagtatasa ng personal na brand: kasalukuyang vs. ideal na posisyon",
+      "careerDescWithRole": "Gabay sa negosasyon ng suweldo, mga landas ng susunod na papel, at mga punto ng pakikipag-usap sa interview para sa iyong {{role}} background",
+      "careerDescDefault": "Gabay sa negosasyon ng suweldo, mga landas ng susunod na papel, at mga punto ng pakikipag-usap sa interview para sa {{industry}}",
+      "kwDescWithStats": "{{count}} nawawalang keyword na natuklasan na tukoy sa {{industry}} na hinahanap ng mga ATS system",
+      "kwDescGood": "Malakas na keyword coverage para sa {{industry}} — kumuha ng mga tip sa phrasing at placement para gawing mas epektibo ang mga ito",
+      "kwDescDefault": "Mga nawawalang keyword na tukoy sa {{industry}} na hinahanap ng mga ATS system"
+    },
+    "premiumCta": {
+      "package": "Premium Package",
+      "title": "🎯 Kumuha ng Iyong ATS-Optimized na Resume + Cover Letter",
+      "subtitle": "Inisulat ng aming AI ang iyong buong resume para tumugma sa iyong target na papel, kasama ang pagbuo ng personalized na cover letter — i-download ang pareho bilang mga PDF.",
+      "aiResume": "Resume na muling isinulat ng AI",
+      "customCoverLetter": "Custom na cover letter",
+      "pdfDownload": "Pag-download ng PDF",
+      "seeAll": "Tingnan ang lahat ng package",
+      "footnote": "Kumpletong package: ATS-optimized na resume + personalized na cover letter na handang ipadala sa mga employer"
+    },
+    "emailCapture": {
+      "joinMessage": "Sumali sa mahigit 10,000 naghahanap ng trabaho na tumatanggap ng lingguhang mga tip para talunin ang ATS at makakuha ng mga interview.",
+      "noSpam": "Walang spam. Mag-unsubscribe anumang oras."
+    },
+    "coverLetterCta": {
+      "title": "Custom na Cover Letter",
+      "personalizedOpening": "Personalized na pagbubukas",
+      "skillsHighlighted": "Mga kasanayan na na-highlight",
+      "instantDownload": "Agarang pag-download"
+    },
+    "competitivePosition": {
+      "top": "🏆 Nangungunang Kandidato",
+      "competitive": "💪 Kompetitibo",
+      "middle": "📊 Sa Kalagitnaan",
+      "unlikely": "⚠️ Malamang Hindi Makaka-Advance",
+      "yourAdvantage": "Ang Iyong Kalamangan",
+      "yourGap": "Ang Iyong Agwat"
+    }
   },
   "analysisPreviewSample": {
     "breakdown": {

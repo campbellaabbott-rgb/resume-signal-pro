@@ -1378,7 +1378,188 @@
       "summaryRewrites": "Réécriture du résumé/titre",
       "prioritizedActionPlan": "Plan d'action prioritaire"
     },
-    "premiumIncludesDetail": "{{subtext}} : analyse complète + CV réécrit par IA + lettre de motivation personnalisée."
+    "premiumIncludesDetail": "{{subtext}} : analyse complète + CV réécrit par IA + lettre de motivation personnalisée.",
+    "resumeBuilderCta": {
+      "title": "Créez une version propre et structurée de ce CV",
+      "subtitle": "Sections modifiables, aperçu en direct, export en PDF ou Word"
+    },
+    "actionBanner": {
+      "issuesFound": "{{count}} problèmes trouvés — corrigez-les maintenant",
+      "keyImprovements": "Améliorations clés disponibles",
+      "withRole": "Corrections spécifiques à {{industry}} pour votre CV de {{role}}",
+      "withoutRole": "Corrections spécifiques au secteur avec des points réécrits",
+      "criticalImprovements": "Améliorations critiques disponibles"
+    },
+    "jobMatch": {
+      "title": "Analyse de correspondance d'emploi",
+      "badge": "Gratuit & Illimité",
+      "subtitle": "Comparez votre CV à n'importe quel emploi — sans limites !",
+      "matchScore": "Score de correspondance",
+      "matchGrade": "Note de correspondance",
+      "experienceFit": "Adéquation de l'expérience",
+      "titleMatch": "Correspondance du titre",
+      "howYouCompare": "Comment vous vous comparez aux autres candidats",
+      "skillsYouHave": "Compétences que vous avez",
+      "skillsToAdd": "Compétences à ajouter",
+      "whatYouNeedToDo": "Ce que vous devez faire pour être considéré",
+      "summary": "💡 Résumé :",
+      "confidence": "Confiance :",
+      "readyToApply": {
+        "title": "Prêt à postuler ?",
+        "subtitle": "Générez un CV adapté spécifiquement à ce poste",
+        "generating": "Génération du CV personnalisé...",
+        "button": "Générer un CV personnalisé et PDF",
+        "footnote": "✨ L'IA réécrit votre CV pour ce travail spécifique + PDF téléchargeable"
+      },
+      "completePackage": {
+        "title": "Vous voulez le package complet ?",
+        "subtitle": "CV complet personnalisé, lettre de motivation, signalements honnêtes des lacunes de compétences et une liste de contrôle de soumission"
+      }
+    },
+    "appRecommendation": {
+      "strongApply": "✓ Excellente correspondance — Postulez maintenant !",
+      "applyWithChanges": "⚡ Bon candidat — Postulez après des corrections rapides",
+      "applyAsStretch": "🎯 Rôle ambitieux — Postulez comme candidature ambitieuse",
+      "doNotApply": "✗ Mauvaise adéquation — Considérez d'autres rôles"
+    },
+    "atsBanner": {
+      "require60": "La plupart des ATS nécessitent 60+ pour passer",
+      "require75": "75+ augmente le taux de rappel",
+      "targetScore": "75+"
+    },
+    "eliteSignals": {
+      "title": "Signaux attractifs pour les recruteurs"
+    },
+    "shareResults": {
+      "title": "Partagez vos résultats",
+      "badge": "Gratuit",
+      "subtitle": "Téléchargez votre carte de score ou partagez-la sur LinkedIn pour vous démarquer auprès des recruteurs"
+    },
+    "topSkipReasons": {
+      "title": "Les 5 principales raisons pour lesquelles votre CV est ignoré",
+      "copyButton": "Copier",
+      "whyLabel": "Pourquoi :",
+      "whyNote": "Les gens veulent d'abord la clarté — les raisons comptent plus que les solutions."
+    },
+    "howYouCompare": {
+      "title": "Comment vous vous comparez",
+      "subtitle": "Voyez comment votre CV se compare à d'autres professionnels de {{industry}}",
+      "you": "Vous",
+      "others": "Autres",
+      "getJobSpecific": "Obtenir une analyse spécifique au poste"
+    },
+    "careerTimeline": {
+      "title": "Chronologie de carrière",
+      "totalExp": "Expérience totale",
+      "totalExpDesc": "Depuis combien de temps vous travaillez dans votre domaine",
+      "avgTenure": "Durée moy. dans chaque emploi",
+      "tenureGood": "✓ Bonne stabilité — les recruteurs aiment 2+ ans par poste",
+      "tenureWarning": "⚠ Une courte durée peut soulever des questions",
+      "tenurePoor": "⚠ Très court — peut être perçu comme du job-hopping",
+      "careerGrowth": "Évolution de carrière"
+    },
+    "careerSituationDetected": {
+      "whatDetected": "Ce que nous avons détecté :",
+      "tailoredAdvice": "Conseils adaptés à votre situation :"
+    },
+    "personalizedCareerInsights": {
+      "headlineTitle": "Votre titre professionnel",
+      "headlineTip": "Utilisez-le sur LinkedIn et dans l'en-tête de votre CV",
+      "uniqueValue": "Votre valeur unique",
+      "nextMoves": "Vos prochaines évolutions de carrière",
+      "interviewStories": "Idées d'histoires pour les entretiens",
+      "salaryInsightTitle": "Aperçu salarial",
+      "estimatedRange": "fourchette estimée",
+      "negotiationLeverage": "Vos leviers de négociation :",
+      "hiddenStrengths": "Forces cachées que vous sous-estimez",
+      "personalBrand": "Votre marque personnelle",
+      "currentLabel": "Actuel :",
+      "idealLabel": "Idéal :",
+      "gapLabel": "Écart :"
+    },
+    "atsCompat": {
+      "ctaSubtext": "Obtenez un CV réécrit par IA optimisé pour TOUS les principaux systèmes ATS",
+      "disclaimer": "* Les notes de compatibilité sont des estimations basées sur l'analyse du format. Les résultats réels peuvent varier.",
+      "topIssueLabel": "💡 Principal problème ATS à corriger"
+    },
+    "powerWords": {
+      "title": "Mots forts que vous utilisez",
+      "keepUsing": "Continuez à les utiliser ! Les recruteurs les adorent."
+    },
+    "weakPhrases": {
+      "title": "Phrases faibles à éliminer"
+    },
+    "quickWins": {
+      "title": "Victoires rapides (5 min ou moins)",
+      "impact": "impact {{level}}",
+      "wantAllDone": "Voulez-vous que toutes vos victoires rapides soient faites pour vous ?",
+      "premiumIncludes": "Notre package Premium inclut un CV réécrit par IA avec toutes les corrections appliquées"
+    },
+    "sampleRewrite": {
+      "title": "Aperçu de la réécriture d'exemple",
+      "badge": "Aperçu gratuit",
+      "before": "❌ AVANT (de votre CV)",
+      "after": "✅ APRÈS (optimisé)",
+      "whyBetter": "Pourquoi c'est mieux :",
+      "cta": "Faites réécrire tous vos points dans l'analyse complète à {{price}}"
+    },
+    "lockedInsights": {
+      "bulletLine1": "• Remplacez 'Responsable de la gestion d'une équipe de 5' → 'Dirigé une équipe interfonctionnelle de 5, générant un gain d'efficacité de 32%'",
+      "bulletLine2": "• Remplacez 'Aidé avec le support client' → 'Résolu 150+ tickets clients/semaine, atteignant 98% de satisfaction'",
+      "bulletLine3": "• Ajoutez des métriques aux points qui manquent actuellement de quantification",
+      "bulletLine4": "• Restructurez les points axés sur les responsabilités en déclarations de réalisations",
+      "bulletWithData1": "• De votre CV : \"{{bullet}}\" — aucun impact mesurable déclaré",
+      "bulletWithData2": "• {{weak}} de vos {{total}} points manquent de quantification",
+      "bulletWithData3": "• Faites réécrire chacun avec des métriques et un verbe d'action plus fort",
+      "kwHard": "• {{count}} compétence{{plural}} technique{{plural}} critique{{plural}} manquante{{plural}} dans votre CV",
+      "kwCerts": "• {{count}} certification{{plural}} du secteur à mentionner (même en cours)",
+      "kwTools": "• {{count}} outil{{plural}} communément listé{{plural}} dans votre domaine qui vous manquent",
+      "kwMethodology": "• {{count}} mot{{plural}} clé de méthodologie qu'utilisent vos concurrents",
+      "kwPlacement": "• Où placer vos mots clés les plus forts pour un poids ATS maximum",
+      "kwVerbs": "• Verbes d'action qui surpassent vos choix de mots actuels",
+      "kwDensity": "• Comment votre densité de mots clés se compare aux meilleurs CV de votre domaine",
+      "kwHardDefault": "• Compétences techniques critiques manquantes dans votre CV",
+      "kwCertsDefault": "• Certifications du secteur à mentionner (même en cours)",
+      "kwVerbsDefault": "• Verbes d'action qui surpassent vos choix de mots actuels",
+      "kwMethodDefault": "• Mots clés de méthodologie qu'utilisent vos concurrents",
+      "careerSalary": "• Conseils de négociation salariale basés sur votre rôle et niveau d'expérience réels",
+      "careerNextRole": "• Voies de progression pour le prochain rôle avec analyse des lacunes pour chacun",
+      "careerInterview": "• Points de discussion pour les entretiens tirés de vos réalisations les plus fortes",
+      "careerBrand": "• Évaluation de la marque personnelle : positionnement actuel vs. idéal",
+      "careerDescWithRole": "Conseils de négociation salariale, voies de progression et points de discussion pour votre background {{role}}",
+      "careerDescDefault": "Conseils de négociation salariale, voies de progression et points de discussion pour {{industry}}",
+      "kwDescWithStats": "{{count}} mots clés manquants trouvés spécifiques à {{industry}} que les systèmes ATS recherchent",
+      "kwDescGood": "Bonne couverture de mots clés pour {{industry}} — obtenez des conseils de formulation et de placement pour les faire compter encore plus",
+      "kwDescDefault": "Mots clés manquants spécifiques à {{industry}} que les systèmes ATS recherchent"
+    },
+    "premiumCta": {
+      "package": "Package Premium",
+      "title": "🎯 Obtenez votre CV optimisé ATS + lettre de motivation",
+      "subtitle": "Notre IA réécrit tout votre CV pour correspondre à votre rôle cible, et génère une lettre de motivation personnalisée — téléchargez les deux en PDF.",
+      "aiResume": "CV réécrit par IA",
+      "customCoverLetter": "Lettre de motivation personnalisée",
+      "pdfDownload": "Téléchargement PDF",
+      "seeAll": "Voir tous les packages",
+      "footnote": "Package complet : CV optimisé ATS + lettre de motivation personnalisée prête à envoyer aux employeurs"
+    },
+    "emailCapture": {
+      "joinMessage": "Rejoignez plus de 10 000 chercheurs d'emploi qui reçoivent des conseils hebdomadaires pour battre l'ATS et décrocher des entretiens.",
+      "noSpam": "Pas de spam. Désabonnez-vous à tout moment."
+    },
+    "coverLetterCta": {
+      "title": "Lettre de motivation personnalisée",
+      "personalizedOpening": "Ouverture personnalisée",
+      "skillsHighlighted": "Compétences mises en évidence",
+      "instantDownload": "Téléchargement instantané"
+    },
+    "competitivePosition": {
+      "top": "🏆 Candidat principal",
+      "competitive": "💪 Compétitif",
+      "middle": "📊 Dans la moyenne",
+      "unlikely": "⚠️ Peu de chances",
+      "yourAdvantage": "Votre avantage",
+      "yourGap": "Votre lacune"
+    }
   },
   "analysisPreviewSample": {
     "breakdown": {

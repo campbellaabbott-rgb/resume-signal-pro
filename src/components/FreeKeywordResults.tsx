@@ -1415,8 +1415,8 @@ export function FreeKeywordResults({
               <FileEdit className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <p className="font-semibold text-sm">Build a clean, structured version of this resume</p>
-              <p className="text-xs text-muted-foreground">Editable sections, live preview, export to PDF or Word</p>
+              <p className="font-semibold text-sm">{t('freeResults.resumeBuilderCta.title')}</p>
+              <p className="text-xs text-muted-foreground">{t('freeResults.resumeBuilderCta.subtitle')}</p>
             </div>
           </div>
           <ArrowRight className="w-4 h-4 text-primary shrink-0 group-hover:translate-x-0.5 transition-transform" />
@@ -1502,15 +1502,15 @@ export function FreeKeywordResults({
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <div className="flex-1">
             <p className="text-sm font-semibold text-foreground">
-              {redFlags.length > 0 
-                ? `${redFlags.length} issues found — fix them now`
-                : `${atsScoreEstimate < 70 ? 'Critical' : 'Key'} improvements available`
+              {redFlags.length > 0
+                ? t('freeResults.actionBanner.issuesFound', { count: redFlags.length })
+                : t(atsScoreEstimate < 70 ? 'freeResults.actionBanner.criticalImprovements' : 'freeResults.actionBanner.keyImprovements')
               }
             </p>
             <p className="text-xs text-muted-foreground">
-              {currentRole 
-                ? `${effectiveIndustry.replace(/_/g, ' ')}-specific fixes for your ${currentRole} resume`
-                : `Industry-specific fixes with rewritten bullet points`
+              {currentRole
+                ? t('freeResults.actionBanner.withRole', { industry: effectiveIndustry.replace(/_/g, ' '), role: currentRole })
+                : t('freeResults.actionBanner.withoutRole')
               }
             </p>
           </div>
@@ -1535,10 +1535,10 @@ export function FreeKeywordResults({
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <h4 className="font-bold text-lg">Job Match Analysis</h4>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-success/20 text-success font-medium">Free & Unlimited</span>
+                <h4 className="font-bold text-lg">{t('freeResults.jobMatch.title')}</h4>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-success/20 text-success font-medium">{t('freeResults.jobMatch.badge')}</span>
               </div>
-              <p className="text-xs text-muted-foreground">Compare your resume against any job — no limits!</p>
+              <p className="text-xs text-muted-foreground">{t('freeResults.jobMatch.subtitle')}</p>
             </div>
           </div>
 
@@ -1577,16 +1577,16 @@ export function FreeKeywordResults({
                     applicationRecommendation.recommendation === "apply_as_stretch" ? "text-primary" :
                     "text-destructive"
                   )}>
-                    {applicationRecommendation.recommendation === "strong_apply" ? "✓ Strong Match — Apply Now!" :
-                     applicationRecommendation.recommendation === "apply_with_changes" ? "⚡ Good Fit — Apply After Quick Fixes" :
-                     applicationRecommendation.recommendation === "apply_as_stretch" ? "🎯 Stretch Role — Apply as Reach" :
-                     "✗ Poor Fit — Consider Other Roles"}
+                    {applicationRecommendation.recommendation === "strong_apply" ? t('freeResults.appRecommendation.strongApply') :
+                     applicationRecommendation.recommendation === "apply_with_changes" ? t('freeResults.appRecommendation.applyWithChanges') :
+                     applicationRecommendation.recommendation === "apply_as_stretch" ? t('freeResults.appRecommendation.applyAsStretch') :
+                     t('freeResults.appRecommendation.doNotApply')}
                   </p>
                   <p className="text-sm text-muted-foreground">{applicationRecommendation.reasoning}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>Confidence:</span>
+                <span>{t('freeResults.jobMatch.confidence')}</span>
                 <span className={cn(
                   "px-2 py-0.5 rounded-full font-medium",
                   applicationRecommendation.confidence === "high" ? "bg-success/20 text-success" :
@@ -1602,7 +1602,7 @@ export function FreeKeywordResults({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             {/* Match Score */}
             <div className={cn("rounded-xl border p-3", getScoreBgColor(jobMatchScore))}>
-              <p className="text-xs text-muted-foreground mb-1">Match Score</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('freeResults.jobMatch.matchScore')}</p>
               <p className={cn("text-2xl font-bold", getScoreColor(jobMatchScore))}>
                 {jobMatchScore}<span className="text-sm text-muted-foreground">%</span>
               </p>
@@ -1610,7 +1610,7 @@ export function FreeKeywordResults({
 
             {/* Match Grade */}
             <div className={cn("rounded-xl border p-3", getGradeBgColor(jobMatchGrade))}>
-              <p className="text-xs text-muted-foreground mb-1">Match Grade</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('freeResults.jobMatch.matchGrade')}</p>
               <div className="flex items-baseline gap-1">
                 <p className={cn("text-2xl font-bold", getGradeColor(jobMatchGrade))}>{jobMatchGrade}</p>
                 <span className={cn("text-xs", getGradeColor(jobMatchGrade))}>{getGradeLabel(jobMatchGrade)}</span>
@@ -1622,7 +1622,7 @@ export function FreeKeywordResults({
               <div className={cn("rounded-xl border p-3", 
                 experienceFit === "good_fit" ? "bg-success/10 border-success/20" : "bg-warning/10 border-warning/20"
               )}>
-                <p className="text-xs text-muted-foreground mb-1">Experience Fit</p>
+                <p className="text-xs text-muted-foreground mb-1">{t('freeResults.jobMatch.experienceFit')}</p>
                 <p className={cn("text-lg font-bold capitalize", 
                   experienceFit === "good_fit" ? "text-success" : "text-warning"
                 )}>
@@ -1637,7 +1637,7 @@ export function FreeKeywordResults({
                 titleAlignment === "strong" ? "bg-success/10 border-success/20" : 
                 titleAlignment === "partial" ? "bg-warning/10 border-warning/20" : "bg-destructive/10 border-destructive/20"
               )}>
-                <p className="text-xs text-muted-foreground mb-1">Title Match</p>
+                <p className="text-xs text-muted-foreground mb-1">{t('freeResults.jobMatch.titleMatch')}</p>
                 <p className={cn("text-lg font-bold capitalize", 
                   titleAlignment === "strong" ? "text-success" : 
                   titleAlignment === "partial" ? "text-warning" : "text-destructive"
@@ -1653,7 +1653,7 @@ export function FreeKeywordResults({
             <div className="rounded-xl bg-card border border-border p-4 mb-4">
               <h5 className="font-semibold text-sm mb-3 flex items-center gap-2">
                 <Briefcase className="w-4 h-4 text-primary" />
-                How You Compare to Other Applicants
+                {t('freeResults.jobMatch.howYouCompare')}
               </h5>
               <div className="flex items-center gap-3 mb-3">
                 <div className={cn(
@@ -1663,19 +1663,19 @@ export function FreeKeywordResults({
                   competitiveAssessment.likelyPosition === "middle_of_pack" ? "bg-warning/20 text-warning" :
                   "bg-destructive/20 text-destructive"
                 )}>
-                  {competitiveAssessment.likelyPosition === "top_candidate" ? "🏆 Top Candidate" :
-                   competitiveAssessment.likelyPosition === "competitive" ? "💪 Competitive" :
-                   competitiveAssessment.likelyPosition === "middle_of_pack" ? "📊 Middle of Pack" :
-                   "⚠️ Unlikely to Advance"}
+                  {competitiveAssessment.likelyPosition === "top_candidate" ? t('freeResults.competitivePosition.top') :
+                   competitiveAssessment.likelyPosition === "competitive" ? t('freeResults.competitivePosition.competitive') :
+                   competitiveAssessment.likelyPosition === "middle_of_pack" ? t('freeResults.competitivePosition.middle') :
+                   t('freeResults.competitivePosition.unlikely')}
                 </div>
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg bg-success/5 border border-success/20">
-                  <p className="text-xs text-success font-medium mb-1">Your Advantage</p>
+                  <p className="text-xs text-success font-medium mb-1">{t('freeResults.competitivePosition.yourAdvantage')}</p>
                   <p className="text-sm text-foreground">{competitiveAssessment.strengthVsField}</p>
                 </div>
                 <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20">
-                  <p className="text-xs text-destructive font-medium mb-1">Your Gap</p>
+                  <p className="text-xs text-destructive font-medium mb-1">{t('freeResults.competitivePosition.yourGap')}</p>
                   <p className="text-sm text-foreground">{competitiveAssessment.weaknessVsField}</p>
                 </div>
               </div>
@@ -1688,7 +1688,7 @@ export function FreeKeywordResults({
               <div className="rounded-xl bg-success/5 border border-success/20 p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle className="w-4 h-4 text-success" />
-                  <p className="text-sm font-medium text-success">Skills You Have</p>
+                  <p className="text-sm font-medium text-success">{t('freeResults.jobMatch.skillsYouHave')}</p>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {matchingSkills.slice(0, 5).map((skill, i) => (
@@ -1704,7 +1704,7 @@ export function FreeKeywordResults({
               <div className="rounded-xl bg-destructive/5 border border-destructive/20 p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <XCircle className="w-4 h-4 text-destructive" />
-                  <p className="text-sm font-medium text-destructive">Skills to Add</p>
+                  <p className="text-sm font-medium text-destructive">{t('freeResults.jobMatch.skillsToAdd')}</p>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {missingSkills.slice(0, 5).map((skill, i) => (
@@ -1722,7 +1722,7 @@ export function FreeKeywordResults({
             <div className="rounded-xl bg-card border border-border p-4 mb-4">
               <h5 className="font-semibold text-sm mb-3 flex items-center gap-2">
                 <Zap className="w-4 h-4 text-warning" />
-                What You Need to Do to Be Considered
+                {t('freeResults.jobMatch.whatYouNeedToDo')}
               </h5>
               <div className="space-y-2">
                 {skillGapActions.slice(0, 5).map((action, i) => (
@@ -1749,7 +1749,7 @@ export function FreeKeywordResults({
           {jobMatchSummary && (
             <div className="rounded-xl bg-muted/50 p-3">
               <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">💡 Summary:</span> {jobMatchSummary}
+                <span className="font-medium text-foreground">{t('freeResults.jobMatch.summary')}</span> {jobMatchSummary}
               </p>
             </div>
           )}
@@ -1762,8 +1762,8 @@ export function FreeKeywordResults({
                   <Download className="w-5 h-5 text-success" />
                 </div>
                 <div>
-                  <h5 className="font-bold text-foreground">Ready to Apply?</h5>
-                  <p className="text-xs text-muted-foreground">Generate a resume tailored specifically for this role</p>
+                  <h5 className="font-bold text-foreground">{t('freeResults.jobMatch.readyToApply.title')}</h5>
+                  <p className="text-xs text-muted-foreground">{t('freeResults.jobMatch.readyToApply.subtitle')}</p>
                 </div>
               </div>
               <Button
@@ -1774,18 +1774,18 @@ export function FreeKeywordResults({
                 {isGeneratingTailored ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Generating Tailored Resume...
+                    {t('freeResults.jobMatch.readyToApply.generating')}
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    Generate Tailored Resume & PDF
+                    {t('freeResults.jobMatch.readyToApply.button')}
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </Button>
               <p className="text-[10px] text-success/70 mt-2 text-center">
-                ✨ AI rewrites your resume for this specific job + downloadable PDF
+                {t('freeResults.jobMatch.readyToApply.footnote')}
               </p>
             </div>
           )}
@@ -1797,10 +1797,9 @@ export function FreeKeywordResults({
                 <Send className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h5 className="font-bold text-foreground">Want the Complete Package?</h5>
+                <h5 className="font-bold text-foreground">{t('freeResults.jobMatch.completePackage.title')}</h5>
                 <p className="text-xs text-muted-foreground">
-                  Full tailored resume, cover letter, honest skill-gap callouts, and a submission checklist —
-                  you review and apply yourself, nothing is auto-submitted
+                  {t('freeResults.jobMatch.completePackage.subtitle')}
                 </p>
               </div>
             </div>
@@ -1843,11 +1842,11 @@ export function FreeKeywordResults({
                   {atsScoreEstimate < 60 ? t('freeResults.atRiskOrNeedsImprovement.atRisk') : t('freeResults.atRiskOrNeedsImprovement.needsImprovement')}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {atsScoreEstimate < 60 ? "Most ATS require 60+ to pass" : "75+ increases callback rate"}
+                  {atsScoreEstimate < 60 ? t('freeResults.atsBanner.require60') : t('freeResults.atsBanner.require75')}
                 </p>
               </div>
             </div>
-            <span className="text-lg font-bold text-success shrink-0">75+</span>
+            <span className="text-lg font-bold text-success shrink-0">{t('freeResults.atsBanner.targetScore')}</span>
           </div>
         </div>
       )}
@@ -2027,7 +2026,7 @@ export function FreeKeywordResults({
         <div className="rounded-xl border p-3 bg-primary/5 border-primary/20 mb-5">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-3.5 h-3.5 text-primary" />
-            <p className="text-xs font-medium text-primary uppercase tracking-wider">Recruiter-Attracting Signals</p>
+            <p className="text-xs font-medium text-primary uppercase tracking-wider">{t('freeResults.eliteSignals.title')}</p>
           </div>
           <div className="space-y-1.5">
             {eliteSignals.map((signal, idx) => (
@@ -2044,13 +2043,13 @@ export function FreeKeywordResults({
       <div className="rounded-2xl bg-card border border-border p-5 mb-5">
         <div className="flex items-center gap-2 mb-4">
           <Share2 className="w-4 h-4 text-primary" />
-          <h4 className="font-semibold">Share Your Results</h4>
+          <h4 className="font-semibold">{t('freeResults.shareResults.title')}</h4>
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success/10 text-success font-medium">
-            Free
+            {t('freeResults.shareResults.badge')}
           </span>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
-          Download your score card or share it on LinkedIn to stand out to recruiters
+          {t('freeResults.shareResults.subtitle')}
         </p>
         <ShareableScoreCard
           candidateName={candidateName}
@@ -2077,11 +2076,8 @@ export function FreeKeywordResults({
             <div className="flex items-center justify-center w-6 h-6 rounded bg-success/20 text-success">
               <CheckCircle2 className="w-4 h-4" />
             </div>
-            <h4 className="font-bold text-lg">Top 5 Reasons Your Resume Is Being Skipped</h4>
+            <h4 className="font-bold text-lg">{t('freeResults.topSkipReasons.title')}</h4>
           </div>
-          <p className="text-sm text-muted-foreground mb-4">
-            Not just "red flags" — the <em>most important ones first</em>.
-          </p>
           
           {/* Code-style block */}
           <div className="rounded-xl bg-[hsl(222,47%,11%)] border border-border/50 overflow-hidden">
@@ -2098,7 +2094,7 @@ export function FreeKeywordResults({
                 className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                Copy
+                {t('freeResults.topSkipReasons.copyButton')}
               </button>
             </div>
             <div className="p-4 font-mono text-sm space-y-3">
@@ -2113,8 +2109,8 @@ export function FreeKeywordResults({
           
           <div className="mt-4 p-3 rounded-xl bg-muted/30 border border-border/50">
             <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">Why:</span>{" "}
-              People want clarity first — reasons matter more than solutions.
+              <span className="font-medium text-foreground">{t('freeResults.topSkipReasons.whyLabel')}</span>{" "}
+              {t('freeResults.topSkipReasons.whyNote')}
             </p>
           </div>
         </div>
@@ -2126,17 +2122,17 @@ export function FreeKeywordResults({
         <div className="rounded-2xl bg-card border border-border p-5">
           <div className="flex items-center gap-2 mb-2">
             <Target className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold flex-1">How You Compare</h4>
+            <h4 className="font-semibold flex-1">{t('freeResults.howYouCompare.title')}</h4>
             <MetricTooltip metricKey="industryBenchmark" />
           </div>
-          <p className="text-xs text-muted-foreground mb-4">See how your resume stacks up against other {industry} professionals</p>
+          <p className="text-xs text-muted-foreground mb-4">{t('freeResults.howYouCompare.subtitle', { industry })}</p>
           
           {/* Score Comparison */}
           <div className="flex items-center gap-3 mb-4">
             {/* Your Score */}
             <div className="flex-1">
               <div className="flex items-baseline gap-2 mb-1.5">
-                <span className="text-xs font-medium text-foreground">You</span>
+                <span className="text-xs font-medium text-foreground">{t('freeResults.howYouCompare.you')}</span>
                 <span className={cn("text-lg font-bold", getScoreColor(atsScoreEstimate))}>{atsScoreEstimate}</span>
               </div>
               <div className="h-3 bg-muted rounded-full overflow-hidden">
@@ -2157,7 +2153,7 @@ export function FreeKeywordResults({
             {/* Industry Avg */}
             <div className="flex-1">
               <div className="flex items-baseline gap-2 mb-1.5 justify-end">
-                <span className="text-xs font-medium text-foreground">Others</span>
+                <span className="text-xs font-medium text-foreground">{t('freeResults.howYouCompare.others')}</span>
                 <span className="text-lg font-bold text-muted-foreground">{industryBenchmark.industryAvg}</span>
               </div>
               <div className="h-3 bg-muted rounded-full overflow-hidden">
@@ -2224,7 +2220,7 @@ export function FreeKeywordResults({
                 className="w-full gap-2 text-xs h-8 border-success/30 hover:bg-success/10 hover:border-success"
               >
                 <Target className="w-3 h-3 text-success" />
-                Get Job-Specific Analysis
+                {t('freeResults.howYouCompare.getJobSpecific')}
                 <ArrowRight className="w-3 h-3" />
               </Button>
               <p className="text-[10px] text-success/70 mt-1.5 text-center">✨ Free</p>
@@ -2236,7 +2232,7 @@ export function FreeKeywordResults({
         <div className="rounded-2xl bg-card border border-border p-5">
           <div className="flex items-center gap-2 mb-4">
             <FileText className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold flex-1">Career Timeline</h4>
+            <h4 className="font-semibold flex-1">{t('freeResults.careerTimeline.title')}</h4>
             <MetricTooltip metricKey="timeline" />
           </div>
           
@@ -2244,36 +2240,36 @@ export function FreeKeywordResults({
             {/* Total Experience */}
             <div className="p-3 rounded-lg bg-muted/30">
               <div className="flex justify-between items-center mb-1">
-                <span className="text-sm font-medium text-foreground">Total Experience</span>
+                <span className="text-sm font-medium text-foreground">{t('freeResults.careerTimeline.totalExp')}</span>
                 <span className="text-sm font-bold text-primary">{timelineAnalysis.totalYears}</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                How long you've been working in your field
+                {t('freeResults.careerTimeline.totalExpDesc')}
               </p>
             </div>
             
             {/* Avg Job Tenure */}
             <div className="p-3 rounded-lg bg-muted/30">
               <div className="flex justify-between items-center mb-1">
-                <span className="text-sm font-medium text-foreground">Avg Time at Each Job</span>
+                <span className="text-sm font-medium text-foreground">{t('freeResults.careerTimeline.avgTenure')}</span>
                 <span className={cn("text-sm font-bold",
                   parseFloat(timelineAnalysis.avgTenure) >= 2 ? "text-success" : 
                   parseFloat(timelineAnalysis.avgTenure) >= 1 ? "text-warning" : "text-destructive"
                 )}>{timelineAnalysis.avgTenure}</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                {parseFloat(timelineAnalysis.avgTenure) >= 2 
-                  ? "✓ Good stability — recruiters like 2+ years per role"
+                {parseFloat(timelineAnalysis.avgTenure) >= 2
+                  ? t('freeResults.careerTimeline.tenureGood')
                   : parseFloat(timelineAnalysis.avgTenure) >= 1
-                    ? "⚠ Short tenure may raise questions"
-                    : "⚠ Very short — may be seen as job hopping"}
+                    ? t('freeResults.careerTimeline.tenureWarning')
+                    : t('freeResults.careerTimeline.tenurePoor')}
               </p>
             </div>
             
             {/* Career Progression */}
             <div className="p-3 rounded-lg bg-muted/30">
               <div className="flex justify-between items-center mb-1">
-                <span className="text-sm font-medium text-foreground">Career Growth</span>
+                <span className="text-sm font-medium text-foreground">{t('freeResults.careerTimeline.careerGrowth')}</span>
                 <span className={cn("text-sm font-bold capitalize",
                   timelineAnalysis.progression === "rapid" ? "text-success" :
                   timelineAnalysis.progression === "steady" ? "text-success" :
@@ -2348,7 +2344,7 @@ export function FreeKeywordResults({
           {/* Indicators */}
           {careerSituation.indicators && careerSituation.indicators.length > 0 && (
             <div className="mb-4">
-              <p className="text-xs font-medium text-muted-foreground mb-2">What we detected:</p>
+              <p className="text-xs font-medium text-muted-foreground mb-2">{t('freeResults.careerSituationDetected.whatDetected')}</p>
               <div className="flex flex-wrap gap-2">
                 {careerSituation.indicators.map((indicator, index) => (
                   <span key={index} className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
@@ -2362,7 +2358,7 @@ export function FreeKeywordResults({
           {/* Tailored Advice */}
           {careerSituation.tailoredAdvice && careerSituation.tailoredAdvice.length > 0 && (
             <div className="space-y-3">
-              <p className="text-sm font-semibold text-foreground">Tailored advice for your situation:</p>
+              <p className="text-sm font-semibold text-foreground">{t('freeResults.careerSituationDetected.tailoredAdvice')}</p>
               {careerSituation.tailoredAdvice.map((advice, index) => (
                 <div 
                   key={index}
@@ -2425,11 +2421,11 @@ export function FreeKeywordResults({
               <div className="mb-5">
                 <div className="flex items-center gap-2 mb-2">
                   <Star className="w-4 h-4 text-primary" />
-                  <h5 className="font-semibold text-sm">Your Professional Headline</h5>
+                  <h5 className="font-semibold text-sm">{t('freeResults.personalizedCareerInsights.headlineTitle')}</h5>
                 </div>
                 <div className="p-3 rounded-xl bg-muted/50 border border-border">
                   <p className="font-medium text-foreground">{personalizedCareerInsights.suggestedHeadline}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Use this on LinkedIn and your resume header</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('freeResults.personalizedCareerInsights.headlineTip')}</p>
                 </div>
               </div>
             )}
@@ -2439,7 +2435,7 @@ export function FreeKeywordResults({
               <div className="mb-5">
                 <div className="flex items-center gap-2 mb-2">
                   <Target className="w-4 h-4 text-primary" />
-                  <h5 className="font-semibold text-sm">Your Unique Value</h5>
+                  <h5 className="font-semibold text-sm">{t('freeResults.personalizedCareerInsights.uniqueValue')}</h5>
                 </div>
                 <p className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-xl">
                   {personalizedCareerInsights.uniqueValue}
@@ -2453,7 +2449,7 @@ export function FreeKeywordResults({
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Rocket className="w-4 h-4 text-primary" />
-                    <h5 className="font-semibold text-sm">Your Next Career Moves</h5>
+                    <h5 className="font-semibold text-sm">{t('freeResults.personalizedCareerInsights.nextMoves')}</h5>
                   </div>
                   <div className="space-y-2">
                     {personalizedCareerInsights.nextRoleSuggestions.map((role, index) => (
@@ -2482,7 +2478,7 @@ export function FreeKeywordResults({
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <MessageSquare className="w-4 h-4 text-primary" />
-                    <h5 className="font-semibold text-sm">Interview Story Ideas</h5>
+                    <h5 className="font-semibold text-sm">{t('freeResults.personalizedCareerInsights.interviewStories')}</h5>
                   </div>
                   <div className="space-y-2">
                     {personalizedCareerInsights.interviewTalkingPoints.map((point, index) => (
@@ -2501,7 +2497,7 @@ export function FreeKeywordResults({
               <div className="mt-5 p-4 rounded-xl bg-gradient-to-r from-success/5 to-primary/5 border border-success/20">
                 <div className="flex items-center gap-2 mb-3">
                   <DollarSign className="w-4 h-4 text-success" />
-                  <h5 className="font-semibold text-sm">Salary Insight</h5>
+                  <h5 className="font-semibold text-sm">{t('freeResults.personalizedCareerInsights.salaryInsightTitle')}</h5>
                   <span className={cn(
                     "text-xs px-2 py-0.5 rounded-full ml-auto",
                     personalizedCareerInsights.salaryInsight.marketPosition === "above_market" ? "bg-success/20 text-success" :
@@ -2514,11 +2510,11 @@ export function FreeKeywordResults({
                 </div>
                 <div className="flex items-baseline gap-2 mb-2">
                   <span className="text-2xl font-bold text-success">{personalizedCareerInsights.salaryInsight.estimatedRange}</span>
-                  <span className="text-xs text-muted-foreground">estimated range</span>
+                  <span className="text-xs text-muted-foreground">{t('freeResults.personalizedCareerInsights.estimatedRange')}</span>
                 </div>
                 {personalizedCareerInsights.salaryInsight.leveragePoints && personalizedCareerInsights.salaryInsight.leveragePoints.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Your negotiation leverage:</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">{t('freeResults.personalizedCareerInsights.negotiationLeverage')}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {personalizedCareerInsights.salaryInsight.leveragePoints.map((point, index) => (
                         <span key={index} className="text-xs px-2 py-1 rounded-full bg-success/10 text-success">
@@ -2538,7 +2534,7 @@ export function FreeKeywordResults({
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Lightbulb className="w-4 h-4 text-warning" />
-                    <h5 className="font-semibold text-sm">Hidden Strengths You're Underselling</h5>
+                    <h5 className="font-semibold text-sm">{t('freeResults.personalizedCareerInsights.hiddenStrengths')}</h5>
                   </div>
                   <div className="space-y-1.5">
                     {personalizedCareerInsights.hiddenStrengths.map((strength, index) => (
@@ -2556,19 +2552,19 @@ export function FreeKeywordResults({
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <User className="w-4 h-4 text-primary" />
-                    <h5 className="font-semibold text-sm">Your Personal Brand</h5>
+                    <h5 className="font-semibold text-sm">{t('freeResults.personalizedCareerInsights.personalBrand')}</h5>
                   </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-start gap-2">
-                      <span className="text-xs text-muted-foreground shrink-0 w-16">Current:</span>
+                      <span className="text-xs text-muted-foreground shrink-0 w-16">{t('freeResults.personalizedCareerInsights.currentLabel')}</span>
                       <span className="text-muted-foreground">{personalizedCareerInsights.personalBrand.currentBrand}</span>
                     </div>
                     <div className="flex items-start gap-2">
-                      <span className="text-xs text-success shrink-0 w-16">Ideal:</span>
+                      <span className="text-xs text-success shrink-0 w-16">{t('freeResults.personalizedCareerInsights.idealLabel')}</span>
                       <span className="text-success font-medium">{personalizedCareerInsights.personalBrand.idealBrand}</span>
                     </div>
                     <div className="flex items-start gap-2">
-                      <span className="text-xs text-warning shrink-0 w-16">Gap:</span>
+                      <span className="text-xs text-warning shrink-0 w-16">{t('freeResults.personalizedCareerInsights.gapLabel')}</span>
                       <span className="text-warning">{personalizedCareerInsights.personalBrand.brandGap}</span>
                     </div>
                   </div>
@@ -2806,14 +2802,14 @@ export function FreeKeywordResults({
 
         {/* Disclaimer about estimates */}
         <p className="text-[10px] text-muted-foreground/70 italic mb-3">
-          * Compatibility ratings are estimates based on format analysis. Actual results may vary by company configuration.
+          {t('freeResults.atsCompat.disclaimer')}
         </p>
 
         {/* Top Issue to Fix */}
         {atsSystemCompatibility.topIssue && (
           <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
             <p className="text-xs font-medium text-foreground mb-1">
-              💡 Top ATS Issue to Fix
+              {t('freeResults.atsCompat.topIssueLabel')}
             </p>
             <p className="text-sm text-muted-foreground">
               {atsSystemCompatibility.topIssue}
@@ -2829,7 +2825,7 @@ export function FreeKeywordResults({
                 {getProductCtaCopy('control', t, formatPrice, isLocalCurrency).premiumPackage.headline}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Get an AI-rewritten resume that's optimized for ALL major ATS systems
+                {t('freeResults.atsCompat.ctaSubtext')}
               </p>
             </div>
             <PremiumPackageButton variant="control" isPrimary section="ats_compatibility" />
@@ -2845,7 +2841,7 @@ export function FreeKeywordResults({
           <div className="rounded-2xl bg-success/5 border border-success/20 p-5">
             <div className="flex items-center gap-2 mb-3">
               <Trophy className="w-4 h-4 text-success" />
-              <h4 className="font-semibold text-success">Strong Words You're Using</h4>
+              <h4 className="font-semibold text-success">{t('freeResults.powerWords.title')}</h4>
             </div>
             <div className="flex flex-wrap gap-2">
               {powerWords.map((word, index) => (
@@ -2854,7 +2850,7 @@ export function FreeKeywordResults({
                 </span>
               ))}
             </div>
-            <p className="text-xs text-success/70 mt-3">Keep using these! Recruiters love them.</p>
+            <p className="text-xs text-success/70 mt-3">{t('freeResults.powerWords.keepUsing')}</p>
           </div>
         )}
 
@@ -2863,7 +2859,7 @@ export function FreeKeywordResults({
           <div className="rounded-2xl bg-destructive/5 border border-destructive/20 p-5">
             <div className="flex items-center gap-2 mb-3">
               <XCircle className="w-4 h-4 text-destructive" />
-              <h4 className="font-semibold text-destructive">Weak Phrases to Eliminate</h4>
+              <h4 className="font-semibold text-destructive">{t('freeResults.weakPhrases.title')}</h4>
             </div>
             <div className="space-y-2">
               {weakPhrases.map((item, index) => (
@@ -2882,7 +2878,7 @@ export function FreeKeywordResults({
         <div className="rounded-2xl bg-primary/5 border border-primary/20 p-5 mb-5">
           <div className="flex items-center gap-2 mb-4">
             <Zap className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold">Quick Wins (5 min or less)</h4>
+            <h4 className="font-semibold">{t('freeResults.quickWins.title')}</h4>
           </div>
           <div className="space-y-3">
             {quickWins.map((win, index) => (
@@ -2903,7 +2899,7 @@ export function FreeKeywordResults({
                       win.impact === "high" ? "bg-success/10 text-success" :
                       win.impact === "medium" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"
                     )}>
-                      {win.impact} impact
+                      {t('freeResults.quickWins.impact', { level: win.impact })}
                     </span>
                   </div>
                 </div>
@@ -2916,10 +2912,10 @@ export function FreeKeywordResults({
             <div className="flex flex-col sm:flex-row items-center gap-3">
               <div className="flex-1 text-center sm:text-left">
                 <p className="font-semibold text-foreground text-sm">
-                  Want all your quick wins done for you?
+                  {t('freeResults.quickWins.wantAllDone')}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Our Premium Package includes an AI-rewritten resume with all fixes applied
+                  {t('freeResults.quickWins.premiumIncludes')}
                 </p>
               </div>
               <PremiumPackageButton variant="control" isPrimary section="quick_wins" />
@@ -2933,13 +2929,13 @@ export function FreeKeywordResults({
         <div className="rounded-2xl bg-gradient-to-br from-primary/10 to-success/10 border border-primary/30 p-5 mb-5">
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold">Sample Rewrite Preview</h4>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary ml-auto">Free teaser</span>
+            <h4 className="font-semibold">{t('freeResults.sampleRewrite.title')}</h4>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary ml-auto">{t('freeResults.sampleRewrite.badge')}</span>
           </div>
           
           <div className="space-y-3">
             <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20">
-              <p className="text-xs text-destructive font-medium mb-1">❌ BEFORE (from your resume)</p>
+              <p className="text-xs text-destructive font-medium mb-1">{t('freeResults.sampleRewrite.before')}</p>
               <p className="text-sm text-foreground italic">"{sampleRewrite.before}"</p>
             </div>
             
@@ -2948,20 +2944,20 @@ export function FreeKeywordResults({
             </div>
             
             <div className="p-3 rounded-xl bg-success/10 border border-success/20">
-              <p className="text-xs text-success font-medium mb-1">✅ AFTER (optimized)</p>
+              <p className="text-xs text-success font-medium mb-1">{t('freeResults.sampleRewrite.after')}</p>
               <p className="text-sm text-foreground font-medium">"{sampleRewrite.after}"</p>
             </div>
             
             <div className="text-center p-2 rounded-lg bg-background/50 border border-border/50">
               <p className="text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">Why it's better:</span> {sampleRewrite.improvement}
+                <span className="font-medium text-foreground">{t('freeResults.sampleRewrite.whyBetter')}</span> {sampleRewrite.improvement}
               </p>
             </div>
           </div>
           
           <div className="flex items-center gap-2 mt-4 p-2 rounded-lg bg-primary/10 border border-primary/20">
             <Lock className="w-3 h-3 text-primary" />
-            <span className="text-xs text-primary">Get all your bullet points rewritten in the full {priceDisplay} analysis</span>
+            <span className="text-xs text-primary">{t('freeResults.sampleRewrite.cta', { price: priceDisplay })}</span>
           </div>
         </div>
       )}
@@ -3001,16 +2997,16 @@ export function FreeKeywordResults({
               ? [
                   ...realWeakBullets.examples.map((bullet) => {
                     const truncated = bullet.length > 100 ? `${bullet.slice(0, 100)}...` : bullet;
-                    return `• From your resume: "${truncated}" — no measurable impact stated`;
+                    return t('freeResults.lockedInsights.bulletWithData1', { bullet: truncated });
                   }),
-                  `• ${realWeakBullets.weakCount} of your ${realWeakBullets.totalCount} bullet points lack quantification`,
-                  "• Get each one rewritten with metrics and a stronger power verb",
+                  t('freeResults.lockedInsights.bulletWithData2', { weak: realWeakBullets.weakCount, total: realWeakBullets.totalCount }),
+                  t('freeResults.lockedInsights.bulletWithData3'),
                 ]
               : [
-                  "• Replace 'Responsible for managing team of 5' → 'Led cross-functional team of 5, driving 32% efficiency gain'",
-                  "• Replace 'Helped with customer support' → 'Resolved 150+ customer tickets/week, achieving 98% satisfaction'",
-                  "• Add metrics to bullet points that currently lack quantification",
-                  "• Restructure responsibility-focused bullets into achievement statements",
+                  t('freeResults.lockedInsights.bulletLine1'),
+                  t('freeResults.lockedInsights.bulletLine2'),
+                  t('freeResults.lockedInsights.bulletLine3'),
+                  t('freeResults.lockedInsights.bulletLine4'),
                 ]
           }
           onUnlock={() => handleUpgradeClick('locked_bullet_rewrites')}
@@ -3022,36 +3018,36 @@ export function FreeKeywordResults({
           title={t('freeResults.keywordGapSection.title')}
           description={
             realKeywordGapStats && realKeywordGapStats.totalMissing > 0
-              ? `${realKeywordGapStats.totalMissing} missing keywords found specific to ${effectiveIndustry.replace(/_/g, ' ')} that ATS systems look for`
+              ? t('freeResults.lockedInsights.kwDescWithStats', { count: realKeywordGapStats.totalMissing, industry: effectiveIndustry.replace(/_/g, ' ') })
               : realKeywordGapStats
-                ? `Strong keyword coverage for ${effectiveIndustry.replace(/_/g, ' ')} — get phrasing and placement tips to make them count even more`
-                : `Missing keywords specific to ${effectiveIndustry.replace(/_/g, ' ')} that ATS systems look for`
+                ? t('freeResults.lockedInsights.kwDescGood', { industry: effectiveIndustry.replace(/_/g, ' ') })
+                : t('freeResults.lockedInsights.kwDescDefault', { industry: effectiveIndustry.replace(/_/g, ' ') })
           }
           previewLines={
             realKeywordGapStats && realKeywordGapStats.totalMissing > 0
               ? [
-                  `• ${realKeywordGapStats.criticalMissing} critical hard skill${realKeywordGapStats.criticalMissing === 1 ? '' : 's'} missing from your resume`,
+                  t('freeResults.lockedInsights.kwHard', { count: realKeywordGapStats.criticalMissing, plural: realKeywordGapStats.criticalMissing === 1 ? '' : 's' }),
                   ...(realKeywordGapStats.certifications > 0
-                    ? [`• ${realKeywordGapStats.certifications} industry certification${realKeywordGapStats.certifications === 1 ? '' : 's'} to mention (even in progress)`]
+                    ? [t('freeResults.lockedInsights.kwCerts', { count: realKeywordGapStats.certifications, plural: realKeywordGapStats.certifications === 1 ? '' : 's' })]
                     : []),
                   ...(realKeywordGapStats.tools > 0
-                    ? [`• ${realKeywordGapStats.tools} tool${realKeywordGapStats.tools === 1 ? '' : 's'} commonly listed in your field that you're missing`]
+                    ? [t('freeResults.lockedInsights.kwTools', { count: realKeywordGapStats.tools, plural: realKeywordGapStats.tools === 1 ? '' : 's' })]
                     : []),
                   ...(realKeywordGapStats.methodology > 0
-                    ? [`• ${realKeywordGapStats.methodology} methodology keyword${realKeywordGapStats.methodology === 1 ? '' : 's'} your competitors are using`]
+                    ? [t('freeResults.lockedInsights.kwMethodology', { count: realKeywordGapStats.methodology, plural: realKeywordGapStats.methodology === 1 ? '' : 's' })]
                     : []),
                 ]
               : realKeywordGapStats
                 ? [
-                    "• Where to place your strongest keywords for maximum ATS weight",
-                    "• Action verbs that outperform your current word choices",
-                    "• How your keyword density compares to top resumes in your field",
+                    t('freeResults.lockedInsights.kwPlacement'),
+                    t('freeResults.lockedInsights.kwVerbs'),
+                    t('freeResults.lockedInsights.kwDensity'),
                   ]
                 : [
-                    "• Critical hard skills missing from your resume",
-                    "• Industry certifications to mention (even in progress)",
-                    "• Action verbs that outperform your current word choices",
-                    "• Methodology keywords your competitors are using",
+                    t('freeResults.lockedInsights.kwHardDefault'),
+                    t('freeResults.lockedInsights.kwCertsDefault'),
+                    t('freeResults.lockedInsights.kwVerbsDefault'),
+                    t('freeResults.lockedInsights.kwMethodDefault'),
                   ]
           }
           onUnlock={() => handleUpgradeClick('locked_keyword_gap')}
@@ -3062,20 +3058,14 @@ export function FreeKeywordResults({
           title={t('freeResults.careerStrategySection.title')}
           description={
             currentRole
-              ? `Salary negotiation guidance, next-role paths, and interview talking points for your ${currentRole} background`
-              : `Salary negotiation guidance, next-role paths, and interview talking points for ${effectiveIndustry.replace(/_/g, ' ')}`
+              ? t('freeResults.lockedInsights.careerDescWithRole', { role: currentRole })
+              : t('freeResults.lockedInsights.careerDescDefault', { industry: effectiveIndustry.replace(/_/g, ' ') })
           }
           previewLines={[
-            // Deliberately not asserting a specific salary number or count here —
-            // a prior version claimed the exact same "$85,000-$120,000" range and
-            // "3 next-role progressions" to every user regardless of their actual
-            // role, industry, or experience level. Real salary/role-path data
-            // isn't something this scan computes, so the honest fix is removing
-            // the fabricated precision, not replacing it with a different guess.
-            "• Salary negotiation guidance based on your actual role and experience level",
-            "• Next-role progression paths with a gap analysis for each",
-            "• Interview talking points derived from your strongest achievements",
-            "• Personal brand assessment: current vs ideal positioning",
+            t('freeResults.lockedInsights.careerSalary'),
+            t('freeResults.lockedInsights.careerNextRole'),
+            t('freeResults.lockedInsights.careerInterview'),
+            t('freeResults.lockedInsights.careerBrand'),
           ]}
           onUnlock={() => handleUpgradeClick('locked_career_strategy')}
           isLoading={isLoading}
@@ -3131,30 +3121,30 @@ export function FreeKeywordResults({
                 <Download className="w-5 h-5 text-success" />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-primary">Premium Package</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-primary">{t('freeResults.premiumCta.package')}</span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
                   {isLocalCurrency ? `$${PRODUCTS.premiumPackage.priceUsd} ≈ ${formatPrice(PRODUCTS.premiumPackage.priceUsd)}` : `$${PRODUCTS.premiumPackage.priceUsd}`}
                 </span>
               </div>
             </div>
             <h4 className="text-xl font-bold text-foreground mb-2">
-              🎯 Get Your ATS-Optimized Resume + Cover Letter
+              {t('freeResults.premiumCta.title')}
             </h4>
             <p className="text-sm text-muted-foreground mb-4">
-              Our AI rewrites your entire resume to match your target role, plus generates a tailored cover letter — download both as PDFs.
+              {t('freeResults.premiumCta.subtitle')}
             </p>
             <div className="grid sm:grid-cols-3 gap-3 mb-4">
               <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50 border border-success/20">
                 <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                <span className="text-xs text-foreground">AI-rewritten resume</span>
+                <span className="text-xs text-foreground">{t('freeResults.premiumCta.aiResume')}</span>
               </div>
               <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50 border border-success/20">
                 <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                <span className="text-xs text-foreground">Custom cover letter</span>
+                <span className="text-xs text-foreground">{t('freeResults.premiumCta.customCoverLetter')}</span>
               </div>
               <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50 border border-success/20">
                 <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                <span className="text-xs text-foreground">PDF download</span>
+                <span className="text-xs text-foreground">{t('freeResults.premiumCta.pdfDownload')}</span>
               </div>
             </div>
             
@@ -3167,10 +3157,10 @@ export function FreeKeywordResults({
               <PremiumPackageButton variant="control" isPrimary section="tailored_resume" />
             </div>
             <Link to="/pricing" onClick={() => window.scrollTo(0, 0)} className="inline-flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mt-3">
-              See all packages <ArrowRight className="w-3 h-3" />
+              {t('freeResults.premiumCta.seeAll')} <ArrowRight className="w-3 h-3" />
             </Link>
             <p className="text-xs text-muted-foreground mt-3">
-              Complete package: ATS-optimized resume + personalized cover letter ready to send to employers
+              {t('freeResults.premiumCta.footnote')}
             </p>
           </div>
         </div>
@@ -3200,7 +3190,7 @@ export function FreeKeywordResults({
           <h4 className="font-semibold">{t('freeScan.emailCapture.title')}</h4>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
-          Join 10,000+ job seekers getting weekly tips to beat the ATS and land interviews.
+          {t('freeResults.emailCapture.joinMessage')}
         </p>
         
         {isSubscribed ? (
@@ -3237,7 +3227,7 @@ export function FreeKeywordResults({
             </Button>
           </form>
         )}
-        <p className="text-xs text-muted-foreground mt-2">No spam. Unsubscribe anytime.</p>
+        <p className="text-xs text-muted-foreground mt-2">{t('freeResults.emailCapture.noSpam')}</p>
       </div>
 
       {/* Cover Letter CTA - requires job description */}
@@ -3248,7 +3238,7 @@ export function FreeKeywordResults({
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <h4 className="font-bold text-foreground">Custom Cover Letter</h4>
+              <h4 className="font-bold text-foreground">{t('freeResults.coverLetterCta.title')}</h4>
               <span className="text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent-foreground font-medium">
                 {isLocalCurrency ? `$${PRODUCTS.coverLetter.priceUsd} ≈ ${formatPrice(PRODUCTS.coverLetter.priceUsd)}` : `$${PRODUCTS.coverLetter.priceUsd}`}
               </span>
@@ -3257,9 +3247,9 @@ export function FreeKeywordResults({
               {getProductCtaCopy('control', t, formatPrice, isLocalCurrency).coverLetter.description}
             </p>
             <div className="flex flex-wrap gap-2 mb-3 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Personalized opening</span>
-              <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Skills highlighted</span>
-              <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> Instant download</span>
+              <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> {t('freeResults.coverLetterCta.personalizedOpening')}</span>
+              <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> {t('freeResults.coverLetterCta.skillsHighlighted')}</span>
+              <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> {t('freeResults.coverLetterCta.instantDownload')}</span>
             </div>
             <CoverLetterButton hasJobDescription={uploadedJobs.length > 0} variant="control" section="cover_letter_cta" />
           </div>
