@@ -113,9 +113,12 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
   );
-  const { data: allowed } = await supabase.rpc("check_rate_limit", {
-    p_function: "generate-cover-letter", p_ip: clientIp, p_max_requests: 20, p_window_minutes: 60
-  });
+  const [{ data: allowed }, body] = await Promise.all([
+    supabase.rpc("check_rate_limit", {
+      p_function: "generate-cover-letter", p_ip: clientIp, p_max_requests: 20, p_window_minutes: 60
+    }),
+    req.json()
+  ]);
   if (!allowed) {
     return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
       { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -127,7 +130,7 @@ serve(async (req) => {
     // application document submitted to an employer, not advisory content for
     // the candidate to read. The `language` field may still arrive in the
     // request body from shared call sites, but it's intentionally unused here.
-    const { resumeText, jobDescription, jobTitle, jobCompany, tone = "professional", personalizationContext } = await req.json();
+    const { resumeText, jobDescription, jobTitle, jobCompany, tone = "professional", personalizationContext } = body;
 
     if (!resumeText) {
       return new Response(

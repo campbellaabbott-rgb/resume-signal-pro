@@ -477,74 +477,10 @@ ${jobDescription}` : 'No job description provided - optimize for general profess
 
 BEFORE YOU RESPOND: Count all jobs, education entries, and major bullet points in the original. Your output MUST contain ALL of them, enhanced.`;
 
-    const { response: resumeResponse, modelUsed: resumeModel } = await callAIWithFallback(
-      apiKey,
-      {
-        messages: [
-          { role: "system", content: resumeSystemPrompt },
-          { role: "user", content: resumeUserPrompt }
-        ],
-        max_completion_tokens: 12000,
-      },
-      'Resume generation'
-    );
-
-    if (!resumeResponse.ok) {
-      const errorText = await resumeResponse.text();
-      logStep("Resume AI API error", { status: resumeResponse.status, error: errorText, model: resumeModel });
-      
-      if (resumeResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "AI service is temporarily busy. Please try again in a few moments.", retryable: true }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (resumeResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI service credits depleted. Please contact support.", retryable: false }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      throw new Error(`Resume AI API error: ${resumeResponse.status}`);
-    }
-
-    logStep("Resume generated successfully", { model: resumeModel });
-
-    const resumeAiResponse = await resumeResponse.json();
-    const resumeContent = resumeAiResponse.choices?.[0]?.message?.content;
-    
-    if (!resumeContent) {
-      throw new Error("No content in resume AI response");
-    }
-
-    let resumeResult;
-    try {
-      const jsonMatch = resumeContent.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        resumeResult = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON found in resume response");
-      }
-    } catch (parseError) {
-      logStep("Resume JSON parse error", { error: String(parseError) });
-      resumeResult = {
-        rewrittenResume: resumeContent,
-        professionalSummary: "",
-        keyChanges: [],
-        addedKeywords: [],
-        atsScore: { before: 50, after: 85, improvement: "Optimized for ATS" },
-        highlights: []
-      };
-    }
-
-    logStep("Resume rewrite complete", { 
-      keywordsAdded: resumeResult.addedKeywords?.length,
-      changesCount: resumeResult.keyChanges?.length 
-    });
-
-    // Step 2: Generate the cover letter
-    logStep("Generating cover letter");
+    // Run resume rewrite and cover letter in parallel.
+    // The cover letter uses the original resumeText (same facts/metrics as the rewrite;
+    // the rewrite only adds ATS keywords, not new information) so both calls are independent.
+    logStep("Starting parallel resume + cover letter generation");
 
     const coverLetterSystemPrompt = `You are a former hiring manager at Google, Amazon, and McKinsey who now coaches executives on personal branding. You've written thousands of cover letters that landed interviews. Your letters sound like they were written by a thoughtful, articulate human - not AI.
 
@@ -606,7 +542,7 @@ Your writing must:
     const coverLetterUserPrompt = `Write a compelling, human-sounding cover letter for this candidate and role:
 
 CANDIDATE'S RESUME (use specific details from this):
-${resumeResult.rewrittenResume}
+${resumeText}
 
 TARGET ROLE: ${jobTitle || 'Not specified'}
 TARGET COMPANY: ${jobCompany || 'Not specified'}
@@ -616,40 +552,93 @@ ${jobDescription}` : ''}
 
 Write a cover letter that sounds like it was written by this specific person - confident, articulate, and genuine. Reference specific experiences from their resume with concrete details.`;
 
-    const { response: coverLetterResponse, modelUsed: coverLetterModel } = await callAIWithFallback(
-      apiKey,
-      {
-        messages: [
-          { role: "system", content: coverLetterSystemPrompt },
-          { role: "user", content: coverLetterUserPrompt }
-        ],
-        max_completion_tokens: 4000,
-      },
-      'Cover letter generation'
-    );
+    const [
+      { response: resumeResponse, modelUsed: resumeModel },
+      { response: coverLetterResponse, modelUsed: coverLetterModel }
+    ] = await Promise.all([
+      callAIWithFallback(
+        apiKey,
+        {
+          messages: [
+            { role: "system", content: resumeSystemPrompt },
+            { role: "user", content: resumeUserPrompt }
+          ],
+          max_completion_tokens: 12000,
+        },
+        'Resume generation'
+      ),
+      callAIWithFallback(
+        apiKey,
+        {
+          messages: [
+            { role: "system", content: coverLetterSystemPrompt },
+            { role: "user", content: coverLetterUserPrompt }
+          ],
+          max_completion_tokens: 4000,
+        },
+        'Cover letter generation'
+      )
+    ]);
+
+    if (!resumeResponse.ok) {
+      const errorText = await resumeResponse.text();
+      logStep("Resume AI API error", { status: resumeResponse.status, error: errorText, model: resumeModel });
+      if (resumeResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "AI service is temporarily busy. Please try again in a few moments.", retryable: true }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (resumeResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "AI service credits depleted. Please contact support.", retryable: false }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      throw new Error(`Resume AI API error: ${resumeResponse.status}`);
+    }
 
     if (!coverLetterResponse.ok) {
       const errorText = await coverLetterResponse.text();
       logStep("Cover letter AI API error", { status: coverLetterResponse.status, error: errorText, model: coverLetterModel });
-      
       if (coverLetterResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "AI service is temporarily busy. Please try again in a few moments.", retryable: true }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
       throw new Error(`Cover letter AI API error: ${coverLetterResponse.status}`);
     }
 
-    logStep("Cover letter generated successfully", { model: coverLetterModel });
+    logStep("Both AI calls complete", { resumeModel, coverLetterModel });
+
+    const resumeAiResponse = await resumeResponse.json();
+    const resumeContent = resumeAiResponse.choices?.[0]?.message?.content;
+    if (!resumeContent) throw new Error("No content in resume AI response");
+
+    let resumeResult;
+    try {
+      const jsonMatch = resumeContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        resumeResult = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("No JSON found in resume response");
+      }
+    } catch (parseError) {
+      logStep("Resume JSON parse error", { error: String(parseError) });
+      resumeResult = {
+        rewrittenResume: resumeContent,
+        professionalSummary: "",
+        keyChanges: [],
+        addedKeywords: [],
+        atsScore: { before: 50, after: 85, improvement: "Optimized for ATS" },
+        highlights: []
+      };
+    }
 
     const coverLetterAiResponse = await coverLetterResponse.json();
     const coverLetterContent = coverLetterAiResponse.choices?.[0]?.message?.content;
-
-    if (!coverLetterContent) {
-      throw new Error("No content in cover letter AI response");
-    }
+    if (!coverLetterContent) throw new Error("No content in cover letter AI response");
 
     let coverLetterResult;
     try {
@@ -670,7 +659,7 @@ Write a cover letter that sounds like it was written by this specific person - c
       };
     }
 
-    logStep("Cover letter generated");
+    logStep("Both results parsed");
 
     // Auto-fix common corruption patterns before validation
     const resumeFix = autoFixContent(resumeResult.rewrittenResume || '', resumeText);

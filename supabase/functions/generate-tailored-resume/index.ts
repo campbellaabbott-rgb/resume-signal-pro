@@ -108,11 +108,14 @@ serve(async (req) => {
 
   const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
   const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  const { data: allowed } = await supabase.rpc("check_rate_limit", { p_function: "generate-tailored-resume", p_ip: clientIp, p_max_requests: 20, p_window_minutes: 60 });
+  const [{ data: allowed }, body] = await Promise.all([
+    supabase.rpc("check_rate_limit", { p_function: "generate-tailored-resume", p_ip: clientIp, p_max_requests: 20, p_window_minutes: 60 }),
+    req.json()
+  ]);
   if (!allowed) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   try {
-    const { resumeText, jobTitle, jobCompany, jobDescription, matchingSkills, missingSkills, personalizationContext } = await req.json();
+    const { resumeText, jobTitle, jobCompany, jobDescription, matchingSkills, missingSkills, personalizationContext } = body;
 
     if (!resumeText || !jobTitle) {
       return new Response(

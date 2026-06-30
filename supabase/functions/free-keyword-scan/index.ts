@@ -338,8 +338,7 @@ async function fetchWithRetry(
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      
-      const response = await fetch(url, options);
+      const response = await fetch(url, { ...options, signal: AbortSignal.timeout(55000) });
       
       // Don't retry client errors (4xx) except rate limits
       if (response.ok || (response.status >= 400 && response.status < 500 && response.status !== 429)) {
