@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ interface EducationEditorProps {
 }
 
 export function EducationEditor({ entries, onChange }: EducationEditorProps) {
+  const { t } = useTranslation();
   const updateEntry = (id: string, patch: Partial<BuilderEducationEntry>) => {
     onChange(entries.map((e) => (e.id === id ? { ...e, ...patch } : e)));
   };
@@ -33,7 +35,7 @@ export function EducationEditor({ entries, onChange }: EducationEditorProps) {
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
               <GripVertical className="w-3.5 h-3.5" />
-              Education {idx + 1}
+              {t("resumeBuilder.education.entry", { num: idx + 1 })}
             </div>
             {entries.length > 1 && (
               <Button
@@ -49,7 +51,7 @@ export function EducationEditor({ entries, onChange }: EducationEditorProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">School</Label>
+              <Label className="text-xs">{t("resumeBuilder.education.school")}</Label>
               <Input
                 value={entry.school}
                 onChange={(e) => updateEntry(entry.id, { school: e.target.value })}
@@ -57,7 +59,7 @@ export function EducationEditor({ entries, onChange }: EducationEditorProps) {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Degree</Label>
+              <Label className="text-xs">{t("resumeBuilder.education.degree")}</Label>
               <Input
                 value={entry.degree}
                 onChange={(e) => updateEntry(entry.id, { degree: e.target.value })}
@@ -65,7 +67,7 @@ export function EducationEditor({ entries, onChange }: EducationEditorProps) {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Field of Study</Label>
+              <Label className="text-xs">{t("resumeBuilder.education.fieldOfStudy")}</Label>
               <Input
                 value={entry.field}
                 onChange={(e) => updateEntry(entry.id, { field: e.target.value })}
@@ -74,7 +76,7 @@ export function EducationEditor({ entries, onChange }: EducationEditorProps) {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">Start Date</Label>
+                <Label className="text-xs">{t("resumeBuilder.education.startDate")}</Label>
                 <Input
                   value={entry.startDate}
                   onChange={(e) => updateEntry(entry.id, { startDate: e.target.value })}
@@ -82,7 +84,7 @@ export function EducationEditor({ entries, onChange }: EducationEditorProps) {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">End Date</Label>
+                <Label className="text-xs">{t("resumeBuilder.education.endDate")}</Label>
                 <Input
                   value={entry.endDate}
                   onChange={(e) => updateEntry(entry.id, { endDate: e.target.value })}
@@ -93,7 +95,7 @@ export function EducationEditor({ entries, onChange }: EducationEditorProps) {
           </div>
 
           <div className="space-y-1">
-            <Label className="text-xs">Additional Details (optional)</Label>
+            <Label className="text-xs">{t("resumeBuilder.education.additionalDetails")}</Label>
             <Textarea
               value={entry.details}
               onChange={(e) => updateEntry(entry.id, { details: e.target.value })}

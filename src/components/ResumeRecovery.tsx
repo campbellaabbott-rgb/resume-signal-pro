@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useCallback, useState } from "react";
 import { Upload, FileText, X, Loader2, AlertCircle, Sparkles, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ interface ResumeRecoveryProps {
 
 export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryProps) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [mode, setMode] = useState<"upload" | "paste">("upload");
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -42,7 +44,7 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
         if (file.type === "text/plain") {
           const text = await file.text();
           setExtractedText(text);
-          toast({ title: "Text file loaded", description: "Ready to analyze." });
+          toast({ title: t("resumeRecovery.toastTextLoaded"), description: t("resumeRecovery.toastTextLoadedDesc") });
           return;
         }
 
@@ -58,8 +60,8 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
           if (data?.success && data?.text) {
             setExtractedText(data.text);
             toast({
-              title: "PDF parsed successfully",
-              description: `Extracted text from ${data.pages ?? ""} page(s).`,
+              title: t("resumeRecovery.toastPdfParsed"),
+              description: t("resumeRecovery.toastPdfParsedDesc", { pages: data.pages ?? "" }),`,
             });
             return;
           }
@@ -74,7 +76,7 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
 
         if (data?.success && data?.text) {
           setExtractedText(data.text);
-          toast({ title: "DOCX parsed successfully", description: "Ready to analyze." });
+          toast({ title: t("resumeRecovery.toastDocxParsed"), description: t("resumeRecovery.toastTextLoadedDesc") });
           return;
         }
 
@@ -82,8 +84,8 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
       } catch (err) {
         console.error("Resume recovery parsing error:", err);
         toast({
-          title: "Could not read your file",
-          description: "Please try pasting the resume text instead.",
+          title: t("resumeRecovery.toastCouldNotRead"),
+          description: t("resumeRecovery.toastCouldNotReadDesc"),
           variant: "destructive",
         });
         clearFile();
@@ -129,9 +131,9 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
           <AlertCircle className="w-6 h-6 text-warning" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold mb-1">Resume Not Found</h2>
+          <h2 className="text-xl font-semibold mb-1">{t("resumeRecovery.title")}</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Your payment was successful! We just need your resume again to generate your analysis.
+            {t("resumeRecovery.subtitle")}
           </p>
         </div>
       </div>
@@ -211,7 +213,7 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
                 </button>
               </div>
               <p className="text-sm text-muted-foreground">
-                {isExtracting ? "Extracting text..." : extractedText ? "Ready to analyze!" : ""}
+                {isExtracting ? t("resumeRecovery.extracting") : extractedText ? t("resumeRecovery.readyToAnalyze") : ""}
               </p>
             </div>
           ) : (
@@ -219,8 +221,8 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 mb-4">
                 <Upload className="w-8 h-8 text-primary" />
               </div>
-              <p className="text-lg font-medium mb-1">Drop your resume here</p>
-              <p className="text-sm text-muted-foreground mb-5">PDF, DOCX, or TXT files supported</p>
+              <p className="text-lg font-medium mb-1">{t("resumeRecovery.dropHere")}</p>
+              <p className="text-sm text-muted-foreground mb-5">{t("resumeRecovery.supported")}</p>
               <label>
                 <input
                   type="file"
@@ -244,7 +246,7 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
             <textarea
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Paste your resume content here...&#10;&#10;Include your work experience, skills, and education."
+              placeholder={t("resumeRecovery.pastePlaceholder")}
               className="w-full h-56 p-4 rounded-xl bg-background/50 border border-border/50 text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 resize-none text-sm leading-relaxed transition-all"
             />
             <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-lg bg-card/80 border border-border text-xs text-muted-foreground">

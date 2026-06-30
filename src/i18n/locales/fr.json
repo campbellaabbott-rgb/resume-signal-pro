@@ -3176,5 +3176,115 @@
     "tryAgain": "Réessayer",
     "returnHome": "Retour à l'accueil",
     "contactUs": "Toujours des problèmes ? Contactez-nous à support@resumebooster.com"
+  },
+  "resumeRecovery": {
+    "title": "CV introuvable",
+    "subtitle": "Votre paiement a réussi ! Nous avons juste besoin de votre CV à nouveau pour générer votre analyse.",
+    "uploadFile": "Télécharger un fichier",
+    "pasteText": "Coller du texte",
+    "dropHere": "Déposez votre CV ici",
+    "supported": "Fichiers PDF, DOCX ou TXT pris en charge",
+    "browseFiles": "Parcourir les fichiers",
+    "extracting": "Extraction du texte...",
+    "readyToAnalyze": "Prêt à analyser !",
+    "pastePlaceholder": "Collez le contenu de votre CV ici...\n\nIncluez votre expérience professionnelle, vos compétences et votre formation.",
+    "extractingBtn": "Extraction...",
+    "generateAnalysis": "Générer l'analyse",
+    "readyInSeconds": "Votre analyse sera prête en quelques secondes",
+    "toastTextLoaded": "Fichier texte chargé",
+    "toastTextLoadedDesc": "Prêt à analyser.",
+    "toastPdfParsed": "PDF analysé avec succès",
+    "toastPdfParsedDesc": "Texte extrait de {{pages}} page(s).",
+    "toastDocxParsed": "DOCX analysé avec succès",
+    "toastCouldNotRead": "Impossible de lire votre fichier",
+    "toastCouldNotReadDesc": "Veuillez essayer de coller le texte du CV."
+  },
+  "liveActivity": {
+    "scanningNow": "personnes scannent maintenant",
+    "justNow": "À l'instant",
+    "activities": {
+      "scanned": "Quelqu'un vient de scanner son CV",
+      "improved": "Un utilisateur a amélioré son score ATS",
+      "downloaded": "Quelqu'un a téléchargé son rapport",
+      "optimized": "Un CV a été optimisé",
+      "keywords": "Les mots-clés ont été analysés",
+      "freeScore": "Quelqu'un a obtenu son score gratuit",
+      "coverLetter": "Une lettre de motivation a été générée"
+    }
+  },
+  "scanCredits": {
+    "credits": "crédits",
+    "yourScanCredits": "Vos crédits de scan",
+    "creditsRemaining": "crédits restants",
+    "neverExpire": "Les crédits n'expirent jamais",
+    "perCredit": "{{price}} par crédit",
+    "topUpCredits": "Recharger des crédits",
+    "useDifferentEmail": "Utiliser un autre e-mail",
+    "checkYourCredits": "Vérifier vos crédits de scan",
+    "enterEmail": "Entrez l'e-mail utilisé pour acheter des scans.",
+    "checking": "Vérification...",
+    "checkCredits": "Vérifier les crédits",
+    "noCredits": "Aucun crédit trouvé pour cet e-mail.",
+    "freeTier": "Niveau gratuit : jusqu'à 7 scans par jour, gratuit pour toujours.",
+    "buyCredits": "Acheter des crédits — {{price}} chacun",
+    "myCredits": "Mes crédits"
+  },
+  "industryConfidence": {
+    "industry": "Secteur :",
+    "corrected": "Corrigé",
+    "lowWarning": "La détection du secteur peut être inexacte. Cela affecte les recommandations de mots-clés.",
+    "mediumWarning": "Certaines recommandations peuvent ne pas être spécifiques au secteur. Vérifiez ou corrigez ci-dessous.",
+    "detectionSignals": "Signaux de détection :",
+    "aiSuggested": "L'IA a également suggéré : {{industry}}",
+    "clickToChange": "Cliquez ci-dessous pour changer si c'est plus précis.",
+    "correctIndustry": "Corriger le secteur",
+    "changeIndustry": "Changer de secteur",
+    "selectCorrect": "Sélectionnez le secteur correct :",
+    "useAiSuggestion": "Utiliser la suggestion IA : {{industry}}",
+    "impactNotice": "Changer le secteur mettra à jour les recommandations de mots-clés et les benchmarks.",
+    "confidenceHigh": "Haute confiance",
+    "confidenceMedium": "Confiance moyenne",
+    "confidenceLow": "Faible confiance",
+    "highShort": "✓ Haute",
+    "mediumShort": "◐ Moyenne",
+    "lowShort": "○ Faible",
+    "highDesc": "Signaux sectoriels forts détectés. Les recommandations sont très pertinentes.",
+    "mediumDesc": "Quelques signaux sectoriels détectés, vérification recommandée.",
+    "lowDesc": "Signaux limités. Veuillez vérifier et corriger si nécessaire pour de meilleures recommandations."
+  },
+  "resumeBuilder": {
+    "experience": {
+      "role": "Poste {{num}}",
+      "jobTitle": "Intitulé du poste",
+      "company": "Entreprise",
+      "location": "Lieu",
+      "startDate": "Date de début",
+      "endDate": "Date de fin",
+      "bulletPoints": "Points clés",
+      "addBullet": "Ajouter un point",
+      "addWorkExperience": "Ajouter une expérience professionnelle"
+    },
+    "education": {
+      "entry": "Formation {{num}}",
+      "school": "Établissement",
+      "degree": "Diplôme",
+      "fieldOfStudy": "Domaine d'études",
+      "startDate": "Date de début",
+      "endDate": "Date de fin",
+      "additionalDetails": "Détails supplémentaires (facultatif)",
+      "addEducation": "Ajouter une formation"
+    },
+    "tagList": {
+      "typeToAdd": "Tapez et appuyez sur Entrée pour ajouter"
+    },
+    "preview": {
+      "yourName": "Votre nom",
+      "role": "Poste",
+      "summary": "Résumé",
+      "experience": "Expérience",
+      "education": "Formation",
+      "skills": "Compétences",
+      "certifications": "Certifications"
+    }
   }
 }

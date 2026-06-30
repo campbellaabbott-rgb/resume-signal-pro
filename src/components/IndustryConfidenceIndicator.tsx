@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { 
@@ -111,32 +112,32 @@ const getConfidenceConfig = (confidence: 'high' | 'medium' | 'low') => {
     case 'high':
       return {
         icon: Check,
-        label: 'High Confidence',
-        shortLabel: '✓ High',
+        label: t('industryConfidence.confidenceHigh'),
+        shortLabel: t('industryConfidence.highShort'),
         bgColor: 'bg-success/10',
         borderColor: 'border-success/30',
         textColor: 'text-success',
-        description: 'Strong industry signals detected. Recommendations are highly relevant.'
+        description: t('industryConfidence.highDesc')
       };
     case 'medium':
       return {
         icon: HelpCircle,
-        label: 'Medium Confidence',
-        shortLabel: '◐ Medium',
+        label: t('industryConfidence.confidenceMedium'),
+        shortLabel: t('industryConfidence.mediumShort'),
         bgColor: 'bg-warning/10',
         borderColor: 'border-warning/30',
         textColor: 'text-warning',
-        description: 'Some industry signals detected, but verification recommended.'
+        description: t('industryConfidence.mediumDesc')
       };
     case 'low':
       return {
         icon: AlertTriangle,
-        label: 'Low Confidence',
-        shortLabel: '○ Low',
+        label: t('industryConfidence.confidenceLow'),
+        shortLabel: t('industryConfidence.lowShort'),
         bgColor: 'bg-muted',
         borderColor: 'border-border',
         textColor: 'text-muted-foreground',
-        description: 'Limited signals. Please verify and correct if needed for better recommendations.'
+        description: t('industryConfidence.lowDesc')
       };
   }
 };
@@ -149,6 +150,7 @@ export function IndustryConfidenceIndicator({
   resumeTextLength,
   visitorId
 }: IndustryConfidenceIndicatorProps) {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showCorrection, setShowCorrection] = useState(false);
   const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null);
@@ -206,7 +208,7 @@ export function IndustryConfidenceIndicator({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Industry: </span>
+                <span className="text-sm text-muted-foreground">{t("industryConfidence.industry")} </span>
                 <span className="font-bold text-foreground text-lg">
                   {formatIndustryName(displayIndustry)}
                 </span>
@@ -242,8 +244,8 @@ export function IndustryConfidenceIndicator({
             <AlertTriangle className={cn("w-4 h-4 mt-0.5 shrink-0", config.textColor)} />
             <p className="text-xs text-muted-foreground">
               {confidence === 'low' 
-                ? "Industry detection may be inaccurate. This affects keyword recommendations."
-                : "Some recommendations may not be industry-specific. Verify or correct below."
+                ? t("industryConfidence.lowWarning")
+                : t("industryConfidence.mediumWarning")
               }
             </p>
           </div>
@@ -278,9 +280,7 @@ export function IndustryConfidenceIndicator({
               <div className="flex items-start gap-2">
                 <Lightbulb className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">
-                    AI also suggested: {formatIndustryName(aiSuggested)}
-                  </p>
+                  <p className="text-sm font-medium text-foreground">{t("industryConfidence.aiSuggested", { industry: formatIndustryName(aiSuggested) })}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Click below to change if this is more accurate.
                   </p>
@@ -309,12 +309,12 @@ export function IndustryConfidenceIndicator({
               className="w-full gap-2"
             >
               <RefreshCw className="w-4 h-4" />
-              {confidence === 'low' ? 'Correct Industry' : 'Change Industry'}
+              {confidence === 'low' ? t('industryConfidence.correctIndustry') : t('industryConfidence.changeIndustry')}
             </Button>
           ) : (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-foreground">Select correct industry:</p>
+                <p className="text-sm font-medium text-foreground">{t("industryConfidence.selectCorrect")}</p>
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();

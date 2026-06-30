@@ -3176,5 +3176,115 @@
     "tryAgain": "Subukan Muli",
     "returnHome": "Bumalik sa Home",
     "contactUs": "May problema pa rin? Makipag-ugnayan sa amin sa support@resumebooster.com"
+  },
+  "resumeRecovery": {
+    "title": "Hindi Nahanap ang Resume",
+    "subtitle": "Matagumpay ang iyong bayad! Kailangan lang namin ulit ang iyong resume para makabuo ng iyong pagsusuri.",
+    "uploadFile": "Mag-upload ng File",
+    "pasteText": "I-paste ang Teksto",
+    "dropHere": "I-drop ang iyong resume dito",
+    "supported": "Suportado ang PDF, DOCX, o TXT na mga file",
+    "browseFiles": "Mag-browse ng mga File",
+    "extracting": "Kino-kuha ang teksto...",
+    "readyToAnalyze": "Handa na para suriin!",
+    "pastePlaceholder": "I-paste ang nilalaman ng iyong resume dito...\n\nIsama ang iyong karanasan sa trabaho, mga kasanayan, at edukasyon.",
+    "extractingBtn": "Kinukuha...",
+    "generateAnalysis": "Bumuo ng Pagsusuri",
+    "readyInSeconds": "Ang iyong pagsusuri ay magiging handa sa ilang segundo",
+    "toastTextLoaded": "Na-load ang text file",
+    "toastTextLoadedDesc": "Handa na para suriin.",
+    "toastPdfParsed": "Matagumpay na na-parse ang PDF",
+    "toastPdfParsedDesc": "Nakuha ang teksto mula sa {{pages}} pahina.",
+    "toastDocxParsed": "Matagumpay na na-parse ang DOCX",
+    "toastCouldNotRead": "Hindi mabasa ang iyong file",
+    "toastCouldNotReadDesc": "Subukang i-paste ang teksto ng resume."
+  },
+  "liveActivity": {
+    "scanningNow": "mga tao ang nagse-scan ngayon",
+    "justNow": "Kakaalis pa lang",
+    "activities": {
+      "scanned": "May isa na nagse-scan ng kanilang resume",
+      "improved": "Isang user ang nagpabuti ng ATS Score",
+      "downloaded": "May isa na nag-download ng kanilang ulat",
+      "optimized": "Isang resume ang na-optimize",
+      "keywords": "Nasuri ang mga keyword",
+      "freeScore": "May nakakuha ng libreng marka",
+      "coverLetter": "Nagawa ang isang cover letter"
+    }
+  },
+  "scanCredits": {
+    "credits": "kredito",
+    "yourScanCredits": "Ang Iyong mga Scan Credit",
+    "creditsRemaining": "na kredito ang natitira",
+    "neverExpire": "Ang mga kredito ay hindi mag-e-expire",
+    "perCredit": "{{price}} bawat kredito",
+    "topUpCredits": "Mag-top Up ng Credits",
+    "useDifferentEmail": "Gumamit ng ibang email",
+    "checkYourCredits": "Suriin ang Iyong mga Scan Credit",
+    "enterEmail": "Ilagay ang email na ginamit mo sa pagbili ng mga scan.",
+    "checking": "Sinusuri...",
+    "checkCredits": "Suriin ang Credits",
+    "noCredits": "Walang nahanap na kredito para sa email na ito.",
+    "freeTier": "Libreng antas: Hanggang 7 scan bawat araw, libre magpakailanman.",
+    "buyCredits": "Bumili ng Credits — {{price}} bawat isa",
+    "myCredits": "Aking mga Kredito"
+  },
+  "industryConfidence": {
+    "industry": "Industriya:",
+    "corrected": "Naayos na",
+    "lowWarning": "Maaaring hindi tumpak ang pagtukoy ng industriya. Nakakaapekto ito sa mga rekomendasyon ng keyword.",
+    "mediumWarning": "Ang ilang rekomendasyon ay maaaring hindi partikular sa industriya. I-verify o itama sa ibaba.",
+    "detectionSignals": "Mga signal ng pagtukoy:",
+    "aiSuggested": "Iminungkahi rin ng AI: {{industry}}",
+    "clickToChange": "Mag-click sa ibaba para baguhin kung mas tumpak ito.",
+    "correctIndustry": "Itama ang Industriya",
+    "changeIndustry": "Baguhin ang Industriya",
+    "selectCorrect": "Piliin ang tamang industriya:",
+    "useAiSuggestion": "Gamitin ang mungkahi ng AI: {{industry}}",
+    "impactNotice": "Ang pagbabago ng industriya ay mag-a-update ng mga rekomendasyon ng keyword at mga benchmark.",
+    "confidenceHigh": "Mataas na Kumpiyansa",
+    "confidenceMedium": "Katamtamang Kumpiyansa",
+    "confidenceLow": "Mababang Kumpiyansa",
+    "highShort": "✓ Mataas",
+    "mediumShort": "◐ Katamtaman",
+    "lowShort": "○ Mababa",
+    "highDesc": "Malakas na mga signal ng industriya ang natuklasan. Ang mga rekomendasyon ay lubos na may kaugnayan.",
+    "mediumDesc": "Ilang signal ng industriya ang natuklasan, inirerekomenda ang pag-verify.",
+    "lowDesc": "Limitadong mga signal. Mangyaring i-verify at itama kung kinakailangan para sa mas magandang rekomendasyon."
+  },
+  "resumeBuilder": {
+    "experience": {
+      "role": "Trabaho {{num}}",
+      "jobTitle": "Titulo ng Trabaho",
+      "company": "Kumpanya",
+      "location": "Lokasyon",
+      "startDate": "Petsa ng Simula",
+      "endDate": "Petsa ng Pagtatapos",
+      "bulletPoints": "Mga Bullet Point",
+      "addBullet": "Magdagdag ng Bullet",
+      "addWorkExperience": "Magdagdag ng Karanasan sa Trabaho"
+    },
+    "education": {
+      "entry": "Edukasyon {{num}}",
+      "school": "Paaralan",
+      "degree": "Antas ng Edukasyon",
+      "fieldOfStudy": "Larangan ng Pag-aaral",
+      "startDate": "Petsa ng Simula",
+      "endDate": "Petsa ng Pagtatapos",
+      "additionalDetails": "Karagdagang Detalye (opsyonal)",
+      "addEducation": "Magdagdag ng Edukasyon"
+    },
+    "tagList": {
+      "typeToAdd": "Mag-type at pindutin ang Enter para magdagdag"
+    },
+    "preview": {
+      "yourName": "Ang Iyong Pangalan",
+      "role": "Trabaho",
+      "summary": "Buod",
+      "experience": "Karanasan",
+      "education": "Edukasyon",
+      "skills": "Mga Kasanayan",
+      "certifications": "Mga Sertipikasyon"
+    }
   }
 }

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState, KeyboardEvent } from "react";
 import { X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ interface TagListEditorProps {
 }
 
 export function TagListEditor({ tags, onChange, placeholder, className }: TagListEditorProps) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState("");
 
   const commitDraft = () => {
@@ -54,7 +56,7 @@ export function TagListEditor({ tags, onChange, placeholder, className }: TagLis
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={commitDraft}
-        placeholder={placeholder || "Type and press Enter to add"}
+        placeholder={placeholder || t("resumeBuilder.tagList.typeToAdd")}
         className="h-9"
       />
     </div>

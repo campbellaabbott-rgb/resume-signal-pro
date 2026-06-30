@@ -3176,5 +3176,115 @@
     "tryAgain": "फिर से कोशिश करें",
     "returnHome": "होम पर वापस जाएं",
     "contactUs": "अभी भी समस्या है? हमसे support@resumebooster.com पर संपर्क करें"
+  },
+  "resumeRecovery": {
+    "title": "रिज़्यूमे नहीं मिला",
+    "subtitle": "आपका भुगतान सफल रहा! हमें आपका विश्लेषण उत्पन्न करने के लिए फिर से आपका रिज़्यूमे चाहिए।",
+    "uploadFile": "फ़ाइल अपलोड करें",
+    "pasteText": "टेक्स्ट पेस्ट करें",
+    "dropHere": "अपना रिज़्यूमे यहाँ छोड़ें",
+    "supported": "PDF, DOCX या TXT फ़ाइलें समर्थित",
+    "browseFiles": "फ़ाइलें ब्राउज़ करें",
+    "extracting": "टेक्स्ट निकाला जा रहा है...",
+    "readyToAnalyze": "विश्लेषण के लिए तैयार!",
+    "pastePlaceholder": "यहाँ अपना रिज़्यूमे सामग्री पेस्ट करें...\n\nअपनी कार्य अनुभव, कौशल और शिक्षा शामिल करें।",
+    "extractingBtn": "निकाला जा रहा है...",
+    "generateAnalysis": "विश्लेषण उत्पन्न करें",
+    "readyInSeconds": "आपका विश्लेषण सेकंडों में तैयार होगा",
+    "toastTextLoaded": "टेक्स्ट फ़ाइल लोड हुई",
+    "toastTextLoadedDesc": "विश्लेषण के लिए तैयार।",
+    "toastPdfParsed": "PDF सफलतापूर्वक पार्स हुई",
+    "toastPdfParsedDesc": "{{pages}} पृष्ठ से टेक्स्ट निकाला।",
+    "toastDocxParsed": "DOCX सफलतापूर्वक पार्स हुई",
+    "toastCouldNotRead": "आपकी फ़ाइल पढ़ी नहीं जा सकी",
+    "toastCouldNotReadDesc": "कृपया रिज़्यूमे टेक्स्ट पेस्ट करने का प्रयास करें।"
+  },
+  "liveActivity": {
+    "scanningNow": "लोग अभी स्कैन कर रहे हैं",
+    "justNow": "अभी-अभी",
+    "activities": {
+      "scanned": "किसी ने अभी अपना रिज़्यूमे स्कैन किया",
+      "improved": "एक उपयोगकर्ता ने ATS स्कोर बेहतर किया",
+      "downloaded": "किसी ने अपनी रिपोर्ट डाउनलोड की",
+      "optimized": "एक रिज़्यूमे अनुकूलित किया गया",
+      "keywords": "कीवर्ड का विश्लेषण किया गया",
+      "freeScore": "किसी को मुफ़्त स्कोर मिला",
+      "coverLetter": "एक कवर लेटर तैयार किया गया"
+    }
+  },
+  "scanCredits": {
+    "credits": "क्रेडिट",
+    "yourScanCredits": "आपके स्कैन क्रेडिट",
+    "creditsRemaining": "क्रेडिट शेष",
+    "neverExpire": "क्रेडिट कभी समाप्त नहीं होते",
+    "perCredit": "{{price}} प्रति क्रेडिट",
+    "topUpCredits": "क्रेडिट रिचार्ज करें",
+    "useDifferentEmail": "दूसरा ईमेल उपयोग करें",
+    "checkYourCredits": "अपने स्कैन क्रेडिट जाँचें",
+    "enterEmail": "वह ईमेल दर्ज करें जिससे आपने स्कैन खरीदे।",
+    "checking": "जाँच हो रही है...",
+    "checkCredits": "क्रेडिट जाँचें",
+    "noCredits": "इस ईमेल के लिए कोई क्रेडिट नहीं मिला।",
+    "freeTier": "मुफ़्त स्तर: प्रतिदिन 7 स्कैन तक, हमेशा के लिए मुफ़्त।",
+    "buyCredits": "क्रेडिट खरीदें — {{price}} प्रत्येक",
+    "myCredits": "मेरे क्रेडिट"
+  },
+  "industryConfidence": {
+    "industry": "उद्योग:",
+    "corrected": "सुधारा गया",
+    "lowWarning": "उद्योग पहचान अनुचित हो सकती है। यह कीवर्ड अनुशंसाओं को प्रभावित करता है।",
+    "mediumWarning": "कुछ अनुशंसाएँ उद्योग-विशिष्ट नहीं हो सकतीं। नीचे सत्यापित या सुधारें।",
+    "detectionSignals": "पहचान संकेत:",
+    "aiSuggested": "AI ने यह भी सुझाया: {{industry}}",
+    "clickToChange": "यदि यह अधिक सटीक है तो बदलने के लिए नीचे क्लिक करें।",
+    "correctIndustry": "उद्योग सुधारें",
+    "changeIndustry": "उद्योग बदलें",
+    "selectCorrect": "सही उद्योग चुनें:",
+    "useAiSuggestion": "AI सुझाव उपयोग करें: {{industry}}",
+    "impactNotice": "उद्योग बदलने से कीवर्ड अनुशंसाएँ और बेंचमार्क अपडेट होंगे।",
+    "confidenceHigh": "उच्च विश्वास",
+    "confidenceMedium": "मध्यम विश्वास",
+    "confidenceLow": "कम विश्वास",
+    "highShort": "✓ उच्च",
+    "mediumShort": "◐ मध्यम",
+    "lowShort": "○ कम",
+    "highDesc": "मजबूत उद्योग संकेत मिले। अनुशंसाएँ अत्यंत प्रासंगिक हैं।",
+    "mediumDesc": "कुछ उद्योग संकेत मिले, सत्यापन की सिफ़ारिश की जाती है।",
+    "lowDesc": "सीमित संकेत। बेहतर अनुशंसाओं के लिए सत्यापित और सुधारें।"
+  },
+  "resumeBuilder": {
+    "experience": {
+      "role": "भूमिका {{num}}",
+      "jobTitle": "पद का नाम",
+      "company": "कंपनी",
+      "location": "स्थान",
+      "startDate": "प्रारंभ तिथि",
+      "endDate": "समाप्ति तिथि",
+      "bulletPoints": "बुलेट पॉइंट",
+      "addBullet": "बुलेट जोड़ें",
+      "addWorkExperience": "कार्य अनुभव जोड़ें"
+    },
+    "education": {
+      "entry": "शिक्षा {{num}}",
+      "school": "विद्यालय/विश्वविद्यालय",
+      "degree": "डिग्री",
+      "fieldOfStudy": "अध्ययन क्षेत्र",
+      "startDate": "प्रारंभ तिथि",
+      "endDate": "समाप्ति तिथि",
+      "additionalDetails": "अतिरिक्त विवरण (वैकल्पिक)",
+      "addEducation": "शिक्षा जोड़ें"
+    },
+    "tagList": {
+      "typeToAdd": "टाइप करें और जोड़ने के लिए Enter दबाएँ"
+    },
+    "preview": {
+      "yourName": "आपका नाम",
+      "role": "भूमिका",
+      "summary": "सारांश",
+      "experience": "अनुभव",
+      "education": "शिक्षा",
+      "skills": "कौशल",
+      "certifications": "प्रमाणपत्र"
+    }
   }
 }

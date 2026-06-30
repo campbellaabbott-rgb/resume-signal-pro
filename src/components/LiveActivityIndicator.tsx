@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Users, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,7 @@ export function LiveActivityIndicator({
   variant = "badge",
   rotationInterval = 8 
 }: LiveActivityIndicatorProps) {
+  const { t } = useTranslation();
   const [activeUsers, setActiveUsers] = useState<number>(0);
   const [lastActivity, setLastActivity] = useState<string>("");
   const [isVisible, setIsVisible] = useState(false);
@@ -23,13 +25,13 @@ export function LiveActivityIndicator({
   const hasTracked = useRef(false);
 
   const activities = [
-    "Someone Just Scanned Their Resume",
-    "A User Improved Their ATS Score",
-    "Someone Downloaded Their Report",
-    "A Resume Was Optimized",
-    "Keywords Were Analyzed",
-    "Someone Got Their Free Score",
-    "A Cover Letter Was Generated"
+    t("liveActivity.activities.scanned"),
+    t("liveActivity.activities.improved"),
+    t("liveActivity.activities.downloaded"),
+    t("liveActivity.activities.optimized"),
+    t("liveActivity.activities.keywords"),
+    t("liveActivity.activities.freeScore"),
+    t("liveActivity.activities.coverLetter"),
   ];
 
   // Calculate active users based on time of day
@@ -83,7 +85,7 @@ export function LiveActivityIndicator({
     return (
       <div className={cn("flex items-center gap-2 text-sm text-muted-foreground", className)}>
         <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-        <span>{activeUsers} people scanning now</span>
+        <span>{activeUsers} {t("liveActivity.scanningNow")}</span>
       </div>
     );
   }
@@ -127,7 +129,7 @@ export function LiveActivityIndicator({
           )}
         >
           <p className="font-medium text-foreground">{lastActivity}</p>
-          <p className="text-xs text-muted-foreground">Just now</p>
+          <p className="text-xs text-muted-foreground">{t("liveActivity.justNow")}</p>
         </div>
       </div>
     );

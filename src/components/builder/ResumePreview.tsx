@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { BuilderResume } from "@/types/resume-builder";
 
 function formatDateRange(startDate: string, endDate: string): string {
@@ -8,6 +9,7 @@ function formatDateRange(startDate: string, endDate: string): string {
 }
 
 export function ResumePreview({ resume }: { resume: BuilderResume }) {
+  const { t } = useTranslation();
   const contactLine = [
     resume.contact.email,
     resume.contact.phone,
@@ -20,25 +22,25 @@ export function ResumePreview({ resume }: { resume: BuilderResume }) {
 
   return (
     <div className="bg-white text-neutral-900 rounded-lg shadow-sm border border-border p-8 text-sm leading-relaxed font-serif min-h-[600px]">
-      <h1 className="text-2xl font-bold tracking-tight">{resume.contact.fullName || "Your Name"}</h1>
+      <h1 className="text-2xl font-bold tracking-tight">{resume.contact.fullName || t("resumeBuilder.preview.yourName")}</h1>
       {resume.contact.title && <p className="text-neutral-600 mt-0.5">{resume.contact.title}</p>}
       {contactLine && <p className="text-xs text-neutral-500 mt-1">{contactLine}</p>}
 
       {resume.summary && (
         <section className="mt-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">Summary</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">{t("resumeBuilder.preview.summary")}</h2>
           <p className="whitespace-pre-wrap">{resume.summary}</p>
         </section>
       )}
 
       {resume.experience.length > 0 && (
         <section className="mt-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">Experience</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">{t("resumeBuilder.preview.experience")}</h2>
           <div className="space-y-4">
             {resume.experience.map((entry) => (
               <div key={entry.id}>
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-semibold">{entry.title || "Role"}</span>
+                  <span className="font-semibold">{entry.title || t("resumeBuilder.preview.role")}</span>
                   <span className="text-xs text-neutral-500 shrink-0">{formatDateRange(entry.startDate, entry.endDate)}</span>
                 </div>
                 {(entry.company || entry.location) && (
@@ -63,7 +65,7 @@ export function ResumePreview({ resume }: { resume: BuilderResume }) {
 
       {resume.education.length > 0 && (
         <section className="mt-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">Education</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">{t("resumeBuilder.preview.education")}</h2>
           <div className="space-y-3">
             {resume.education.map((entry) => {
               const degreeLine = [entry.degree, entry.field].filter(Boolean).join(", ");
@@ -84,14 +86,14 @@ export function ResumePreview({ resume }: { resume: BuilderResume }) {
 
       {resume.skills.length > 0 && (
         <section className="mt-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">Skills</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">{t("resumeBuilder.preview.skills")}</h2>
           <p>{resume.skills.join("  •  ")}</p>
         </section>
       )}
 
       {resume.certifications.length > 0 && (
         <section className="mt-5">
-          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">Certifications</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wider border-b border-neutral-300 pb-1 mb-2">{t("resumeBuilder.preview.certifications")}</h2>
           <p>{resume.certifications.join("  •  ")}</p>
         </section>
       )}

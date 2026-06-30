@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ interface ExperienceEditorProps {
 }
 
 export function ExperienceEditor({ entries, onChange }: ExperienceEditorProps) {
+  const { t } = useTranslation();
   const updateEntry = (id: string, patch: Partial<BuilderExperienceEntry>) => {
     onChange(entries.map((e) => (e.id === id ? { ...e, ...patch } : e)));
   };
@@ -54,7 +56,7 @@ export function ExperienceEditor({ entries, onChange }: ExperienceEditorProps) {
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
               <GripVertical className="w-3.5 h-3.5" />
-              Role {idx + 1}
+              {t("resumeBuilder.experience.role", { num: idx + 1 })}
             </div>
             {entries.length > 1 && (
               <Button
@@ -70,7 +72,7 @@ export function ExperienceEditor({ entries, onChange }: ExperienceEditorProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Job Title</Label>
+              <Label className="text-xs">{t("resumeBuilder.experience.jobTitle")}</Label>
               <Input
                 value={entry.title}
                 onChange={(e) => updateEntry(entry.id, { title: e.target.value })}
@@ -78,7 +80,7 @@ export function ExperienceEditor({ entries, onChange }: ExperienceEditorProps) {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Company</Label>
+              <Label className="text-xs">{t("resumeBuilder.experience.company")}</Label>
               <Input
                 value={entry.company}
                 onChange={(e) => updateEntry(entry.id, { company: e.target.value })}
@@ -86,7 +88,7 @@ export function ExperienceEditor({ entries, onChange }: ExperienceEditorProps) {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Location</Label>
+              <Label className="text-xs">{t("resumeBuilder.experience.location")}</Label>
               <Input
                 value={entry.location}
                 onChange={(e) => updateEntry(entry.id, { location: e.target.value })}
@@ -95,7 +97,7 @@ export function ExperienceEditor({ entries, onChange }: ExperienceEditorProps) {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">Start Date</Label>
+                <Label className="text-xs">{t("resumeBuilder.experience.startDate")}</Label>
                 <Input
                   value={entry.startDate}
                   onChange={(e) => updateEntry(entry.id, { startDate: e.target.value })}
@@ -103,7 +105,7 @@ export function ExperienceEditor({ entries, onChange }: ExperienceEditorProps) {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">End Date</Label>
+                <Label className="text-xs">{t("resumeBuilder.experience.endDate")}</Label>
                 <Input
                   value={entry.endDate}
                   onChange={(e) => updateEntry(entry.id, { endDate: e.target.value })}
@@ -114,7 +116,7 @@ export function ExperienceEditor({ entries, onChange }: ExperienceEditorProps) {
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs">Bullet Points</Label>
+            <Label className="text-xs">{t("resumeBuilder.experience.bulletPoints")}</Label>
             {entry.bullets.map((bullet, bIdx) => (
               <div key={bIdx} className="flex items-start gap-2">
                 <Textarea

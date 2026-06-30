@@ -3176,5 +3176,115 @@
     "tryAgain": "Erneut versuchen",
     "returnHome": "Zur Startseite",
     "contactUs": "Noch Probleme? Kontaktiere uns unter support@resumebooster.com"
+  },
+  "resumeRecovery": {
+    "title": "Lebenslauf nicht gefunden",
+    "subtitle": "Ihre Zahlung war erfolgreich! Wir benötigen Ihren Lebenslauf erneut, um Ihre Analyse zu erstellen.",
+    "uploadFile": "Datei hochladen",
+    "pasteText": "Text einfügen",
+    "dropHere": "Lebenslauf hier ablegen",
+    "supported": "PDF, DOCX oder TXT werden unterstützt",
+    "browseFiles": "Dateien durchsuchen",
+    "extracting": "Text wird extrahiert...",
+    "readyToAnalyze": "Bereit zur Analyse!",
+    "pastePlaceholder": "Fügen Sie hier Ihren Lebenslaufinhalt ein...\n\nGeben Sie Ihre Berufserfahrung, Fähigkeiten und Ausbildung an.",
+    "extractingBtn": "Extrahieren...",
+    "generateAnalysis": "Analyse erstellen",
+    "readyInSeconds": "Ihre Analyse ist in Sekunden fertig",
+    "toastTextLoaded": "Textdatei geladen",
+    "toastTextLoadedDesc": "Bereit zur Analyse.",
+    "toastPdfParsed": "PDF erfolgreich geparst",
+    "toastPdfParsedDesc": "Text aus {{pages}} Seite(n) extrahiert.",
+    "toastDocxParsed": "DOCX erfolgreich geparst",
+    "toastCouldNotRead": "Datei konnte nicht gelesen werden",
+    "toastCouldNotReadDesc": "Bitte fügen Sie stattdessen den Lebenslauftext ein."
+  },
+  "liveActivity": {
+    "scanningNow": "Personen scannen gerade",
+    "justNow": "Gerade eben",
+    "activities": {
+      "scanned": "Jemand hat gerade seinen Lebenslauf gescannt",
+      "improved": "Ein Nutzer hat seinen ATS-Score verbessert",
+      "downloaded": "Jemand hat seinen Bericht heruntergeladen",
+      "optimized": "Ein Lebenslauf wurde optimiert",
+      "keywords": "Keywords wurden analysiert",
+      "freeScore": "Jemand hat seinen kostenlosen Score erhalten",
+      "coverLetter": "Ein Anschreiben wurde erstellt"
+    }
+  },
+  "scanCredits": {
+    "credits": "Credits",
+    "yourScanCredits": "Ihre Scan-Credits",
+    "creditsRemaining": "Credits verbleibend",
+    "neverExpire": "Credits verfallen nie",
+    "perCredit": "{{price}} pro Credit",
+    "topUpCredits": "Credits aufladen",
+    "useDifferentEmail": "Andere E-Mail verwenden",
+    "checkYourCredits": "Scan-Credits prüfen",
+    "enterEmail": "Geben Sie die E-Mail-Adresse ein, die Sie beim Kauf verwendet haben.",
+    "checking": "Wird geprüft...",
+    "checkCredits": "Credits prüfen",
+    "noCredits": "Keine Credits für diese E-Mail gefunden.",
+    "freeTier": "Kostenlose Stufe: Bis zu 7 Scans pro Tag, kostenlos für immer.",
+    "buyCredits": "Credits kaufen — {{price}} pro Stück",
+    "myCredits": "Meine Credits"
+  },
+  "industryConfidence": {
+    "industry": "Branche:",
+    "corrected": "Korrigiert",
+    "lowWarning": "Die Branchenerkennung könnte ungenau sein. Dies beeinflusst die Keyword-Empfehlungen.",
+    "mediumWarning": "Einige Empfehlungen sind möglicherweise nicht branchenspezifisch. Bitte überprüfen oder korrigieren Sie unten.",
+    "detectionSignals": "Erkennungssignale:",
+    "aiSuggested": "KI schlug auch vor: {{industry}}",
+    "clickToChange": "Klicken Sie unten, um zu ändern, wenn dies genauer ist.",
+    "correctIndustry": "Branche korrigieren",
+    "changeIndustry": "Branche ändern",
+    "selectCorrect": "Korrekte Branche auswählen:",
+    "useAiSuggestion": "KI-Vorschlag verwenden: {{industry}}",
+    "impactNotice": "Das Ändern der Branche aktualisiert Keyword-Empfehlungen und Benchmarks.",
+    "confidenceHigh": "Hohe Konfidenz",
+    "confidenceMedium": "Mittlere Konfidenz",
+    "confidenceLow": "Niedrige Konfidenz",
+    "highShort": "✓ Hoch",
+    "mediumShort": "◐ Mittel",
+    "lowShort": "○ Niedrig",
+    "highDesc": "Starke Branchensignale erkannt. Empfehlungen sind sehr relevant.",
+    "mediumDesc": "Einige Branchensignale erkannt, Überprüfung empfohlen.",
+    "lowDesc": "Begrenzte Signale. Bitte überprüfen und ggf. korrigieren für bessere Empfehlungen."
+  },
+  "resumeBuilder": {
+    "experience": {
+      "role": "Stelle {{num}}",
+      "jobTitle": "Berufsbezeichnung",
+      "company": "Unternehmen",
+      "location": "Standort",
+      "startDate": "Startdatum",
+      "endDate": "Enddatum",
+      "bulletPoints": "Aufzählungspunkte",
+      "addBullet": "Punkt hinzufügen",
+      "addWorkExperience": "Berufserfahrung hinzufügen"
+    },
+    "education": {
+      "entry": "Ausbildung {{num}}",
+      "school": "Schule/Universität",
+      "degree": "Abschluss",
+      "fieldOfStudy": "Studienrichtung",
+      "startDate": "Startdatum",
+      "endDate": "Enddatum",
+      "additionalDetails": "Weitere Details (optional)",
+      "addEducation": "Ausbildung hinzufügen"
+    },
+    "tagList": {
+      "typeToAdd": "Eingeben und Enter drücken zum Hinzufügen"
+    },
+    "preview": {
+      "yourName": "Ihr Name",
+      "role": "Stelle",
+      "summary": "Zusammenfassung",
+      "experience": "Berufserfahrung",
+      "education": "Ausbildung",
+      "skills": "Fähigkeiten",
+      "certifications": "Zertifikate"
+    }
   }
 }

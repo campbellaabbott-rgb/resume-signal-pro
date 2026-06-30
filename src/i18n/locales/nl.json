@@ -3176,5 +3176,115 @@
     "tryAgain": "Opnieuw proberen",
     "returnHome": "Terug naar home",
     "contactUs": "Nog steeds problemen? Neem contact op via support@resumebooster.com"
+  },
+  "resumeRecovery": {
+    "title": "CV niet gevonden",
+    "subtitle": "Uw betaling is geslaagd! We hebben alleen uw cv opnieuw nodig om uw analyse te genereren.",
+    "uploadFile": "Bestand uploaden",
+    "pasteText": "Tekst plakken",
+    "dropHere": "Laat uw cv hier vallen",
+    "supported": "PDF-, DOCX- of TXT-bestanden ondersteund",
+    "browseFiles": "Bestanden bladeren",
+    "extracting": "Tekst extraheren...",
+    "readyToAnalyze": "Klaar voor analyse!",
+    "pastePlaceholder": "Plak hier uw cv-inhoud...\n\nVoeg uw werkervaring, vaardigheden en opleiding toe.",
+    "extractingBtn": "Extraheren...",
+    "generateAnalysis": "Analyse genereren",
+    "readyInSeconds": "Uw analyse is binnen enkele seconden klaar",
+    "toastTextLoaded": "Tekstbestand geladen",
+    "toastTextLoadedDesc": "Klaar voor analyse.",
+    "toastPdfParsed": "PDF succesvol geparseerd",
+    "toastPdfParsedDesc": "Tekst geëxtraheerd uit {{pages}} pagina('s).",
+    "toastDocxParsed": "DOCX succesvol geparseerd",
+    "toastCouldNotRead": "Uw bestand kon niet worden gelezen",
+    "toastCouldNotReadDesc": "Probeer de cv-tekst te plakken."
+  },
+  "liveActivity": {
+    "scanningNow": "mensen scannen nu",
+    "justNow": "Zojuist",
+    "activities": {
+      "scanned": "Iemand heeft zojuist zijn cv gescand",
+      "improved": "Een gebruiker heeft zijn ATS-score verbeterd",
+      "downloaded": "Iemand heeft zijn rapport gedownload",
+      "optimized": "Een cv is geoptimaliseerd",
+      "keywords": "Zoekwoorden zijn geanalyseerd",
+      "freeScore": "Iemand heeft zijn gratis score ontvangen",
+      "coverLetter": "Er is een sollicitatiebrief gegenereerd"
+    }
+  },
+  "scanCredits": {
+    "credits": "credits",
+    "yourScanCredits": "Uw scan-credits",
+    "creditsRemaining": "credits resterend",
+    "neverExpire": "Credits verlopen nooit",
+    "perCredit": "{{price}} per credit",
+    "topUpCredits": "Credits bijvullen",
+    "useDifferentEmail": "Ander e-mailadres gebruiken",
+    "checkYourCredits": "Scan-credits controleren",
+    "enterEmail": "Voer het e-mailadres in dat u hebt gebruikt voor aankopen.",
+    "checking": "Controleren...",
+    "checkCredits": "Credits controleren",
+    "noCredits": "Geen credits gevonden voor dit e-mailadres.",
+    "freeTier": "Gratis laag: tot 7 scans per dag, voor altijd gratis.",
+    "buyCredits": "Credits kopen — {{price}} per stuk",
+    "myCredits": "Mijn credits"
+  },
+  "industryConfidence": {
+    "industry": "Industrie:",
+    "corrected": "Gecorrigeerd",
+    "lowWarning": "Branchedetectie kan onnauwkeurig zijn. Dit beïnvloedt de zoekwoordaanbevelingen.",
+    "mediumWarning": "Sommige aanbevelingen zijn mogelijk niet branchespecifiek. Verifieer of corrigeer hieronder.",
+    "detectionSignals": "Detectiesignalen:",
+    "aiSuggested": "AI suggereerde ook: {{industry}}",
+    "clickToChange": "Klik hieronder om te wijzigen als dit nauwkeuriger is.",
+    "correctIndustry": "Branche corrigeren",
+    "changeIndustry": "Branche wijzigen",
+    "selectCorrect": "Selecteer de juiste branche:",
+    "useAiSuggestion": "AI-suggestie gebruiken: {{industry}}",
+    "impactNotice": "Het wijzigen van de branche werkt zoekwoordaanbevelingen en benchmarks bij.",
+    "confidenceHigh": "Hoge betrouwbaarheid",
+    "confidenceMedium": "Gemiddelde betrouwbaarheid",
+    "confidenceLow": "Lage betrouwbaarheid",
+    "highShort": "✓ Hoog",
+    "mediumShort": "◐ Gemiddeld",
+    "lowShort": "○ Laag",
+    "highDesc": "Sterke branchesignalen gedetecteerd. Aanbevelingen zijn zeer relevant.",
+    "mediumDesc": "Sommige branchesignalen gedetecteerd, verificatie aanbevolen.",
+    "lowDesc": "Beperkte signalen. Verifieer en corrigeer indien nodig voor betere aanbevelingen."
+  },
+  "resumeBuilder": {
+    "experience": {
+      "role": "Functie {{num}}",
+      "jobTitle": "Functietitel",
+      "company": "Bedrijf",
+      "location": "Locatie",
+      "startDate": "Begindatum",
+      "endDate": "Einddatum",
+      "bulletPoints": "Opsommingstekens",
+      "addBullet": "Punt toevoegen",
+      "addWorkExperience": "Werkervaring toevoegen"
+    },
+    "education": {
+      "entry": "Opleiding {{num}}",
+      "school": "School/Universiteit",
+      "degree": "Diploma",
+      "fieldOfStudy": "Studierichting",
+      "startDate": "Begindatum",
+      "endDate": "Einddatum",
+      "additionalDetails": "Aanvullende details (optioneel)",
+      "addEducation": "Opleiding toevoegen"
+    },
+    "tagList": {
+      "typeToAdd": "Typ en druk op Enter om toe te voegen"
+    },
+    "preview": {
+      "yourName": "Uw naam",
+      "role": "Functie",
+      "summary": "Samenvatting",
+      "experience": "Ervaring",
+      "education": "Opleiding",
+      "skills": "Vaardigheden",
+      "certifications": "Certificeringen"
+    }
   }
 }

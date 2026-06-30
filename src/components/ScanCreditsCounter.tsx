@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import { Coins, Check, ChevronDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { ScanPackPurchase } from "@/components/ScanPackPurchase";
 import { useCurrency } from "@/hooks/use-currency";
 
 export function ScanCreditsCounter() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [checkedEmail, setCheckedEmail] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -75,7 +77,7 @@ export function ScanCreditsCounter() {
           >
             <Coins className="w-4 h-4 text-success" />
             <span className="font-semibold text-success">{credits}</span>
-            <span className="text-muted-foreground hidden sm:inline">credits</span>
+            <span className="text-muted-foreground hidden sm:inline">{t("scanCredits.credits")}</span>
             <ChevronDown className="w-3 h-3 text-muted-foreground" />
           </Button>
         </PopoverTrigger>
@@ -86,18 +88,18 @@ export function ScanCreditsCounter() {
                 <Coins className="w-5 h-5 text-success" />
               </div>
               <div>
-                <p className="font-semibold">Your Scan Credits</p>
+                <p className="font-semibold">{t("scanCredits.yourScanCredits")}</p>
                 <p className="text-sm text-muted-foreground">{checkedEmail}</p>
               </div>
             </div>
             
             <div className="p-3 rounded-lg bg-secondary/50 text-center">
               <p className="text-3xl font-bold text-success">{credits}</p>
-              <p className="text-sm text-muted-foreground">credits remaining</p>
+              <p className="text-sm text-muted-foreground">{t("scanCredits.creditsRemaining")}</p>
             </div>
             
             <p className="text-xs text-muted-foreground text-center">
-              Credits never expire • {formatLocalPrice(pricePerCredit)} per credit
+              {t("scanCredits.neverExpire")} • {t("scanCredits.perCredit", { price: formatLocalPrice(pricePerCredit) })}
             </p>
             
             <Button
@@ -145,15 +147,15 @@ export function ScanCreditsCounter() {
           className="gap-2 min-h-[44px] touch-manipulation text-muted-foreground hover:text-foreground"
         >
           <Coins className="w-4 h-4" />
-          <span className="hidden sm:inline">My Credits</span>
+          <span className="hidden sm:inline">{t("scanCredits.myCredits")}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-4" align="end">
         <div className="space-y-4">
           <div>
-            <h4 className="font-semibold mb-1">Check Your Scan Credits</h4>
+            <h4 className="font-semibold mb-1">{t("scanCredits.checkYourCredits")}</h4>
             <p className="text-sm text-muted-foreground">
-              Enter the email you used to purchase scans.
+              {t("scanCredits.enterEmail")}
             </p>
           </div>
           
@@ -172,24 +174,24 @@ export function ScanCreditsCounter() {
               className="w-full"
               size="sm"
             >
-              {isLoading ? "Checking..." : "Check Credits"}
+              {isLoading ? t("scanCredits.checking") : t("scanCredits.checkCredits")}
             </Button>
           </div>
           
           {checkedEmail && credits === 0 && (
             <div className="p-3 rounded-lg bg-muted/50 text-center">
               <p className="text-sm text-muted-foreground">
-                No credits found for this email.
+                {t("scanCredits.noCredits")}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                {formatLocalPrice(pricePerCredit)} per credit • Buy any amount
+                {t("scanCredits.perCredit", { price: formatLocalPrice(pricePerCredit) })}
               </p>
             </div>
           )}
           
           <div className="pt-2 border-t border-border space-y-2">
             <p className="text-xs text-muted-foreground">
-              <strong>Free tier:</strong> Up to 7 scans per day, free forever.
+              {t("scanCredits.freeTier")}
             </p>
             <Button
               onClick={() => {

@@ -3176,5 +3176,115 @@
     "tryAgain": "Try Again",
     "returnHome": "Return to Home",
     "contactUs": "Still having issues? Contact us at support@resumebooster.com"
+  },
+  "resumeRecovery": {
+    "title": "Resume Not Found",
+    "subtitle": "Your payment was successful! We just need your resume again to generate your analysis.",
+    "uploadFile": "Upload File",
+    "pasteText": "Paste Text",
+    "dropHere": "Drop your resume here",
+    "supported": "PDF, DOCX, or TXT files supported",
+    "browseFiles": "Browse Files",
+    "extracting": "Extracting text...",
+    "readyToAnalyze": "Ready to analyze!",
+    "pastePlaceholder": "Paste your resume content here...\n\nInclude your work experience, skills, and education.",
+    "extractingBtn": "Extracting...",
+    "generateAnalysis": "Generate Analysis",
+    "readyInSeconds": "Your analysis will be ready in seconds",
+    "toastTextLoaded": "Text file loaded",
+    "toastTextLoadedDesc": "Ready to analyze.",
+    "toastPdfParsed": "PDF parsed successfully",
+    "toastPdfParsedDesc": "Extracted text from {{pages}} page(s).",
+    "toastDocxParsed": "DOCX parsed successfully",
+    "toastCouldNotRead": "Could not read your file",
+    "toastCouldNotReadDesc": "Please try pasting the resume text instead."
+  },
+  "liveActivity": {
+    "scanningNow": "people scanning now",
+    "justNow": "Just now",
+    "activities": {
+      "scanned": "Someone Just Scanned Their Resume",
+      "improved": "A User Improved Their ATS Score",
+      "downloaded": "Someone Downloaded Their Report",
+      "optimized": "A Resume Was Optimized",
+      "keywords": "Keywords Were Analyzed",
+      "freeScore": "Someone Got Their Free Score",
+      "coverLetter": "A Cover Letter Was Generated"
+    }
+  },
+  "scanCredits": {
+    "credits": "credits",
+    "yourScanCredits": "Your Scan Credits",
+    "creditsRemaining": "credits remaining",
+    "neverExpire": "Credits never expire",
+    "perCredit": "{{price}} per credit",
+    "topUpCredits": "Top Up Credits",
+    "useDifferentEmail": "Use different email",
+    "checkYourCredits": "Check Your Scan Credits",
+    "enterEmail": "Enter the email you used to purchase scans.",
+    "checking": "Checking...",
+    "checkCredits": "Check Credits",
+    "noCredits": "No credits found for this email.",
+    "freeTier": "Free tier: Up to 7 scans per day, free forever.",
+    "buyCredits": "Buy Credits — {{price}} each",
+    "myCredits": "My Credits"
+  },
+  "industryConfidence": {
+    "industry": "Industry:",
+    "corrected": "Corrected",
+    "lowWarning": "Industry detection may be inaccurate. This affects keyword recommendations.",
+    "mediumWarning": "Some recommendations may not be industry-specific. Verify or correct below.",
+    "detectionSignals": "Detection signals:",
+    "aiSuggested": "AI also suggested: {{industry}}",
+    "clickToChange": "Click below to change if this is more accurate.",
+    "correctIndustry": "Correct Industry",
+    "changeIndustry": "Change Industry",
+    "selectCorrect": "Select correct industry:",
+    "useAiSuggestion": "Use AI suggestion: {{industry}}",
+    "impactNotice": "Changing industry will update keyword recommendations and benchmarks.",
+    "confidenceHigh": "High Confidence",
+    "confidenceMedium": "Medium Confidence",
+    "confidenceLow": "Low Confidence",
+    "highShort": "✓ High",
+    "mediumShort": "◐ Medium",
+    "lowShort": "○ Low",
+    "highDesc": "Strong industry signals detected. Recommendations are highly relevant.",
+    "mediumDesc": "Some industry signals detected, but verification recommended.",
+    "lowDesc": "Limited signals. Please verify and correct if needed for better recommendations."
+  },
+  "resumeBuilder": {
+    "experience": {
+      "role": "Role {{num}}",
+      "jobTitle": "Job Title",
+      "company": "Company",
+      "location": "Location",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "bulletPoints": "Bullet Points",
+      "addBullet": "Add Bullet",
+      "addWorkExperience": "Add Work Experience"
+    },
+    "education": {
+      "entry": "Education {{num}}",
+      "school": "School",
+      "degree": "Degree",
+      "fieldOfStudy": "Field of Study",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "additionalDetails": "Additional Details (optional)",
+      "addEducation": "Add Education"
+    },
+    "tagList": {
+      "typeToAdd": "Type and press Enter to add"
+    },
+    "preview": {
+      "yourName": "Your Name",
+      "role": "Role",
+      "summary": "Summary",
+      "experience": "Experience",
+      "education": "Education",
+      "skills": "Skills",
+      "certifications": "Certifications"
+    }
   }
 }
