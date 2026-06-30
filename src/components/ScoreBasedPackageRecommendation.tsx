@@ -9,7 +9,8 @@ interface ScoreBasedPackageRecommendationProps {
 }
 
 export function ScoreBasedPackageRecommendation({
-  const { t } = useTranslation(); atsScore }: ScoreBasedPackageRecommendationProps) {
+  { atsScore }: ScoreBasedPackageRecommendationProps) { {
+  const { t } = useTranslation();
   // Determine recommendation based on score - use prices from products config
   const getRecommendation = () => {
     if (atsScore < 50) {

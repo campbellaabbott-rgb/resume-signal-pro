@@ -19,7 +19,8 @@ const categoryLabels: Record<ChecklistItem['category'], { label: string; color: 
 };
 
 export function InteractiveChecklist({
-  const { t } = useTranslation(); entryId, items, candidateName }: InteractiveChecklistProps) {
+  { entryId, items, candidateName }: InteractiveChecklistProps) { {
+  const { t } = useTranslation();
   const { updateChecklist } = useScanHistory();
   const [localItems, setLocalItems] = useState<ChecklistItem[]>(items);
   const [showConfetti, setShowConfetti] = useState(false);

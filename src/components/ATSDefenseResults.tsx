@@ -188,7 +188,8 @@ function ScoreComparison({ before, after, label }: { before: number; after: numb
 }
 
 export function ATSDefenseResults({
-  const { t } = useTranslation(); data, resumeText, multiColumnDetected }: ATSDefenseResultsProps) {
+  { data, resumeText, multiColumnDetected }: ATSDefenseResultsProps) { {
+  const { t } = useTranslation();
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const scoreImprovement = data.afterScore.overall - data.beforeScore.overall;
 

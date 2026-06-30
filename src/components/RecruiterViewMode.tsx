@@ -88,7 +88,8 @@ const decisionStyles = {
 };
 
 export function RecruiterViewMode({
-  const { t } = useTranslation(); resumeText, industry, currentRole }: RecruiterViewModeProps) {
+  { resumeText, industry, currentRole }: RecruiterViewModeProps) { {
+  const { t } = useTranslation();
   const [data, setData] = useState<RecruiterViewData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();

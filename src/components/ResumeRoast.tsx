@@ -52,7 +52,8 @@ const impactColors = {
 };
 
 export function ResumeRoast({
-  const { t } = useTranslation(); resumeText, industry, currentRole }: ResumeRoastProps) {
+  { resumeText, industry, currentRole }: ResumeRoastProps) { {
+  const { t } = useTranslation();
   const [data, setData] = useState<RoastData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [copiedTweet, setCopiedTweet] = useState(false);
