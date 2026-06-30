@@ -2744,6 +2744,18 @@
     }
   },
   "changelogEntries": {
+    "fasterPremiumGeneration": {
+      "title": "El paquete premium de currículum + carta de presentación se genera el doble de rápido",
+      "description": "Paralelizamos las dos llamadas de IA que generan tu currículum reescrito y tu carta de presentación para que se ejecuten simultáneamente en lugar de una tras otra. La mayoría de los paquetes premium ahora se completan en 15–25 segundos en lugar de 30–50 segundos."
+    },
+    "employerAwareIndustryDetection": {
+      "title": "La detección de industria ahora reconoce tus empleadores",
+      "description": "Añadimos una base de datos de ~200 empresas conocidas para que el motor pueda usar tu historial de empleadores como señal directa de industria — Goldman Sachs, McKinsey, Kaiser Permanente y cientos más se reconocen al instante. También mejoramos cómo se ponderan los trabajos recientes: tu puesto actual ahora cuenta significativamente más que empleos de hace 5+ años, por lo que los cambios de carrera se clasifican correctamente según dónde están hoy."
+    },
+    "scanAiReliability": {
+      "title": "Escaneos más fiables cuando la IA es lenta",
+      "description": "Añadimos un tiempo de espera de 55 segundos para la llamada de IA primaria durante el escaneo de currículums. Si el primer modelo de IA se detiene, el motor ahora cambia automáticamente a un modelo de respaldo más rápido en lugar de esperar hasta 2,5 minutos."
+    },
     "industryDetectionAccuracy": {
       "title": "Sharper, more accurate industry detection",
       "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."

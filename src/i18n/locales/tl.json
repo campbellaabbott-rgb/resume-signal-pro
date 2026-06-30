@@ -2744,6 +2744,18 @@
     }
   },
   "changelogEntries": {
+    "fasterPremiumGeneration": {
+      "title": "Ang premium na resume + cover letter ay nabubuo nang dalawang beses na mas mabilis",
+      "description": "Pinagsabay namin ang dalawang AI na tawag na bumubuo ng iyong binagong resume at cover letter para magsabay ang mga ito sa halip na sunud-sunod. Karamihan sa mga premium package ay natapos na ngayon sa 15–25 segundo sa halip na 30–50 segundo."
+    },
+    "employerAwareIndustryDetection": {
+      "title": "Ang pagtuklas ng industriya ay nakikilala na ang iyong mga employer",
+      "description": "Nagdagdag kami ng database ng ~200 kilalang kumpanya para magamit ng engine ang iyong kasaysayan ng employer bilang direktang signal ng industriya — Goldman Sachs, McKinsey, Kaiser Permanente, at daan-daang iba pa ay agad na nakikilala ngayon. Pinahusay din namin kung paano binibigyan ng timbang ang mga kamakailang trabaho: ang iyong kasalukuyang papel ay nagbibigay na ng mas malaking kahalagahan kaysa sa mga trabaho mula 5+ taon na ang nakalipas, para ang mga nagbago ng karera ay mauri nang tama batay sa kinatatayuan nila ngayon."
+    },
+    "scanAiReliability": {
+      "title": "Mas maaasahang mga scan kapag mabagal ang AI",
+      "description": "Nagdagdag ng 55-segundong timeout sa pangunahing AI na tawag sa panahon ng pag-scan ng resume. Kung ang unang modelo ng AI ay bumagal, awtomatiko na ngayong nagpapalit ang engine sa mas mabilis na backup na modelo sa halip na maghintay nang hanggang 2.5 minuto."
+    },
     "industryDetectionAccuracy": {
       "title": "Sharper, more accurate industry detection",
       "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."

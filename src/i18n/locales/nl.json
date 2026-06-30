@@ -2744,6 +2744,18 @@
     }
   },
   "changelogEntries": {
+    "fasterPremiumGeneration": {
+      "title": "Premium cv + sollicitatiebrief wordt twee keer zo snel gegenereerd",
+      "description": "We hebben de twee AI-aanroepen die uw herschreven cv en sollicitatiebrief genereren geparallelliseerd zodat ze tegelijkertijd worden uitgevoerd in plaats van achter elkaar. De meeste premiumpakketten zijn nu klaar in 15–25 seconden in plaats van 30–50 seconden."
+    },
+    "employerAwareIndustryDetection": {
+      "title": "Branchedetectie herkent nu uw werkgevers",
+      "description": "We hebben een database van ~200 bekende bedrijven toegevoegd zodat de engine uw werkgevershistorie kan gebruiken als direct branchesignaal — Goldman Sachs, McKinsey, Kaiser Permanente en honderden andere worden nu direct herkend. We hebben ook de weging van recente banen verbeterd: uw huidige functie telt nu aanzienlijk meer dan banen van 5+ jaar geleden, zodat carrièreswissers correct worden geclassificeerd op basis van waar ze nu staan."
+    },
+    "scanAiReliability": {
+      "title": "Betrouwbaardere scans wanneer AI traag is",
+      "description": "Een time-out van 55 seconden toegevoegd aan de primaire AI-aanroep tijdens het scannen van cv's. Als het eerste AI-model vastloopt, schakelt de engine nu automatisch over naar een sneller back-upmodel in plaats van tot 2,5 minuten te wachten."
+    },
     "industryDetectionAccuracy": {
       "title": "Sharper, more accurate industry detection",
       "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."

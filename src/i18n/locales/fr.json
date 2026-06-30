@@ -2744,6 +2744,18 @@
     }
   },
   "changelogEntries": {
+    "fasterPremiumGeneration": {
+      "title": "Le package premium CV + lettre de motivation se génère deux fois plus vite",
+      "description": "Nous avons parallélisé les deux appels IA qui génèrent votre CV réécrit et votre lettre de motivation pour qu'ils s'exécutent simultanément plutôt que l'un après l'autre. La plupart des packages premium sont maintenant prêts en 15 à 25 secondes au lieu de 30 à 50 secondes."
+    },
+    "employerAwareIndustryDetection": {
+      "title": "La détection de secteur reconnaît maintenant vos employeurs",
+      "description": "Nous avons ajouté une base de données d'environ 200 entreprises connues pour que le moteur puisse utiliser votre historique d'employeurs comme signal direct de secteur — Goldman Sachs, McKinsey, Kaiser Permanente et des centaines d'autres sont maintenant reconnus instantanément. Nous avons également amélioré la pondération des emplois récents : votre poste actuel compte désormais bien plus que des emplois d'il y a 5 ans ou plus, afin que les personnes en reconversion soient correctement classées selon leur situation actuelle."
+    },
+    "scanAiReliability": {
+      "title": "Analyses plus fiables lorsque l'IA est lente",
+      "description": "Ajout d'un délai d'expiration de 55 secondes pour l'appel IA principal lors de l'analyse de CV. Si le premier modèle IA se bloque, le moteur bascule maintenant automatiquement vers un modèle de secours plus rapide au lieu d'attendre jusqu'à 2,5 minutes."
+    },
     "industryDetectionAccuracy": {
       "title": "Sharper, more accurate industry detection",
       "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."

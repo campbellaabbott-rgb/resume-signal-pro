@@ -2744,6 +2744,18 @@
     }
   },
   "changelogEntries": {
+    "fasterPremiumGeneration": {
+      "title": "Premium-Lebenslauf + Anschreiben wird doppelt so schnell erstellt",
+      "description": "Wir haben die beiden KI-Aufrufe, die Ihren überarbeiteten Lebenslauf und Ihr Anschreiben erstellen, parallelisiert, sodass sie gleichzeitig statt nacheinander ausgeführt werden. Die meisten Premium-Pakete sind jetzt in 15–25 Sekunden fertig statt in 30–50 Sekunden."
+    },
+    "employerAwareIndustryDetection": {
+      "title": "Branchenerkennung erkennt jetzt Ihre Arbeitgeber",
+      "description": "Wir haben eine Datenbank mit ~200 bekannten Unternehmen hinzugefügt, sodass die Engine Ihre Arbeitgeberhistorie als direktes Branchensignal nutzen kann – Goldman Sachs, McKinsey, Kaiser Permanente und Hunderte mehr werden jetzt sofort erkannt. Außerdem haben wir die Gewichtung kürzlich ausgeübter Stellen verbessert: Ihre aktuelle Stelle zählt nun deutlich mehr als Jobs von vor 5+ Jahren, sodass Karrierewechsler basierend auf ihrem aktuellen Stand korrekt eingeordnet werden."
+    },
+    "scanAiReliability": {
+      "title": "Zuverlässigere Scans bei langsamer KI",
+      "description": "Beim Lebenslauf-Scan wurde ein 55-Sekunden-Timeout für den primären KI-Aufruf hinzugefügt. Wenn das erste KI-Modell ins Stocken gerät, wechselt die Engine jetzt automatisch zu einem schnelleren Backup-Modell, anstatt bis zu 2,5 Minuten zu warten."
+    },
     "industryDetectionAccuracy": {
       "title": "Sharper, more accurate industry detection",
       "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."

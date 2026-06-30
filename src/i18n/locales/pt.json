@@ -2744,6 +2744,18 @@
     }
   },
   "changelogEntries": {
+    "fasterPremiumGeneration": {
+      "title": "Pacote premium de currículo + carta de apresentação gerado duas vezes mais rápido",
+      "description": "Paralelizamos as duas chamadas de IA que geram seu currículo reescrito e carta de apresentação para que sejam executadas simultaneamente em vez de uma após a outra. A maioria dos pacotes premium agora é concluída em 15 a 25 segundos em vez de 30 a 50 segundos."
+    },
+    "employerAwareIndustryDetection": {
+      "title": "Detecção de setor agora reconhece seus empregadores",
+      "description": "Adicionamos um banco de dados de ~200 empresas conhecidas para que o motor possa usar seu histórico de empregadores como sinal direto de setor — Goldman Sachs, McKinsey, Kaiser Permanente e centenas de outras agora são reconhecidas instantaneamente. Também melhoramos como os empregos recentes são ponderados: sua função atual agora conta significativamente mais do que empregos de 5+ anos atrás, para que quem mudou de carreira seja classificado corretamente com base em onde está hoje."
+    },
+    "scanAiReliability": {
+      "title": "Verificações mais confiáveis quando a IA é lenta",
+      "description": "Adicionamos um timeout de 55 segundos para a chamada de IA primária durante a verificação de currículos. Se o primeiro modelo de IA travar, o motor agora muda automaticamente para um modelo de backup mais rápido em vez de aguardar até 2,5 minutos."
+    },
     "industryDetectionAccuracy": {
       "title": "Sharper, more accurate industry detection",
       "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."

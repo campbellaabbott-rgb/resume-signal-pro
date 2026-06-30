@@ -2744,6 +2744,18 @@
     }
   },
   "changelogEntries": {
+    "fasterPremiumGeneration": {
+      "title": "Premium resume + cover letter generates twice as fast",
+      "description": "We parallelised the two AI calls that build your rewritten resume and cover letter so they run simultaneously instead of back-to-back. Most premium packages now complete in 15–25 seconds instead of 30–50 seconds."
+    },
+    "employerAwareIndustryDetection": {
+      "title": "Industry detection now recognises your employers",
+      "description": "We added a database of ~200 well-known companies so the engine can use your employer history as a direct industry signal — Goldman Sachs, McKinsey, Kaiser Permanente, and hundreds more are now recognised instantly. We also fixed how recently-held jobs are weighted: your current role now counts significantly more than jobs from 5+ years ago, so career changers get correctly classified based on where they are today, not where they started."
+    },
+    "scanAiReliability": {
+      "title": "More reliable scans when AI is slow",
+      "description": "Added a 55-second timeout to the primary AI call during resume scanning. If the first AI model stalls, the engine now automatically switches to a faster backup model instead of hanging for up to 2.5 minutes. Most users won't notice — but if you've ever seen the scan spinner run unusually long, this fixes that."
+    },
     "industryDetectionAccuracy": {
       "title": "Sharper, more accurate industry detection",
       "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."

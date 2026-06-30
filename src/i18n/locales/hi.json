@@ -2744,6 +2744,18 @@
     }
   },
   "changelogEntries": {
+    "fasterPremiumGeneration": {
+      "title": "प्रीमियम रिज्यूमे + कवर लेटर दोगुनी तेजी से जनरेट होता है",
+      "description": "हमने आपके रीराइटेन रिज्यूमे और कवर लेटर बनाने वाले दोनों AI कॉल्स को समानांतर में चलाया है ताकि वे एक के बाद एक की बजाय एक साथ चलें। अधिकांश प्रीमियम पैकेज अब 30–50 सेकंड के बजाय 15–25 सेकंड में पूरे होते हैं।"
+    },
+    "employerAwareIndustryDetection": {
+      "title": "इंडस्ट्री डिटेक्शन अब आपके नियोक्ताओं को पहचानता है",
+      "description": "हमने ~200 प्रसिद्ध कंपनियों का डेटाबेस जोड़ा है ताकि इंजन आपके नियोक्ता इतिहास को सीधे इंडस्ट्री सिग्नल के रूप में उपयोग कर सके — Goldman Sachs, McKinsey, Kaiser Permanente और सैकड़ों अन्य अब तुरंत पहचाने जाते हैं। हमने हाल की नौकरियों की वेटिंग भी बेहतर की है: आपकी वर्तमान भूमिका अब 5+ साल पुरानी नौकरियों की तुलना में काफी अधिक मायने रखती है, इसलिए करियर बदलने वाले लोग आज की स्थिति के आधार पर सही वर्गीकृत होते हैं।"
+    },
+    "scanAiReliability": {
+      "title": "AI धीमा होने पर अधिक विश्वसनीय स्कैन",
+      "description": "रिज्यूमे स्कैनिंग के दौरान प्राथमिक AI कॉल के लिए 55-सेकंड का टाइमआउट जोड़ा गया। अगर पहला AI मॉडल रुक जाता है, तो इंजन अब 2.5 मिनट तक इंतजार करने की बजाय स्वचालित रूप से एक तेज बैकअप मॉडल पर स्विच करता है।"
+    },
     "industryDetectionAccuracy": {
       "title": "Sharper, more accurate industry detection",
       "description": "We overhauled how we identify your industry from your resume. Six rounds of testing and fixes corrected misclassifications for roles like Growth Hacker, Salesforce Administrator, Quantitative Researcher, and Software Engineers at AI companies. We also fixed a scoring logic bug that caused false positives for DevOps engineers. The result is more accurate industry-specific tips, keyword suggestions, and ATS scoring weights that match your actual role."
