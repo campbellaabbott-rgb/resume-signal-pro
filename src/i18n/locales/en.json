@@ -1559,6 +1559,12 @@
       "unlikely": "⚠️ Unlikely to Advance",
       "yourAdvantage": "Your Advantage",
       "yourGap": "Your Gap"
+    },
+    "cta": {
+      "fixIssues": "See What's Costing You Interviews — {{price}}",
+      "getFullAnalysis": "Get My Recruiter-Ready Resume — {{price}}",
+      "socialProof": "{{count}} people upgraded their resume this week",
+      "resultsExpiry": "Your results are saved for {{hours}} more hours"
     }
   },
   "analysisPreviewSample": {

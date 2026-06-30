@@ -1559,6 +1559,12 @@
       "unlikely": "⚠️ Weinig kans",
       "yourAdvantage": "Jouw voordeel",
       "yourGap": "Jouw kloof"
+    },
+    "cta": {
+      "fixIssues": "Zie wat sollicitaties kost — {{price}}",
+      "getFullAnalysis": "Mijn recruiter-klaar cv ophalen — {{price}}",
+      "socialProof": "{{count}} mensen verbeterden hun cv deze week",
+      "resultsExpiry": "Uw resultaten worden nog {{hours}} uur opgeslagen"
     }
   },
   "analysisPreviewSample": {

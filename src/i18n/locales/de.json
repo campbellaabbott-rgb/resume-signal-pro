@@ -1559,6 +1559,12 @@
       "unlikely": "⚠️ Kaum Chancen",
       "yourAdvantage": "Dein Vorteil",
       "yourGap": "Deine Lücke"
+    },
+    "cta": {
+      "fixIssues": "Sehen, was Bewerbungen kostet — {{price}}",
+      "getFullAnalysis": "Meinen bewerbungsfertigen Lebenslauf holen — {{price}}",
+      "socialProof": "{{count}} Personen haben ihren Lebenslauf diese Woche verbessert",
+      "resultsExpiry": "Ihre Ergebnisse werden noch {{hours}} Stunden gespeichert"
     }
   },
   "analysisPreviewSample": {

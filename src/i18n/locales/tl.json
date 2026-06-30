@@ -1559,6 +1559,12 @@
       "unlikely": "⚠️ Malamang Hindi Makaka-Advance",
       "yourAdvantage": "Ang Iyong Kalamangan",
       "yourGap": "Ang Iyong Agwat"
+    },
+    "cta": {
+      "fixIssues": "Tingnan kung ano ang pumipigil sa mga interview — {{price}}",
+      "getFullAnalysis": "Kunin ang aking recruiter-ready na resume — {{price}}",
+      "socialProof": "{{count}} tao ang nagpabuti ng kanilang resume ngayong linggo",
+      "resultsExpiry": "Ang iyong mga resulta ay naka-save pa ng {{hours}} oras"
     }
   },
   "analysisPreviewSample": {

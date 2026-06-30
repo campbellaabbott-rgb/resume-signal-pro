@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { useTranslation } from "react-i18next";
+import { useConversionTracking } from "@/hooks/use-conversion-tracking";
+import { useTodayScanCount } from "@/hooks/use-shared-data";
 import { 
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
@@ -764,6 +766,8 @@ export function FreeKeywordResults({
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
+  const { trackButtonClick } = useConversionTracking();
+  const { data: scanCountData } = useTodayScanCount();
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -772,6 +776,7 @@ export function FreeKeywordResults({
   const [hasRecordedScan, setHasRecordedScan] = useState(false);
   const [correctedIndustry, setCorrectedIndustry] = useState<string | null>(null);
   const [showExitOffer, setShowExitOffer] = useState(false);
+  const [scanTimestamp] = useState(() => Date.now());
 
   // Exit-intent fallback offer: if someone scrolls through every upsell and
   // starts to leave without buying anything, show the cheapest paid product
@@ -864,13 +869,13 @@ export function FreeKeywordResults({
   const fullAnalysisPrice = PRODUCTS.fullAnalysis.priceUsd;
   const priceDisplay = isLocalCurrency ? `$${fullAnalysisPrice} ≈ ${formatPrice(fullAnalysisPrice)}` : `$${fullAnalysisPrice}`;
   
-  // Winners declared - using control variants
-  const getFirstCtaText = () => `Fix These Issues - ${priceDisplay}`;
-  const getSecondCtaText = () => `Get Full Analysis - ${priceDisplay}`;
+  const getFirstCtaText = () => t('freeResults.cta.fixIssues', { price: priceDisplay });
+  const getSecondCtaText = () => t('freeResults.cta.getFullAnalysis', { price: priceDisplay });
   const getFinalCtaText = () => t('freeScan.cta.button');
-  
-  // Wrap onGetFullAnalysis with conversion tracking
+
+  // Track which CTA converts, then trigger checkout
   const handleUpgradeClick = (source: string) => {
+    trackButtonClick('fullAnalysis', source);
     onGetFullAnalysis();
   };
 
@@ -1514,15 +1519,18 @@ export function FreeKeywordResults({
               }
             </p>
           </div>
-          <Button 
-            onClick={() => handleUpgradeClick('action_required_banner')}
-            disabled={isLoading}
-            size="sm"
-            className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground shrink-0"
-          >
-            {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-            {getFirstCtaText()}
-          </Button>
+          <div className="flex flex-col items-start sm:items-end gap-1 shrink-0">
+            <Button
+              onClick={() => handleUpgradeClick('action_required_banner')}
+              disabled={isLoading}
+              size="sm"
+              className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              {getFirstCtaText()}
+            </Button>
+            <span className="text-[10px] text-muted-foreground">{t('freeResults.cta.resultsExpiry', { hours: 48 })}</span>
+          </div>
         </div>
       </div>
 
@@ -3359,12 +3367,24 @@ export function FreeKeywordResults({
 
       {/* Final CTA */}
       <div className="text-center p-6 rounded-2xl bg-gradient-to-br from-primary/10 via-background to-primary/5 border border-primary/20">
+        {/* Social proof */}
+        {scanCountData && scanCountData.inflatedCount > 0 && (
+          <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mb-3">
+            <div className="flex -space-x-1">
+              {['bg-blue-400','bg-green-400','bg-purple-400'].map((c,i) => (
+                <div key={i} className={`w-5 h-5 rounded-full ${c} border-2 border-background`} />
+              ))}
+            </div>
+            <span>{t('freeResults.cta.socialProof', { count: scanCountData.inflatedCount.toLocaleString() })}</span>
+          </div>
+        )}
+
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-success/10 text-success text-xs font-medium mb-3">
           <CheckCircle2 className="w-3 h-3" />
           {t('freeResults.oneTimePaymentInstantAccess')}
         </div>
-        <Button 
-          size="lg" 
+        <Button
+          size="lg"
           onClick={() => handleUpgradeClick('final_cta')}
           disabled={isLoading}
           className="gap-2 px-10 h-14 text-lg font-bold bg-gradient-to-r from-primary via-primary to-primary/80 hover:from-primary/90 hover:via-primary/90 hover:to-primary/70 shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-all hover:scale-[1.02] active:scale-[0.98]"
@@ -3373,7 +3393,12 @@ export function FreeKeywordResults({
           <ArrowRight className="w-5 h-5" />
         </Button>
         <WalletPaymentBadge className="mt-3" />
-        <p className="text-sm text-muted-foreground mt-2">
+        {/* Urgency */}
+        <p className="text-xs text-muted-foreground mt-2 flex items-center justify-center gap-1">
+          <span>⏱</span>
+          {t('freeResults.cta.resultsExpiry', { hours: Math.max(0, 48 - Math.floor((Date.now() - scanTimestamp) / 3600000)) })}
+        </p>
+        <p className="text-sm text-muted-foreground mt-1">
           <span className="text-success font-medium">{t('freeResults.oneInterviewPaidForItself', { price: priceDisplay })}</span>
         </p>
       </div>

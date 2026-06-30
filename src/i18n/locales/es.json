@@ -1559,6 +1559,12 @@
       "unlikely": "⚠️ Pocas probabilidades",
       "yourAdvantage": "Tu ventaja",
       "yourGap": "Tu brecha"
+    },
+    "cta": {
+      "fixIssues": "Ver qué te cuesta entrevistas — {{price}}",
+      "getFullAnalysis": "Obtener mi CV listo para reclutadores — {{price}}",
+      "socialProof": "{{count}} personas mejoraron su CV esta semana",
+      "resultsExpiry": "Tus resultados se guardarán {{hours}} horas más"
     }
   },
   "analysisPreviewSample": {

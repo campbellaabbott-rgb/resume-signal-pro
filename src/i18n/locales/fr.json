@@ -1559,6 +1559,12 @@
       "unlikely": "⚠️ Peu de chances",
       "yourAdvantage": "Votre avantage",
       "yourGap": "Votre lacune"
+    },
+    "cta": {
+      "fixIssues": "Voir ce qui vous coûte des entretiens — {{price}}",
+      "getFullAnalysis": "Obtenir mon CV prêt pour les recruteurs — {{price}}",
+      "socialProof": "{{count}} personnes ont amélioré leur CV cette semaine",
+      "resultsExpiry": "Vos résultats sont sauvegardés encore {{hours}} heures"
     }
   },
   "analysisPreviewSample": {
