@@ -98,7 +98,14 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'developer advocate', 'developer relations', 'devrel', 'programmer', 'coder',
       'fullstack engineer', 'full-stack engineer', 'full stack engineer',
       'embedded engineer', 'firmware engineer', 'game developer', 'game engineer',
-      'blockchain engineer', 'web3 engineer', 'smart contract engineer'
+      'blockchain engineer', 'web3 engineer', 'smart contract engineer',
+      // System/platform admins — configure and operate tech, not sell it
+      'systems administrator', 'sysadmin', 'it administrator', 'it admin',
+      'salesforce administrator', 'crm administrator', 'salesforce admin',
+      'salesforce developer', 'salesforce engineer', 'salesforce architect',
+      'it manager', 'it director', 'vp of engineering', 'head of engineering',
+      'database administrator', 'dba', 'network administrator',
+      'it support', 'help desk', 'desktop support', 'it specialist'
     ],
     primary: [
       'code', 'coding', 'programming', 'develop', 'development',
@@ -118,12 +125,18 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'terraform', 'ansible', 'jenkins', 'circleci', 'github actions',
       'postgresql', 'mysql', 'mongodb', 'redis', 'elasticsearch',
       'rabbitmq', 'graphql', 'rest', 'restful',
-      'github.com', 'portfolio', 'open source', 'open-source'
+      'github.com', 'portfolio', 'open source', 'open-source',
+      // CRM/admin tools — in tech context these are admin/configuration roles, not sales
+      'salesforce', 'salesforce.com', 'apex', 'soql', 'lightning', 'salesforce flow',
+      'crm', 'hubspot crm', 'microsoft dynamics', 'servicenow', 'zendesk',
+      'jira', 'confluence', 'atlassian', 'okta', 'active directory'
     ],
     certifications: [
       'aws certified', 'azure certified', 'gcp certified', 'ckad', 'cka',
       'cissp', 'comptia', 'cisco certified', 'ccna', 'ccnp',
-      'scrum master', 'psm', 'csm', 'pmp'
+      'scrum master', 'psm', 'csm', 'pmp',
+      'salesforce certified', 'salesforce administrator', 'salesforce developer',
+      'salesforce architect', 'microsoft certified', 'itil', 'servicenow certified'
     ]
   },
 
@@ -260,6 +273,8 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'marketing manager', 'marketing director', 'cmo', 'chief marketing officer',
       'vp of marketing', 'head of marketing', 'brand manager', 'product marketing',
       'growth marketing', 'performance marketing', 'digital marketing',
+      'growth hacker', 'head of growth', 'growth manager', 'vp of growth',
+      'director of growth', 'growth lead', 'growth product manager',
       'content marketing', 'content strategist', 'seo specialist', 'seo manager',
       'ppc specialist', 'paid media', 'social media manager', 'community manager',
       'email marketing', 'marketing analyst', 'marketing coordinator',
@@ -273,7 +288,11 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'content strategy', 'content creation', 'copywriting', 'copy',
       'social media', 'organic social', 'paid social', 'advertising',
       'media buying', 'media planning', 'creative', 'creative direction',
-      'brand identity', 'brand guidelines', 'messaging', 'positioning'
+      'brand identity', 'brand guidelines', 'messaging', 'positioning',
+      // Growth-specific primary signals — ensures growth roles beat data_science
+      'mau', 'dau', 'growth rate', 'user acquisition', 'retention rate',
+      'activation rate', 'referral', 'viral coefficient', 'k-factor',
+      'cohort retention', 'day 30 retention', 'growth loop'
     ],
     secondary: [
       'google ads', 'facebook ads', 'meta ads', 'linkedin ads', 'tiktok ads',
@@ -296,7 +315,9 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'finance manager', 'financial analyst', 'fp&a', 'financial planning',
       'investment analyst', 'portfolio manager', 'fund manager',
       'investment banker', 'private equity', 'venture capital', 'vc',
-      'hedge fund', 'quantitative analyst', 'quant', 'trader', 'trading',
+      'hedge fund', 'quantitative analyst', 'quantitative researcher', 'quant researcher',
+      'quant', 'trader', 'trading', 'algorithmic trader', 'algo trader',
+      'portfolio strategist', 'systematic trader', 'quantitative strategist',
       'auditor', 'tax manager', 'tax accountant', 'treasury', 'treasurer',
       'credit analyst', 'risk analyst', 'compliance officer', 'actuary'
     ],
@@ -307,7 +328,11 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'audit', 'auditing', 'internal controls', 'sox', 'sarbanes-oxley',
       'gaap', 'ifrs', 'financial reporting', 'consolidation',
       'valuation', 'dcf', 'discounted cash flow', 'lbo', 'merger', 'm&a',
-      'due diligence', 'deal', 'transaction', 'portfolio', 'aum'
+      'due diligence', 'deal', 'transaction', 'portfolio', 'aum',
+      // Quant/hedge fund signals — these must beat data_science scoring
+      'backtest', 'backtested', 'backtesting', 'alpha', 'alpha generation',
+      'signal', 'trading signal', 'factor', 'risk-adjusted', 'sharpe',
+      'drawdown', 'market neutral', 'long/short', 'execution algorithm'
     ],
     secondary: [
       'excel', 'financial modeling', 'bloomberg', 'factset', 'capital iq',
@@ -749,7 +774,11 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['valuation', 'dcf', 'modeling'],
     ['portfolio', 'aum', 'returns'],
     ['budget', 'forecast', 'variance'],
-    ['gaap', 'financial', 'statements']
+    ['gaap', 'financial', 'statements'],
+    // Quant/hedge fund — must beat data_science when these appear together
+    ['backtest', 'alpha', 'signal'],
+    ['sharpe', 'drawdown', 'factor'],
+    ['trading', 'execution', 'portfolio']
   ],
   healthcare: [
     ['patient', 'clinical', 'hospital'],
@@ -880,20 +909,23 @@ const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleS
     { negativeFor: 'marketing', requiredTitleSignal: true },
     { negativeFor: 'creative', requiredTitleSignal: true }
   ],
-  // If someone has tech titles, consulting/sales keywords shouldn't reclassify.
-  // Note: "solutions architect" at a consulting firm should NOT be caught here —
-  // the consulting industry's title list also includes solutions architect; if
-  // consulting co-occurrence patterns fire (client, engagement, advisory, presales),
-  // consulting should win via higher title+co-occurrence combined score.
-  // "Growth engineer": has "engineer" title but marketing signals — stays technology
-  // if title score for technology dominates; marketing title wins only if explicit
-  // marketing title (growth marketing, demand gen) present without "engineer".
+  // If someone has tech titles (SWE, DevOps, admin), other industries shouldn't reclassify.
+  // Key case: SWE at an ML company who writes Python scripts touching ML APIs should stay
+  // technology — they need a machine_learning TITLE to score as ML engineer.
+  // "Growth engineer": has "engineer" title but marketing signals — stays technology.
   technology: [
     { negativeFor: 'consulting', requiredTitleSignal: true },
     { negativeFor: 'sales', requiredTitleSignal: true },
-    { negativeFor: 'marketing', requiredTitleSignal: true }, // growth engineer stays tech
+    { negativeFor: 'marketing', requiredTitleSignal: true },
     { negativeFor: 'data_engineering', requiredTitleSignal: true },
-    { negativeFor: 'machine_learning', requiredTitleSignal: true }
+    { negativeFor: 'machine_learning', requiredTitleSignal: true }, // SWE at ML co ≠ ML engineer
+    { negativeFor: 'data_science', requiredTitleSignal: true }
+  ],
+  // Machine learning: strong title required — writing Python at an ML company is NOT
+  // sufficient to reclassify away from technology. ML engineer needs ML/AI title.
+  machine_learning: [
+    { negativeFor: 'technology', requiredTitleSignal: true },
+    { negativeFor: 'data_science', requiredTitleSignal: true }
   ],
   // If someone has marketing titles, sales keywords shouldn't reclassify
   marketing: [
@@ -1239,11 +1271,11 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
     }
   }
   
-  // Co-occurrence bonus — ONLY fires after minimum keyword/title score is established.
-  // Without this gate, DevOps resumes mentioning [kafka, spark, data warehouse] could
-  // score as data_engineering with zero matching titles or primary keywords.
-  // Threshold: at least one solid keyword match (score >= 4) before co-occurrence adds weight.
-  if (score >= 4) {
+  // Co-occurrence bonus — fires after minimum score is established.
+  // Gate at 2.5 (lowered from 4): allows pattern-based rescue for roles like
+  // growth hacker or marketing analyst that have keyword signals but weaker title matches,
+  // while still blocking zero-signal false positives (DevOps→data_eng needs primary keywords first).
+  if (score >= 2.5) {
     const coOccurrenceScore = checkCoOccurrence(sections.fullText, industry);
     if (coOccurrenceScore > 0) {
       score += coOccurrenceScore;
