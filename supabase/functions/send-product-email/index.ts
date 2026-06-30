@@ -274,12 +274,12 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
         <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
           <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
             <div>
-              <div style="font-size: 24px; font-weight: bold; color: #9ca3af;">${generatedContent.resume.atsScore.before}%</div>
+              <div style="font-size: 24px; font-weight: bold; color: #9ca3af;">${escapeHtml(String(generatedContent.resume.atsScore.before ?? '?'))}%</div>
               <div style="color: #6b7280; font-size: 12px;">Before</div>
             </div>
             <div style="font-size: 24px; color: #22c55e;">→</div>
             <div>
-              <div style="font-size: 36px; font-weight: bold; color: #22c55e;">${generatedContent.resume.atsScore.after}%</div>
+              <div style="font-size: 36px; font-weight: bold; color: #22c55e;">${escapeHtml(String(generatedContent.resume.atsScore.after ?? '?'))}%</div>
               <div style="color: #166534; font-size: 12px;">After</div>
             </div>
           </div>

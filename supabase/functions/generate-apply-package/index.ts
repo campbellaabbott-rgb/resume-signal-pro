@@ -20,8 +20,8 @@ const REQUEST_TIMEOUT_MS = 55000;
 const RETRY_DELAY_MS = 1000;
 
 const MODEL_FALLBACK_ORDER = [
-  'openai/gpt-5',
   'google/gemini-2.5-pro',
+  'openai/gpt-5',
   'openai/gpt-5-mini',
 ];
 

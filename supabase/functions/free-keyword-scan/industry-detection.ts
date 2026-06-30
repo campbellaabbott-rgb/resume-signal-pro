@@ -202,7 +202,7 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'bayesian', 'bayesian inference', 'probabilistic modeling'
     ],
     secondary: [
-      'python', 'r', 'sql', 'pandas', 'numpy', 'scikit-learn', 'sklearn',
+      'r language', 'sql', 'pandas', 'numpy', 'scikit-learn', 'sklearn',
       'jupyter', 'jupyter notebook', 'matplotlib', 'seaborn', 'plotly',
       'tableau', 'power bi', 'looker', 'metabase', 'domo',
       'statsmodels', 'scipy', 'xgboost', 'lightgbm', 'catboost',
@@ -319,7 +319,10 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'quant', 'trader', 'trading', 'algorithmic trader', 'algo trader',
       'portfolio strategist', 'systematic trader', 'quantitative strategist',
       'auditor', 'tax manager', 'tax accountant', 'treasury', 'treasurer',
-      'credit analyst', 'risk analyst', 'compliance officer', 'actuary'
+      'credit analyst', 'risk analyst', 'compliance officer', 'actuary',
+      'financial advisor', 'wealth advisor', 'investment advisor', 'financial planner',
+      'registered investment advisor', 'ria', 'wealth manager', 'private wealth manager',
+      'cfp', 'certified financial planner', 'financial consultant', 'retirement planner'
     ],
     primary: [
       'financial statements', 'balance sheet', 'income statement', 'cash flow',
@@ -506,7 +509,9 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'materials engineer', 'nuclear engineer', 'marine engineer',
       'geological engineer', 'mining engineer', 'safety engineer',
       'packaging engineer', 'validation engineer', 'commissioning engineer',
-      'r&d engineer', 'research engineer', 'applications engineer'
+      'r&d engineer', 'research engineer', 'applications engineer',
+      'construction manager', 'construction project manager', 'site manager',
+      'site superintendent', 'general contractor', 'construction superintendent'
       // NOTE: 'editor' is NOT an engineering title — do NOT add it
     ],
     primary: [
@@ -1641,12 +1646,25 @@ export function detectIndustry(
   // Military/general should NEVER be a final result
   finalIndustry = remapPhantomIndustry(finalIndustry, resumeText, scores);
   
-  // DOUBLE-CHECK: If remap still returned a phantom, force to consulting
+  // DOUBLE-CHECK: If remap still returned a phantom, pick the top-scoring real industry
+  // or fall back to consulting only for military (career transition context).
   if (['military', 'general'].includes(finalIndustry)) {
-    console.log(`[INDUSTRY-DETECTION] FORCE-KILL: "${finalIndustry}" escaped remap → forcing to consulting`);
-    finalIndustry = 'consulting';
-    if (confidence === 'high') confidence = 'medium';
-    finalSignals.push('Forced remap from non-functional industry');
+    const topReal = scores.find(s => !['military', 'general'].includes(s.industry) && s.score >= 3);
+    if (topReal) {
+      console.log(`[INDUSTRY-DETECTION] FORCE-KILL: "${finalIndustry}" → best real industry "${topReal.industry}" (score ${topReal.score})`);
+      finalIndustry = topReal.industry;
+      if (confidence === 'high') confidence = 'medium';
+      finalSignals.push('Remapped from non-functional industry to best real match');
+    } else if (finalIndustry === 'military') {
+      console.log(`[INDUSTRY-DETECTION] FORCE-KILL: military with no real signals → consulting`);
+      finalIndustry = 'consulting';
+      if (confidence === 'high') confidence = 'medium';
+      finalSignals.push('Military transition with no industry signals → consulting');
+    } else {
+      // True general resume — pick consulting as a reasonable neutral
+      console.log(`[INDUSTRY-DETECTION] FORCE-KILL: genuine general resume → general (kept for low-signal profiles)`);
+      finalIndustry = 'general';
+    }
   }
   
   // === MULTI-INDUSTRY DETECTION ===

@@ -17,8 +17,8 @@ const RETRY_DELAY_MS = 1000;
 
 // Model fallback order
 const MODEL_FALLBACK_ORDER = [
-  'openai/gpt-5',
   'google/gemini-2.5-pro',
+  'openai/gpt-5',
   'openai/gpt-5-mini',
 ];
 
@@ -89,7 +89,7 @@ async function callAIWithFallback(
         lastError = error instanceof Error ? error : new Error(errorMessage);
         
         if (attempt < MAX_RETRIES) {
-          await sleep(RETRY_DELAY_MS);
+          await sleep(RETRY_DELAY_MS * Math.pow(2, attempt));
           continue;
         }
         break;
@@ -97,7 +97,7 @@ async function callAIWithFallback(
     }
     logStep(`${context} - ${model} failed, trying next model`);
   }
-  
+
   throw lastError || new Error('All AI models failed');
 }
 
@@ -325,7 +325,14 @@ Write something that sounds like this specific person wrote it - confident, spec
         { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    
+
+    if (errorMessage.includes('All AI models failed')) {
+      return new Response(
+        JSON.stringify({ error: "The AI service is temporarily unavailable. Please try again in a few minutes.", retryable: true }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: "Failed to generate cover letter", details: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -321,6 +321,11 @@ const getClientIp = (req: Request): string => {
 // Retry helper for AI API calls with exponential backoff
 const MAX_AI_RETRIES = 2;
 const AI_RETRY_DELAY_MS = 2000;
+const MODEL_FALLBACK_ORDER = [
+  'google/gemini-2.5-pro',
+  'google/gemini-2.5-flash',
+  'openai/gpt-4o-mini',
+];
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -537,7 +542,7 @@ serve(async (req) => {
       ipCountry: country || null,
       visitorId: clientIp,
       inputLength: resumeText.length,
-      aiModel: 'google/gemini-2.5-pro'
+      aiModel: MODEL_FALLBACK_ORDER[0]
     };
 
     // Check global rate limit result
@@ -986,14 +991,20 @@ ${resumeText.substring(0, 15000)}
 
     console.log("[FREE-KEYWORD-SCAN] Calling Lovable AI Gateway...");
 
-    const aiResponse = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro", // Using Pro for better personalization and nuanced analysis
+    let aiResponse: Response | null = null;
+    let usedModel = MODEL_FALLBACK_ORDER[0];
+    for (const modelId of MODEL_FALLBACK_ORDER) {
+      usedModel = modelId;
+      console.log(`[FREE-KEYWORD-SCAN] Trying model: ${modelId}`);
+      try {
+        const candidate = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: modelId,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
@@ -1337,7 +1348,24 @@ ${resumeText.substring(0, 15000)}
         }],
         tool_choice: { type: "function", function: { name: "submit_analysis" } }
       }),
-    });
+        });
+        if (candidate.ok || candidate.status === 400 || candidate.status === 429) {
+          aiResponse = candidate;
+          break;
+        }
+        console.warn(`[FREE-KEYWORD-SCAN] Model ${modelId} returned ${candidate.status}, trying next fallback`);
+        aiResponse = candidate;
+      } catch (err) {
+        console.warn(`[FREE-KEYWORD-SCAN] Model ${modelId} threw: ${err}, trying next fallback`);
+      }
+    }
+
+    if (!aiResponse) {
+      return new Response(
+        JSON.stringify({ error: "The AI service is temporarily unavailable. Please try again in a few minutes." }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (!aiResponse.ok) {
       // Log detailed error for debugging
@@ -1655,7 +1683,7 @@ ${resumeText.substring(0, 15000)}
               p_status: 'failed',
               p_duration_ms: Date.now() - requestStartTime,
               p_cache_hit: false,
-              p_ai_model: 'google/gemini-2.5-pro',
+              p_ai_model: usedModel ?? MODEL_FALLBACK_ORDER[0],
               p_error_code: 'UNCAUGHT_ERROR',
               p_error_message: error instanceof Error ? error.message : 'Unknown error',
               p_ip_country: null,

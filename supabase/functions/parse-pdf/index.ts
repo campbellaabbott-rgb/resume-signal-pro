@@ -295,8 +295,8 @@ serve(async (req) => {
     // a page number) "succeeds" here with little-to-no text, which would otherwise
     // silently flow into analysis as garbage input. Treat that as a parse failure
     // with specific, actionable guidance instead of pretending it worked.
-    const MIN_CHARS_PER_PAGE = 20;
-    const looksLikeScannedPdf = text.length < Math.max(40, doc.numPages * MIN_CHARS_PER_PAGE);
+    const MIN_CHARS_PER_PAGE = 200;
+    const looksLikeScannedPdf = text.length < Math.max(200, doc.numPages * MIN_CHARS_PER_PAGE);
 
     if (looksLikeScannedPdf) {
       trackPerformance(requestStartTime, 'parse-pdf', false, { pages: doc.numPages, textLength: text.length, reason: 'scanned_or_empty' }, clientIp);
