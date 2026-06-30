@@ -56,6 +56,11 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+  const supabaseEarly = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+  const { data: rlAllowed } = await supabaseEarly.rpc("check_rate_limit", { p_function: "verify-product-purchase", p_ip: clientIp, p_max_requests: 30, p_window_minutes: 60 });
+  if (!rlAllowed) return new Response(JSON.stringify({ error: "Too many requests. Please try again later." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
   try {
     const { sessionId, generateContent = false } = await req.json();
 
@@ -321,7 +326,7 @@ serve(async (req) => {
       
       const { error: creditError } = await supabase.rpc('add_scan_credits', {
         p_email: customerEmail,
-        p_credits: Math.min(credits, 100) // Cap at 100 per call for safety
+        p_credits: Math.min(credits, 500) // Cap at 500 — matches stripe-webhook cap
       });
 
       if (creditError) {
@@ -339,7 +344,7 @@ serve(async (req) => {
       
       const { error: creditError } = await supabase.rpc('add_scan_credits', {
         p_email: customerEmail,
-        p_credits: Math.min(credits, 100) // Cap at 100 per call for safety
+        p_credits: Math.min(credits, 500) // Cap at 500 — matches stripe-webhook cap
       });
 
       if (creditError) {

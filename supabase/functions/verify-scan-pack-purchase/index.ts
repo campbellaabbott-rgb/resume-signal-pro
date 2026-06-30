@@ -151,10 +151,13 @@ serve(async (req) => {
       logStep("Credits from metadata", { credits: creditsToAdd });
     }
 
-    // Validate credits amount (security check)
-    if (creditsToAdd < 1 || creditsToAdd > 100) {
+    // Validate credits amount — reject entirely rather than silently under-deliver
+    if (creditsToAdd < 1 || creditsToAdd > 500) {
       console.error("[VERIFY-SCAN-PACK-PURCHASE] Invalid credit amount:", creditsToAdd);
-      creditsToAdd = 1; // Default to 1 if invalid
+      return new Response(
+        JSON.stringify({ error: "Invalid credit amount detected. Please contact support.", verified: false }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     
     const { data: creditSuccess, error: creditError } = await supabase.rpc('add_scan_credits', {

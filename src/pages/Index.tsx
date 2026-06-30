@@ -398,7 +398,17 @@ const Index = () => {
     if (searchParams.get("scan_pack_success") === "true") {
       const sessionId = searchParams.get("session_id");
       if (sessionId) {
-        verifyPurchase(sessionId);
+        (async () => {
+          try {
+            await verifyPurchase(sessionId);
+          } catch (err) {
+            toast({
+              title: t('homepage.toast.analysisFailed'),
+              description: t('homepage.toast.tryAgain'),
+              variant: "destructive",
+            });
+          }
+        })();
         // Clean URL
         window.history.replaceState({}, '', window.location.pathname);
       }

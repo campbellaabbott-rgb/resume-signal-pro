@@ -734,6 +734,10 @@ serve(async (req) => {
 
     if (globalRlError) {
       console.error("[ANALYZE-RESUME] Global rate limit check error:", globalRlError);
+      return new Response(
+        JSON.stringify({ error: 'Service temporarily unavailable. Please try again shortly.' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     } else if (!globalAllowed) {
       console.log(`[ANALYZE-RESUME] Global rate limit exceeded for IP: ${clientIp}`);
       return new Response(

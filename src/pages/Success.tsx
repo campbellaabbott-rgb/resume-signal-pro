@@ -615,20 +615,22 @@ const Success = () => {
                         </Button>
                       </div>
                       
-                      {/* Email Sent card */}
-                      <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-success/30 space-y-3">
-                        <div className="flex items-center gap-2 text-sm font-medium text-success">
-                          <Mail className="w-4 h-4" />
-                          Email Sent
+                      {/* Email Sent card — only show when email was actually delivered */}
+                      {emailSent && (
+                        <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-success/30 space-y-3">
+                          <div className="flex items-center gap-2 text-sm font-medium text-success">
+                            <Mail className="w-4 h-4" />
+                            Email Sent
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            A copy was sent to your email
+                          </p>
+                          <div className="flex items-center gap-2 text-success text-sm">
+                            <CheckCircle2 className="w-4 h-4" />
+                            Check your inbox
+                          </div>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          A copy was sent to your email
-                        </p>
-                        <div className="flex items-center gap-2 text-success text-sm">
-                          <CheckCircle2 className="w-4 h-4" />
-                          Check your inbox
-                        </div>
-                      </div>
+                      )}
 
                       {/* Clear Browser Data card */}
                       <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-amber-500/20 space-y-3">

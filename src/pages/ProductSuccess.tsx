@@ -238,10 +238,10 @@ export default function ProductSuccess() {
       try {
         const [packageResult, coverLetterResult] = await Promise.all([
           supabase.functions.invoke('generate-apply-package', {
-            body: { resumeText, jobPostingText: jobDescription, language: localStorage.getItem('i18nextLng') }
+            body: { resumeText, jobPostingText: jobDescription, language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })() }
           }),
           supabase.functions.invoke('generate-cover-letter', {
-            body: { resumeText, jobDescription, jobTitle: 'Target Position', tone: 'professional', language: localStorage.getItem('i18nextLng') }
+            body: { resumeText, jobDescription, jobTitle: 'Target Position', tone: 'professional', language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })() }
           })
         ]);
 
@@ -519,7 +519,8 @@ export default function ProductSuccess() {
 
       setStreamingComplete(true);
       setIsStreaming(false);
-      
+      streamingStartedRef.current = false; // Allow re-generation after successful stream
+
       // Track success
       if (productKey && product) {
         trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
@@ -714,7 +715,7 @@ export default function ProductSuccess() {
                 sessionId,
                 resumeText: sessionData.resumeText,
                 targetRoles: [],
-                language: localStorage.getItem('i18nextLng')
+                language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })()
               }
             });
 
@@ -748,7 +749,7 @@ export default function ProductSuccess() {
               body: {
                 resumeText: sessionData.resumeText,
                 jobDescription: sessionData.jobDescriptionText || undefined,
-                language: localStorage.getItem('i18nextLng')
+                language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })()
               }
             });
             
@@ -785,7 +786,7 @@ export default function ProductSuccess() {
                 body: {
                   resumeText: sessionData.resumeText,
                   jobPostingText: sessionData.jobDescriptionText,
-                  language: localStorage.getItem('i18nextLng')
+                  language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })()
                 }
               }),
               supabase.functions.invoke('generate-cover-letter', {
@@ -794,7 +795,7 @@ export default function ProductSuccess() {
                   jobDescription: sessionData.jobDescriptionText,
                   jobTitle: 'Target Position',
                   tone: 'professional',
-                  language: localStorage.getItem('i18nextLng')
+                  language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })()
                 }
               })
             ]);
@@ -831,7 +832,7 @@ export default function ProductSuccess() {
               body: {
                 resumeText: sessionData.resumeText,
                 jobDescription: sessionData.jobDescriptionText || undefined,
-                language: localStorage.getItem('i18nextLng')
+                language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })()
               }
             });
             
