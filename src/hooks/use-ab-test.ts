@@ -41,6 +41,14 @@ export const AB_TESTS = {
     name: 'hero_layout',
     variants: ['compact', 'original', 'ultra_compact', 'social_first', 'benefit_led'] as const,
   },
+  // Test how much free content drives conversion:
+  // - control: show everything (current behaviour — salary, personal brand, career moves, interview stories all free)
+  // - gated: lock salary insight, personal brand, next career moves, and interview stories
+  //   behind a premium prompt so the "aha" value becomes the upgrade trigger
+  free_content_depth: {
+    name: 'free_content_depth',
+    variants: ['control', 'gated'] as const,
+  },
 } as const;
 
 type TestName = keyof typeof AB_TESTS;

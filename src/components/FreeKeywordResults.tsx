@@ -4,6 +4,7 @@ import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { useTranslation } from "react-i18next";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useTodayScanCount } from "@/hooks/use-shared-data";
+import { useABTest } from "@/hooks/use-ab-test";
 import { 
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
@@ -768,6 +769,8 @@ export function FreeKeywordResults({
   const { formatPrice, isLocalCurrency } = useCurrency();
   const { trackButtonClick } = useConversionTracking();
   const { data: scanCountData } = useTodayScanCount();
+  const { variant: contentDepthVariant, trackConversion: trackContentDepthConversion } = useABTest('free_content_depth');
+  const gateDeepInsights = contentDepthVariant === 'gated';
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -876,6 +879,7 @@ export function FreeKeywordResults({
   // Track which CTA converts, then trigger checkout
   const handleUpgradeClick = (source: string) => {
     trackButtonClick('fullAnalysis', source);
+    trackContentDepthConversion({ source });
     onGetFullAnalysis();
   };
 
@@ -2454,6 +2458,15 @@ export function FreeKeywordResults({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Next Role Suggestions */}
               {personalizedCareerInsights.nextRoleSuggestions && personalizedCareerInsights.nextRoleSuggestions.length > 0 && (
+                gateDeepInsights ? (
+                  <LockedPremiumInsight
+                    title={t('freeResults.personalizedCareerInsights.nextMoves')}
+                    description={t('freeResults.lockedInsights.careerNextRole')}
+                    previewLines={personalizedCareerInsights.nextRoleSuggestions.slice(0, 2).map(r => `→ ${r.title}`)}
+                    onUnlock={() => handleUpgradeClick('locked_next_roles')}
+                    isLoading={isLoading}
+                  />
+                ) : (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Rocket className="w-4 h-4 text-primary" />
@@ -2479,10 +2492,20 @@ export function FreeKeywordResults({
                     ))}
                   </div>
                 </div>
+                )
               )}
 
               {/* Interview Talking Points */}
               {personalizedCareerInsights.interviewTalkingPoints && personalizedCareerInsights.interviewTalkingPoints.length > 0 && (
+                gateDeepInsights ? (
+                  <LockedPremiumInsight
+                    title={t('freeResults.personalizedCareerInsights.interviewStories')}
+                    description={t('freeResults.lockedInsights.careerInterview')}
+                    previewLines={personalizedCareerInsights.interviewTalkingPoints.slice(0, 2).map(p => `"${p.achievement.substring(0, 60)}..."`)}
+                    onUnlock={() => handleUpgradeClick('locked_interview_stories')}
+                    isLoading={isLoading}
+                  />
+                ) : (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <MessageSquare className="w-4 h-4 text-primary" />
@@ -2497,11 +2520,23 @@ export function FreeKeywordResults({
                     ))}
                   </div>
                 </div>
+                )
               )}
             </div>
 
             {/* Salary Insight */}
-            {personalizedCareerInsights.salaryInsight && (
+            {personalizedCareerInsights.salaryInsight && (gateDeepInsights ? (
+              <div className="mt-5">
+                <LockedPremiumInsight
+                  title={t('freeResults.personalizedCareerInsights.salaryInsightTitle')}
+                  description={t('freeResults.lockedInsights.careerSalary')}
+                  previewLines={[`💰 ${personalizedCareerInsights.salaryInsight.estimatedRange}`, ...(personalizedCareerInsights.salaryInsight.leveragePoints?.slice(0,2) ?? [])]}
+                  onUnlock={() => handleUpgradeClick('locked_salary')}
+                  isLoading={isLoading}
+                  variant="highlight"
+                />
+              </div>
+            ) : (
               <div className="mt-5 p-4 rounded-xl bg-gradient-to-r from-success/5 to-primary/5 border border-success/20">
                 <div className="flex items-center gap-2 mb-3">
                   <DollarSign className="w-4 h-4 text-success" />
@@ -2533,7 +2568,7 @@ export function FreeKeywordResults({
                   </div>
                 )}
               </div>
-            )}
+            ))}
 
             {/* Hidden Strengths & Personal Brand */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
@@ -2557,6 +2592,18 @@ export function FreeKeywordResults({
 
               {/* Personal Brand */}
               {personalizedCareerInsights.personalBrand && (
+                gateDeepInsights ? (
+                  <LockedPremiumInsight
+                    title={t('freeResults.personalizedCareerInsights.personalBrand')}
+                    description={t('freeResults.lockedInsights.careerBrand')}
+                    previewLines={[
+                      `${t('freeResults.personalizedCareerInsights.currentLabel')} ${personalizedCareerInsights.personalBrand.currentBrand.substring(0, 50)}...`,
+                      `${t('freeResults.personalizedCareerInsights.idealLabel')} ...`,
+                    ]}
+                    onUnlock={() => handleUpgradeClick('locked_personal_brand')}
+                    isLoading={isLoading}
+                  />
+                ) : (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <User className="w-4 h-4 text-primary" />
@@ -2577,6 +2624,7 @@ export function FreeKeywordResults({
                     </div>
                   </div>
                 </div>
+                )
               )}
             </div>
           </div>
