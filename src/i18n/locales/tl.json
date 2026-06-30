@@ -2557,6 +2557,10 @@
     }
   },
   "changelogEntries": {
+    "everythingTranslated": {
+      "title": "Lahat ng screen ay isinalin na ngayon",
+      "description": "Nakumpleto ang buong saklaw ng pagsasalin sa lahat ng 9 suportadong wika. Bawat screen na nakikita ng gumagamit — ang resume builder, mga panel ng keyword ng industriya at papel, pagsusuri ng job match, simulasyon ng recruiter, mga score card, generator ng elevator pitch, resume roast, mga tagapagpahiwatig ng live na aktibidad, counter ng scan credit at marami pa — ay ipinapakita na ngayon sa iyong piniling wika. Dati, marami sa mga screen na ito ay nagpapakita sa Ingles anuman ang iyong setting ng wika."
+    },
     "yourReportsSpeakYourLanguage": {
       "title": "Ang iyong mga ulat ay nagsasalita na ngayon ng iyong wika",
       "description": "Lahat ng aming bayad na ulat — Resume Score, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator, at Apply Assistant — ay gumagawa na ngayon ng AI content at on-screen text sa isa sa 9 wikang sinusuportahan namin, depende sa iyong pinili, sa halip na laging nagde-default sa English. Ang mga inangkop na resume at cover letter na ipinapadala mo sa mga employer ay sinasadyang nananatili sa orihinal na wika, dahil ang pagsasalin ng totoong job application nang walang pagsang-ayon ay maaaring magdulot ng higit na pinsala kaysa benepisyo."

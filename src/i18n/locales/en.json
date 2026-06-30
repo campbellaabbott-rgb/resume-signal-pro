@@ -2557,6 +2557,10 @@
     }
   },
   "changelogEntries": {
+    "everythingTranslated": {
+      "title": "Every screen is now translated",
+      "description": "Completed full translation coverage across all 9 supported languages. Every user-facing screen — the resume builder, industry and role keyword panels, job match analysis, recruiter simulation, score cards, elevator pitch generator, resume roast, live activity indicators, scan credit counter, and more — now displays in your chosen language. Previously, many of these screens defaulted to English regardless of your language setting."
+    },
     "yourReportsSpeakYourLanguage": {
       "title": "Your reports now speak your language",
       "description": "All of our paid reports — Resume Score, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator, and Apply Assistant — now generate their AI content and on-screen text in whichever of our 9 supported languages you've selected, instead of always defaulting to English. Tailored resumes and cover letters you submit to employers still stay in their original language by design, since translating an actual job application without asking could do more harm than good."

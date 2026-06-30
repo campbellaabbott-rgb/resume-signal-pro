@@ -2557,6 +2557,10 @@
     }
   },
   "changelogEntries": {
+    "everythingTranslated": {
+      "title": "Todas las pantallas ahora están traducidas",
+      "description": "Se completó la cobertura de traducción completa en los 9 idiomas compatibles. Cada pantalla visible para el usuario — el constructor de currículum, paneles de palabras clave de industria y rol, análisis de coincidencia de empleo, simulación de reclutador, tarjetas de puntuación, generador de discurso de presentación, crítica de currículum, indicadores de actividad en vivo, contador de créditos de escaneo y más — ahora se muestra en el idioma elegido. Anteriormente, muchas de estas pantallas se mostraban en inglés independientemente del idioma seleccionado."
+    },
     "yourReportsSpeakYourLanguage": {
       "title": "Tus informes ahora hablan tu idioma",
       "description": "Todos nuestros informes de pago — Puntuación de Currículum, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator y Apply Assistant — ahora generan su contenido de IA y el texto en pantalla en el idioma que hayas seleccionado entre los 9 que admitimos, en lugar de usar siempre inglés por defecto. Los currículums adaptados y las cartas de presentación que envías a empleadores siguen en su idioma original a propósito, ya que traducir una solicitud de empleo real sin avisar podría hacer más daño que bien."

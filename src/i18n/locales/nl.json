@@ -2557,6 +2557,10 @@
     }
   },
   "changelogEntries": {
+    "everythingTranslated": {
+      "title": "Elk scherm is nu vertaald",
+      "description": "Volledige vertaaldekking voltooid voor alle 9 ondersteunde talen. Elk gebruikersscherm — de cv-builder, branche- en rolkeywordpanelen, vacatureovereenkomstanalyse, recruitersimulatie, scorekaarten, elevator-pitchgenerator, cv-roast, live-activiteitsindicatoren, scancreditteller en meer — wordt nu weergegeven in de gekozen taal. Voorheen werden veel van deze schermen in het Engels weergegeven, ongeacht de taalinstelling."
+    },
     "yourReportsSpeakYourLanguage": {
       "title": "Je rapporten spreken nu jouw taal",
       "description": "Al onze betaalde rapporten — Cv-score, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator en Apply Assistant — genereren hun AI-inhoud en schermtekst nu in een van onze 9 ondersteunde talen, afhankelijk van wat je hebt geselecteerd, in plaats van altijd standaard Engels. Aangepaste cv's en motivatiebrieven die je naar werkgevers stuurt, blijven met opzet in hun oorspronkelijke taal — een echte sollicitatie ongevraagd vertalen kan namelijk meer kwaad dan goed doen."

@@ -2557,6 +2557,10 @@
     }
   },
   "changelogEntries": {
+    "everythingTranslated": {
+      "title": "Jeder Bildschirm ist jetzt übersetzt",
+      "description": "Vollständige Übersetzungsabdeckung für alle 9 unterstützten Sprachen abgeschlossen. Jeder nutzerseitige Bereich — der Lebenslauf-Builder, Branchen- und Rollenkeyword-Panels, Job-Match-Analyse, Recruiter-Simulation, Score-Karten, Elevator-Pitch-Generator, Resume-Roast, Live-Aktivitätsindikatoren, Scan-Credit-Zähler und mehr — wird jetzt in Ihrer gewählten Sprache angezeigt. Zuvor wurden viele dieser Bereiche unabhängig von Ihrer Spracheinstellung auf Englisch angezeigt."
+    },
     "yourReportsSpeakYourLanguage": {
       "title": "Deine Berichte sprechen jetzt deine Sprache",
       "description": "Alle unsere kostenpflichtigen Berichte — Lebenslauf-Score, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator und Apply Assistant — generieren ihren KI-Inhalt und Bildschirmtext jetzt in einer der 9 von uns unterstützten Sprachen, je nachdem, welche du ausgewählt hast, statt immer auf Englisch zurückzugreifen. Angepasste Lebensläufe und Anschreiben, die du an Arbeitgeber sendest, bleiben weiterhin in ihrer Originalsprache — denn eine echte Bewerbung ungefragt zu übersetzen, könnte mehr schaden als nützen."

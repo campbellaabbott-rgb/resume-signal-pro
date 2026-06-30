@@ -2557,6 +2557,10 @@
     }
   },
   "changelogEntries": {
+    "everythingTranslated": {
+      "title": "Chaque écran est maintenant traduit",
+      "description": "Couverture de traduction complète achevée dans les 9 langues prises en charge. Chaque écran visible par l'utilisateur — le générateur de CV, les panneaux de mots-clés sectoriels et par rôle, l'analyse de correspondance d'emploi, la simulation de recruteur, les cartes de score, le générateur de pitch d'ascenseur, la critique de CV, les indicateurs d'activité en direct, le compteur de crédits de scan et plus encore — s'affiche désormais dans la langue choisie. Auparavant, de nombreux écrans s'affichaient en anglais quelle que soit la langue sélectionnée."
+    },
     "yourReportsSpeakYourLanguage": {
       "title": "Vos rapports parlent désormais votre langue",
       "description": "Tous nos rapports payants — Score de CV, Career Snapshot, Graduate Game Plan, Interview Coach, Career Path Simulator et Apply Assistant — génèrent désormais leur contenu IA et leur texte à l'écran dans l'une des 9 langues que nous prenons en charge, selon celle que vous avez sélectionnée, au lieu de toujours basculer sur l'anglais par défaut. Les CV personnalisés et les lettres de motivation que vous envoyez aux employeurs restent volontairement dans leur langue d'origine, car traduire une vraie candidature sans le demander pourrait faire plus de mal que de bien."
