@@ -287,7 +287,11 @@ const getAnalysisTools = (hasLinkedIn: boolean, hasJobDescription: boolean) => [
     parameters: {
       type: "object",
       properties: {
-        industry: { type: "string", description: "Detected industry (e.g., 'Software Engineering', 'Marketing', 'Finance')" },
+        industry: {
+          type: "string",
+          enum: ["technology", "healthcare", "finance", "marketing", "sales", "engineering", "education", "hr", "consulting", "legal", "retail", "hospitality", "manufacturing", "government", "general"],
+          description: "Detected industry. Pick the single best-matching value. Use 'technology' for software/IT/SaaS/cloud/data. Use 'engineering' only for non-software engineering (civil, mechanical, electrical, chemical). Use 'hr' for human resources/recruiting/talent. Use 'hospitality' for hotels/restaurants/travel/tourism. Use 'general' only when no other category fits."
+        },
         experienceLevel: { type: "string", enum: ["entry", "mid", "senior", "executive"], description: "Career experience level" },
         atsScore: {
           type: "object",

@@ -551,55 +551,13 @@ export const EXPERIENCE_CONFIGS: Record<string, ExperienceLevelConfig> = {
   }
 };
 
-// Get personalized advice based on industry
+// Get personalized advice based on industry.
+// The AI now returns exact enum keys matching INDUSTRY_CONFIGS keys, so a direct
+// lookup is used. The fallback to 'general' handles any legacy free-text values
+// still in the database from before the enum was enforced on the AI schema.
 export function getIndustryAdvice(industry: string): IndustryConfig {
-  const normalizedIndustry = industry.toLowerCase();
-  
-  // Map common industry names to our configs
-  if (normalizedIndustry.includes('tech') || normalizedIndustry.includes('software') || normalizedIndustry.includes('it')) {
-    return INDUSTRY_CONFIGS.technology;
-  }
-  if (normalizedIndustry.includes('health') || normalizedIndustry.includes('medical') || normalizedIndustry.includes('hospital')) {
-    return INDUSTRY_CONFIGS.healthcare;
-  }
-  if (normalizedIndustry.includes('financ') || normalizedIndustry.includes('bank') || normalizedIndustry.includes('investment')) {
-    return INDUSTRY_CONFIGS.finance;
-  }
-  if (normalizedIndustry.includes('market') || normalizedIndustry.includes('advertis') || normalizedIndustry.includes('brand')) {
-    return INDUSTRY_CONFIGS.marketing;
-  }
-  if (normalizedIndustry.includes('sales') || normalizedIndustry.includes('business develop')) {
-    return INDUSTRY_CONFIGS.sales;
-  }
-  if (normalizedIndustry.includes('engineer') && !normalizedIndustry.includes('software')) {
-    return INDUSTRY_CONFIGS.engineering;
-  }
-  if (normalizedIndustry.includes('education') || normalizedIndustry.includes('teaching') || normalizedIndustry.includes('school')) {
-    return INDUSTRY_CONFIGS.education;
-  }
-  if (normalizedIndustry.includes('hr') || normalizedIndustry.includes('human resource') || normalizedIndustry.includes('recruit')) {
-    return INDUSTRY_CONFIGS.hr;
-  }
-  if (normalizedIndustry.includes('consult')) {
-    return INDUSTRY_CONFIGS.consulting;
-  }
-  if (normalizedIndustry.includes('legal') || normalizedIndustry.includes('law') || normalizedIndustry.includes('attorney') || normalizedIndustry.includes('paralegal')) {
-    return INDUSTRY_CONFIGS.legal;
-  }
-  if (normalizedIndustry.includes('retail') || normalizedIndustry.includes('store') || normalizedIndustry.includes('merchandis')) {
-    return INDUSTRY_CONFIGS.retail;
-  }
-  if (normalizedIndustry.includes('hospital') || normalizedIndustry.includes('hotel') || normalizedIndustry.includes('restaurant') || normalizedIndustry.includes('food service') || normalizedIndustry.includes('tourism')) {
-    return INDUSTRY_CONFIGS.hospitality;
-  }
-  if (normalizedIndustry.includes('manufactur') || normalizedIndustry.includes('production') || normalizedIndustry.includes('factory') || normalizedIndustry.includes('industrial')) {
-    return INDUSTRY_CONFIGS.manufacturing;
-  }
-  if (normalizedIndustry.includes('government') || normalizedIndustry.includes('public sector') || normalizedIndustry.includes('federal') || normalizedIndustry.includes('municipal') || normalizedIndustry.includes('civic')) {
-    return INDUSTRY_CONFIGS.government;
-  }
-  
-  return INDUSTRY_CONFIGS.general;
+  const key = industry.toLowerCase().trim();
+  return INDUSTRY_CONFIGS[key] ?? INDUSTRY_CONFIGS.general;
 }
 
 // Get personalized advice based on experience level
