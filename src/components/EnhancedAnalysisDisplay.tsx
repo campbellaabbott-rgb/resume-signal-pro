@@ -109,7 +109,7 @@ const InfoTooltip = ({ title, description }: { title: string; description: strin
             <button 
               onClick={() => setShowMobile(false)}
               className="absolute top-2 right-2 p-1 text-muted-foreground"
-              aria-label=t('enhancedAnalysis.close')
+              aria-label={t('enhancedAnalysis.close')}
             >
               <X className="w-3 h-3" />
             </button>
@@ -296,7 +296,7 @@ export function EnhancedAnalysisDisplay({
               <p className="text-sm font-medium text-foreground flex-1">ATS Compatibility</p>
               <InfoTooltip 
                 title="ATS Compatibility Score" 
-                description=t('enhancedAnalysis.atsDesc')
+                description={t('enhancedAnalysis.atsDesc')}
               />
             </div>
             <p className={cn("text-3xl font-bold", getScoreColor(dualScore.atsCompatibility))}>
@@ -314,7 +314,7 @@ export function EnhancedAnalysisDisplay({
               <p className="text-sm font-medium text-foreground flex-1">Recruiter Impact</p>
               <InfoTooltip 
                 title="Recruiter Impact Score" 
-                description=t('enhancedAnalysis.recruiterDesc')
+                description={t('enhancedAnalysis.recruiterDesc')}
               />
             </div>
             <p className={cn("text-3xl font-bold", getScoreColor(dualScore.recruiterImpact))}>
@@ -422,7 +422,7 @@ export function EnhancedAnalysisDisplay({
             <h4 className="font-bold text-foreground">Best Uses for This Resume</h4>
             <InfoTooltip 
               title="Usage Recommendations" 
-              description=t('enhancedAnalysis.bestUsesDesc')
+              description={t('enhancedAnalysis.bestUsesDesc')}
             />
           </div>
           <p className="text-xs text-muted-foreground mb-3">

@@ -44,7 +44,7 @@ function CopyButton({ text }: { text: string }) {
   };
 
   return (
-    <button onClick={handleCopy} className="p-1 rounded hover:bg-muted transition-colors" title=t('jobKeywordMatcher.copySuggestion')>
+    <button onClick={handleCopy} className="p-1 rounded hover:bg-muted transition-colors" title={t('jobKeywordMatcher.copySuggestion')}>
       {copied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3 text-muted-foreground" />}
     </button>
   );
