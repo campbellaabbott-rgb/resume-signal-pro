@@ -165,10 +165,10 @@ function calculateAmount(currency: string): { amount: number; currency: string }
     return { amount: BASE_PRICE_USD * 100, currency: "usd" };
   }
   
-  const convertedAmount = BASE_PRICE_USD * currencyData.rate;
-  const roundedAmount = Math.round(convertedAmount);
-  const amountInSmallestUnit = roundedAmount * currencyData.minUnit;
-  
+  // Multiply by minUnit BEFORE rounding — rounding major units first (e.g. 4.6 → 5)
+  // then multiplying by 100 gives €5.00 instead of €4.60 (26% overcharge for GBP).
+  const amountInSmallestUnit = Math.round(BASE_PRICE_USD * currencyData.rate * currencyData.minUnit);
+
   return { amount: amountInSmallestUnit, currency: lowerCurrency };
 }
 
@@ -421,6 +421,7 @@ serve(async (req) => {
         resumeData: resumeData ? JSON.stringify(resumeData).slice(0, 500) : "",
         originalCurrency: currency,
         baseAmountUSD: BASE_PRICE_USD.toString(),
+        product_type: 'full_analysis',
       },
       // Additional reliability settings
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // Session expires in 30 minutes

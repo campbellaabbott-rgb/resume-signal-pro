@@ -322,20 +322,6 @@ const Index = () => {
     return checkConnectionHealth();
   };
 
-  // Check if popups are likely blocked (for desktop in iframe)
-  const checkPopupBlocked = (): boolean => {
-    const inIframe = window.self !== window.top;
-    if (!inIframe) return false;
-    
-    // Test popup capability
-    const testWin = window.open('', '_blank', 'width=1,height=1');
-    if (testWin) {
-      testWin.close();
-      return false;
-    }
-    return true;
-  };
-
   // Cleanup expired data on mount, setup unload handler, and restore from session
   useEffect(() => {
     cleanupExpiredResumeData();
@@ -780,6 +766,11 @@ const Index = () => {
       const errorMsg = error?.message?.toLowerCase() || '';
       if (errorMsg.includes('rate') || errorMsg.includes('limit') || errorMsg.includes('429')) {
         setShowRateLimitUpsell(true);
+        toast({
+          title: t('homepage.toast.dailyScanLimitReached'),
+          description: t('homepage.toast.tryAgain'),
+          variant: "destructive",
+        });
         return;
       }
       
@@ -1086,13 +1077,6 @@ const Index = () => {
       // Check for popup blockers on desktop in iframe
       const inIframe = window.self !== window.top;
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      
-      if (inIframe && !isMobile) {
-        const popupsBlocked = checkPopupBlocked();
-        if (popupsBlocked) {
-          console.log("[Checkout] Popup blocker detected, will use clipboard fallback");
-        }
-      }
       
       // Step 2: Connect to payment service
       setCheckoutStep('connecting');

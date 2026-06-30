@@ -126,6 +126,11 @@ async function triggerProductDelivery(
     }
   }).select().single();
 
+  if (deliveryRecord.error) {
+    logStep("Failed to create delivery record", { error: deliveryRecord.error.message, sessionId });
+    // Continue processing — payment was received, delivery tracking failure shouldn't block fulfillment
+  }
+
   // Handle scan packs - just add credits
   if (productType === 'scan_pack' || productType === 'scan_credits' || productType === 'career_bundle') {
     if (customerEmail) {
@@ -154,7 +159,7 @@ async function triggerProductDelivery(
           supabase.from('product_deliveries')
             .update({ status: 'delivered', generation_success: true })
             .eq('id', deliveryRecord.data?.id)
-        ]));
+        ]).catch(err => logStep("Scan pack delivery tracking failed", { error: String(err) })));
       }
     }
     return { success: true, productType };

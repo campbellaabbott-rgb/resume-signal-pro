@@ -543,6 +543,11 @@ serve(async (req) => {
     // Check global rate limit result
     if (globalRateLimitResult.error) {
       console.error("[FREE-KEYWORD-SCAN] Global rate limit check error:", globalRateLimitResult.error);
+      // DB error means we cannot verify rate limit — fail closed to prevent unlimited free scans
+      return new Response(
+        JSON.stringify({ error: 'Service temporarily unavailable. Please try again shortly.' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     } else if (!globalRateLimitResult.data) {
       console.log(`[FREE-KEYWORD-SCAN] Global rate limit exceeded for IP: ${clientIp}`);
       return new Response(
@@ -554,6 +559,10 @@ serve(async (req) => {
     // Check function-specific rate limit result
     if (functionRateLimitResult.error) {
       console.error("[FREE-KEYWORD-SCAN] Rate limit check error:", functionRateLimitResult.error);
+      return new Response(
+        JSON.stringify({ error: 'Service temporarily unavailable. Please try again shortly.' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     } else if (!functionRateLimitResult.data) {
       // Get current usage for helpful error message (non-blocking detail fetch)
       const { data: usageData } = await supabase
@@ -1388,7 +1397,7 @@ ${resumeText.substring(0, 15000)}
     // Normalize industry to valid value
     const rawAIIndustry = analysis.industry;
     const normalizedAIIndustry = normalizeIndustry(rawAIIndustry);
-    if (rawAIIndustry !== normalizedAIIndustry) {
+    if (rawAIIndustry && rawAIIndustry !== normalizedAIIndustry) {
       console.log(`[FREE-KEYWORD-SCAN] AI industry normalized: "${rawAIIndustry}" -> "${normalizedAIIndustry}"`);
     }
 
@@ -1474,7 +1483,7 @@ ${resumeText.substring(0, 15000)}
 
     // Ensure limits
     const keywords = (analysis.keywords || [])
-      .filter((k: { keyword?: string }) => !k.keyword || isKeywordActuallyMissing(k.keyword))
+      .filter((k: { keyword?: string }) => k.keyword && k.keyword.trim() !== '' && isKeywordActuallyMissing(k.keyword))
       .slice(0, 6);
     const redFlags = (analysis.redFlags || []).slice(0, 3);
 

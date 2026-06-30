@@ -63,26 +63,25 @@ function getClientCachedResult(cacheKey: string): StreamingScanResult | null {
     const cached = localStorage.getItem(cacheKey);
     if (!cached) return null;
     
-    const { result, timestamp, resumePreview } = JSON.parse(cached);
+    const { result, timestamp } = JSON.parse(cached);
     if (Date.now() - timestamp > CLIENT_CACHE_TTL_MS) {
       localStorage.removeItem(cacheKey);
       return null;
     }
-    
-    console.log('[StreamingScan] Client cache HIT for key:', cacheKey.substring(0, 20), 'preview:', resumePreview?.substring(0, 50));
+
+    console.log('[StreamingScan] Client cache HIT for key:', cacheKey.substring(0, 20));
     return result;
   } catch {
     return null;
   }
 }
 
-// Store result in localStorage with resume preview for debugging
-function setClientCachedResult(cacheKey: string, result: StreamingScanResult, resumePreview: string): void {
+// Store result in localStorage — no resume text stored to avoid PII in browser storage
+function setClientCachedResult(cacheKey: string, result: StreamingScanResult, _resumePreview: string): void {
   try {
     localStorage.setItem(cacheKey, JSON.stringify({
       result,
       timestamp: Date.now(),
-      resumePreview: resumePreview.substring(0, 100), // Store first 100 chars for debugging
     }));
     console.log('[StreamingScan] Cached result in localStorage for key:', cacheKey.substring(0, 20));
   } catch (e) {
