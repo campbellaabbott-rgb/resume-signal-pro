@@ -8,8 +8,7 @@ interface ScoreBasedPackageRecommendationProps {
   atsScore: number;
 }
 
-export function ScoreBasedPackageRecommendation({
-  { atsScore }: ScoreBasedPackageRecommendationProps) { {
+export function ScoreBasedPackageRecommendation({ atsScore }: ScoreBasedPackageRecommendationProps) {
   const { t } = useTranslation();
   // Determine recommendation based on score - use prices from products config
   const getRecommendation = () => {

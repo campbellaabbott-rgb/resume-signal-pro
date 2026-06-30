@@ -57,8 +57,7 @@ const productDetails: Record<string, {
   },
 };
 
-export function SmartProductRecommendations({
-  { onSelectProduct, className }: SmartProductRecommendationsProps) { {
+export function SmartProductRecommendations({ onSelectProduct, className }: SmartProductRecommendationsProps) {
   const { t } = useTranslation();
   const { profile, getProductRecommendations, hasProfile } = usePersonalization();
   
