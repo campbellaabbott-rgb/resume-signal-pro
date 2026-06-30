@@ -746,8 +746,9 @@ const Index = () => {
           skillGapActions: (result as any).skillGapActions,
           competitiveAssessment: (result as any).competitiveAssessment,
           industryDetection: (result as any).industryDetection,
+          careerSituation: (result as any).careerSituation,
         });
-        
+
         // Track scan completed in funnel
         trackScanCompleted(result.atsScoreEstimate || 0, result.industry || 'General');
         
@@ -873,6 +874,7 @@ const Index = () => {
           titleAlignment: data.titleAlignment,
           jobMatchSummary: data.jobMatchSummary,
           industryDetection: data.industryDetection,
+          careerSituation: data.careerSituation,
         });
         
         toast({

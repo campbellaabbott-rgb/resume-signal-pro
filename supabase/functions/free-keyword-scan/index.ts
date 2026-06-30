@@ -1228,13 +1228,31 @@ ${resumeText.substring(0, 15000)}
                 },
                 careerSituation: {
                   type: "object",
+                  description: "Only populate when situation is NOT 'standard'. For standard resumes omit this field entirely.",
                   properties: {
-                    situation: { type: "string" },
-                    confidence: { type: "string" },
-                    summary: { type: "string" },
-                    advice: { type: "string" }
+                    situation: { type: "string", description: "career_changer | returning_to_workforce | military_transition | recent_grad | standard" },
+                    confidence: { type: "string", description: "high | medium | low" },
+                    situationSummary: { type: "string", description: "1-2 sentences describing what was detected and why it matters for their job search" },
+                    indicators: {
+                      type: "array",
+                      description: "Short phrases (2-5 words) pulled directly from the resume that signal this career situation",
+                      items: { type: "string" }
+                    },
+                    tailoredAdvice: {
+                      type: "array",
+                      description: "2-4 specific, actionable tips for this career situation",
+                      items: {
+                        type: "object",
+                        properties: {
+                          tip: { type: "string", description: "One concrete action they can take on their resume" },
+                          priority: { type: "string", description: "critical | important | helpful" },
+                          example: { type: "string", description: "Optional: a specific before/after or example for this tip" }
+                        },
+                        required: ["tip", "priority"]
+                      }
+                    }
                   },
-                  required: ["situation", "confidence", "summary", "advice"]
+                  required: ["situation", "confidence", "situationSummary", "indicators", "tailoredAdvice"]
                 },
                 jobMatchScore: { type: "number" },
                 jobMatchGrade: { type: "string" },
