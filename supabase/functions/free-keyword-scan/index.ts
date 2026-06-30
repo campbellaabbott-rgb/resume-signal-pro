@@ -59,24 +59,41 @@ const VALID_INDUSTRIES = [
   'technology', 'healthcare', 'finance', 'legal', 'sales',
   'marketing', 'education', 'engineering', 'creative', 'hr',
   'consulting', 'retail', 'hospitality', 'manufacturing',
-  'government', 'product_management', 'general'
+  'government', 'product_management',
+  'data_engineering', 'data_science', 'machine_learning',
+  'general'
 ];
 
 // Industry aliases for normalization — collapses niche sub-industries to parent categories
 const INDUSTRY_ALIASES: Record<string, string> = {
-  // Technology umbrella
+  // Technology (software engineers, devops, security — NOT data/ML)
   'tech': 'technology', 'software': 'technology', 'it': 'technology',
   'software development': 'technology', 'information technology': 'technology',
   'software_engineering': 'technology', 'software engineering': 'technology',
-  'ai_ml': 'technology', 'data_engineering': 'technology',
-  'dataengineering': 'technology', 'data engineering': 'technology',
-  'technical_program_management': 'product_management', 'product management': 'product_management',
-  'program management': 'product_management', 'scrum master': 'product_management',
-  'agile coach': 'product_management',
   'securityengineering': 'technology', 'security_engineering': 'technology',
   'security engineering': 'technology', 'cybersecurity': 'technology',
   'cloud_engineering': 'technology', 'platform_engineering': 'technology',
   'devops': 'technology', 'sre': 'technology',
+  // Data Engineering
+  'data engineering': 'data_engineering', 'dataengineering': 'data_engineering',
+  'analytics engineering': 'data_engineering', 'etl engineering': 'data_engineering',
+  'data platform': 'data_engineering', 'data infrastructure': 'data_engineering',
+  // Data Science
+  'data science': 'data_science', 'datascience': 'data_science',
+  'data analysis': 'data_science', 'business intelligence': 'data_science',
+  'businessintelligence': 'data_science', 'business_intelligence': 'data_science',
+  'quantitative analysis': 'data_science',
+  // Machine Learning / AI
+  'machine learning': 'machine_learning', 'machinelearning': 'machine_learning',
+  'artificial intelligence': 'machine_learning', 'ai': 'machine_learning',
+  'ai_ml': 'machine_learning', 'ml': 'machine_learning',
+  'deep learning': 'machine_learning', 'nlp': 'machine_learning',
+  'computer vision': 'machine_learning', 'generative ai': 'machine_learning',
+  'llm': 'machine_learning', 'mlops': 'machine_learning',
+  // Product Management
+  'technical_program_management': 'product_management', 'product management': 'product_management',
+  'program management': 'product_management', 'scrum master': 'product_management',
+  'agile coach': 'product_management',
   // Healthcare umbrella
   'medical': 'healthcare', 'health': 'healthcare', 'medicine': 'healthcare',
   'nursing': 'healthcare', 'pharmaceutical': 'healthcare',
@@ -84,7 +101,6 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   // Finance umbrella
   'banking': 'finance', 'accounting': 'finance', 'financial services': 'finance',
   'supplychainanalytics': 'finance', 'supply_chain_analytics': 'finance',
-  'businessintelligence': 'finance', 'business_intelligence': 'finance',
   'quantitative_finance': 'finance', 'private_equity': 'finance',
   // Legal
   'law': 'legal', 'attorney': 'legal', 'lawyer': 'legal',
@@ -747,6 +763,21 @@ INDUSTRY-SPECIFIC SCORING WEIGHTS:
 - GOVERNMENT/PUBLIC SECTOR: Compliance Keywords (30%), Program Scale (25%), Budget/Impact (25%), Format (15%), Education (5%)
   * Must-haves: Budget managed, constituents/program scale, agency/department names, security clearance level if applicable
   * Critical: Federal resumes need hours-per-week and GS-level equivalents; match job announcement keywords exactly
+
+- DATA ENGINEERING: Technical Tools (40%), Pipeline Architecture (25%), Quantification (20%), Format (10%), Experience (5%)
+  * Must-haves: Orchestration tool named (Airflow, Dagster, Prefect), transformation tool (dbt), warehousing platform (Snowflake/BigQuery/Redshift/Databricks), streaming tech if relevant (Kafka/Flink); data volume/scale quantified (TB/PB processed, pipeline count, latency SLA)
+  * Critical: Modeling approach named (dimensional, star schema, medallion); data quality tooling; cost or reliability improvement metric; specific ingestion tools (Fivetran, Airbyte, custom)
+  * Heavy penalty for missing tool specifics — "built ETL pipelines" scores very low; "built Airflow DAGs processing 500GB/day on Snowflake, reducing load time 40%" scores high
+
+- DATA SCIENCE: Methodology Rigor (30%), Quantified Business Impact (30%), Tools & Skills (25%), Format (10%), Education (5%)
+  * Must-haves: Statistical method named (A/B testing, regression, classification, time series); business outcome with metric (revenue lift $, conversion +%, churn -%, cost savings $); visualization tool (Tableau/Power BI/Looker); Python or R with key libraries (pandas, scikit-learn, etc.)
+  * Critical: Experiment design experience; model accuracy or lift metric; SQL proficiency stated; stakeholder-facing work (dashboards, presentations, recommendations adopted)
+  * Deduct points for results-free bullet points ("analyzed data", "built models" without outcomes)
+
+- MACHINE LEARNING / AI: Production Deployment (30%), Technical Depth (30%), Quantified Impact (25%), Modern Stack (10%), Format (5%)
+  * Must-haves: Model in production (state scale: QPS, users, latency SLA); training framework (PyTorch/TensorFlow/JAX); at least one of: fine-tuning, RAG, inference optimization, or model evaluation pipeline; measurable improvement (accuracy %, latency reduction %, cost per inference)
+  * For LLM/GenAI roles specifically: LLM framework (LangChain/LlamaIndex/DSPy), vector DB (Pinecone/Weaviate/Qdrant/Chroma), RAG pipeline or agent architecture, eval methodology (RAGAS, human eval, benchmarks)
+  * Critical: MLOps/experiment tracking (MLflow, W&B, Neptune); GPU/infrastructure experience; model quantization or serving optimization; heavy penalty if no production deployment is mentioned for senior roles
 
 - GENERAL/OTHER: Keywords (25%), Experience (25%), Quantification (20%), Format (15%), Education (10%), Skills (5%)
 

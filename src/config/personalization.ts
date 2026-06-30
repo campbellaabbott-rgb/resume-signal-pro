@@ -504,6 +504,90 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     keyMetrics: ['Conversion improvement', 'User satisfaction (SUS/NPS)', 'Brand metric changes', 'Assets produced', 'Projects shipped', 'Accessibility score'],
     industryBenchmarks: { avgScore: 63, topScore: 88 }
   },
+  data_engineering: {
+    name: 'Data Engineering',
+    keywords: ['ETL', 'Data Pipeline', 'Apache Airflow', 'dbt', 'Apache Spark', 'Apache Kafka', 'Snowflake', 'BigQuery', 'Databricks', 'Data Warehouse', 'Stream Processing', 'Data Modeling'],
+    resumeTips: [
+      'Name every tool explicitly — "Airflow", "dbt", "Snowflake" score independently in ATS; "ETL tools" scores nothing',
+      'Quantify pipeline scale: GB/TB/PB processed, number of DAGs/pipelines, latency SLA, uptime %',
+      'State your modeling approach: dimensional modeling, star schema, medallion architecture, data vault',
+      'Include data quality and reliability metrics: incident count, SLA adherence, freshness SLA'
+    ],
+    preferredFormat: 'Reverse chronological with dedicated Technical Skills section listing all tools and platforms',
+    atsNotes: 'Data eng roles use Greenhouse and Lever. Tool names are primary ATS filters — Snowflake, dbt, Airflow, Spark are exact-match keywords.',
+    topSkills: ['Apache Airflow', 'dbt', 'Apache Spark', 'Snowflake/BigQuery', 'Python', 'SQL', 'Kafka', 'Databricks'],
+    certifications: ['Databricks Certified DE Associate', 'Snowflake Core', 'AWS Certified Data Analytics', 'GCP Professional Data Engineer', 'Azure Data Engineer Associate', 'dbt Certified'],
+    commonMistakes: [
+      '"Built ETL pipelines" without naming the orchestration tool, warehouse, or scale',
+      'Missing data volume metrics — recruiters filter by scale (GB vs PB is a different role)',
+      'Not mentioning data modeling approach (star schema vs. medallion tells interviewers your design philosophy)',
+      'Omitting data quality or reliability work — downtime and SLA adherence are critical hiring signals'
+    ],
+    strongActionVerbs: ['Architected', 'Engineered', 'Orchestrated', 'Optimized', 'Migrated', 'Modeled', 'Automated', 'Reduced'],
+    bulletExamples: [
+      { weak: 'Built ETL pipelines for data warehouse', strong: 'Architected Airflow DAGs ingesting 2TB/day from 40+ sources into Snowflake, reducing load time 65% and achieving 99.9% pipeline SLA' },
+      { weak: 'Worked on dbt models', strong: 'Built 150+ dbt models in medallion architecture, cutting analyst query time from 45s to 3s and enabling self-serve reporting for 60 stakeholders' }
+    ],
+    keyMetrics: ['Data volume (GB/TB/PB)', 'Pipeline count', 'Latency SLA', 'Uptime %', 'Query performance improvement', 'Cost reduction'],
+    industryBenchmarks: { avgScore: 68, topScore: 91 }
+  },
+
+  data_science: {
+    name: 'Data Science',
+    keywords: ['Statistical Modeling', 'Machine Learning', 'A/B Testing', 'Python', 'SQL', 'Tableau', 'Experimentation', 'Predictive Modeling', 'scikit-learn', 'Data Visualization'],
+    resumeTips: [
+      'Lead every bullet with a business outcome: revenue lift $, conversion +%, churn -%, cost saved $ — not just "analyzed data"',
+      'Name your statistical method and show it was applied rigorously: "Ran 3-week A/B test (n=50K, p<0.05)" not just "A/B tested"',
+      'List visualization and BI tools explicitly — Tableau, Power BI, Looker are ATS keywords that analysts filter on',
+      'Show stakeholder impact: "Recommendation adopted by CPO" or "Dashboard used by 50 analysts daily" proves real influence'
+    ],
+    preferredFormat: 'Reverse chronological with Skills section separating Languages, Tools, and Methods',
+    atsNotes: 'Data science roles use Greenhouse, Lever, Workday. SQL, Python, and specific BI tools (Tableau/Power BI) are primary ATS filters.',
+    topSkills: ['Python', 'SQL', 'Statistical Analysis', 'A/B Testing', 'scikit-learn', 'Tableau/Power BI', 'Machine Learning', 'Data Visualization'],
+    certifications: ['Google Data Analytics', 'IBM Data Science', 'Tableau Desktop Specialist', 'AWS ML Specialty', 'Coursera ML (Andrew Ng)', 'DataCamp'],
+    commonMistakes: [
+      '"Analyzed data to find insights" — zero scoring value without a method and outcome stated',
+      'Not quantifying model performance (accuracy, AUC, RMSE) or business lift',
+      'Missing BI/visualization tool names — employers filter on Tableau vs Power BI vs Looker',
+      'Leaving out experiment design details (sample size, duration, significance) which signal rigor to technical interviewers'
+    ],
+    strongActionVerbs: ['Modeled', 'Predicted', 'Experimented', 'Quantified', 'Forecasted', 'Identified', 'Reduced', 'Increased'],
+    bulletExamples: [
+      { weak: 'Built machine learning models for churn prediction', strong: 'Built XGBoost churn model (AUC 0.89) identifying 78% of churners 30 days early, enabling targeted retention that reduced churn 18% ($2.3M ARR saved)' },
+      { weak: 'Ran A/B tests on pricing page', strong: 'Designed and analyzed 5 pricing page experiments (avg n=80K/variant, 95% CI) lifting conversion 14% (+$1.8M ARR); presented findings to CEO and VP Product' }
+    ],
+    keyMetrics: ['Model accuracy/AUC/F1', 'Revenue/cost impact $', 'Conversion lift %', 'Churn reduction %', 'Sample size', 'Statistical significance'],
+    industryBenchmarks: { avgScore: 67, topScore: 90 }
+  },
+
+  machine_learning: {
+    name: 'Machine Learning / AI',
+    keywords: ['PyTorch', 'TensorFlow', 'LLM', 'Fine-tuning', 'RAG', 'Model Deployment', 'Inference Optimization', 'Hugging Face', 'MLflow', 'Vector Database', 'LangChain', 'Embeddings'],
+    resumeTips: [
+      'REQUIRED for senior roles: state that a model is in production with scale (QPS served, users impacted, latency SLA) — "trained a model" without production context scores low',
+      'For LLM/GenAI roles: name your stack explicitly (LangChain/LlamaIndex, vector DB, eval framework) — "worked with LLMs" is too vague',
+      'Quantify inference efficiency: latency reduction ms, cost per inference $, GPU utilization % — these signal production-grade thinking',
+      'Include experiment tracking and MLOps tooling (MLflow, W&B, SageMaker) — they are ATS keywords and signal production maturity'
+    ],
+    preferredFormat: 'Reverse chronological with Technical Stack section listing frameworks, platforms, and tooling separately',
+    atsNotes: 'ML roles use Greenhouse, Lever, internal ATS. PyTorch, TensorFlow, specific LLM frameworks, and MLOps tools are primary filters.',
+    topSkills: ['PyTorch', 'TensorFlow', 'Python', 'LLMs/Transformers', 'MLflow/W&B', 'Model Deployment', 'RAG', 'Vector Databases'],
+    certifications: ['AWS ML Specialty', 'GCP Professional ML Engineer', 'Azure AI Engineer', 'TensorFlow Developer', 'deeplearning.ai Specializations', 'Fast.ai'],
+    commonMistakes: [
+      'Missing production deployment — "trained models" without deployment context scores much lower than "deployed to production at X scale"',
+      'Not naming the LLM framework for GenAI roles (LangChain, LlamaIndex, DSPy are all distinct ATS keywords)',
+      'Omitting inference metrics (latency, cost, throughput) which distinguish ML engineers from data scientists',
+      'No MLOps/experiment tracking tool mentioned — signals that experiments were not reproducible'
+    ],
+    strongActionVerbs: ['Trained', 'Deployed', 'Fine-tuned', 'Optimized', 'Served', 'Distilled', 'Evaluated', 'Scaled'],
+    bulletExamples: [
+      { weak: 'Built machine learning models using PyTorch', strong: 'Fine-tuned Llama-3 8B on proprietary customer data (LoRA, 4-bit quant), deployed via vLLM serving 2K QPS at <200ms p99, reducing inference cost 60% vs GPT-4' },
+      { weak: 'Worked on recommendation system', strong: 'Shipped two-tower retrieval model (PyTorch, 500M+ items) serving 10M daily users, improving CTR 23% and reducing embedding serving latency from 180ms to 40ms' }
+    ],
+    keyMetrics: ['QPS/RPS served', 'Latency (p50/p99)', 'Model accuracy/AUC', 'Cost per inference', 'GPU utilization %', 'User/business impact'],
+    industryBenchmarks: { avgScore: 69, topScore: 92 }
+  },
+
   general: {
     name: 'General / Other',
     keywords: ['Leadership', 'Communication', 'Problem Solving', 'Team Collaboration', 'Project Management', 'Customer Service'],

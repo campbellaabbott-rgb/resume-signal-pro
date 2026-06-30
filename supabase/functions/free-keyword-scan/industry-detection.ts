@@ -76,15 +76,19 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'frontend developer', 'backend developer', 'web developer',
       'mobile developer', 'ios developer', 'android developer',
       'devops engineer', 'sre', 'site reliability engineer',
-      'platform engineer', 'cloud engineer', 'data engineer',
-      'ml engineer', 'machine learning engineer', 'ai engineer',
-      'data scientist', 'qa engineer', 'test engineer', 'sdet',
-      'systems engineer', 'network engineer', 'security engineer',
+      'platform engineer', 'cloud engineer',
+      'qa engineer', 'test engineer', 'sdet', 'quality assurance engineer',
+      'systems engineer', 'network engineer', 'security engineer', 'appsec engineer',
       'solutions architect', 'technical architect', 'enterprise architect',
+      'cloud architect', 'software architect',
       'engineering manager', 'tech lead', 'technical lead', 'cto',
-      'vp of engineering', 'director of engineering', 'staff engineer',
-      'principal engineer', 'distinguished engineer', 'developer advocate',
-      'developer relations', 'devrel', 'programmer', 'coder'
+      'vp of engineering', 'director of engineering',
+      'staff engineer', 'senior staff engineer', 'principal engineer',
+      'distinguished engineer', 'engineering fellow', 'fellow',
+      'developer advocate', 'developer relations', 'devrel', 'programmer', 'coder',
+      'fullstack engineer', 'full-stack engineer', 'full stack engineer',
+      'embedded engineer', 'firmware engineer', 'game developer', 'game engineer',
+      'blockchain engineer', 'web3 engineer', 'smart contract engineer'
     ],
     primary: [
       'code', 'coding', 'programming', 'develop', 'development',
@@ -103,12 +107,123 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'aws', 'azure', 'gcp', 'google cloud', 'docker', 'kubernetes',
       'terraform', 'ansible', 'jenkins', 'circleci', 'github actions',
       'postgresql', 'mysql', 'mongodb', 'redis', 'elasticsearch',
-      'kafka', 'rabbitmq', 'graphql', 'rest', 'restful'
+      'rabbitmq', 'graphql', 'rest', 'restful',
+      'github.com', 'portfolio', 'open source', 'open-source'
     ],
     certifications: [
       'aws certified', 'azure certified', 'gcp certified', 'ckad', 'cka',
       'cissp', 'comptia', 'cisco certified', 'ccna', 'ccnp',
       'scrum master', 'psm', 'csm', 'pmp'
+    ]
+  },
+
+  data_engineering: {
+    titles: [
+      'data engineer', 'senior data engineer', 'staff data engineer', 'principal data engineer',
+      'analytics engineer', 'data platform engineer', 'data infrastructure engineer',
+      'data architect', 'data warehouse engineer', 'etl developer', 'etl engineer',
+      'bi engineer', 'business intelligence engineer', 'bi developer',
+      'database engineer', 'database administrator', 'dba',
+      'streaming engineer', 'real-time data engineer', 'lakehouse engineer'
+    ],
+    primary: [
+      'etl', 'elt', 'pipeline', 'data pipeline', 'data warehouse', 'data lake',
+      'data lakehouse', 'data platform', 'data infrastructure',
+      'airflow', 'apache airflow', 'dbt', 'data build tool',
+      'spark', 'apache spark', 'kafka', 'apache kafka',
+      'ingestion', 'orchestration', 'transformation', 'batch processing', 'stream processing',
+      'dimensional modeling', 'star schema', 'data modeling', 'data quality'
+    ],
+    secondary: [
+      'snowflake', 'bigquery', 'redshift', 'databricks', 'delta lake',
+      'flink', 'apache flink', 'fivetran', 'stitch', 'airbyte',
+      'dbt cloud', 'great expectations', 'monte carlo',
+      'pyspark', 'hadoop', 'hive', 'presto', 'trino', 'athena',
+      'dagster', 'prefect', 'luigi', 'mwaa',
+      'parquet', 'avro', 'iceberg', 'hudi',
+      'dynamodb', 'cassandra', 'hbase',
+      'oltp', 'olap', 'data mart', 'fact table', 'dimension table', 'slowly changing dimension'
+    ],
+    certifications: [
+      'databricks certified', 'snowflake core', 'aws data', 'gcp data engineer',
+      'azure data engineer', 'dbt certified'
+    ]
+  },
+
+  data_science: {
+    titles: [
+      'data scientist', 'senior data scientist', 'staff data scientist', 'principal data scientist',
+      'data analyst', 'senior data analyst', 'analytics manager', 'head of analytics',
+      'business intelligence analyst', 'bi analyst', 'business analyst',
+      'quantitative analyst', 'quant analyst', 'research scientist',
+      'applied scientist', 'decision scientist', 'growth analyst',
+      'product analyst', 'marketing analyst', 'operations analyst',
+      'statistician', 'biostatistician', 'clinical data scientist'
+    ],
+    primary: [
+      'statistical analysis', 'statistics', 'hypothesis testing', 'a/b testing',
+      'experiment design', 'experimentation', 'regression', 'classification',
+      'clustering', 'predictive modeling', 'machine learning', 'model building',
+      'feature engineering', 'exploratory data analysis', 'eda',
+      'data visualization', 'insights', 'dashboards', 'reporting',
+      'business intelligence', 'kpi', 'metrics', 'forecasting'
+    ],
+    secondary: [
+      'python', 'r', 'sql', 'pandas', 'numpy', 'scikit-learn', 'sklearn',
+      'jupyter', 'jupyter notebook', 'matplotlib', 'seaborn', 'plotly',
+      'tableau', 'power bi', 'looker', 'metabase', 'domo',
+      'statsmodels', 'scipy', 'xgboost', 'lightgbm', 'catboost',
+      'excel', 'google analytics', 'mixpanel', 'amplitude', 'segment',
+      'spss', 'sas', 'stata'
+    ],
+    certifications: [
+      'google data analytics', 'ibm data science', 'tableau certified',
+      'aws machine learning', 'coursera', 'datacamp'
+    ]
+  },
+
+  machine_learning: {
+    titles: [
+      'machine learning engineer', 'ml engineer', 'senior ml engineer',
+      'ai engineer', 'ai/ml engineer', 'applied ml engineer',
+      'llm engineer', 'large language model engineer',
+      'generative ai engineer', 'gen ai engineer', 'genai engineer',
+      'prompt engineer', 'ai prompt engineer',
+      'rag engineer', 'retrieval augmented generation engineer',
+      'mlops engineer', 'ml platform engineer', 'ml infrastructure engineer',
+      'ai research engineer', 'research engineer', 'applied research scientist',
+      'computer vision engineer', 'nlp engineer', 'speech engineer',
+      'recommendation systems engineer', 'ranking engineer',
+      'ai product engineer', 'multimodal engineer'
+    ],
+    primary: [
+      'machine learning', 'deep learning', 'neural network', 'model training',
+      'model deployment', 'model serving', 'inference', 'fine-tuning', 'fine tuning',
+      'llm', 'large language model', 'generative ai', 'generative artificial intelligence',
+      'rag', 'retrieval augmented generation', 'vector database', 'vector db',
+      'embeddings', 'embedding', 'prompt engineering', 'prompt design',
+      'rlhf', 'reinforcement learning from human feedback',
+      'transfer learning', 'pre-training', 'foundation model', 'base model',
+      'computer vision', 'natural language processing', 'nlp', 'speech recognition'
+    ],
+    secondary: [
+      'pytorch', 'tensorflow', 'keras', 'jax',
+      'hugging face', 'transformers', 'diffusers',
+      'langchain', 'llamaindex', 'llama index',
+      'openai', 'openai api', 'anthropic', 'claude',
+      'vllm', 'triton', 'torchserve', 'bentoml', 'ray serve',
+      'pinecone', 'weaviate', 'milvus', 'qdrant', 'chroma',
+      'lora', 'qlora', 'peft', 'adapter',
+      'mlflow', 'weights & biases', 'wandb', 'neptune',
+      'sagemaker', 'vertex ai', 'azure ml', 'databricks ml',
+      'cuda', 'gpu', 'a100', 'h100', 'tensor cores',
+      'bert', 'gpt', 't5', 'llama', 'mistral', 'falcon',
+      'langsmith', 'dspy', 'guidance', 'semantic kernel'
+    ],
+    certifications: [
+      'aws machine learning specialty', 'gcp professional ml engineer',
+      'azure ai engineer', 'tensorflow developer', 'deeplearning.ai',
+      'coursera machine learning', 'fast.ai'
     ]
   },
   
@@ -663,6 +778,32 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['prd', 'product', 'feature'],
     ['mvp', 'product', 'launch']
   ],
+  data_engineering: [
+    ['airflow', 'dbt', 'etl'],
+    ['kafka', 'spark', 'stream'],
+    ['snowflake', 'bigquery', 'data warehouse'],
+    ['databricks', 'delta lake', 'pipeline'],
+    ['flink', 'kafka', 'real-time'],
+    ['fivetran', 'stitch', 'ingestion']
+  ],
+  data_science: [
+    ['model', 'training', 'accuracy'],
+    ['hypothesis testing', 'a/b test', 'experiment'],
+    ['jupyter', 'pandas', 'scikit'],
+    ['tableau', 'power bi', 'dashboard'],
+    ['regression', 'classification', 'prediction'],
+    ['sql', 'python', 'analysis']
+  ],
+  machine_learning: [
+    ['llm', 'fine-tuning', 'inference'],
+    ['vector', 'embedding', 'rag'],
+    ['production', 'serving', 'latency'],
+    ['pytorch', 'tensorflow', 'model'],
+    ['langchain', 'openai', 'prompt'],
+    ['pinecone', 'weaviate', 'vector database'],
+    ['mlops', 'mlflow', 'deployment'],
+    ['hugging face', 'transformers', 'bert']
+  ],
   retail: [
     ['sales floor', 'inventory', 'customer service'],
     ['pos', 'cashier', 'upselling'],
@@ -743,9 +884,26 @@ const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleS
   creative: [
     { negativeFor: 'marketing', requiredTitleSignal: true }
   ],
+  // Data engineering titles shouldn't reclassify to generic tech or data science
+  data_engineering: [
+    { negativeFor: 'technology', requiredTitleSignal: true },
+    { negativeFor: 'data_science', requiredTitleSignal: true }
+  ],
+  // Data science titles shouldn't reclassify to technology or data engineering
+  data_science: [
+    { negativeFor: 'technology', requiredTitleSignal: true },
+    { negativeFor: 'data_engineering', requiredTitleSignal: true }
+  ],
+  // ML engineers shouldn't reclassify to generic technology
+  machine_learning: [
+    { negativeFor: 'technology', requiredTitleSignal: true },
+    { negativeFor: 'data_science', requiredTitleSignal: true }
+  ],
   // If someone has PM titles, technology/consulting keywords shouldn't reclassify
   product_management: [
     { negativeFor: 'technology', requiredTitleSignal: true },
+    { negativeFor: 'data_engineering', requiredTitleSignal: true },
+    { negativeFor: 'machine_learning', requiredTitleSignal: true },
     { negativeFor: 'consulting', requiredTitleSignal: true },
     { negativeFor: 'sales', requiredTitleSignal: true }
   ]
