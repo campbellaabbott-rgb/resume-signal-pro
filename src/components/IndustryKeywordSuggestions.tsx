@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 // Industry-specific keyword suggestions component
 // Shows which important industry keywords are present/missing in the resume
 
@@ -29,7 +30,8 @@ const categoryLabels: Record<string, string> = {
   methodology: 'Methodology',
 };
 
-export function IndustryKeywordSuggestions({ 
+export function IndustryKeywordSuggestions({
+  const { t } = useTranslation(); 
   industry, 
   resumeText,
   className 
@@ -76,9 +78,7 @@ export function IndustryKeywordSuggestions({
               "w-4 h-4",
               hasCriticalGaps ? "text-destructive" : hasHighGaps ? "text-warning" : "text-success"
             )} />
-            <h4 className="font-semibold text-sm">
-              {config.name} Keywords
-            </h4>
+            <h4 className="font-semibold text-sm">{t('industryKeywords.title', { industry: config.name })}</h4>
             <span className={cn(
               "text-xs px-2 py-0.5 rounded-full font-medium",
               hasCriticalGaps 
@@ -86,9 +86,7 @@ export function IndustryKeywordSuggestions({
                 : hasHighGaps 
                   ? "bg-warning/10 text-warning"
                   : "bg-success/10 text-success"
-            )}>
-              {presentCount}/{totalCount} found
-            </span>
+            )}>{t('industryKeywords.found', { present: presentCount, total: totalCount })}</span>
           </div>
           <p className="text-xs text-muted-foreground">
             {hasCriticalGaps 
@@ -108,7 +106,7 @@ export function IndustryKeywordSuggestions({
           )}>
             {coveragePercent}%
           </span>
-          <span className="text-xs text-muted-foreground">coverage</span>
+          <span className="text-xs text-muted-foreground">{t('industryKeywords.coverage')}</span>
         </div>
       </div>
 

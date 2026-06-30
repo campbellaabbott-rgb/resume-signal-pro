@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Flame, Loader2, Copy, CheckCircle, AlertTriangle, Star, Share2 } from "lucide-react";
@@ -50,7 +51,8 @@ const impactColors = {
   Low: "bg-green-500/10 text-green-700",
 };
 
-export function ResumeRoast({ resumeText, industry, currentRole }: ResumeRoastProps) {
+export function ResumeRoast({
+  const { t } = useTranslation(); resumeText, industry, currentRole }: ResumeRoastProps) {
   const [data, setData] = useState<RoastData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [copiedTweet, setCopiedTweet] = useState(false);
@@ -63,10 +65,10 @@ export function ResumeRoast({ resumeText, industry, currentRole }: ResumeRoastPr
         body: { resumeText, industry, currentRole },
       });
       if (error) throw error;
-      if (!result?.success) throw new Error(result?.error || "Generation failed");
+      if (!result?.success) throw new Error(result?.error || t('resumeRoast.genFailed'));
       setData(result.data);
     } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to generate roast", variant: "destructive" });
+      toast({ title: t('resumeRoast.error'), description: err.message || t('resumeRoast.failed'), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -76,7 +78,7 @@ export function ResumeRoast({ resumeText, industry, currentRole }: ResumeRoastPr
     if (!data?.tweetableRoast) return;
     navigator.clipboard.writeText(data.tweetableRoast);
     setCopiedTweet(true);
-    toast({ title: "Copied!", description: "Share your roast on social media 🔥" });
+    toast({ title: t('resumeRoast.copied'), description: "Share your roast on social media 🔥" });
     setTimeout(() => setCopiedTweet(false), 2000);
   };
 
@@ -92,7 +94,7 @@ export function ResumeRoast({ resumeText, industry, currentRole }: ResumeRoastPr
         </p>
         <Button onClick={generate} disabled={isLoading} size="sm" className="gap-2" variant="destructive">
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Flame className="w-4 h-4" />}
-          {isLoading ? "Preparing your roast..." : "🔥 Roast My Resume"}
+          {isLoading ? t('resumeRoast.preparing') : "🔥 Roast My Resume"}
         </Button>
       </div>
     );

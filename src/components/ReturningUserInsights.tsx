@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 // Returning user insights component
 // Shows progress tracking and personalized insights for returning users
 
@@ -13,7 +14,8 @@ interface ReturningUserInsightsProps {
   className?: string;
 }
 
-export function ReturningUserInsights({ 
+export function ReturningUserInsights({
+  const { t } = useTranslation(); 
   currentScore, 
   currentIndustry,
   className 
@@ -122,7 +124,7 @@ export function ReturningUserInsights({
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              {isNewBest ? "New personal best!" : "Personal best"}
+              {isNewBest ? t('returningUser.newBest') : t('returningUser.personalBest')}
             </p>
           </div>
 

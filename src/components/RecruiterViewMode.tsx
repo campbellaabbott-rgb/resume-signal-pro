@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -74,19 +75,20 @@ const attentionColors = {
 };
 
 const attentionLabels = {
-  high: { text: "High Focus", color: "text-green-600" },
-  medium: { text: "Glanced", color: "text-yellow-600" },
-  low: { text: "Barely Seen", color: "text-orange-600" },
-  skipped: { text: "Skipped", color: "text-red-600" },
+  high: { text: t('recruiterView.highFocus'), color: "text-green-600" },
+  medium: { text: t('recruiterView.glanced'), color: "text-yellow-600" },
+  low: { text: t('recruiterView.barelySeen'), color: "text-orange-600" },
+  skipped: { text: t('recruiterView.skipped'), color: "text-red-600" },
 };
 
 const decisionStyles = {
-  ADVANCE: { bg: "bg-green-500/10 border-green-500/30", text: "text-green-700", icon: CheckCircle, label: "ADVANCE TO INTERVIEW" },
-  MAYBE: { bg: "bg-yellow-500/10 border-yellow-500/30", text: "text-yellow-700", icon: Clock, label: "MAYBE — NEEDS REVIEW" },
-  REJECT: { bg: "bg-red-500/10 border-red-500/30", text: "text-red-700", icon: XCircle, label: "SCREENED OUT" },
+  ADVANCE: { bg: "bg-green-500/10 border-green-500/30", text: "text-green-700", icon: CheckCircle, label: t('recruiterView.advance') },
+  MAYBE: { bg: "bg-yellow-500/10 border-yellow-500/30", text: "text-yellow-700", icon: Clock, label: t('recruiterView.maybe') },
+  REJECT: { bg: "bg-red-500/10 border-red-500/30", text: "text-red-700", icon: XCircle, label: t('recruiterView.screenedOut') },
 };
 
-export function RecruiterViewMode({ resumeText, industry, currentRole }: RecruiterViewModeProps) {
+export function RecruiterViewMode({
+  const { t } = useTranslation(); resumeText, industry, currentRole }: RecruiterViewModeProps) {
   const [data, setData] = useState<RecruiterViewData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -119,7 +121,7 @@ export function RecruiterViewMode({ resumeText, industry, currentRole }: Recruit
         </p>
         <Button onClick={generate} disabled={isLoading} size="sm" className="gap-2">
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
-          {isLoading ? "Simulating hiring pipeline..." : "Run Recruiter Simulation"}
+          {isLoading ? t('recruiterView.simulating') : t('recruiterView.runSim')}
         </Button>
       </div>
     );
@@ -162,12 +164,12 @@ export function RecruiterViewMode({ resumeText, industry, currentRole }: Recruit
         </h4>
         <div className="grid grid-cols-2 gap-2 text-xs">
           {[
-            { icon: User, label: "Name", value: atsParsedFields.name },
-            { icon: Mail, label: "Email", value: atsParsedFields.email },
-            { icon: Phone, label: "Phone", value: atsParsedFields.phone },
-            { icon: MapPin, label: "Location", value: atsParsedFields.location },
-            { icon: Briefcase, label: "Title", value: atsParsedFields.currentTitle },
-            { icon: GraduationCap, label: "Education", value: atsParsedFields.education },
+            { icon: User, label: t('recruiterView.fieldName'), value: atsParsedFields.name },
+            { icon: Mail, label: t('recruiterView.fieldEmail'), value: atsParsedFields.email },
+            { icon: Phone, label: t('recruiterView.fieldPhone'), value: atsParsedFields.phone },
+            { icon: MapPin, label: t('recruiterView.fieldLocation'), value: atsParsedFields.location },
+            { icon: Briefcase, label: t('recruiterView.fieldTitle'), value: atsParsedFields.currentTitle },
+            { icon: GraduationCap, label: t('recruiterView.fieldEducation'), value: atsParsedFields.education },
           ].map(({ icon: Icon, label, value }) => (
             <div key={label} className={cn(
               "flex items-center gap-1.5 px-2 py-1.5 rounded-lg",
@@ -176,7 +178,7 @@ export function RecruiterViewMode({ resumeText, industry, currentRole }: Recruit
               <Icon className="w-3 h-3 text-muted-foreground shrink-0" />
               <span className="text-muted-foreground">{label}:</span>
               <span className={cn("truncate font-medium", !value && "text-red-600 italic")}>
-                {value || "Not found"}
+                {value || t('recruiterView.notFound')}
               </span>
             </div>
           ))}

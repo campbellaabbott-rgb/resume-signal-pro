@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 // Role-specific keyword suggestions component
 // Shows keywords tailored to detected/target job title
 
@@ -19,7 +20,8 @@ const categoryConfig = {
   differentiator: { icon: Star, label: 'Standout', color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/30' },
 };
 
-export function RoleKeywordSuggestions({ 
+export function RoleKeywordSuggestions({
+  const { t } = useTranslation(); 
   currentRole,
   targetRole,
   resumeText,
@@ -68,13 +70,9 @@ export function RoleKeywordSuggestions({
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <Briefcase className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold text-sm">
-              {config.title} Keywords
-            </h4>
+            <h4 className="font-semibold text-sm">{t('roleKeywords.title', { role: config.title })}</h4>
             {targetRole && targetRole !== currentRole && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                Target Role
-              </span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{t('roleKeywords.targetRole')}</span>
             )}
           </div>
           <p className="text-xs text-muted-foreground">
@@ -95,7 +93,7 @@ export function RoleKeywordSuggestions({
           )}>
             {presentCount}/{totalCount}
           </span>
-          <span className="text-xs text-muted-foreground">keywords</span>
+          <span className="text-xs text-muted-foreground">{t('roleKeywords.keywords')}</span>
         </div>
       </div>
 

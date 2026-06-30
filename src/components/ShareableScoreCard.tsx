@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState, useRef } from "react";
 import { Download, Linkedin, Check, Loader2, ImageIcon, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ const trackShareEvent = async (
 };
 
 export function ShareableScoreCard({
+  const { t } = useTranslation();
   candidateName,
   atsScore,
   formatGrade,
@@ -72,17 +74,17 @@ export function ShareableScoreCard({
   };
 
   const getScoreLabel = (score: number) => {
-    if (score >= 85) return "Excellent";
-    if (score >= 70) return "Good";
-    if (score >= 50) return "Needs Improvement";
-    return "Poor";
+    if (score >= 85) return t('shareableCard.excellent');
+    if (score >= 70) return t('shareableCard.good');
+    if (score >= 50) return t('shareableCard.needsImprovement');
+    return t('shareableCard.poor');
   };
 
   const generateImage = async (): Promise<string | null> => {
     if (!cardRef.current) {
       toast({
-        title: "Error generating image",
-        description: "Please try again",
+        title: t('shareableCard.errorGen'),
+        description: t('shareableCard.tryAgain'),
         variant: "destructive"
       });
       return null;
@@ -109,8 +111,8 @@ export function ShareableScoreCard({
     } catch (error) {
       console.error("Failed to generate image:", error);
       toast({
-        title: "Failed to generate image",
-        description: "Please try again",
+        title: t('shareableCard.failedGen'),
+        description: t('shareableCard.tryAgain'),
         variant: "destructive"
       });
       return null;
@@ -139,8 +141,8 @@ export function ShareableScoreCard({
     setTimeout(() => setDownloaded(false), 2000);
     
     toast({
-      title: "Score card downloaded!",
-      description: "Share it on LinkedIn to stand out to recruiters"
+      title: t('shareableCard.scoreCardDownloaded'),
+      description: t('shareableCard.shareLinkedIn')
     });
   };
 
@@ -166,8 +168,8 @@ export function ShareableScoreCard({
         setTimeout(() => setCopied(false), 2000);
         
         toast({
-          title: "Image copied!",
-          description: "Paste it anywhere (Ctrl+V or Cmd+V)"
+          title: t('shareableCard.imageCopied'),
+          description: t('shareableCard.pasteAnywhere')
         });
       } else {
         // Fallback for browsers without ClipboardItem support
@@ -177,8 +179,8 @@ export function ShareableScoreCard({
       console.error("Copy failed, downloading instead:", error);
       // Fallback: download instead
       toast({
-        title: "Copy not supported",
-        description: "Downloading image instead...",
+        title: t('shareableCard.copyNotSupported'),
+        description: t('shareableCard.downloadingInstead'),
       });
       handleDownload();
     }
@@ -208,8 +210,8 @@ export function ShareableScoreCard({
     );
     
     toast({
-      title: "Image downloaded!",
-      description: "Upload it to your LinkedIn post to stand out"
+      title: t('shareableCard.imageDownloaded'),
+      description: t('shareableCard.uploadLinkedIn')
     });
   };
 
@@ -352,7 +354,7 @@ export function ShareableScoreCard({
           ) : (
             <Download className="w-4 h-4" />
           )}
-          {downloaded ? "Downloaded!" : "Download"}
+          {downloaded ? t('shareableCard.downloaded') : t('shareableCard.download')}
         </Button>
         
         <Button
@@ -367,7 +369,7 @@ export function ShareableScoreCard({
           ) : (
             <ImageIcon className="w-4 h-4" />
           )}
-          {copied ? "Copied!" : "Copy"}
+          {copied ? t('shareableCard.copied') : t('shareableCard.copy')}
         </Button>
         
         <Button
@@ -387,7 +389,7 @@ export function ShareableScoreCard({
           className="gap-1.5 text-xs text-muted-foreground ml-auto"
         >
           {showPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-          {showPreview ? "Hide" : "Preview"}
+          {showPreview ? t('shareableCard.hide') : t('shareableCard.preview')}
         </Button>
       </div>
 

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import { CheckCircle2, Circle, Sparkles, TrendingUp, Clock, Award } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,7 +18,8 @@ const categoryLabels: Record<ChecklistItem['category'], { label: string; color: 
   keywords: { label: "Keywords", color: "bg-info/10 text-info" },
 };
 
-export function InteractiveChecklist({ entryId, items, candidateName }: InteractiveChecklistProps) {
+export function InteractiveChecklist({
+  const { t } = useTranslation(); entryId, items, candidateName }: InteractiveChecklistProps) {
   const { updateChecklist } = useScanHistory();
   const [localItems, setLocalItems] = useState<ChecklistItem[]>(items);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -54,10 +56,10 @@ export function InteractiveChecklist({ entryId, items, candidateName }: Interact
   
   // Get motivational message based on progress
   const getMotivationalMessage = () => {
-    if (completedCount === 0) return "Let's get started! Check off items as you fix them.";
-    if (progressPercent < 33) return "Great start! Keep going!";
-    if (progressPercent < 66) return "You're making excellent progress!";
-    if (progressPercent < 100) return "Almost there! Just a few more fixes!";
+    if (completedCount === 0) return t('interactiveChecklist.motivStart');
+    if (progressPercent < 33) return t('interactiveChecklist.motivGreat');
+    if (progressPercent < 66) return t('interactiveChecklist.motivExcellent');
+    if (progressPercent < 100) return t('interactiveChecklist.motivAlmost');
     return "🎉 All done! Your resume is optimized!";
   };
   

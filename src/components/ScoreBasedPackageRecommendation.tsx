@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Crown, FileText, Sparkles, ArrowRight, TrendingUp, AlertTriangle, Clock, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -7,36 +8,37 @@ interface ScoreBasedPackageRecommendationProps {
   atsScore: number;
 }
 
-export function ScoreBasedPackageRecommendation({ atsScore }: ScoreBasedPackageRecommendationProps) {
+export function ScoreBasedPackageRecommendation({
+  const { t } = useTranslation(); atsScore }: ScoreBasedPackageRecommendationProps) {
   // Determine recommendation based on score - use prices from products config
   const getRecommendation = () => {
     if (atsScore < 50) {
       return {
         urgency: "high",
-        title: "⚠️ Your resume is being auto-rejected",
-        subtitle: "ATS systems are filtering you out before recruiters see your application",
-        urgencyBadge: "Critical",
-        urgencyMessage: "75% of resumes with scores below 50 never reach a human recruiter",
+        title: t('scorePackage.autoRejected'),
+        subtitle: t('scorePackage.filtered'),
+        urgencyBadge: t('scorePackage.critical'),
+        urgencyMessage: t('scorePackage.stat75'),
         recommended: {
           id: "premiumPackage",
           name: PRODUCTS.premiumPackage.name,
           price: PRODUCTS.premiumPackage.priceUsd,
           icon: Crown,
-          reason: "Complete rewrite + ATS optimization + cover letter",
-          estimatedGain: "30-40 points",
+          reason: t('scorePackage.rewriteDesc'),
+          estimatedGain: t('scorePackage.rewriteGain'),
         },
         alternative: {
           id: "basicKeywordFix",
           name: PRODUCTS.basicKeywordFix.name,
           price: PRODUCTS.basicKeywordFix.priceUsd,
-          reason: "Quick ATS keyword optimization",
+          reason: t('scorePackage.quickFix'),
         },
       };
     } else if (atsScore < 70) {
       return {
         urgency: "medium",
-        title: "Your resume has room for improvement",
-        subtitle: "A targeted fix could boost your score significantly",
+        title: t('scorePackage.roomForImprovement'),
+        subtitle: t('scorePackage.targetedFix'),
         urgencyBadge: null,
         urgencyMessage: null,
         recommended: {
@@ -44,21 +46,21 @@ export function ScoreBasedPackageRecommendation({ atsScore }: ScoreBasedPackageR
           name: PRODUCTS.basicKeywordFix.name,
           price: PRODUCTS.basicKeywordFix.priceUsd,
           icon: FileText,
-          reason: "Add missing keywords + improve bullet points",
-          estimatedGain: "15-25 points",
+          reason: t('scorePackage.addKeywords'),
+          estimatedGain: t('scorePackage.midGain'),
         },
         alternative: {
           id: "premiumPackage",
           name: PRODUCTS.premiumPackage.name,
           price: PRODUCTS.premiumPackage.priceUsd,
-          reason: "For a complete professional overhaul",
+          reason: t('scorePackage.completeOverhaul'),
         },
       };
     } else {
       return {
         urgency: "low",
-        title: "Your resume is already strong!",
-        subtitle: "Fine-tune it for specific job applications",
+        title: t('scorePackage.alreadyStrong'),
+        subtitle: t('scorePackage.fineTune'),
         urgencyBadge: null,
         urgencyMessage: null,
         recommended: {
@@ -66,14 +68,14 @@ export function ScoreBasedPackageRecommendation({ atsScore }: ScoreBasedPackageR
           name: PRODUCTS.fullAnalysis.name,
           price: PRODUCTS.fullAnalysis.priceUsd,
           icon: Sparkles,
-          reason: "Get detailed rewrites + job-specific tailoring",
-          estimatedGain: "5-15 points",
+          reason: t('scorePackage.detailedRewrites'),
+          estimatedGain: t('scorePackage.fineTuneGain'),
         },
         alternative: {
           id: "coverLetter",
           name: PRODUCTS.coverLetter.name,
           price: PRODUCTS.coverLetter.priceUsd,
-          reason: "Complete your application package",
+          reason: t('scorePackage.completePackage'),
         },
       };
     }
@@ -149,7 +151,7 @@ export function ScoreBasedPackageRecommendation({ atsScore }: ScoreBasedPackageR
                 ? "bg-destructive/20 text-destructive" 
                 : "bg-primary/10 text-primary"
             )}>
-              {isHighUrgency ? "Strongly Recommended" : "Recommended"}
+              {isHighUrgency ? t('scorePackage.stronglyRecommended') : t('scorePackage.recommended')}
             </span>
           </div>
           <span className="text-xl font-bold">${recommendation.recommended.price}</span>
@@ -167,7 +169,7 @@ export function ScoreBasedPackageRecommendation({ atsScore }: ScoreBasedPackageR
             "text-sm flex items-center gap-1",
             isHighUrgency ? "text-destructive" : "text-primary"
           )}>
-            {isHighUrgency ? "Fix Now" : "View details"} <ArrowRight className="w-3 h-3" />
+            {isHighUrgency ? t('scorePackage.fixNow') : t('scorePackage.viewDetails')} <ArrowRight className="w-3 h-3" />
           </span>
         </div>
       </Link>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import {
   Target, CheckCircle2, XCircle, AlertTriangle, Lightbulb,
@@ -43,7 +44,7 @@ function CopyButton({ text }: { text: string }) {
   };
 
   return (
-    <button onClick={handleCopy} className="p-1 rounded hover:bg-muted transition-colors" title="Copy suggestion">
+    <button onClick={handleCopy} className="p-1 rounded hover:bg-muted transition-colors" title=t('jobKeywordMatcher.copySuggestion')>
       {copied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3 text-muted-foreground" />}
     </button>
   );
@@ -56,6 +57,7 @@ function CopyButton({ text }: { text: string }) {
 // implicit demonstration through other experience) is judged correctly instead of
 // requiring an exact substring match.
 export function JobKeywordMatcher({
+  const { t } = useTranslation();
   jobTitle,
   jobCompany,
   matchingSkills = [],
@@ -129,15 +131,15 @@ export function JobKeywordMatcher({
         <div className="flex flex-wrap gap-4 mt-4 text-sm">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-success" />
-            <span><strong>{matchingSkills.length}</strong> matched</span>
+            <span><strong>{matchingSkills.length}</strong>{t('jobKeywordMatcher.matched')}</span>
           </div>
           <div className="flex items-center gap-2">
             <XCircle className="w-4 h-4 text-destructive" />
-            <span><strong>{criticalMissing.length}</strong> critical gaps</span>
+            <span><strong>{criticalMissing.length}</strong>{t('jobKeywordMatcher.criticalGaps')}</span>
           </div>
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-warning" />
-            <span><strong>{importantMissing.length}</strong> important gaps</span>
+            <span><strong>{importantMissing.length}</strong>{t('jobKeywordMatcher.importantGaps')}</span>
           </div>
         </div>
       </div>

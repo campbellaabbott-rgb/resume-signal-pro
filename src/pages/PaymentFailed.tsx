@@ -1,9 +1,11 @@
+import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, RefreshCcw, CreditCard, HelpCircle, ArrowLeft } from "lucide-react";
 
 const PaymentFailed = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const product = searchParams.get("product");
@@ -33,7 +35,7 @@ const PaymentFailed = () => {
           <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
             <AlertCircle className="w-8 h-8 text-destructive" />
           </div>
-          <CardTitle className="text-2xl">Payment Unsuccessful</CardTitle>
+          <CardTitle className="text-2xl">{t('paymentFailed.title')}</CardTitle>
           <CardDescription className="text-base mt-2">
             We couldn't process your payment. Don't worry — no charges were made to your account.
           </CardDescription>
@@ -42,7 +44,7 @@ const PaymentFailed = () => {
         <CardContent className="space-y-6">
           {/* Common reasons */}
           <div className="space-y-3">
-            <p className="text-sm font-medium text-muted-foreground">Common reasons this happens:</p>
+            <p className="text-sm font-medium text-muted-foreground">{t('paymentFailed.commonReasons')}</p>
             <div className="space-y-3">
               {commonReasons.map((reason, index) => (
                 <div key={index} className="flex gap-3 p-3 bg-muted/50 rounded-lg">

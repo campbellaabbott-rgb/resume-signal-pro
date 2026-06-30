@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { Mic, Copy, Check, RefreshCw, Clock, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ interface PitchData {
 }
 
 export function ElevatorPitchGenerator({
+  const { t } = useTranslation();
   resumeText,
   industry,
   currentRole,
@@ -78,9 +80,9 @@ export function ElevatorPitchGenerator({
       await navigator.clipboard.writeText(pitchData.pitch);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      toast({ title: "Pitch copied!", description: "Paste it anywhere to practice." });
+      toast({ title: t('elevatorPitch.copied'), description: t('elevatorPitch.pasteAnywhere') });
     } catch {
-      toast({ title: "Copy failed", description: "Please select and copy manually.", variant: "destructive" });
+      toast({ title: t('elevatorPitch.copyFailed'), description: t('elevatorPitch.selectManually'), variant: "destructive" });
     }
   };
 
@@ -167,7 +169,7 @@ export function ElevatorPitchGenerator({
             <button
               onClick={copyPitch}
               className="absolute top-3 right-3 p-1.5 rounded-md hover:bg-muted transition-colors"
-              title="Copy pitch"
+              title=t('elevatorPitch.copy')
             >
               {copied ? (
                 <Check className="w-4 h-4 text-success" />

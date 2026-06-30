@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState, useEffect, useRef } from "react";
 import { Loader2, Brain, CheckCircle2, Copy, Check, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,12 +17,13 @@ interface StreamingContentDisplayProps {
 }
 
 export function StreamingContentDisplay({
+  const { t } = useTranslation();
   content,
   isStreaming,
   isComplete,
   error,
-  title = "Generating...",
-  subtitle = "Watch your content appear in real-time",
+  title = t('streamingContent.generating'),
+  subtitle = t('streamingContent.watchRT'),
   showCopyButton = true,
   className,
 }: StreamingContentDisplayProps) {
@@ -89,13 +91,13 @@ export function StreamingContentDisplay({
           )}
           <div>
             <h3 className="font-semibold text-foreground">
-              {isComplete ? "Generation Complete" : title}
+              {isComplete ? t('streamingContent.complete') : title}
             </h3>
             <p className="text-sm text-muted-foreground">
               {isStreaming 
-                ? `${content.length.toLocaleString()} characters generated...` 
+                ? t('streamingContent.characters', { count: content.length.toLocaleString() }) 
                 : isComplete 
-                  ? "Your content is ready" 
+                  ? t('streamingContent.ready') 
                   : subtitle}
             </p>
           </div>
@@ -123,7 +125,7 @@ export function StreamingContentDisplay({
               ) : (
                 <Copy className="h-4 w-4 mr-1" />
               )}
-              {copied ? "Copied" : "Copy"}
+              {copied ? t('streamingContent.copied') : t('streamingContent.copy')}
             </Button>
           </div>
         )}

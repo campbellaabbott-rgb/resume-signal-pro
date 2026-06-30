@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import { Loader2, Brain, FileText, Sparkles, Check, Zap } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -60,6 +61,7 @@ export function AIGenerationProgress({
   productName = "your content",
   onComplete 
 }: AIGenerationProgressProps) {
+  const { t } = useTranslation();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [startTime] = useState(Date.now());

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { usePersonalization } from '@/hooks/use-personalization';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,7 +57,8 @@ const productDetails: Record<string, {
   },
 };
 
-export function SmartProductRecommendations({ onSelectProduct, className }: SmartProductRecommendationsProps) {
+export function SmartProductRecommendations({
+  const { t } = useTranslation(); onSelectProduct, className }: SmartProductRecommendationsProps) {
   const { profile, getProductRecommendations, hasProfile } = usePersonalization();
   
   if (!hasProfile) {
