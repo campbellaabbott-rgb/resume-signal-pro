@@ -149,11 +149,19 @@ Adjust your language and emphasis based on their career stage.` : ''}
 - ALL original content should be enhanced, not cut
 
 ### YOUR JOB:
-1. Provide a new professional summary tailored to the target role
-2. Identify which of their existing skills to emphasize FIRST (but keep all)
-3. Suggest how to REWORD existing bullet points to highlight relevance
-4. Recommend what keywords from the job to weave into existing content
-5. Provide strategic tips for the application
+1. Extract the 8-12 most important keywords from the job description (required skills, tools, verbs, domain terms)
+2. Provide a new professional summary that naturally uses the top JD keywords
+3. Identify which of their existing skills to emphasize FIRST (but keep all)
+4. Rewrite 5-7 existing bullet points to inject missing JD keywords naturally — ALWAYS preserve the original bullet verbatim alongside the rewrite
+5. For each rewritten bullet, list exactly which keywords you injected
+6. Estimate the match score improvement (0-40 point delta) based on keywords added
+7. List any required JD keywords still not covered after tailoring
+8. Provide strategic application tips
+
+### KEYWORD INJECTION RULES:
+- Inject keywords naturally — do not keyword-stuff
+- Preserve the original achievement/metric — only reframe the language
+- Each tailored bullet MUST be copy-paste ready
 
 ### WHAT YOU SHOULD NOT DO:
 - Do not suggest removing any experiences
@@ -208,12 +216,27 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
                   items: {
                     type: "object",
                     properties: {
-                      original: { type: "string", description: "Original bullet point or context" },
-                      tailored: { type: "string", description: "Rewritten version tailored to the role" }
+                      original: { type: "string", description: "The original bullet point verbatim from the resume" },
+                      tailored: { type: "string", description: "Rewritten version with JD keywords injected naturally — copy-paste ready" },
+                      keywordsInjected: { type: "array", items: { type: "string" }, description: "Exact keywords from the JD that were added to this bullet" }
                     },
-                    required: ["tailored"]
+                    required: ["original", "tailored", "keywordsInjected"]
                   },
-                  description: "3-5 rewritten bullet points from their experience"
+                  description: "5-7 rewritten bullet points — always include the original verbatim"
+                },
+                keywordsRequired: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Top 8-12 keywords extracted from the job description"
+                },
+                keywordGaps: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Required JD keywords still not covered after tailoring (max 5)"
+                },
+                matchScoreDelta: {
+                  type: "number",
+                  description: "Estimated ATS keyword match improvement in percentage points (0-40)"
                 },
                 suggestedJobTitle: {
                   type: "string",
@@ -229,7 +252,7 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
                   description: "2-3 specific tips for applying to this role"
                 }
               },
-              required: ["professionalSummary", "keySkills", "experienceHighlights", "suggestedJobTitle", "coverLetterOpening", "applicationTips"]
+              required: ["professionalSummary", "keySkills", "experienceHighlights", "keywordsRequired", "keywordGaps", "matchScoreDelta", "suggestedJobTitle", "coverLetterOpening", "applicationTips"]
             }
           }
         }],
