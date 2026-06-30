@@ -716,7 +716,35 @@ INDUSTRY-SPECIFIC SCORING WEIGHTS:
   
 - CREATIVE/DESIGN: Portfolio (35%), Skills (25%), Experience (20%), Keywords (15%), Format (5%)
   * Must-haves: Portfolio link, software proficiency, project outcomes
-  
+
+- PRODUCT MANAGEMENT: Outcome Quantification (35%), Cross-Functional Impact (25%), Keywords (20%), Format (10%), Skills (10%)
+  * Must-haves: OKRs/metrics, product launches with impact, stakeholder management, roadmap ownership
+  * Critical: Business outcomes (revenue, users, engagement) not just features shipped; A/B testing experience
+
+- HR/HUMAN RESOURCES: Certifications (25%), Quantification (25%), Keywords (25%), Experience (15%), Format (10%)
+  * Must-haves: SHRM-CP/SCP or PHR/SPHR, HRIS systems (Workday, ADP), time-to-hire metrics, retention rates
+  * Critical: Headcount supported, cost-per-hire, employee satisfaction scores
+
+- CONSULTING: Business Impact (35%), Client Scope (25%), Keywords (20%), Education (15%), Format (5%)
+  * Must-haves: Client names/industries, deal/project sizes, measurable outcomes (cost savings, revenue impact)
+  * Critical: SAR format (Situation-Action-Result), firm names (McKinsey/Bain/BCG/Big 4 add weight)
+
+- RETAIL: Sales Metrics (35%), Customer Metrics (25%), Keywords (20%), Leadership (15%), Format (5%)
+  * Must-haves: Sales vs target %, customer satisfaction scores, specific POS/inventory systems used
+  * Critical: Revenue numbers, upsell rates, shrink reduction — vague "customer service" without metrics scores low
+
+- HOSPITALITY: Guest Satisfaction (30%), Revenue Metrics (25%), Certifications (20%), Keywords (15%), Format (10%)
+  * Must-haves: Guest satisfaction scores (TripAdvisor/internal), RevPAR/occupancy data, property management systems (Opera)
+  * Critical: ServSafe/TIPS certification; quantified event revenue; multilingual abilities if applicable
+
+- MANUFACTURING: Safety & Compliance (30%), Process Metrics (30%), Technical Skills (20%), Certifications (15%), Format (5%)
+  * Must-haves: OEE/yield/scrap metrics, safety record (OSHA, incident-free hours), ERP system (SAP/Oracle), Lean/Six Sigma
+  * Critical: Specific cost savings or efficiency gains in %; ISO/AS9100/IATF certifications
+
+- GOVERNMENT/PUBLIC SECTOR: Compliance Keywords (30%), Program Scale (25%), Budget/Impact (25%), Format (15%), Education (5%)
+  * Must-haves: Budget managed, constituents/program scale, agency/department names, security clearance level if applicable
+  * Critical: Federal resumes need hours-per-week and GS-level equivalents; match job announcement keywords exactly
+
 - GENERAL/OTHER: Keywords (25%), Experience (25%), Quantification (20%), Format (15%), Education (10%), Skills (5%)
 
 Apply the appropriate weights when calculating the ATS score. Mention in industryScoreInsight which weights were applied.

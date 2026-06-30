@@ -444,6 +444,27 @@ export const INDUSTRY_KEYWORDS: Record<string, IndustryKeywordConfig> = {
       { keyword: 'Escalation', category: 'technical', importance: 'medium' },
     ],
   },
+  retail: {
+    name: 'Retail',
+    aliases: ['store', 'ecommerce', 'e-commerce', 'merchandising', 'retail management'],
+    keywords: [
+      { keyword: 'Sales vs Target', category: 'technical', importance: 'critical' },
+      { keyword: 'Customer Satisfaction', category: 'technical', importance: 'critical' },
+      { keyword: 'Inventory Management', category: 'technical', importance: 'high' },
+      { keyword: 'Loss Prevention', category: 'technical', importance: 'high' },
+      { keyword: 'Visual Merchandising', category: 'technical', importance: 'high' },
+      { keyword: 'POS Systems', category: 'tool', importance: 'high' },
+      { keyword: 'Upselling', category: 'technical', importance: 'high' },
+      { keyword: 'Planogram', category: 'technical', importance: 'medium' },
+      { keyword: 'Shrink Reduction', category: 'technical', importance: 'medium' },
+      { keyword: 'KPIs', category: 'methodology', importance: 'high' },
+      { keyword: 'Team Leadership', category: 'soft', importance: 'high' },
+      { keyword: 'Comp Sales', category: 'technical', importance: 'medium' },
+      { keyword: 'Customer Retention', category: 'technical', importance: 'medium' },
+      { keyword: 'Store Operations', category: 'technical', importance: 'high' },
+      { keyword: 'Product Knowledge', category: 'technical', importance: 'medium' },
+    ],
+  },
   hospitality: {
     name: 'Hospitality',
     aliases: ['hotel', 'restaurant', 'food service', 'tourism', 'event management', 'catering'],
@@ -1436,12 +1457,18 @@ export function findIndustryConfig(industryName: string): IndustryKeywordConfig 
     // Education
     'k12_education': 'education', 'higher_education': 'education', 'edtech': 'education',
     'curriculum_development': 'education', 'special_education': 'education',
-    // Operations/Manufacturing
-    'lean_manufacturing': 'operations', 'quality_engineering': 'operations',
-    'process_engineering': 'operations', 'supply_chain_manufacturing': 'operations',
-    'plant_management': 'operations',
+    // Manufacturing
+    'lean_manufacturing': 'manufacturing', 'quality_engineering': 'manufacturing',
+    'process_engineering': 'manufacturing', 'supply_chain_manufacturing': 'manufacturing',
+    'plant_management': 'manufacturing',
+    // Retail
+    'ecommerce': 'retail', 'e-commerce': 'retail', 'store_management': 'retail',
+    // Hospitality
+    'hotel_management': 'hospitality', 'food_service': 'hospitality', 'event_management': 'hospitality',
+    // Government
+    'public_administration': 'government', 'military': 'government', 'federal_government': 'government',
     // Other
-    'supply_chain_analytics': 'operations', 'sports_management': 'operations',
+    'supply_chain_analytics': 'consulting', 'sports_management': 'general',
     'healthcare_it': 'technology', 'fintech': 'finance',
   };
   
