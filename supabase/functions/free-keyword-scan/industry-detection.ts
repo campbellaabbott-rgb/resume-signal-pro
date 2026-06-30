@@ -185,7 +185,16 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'pharmacist', 'pharmacy technician', 'radiologist', 'radiologic technician',
       'medical technologist', 'lab technician', 'phlebotomist',
       'healthcare administrator', 'clinical director', 'nursing manager',
-      'charge nurse', 'case manager', 'care coordinator'
+      'charge nurse', 'case manager', 'care coordinator',
+      'respiratory therapist', 'rt', 'speech language pathologist', 'slp',
+      'surgical technologist', 'sterile processing technician',
+      'dialysis technician', 'emt', 'paramedic', 'emergency medical technician',
+      'dental assistant', 'dental hygienist', 'optometrist', 'optician',
+      'clinical research coordinator', 'clinical trial manager',
+      'health information manager', 'medical coder', 'medical biller',
+      'patient access representative', 'medical receptionist',
+      'director of nursing', 'don', 'chief nursing officer', 'cno',
+      'hospitalist', 'intensivist', 'anesthesiologist', 'crna'
     ],
     primary: [
       'patient care', 'patient', 'patients', 'clinical', 'bedside',
@@ -244,21 +253,32 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'paralegal', 'legal assistant', 'legal secretary',
       'compliance officer', 'compliance manager', 'contract manager',
       'litigation', 'litigator', 'corporate counsel', 'in-house counsel',
-      'ip attorney', 'patent attorney', 'trademark attorney'
+      'ip attorney', 'patent attorney', 'trademark attorney',
+      'securities attorney', 'real estate attorney', 'tax attorney',
+      'employment attorney', 'labor attorney', 'family law attorney',
+      'criminal defense attorney', 'public defender', 'district attorney',
+      'assistant district attorney', 'ada', 'deputy general counsel',
+      'associate general counsel', 'chief legal officer', 'clo',
+      'legal operations manager', 'legal ops', 'contract specialist',
+      'regulatory affairs manager', 'regulatory counsel',
+      'privacy counsel', 'data privacy attorney', 'fintech counsel'
     ],
     primary: [
       'legal', 'law', 'litigation', 'contract', 'contracts',
       'agreement', 'agreements', 'negotiate', 'negotiation',
       'court', 'trial', 'discovery', 'deposition', 'motion',
       'brief', 'pleading', 'complaint', 'settlement', 'judgment',
-      'legal research', 'case law', 'statute', 'regulation'
+      'legal research', 'case law', 'statute', 'regulation',
+      'counsel', 'advise', 'draft', 'review', 'corporate governance',
+      'securities', 'intellectual property', 'employment law', 'compliance'
     ],
     secondary: [
       'westlaw', 'lexisnexis', 'practical law', 'contract lifecycle',
       'clm', 'docusign', 'ironclad', 'matter management',
-      'corporate governance', 'board', 'securities', 'sec',
-      'intellectual property', 'ip', 'patent', 'trademark', 'copyright',
-      'm&a', 'due diligence', 'employment law', 'labor law'
+      'board', 'sec', 'ip', 'patent', 'trademark', 'copyright',
+      'm&a', 'due diligence', 'labor law', 'billable hours',
+      'matter', 'docket', 'filing', 'privilege', 'confidentiality',
+      'indemnification', 'liability', 'damages', 'injunction', 'arbitration'
     ],
     certifications: [
       'jd', 'juris doctor', 'bar admission', 'bar certified',
@@ -272,7 +292,17 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'principal', 'assistant principal', 'dean', 'superintendent',
       'curriculum coordinator', 'instructional coach', 'department head',
       'special education teacher', 'sped teacher', 'counselor',
-      'school counselor', 'academic advisor', 'tutor', 'teaching assistant'
+      'school counselor', 'academic advisor', 'tutor', 'teaching assistant',
+      'curriculum director', 'director of curriculum', 'director of instruction',
+      'literacy coach', 'math coach', 'stem coordinator',
+      'school psychologist', 'school social worker',
+      'library media specialist', 'librarian', 'media specialist',
+      'esl teacher', 'esl instructor', 'bilingual teacher',
+      'substitute teacher', 'paraprofessional', 'paraeducator',
+      'adjunct professor', 'adjunct instructor', 'visiting lecturer',
+      'department chair', 'associate dean', 'provost',
+      'director of education', 'education coordinator', 'training coordinator',
+      'corporate trainer', 'learning specialist'
     ],
     primary: [
       'teaching', 'instruction', 'curriculum', 'lesson plan', 'lesson plans',
@@ -377,21 +407,32 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'consultant', 'senior consultant', 'management consultant',
       'strategy consultant', 'business analyst', 'associate consultant',
       'principal', 'partner', 'engagement manager', 'project manager',
-      'advisory', 'advisor', 'director'
+      'advisory', 'advisor', 'director',
+      'managing director', 'md', 'vice president', 'associate',
+      'analyst', 'senior analyst', 'manager', 'senior manager',
+      'it consultant', 'technology consultant', 'operations consultant',
+      'hr consultant', 'financial consultant', 'risk consultant',
+      'transformation lead', 'change management lead', 'implementation lead',
+      'business transformation', 'organizational effectiveness'
     ],
     primary: [
       'consulting', 'advisory', 'client', 'clients', 'engagement',
       'strategy', 'strategic', 'analysis', 'recommendation',
       'stakeholder', 'presentation', 'deliverable', 'workstream',
-      'problem solving', 'business case', 'roi'
+      'problem solving', 'business case', 'roi',
+      'go-to-market', 'operating model', 'cost reduction', 'revenue growth',
+      'process improvement', 'diagnostic', 'assessment', 'roadmap',
+      'hypothesis', 'framework', 'structured problem solving'
     ],
     secondary: [
       'mckinsey', 'bain', 'bcg', 'deloitte', 'accenture', 'kpmg', 'ey', 'pwc',
+      'capgemini', 'oliver wyman', 'roland berger', 'booz allen', 'leek',
       'powerpoint', 'excel', 'modeling', 'research', 'benchmarking',
-      'due diligence', 'transformation', 'change management', 'implementation'
+      'due diligence', 'transformation', 'change management', 'implementation',
+      'deck', 'slide', 'executive presentation', 'c-suite', 'board presentation'
     ],
     certifications: [
-      'pmp', 'prince2', 'mba', 'cmc', 'six sigma'
+      'pmp', 'prince2', 'mba', 'cmc', 'six sigma', 'lean', 'prosci'
     ]
   },
   
@@ -593,7 +634,19 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
   ],
   consulting: [
     ['client', 'engagement', 'strategy'],
-    ['advisory', 'deliverable', 'workstream']
+    ['advisory', 'deliverable', 'workstream'],
+    ['mckinsey', 'bain', 'bcg'],
+    ['deloitte', 'accenture', 'pwc'],
+    ['transformation', 'recommendation', 'stakeholder'],
+    ['deck', 'slide', 'executive']
+  ],
+  legal: [
+    ['litigation', 'court', 'contract'],
+    ['counsel', 'compliance', 'legal'],
+    ['westlaw', 'bar', 'attorney'],
+    ['securities', 'ip', 'corporate'],
+    ['billable', 'matter', 'docket'],
+    ['contract', 'draft', 'review']
   ],
   creative: [
     ['design', 'portfolio', 'visual'],

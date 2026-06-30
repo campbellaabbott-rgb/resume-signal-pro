@@ -695,15 +695,16 @@ INDUSTRY-SPECIFIC SCORING WEIGHTS:
   * Bonus: Open source contributions, certifications (AWS, Azure, Google Cloud)
   
 - HEALTHCARE/MEDICAL: Licenses & Certifications (35%), Compliance Keywords (25%), Experience (20%), Education (15%), Format (5%)
-  * Must-haves: License numbers, certifications (RN, MD, CNA), HIPAA compliance, EMR systems
-  * Critical: State licenses, DEA numbers for applicable roles
+  * Must-haves: State license number + type (RN, LPN, MD, DO, NP, CNA, RT, CRNA), HIPAA compliance, named EMR/EHR system (Epic, Cerner, Meditech, Allscripts), patient population/specialty (ICU, oncology, pediatrics, ER)
+  * Critical: BLS/ACLS/PALS certifications; DEA number for prescribers; JCAHO/Joint Commission compliance; specific unit or care setting named
   
 - FINANCE/BANKING: Quantification (35%), Certifications (25%), Keywords (20%), Education (15%), Format (5%)
   * Must-haves: CFA, CPA, Series licenses, regulatory knowledge (SOX, Basel, Dodd-Frank)
   * Critical: Revenue/AUM numbers, percentage improvements
   
 - LEGAL: Education/Bar (35%), Keywords (25%), Experience (20%), Writing Quality (15%), Format (5%)
-  * Must-haves: Bar admissions, law school, practice areas, case outcomes
+  * Must-haves: Bar admission + jurisdiction(s), law school name + JD year, practice area(s) stated explicitly (litigation, corporate, IP, employment, securities, real estate), billable hours target or actual, matter outcomes (settlement value, case result, deal size)
+  * Critical: In-house counsel should name company size and industry; litigators need court level (federal/state/appellate); corporate attorneys need deal type and value
   
 - SALES/MARKETING: Quantification (40%), Keywords (25%), Experience (20%), Format (10%), Skills (5%)
   * Must-haves: Revenue generated, quota attainment %, deals closed, campaign ROI
@@ -712,14 +713,16 @@ INDUSTRY-SPECIFIC SCORING WEIGHTS:
   * Must-haves: Teaching licenses, grade levels, subjects, student outcomes
   
 - ENGINEERING (Non-Software): Technical Skills (30%), Certifications (25%), Experience (20%), Education (20%), Format (5%)
-  * Must-haves: PE license, industry certifications, CAD/tools, project scale
+  * Must-haves: PE license or EIT status (if applicable, state explicitly); specific CAD tools named (AutoCAD, SolidWorks, CATIA, Revit, ANSYS); project budget + scope; discipline named (mechanical, civil, structural, electrical, chemical, aerospace)
+  * Critical: Quantified outcomes (load capacity, cost savings, efficiency %, safety record); relevant standards (ASME, ASTM, ASCE, NEC, NFPA); Six Sigma/Lean if process engineering
   
 - CREATIVE/DESIGN: Portfolio (35%), Skills (25%), Experience (20%), Keywords (15%), Format (5%)
-  * Must-haves: Portfolio link, software proficiency, project outcomes
+  * Must-haves: Portfolio/Behance/Dribbble URL (penalty if absent), named tools (Figma, Adobe Creative Suite: Photoshop/Illustrator/InDesign/After Effects), measurable outcomes (conversion lift %, engagement increase, brand metric improvement), design system or component library experience
+  * Critical: UX roles need user research methods named (usability testing, A/B testing, user interviews); creative directors need team size + budget managed
 
 - PRODUCT MANAGEMENT: Outcome Quantification (35%), Cross-Functional Impact (25%), Keywords (20%), Format (10%), Skills (10%)
-  * Must-haves: OKRs/metrics, product launches with impact, stakeholder management, roadmap ownership
-  * Critical: Business outcomes (revenue, users, engagement) not just features shipped; A/B testing experience
+  * Must-haves: Business outcomes with numbers (revenue impact $, MAU/DAU growth %, conversion rate change, engagement lift — NOT just "launched feature X"); roadmap ownership stated; cross-functional team size led; at least one A/B test or data-driven decision described
+  * Critical: Heavy penalty for features-without-outcomes bullets ("Shipped checkout redesign" scores low; "Shipped checkout redesign, improving conversion 22%" scores high); OKR or KPI framework named; product analytics tool (Amplitude, Mixpanel, GA4) mentioned
 
 - HR/HUMAN RESOURCES: Certifications (25%), Quantification (25%), Keywords (25%), Experience (15%), Format (10%)
   * Must-haves: SHRM-CP/SCP or PHR/SPHR, HRIS systems (Workday, ADP), time-to-hire metrics, retention rates

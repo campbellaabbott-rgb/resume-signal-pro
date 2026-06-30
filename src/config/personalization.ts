@@ -103,20 +103,20 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     name: 'Healthcare',
     keywords: ['HIPAA', 'Patient Care', 'EHR', 'EMR', 'Clinical', 'Compliance', 'Quality Assurance', 'Care Coordination', 'Evidence-Based'],
     resumeTips: [
-      'Include license numbers and certifications prominently',
-      'Emphasize patient outcomes and safety metrics',
-      'List specific equipment and systems experience',
-      'Highlight continuing education and training'
+      'REQUIRED: State license number, type, and expiration date (e.g., "RN License #123456, NY, exp. 2026")',
+      'Name your EMR/EHR system explicitly — Epic, Cerner, Meditech, Allscripts (ATS filters on this)',
+      'Include patient population and specialty: ICU, pediatrics, oncology, ER, med-surg — recruiters filter by unit',
+      'Quantify patient load per shift and measurable outcomes (satisfaction scores, readmission rates, error rates)'
     ],
-    preferredFormat: 'Reverse chronological with certifications section',
-    atsNotes: 'Healthcare uses iCIMS, Taleo heavily. Include exact certification names.',
-    topSkills: ['Patient Assessment', 'Care Planning', 'Medical Terminology', 'EHR Systems'],
-    certifications: ['RN', 'BSN', 'MSN', 'ACLS', 'BLS', 'CNA', 'LPN'],
+    preferredFormat: 'Reverse chronological with certifications and licensure section at top',
+    atsNotes: 'Healthcare ATS (iCIMS, Taleo, Workday) filters by license type, EMR system, and specialty. Missing any of these = automatic screen-out.',
+    topSkills: ['Patient Assessment', 'Care Planning', 'Epic/Cerner', 'HIPAA Compliance', 'Clinical Documentation'],
+    certifications: ['RN', 'BSN', 'MSN', 'ACLS', 'BLS', 'PALS', 'CNA', 'LPN', 'NPI', 'DEA (if prescriber)'],
     commonMistakes: [
-      'Not including license numbers and expiration dates',
-      'Missing HIPAA compliance mentions',
-      'Vague patient care descriptions without outcomes',
-      'Forgetting to list specific EHR/EMR systems used'
+      'Missing license number and expiration date — many ATS systems auto-reject without it',
+      'Vague "patient care" bullets without specialty, patient volume, or outcomes',
+      'Not naming the specific EMR system used (Epic vs Cerner matters to employers)',
+      'Omitting patient population (ICU vs med-surg vs ER changes what recruiters see)'
     ],
     strongActionVerbs: ['Administered', 'Assessed', 'Coordinated', 'Monitored', 'Educated', 'Implemented', 'Documented', 'Triaged'],
     bulletExamples: [
@@ -211,20 +211,20 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     name: 'Engineering (Non-Software)',
     keywords: ['CAD', 'AutoCAD', 'SolidWorks', 'Project Management', 'P&ID', 'Lean', 'Six Sigma', 'Quality Control', 'Specifications'],
     resumeTips: [
-      'Include PE license if applicable',
-      'List specific software and tools with versions',
-      'Quantify project budgets, timelines, team sizes',
-      'Highlight safety records and compliance'
+      'State your PE license status explicitly — if licensed: "PE License #XXXXX, [State]"; if not yet: "EIT (Engineer-in-Training), [State]" — never omit this',
+      'Name every CAD/simulation tool explicitly: AutoCAD, SolidWorks, CATIA, ANSYS, Revit — ATS systems filter on exact names',
+      'Quantify every project: budget ($), timeline, team size, and one measurable outcome (cost savings, efficiency %, load capacity)',
+      'Include discipline and relevant standards: ASME, ASTM, ASCE, NEC, NFPA, ISO — these are ATS keywords in engineering job postings'
     ],
-    preferredFormat: 'Reverse chronological with technical skills section',
-    atsNotes: 'Engineering firms use Taleo, Workday. Include exact software names.',
-    topSkills: ['CAD Software', 'Project Management', 'Technical Documentation', 'Problem Solving'],
-    certifications: ['PE', 'PMP', 'Six Sigma', 'LEED'],
+    preferredFormat: 'Reverse chronological with technical skills and licensure section',
+    atsNotes: 'Engineering ATS (Taleo, Workday, iCIMS) filters by discipline, license status, and CAD tools. Missing exact tool names causes screen-outs.',
+    topSkills: ['AutoCAD/SolidWorks', 'PE License', 'Project Engineering', 'Technical Analysis', 'Quality Control'],
+    certifications: ['PE (Professional Engineer)', 'EIT/FE', 'PMP', 'Six Sigma Black Belt', 'LEED AP', 'API', 'NACE'],
     commonMistakes: [
-      'Not mentioning PE license or EIT status',
-      'Missing project budget and timeline details',
-      'Vague technical descriptions without specifications',
-      'Not highlighting safety and compliance achievements'
+      '"PE license if applicable" is not enough — state your exact license number and state, or explicitly note EIT status',
+      'Listing "CAD" without naming the specific tool (AutoCAD vs SolidWorks are different ATS keywords)',
+      'Missing project budget and scope — hiring managers filter by project size',
+      'Not including relevant standards (ASME, ASTM) which are primary ATS keywords in engineering postings'
     ],
     strongActionVerbs: ['Designed', 'Engineered', 'Tested', 'Analyzed', 'Calculated', 'Specified', 'Inspected', 'Commissioned'],
     bulletExamples: [
@@ -238,20 +238,20 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     name: 'Education',
     keywords: ['Curriculum', 'Assessment', 'Differentiation', 'IEP', 'Classroom Management', 'Student Outcomes', 'Professional Development'],
     resumeTips: [
-      'Include teaching certifications and endorsements',
-      'Show student achievement data and improvements',
-      'Highlight specialized training and methodologies',
-      'List grade levels and subjects taught'
+      'REQUIRED: State certification number, endorsement area, and expiration (e.g., "NY Teaching Certificate #12345, Secondary Mathematics 7-12, exp. 2027") — district ATS auto-filters on this',
+      'Include grade level and subject for every role — "7th grade math" beats "middle school" every time',
+      'Quantify student outcomes with data: test score improvement %, pass rates vs. national average, attendance improvement',
+      'Name the curriculum/program used: Common Core, IB, AP, PBIS, Fundations, Everyday Math — these are ATS keywords'
     ],
-    preferredFormat: 'Reverse chronological with certifications prominent',
-    atsNotes: 'School districts use varied systems. Keep format simple.',
-    topSkills: ['Classroom Management', 'Curriculum Development', 'Assessment', 'Technology Integration'],
-    certifications: ['State Teaching License', 'TESOL', 'Special Education Endorsement'],
+    preferredFormat: 'Reverse chronological with state certification prominently in header or top section',
+    atsNotes: 'District ATS systems (often Frontline/AppliTrack) scan for exact certification codes, endorsement areas, and grade bands. Missing cert number = auto-reject in many districts.',
+    topSkills: ['Differentiated Instruction', 'Data-Driven Instruction', 'IEP Development', 'Classroom Management', 'Curriculum Alignment'],
+    certifications: ['State Teaching Certificate (with #)', 'TESOL/TEFL', 'Special Education Endorsement', 'Reading Specialist', 'School Counselor License', 'National Board Certification (NBCT)'],
     commonMistakes: [
-      'Not including state certification numbers',
-      'Missing student outcome data',
-      'Vague classroom descriptions without methodologies',
-      'Not mentioning specific curricula or programs used'
+      'Missing state certification number and endorsement area — most district ATS will auto-reject without it',
+      'Vague grade level ("middle school" instead of "grades 6-8") limits ATS matching',
+      'No student outcome data — even one data point (test scores, proficiency %) dramatically improves ATS scoring',
+      'Not naming specific programs (Fountas & Pinnell, Saxon Math, etc.) which appear in job postings as keywords'
     ],
     strongActionVerbs: ['Taught', 'Developed', 'Implemented', 'Assessed', 'Differentiated', 'Mentored', 'Collaborated', 'Facilitated'],
     bulletExamples: [
