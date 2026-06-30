@@ -74,21 +74,21 @@ const attentionColors = {
   skipped: "border-l-4 border-l-red-500 bg-red-500/5 opacity-60",
 };
 
-const attentionLabels = {
-  high: { text: t('recruiterView.highFocus'), color: "text-green-600" },
-  medium: { text: t('recruiterView.glanced'), color: "text-yellow-600" },
-  low: { text: t('recruiterView.barelySeen'), color: "text-orange-600" },
-  skipped: { text: t('recruiterView.skipped'), color: "text-red-600" },
-};
-
-const decisionStyles = {
-  ADVANCE: { bg: "bg-green-500/10 border-green-500/30", text: "text-green-700", icon: CheckCircle, label: t('recruiterView.advance') },
-  MAYBE: { bg: "bg-yellow-500/10 border-yellow-500/30", text: "text-yellow-700", icon: Clock, label: t('recruiterView.maybe') },
-  REJECT: { bg: "bg-red-500/10 border-red-500/30", text: "text-red-700", icon: XCircle, label: t('recruiterView.screenedOut') },
-};
-
 export function RecruiterViewMode({ resumeText, industry, currentRole }: RecruiterViewModeProps) {
   const { t } = useTranslation();
+
+  const attentionLabels = {
+    high: { text: t('recruiterView.highFocus'), color: "text-green-600" },
+    medium: { text: t('recruiterView.glanced'), color: "text-yellow-600" },
+    low: { text: t('recruiterView.barelySeen'), color: "text-orange-600" },
+    skipped: { text: t('recruiterView.skipped'), color: "text-red-600" },
+  };
+
+  const decisionStyles = {
+    ADVANCE: { bg: "bg-green-500/10 border-green-500/30", text: "text-green-700", icon: CheckCircle, label: t('recruiterView.advance') },
+    MAYBE: { bg: "bg-yellow-500/10 border-yellow-500/30", text: "text-yellow-700", icon: Clock, label: t('recruiterView.maybe') },
+    REJECT: { bg: "bg-red-500/10 border-red-500/30", text: "text-red-700", icon: XCircle, label: t('recruiterView.screenedOut') },
+  };
   const [data, setData] = useState<RecruiterViewData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
