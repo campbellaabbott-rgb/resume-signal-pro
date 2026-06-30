@@ -1,9 +1,198 @@
 /**
  * Industry Detection Engine
- * 
+ *
  * Uses weighted keyword frequency, section awareness, co-occurrence clustering,
- * and job title anchoring to detect industry with high accuracy.
+ * job title anchoring, employer name lookup, and recency-weighted bullet scoring
+ * to detect industry with high accuracy.
  */
+
+/**
+ * Well-known employer → industry map.
+ * Used as a high-confidence anchor: if the resume mentions a recognizable employer,
+ * boost that industry's score before keyword scoring runs.
+ * Score boost is ~3pts — meaningful for ties, but can't override a clear title mismatch
+ * (e.g. SWE at Goldman still scores technology because title match gives 16+ pts).
+ */
+const KNOWN_EMPLOYERS: Record<string, string> = {
+  // Technology
+  'google': 'technology', 'alphabet': 'technology', 'deepmind': 'technology',
+  'apple': 'technology', 'microsoft': 'technology', 'meta': 'technology',
+  'facebook': 'technology', 'instagram': 'technology', 'whatsapp': 'technology',
+  'amazon': 'technology', 'aws': 'technology', 'netflix': 'technology',
+  'uber': 'technology', 'lyft': 'technology', 'airbnb': 'technology',
+  'twitter': 'technology', 'x corp': 'technology', 'snap': 'technology',
+  'pinterest': 'technology', 'reddit': 'technology', 'discord': 'technology',
+  'salesforce': 'technology', 'oracle': 'technology', 'sap': 'technology',
+  'ibm': 'technology', 'intel': 'technology', 'nvidia': 'technology',
+  'amd': 'technology', 'qualcomm': 'technology', 'broadcom': 'technology',
+  'cisco': 'technology', 'vmware': 'technology', 'workday': 'technology',
+  'servicenow': 'technology', 'snowflake': 'technology', 'databricks': 'technology',
+  'stripe': 'technology', 'square': 'technology', 'block': 'technology',
+  'paypal': 'technology', 'braintree': 'technology', 'venmo': 'technology',
+  'adobe': 'technology', 'intuit': 'technology', 'dropbox': 'technology',
+  'slack': 'technology', 'zoom': 'technology', 'shopify': 'technology',
+  'twilio': 'technology', 'cloudflare': 'technology', 'hashicorp': 'technology',
+  'mongodb': 'technology', 'elastic': 'technology', 'palantir': 'technology',
+  'splunk': 'technology', 'datadog': 'technology', 'new relic': 'technology',
+  'pagerduty': 'technology', 'github': 'technology', 'gitlab': 'technology',
+  'atlassian': 'technology', 'jira': 'technology', 'confluence': 'technology',
+  'hubspot': 'technology', 'zendesk': 'technology', 'intercom': 'technology',
+  'figma': 'technology', 'canva': 'technology', 'notion': 'technology',
+  'airtable': 'technology', 'vercel': 'technology', 'netlify': 'technology',
+  'digitalocean': 'technology', 'digital ocean': 'technology',
+  'roblox': 'technology', 'unity': 'technology', 'epic games': 'technology',
+  'openai': 'technology', 'anthropic': 'technology', 'cohere': 'technology',
+  'scale ai': 'technology', 'anyscale': 'technology', 'mistral': 'technology',
+  'okta': 'technology', 'crowdstrike': 'technology', 'palo alto networks': 'technology',
+  'zscaler': 'technology', 'fortinet': 'technology', 'sentinelone': 'technology',
+  'veeva': 'technology', 'epic systems': 'technology', 'cerner': 'technology',
+  'toast': 'technology', 'mindbody': 'technology', 'procore': 'technology',
+  'costar': 'technology', 'zillow': 'technology', 'redfin': 'technology',
+  'opendoor': 'technology', 'compass': 'technology',
+  // Finance / Banking / Investment
+  'goldman sachs': 'finance', 'goldman': 'finance',
+  'morgan stanley': 'finance', 'jp morgan': 'finance', 'jpmorgan': 'finance',
+  'bank of america': 'finance', 'wells fargo': 'finance',
+  'citigroup': 'finance', 'citibank': 'finance', 'citi': 'finance',
+  'deutsche bank': 'finance', 'barclays': 'finance', 'ubs': 'finance',
+  'credit suisse': 'finance', 'hsbc': 'finance', 'bnp paribas': 'finance',
+  'blackrock': 'finance', 'vanguard': 'finance', 'fidelity': 'finance',
+  'charles schwab': 'finance', 'schwab': 'finance',
+  'td ameritrade': 'finance', 'e*trade': 'finance', 'etrade': 'finance',
+  'merrill lynch': 'finance', 'merrill': 'finance',
+  'piper sandler': 'finance', 'jefferies': 'finance', 'lazard': 'finance',
+  'evercore': 'finance', 'moelis': 'finance', 'houlihan lokey': 'finance',
+  'kkr': 'finance', 'blackstone': 'finance', 'apollo': 'finance',
+  'carlyle': 'finance', 'tpg': 'finance', 'bain capital': 'finance',
+  'citadel': 'finance', 'two sigma': 'finance', 'de shaw': 'finance',
+  'bridgewater': 'finance', 'renaissance': 'finance', 'point72': 'finance',
+  'millennium': 'finance', 'jane street': 'finance', 'virtu': 'finance',
+  'susquehanna': 'finance', 'drw': 'finance', 'imc trading': 'finance',
+  'raymond james': 'finance', 'stifel': 'finance', 'truist': 'finance',
+  'pnc': 'finance', 'us bancorp': 'finance', 'us bank': 'finance',
+  'state street': 'finance', 'northern trust': 'finance',
+  'american express': 'finance', 'amex': 'finance',
+  'visa': 'finance', 'mastercard': 'finance', 'discover': 'finance',
+  'nerdwallet': 'finance', 'sofi': 'finance', 'robinhood': 'finance',
+  'coinbase': 'finance', 'kraken': 'finance',
+  // Consulting
+  'mckinsey': 'consulting', 'bain': 'consulting', 'bcg': 'consulting',
+  'boston consulting group': 'consulting',
+  'deloitte': 'consulting', 'pwc': 'consulting', 'kpmg': 'consulting',
+  'ernst & young': 'consulting', 'ey': 'consulting',
+  'accenture': 'consulting', 'booz allen': 'consulting',
+  'oliver wyman': 'consulting', 'roland berger': 'consulting',
+  'strategy&': 'consulting', 'lek consulting': 'consulting',
+  'a.t. kearney': 'consulting', 'kearney': 'consulting',
+  'alvarez & marsal': 'consulting', 'fti consulting': 'consulting',
+  'gartner': 'consulting', 'huron': 'consulting', 'west monroe': 'consulting',
+  'guidehouse': 'consulting', 'slalom': 'consulting', 'capgemini': 'consulting',
+  'cognizant': 'consulting', 'wipro': 'consulting', 'infosys': 'consulting',
+  'tata consultancy': 'consulting', 'tcs': 'consulting',
+  'icf': 'consulting', 'l.e.k.': 'consulting',
+  // Healthcare
+  'mayo clinic': 'healthcare', 'cleveland clinic': 'healthcare',
+  'johns hopkins': 'healthcare', 'kaiser permanente': 'healthcare',
+  'hca healthcare': 'healthcare', 'ascension': 'healthcare',
+  'commonspirit': 'healthcare', 'tenet healthcare': 'healthcare',
+  'providence': 'healthcare', 'intermountain': 'healthcare',
+  'unitedhealthcare': 'healthcare', 'unitedhealth': 'healthcare',
+  'cigna': 'healthcare', 'aetna': 'healthcare', 'humana': 'healthcare',
+  'anthem': 'healthcare', 'cvs health': 'healthcare', 'walgreens': 'healthcare',
+  'pfizer': 'healthcare', 'johnson & johnson': 'healthcare', 'j&j': 'healthcare',
+  'merck': 'healthcare', 'astrazeneca': 'healthcare',
+  'bristol-myers squibb': 'healthcare', 'bms': 'healthcare',
+  'abbott': 'healthcare', 'medtronic': 'healthcare',
+  'boston scientific': 'healthcare', 'stryker': 'healthcare',
+  'baxter': 'healthcare', 'becton dickinson': 'healthcare', 'bd': 'healthcare',
+  'zimmer biomet': 'healthcare', 'edwards lifesciences': 'healthcare',
+  'hologic': 'healthcare', 'intuitive surgical': 'healthcare',
+  'biogen': 'healthcare', 'gilead': 'healthcare', 'regeneron': 'healthcare',
+  'moderna': 'healthcare', 'biontech': 'healthcare', 'illumina': 'healthcare',
+  'quest diagnostics': 'healthcare', 'labcorp': 'healthcare',
+  // Legal
+  'skadden': 'legal', 'sullivan & cromwell': 'legal',
+  'latham & watkins': 'legal', 'kirkland & ellis': 'legal',
+  'wachtell': 'legal', 'cravath': 'legal', 'davis polk': 'legal',
+  'simpson thacher': 'legal', 'cleary gottlieb': 'legal',
+  'white & case': 'legal', 'paul weiss': 'legal', 'sidley austin': 'legal',
+  'gibson dunn': 'legal', 'cooley': 'legal', 'orrick': 'legal',
+  'wilmerhale': 'legal', 'jones day': 'legal', 'baker mckenzie': 'legal',
+  'dla piper': 'legal', 'greenberg traurig': 'legal',
+  'morgan lewis': 'legal', 'hogan lovells': 'legal', 'freshfields': 'legal',
+  'linklaters': 'legal', 'allen & overy': 'legal', 'clifford chance': 'legal',
+  // Manufacturing / Industrial
+  'general electric': 'manufacturing', 'ge': 'manufacturing',
+  '3m': 'manufacturing', 'honeywell': 'manufacturing',
+  'caterpillar': 'manufacturing', 'deere': 'manufacturing',
+  'john deere': 'manufacturing', 'boeing': 'manufacturing',
+  'lockheed martin': 'manufacturing', 'raytheon': 'manufacturing',
+  'northrop grumman': 'manufacturing', 'general dynamics': 'manufacturing',
+  'ford': 'manufacturing', 'general motors': 'manufacturing', 'gm': 'manufacturing',
+  'toyota': 'manufacturing', 'honda': 'manufacturing', 'bmw': 'manufacturing',
+  'volkswagen': 'manufacturing', 'stellantis': 'manufacturing',
+  'whirlpool': 'manufacturing', 'emerson': 'manufacturing',
+  'parker hannifin': 'manufacturing', 'eaton': 'manufacturing',
+  'rockwell automation': 'manufacturing', 'siemens': 'manufacturing',
+  'abb': 'manufacturing', 'schneider electric': 'manufacturing',
+  'illinois tool works': 'manufacturing', 'itw': 'manufacturing',
+  'dover': 'manufacturing', 'danaher': 'manufacturing', 'roper': 'manufacturing',
+  'cooper industries': 'manufacturing', 'textron': 'manufacturing',
+  'l3harris': 'manufacturing', 'bae systems': 'manufacturing',
+  'dupont': 'manufacturing', 'basf': 'manufacturing', 'dow': 'manufacturing',
+  'exxon': 'manufacturing', 'chevron': 'manufacturing', 'shell': 'manufacturing',
+  // Retail
+  'walmart': 'retail', 'target': 'retail', 'costco': 'retail',
+  'kroger': 'retail', 'home depot': 'retail', "lowe's": 'retail', 'lowes': 'retail',
+  "macy's": 'retail', 'macys': 'retail', 'nordstrom': 'retail',
+  'gap': 'retail', 'old navy': 'retail', 'banana republic': 'retail',
+  'h&m': 'retail', 'zara': 'retail', 'uniqlo': 'retail',
+  'tj maxx': 'retail', 'marshalls': 'retail', 'ross': 'retail',
+  'dollar general': 'retail', 'dollar tree': 'retail', 'five below': 'retail',
+  'best buy': 'retail', 'autozone': 'retail', "o'reilly": 'retail',
+  'advance auto': 'retail', 'petsmart': 'retail', 'petco': 'retail',
+  'ulta': 'retail', 'sephora': 'retail',
+  // Hospitality / Food & Beverage
+  'marriott': 'hospitality', 'hilton': 'hospitality', 'hyatt': 'hospitality',
+  'ihg': 'hospitality', 'wyndham': 'hospitality', 'four seasons': 'hospitality',
+  'ritz-carlton': 'hospitality', 'ritz carlton': 'hospitality',
+  'accor': 'hospitality', 'mgm resorts': 'hospitality', 'mgm': 'hospitality',
+  'las vegas sands': 'hospitality', 'wynn': 'hospitality',
+  'caesars': 'hospitality', 'hard rock': 'hospitality',
+  'darden': 'hospitality', 'yum brands': 'hospitality',
+  'restaurant brands': 'hospitality',
+  'chipotle': 'hospitality', 'starbucks': 'hospitality',
+  "mcdonald's": 'hospitality', 'mcdonalds': 'hospitality',
+  'burger king': 'hospitality', 'wendy': 'hospitality',
+  'taco bell': 'hospitality', 'subway': 'hospitality',
+  'olive garden': 'hospitality', 'cheesecake factory': 'hospitality',
+  'dominos': 'hospitality', "domino's": 'hospitality',
+  // Government / Public Sector
+  'department of defense': 'government', 'department of state': 'government',
+  'department of treasury': 'government', 'department of energy': 'government',
+  'department of justice': 'government', 'department of homeland': 'government',
+  'federal bureau': 'government', 'fbi': 'government',
+  'central intelligence': 'government', 'cia': 'government',
+  'national security': 'government', 'nsa': 'government',
+  'fema': 'government', 'cdc': 'government', 'nih': 'government',
+  'epa': 'government', 'ftc': 'government', 'fda': 'government',
+  'usaid': 'government', 'peace corps': 'government',
+  'world bank': 'government', 'imf': 'government',
+  'united nations': 'government', 'nato': 'government',
+  // Education
+  'harvard': 'education', 'mit': 'education', 'stanford': 'education',
+  'yale': 'education', 'columbia': 'education', 'princeton': 'education',
+  'university of chicago': 'education', 'nyu': 'education',
+  'ucla': 'education', 'uc berkeley': 'education', 'berkeley': 'education',
+  'michigan': 'education', 'penn state': 'education', 'ohio state': 'education',
+  'khan academy': 'education', 'coursera': 'education', 'udemy': 'education',
+  'duolingo': 'education', 'chegg': 'education', 'chegg tutors': 'education',
+  // HR / Staffing
+  'adp': 'hr', 'paychex': 'hr', 'aon': 'hr', 'mercer': 'hr',
+  'korn ferry': 'hr', 'heidrick': 'hr', 'spencer stuart': 'hr',
+  'manpower': 'hr', 'randstad': 'hr', 'adecco': 'hr', 'robert half': 'hr',
+  'kelly services': 'hr', 'insight global': 'hr',
+};
 
 // Section weights - job titles and summary have highest influence
 // REBALANCED: Titles increased, skills decreased to prevent misclassification
@@ -1060,10 +1249,10 @@ interface SectionMatch {
  */
 function extractSections(resumeText: string): {
   jobTitles: string[];
+  employers: string[];
   summary: string;
   headings: string[];
-  firstBullets: string[];
-  otherBullets: string[];
+  weightedBullets: Array<{ text: string; weight: number }>;
   skills: string;
   fullText: string;
 } {
@@ -1091,33 +1280,43 @@ function extractSections(resumeText: string): {
     'chef', 'cook', 'bartender', 'cashier', 'concierge', 'server', 'sommelier',
   ];
   
+  const employers: string[] = [];
+
   for (const line of lines) {
     if (line.length < 120) {
       const hasTitle = titleKeywords.some(kw => line.includes(kw));
       if (hasTitle) {
         let cleanTitle = '';
-        
+        let employerFragment = '';
+
         // Pattern 1: "Company, Location; Title (Date)" — semicolon separates company from title
         const semicolonMatch = line.match(/;\s*(.+?)(?:\s*\(|$)/i);
         if (semicolonMatch) {
           cleanTitle = semicolonMatch[1].trim();
+          employerFragment = line.split(';')[0].trim();
         }
-        
+
         // Pattern 2: "Title - Company" or "Title | Company" or "Title @ Company"
         if (!cleanTitle) {
-          cleanTitle = line.split(/[-–—|@]|\d{4}|january|february|march|april|may|june|july|august|september|october|november|december/i)[0].trim();
+          const parts = line.split(/[-–—|@]|\d{4}|january|february|march|april|may|june|july|august|september|october|november|december/i);
+          cleanTitle = parts[0].trim();
+          if (parts[1]) employerFragment = parts[1].trim();
         }
-        
+
         // Pattern 3: "Title at Company"
         if (!cleanTitle || cleanTitle === line.trim()) {
-          const atMatch = line.match(/^(.+?)\s+at\s+/i);
+          const atMatch = line.match(/^(.+?)\s+at\s+(.+?)(?:\s*\(|$)/i);
           if (atMatch) {
             cleanTitle = atMatch[1].trim();
+            employerFragment = atMatch[2].trim();
           }
         }
-        
+
         if (cleanTitle && cleanTitle.length > 3 && cleanTitle.length < 80) {
           jobTitles.push(cleanTitle);
+        }
+        if (employerFragment && employerFragment.length > 1 && employerFragment.length < 60) {
+          employers.push(employerFragment.toLowerCase());
         }
       }
     }
@@ -1173,33 +1372,55 @@ function extractSections(resumeText: string): {
     }
   }
   
-  // Extract bullets
-  const allBullets: string[] = [];
+  // Build job blocks for recency-weighted bullet scoring.
+  // Each block starts at a detected title line; bullets below belong to that block.
+  // Blocks are in resume order (most recent first, reverse-chronological convention).
+  const BLOCK_WEIGHTS = [2.0, 1.5, 1.0, 0.6]; // weight by block index: most recent -> oldest
+  const isBulletLine = (l: string) =>
+    l.startsWith('\u2022') || l.startsWith('-') || l.startsWith('*') ||
+    /^[\u2022\u2023\u25E6\u2043\u2219]/.test(l) ||
+    (l.length > 30 && l.length < 300);
+
+  const jobBlocks: string[][] = [];
+  let currentBlock: string[] | null = null;
+
   for (const line of lines) {
-    if (line.startsWith('•') || line.startsWith('-') || line.startsWith('*') || 
-        line.match(/^[\u2022\u2023\u25E6\u2043\u2219]/) ||
-        (line.length > 30 && line.length < 300)) {
-      allBullets.push(line);
+    const isTitleLine = line.length < 120 && titleKeywords.some(kw => line.includes(kw));
+    if (isTitleLine) {
+      currentBlock = [];
+      jobBlocks.push(currentBlock);
+    } else if (isBulletLine(line)) {
+      if (currentBlock) {
+        currentBlock.push(line);
+      } else {
+        // Bullets before any title line — treat as most-recent block
+        currentBlock = [];
+        jobBlocks.push(currentBlock);
+        currentBlock.push(line);
+      }
     }
   }
-  
-  // First 3 bullets per "section" (rough approximation)
-  const firstBullets = allBullets.slice(0, 9);
-  const otherBullets = allBullets.slice(9);
-  
+
+  // Flatten blocks into weightedBullets with per-bullet recency weight
+  const weightedBullets: Array<{ text: string; weight: number }> = [];
+  jobBlocks.forEach((block, blockIdx) => {
+    const w = BLOCK_WEIGHTS[Math.min(blockIdx, BLOCK_WEIGHTS.length - 1)];
+    block.forEach(bullet => weightedBullets.push({ text: bullet, weight: w }));
+  });
+
   // Extract skills section
   let skills = '';
   const skillsStart = text.indexOf('skills');
   if (skillsStart !== -1) {
     skills = text.slice(skillsStart, skillsStart + 500);
   }
-  
+
   return {
     jobTitles,
+    employers,
     summary,
     headings,
-    firstBullets,
-    otherBullets,
+    weightedBullets,
     skills,
     fullText: text
   };
@@ -1276,25 +1497,28 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
     }
   }
   
-  // Check first bullets (higher weight)
-  for (const bullet of sections.firstBullets) {
+  // Check bullets with per-bullet recency weight (recent job blocks score higher)
+  for (const { text: bullet, weight } of sections.weightedBullets) {
     for (const kw of keywords.primary) {
       if (bullet.includes(kw)) {
-        score += SECTION_WEIGHTS.firstBullets;
+        score += weight;
       }
     }
     for (const kw of keywords.secondary) {
       if (bullet.includes(kw)) {
-        score += SECTION_WEIGHTS.firstBullets * 0.5;
+        score += weight * 0.5;
       }
     }
   }
-  
-  // Check other bullets
-  for (const bullet of sections.otherBullets) {
-    for (const kw of keywords.primary) {
-      if (bullet.includes(kw)) {
-        score += SECTION_WEIGHTS.otherBullets;
+
+  // Employer name signal: well-known employers are unambiguous industry anchors.
+  // Boost is ~3pts — enough to tip a tie, not enough to override a clear title mismatch.
+  for (const employerFragment of sections.employers) {
+    for (const [knownName, knownIndustry] of Object.entries(KNOWN_EMPLOYERS)) {
+      if (knownIndustry === industry && employerFragment.includes(knownName)) {
+        score += 3.0;
+        if (signals.length < 10) signals.push(`Known employer: "${knownName}"`);
+        break; // one boost per employer fragment
       }
     }
   }
