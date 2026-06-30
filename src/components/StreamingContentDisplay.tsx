@@ -21,12 +21,14 @@ export function StreamingContentDisplay({
   isStreaming,
   isComplete,
   error,
-  title = t('streamingContent.generating'),
-  subtitle = t('streamingContent.watchRT'),
+  title,
+  subtitle,
   showCopyButton = true,
   className,
 }: StreamingContentDisplayProps) {
   const { t } = useTranslation();
+  const resolvedTitle = title ?? t('streamingContent.generating');
+  const resolvedSubtitle = subtitle ?? t('streamingContent.watchRT');
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -91,14 +93,14 @@ export function StreamingContentDisplay({
           )}
           <div>
             <h3 className="font-semibold text-foreground">
-              {isComplete ? t('streamingContent.complete') : title}
+              {isComplete ? t('streamingContent.complete') : resolvedTitle}
             </h3>
             <p className="text-sm text-muted-foreground">
               {isStreaming 
                 ? t('streamingContent.characters', { count: content.length.toLocaleString() }) 
                 : isComplete 
                   ? t('streamingContent.ready') 
-                  : subtitle}
+                  : resolvedSubtitle}
             </p>
           </div>
         </div>

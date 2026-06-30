@@ -107,41 +107,6 @@ const getAvailableIndustries = (): { value: string; label: string }[] => {
   return industries.sort((a, b) => a.label.localeCompare(b.label));
 };
 
-const getConfidenceConfig = (confidence: 'high' | 'medium' | 'low') => {
-  switch (confidence) {
-    case 'high':
-      return {
-        icon: Check,
-        label: t('industryConfidence.confidenceHigh'),
-        shortLabel: t('industryConfidence.highShort'),
-        bgColor: 'bg-success/10',
-        borderColor: 'border-success/30',
-        textColor: 'text-success',
-        description: t('industryConfidence.highDesc')
-      };
-    case 'medium':
-      return {
-        icon: HelpCircle,
-        label: t('industryConfidence.confidenceMedium'),
-        shortLabel: t('industryConfidence.mediumShort'),
-        bgColor: 'bg-warning/10',
-        borderColor: 'border-warning/30',
-        textColor: 'text-warning',
-        description: t('industryConfidence.mediumDesc')
-      };
-    case 'low':
-      return {
-        icon: AlertTriangle,
-        label: t('industryConfidence.confidenceLow'),
-        shortLabel: t('industryConfidence.lowShort'),
-        bgColor: 'bg-muted',
-        borderColor: 'border-border',
-        textColor: 'text-muted-foreground',
-        description: t('industryConfidence.lowDesc')
-      };
-  }
-};
-
 export function IndustryConfidenceIndicator({
   industry,
   industryDetection,
@@ -155,7 +120,42 @@ export function IndustryConfidenceIndicator({
   const [showCorrection, setShowCorrection] = useState(false);
   const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null);
   const isMobile = useIsMobile();
-  
+
+  const getConfidenceConfig = (confidence: 'high' | 'medium' | 'low') => {
+    switch (confidence) {
+      case 'high':
+        return {
+          icon: Check,
+          label: t('industryConfidence.confidenceHigh'),
+          shortLabel: t('industryConfidence.highShort'),
+          bgColor: 'bg-success/10',
+          borderColor: 'border-success/30',
+          textColor: 'text-success',
+          description: t('industryConfidence.highDesc')
+        };
+      case 'medium':
+        return {
+          icon: HelpCircle,
+          label: t('industryConfidence.confidenceMedium'),
+          shortLabel: t('industryConfidence.mediumShort'),
+          bgColor: 'bg-warning/10',
+          borderColor: 'border-warning/30',
+          textColor: 'text-warning',
+          description: t('industryConfidence.mediumDesc')
+        };
+      case 'low':
+        return {
+          icon: AlertTriangle,
+          label: t('industryConfidence.confidenceLow'),
+          shortLabel: t('industryConfidence.lowShort'),
+          bgColor: 'bg-muted',
+          borderColor: 'border-border',
+          textColor: 'text-muted-foreground',
+          description: t('industryConfidence.lowDesc')
+        };
+    }
+  };
+
   const confidence = industryDetection?.confidence || 'medium';
   const signals = industryDetection?.signals || [];
   const aiSuggested = industryDetection?.aiSuggested;
