@@ -58,7 +58,7 @@ const ANALYSIS_STEP_KEYS = [
   "uploader.analysisSteps.step8"
 ];
 
-const ESTIMATED_TIME_SECONDS = 90; // 1.5 minutes
+const ESTIMATED_TIME_SECONDS = 30;
 
 interface FreeScanProgressProps {
   streamingProgress?: {

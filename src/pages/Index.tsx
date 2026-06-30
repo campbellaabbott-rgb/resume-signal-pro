@@ -1251,11 +1251,9 @@ const Index = () => {
         {/* Trust Indicators - Right after hero for credibility */}
         <TrustIndicators />
         
-        {/* How It Works - Show after uploader on mobile for cleaner flow */}
-        <div className="hidden sm:block">
-          <HowItWorks />
-        </div>
-        
+        {/* How It Works - shown before uploader on all screen sizes */}
+        <HowItWorks />
+
         {/* Hidden honeypot field for bot detection */}
         <input
           type="text"
@@ -1286,11 +1284,6 @@ const Index = () => {
           onJobsChange={setUploadedJobs}
           streamingProgress={streamingProgress}
         />
-        
-        {/* How It Works - Show after uploader on mobile */}
-        <div className="sm:hidden">
-          <HowItWorks />
-        </div>
         
         {/* Mini Pricing Cards - Featured packages */}
         <MiniPricingCards />
@@ -1403,21 +1396,22 @@ const Index = () => {
         />
       </main>
       
-      <StickyBottomCTA 
-        onGetStarted={() => {
-          document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
-        }}
-        isLoading={isLoading}
-      />
-      
-      
-      
+      {/* StickyBottomCTA only shown before results — once results are visible the
+          inline ScoreBasedPackageRecommendation is the primary CTA */}
+      {!freeKeywordResult && (
+        <StickyBottomCTA
+          onGetStarted={() => {
+            document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
+          }}
+          isLoading={isLoading}
+        />
+      )}
+
       <FloatingUploadButton
         hasContent={showFloatingScan}
         scanComplete={!!freeKeywordResult}
         trigger={floatingScanTrigger}
       />
-      <FloatingSeeReportButton isVisible={!!freeKeywordResult} />
 
       
       <Footer />
