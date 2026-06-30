@@ -252,13 +252,21 @@ export function ResumeUploader({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    
+
     const file = e.dataTransfer.files[0];
-    if (file && isValidFileType(file)) {
+    if (!file) return;
+
+    if (isValidFileType(file)) {
       setSelectedFile(file);
       onFileSelect(file);
+    } else {
+      toast({
+        title: "Unsupported file type",
+        description: "Please upload a PDF, DOCX, or TXT file.",
+        variant: "destructive",
+      });
     }
-  }, [onFileSelect]);
+  }, [onFileSelect, toast]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

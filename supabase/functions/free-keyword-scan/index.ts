@@ -1440,8 +1440,16 @@ ${resumeText.substring(0, 15000)}
       detectionSource = serverAIMatch ? 'server_low_ai_agree' : 'ai_override_low';
     }
 
+    // Guard: "general" is a valid server fallback but should never be the final industry
+    // surfaced to the user when a more specific detection exists. If AI returned "general"
+    // on a low-confidence override, fall back to the server's best guess instead.
+    if (finalIndustry === 'general' && industryDetection.industry !== 'general') {
+      finalIndustry = industryDetection.industry;
+      detectionSource = 'server_general_fallback';
+    }
+
     analysis.industry = finalIndustry;
-    
+
     // Determine final confidence
     const finalConfidence = industryDetection.confidence === 'high' ? 'high' :
       (serverAIMatch ? industryDetection.confidence : 

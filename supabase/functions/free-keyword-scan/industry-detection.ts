@@ -577,10 +577,12 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
     titles: [
       'consultant', 'senior consultant', 'management consultant',
       'strategy consultant', 'business analyst', 'associate consultant',
-      'principal', 'partner', 'engagement manager', 'project manager',
-      'advisory', 'advisor', 'director',
-      'managing director', 'md', 'vice president', 'associate',
-      'analyst', 'senior analyst', 'manager', 'senior manager',
+      'strategy analyst', 'management analyst', 'operations analyst',
+      'consulting partner', 'engagement partner', 'engagement manager',
+      'consulting manager', 'senior consulting manager',
+      'managing director', 'managing partner',
+      // Note: bare 'analyst', 'manager', 'director', 'associate', 'vice president'
+      // intentionally excluded — they match too broadly on non-consulting resumes
       'it consultant', 'technology consultant', 'operations consultant',
       'hr consultant', 'financial consultant', 'risk consultant',
       'transformation lead', 'change management lead', 'implementation lead',
@@ -793,7 +795,10 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
   legal: [
     ['litigation', 'court', 'contract'],
     ['counsel', 'compliance', 'legal'],
-    ['westlaw', 'bar', 'attorney']
+    ['westlaw', 'bar', 'attorney'],
+    ['securities', 'ip', 'corporate'],
+    ['billable', 'matter', 'docket'],
+    ['contract', 'draft', 'review']
   ],
   education: [
     ['teaching', 'students', 'curriculum'],
@@ -818,14 +823,6 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['deloitte', 'accenture', 'pwc'],
     ['transformation', 'recommendation', 'stakeholder'],
     ['deck', 'slide', 'executive']
-  ],
-  legal: [
-    ['litigation', 'court', 'contract'],
-    ['counsel', 'compliance', 'legal'],
-    ['westlaw', 'bar', 'attorney'],
-    ['securities', 'ip', 'corporate'],
-    ['billable', 'matter', 'docket'],
-    ['contract', 'draft', 'review']
   ],
   creative: [
     ['design', 'portfolio', 'visual'],
@@ -904,10 +901,13 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
 // keywords dominate the skills/bullets, it should NOT switch to the negative industry.
 // Format: { industry: keywords_that_should_NOT_cause_reclassification_away }
 const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleSignal: boolean }[]> = {
-  // If someone has sales titles, marketing keywords in skills shouldn't reclassify them
+  // If someone has sales titles, marketing/technology keywords shouldn't reclassify them.
+  // Key case: SaaS Account Executive who mentions APIs, integrations, software in job bullets
+  // should stay sales — technology must not steal based on product vocabulary alone.
   sales: [
     { negativeFor: 'marketing', requiredTitleSignal: true },
-    { negativeFor: 'creative', requiredTitleSignal: true }
+    { negativeFor: 'creative', requiredTitleSignal: true },
+    { negativeFor: 'technology', requiredTitleSignal: true }
   ],
   // If someone has tech titles (SWE, DevOps, admin), other industries shouldn't reclassify.
   // Key case: SWE at an ML company who writes Python scripts touching ML APIs should stay
