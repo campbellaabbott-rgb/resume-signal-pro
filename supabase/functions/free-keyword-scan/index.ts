@@ -56,10 +56,10 @@ function logScanMetric(
 
 // Valid industries list
 const VALID_INDUSTRIES = [
-  'technology', 'healthcare', 'finance', 'legal', 'sales', 
-  'marketing', 'education', 'engineering', 'creative', 'hr', 
-  'consulting', 'retail', 'hospitality', 'manufacturing', 
-  'government', 'general'
+  'technology', 'healthcare', 'finance', 'legal', 'sales',
+  'marketing', 'education', 'engineering', 'creative', 'hr',
+  'consulting', 'retail', 'hospitality', 'manufacturing',
+  'government', 'product_management', 'general'
 ];
 
 // Industry aliases for normalization — collapses niche sub-industries to parent categories
@@ -70,9 +70,9 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'software_engineering': 'technology', 'software engineering': 'technology',
   'ai_ml': 'technology', 'data_engineering': 'technology',
   'dataengineering': 'technology', 'data engineering': 'technology',
-  'technical_program_management': 'technology', 'product_management': 'technology',
-  'product management': 'technology', 'program management': 'technology',
-  'scrum master': 'technology', 'agile coach': 'technology',
+  'technical_program_management': 'product_management', 'product management': 'product_management',
+  'program management': 'product_management', 'scrum master': 'product_management',
+  'agile coach': 'product_management',
   'securityengineering': 'technology', 'security_engineering': 'technology',
   'security engineering': 'technology', 'cybersecurity': 'technology',
   'cloud_engineering': 'technology', 'platform_engineering': 'technology',
