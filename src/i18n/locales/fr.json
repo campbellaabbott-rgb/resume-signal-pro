@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "industryDetectionSweep2": {
+      "title": "Détection d'industrie plus précise pour 20+ rôles",
+      "description": "Deuxième passage de correction du moteur de détection d'industrie: suppression des mots-clés faux positifs génériques, ajout de 30+ mots-clés manquants pour la fabrication, RH, créatif et conseil, expansion de la table des employeurs avec 30 nouvelles entreprises, et ajout de 15 nouveaux patterns de co-occurrence."
+    },
     "scanFeedback": {
       "title": "Dites-nous si votre analyse a été utile",
       "description": "Un rapide pouce en haut / bas apparaît désormais au bas de chaque analyse gratuite. Vos réponses alimentent directement notre pipeline d'amélioration — nous les utilisons pour identifier les types de recommandations systématiquement erronés et les corriger dans les futures mises à jour."

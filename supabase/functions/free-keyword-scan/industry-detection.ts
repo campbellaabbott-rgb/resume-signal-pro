@@ -49,6 +49,28 @@ const KNOWN_EMPLOYERS: Record<string, string> = {
   'toast': 'technology', 'mindbody': 'technology', 'procore': 'technology',
   'costar': 'technology', 'zillow': 'technology', 'redfin': 'technology',
   'opendoor': 'technology', 'compass': 'technology',
+  // Fintech / Digital payments
+  'klarna': 'finance', 'wise': 'finance', 'revolut': 'finance',
+  'transferwise': 'finance', 'chime': 'finance', 'affirm': 'finance',
+  'plaid': 'finance', 'brex': 'finance', 'ramp': 'finance',
+  // GenAI / LLM-native companies
+  'hugging face': 'machine_learning', 'stability ai': 'machine_learning',
+  'character.ai': 'machine_learning', 'together.ai': 'machine_learning',
+  'replicate': 'machine_learning', 'modal': 'machine_learning',
+  'langchain': 'machine_learning', 'llamaindex': 'machine_learning',
+  'perplexity': 'machine_learning', 'inflection': 'machine_learning',
+  // Chinese / Asian tech
+  'alibaba': 'technology', 'tencent': 'technology', 'bytedance': 'technology',
+  'baidu': 'technology', 'xiaomi': 'technology', 'grab': 'technology',
+  'sea limited': 'technology', 'shopee': 'technology',
+  // Collaboration / no-code / design tools
+  'miro': 'technology', 'monday.com': 'technology',
+  'asana': 'technology', 'webflow': 'technology', 'retool': 'technology',
+  'zapier': 'technology', 'loom': 'technology',
+  'doordash': 'technology', 'booking.com': 'technology',
+  // HR tech
+  'lattice': 'technology', 'rippling': 'technology', 'deel': 'technology',
+  'remote.com': 'technology', 'personio': 'technology',
   // Finance / Banking / Investment
   'goldman sachs': 'finance', 'goldman': 'finance',
   'morgan stanley': 'finance', 'jp morgan': 'finance', 'jpmorgan': 'finance',
@@ -306,7 +328,7 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'scalability', 'distributed systems', 'cloud', 'infrastructure'
     ],
     secondary: [
-      'python', 'javascript', 'typescript', 'java', 'c++', 'c#', 'go',
+      'python', 'javascript', 'typescript', 'java', 'c++', 'c#', '.net',
       'golang', 'rust', 'ruby', 'php', 'scala', 'kotlin', 'swift',
       'react', 'angular', 'vue', 'node.js', 'nodejs', 'express',
       'django', 'flask', 'spring', 'rails', 'laravel', 'next.js',
@@ -380,26 +402,31 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       // NOTE: 'business analyst' intentionally excluded — too generic, routes to finance/consulting
     ],
     primary: [
-      'statistical analysis', 'statistics', 'hypothesis testing', 'a/b testing',
+      'statistical analysis', 'statistics', 'hypothesis testing', 'a/b testing', 'a/b test',
       'experiment design', 'experimentation', 'regression', 'classification',
-      'clustering', 'predictive modeling', 'machine learning', 'model building',
+      'clustering', 'predictive modeling', 'model building',
       'feature engineering', 'exploratory data analysis', 'eda',
       'data visualization', 'insights', 'dashboards', 'reporting',
       'business intelligence', 'kpi', 'metrics', 'forecasting',
       'causal inference', 'causal analysis', 'treatment effect',
       'time series', 'time series forecasting', 'survival analysis',
-      'bayesian', 'bayesian inference', 'probabilistic modeling'
+      'bayesian', 'bayesian inference', 'probabilistic modeling',
+      'cohort analysis', 'retention analysis', 'funnel analysis'
+      // NOTE: 'machine learning' intentionally excluded — belongs to machine_learning industry only.
+      // A data scientist who mentions ML in a skills section should NOT match this keyword here;
+      // they score via sklearn/tensorflow in secondary keywords + co-occurrence patterns.
     ],
     secondary: [
       'r language', 'sql', 'pandas', 'numpy', 'scikit-learn', 'sklearn',
       'jupyter', 'jupyter notebook', 'matplotlib', 'seaborn', 'plotly',
-      'tableau', 'power bi', 'looker', 'metabase', 'domo',
+      'tableau', 'power bi', 'power-bi', 'looker', 'metabase', 'domo',
       'statsmodels', 'scipy', 'xgboost', 'lightgbm', 'catboost',
       'excel', 'google analytics', 'mixpanel', 'amplitude', 'segment',
       'spss', 'sas', 'stata',
       'arima', 'prophet', 'sarima', 'exponential smoothing',
       'kaplan-meier', 'cox regression', 'dowhy', 'causalml',
-      'nltk', 'spacy', 'text analysis', 'sentiment analysis', 'topic modeling'
+      'nltk', 'spacy', 'text analysis', 'sentiment analysis', 'topic modeling',
+      'auc', 'roc curve', 'precision recall', 'f1 score', 'confusion matrix'
     ],
     certifications: [
       'google data analytics', 'ibm data science', 'tableau certified',
@@ -551,8 +578,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'physician', 'doctor', 'md', 'do', 'surgeon', 'specialist',
       'medical assistant', 'cna', 'certified nursing assistant',
       'physical therapist', 'pt', 'occupational therapist', 'ot',
-      'pharmacist', 'pharmacy technician', 'radiologist', 'radiologic technician',
-      'medical technologist', 'lab technician', 'phlebotomist',
+      'pharmacist', 'pharmacy technician', 'radiologist', 'radiologic technician', 'radiologic technologist',
+      'medical technologist', 'lab technician', 'lab technologist', 'phlebotomist',
       'healthcare administrator', 'clinical director', 'nursing manager',
       'charge nurse', 'case manager', 'care coordinator',
       'respiratory therapist', 'rt', 'speech language pathologist', 'slp',
@@ -600,15 +627,19 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'interviews', 'interviewing', 'onboarding', 'offboarding',
       'employee', 'employees', 'headcount', 'workforce', 'staffing',
       'job description', 'job posting', 'offer letter', 'compensation',
-      'benefits', 'payroll', 'performance review', 'performance management'
+      'benefits', 'payroll', 'performance review', 'performance management',
+      'talent development', 'succession planning', 'workforce planning',
+      'employee engagement', 'employee relations', 'culture', 'engagement survey',
+      'learning and development', 'training program'
     ],
     secondary: [
       'workday', 'adp', 'bamboohr', 'greenhouse', 'lever', 'icims',
       'taleo', 'successfactors', 'ultipro', 'paychex', 'gusto',
       'linkedin recruiter', 'indeed', 'glassdoor', 'handshake',
       'ats', 'applicant tracking', 'hris', 'hrms',
-      'engagement', 'retention', 'turnover', 'culture', 'dei',
-      'diversity', 'inclusion', 'equity', 'eeo', 'compliance'
+      'turnover', 'attrition', 'dei',
+      'diversity', 'inclusion', 'equity', 'eeo', 'compliance',
+      'people analytics', 'org design', 'organizational development'
     ],
     certifications: [
       'shrm-cp', 'shrm-scp', 'phr', 'sphr', 'gphr', 'airs', 'cir'
@@ -648,7 +679,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'intellectual property', 'patent', 'trademark', 'copyright',
       'm&a', 'due diligence', 'labor law', 'billable hours',
       'matter', 'docket', 'filing', 'privilege', 'confidentiality',
-      'indemnification', 'liability', 'damages', 'injunction', 'arbitration'
+      'indemnification', 'liability', 'damages', 'injunction', 'arbitration',
+      'document review', 'e-discovery', 'ediscovery', 'gdpr', 'ccpa', 'privacy law'
     ],
     certifications: [
       'jd', 'juris doctor', 'bar admission', 'bar certified',
@@ -795,19 +827,22 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
     ],
     primary: [
       'consulting', 'advisory', 'client', 'clients', 'engagement',
-      'strategy', 'strategic', 'analysis', 'recommendation',
+      'strategy', 'strategic', 'recommendation',
       'stakeholder', 'presentation', 'deliverable', 'workstream',
-      'problem solving', 'business case', 'roi',
-      'go-to-market', 'operating model', 'cost reduction', 'revenue growth',
-      'process improvement', 'diagnostic', 'assessment', 'roadmap',
-      'hypothesis', 'framework', 'structured problem solving'
+      'business case', 'operating model', 'cost reduction', 'revenue growth',
+      'process improvement', 'diagnostic', 'assessment',
+      'hypothesis', 'framework', 'structured problem solving',
+      'value proposition', 'competitive landscape', 'target operating model',
+      'client engagement', 'project management', 'issue tree'
     ],
     secondary: [
       'mckinsey', 'bain', 'bcg', 'deloitte', 'accenture', 'kpmg', 'ey', 'pwc',
-      'capgemini', 'oliver wyman', 'roland berger', 'booz allen', 'leek',
-      'powerpoint', 'excel', 'modeling', 'research', 'benchmarking',
+      'capgemini', 'oliver wyman', 'roland berger', 'booz allen',
+      'powerpoint', 'excel', 'benchmarking',
       'due diligence', 'transformation', 'change management', 'implementation',
-      'deck', 'slide', 'executive presentation', 'c-suite', 'board presentation'
+      'deck', 'slide', 'executive presentation', 'c-suite', 'board presentation',
+      'roi analysis', 'business model', 'go-to-market strategy',
+      'market entry', 'organizational design', 'post-merger integration'
     ],
     certifications: [
       'pmp', 'prince2', 'mba', 'cmc', 'prosci'
@@ -830,14 +865,17 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'layout', 'typography', 'color', 'composition', 'aesthetic',
       'user experience', 'user interface', 'wireframe', 'mockup',
       'prototype', 'portfolio', 'concept', 'ideation',
-      'user research', 'usability testing', 'usability test', 'design thinking',
+      'user research', 'usability testing', 'usability test', 'user testing', 'design thinking',
       'journey map', 'persona', 'information architecture', 'interaction design',
-      'accessibility', 'a11y', 'heuristic evaluation', 'affinity mapping'
+      'accessibility', 'a11y', 'heuristic evaluation', 'affinity mapping',
+      'visual hierarchy', 'color theory', 'tone of voice', 'design system',
+      'component library', 'style guide', 'brand guidelines'
     ],
     secondary: [
       'photoshop', 'illustrator', 'indesign', 'figma', 'sketch', 'xd',
       'after effects', 'premiere', 'final cut', 'cinema 4d', 'blender',
-      'canva', 'invision', 'zeplin', 'principle', 'framer'
+      'canva', 'invision', 'zeplin', 'principle', 'framer',
+      'procreate', 'lightroom', 'capture one', 'davinci resolve'
     ],
     certifications: [
       'adobe certified', 'google ux', 'uxcel'
@@ -909,13 +947,16 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'quality control', 'quality assurance', 'inspection', 'oee', 'throughput',
       'cycle time', 'downtime', 'scrap', 'yield', 'defect rate',
       'lean', 'six sigma', 'kaizen', 'continuous improvement', '5s',
-      'safety', 'osha', 'ehs', 'incident rate', 'near miss'
+      'safety', 'osha', 'ehs', 'incident rate', 'near miss',
+      'equipment', 'machinery', 'production planning', 'work instruction',
+      'shift management', 'line balancing', 'takt time', 'changeover'
     ],
     secondary: [
       'sap', 'erp', 'mes', 'cmms', 'plc', 'scada', 'hmi',
       'iso 9001', 'as9100', 'iatf', 'ts16949', 'fda', 'gmp',
       'bom', 'bill of materials', 'work order', 'preventive maintenance',
-      'supply chain', 'procurement', 'inventory', 'kanban', 'jit', 'just-in-time'
+      'supply chain', 'procurement', 'inventory', 'kanban', 'jit', 'just-in-time',
+      'warehouse', 'logistics', 'shipping', 'receiving', 'material handling'
     ],
     certifications: [
       'six sigma black belt', 'six sigma green belt', 'lean certified',
@@ -1037,7 +1078,10 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['mckinsey', 'bain', 'bcg'],
     ['deloitte', 'accenture', 'pwc'],
     ['transformation', 'recommendation', 'stakeholder'],
-    ['deck', 'slide', 'executive']
+    ['deck', 'slide', 'executive'],
+    ['client', 'deliverable', 'recommendation'],
+    ['engagement manager', 'workstream', 'stakeholder'],
+    ['business case', 'operating model', 'strategic']
   ],
   creative: [
     ['design', 'portfolio', 'visual'],
@@ -1063,31 +1107,41 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['dbt', 'bigquery', 'airflow'],
     ['dbt', 'databricks', 'pipeline'],
     ['airflow', 'dbt', 'etl'],
+    ['dbt', 'prefect', 'pipeline'],
+    ['dbt', 'dagster', 'pipeline'],
     // Streaming with warehouse anchor (guards against DevOps false positive)
     ['kafka', 'spark', 'data warehouse'],
     ['kafka', 'flink', 'pipeline'],
     ['snowflake', 'bigquery', 'data warehouse'],
     ['databricks', 'delta lake', 'pipeline'],
     ['fivetran', 'stitch', 'ingestion'],
-    ['airbyte', 'dbt', 'transformation']
+    ['airbyte', 'dbt', 'transformation'],
+    // Broader warehouse + orchestration combos
+    ['data pipeline', 'etl', 'warehouse'],
+    ['ingestion', 'transformation', 'orchestration']
   ],
   data_science: [
-    ['model', 'training', 'accuracy'],
+    // Remove 'model, training, accuracy' — too generic (fires for finance modeling)
     ['hypothesis testing', 'a/b test', 'experiment'],
     ['jupyter', 'pandas', 'scikit'],
     ['tableau', 'power bi', 'dashboard'],
     ['regression', 'classification', 'prediction'],
-    ['database', 'python', 'analysis']
+    ['cohort', 'retention', 'dashboard'],
+    ['statistical', 'analysis', 'python'],
+    ['auc', 'roc', 'precision recall'],
+    ['feature engineering', 'cross-validation', 'model']
   ],
   machine_learning: [
     ['llm', 'fine-tuning', 'inference'],
     ['vector', 'embedding', 'rag'],
     ['production', 'serving', 'latency'],
-    ['pytorch', 'tensorflow', 'model'],
+    ['pytorch', 'tensorflow', 'model training'],
     ['langchain', 'openai', 'prompt'],
     ['pinecone', 'weaviate', 'vector database'],
     ['mlops', 'mlflow', 'deployment'],
-    ['hugging face', 'transformers', 'bert']
+    ['hugging face', 'transformers', 'bert'],
+    ['lora', 'qlora', 'fine-tuning'],
+    ['quantization', 'inference', 'gpu']
   ],
   retail: [
     ['sales floor', 'inventory', 'customer service'],
@@ -1177,9 +1231,10 @@ const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleS
   legal: [
     { negativeFor: 'consulting', requiredTitleSignal: true }
   ],
-  // If someone has consulting titles, sales keywords shouldn't reclassify
+  // If someone has consulting titles, sales/PM keywords shouldn't reclassify
   consulting: [
-    { negativeFor: 'sales', requiredTitleSignal: true }
+    { negativeFor: 'sales', requiredTitleSignal: true },
+    { negativeFor: 'product_management', requiredTitleSignal: true }
   ],
   // If someone has creative titles, marketing keywords shouldn't reclassify
   creative: [
@@ -1203,7 +1258,8 @@ const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleS
     { negativeFor: 'data_engineering', requiredTitleSignal: true },
     { negativeFor: 'machine_learning', requiredTitleSignal: true },
     { negativeFor: 'consulting', requiredTitleSignal: true },
-    { negativeFor: 'sales', requiredTitleSignal: true }
+    { negativeFor: 'sales', requiredTitleSignal: true },
+    { negativeFor: 'marketing', requiredTitleSignal: true }
   ],
   // Government: policy analyst uses strategy/stakeholder/analysis — all consulting primary.
   // Require consulting title signals before reclassifying away from government.
@@ -1278,6 +1334,10 @@ function extractSections(resumeText: string): {
     'rn', 'np', 'lpn', 'lvn', 'cna', 'emt', 'md', 'do', 'dpt', 'pa-c',
     // Hospitality service roles
     'chef', 'cook', 'bartender', 'cashier', 'concierge', 'server', 'sommelier',
+    // Creative roles often absent from generic titleKeywords
+    'illustrator', 'photographer', 'videographer', 'animator', 'housekeeper',
+    // Technical / trade roles
+    'technician', 'technologist', 'mechanic', 'electrician', 'welder', 'operator',
   ];
   
   const employers: string[] = [];
@@ -1358,12 +1418,16 @@ function extractSections(resumeText: string): {
   // Extract headings
   const headings: string[] = [];
   const headingPatterns = [
-    /^(experience|work experience|professional experience|employment|career)/i,
-    /^(education|academic|qualifications)/i,
-    /^(skills|technical skills|core competencies)/i,
-    /^(certifications?|licenses?)/i,
-    /^(projects?|key projects)/i,
-    /^(achievements?|accomplishments?)/i
+    /^(experience|work experience|professional experience|employment|career|work history)/i,
+    /^(education|academic|qualifications|academic background)/i,
+    /^(skills|technical skills|core competencies|technical stack|key skills)/i,
+    /^(certifications?|licenses?|credentials)/i,
+    /^(projects?|key projects|notable projects|portfolio)/i,
+    /^(achievements?|accomplishments?|awards?|honors?)/i,
+    /^(summary|professional summary|profile|objective|about me)/i,
+    /^(publications?|research|patents?)/i,
+    /^(volunteer|community|leadership)/i,
+    /^(languages|interests|hobbies)/i
   ];
   
   for (const line of lines) {
@@ -1953,12 +2017,12 @@ export function detectIndustry(
   let secondaryIndustry: string | undefined;
   let secondaryScore: number | undefined;
   
-  const nonPhantomSecond = scores.find(s => 
-    s.industry !== finalIndustry && 
-    !['military', 'general'].includes(s.industry) && 
-    s.score >= 8
+  const nonPhantomSecond = scores.find(s =>
+    s.industry !== finalIndustry &&
+    !['military', 'general'].includes(s.industry) &&
+    s.score >= 5
   );
-  
+
   if (nonPhantomSecond && nonPhantomSecond.score >= adjustedTop.score * 0.5) {
     secondaryIndustry = nonPhantomSecond.industry;
     secondaryScore = nonPhantomSecond.score;

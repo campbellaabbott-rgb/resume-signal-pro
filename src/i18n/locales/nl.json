@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "industryDetectionSweep2": {
+      "title": "Scherpere industriedetectie voor 20+ rollen",
+      "description": "Tweede bugsweep van de industriedetectie-engine: verwijdering van generieke vals-positieve trefwoorden, toevoeging van 30+ ontbrekende rolspecifieke trefwoorden voor productie, HR, creatief en advies, uitbreiding van de werkgeversopzoektabel met 30 nieuwe bedrijven, en toevoeging van 15 nieuwe co-occurrence patronen."
+    },
     "scanFeedback": {
       "title": "Vertel ons of uw scan nuttig was",
       "description": "Er verschijnt nu een snelle duim omhoog / omlaag onderaan elke gratis scan. Uw antwoorden gaan rechtstreeks naar onze verbeteringspijplijn — we gebruiken ze om te identificeren welke aanbevelingstypes systematisch onjuist zijn en ze te corrigeren in toekomstige updates."

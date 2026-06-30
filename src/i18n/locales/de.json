@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "industryDetectionSweep2": {
+      "title": "Schärfere Branchenerkennung für 20+ Berufsbilder",
+      "description": "Zweiter Bug-Sweep der Branchenerkennungs-Engine: generische False-Positive-Schlüsselwörter entfernt, 30+ fehlende berufstyp-spezifische Schlüsselwörter für Fertigung, HR, Kreativ und Beratung ergänzt, Arbeitgeber-Nachschlagetabelle mit 30 neuen Unternehmen erweitert, und 15 neue Co-Occurrence-Muster hinzugefügt."
+    },
     "scanFeedback": {
       "title": "Teilen Sie uns mit, ob Ihre Analyse hilfreich war",
       "description": "Am Ende jeder kostenlosen Analyse erscheint nun ein schnelles Daumen-hoch / Daumen-runter. Ihre Antworten fließen direkt in unsere Verbesserungspipeline ein — wir nutzen sie, um systematisch fehlerhafte Empfehlungstypen zu identifizieren und in zukünftigen Updates zu korrigieren."

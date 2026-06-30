@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "industryDetectionSweep2": {
+      "title": "Detección de industria más precisa para 20+ roles",
+      "description": "Segunda pasada de corrección de errores del motor de detección de industrias: eliminadas palabras clave falsas positivas genéricas, añadidas 30+ palabras clave faltantes para manufactura, RRHH, creativos y consultoría, ampliada la tabla de empleadores con 30 nuevas empresas, y añadidos 15 nuevos patrones de co-ocurrencia."
+    },
     "scanFeedback": {
       "title": "Díganos si su análisis fue útil",
       "description": "Ahora aparece un rápido pulgar arriba / abajo al final de cada análisis gratuito. Sus respuestas van directamente a nuestra línea de mejora — las usamos para identificar qué tipos de recomendaciones son sistemáticamente incorrectos y corregirlos en futuras actualizaciones."

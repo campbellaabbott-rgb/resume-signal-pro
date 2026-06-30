@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "industryDetectionSweep2": {
+      "title": "Sharper industry detection across 20+ roles",
+      "description": "Second-pass bug sweep of the industry detection engine: removed generic false-positive keywords that caused supply chain, operations, and analytics roles to mis-classify; added 30+ missing role-specific keywords for manufacturing, HR, creative, and consulting; expanded the employer lookup table with 30 new companies; and added 15 new co-occurrence patterns to disambiguate analytics engineers, ML engineers, and product designers."
+    },
     "scanFeedback": {
       "title": "Tell us if your scan was helpful",
       "description": "A quick thumbs up / thumbs down now appears at the bottom of every free scan. Your responses go directly into our improvement pipeline — we use them to identify which recommendation types are systematically off and fix them in future updates."
