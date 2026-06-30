@@ -83,13 +83,24 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'data analysis': 'data_science', 'business intelligence': 'data_science',
   'businessintelligence': 'data_science', 'business_intelligence': 'data_science',
   'quantitative analysis': 'data_science',
-  // Machine Learning / AI
+  // Machine Learning / AI — exhaustive alias map so Claude's free-text returns never fall to 'general'
   'machine learning': 'machine_learning', 'machinelearning': 'machine_learning',
   'artificial intelligence': 'machine_learning', 'ai': 'machine_learning',
   'ai_ml': 'machine_learning', 'ml': 'machine_learning',
   'deep learning': 'machine_learning', 'nlp': 'machine_learning',
-  'computer vision': 'machine_learning', 'generative ai': 'machine_learning',
-  'llm': 'machine_learning', 'mlops': 'machine_learning',
+  'natural language processing': 'machine_learning',
+  'computer vision': 'machine_learning', 'computer_vision': 'machine_learning',
+  'generative ai': 'machine_learning', 'generative_ai': 'machine_learning',
+  'gen_ai': 'machine_learning', 'genai': 'machine_learning',
+  'llm': 'machine_learning', 'llmops': 'machine_learning',
+  'mlops': 'machine_learning', 'ml_ops': 'machine_learning',
+  'recsys': 'machine_learning', 'recommendation systems': 'machine_learning',
+  'recommendation_systems': 'machine_learning',
+  'alignment research': 'machine_learning', 'alignment_research': 'machine_learning',
+  'applied ml': 'machine_learning', 'applied_ml': 'machine_learning',
+  'applied ai': 'machine_learning', 'applied_ai': 'machine_learning',
+  'multimodal': 'machine_learning', 'speech recognition': 'machine_learning',
+  'foundation models': 'machine_learning', 'foundation_models': 'machine_learning',
   // Product Management
   'technical_program_management': 'product_management', 'product management': 'product_management',
   'program management': 'product_management', 'scrum master': 'product_management',
@@ -742,9 +753,11 @@ INDUSTRY-SPECIFIC SCORING WEIGHTS:
   * Must-haves: Portfolio/Behance/Dribbble URL (penalty if absent), named tools (Figma, Adobe Creative Suite: Photoshop/Illustrator/InDesign/After Effects), measurable outcomes (conversion lift %, engagement increase, brand metric improvement), design system or component library experience
   * Critical: UX roles need user research methods named (usability testing, A/B testing, user interviews); creative directors need team size + budget managed
 
-- PRODUCT MANAGEMENT: Outcome Quantification (35%), Cross-Functional Impact (25%), Keywords (20%), Format (10%), Skills (10%)
-  * Must-haves: Business outcomes with numbers (revenue impact $, MAU/DAU growth %, conversion rate change, engagement lift — NOT just "launched feature X"); roadmap ownership stated; cross-functional team size led; at least one A/B test or data-driven decision described
-  * Critical: Heavy penalty for features-without-outcomes bullets ("Shipped checkout redesign" scores low; "Shipped checkout redesign, improving conversion 22%" scores high); OKR or KPI framework named; product analytics tool (Amplitude, Mixpanel, GA4) mentioned
+- PRODUCT MANAGEMENT: Outcome Quantification (35%), Cross-Functional Leadership (20%), Stakeholder Seniority (5%), Keywords (20%), Format (10%), Skills (10%)
+  * Must-haves: Business outcomes with numbers (revenue impact $, MAU/DAU growth %, conversion rate change, engagement lift — NOT just "launched feature X"); roadmap ownership stated; team size AND seniority of stakeholders influenced (3 engineers = low; cross-org VP-level alignment = high); at least one A/B test or data-driven decision described
+  * Cross-Functional Leadership scoring: team of 3-5 = baseline; 6-15 cross-functional with named functions (eng + design + data + marketing) = high; org-wide initiative with exec sponsors = maximum. Score the SIZE and DIVERSITY of cross-functional influence, not just that it existed.
+  * For Technical Program Managers (TPM): weight technical depth higher — program scope in engineering orgs, system complexity, headcount of engineers coordinated
+  * Critical: Heavy penalty for features-without-outcomes bullets; OKR or KPI framework named; product analytics tool (Amplitude, Mixpanel, GA4) mentioned
 
 - HR/HUMAN RESOURCES: Certifications (25%), Quantification (25%), Keywords (25%), Experience (15%), Format (10%)
   * Must-haves: SHRM-CP/SCP or PHR/SPHR, HRIS systems (Workday, ADP), time-to-hire metrics, retention rates

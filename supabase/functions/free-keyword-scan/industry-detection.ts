@@ -37,7 +37,12 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'commercial account executive', 'gtm', 'go-to-market',
       'founding gtm', 'salesperson', 'sales associate', 'sales lead',
       'business development manager', 'partnerships manager',
-      'revenue operations', 'revops', 'sales operations'
+      'revenue operations', 'revops', 'sales operations',
+      // Customer-facing post-sales roles (distinct from marketing/support)
+      'customer success manager', 'csm', 'account manager', 'am',
+      'customer success', 'renewal manager', 'expansion manager',
+      'client success manager', 'client success', 'customer growth manager',
+      'strategic customer success', 'enterprise customer success'
     ],
     primary: [
       'quota', 'closed won', 'closed-won', 'arr', 'mrr',
@@ -129,7 +134,9 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'data architect', 'data warehouse engineer', 'etl developer', 'etl engineer',
       'bi engineer', 'business intelligence engineer', 'bi developer',
       'database engineer', 'database administrator', 'dba',
-      'streaming engineer', 'real-time data engineer', 'lakehouse engineer'
+      'streaming engineer', 'real-time data engineer', 'lakehouse engineer',
+      'data reliability engineer', 'reverse etl engineer',
+      'analytics engineer', 'dbt engineer', 'data integration engineer'
     ],
     primary: [
       'etl', 'elt', 'pipeline', 'data pipeline', 'data warehouse', 'data lake',
@@ -163,6 +170,9 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'applied scientist', 'decision scientist', 'growth analyst',
       'product analyst', 'marketing analyst', 'operations analyst',
       'statistician', 'biostatistician', 'clinical data scientist',
+      'ml scientist', 'research scientist', 'experimentation analyst',
+      'insights analyst', 'decision scientist', 'revenue analytics',
+      'revenue operations analyst', 'go-to-market analyst',
       // BI roles that use analytics tools — included only when co-occurring with analytics keywords
       'business intelligence analyst', 'bi analyst'
       // NOTE: 'business analyst' intentionally excluded — too generic, routes to finance/consulting
@@ -205,6 +215,10 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'rag engineer', 'retrieval augmented generation engineer',
       'mlops engineer', 'ml platform engineer', 'ml infrastructure engineer',
       'ai research engineer', 'research engineer', 'applied research scientist',
+      'foundation model engineer', 'alignment researcher', 'ai safety researcher',
+      'multimodal engineer', 'speech engineer', 'ranking engineer',
+      'recsys engineer', 'recommendation systems engineer',
+      'applied ml engineer', 'applied ai engineer',
       'computer vision engineer', 'nlp engineer', 'speech engineer',
       'recommendation systems engineer', 'ranking engineer',
       'ai product engineer', 'multimodal engineer'
@@ -225,6 +239,7 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'langchain', 'llamaindex', 'llama index',
       'openai', 'openai api', 'anthropic', 'claude',
       'vllm', 'triton', 'torchserve', 'bentoml', 'ray serve',
+      'mlops', 'ml pipeline', 'model registry', 'model monitoring', 'feature store',
       'pinecone', 'weaviate', 'milvus', 'qdrant', 'chroma',
       'lora', 'qlora', 'peft', 'bitsandbytes', 'gptq', 'awq', 'quantization',
       'mlflow', 'weights & biases', 'wandb', 'neptune',
@@ -248,7 +263,10 @@ const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: string[]
       'content marketing', 'content strategist', 'seo specialist', 'seo manager',
       'ppc specialist', 'paid media', 'social media manager', 'community manager',
       'email marketing', 'marketing analyst', 'marketing coordinator',
-      'demand generation', 'demand gen', 'campaign manager', 'creative director'
+      'demand generation', 'demand gen', 'campaign manager', 'creative director',
+      'marketing operations manager', 'marketing ops', 'revenue marketing manager',
+      'lifecycle marketing manager', 'crm manager', 'retention marketing',
+      'growth engineer' // growth engineers use marketing signals AND tech — see disambiguation rule
     ],
     primary: [
       'campaign', 'campaigns', 'brand awareness', 'brand strategy',
@@ -796,12 +814,18 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['mvp', 'product', 'launch']
   ],
   data_engineering: [
+    // Canonical modern data stack — strongest signal
+    ['dbt', 'snowflake', 'airflow'],
+    ['dbt', 'bigquery', 'airflow'],
+    ['dbt', 'databricks', 'pipeline'],
     ['airflow', 'dbt', 'etl'],
-    ['kafka', 'spark', 'stream'],
+    // Streaming with warehouse anchor (guards against DevOps false positive)
+    ['kafka', 'spark', 'data warehouse'],
+    ['kafka', 'flink', 'pipeline'],
     ['snowflake', 'bigquery', 'data warehouse'],
     ['databricks', 'delta lake', 'pipeline'],
-    ['flink', 'kafka', 'real-time'],
-    ['fivetran', 'stitch', 'ingestion']
+    ['fivetran', 'stitch', 'ingestion'],
+    ['airbyte', 'dbt', 'transformation']
   ],
   data_science: [
     ['model', 'training', 'accuracy'],
@@ -861,9 +885,13 @@ const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleS
   // the consulting industry's title list also includes solutions architect; if
   // consulting co-occurrence patterns fire (client, engagement, advisory, presales),
   // consulting should win via higher title+co-occurrence combined score.
+  // "Growth engineer": has "engineer" title but marketing signals — stays technology
+  // if title score for technology dominates; marketing title wins only if explicit
+  // marketing title (growth marketing, demand gen) present without "engineer".
   technology: [
     { negativeFor: 'consulting', requiredTitleSignal: true },
     { negativeFor: 'sales', requiredTitleSignal: true },
+    { negativeFor: 'marketing', requiredTitleSignal: true }, // growth engineer stays tech
     { negativeFor: 'data_engineering', requiredTitleSignal: true },
     { negativeFor: 'machine_learning', requiredTitleSignal: true }
   ],

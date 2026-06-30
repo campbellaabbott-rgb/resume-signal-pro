@@ -272,13 +272,13 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     ],
     preferredFormat: 'Achievement-focused hybrid format',
     atsNotes: 'HR professionals are ATS experts—format flawlessly!',
-    topSkills: ['Talent Acquisition', 'Employee Relations', 'HRIS', 'Compensation & Benefits'],
-    certifications: ['SHRM-CP', 'SHRM-SCP', 'PHR', 'SPHR'],
+    topSkills: ['Talent Acquisition', 'Employee Relations', 'HRIS (Workday/BambooHR)', 'Compensation & Benefits', 'DEI Programs'],
+    certifications: ['SHRM-CP', 'SHRM-SCP', 'PHR', 'SPHR', 'Workday HCM Certified', 'SAP SuccessFactors Certified', 'ADP Certified', 'BambooHR Certified', 'Rippling Admin Certified'],
     commonMistakes: [
-      'Not quantifying hiring metrics',
-      'Missing HRIS system names and versions',
-      'Vague "improved culture" claims without data',
-      'Not mentioning compliance training or certifications'
+      'Not naming the HRIS system used — Workday, BambooHR, ADP, SAP SuccessFactors, Rippling are all distinct ATS keywords',
+      'Not quantifying hiring metrics (time-to-fill, time-to-hire, cost-per-hire, offer acceptance rate)',
+      'Vague "improved culture" or "improved retention" claims without data points',
+      'Missing employment law knowledge (FMLA, ADA, EEO, FLSA) — critical for compliance-heavy roles'
     ],
     strongActionVerbs: ['Recruited', 'Onboarded', 'Administered', 'Negotiated', 'Implemented', 'Resolved', 'Streamlined', 'Trained'],
     bulletExamples: [
@@ -526,9 +526,12 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     strongActionVerbs: ['Architected', 'Engineered', 'Orchestrated', 'Optimized', 'Migrated', 'Modeled', 'Automated', 'Reduced'],
     bulletExamples: [
       { weak: 'Built ETL pipelines for data warehouse', strong: 'Architected Airflow DAGs ingesting 2TB/day from 40+ sources into Snowflake, reducing load time 65% and achieving 99.9% pipeline SLA' },
-      { weak: 'Worked on dbt models', strong: 'Built 150+ dbt models in medallion architecture, cutting analyst query time from 45s to 3s and enabling self-serve reporting for 60 stakeholders' }
+      { weak: 'Worked on dbt models', strong: 'Built 150+ dbt models in medallion architecture (bronze/silver/gold), cutting analyst query time from 45s to 3s and enabling self-serve reporting for 60 stakeholders' },
+      { weak: 'Set up data quality monitoring', strong: 'Implemented Monte Carlo data observability across 200+ tables, reducing P0 data incidents by 80% and achieving 99.5% freshness SLA for 12 downstream dashboards' },
+      { weak: 'Worked on reverse ETL project', strong: 'Built reverse ETL pipeline with Census syncing 5M customer records from Snowflake to Salesforce + HubSpot daily, enabling marketing segmentation for $4M campaign' }
     ],
-    keyMetrics: ['Data volume (GB/TB/PB)', 'Pipeline count', 'Latency SLA', 'Uptime %', 'Query performance improvement', 'Cost reduction'],
+    certifications: ['Databricks Certified DE Associate', 'Snowflake SnowPro Core', 'AWS Certified Data Analytics', 'GCP Professional Data Engineer', 'Azure Data Engineer Associate', 'dbt Certified Analytics Engineer', 'Fivetran Certified'],
+    keyMetrics: ['Data volume (GB/TB/PB)', 'Pipeline count / DAG count', 'Latency SLA (ms)', 'Pipeline uptime %', 'Query performance improvement', 'Cost reduction $', 'Freshness SLA', 'Downstream consumers enabled'],
     industryBenchmarks: { avgScore: 68, topScore: 91 }
   },
 
@@ -581,7 +584,7 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     ],
     strongActionVerbs: ['Trained', 'Deployed', 'Fine-tuned', 'Optimized', 'Served', 'Distilled', 'Evaluated', 'Scaled'],
     bulletExamples: [
-      { weak: 'Built machine learning models using PyTorch', strong: 'Fine-tuned Llama-3 8B on proprietary customer data (LoRA, 4-bit quant), deployed via vLLM serving 2K QPS at <200ms p99, reducing inference cost 60% vs GPT-4' },
+      { weak: 'Built machine learning models using PyTorch', strong: 'Fine-tuned Llama-3 8B on proprietary customer data using QLoRA (4-bit, bitsandbytes), deployed via vLLM serving 2K QPS at <200ms p99 latency, reducing inference cost 60% vs GPT-4 API' },
       { weak: 'Worked on recommendation system', strong: 'Shipped two-tower retrieval model (PyTorch, 500M+ items) serving 10M daily users, improving CTR 23% and reducing embedding serving latency from 180ms to 40ms' }
     ],
     keyMetrics: ['QPS/RPS served', 'Latency (p50/p99)', 'Model accuracy/AUC', 'Cost per inference', 'GPU utilization %', 'User/business impact'],
