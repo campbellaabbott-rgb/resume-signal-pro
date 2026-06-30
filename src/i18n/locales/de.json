@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "linkedInInsights": {
+      "title": "LinkedIn-Profilanalyse — sehen Sie, wie Sie auf Recruiter wirken",
+      "description": "Fügen Sie Ihr LinkedIn-Profil neben Ihrem Lebenslauf hinzu und erhalten Sie eine kombinierte Analyse: einen LinkedIn-Score, eine Aufschlüsselung von Inkonsistenzen zwischen Ihrem Lebenslauf und Profil, eine verbesserte Überschrift und Über mich-Sektion."
+    },
     "bulletQualityAnalysis": {
       "title": "Quick Wins zielen jetzt auf Ihre tatsächlich schwachen Bullets",
       "description": "Bevor die KI aufgerufen wird, liest der Scanner jeden Bullet-Punkt vor und identifiziert, welche mit schwachen, passiven Phrasen beginnen und welche keine messbare Metrik haben. Diese spezifischen Bullets werden direkt an die KI weitergegeben."

@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "linkedInInsights": {
+      "title": "Análisis de perfil de LinkedIn — cómo te ven los reclutadores",
+      "description": "Añade tu perfil de LinkedIn junto a tu currículum y obtén un análisis combinado: una puntuación de LinkedIn, inconsistencias entre tu currículum y perfil, un titular mejorado y apertura de sección Acerca de que puedes copiar con un clic."
+    },
     "bulletQualityAnalysis": {
       "title": "Las mejoras rápidas ahora apuntan a tus puntos débiles reales",
       "description": "Antes de llamar a la IA, el escáner pre-lee cada punto e identifica cuáles comienzan con frases pasivas débiles y cuáles no tienen métricas medibles. Esos puntos específicos se entregan directamente a la IA."

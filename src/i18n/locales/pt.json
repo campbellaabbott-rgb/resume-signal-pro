@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "linkedInInsights": {
+      "title": "Análise de perfil LinkedIn — como os recrutadores te veem",
+      "description": "Adicione seu perfil LinkedIn junto ao currículo e obtenha uma análise combinada: pontuação LinkedIn, inconsistências entre currículo e perfil, um título melhorado e abertura da seção Sobre que você pode copiar com um clique."
+    },
     "bulletQualityAnalysis": {
       "title": "Melhorias rápidas agora visam seus pontos fracos reais",
       "description": "Antes de chamar a IA, o scanner pré-lê cada ponto e identifica quais começam com frases passivas fracas e quais não têm métricas mensuráveis. Esses pontos específicos são entregues diretamente à IA."

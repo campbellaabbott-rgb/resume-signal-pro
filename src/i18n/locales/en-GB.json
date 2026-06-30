@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "linkedInInsights": {
+      "title": "LinkedIn profile analysis — see how you look to recruiters",
+      "description": "Add your LinkedIn profile alongside your CV and get a combined analysis: a LinkedIn score, a breakdown of inconsistencies between your CV and profile, CV highlights that should be on LinkedIn, an improved headline and About section opening you can copy in one click, and specific tips to hit LinkedIn's All-Star ranking."
+    },
     "bulletQualityAnalysis": {
       "title": "Quick wins now target your actual weak bullets",
       "description": "Before calling the AI, the scanner now pre-reads every bullet point and identifies which ones start with weak, passive phrases (“Responsible for”, “Helped with”, “Assisted in”) and which ones have no measurable metric. Those specific bullets are handed directly to the AI — so the rewrite suggestions and quick wins in your report are based on your actual words, not generic advice."

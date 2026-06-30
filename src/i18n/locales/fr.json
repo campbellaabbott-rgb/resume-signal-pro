@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "linkedInInsights": {
+      "title": "Analyse de profil LinkedIn — comment vous apparaissez aux recruteurs",
+      "description": "Ajoutez votre profil LinkedIn avec votre CV et obtenez une analyse combinée: un score LinkedIn, des incohérences entre votre CV et profil, un titre amélioré et une ouverture de section À propos que vous pouvez copier en un clic."
+    },
     "bulletQualityAnalysis": {
       "title": "Les améliorations rapides ciblent maintenant vos vraies faiblesses",
       "description": "Avant d'appeler l'IA, le scanner pré-lit chaque point et identifie ceux qui commencent par des phrases passives faibles et ceux qui n'ont pas de métrique mesurable. Ces points spécifiques sont transmis directement à l'IA."

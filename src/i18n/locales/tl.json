@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "linkedInInsights": {
+      "title": "Pagsusuri ng LinkedIn profile — paano ka nakikita ng mga recruiter",
+      "description": "Idagdag ang iyong LinkedIn profile kasama ang iyong resume at makakuha ng pinagsama-samang pagsusuri: LinkedIn score, mga pagkakaiba-iba sa pagitan ng iyong resume at profile, at pinahusay na headline na maaari mong kopyahin sa isang click."
+    },
     "bulletQualityAnalysis": {
       "title": "Ang mga mabilis na pagpapabuti ay nagtutukoy na sa iyong totoong mahihinang mga bullet",
       "description": "Bago tawagan ang AI, binabasa ng scanner ang bawat bullet point at tinutukoy kung alin ang nagsisimula sa mahina, passive na parirala at kung alin ang walang nasusukat na sukatan. Ang mga partikular na bullet ay direktang ibinibigay sa AI."

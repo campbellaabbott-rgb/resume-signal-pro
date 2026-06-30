@@ -60,6 +60,7 @@ import { useAffiliateTracking, getStoredReferralCode } from "@/hooks/use-affilia
 import { useStreamingScan, type StreamProgress, clearAllClientScanCaches } from "@/hooks/use-streaming-scan";
 import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
 import { ScanFeedback } from "@/components/ScanFeedback";
+import { LinkedInInsights } from "@/components/LinkedInInsights";
 
 interface FreeKeywordResult {
   detectedLanguage?: { code: string; name: string } | null;
@@ -1367,6 +1368,16 @@ const Index = () => {
               
               {/* Score-based package recommendation */}
               <ScoreBasedPackageRecommendation atsScore={freeKeywordResult.atsScoreEstimate} />
+
+              {/* LinkedIn insights — shown when user provided their LinkedIn profile */}
+              {linkedInText && (
+                <LinkedInInsights
+                  resumeText={resumeText}
+                  linkedinText={linkedInText}
+                  industry={freeKeywordResult.industry || "general"}
+                  resumeAtsScore={freeKeywordResult.atsScoreEstimate || 0}
+                />
+              )}
 
               {/* Feedback */}
               <div className="flex justify-center">

@@ -2744,6 +2744,10 @@
     }
   },
   "changelogEntries": {
+    "linkedInInsights": {
+      "title": "LinkedIn-profielanalyse — zie hoe recruiters u zien",
+      "description": "Voeg uw LinkedIn-profiel toe naast uw cv en ontvang een gecombineerde analyse: een LinkedIn-score, inconsistenties tussen uw cv en profiel, een verbeterde kop en Over mij-sectie die u met één klik kunt kopiëren."
+    },
     "bulletQualityAnalysis": {
       "title": "Snelle verbeteringen richten zich nu op uw daadwerkelijk zwakke punten",
       "description": "Voordat de AI wordt aangeroepen, leest de scanner elk bullet point voor en identificeert welke beginnen met zwakke, passieve zinnen en welke geen meetbare statistiek hebben. Die specifieke bullets worden direct aan de AI doorgegeven."

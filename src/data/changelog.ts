@@ -18,6 +18,7 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "linkedInInsights", date: "2026-06-30", tags: ["new"] },
   { id: "bulletQualityAnalysis", date: "2026-06-30", tags: ["improved"] },
   { id: "industryDetectionSweep2", date: "2026-06-30", tags: ["improved"] },
   { id: "scanFeedback", date: "2026-06-30", tags: ["new"] },
