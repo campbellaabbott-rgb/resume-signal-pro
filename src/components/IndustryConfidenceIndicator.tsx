@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { 
-  Briefcase, ChevronDown, Check, AlertTriangle, 
-  HelpCircle, X, RefreshCw, Lightbulb
+import {
+  Briefcase, ChevronDown, Check, AlertTriangle,
+  HelpCircle, X, RefreshCw, Lightbulb, ThumbsUp, ThumbsDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -161,6 +161,27 @@ export function IndustryConfidenceIndicator({
   const aiSuggested = industryDetection?.aiSuggested;
   const config = getConfidenceConfig(confidence);
   const availableIndustries = getAvailableIndustries();
+
+  // Inline feedback state — "Is this right?"
+  // null = not answered, true = confirmed correct, false = wants to correct
+  const [feedbackGiven, setFeedbackGiven] = useState<boolean | null>(null);
+
+  const handleConfirm = async () => {
+    setFeedbackGiven(true);
+    // Log a "confirmed correct" correction where original === corrected
+    try {
+      await supabase.rpc('log_industry_correction', {
+        p_original_industry: industry,
+        p_corrected_industry: industry,
+        p_original_confidence: confidence,
+        p_detection_source: 'user_confirmed',
+        p_resume_text_length: resumeTextLength || null,
+        p_server_signals: signals.length > 0 ? signals : null,
+        p_ai_suggested_industry: aiSuggested || null,
+        p_visitor_id: visitorId || null
+      });
+    } catch { /* non-blocking */ }
+  };
   
   const handleCorrection = async (newIndustry: string) => {
     // Log the correction for improving detection algorithm
@@ -238,12 +259,36 @@ export function IndustryConfidenceIndicator({
           </div>
         </div>
         
+        {/* Inline "Is this right?" feedback — always visible, no expand needed */}
+        {!selectedIndustry && feedbackGiven === null && (
+          <div className="mt-2.5 flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Is this right?</span>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleConfirm(); }}
+              className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border border-success/40 text-success hover:bg-success/10 transition-colors"
+            >
+              <ThumbsUp className="w-3 h-3" /> Yes
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setFeedbackGiven(false); setIsExpanded(true); setShowCorrection(true); }}
+              className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border border-muted text-muted-foreground hover:border-destructive/40 hover:text-destructive transition-colors"
+            >
+              <ThumbsDown className="w-3 h-3" /> No
+            </button>
+          </div>
+        )}
+        {!selectedIndustry && feedbackGiven === true && (
+          <div className="mt-2.5 flex items-center gap-1.5 text-xs text-success">
+            <Check className="w-3.5 h-3.5" /> Got it — thanks for confirming!
+          </div>
+        )}
+
         {/* Warning for low/medium confidence */}
-        {showWarning && !selectedIndustry && (
+        {showWarning && !selectedIndustry && feedbackGiven === null && (
           <div className="mt-2 flex items-start gap-2">
             <AlertTriangle className={cn("w-4 h-4 mt-0.5 shrink-0", config.textColor)} />
             <p className="text-xs text-muted-foreground">
-              {confidence === 'low' 
+              {confidence === 'low'
                 ? t("industryConfidence.lowWarning")
                 : t("industryConfidence.mediumWarning")
               }
