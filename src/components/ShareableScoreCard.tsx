@@ -51,7 +51,6 @@ const trackShareEvent = async (
 };
 
 export function ShareableScoreCard({
-  const { t } = useTranslation();
   candidateName,
   atsScore,
   formatGrade,
@@ -60,6 +59,7 @@ export function ShareableScoreCard({
   topStrength,
   improvementPotential
 }: ShareableScoreCardProps) {
+  const { t } = useTranslation();
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [copied, setCopied] = useState(false);

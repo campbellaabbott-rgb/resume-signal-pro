@@ -135,7 +135,6 @@ const InfoTooltip = ({ title, description }: { title: string; description: strin
 };
 
 export function EnhancedAnalysisDisplay({
-  const { t } = useTranslation();
   resumeType,
   seniorityLevel,
   dualScore,
@@ -150,6 +149,7 @@ export function EnhancedAnalysisDisplay({
   resumeTextLength,
   visitorId
 }: EnhancedAnalysisDisplayProps) {
+  const { t } = useTranslation();
   if (!dualScore && !resumeType && !usageRecommendations && !industryDetection && !industry) {
     return null;
   }

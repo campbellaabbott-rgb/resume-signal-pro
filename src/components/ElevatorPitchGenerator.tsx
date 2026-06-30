@@ -24,7 +24,6 @@ interface PitchData {
 }
 
 export function ElevatorPitchGenerator({
-  const { t } = useTranslation();
   resumeText,
   industry,
   currentRole,
@@ -32,6 +31,7 @@ export function ElevatorPitchGenerator({
   candidateName,
   className
 }: ElevatorPitchGeneratorProps) {
+  const { t } = useTranslation();
   const [pitchData, setPitchData] = useState<PitchData | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);

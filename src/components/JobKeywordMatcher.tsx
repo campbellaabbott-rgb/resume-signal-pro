@@ -57,7 +57,6 @@ function CopyButton({ text }: { text: string }) {
 // implicit demonstration through other experience) is judged correctly instead of
 // requiring an exact substring match.
 export function JobKeywordMatcher({
-  const { t } = useTranslation();
   jobTitle,
   jobCompany,
   matchingSkills = [],
@@ -65,6 +64,7 @@ export function JobKeywordMatcher({
   matchScore,
   className
 }: JobKeywordMatcherProps) {
+  const { t } = useTranslation();
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(["hard_skill"]));
   const [showAllCritical, setShowAllCritical] = useState(false);
 
