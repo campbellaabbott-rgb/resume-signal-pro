@@ -1042,7 +1042,9 @@ function extractSections(resumeText: string): {
     'representative', 'rep', 'officer', 'nurse', 'teacher', 'attorney', 'accountant',
     'salesperson', 'gtm', 'go-to-market', 'founder', 'ceo', 'cfo', 'cto', 'cro',
     'recruiter', 'therapist', 'scientist', 'researcher', 'strategist',
-    'product owner', 'scrum master', 'product manager'
+    'product owner', 'scrum master', 'product manager',
+    'partner', 'superintendent', 'physician', 'doctor', 'pharmacist', 'paralegal',
+    'buyer', 'planner', 'underwriter', 'actuary', 'appraiser', 'auditor',
   ];
   
   for (const line of lines) {
@@ -1059,7 +1061,7 @@ function extractSections(resumeText: string): {
         
         // Pattern 2: "Title - Company" or "Title | Company" or "Title @ Company"
         if (!cleanTitle) {
-          cleanTitle = line.split(/[-–|@]|\d{4}|january|february|march|april|may|june|july|august|september|october|november|december/i)[0].trim();
+          cleanTitle = line.split(/[-–—|@]|\d{4}|january|february|march|april|may|june|july|august|september|october|november|december/i)[0].trim();
         }
         
         // Pattern 3: "Title at Company"
@@ -1210,7 +1212,12 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
     const recencyMultiplier = Math.max(0.4, 1 - index * 0.15);
 
     for (const industryTitle of keywords.titles) {
-      if (title.includes(industryTitle)) {
+      // For very short abbreviations (≤3 chars), require word boundaries to prevent
+      // substring matches — e.g. "rn" firing inside "International", "rt" in "partner"
+      const matches = industryTitle.length <= 3
+        ? new RegExp(`(?<![a-z])${industryTitle}(?![a-z])`).test(title)
+        : title.includes(industryTitle);
+      if (matches) {
         score += SECTION_WEIGHTS.jobTitle * 2 * recencyMultiplier; // Double weight for exact title match
         signals.push(`Job title match: "${industryTitle}"${index === 0 ? ' (most recent role)' : ''}`);
       }
