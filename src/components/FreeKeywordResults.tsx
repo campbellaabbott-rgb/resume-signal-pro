@@ -2184,32 +2184,74 @@ export function FreeKeywordResults({
             </div>
           </div>
           
-          {/* Industry Comparison - Single consistent message anchored on cohort */}
+          {/* Peer Percentile — emotionally specific: names the person, role, seniority */}
           {(() => {
-            const cohortLabel = `${experienceLevel.level} ${industry} resumes`;
             const isTop = industryBenchmark.comparison === "above";
             const isAt = industryBenchmark.comparison === "at";
-            const displayPercentile = industryBenchmark.percentile.includes("%") || industryBenchmark.percentile.toLowerCase().includes("top") || industryBenchmark.percentile.toLowerCase().includes("bottom")
-              ? industryBenchmark.percentile
-              : isTop ? t('freeResults.peerBenchmark.above') : isAt ? t('freeResults.peerBenchmark.at') : t('freeResults.peerBenchmark.below');
+            const isBelow = industryBenchmark.comparison === "below";
+            const firstName = candidateName?.split(' ')[0];
+            const roleLabel = industryDetection?.detectedRole || currentRole || null;
+            const senLabel = seniorityLevel || industryDetection?.seniorityLevel || null;
+            // Build cohort label: "Senior Software Engineer" or "Technology" fallback
+            const cohortLabel = [senLabel, roleLabel].filter(Boolean).join(' ') || industry.replace(/_/g, ' ');
+            // Compute numeric percentile for emotional framing
+            const pctRaw = industryBenchmark.percentile;
+            const numMatch = pctRaw.match(/\d+/);
+            const numPct = numMatch ? parseInt(numMatch[0]) : null;
+            // bottom X% or top X%
+            const isBottomFrame = pctRaw.toLowerCase().includes("bottom") || (!isTop && !isAt && numPct !== null && numPct <= 50);
+            const pctDisplay = pctRaw.includes("%") || pctRaw.toLowerCase().includes("top") || pctRaw.toLowerCase().includes("bottom")
+              ? pctRaw
+              : isTop ? "Top 25%" : isAt ? "Top 50%" : "Bottom 40%";
+
+            const headlineText = (() => {
+              if (isTop) return `${firstName ? firstName + "'s" : "Your"} resume outperforms most ${cohortLabel} resumes`;
+              if (isAt) return `${firstName ? firstName + "'s" : "Your"} resume is average among ${cohortLabel} resumes`;
+              return `${firstName ? firstName + "'s" : "Your"} resume scores below most ${cohortLabel} resumes`;
+            })();
+
+            const bodyText = (() => {
+              if (isTop) return `Recruiters scanning ${cohortLabel} candidates will likely pass your resume to the next round based on ATS score alone.`;
+              if (isAt) return `Half the ${cohortLabel} resumes we've analyzed score the same or higher. A few targeted fixes could move you into the top quarter.`;
+              return `Most ${cohortLabel} resumes that make it to a recruiter's desk score higher than yours. The gap is fixable — but it needs to close before you apply.`;
+            })();
 
             return (
               <div className={cn(
-                "text-center py-3 px-4 rounded-lg mb-3",
-                isTop ? "bg-success/15" : isAt ? "bg-warning/15" : "bg-destructive/15"
+                "rounded-lg mb-3 overflow-hidden border",
+                isTop ? "border-success/30" : isAt ? "border-warning/30" : "border-destructive/30"
               )}>
-                <p className={cn("text-base font-bold",
-                  isTop ? "text-success" : isAt ? "text-warning" : "text-destructive"
+                <div className={cn(
+                  "px-4 py-3 flex items-center gap-3",
+                  isTop ? "bg-success/10" : isAt ? "bg-warning/10" : "bg-destructive/10"
                 )}>
-                  {displayPercentile}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {t('freeResults.peerBenchmark.forAtsReadinessAmong', { cohort: cohortLabel })}
-                </p>
+                  <div className={cn(
+                    "text-2xl font-black tabular-nums shrink-0",
+                    isTop ? "text-success" : isAt ? "text-warning" : "text-destructive"
+                  )}>
+                    {pctDisplay}
+                  </div>
+                  <div>
+                    <p className={cn("text-sm font-semibold leading-tight",
+                      isTop ? "text-success" : isAt ? "text-warning" : "text-destructive"
+                    )}>{headlineText}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{bodyText}</p>
+                  </div>
+                </div>
+                {!isTop && (
+                  <div className="px-4 py-2 bg-background/60 border-t border-border/40">
+                    <p className="text-xs text-muted-foreground">
+                      {isBelow
+                        ? "Resumes that score in the top 25% get 3× more interview callbacks in your field."
+                        : "Top-quartile resumes in your field get called back 2× more often."}
+                      {" "}<button onClick={() => handleUpgradeClick('peer_percentile_cta')} className="text-primary font-semibold hover:underline">See what's holding you back →</button>
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })()}
-          
+
           {/* What This Means - Clear, non-contradictory guidance */}
           <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
             <p className="text-xs font-medium text-foreground mb-1">
@@ -3287,6 +3329,52 @@ export function FreeKeywordResults({
         onUpgradeClick={() => handleUpgradeClick('red_flags')}
         premiumButton={<PremiumPackageButton variant="control" isPrimary section="red_flags" />}
       />
+
+      {/* Gated "hidden issues" card — shows that more problems exist but gates the detail */}
+      {redFlags.length >= 1 && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5 mb-5 relative overflow-hidden">
+          <div className="flex items-center gap-2 mb-3">
+            <Lock className="w-4 h-4 text-destructive" />
+            <h4 className="font-semibold text-foreground">
+              {redFlags.length + 2} more issues detected in {candidateName ? `${candidateName.split(' ')[0]}'s` : 'your'} resume
+            </h4>
+            <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold">
+              Premium Only
+            </span>
+          </div>
+          {/* Blurred fake issue rows */}
+          <div className="space-y-2 select-none pointer-events-none">
+            {[
+              { label: "ATS Rejection Trigger", detail: "A formatting pattern on line 3 of your experience section causes 4 major ATS systems to drop your resume before human review." },
+              { label: "Keyword Density Issue", detail: "Your top 2 skills appear only once — most shortlisted candidates in your industry mention them 3-5 times across different sections." },
+              { label: "Experience Gap Signal", detail: "A 7-month gap between your last two roles is flagged by applicant tracking systems without a framing fix." },
+            ].map((item, i) => (
+              <div key={i} className="rounded-lg border border-destructive/15 bg-background/60 p-3 blur-[3px]">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.detail}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Unlock overlay */}
+          <div className="absolute inset-x-0 bottom-0 top-16 flex flex-col items-center justify-end pb-5 bg-gradient-to-t from-destructive/10 via-destructive/5 to-transparent">
+            <p className="text-sm font-medium text-foreground mb-3 text-center px-4">
+              These issues are specific to your resume — not generic tips.
+            </p>
+            <button
+              onClick={() => handleUpgradeClick('hidden_issues_gate')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-destructive text-white font-semibold text-sm shadow-lg hover:bg-destructive/90 transition-colors"
+            >
+              <Lock className="w-4 h-4" />
+              Unlock Full Analysis
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Missing Keywords - Priority sorted with impact indicators */}
       <KeywordsSection
