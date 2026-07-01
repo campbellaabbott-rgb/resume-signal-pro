@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { crypto } from "https://deno.land/std@0.190.0/crypto/mod.ts";
 import { detectIndustry, formatDetectionForPrompt, buildDynamicCorrectionBoosts, INDUSTRY_KEYWORDS } from "./industry-detection.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 
