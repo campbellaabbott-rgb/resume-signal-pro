@@ -24,6 +24,10 @@ export interface IndustryDetectionData {
   seniorityLevel?: string;
   yearsEstimate?: string | null;
   alternativeIndustries?: string[];
+  alternativeIndustriesWithReasons?: Array<{ industry: string; reason?: string }>;
+  educationSignals?: string[];
+  subRole?: string;
+  techStack?: string[];
 }
 
 interface IndustryConfidenceIndicatorProps {
@@ -167,6 +171,9 @@ export function IndustryConfidenceIndicator({
   const seniorityLevel = industryDetection?.seniorityLevel;
   const yearsEstimate = industryDetection?.yearsEstimate;
   const alternativeIndustries = industryDetection?.alternativeIndustries || [];
+  const alternativeIndustriesWithReasons = industryDetection?.alternativeIndustriesWithReasons || [];
+  const techStack = industryDetection?.techStack || [];
+  const educationSignals = industryDetection?.educationSignals || [];
   const config = getConfidenceConfig(confidence);
   const availableIndustries = getAvailableIndustries();
 
@@ -260,13 +267,33 @@ export function IndustryConfidenceIndicator({
                     </span>
                   )}
                   {detectedRole && (
-                    <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={detectedRole}>
+                    <span className="text-xs text-muted-foreground truncate max-w-[220px]" title={detectedRole}>
                       {detectedRole}
                     </span>
                   )}
                   {yearsEstimate && (
                     <span className="text-xs text-muted-foreground">· {yearsEstimate}</span>
                   )}
+                </div>
+              )}
+              {/* Tech stack badges — only for tech-family roles */}
+              {techStack.length > 0 && (
+                <div className="flex items-center gap-1 mt-1 flex-wrap">
+                  {techStack.map((t, i) => (
+                    <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium border border-primary/20">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {/* Education credential badges */}
+              {educationSignals.length > 0 && (
+                <div className="flex items-center gap-1 mt-1 flex-wrap">
+                  {educationSignals.slice(0, 2).map((s, i) => (
+                    <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-success/10 text-success font-medium border border-success/20">
+                      {s.replace('Degree: ', '').replace('Credential: ', '')}
+                    </span>
+                  ))}
                 </div>
               )}
               {/* Top 2 signals always visible — builds trust without requiring expand */}
@@ -357,18 +384,26 @@ export function IndustryConfidenceIndicator({
             </div>
           )}
           
-          {/* Alternative industries — quick switches without opening full correction grid */}
-          {alternativeIndustries.length > 0 && (
+          {/* Alternative industries — quick switches with reason strings */}
+          {(alternativeIndustriesWithReasons.length > 0 || alternativeIndustries.length > 0) && (
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-1.5">Also considered:</p>
-              <div className="flex flex-wrap gap-1.5">
-                {alternativeIndustries.map((alt, i) => (
+              <div className="space-y-1.5">
+                {(alternativeIndustriesWithReasons.length > 0 ? alternativeIndustriesWithReasons : alternativeIndustries.map(a => ({ industry: a, reason: undefined }))).map((alt, i) => (
                   <button
                     key={i}
-                    onClick={(e) => { e.stopPropagation(); handleCorrection(alt); }}
-                    className="text-xs px-2.5 py-1 rounded-full border border-border hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={(e) => { e.stopPropagation(); handleCorrection(alt.industry); }}
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 text-left transition-colors group"
                   >
-                    {formatIndustryName(alt)}
+                    <div>
+                      <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
+                        {formatIndustryName(alt.industry)}
+                      </span>
+                      {alt.reason && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{alt.reason}</p>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground shrink-0">Switch →</span>
                   </button>
                 ))}
               </div>

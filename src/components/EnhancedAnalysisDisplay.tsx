@@ -68,6 +68,14 @@ export interface IndustryDetection {
   confidence: 'high' | 'medium' | 'low';
   signals: string[];
   aiSuggested?: string;
+  detectedRole?: string | null;
+  seniorityLevel?: string;
+  yearsEstimate?: string | null;
+  alternativeIndustries?: string[];
+  alternativeIndustriesWithReasons?: Array<{ industry: string; reason?: string }>;
+  educationSignals?: string[];
+  subRole?: string;
+  techStack?: string[];
 }
 
 interface EnhancedAnalysisDisplayProps {

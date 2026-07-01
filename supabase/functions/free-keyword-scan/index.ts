@@ -2423,16 +2423,29 @@ ${resumeText.substring(0, 20000)}
     // misclassification (IndustryConfidenceIndicator -> log_industry_correction).
     // Without this, the correction UI never has real data to show and the
     // industry_corrections feedback loop never gets fed.
+    // Build detectedRole: prefer subRole (more specific) over primaryTitle, enrich with tech stack
+    const baseRole = industryDetection.subRole || seniorityDetection.primaryTitle || null;
+    const enrichedRole = baseRole && industryDetection.techStack && industryDetection.techStack.length > 0
+      ? `${baseRole} · ${industryDetection.techStack.slice(0, 2).join('/')}`
+      : baseRole;
+
     responseData.industryDetection = {
       detected: finalIndustry,
       confidence: finalConfidence,
       signals: industryDetection.signals,
       aiSuggested: normalizedAIIndustry !== finalIndustry ? normalizedAIIndustry : undefined,
-      // Role + seniority context — makes the UI feel specific ("Senior PM · Product Management")
-      detectedRole: seniorityDetection.primaryTitle || null,
+      // Role + seniority context — makes the UI feel specific ("Senior DevOps Engineer · Kubernetes/Terraform")
+      detectedRole: enrichedRole,
       seniorityLevel: seniorityDetection.level,
       yearsEstimate: seniorityDetection.yearsEstimate !== 'unknown' ? seniorityDetection.yearsEstimate : null,
       alternativeIndustries: industryDetection.alternativeIndustries.slice(0, 3).map(a => a.industry),
+      alternativeIndustriesWithReasons: industryDetection.alternativeIndustries.slice(0, 3).map(a => ({
+        industry: a.industry,
+        reason: a.reason,
+      })),
+      educationSignals: industryDetection.educationSignals,
+      subRole: industryDetection.subRole,
+      techStack: industryDetection.techStack,
     };
 
 

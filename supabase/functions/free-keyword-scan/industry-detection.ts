@@ -1289,9 +1289,15 @@ interface DetectionResult {
   confidence: 'high' | 'medium' | 'low';
   score: number;
   signals: string[];
-  alternativeIndustries: Array<{ industry: string; score: number }>;
+  alternativeIndustries: Array<{ industry: string; score: number; reason?: string }>;
   secondaryIndustry?: string;
   secondaryScore?: number;
+  /** More specific sub-role within the detected industry, e.g. "Frontend Engineer", "FP&A Analyst", "IB Associate" */
+  subRole?: string;
+  /** Top detected tech stack items for tech roles, e.g. ["Python", "Go", "Kubernetes"] */
+  techStack?: string[];
+  /** Degree/credential signals found in education section */
+  educationSignals?: string[];
 }
 
 interface SectionMatch {
@@ -1891,6 +1897,258 @@ function applyCorrectionsBoost(
 }
 
 /**
+ * Parse the education section for degree/credential signals.
+ * Returns: array of { industry, boost, signal } — each representing one unambiguous
+ * credential found. A JD = legal +12, MD = healthcare +12, CPA = finance +10, etc.
+ */
+function extractEducationSignals(resumeText: string): Array<{ industry: string; boost: number; signal: string }> {
+  const text = resumeText.toLowerCase();
+  const results: Array<{ industry: string; boost: number; signal: string }> = [];
+
+  // Helper: check with word boundaries for short tokens
+  const has = (token: string) => {
+    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = token.length <= 4
+      ? new RegExp(`(?<![a-z])${escaped}(?![a-z])`)
+      : new RegExp(escaped);
+    return re.test(text);
+  };
+
+  // Legal degrees — most unambiguous signals on a resume
+  if (has('j.d.') || has('juris doctor') || /\bjd\b/.test(text)) {
+    results.push({ industry: 'legal', boost: 12, signal: 'Degree: J.D. (Juris Doctor)' });
+  }
+  if (has('llm') || has('ll.m.') || has('master of laws')) {
+    results.push({ industry: 'legal', boost: 10, signal: 'Degree: LL.M.' });
+  }
+  if (has('bar exam') || has('bar admission') || has('admitted to the bar') || has('passed the bar')) {
+    results.push({ industry: 'legal', boost: 10, signal: 'Credential: Bar admission' });
+  }
+
+  // Medical degrees
+  if (has('m.d.') || has('doctor of medicine') || /\bmd\b/.test(text)) {
+    results.push({ industry: 'healthcare', boost: 12, signal: 'Degree: M.D.' });
+  }
+  if (has('d.o.') || has('doctor of osteopathy') || /\bdo\b/.test(text)) {
+    results.push({ industry: 'healthcare', boost: 12, signal: 'Degree: D.O.' });
+  }
+  if (has('pharm.d.') || has('doctor of pharmacy') || /\bpharmd\b/.test(text)) {
+    results.push({ industry: 'healthcare', boost: 10, signal: 'Degree: Pharm.D.' });
+  }
+  if (has('d.p.t.') || has('doctor of physical therapy') || /\bdpt\b/.test(text)) {
+    results.push({ industry: 'healthcare', boost: 9, signal: 'Degree: D.P.T.' });
+  }
+  if (has('bsn') || has('b.s.n') || has('bachelor of science in nursing') || has('master of science in nursing') || has('msn')) {
+    results.push({ industry: 'healthcare', boost: 9, signal: 'Degree: Nursing (BSN/MSN)' });
+  }
+
+  // Finance credentials — CPA and CFA are extremely specific
+  if (/\bcpa\b/.test(text) || has('certified public accountant')) {
+    results.push({ industry: 'finance', boost: 10, signal: 'Credential: CPA' });
+  }
+  if (/\bcfa\b/.test(text) || has('chartered financial analyst')) {
+    results.push({ industry: 'finance', boost: 10, signal: 'Credential: CFA' });
+  }
+  if (/\bcfp\b/.test(text) || has('certified financial planner')) {
+    results.push({ industry: 'finance', boost: 8, signal: 'Credential: CFP' });
+  }
+  if (has('series 7') || has('series 63') || has('series 65') || has('series 66')) {
+    results.push({ industry: 'finance', boost: 8, signal: 'Credential: FINRA license' });
+  }
+  if (has('b.s. accounting') || has('bs accounting') || has('bachelor of accounting') || has('master of accounting') || has('msa') || has('m.s. accounting')) {
+    results.push({ industry: 'finance', boost: 6, signal: 'Degree: Accounting' });
+  }
+  if (has('mba') || has('m.b.a.') || has('master of business administration')) {
+    // MBA is broad — gives modest boost to consulting + finance but doesn't lock either
+    results.push({ industry: 'consulting', boost: 4, signal: 'Degree: MBA' });
+    results.push({ industry: 'finance', boost: 3, signal: 'Degree: MBA' });
+  }
+
+  // CS / Engineering degrees → technology
+  if (
+    has('b.s. computer science') || has('bs computer science') ||
+    has('bachelor of science in computer science') ||
+    has('m.s. computer science') || has('ms computer science') ||
+    has('master of science in computer science') ||
+    has('b.s. software engineering') || has('bs software engineering') ||
+    has('b.eng.') || has('b.s.e') || has('bachelor of engineering')
+  ) {
+    results.push({ industry: 'technology', boost: 5, signal: 'Degree: CS/Software Engineering' });
+  }
+  if (
+    has('ph.d. computer science') || has('phd computer science') ||
+    has('ph.d. machine learning') || has('phd machine learning') ||
+    has('ph.d. artificial intelligence') || has('phd artificial intelligence') ||
+    has('ph.d. in cs') || has('phd in cs')
+  ) {
+    results.push({ industry: 'machine_learning', boost: 8, signal: 'Degree: PhD CS/ML/AI' });
+    results.push({ industry: 'technology', boost: 4, signal: 'Degree: PhD CS/ML/AI' });
+  }
+  if (has('ph.d. statistics') || has('phd statistics') || has('ph.d. mathematics') || has('phd mathematics')) {
+    results.push({ industry: 'data_science', boost: 6, signal: 'Degree: PhD Statistics/Math' });
+  }
+
+  // Engineering degrees → engineering
+  if (
+    has('b.s. mechanical engineering') || has('bs mechanical engineering') ||
+    has('b.s. electrical engineering') || has('bs electrical engineering') ||
+    has('b.s. civil engineering') || has('bs civil engineering') ||
+    has('b.s. chemical engineering') || has('bs chemical engineering') ||
+    has('m.s. mechanical engineering') || has('m.s. electrical engineering') ||
+    has('m.s. civil engineering') || has('m.s. chemical engineering') ||
+    (has('bachelor') && has('engineering') && !has('software')) ||
+    (has('master') && has('engineering') && !has('software') && !has('machine learning'))
+  ) {
+    results.push({ industry: 'engineering', boost: 6, signal: 'Degree: Engineering' });
+  }
+
+  // Teaching certifications → education
+  if (has('teaching credential') || has('teaching certificate') || has('state teaching license') || has('b.s. education') || has('b.a. education') || has('bachelor of education') || has('master of education') || has('m.ed.') || has('m.a.t.')) {
+    results.push({ industry: 'education', boost: 8, signal: 'Credential: Teaching license/education degree' });
+  }
+
+  return results;
+}
+
+// Tech stack keyword groups for sub-role detection
+const TECH_STACKS: Array<{ label: string; keywords: string[] }> = [
+  { label: 'Python', keywords: ['python', 'django', 'flask', 'fastapi', 'pandas', 'numpy', 'pydantic'] },
+  { label: 'Go', keywords: ['golang', ' go ', 'goroutine', 'grpc', 'gin framework'] },
+  { label: 'Java', keywords: ['java', 'spring boot', 'spring framework', 'maven', 'gradle', 'jvm', 'hibernate'] },
+  { label: 'TypeScript', keywords: ['typescript', 'ts', '.tsx', 'tsc'] },
+  { label: 'JavaScript', keywords: ['javascript', 'node.js', 'nodejs', 'express.js', 'next.js', 'nuxt'] },
+  { label: 'React', keywords: ['react', 'react.js', 'reactjs', 'redux', 'hooks', 'jsx'] },
+  { label: 'Rust', keywords: ['rust', 'cargo', 'tokio'] },
+  { label: 'Ruby', keywords: ['ruby on rails', 'rails', 'ruby'] },
+  { label: 'Scala', keywords: ['scala', 'spark', 'akka'] },
+  { label: 'C++', keywords: ['c++', 'cpp', 'cmake', 'stl', 'boost library'] },
+  { label: 'Swift', keywords: ['swift', 'swiftui', 'xcode', 'ios sdk', 'cocoa'] },
+  { label: 'Kotlin', keywords: ['kotlin', 'android studio', 'jetpack compose', 'coroutines'] },
+  { label: 'AWS', keywords: ['aws', 'amazon web services', 'ec2', 's3', 'lambda', 'eks', 'cloudformation'] },
+  { label: 'GCP', keywords: ['gcp', 'google cloud', 'bigquery', 'cloud run', 'pub/sub', 'gke'] },
+  { label: 'Azure', keywords: ['azure', 'microsoft azure', 'aks', 'cosmos db', 'azure devops'] },
+  { label: 'Kubernetes', keywords: ['kubernetes', 'k8s', 'helm', 'kubectl', 'eks', 'gke', 'aks'] },
+  { label: 'Docker', keywords: ['docker', 'dockerfile', 'docker-compose', 'containers', 'container orchestration'] },
+  { label: 'Terraform', keywords: ['terraform', 'iac', 'infrastructure as code', 'pulumi', 'cloudformation'] },
+  { label: 'PyTorch', keywords: ['pytorch', 'torch', 'autograd'] },
+  { label: 'TensorFlow', keywords: ['tensorflow', 'keras', 'tf2'] },
+  { label: 'SQL', keywords: ['sql', 'postgresql', 'postgres', 'mysql', 'sqlite'] },
+];
+
+// Sub-role patterns within a detected industry
+const TECH_SUB_ROLES: Array<{ role: string; signals: string[]; minSignals: number }> = [
+  { role: 'ML Engineer', signals: ['pytorch', 'tensorflow', 'llm', 'fine-tuning', 'model training', 'inference', 'hugging face', 'mlflow', 'feature engineering', 'training pipeline'], minSignals: 2 },
+  { role: 'Data Engineer', signals: ['dbt', 'airflow', 'spark', 'kafka', 'etl', 'data pipeline', 'data warehouse', 'fivetran', 'dagster', 'bigquery', 'snowflake', 'databricks'], minSignals: 2 },
+  { role: 'DevOps / Platform Engineer', signals: ['kubernetes', 'docker', 'terraform', 'ci/cd', 'github actions', 'jenkins', 'helm', 'iac', 'infrastructure as code', 'sre', 'site reliability', 'observability', 'prometheus', 'grafana'], minSignals: 2 },
+  { role: 'Security Engineer', signals: ['penetration testing', 'pentest', 'vulnerability', 'soc', 'siem', 'threat modeling', 'appsec', 'devsecops', 'zero trust', 'sast', 'dast', 'incident response', 'red team', 'blue team', 'soc analyst', 'cissp', 'security engineering'], minSignals: 2 },
+  { role: 'Frontend Engineer', signals: ['react', 'vue', 'angular', 'css', 'html', 'ui components', 'responsive design', 'web performance', 'next.js', 'svelte', 'frontend', 'front-end', 'web app'], minSignals: 2 },
+  { role: 'Mobile Engineer', signals: ['ios', 'android', 'swift', 'kotlin', 'react native', 'flutter', 'mobile app', 'app store', 'play store', 'xcode', 'android studio'], minSignals: 2 },
+  { role: 'Backend Engineer', signals: ['api', 'rest', 'grpc', 'microservices', 'backend', 'back-end', 'server-side', 'database design', 'distributed systems', 'message queue', 'kafka', 'rabbitmq'], minSignals: 2 },
+  { role: 'Solutions Architect', signals: ['solutions architect', 'enterprise architect', 'system design', 'architecture review', 'technical design', 'architecture diagram', 'cloud architecture'], minSignals: 1 },
+];
+
+const FINANCE_SUB_ROLES: Array<{ role: string; signals: string[]; minSignals: number }> = [
+  { role: 'Investment Banker', signals: ['investment banking', 'ib', 'm&a', 'mergers and acquisitions', 'capital markets', 'ipo', 'lbo', 'leveraged buyout', 'dcf', 'pitchbook', 'deal team', 'bulge bracket', 'boutique bank', 'fairness opinion'], minSignals: 2 },
+  { role: 'Private Equity', signals: ['private equity', 'pe', 'portfolio company', 'fund management', 'carried interest', 'carry', 'deal sourcing', 'lbo model', 'buyout', 'growth equity', 'venture capital', 'vc', 'cap table'], minSignals: 2 },
+  { role: 'Asset Manager', signals: ['assets under management', 'aum', 'portfolio management', 'equity research', 'alpha', 'bloomberg terminal', 'factor model', 'fixed income', 'hedge fund', 'long/short', 'sharpe ratio', 'attribution analysis'], minSignals: 2 },
+  { role: 'FP&A Analyst', signals: ['fp&a', 'financial planning', 'variance analysis', 'budget', 'headcount planning', 'business partnering', 'three-statement model', 'kpi dashboard', 'monthly close', 'reforecasting', 'opex', 'capex'], minSignals: 2 },
+  { role: 'Accountant / Controller', signals: ['general ledger', 'gl', 'journal entries', 'month-end close', 'accounts payable', 'accounts receivable', 'reconciliation', 'gaap', 'ifrs', 'tax preparation', 'audit', 'cpa exam', 'big 4'], minSignals: 2 },
+  { role: 'Quantitative Analyst', signals: ['quantitative', 'quant', 'stochastic', 'monte carlo', 'options pricing', 'derivatives', 'risk model', 'market making', 'algorithmic trading', 'backtesting', 'statistical arbitrage'], minSignals: 2 },
+];
+
+/**
+ * Detect sub-role within the given industry using keyword pattern matching.
+ * Returns the most specific sub-role label, or undefined if no pattern fires.
+ */
+function detectSubRole(industry: string, text: string): string | undefined {
+  const lower = text.toLowerCase();
+  const patterns = industry === 'finance' ? FINANCE_SUB_ROLES
+    : (industry === 'technology' || industry === 'machine_learning' || industry === 'data_engineering' || industry === 'data_science') ? TECH_SUB_ROLES
+    : null;
+  if (!patterns) return undefined;
+
+  let best: { role: string; count: number } | null = null;
+  for (const p of patterns) {
+    const count = p.signals.filter(s => lower.includes(s)).length;
+    if (count >= p.minSignals && (!best || count > best.count)) {
+      best = { role: p.role, count };
+    }
+  }
+  return best?.role;
+}
+
+/**
+ * Extract the top tech stack items present in the resume text (max 3).
+ * Only meaningful for tech-industry resumes.
+ */
+function extractTechStack(text: string): string[] {
+  const lower = text.toLowerCase();
+  const found: Array<{ label: string; count: number }> = [];
+  for (const stack of TECH_STACKS) {
+    const count = stack.keywords.filter(kw => lower.includes(kw)).length;
+    if (count > 0) found.push({ label: stack.label, count });
+  }
+  // Sort by frequency, dedupe cloud platforms to one entry
+  found.sort((a, b) => b.count - a.count);
+  const result: string[] = [];
+  const seenCloud = false;
+  const cloudLabels = new Set(['AWS', 'GCP', 'Azure']);
+  let addedCloud = false;
+  for (const { label } of found) {
+    if (result.length >= 3) break;
+    if (cloudLabels.has(label)) {
+      if (!addedCloud) { result.push(label); addedCloud = true; }
+    } else {
+      result.push(label);
+    }
+  }
+  return result;
+}
+
+/**
+ * Build human-readable reason strings for alternative industry suggestions.
+ * These appear in IndustryConfidenceIndicator to explain why the alternative
+ * was considered (e.g. "Your Salesforce skills match RevOps roles").
+ */
+function buildAlternativeReason(primaryIndustry: string, altIndustry: string, resumeText: string): string | undefined {
+  const text = resumeText.toLowerCase();
+  const reasons: Record<string, Record<string, string | (() => string)>> = {
+    technology: {
+      data_science: 'SQL + analytics keywords suggest data science alignment',
+      data_engineering: 'ETL/pipeline keywords suggest data engineering roles',
+      machine_learning: 'ML framework keywords suggest ML engineering roles',
+      product_management: 'Cross-functional + roadmap keywords suggest PM roles',
+      sales: 'CRM tools + account keywords suggest pre/post-sales engineering',
+    },
+    finance: {
+      consulting: 'Strategy + advisory keywords align with consulting roles',
+      technology: 'Fintech + API keywords suggest financial technology roles',
+      data_science: 'Quantitative + statistical analysis suggests finance data roles',
+    },
+    consulting: {
+      finance: 'Financial modeling + valuation keywords suggest finance fit',
+      technology: 'Technical implementation keywords suggest tech consulting',
+      product_management: 'Strategy + stakeholder keywords suggest PM roles',
+    },
+    sales: {
+      marketing: 'Campaign + content keywords suggest demand generation',
+      technology: 'Technical product knowledge suggests sales engineering',
+      product_management: 'Product feedback + user insight keywords suggest PM fit',
+    },
+    marketing: {
+      data_science: 'Analytics + attribution keywords suggest marketing analytics',
+      sales: 'Pipeline + revenue keywords suggest demand gen / growth',
+      product_management: 'User research + growth keywords suggest product marketing',
+    },
+  };
+  const primaryMap = reasons[primaryIndustry];
+  if (!primaryMap) return undefined;
+  const r = primaryMap[altIndustry];
+  if (!r) return undefined;
+  return typeof r === 'function' ? r() : r;
+}
+
+/**
  * Main detection function
  * @param dynamicCorrections - Optional correction data from DB for dynamic learning
  */
@@ -1901,6 +2159,10 @@ export function detectIndustry(
 ): DetectionResult {
   const sections = extractSections(resumeText);
 
+  // === EDUCATION SIGNALS — run before main scoring so boosts are baked in ===
+  const educationBoosts = extractEducationSignals(resumeText);
+  const educationSignalStrings = educationBoosts.map(e => e.signal);
+
   // Calculate scores for all industries
   const scores: Array<{ industry: string; score: number; signals: string[] }> = [];
 
@@ -1908,6 +2170,14 @@ export function detectIndustry(
     const result = calculateIndustryScore(sections, industry);
     const signals = result.signals;
     let score = result.score;
+
+    // Apply education boosts
+    for (const edu of educationBoosts) {
+      if (edu.industry === industry) {
+        score += edu.boost;
+        if (signals.length < 10) signals.push(edu.signal);
+      }
+    }
 
     if (jobDescriptionText && jobDescriptionText.trim().length > 0) {
       const jobPostingResult = calculateJobPostingScore(jobDescriptionText, industry);
@@ -2029,17 +2299,34 @@ export function detectIndustry(
     console.log(`[INDUSTRY-DETECTION] Multi-industry: primary="${finalIndustry}" (${finalScore}), secondary="${secondaryIndustry}" (${secondaryScore})`);
   }
   
+  // === SUB-ROLE DETECTION ===
+  const subRole = detectSubRole(finalIndustry, resumeText);
+
+  // === TECH STACK EXTRACTION (tech-family industries only) ===
+  const isTechFamily = ['technology', 'machine_learning', 'data_engineering', 'data_science'].includes(finalIndustry);
+  const techStack = isTechFamily ? extractTechStack(resumeText) : undefined;
+
+  // === ALTERNATIVE INDUSTRIES with reason strings ===
+  const altIndustries = scores
+    .filter(s => s.industry !== finalIndustry && !['military', 'general'].includes(s.industry) && s.score >= 2)
+    .slice(0, 3)
+    .map(s => ({
+      industry: s.industry,
+      score: s.score,
+      reason: buildAlternativeReason(finalIndustry, s.industry, resumeText),
+    }));
+
   return {
     industry: finalIndustry,
     confidence,
     score: finalScore,
     signals: finalSignals.slice(0, 5),
-    alternativeIndustries: scores.slice(1, 4).map(s => ({
-      industry: s.industry,
-      score: s.score
-    })),
+    alternativeIndustries: altIndustries,
     secondaryIndustry,
     secondaryScore,
+    subRole,
+    techStack,
+    educationSignals: educationSignalStrings.length > 0 ? educationSignalStrings : undefined,
   };
 }
 
@@ -2051,19 +2338,24 @@ export function formatDetectionForPrompt(result: DetectionResult): string {
     ? `\n- Secondary Industry: ${result.secondaryIndustry} (score: ${result.secondaryScore?.toFixed(1)})\n  NOTE: This candidate shows strong signals for BOTH industries. Tailor keywords and recommendations to cover both domains.`
     : '';
     
+  const subRoleNote = result.subRole ? `\n- Detected Sub-Role: ${result.subRole}` : '';
+  const techStackNote = result.techStack && result.techStack.length > 0 ? `\n- Tech Stack Detected: ${result.techStack.join(', ')} — use these specific technologies when suggesting keywords or rewrites` : '';
+  const eduNote = result.educationSignals && result.educationSignals.length > 0 ? `\n- Education Signals: ${result.educationSignals.join('; ')}` : '';
+
   return `
 **PRE-DETECTED INDUSTRY (MANDATORY — your response MUST use this industry):**
 - Detected Industry: ${result.industry.toUpperCase()}
 - Confidence: ${result.confidence}
 - Score: ${result.score.toFixed(1)}
-- Key Signals: ${result.signals.join('; ')}${multiIndustryNote}
-${result.alternativeIndustries.length > 0 ? `- Alternative industries: ${result.alternativeIndustries.map(a => `${a.industry}(${a.score.toFixed(1)})`).join(', ')}` : ''}
+- Key Signals: ${result.signals.join('; ')}${subRoleNote}${techStackNote}${eduNote}${multiIndustryNote}
+${result.alternativeIndustries.length > 0 ? `- Alternative industries: ${result.alternativeIndustries.map(a => `${a.industry}(${a.score.toFixed(1)})${a.reason ? ` — ${a.reason}` : ''}`).join(', ')}` : ''}
 
-CRITICAL INSTRUCTION: The pre-detection algorithm has analyzed job titles, keyword frequency, section weights, and co-occurrence patterns.
-${result.confidence === 'high' ? 
-  `HIGH CONFIDENCE — You MUST return "${result.industry}" as the industry. DO NOT override this. The algorithm matched job titles directly. Even if the skills section mentions other fields (e.g., marketing keywords on a sales resume), the JOB TITLES determine industry.` : 
-  result.confidence === 'medium' ? 
+CRITICAL INSTRUCTION: The pre-detection algorithm has analyzed job titles, keyword frequency, section weights, co-occurrence patterns, and education credentials.
+${result.confidence === 'high' ?
+  `HIGH CONFIDENCE — You MUST return "${result.industry}" as the industry. DO NOT override this. The algorithm matched job titles directly. Even if the skills section mentions other fields (e.g., marketing keywords on a sales resume), the JOB TITLES determine industry.` :
+  result.confidence === 'medium' ?
   `MEDIUM CONFIDENCE — Return "${result.industry}" unless you have STRONG title-based evidence for a different industry. Skills-section keywords alone are NOT sufficient evidence to override.` :
   'LOW CONFIDENCE — Use your judgment but consider these signals. Job titles should weigh more than skills lists.'}
+${result.subRole ? `\nThis candidate appears to be a ${result.subRole}. Tailor all keyword suggestions, quick wins, and red flags specifically to this sub-role.` : ''}
 `;
 }
