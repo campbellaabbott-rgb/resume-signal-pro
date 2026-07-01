@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { detectIndustry as detectIndustryShared } from "../free-keyword-scan/industry-detection.ts";
+import { detectIndustry as detectIndustryShared } from "./industry-detection.ts";
 const serve = Deno.serve;
 
 // Declare EdgeRuntime for background tasks
