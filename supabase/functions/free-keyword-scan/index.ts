@@ -2381,6 +2381,14 @@ ${resumeText.substring(0, 20000)}
     );
 
     // Build response with analysis data (use actual values, slice arrays)
+    // Projected score: estimate how much the ATS score would improve if the user
+    // addressed the top quick wins + fixed their weak bullets. Each quick win is
+    // worth ~4-6 pts; each confirmed weak bullet fix is worth ~2-3 pts. Cap at 95.
+    const qwCount = (analysis.quickWins || []).length;
+    const weakBulletCount = bulletAnalysis.weakBullets.length + (bulletAnalysis.quantRate < 40 ? bulletAnalysis.unquantifiedBullets.length : 0);
+    const projectedScoreRaw = analysis.atsScoreEstimate + qwCount * 5 + Math.min(weakBulletCount, 3) * 3;
+    const projectedScore = Math.min(95, Math.round(projectedScoreRaw));
+
     const responseData: Record<string, unknown> = {
       success: true,
       ...analysis,
@@ -2390,6 +2398,19 @@ ${resumeText.substring(0, 20000)}
       powerWords: (analysis.powerWords || []).slice(0, 5),
       weakPhrases: (analysis.weakPhrases || []).slice(0, 4),
       quickWins: (analysis.quickWins || []).slice(0, 3),
+      // Rule-based pre-detected weak bullets — surfaced directly in the UI so users
+      // see their ACTUAL problem bullets by name, not just generic advice
+      weakBulletsDetected: bulletAnalysis.weakBullets.slice(0, 3).map(b => ({
+        text: b.text,
+        role: b.role,
+        reason: b.reason,
+      })),
+      unquantifiedBulletsDetected: bulletAnalysis.quantRate < 50
+        ? bulletAnalysis.unquantifiedBullets.slice(0, 3).map(b => ({ text: b.text, role: b.role }))
+        : [],
+      bulletQuantRate: bulletAnalysis.quantRate,
+      // Projected score after fixing quick wins + weak bullets
+      projectedScore: projectedScore > analysis.atsScoreEstimate ? projectedScore : null,
     };
     
     // Add multi-industry data if detected

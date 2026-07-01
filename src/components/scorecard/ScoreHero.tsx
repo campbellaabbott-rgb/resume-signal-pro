@@ -29,6 +29,7 @@ interface ScoreHeroProps {
   onForceReanalyze?: () => void;
   isLoading?: boolean;
   eliteSignalsCount?: number;
+  projectedScore?: number;
 }
 
 const getExperienceLevelKey = (level: string) => {
@@ -167,6 +168,7 @@ export function ScoreHero({
   onForceReanalyze,
   isLoading,
   eliteSignalsCount = 0,
+  projectedScore,
 }: ScoreHeroProps) {
   const { t } = useTranslation();
 
@@ -270,7 +272,7 @@ export function ScoreHero({
             </div>
 
             {/* Quick status row */}
-            <div className="flex items-center gap-3 text-xs">
+            <div className="flex items-center gap-3 text-xs flex-wrap">
               {redFlagsCount > 0 ? (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">
                   <AlertTriangle className="w-3 h-3" />
@@ -289,6 +291,15 @@ export function ScoreHero({
                 </span>
               )}
             </div>
+
+            {/* Projected score — shows potential after fixing quick wins */}
+            {projectedScore && projectedScore > atsScoreEstimate && (
+              <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/10 border border-success/20 text-xs font-medium text-success">
+                <TrendingUp className="w-3.5 h-3.5" />
+                Fix the issues below → estimated <span className="font-bold text-sm">{projectedScore}</span>
+                <span className="text-success/70 ml-0.5">(+{projectedScore - atsScoreEstimate} pts)</span>
+              </div>
+            )}
           </div>
         </div>
 

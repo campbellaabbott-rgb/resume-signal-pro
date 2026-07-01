@@ -694,6 +694,11 @@ interface FreeKeywordResultsProps {
   eliteSignals?: EliteSignal[];
   // Industry correction callback
   onIndustryChange?: (newIndustry: string) => void;
+  // Pre-detected weak bullets quoted directly from resume
+  weakBulletsDetected?: { text: string; role: string; reason: string }[];
+  unquantifiedBulletsDetected?: { text: string; role: string }[];
+  bulletQuantRate?: number;
+  projectedScore?: number | null;
 }
 
 export function FreeKeywordResults({
@@ -763,7 +768,11 @@ export function FreeKeywordResults({
   contentLocations,
   industryDetection,
   eliteSignals,
-  onIndustryChange
+  onIndustryChange,
+  weakBulletsDetected = [],
+  unquantifiedBulletsDetected = [],
+  bulletQuantRate,
+  projectedScore,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1411,6 +1420,7 @@ export function FreeKeywordResults({
         onForceReanalyze={onForceReanalyze}
         isLoading={isLoading}
         eliteSignalsCount={eliteSignals?.length || 0}
+        projectedScore={projectedScore ?? undefined}
       />
 
       {/* Resume Builder CTA */}
@@ -2928,6 +2938,55 @@ export function FreeKeywordResults({
           </div>
         )}
       </div>
+
+      {/* Weak Bullets — quoted directly from the resume so the report feels specific */}
+      {(weakBulletsDetected.length > 0 || unquantifiedBulletsDetected.length > 0) && (
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 mb-5">
+          <div className="flex items-center gap-2 mb-1">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+            <h4 className="font-semibold text-foreground">
+              {candidateName ? `${candidateName?.split(' ')[0]}'s bullets that need fixing` : 'Bullets that need fixing'}
+            </h4>
+            <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">
+              From your resume
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">These exact lines were found in your resume and are dragging your score down.</p>
+          <div className="space-y-2">
+            {weakBulletsDetected.map((b, i) => (
+              <div key={i} className="rounded-lg border border-destructive/20 bg-background/60 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-destructive/15 flex items-center justify-center">
+                    <span className="text-[10px] text-destructive font-bold">✕</span>
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground/90 italic">"{b.text}"</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      <span className="font-medium">{b.role}</span> · {b.reason}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {unquantifiedBulletsDetected.map((b, i) => (
+              <div key={`uq-${i}`} className="rounded-lg border border-warning/20 bg-background/60 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-warning/15 flex items-center justify-center">
+                    <span className="text-[10px] text-warning font-bold">#</span>
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground/90 italic">"{b.text}"</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      <span className="font-medium">{b.role}</span> · no measurable metric
+                      {bulletQuantRate !== undefined && <span className="ml-1">({bulletQuantRate}% of your bullets have metrics)</span>}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Quick Wins */}
       {quickWins.length > 0 && (

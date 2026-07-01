@@ -219,6 +219,11 @@ interface FreeKeywordResult {
     yearsEstimate?: string | null;
     alternativeIndustries?: string[];
   };
+  // Pre-detected weak bullets — quoted directly from the resume
+  weakBulletsDetected?: { text: string; role: string; reason: string }[];
+  unquantifiedBulletsDetected?: { text: string; role: string }[];
+  bulletQuantRate?: number;
+  projectedScore?: number | null;
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
@@ -1368,6 +1373,10 @@ const Index = () => {
                 eliteSignals={freeKeywordResult.eliteSignals}
                 contentLocations={freeKeywordResult.contentLocations}
                 industryDetection={freeKeywordResult.industryDetection}
+                weakBulletsDetected={freeKeywordResult.weakBulletsDetected}
+                unquantifiedBulletsDetected={freeKeywordResult.unquantifiedBulletsDetected}
+                bulletQuantRate={freeKeywordResult.bulletQuantRate}
+                projectedScore={freeKeywordResult.projectedScore ?? undefined}
               />
               
               {/* Score-based package recommendation */}
