@@ -8195,6 +8195,27 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       }
       
       // Store enhanced detection metadata for UI (includes sub-industry info)
+      // Enrich with shared detector fields (subRole, techStack, educationSignals, alt reasons)
+      let sharedEnrichment: {
+        subRole?: string;
+        techStack?: string[];
+        educationSignals?: string[];
+        alternativeIndustriesWithReasons?: Array<{ industry: string; reason?: string }>;
+      } = {};
+      try {
+        const shared = detectIndustryShared(resumeText);
+        sharedEnrichment = {
+          subRole: shared.subRole,
+          techStack: shared.techStack,
+          educationSignals: shared.educationSignals,
+          alternativeIndustriesWithReasons: (shared.alternativeIndustries || [])
+            .slice(0, 3)
+            .map((a: any) => ({ industry: a.industry, reason: a.reason })),
+        };
+      } catch (e) {
+        console.warn('[FREE-KEYWORD-SCAN-STREAM] Shared industry enrichment failed:', (e as Error).message);
+      }
+
       const industryDetectionMeta = {
         detected: hybridResult.industry,
         subIndustry: hybridResult.subIndustry,
@@ -8202,9 +8223,11 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         confidence: hybridResult.confidence,
         signals: hybridResult.signals,
         aiSuggested: rawIndustry,
-        score: hybridResult.score
+        score: hybridResult.score,
+        ...sharedEnrichment,
       };
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Industry detection: ${JSON.stringify(industryDetectionMeta)}`);
+
 
       // Log industry detection metrics for accuracy tracking (non-blocking)
       const normalizedAISuggested = normalizeIndustry(rawIndustry);
