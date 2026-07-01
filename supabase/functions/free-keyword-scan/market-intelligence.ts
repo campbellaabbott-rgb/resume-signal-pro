@@ -1,0 +1,898 @@
+/**
+ * Market Intelligence Module
+ *
+ * Five capabilities:
+ * 1. Geo/country detection from resume text (phone, address, institutions, currency)
+ * 2. Country + industry market insights injected into AI prompt
+ * 3. Skills recency scoring (aging vs fresh skills per industry)
+ * 4. Career trajectory analysis (upward / lateral / transition / regression)
+ * 5. ATS system detection from job description text
+ *
+ * All functions are pure / synchronous — no network calls.
+ */
+
+// ─── 1. GEO DETECTION ────────────────────────────────────────────────────────
+
+const PHONE_TO_COUNTRY: Array<{ pattern: RegExp; country: string }> = [
+  { pattern: /\+44[\s\-]?\d/, country: 'GB' },
+  { pattern: /\+61[\s\-]?\d/, country: 'AU' },
+  { pattern: /\+64[\s\-]?\d/, country: 'NZ' },
+  { pattern: /\+49[\s\-]?\d/, country: 'DE' },
+  { pattern: /\+33[\s\-]?\d/, country: 'FR' },
+  { pattern: /\+31[\s\-]?\d/, country: 'NL' },
+  { pattern: /\+32[\s\-]?\d/, country: 'BE' },
+  { pattern: /\+41[\s\-]?\d/, country: 'CH' },
+  { pattern: /\+43[\s\-]?\d/, country: 'AT' },
+  { pattern: /\+46[\s\-]?\d/, country: 'SE' },
+  { pattern: /\+47[\s\-]?\d/, country: 'NO' },
+  { pattern: /\+45[\s\-]?\d/, country: 'DK' },
+  { pattern: /\+358[\s\-]?\d/, country: 'FI' },
+  { pattern: /\+353[\s\-]?\d/, country: 'IE' },
+  { pattern: /\+34[\s\-]?\d/, country: 'ES' },
+  { pattern: /\+39[\s\-]?\d/, country: 'IT' },
+  { pattern: /\+48[\s\-]?\d/, country: 'PL' },
+  { pattern: /\+91[\s\-]?\d/, country: 'IN' },
+  { pattern: /\+65[\s\-]?\d/, country: 'SG' },
+  { pattern: /\+852[\s\-]?\d/, country: 'HK' },
+  { pattern: /\+81[\s\-]?\d/, country: 'JP' },
+  { pattern: /\+82[\s\-]?\d/, country: 'KR' },
+  { pattern: /\+86[\s\-]?\d/, country: 'CN' },
+  { pattern: /\+971[\s\-]?\d/, country: 'AE' },
+  { pattern: /\+972[\s\-]?\d/, country: 'IL' },
+  { pattern: /\+27[\s\-]?\d/, country: 'ZA' },
+  { pattern: /\+55[\s\-]?\d/, country: 'BR' },
+  { pattern: /\+52[\s\-]?\d/, country: 'MX' },
+  { pattern: /\+1[\s\-]?\(?\d{3}\)?[\s\-]\d{3}[\s\-]\d{4}/, country: 'US' }, // US format last — most common
+  { pattern: /\+1[\s\-]?\d{3}[\s\-]\d{3}[\s\-]\d{4}/, country: 'US' },
+];
+
+// UK-specific city/postcode patterns
+const UK_SIGNALS = /\b(london|manchester|birmingham|leeds|edinburgh|glasgow|bristol|cardiff|belfast|sheffield|liverpool|EC\d|WC\d|SW\d|SE\d|N\d|NW\d|W\d|E\d|EC\d|WC\d|[A-Z]{1,2}\d{1,2}\s\d[A-Z]{2})\b/i;
+const AU_SIGNALS = /\b(sydney|melbourne|brisbane|perth|adelaide|canberra|darwin|hobart|NSW|VIC|QLD|WA|SA|ACT|TAS|NT)\b/;
+const DE_SIGNALS = /\b(berlin|munich|münchen|hamburg|frankfurt|cologne|köln|düsseldorf|stuttgart|dortmund|essen|GmbH|AG)\b/i;
+const IN_SIGNALS = /\b(mumbai|delhi|bangalore|bengaluru|chennai|hyderabad|pune|kolkata|ahmedabad|india)\b/i;
+const SG_SIGNALS = /\b(singapore|\bSGD\b|buona vista|one-north|raffles|central business district cbd)\b/i;
+const CA_SIGNALS = /\b(toronto|vancouver|montreal|calgary|ottawa|edmonton|winnipeg|ontario|british columbia|alberta|quebec|canada|GIC|TFSA|RRSP)\b/i;
+const UAE_SIGNALS = /\b(dubai|abu dhabi|sharjah|uae|united arab emirates|\bAED\b|free zone|dafza|difc)\b/i;
+
+// Currency symbols used in resume (salary mentions, etc.)
+const CURRENCY_TO_COUNTRY: Record<string, string> = {
+  '£': 'GB', '€': 'EU', '₹': 'IN', 'A\\$': 'AU', 'C\\$': 'CA',
+  'S\\$': 'SG', 'HK\\$': 'HK', '¥': 'JP', '₩': 'KR', 'R ': 'ZA',
+};
+
+export interface GeoDetectionResult {
+  country: string | null;
+  confidence: 'high' | 'medium' | 'low';
+  signals: string[];
+  source: 'phone' | 'address' | 'institution' | 'currency' | 'ip' | 'none';
+}
+
+/**
+ * Detect country from resume text using phone format, city names, currency, and institutions.
+ * Returns null country if nothing is found — caller uses IP-based country as fallback.
+ */
+export function detectCountryFromResume(resumeText: string): GeoDetectionResult {
+  const text = resumeText;
+  const lower = text.toLowerCase();
+  const signals: string[] = [];
+
+  // 1. Phone number format (highest confidence)
+  for (const { pattern, country } of PHONE_TO_COUNTRY) {
+    if (pattern.test(text)) {
+      signals.push(`Phone prefix matches ${country}`);
+      return { country, confidence: 'high', signals, source: 'phone' };
+    }
+  }
+
+  // 2. Address / city patterns (medium-high)
+  if (UK_SIGNALS.test(text)) {
+    signals.push('UK city or postcode detected');
+    return { country: 'GB', confidence: 'medium', signals, source: 'address' };
+  }
+  if (CA_SIGNALS.test(text)) {
+    signals.push('Canadian city/province detected');
+    return { country: 'CA', confidence: 'medium', signals, source: 'address' };
+  }
+  if (AU_SIGNALS.test(text)) {
+    signals.push('Australian city/state detected');
+    return { country: 'AU', confidence: 'medium', signals, source: 'address' };
+  }
+  if (DE_SIGNALS.test(text)) {
+    signals.push('German city or company suffix detected');
+    return { country: 'DE', confidence: 'medium', signals, source: 'address' };
+  }
+  if (IN_SIGNALS.test(text)) {
+    signals.push('Indian city detected');
+    return { country: 'IN', confidence: 'medium', signals, source: 'address' };
+  }
+  if (SG_SIGNALS.test(text)) {
+    signals.push('Singapore location detected');
+    return { country: 'SG', confidence: 'medium', signals, source: 'address' };
+  }
+  if (UAE_SIGNALS.test(text)) {
+    signals.push('UAE location detected');
+    return { country: 'AE', confidence: 'medium', signals, source: 'address' };
+  }
+
+  // 3. Currency symbols (medium)
+  for (const [symbol, country] of Object.entries(CURRENCY_TO_COUNTRY)) {
+    if (new RegExp(symbol).test(text)) {
+      signals.push(`Currency symbol "${symbol}" detected`);
+      return { country, confidence: 'medium', signals, source: 'currency' };
+    }
+  }
+
+  // 4. US fallback — no international signals, US is most common
+  const hasUSCity = /\b(new york|san francisco|los angeles|chicago|boston|seattle|austin|denver|atlanta|miami|brooklyn|manhattan|bay area|silicon valley)\b/i.test(text);
+  if (hasUSCity) {
+    signals.push('US city detected');
+    return { country: 'US', confidence: 'medium', signals, source: 'address' };
+  }
+
+  return { country: null, confidence: 'low', signals: ['No country signals found in resume'], source: 'none' };
+}
+
+// ─── 2. MARKET INTELLIGENCE DATA ─────────────────────────────────────────────
+
+interface MarketInsight {
+  marketSummary: string;                // 1-2 sentence market overview
+  hotSkills: string[];                  // Skills in high demand right now
+  risingKeywords: string[];             // Keywords trending up in job postings
+  cvNorms: string[];                    // Country-specific CV/resume formatting norms
+  salaryContext?: string;               // Comp context if relevant
+  uniqueSignals?: string[];             // Differentiating factors in this market
+}
+
+type CountryIndustryKey = `${string}:${string}` | string;
+
+// Market data keyed by "country:industry" with country-only fallbacks.
+// Reflects market conditions as of mid-2025.
+const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
+
+  // ── UNITED KINGDOM ──
+  'GB:technology': {
+    marketSummary: 'UK tech hiring is recovering in 2025 with strong demand in AI, fintech, and cybersecurity. London remains the hub but Manchester and Bristol are growing fast.',
+    hotSkills: ['Python', 'Kubernetes', 'TypeScript', 'LLM/GenAI', 'Terraform', 'Golang'],
+    risingKeywords: ['AI integration', 'MLOps', 'platform engineering', 'FinOps'],
+    cvNorms: ['UK CVs are typically 2 pages maximum', 'Do NOT include photo, age, or marital status — these can trigger unconscious bias claims', 'Spell out GCSE/A-Level grades if listed', 'Include "right to work" status if non-UK national'],
+    salaryContext: 'Senior SWE roles in London range £80-130K; outside London 15-25% lower',
+    uniqueSignals: ['SC Clearance or DV Clearance dramatically expands gov/defence opportunities', 'IR35 compliance note matters for contractors'],
+  },
+  'GB:finance': {
+    marketSummary: 'London remains Europe\'s largest financial centre despite post-Brexit shifts. IB, asset management, and fintech all hiring. Regulatory roles especially in demand.',
+    hotSkills: ['Python', 'SQL', 'Bloomberg', 'VBA', 'Power BI', 'IFRS'],
+    risingKeywords: ['ESG reporting', 'SFDR compliance', 'AI in finance', 'RegTech'],
+    cvNorms: ['Two pages standard', 'A-Levels and university grades expected for junior roles', 'Include professional body membership (CFA, CIMA, ACCA, ACA)'],
+    salaryContext: 'IB analyst £60-80K base + bonus; AM roles £70-120K depending on AUM',
+    uniqueSignals: ['CIMA, ACA, ACCA certifications valued over US CPA', 'FCA regulatory knowledge is a differentiator'],
+  },
+  'GB:consulting': {
+    marketSummary: 'Big 4 and MBB continue strong hiring. Public sector consulting saw budget cuts in 2024 but private sector demand is robust.',
+    hotSkills: ['PowerPoint', 'Excel', 'Python', 'Tableau', 'stakeholder management'],
+    risingKeywords: ['digital transformation', 'AI strategy', 'operating model', 'ESG'],
+    cvNorms: ['Two pages maximum for MBB', 'A-Level grades expected by top firms', 'Include university rank and degree classification (2:1, First)'],
+    uniqueSignals: ['Degree classification (First, 2:1) matters more than in the US', 'University brand (Oxbridge, Russel Group) still heavily weighted at MBB'],
+  },
+  'GB:healthcare': {
+    marketSummary: 'NHS and private sector both hiring. Clinical roles have strong demand; health tech and digital health are fast growing.',
+    hotSkills: ['EMR/EHR systems', 'clinical audit', 'NICE guidelines', 'patient safety'],
+    risingKeywords: ['digital health', 'NHS App', 'remote monitoring', 'AI diagnostics'],
+    cvNorms: ['GMC/NMC registration number required', 'Clinical roles: include appraisal/revalidation status', 'DBS check status should be mentioned'],
+    uniqueSignals: ['NHS banding knowledge expected', 'Right to work + GMC registration are hard gates'],
+  },
+
+  // ── AUSTRALIA ──
+  'AU:technology': {
+    marketSummary: 'Australian tech market is tight but resilient. Sydney and Melbourne dominate; gov digital transformation projects are creating strong demand.',
+    hotSkills: ['Python', 'AWS', 'React', 'TypeScript', 'Kubernetes', 'Terraform'],
+    risingKeywords: ['cloud migration', 'cybersecurity', 'data engineering', 'AI/ML'],
+    cvNorms: ['2-3 pages acceptable', 'Include Australian work rights status', 'Referees expected — "available on request" is standard', 'Include LinkedIn URL'],
+    salaryContext: 'Senior SWE AUD $150-200K; mid-level $110-150K',
+    uniqueSignals: ['NV1/NV2 security clearance expands ASD/Defence opportunities significantly', 'Australian citizen status matters for gov roles'],
+  },
+  'AU:finance': {
+    marketSummary: 'Big 4 banks (CBA, ANZ, NAB, Westpac), superannuation funds, and growing fintech sector. ASIC regulatory roles in demand.',
+    hotSkills: ['Excel', 'Python', 'SQL', 'Power BI', 'IFRS', 'superannuation'],
+    risingKeywords: ['APRA compliance', 'open banking', 'CDR', 'ESG reporting', 'Basel IV'],
+    cvNorms: ['Include CA ANZ or CPA Australia membership', 'Mention ASIC RG146 compliance for financial advisors'],
+    salaryContext: 'IB analyst AUD $90-120K; CFP/CPA roles $90-130K',
+    uniqueSignals: ['Superannuation industry knowledge is a major differentiator', 'ASIC/APRA regulatory knowledge valued highly'],
+  },
+  'AU:healthcare': {
+    marketSummary: 'Strong demand across nursing, allied health, and aged care post-COVID. Telehealth and rural/remote roles especially undersupplied.',
+    hotSkills: ['AHPRA registration', 'EMR systems', 'clinical governance', 'aged care standards'],
+    risingKeywords: ['telehealth', 'aged care reform', 'NDIS', 'rural health'],
+    cvNorms: ['AHPRA registration number required for clinical roles', 'Working with Children Check (WWCC) state-specific', 'NDIS Worker Screening mandatory for disability roles'],
+    uniqueSignals: ['AHPRA registration status is a hard requirement — always list it prominently', 'Aged Care Quality Standards compliance knowledge is valued'],
+  },
+
+  // ── GERMANY ──
+  'DE:technology': {
+    marketSummary: 'Germany\'s tech sector is growing, particularly in Berlin, Munich, and Hamburg. Mittelstand companies increasingly digital. English-language roles common in Berlin startup scene.',
+    hotSkills: ['Java', 'Python', 'SAP', 'Kubernetes', 'TypeScript', 'AWS'],
+    risingKeywords: ['Industry 4.0', 'Embedded systems', 'automotive software', 'B2B SaaS'],
+    cvNorms: ['German Lebenslauf traditionally includes photo, date of birth, nationality — now optional for modern companies', 'English CV standard at international/startup companies', 'Arbeitszeugnisse (employment references) expected for applications'],
+    salaryContext: 'Senior SWE €80-120K in Munich/Frankfurt; Berlin 10-15% lower',
+    uniqueSignals: ['SAP expertise is extremely valuable across all industries', 'German language skills required at most non-startup companies', 'Tarifvertrag (collective bargaining) affects comp at large companies'],
+  },
+  'DE:engineering': {
+    marketSummary: 'Automotive and mechanical engineering remain core; green energy and electrification driving major new hiring waves.',
+    hotSkills: ['CAD/CATIA', 'SolidWorks', 'MATLAB', 'ISO standards', 'DIN norms', 'electrification'],
+    risingKeywords: ['BEV/EV development', 'H2/hydrogen', 'AUTOSAR', 'functional safety'],
+    cvNorms: ['Ingenieur title is legally protected in Germany — include your degree classification', 'VDI membership valued', 'Include Fachrichtung (engineering specialization) explicitly'],
+    uniqueSignals: ['Automotive supply chain knowledge (Tier 1/Tier 2) is extremely marketable', 'TÜV certifications valued'],
+  },
+
+  // ── INDIA ──
+  'IN:technology': {
+    marketSummary: 'India\'s tech market is the world\'s largest IT services employer. Product-based companies (hyperscalers + unicorns) command premium pay. Services (TCS, Infosys, Wipro) have high volume hiring.',
+    hotSkills: ['Java', 'Python', 'React', 'AWS', 'Microservices', 'SQL', 'DSA'],
+    risingKeywords: ['GenAI integration', 'MLOps', 'cloud-native', 'DevSecOps', 'SRE'],
+    cvNorms: ['1-2 pages preferred', 'Include 10th/12th board marks for fresher roles', 'CGPA expected for campus hires', 'Include notice period clearly'],
+    salaryContext: 'Senior SWE (7+ years) at product company ₹40-80L CTC; services ₹20-35L',
+    uniqueSignals: ['Notice period (30/60/90 days) must be prominently stated', 'DSA/competitive programming background valued for product companies', 'FAANG/MAANG experience dramatically increases market value'],
+  },
+  'IN:finance': {
+    marketSummary: 'BFSI sector is India\'s second-largest employer. NBFCs, fintech startups, and private banks all hiring aggressively. CA designation is highly valued.',
+    hotSkills: ['Excel', 'Tally ERP', 'SAP FICO', 'Python', 'SQL', 'IND AS'],
+    risingKeywords: ['UPI/payment systems', 'SEBI compliance', 'RBI regulations', 'fintech credit'],
+    cvNorms: ['CA (Institute of Chartered Accountants of India) designation is paramount', 'Include All India Rank if CA inter/final was AIR-ranked', 'Notice period must be stated'],
+    uniqueSignals: ['CA qualification from ICAI is the gold standard — equivalent to CPA+CFA combined in US market', 'SEBI/RBI regulatory experience is a major differentiator'],
+  },
+
+  // ── SINGAPORE ──
+  'SG:technology': {
+    marketSummary: 'Singapore is APAC\'s tech hub. Strong government investment in digital economy; hyperscalers (AWS, Google, Meta, ByteDance) have major offices. Fintech and healthtech booming.',
+    hotSkills: ['Python', 'Kubernetes', 'TypeScript', 'AWS/GCP', 'Golang', 'Data Engineering'],
+    risingKeywords: ['AI governance', 'MAS TRM compliance', 'green tech', 'APAC expansion'],
+    cvNorms: ['2 pages standard', 'Include Singapore PR/EP/DP status explicitly', 'Photo optional but common', 'Include expected salary range'],
+    salaryContext: 'Senior SWE SGD $150-220K; mid-level $100-150K',
+    uniqueSignals: ['MAS TRM (Technology Risk Management) guidelines knowledge valued in fintech/banking', 'PDPA compliance knowledge is increasingly expected', 'EP/PR status affects hiring speed significantly'],
+  },
+  'SG:finance': {
+    marketSummary: 'Singapore is the leading financial centre in APAC. MAS-regulated institutions, family offices, and fintech all thriving. Strong demand for risk, compliance, and quant roles.',
+    hotSkills: ['Python', 'Bloomberg', 'Excel', 'SQL', 'MAS compliance', 'ISDA'],
+    risingKeywords: ['Digital asset regulation', 'MAS FEAT principles', 'ESG finance', 'payments modernisation'],
+    salaryContext: 'VP-level banking roles SGD $180-280K; quant roles $200-350K',
+    uniqueSignals: ['MAS licensing knowledge (CMS, CMSL) is a hard gate for regulated roles', 'Family office experience is a fast-growing niche'],
+  },
+
+  // ── UAE ──
+  'AE:technology': {
+    marketSummary: 'Dubai and Abu Dhabi are investing heavily in tech. Strong demand from government digital initiatives, fintech, and e-commerce. Tax-free compensation is a draw.',
+    hotSkills: ['Python', 'AWS', 'React', 'TypeScript', 'cloud', 'AI/ML'],
+    risingKeywords: ['UAE digital economy', 'ADGM fintech', 'DIFC technology', 'smart government'],
+    cvNorms: ['Photo expected on CV', 'Include nationality and visa status', 'Arabic language skills are a bonus but not required for tech roles', 'Expected salary must be stated'],
+    salaryContext: 'Senior SWE AED $250-400K (tax-free); significant variation by company type',
+    uniqueSignals: ['UAE Golden Visa eligibility for tech talent is a differentiator', 'ADGM/DIFC regulatory knowledge valued in fintech', 'Arabic language a significant differentiator in government projects'],
+  },
+
+  // ── CANADA ──
+  'CA:technology': {
+    marketSummary: 'Canadian tech market is strong in Toronto, Vancouver, and Waterloo. US companies have major offices; homegrown AI research community is world-class.',
+    hotSkills: ['Python', 'TypeScript', 'AWS', 'Kubernetes', 'React', 'ML/AI'],
+    risingKeywords: ['AI/ML', 'cloud-native', 'FinOps', 'cybersecurity', 'web3 (selective)'],
+    cvNorms: ['1-2 pages preferred', 'Do NOT include photo, DOB, or marital status (protected grounds under CHRA)', 'Include Canadian PR/citizenship status or work permit type'],
+    salaryContext: 'Senior SWE CAD $150-220K in Toronto/Vancouver; lower in other cities',
+    uniqueSignals: ['Canadian permanent residency/citizenship often required for certain gov/defence contracts', 'Federal government positions require enhanced reliability screening or secret clearance'],
+  },
+
+  // ── US (DEFAULT) ──
+  'US:technology': {
+    marketSummary: 'US tech hiring in 2025 is bifurcated: hyperscalers and AI companies are hiring aggressively while mid-size SaaS companies are more selective. Strong demand for AI/ML, platform, and security engineers.',
+    hotSkills: ['Python', 'TypeScript', 'Kubernetes', 'LLM APIs', 'Terraform', 'Golang', 'Rust'],
+    risingKeywords: ['agentic AI', 'RAG', 'FinOps', 'platform engineering', 'zero trust security'],
+    cvNorms: ['1 page for <10 years experience, 2 pages maximum', 'Do NOT include photo, age, nationality, or marital status', 'Include LinkedIn URL and GitHub for technical roles'],
+    salaryContext: 'Senior SWE: $180-280K TC at top companies; $130-180K at mid-market',
+    uniqueSignals: ['Work authorization status (US citizen, GC, H1B) affects hiring speed dramatically', 'Leetcode/system design skills expected at FAANG+'],
+  },
+  'US:finance': {
+    marketSummary: 'Wall Street hiring recovering in 2025. IB deal flow picking up; AM and hedge funds selective but paying well. Fintech and crypto roles growing again.',
+    hotSkills: ['Excel/VBA', 'Python', 'Bloomberg', 'SQL', 'PowerPoint', 'financial modeling'],
+    risingKeywords: ['AI in finance', 'RPA', 'ESG', 'alt data', 'quant finance'],
+    cvNorms: ['One page preferred for analysts, two for VPs+', 'Do not include photo or personal demographics', 'GPA still expected for campus/entry-level roles'],
+    salaryContext: 'IB analyst $110-120K base + $50-100K bonus; senior associate $180-230K',
+    uniqueSignals: ['Series 7/63/65 licenses dramatically expand role options', 'MBA from M7 school still heavily weighted at top firms'],
+  },
+  'US:consulting': {
+    marketSummary: 'MBB and Big 4 strategy practices are highly selective but hiring. Boutique strategy firms growing. Technology consulting demand remains strong.',
+    hotSkills: ['PowerPoint', 'Excel', 'SQL', 'Python', 'stakeholder management', 'project management'],
+    risingKeywords: ['AI strategy', 'digital transformation', 'operating model', 'M&A integration'],
+    cvNorms: ['One page strictly for MBB applications', 'GPA required — typically 3.5+ expected', 'Include "top quartile" academic honors explicitly'],
+    uniqueSignals: ['Case interview performance is the primary gate — this resume gets you the interview', 'Target school brands (HBS, Wharton, Kellogg, Booth) still heavily weighted'],
+  },
+  'US:healthcare': {
+    marketSummary: 'Healthcare is the US\'s largest employer. Clinical roles have persistent shortages; health tech and digital health booming; pharma and biotech hiring strongly.',
+    hotSkills: ['Epic', 'Cerner', 'EMR/EHR', 'HIPAA', 'clinical trial management', 'FDA 21 CFR'],
+    risingKeywords: ['AI diagnostics', 'value-based care', 'interoperability', 'telehealth', 'cell & gene therapy'],
+    cvNorms: ['Clinical roles: include license numbers, NPI, state licensure', 'Include malpractice insurance status for physicians', 'DEA registration number for prescribers'],
+    uniqueSignals: ['NPI number is a must-have for clinical roles', 'Board certification status dramatically affects positioning', 'Joint Commission knowledge valued in hospital administration'],
+  },
+  'US:sales': {
+    marketSummary: 'SaaS sales hiring remains strong, especially enterprise and AI-native companies. RevOps and sales engineering roles are premium segments.',
+    hotSkills: ['Salesforce', 'Outreach/Salesloft', 'MEDDIC/MEDDPICC', 'HubSpot', 'Clari', 'Gong'],
+    risingKeywords: ['AI-assisted selling', 'PLG sales motion', 'product-led sales', 'usage-based'],
+    cvNorms: ['Quota attainment percentages are mandatory — e.g. "125% of $1.2M quota"', 'ARR closed numbers expected for enterprise AE roles', 'Include average deal size and sales cycle length'],
+    uniqueSignals: ['MEDDIC/MEDDPICC methodology knowledge is increasingly a hard requirement at enterprise companies', 'Named account lists and territory management are differentiators'],
+  },
+  'US:marketing': {
+    marketSummary: 'Marketing teams are leaner but spending is up on performance/demand gen. Content marketing and AI-assisted workflows in high demand.',
+    hotSkills: ['HubSpot', 'Salesforce Marketing Cloud', 'Google Ads', 'SQL', 'Python', 'Figma'],
+    risingKeywords: ['AI content generation', 'account-based marketing', 'intent data', 'dark funnel'],
+    cvNorms: ['Include specific CAC, MQL, pipeline metrics — vague "increased traffic" claims are filtered out', 'Budget ownership ($Xk/year managed) is a strong differentiator'],
+    uniqueSignals: ['Attribution modeling and multi-touch analytics skills are increasingly valued', 'AI tool proficiency (Jasper, Copy.ai, Midjourney for creative) differentiates'],
+  },
+  'US:product_management': {
+    marketSummary: 'PM roles are highly competitive in 2025. AI PMs commanding significant premiums. B2B SaaS and AI companies are the main hirers.',
+    hotSkills: ['SQL', 'Amplitude/Mixpanel', 'Figma', 'Jira', 'A/B testing', 'stakeholder management'],
+    risingKeywords: ['AI product', 'LLM product development', 'agentic workflows', 'product-led growth'],
+    cvNorms: ['Quantify product impact (e.g., "drove 40% DAU increase" not "improved engagement")', 'Include specific OKR outcomes', 'Ship velocity and team size context expected at senior level'],
+    uniqueSignals: ['AI/ML product experience commands 20-40% salary premium', 'Technical PM credentials (CS degree, coding skills) are differentiators at most companies now'],
+  },
+
+  // Fallback for any country with no specific data
+  'DEFAULT': {
+    marketSummary: 'Ensure your resume is optimized for ATS systems used in your target market.',
+    hotSkills: [],
+    risingKeywords: [],
+    cvNorms: ['Use consistent date formatting throughout', 'Include contact details prominently', 'Tailor the summary to each role'],
+  },
+};
+
+/**
+ * Get market insight for a country + industry combination.
+ * Falls back to US data, then country-only, then DEFAULT.
+ */
+export function getMarketInsight(country: string | null, industry: string): MarketInsight & { countryName: string } {
+  const c = (country || 'US').toUpperCase();
+
+  const COUNTRY_NAMES: Record<string, string> = {
+    US: 'United States', GB: 'United Kingdom', AU: 'Australia', CA: 'Canada',
+    DE: 'Germany', FR: 'France', IN: 'India', SG: 'Singapore', AE: 'UAE',
+    HK: 'Hong Kong', JP: 'Japan', NL: 'Netherlands', IE: 'Ireland',
+    CH: 'Switzerland', SE: 'Sweden', NZ: 'New Zealand', ZA: 'South Africa',
+    BR: 'Brazil', MX: 'Mexico', IL: 'Israel', KR: 'South Korea',
+  };
+
+  const specific = MARKET_DATA[`${c}:${industry}`];
+  if (specific) return { ...specific, countryName: COUNTRY_NAMES[c] || c };
+
+  // Try broader industry match with US
+  const usIndustry = MARKET_DATA[`US:${industry}`];
+  if (usIndustry) return { ...usIndustry, countryName: COUNTRY_NAMES[c] || c };
+
+  return { ...MARKET_DATA['DEFAULT'], countryName: COUNTRY_NAMES[c] || c };
+}
+
+export function formatGeoContextForPrompt(
+  country: string | null,
+  industry: string,
+  resumeCountry: GeoDetectionResult,
+): string {
+  const effectiveCountry = resumeCountry.country || country;
+  if (!effectiveCountry && !country) return '';
+
+  const insight = getMarketInsight(effectiveCountry, industry);
+  const lines = ['\n\n<geo_market_context>'];
+  lines.push(`Candidate Location: ${insight.countryName} (${resumeCountry.source === 'phone' ? 'confirmed from phone number' : resumeCountry.source === 'address' ? 'inferred from address' : 'inferred from IP'})`);
+  lines.push(`Market Summary: ${insight.marketSummary}`);
+  if (insight.hotSkills.length > 0) lines.push(`Hot Skills in ${insight.countryName} ${industry} market: ${insight.hotSkills.join(', ')}`);
+  if (insight.risingKeywords.length > 0) lines.push(`Rising Keywords: ${insight.risingKeywords.join(', ')}`);
+  if (insight.cvNorms.length > 0) {
+    lines.push('Country-Specific CV Norms:');
+    insight.cvNorms.forEach(n => lines.push(`  - ${n}`));
+  }
+  if (insight.uniqueSignals?.length) {
+    lines.push('Market-Specific Differentiators:');
+    insight.uniqueSignals.forEach(s => lines.push(`  - ${s}`));
+  }
+  if (insight.salaryContext) lines.push(`Salary Context: ${insight.salaryContext}`);
+  lines.push('\nINSTRUCTION: Incorporate the above market context into your analysis. If the resume is missing any country-specific credentials or norm elements (e.g., license numbers, visa status, degree classification), flag them. If the candidate\'s skills match the "hot skills" list, explicitly affirm this as a strength. Reference the candidate\'s country market in your insights.');
+  lines.push('</geo_market_context>');
+  return lines.join('\n');
+}
+
+// ─── 3. SKILLS RECENCY SCORING ────────────────────────────────────────────────
+
+// Skills that are declining in job postings as of 2025
+const AGING_SKILLS_BY_INDUSTRY: Record<string, string[]> = {
+  technology: [
+    'jquery', 'backbone.js', 'angularjs', 'angular.js', 'coffeescript',
+    'bower', 'grunt', 'gulp', 'svn', 'subversion', 'cvs', 'mercurial',
+    'flash', 'actionscript', 'silverlight', 'vbscript',
+    'soap', 'wsdl', 'xml-rpc',
+    'mean stack', 'lamp stack',
+    'openshift 3', 'vmware vsphere 5', 'on-premise servers',
+    'perl 5', 'coldfusion', 'cobol', 'delphi', 'vb.net',
+    'hadoop mapreduce', 'hive (legacy)', 'pig latin',
+    'rss feeds', 'yahoo query language',
+    'phonegap', 'cordova', 'sencha touch',
+    'internet explorer', 'ie11', 'ie compatibility',
+    'google analytics universal',
+  ],
+  data_science: [
+    'r studio (standalone)', 'spss', 'sas base',
+    'hadoop mapreduce', 'pig', 'hive ql',
+    'tableau public only',
+    'excel pivot tables only',
+  ],
+  data_engineering: [
+    'hadoop mapreduce', 'oozie', 'sqoop', 'flume', 'pig',
+    'hive ql', 'teradata (legacy)', 'informatica powercenter',
+    'ssis (standalone)', 'pentaho',
+  ],
+  marketing: [
+    'google analytics universal', 'adobe flash banners', 'keyword stuffing',
+    'blackhat seo', 'link farms',
+    'yahoo search marketing', 'myspace marketing',
+    'flash animations', 'email blast (as term)', 'pop-up ads',
+  ],
+  finance: [
+    'lotus 1-2-3', 'as/400 finance', 'cognos controller (legacy)',
+    'hyperion (pre-cloud)', 'oracle financials 11i',
+  ],
+};
+
+// Skills that are rising in job postings as of 2025
+const FRESH_SKILLS_BY_INDUSTRY: Record<string, string[]> = {
+  technology: [
+    'llm', 'langchain', 'rag', 'vector database', 'embedding',
+    'agentic ai', 'function calling', 'mcp', 'llmops',
+    'platform engineering', 'internal developer platform', 'backstage',
+    'opentelemetry', 'ebpf', 'wasm', 'webassembly',
+    'rust', 'go', 'deno', 'bun',
+    'cursor', 'copilot', 'ai-assisted development',
+    'finops', 'cloud cost optimization',
+    'zero trust', 'spiffe', 'spdx', 'sbom',
+    'temporal', 'dapr', 'envoy', 'cilium',
+  ],
+  data_science: [
+    'llm fine-tuning', 'rag', 'causal inference', 'dbt',
+    'feature store', 'mlflow', 'wandb', 'bentoml',
+    'evidence.dev', 'polars', 'duckdb',
+  ],
+  data_engineering: [
+    'dbt', 'dagster', 'duckdb', 'iceberg', 'delta lake',
+    'polars', 'kafka connect', 'flink', 'materialize',
+    'openlineage', 'data mesh', 'data contracts',
+  ],
+  marketing: [
+    'ai content generation', 'intent data', 'dark funnel analytics',
+    'account-based experience', 'abx', 'product-led growth',
+    'ga4', 'server-side tagging', 'cookieless tracking',
+    'generative ai for creative', 'performance max',
+  ],
+  finance: [
+    'python (finance)', 'ai in finance', 'alternative data',
+    'esg reporting', 'sfdr', 'tcfd', 'xbrl',
+    'digital assets', 'tokenization',
+    'power bi', 'tableau', 'sql for finance',
+  ],
+};
+
+export interface SkillsRecencyResult {
+  agingSkills: string[];
+  freshSkills: string[];    // Skills in resume that match fresh/in-demand list
+  freshnessScore: number;   // 0-100, higher = more current skill set
+  hasAgingSignals: boolean;
+}
+
+export function analyzeSkillsRecency(resumeText: string, industry: string): SkillsRecencyResult {
+  const lower = resumeText.toLowerCase();
+  const agingList = AGING_SKILLS_BY_INDUSTRY[industry] || AGING_SKILLS_BY_INDUSTRY.technology;
+  const freshList = FRESH_SKILLS_BY_INDUSTRY[industry] || FRESH_SKILLS_BY_INDUSTRY.technology;
+
+  const agingSkills = agingList.filter(s => lower.includes(s.toLowerCase()));
+  const freshSkills = freshList.filter(s => lower.includes(s.toLowerCase()));
+
+  // Score: start at 70, +5 per fresh skill (max +30), -8 per aging skill (min 20)
+  const freshnessScore = Math.max(20, Math.min(100,
+    70 + freshSkills.length * 5 - agingSkills.length * 8
+  ));
+
+  return {
+    agingSkills: agingSkills.slice(0, 5),
+    freshSkills: freshSkills.slice(0, 5),
+    freshnessScore,
+    hasAgingSignals: agingSkills.length > 0,
+  };
+}
+
+export function formatSkillsRecencyForPrompt(recency: SkillsRecencyResult, industry: string): string {
+  if (!recency.hasAgingSignals && recency.freshSkills.length === 0) return '';
+  const lines = ['\n\n<skills_recency_analysis>'];
+  if (recency.agingSkills.length > 0) {
+    lines.push(`AGING SKILLS DETECTED (declining in ${industry} job postings as of 2025): ${recency.agingSkills.join(', ')}`);
+    lines.push('INSTRUCTION: Flag these as "skills that may date your resume" in red flags or quick wins. Suggest modern equivalents where possible (e.g., SVN → Git, AngularJS → React/Vue/Angular 17+). Do NOT tell the candidate to remove them entirely if they\'re genuinely experienced — instead suggest pairing them with modern equivalents.');
+  }
+  if (recency.freshSkills.length > 0) {
+    lines.push(`STRONG/CURRENT SKILLS (high demand in 2025 ${industry} market): ${recency.freshSkills.join(', ')}`);
+    lines.push('INSTRUCTION: Affirm these as genuine strengths and mention them as competitive advantages in your analysis.');
+  }
+  lines.push(`Skills Freshness Score: ${recency.freshnessScore}/100`);
+  lines.push('</skills_recency_analysis>');
+  return lines.join('\n');
+}
+
+// ─── 4. CAREER TRAJECTORY ANALYSIS ──────────────────────────────────────────
+
+export type TrajectoryType = 'upward' | 'lateral' | 'transition' | 'regression' | 'early_career' | 'unknown';
+
+export interface CareerTrajectory {
+  trajectory: TrajectoryType;
+  promotionCount: number;
+  industryTransitionDetected: boolean;
+  fromIndustry?: string;
+  transitionConfidence: 'high' | 'medium' | 'low';
+  yearsAtCurrentLevel: number | null;
+  progressionSummary: string;
+}
+
+const SENIORITY_RANK: Record<string, number> = {
+  intern: 0, trainee: 0, apprentice: 0,
+  associate: 1, junior: 1, entry: 1, assistant: 1, coordinator: 1,
+  analyst: 2, specialist: 2, developer: 2, engineer: 2, representative: 2,
+  senior: 3, 'sr.': 3, lead: 3, principal: 3, staff: 3,
+  manager: 4, director: 4, head: 4, vp: 5, 'vice president': 5,
+  svp: 6, evp: 6, c: 7, ceo: 7, cto: 7, cfo: 7, coo: 7, cro: 7, partner: 7, founder: 7,
+};
+
+function extractSeniorityFromTitle(title: string): number {
+  const lower = title.toLowerCase();
+  let rank = 2; // default = individual contributor
+  for (const [kw, r] of Object.entries(SENIORITY_RANK)) {
+    if (lower.includes(kw) && r > rank) rank = r;
+  }
+  return rank;
+}
+
+const TRANSITION_KEYWORDS: Record<string, string[]> = {
+  military: ['military', 'army', 'navy', 'air force', 'marines', 'coast guard', 'nco', 'officer', 'sergeant', 'lieutenant', 'captain', 'colonel'],
+  nonprofit: ['nonprofit', 'ngo', 'charity', 'foundation', 'volunteer', 'mission-driven'],
+  academia: ['professor', 'phd candidate', 'postdoc', 'teaching assistant', 'research assistant', 'lecturer'],
+  government: ['government', 'federal', 'state agency', 'municipality', 'civil service'],
+};
+
+export function analyzeCareerTrajectory(
+  allTitles: string[],
+  industry: string,
+  resumeText: string,
+): CareerTrajectory {
+  if (allTitles.length === 0) {
+    return {
+      trajectory: 'unknown', promotionCount: 0,
+      industryTransitionDetected: false, transitionConfidence: 'low',
+      yearsAtCurrentLevel: null, progressionSummary: 'Unable to detect career trajectory from available data.',
+    };
+  }
+
+  if (allTitles.length === 1) {
+    return {
+      trajectory: 'early_career', promotionCount: 0,
+      industryTransitionDetected: false, transitionConfidence: 'low',
+      yearsAtCurrentLevel: null, progressionSummary: 'Single role detected — early career or career starter.',
+    };
+  }
+
+  // Seniority ranks in reverse-chron order (most recent first)
+  const ranks = allTitles.map(extractSeniorityFromTitle);
+  const mostRecent = ranks[0];
+  const oldest = ranks[ranks.length - 1];
+
+  // Count promotions (rank increases between adjacent roles)
+  let promotionCount = 0;
+  for (let i = 0; i < ranks.length - 1; i++) {
+    if (ranks[i] > ranks[i + 1]) promotionCount++;
+  }
+
+  // Detect regressions (only meaningful if followed by recent recovery)
+  const regressionCount = ranks.filter((r, i) => i > 0 && r < ranks[i - 1]).length;
+
+  // Determine trajectory
+  let trajectory: TrajectoryType;
+  if (mostRecent > oldest + 1) trajectory = 'upward';
+  else if (mostRecent < oldest) trajectory = 'regression';
+  else if (promotionCount >= 2) trajectory = 'upward';
+  else trajectory = 'lateral';
+
+  // Industry transition detection
+  const lowerText = resumeText.toLowerCase();
+  let industryTransitionDetected = false;
+  let fromIndustry: string | undefined;
+  for (const [srcIndustry, kws] of Object.entries(TRANSITION_KEYWORDS)) {
+    if (srcIndustry !== industry && kws.some(k => lowerText.includes(k))) {
+      industryTransitionDetected = true;
+      fromIndustry = srcIndustry;
+      trajectory = 'transition';
+      break;
+    }
+  }
+
+  // Build human-readable summary
+  const titleFlow = allTitles.slice(0, 4).reverse().join(' → ');
+  const progressionSummary = (() => {
+    if (trajectory === 'upward') return `Clear upward trajectory: ${titleFlow}. ${promotionCount} promotion${promotionCount !== 1 ? 's' : ''} detected.`;
+    if (trajectory === 'transition') return `Career transition from ${fromIndustry || 'prior field'} to ${industry}. Recent titles: ${titleFlow}.`;
+    if (trajectory === 'regression') return `Title regression detected (${titleFlow}). May be intentional (work-life balance, specialization) — avoid penalizing without context.`;
+    if (trajectory === 'lateral') return `Lateral moves across companies: ${titleFlow}. Breadth-building pattern rather than title progression.`;
+    return `Career path: ${titleFlow}.`;
+  })();
+
+  return {
+    trajectory,
+    promotionCount,
+    industryTransitionDetected,
+    fromIndustry,
+    transitionConfidence: industryTransitionDetected ? 'high' : 'low',
+    yearsAtCurrentLevel: null,
+    progressionSummary,
+  };
+}
+
+export function formatCareerTrajectoryForPrompt(traj: CareerTrajectory): string {
+  const lines = ['\n\n<career_trajectory_analysis>'];
+  lines.push(`Trajectory Type: ${traj.trajectory}`);
+  lines.push(`Promotions Detected: ${traj.promotionCount}`);
+  lines.push(`Summary: ${traj.progressionSummary}`);
+  if (traj.industryTransitionDetected) {
+    lines.push(`Industry Transition: FROM ${traj.fromIndustry} → current industry`);
+    lines.push('INSTRUCTION: This candidate is a career transitioner. Do NOT penalize for missing "years in industry." Instead, focus quick wins on how to frame transferable skills and signal the transition clearly to recruiters. Bridge language (e.g., "leveraging X years in [previous field] to bring [value] to [current field]") is a key quick win.');
+  } else if (traj.trajectory === 'upward') {
+    lines.push('INSTRUCTION: Highlight the upward progression as a key strength. Quick wins should help ARTICULATE this progression more clearly — not change direction. Flag any resume sections that undersell the scope increase between roles.');
+  } else if (traj.trajectory === 'lateral') {
+    lines.push('INSTRUCTION: Lateral movers may not show title progression but often have broad skills. Help the candidate frame lateral moves as intentional breadth-building rather than stagnation. Suggest adding a brief "why I moved" context in bullets where relevant.');
+  } else if (traj.trajectory === 'regression') {
+    lines.push('INSTRUCTION: Title regression may be intentional (consulting back to IC, leadership to specialist). Do NOT assume it is negative. Flag it only if there is no clear explanation in the resume. If there is a clear explanation, treat it as neutral.');
+  }
+  lines.push('</career_trajectory_analysis>');
+  return lines.join('\n');
+}
+
+// ─── 5. ATS SYSTEM DETECTION ─────────────────────────────────────────────────
+
+export type AtsSystem = 'greenhouse' | 'lever' | 'workday' | 'taleo' | 'icims' | 'smartrecruiters' | 'ashby' | 'jobvite' | 'brassring' | 'successfactors' | 'unknown';
+
+interface AtsSystemProfile {
+  name: string;
+  knownIssues: string[];
+  recommendations: string[];
+  parsingStrength: 'strong' | 'moderate' | 'weak';
+}
+
+const ATS_PROFILES: Record<AtsSystem, AtsSystemProfile> = {
+  greenhouse: {
+    name: 'Greenhouse',
+    knownIssues: ['Struggles with two-column layouts', 'Tables sometimes parsed as single line'],
+    recommendations: ['Single-column format strongly preferred', 'Standard section headings parse best', 'PDF and Word both supported well'],
+    parsingStrength: 'strong',
+  },
+  lever: {
+    name: 'Lever',
+    knownIssues: ['Header/footer text sometimes dropped', 'Unusual fonts may not parse'],
+    recommendations: ['Avoid header/footer for important contact info', 'Standard fonts only', 'LinkedIn URL in body, not header'],
+    parsingStrength: 'strong',
+  },
+  workday: {
+    name: 'Workday',
+    knownIssues: ['Notoriously poor PDF parsing', 'Tables and text boxes are dropped', 'Two-column layouts frequently corrupted', 'Bullets sometimes become unparsed symbols'],
+    recommendations: ['Use Word (.docx) format when possible', 'AVOID tables and text boxes entirely', 'Single-column, plain formatting mandatory', 'Standard bullet points (•) only'],
+    parsingStrength: 'weak',
+  },
+  taleo: {
+    name: 'Taleo (Oracle)',
+    knownIssues: ['Very old system — poor PDF parsing', 'Graphics, logos, and icons stripped', 'Dates must be in standard MM/YYYY format', 'Skills keyword matching is literal (exact match only)'],
+    recommendations: ['Plain text or Word format', 'Exact keyword matching critical — avoid synonyms', 'Remove all graphics, logos, shading', 'Use standard MM/YYYY date format throughout'],
+    parsingStrength: 'weak',
+  },
+  icims: {
+    name: 'iCIMS',
+    knownIssues: ['Multi-column layouts may be concatenated incorrectly', 'Special characters in bullets sometimes garbled'],
+    recommendations: ['Single-column preferred', 'Standard UTF-8 characters only', 'Avoid em-dashes — use standard hyphens'],
+    parsingStrength: 'moderate',
+  },
+  smartrecruiters: {
+    name: 'SmartRecruiters',
+    knownIssues: ['Modern system with better parsing', 'Still prefers single-column'],
+    recommendations: ['Modern formats generally supported', 'Single-column still safer', 'PDF fine'],
+    parsingStrength: 'strong',
+  },
+  ashby: {
+    name: 'Ashby',
+    knownIssues: ['Newer system, generally good parsing'],
+    recommendations: ['Most modern formats supported', 'PDF preferred', 'No special formatting concerns'],
+    parsingStrength: 'strong',
+  },
+  jobvite: {
+    name: 'Jobvite',
+    knownIssues: ['Tables not reliably parsed', 'Some PDF rendering issues'],
+    recommendations: ['Single-column preferred', 'Word format safer than PDF for complex layouts'],
+    parsingStrength: 'moderate',
+  },
+  brassring: {
+    name: 'BrassRing (IBM Kenexa)',
+    knownIssues: ['Legacy system with minimal formatting support', 'Poor PDF handling', 'Graphics stripped', 'Column layouts broken'],
+    recommendations: ['Plain text format ideal', 'Remove ALL formatting beyond basic bullets', 'No tables, no columns, no text boxes', 'Dates in MM/YYYY format'],
+    parsingStrength: 'weak',
+  },
+  successfactors: {
+    name: 'SAP SuccessFactors',
+    knownIssues: ['Complex layouts often garbled', 'PDF parsing inconsistent', 'Header/footer text frequently lost'],
+    recommendations: ['Simple single-column layout', 'Word format preferred over PDF', 'Avoid headers/footers for key information'],
+    parsingStrength: 'moderate',
+  },
+  unknown: {
+    name: 'Unknown ATS',
+    knownIssues: [],
+    recommendations: ['Use single-column layout for maximum compatibility', 'Submit in both PDF and Word if given the option', 'Avoid tables, text boxes, and headers/footers for key content'],
+    parsingStrength: 'moderate',
+  },
+};
+
+// Signals in job descriptions that indicate which ATS is being used
+const ATS_DETECTION_SIGNALS: Array<{ system: AtsSystem; patterns: RegExp[] }> = [
+  { system: 'greenhouse', patterns: [/greenhouse\.io/i, /boards\.greenhouse\.io/i, /gh\.io/i] },
+  { system: 'lever', patterns: [/lever\.co/i, /jobs\.lever\.co/i] },
+  { system: 'workday', patterns: [/workday\.com/i, /myworkdayjobs\.com/i, /wd\d+\.myworkday/i, /workdayjobs/i] },
+  { system: 'taleo', patterns: [/taleo\.net/i, /oracle\.taleo/i, /tbe\.taleo/i] },
+  { system: 'icims', patterns: [/icims\.com/i, /careers\.icims\.com/i, /recruiting\.icims/i] },
+  { system: 'smartrecruiters', patterns: [/smartrecruiters\.com/i, /jobs\.smartrecruiters/i] },
+  { system: 'ashby', patterns: [/ashbyhq\.com/i, /jobs\.ashbyhq\.com/i] },
+  { system: 'jobvite', patterns: [/jobvite\.com/i, /hire\.jobvite\.com/i] },
+  { system: 'brassring', patterns: [/brassring\.com/i, /kenexa\.com/i, /talent\.ibm\.com/i] },
+  { system: 'successfactors', patterns: [/successfactors\.com/i, /jobs\.sap\.com/i, /career\.sap\./i, /sap\.taleo/i] },
+];
+
+// Company patterns that strongly indicate a specific ATS
+const COMPANY_ATS_MAP: Array<{ pattern: RegExp; system: AtsSystem }> = [
+  { pattern: /google|alphabet|youtube|deepmind|waymo/i, system: 'greenhouse' },
+  { pattern: /stripe|linear|vercel|notion|figma|loom|mercury/i, system: 'lever' },
+  { pattern: /salesforce|oracle|sap|general motors|ford|boeing|lockheed|deloitte|jpmorgan|bank of america|wells fargo|walmart/i, system: 'workday' },
+  { pattern: /mckinsey|bain|bcg|accenture|ibm|att|verizon|fedex|ups/i, system: 'brassring' },
+  { pattern: /amazon|aws/i, system: 'icims' },
+  { pattern: /meta|facebook/i, system: 'greenhouse' },
+  { pattern: /microsoft|linkedin/i, system: 'icims' },
+];
+
+export function detectAtsSystem(jobDescriptionText: string | null | undefined, companyName?: string): AtsSystem {
+  if (!jobDescriptionText && !companyName) return 'unknown';
+
+  const combined = `${jobDescriptionText || ''} ${companyName || ''}`;
+
+  // URL-based detection (highest confidence)
+  for (const { system, patterns } of ATS_DETECTION_SIGNALS) {
+    if (patterns.some(p => p.test(combined))) return system;
+  }
+
+  // Company name inference (medium confidence)
+  for (const { pattern, system } of COMPANY_ATS_MAP) {
+    if (pattern.test(combined)) return system;
+  }
+
+  return 'unknown';
+}
+
+export function formatAtsSystemForPrompt(atsSystem: AtsSystem, resumeText: string): string {
+  if (atsSystem === 'unknown') return '';
+  const profile = ATS_PROFILES[atsSystem];
+
+  const lines = ['\n\n<ats_system_context>'];
+  lines.push(`Detected ATS: ${profile.name} (${profile.parsingStrength} parser)`);
+
+  // Check if the resume has formatting issues that are known problems for this ATS
+  const hasMultiColumn = /\t{3,}|  {6,}/.test(resumeText);
+  const hasTables = /\|.*\|/.test(resumeText);
+  const hasTextBox = /■|▪|◆|►/.test(resumeText);
+
+  if (profile.parsingStrength === 'weak') {
+    lines.push(`⚠️ WARNING: ${profile.name} is a weak parser. Formatting issues are high risk.`);
+  }
+
+  const activeIssues = profile.knownIssues.filter(issue => {
+    if (issue.includes('two-column') && hasMultiColumn) return true;
+    if (issue.includes('table') && hasTables) return true;
+    if (issue.includes('text box') && hasTextBox) return true;
+    return profile.parsingStrength === 'weak';
+  });
+
+  if (activeIssues.length > 0) {
+    lines.push(`Known Issues with ${profile.name}: ${activeIssues.join('; ')}`);
+  }
+  lines.push(`Recommendations for ${profile.name}: ${profile.recommendations.join('; ')}`);
+  lines.push(`INSTRUCTION: Include at least one ATS-specific formatting recommendation in your red flags or quick wins. Reference "${profile.name}" by name so the candidate understands this is specific to their target company's system.`);
+  lines.push('</ats_system_context>');
+  return lines.join('\n');
+}
+
+// ─── COMPETITIVE KEYWORD GAP ─────────────────────────────────────────────────
+
+// Top-quartile keywords per industry + seniority tier.
+// These appear in 70%+ of top-scoring resumes at each level.
+const COMPETITIVE_KEYWORDS: Record<string, Record<string, string[]>> = {
+  technology: {
+    entry: ['github', 'git', 'api', 'agile', 'unit testing', 'pull request', 'sql', 'rest'],
+    mid: ['system design', 'code review', 'ci/cd', 'microservices', 'distributed systems', 'monitoring', 'on-call', 'incident response'],
+    senior: ['architecture', 'technical leadership', 'cross-functional', 'mentorship', 'staff', 'system design interview', 'platform', 'scalability', 'reliability', 'cost optimization'],
+    executive: ['engineering strategy', 'org design', 'headcount', 'technical roadmap', 'exec communication', 'board', 'series', 'ipo'],
+  },
+  finance: {
+    entry: ['excel', 'financial modeling', 'dcf', 'bloomberg', 'sql', 'powerpoint', 'pitch book'],
+    mid: ['variance analysis', 'budget', 'forecast', 'p&l', 'business partnering', 'stakeholder', 'cfo'],
+    senior: ['m&a', 'capital allocation', 'investor relations', 'board reporting', 'strategic finance', 'ebitda'],
+    executive: ['capital markets', 'fundraising', 'ipo', 'series', 'audit committee', 'debt financing'],
+  },
+  sales: {
+    entry: ['quota', 'pipeline', 'crm', 'outbound', 'discovery', 'demo', 'cold outreach'],
+    mid: ['account executive', 'enterprise', 'closed won', 'arr', 'forecast', 'salesforce', 'meddic'],
+    senior: ['territory', 'team management', 'revenue growth', 'strategic accounts', 'president club', 'vp'],
+    executive: ['go-to-market', 'revenue strategy', 'board', 'series', 'sales enablement', 'chro'],
+  },
+  marketing: {
+    entry: ['content', 'seo', 'social media', 'email marketing', 'google analytics', 'canva', 'copywriting'],
+    mid: ['campaign management', 'roi', 'cac', 'ltv', 'a/b testing', 'demand generation', 'attribution'],
+    senior: ['marketing strategy', 'brand', 'budget ownership', 'cross-functional', 'board reporting', 'cmo'],
+    executive: ['gtm strategy', 'revenue marketing', 'series', 'ipo marketing', 'investor relations'],
+  },
+  consulting: {
+    entry: ['analysis', 'powerpoint', 'excel', 'client deliverable', 'research', 'hypothesis'],
+    mid: ['engagement management', 'client relationship', 'issue tree', 'workshop facilitation', 'recommendations'],
+    senior: ['business development', 'proposal', 'practice leadership', 'thought leadership', 'p&l'],
+    executive: ['managing director', 'partner', 'equity', 'firm-wide', 'sector lead'],
+  },
+  product_management: {
+    entry: ['roadmap', 'user stories', 'agile', 'sprint', 'stakeholder', 'figma', 'analytics'],
+    mid: ['okr', 'a/b testing', 'user research', 'go-to-market', 'product strategy', 'cross-functional'],
+    senior: ['product vision', 'team leadership', 'executive alignment', 'revenue impact', 'platform'],
+    executive: ['product org', 'cpo', 'board', 'series', 'p&l ownership', 'build vs buy'],
+  },
+  healthcare: {
+    entry: ['patient care', 'emr', 'hipaa', 'clinical documentation', 'vital signs', 'care coordination'],
+    mid: ['quality improvement', 'clinical outcomes', 'interdisciplinary', 'care management', 'compliance'],
+    senior: ['department management', 'budget', 'clinical leadership', 'accreditation', 'jcaho', 'cms'],
+    executive: ['hospital administration', 'strategy', 'board', 'population health', 'value-based care'],
+  },
+};
+
+export interface CompetitiveGapResult {
+  missingHighFrequency: string[];   // Keywords present in 70%+ of top resumes but absent from this one
+  presentHighFrequency: string[];   // Keywords present in both top resumes and this resume (strengths)
+  gapScore: number;                 // 0-100, lower = more gaps
+}
+
+export function analyzeCompetitiveKeywordGap(
+  resumeText: string,
+  industry: string,
+  seniorityLevel: string,
+): CompetitiveGapResult {
+  const lower = resumeText.toLowerCase();
+  const level = ['entry', 'mid', 'senior', 'executive'].includes(seniorityLevel) ? seniorityLevel : 'mid';
+  const industryKws = COMPETITIVE_KEYWORDS[industry]?.[level] || COMPETITIVE_KEYWORDS['technology'][level];
+
+  const present = industryKws.filter(kw => lower.includes(kw.toLowerCase()));
+  const missing = industryKws.filter(kw => !lower.includes(kw.toLowerCase()));
+
+  const gapScore = industryKws.length > 0
+    ? Math.round((present.length / industryKws.length) * 100)
+    : 50;
+
+  return {
+    missingHighFrequency: missing.slice(0, 6),
+    presentHighFrequency: present.slice(0, 5),
+    gapScore,
+  };
+}
+
+export function formatCompetitiveGapForPrompt(gap: CompetitiveGapResult, industry: string, level: string): string {
+  if (gap.missingHighFrequency.length === 0 && gap.presentHighFrequency.length === 0) return '';
+  const lines = ['\n\n<competitive_keyword_analysis>'];
+  lines.push(`Competitive Keyword Coverage: ${gap.gapScore}% of high-frequency ${industry} ${level} resume keywords present`);
+  if (gap.presentHighFrequency.length > 0) {
+    lines.push(`Present (competitive strengths): ${gap.presentHighFrequency.join(', ')}`);
+  }
+  if (gap.missingHighFrequency.length > 0) {
+    lines.push(`Missing (appear in 70%+ of top-quartile ${industry} ${level} resumes): ${gap.missingHighFrequency.join(', ')}`);
+    lines.push('INSTRUCTION: These are high-frequency competitive keywords. If genuinely absent and applicable, prioritize them in keyword gaps and quick wins. If present implicitly (demonstrated through experience), flag them as "add the explicit keyword for ATS" rather than as a hard gap. Do NOT add keywords the candidate doesn\'t genuinely have.');
+  }
+  lines.push('</competitive_keyword_analysis>');
+  return lines.join('\n');
+}

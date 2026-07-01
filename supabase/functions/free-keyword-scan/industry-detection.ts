@@ -2091,7 +2091,6 @@ function extractTechStack(text: string): string[] {
   // Sort by frequency, dedupe cloud platforms to one entry
   found.sort((a, b) => b.count - a.count);
   const result: string[] = [];
-  const seenCloud = false;
   const cloudLabels = new Set(['AWS', 'GCP', 'Azure']);
   let addedCloud = false;
   for (const { label } of found) {

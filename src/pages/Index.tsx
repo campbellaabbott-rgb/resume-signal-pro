@@ -224,6 +224,36 @@ interface FreeKeywordResult {
   unquantifiedBulletsDetected?: { text: string; role: string }[];
   bulletQuantRate?: number;
   projectedScore?: number | null;
+  // Market intelligence
+  marketIntelligence?: {
+    country: string;
+    countryName: string;
+    countrySource: string;
+    hotSkills: string[];
+    risingKeywords: string[];
+    cvNorms: string[];
+    salaryContext: string | null;
+    marketSummary: string;
+  };
+  skillsRecency?: {
+    agingSkills: string[];
+    freshSkills: string[];
+    freshnessScore: number;
+    hasAgingSignals: boolean;
+  };
+  careerTrajectory?: {
+    trajectory: string;
+    promotionCount: number;
+    industryTransitionDetected: boolean;
+    fromIndustry: string | null;
+    progressionSummary: string;
+  };
+  atsSystem?: { system: string; name: string; parsingStrength: string } | null;
+  competitiveGap?: {
+    missingHighFrequency: string[];
+    presentHighFrequency: string[];
+    gapScore: number;
+  };
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
@@ -768,6 +798,17 @@ const Index = () => {
           competitiveAssessment: (result as any).competitiveAssessment,
           industryDetection: (result as any).industryDetection,
           careerSituation: (result as any).careerSituation,
+          // Market intelligence
+          marketIntelligence: (result as any).marketIntelligence,
+          skillsRecency: (result as any).skillsRecency,
+          careerTrajectory: (result as any).careerTrajectory,
+          atsSystem: (result as any).atsSystem,
+          competitiveGap: (result as any).competitiveGap,
+          // Bullet analysis
+          weakBulletsDetected: (result as any).weakBulletsDetected,
+          unquantifiedBulletsDetected: (result as any).unquantifiedBulletsDetected,
+          bulletQuantRate: (result as any).bulletQuantRate,
+          projectedScore: (result as any).projectedScore,
         });
 
         // Track scan completed in funnel
@@ -1377,6 +1418,11 @@ const Index = () => {
                 unquantifiedBulletsDetected={freeKeywordResult.unquantifiedBulletsDetected}
                 bulletQuantRate={freeKeywordResult.bulletQuantRate}
                 projectedScore={freeKeywordResult.projectedScore ?? undefined}
+                marketIntelligence={freeKeywordResult.marketIntelligence}
+                skillsRecency={freeKeywordResult.skillsRecency}
+                careerTrajectory={freeKeywordResult.careerTrajectory}
+                atsSystemDetected={freeKeywordResult.atsSystem}
+                competitiveGap={freeKeywordResult.competitiveGap}
               />
               
               {/* Score-based package recommendation */}

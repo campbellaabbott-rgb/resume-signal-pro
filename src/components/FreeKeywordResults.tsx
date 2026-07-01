@@ -699,6 +699,16 @@ interface FreeKeywordResultsProps {
   unquantifiedBulletsDetected?: { text: string; role: string }[];
   bulletQuantRate?: number;
   projectedScore?: number | null;
+  // Market intelligence
+  marketIntelligence?: {
+    country: string; countryName: string; countrySource: string;
+    hotSkills: string[]; risingKeywords: string[]; cvNorms: string[];
+    salaryContext: string | null; marketSummary: string;
+  };
+  skillsRecency?: { agingSkills: string[]; freshSkills: string[]; freshnessScore: number; hasAgingSignals: boolean };
+  careerTrajectory?: { trajectory: string; promotionCount: number; industryTransitionDetected: boolean; fromIndustry: string | null; progressionSummary: string };
+  atsSystemDetected?: { system: string; name: string; parsingStrength: string } | null;
+  competitiveGap?: { missingHighFrequency: string[]; presentHighFrequency: string[]; gapScore: number };
 }
 
 export function FreeKeywordResults({
@@ -773,6 +783,11 @@ export function FreeKeywordResults({
   unquantifiedBulletsDetected = [],
   bulletQuantRate,
   projectedScore,
+  marketIntelligence,
+  skillsRecency,
+  careerTrajectory,
+  atsSystemDetected,
+  competitiveGap,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -3027,6 +3042,184 @@ export function FreeKeywordResults({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ── MARKET INTELLIGENCE CARD ── */}
+      {marketIntelligence && (
+        <div className="rounded-2xl border border-primary/20 bg-card p-5 mb-5">
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart3 className="w-4 h-4 text-primary" />
+            <h4 className="font-semibold text-foreground">
+              {marketIntelligence.countryName} Market Intelligence
+            </h4>
+            <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+              {marketIntelligence.countryName}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{marketIntelligence.marketSummary}</p>
+          {marketIntelligence.hotSkills.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs font-semibold text-foreground mb-1.5">🔥 Hot skills right now</p>
+              <div className="flex flex-wrap gap-1.5">
+                {marketIntelligence.hotSkills.map((skill, i) => (
+                  <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20 font-medium">{skill}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {marketIntelligence.risingKeywords.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs font-semibold text-foreground mb-1.5">📈 Rising keywords in job postings</p>
+              <div className="flex flex-wrap gap-1.5">
+                {marketIntelligence.risingKeywords.map((kw, i) => (
+                  <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning border border-warning/20 font-medium">{kw}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {marketIntelligence.cvNorms.length > 0 && (
+            <div className="mb-2">
+              <p className="text-xs font-semibold text-foreground mb-1.5">📋 {marketIntelligence.countryName} CV norms</p>
+              <ul className="space-y-1">
+                {marketIntelligence.cvNorms.map((norm, i) => (
+                  <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                    <span className="text-primary mt-0.5 shrink-0">•</span>{norm}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {marketIntelligence.salaryContext && (
+            <p className="text-xs text-muted-foreground mt-2 border-t border-border/40 pt-2">
+              <span className="font-medium text-foreground">💰 Salary context: </span>{marketIntelligence.salaryContext}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── SKILLS RECENCY CARD ── */}
+      {skillsRecency && (skillsRecency.agingSkills.length > 0 || skillsRecency.freshSkills.length > 0) && (
+        <div className={cn(
+          "rounded-2xl border p-5 mb-5",
+          skillsRecency.hasAgingSignals ? "border-warning/30 bg-warning/5" : "border-success/20 bg-success/5"
+        )}>
+          <div className="flex items-center gap-2 mb-3">
+            <RefreshCw className={cn("w-4 h-4", skillsRecency.hasAgingSignals ? "text-warning" : "text-success")} />
+            <h4 className="font-semibold text-foreground">Skills Freshness</h4>
+            <span className={cn(
+              "ml-auto text-xs px-2 py-0.5 rounded-full font-semibold",
+              skillsRecency.freshnessScore >= 75 ? "bg-success/15 text-success" :
+              skillsRecency.freshnessScore >= 50 ? "bg-warning/15 text-warning" : "bg-destructive/15 text-destructive"
+            )}>
+              {skillsRecency.freshnessScore}/100
+            </span>
+          </div>
+          {skillsRecency.agingSkills.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs font-semibold text-warning mb-1.5">⚠️ Aging skills (declining in job postings)</p>
+              <div className="flex flex-wrap gap-1.5">
+                {skillsRecency.agingSkills.map((s, i) => (
+                  <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning border border-warning/20 line-through">{s}</span>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1.5">These appear in fewer current job postings — consider pairing with modern equivalents.</p>
+            </div>
+          )}
+          {skillsRecency.freshSkills.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-success mb-1.5">✓ Current skills (high demand 2025)</p>
+              <div className="flex flex-wrap gap-1.5">
+                {skillsRecency.freshSkills.map((s, i) => (
+                  <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20 font-medium">{s}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── CAREER TRAJECTORY CARD ── */}
+      {careerTrajectory && careerTrajectory.trajectory !== 'unknown' && (
+        <div className="rounded-2xl border border-border bg-card p-5 mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            <h4 className="font-semibold text-foreground">Career Trajectory</h4>
+            <span className={cn(
+              "ml-auto text-xs px-2 py-0.5 rounded-full font-medium",
+              careerTrajectory.trajectory === 'upward' ? "bg-success/15 text-success" :
+              careerTrajectory.trajectory === 'transition' ? "bg-primary/10 text-primary" :
+              careerTrajectory.trajectory === 'regression' ? "bg-warning/15 text-warning" :
+              "bg-muted text-muted-foreground"
+            )}>
+              {careerTrajectory.trajectory === 'upward' ? '↑ Upward' :
+               careerTrajectory.trajectory === 'lateral' ? '→ Lateral' :
+               careerTrajectory.trajectory === 'transition' ? '⇄ Transition' :
+               careerTrajectory.trajectory === 'regression' ? '↓ Regression' :
+               careerTrajectory.trajectory === 'early_career' ? '◎ Early Career' : careerTrajectory.trajectory}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">{careerTrajectory.progressionSummary}</p>
+          {careerTrajectory.industryTransitionDetected && careerTrajectory.fromIndustry && (
+            <div className="mt-2 p-2.5 rounded-lg bg-primary/5 border border-primary/20">
+              <p className="text-xs text-primary font-medium">Career transition detected: {careerTrajectory.fromIndustry} → current field</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Your resume should explicitly bridge your previous experience to your target role — this is a key quick win.</p>
+            </div>
+          )}
+          {careerTrajectory.promotionCount > 0 && (
+            <p className="text-xs text-success mt-2">✓ {careerTrajectory.promotionCount} promotion{careerTrajectory.promotionCount !== 1 ? 's' : ''} detected — make sure each title change is clearly visible.</p>
+          )}
+        </div>
+      )}
+
+      {/* ── COMPETITIVE KEYWORD GAP CARD ── */}
+      {competitiveGap && competitiveGap.missingHighFrequency.length > 0 && (
+        <div className="rounded-2xl border border-destructive/20 bg-card p-5 mb-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Target className="w-4 h-4 text-destructive" />
+            <h4 className="font-semibold text-foreground">Competitive Keyword Gap</h4>
+            <span className={cn(
+              "ml-auto text-xs px-2 py-0.5 rounded-full font-semibold",
+              competitiveGap.gapScore >= 70 ? "bg-success/15 text-success" :
+              competitiveGap.gapScore >= 40 ? "bg-warning/15 text-warning" : "bg-destructive/15 text-destructive"
+            )}>
+              {competitiveGap.gapScore}% coverage
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Keywords that appear in 70%+ of top-quartile resumes at your level — and are missing from yours.
+          </p>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {competitiveGap.missingHighFrequency.map((kw, i) => (
+              <span key={i} className="text-xs px-2 py-1 rounded-full border border-destructive/30 bg-destructive/5 text-destructive font-medium">
+                − {kw}
+              </span>
+            ))}
+          </div>
+          {competitiveGap.presentHighFrequency.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {competitiveGap.presentHighFrequency.map((kw, i) => (
+                <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20">
+                  ✓ {kw}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── ATS SYSTEM CARD ── */}
+      {atsSystemDetected && (
+        <div className="rounded-2xl border border-warning/30 bg-warning/5 p-4 mb-5">
+          <div className="flex items-center gap-2 mb-1">
+            <Settings2 className="w-4 h-4 text-warning" />
+            <p className="text-sm font-semibold text-foreground">
+              Target ATS: <span className="text-warning">{atsSystemDetected.name}</span>
+            </p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            We detected this company uses {atsSystemDetected.name}. Formatting recommendations above are tailored for this specific system.
+          </p>
         </div>
       )}
 
