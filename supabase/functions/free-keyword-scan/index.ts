@@ -2407,6 +2407,11 @@ ${resumeText.substring(0, 20000)}
       confidence: finalConfidence,
       signals: industryDetection.signals,
       aiSuggested: normalizedAIIndustry !== finalIndustry ? normalizedAIIndustry : undefined,
+      // Role + seniority context — makes the UI feel specific ("Senior PM · Product Management")
+      detectedRole: seniorityDetection.primaryTitle || null,
+      seniorityLevel: seniorityDetection.level,
+      yearsEstimate: seniorityDetection.yearsEstimate !== 'unknown' ? seniorityDetection.yearsEstimate : null,
+      alternativeIndustries: industryDetection.alternativeIndustries.slice(0, 3).map(a => a.industry),
     };
 
 

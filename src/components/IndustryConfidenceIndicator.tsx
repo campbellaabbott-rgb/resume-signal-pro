@@ -20,6 +20,10 @@ export interface IndustryDetectionData {
   confidence: 'high' | 'medium' | 'low';
   signals: string[];
   aiSuggested?: string;
+  detectedRole?: string | null;
+  seniorityLevel?: string;
+  yearsEstimate?: string | null;
+  alternativeIndustries?: string[];
 }
 
 interface IndustryConfidenceIndicatorProps {
@@ -159,8 +163,16 @@ export function IndustryConfidenceIndicator({
   const confidence = industryDetection?.confidence || 'medium';
   const signals = industryDetection?.signals || [];
   const aiSuggested = industryDetection?.aiSuggested;
+  const detectedRole = industryDetection?.detectedRole;
+  const seniorityLevel = industryDetection?.seniorityLevel;
+  const yearsEstimate = industryDetection?.yearsEstimate;
+  const alternativeIndustries = industryDetection?.alternativeIndustries || [];
   const config = getConfidenceConfig(confidence);
   const availableIndustries = getAvailableIndustries();
+
+  const seniorityLabel: Record<string, string> = {
+    entry: 'Entry-level', mid: 'Mid-level', senior: 'Senior', executive: 'Executive',
+  };
 
   // Inline feedback state — "Is this right?"
   // null = not answered, true = confirmed correct, false = wants to correct
@@ -228,7 +240,7 @@ export function IndustryConfidenceIndicator({
               <Briefcase className={cn("w-5 h-5", config.textColor)} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm text-muted-foreground">{t("industryConfidence.industry")} </span>
                 <span className="font-bold text-foreground text-lg">
                   {formatIndustryName(displayIndustry)}
@@ -239,6 +251,37 @@ export function IndustryConfidenceIndicator({
                   </span>
                 )}
               </div>
+              {/* Role + seniority — shown when available, makes detection feel specific */}
+              {(detectedRole || seniorityLevel) && (
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                  {seniorityLevel && seniorityLabel[seniorityLevel] && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                      {seniorityLabel[seniorityLevel]}
+                    </span>
+                  )}
+                  {detectedRole && (
+                    <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={detectedRole}>
+                      {detectedRole}
+                    </span>
+                  )}
+                  {yearsEstimate && (
+                    <span className="text-xs text-muted-foreground">· {yearsEstimate}</span>
+                  )}
+                </div>
+              )}
+              {/* Top 2 signals always visible — builds trust without requiring expand */}
+              {signals.length > 0 && (
+                <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                  {signals.slice(0, 2).map((s, i) => (
+                    <span key={i} className="text-xs px-1.5 py-0.5 rounded bg-muted/70 text-muted-foreground">
+                      {s}
+                    </span>
+                  ))}
+                  {signals.length > 2 && (
+                    <span className="text-xs text-muted-foreground">+{signals.length - 2} more</span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           
@@ -300,18 +343,13 @@ export function IndustryConfidenceIndicator({
       {/* Expanded Details */}
       {isExpanded && (
         <div className="px-4 pb-4 border-t border-border/30 pt-3 space-y-3 animate-fade-in">
-          {/* Detection Signals */}
-          {signals.length > 0 && (
+          {/* All detection signals (expanded — first 2 already shown above the fold) */}
+          {signals.length > 2 && (
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2">
-                Detection signals:
-              </p>
+              <p className="text-xs font-medium text-muted-foreground mb-2">All detection signals:</p>
               <div className="flex flex-wrap gap-1.5">
-                {signals.slice(0, 5).map((signal, idx) => (
-                  <span 
-                    key={idx}
-                    className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground"
-                  >
+                {signals.map((signal, idx) => (
+                  <span key={idx} className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
                     {signal}
                   </span>
                 ))}
@@ -319,6 +357,24 @@ export function IndustryConfidenceIndicator({
             </div>
           )}
           
+          {/* Alternative industries — quick switches without opening full correction grid */}
+          {alternativeIndustries.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1.5">Also considered:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {alternativeIndustries.map((alt, i) => (
+                  <button
+                    key={i}
+                    onClick={(e) => { e.stopPropagation(); handleCorrection(alt); }}
+                    className="text-xs px-2.5 py-1 rounded-full border border-border hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {formatIndustryName(alt)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* AI Suggestion (if different) */}
           {aiSuggested && aiSuggested !== industry && (
             <div className="p-3 rounded-xl bg-primary/5 border border-primary/20">

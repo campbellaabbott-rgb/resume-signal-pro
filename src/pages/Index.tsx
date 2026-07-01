@@ -214,6 +214,10 @@ interface FreeKeywordResult {
     confidence: 'high' | 'medium' | 'low';
     signals: string[];
     aiSuggested?: string;
+    detectedRole?: string | null;
+    seniorityLevel?: string;
+    yearsEstimate?: string | null;
+    alternativeIndustries?: string[];
   };
 }
 
