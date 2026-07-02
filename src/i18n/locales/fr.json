@@ -1585,7 +1585,8 @@
       "emailDesc": "Recevez ce résumé et votre plan d’action dans votre boîte mail — pratique pour appliquer les corrections plus tard.",
       "emailSend": "Envoyer",
       "emailSent": "Envoyé ! Vérifiez votre boîte de réception.",
-      "emailPrivacy": "Seuls les résultats de l’analyse sont envoyés — jamais votre CV. Pas de spam."
+      "emailPrivacy": "Seuls les résultats de l’analyse sont envoyés — jamais votre CV. Pas de spam.",
+      "pulseOptIn": "Envoyez-moi aussi un pouls du marché mensuel : les mots-clés en hausse dans mon secteur, avec un lien de réanalyse gratuite. Désabonnement à tout moment."
     }
   },
   "analysisPreviewSample": {

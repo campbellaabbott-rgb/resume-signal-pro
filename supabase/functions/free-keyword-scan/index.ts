@@ -1567,6 +1567,12 @@ CRITICAL LANGUAGE HANDLING:
 - nextBestAction: The single most impactful action for THIS specific candidate. Name a specific section, company, or bullet. One clear imperative sentence.
 - recruiterFirstPassSummary: 2-3 sentences written as a recruiter speaking after a 6-second scan. First impression, first question, pass/fail verdict. Be honest — if the resume would struggle, say so clearly but constructively.
 - powerWords: Each entry must include the word AND a one-line "why" explaining why it's effective for this specific role/industry.
+- resumeTriggeredQuestions: EXACTLY 3 questions derived from THIS resume's actual weak spots — employment gaps, vague or inflated claims, title/level mismatches, missing scope numbers, short tenures, or unexplained transitions. Phrase each as a recruiter would actually say it in a screen. The trigger field must quote the specific resume content. If the resume is genuinely strong, ask the questions a top-tier interviewer would still probe (depth of ownership, verification of the biggest claim).
+- recruiterPanel: Three distinct persona voices, each referencing specific resume content:
+  * screener (6 seconds): first visual impression, does it survive the pile — blunt, fast.
+  * hiringManager (skeptical): which specific claim they doubt most and what evidence is missing.
+  * hrScreener (level/comp): what seniority level this resume READS as (which may differ from the title claimed) — this persona catches level mismatches.
+  The three verdicts must NOT agree by default — real committees disagree, and divergence is the insight.
 - formatGradeDrivers: 2-3 specific issues that drove the format grade. Name the actual problem found (e.g. "3-column layout will break in Workday's ATS parser"), not generic advice.
 - sectionCheck.sectionQuality: Rate each section strong | adequate | thin | missing based on actual content depth, not just presence.
 - personalizedCareerInsights: This is where you REALLY shine:
@@ -2359,6 +2365,44 @@ ${resumeText.substring(0, 20000)}
                   },
                   required: ["before", "after", "improvement"]
                 },
+                resumeTriggeredQuestions: {
+                  type: "array",
+                  description: "EXACTLY 3 interview questions this specific resume will trigger, derived from its actual weak spots (gaps, vague claims, title/level mismatches, missing scope, short tenures). Each must quote or reference the specific resume content that triggers it. These are questions a recruiter WILL ask — not generic interview prep.",
+                  items: {
+                    type: "object",
+                    properties: {
+                      question: { type: "string", description: "The question phrased as a recruiter would actually ask it." },
+                      trigger: { type: "string", description: "The specific resume content that triggers it, quoted (e.g. 'the 7-month gap between Acme and BetaCo')." },
+                      howToPrepare: { type: "string", description: "One-sentence coaching on how to answer or how to fix the resume so it isn't asked." }
+                    },
+                    required: ["question", "trigger", "howToPrepare"]
+                  }
+                },
+                recruiterPanel: {
+                  type: "object",
+                  description: "Three hiring-committee personas give short verdicts on THIS resume. Each verdict is 1-2 sentences in that persona's voice and must reference specific resume content.",
+                  properties: {
+                    screener: {
+                      type: "object",
+                      description: "The 6-second screener: what they see in the first glance and whether it survives the pile.",
+                      properties: { verdict: { type: "string" }, wouldPass: { type: "boolean" } },
+                      required: ["verdict", "wouldPass"]
+                    },
+                    hiringManager: {
+                      type: "object",
+                      description: "The skeptical hiring manager: which claims they don't believe or want evidence for.",
+                      properties: { verdict: { type: "string" }, biggestDoubt: { type: "string" } },
+                      required: ["verdict", "biggestDoubt"]
+                    },
+                    hrScreener: {
+                      type: "object",
+                      description: "The HR/comp screener: what level and salary band this resume signals, and any level mismatch.",
+                      properties: { verdict: { type: "string" }, levelRead: { type: "string", description: "The seniority level this resume reads as, in plain words." } },
+                      required: ["verdict", "levelRead"]
+                    }
+                  },
+                  required: ["screener", "hiringManager", "hrScreener"]
+                },
                 nextBestAction: {
                   type: "object",
                   description: "The single most impactful action this specific candidate should take on their resume RIGHT NOW. Be concrete — name the specific section, bullet, or keyword. This is the synthesis moment: one clear directive based on everything above.",
@@ -2910,6 +2954,15 @@ ${resumeText.substring(0, 20000)}
       analysis.recruiterFirstPassSummary = asStr(analysis.recruiterFirstPassSummary);
       analysis.formatGradeDrivers = asArr(analysis.formatGradeDrivers, (d: unknown) =>
         !!d && typeof (d as { driver?: unknown }).driver === 'string');
+      analysis.resumeTriggeredQuestions = asArr(analysis.resumeTriggeredQuestions, (q: unknown) =>
+        !!q && typeof (q as { question?: unknown }).question === 'string' && typeof (q as { trigger?: unknown }).trigger === 'string');
+      if (analysis.recruiterPanel) {
+        const rp = analysis.recruiterPanel as Record<string, { verdict?: unknown } | undefined>;
+        const personaOk = (x?: { verdict?: unknown }) => !!x && typeof x.verdict === 'string' && (x.verdict as string).trim().length > 0;
+        if (!personaOk(rp.screener) || !personaOk(rp.hiringManager) || !personaOk(rp.hrScreener)) {
+          analysis.recruiterPanel = null;
+        }
+      }
     }
 
     // Build response with analysis data (use actual values, slice arrays)
@@ -3394,6 +3447,10 @@ ${resumeText.substring(0, 20000)}
 
     // Executive scope check — senior/executive resumes only
     responseData.executiveScopeCheck = executiveScopeCheck;
+
+    // Questions this resume will trigger + the recruiter panel verdicts
+    responseData.resumeTriggeredQuestions = (analysis.resumeTriggeredQuestions || []).slice(0, 3);
+    responseData.recruiterPanel = analysis.recruiterPanel ?? null;
 
     // Critical-field repair: an incomplete report gets missing essentials
     // synthesized from rule-based data instead of shipping thin.

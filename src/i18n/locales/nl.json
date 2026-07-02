@@ -1585,7 +1585,8 @@
       "emailDesc": "Ontvang deze samenvatting en je verbeterplan in je inbox — handig om de verbeteringen later door te voeren.",
       "emailSend": "Versturen",
       "emailSent": "Verzonden! Check je inbox.",
-      "emailPrivacy": "Alleen de analyseresultaten worden gemaild — nooit je cv. Geen spam."
+      "emailPrivacy": "Alleen de analyseresultaten worden gemaild — nooit je cv. Geen spam.",
+      "pulseOptIn": "Stuur mij ook een maandelijkse marktpuls: de opkomende trefwoorden in mijn sector, met een gratis rescan-link. Altijd uitschrijfbaar."
     }
   },
   "analysisPreviewSample": {

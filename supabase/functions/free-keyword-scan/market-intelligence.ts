@@ -1056,7 +1056,7 @@ export function formatTimelineForPrompt(timeline: TimelineResult): string {
 // Scale: 3 = appears in 80%+ of postings, 2 = 50-79%, 1 = 20-49%.
 // Used to sort missing keywords so the highest-impact gaps appear first.
 
-const KEYWORD_FREQUENCY: Record<string, Record<string, number>> = {
+export const KEYWORD_FREQUENCY: Record<string, Record<string, number>> = {
   technology: {
     'python': 3, 'javascript': 3, 'typescript': 3, 'react': 3, 'node.js': 3,
     'aws': 3, 'docker': 3, 'kubernetes': 3, 'sql': 3, 'git': 3,

@@ -26,6 +26,7 @@ export function EmailReportCapture({ payload }: EmailReportCaptureProps) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [subscribePulse, setSubscribePulse] = useState(true);
 
   const send = async () => {
     const trimmed = email.trim();
@@ -37,7 +38,7 @@ export function EmailReportCapture({ payload }: EmailReportCaptureProps) {
     setErrorMsg(null);
     try {
       const { data, error } = await supabase.functions.invoke("send-scan-report", {
-        body: { email: trimmed, ...payload },
+        body: { email: trimmed, subscribePulse, ...payload },
       });
       if (error || !(data as { success?: boolean })?.success) {
         throw new Error((data as { error?: string })?.error || error?.message || "send failed");
@@ -88,6 +89,17 @@ export function EmailReportCapture({ payload }: EmailReportCaptureProps) {
         </button>
       </div>
       {errorMsg && <p className="text-xs text-destructive mt-2">{errorMsg}</p>}
+      <label className="flex items-start gap-2 mt-2.5 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={subscribePulse}
+          onChange={(e) => setSubscribePulse(e.target.checked)}
+          className="mt-0.5 accent-primary"
+        />
+        <span className="text-xs text-muted-foreground">
+          {t('freeResults.enterprise.pulseOptIn', 'Also send me a monthly market pulse: the keywords rising in my industry, with a free rescan link. Unsubscribe anytime.')}
+        </span>
+      </label>
       <p className="text-[10px] text-muted-foreground mt-2">{t('freeResults.enterprise.emailPrivacy', 'Only the analysis results are emailed — never your resume. No spam.')}</p>
     </div>
   );

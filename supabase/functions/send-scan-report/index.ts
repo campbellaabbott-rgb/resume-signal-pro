@@ -31,6 +31,7 @@ interface ScanReportRequest {
   redFlags?: Array<{ issue: string }>;
   fixRoadmap?: { steps: Array<{ order: number; step: string; minutes: number; scoreImpact: number }>; totalMinutes: number } | null;
   industry?: string;
+  subscribePulse?: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -65,6 +66,15 @@ Deno.serve(async (req) => {
         p_ats_score: Math.round(body.score),
         p_industry: body.industry ?? null,
       });
+      // Market pulse opt-in — explicit checkbox in the report UI
+      if (body.subscribePulse) {
+        await supabase.from("market_pulse_subscribers").upsert({
+          email,
+          industry: body.industry ?? "general",
+          last_score: Math.round(body.score),
+          unsubscribed_at: null,
+        });
+      }
     } catch (e) {
       console.warn("[SEND-SCAN-REPORT] Lead save failed (continuing):", e);
     }

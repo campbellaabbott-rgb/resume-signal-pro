@@ -775,6 +775,12 @@ export interface FreeKeywordResultsProps {
     presentCount: number;
     missing: string[];
   };
+  resumeTriggeredQuestions?: Array<{ question: string; trigger: string; howToPrepare: string }>;
+  recruiterPanel?: {
+    screener: { verdict: string; wouldPass?: boolean };
+    hiringManager: { verdict: string; biggestDoubt?: string };
+    hrScreener: { verdict: string; levelRead?: string };
+  };
 }
 
 export function FreeKeywordResults({
@@ -878,6 +884,8 @@ export function FreeKeywordResults({
   dualIndustryComparison,
   premiumTeaser,
   executiveScopeCheck,
+  resumeTriggeredQuestions,
+  recruiterPanel,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -4137,6 +4145,72 @@ export function FreeKeywordResults({
           industry: effectiveIndustry,
         }}
       />
+
+      {/* ── The Recruiter Panel — three personas, three verdicts ────────────── */}
+      {recruiterPanel && (
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h4 className="font-semibold text-foreground text-sm mb-1">The Recruiter Panel</h4>
+          <p className="text-xs text-muted-foreground mb-3">
+            Three people read your resume before anyone calls you. Here's what each one sees.
+          </p>
+          <div className="space-y-2.5">
+            <div className={cn("rounded-xl border p-3", recruiterPanel.screener.wouldPass === false ? "border-destructive/30 bg-destructive/5" : "border-success/30 bg-success/5")}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-bold text-foreground">⏱️ The 6-Second Screener</span>
+                {recruiterPanel.screener.wouldPass != null && (
+                  <span className={cn("ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold", recruiterPanel.screener.wouldPass ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive")}>
+                    {recruiterPanel.screener.wouldPass ? "Survives the pile" : "At risk of the pile"}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-foreground/90 italic">"{recruiterPanel.screener.verdict}"</p>
+            </div>
+            <div className="rounded-xl border border-warning/30 bg-warning/5 p-3">
+              <p className="text-xs font-bold text-foreground mb-1">🧐 The Skeptical Hiring Manager</p>
+              <p className="text-sm text-foreground/90 italic">"{recruiterPanel.hiringManager.verdict}"</p>
+              {recruiterPanel.hiringManager.biggestDoubt && (
+                <p className="text-xs text-muted-foreground mt-1"><span className="font-medium text-foreground">Biggest doubt:</span> {recruiterPanel.hiringManager.biggestDoubt}</p>
+              )}
+            </div>
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-3">
+              <p className="text-xs font-bold text-foreground mb-1">💼 The HR / Level Screener</p>
+              <p className="text-sm text-foreground/90 italic">"{recruiterPanel.hrScreener.verdict}"</p>
+              {recruiterPanel.hrScreener.levelRead && (
+                <p className="text-xs text-muted-foreground mt-1"><span className="font-medium text-foreground">Reads as:</span> {recruiterPanel.hrScreener.levelRead}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Questions your resume will trigger ──────────────────────────────── */}
+      {resumeTriggeredQuestions && resumeTriggeredQuestions.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h4 className="font-semibold text-foreground text-sm mb-1">Questions Your Resume Will Trigger</h4>
+          <p className="text-xs text-muted-foreground mb-3">
+            These aren't generic interview prep — they're the questions THIS resume invites. Fix the trigger, or prepare the answer.
+          </p>
+          <div className="space-y-3">
+            {resumeTriggeredQuestions.slice(0, 3).map((q, i) => (
+              <div key={i} className="rounded-xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-sm font-semibold text-foreground">“{q.question}”</p>
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  <span className="font-medium text-destructive">Triggered by:</span> {q.trigger}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  <span className="font-medium text-success">Prepare:</span> {q.howToPrepare}
+                </p>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => handleUpgradeClick('triggered_questions')}
+            className="mt-3 w-full text-center text-xs text-primary hover:underline"
+          >
+            Get full answers and mock-interview practice with the Interview Coach →
+          </button>
+        </div>
+      )}
 
       {/* ── Next Best Action ─────────────────────────────────────────────────── */}
       {nextBestAction && (

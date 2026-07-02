@@ -125,3 +125,6 @@ verify_jwt = false
 
 [functions.send-scan-report]
 verify_jwt = false
+
+[functions.send-market-pulse]
+verify_jwt = false

@@ -1585,7 +1585,8 @@
       "emailDesc": "Recibe este resumen y tu plan de mejora en tu correo — útil para aplicar los cambios después.",
       "emailSend": "Enviar",
       "emailSent": "¡Enviado! Revisa tu bandeja de entrada.",
-      "emailPrivacy": "Solo se envían los resultados del análisis — nunca tu currículum. Sin spam."
+      "emailPrivacy": "Solo se envían los resultados del análisis — nunca tu currículum. Sin spam.",
+      "pulseOptIn": "Envíame también un pulso de mercado mensual: las palabras clave en alza en mi industria, con un enlace de reescaneo gratis. Cancela cuando quieras."
     }
   },
   "analysisPreviewSample": {

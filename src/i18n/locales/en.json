@@ -1585,7 +1585,8 @@
       "emailDesc": "Get this summary and your fix plan in your inbox — handy for working through the fixes later.",
       "emailSend": "Send",
       "emailSent": "Sent! Check your inbox for your scan summary and fix plan.",
-      "emailPrivacy": "Only the analysis results are emailed — never your resume. No spam."
+      "emailPrivacy": "Only the analysis results are emailed — never your resume. No spam.",
+      "pulseOptIn": "Also send me a monthly market pulse: the keywords rising in my industry, with a free rescan link. Unsubscribe anytime."
     }
   },
   "analysisPreviewSample": {

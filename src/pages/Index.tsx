@@ -308,6 +308,12 @@ interface FreeKeywordResult {
     presentCount: number;
     missing: string[];
   } | null;
+  resumeTriggeredQuestions?: Array<{ question: string; trigger: string; howToPrepare: string }>;
+  recruiterPanel?: {
+    screener: { verdict: string; wouldPass?: boolean };
+    hiringManager: { verdict: string; biggestDoubt?: string };
+    hrScreener: { verdict: string; levelRead?: string };
+  } | null;
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
@@ -893,6 +899,8 @@ const Index = () => {
           reportCompleteness: (result as any).reportCompleteness,
           partialResults: (result as any).partialResults,
           executiveScopeCheck: (result as any).executiveScopeCheck,
+          resumeTriggeredQuestions: (result as any).resumeTriggeredQuestions,
+          recruiterPanel: (result as any).recruiterPanel,
         });
 
         // Track scan completed in funnel
@@ -1573,6 +1581,8 @@ const Index = () => {
                 dualIndustryComparison={freeKeywordResult.dualIndustryComparison ?? undefined}
                 premiumTeaser={freeKeywordResult.premiumTeaser ?? undefined}
                 executiveScopeCheck={freeKeywordResult.executiveScopeCheck ?? undefined}
+                resumeTriggeredQuestions={freeKeywordResult.resumeTriggeredQuestions}
+                recruiterPanel={freeKeywordResult.recruiterPanel ?? undefined}
               />
               </CardErrorBoundary>
               

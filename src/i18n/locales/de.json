@@ -1585,7 +1585,8 @@
       "emailDesc": "Erhalten Sie diese Zusammenfassung und Ihren Verbesserungsplan per E-Mail — praktisch zum späteren Abarbeiten.",
       "emailSend": "Senden",
       "emailSent": "Gesendet! Prüfen Sie Ihren Posteingang.",
-      "emailPrivacy": "Nur die Analyseergebnisse werden gesendet — nie Ihr Lebenslauf. Kein Spam."
+      "emailPrivacy": "Nur die Analyseergebnisse werden gesendet — nie Ihr Lebenslauf. Kein Spam.",
+      "pulseOptIn": "Senden Sie mir auch einen monatlichen Markt-Puls: die aufsteigenden Keywords meiner Branche, mit kostenlosem Rescan-Link. Jederzeit abbestellbar."
     }
   },
   "analysisPreviewSample": {
