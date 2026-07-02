@@ -1195,7 +1195,8 @@ serve(async (req) => {
         p_max_requests: FREE_SCANS_PER_DAY,
         p_window_minutes: 1440 // 24 hours
       }),
-      // Load dynamic correction boosts from DB in parallel (for industry detection)
+      // Load dynamic correction boosts from DB — aggregate counts per original→target pair
+      // so the compound learning system (Fix #3) gets real frequency data.
       supabase
         .from('industry_corrections')
         .select('original_industry, corrected_industry')
@@ -1205,7 +1206,17 @@ serve(async (req) => {
             console.warn('[FREE-KEYWORD-SCAN] Failed to load dynamic corrections:', error.message);
             return null;
           }
-          return data;
+          if (!data) return null;
+          // Aggregate into counts per original→corrected pair
+          const counts: Record<string, number> = {};
+          for (const row of data) {
+            const key = `${row.original_industry}→${row.corrected_industry}`;
+            counts[key] = (counts[key] || 0) + 1;
+          }
+          return Object.entries(counts).map(([key, count]) => {
+            const [original_industry, corrected_industry] = key.split('→');
+            return { original_industry, corrected_industry, count };
+          });
         })
     ]);
 
@@ -1280,23 +1291,11 @@ serve(async (req) => {
     // Run server-side industry detection using pre-fetched correction data
     console.log("[FREE-KEYWORD-SCAN] Running server-side industry detection...");
     
-    // Build dynamic boosts from pre-fetched correction data
-    let dynamicBoosts: Record<string, { target: string; boost: number }[]> | undefined;
+    // Build dynamic boosts from pre-fetched correction data (already aggregated with counts)
+    let dynamicBoosts: Record<string, { target: string; boost: number; multiplier: number }[]> | undefined;
     if (correctionResult && correctionResult.length > 0) {
-      const counts: Record<string, Record<string, number>> = {};
-      for (const row of correctionResult) {
-        if (!counts[row.original_industry]) counts[row.original_industry] = {};
-        counts[row.original_industry][row.corrected_industry] = (counts[row.original_industry][row.corrected_industry] || 0) + 1;
-      }
-      const flatCorrections = Object.entries(counts).flatMap(([orig, targets]) =>
-        Object.entries(targets).map(([corrected, count]) => ({
-          original_industry: orig,
-          corrected_industry: corrected,
-          count,
-        }))
-      );
-      dynamicBoosts = buildDynamicCorrectionBoosts(flatCorrections);
-      console.log(`[FREE-KEYWORD-SCAN] Loaded ${flatCorrections.length} dynamic correction patterns`);
+      dynamicBoosts = buildDynamicCorrectionBoosts(correctionResult);
+      console.log(`[FREE-KEYWORD-SCAN] Loaded ${correctionResult.length} dynamic correction patterns`);
     }
     
     const industryDetection = detectIndustry(resumeText, dynamicBoosts, truncatedJobDescription || undefined);
@@ -1394,9 +1393,9 @@ STEP 3 - EXTRACT JOB TITLES: List every job title from the resume
 STEP 4 - CHECK EDUCATION: Note degrees and their relevance
 STEP 5 - CHECK CERTIFICATIONS: Note industry-specific credentials
 STEP 6 - SCAN SKILLS SECTION: Identify explicit AND implicit skills
-STEP 7 - DETERMINE INDUSTRY: Use job titles as PRIMARY signal
+STEP 7 - DETERMINE INDUSTRY: Use job titles as PRIMARY signal. CRITICAL: When a job description is also provided, the industry field in your response MUST reflect the CANDIDATE'S industry (from their resume job titles), NOT the industry of the target job posting. A finance analyst applying to a tech company is still in finance. The job description is used only for skill-gap comparison, never for industry classification.
 
-Only THEN proceed with analysis. The industry MUST match what the person's job titles indicate they DO.
+Only THEN proceed with analysis. The industry MUST match what the person's job titles indicate they DO — not the company or role they're applying to.
 
 CRITICAL LANGUAGE HANDLING:
 1. DETECT the language of the resume (e.g., "en", "es", "pt", "de", "fr", "nl", "hi", "tl", "vi", "hr", "zh", etc.)
