@@ -3,6 +3,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import Auth from "./pages/Auth";
+import Account from "./pages/Account";
 import { FloatingHelpButton } from "./components/FloatingHelpButton";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { LanguageDebugBanner } from "./components/LanguageDebugBanner";
@@ -37,6 +40,7 @@ const queryClient = new QueryClient();
 const App = () => (
   <ErrorBoundary>
   <QueryClientProvider client={queryClient}>
+  <AuthProvider>
     <Toaster />
     <Sonner />
     <BrowserRouter>
@@ -44,6 +48,8 @@ const App = () => (
       <Suspense fallback={null}>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/account" element={<Account />} />
           <Route path="/success" element={<Success />} />
           <Route path="/product-success" element={<ProductSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
@@ -69,6 +75,7 @@ const App = () => (
       <FloatingHelpButton />
       <LanguageDebugBanner />
     </BrowserRouter>
+  </AuthProvider>
   </QueryClientProvider>
   </ErrorBoundary>
 );

@@ -2,6 +2,8 @@ import { Sparkles, CreditCard, Package, Shield, Megaphone } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -12,6 +14,7 @@ import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 export function Header() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { session } = useAuth();
   const location = useLocation();
   const [showScanPackModal, setShowScanPackModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
@@ -108,6 +111,18 @@ export function Header() {
           {/* Right: Actions */}
           <div className="flex items-center gap-1 sm:gap-2">
             <LanguageSwitcher variant="compact" />
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="gap-1.5 text-muted-foreground hover:text-foreground min-h-[44px] touch-manipulation"
+              aria-label={session ? "Your account" : "Sign in"}
+            >
+              <Link to={session ? "/account" : "/auth"}>
+                <UserIcon className="w-4 h-4" />
+                <span className="hidden md:inline">{session ? "Account" : "Sign in"}</span>
+              </Link>
+            </Button>
             <ScanCreditsCounter />
             <Button 
               variant="default" 

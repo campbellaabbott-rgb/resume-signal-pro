@@ -21,6 +21,8 @@ import { RateLimitUpsell } from "@/components/RateLimitUpsell";
 import { TailoredResumeModal } from "@/components/TailoredResumeModal";
 import { ResumeLanguageSuggestion } from "@/components/ResumeLanguageSuggestion";
 import { CardErrorBoundary } from "@/components/CardErrorBoundary";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase as supabaseClient } from "@/integrations/supabase/client";
 import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 
 import { LiveActivityIndicator } from "@/components/LiveActivityIndicator";
@@ -320,6 +322,7 @@ const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx'
 
 const Index = () => {
   const { t } = useTranslation();
+  const { session } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isFreeScanLoading, setIsFreeScanLoading] = useState(false);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
@@ -902,6 +905,20 @@ const Index = () => {
           resumeTriggeredQuestions: (result as any).resumeTriggeredQuestions,
           recruiterPanel: (result as any).recruiterPanel,
         });
+
+        // Save to cloud scan history for signed-in users (fire and forget)
+        if (session?.user) {
+          supabaseClient.from('user_scans').insert({
+            user_id: session.user.id,
+            ats_score: result.atsScoreEstimate || 0,
+            projected_score: (result as any).projectedScore ?? null,
+            industry: result.industry || null,
+            verdict: (result as any).reportVerdict ?? null,
+            red_flag_count: (result.redFlags || []).length,
+          }).then(({ error }) => {
+            if (error) console.warn('[Account] Failed to save scan to history:', error.message);
+          });
+        }
 
         // Track scan completed in funnel
         trackScanCompleted(result.atsScoreEstimate || 0, result.industry || 'General');
