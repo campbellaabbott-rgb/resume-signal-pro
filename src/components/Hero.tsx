@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Users, Sparkles, CheckCircle2, Info, X, ArrowRight, Package, TrendingUp, Award, Check } from "lucide-react";
+import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Sparkles, Info, X, ArrowRight, Package, Award, Check } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
@@ -8,7 +8,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { PRODUCTS } from "@/config/products";
 import { useABTest } from "@/hooks/use-ab-test";
 import { SampleReportPreview } from "./SampleReportPreview";
-import { useTodayScanCount } from "@/hooks/use-shared-data";
 
 // Animated result preview component - shows what users get
 function AnimatedResultPreview() {
@@ -40,65 +39,41 @@ function AnimatedResultPreview() {
   );
 }
 
-// Hero stats bar - immediate social proof with inflated live count
+// Hero stats bar — verifiable product facts, not manufactured social proof.
+// Every number here is checkable in the product itself (industry list, scan
+// report, language picker), which is what actually builds credibility.
 function HeroStatsBar() {
-  const { inflatedCount } = useTodayScanCount();
-  const [displayCount, setDisplayCount] = useState<number>(inflatedCount);
-  const [isAnimating, setIsAnimating] = useState(false);
-
-  // Sync with shared data
-  useEffect(() => {
-    setDisplayCount(inflatedCount);
-  }, [inflatedCount]);
-
-  useEffect(() => {
-    // Slow increment every 8-15 seconds to simulate real-time activity
-    const incrementInterval = setInterval(() => {
-      setDisplayCount(prev => {
-        setIsAnimating(true);
-        setTimeout(() => setIsAnimating(false), 600);
-        return prev + 1;
-      });
-    }, Math.random() * 7000 + 8000); // Random interval between 8-15 seconds
-
-    return () => {
-      clearInterval(incrementInterval);
-    };
-  }, []);
-
   const { t } = useTranslation();
-  
+
   return (
     <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 py-3 px-4 rounded-2xl bg-gradient-to-r from-card/80 via-card/60 to-card/80 border border-border/40 backdrop-blur-sm">
       <div className="flex items-center gap-2">
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-success/20">
-          <TrendingUp className="w-4 h-4 text-success" />
+        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/20">
+          <Target className="w-4 h-4 text-primary" />
         </div>
         <div className="text-left">
-          <p className={`text-lg sm:text-xl font-bold text-foreground transition-all duration-300 ${isAnimating ? 'scale-110 text-success' : ''}`}>
-            {displayCount.toLocaleString()}+
-          </p>
-          <p className="text-xs text-muted-foreground">{t('hero.stats.scannedToday', 'Scanned today')}</p>
+          <p className="text-lg sm:text-xl font-bold text-foreground">52</p>
+          <p className="text-xs text-muted-foreground">{t('hero.stats.industriesCovered', 'Industries covered')}</p>
+        </div>
+      </div>
+      <div className="w-px h-10 bg-border/50 hidden sm:block" />
+      <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-success/20">
+          <FileText className="w-4 h-4 text-success" />
+        </div>
+        <div className="text-left">
+          <p className="text-lg sm:text-xl font-bold text-foreground">24+</p>
+          <p className="text-xs text-muted-foreground">{t('hero.stats.checksPerScan', 'Checks per scan')}</p>
         </div>
       </div>
       <div className="w-px h-10 bg-border/50 hidden sm:block" />
       <div className="flex items-center gap-2">
         <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-warning/20">
-          <Star className="w-4 h-4 text-warning" />
+          <Award className="w-4 h-4 text-warning" />
         </div>
         <div className="text-left">
-          <p className="text-lg sm:text-xl font-bold text-foreground">4.9/5</p>
-          <p className="text-xs text-muted-foreground">{t('hero.stats.userRating', 'User rating')}</p>
-        </div>
-      </div>
-      <div className="w-px h-10 bg-border/50 hidden sm:block" />
-      <div className="flex items-center gap-2">
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/20">
-          <Award className="w-4 h-4 text-primary" />
-        </div>
-        <div className="text-left">
-          <p className="text-lg sm:text-xl font-bold text-foreground">89%</p>
-          <p className="text-xs text-muted-foreground">{t('hero.stats.gotInterviews', 'Got interviews')}</p>
+          <p className="text-lg sm:text-xl font-bold text-foreground">10</p>
+          <p className="text-xs text-muted-foreground">{t('hero.stats.languagesSupported', 'Languages supported')}</p>
         </div>
       </div>
     </div>
@@ -208,7 +183,7 @@ export function Hero() {
       >
         <Sparkles className={iconSize[size]} />
         <span>{t('hero.ctaButton', 'Check My Resume Now')}</span>
-        <div className={`absolute rounded-full bg-primary text-primary-foreground font-bold shadow-lg animate-pulse ${badgeClasses[size]}`}>
+        <div className={`absolute rounded-full bg-primary text-primary-foreground font-bold shadow-lg ${badgeClasses[size]}`}>
           {t('hero.freeBadge', 'FREE')}
         </div>
       </button>
@@ -275,20 +250,18 @@ export function Hero() {
               {renderTrustIndicators()}
             </div>
 
-            {/* Mini testimonial for extra social proof */}
+            {/* Transparency strip — verifiable facts beat manufactured activity feeds */}
             <div className="animate-fade-in flex justify-center" style={{ animationDelay: "0.15s" }}>
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-card/60 border border-border/40">
-                <div className="flex -space-x-2">
-                  {['JD', 'MK', 'AS'].map((initials, i) => (
-                    <div key={i} className="w-6 h-6 rounded-full bg-gradient-to-br from-primary/30 to-success/30 flex items-center justify-center border-2 border-background text-[8px] font-bold text-foreground">
-                      {initials}
-                    </div>
-                  ))}
-                </div>
+              <Link
+                to="/methodology"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-card/60 border border-border/40 hover:border-primary/40 transition-colors"
+              >
+                <Shield className="w-3.5 h-3.5 text-primary" />
                 <span className="text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground">{t('hero.socialFirst.recentActivityCount', { count: 142 })}</span> {t('hero.socialFirst.recentActivityText')}
+                  {t('hero.seeMethodology', 'See our methodology')} — {t('hero.transparentScoring', 'transparent AI scoring, no black box')}
                 </span>
-              </div>
+                <ArrowRight className="w-3 h-3 text-primary" />
+              </Link>
             </div>
           </div>
         </div>
@@ -584,16 +557,26 @@ export function Hero() {
             )}
           </div>
 
-          {/* Trusted by companies - desktop only */}
+          {/* How-it-works transparency strip — replaces the implied big-tech
+              endorsement wall, which read as fake and undercut trust */}
           <div className="animate-fade-in hidden sm:block" style={{ animationDelay: "0.35s" }}>
-            <p className="text-xs text-muted-foreground/60 mb-4">{t('hero.trustedBy')}</p>
-            <div className="flex flex-wrap justify-center items-center gap-x-6 sm:gap-x-8 gap-y-3">
-              <span className="text-sm sm:text-base font-semibold text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">Google</span>
-              <span className="text-sm sm:text-base font-semibold text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">Microsoft</span>
-              <span className="text-sm sm:text-base font-semibold text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">Amazon</span>
-              <span className="text-sm sm:text-base font-semibold text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">Apple</span>
-              <span className="text-sm sm:text-base font-semibold text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">Meta</span>
-              <span className="text-sm sm:text-base font-semibold text-muted-foreground/60 hover:text-muted-foreground/80 transition-colors">Netflix</span>
+            <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-xs text-muted-foreground/70">
+              <span className="flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-success/70" />
+                {t('hero.factGdpr', 'GDPR compliant')}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-success/70" />
+                {t('hero.factAutoDelete', 'Resumes auto-deleted within 24h')}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-success/70" />
+                {t('hero.factNoStorage', 'Never stored, never shared')}
+              </span>
+              <Link to="/methodology" className="flex items-center gap-1.5 text-primary/80 hover:text-primary transition-colors">
+                <Info className="w-3.5 h-3.5" />
+                {t('hero.seeMethodology', 'See our methodology')}
+              </Link>
             </div>
           </div>
 

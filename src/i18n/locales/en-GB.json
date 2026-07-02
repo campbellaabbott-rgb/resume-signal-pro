@@ -52,7 +52,10 @@
     "stats": {
       "scannedToday": "Scanned today",
       "userRating": "User rating",
-      "gotInterviews": "Got interviews"
+      "gotInterviews": "Got interviews",
+      "industriesCovered": "Industries covered",
+      "checksPerScan": "Checks per scan",
+      "languagesSupported": "Languages supported"
     },
     "chips": {
       "scan": "30-second scan",
@@ -87,8 +90,8 @@
       "approved": "Recruiter-approved"
     },
     "socialFirst": {
-      "joinThousands": "Join thousands of job seekers who landed interviews",
-      "subheading": "See why 89% of our users got interview callbacks after using our scanner.",
+      "joinThousands": "Free scan · No sign-up · Results in about 60 seconds",
+      "subheading": "Upload your CV and see exactly what ATS systems and recruiters will flag — with specific fixes you can apply today.",
       "recentActivityCount": "{{count}} people",
       "recentActivityText": "scanned their CV in the last hour"
     },
@@ -119,7 +122,11 @@
       "ready": "{{count}} ready"
     },
     "testimonialQuote": "Fixed my CV in 10 minutes. Got 3 interview calls the same week.",
-    "testimonialAuthorName": "— Sarah K., Software Engineer"
+    "testimonialAuthorName": "— Sarah K., Software Engineer",
+    "transparentScoring": "transparent AI scoring, no black box",
+    "factGdpr": "GDPR compliant",
+    "factAutoDelete": "CVs auto-deleted within 24h",
+    "factNoStorage": "Never stored, never shared"
   },
   "footer": {
     "copyright": "© {{year}} CV Booster. All rights reserved.",

@@ -52,7 +52,10 @@
     "stats": {
       "scannedToday": "Na-scan ngayon",
       "userRating": "Rating ng users",
-      "gotInterviews": "Nakakuha ng interviews"
+      "gotInterviews": "Nakakuha ng interviews",
+      "industriesCovered": "Mga industriyang saklaw",
+      "checksPerScan": "Mga pagsusuri bawat scan",
+      "languagesSupported": "Mga suportadong wika"
     },
     "chips": {
       "scan": "30-second scan",
@@ -87,8 +90,8 @@
       "approved": "Recruiter-approved"
     },
     "socialFirst": {
-      "joinThousands": "Sumali sa libo-libong job seeker na nakakuha ng interview",
-      "subheading": "Alamin kung bakit 89% ng aming mga user ang nakatanggap ng interview callback matapos gamitin ang aming scanner.",
+      "joinThousands": "Libreng scan · Walang sign-up · Resulta sa humigit-kumulang 60 segundo",
+      "subheading": "I-upload ang iyong resume at makita mismo kung ano ang mamarkahan ng mga ATS system at recruiter — may mga tiyak na ayos na magagamit mo ngayon din.",
       "recentActivityCount": "{{count}} katao",
       "recentActivityText": "ang nag-scan ng kanilang resume sa huling oras"
     },
@@ -119,7 +122,11 @@
       "ready": "{{count}} handa"
     },
     "testimonialQuote": "Naayos ang resume ko sa loob ng 10 minuto. Nakakuha ng 3 interview call sa parehong linggo.",
-    "testimonialAuthorName": "— Sarah K., Software Engineer"
+    "testimonialAuthorName": "— Sarah K., Software Engineer",
+    "transparentScoring": "transparent na AI scoring, walang black box",
+    "factGdpr": "Sumusunod sa GDPR",
+    "factAutoDelete": "Awtomatikong binubura ang mga resume sa loob ng 24 oras",
+    "factNoStorage": "Hindi kailanman iniimbak o ibinabahagi"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Lahat ng karapatan ay nakalaan.",

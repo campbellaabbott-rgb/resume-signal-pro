@@ -52,7 +52,10 @@
     "stats": {
       "scannedToday": "Analisados hoje",
       "userRating": "Avaliação dos utilizadores",
-      "gotInterviews": "Conseguiram entrevistas"
+      "gotInterviews": "Conseguiram entrevistas",
+      "industriesCovered": "Setores cobertos",
+      "checksPerScan": "Verificações por análise",
+      "languagesSupported": "Idiomas suportados"
     },
     "chips": {
       "scan": "Análise em 30 segundos",
@@ -87,8 +90,8 @@
       "approved": "Aprovado por recrutadores"
     },
     "socialFirst": {
-      "joinThousands": "Junte-se a milhares de candidatos que conseguiram entrevistas",
-      "subheading": "Veja por que 89% dos nossos usuários receberam retornos de entrevista após usar o nosso scanner.",
+      "joinThousands": "Análise grátis · Sem cadastro · Resultados em cerca de 60 segundos",
+      "subheading": "Envie seu currículo e veja exatamente o que os sistemas ATS e recrutadores vão apontar — com correções específicas que você pode aplicar hoje.",
       "recentActivityCount": "{{count}} pessoas",
       "recentActivityText": "verificaram o currículo na última hora"
     },
@@ -119,7 +122,11 @@
       "ready": "{{count}} prontas"
     },
     "testimonialQuote": "Corrigi o meu currículo em 10 minutos. Recebi 3 chamadas de entrevista na mesma semana.",
-    "testimonialAuthorName": "— Sarah K., Engenheira de Software"
+    "testimonialAuthorName": "— Sarah K., Engenheira de Software",
+    "transparentScoring": "pontuação de IA transparente, sem caixa preta",
+    "factGdpr": "Compatível com GDPR",
+    "factAutoDelete": "Currículos excluídos automaticamente em 24 h",
+    "factNoStorage": "Nunca armazenados, nunca compartilhados"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Todos os direitos reservados.",

@@ -58,7 +58,10 @@
     "stats": {
       "scannedToday": "Heute gescannt",
       "userRating": "Nutzerbewertung",
-      "gotInterviews": "Bekamen Vorstellungsgespräche"
+      "gotInterviews": "Bekamen Vorstellungsgespräche",
+      "industriesCovered": "Abgedeckte Branchen",
+      "checksPerScan": "Prüfungen pro Scan",
+      "languagesSupported": "Unterstützte Sprachen"
     },
     "chips": {
       "scan": "30-Sekunden-Scan",
@@ -87,8 +90,8 @@
       "approved": "Recruiter-geprüft"
     },
     "socialFirst": {
-      "joinThousands": "Schließe dich Tausenden von Jobsuchenden an, die Vorstellungsgespräche bekommen haben",
-      "subheading": "Erfahre, warum 89 % unserer Nutzer nach der Nutzung unseres Scanners Rückrufe für Vorstellungsgespräche erhielten.",
+      "joinThousands": "Kostenloser Scan · Keine Anmeldung · Ergebnisse in ca. 60 Sekunden",
+      "subheading": "Laden Sie Ihren Lebenslauf hoch und sehen Sie genau, was ATS-Systeme und Recruiter beanstanden — mit konkreten Korrekturen, die Sie sofort umsetzen können.",
       "recentActivityCount": "{{count}} Personen",
       "recentActivityText": "haben in der letzten Stunde ihren Lebenslauf gescannt"
     },
@@ -119,7 +122,11 @@
       "ready": "{{count}} bereit"
     },
     "testimonialQuote": "Habe meinen Lebenslauf in 10 Minuten korrigiert. Hatte in derselben Woche 3 Vorstellungsgespräche.",
-    "testimonialAuthorName": "— Sarah K., Softwareentwicklerin"
+    "testimonialAuthorName": "— Sarah K., Softwareentwicklerin",
+    "transparentScoring": "transparente KI-Bewertung, keine Blackbox",
+    "factGdpr": "DSGVO-konform",
+    "factAutoDelete": "Lebensläufe werden nach 24 h automatisch gelöscht",
+    "factNoStorage": "Nie gespeichert, nie geteilt"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle Rechte vorbehalten.",

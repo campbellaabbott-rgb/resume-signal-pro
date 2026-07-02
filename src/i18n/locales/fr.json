@@ -52,7 +52,10 @@
     "stats": {
       "scannedToday": "Scannés aujourd'hui",
       "userRating": "Note des utilisateurs",
-      "gotInterviews": "Ont obtenu des entretiens"
+      "gotInterviews": "Ont obtenu des entretiens",
+      "industriesCovered": "Secteurs couverts",
+      "checksPerScan": "Vérifications par analyse",
+      "languagesSupported": "Langues prises en charge"
     },
     "chips": {
       "scan": "Scan en 30 secondes",
@@ -87,8 +90,8 @@
       "approved": "Approuvé par les recruteurs"
     },
     "socialFirst": {
-      "joinThousands": "Rejoignez des milliers de candidats qui ont décroché des entretiens",
-      "subheading": "Découvrez pourquoi 89 % de nos utilisateurs ont reçu des rappels d'entretien après avoir utilisé notre scanner.",
+      "joinThousands": "Analyse gratuite · Sans inscription · Résultats en 60 secondes environ",
+      "subheading": "Téléchargez votre CV et voyez exactement ce que les systèmes ATS et les recruteurs signaleront — avec des corrections concrètes à appliquer dès aujourd’hui.",
       "recentActivityCount": "{{count}} personnes",
       "recentActivityText": "ont scanné leur CV dans la dernière heure"
     },
@@ -119,7 +122,11 @@
       "ready": "{{count}} prêts"
     },
     "testimonialQuote": "J'ai corrigé mon CV en 10 minutes. J'ai eu 3 appels d'entretien la même semaine.",
-    "testimonialAuthorName": "— Sarah K., Ingénieure logiciel"
+    "testimonialAuthorName": "— Sarah K., Ingénieure logiciel",
+    "transparentScoring": "notation IA transparente, sans boîte noire",
+    "factGdpr": "Conforme au RGPD",
+    "factAutoDelete": "CV supprimés automatiquement sous 24 h",
+    "factNoStorage": "Jamais stockés, jamais partagés"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Tous droits réservés.",

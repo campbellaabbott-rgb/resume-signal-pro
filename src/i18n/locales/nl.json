@@ -52,7 +52,10 @@
     "stats": {
       "scannedToday": "Vandaag gescand",
       "userRating": "Gebruikersbeoordeling",
-      "gotInterviews": "Kreeg interviews"
+      "gotInterviews": "Kreeg interviews",
+      "industriesCovered": "Sectoren gedekt",
+      "checksPerScan": "Controles per scan",
+      "languagesSupported": "Ondersteunde talen"
     },
     "chips": {
       "scan": "Scan in 30 seconden",
@@ -87,8 +90,8 @@
       "approved": "Recruiter-goedgekeurd"
     },
     "socialFirst": {
-      "joinThousands": "Sluit je aan bij duizenden sollicitanten die sollicitatiegesprekken hebben gekregen",
-      "subheading": "Ontdek waarom 89% van onze gebruikers terugbelteractie kreeg na het gebruik van onze scanner.",
+      "joinThousands": "Gratis scan · Geen aanmelding · Resultaten in ongeveer 60 seconden",
+      "subheading": "Upload je cv en zie precies wat ATS-systemen en recruiters zullen aanmerken — met concrete verbeteringen die je vandaag kunt toepassen.",
       "recentActivityCount": "{{count}} mensen",
       "recentActivityText": "hebben hun cv in het afgelopen uur gescand"
     },
@@ -119,7 +122,11 @@
       "ready": "{{count}} gereed"
     },
     "testimonialQuote": "Mijn cv binnen 10 minuten opgelost. Diezelfde week 3 gesprekken gekregen.",
-    "testimonialAuthorName": "— Sarah K., Software-engineer"
+    "testimonialAuthorName": "— Sarah K., Software-engineer",
+    "transparentScoring": "transparante AI-beoordeling, geen black box",
+    "factGdpr": "AVG-conform",
+    "factAutoDelete": "Cv's automatisch verwijderd binnen 24 u",
+    "factNoStorage": "Nooit opgeslagen, nooit gedeeld"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle rechten voorbehouden.",
