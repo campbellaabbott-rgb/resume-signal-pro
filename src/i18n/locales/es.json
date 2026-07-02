@@ -2744,6 +2744,30 @@
     }
   },
   "changelogEntries": {
+    "tenNewIndustries": {
+      "title": "10 nuevas industrias con soporte completo",
+      "description": "El escáner ahora cuenta con bibliotecas de palabras clave dedicadas, reconocimiento de títulos de puesto, tablas de certificaciones y puntos de referencia para 10 campos más: ciberseguridad, logística y cadena de suministro, bienes raíces, seguros, organizaciones sin fines de lucro, biotecnología y ciencia de laboratorio, aviación, energía, oficios especializados (electricistas, plomeros, HVAC, soldadores y más) y atención al cliente. Si trabajas en uno de estos campos, tu escaneo ya no se fuerza en una categoría vagamente relacionada: las palabras clave, alertas y comparativas ahora son específicas de tu profesión real."
+    },
+    "specializationDetection": {
+      "title": "Detección de industria a nivel de especialización",
+      "description": "Las industrias amplias esconden trabajos muy distintos: una enfermera, un facturador médico y un representante farmacéutico son todos \"salud\", pero necesitan currículums completamente diferentes. El escáner ahora detecta tu especialización dentro de la industria y adapta cada recomendación a ella. Las licencias profesionales como RN, CPA, PE o CISSP ahora anclan la clasificación, y cuando pegas una descripción de puesto, el análisis se enfoca en el campo al que estás aplicando. Los currículums multidisciplinarios reciben una lectura de mezcla honesta (p. ej. \"60% datos / 40% marketing\") en lugar de forzarse en una sola casilla."
+    },
+    "interviewLikelihoodFixPlan": {
+      "title": "Probabilidad de entrevista y un plan de mejora minuto a minuto",
+      "description": "Tres nuevos resultados te dicen dónde estás y exactamente qué hacer. Una banda de probabilidad de entrevista combina tu tasa de aprobación ATS, percentil y alertas críticas en un veredicto honesto, nombrando el factor que más te frena. Una comparación lado a lado muestra cómo se compara tu currículum con un candidato del cuartil superior de tu campo. Y un plan de mejora numerado ordena todo en una sola sesión de trabajo, priorizado por puntos ganados por minuto, con puntuación proyectada tras cada paso."
+    },
+    "deeperScoreReporting": {
+      "title": "Ve exactamente qué determina tu puntuación",
+      "description": "Tu puntuación ATS ya no es un número opaco. Un desglose muestra los tres componentes — coincidencia de palabras clave, formato y cuantificación — como barras separadas. Las mejoras rápidas ahora tienen valores de puntos explícitos y están ordenadas por impacto. Recibes tres reescrituras de viñetas en lugar de una, una clasificación de gravedad en cada alerta, los problemas específicos que determinaron tu nota de formato, calificaciones de calidad por sección, un veredicto de primera impresión del reclutador en 6 segundos y una próxima acción clara."
+    },
+    "atsPreviewComparisons": {
+      "title": "Ve tu currículum como lo ve un ATS",
+      "description": "Una nueva vista previa muestra el texto sin formato que un sistema de seguimiento de candidatos extrae realmente de tu currículum — sin formato, columnas ni iconos — para que detectes contenido que se pierde antes de que lo vea un humano. Además: tu percentil frente a otros candidatos de tu industria, una tasa estimada de aprobación ATS, un mapa de calor de brechas de palabras clave con consejos de ubicación, una auditoría de tono y voz, y una auditoría de longitud de secciones frente a objetivos ideales."
+    },
+    "trulyPersonalReports": {
+      "title": "Cada escaneo ahora está escrito específicamente sobre ti",
+      "description": "El consejo genérico ahora se considera un fallo. Cada alerta y mejora rápida debe citar textualmente tu currículum real. Los consejos se calibran según tu seniority: a los ejecutivos nunca se les dice \"añade más palabras clave\" y a los principiantes nunca se les pregunta por presupuestos. Quienes cambian de carrera reciben mapeo de habilidades transferibles, los veteranos traducción militar-civil, quienes regresan al trabajo lenguaje para enmarcar pausas, y los recién graduados consejos para elevar proyectos. Tu nombre y rol recorren ahora todo el informe."
+    },
     "linkedInInsights": {
       "title": "Análisis de perfil de LinkedIn — cómo te ven los reclutadores",
       "description": "Añade tu perfil de LinkedIn junto a tu currículum y obtén un análisis combinado: una puntuación de LinkedIn, inconsistencias entre tu currículum y perfil, un titular mejorado y apertura de sección Acerca de que puedes copiar con un clic."

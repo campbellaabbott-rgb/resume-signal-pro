@@ -2744,6 +2744,30 @@
     }
   },
   "changelogEntries": {
+    "tenNewIndustries": {
+      "title": "10 nieuwe sectoren nu volledig ondersteund",
+      "description": "De scanner heeft nu eigen trefwoordbibliotheken, functietitelherkenning, certificeringstabellen en scorebenchmarks voor 10 extra vakgebieden: cybersecurity, logistiek & supply chain, vastgoed, verzekeringen, non-profit & fondsenwerving, biotech & laboratoriumwetenschap, luchtvaart, energie, vakmanschap (elektriciens, loodgieters, HVAC, lassers en meer) en klantenservice. Werk je in een van deze vakgebieden, dan wordt je scan niet langer in een vaag verwante categorie geperst — trefwoorden, waarschuwingen en benchmarks zijn nu specifiek voor jouw echte beroep."
+    },
+    "specializationDetection": {
+      "title": "Sectordetectie op specialisatieniveau",
+      "description": "Brede sectoren verbergen heel verschillende banen — een verpleegkundige, een medisch declarant en een farmaceutisch vertegenwoordiger vallen allemaal onder \"zorg\", maar hebben totaal verschillende cv's nodig. De scanner detecteert nu je specialisatie binnen de sector en stemt elke aanbeveling daarop af. Beroepslicenties zoals RN, CPA, PE of CISSP verankeren nu de classificatie, en wanneer je een vacaturetekst plakt, wordt de analyse gericht op het veld waarnaar je solliciteert. Multidisciplinaire cv's krijgen een eerlijke mixweergave (bijv. \"60% data / 40% marketing\") in plaats van in één hokje te worden geduwd."
+    },
+    "interviewLikelihoodFixPlan": {
+      "title": "Sollicitatiegesprek-kans en een verbeterplan per minuut",
+      "description": "Drie nieuwe resultaten vertellen je waar je staat en wat je precies moet doen. Een terugbelkans-indicator combineert je ATS-slagingspercentage, percentiel en kritieke waarschuwingen tot één eerlijk oordeel — met de grootste blokkade expliciet benoemd. Een vergelijking naast elkaar toont hoe je cv zich verhoudt tot een topkwartiel-kandidaat in jouw vakgebied. En een genummerd verbeterplan ordent alles in één werksessie, gesorteerd op punten per minuut, met een lopende scoreprognose na elke stap."
+    },
+    "deeperScoreReporting": {
+      "title": "Zie precies wat je score bepaalt",
+      "description": "Je ATS-score is niet langer één ondoorzichtig getal. Een uitsplitsing toont de drie componenten — trefwoordmatch, opmaak en kwantificering — als aparte balken. Quick wins hebben nu expliciete puntwaarden en zijn gesorteerd op impact. Je krijgt drie bullet-herschrijvingen in plaats van één, een ernstclassificatie bij elke waarschuwing, de specifieke problemen achter je opmaakcijfer, kwaliteitsbeoordelingen per sectie, een recruiter-eerste-indruk-oordeel in 6 seconden en één duidelijke volgende actie."
+    },
+    "atsPreviewComparisons": {
+      "title": "Bekijk je cv zoals een ATS het ziet",
+      "description": "Een nieuwe parse-preview toont de ruwe tekst die een sollicitantvolgsysteem daadwerkelijk uit je cv haalt — zonder opmaak, kolommen en pictogrammen — zodat je content ziet die verloren gaat voordat een mens het leest. Daarnaast: je percentiel ten opzichte van andere kandidaten in je sector, een geschat ATS-slagingspercentage, een heatmap van trefwoordgaten met plaatsingsadvies, een toon- en stemaudit, en een sectielengte-audit ten opzichte van ideale woordaantallen."
+    },
+    "trulyPersonalReports": {
+      "title": "Elke scan is nu specifiek over jou geschreven",
+      "description": "Generiek advies geldt nu als een fout. Elke waarschuwing en quick win moet je echte cv-tekst letterlijk citeren. Advies wordt gekalibreerd op je senioriteit: leidinggevenden krijgen nooit \"voeg meer trefwoorden toe\" te horen en starters worden nooit naar budgetverantwoordelijkheid gevraagd. Carrièreswitchers krijgen een mapping van overdraagbare vaardigheden, veteranen een militair-naar-burger-vertaling, herintreders taal om gaten te duiden, en pas afgestudeerden advies om projecten op te waarderen. Je naam en rol lopen nu door het hele rapport."
+    },
     "linkedInInsights": {
       "title": "LinkedIn-profielanalyse — zie hoe recruiters u zien",
       "description": "Voeg uw LinkedIn-profiel toe naast uw cv en ontvang een gecombineerde analyse: een LinkedIn-score, inconsistenties tussen uw cv en profiel, een verbeterde kop en Over mij-sectie die u met één klik kunt kopiëren."

@@ -2744,6 +2744,30 @@
     }
   },
   "changelogEntries": {
+    "tenNewIndustries": {
+      "title": "10 nouveaux secteurs désormais entièrement pris en charge",
+      "description": "Le scanner dispose désormais de bibliothèques de mots-clés dédiées, de reconnaissance des intitulés de poste, de tables de certifications et de référentiels de notation pour 10 domaines supplémentaires : cybersécurité, logistique et chaîne d'approvisionnement, immobilier, assurance, associatif et collecte de fonds, biotech et sciences de laboratoire, aviation, énergie, métiers spécialisés (électriciens, plombiers, CVC, soudeurs et plus) et support client. Si vous travaillez dans l'un de ces domaines, votre analyse n'est plus forcée dans une catégorie vaguement liée — mots-clés, alertes et référentiels sont désormais propres à votre métier réel."
+    },
+    "specializationDetection": {
+      "title": "Détection sectorielle au niveau de la spécialisation",
+      "description": "Les grands secteurs cachent des métiers très différents — une infirmière, un facturier médical et un délégué pharmaceutique relèvent tous de la « santé » mais ont besoin de CV totalement différents. Le scanner détecte désormais votre spécialisation au sein du secteur et adapte chaque recommandation. Les licences professionnelles comme RN, CPA, PE ou CISSP ancrent désormais la classification, et lorsque vous collez une offre d'emploi, l'analyse est cadrée sur le domaine visé. Les CV transversaux reçoivent une lecture honnête du mélange (p. ex. « 60 % data / 40 % marketing ») au lieu d'être rangés dans une seule case."
+    },
+    "interviewLikelihoodFixPlan": {
+      "title": "Probabilité d'entretien et plan d'action minute par minute",
+      "description": "Trois nouveaux résultats vous disent où vous en êtes et quoi faire ensuite. Une jauge de probabilité de rappel combine taux de passage ATS, percentile et alertes critiques en un verdict honnête — avec le principal frein nommé explicitement. Une comparaison côte à côte montre votre CV face à un candidat du quartile supérieur de votre domaine. Et un plan d'action numéroté organise tout en une seule session de travail, trié par points gagnés par minute, avec un score projeté après chaque étape."
+    },
+    "deeperScoreReporting": {
+      "title": "Voyez exactement ce qui détermine votre score",
+      "description": "Votre score ATS n'est plus un chiffre opaque. Une ventilation montre les trois composantes — correspondance de mots-clés, format et quantification — sous forme de barres distinctes. Les gains rapides portent désormais des valeurs en points explicites et sont triés par impact. Vous obtenez trois réécritures de puces au lieu d'une, un niveau de gravité pour chaque alerte, les problèmes précis qui ont déterminé votre note de format, des évaluations de qualité par section, un verdict de première lecture du recruteur en 6 secondes et une prochaine action claire."
+    },
+    "atsPreviewComparisons": {
+      "title": "Voyez votre CV comme le voit un ATS",
+      "description": "Un nouvel aperçu d'analyse montre le texte brut qu'un système de suivi des candidatures extrait réellement de votre CV — mise en forme, colonnes et icônes supprimées — pour repérer le contenu perdu avant qu'un humain ne le voie. En complément : votre percentile face aux autres candidats de votre secteur, un taux de passage ATS estimé, une carte thermique des mots-clés manquants avec conseils de placement, un audit de ton et de voix, et un audit de longueur des sections par rapport aux cibles idéales."
+    },
+    "trulyPersonalReports": {
+      "title": "Chaque analyse est désormais écrite spécifiquement sur vous",
+      "description": "Le conseil générique est désormais considéré comme un échec. Chaque alerte et gain rapide doit citer mot pour mot le texte réel de votre CV. Les conseils sont calibrés selon votre séniorité : on ne dit jamais à un dirigeant d'« ajouter des mots-clés » et on ne demande jamais à un débutant sa gestion de budget. Les personnes en reconversion reçoivent une cartographie des compétences transférables, les vétérans une traduction militaire-civil, les personnes de retour à l'emploi un langage pour cadrer les pauses, et les jeunes diplômés des conseils pour valoriser leurs projets. Votre nom et votre rôle traversent désormais tout le rapport."
+    },
     "linkedInInsights": {
       "title": "Analyse de profil LinkedIn — comment vous apparaissez aux recruteurs",
       "description": "Ajoutez votre profil LinkedIn avec votre CV et obtenez une analyse combinée: un score LinkedIn, des incohérences entre votre CV et profil, un titre amélioré et une ouverture de section À propos que vous pouvez copier en un clic."

@@ -2744,6 +2744,30 @@
     }
   },
   "changelogEntries": {
+    "tenNewIndustries": {
+      "title": "10 new industries now fully supported",
+      "description": "The scanner now has dedicated keyword libraries, job-title recognition, certification tables, and scoring benchmarks for 10 more fields: cybersecurity, logistics & supply chain, real estate, insurance, nonprofit & fundraising, biotech & lab science, aviation, energy, skilled trades (electricians, plumbers, HVAC, welders and more), and customer support. If you work in one of these fields, your scan is no longer squeezed into a loosely-related category — keywords, red flags, and benchmarks are now specific to your actual profession."
+    },
+    "specializationDetection": {
+      "title": "Specialization-level industry detection",
+      "description": "Broad industries hide very different jobs — a nurse, a medical biller, and a pharma sales rep are all \"healthcare\" but need completely different resumes. The scanner now detects your specialization within the industry (clinical care vs. healthcare administration vs. pharma vs. health tech; frontend vs. backend vs. DevOps; accounting vs. FP&A vs. investment banking, and more) and tailors every recommendation to it. Professional licenses like RN, CPA, PE, CISSP, or a journeyman card now anchor the classification, and when you paste a job description, the analysis is framed around the field you're applying INTO. Cross-functional resumes get an honest blend readout (e.g. \"60% data / 40% marketing\") instead of being forced into one box."
+    },
+    "interviewLikelihoodFixPlan": {
+      "title": "Interview likelihood and a minute-by-minute fix plan",
+      "description": "Three new results tell you where you stand and exactly what to do next. An interview callback likelihood band combines your ATS pass rate, peer percentile, and critical red flags into one honest verdict — with the single biggest factor holding you back named explicitly. A side-by-side comparison shows how your resume stacks up against a top-quartile candidate in your field on quantified bullets, leadership signals, and keyword coverage. And a numbered fix plan sequences everything into a single work session, ordered by points gained per minute, with a running projected score after each step."
+    },
+    "deeperScoreReporting": {
+      "title": "See exactly what drives your score",
+      "description": "Your ATS score is no longer a single opaque number. A score breakdown shows the three components — keyword match, format, and quantification — as separate bars. Quick wins now carry explicit point values and are sorted by impact. You get three bullet rewrites instead of one, a severity ranking on every red flag (critical / moderate / minor), the specific issues that drove your format grade, quality ratings for each resume section, a recruiter first-pass verdict written as a 6-second scan, and one clear next best action to take."
+    },
+    "atsPreviewComparisons": {
+      "title": "See your resume the way an ATS does",
+      "description": "A new parse preview shows the raw text an applicant tracking system actually extracts from your resume — formatting, columns, and icons stripped away — so you can spot content that gets lost before a human ever sees it. Alongside it: your percentile against other candidates in your industry, an estimated ATS pass rate, a keyword gap heat map that shows how often each missing keyword appears in real job postings (with advice on which section to add it to), a tone & voice audit that counts passive phrases and first-person pronouns, and a section length audit comparing each section against ideal word-count targets."
+    },
+    "trulyPersonalReports": {
+      "title": "Every scan is now written specifically about you",
+      "description": "Generic advice is now treated as a failure. Every red flag, weak phrase, and quick win must quote your actual resume text verbatim — not \"your bullets lack metrics\" but exactly which bullet, quoted back to you. Advice is calibrated to your seniority: executives are never told to \"add more keywords,\" and entry-level candidates are never asked about P&L ownership. Career changers get transferable-skills mapping, veterans get military-to-civilian translation, returners get gap-framing language, and recent grads get project elevation advice. Your name and role now run throughout the report."
+    },
     "industryDetectionAccuracy8Fixes": {
       "title": "8 accuracy upgrades to industry detection",
       "description": "We identified and fixed every known category of industry misclassification. (1) Unambiguous role titles — registered nurse, attorney, product manager, ML engineer, and 50+ others — now hard-lock the industry regardless of keyword scores, so a nurse with Python in her skills section is never classified as a data scientist. (2) Each industry now requires at least one anchor term to be present before high confidence is granted — eliminating false positives caused by long skills lists. (3) Very short resumes (under 80 words) skip keyword scoring entirely and rely only on your job titles. (4) The employer name boost is now guarded — a finance analyst at Google no longer gets a technology boost. (5) Implausible industry + seniority combinations (e.g. entry-level consulting, executive retail) are flagged and confidence is capped. (6) The skills section contribution is now hard-capped at 6 points regardless of how many skills are listed — your most recent job titles always outweigh a 60-item skills list. (7) When you paste a job description alongside your resume, the AI now classifies your industry from your resume titles, not the company you're applying to. (8) User corrections now compound logarithmically — the more times a pattern is corrected, the stronger the learning signal."

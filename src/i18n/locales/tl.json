@@ -2744,6 +2744,30 @@
     }
   },
   "changelogEntries": {
+    "tenNewIndustries": {
+      "title": "10 bagong industriya ang ganap nang suportado",
+      "description": "Ang scanner ay mayroon na ngayong sariling keyword library, pagkilala sa job title, talahanayan ng sertipikasyon, at scoring benchmark para sa 10 pang larangan: cybersecurity, logistics at supply chain, real estate, insurance, nonprofit at fundraising, biotech at lab science, aviation, enerhiya, skilled trades (electrician, tubero, HVAC, welder at iba pa), at customer support. Kung nagtatrabaho ka sa isa sa mga larangang ito, hindi na ipinipilit ang iyong scan sa malayong kategorya — ang mga keyword, babala, at benchmark ay tugma na sa iyong tunay na propesyon."
+    },
+    "specializationDetection": {
+      "title": "Pagtukoy ng industriya sa antas ng espesyalisasyon",
+      "description": "Ang malalawak na industriya ay nagtatago ng magkakaibang trabaho — ang nurse, medical biller, at pharma sales rep ay pawang \"healthcare\" ngunit magkakaibang resume ang kailangan. Natutukoy na ngayon ng scanner ang iyong espesyalisasyon sa loob ng industriya at iniaangkop dito ang bawat rekomendasyon. Ang mga propesyonal na lisensya tulad ng RN, CPA, PE, o CISSP ay nag-aangkla na ngayon sa klasipikasyon, at kapag nagdikit ka ng job description, nakatuon ang pagsusuri sa larangang inaaplayan mo. Ang mga cross-functional na resume ay nakakakuha ng tapat na blend readout (hal. \"60% data / 40% marketing\") sa halip na ipilit sa isang kahon."
+    },
+    "interviewLikelihoodFixPlan": {
+      "title": "Posibilidad ng interview at plano ng pag-aayos bawat minuto",
+      "description": "Tatlong bagong resulta ang nagsasabi kung nasaan ka at kung ano ang eksaktong susunod na gagawin. Pinagsasama ng interview callback likelihood ang iyong ATS pass rate, percentile, at mga kritikal na babala sa isang tapat na hatol — na tahasang pinangangalanan ang pinakamalaking hadlang. Ipinapakita ng paghahambing kung paano tumitindig ang iyong resume laban sa top-quartile na kandidato sa iyong larangan. At isang may-numerong plano ng pag-aayos ang nag-aayos ng lahat sa iisang work session, nakaayos ayon sa puntos bawat minuto, na may tinatayang iskor pagkatapos ng bawat hakbang."
+    },
+    "deeperScoreReporting": {
+      "title": "Tingnan kung ano mismo ang bumubuo sa iyong iskor",
+      "description": "Ang iyong ATS score ay hindi na iisang malabo na numero. Ipinapakita ng score breakdown ang tatlong bahagi — keyword match, format, at quantification — bilang magkakahiwalay na bar. Ang mga quick win ay may tahasang halaga ng puntos na at nakaayos ayon sa epekto. Makakakuha ka ng tatlong bullet rewrite sa halip na isa, severity ranking sa bawat babala, ang mga tiyak na isyung nagtakda ng iyong format grade, quality rating bawat seksyon, hatol ng recruiter sa 6-segundong pagbasa, at isang malinaw na susunod na hakbang."
+    },
+    "atsPreviewComparisons": {
+      "title": "Tingnan ang iyong resume tulad ng pagtingin ng ATS",
+      "description": "Ipinapakita ng bagong parse preview ang hilaw na tekstong aktwal na kinukuha ng applicant tracking system mula sa iyong resume — tinanggal ang formatting, column, at icon — para makita mo ang nilalamang nawawala bago pa ito makita ng tao. Kasama rin: ang iyong percentile laban sa ibang kandidato sa iyong industriya, tinatayang ATS pass rate, keyword gap heat map na may payo kung saang seksyon idadagdag, tone at voice audit, at section length audit laban sa mga ideal na target ng bilang ng salita."
+    },
+    "trulyPersonalReports": {
+      "title": "Bawat scan ay nakasulat na ngayon nang partikular tungkol sa iyo",
+      "description": "Ang pangkalahatang payo ay itinuturing nang kabiguan. Bawat babala at quick win ay kailangang sumipi nang verbatim mula sa iyong aktwal na resume. Ang payo ay nakaayon sa iyong seniority: hindi kailanman sasabihin sa mga executive na \"magdagdag ng keywords\" at hindi kailanman tatanungin ang mga baguhan tungkol sa budget. Ang mga nagpapalit ng karera ay may transferable-skills mapping, ang mga beterano ay may military-to-civilian na salin, ang mga bumabalik sa trabaho ay may wika para sa pag-frame ng gap, at ang mga bagong gradweyt ay may payo sa pagtataas ng mga proyekto. Ang iyong pangalan at tungkulin ay tumatakbo na sa buong ulat."
+    },
     "linkedInInsights": {
       "title": "Pagsusuri ng LinkedIn profile — paano ka nakikita ng mga recruiter",
       "description": "Idagdag ang iyong LinkedIn profile kasama ang iyong resume at makakuha ng pinagsama-samang pagsusuri: LinkedIn score, mga pagkakaiba-iba sa pagitan ng iyong resume at profile, at pinahusay na headline na maaari mong kopyahin sa isang click."

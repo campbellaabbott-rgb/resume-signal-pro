@@ -2744,6 +2744,30 @@
     }
   },
   "changelogEntries": {
+    "tenNewIndustries": {
+      "title": "10 novos setores agora totalmente suportados",
+      "description": "O scanner agora tem bibliotecas de palavras-chave dedicadas, reconhecimento de cargos, tabelas de certificações e benchmarks de pontuação para mais 10 áreas: cibersegurança, logística e cadeia de suprimentos, imóveis, seguros, organizações sem fins lucrativos, biotecnologia e ciência de laboratório, aviação, energia, ofícios especializados (eletricistas, encanadores, HVAC, soldadores e mais) e atendimento ao cliente. Se você trabalha em uma dessas áreas, sua análise não é mais espremida em uma categoria vagamente relacionada — palavras-chave, alertas e benchmarks agora são específicos da sua profissão real."
+    },
+    "specializationDetection": {
+      "title": "Detecção de setor em nível de especialização",
+      "description": "Setores amplos escondem trabalhos muito diferentes — uma enfermeira, um faturista médico e um representante farmacêutico são todos \"saúde\", mas precisam de currículos completamente diferentes. O scanner agora detecta sua especialização dentro do setor e adapta cada recomendação a ela. Licenças profissionais como RN, CPA, PE ou CISSP agora ancoram a classificação, e quando você cola uma descrição de vaga, a análise é enquadrada no campo para o qual você está se candidatando. Currículos multidisciplinares recebem uma leitura honesta da mistura (ex.: \"60% dados / 40% marketing\") em vez de serem forçados em uma única caixa."
+    },
+    "interviewLikelihoodFixPlan": {
+      "title": "Probabilidade de entrevista e um plano de melhoria minuto a minuto",
+      "description": "Três novos resultados mostram onde você está e exatamente o que fazer. Uma faixa de probabilidade de retorno combina taxa de aprovação ATS, percentil e alertas críticos em um veredito honesto — nomeando o fator que mais te segura. Uma comparação lado a lado mostra seu currículo frente a um candidato do quartil superior da sua área. E um plano numerado organiza tudo em uma única sessão de trabalho, ordenado por pontos ganhos por minuto, com pontuação projetada após cada etapa."
+    },
+    "deeperScoreReporting": {
+      "title": "Veja exatamente o que determina sua pontuação",
+      "description": "Sua pontuação ATS não é mais um número opaco. Um detalhamento mostra os três componentes — correspondência de palavras-chave, formato e quantificação — como barras separadas. As melhorias rápidas agora têm valores de pontos explícitos e são ordenadas por impacto. Você recebe três reescritas de bullets em vez de uma, classificação de gravidade em cada alerta, os problemas específicos por trás da sua nota de formato, avaliações de qualidade por seção, um veredito de primeira impressão do recrutador em 6 segundos e uma próxima ação clara."
+    },
+    "atsPreviewComparisons": {
+      "title": "Veja seu currículo como um ATS o vê",
+      "description": "Uma nova pré-visualização mostra o texto bruto que um sistema de rastreamento de candidatos realmente extrai do seu currículo — sem formatação, colunas e ícones — para você identificar conteúdo que se perde antes que um humano o veja. Além disso: seu percentil frente a outros candidatos do seu setor, uma taxa estimada de aprovação ATS, um mapa de calor de lacunas de palavras-chave com conselhos de posicionamento, uma auditoria de tom e voz, e uma auditoria de comprimento de seções frente a metas ideais."
+    },
+    "trulyPersonalReports": {
+      "title": "Cada análise agora é escrita especificamente sobre você",
+      "description": "Conselho genérico agora é tratado como falha. Cada alerta e melhoria rápida deve citar literalmente o texto real do seu currículo. Os conselhos são calibrados pela sua senioridade: executivos nunca ouvem \"adicione mais palavras-chave\" e iniciantes nunca são questionados sobre orçamentos. Quem muda de carreira recebe mapeamento de habilidades transferíveis, veteranos recebem tradução militar-civil, quem retorna ao trabalho recebe linguagem para enquadrar pausas, e recém-formados recebem dicas para valorizar projetos. Seu nome e cargo agora percorrem todo o relatório."
+    },
     "linkedInInsights": {
       "title": "Análise de perfil LinkedIn — como os recrutadores te veem",
       "description": "Adicione seu perfil LinkedIn junto ao currículo e obtenha uma análise combinada: pontuação LinkedIn, inconsistências entre currículo e perfil, um título melhorado e abertura da seção Sobre que você pode copiar com um clique."

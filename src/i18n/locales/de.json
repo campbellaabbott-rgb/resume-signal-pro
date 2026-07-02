@@ -2744,6 +2744,30 @@
     }
   },
   "changelogEntries": {
+    "tenNewIndustries": {
+      "title": "10 neue Branchen werden jetzt vollständig unterstützt",
+      "description": "Der Scanner verfügt jetzt über eigene Keyword-Bibliotheken, Jobtitel-Erkennung, Zertifizierungstabellen und Bewertungs-Benchmarks für 10 weitere Bereiche: Cybersicherheit, Logistik & Supply Chain, Immobilien, Versicherungen, Non-Profit & Fundraising, Biotech & Laborwissenschaft, Luftfahrt, Energie, Handwerksberufe (Elektriker, Klempner, HLK, Schweißer und mehr) und Kundensupport. Wer in einem dieser Bereiche arbeitet, wird nicht mehr in eine nur lose verwandte Kategorie gepresst — Keywords, Warnsignale und Benchmarks sind jetzt spezifisch für den tatsächlichen Beruf."
+    },
+    "specializationDetection": {
+      "title": "Branchenerkennung auf Spezialisierungsebene",
+      "description": "Breite Branchen verbergen sehr unterschiedliche Berufe — eine Pflegekraft, ein Abrechnungsspezialist und ein Pharma-Vertriebler sind alle „Gesundheitswesen\", brauchen aber völlig unterschiedliche Lebensläufe. Der Scanner erkennt jetzt Ihre Spezialisierung innerhalb der Branche und passt jede Empfehlung daran an. Berufslizenzen wie RN, CPA, PE oder CISSP verankern jetzt die Klassifizierung, und wenn Sie eine Stellenbeschreibung einfügen, wird die Analyse auf das Zielfeld ausgerichtet. Bereichsübergreifende Lebensläufe erhalten eine ehrliche Mischungsangabe (z. B. „60 % Data / 40 % Marketing\") statt in eine Schublade gesteckt zu werden."
+    },
+    "interviewLikelihoodFixPlan": {
+      "title": "Interview-Wahrscheinlichkeit und ein minutengenauer Verbesserungsplan",
+      "description": "Drei neue Ergebnisse zeigen, wo Sie stehen und was als Nächstes zu tun ist. Eine Interview-Rückruf-Wahrscheinlichkeit kombiniert ATS-Bestehensquote, Perzentil und kritische Warnsignale zu einem ehrlichen Urteil — mit klarer Benennung des größten Hindernisses. Ein direkter Vergleich zeigt, wie Ihr Lebenslauf gegenüber einem Top-Quartil-Kandidaten in Ihrem Bereich abschneidet. Und ein nummerierter Verbesserungsplan ordnet alles in eine einzige Arbeitssitzung, sortiert nach Punkten pro Minute, mit laufender Punkteprognose nach jedem Schritt."
+    },
+    "deeperScoreReporting": {
+      "title": "Sehen Sie genau, was Ihren Score bestimmt",
+      "description": "Ihr ATS-Score ist keine undurchsichtige Einzelzahl mehr. Eine Aufschlüsselung zeigt die drei Komponenten — Keyword-Übereinstimmung, Format und Quantifizierung — als separate Balken. Quick Wins tragen jetzt explizite Punktwerte und sind nach Wirkung sortiert. Sie erhalten drei Bullet-Umformulierungen statt einer, eine Schweregrad-Einstufung für jedes Warnsignal, die konkreten Ursachen Ihrer Format-Note, Qualitätsbewertungen für jeden Abschnitt, ein Recruiter-Ersteindruck-Urteil im 6-Sekunden-Scan und eine klare nächste Maßnahme."
+    },
+    "atsPreviewComparisons": {
+      "title": "Sehen Sie Ihren Lebenslauf mit den Augen eines ATS",
+      "description": "Eine neue Parse-Vorschau zeigt den Rohtext, den ein Bewerbermanagementsystem tatsächlich aus Ihrem Lebenslauf extrahiert — ohne Formatierung, Spalten und Symbole. Dazu kommen: Ihr Perzentil im Vergleich zu anderen Kandidaten Ihrer Branche, eine geschätzte ATS-Bestehensquote, eine Keyword-Lücken-Heatmap mit Platzierungsempfehlungen, ein Ton- und Sprachaudit (Passivkonstruktionen und Ich-Formulierungen) und ein Abschnittslängen-Audit im Vergleich zu idealen Wortzahl-Zielen."
+    },
+    "trulyPersonalReports": {
+      "title": "Jeder Scan ist jetzt speziell über Sie geschrieben",
+      "description": "Generische Ratschläge gelten jetzt als Fehler. Jedes Warnsignal und jeder Quick Win muss Ihren tatsächlichen Lebenslauftext wörtlich zitieren. Die Ratschläge sind auf Ihre Seniorität abgestimmt: Führungskräften wird nie „mehr Keywords\" empfohlen, Berufseinsteiger werden nie nach Budgetverantwortung gefragt. Quereinsteiger erhalten eine Zuordnung übertragbarer Fähigkeiten, Veteranen eine Militär-zu-Zivil-Übersetzung, Rückkehrer Formulierungshilfen für Lücken und Absolventen Tipps zur Aufwertung von Projekten. Ihr Name und Ihre Rolle ziehen sich jetzt durch den gesamten Bericht."
+    },
     "linkedInInsights": {
       "title": "LinkedIn-Profilanalyse — sehen Sie, wie Sie auf Recruiter wirken",
       "description": "Fügen Sie Ihr LinkedIn-Profil neben Ihrem Lebenslauf hinzu und erhalten Sie eine kombinierte Analyse: einen LinkedIn-Score, eine Aufschlüsselung von Inkonsistenzen zwischen Ihrem Lebenslauf und Profil, eine verbesserte Überschrift und Über mich-Sektion."
