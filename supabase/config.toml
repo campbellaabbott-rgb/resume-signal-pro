@@ -1,136 +1,95 @@
 project_id = "bwhdazbotpblihdxcmho"
 
-[functions.create-checkout]
-verify_jwt = false
-
-[functions.analyze-resume]
-verify_jwt = false
-
-[functions.parse-pdf]
-verify_jwt = false
-
-[functions.parse-docx]
-verify_jwt = false
-
-[functions.send-analysis-email]
-verify_jwt = false
-
-[functions.scrape-linkedin]
-verify_jwt = false
-
-[functions.free-keyword-scan]
-verify_jwt = false
-
-[functions.free-keyword-scan-stream]
-verify_jwt = false
-
-[functions.save-lead]
-verify_jwt = false
-
-[functions.track-ab-event]
-verify_jwt = false
-
-[functions.parse-spreadsheet]
-verify_jwt = false
-
-[functions.create-scan-pack-checkout]
-verify_jwt = false
-
-[functions.verify-scan-pack-purchase]
-verify_jwt = false
-
-[functions.generate-tailored-resume]
-verify_jwt = false
-
-[functions.generate-tailored-resume-stream]
-verify_jwt = false
-
-[functions.create-product-checkout]
-verify_jwt = false
-
-[functions.generate-keyword-fix]
-verify_jwt = false
-
-[functions.generate-cover-letter]
-verify_jwt = false
-
-[functions.generate-cover-letter-stream]
-verify_jwt = false
-
-[functions.verify-product-purchase]
-verify_jwt = false
-
-[functions.generate-premium-package]
-verify_jwt = false
-
-[functions.generate-premium-package-stream]
-verify_jwt = false
-
-[functions.send-product-email]
-verify_jwt = false
-
-[functions.create-test-checkout]
-verify_jwt = false
-
-[functions.generate-ats-defense]
-verify_jwt = false
-
-[functions.get-analytics]
-verify_jwt = false
-
-[functions.stripe-webhook]
-verify_jwt = false
-
-[functions.generate-cohort-report]
-verify_jwt = false
-
-[functions.check-error-spikes]
-verify_jwt = false
-
-[functions.health-check]
-verify_jwt = false
-
-[functions.generate-summary]
-verify_jwt = false
-
-[functions.scan-heartbeat]
-verify_jwt = false
-
-[functions.check-alerts]
-verify_jwt = false
-
-[functions.recover-purchase]
-verify_jwt = false
-
-[functions.retry-failed-deliveries]
-verify_jwt = false
-
-[functions.admin-regenerate-delivery]
-verify_jwt = false
-
-[functions.test-ai-fallback]
-verify_jwt = false
-
-[functions.scheduled-health-probe]
-verify_jwt = false
-
-[functions.warm-up]
-verify_jwt = false
-
-[functions.generate-career-snapshot]
-verify_jwt = false
-
-[functions.generate-graduate-gameplan]
-verify_jwt = false
-
-[functions.send-scan-report]
-verify_jwt = false
-
-[functions.send-market-pulse]
-verify_jwt = false
-
-[functions.notify-owner]
-verify_jwt = false
-
-[functions.process-email-queue]
-verify_jwt = true
+[functions]
+  [functions.admin-regenerate-delivery]
+    verify_jwt = false
+  [functions.analyze-resume]
+    verify_jwt = false
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.check-alerts]
+    verify_jwt = false
+  [functions.check-error-spikes]
+    verify_jwt = false
+  [functions.create-checkout]
+    verify_jwt = false
+  [functions.create-product-checkout]
+    verify_jwt = false
+  [functions.create-scan-pack-checkout]
+    verify_jwt = false
+  [functions.create-test-checkout]
+    verify_jwt = false
+  [functions.free-keyword-scan]
+    verify_jwt = false
+  [functions.free-keyword-scan-stream]
+    verify_jwt = false
+  [functions.generate-ats-defense]
+    verify_jwt = false
+  [functions.generate-career-snapshot]
+    verify_jwt = false
+  [functions.generate-cohort-report]
+    verify_jwt = false
+  [functions.generate-cover-letter]
+    verify_jwt = false
+  [functions.generate-cover-letter-stream]
+    verify_jwt = false
+  [functions.generate-graduate-gameplan]
+    verify_jwt = false
+  [functions.generate-keyword-fix]
+    verify_jwt = false
+  [functions.generate-premium-package]
+    verify_jwt = false
+  [functions.generate-premium-package-stream]
+    verify_jwt = false
+  [functions.generate-summary]
+    verify_jwt = false
+  [functions.generate-tailored-resume]
+    verify_jwt = false
+  [functions.generate-tailored-resume-stream]
+    verify_jwt = false
+  [functions.get-analytics]
+    verify_jwt = false
+  [functions.health-check]
+    verify_jwt = false
+  [functions.notify-owner]
+    verify_jwt = false
+  [functions.parse-docx]
+    verify_jwt = false
+  [functions.parse-pdf]
+    verify_jwt = false
+  [functions.parse-spreadsheet]
+    verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.recover-purchase]
+    verify_jwt = false
+  [functions.retry-failed-deliveries]
+    verify_jwt = false
+  [functions.save-lead]
+    verify_jwt = false
+  [functions.scan-heartbeat]
+    verify_jwt = false
+  [functions.scheduled-health-probe]
+    verify_jwt = false
+  [functions.scrape-linkedin]
+    verify_jwt = false
+  [functions.send-analysis-email]
+    verify_jwt = false
+  [functions.send-market-pulse]
+    verify_jwt = false
+  [functions.send-product-email]
+    verify_jwt = false
+  [functions.send-scan-report]
+    verify_jwt = false
+  [functions.stripe-webhook]
+    verify_jwt = false
+  [functions.test-ai-fallback]
+    verify_jwt = false
+  [functions.track-ab-event]
+    verify_jwt = false
+  [functions.verify-product-purchase]
+    verify_jwt = false
+  [functions.verify-scan-pack-purchase]
+    verify_jwt = false
+  [functions.warm-up]
+    verify_jwt = false
