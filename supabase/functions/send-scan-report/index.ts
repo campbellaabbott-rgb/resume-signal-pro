@@ -78,44 +78,109 @@ Deno.serve(async (req) => {
       });
     }
 
-    const scoreColor = body.score >= 70 ? "#22c55e" : body.score >= 50 ? "#f59e0b" : "#ef4444";
+    const SITE_URL = "https://resumebooster.work";
+    const ctaUrl = `${SITE_URL}/?utm_source=email&utm_medium=scan_report&utm_campaign=free_scan#pricing`;
+    const rescanUrl = `${SITE_URL}/?utm_source=email&utm_medium=scan_report&utm_campaign=rescan`;
+
+    const score = Math.round(body.score);
+    const scoreColor = score >= 70 ? "#16a34a" : score >= 50 ? "#d97706" : "#dc2626";
+    const scoreBg = score >= 70 ? "#f0fdf4" : score >= 50 ? "#fffbeb" : "#fef2f2";
+    const scoreLabel = score >= 70 ? "Good" : score >= 50 ? "Needs work" : "At risk";
+
+    // Email-safe horizontal bar (nested divs degrade gracefully in Outlook)
+    const bar = (label: string, value: number, color: string) => `
+      <tr>
+        <td style="padding:4px 0;font-size:12px;color:#555;width:110px">${escapeHtml(label)}</td>
+        <td style="padding:4px 0">
+          <div style="background:#eee;border-radius:6px;height:8px;width:100%">
+            <div style="background:${color};border-radius:6px;height:8px;width:${Math.min(Math.max(value, 2), 100)}%"></div>
+          </div>
+        </td>
+        <td style="padding:4px 0 4px 8px;font-size:12px;font-weight:700;color:#111;width:36px;text-align:right">${escapeHtml(value)}%</td>
+      </tr>`;
+
     const rows: string[] = [];
 
     if (body.verdict) {
-      rows.push(`<p style="font-size:15px;line-height:1.5;color:#111;font-weight:600">${escapeHtml(body.verdict)}</p>`);
+      rows.push(`<p style="font-size:15px;line-height:1.55;color:#111;font-weight:600;margin:0 0 12px">${escapeHtml(body.verdict)}</p>`);
     }
+
+    // Score panel
     rows.push(`
-      <div style="text-align:center;padding:16px 0">
-        <span style="font-size:44px;font-weight:800;color:${scoreColor}">${escapeHtml(Math.round(body.score))}</span>
-        <span style="font-size:16px;color:#666">/100 ATS score</span>
-        ${body.projectedScore ? `<div style="font-size:13px;color:#22c55e;margin-top:4px">→ ~${escapeHtml(Math.round(body.projectedScore))} after the fixes below</div>` : ""}
+      <div style="background:${scoreBg};border:1px solid ${scoreColor}22;border-radius:12px;text-align:center;padding:20px 16px;margin:0 0 16px">
+        <div style="font-size:52px;font-weight:800;color:${scoreColor};line-height:1">${escapeHtml(score)}<span style="font-size:18px;font-weight:400;color:#888">/100</span></div>
+        <div style="display:inline-block;background:${scoreColor};color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;margin-top:8px;letter-spacing:0.5px;text-transform:uppercase">${scoreLabel}</div>
+        ${body.projectedScore && Math.round(body.projectedScore) > score ? `<div style="font-size:13px;color:#16a34a;margin-top:10px;font-weight:600">↗ Projected ~${escapeHtml(Math.round(body.projectedScore))} after your fix plan</div>` : ""}
       </div>`);
 
+    // Breakdown bars
     if (body.scoreBreakdown) {
-      rows.push(`<p style="font-size:13px;color:#444">Keyword match: <b>${escapeHtml(body.scoreBreakdown.keywords)}%</b> · Format: <b>${escapeHtml(body.scoreBreakdown.format)}%</b> · Quantification: <b>${escapeHtml(body.scoreBreakdown.quantification)}%</b></p>`);
-    }
-    if (body.peerPercentile != null || body.applicationPassRate != null) {
-      rows.push(`<p style="font-size:13px;color:#444">${body.peerPercentile != null ? `Peer percentile: <b>${escapeHtml(body.peerPercentile)}</b>` : ""}${body.peerPercentile != null && body.applicationPassRate != null ? " · " : ""}${body.applicationPassRate != null ? `Est. ATS pass rate: <b>${escapeHtml(body.applicationPassRate)}%</b>` : ""}</p>`);
-    }
-    if (body.redFlags && body.redFlags.length > 0) {
-      rows.push(`<h3 style="font-size:14px;color:#111;margin:18px 0 6px">Top issues</h3><ol style="font-size:13px;color:#444;padding-left:18px;margin:0">${body.redFlags.slice(0, 3).map(f => `<li style="margin-bottom:4px">${escapeHtml(f.issue)}</li>`).join("")}</ol>`);
-    }
-    if (body.fixRoadmap && body.fixRoadmap.steps.length > 0) {
-      rows.push(`<h3 style="font-size:14px;color:#111;margin:18px 0 6px">Your ${escapeHtml(body.fixRoadmap.totalMinutes)}-minute fix plan</h3><ol style="font-size:13px;color:#444;padding-left:18px;margin:0">${body.fixRoadmap.steps.map(s => `<li style="margin-bottom:4px">${escapeHtml(s.step)} <span style="color:#888">(~${escapeHtml(s.minutes)} min, +${escapeHtml(s.scoreImpact)} pts)</span></li>`).join("")}</ol>`);
+      const sb = body.scoreBreakdown;
+      rows.push(`
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px">
+          ${bar("Keyword match", sb.keywords, "#2563eb")}
+          ${bar("Format", sb.format, "#d97706")}
+          ${bar("Quantification", sb.quantification, "#16a34a")}
+        </table>`);
     }
 
+    // Comparison stat boxes
+    if (body.peerPercentile != null || body.applicationPassRate != null) {
+      rows.push(`
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px"><tr>
+          ${body.peerPercentile != null ? `<td width="49%" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;text-align:center;padding:12px 8px"><div style="font-size:22px;font-weight:800;color:#111">${escapeHtml(body.peerPercentile)}<span style="font-size:12px;color:#888">th</span></div><div style="font-size:11px;color:#666">percentile in your industry</div></td>` : ""}
+          ${body.peerPercentile != null && body.applicationPassRate != null ? `<td width="2%"></td>` : ""}
+          ${body.applicationPassRate != null ? `<td width="49%" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;text-align:center;padding:12px 8px"><div style="font-size:22px;font-weight:800;color:#111">${escapeHtml(body.applicationPassRate)}<span style="font-size:12px;color:#888">%</span></div><div style="font-size:11px;color:#666">est. ATS pass rate</div></td>` : ""}
+        </tr></table>`);
+    }
+
+    // Top issues with severity accents
+    if (body.redFlags && body.redFlags.length > 0) {
+      rows.push(`
+        <h3 style="font-size:13px;color:#111;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.5px">⚠️ Top issues</h3>
+        ${body.redFlags.slice(0, 3).map((f, i) => `
+          <div style="border-left:3px solid #dc2626;background:#fef2f2;border-radius:0 8px 8px 0;padding:8px 12px;margin:0 0 6px">
+            <span style="font-size:13px;color:#333"><b style="color:#dc2626">${i + 1}.</b> ${escapeHtml(f.issue)}</span>
+          </div>`).join("")}`);
+    }
+
+    // Fix plan as a checklist
+    if (body.fixRoadmap && body.fixRoadmap.steps.length > 0) {
+      rows.push(`
+        <h3 style="font-size:13px;color:#111;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.5px">✅ Your ${escapeHtml(body.fixRoadmap.totalMinutes)}-minute fix plan</h3>
+        ${body.fixRoadmap.steps.map(s => `
+          <div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin:0 0 6px">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+              <td style="font-size:13px;color:#333;line-height:1.4"><b style="color:#2563eb">${escapeHtml(s.order ?? "")}.</b> ${escapeHtml(s.step)}</td>
+              <td style="white-space:nowrap;text-align:right;padding-left:10px;vertical-align:top">
+                <span style="font-size:11px;color:#888">~${escapeHtml(s.minutes)} min</span>
+                <span style="display:inline-block;background:#f0fdf4;color:#16a34a;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:4px">+${escapeHtml(s.scoreImpact)} pts</span>
+              </td>
+            </tr></table>
+          </div>`).join("")}`);
+    }
+
+    const preheader = `Your resume scored ${score}/100 — ${body.fixRoadmap?.totalMinutes ? `a ${body.fixRoadmap.totalMinutes}-minute fix plan is inside.` : "your fix plan is inside."}`;
+
     const html = `
-<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f6f6f6;font-family:Helvetica,Arial,sans-serif">
-  <div style="max-width:560px;margin:0 auto;padding:24px">
-    <div style="background:#fff;border-radius:12px;padding:28px;border:1px solid #e5e5e5">
-      <h1 style="font-size:18px;color:#2563eb;margin:0 0 4px">Resume Booster</h1>
-      <p style="font-size:12px;color:#888;margin:0 0 16px">Your free scan summary</p>
-      ${rows.join("\n")}
-      <div style="text-align:center;margin-top:24px">
-        <a href="https://resumebooster.app" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:600;padding:12px 24px;border-radius:8px;text-decoration:none">Get the full analysis</a>
-      </div>
-      <p style="font-size:11px;color:#aaa;margin-top:20px">Your resume was never stored — this summary contains only the analysis results you requested.</p>
+<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif">
+  <div style="display:none;max-height:0;overflow:hidden;font-size:1px;color:#f1f5f9">${escapeHtml(preheader)}</div>
+  <div style="max-width:560px;margin:0 auto;padding:24px 16px">
+    <div style="text-align:center;padding:0 0 14px">
+      <span style="font-size:17px;font-weight:800;color:#0f172a">Resume <span style="color:#2563eb">Booster</span></span>
+      <div style="font-size:11px;color:#94a3b8;margin-top:2px">Free scan summary · ${escapeHtml(new Date().toISOString().slice(0, 10))}</div>
     </div>
+    <div style="background:#fff;border-radius:14px;padding:26px 24px;border:1px solid #e2e8f0">
+      ${rows.join("\n")}
+      <div style="text-align:center;margin-top:22px">
+        <a href="${ctaUrl}" style="display:inline-block;background:#2563eb;color:#fff;font-size:15px;font-weight:700;padding:13px 30px;border-radius:10px;text-decoration:none">Get the full analysis →</a>
+        <div style="margin-top:10px"><a href="${rescanUrl}" style="font-size:12px;color:#64748b;text-decoration:underline">Made the fixes? Rescan free to see your new score</a></div>
+      </div>
+    </div>
+    <p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:16px;line-height:1.5">
+      Your resume was never stored — this summary contains only the analysis results you requested.<br>
+      You received this because you asked for your scan report at resumebooster.work. No follow-up emails unless you ask.
+    </p>
   </div>
 </body></html>`;
 
