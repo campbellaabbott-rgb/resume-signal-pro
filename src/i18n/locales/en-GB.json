@@ -2875,6 +2875,30 @@
     "scannedPdfDetection": {
       "title": "Scanned PDF detection",
       "description": "If you upload a scanned image-based PDF with no selectable text, we now tell you immediately instead of silently analysing blank content — with a clear suggestion to upload a text-based version or paste your CV directly."
+    },
+    "industryDetectionAccuracy8Fixes": {
+      "title": "8 accuracy upgrades to industry detection",
+      "description": "We identified and fixed every known category of industry misclassification. Unambiguous role titles now hard-lock the industry, anchor terms prevent skills-list false positives, very short resumes rely only on job titles, the employer boost is guarded, implausible industry/seniority combos are flagged, skills section contribution is capped, the AI classifies from resume titles not the target job, and user corrections now compound the more they repeat."
+    },
+    "marketIntelligenceCards": {
+      "title": "Live market intelligence in your scan results",
+      "description": "Five new data cards now appear in your scan results: Market Intelligence (hot skills, rising keywords, local CV norms, salary context), Skills Recency (aging vs in-demand skills), Career Trajectory (upward/lateral/transition path), Competitive Keyword Gap (top-quartile keyword coverage), and ATS System detection (when we can identify which ATS the company uses)."
+    },
+    "resumeTimelineAnalysis": {
+      "title": "Employment gap and short tenure detection",
+      "description": "The scanner now parses your work history date ranges to detect gaps longer than 6 months and roles shorter than 12 months. If found, a new card appears with the specific gap duration and concrete advice on how to address it before applying."
+    },
+    "gatedKeywordGap": {
+      "title": "Keywords now sorted by how often they appear in job postings",
+      "description": "Missing keywords are ranked by real posting frequency for your role — the highest-impact gaps appear first. The top 3 are shown in full; additional high-priority keywords are previewed so you know there's more."
+    },
+    "phraseAwareKeywordMatching": {
+      "title": "Fewer false 'missing keyword' reports",
+      "description": "The keyword detector now understands compound phrases and abbreviations. 'Machine learning' and 'ML' match. 'CI/CD', 'ci-cd', and 'cicd' match. 'P&L' matches 'profit and loss'. 'Full-stack' and 'fullstack' are equivalent. This eliminates false positives where skills you clearly had were reported as missing."
+    },
+    "roleLockDetection": {
+      "title": "Role-specific detection for 50+ job titles",
+      "description": "Over 50 unambiguous job titles now hard-lock the correct industry regardless of what else appears on the resume — registered nurses, attorneys, teachers, product managers, data engineers, ML engineers, and many more. A nurse with SQL in her skills can no longer be classified as a data scientist."
     }
   },
   "sampleReportPreview": {

@@ -2744,6 +2744,30 @@
     }
   },
   "changelogEntries": {
+    "industryDetectionAccuracy8Fixes": {
+      "title": "8 accuracy upgrades to industry detection",
+      "description": "We identified and fixed every known category of industry misclassification. (1) Unambiguous role titles — registered nurse, attorney, product manager, ML engineer, and 50+ others — now hard-lock the industry regardless of keyword scores, so a nurse with Python in her skills section is never classified as a data scientist. (2) Each industry now requires at least one anchor term to be present before high confidence is granted — eliminating false positives caused by long skills lists. (3) Very short resumes (under 80 words) skip keyword scoring entirely and rely only on your job titles. (4) The employer name boost is now guarded — a finance analyst at Google no longer gets a technology boost. (5) Implausible industry + seniority combinations (e.g. entry-level consulting, executive retail) are flagged and confidence is capped. (6) The skills section contribution is now hard-capped at 6 points regardless of how many skills are listed — your most recent job titles always outweigh a 60-item skills list. (7) When you paste a job description alongside your resume, the AI now classifies your industry from your resume titles, not the company you're applying to. (8) User corrections now compound logarithmically — the more times a pattern is corrected, the stronger the learning signal."
+    },
+    "marketIntelligenceCards": {
+      "title": "Live market intelligence in your scan results",
+      "description": "Your scan now includes five new data cards below your main results. The Market Intelligence card shows the job market conditions for your industry in your country — hot skills right now, rising keywords appearing in job postings, local CV norms, and salary context. The Skills Recency card flags skills that are declining in job postings (strikethrough, amber) and highlights skills in high current demand (green). The Career Trajectory card reads your title progression and tells you whether you're on an upward, lateral, or transitional path. The Competitive Keyword Gap card shows the percentage of top-quartile keywords you're covering and lists the highest-frequency ones you're missing. The ATS System card appears when we detect from your job description which ATS the company uses, and tailors parsing advice to that specific system."
+    },
+    "resumeTimelineAnalysis": {
+      "title": "Employment gap and short tenure detection",
+      "description": "The scanner now parses the date ranges in your work history to detect employment gaps longer than 6 months and roles shorter than 12 months — both of which get flagged by many ATS systems and recruiter screening tools. If gaps or short tenures are found, a new card appears in your results with the specific gap duration, which role it followed, and concrete advice on how to address it (adding a consulting entry, a brief explanation in your summary, or contract role context). Total experience and average tenure are also surfaced."
+    },
+    "gatedKeywordGap": {
+      "title": "Top keywords now sorted by how often they actually appear in job postings",
+      "description": "Missing keywords in your scan are now ranked by how frequently they appear in real job postings for your role — so the most impactful gaps always appear first. The top 3 are shown in full. Additional high-priority keywords (those appearing in 50–80% of postings for your level) are shown as a blurred preview with a count, so you can see there's more without getting the full list for free."
+    },
+    "phraseAwareKeywordMatching": {
+      "title": "Fewer false 'missing keyword' reports",
+      "description": "The keyword gap detector now understands compound phrases, abbreviations, and spacing variants. 'Machine learning' and 'ML' are treated as the same keyword. 'CI/CD', 'ci-cd', and 'cicd' all match. 'P&L' matches 'profit and loss'. 'Full-stack', 'full stack', and 'fullstack' are equivalent. This eliminates a whole class of false positives where a skill you clearly had was being reported as missing because it was written slightly differently."
+    },
+    "roleLockDetection": {
+      "title": "Role-specific detection for 50+ job titles",
+      "description": "Added a role-lock system that recognises over 50 unambiguous job titles and forces the correct industry classification regardless of what else appears on the resume. Covered roles include clinical titles (registered nurse, NP, physician, surgeon, pharmacist, EMT), legal titles (attorney, counsel, paralegal), education (teacher, professor, principal), product management (PM, APM, CPO), data engineering (data pipeline engineer, analytics engineer), ML/AI (ML engineer, applied scientist, LLM engineer), and more. Previously, a nurse with SQL in her skills section could be misclassified as technology — this is now impossible."
+    },
     "linkedInInsights": {
       "title": "LinkedIn profile analysis — see how you look to recruiters",
       "description": "Add your LinkedIn profile alongside your resume and get a combined analysis: a LinkedIn score, a breakdown of inconsistencies between your resume and profile, resume highlights that should be on LinkedIn, an improved headline and About section opening you can copy in one click, and specific tips to hit LinkedIn's All-Star ranking."
