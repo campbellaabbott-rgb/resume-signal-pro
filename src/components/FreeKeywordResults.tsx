@@ -758,6 +758,13 @@ interface FreeKeywordResultsProps {
     totalMinutes: number;
     finalProjectedScore: number;
   };
+  // Enterprise reporting batch
+  reportVerdict?: string;
+  dualIndustryComparison?: {
+    primary: { industry: string; score: number; keywordCoveragePct: number; benchmarkMedian: number };
+    secondary: { industry: string; score: number; keywordCoveragePct: number; benchmarkMedian: number };
+  };
+  premiumTeaser?: { rewritePreview: string; totalRewritesAvailable: number };
 }
 
 export function FreeKeywordResults({
@@ -857,6 +864,9 @@ export function FreeKeywordResults({
   interviewLikelihood,
   competitorSilhouette,
   fixRoadmap,
+  reportVerdict,
+  dualIndustryComparison,
+  premiumTeaser,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1487,6 +1497,61 @@ export function FreeKeywordResults({
         </div>
       )}
 
+      {/* ── Verdict-first hero — one sentence the whole report is evidence for ── */}
+      {reportVerdict && (
+        <div className="rounded-2xl border-2 border-primary/40 bg-gradient-to-r from-primary/10 to-primary/5 p-5 mb-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1.5">The Verdict</p>
+          <p className="text-base md:text-lg font-semibold text-foreground leading-snug">{reportVerdict}</p>
+          <div className="flex items-center justify-between gap-3 mt-2 flex-wrap">
+            <p className="text-xs text-muted-foreground">Everything below is the evidence — and the fix.</p>
+            <button
+              onClick={async () => {
+                const { default: JsPDF } = await import('jspdf');
+                const doc = new JsPDF({ unit: 'pt', format: 'a4' });
+                const W = doc.internal.pageSize.getWidth();
+                const margin = 48;
+                let y = 56;
+                const line = (text: string, size = 10, bold = false, color: [number, number, number] = [40, 40, 40]) => {
+                  doc.setFontSize(size);
+                  doc.setFont('helvetica', bold ? 'bold' : 'normal');
+                  doc.setTextColor(...color);
+                  const wrapped = doc.splitTextToSize(text, W - margin * 2);
+                  doc.text(wrapped, margin, y);
+                  y += wrapped.length * (size * 1.35) + 4;
+                };
+                line('Resume Booster — Free Scan Summary', 16, true, [37, 99, 235]);
+                line(new Date().toLocaleDateString(), 9, false, [120, 120, 120]);
+                y += 6;
+                line(reportVerdict, 11, true);
+                y += 4;
+                line(`ATS Score: ${atsScoreEstimate}/100${projectedScore ? `  →  ${projectedScore} after fixes` : ''}`, 12, true);
+                if (scoreBreakdown) line(`Breakdown — Keywords: ${scoreBreakdown.keywords}%  ·  Format: ${scoreBreakdown.format}%  ·  Quantification: ${scoreBreakdown.quantification}%`, 10);
+                if (peerPercentile != null) line(`Peer percentile: ${peerPercentile} of 100 ${industry.replace(/_/g, ' ')} candidates  ·  Est. ATS pass rate: ${applicationPassRate ?? '—'}%`, 10);
+                y += 6;
+                if (redFlags.length > 0) {
+                  line('Top issues found:', 11, true);
+                  redFlags.slice(0, 3).forEach((f, i) => line(`${i + 1}. ${f.issue}`, 10));
+                  y += 4;
+                }
+                if (fixRoadmap && fixRoadmap.steps.length > 0) {
+                  line(`Your ${fixRoadmap.totalMinutes}-minute fix plan:`, 11, true);
+                  fixRoadmap.steps.forEach(s => line(`${s.order}. ${s.step} (~${s.minutes} min, +${s.scoreImpact} pts)`, 10));
+                  y += 4;
+                }
+                line('Locked in this summary (Premium): full rewrites, all keywords, red-flag fixes', 10, true, [180, 100, 20]);
+                line('Get the full report at resumebooster.app', 9, false, [120, 120, 120]);
+                doc.save('resume-scan-summary.pdf');
+                trackButtonClick('download_pdf_summary', 'verdict_hero');
+              }}
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/15 text-primary text-xs font-semibold hover:bg-primary/25 transition-colors"
+            >
+              <FileText className="w-3 h-3" />
+              Download PDF summary
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Dashboard-style Score Hero */}
       <ScoreHero
         candidateName={candidateName}
@@ -1614,6 +1679,30 @@ export function FreeKeywordResults({
               The job you're targeting sits in <span className="font-semibold text-foreground">{jdTargetIndustry.replace(/_/g, ' ')}</span> — gaps below are framed as a transition into that field.
             </p>
           )}
+        </div>
+      )}
+
+      {/* ── Dual-industry comparison — uncertainty turned into extra depth ── */}
+      {dualIndustryComparison && (
+        <div className="rounded-2xl border border-border bg-card p-5 mb-5">
+          <h4 className="font-semibold text-foreground text-sm mb-1">Your Resume, Read Two Ways</h4>
+          <p className="text-xs text-muted-foreground mb-3">
+            Your background fits two fields — here's how you score in each, so you can target the stronger one.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {([dualIndustryComparison.primary, dualIndustryComparison.secondary]).map((side, i) => (
+              <div key={i} className={cn("rounded-xl border p-3", side.score >= (i === 0 ? dualIndustryComparison.secondary : dualIndustryComparison.primary).score ? "border-primary/30 bg-primary/5" : "border-border bg-muted/20")}>
+                <p className="text-xs font-semibold text-foreground capitalize mb-1">As a {side.industry.replace(/_/g, ' ')} candidate</p>
+                <p className="text-2xl font-bold text-foreground">{side.score}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Keyword coverage: {side.keywordCoveragePct}% · Industry median: {side.benchmarkMedian}
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-2">
+            Methodology: the alternative score shifts your real score by the keyword-coverage difference between the two fields.
+          </p>
         </div>
       )}
 
@@ -3561,6 +3650,9 @@ export function FreeKeywordResults({
               </div>
             )}
           </div>
+          <p className="text-[10px] text-muted-foreground">
+            Methodology: percentile is a normal-distribution estimate against your industry's median ATS score; pass rate is banded from your score against common ATS filter thresholds. Both are estimates, not guarantees.
+          </p>
         </div>
       )}
 
@@ -3596,6 +3688,9 @@ export function FreeKeywordResults({
           </div>
           <p className="text-xs text-muted-foreground">
             <span className="font-medium text-foreground">Biggest factor:</span> {interviewLikelihood.topFactor}
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-2">
+            Methodology: weighted blend of ATS pass rate (45%), peer percentile (35%), and critical red flags (20%).
           </p>
         </div>
       )}
@@ -3876,6 +3971,44 @@ export function FreeKeywordResults({
               </div>
             ))}
           </div>
+
+          {/* Post-fix rescan loop — the return visit is where conversion happens */}
+          <div className="mt-4 flex items-center justify-between gap-3 p-3 rounded-xl bg-primary/5 border border-primary/20">
+            <p className="text-xs text-foreground/80">
+              Fixed these? <span className="font-semibold text-foreground">Rescan free</span> to confirm your new score.
+            </p>
+            <button
+              onClick={() => { onForceReanalyze?.(); document.getElementById('free-results')?.scrollIntoView({ behavior: 'smooth' }); }}
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/15 text-primary text-xs font-semibold hover:bg-primary/25 transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Rescan now
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Premium receipt — a REAL computed artifact, blurred at the gate ── */}
+      {premiumTeaser && (
+        <div className="rounded-2xl border border-primary/30 bg-card p-5 relative overflow-hidden">
+          <div className="flex items-center gap-2 mb-2">
+            <Lock className="w-4 h-4 text-primary" />
+            <h4 className="font-semibold text-foreground text-sm">Your rewritten resume is already drafted</h4>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            This isn't a template — it's built from your actual bullets. Here's the opening of one rewrite:
+          </p>
+          <div className="rounded-lg bg-success/5 border border-success/20 p-3 select-none">
+            <p className="text-sm text-foreground font-medium">
+              "{premiumTeaser.rewritePreview.split(' ').slice(0, 4).join(' ')} <span className="blur-[4px]">{premiumTeaser.rewritePreview.split(' ').slice(4).join(' ')} and the rest of this bullet</span>"
+            </p>
+          </div>
+          <button
+            onClick={() => handleUpgradeClick('premium_receipt')}
+            className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors"
+          >
+            Unlock all {premiumTeaser.totalRewritesAvailable}+ rewrites
+          </button>
         </div>
       )}
 

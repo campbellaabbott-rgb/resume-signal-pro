@@ -292,6 +292,14 @@ interface FreeKeywordResult {
     totalMinutes: number;
     finalProjectedScore: number;
   };
+  // Enterprise reporting batch
+  reportVerdict?: string | null;
+  dualIndustryComparison?: {
+    primary: { industry: string; score: number; keywordCoveragePct: number; benchmarkMedian: number };
+    secondary: { industry: string; score: number; keywordCoveragePct: number; benchmarkMedian: number };
+  } | null;
+  premiumTeaser?: { rewritePreview: string; totalRewritesAvailable: number } | null;
+  reportCompleteness?: number;
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
@@ -870,6 +878,11 @@ const Index = () => {
           interviewLikelihood: (result as any).interviewLikelihood,
           competitorSilhouette: (result as any).competitorSilhouette,
           fixRoadmap: (result as any).fixRoadmap,
+          // Enterprise reporting batch
+          reportVerdict: (result as any).reportVerdict,
+          dualIndustryComparison: (result as any).dualIndustryComparison,
+          premiumTeaser: (result as any).premiumTeaser,
+          reportCompleteness: (result as any).reportCompleteness,
         });
 
         // Track scan completed in funnel
@@ -1018,6 +1031,11 @@ const Index = () => {
           interviewLikelihood: data.interviewLikelihood,
           competitorSilhouette: data.competitorSilhouette,
           fixRoadmap: data.fixRoadmap,
+          // Enterprise reporting batch
+          reportVerdict: data.reportVerdict,
+          dualIndustryComparison: data.dualIndustryComparison,
+          premiumTeaser: data.premiumTeaser,
+          reportCompleteness: data.reportCompleteness,
         });
 
         toast({
@@ -1524,6 +1542,9 @@ const Index = () => {
                 interviewLikelihood={freeKeywordResult.interviewLikelihood}
                 competitorSilhouette={freeKeywordResult.competitorSilhouette}
                 fixRoadmap={freeKeywordResult.fixRoadmap}
+                reportVerdict={freeKeywordResult.reportVerdict ?? undefined}
+                dualIndustryComparison={freeKeywordResult.dualIndustryComparison ?? undefined}
+                premiumTeaser={freeKeywordResult.premiumTeaser ?? undefined}
               />
               
               {/* Score-based package recommendation */}

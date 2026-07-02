@@ -1280,6 +1280,248 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
     certifications: [
       'itil', 'hdi', 'comptia a+', 'customer service certification'
     ]
+  },
+
+  pharmacy: {
+    titles: [
+      'pharmacist', 'clinical pharmacist', 'staff pharmacist', 'pharmacy manager',
+      'pharmacy technician', 'pharm tech', 'pharmacy intern', 'pharmacist in charge',
+      'retail pharmacist', 'hospital pharmacist', 'oncology pharmacist',
+      'pharmacy director', 'medication safety'
+    ],
+    primary: [
+      'prescriptions', 'dispensing', 'medication therapy', 'drug interactions',
+      'compounding', 'formulary', 'medication reconciliation', 'immunizations',
+      'patient counseling', 'pharmacy operations', 'controlled substances',
+      'inventory management pharmacy', 'prior authorizations', 'refills',
+      'medication adherence', 'drug utilization review', 'sterile compounding'
+    ],
+    secondary: [
+      'pyxis', 'omnicell', 'epic willow', 'rx30', 'pioneerrx', 'mckesson',
+      'ndc', 'dea', 'board of pharmacy', 'usp 797', 'usp 800', 'pbm',
+      'medicare part d', 'retail pharmacy', 'ltc pharmacy'
+    ],
+    certifications: [
+      'pharmd', 'rph', 'cpht', 'ptcb', 'bcps', 'bcop', 'immunization certified'
+    ]
+  },
+
+  dental: {
+    titles: [
+      'dentist', 'dental hygienist', 'dental assistant', 'orthodontist',
+      'oral surgeon', 'endodontist', 'periodontist', 'dental office manager',
+      'treatment coordinator', 'registered dental assistant', 'rda'
+    ],
+    primary: [
+      'dental', 'patients dental', 'cleanings', 'prophylaxis', 'restorative',
+      'crowns', 'fillings', 'extractions', 'root canal', 'radiographs',
+      'x-rays dental', 'periodontal', 'scaling and root planing', 'fluoride',
+      'impressions', 'chairside', 'sterilization', 'four-handed dentistry',
+      'treatment planning', 'oral health', 'hygiene appointments'
+    ],
+    secondary: [
+      'dentrix', 'eaglesoft', 'open dental', 'curve dental', 'cbct',
+      'itero', 'cerec', 'invisalign', 'nitrous oxide', 'local anesthesia',
+      'osha compliance dental', 'hipaa', 'insurance verification', 'cdt codes'
+    ],
+    certifications: [
+      'dds', 'dmd', 'rdh', 'rda', 'cda', 'efda', 'radiology certified', 'cpr certified'
+    ]
+  },
+
+  veterinary: {
+    titles: [
+      'veterinarian', 'veterinary technician', 'vet tech', 'veterinary assistant',
+      'veterinary nurse', 'practice manager veterinary', 'kennel technician',
+      'emergency veterinarian', 'associate veterinarian', 'relief veterinarian'
+    ],
+    primary: [
+      'veterinary', 'animals', 'canine', 'feline', 'small animal', 'large animal',
+      'exotic animals', 'spay', 'neuter', 'vaccinations animal', 'anesthesia monitoring',
+      'surgical assistance', 'dental prophylaxis animal', 'radiology animal',
+      'client education pet', 'wellness exams', 'preventive care animal',
+      'euthanasia', 'triage animal', 'laboratory diagnostics', 'parasite prevention'
+    ],
+    secondary: [
+      'avimark', 'cornerstone', 'ezyvet', 'idexx', 'antech', 'dvm software',
+      'fear free', 'aaha', 'dea logs', 'controlled drug logs', 'pet owners'
+    ],
+    certifications: [
+      'dvm', 'vmd', 'cvt', 'rvt', 'lvt', 'fear free certified', 'avma'
+    ]
+  },
+
+  fitness: {
+    titles: [
+      'personal trainer', 'fitness instructor', 'group fitness instructor',
+      'strength and conditioning coach', 'yoga instructor', 'pilates instructor',
+      'fitness manager', 'gym manager', 'wellness coach', 'health coach',
+      'athletic trainer', 'exercise physiologist', 'nutrition coach'
+    ],
+    primary: [
+      'personal training', 'fitness assessments', 'program design', 'client retention',
+      'training sessions', 'group classes', 'strength training', 'cardio',
+      'weight loss', 'muscle gain', 'body composition', 'movement screening',
+      'exercise prescription', 'client goals', 'session packages', 'member engagement',
+      'fitness goals', 'workout programming', 'injury prevention', 'mobility'
+    ],
+    secondary: [
+      'mindbody', 'trainerize', 'myfitnesspal', 'les mills', 'crossfit',
+      'functional training', 'hiit', 'macros', 'nutrition planning',
+      'club membership', 'member sales', 'fitness floor'
+    ],
+    certifications: [
+      'nasm', 'ace certified', 'issa', 'acsm', 'cscs', 'nsca', 'ryt 200',
+      'ryt 500', 'precision nutrition', 'crossfit level'
+    ]
+  },
+
+  media: {
+    titles: [
+      'journalist', 'reporter', 'editor', 'news editor', 'managing editor',
+      'staff writer', 'correspondent', 'news anchor', 'producer news',
+      'broadcast journalist', 'photojournalist', 'copy editor', 'columnist',
+      'editor in chief', 'news director', 'assignment editor'
+    ],
+    primary: [
+      'reporting', 'breaking news', 'bylines', 'sources', 'interviews journalism',
+      'investigative', 'fact-checking', 'editorial', 'news coverage', 'deadline',
+      'ap style', 'beat reporting', 'feature stories', 'news stories', 'pitches',
+      'press releases', 'newsroom', 'wire services', 'op-ed', 'longform',
+      'multimedia journalism', 'audience engagement news'
+    ],
+    secondary: [
+      'wordpress cms', 'chartbeat', 'parse.ly', 'social media news', 'seo headlines',
+      'video editing news', 'podcast production', 'newsletter', 'substack',
+      'freedom of information', 'foia requests', 'press credentials'
+    ],
+    certifications: [
+      'journalism degree', 'spj', 'poynter', 'ire member'
+    ]
+  },
+
+  telecom: {
+    titles: [
+      'telecommunications engineer', 'telecom technician', 'network technician telecom',
+      'rf engineer', 'fiber optic technician', 'tower climber', 'osp engineer',
+      'central office technician', 'noc technician', 'field service technician telecom',
+      'wireless engineer', 'voip engineer', 'telecom project manager'
+    ],
+    primary: [
+      'telecommunications', 'fiber optic', 'fiber splicing', 'otdr', '5g', 'lte',
+      'rf optimization', 'cell sites', 'base stations', 'microwave links',
+      'copper', 'dsl', 'docsis', 'voip', 'sip', 'pbx', 'pstn', 'sonet',
+      'dwdm', 'osp', 'outside plant', 'cable installation', 'site surveys telecom',
+      'network buildout', 'backhaul', 'small cells', 'das systems'
+    ],
+    secondary: [
+      'ericsson', 'nokia networks', 'huawei', 'ciena', 'juniper', 'adtran',
+      'calix', 'fujitsu network', 'jdsu', 'exfo', 'anritsu', 'fcc compliance',
+      'nesc', 'osha 10 telecom'
+    ],
+    certifications: [
+      'bicsi', 'rcdd', 'fiber certified', 'coax certified', 'comptia network+',
+      'ccna', 'tower climbing certified', 'osha 10'
+    ]
+  },
+
+  agriculture: {
+    titles: [
+      'farm manager', 'ranch manager', 'agronomist', 'crop consultant',
+      'agricultural technician', 'farm operator', 'livestock manager',
+      'precision agriculture specialist', 'greenhouse manager', 'harvest manager',
+      'agricultural sales', 'feed mill operator', 'dairy manager'
+    ],
+    primary: [
+      'crops', 'harvest', 'planting', 'yield', 'acres', 'irrigation',
+      'livestock', 'cattle', 'dairy', 'poultry', 'swine', 'crop rotation',
+      'soil health', 'fertilizer', 'pesticides', 'herbicides', 'agronomy',
+      'precision agriculture', 'farm equipment', 'tractors', 'combines',
+      'grain', 'silage', 'feed', 'animal husbandry', 'breeding', 'calving'
+    ],
+    secondary: [
+      'john deere', 'case ih', 'gps guidance', 'variable rate', 'yield mapping',
+      'usda', 'fsa', 'organic certification', 'gap certification', 'commodity markets',
+      'grain elevators', 'crop insurance', 'h2a'
+    ],
+    certifications: [
+      'certified crop adviser', 'cca', 'pesticide applicator license', 'cdl',
+      'artificial insemination certified', 'pca license'
+    ]
+  },
+
+  sports_management: {
+    titles: [
+      'athletic director', 'sports coach', 'head coach', 'assistant coach',
+      'sports agent', 'team manager sports', 'recruiting coordinator',
+      'sports marketing manager', 'stadium operations', 'ticket sales sports',
+      'player development', 'scout', 'sports information director'
+    ],
+    primary: [
+      'athletes', 'recruiting athletes', 'game day operations', 'season tickets',
+      'sponsorships sports', 'team operations', 'roster', 'player development',
+      'practice planning', 'game film', 'scouting reports', 'ncaa compliance',
+      'athletic programs', 'sports facilities', 'tournaments', 'league operations',
+      'coaching staff', 'win-loss record', 'championships', 'training camps'
+    ],
+    secondary: [
+      'hudl', 'teamworks', 'front rush', 'arms software', 'ncaa', 'naia',
+      'title ix', 'name image likeness', 'nil', 'transfer portal',
+      'ticketmaster', 'seatgeek', 'fan engagement'
+    ],
+    certifications: [
+      'coaching license', 'uslsoccer license', 'cpr aed', 'first aid',
+      'ncaa certification', 'strength conditioning certified'
+    ]
+  },
+
+  entertainment: {
+    titles: [
+      'film producer', 'tv producer', 'production manager', 'production coordinator',
+      'director film', 'assistant director', 'line producer', 'showrunner',
+      'casting director', 'talent manager', 'stage manager', 'production assistant',
+      'gaffer', 'grip', 'sound mixer', 'editor film', 'post production supervisor'
+    ],
+    primary: [
+      'production', 'pre-production', 'post-production', 'on set', 'call sheets',
+      'shooting schedule', 'budgets production', 'crew management', 'casting',
+      'talent', 'locations', 'principal photography', 'dailies', 'wrap',
+      'episodic', 'feature film', 'commercials production', 'music videos',
+      'live events', 'streaming content', 'development slate', 'script coverage'
+    ],
+    secondary: [
+      'movie magic', 'final draft', 'avid', 'premiere pro', 'davinci resolve',
+      'pro tools', 'sag-aftra', 'iatse', 'dga', 'netflix', 'hulu', 'production insurance',
+      'film festivals', 'distribution deals'
+    ],
+    certifications: [
+      'dga membership', 'sag-aftra', 'osha 10 entertainment', 'film degree'
+    ]
+  },
+
+  academia: {
+    titles: [
+      'professor', 'assistant professor', 'associate professor', 'lecturer',
+      'research fellow', 'principal investigator', 'postdoctoral researcher',
+      'research director', 'department chair', 'dean', 'academic advisor',
+      'research coordinator', 'adjunct professor', 'visiting scholar'
+    ],
+    primary: [
+      'research', 'publications', 'peer-reviewed', 'journal articles', 'grants research',
+      'grant funding', 'nsf', 'nih', 'principal investigator', 'research agenda',
+      'dissertation', 'thesis supervision', 'graduate students', 'undergraduate teaching',
+      'tenure', 'tenure-track', 'conference presentations', 'citations',
+      'h-index', 'literature review', 'methodology', 'irb approval',
+      'academic committees', 'curriculum development higher ed'
+    ],
+    secondary: [
+      'google scholar', 'orcid', 'researchgate', 'pubmed', 'jstor', 'scopus',
+      'web of science', 'latex', 'endnote', 'zotero', 'mendeley', 'r01',
+      'sabbatical', 'external funding', 'editorial board'
+    ],
+    certifications: [
+      'phd', 'doctorate', 'edd', 'postdoc', 'fulbright'
+    ]
   }
 };
 
@@ -1504,6 +1746,116 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['federal', 'grant', 'procurement'],
     ['security clearance', 'dod', 'agency'],
     ['constituent', 'public sector', 'legislation']
+  ],
+  cybersecurity: [
+    ['siem', 'incident response', 'threat'],
+    ['vulnerability', 'penetration', 'exploit'],
+    ['soc', 'edr', 'threat hunting'],
+    ['nist', 'security controls', 'risk assessment']
+  ],
+  logistics: [
+    ['supply chain', 'inventory', 'warehouse'],
+    ['freight', 'carrier', 'shipping'],
+    ['demand planning', 'forecasting', 'safety stock'],
+    ['wms', '3pl', 'fulfillment']
+  ],
+  real_estate: [
+    ['listings', 'closings', 'escrow'],
+    ['mls', 'buyers', 'sellers'],
+    ['leasing', 'tenants', 'rent roll'],
+    ['cap rate', 'noi', 'acquisitions']
+  ],
+  insurance: [
+    ['underwriting', 'premiums', 'policies'],
+    ['claims', 'adjusting', 'coverage'],
+    ['loss ratio', 'actuarial', 'reinsurance'],
+    ['book of business', 'renewals', 'commercial lines']
+  ],
+  nonprofit: [
+    ['fundraising', 'donors', 'grants'],
+    ['major gifts', 'stewardship', 'annual fund'],
+    ['volunteers', 'community outreach', 'mission'],
+    ['capital campaign', 'planned giving', 'endowment']
+  ],
+  biotech: [
+    ['assay', 'cell culture', 'pcr'],
+    ['clinical trials', 'protocol', 'gcp'],
+    ['gmp', 'batch records', 'sop'],
+    ['sequencing', 'flow cytometry', 'antibody']
+  ],
+  aviation: [
+    ['flight hours', 'faa', 'type rating'],
+    ['aircraft', 'airframe', 'powerplant'],
+    ['ifr', 'multi-engine', 'checkride'],
+    ['airworthiness', 'inspections', 'maintenance logs']
+  ],
+  energy: [
+    ['drilling', 'rig', 'wellsite'],
+    ['pipeline', 'refinery', 'downstream'],
+    ['solar', 'photovoltaic', 'inverters'],
+    ['grid', 'substation', 'transmission']
+  ],
+  skilled_trades: [
+    ['wiring', 'conduit', 'breaker panels'],
+    ['hvac', 'refrigeration', 'ductwork'],
+    ['welding', 'fabrication', 'blueprints'],
+    ['journeyman', 'apprenticeship', 'code compliance']
+  ],
+  customer_success: [
+    ['tickets', 'sla', 'csat'],
+    ['escalations', 'knowledge base', 'resolution time'],
+    ['average handle time', 'first call resolution', 'call volume'],
+    ['zendesk', 'live chat', 'support queue']
+  ],
+  pharmacy: [
+    ['prescriptions', 'dispensing', 'medication'],
+    ['compounding', 'formulary', 'controlled substances'],
+    ['immunizations', 'patient counseling', 'refills']
+  ],
+  dental: [
+    ['cleanings', 'radiographs', 'periodontal'],
+    ['crowns', 'fillings', 'extractions'],
+    ['chairside', 'sterilization', 'impressions']
+  ],
+  veterinary: [
+    ['canine', 'feline', 'vaccinations animal'],
+    ['spay', 'neuter', 'anesthesia monitoring'],
+    ['wellness exams', 'client education pet', 'triage animal']
+  ],
+  fitness: [
+    ['personal training', 'fitness assessments', 'program design'],
+    ['strength training', 'body composition', 'exercise prescription'],
+    ['group classes', 'member engagement', 'session packages']
+  ],
+  media: [
+    ['reporting', 'bylines', 'sources'],
+    ['editorial', 'ap style', 'deadline'],
+    ['investigative', 'fact-checking', 'beat reporting']
+  ],
+  telecom: [
+    ['fiber optic', 'fiber splicing', 'otdr'],
+    ['5g', 'lte', 'cell sites'],
+    ['voip', 'sip', 'pbx']
+  ],
+  agriculture: [
+    ['crops', 'harvest', 'yield'],
+    ['livestock', 'cattle', 'feed'],
+    ['irrigation', 'soil health', 'agronomy']
+  ],
+  sports_management: [
+    ['recruiting athletes', 'roster', 'scouting reports'],
+    ['game day operations', 'season tickets', 'sponsorships sports'],
+    ['practice planning', 'game film', 'coaching staff']
+  ],
+  entertainment: [
+    ['call sheets', 'shooting schedule', 'crew management'],
+    ['pre-production', 'principal photography', 'post-production'],
+    ['casting', 'talent', 'locations']
+  ],
+  academia: [
+    ['publications', 'peer-reviewed', 'citations'],
+    ['grant funding', 'principal investigator', 'nsf'],
+    ['tenure', 'dissertation', 'graduate students']
   ]
 };
 
@@ -1619,6 +1971,70 @@ const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleS
   manufacturing: [
     { negativeFor: 'engineering', requiredTitleSignal: true },
     { negativeFor: 'consulting', requiredTitleSignal: true }
+  ],
+  // Security engineers mention cloud/code/APIs constantly — technology must not steal.
+  cybersecurity: [
+    { negativeFor: 'technology', requiredTitleSignal: true },
+    { negativeFor: 'government', requiredTitleSignal: true }
+  ],
+  // Supply chain roles share ops/process vocabulary with manufacturing and consulting.
+  logistics: [
+    { negativeFor: 'manufacturing', requiredTitleSignal: true },
+    { negativeFor: 'consulting', requiredTitleSignal: true }
+  ],
+  // Support roles share CRM/customer vocabulary with sales — sales needs a title to steal.
+  customer_success: [
+    { negativeFor: 'sales', requiredTitleSignal: true },
+    { negativeFor: 'technology', requiredTitleSignal: true }
+  ],
+  // Lab scientists share data/analysis vocabulary with data_science and healthcare.
+  biotech: [
+    { negativeFor: 'data_science', requiredTitleSignal: true },
+    { negativeFor: 'healthcare', requiredTitleSignal: true }
+  ],
+  // Professors share teaching vocabulary with education (K-12) — keep separate.
+  academia: [
+    { negativeFor: 'education', requiredTitleSignal: true },
+    { negativeFor: 'data_science', requiredTitleSignal: true }
+  ],
+  // Journalists share content/social vocabulary with marketing.
+  media: [
+    { negativeFor: 'marketing', requiredTitleSignal: true },
+    { negativeFor: 'creative', requiredTitleSignal: true }
+  ],
+  // Telecom techs mention networking constantly — technology must not steal.
+  telecom: [
+    { negativeFor: 'technology', requiredTitleSignal: true },
+    { negativeFor: 'engineering', requiredTitleSignal: true }
+  ],
+  // Trainers share client/coaching vocabulary with healthcare and education.
+  fitness: [
+    { negativeFor: 'healthcare', requiredTitleSignal: true },
+    { negativeFor: 'education', requiredTitleSignal: true }
+  ],
+  // Pharmacists share clinical vocabulary with healthcare — distinct field.
+  pharmacy: [
+    { negativeFor: 'healthcare', requiredTitleSignal: true }
+  ],
+  // Insurance shares finance vocabulary (premiums, risk) — finance needs titles.
+  insurance: [
+    { negativeFor: 'finance', requiredTitleSignal: true },
+    { negativeFor: 'sales', requiredTitleSignal: true }
+  ],
+  // Realtors share sales vocabulary heavily — sales needs a title to steal.
+  real_estate: [
+    { negativeFor: 'sales', requiredTitleSignal: true },
+    { negativeFor: 'finance', requiredTitleSignal: true }
+  ],
+  // Nonprofit fundraisers share sales/marketing vocabulary (campaigns, donors≈clients).
+  nonprofit: [
+    { negativeFor: 'sales', requiredTitleSignal: true },
+    { negativeFor: 'marketing', requiredTitleSignal: true }
+  ],
+  // Production managers share PM/ops vocabulary.
+  entertainment: [
+    { negativeFor: 'product_management', requiredTitleSignal: true },
+    { negativeFor: 'creative', requiredTitleSignal: true }
   ]
 };
 
@@ -1642,6 +2058,9 @@ interface DetectionResult {
   jdIndustry?: string;
   /** Blend percentages when the candidate straddles two industries, e.g. { primaryPct: 60, secondaryPct: 40 } */
   industryBlend?: { primaryPct: number; secondaryPct: number };
+  /** Coverage telemetry: top-3 scored industries and the winner's margin over #2.
+   *  Thin margins flag industries whose keyword tables need reinforcement. */
+  telemetry?: { top3: Array<{ industry: string; score: number }>; marginRatio: number };
 }
 
 interface SectionMatch {
@@ -2584,6 +3003,54 @@ const ROLE_LOCKS: Array<{ pattern: RegExp; industry: string; label: string }> = 
   { pattern: /\b(electrician|journeyman|plumber|hvac technician|hvac installer|welder|pipefitter|millwright|machinist|carpenter|crane operator|ironworker|diesel mechanic|automotive technician|auto mechanic|maintenance technician)\b/i, industry: 'skilled_trades', label: 'trade title' },
   // Customer support (distinct from sales-flavored customer success)
   { pattern: /\b(customer support specialist|customer service representative|support engineer|technical support engineer|help desk|service desk analyst|call center|contact center|escalation manager|tier [23] support)\b/i, industry: 'customer_success', label: 'support title' },
+  // Pharmacy
+  { pattern: /\b(pharmacist|pharmacy technician|pharm tech|pharmacy manager|pharmacy intern|pharmd)\b/i, industry: 'pharmacy', label: 'pharmacy title' },
+  // Dental
+  { pattern: /\b(dentist|dental hygienist|dental assistant|orthodontist|oral surgeon|endodontist|periodontist)\b/i, industry: 'dental', label: 'dental title' },
+  // Veterinary
+  { pattern: /\b(veterinarian|veterinary technician|vet tech|veterinary assistant|veterinary nurse)\b/i, industry: 'veterinary', label: 'veterinary title' },
+  // Fitness
+  { pattern: /\b(personal trainer|fitness instructor|group fitness|strength and conditioning coach|yoga instructor|pilates instructor|athletic trainer|exercise physiologist)\b/i, industry: 'fitness', label: 'fitness title' },
+  // Media / Journalism
+  { pattern: /\b(journalist|reporter|news editor|managing editor|staff writer|correspondent|news anchor|photojournalist|copy editor|editor in chief|news director)\b/i, industry: 'media', label: 'journalism title' },
+  // Telecom
+  { pattern: /\b(telecommunications engineer|telecom technician|rf engineer|fiber optic technician|tower climber|osp engineer|central office technician|voip engineer)\b/i, industry: 'telecom', label: 'telecom title' },
+  // Agriculture
+  { pattern: /\b(farm manager|ranch manager|agronomist|crop consultant|livestock manager|greenhouse manager|dairy manager|farm operator)\b/i, industry: 'agriculture', label: 'agriculture title' },
+  // Sports management
+  { pattern: /\b(athletic director|head coach|assistant coach|sports agent|recruiting coordinator|sports information director|player development|scout\b)\b/i, industry: 'sports_management', label: 'sports title' },
+  // Entertainment production
+  { pattern: /\b(film producer|tv producer|line producer|showrunner|casting director|production coordinator|assistant director|stage manager|gaffer|post production supervisor)\b/i, industry: 'entertainment', label: 'production title' },
+  // Academia / Research
+  { pattern: /\b(assistant professor|associate professor|full professor|research fellow|principal investigator|postdoctoral researcher|department chair|adjunct professor|visiting scholar)\b/i, industry: 'academia', label: 'academic title' },
+];
+
+// ─── MULTILINGUAL TITLE LOCKS ────────────────────────────────────────────────
+// The keyword tables are English, but resumes arrive in 10 languages. These
+// translated titles (es/de/fr/pt/nl) lock the industry the same way English
+// role locks do, so a German "Krankenschwester" is never misclassified.
+const MULTILINGUAL_TITLE_LOCKS: Array<{ pattern: RegExp; industry: string; label: string }> = [
+  // Healthcare
+  { pattern: /\b(enfermera|enfermero|krankenschwester|krankenpfleger|infirmier|infirmière|enfermeira|enfermeiro|verpleegkundige|médico|medico cirujano|arzt|ärztin|médecin|arts\b)\b/i, industry: 'healthcare', label: 'healthcare title (non-EN)' },
+  // Legal
+  { pattern: /\b(abogado|abogada|rechtsanwalt|rechtsanwältin|avocat|avocate|advogado|advogada|advocaat|jurist\b)\b/i, industry: 'legal', label: 'legal title (non-EN)' },
+  // Education
+  { pattern: /\b(profesor de|maestra|maestro de|lehrer|lehrerin|enseignant|enseignante|instituteur|professora|professor de|leraar|lerares|docent\b)\b/i, industry: 'education', label: 'teaching title (non-EN)' },
+  // Engineering / tech
+  { pattern: /\b(desarrollador|programador|softwareentwickler|entwicklerin|développeur|développeuse|desenvolvedor|programador de software|softwareontwikkelaar)\b/i, industry: 'technology', label: 'developer title (non-EN)' },
+  { pattern: /\b(ingeniero civil|ingeniera|bauingenieur|maschinenbauingenieur|ingénieur|ingénieure|engenheiro|engenheira|ingenieur\b)\b/i, industry: 'engineering', label: 'engineering title (non-EN)' },
+  // Finance / accounting
+  { pattern: /\b(contador|contadora|contable|buchhalter|buchhalterin|comptable|contabilista|contador público|boekhouder|accountant\b.*\b(de|der|van)\b)\b/i, industry: 'finance', label: 'accounting title (non-EN)' },
+  // Sales
+  { pattern: /\b(vendedor|vendedora|ejecutivo de ventas|vertriebsmitarbeiter|vertriebsleiter|commercial\b.*(ventes|vente)|responsable commercial|vendedor de|verkoper|verkoopmedewerker)\b/i, industry: 'sales', label: 'sales title (non-EN)' },
+  // HR
+  { pattern: /\b(recursos humanos|personalreferent|personalleiter|ressources humaines|recursos humanos analista|personeelszaken|hr-manager\b)\b/i, industry: 'hr', label: 'HR title (non-EN)' },
+  // Marketing
+  { pattern: /\b(mercadotecnia|marketing digital especialista|marketingleiter|marketingmanager|responsable marketing|chef de marque|analista de marketing|marketeer\b)\b/i, industry: 'marketing', label: 'marketing title (non-EN)' },
+  // Skilled trades
+  { pattern: /\b(electricista|klempner|elektriker|installateur|électricien|plombier|eletricista|encanador|elektricien|loodgieter)\b/i, industry: 'skilled_trades', label: 'trade title (non-EN)' },
+  // Hospitality
+  { pattern: /\b(cocinero|chef de cocina|koch\b|köchin|cuisinier|chef de cuisine|cozinheiro|kok\b|hotelmanager|gerente de hotel)\b/i, industry: 'hospitality', label: 'hospitality title (non-EN)' },
 ];
 
 // ─── CERTIFICATION-BASED INDUSTRY LOCKING ────────────────────────────────────
@@ -2640,6 +3107,13 @@ function applyRoleFirstAnchoring(
       return { industry: lock.industry, matchedTitle: m[0].trim() };
     }
   }
+  // Non-English titles lock the same way — resumes arrive in 10 languages
+  for (const lock of MULTILINGUAL_TITLE_LOCKS) {
+    const m = allText.match(lock.pattern);
+    if (m) {
+      return { industry: lock.industry, matchedTitle: m[0].trim() };
+    }
+  }
   return null;
 }
 
@@ -2677,6 +3151,16 @@ const REQUIRED_ANCHORS: Record<string, string[]> = {
   energy: ['energy', 'oil', 'gas', 'power', 'solar', 'wind', 'utility', 'grid', 'drilling', 'pipeline'],
   skilled_trades: ['electrical', 'plumbing', 'hvac', 'welding', 'construction', 'maintenance', 'installation', 'repair', 'trade'],
   customer_success: ['customer', 'support', 'tickets', 'service', 'csat', 'help desk', 'resolution'],
+  pharmacy: ['pharmacy', 'pharmacist', 'prescriptions', 'medication', 'dispensing', 'drug'],
+  dental: ['dental', 'dentist', 'hygienist', 'teeth', 'oral', 'patients'],
+  veterinary: ['veterinary', 'animal', 'vet', 'canine', 'feline', 'pet'],
+  fitness: ['fitness', 'training', 'clients', 'exercise', 'gym', 'wellness', 'coaching'],
+  media: ['news', 'reporting', 'editorial', 'journalism', 'stories', 'media', 'bylines'],
+  telecom: ['telecom', 'fiber', 'network', 'wireless', 'cable', 'rf', '5g', 'voip'],
+  agriculture: ['farm', 'crops', 'livestock', 'agriculture', 'harvest', 'soil', 'acres'],
+  sports_management: ['athletes', 'coaching', 'sports', 'team', 'recruiting', 'athletic', 'game'],
+  entertainment: ['production', 'film', 'set', 'talent', 'casting', 'crew', 'shoot'],
+  academia: ['research', 'publications', 'university', 'academic', 'teaching', 'grant', 'faculty'],
 };
 
 function checkRequiredAnchors(industry: string, resumeText: string): boolean {
@@ -3012,6 +3496,12 @@ export function detectIndustry(
     subIndustry,
     jdIndustry,
     industryBlend,
+    telemetry: {
+      top3: scores.slice(0, 3).map(s => ({ industry: s.industry, score: Math.round(s.score * 10) / 10 })),
+      marginRatio: scores[1] && scores[1].score > 0
+        ? Math.round((scores[0].score / scores[1].score) * 100) / 100
+        : 99,
+    },
   };
 }
 

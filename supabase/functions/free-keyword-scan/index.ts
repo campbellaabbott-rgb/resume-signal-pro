@@ -936,6 +936,9 @@ const INDUSTRY_ATS_BENCHMARKS: Record<string, number> = {
   cybersecurity: 69, logistics: 64, real_estate: 61, insurance: 66,
   nonprofit: 62, biotech: 68, aviation: 66, energy: 65,
   skilled_trades: 58, customer_success: 62,
+  pharmacy: 67, dental: 63, veterinary: 63, fitness: 59, media: 62,
+  telecom: 65, agriculture: 60, sports_management: 61, entertainment: 60,
+  academia: 66,
 };
 
 /**
@@ -2542,7 +2545,14 @@ ${resumeText.substring(0, 20000)}
             p_server_industry: industryDetection.industry,
             p_server_confidence: industryDetection.confidence,
             p_server_score: industryDetection.score,
-            p_server_signals: industryDetection.signals,
+            // Coverage telemetry rides along in signals: top-3 scores + margin let us
+            // find industries with chronically thin margins (= keyword tables to reinforce)
+            p_server_signals: [
+              ...industryDetection.signals,
+              ...(industryDetection.telemetry
+                ? [`telemetry: top3=${industryDetection.telemetry.top3.map(t => `${t.industry}:${t.score}`).join(',')} margin=${industryDetection.telemetry.marginRatio}`]
+                : []),
+            ],
             p_ai_suggested_industry: normalizedAIIndustry,
             p_final_industry: finalIndustry,
             p_final_confidence: finalConfidence,
@@ -2617,6 +2627,58 @@ ${resumeText.substring(0, 20000)}
         }
       })()
     );
+
+    // ── SCHEMA VALIDATION LAYER ─────────────────────────────────────────────
+    // AI output goes almost straight into the response; one malformed field
+    // (string where number expected, missing array) degrades a card or renders
+    // "NaN". Coerce every field the UI depends on, drop invalid entries, and
+    // fall back to rule-based values. The report may render smaller — never broken.
+    {
+      const asNum = (v: unknown, min: number, max: number, fallback: number): number => {
+        const n = typeof v === 'number' ? v : typeof v === 'string' ? parseFloat(v) : NaN;
+        return Number.isFinite(n) ? Math.max(min, Math.min(max, Math.round(n))) : fallback;
+      };
+      const asStr = (v: unknown): string | null => typeof v === 'string' && v.trim().length > 0 ? v.trim() : null;
+      const asArr = <T,>(v: unknown, itemOk: (x: unknown) => boolean): T[] =>
+        Array.isArray(v) ? (v.filter(itemOk) as T[]) : [];
+
+      analysis.atsScoreEstimate = asNum(analysis.atsScoreEstimate, 5, 98, ruleBasedAts);
+      if (typeof analysis.formatGrade !== 'string' || !/^[A-F][+-]?$/.test(analysis.formatGrade)) {
+        analysis.formatGrade = 'C';
+      }
+      analysis.redFlags = asArr(analysis.redFlags, (f: unknown) =>
+        !!f && typeof (f as { issue?: unknown }).issue === 'string' && typeof (f as { impact?: unknown }).impact === 'string');
+      analysis.quickWins = asArr(analysis.quickWins, (w: unknown) =>
+        !!w && typeof (w as { fix?: unknown }).fix === 'string')
+        .map((w: { fix: string; timeEstimate?: unknown; impact?: unknown; scoreImpact?: unknown; category?: unknown }) => ({
+          ...w,
+          timeEstimate: asStr(w.timeEstimate) ?? '10 min',
+          impact: ['low', 'medium', 'high'].includes(w.impact as string) ? w.impact : 'medium',
+          scoreImpact: asNum(w.scoreImpact, 1, 15, 4),
+        }));
+      analysis.keywords = asArr(analysis.keywords, (k: unknown) =>
+        !!k && typeof (k as { keyword?: unknown }).keyword === 'string');
+      analysis.powerWords = asArr(analysis.powerWords, (p: unknown) =>
+        typeof p === 'string' || (!!p && typeof (p as { word?: unknown }).word === 'string'));
+      analysis.weakPhrases = asArr(analysis.weakPhrases, (p: unknown) =>
+        !!p && typeof (p as { phrase?: unknown }).phrase === 'string');
+      analysis.additionalRewrites = asArr(analysis.additionalRewrites, (r: unknown) =>
+        !!r && typeof (r as { before?: unknown }).before === 'string' && typeof (r as { after?: unknown }).after === 'string');
+      analysis.topSkipReasons = asArr(analysis.topSkipReasons, (s: unknown) => typeof s === 'string');
+      if (analysis.scoreBreakdown) {
+        const sb = analysis.scoreBreakdown as { keywords?: unknown; format?: unknown; quantification?: unknown };
+        const k = asNum(sb.keywords, 0, 100, -1);
+        const f = asNum(sb.format, 0, 100, -1);
+        const q = asNum(sb.quantification, 0, 100, -1);
+        analysis.scoreBreakdown = (k >= 0 && f >= 0 && q >= 0) ? { keywords: k, format: f, quantification: q } : null;
+      }
+      if (analysis.nextBestAction && typeof (analysis.nextBestAction as { action?: unknown }).action !== 'string') {
+        analysis.nextBestAction = null;
+      }
+      analysis.recruiterFirstPassSummary = asStr(analysis.recruiterFirstPassSummary);
+      analysis.formatGradeDrivers = asArr(analysis.formatGradeDrivers, (d: unknown) =>
+        !!d && typeof (d as { driver?: unknown }).driver === 'string');
+    }
 
     // Build response with analysis data (use actual values, slice arrays)
 
@@ -3016,6 +3078,86 @@ ${resumeText.substring(0, 20000)}
       return { steps: plan, totalMinutes, finalProjectedScore: cumulative };
     })();
     responseData.fixRoadmap = fixRoadmap;
+
+    // ── Enterprise reporting batch ──────────────────────────────────────────
+
+    // Dual-industry comparison — when detection confidence is low/medium and a
+    // real secondary exists, analyze BOTH industries instead of silently picking
+    // one. Turns detection uncertainty into extra report depth.
+    const dualIndustryComparison = (() => {
+      if (finalConfidence === 'high') return null;
+      const secondInd = industryDetection.secondaryIndustry;
+      if (!secondInd || secondInd === finalIndustry) return null;
+      const lower = resumeText.toLowerCase();
+      const coverage = (ind: string): number => {
+        const kw = INDUSTRY_KEYWORDS[ind];
+        if (!kw) return 0;
+        return Math.round((kw.primary.filter((k: string) => lower.includes(k)).length / Math.max(kw.primary.length, 1)) * 100);
+      };
+      const covA = coverage(finalIndustry);
+      const covB = coverage(secondInd);
+      // Estimate the alternative score by shifting the real score by the coverage delta (dampened)
+      const altScore = Math.max(15, Math.min(95, Math.round(analysis.atsScoreEstimate + (covB - covA) * 0.4)));
+      return {
+        primary: { industry: finalIndustry, score: analysis.atsScoreEstimate, keywordCoveragePct: covA, benchmarkMedian: INDUSTRY_ATS_BENCHMARKS[finalIndustry] ?? 65 },
+        secondary: { industry: secondInd, score: altScore, keywordCoveragePct: covB, benchmarkMedian: INDUSTRY_ATS_BENCHMARKS[secondInd] ?? 65 },
+      };
+    })();
+    responseData.dualIndustryComparison = dualIndustryComparison;
+
+    // Verdict-first hero — one sentence the whole report is evidence for
+    const reportVerdict = (() => {
+      const firstName = typeof analysis.candidateName === 'string' && analysis.candidateName.trim()
+        ? analysis.candidateName.trim().split(/\s+/)[0] : null;
+      const role = typeof analysis.currentRole === 'string' && analysis.currentRole.trim()
+        ? analysis.currentRole.trim() : `${finalIndustry.replace(/_/g, ' ')} roles`;
+      const criticalCount = sortedRedFlags.filter((f: { severity?: string }) => f.severity === 'critical').length;
+      const blockerClause = criticalCount > 0
+        ? `${criticalCount} critical issue${criticalCount > 1 ? 's are' : ' is'} holding you back`
+        : sortedQuickWins.length > 0
+          ? `${Math.min(sortedQuickWins.length, 3)} quick fixes would move your score most`
+          : 'the fundamentals are in place';
+      return `${firstName ? firstName + ', this' : 'This'} resume will pass roughly ${applicationPassRate}% of ATS filters for ${role} — ${blockerClause}.`;
+    })();
+    responseData.reportVerdict = reportVerdict;
+
+    // Premium teaser — a REAL computed artifact, shown blurred at the gate.
+    // Real receipts convert; generic placeholders don't.
+    const premiumTeaser = (() => {
+      const source = (analysis.additionalRewrites?.[0]?.after as string | undefined)
+        ?? (analysis.sampleRewrite?.after as string | undefined);
+      if (!source) return null;
+      const words = source.split(/\s+/);
+      return {
+        rewritePreview: words.slice(0, 8).join(' ') + (words.length > 8 ? ' …' : ''),
+        totalRewritesAvailable: 2 + (analysis.additionalRewrites?.length ?? 0),
+      };
+    })();
+    responseData.premiumTeaser = premiumTeaser;
+
+    // Report completeness — count sections with real content; fill critical
+    // gaps from rule-based values so thin AI outputs never produce thin reports.
+    const reportCompleteness = (() => {
+      const checks: Record<string, boolean> = {
+        score: Number.isFinite(analysis.atsScoreEstimate),
+        scoreBreakdown: !!responseData.scoreBreakdown,
+        redFlags: (analysis.redFlags?.length ?? 0) > 0,
+        keywords: (keywords?.length ?? 0) > 0,
+        quickWins: sortedQuickWins.length > 0,
+        rewrite: !!analysis.sampleRewrite,
+        recruiterFirstPass: !!analysis.recruiterFirstPassSummary,
+        nextBestAction: !!analysis.nextBestAction,
+        comparisons: peerPercentile != null,
+        fixRoadmap: fixRoadmap.steps.length > 0,
+      };
+      const present = Object.values(checks).filter(Boolean).length;
+      const pct = Math.round((present / Object.keys(checks).length) * 100);
+      if (pct < 70) {
+        console.warn(`[FREE-KEYWORD-SCAN] Low report completeness: ${pct}% — missing: ${Object.entries(checks).filter(([, v]) => !v).map(([k]) => k).join(', ')}`);
+      }
+      return { pct, missing: Object.entries(checks).filter(([, v]) => !v).map(([k]) => k) };
+    })();
+    responseData.reportCompleteness = reportCompleteness.pct;
 
     // Log successful completion metric
     logScanMetric(metricCtx, 'completed', {
