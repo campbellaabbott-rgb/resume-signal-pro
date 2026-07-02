@@ -2868,9 +2868,12 @@ ${resumeText.substring(0, 20000)}
         firstPersonCount += (line.match(FIRST_PERSON_PATTERN) || []).length;
       }
       const bulletLines = lines.filter(l => /^[•\-*‣◦⁃∙]/.test(l.trim()));
+      // Non-global copy: a /g regex carries lastIndex state across .test() calls,
+      // which makes results alternate incorrectly inside a filter loop
+      const PASSIVE_WORD = /\b(was|were|been|is|are|being)\b/i;
       const activeCount = bulletLines.filter(l => {
         const firstWord = l.trim().replace(/^[•\-*‣◦⁃∙]\s*/, '').split(/\s+/)[0] || '';
-        return firstWord.length > 2 && /^[A-Z]/.test(firstWord) && !PASSIVE_PATTERN.test(firstWord);
+        return firstWord.length > 2 && /^[A-Z]/.test(firstWord) && !PASSIVE_WORD.test(firstWord);
       }).length;
       const passiveRatio = (passiveCount + activeCount) > 0
         ? Math.round((passiveCount / (passiveCount + activeCount)) * 100)
@@ -2976,7 +2979,7 @@ ${resumeText.substring(0, 20000)}
       const steps: Array<{ step: string; minutes: number; scoreImpact: number }> = [];
       for (const w of sortedQuickWins.slice(0, 3) as Array<{ fix: string; timeEstimate?: string; scoreImpact?: number }>) {
         const mins = parseInt((w.timeEstimate || '10').match(/\d+/)?.[0] || '10', 10);
-        steps.push({ step: w.fix, minutes: Math.min(mins, 30), scoreImpact: w.scoreImpact ?? 4 });
+        steps.push({ step: w.fix, minutes: Math.min(Math.max(mins, 1), 30), scoreImpact: w.scoreImpact ?? 4 });
       }
       if (bulletAnalysis.weakBullets.length > 0) {
         steps.push({
