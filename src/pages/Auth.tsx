@@ -33,7 +33,9 @@ export default function Auth() {
       options: { emailRedirectTo: `${window.location.origin}/account` },
     });
     setBusy(false);
-    if (err) setError(err.message);
+    if (err) setError(/rate limit/i.test(err.message)
+      ? "Too many email attempts in a short time — please wait a few minutes and try again."
+      : err.message);
     else setNotice("Magic link sent — click it in your inbox and you're in. No password needed.");
   };
 
@@ -63,9 +65,12 @@ export default function Auth() {
     const { error: err } = await fn(email.trim(), password);
     setBusy(false);
     if (err) {
-      setError(/email not confirmed/i.test(err)
+      const friendly = /email not confirmed/i.test(err)
         ? "Your email isn't confirmed yet — check your inbox for the confirmation link (it may be in spam)."
-        : err);
+        : /rate limit/i.test(err)
+          ? "Too many email attempts in a short time — please wait a few minutes and try again. (If this keeps happening, try the sign-in link option instead.)"
+          : err;
+      setError(friendly);
       setShowResend(/email not confirmed/i.test(err));
     } else if (mode === "signup") {
       setNotice("Account created! Check your inbox for a confirmation link, then come back and sign in.");
