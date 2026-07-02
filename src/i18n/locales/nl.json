@@ -1572,6 +1572,20 @@
       "getFullAnalysis": "Mijn recruiter-klaar cv ophalen — {{price}}",
       "socialProof": "{{count}} mensen verbeterden hun cv deze week",
       "resultsExpiry": "Uw resultaten worden nog {{hours}} uur opgeslagen"
+    },
+    "enterprise": {
+      "verdictLabel": "Het Oordeel",
+      "verdictEvidence": "Alles hieronder is het bewijs — en de oplossing.",
+      "downloadPdf": "PDF-samenvatting downloaden",
+      "nextActionLabel": "Jouw belangrijkste volgende stap",
+      "howYouCompare": "Hoe je je verhoudt",
+      "interviewLikelihood": "Kans op een sollicitatiegesprek",
+      "xrayTitle": "Cv-röntgenfoto",
+      "emailTitle": "E-mail mijn rapport",
+      "emailDesc": "Ontvang deze samenvatting en je verbeterplan in je inbox — handig om de verbeteringen later door te voeren.",
+      "emailSend": "Versturen",
+      "emailSent": "Verzonden! Check je inbox.",
+      "emailPrivacy": "Alleen de analyseresultaten worden gemaild — nooit je cv. Geen spam."
     }
   },
   "analysisPreviewSample": {

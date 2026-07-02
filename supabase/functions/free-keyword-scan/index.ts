@@ -79,6 +79,14 @@ const VALID_INDUSTRIES = [
   'consulting', 'retail', 'hospitality', 'manufacturing',
   'government', 'product_management',
   'data_engineering', 'data_science', 'machine_learning',
+  // Expansion batches — must stay in sync with INDUSTRY_KEYWORDS in industry-detection.ts
+  'cybersecurity', 'logistics', 'real_estate', 'insurance', 'nonprofit',
+  'biotech', 'aviation', 'energy', 'skilled_trades', 'customer_success',
+  'pharmacy', 'dental', 'veterinary', 'fitness', 'media',
+  'telecom', 'agriculture', 'sports_management', 'entertainment', 'academia',
+  'construction_management', 'architecture', 'social_work', 'childcare',
+  'beauty', 'culinary', 'law_enforcement', 'environmental', 'gaming',
+  'ecommerce', 'translation', 'event_planning',
   'general'
 ];
 
@@ -88,10 +96,12 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'tech': 'technology', 'software': 'technology', 'it': 'technology',
   'software development': 'technology', 'information technology': 'technology',
   'software_engineering': 'technology', 'software engineering': 'technology',
-  'securityengineering': 'technology', 'security_engineering': 'technology',
-  'security engineering': 'technology', 'cybersecurity': 'technology',
   'cloud_engineering': 'technology', 'platform_engineering': 'technology',
   'devops': 'technology', 'sre': 'technology',
+  // Cybersecurity is its own industry now
+  'securityengineering': 'cybersecurity', 'security_engineering': 'cybersecurity',
+  'security engineering': 'cybersecurity', 'information security': 'cybersecurity',
+  'infosec': 'cybersecurity', 'security': 'cybersecurity',
   // Data Engineering
   'data engineering': 'data_engineering', 'dataengineering': 'data_engineering',
   'analytics engineering': 'data_engineering', 'etl engineering': 'data_engineering',
@@ -123,10 +133,11 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'technical_program_management': 'product_management', 'product management': 'product_management',
   'program management': 'product_management', 'scrum master': 'product_management',
   'agile coach': 'product_management',
-  // Healthcare umbrella
+  // Healthcare umbrella (pharmacy/dental/veterinary/social work are separate industries now)
   'medical': 'healthcare', 'health': 'healthcare', 'medicine': 'healthcare',
   'nursing': 'healthcare', 'pharmaceutical': 'healthcare',
   'physician': 'healthcare', 'clinical': 'healthcare',
+  'pharma': 'healthcare',
   // Finance umbrella
   'banking': 'finance', 'accounting': 'finance', 'financial services': 'finance',
   'supplychainanalytics': 'finance', 'supply_chain_analytics': 'finance',
@@ -137,10 +148,15 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'advertising': 'marketing', 'pr': 'marketing', 'public relations': 'marketing',
   'digital_marketing': 'marketing', 'digital marketing': 'marketing',
   'content_marketing': 'marketing', 'performance_marketing': 'marketing',
-  // Education
-  'teaching': 'education', 'academia': 'education', 'academic': 'education',
-  // Creative
-  'design': 'creative', 'art': 'creative', 'media': 'creative',
+  // Education (academia and childcare are separate industries now)
+  'teaching': 'education', 'k-12': 'education', 'k12': 'education',
+  'academic': 'education',
+  'higher education': 'academia', 'research': 'academia', 'university': 'academia',
+  'early childhood education': 'childcare', 'early_childhood_education': 'childcare',
+  'daycare': 'childcare',
+  // Creative (media/journalism is its own industry now)
+  'design': 'creative', 'art': 'creative', 'ux': 'creative', 'graphic design': 'creative',
+  'journalism': 'media', 'news': 'media', 'publishing': 'media', 'broadcasting': 'media',
   // HR
   'human resources': 'hr', 'recruitment': 'hr', 'talent': 'hr',
   'humanresources': 'hr', 'human_resources': 'hr',
@@ -150,10 +166,58 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   // Sales
   'business_development': 'sales', 'business development': 'sales',
   // Retail / Hospitality / Manufacturing / Government
-  'ecommerce': 'retail', 'e-commerce': 'retail',
   'hotel': 'hospitality', 'restaurant': 'hospitality', 'tourism': 'hospitality',
   'production': 'manufacturing', 'factory': 'manufacturing',
   'public sector': 'government', 'federal': 'government', 'state': 'government',
+  // Expansion-batch aliases — every plausible AI label maps to one of the 52 slugs
+  'e-commerce': 'ecommerce', 'online retail': 'ecommerce', 'marketplace': 'ecommerce',
+  'supply chain': 'logistics', 'supply_chain': 'logistics', 'transportation': 'logistics',
+  'warehousing': 'logistics', 'shipping': 'logistics', 'procurement': 'logistics',
+  'realestate': 'real_estate', 'real estate': 'real_estate', 'property management': 'real_estate',
+  'property': 'real_estate', 'mortgage': 'real_estate',
+  'actuarial': 'insurance', 'underwriting': 'insurance', 'claims': 'insurance',
+  'non-profit': 'nonprofit', 'non profit': 'nonprofit', 'ngo': 'nonprofit',
+  'fundraising': 'nonprofit', 'philanthropy': 'nonprofit',
+  'biotechnology': 'biotech', 'life sciences': 'biotech', 'life_sciences': 'biotech',
+  'laboratory': 'biotech', 'clinical research': 'biotech', 'pharma research': 'biotech',
+  'airline': 'aviation', 'aerospace': 'aviation', 'airlines': 'aviation',
+  'oil and gas': 'energy', 'oil_and_gas': 'energy', 'utilities': 'energy',
+  'renewable energy': 'energy', 'renewables': 'energy', 'solar': 'energy',
+  'trades': 'skilled_trades', 'construction trades': 'skilled_trades',
+  'electrical': 'skilled_trades', 'plumbing': 'skilled_trades', 'hvac': 'skilled_trades',
+  'customer support': 'customer_success', 'customer service': 'customer_success',
+  'customer_support': 'customer_success', 'customer_service': 'customer_success',
+  'call center': 'customer_success', 'support': 'customer_success',
+  'dentistry': 'dental', 'dental care': 'dental',
+  'veterinary medicine': 'veterinary', 'animal care': 'veterinary',
+  'wellness': 'fitness', 'personal training': 'fitness', 'health and fitness': 'fitness',
+  'telecommunications': 'telecom', 'wireless': 'telecom', 'networking': 'telecom',
+  'farming': 'agriculture', 'agribusiness': 'agriculture', 'ranching': 'agriculture',
+  'sports': 'sports_management', 'athletics': 'sports_management', 'coaching': 'sports_management',
+  'film': 'entertainment', 'television': 'entertainment', 'tv production': 'entertainment',
+  'film production': 'entertainment', 'music industry': 'entertainment',
+  'construction': 'construction_management', 'construction management': 'construction_management',
+  'general contracting': 'construction_management',
+  'architectural': 'architecture', 'urban planning': 'architecture', 'interior design': 'architecture',
+  'social services': 'social_work', 'social_services': 'social_work',
+  'mental health': 'social_work', 'counseling': 'social_work', 'therapy': 'social_work',
+  'behavioral health': 'social_work', 'human services': 'social_work',
+  'child care': 'childcare', 'early education': 'childcare',
+  'cosmetology': 'beauty', 'salon': 'beauty', 'spa': 'beauty', 'esthetics': 'beauty',
+  'food service': 'culinary', 'food_service': 'culinary', 'restaurant kitchen': 'culinary',
+  'chef': 'culinary', 'cooking': 'culinary',
+  'police': 'law_enforcement', 'law enforcement': 'law_enforcement',
+  'security services': 'law_enforcement', 'corrections': 'law_enforcement',
+  'public safety': 'law_enforcement',
+  'sustainability': 'environmental', 'esg': 'environmental', 'climate': 'environmental',
+  'conservation': 'environmental', 'environment': 'environmental',
+  'game development': 'gaming', 'game_development': 'gaming', 'video games': 'gaming',
+  'game design': 'gaming', 'esports': 'gaming',
+  'localization': 'translation', 'interpretation': 'translation', 'linguistics': 'translation',
+  'languages': 'translation',
+  'events': 'event_planning', 'event management': 'event_planning',
+  'event_management': 'event_planning', 'weddings': 'event_planning',
+  'meetings and events': 'event_planning',
   // Military → context-aware (handled by detection engine), default to general
   'military': 'general',
   // Operations → general (too ambiguous without context)
@@ -1311,6 +1375,30 @@ serve(async (req) => {
     const industryDetection = detectIndustry(resumeText, dynamicBoosts, truncatedJobDescription || undefined);
     console.log(`[FREE-KEYWORD-SCAN] Pre-detected industry: ${industryDetection.industry} (confidence: ${industryDetection.confidence}, score: ${industryDetection.score.toFixed(1)})`);
     console.log(`[FREE-KEYWORD-SCAN] Signals: ${industryDetection.signals.slice(0, 3).join(', ')}`);
+
+    // === DETERMINISTIC INDUSTRY PINNING ===
+    // The same resume must get the same industry every time. If a previous
+    // high-confidence scan pinned this resume hash, reuse it — the AI-override
+    // step can never flip the answer between runs.
+    const resumeHash = await (async () => {
+      const normalized = resumeText.replace(/\s+/g, ' ').trim().toLowerCase();
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(normalized));
+      return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+    })();
+    let pinnedIndustry: string | null = null;
+    try {
+      const { data: pin } = await supabase
+        .from('scan_industry_pins')
+        .select('industry')
+        .eq('resume_hash', resumeHash)
+        .maybeSingle();
+      if (pin?.industry && VALID_INDUSTRIES.includes(pin.industry)) {
+        pinnedIndustry = pin.industry;
+        console.log(`[FREE-KEYWORD-SCAN] Industry pin hit: ${pinnedIndustry} (hash ${resumeHash.slice(0, 8)})`);
+      }
+    } catch (e) {
+      console.warn('[FREE-KEYWORD-SCAN] Pin lookup failed (continuing unpinned):', e);
+    }
     
     // Format detection result for AI prompt
     const industryHint = formatDetectionForPrompt(industryDetection);
@@ -1851,6 +1939,62 @@ ${resumeText.substring(0, 20000)}
     console.log("[FREE-KEYWORD-SCAN] Calling Lovable AI Gateway...");
 
     let aiResponse: Response | null = null;
+    // ── RULE-BASED FALLBACK REPORT ──────────────────────────────────────────
+    // If every AI model fails, we still hold enough rule-computed signal
+    // (industry detection, ATS score, bullet analysis, keyword corpus, timeline,
+    // tone audit) to serve a genuinely useful report. Build a minimal `analysis`
+    // and let the normal enrichment pipeline run — never show an error page.
+    let usedRuleBasedFallback = false;
+    const buildRuleBasedFallbackAnalysis = () => {
+      usedRuleBasedFallback = true;
+      const fallbackIndustry = industryDetection.industry !== 'general' ? industryDetection.industry : 'general';
+      const fallbackScore = calculateRuleBasedAtsScore(resumeText, fallbackIndustry, seniorityDetection);
+      const lower = resumeText.toLowerCase();
+      const hasSections = {
+        hasContact: /@|phone|\(\d{3}\)/.test(lower),
+        hasSummary: /\b(summary|objective|profile)\b/.test(lower),
+        hasExperience: /\b(experience|employment|work history)\b/.test(lower),
+        hasEducation: /\b(education|degree|university|college)\b/.test(lower),
+        hasSkills: /\b(skills|technologies|competencies)\b/.test(lower),
+      };
+      const level = seniorityDetection.level === 'executive' ? 'executive'
+        : seniorityDetection.level === 'senior' ? 'senior'
+        : seniorityDetection.level === 'entry' ? 'entry' : 'mid';
+      return {
+        detectedLanguage: { code: 'en', name: 'English' },
+        candidateName: null,
+        industry: fallbackIndustry,
+        atsScoreEstimate: fallbackScore,
+        formatGrade: bulletAnalysis.quantRate >= 50 ? 'B' : 'C',
+        formatIssue: 'Automated formatting review only — AI review was unavailable for this scan.',
+        experienceLevel: { level, yearsEstimate: seniorityDetection.yearsEstimate ?? 'unknown' },
+        sectionCheck: {
+          ...hasSections,
+          missingSections: Object.entries(hasSections).filter(([, v]) => !v).map(([k]) => k.replace(/^has/, '').toLowerCase()),
+        },
+        contactInfo: { hasEmail: /@/.test(resumeText), hasPhone: /\(\d{3}\)|\d{3}[-.]\d{3,4}/.test(resumeText), hasLinkedIn: /linkedin/i.test(resumeText), missingItems: [] },
+        redFlags: bulletAnalysis.weakBullets.slice(0, 3).map(b => ({
+          issue: `Weak bullet: "${b.text.slice(0, 80)}"`,
+          impact: b.reason,
+          severity: 'moderate',
+        })),
+        keywords: [],
+        quickWins: [
+          ...(bulletAnalysis.quantRate < 50 ? [{ fix: 'Add numbers to your unquantified bullets — metrics are the fastest score lift', timeEstimate: '15 min', impact: 'high', scoreImpact: 6, category: 'quantification' }] : []),
+          ...(bulletAnalysis.weakBullets.length > 0 ? [{ fix: 'Rewrite bullets that start with passive phrases ("Responsible for", "Helped with")', timeEstimate: '10 min', impact: 'high', scoreImpact: 5, category: 'content' }] : []),
+        ],
+        topSkipReasons: [],
+        powerWords: [],
+        weakPhrases: [],
+        additionalRewrites: [],
+        formatGradeDrivers: [],
+        recruiterFirstPassSummary: null,
+        nextBestAction: bulletAnalysis.quantRate < 50
+          ? { action: 'Add a concrete number to each of your top 3 bullets', why: 'Quantified impact is the single strongest screening signal', estimatedImpact: '+5-8 pts' }
+          : null,
+      };
+    };
+
     let usedModel = MODEL_FALLBACK_ORDER[0];
     for (const modelId of MODEL_FALLBACK_ORDER) {
       usedModel = modelId;
@@ -2294,14 +2438,12 @@ ${resumeText.substring(0, 20000)}
       }
     }
 
-    if (!aiResponse) {
-      return new Response(
-        JSON.stringify({ error: "The AI service is temporarily unavailable. Please try again in a few minutes." }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    let analysis: any = null;
 
-    if (!aiResponse.ok) {
+    if (!aiResponse) {
+      console.error("[FREE-KEYWORD-SCAN] All AI models failed — serving rule-based fallback report");
+      analysis = buildRuleBasedFallbackAnalysis();
+    } else if (!aiResponse.ok) {
       // Log detailed error for debugging
       let errorBody = '';
       try {
@@ -2310,56 +2452,42 @@ ${resumeText.substring(0, 20000)}
         errorBody = 'Could not read error body';
       }
       console.error("[FREE-KEYWORD-SCAN] AI Gateway error:", aiResponse.status, "Body:", errorBody);
-      
+
       if (aiResponse.status === 429) {
+        // Busy is genuinely transient — a user retry in seconds beats a degraded report
         return new Response(
           JSON.stringify({ error: "Service busy. Please try again in a moment." }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
-      // 400 errors often indicate request issues - log and return appropriate error
-      if (aiResponse.status === 400) {
-        console.error("[FREE-KEYWORD-SCAN] Bad request to AI - possible payload too large or invalid schema");
-        // Try with a smaller payload on retry
-        return new Response(
-          JSON.stringify({ error: "Analysis request failed. Please try with a shorter resume." }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+
+      // 400s and 5xxs: serve the rule-based report instead of an error page
+      analysis = buildRuleBasedFallbackAnalysis();
     }
 
-    const aiResult = await aiResponse.json();
-    console.log("[FREE-KEYWORD-SCAN] AI response received");
+    if (!analysis && aiResponse) {
+      const aiResult = await aiResponse.json();
+      console.log("[FREE-KEYWORD-SCAN] AI response received");
 
-    // Extract tool call result
-    let analysis = null;
-    const toolCalls = aiResult.choices?.[0]?.message?.tool_calls;
-    
-    if (toolCalls && toolCalls.length > 0) {
-      try {
-        analysis = JSON.parse(toolCalls[0].function.arguments);
-      } catch (e) {
-        console.error("[FREE-KEYWORD-SCAN] Failed to parse tool call:", e);
+      // Extract tool call result
+      const toolCalls = aiResult.choices?.[0]?.message?.tool_calls;
+      if (toolCalls && toolCalls.length > 0) {
+        try {
+          analysis = JSON.parse(toolCalls[0].function.arguments);
+        } catch (e) {
+          console.error("[FREE-KEYWORD-SCAN] Failed to parse tool call:", e);
+        }
       }
     }
 
     if (!analysis) {
-      console.error("[FREE-KEYWORD-SCAN] No analysis returned from AI");
+      console.error("[FREE-KEYWORD-SCAN] No analysis returned from AI — serving rule-based fallback report");
       logScanMetric(metricCtx, 'validation_error', {
         errorCode: 'NO_ANALYSIS',
-        errorMessage: 'No analysis returned from AI',
+        errorMessage: 'No analysis returned from AI — rule-based fallback served',
         outputValid: false
       });
-      return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      analysis = buildRuleBasedFallbackAnalysis();
     }
 
     // Validate AI response structure
@@ -2439,14 +2567,46 @@ ${resumeText.substring(0, 20000)}
       detectionSource = 'server_general_fallback';
     }
 
+    // === APPLY INDUSTRY PIN ===
+    // A pinned resume always resolves to its pinned industry — determinism
+    // beats whatever the AI said on this particular run.
+    if (pinnedIndustry && pinnedIndustry !== finalIndustry) {
+      console.log(`[FREE-KEYWORD-SCAN] Pin override: "${finalIndustry}" → "${pinnedIndustry}"`);
+      finalIndustry = pinnedIndustry;
+      detectionSource = 'pinned';
+    } else if (pinnedIndustry) {
+      detectionSource = 'pinned_agree';
+    }
+
     analysis.industry = finalIndustry;
 
     // Determine final confidence
-    const finalConfidence = industryDetection.confidence === 'high' ? 'high' :
-      (serverAIMatch ? industryDetection.confidence : 
+    const finalConfidence = pinnedIndustry ? 'high' :
+      industryDetection.confidence === 'high' ? 'high' :
+      (serverAIMatch ? industryDetection.confidence :
         (industryDetection.confidence === 'medium' ? 'medium' : 'low'));
 
     console.log(`[FREE-KEYWORD-SCAN] Final industry: "${finalIndustry}" (source: ${detectionSource}, confidence: ${finalConfidence})`);
+
+    // Write a new pin for future rescans of this resume (high confidence only,
+    // and never from the rule-based fallback path — that's a degraded signal).
+    if (!pinnedIndustry && finalConfidence === 'high' && !usedRuleBasedFallback && finalIndustry !== 'general') {
+      EdgeRuntime.waitUntil(
+        (async () => {
+          try {
+            await supabase.from('scan_industry_pins').upsert({
+              resume_hash: resumeHash,
+              industry: finalIndustry,
+              confidence: finalConfidence,
+              source: 'detection',
+              updated_at: new Date().toISOString(),
+            });
+          } catch (e) {
+            console.warn('[FREE-KEYWORD-SCAN] Pin write failed:', e);
+          }
+        })()
+      );
+    }
 
     // Rule-based ATS score — clamp AI's number within ±12 of the server-computed value
     // to prevent flattering hallucinations or implausibly low scores.
@@ -3162,6 +3322,27 @@ ${resumeText.substring(0, 20000)}
       return { pct, missing: Object.entries(checks).filter(([, v]) => !v).map(([k]) => k) };
     })();
     responseData.reportCompleteness = reportCompleteness.pct;
+    responseData.partialResults = usedRuleBasedFallback;
+
+    // Critical-field repair: an incomplete report gets missing essentials
+    // synthesized from rule-based data instead of shipping thin.
+    if (reportCompleteness.pct < 70) {
+      if (!responseData.nextBestAction && sortedQuickWins.length > 0) {
+        const top = sortedQuickWins[0] as { fix: string; scoreImpact?: number };
+        responseData.nextBestAction = {
+          action: top.fix,
+          why: 'Highest-impact fix identified in this scan',
+          estimatedImpact: `+${top.scoreImpact ?? 4} pts`,
+        };
+      }
+      if (!responseData.recruiterFirstPassSummary) {
+        responseData.recruiterFirstPassSummary =
+          `At ${analysis.atsScoreEstimate}/100, this resume ${analysis.atsScoreEstimate >= 70 ? 'would likely survive' : 'is at risk in'} a 6-second recruiter scan. ` +
+          (bulletAnalysis.weakBullets.length > 0
+            ? `The first thing a recruiter would question: "${bulletAnalysis.weakBullets[0].text.slice(0, 70)}…"`
+            : 'Strengthening quantified impact would improve the first impression.');
+      }
+    }
 
     // Log successful completion metric
     logScanMetric(metricCtx, 'completed', {

@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { ScanSearch, ChevronDown, ChevronUp } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface ResumeXRayProps {
   resumeText: string;
@@ -35,6 +36,7 @@ function lineMatches(line: string, snippet: string): boolean {
 }
 
 export function ResumeXRay({ resumeText, weakBullets = [], unquantifiedBullets = [], powerWords = [], className }: ResumeXRayProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
   const powerWordList = useMemo(
@@ -89,7 +91,7 @@ export function ResumeXRay({ resumeText, weakBullets = [], unquantifiedBullets =
     <div className={cn("rounded-2xl border border-border bg-card p-5", className)}>
       <div className="flex items-center gap-2 mb-1">
         <ScanSearch className="w-4 h-4 text-primary" />
-        <h4 className="font-semibold text-foreground text-sm">Resume X-Ray</h4>
+        <h4 className="font-semibold text-foreground text-sm">{t('freeResults.enterprise.xrayTitle', 'Resume X-Ray')}</h4>
         {flaggedCount > 0 && (
           <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold">
             {flaggedCount} line{flaggedCount !== 1 ? "s" : ""} flagged

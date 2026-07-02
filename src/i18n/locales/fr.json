@@ -1572,6 +1572,20 @@
       "getFullAnalysis": "Obtenir mon CV prêt pour les recruteurs — {{price}}",
       "socialProof": "{{count}} personnes ont amélioré leur CV cette semaine",
       "resultsExpiry": "Vos résultats sont sauvegardés encore {{hours}} heures"
+    },
+    "enterprise": {
+      "verdictLabel": "Le Verdict",
+      "verdictEvidence": "Tout ce qui suit en est la preuve — et la solution.",
+      "downloadPdf": "Télécharger le résumé PDF",
+      "nextActionLabel": "Votre action n°1",
+      "howYouCompare": "Votre positionnement",
+      "interviewLikelihood": "Probabilité de rappel pour un entretien",
+      "xrayTitle": "Radiographie du CV",
+      "emailTitle": "Recevoir mon rapport par e-mail",
+      "emailDesc": "Recevez ce résumé et votre plan d’action dans votre boîte mail — pratique pour appliquer les corrections plus tard.",
+      "emailSend": "Envoyer",
+      "emailSent": "Envoyé ! Vérifiez votre boîte de réception.",
+      "emailPrivacy": "Seuls les résultats de l’analyse sont envoyés — jamais votre CV. Pas de spam."
     }
   },
   "analysisPreviewSample": {

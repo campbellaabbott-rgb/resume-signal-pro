@@ -1572,6 +1572,20 @@
       "getFullAnalysis": "Obter meu currículo pronto para recrutadores — {{price}}",
       "socialProof": "{{count}} pessoas melhoraram seu currículo esta semana",
       "resultsExpiry": "Seus resultados ficam salvos por mais {{hours}} horas"
+    },
+    "enterprise": {
+      "verdictLabel": "O Veredito",
+      "verdictEvidence": "Tudo abaixo é a evidência — e a solução.",
+      "downloadPdf": "Baixar resumo em PDF",
+      "nextActionLabel": "Sua ação nº 1",
+      "howYouCompare": "Como você se compara",
+      "interviewLikelihood": "Probabilidade de entrevista",
+      "xrayTitle": "Raio-X do currículo",
+      "emailTitle": "Enviar meu relatório por e-mail",
+      "emailDesc": "Receba este resumo e seu plano de melhorias no seu e-mail — útil para aplicar as correções depois.",
+      "emailSend": "Enviar",
+      "emailSent": "Enviado! Verifique sua caixa de entrada.",
+      "emailPrivacy": "Apenas os resultados da análise são enviados — nunca seu currículo. Sem spam."
     }
   },
   "analysisPreviewSample": {

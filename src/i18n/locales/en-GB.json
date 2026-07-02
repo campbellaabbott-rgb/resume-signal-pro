@@ -1572,6 +1572,20 @@
       "getFullAnalysis": "Get My Recruiter-Ready CV — {{price}}",
       "socialProof": "{{count}} people upgraded their CV this week",
       "resultsExpiry": "Your results are saved for {{hours}} more hours"
+    },
+    "enterprise": {
+      "verdictLabel": "The Verdict",
+      "verdictEvidence": "Everything below is the evidence — and the fix.",
+      "downloadPdf": "Download PDF summary",
+      "nextActionLabel": "Your #1 Next Action",
+      "howYouCompare": "How You Compare",
+      "interviewLikelihood": "Interview Callback Likelihood",
+      "xrayTitle": "CV X-Ray",
+      "emailTitle": "Email me my report",
+      "emailDesc": "Get this summary and your fix plan in your inbox — handy for working through the fixes later.",
+      "emailSend": "Send",
+      "emailSent": "Sent! Check your inbox for your scan summary and fix plan.",
+      "emailPrivacy": "Only the analysis results are emailed — never your CV. No spam."
     }
   },
   "analysisPreviewSample": {

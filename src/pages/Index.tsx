@@ -20,6 +20,7 @@ import { FinalCTA } from "@/components/FinalCTA";
 import { RateLimitUpsell } from "@/components/RateLimitUpsell";
 import { TailoredResumeModal } from "@/components/TailoredResumeModal";
 import { ResumeLanguageSuggestion } from "@/components/ResumeLanguageSuggestion";
+import { CardErrorBoundary } from "@/components/CardErrorBoundary";
 import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 
 import { LiveActivityIndicator } from "@/components/LiveActivityIndicator";
@@ -300,6 +301,7 @@ interface FreeKeywordResult {
   } | null;
   premiumTeaser?: { rewritePreview: string; totalRewritesAvailable: number } | null;
   reportCompleteness?: number;
+  partialResults?: boolean;
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
@@ -883,6 +885,7 @@ const Index = () => {
           dualIndustryComparison: (result as any).dualIndustryComparison,
           premiumTeaser: (result as any).premiumTeaser,
           reportCompleteness: (result as any).reportCompleteness,
+          partialResults: (result as any).partialResults,
         });
 
         // Track scan completed in funnel
@@ -1444,6 +1447,23 @@ const Index = () => {
           <section id="free-results" className="py-12 scroll-mt-20" data-results-section="true">
             <div className="container space-y-4">
               <ResumeLanguageSuggestion detectedLanguage={freeKeywordResult.detectedLanguage} />
+              {freeKeywordResult.partialResults && (
+                <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 flex items-start gap-2">
+                  <span className="text-warning text-sm shrink-0">⚠️</span>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">Partial results:</span> our AI reviewer was briefly unavailable, so this report uses automated analysis only. Rescan in a few minutes for the full AI-personalized version.
+                  </p>
+                </div>
+              )}
+              <CardErrorBoundary
+                section="free-keyword-results"
+                fallback={
+                  <div className="rounded-2xl border border-warning/30 bg-warning/5 p-6 text-center">
+                    <p className="text-sm font-semibold text-foreground mb-1">Something went wrong displaying your report</p>
+                    <p className="text-xs text-muted-foreground">Your scan completed — try refreshing the page to see the results.</p>
+                  </div>
+                }
+              >
               <FreeKeywordResults
                 candidateName={freeKeywordResult.candidateName}
                 currentRole={freeKeywordResult.currentRole}
@@ -1546,6 +1566,7 @@ const Index = () => {
                 dualIndustryComparison={freeKeywordResult.dualIndustryComparison ?? undefined}
                 premiumTeaser={freeKeywordResult.premiumTeaser ?? undefined}
               />
+              </CardErrorBoundary>
               
               {/* Score-based package recommendation */}
               <ScoreBasedPackageRecommendation atsScore={freeKeywordResult.atsScoreEstimate} />

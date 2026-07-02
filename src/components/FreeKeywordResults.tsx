@@ -41,6 +41,7 @@ import { AISummary } from "./AISummary";
 import { ShareableScoreCard } from "./ShareableScoreCard";
 import { ResumeXRay } from "./ResumeXRay";
 import { EmailReportCapture } from "./EmailReportCapture";
+import { CardErrorBoundary } from "./CardErrorBoundary";
 import { diffWords } from "@/lib/diff-words";
 import { ScoreHero } from "./scorecard/ScoreHero";
 import { MetricCardsGrid } from "./scorecard/MetricCardsGrid";
@@ -631,7 +632,7 @@ interface EliteSignal {
   strength: 'high' | 'medium';
 }
 
-interface FreeKeywordResultsProps {
+export interface FreeKeywordResultsProps {
   candidateName?: string | null;
   currentRole?: string;
   industry: string;
@@ -1503,10 +1504,10 @@ export function FreeKeywordResults({
       {/* ── Verdict-first hero — one sentence the whole report is evidence for ── */}
       {reportVerdict && (
         <div className="rounded-2xl border-2 border-primary/40 bg-gradient-to-r from-primary/10 to-primary/5 p-5 mb-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1.5">The Verdict</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1.5">{t('freeResults.enterprise.verdictLabel', 'The Verdict')}</p>
           <p className="text-base md:text-lg font-semibold text-foreground leading-snug">{reportVerdict}</p>
           <div className="flex items-center justify-between gap-3 mt-2 flex-wrap">
-            <p className="text-xs text-muted-foreground">Everything below is the evidence — and the fix.</p>
+            <p className="text-xs text-muted-foreground">{t('freeResults.enterprise.verdictEvidence', 'Everything below is the evidence — and the fix.')}</p>
             <button
               onClick={async () => {
                 const { default: JsPDF } = await import('jspdf');
@@ -1549,7 +1550,7 @@ export function FreeKeywordResults({
               className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/15 text-primary text-xs font-semibold hover:bg-primary/25 transition-colors"
             >
               <FileText className="w-3 h-3" />
-              Download PDF summary
+              {t('freeResults.enterprise.downloadPdf', 'Download PDF summary')}
             </button>
           </div>
         </div>
@@ -3616,12 +3617,14 @@ export function FreeKeywordResults({
 
       {/* ── Resume X-Ray — their actual document, annotated inline ─────────── */}
       {resumeText && (weakBulletsDetected.length > 0 || unquantifiedBulletsDetected.length > 0 || powerWords.length > 0) && (
-        <ResumeXRay
-          resumeText={resumeText}
-          weakBullets={weakBulletsDetected}
-          unquantifiedBullets={unquantifiedBulletsDetected}
-          powerWords={powerWords}
-        />
+        <CardErrorBoundary section="resume-xray">
+          <ResumeXRay
+            resumeText={resumeText}
+            weakBullets={weakBulletsDetected}
+            unquantifiedBullets={unquantifiedBulletsDetected}
+            powerWords={powerWords}
+          />
+        </CardErrorBoundary>
       )}
 
       {/* ── Score Breakdown ─────────────────────────────────────────────────── */}
@@ -3650,7 +3653,7 @@ export function FreeKeywordResults({
       {/* ── Peer Percentile + Application Pass Rate ─────────────────────────── */}
       {(peerPercentile != null || applicationPassRate != null) && (
         <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-          <h4 className="font-semibold text-foreground text-sm">How You Compare</h4>
+          <h4 className="font-semibold text-foreground text-sm">{t('freeResults.enterprise.howYouCompare', 'How You Compare')}</h4>
           <div className="grid grid-cols-2 gap-3">
             {peerPercentile != null && (
               <div className={cn(
@@ -3715,7 +3718,7 @@ export function FreeKeywordResults({
         )}>
           <div className="flex items-center gap-2 mb-2">
             <Target className="w-4 h-4 text-foreground" />
-            <h4 className="font-semibold text-foreground text-sm">Interview Callback Likelihood</h4>
+            <h4 className="font-semibold text-foreground text-sm">{t('freeResults.enterprise.interviewLikelihood', 'Interview Callback Likelihood')}</h4>
             <span className={cn(
               "ml-auto text-xs px-2 py-0.5 rounded-full font-semibold capitalize",
               interviewLikelihood.band === 'strong' ? "bg-success/15 text-success" :
@@ -4089,7 +4092,7 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border-2 border-primary bg-primary/5 p-5">
           <div className="flex items-center gap-2 mb-2">
             <Zap className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold text-primary text-sm uppercase tracking-wide">Your #1 Next Action</h4>
+            <h4 className="font-semibold text-primary text-sm uppercase tracking-wide">{t('freeResults.enterprise.nextActionLabel', 'Your #1 Next Action')}</h4>
           </div>
           <p className="text-base font-semibold text-foreground mb-1">{nextBestAction.action}</p>
           {nextBestAction.why && (

@@ -242,6 +242,67 @@ const cases: GoldenCase[] = [
     resume: `Rita Vale\nEvent Planner\n${EXPERIENCE}\nEvent Manager, Summit Events (2018-present)\n- Produced 40 corporate events and conferences yearly, 5,000+ attendees\n- Vendor management, run of show, event budgets to $1.2M, BEOs\nCERTIFICATIONS\nCMP`,
   },
 
+  // ── Remaining core industries ────────────────────────────────────────────
+  {
+    name: "management consultant",
+    expected: "consulting",
+    resume: `Ted Vo\nManagement Consultant\n${EXPERIENCE}\nConsultant, McKinley Group (2019-present)\n- Led client engagements on operating model strategy, built deliverables for C-suite stakeholders\n- Managed workstreams across due diligence and transformation engagements\nSKILLS\nPowerPoint, stakeholder management`,
+  },
+  {
+    name: "ux designer",
+    expected: "creative",
+    resume: `Ava Kohl\nSenior UX Designer\n${EXPERIENCE}\nUX Designer, DesignLab (2020-present)\n- Designed user flows, wireframes and prototypes in Figma for mobile app\n- Ran usability research and design reviews, built the design system\nSKILLS\nFigma, prototyping, user research`,
+  },
+  {
+    name: "store manager",
+    expected: "retail",
+    resume: `Rob Lane\nStore Manager\n${EXPERIENCE}\nStore Manager, ValueMart (2017-present)\n- Ran a $6M store: scheduling, inventory, merchandising and loss prevention\n- Coached 25 associates, improved customer satisfaction scores\nSKILLS\nPOS systems, merchandising`,
+  },
+  {
+    name: "hotel manager",
+    expected: "hospitality",
+    resume: `Elle Marsh\nHotel Manager\n${EXPERIENCE}\nFront Desk Manager, Grand Plaza Hotel (2018-present)\n- Managed guest services and reservations for a 300-room property\n- Oversaw housekeeping coordination and F&B alignment, RevPAR up 12%\nSKILLS\nOpera PMS, guest relations`,
+  },
+  {
+    name: "policy analyst",
+    expected: "government",
+    resume: `Ian Cho\nPolicy Analyst\n${EXPERIENCE}\nPolicy Analyst, State Department of Commerce (2019-present)\n- Drafted legislative analysis and regulatory impact assessments\n- Managed federal grant compliance and stakeholder briefings\nCLEARANCE\nSecret clearance`,
+  },
+  {
+    name: "ml engineer (technology trap)",
+    expected: "machine_learning",
+    resume: `Ola Deng\nMachine Learning Engineer\n${EXPERIENCE}\nML Engineer, VisionAI (2021-present)\n- Trained and deployed deep learning models for image classification\n- Built inference pipelines, model monitoring and evaluation in PyTorch\nSKILLS\nPyTorch, MLOps, transformers`,
+  },
+  {
+    name: "data engineer (technology trap)",
+    expected: "data_engineering",
+    resume: `Uma Roy\nData Engineer\n${EXPERIENCE}\nData Engineer, StreamCo (2020-present)\n- Built ETL pipelines in Airflow feeding the Snowflake warehouse\n- Managed data ingestion from Kafka, dbt transformations and data quality checks\nSKILLS\nAirflow, dbt, Snowflake, Kafka`,
+  },
+  {
+    name: "mechanical engineer",
+    expected: "engineering",
+    resume: `Hal Berg\nMechanical Engineer\n${EXPERIENCE}\nMechanical Engineer, MachWorks (2018-present)\n- Designed components in SolidWorks with GD&T, ran FEA thermal analysis\n- Prototyping and tolerance stack-ups for production parts\nLICENSES\nEIT`,
+  },
+
+  // ── Multilingual title locks ─────────────────────────────────────────────
+  {
+    name: "German nurse (Krankenschwester)",
+    expected: "healthcare",
+    resume: `Anna Weber\nKrankenschwester\nBERUFSERFAHRUNG\nKrankenschwester, Klinikum München (2019-heute)\n- Patientenversorgung auf der Intensivstation, Medikamentengabe\n- Dokumentation und Pflegeplanung\nKENNTNISSE\nPflege, Dokumentation`,
+  },
+  {
+    name: "Spanish electrician (electricista)",
+    expected: "skilled_trades",
+    resume: `Carlos Ruiz\nElectricista\nEXPERIENCIA\nElectricista, Instalaciones Ruiz (2016-presente)\n- Instalación y mantenimiento de sistemas eléctricos residenciales\n- Cableado, cuadros eléctricos y cumplimiento de normativa\nLICENCIAS\nCarnet de instalador`,
+  },
+
+  // ── Thin resume (title-only fallback) ────────────────────────────────────
+  {
+    name: "thin resume with only a title",
+    expected: "legal",
+    resume: `Jo Best\nParalegal\n${EXPERIENCE}\nParalegal, Smith & Co (2021-present)\n- Legal research and case files`,
+  },
+
   // ── Context guards ───────────────────────────────────────────────────────
   {
     name: "aspiring nurse in summary must NOT lock healthcare",

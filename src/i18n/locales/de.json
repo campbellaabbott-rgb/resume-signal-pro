@@ -1572,6 +1572,20 @@
       "getFullAnalysis": "Meinen bewerbungsfertigen Lebenslauf holen — {{price}}",
       "socialProof": "{{count}} Personen haben ihren Lebenslauf diese Woche verbessert",
       "resultsExpiry": "Ihre Ergebnisse werden noch {{hours}} Stunden gespeichert"
+    },
+    "enterprise": {
+      "verdictLabel": "Das Urteil",
+      "verdictEvidence": "Alles darunter ist der Beweis — und die Lösung.",
+      "downloadPdf": "PDF-Zusammenfassung herunterladen",
+      "nextActionLabel": "Ihre wichtigste nächste Maßnahme",
+      "howYouCompare": "So schneiden Sie ab",
+      "interviewLikelihood": "Wahrscheinlichkeit einer Interview-Einladung",
+      "xrayTitle": "Lebenslauf-Röntgen",
+      "emailTitle": "Bericht per E-Mail senden",
+      "emailDesc": "Erhalten Sie diese Zusammenfassung und Ihren Verbesserungsplan per E-Mail — praktisch zum späteren Abarbeiten.",
+      "emailSend": "Senden",
+      "emailSent": "Gesendet! Prüfen Sie Ihren Posteingang.",
+      "emailPrivacy": "Nur die Analyseergebnisse werden gesendet — nie Ihr Lebenslauf. Kein Spam."
     }
   },
   "analysisPreviewSample": {

@@ -1572,6 +1572,20 @@
       "getFullAnalysis": "Kunin ang aking recruiter-ready na resume — {{price}}",
       "socialProof": "{{count}} tao ang nagpabuti ng kanilang resume ngayong linggo",
       "resultsExpiry": "Ang iyong mga resulta ay naka-save pa ng {{hours}} oras"
+    },
+    "enterprise": {
+      "verdictLabel": "Ang Hatol",
+      "verdictEvidence": "Lahat ng nasa ibaba ay ang ebidensya — at ang solusyon.",
+      "downloadPdf": "I-download ang PDF na buod",
+      "nextActionLabel": "Ang iyong #1 susunod na hakbang",
+      "howYouCompare": "Paano ka kumpara",
+      "interviewLikelihood": "Posibilidad ng interview callback",
+      "xrayTitle": "Resume X-Ray",
+      "emailTitle": "I-email ang aking ulat",
+      "emailDesc": "Matanggap ang buod at plano ng pag-aayos sa iyong inbox — kapaki-pakinabang sa paggawa ng mga ayos mamaya.",
+      "emailSend": "Ipadala",
+      "emailSent": "Naipadala! Tingnan ang iyong inbox.",
+      "emailPrivacy": "Tanging mga resulta ng pagsusuri lang ang ipinapadala — hindi kailanman ang iyong resume. Walang spam."
     }
   },
   "analysisPreviewSample": {

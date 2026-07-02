@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { Mail, Check, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "react-i18next";
 
 interface EmailReportCaptureProps {
   payload: {
@@ -21,6 +22,7 @@ interface EmailReportCaptureProps {
 }
 
 export function EmailReportCapture({ payload }: EmailReportCaptureProps) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export function EmailReportCapture({ payload }: EmailReportCaptureProps) {
     return (
       <div className="rounded-2xl border border-success/30 bg-success/5 p-4 flex items-center gap-2">
         <Check className="w-4 h-4 text-success shrink-0" />
-        <p className="text-sm text-foreground">Sent! Check your inbox for your scan summary and fix plan.</p>
+        <p className="text-sm text-foreground">{t('freeResults.enterprise.emailSent', 'Sent! Check your inbox for your scan summary and fix plan.')}</p>
       </div>
     );
   }
@@ -61,10 +63,10 @@ export function EmailReportCapture({ payload }: EmailReportCaptureProps) {
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="flex items-center gap-2 mb-1">
         <Mail className="w-4 h-4 text-primary" />
-        <h4 className="font-semibold text-foreground text-sm">Email me my report</h4>
+        <h4 className="font-semibold text-foreground text-sm">{t('freeResults.enterprise.emailTitle', 'Email me my report')}</h4>
       </div>
       <p className="text-xs text-muted-foreground mb-3">
-        Get this summary and your fix plan in your inbox — handy for working through the fixes later.
+        {t('freeResults.enterprise.emailDesc', 'Get this summary and your fix plan in your inbox — handy for working through the fixes later.')}
       </p>
       <div className="flex gap-2">
         <input
@@ -82,11 +84,11 @@ export function EmailReportCapture({ payload }: EmailReportCaptureProps) {
           className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors"
         >
           {status === "sending" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
-          Send
+          {t('freeResults.enterprise.emailSend', 'Send')}
         </button>
       </div>
       {errorMsg && <p className="text-xs text-destructive mt-2">{errorMsg}</p>}
-      <p className="text-[10px] text-muted-foreground mt-2">Only the analysis results are emailed — never your resume. No spam.</p>
+      <p className="text-[10px] text-muted-foreground mt-2">{t('freeResults.enterprise.emailPrivacy', 'Only the analysis results are emailed — never your resume. No spam.')}</p>
     </div>
   );
 }
