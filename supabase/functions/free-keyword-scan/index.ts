@@ -87,6 +87,8 @@ const VALID_INDUSTRIES = [
   'construction_management', 'architecture', 'social_work', 'childcare',
   'beauty', 'culinary', 'law_enforcement', 'environmental', 'gaming',
   'ecommerce', 'translation', 'event_planning',
+  'administrative', 'library', 'clergy', 'mining', 'maritime',
+  'landscaping', 'janitorial',
   'general'
 ];
 
@@ -218,6 +220,19 @@ const INDUSTRY_ALIASES: Record<string, string> = {
   'events': 'event_planning', 'event management': 'event_planning',
   'event_management': 'event_planning', 'weddings': 'event_planning',
   'meetings and events': 'event_planning',
+  'office administration': 'administrative', 'office management': 'administrative',
+  'admin': 'administrative', 'clerical': 'administrative',
+  'executive support': 'administrative', 'office support': 'administrative',
+  'library science': 'library', 'archives': 'library', 'information science': 'library',
+  'religious': 'clergy', 'ministry': 'clergy', 'faith-based': 'clergy', 'church': 'clergy',
+  'mining and metals': 'mining', 'metals and mining': 'mining', 'quarrying': 'mining',
+  'shipping industry': 'maritime', 'marine': 'maritime', 'nautical': 'maritime',
+  'offshore maritime': 'maritime',
+  'lawn care': 'landscaping', 'grounds': 'landscaping', 'horticulture': 'landscaping',
+  'groundskeeping': 'landscaping',
+  'cleaning services': 'janitorial', 'custodial': 'janitorial',
+  'facilities services': 'janitorial', 'housekeeping': 'janitorial',
+  'trucking': 'logistics', 'driving': 'logistics', 'delivery': 'logistics',
   // Military → context-aware (handled by detection engine), default to general
   'military': 'general',
   // Operations → general (too ambiguous without context)
@@ -1007,6 +1022,8 @@ const INDUSTRY_ATS_BENCHMARKS: Record<string, number> = {
   childcare: 58, beauty: 57, culinary: 59, law_enforcement: 62,
   environmental: 66, gaming: 66, ecommerce: 65, translation: 63,
   event_planning: 61,
+  administrative: 60, library: 63, clergy: 60, mining: 62,
+  maritime: 63, landscaping: 57, janitorial: 55,
 };
 
 /**

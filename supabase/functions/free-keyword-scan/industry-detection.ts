@@ -214,6 +214,51 @@ const KNOWN_EMPLOYERS: Record<string, string> = {
   'korn ferry': 'hr', 'heidrick': 'hr', 'spencer stuart': 'hr',
   'manpower': 'hr', 'randstad': 'hr', 'adecco': 'hr', 'robert half': 'hr',
   'kelly services': 'hr', 'insight global': 'hr',
+  // Expansion-batch employers — the table must know the new industries too
+  'crowdstrike': 'cybersecurity', 'palo alto networks': 'cybersecurity',
+  'mandiant': 'cybersecurity', 'sentinelone': 'cybersecurity', 'okta': 'cybersecurity',
+  'fedex': 'logistics', 'ups': 'logistics', 'dhl': 'logistics',
+  'xpo': 'logistics', 'c.h. robinson': 'logistics', 'jb hunt': 'logistics',
+  'schneider national': 'logistics', 'swift transportation': 'logistics',
+  'keller williams': 'real_estate', 'coldwell banker': 'real_estate',
+  're/max': 'real_estate', 'cbre': 'real_estate', 'jll': 'real_estate',
+  'compass real estate': 'real_estate', 'zillow': 'real_estate',
+  'state farm': 'insurance', 'allstate': 'insurance', 'geico': 'insurance',
+  'progressive insurance': 'insurance', 'liberty mutual': 'insurance', 'aflac': 'insurance',
+  'red cross': 'nonprofit', 'united way': 'nonprofit', 'habitat for humanity': 'nonprofit',
+  'salvation army': 'nonprofit', 'ymca': 'nonprofit',
+  'genentech': 'biotech', 'amgen': 'biotech', 'moderna': 'biotech',
+  'regeneron': 'biotech', 'illumina': 'biotech', 'thermo fisher': 'biotech',
+  'labcorp': 'biotech', 'quest diagnostics': 'biotech',
+  'delta air lines': 'aviation', 'united airlines': 'aviation', 'american airlines': 'aviation',
+  'southwest airlines': 'aviation', 'boeing': 'aviation', 'airbus': 'aviation',
+  'exxonmobil': 'energy', 'chevron': 'energy', 'halliburton': 'energy',
+  'schlumberger': 'energy', 'nextera': 'energy', 'duke energy': 'energy', 'sunrun': 'energy',
+  'cvs pharmacy': 'pharmacy', 'walgreens': 'pharmacy', 'rite aid': 'pharmacy',
+  'banfield': 'veterinary', 'vca animal': 'veterinary', 'petco': 'veterinary',
+  'planet fitness': 'fitness', 'equinox': 'fitness', 'orangetheory': 'fitness',
+  'la fitness': 'fitness', 'lifetime fitness': 'fitness',
+  'new york times': 'media', 'washington post': 'media', 'cnn': 'media',
+  'nbc news': 'media', 'reuters': 'media', 'associated press': 'media',
+  'verizon': 'telecom', 'at&t': 'telecom', 't-mobile': 'telecom',
+  'comcast': 'telecom', 'charter communications': 'telecom', 'lumen': 'telecom',
+  'john deere': 'agriculture', 'cargill': 'agriculture', 'archer daniels': 'agriculture',
+  'tyson foods': 'agriculture',
+  'turner construction': 'construction_management', 'bechtel': 'construction_management',
+  'skanska': 'construction_management', 'kiewit': 'construction_management',
+  'dpr construction': 'construction_management',
+  'gensler': 'architecture', 'hok': 'architecture', 'hdr': 'architecture',
+  'aecom': 'engineering', 'jacobs engineering': 'engineering',
+  'sysco': 'culinary', 'us foods': 'culinary', 'aramark': 'culinary', 'sodexo': 'culinary',
+  'epic games': 'gaming', 'riot games': 'gaming', 'activision': 'gaming',
+  'blizzard': 'gaming', 'electronic arts': 'gaming', 'ubisoft': 'gaming', 'roblox': 'gaming',
+  'shopify': 'ecommerce', 'etsy': 'ecommerce', 'wayfair': 'ecommerce', 'chewy': 'ecommerce',
+  'allied universal': 'law_enforcement', 'securitas': 'law_enforcement', 'g4s': 'law_enforcement',
+  'republic services': 'janitorial', 'waste management': 'janitorial',
+  'abm industries': 'janitorial', 'servicemaster': 'janitorial',
+  'brightview': 'landscaping', 'trugreen': 'landscaping', 'davey tree': 'landscaping',
+  'maersk': 'maritime', 'msc': 'maritime', 'crowley': 'maritime',
+  'freeport-mcmoran': 'mining', 'newmont': 'mining', 'barrick': 'mining', 'rio tinto': 'mining',
 };
 
 // Section weights - job titles and summary have highest influence
@@ -1031,7 +1076,11 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'transportation manager', 'fleet manager', 'distribution manager',
       'freight broker', 'customs broker', 'import export specialist',
       'supply chain analyst', 'logistics analyst', 'materials manager',
-      'fulfillment manager', 'shipping coordinator', 'dispatcher'
+      'fulfillment manager', 'shipping coordinator', 'dispatcher',
+      // Driver roles — huge resume volume that previously had no home
+      'truck driver', 'cdl driver', 'otr driver', 'delivery driver',
+      'bus driver', 'route driver', 'courier', 'owner operator',
+      'forklift operator', 'warehouse associate', 'package handler'
     ],
     primary: [
       'supply chain', 'logistics', 'warehouse', 'inventory', 'procurement',
@@ -1039,7 +1088,9 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'demand planning', 'forecasting', 'on-time delivery', 'otif',
       'inventory turnover', 'stock levels', 'purchase orders', '3pl',
       'carrier', 'lanes', 'ltl', 'ftl', 'last mile', 'cross-docking',
-      'kitting', 'cycle count', 'lead time', 'reorder point', 'safety stock'
+      'kitting', 'cycle count', 'lead time', 'reorder point', 'safety stock',
+      'routes', 'deliveries', 'accident-free miles', 'dot compliance',
+      'hours of service', 'pre-trip inspections', 'load securement', 'manifests'
     ],
     secondary: [
       'sap', 'oracle scm', 'wms', 'tms', 'erp', 'edi', 'netsuite',
@@ -1831,6 +1882,170 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
     certifications: [
       'cmp', 'certified meeting professional', 'csep', 'cwep', 'dmcp'
     ]
+  },
+
+  administrative: {
+    titles: [
+      'executive assistant', 'administrative assistant', 'admin assistant',
+      'office manager', 'office administrator', 'receptionist', 'front desk coordinator',
+      'data entry clerk', 'data entry specialist', 'office coordinator',
+      'administrative coordinator', 'executive coordinator', 'personal assistant',
+      'secretary', 'legal secretary', 'clerical', 'office assistant',
+      'operations assistant', 'administrative specialist', 'virtual assistant'
+    ],
+    primary: [
+      'calendar management', 'scheduling', 'travel arrangements', 'expense reports',
+      'correspondence', 'meeting coordination', 'meeting minutes', 'filing',
+      'data entry', 'office supplies', 'front desk', 'phone screening',
+      'executive support', 'c-suite support', 'gatekeeping', 'inbox management',
+      'document preparation', 'record keeping', 'office operations',
+      'administrative support', 'visitor management', 'mail distribution',
+      'onboarding coordination', 'event coordination office'
+    ],
+    secondary: [
+      'microsoft office', 'outlook', 'excel', 'word', 'powerpoint',
+      'google workspace', 'concur', 'expensify', 'docusign', 'zoom scheduling',
+      'multi-line phone', 'typing wpm', 'shorthand', 'notary', 'quickbooks entry'
+    ],
+    certifications: [
+      'certified administrative professional', 'cap certification', 'notary public',
+      'microsoft office specialist'
+    ]
+  },
+
+  library: {
+    titles: [
+      'librarian', 'library assistant', 'library technician', 'archivist',
+      'library director', 'reference librarian', 'cataloging librarian',
+      'youth services librarian', 'digital archivist', 'records manager',
+      'metadata librarian', 'collections manager'
+    ],
+    primary: [
+      'library', 'cataloging', 'circulation', 'reference services', 'collection development',
+      'archives', 'archival', 'patrons', 'interlibrary loan', 'library programs',
+      'digitization', 'metadata', 'special collections', 'preservation',
+      'reader advisory', 'library instruction', 'acquisitions library', 'weeding'
+    ],
+    secondary: [
+      'marc records', 'dewey decimal', 'library of congress', 'oclc', 'worldcat',
+      'ils', 'koha', 'sierra', 'alma', 'dublin core', 'finding aids', 'ead'
+    ],
+    certifications: [
+      'mlis', 'mls degree', 'master of library science', 'certified archivist'
+    ]
+  },
+
+  clergy: {
+    titles: [
+      'pastor', 'minister', 'priest', 'rabbi', 'imam', 'chaplain',
+      'youth pastor', 'worship leader', 'deacon', 'church administrator',
+      'missionary', 'ministry director', 'associate pastor'
+    ],
+    primary: [
+      'ministry', 'congregation', 'sermons', 'preaching', 'pastoral care',
+      'worship services', 'bible study', 'discipleship', 'church',
+      'parish', 'spiritual guidance', 'counseling pastoral', 'weddings and funerals',
+      'outreach ministry', 'mission trips', 'youth ministry', 'small groups',
+      'stewardship church', 'liturgy', 'sacraments'
+    ],
+    secondary: [
+      'seminary', 'theology', 'divinity', 'ordained', 'denominational',
+      'church management software', 'planning center', 'tithely', 'vbs'
+    ],
+    certifications: [
+      'master of divinity', 'mdiv', 'ordination', 'theology degree', 'cpe chaplaincy'
+    ]
+  },
+
+  mining: {
+    titles: [
+      'mining engineer', 'mine manager', 'underground miner', 'driller mining',
+      'blaster', 'geologist mining', 'mine surveyor', 'mill operator',
+      'heavy equipment operator mining', 'shift supervisor mining', 'quarry manager'
+    ],
+    primary: [
+      'mining', 'underground', 'open pit', 'ore', 'extraction', 'drilling and blasting',
+      'mine safety', 'msha', 'ventilation mining', 'ground control', 'haul trucks',
+      'crushing', 'milling', 'processing plant', 'tailings', 'reclamation',
+      'exploration', 'core samples', 'assay mining', 'shaft', 'stope'
+    ],
+    secondary: [
+      'caterpillar', 'komatsu', 'longwall', 'continuous miner', 'jumbo drill',
+      'surpac', 'vulcan software', 'deswik', 'mine planning'
+    ],
+    certifications: [
+      'msha certification', 'mine safety', 'blasting license', 'pe mining'
+    ]
+  },
+
+  maritime: {
+    titles: [
+      'ship captain', 'deck officer', 'chief mate', 'able seaman', 'deckhand',
+      'marine engineer', 'port captain', 'harbor pilot', 'tugboat captain',
+      'vessel operator', 'merchant mariner', 'boatswain', 'port operations manager'
+    ],
+    primary: [
+      'maritime', 'vessel', 'ship', 'navigation', 'watchkeeping', 'mooring',
+      'cargo operations', 'ballast', 'deck operations', 'seamanship',
+      'port operations', 'stevedoring', 'anchorage', 'voyage planning',
+      'engine room', 'dry dock', 'chartering', 'imo regulations', 'solas',
+      'offshore', 'towing', 'dredging'
+    ],
+    secondary: [
+      'uscg', 'coast guard licensed', 'stcw', 'twic card', 'ecdis', 'radar certified',
+      'gmdss', 'marpol', 'jones act', 'ism code'
+    ],
+    certifications: [
+      'uscg license', 'stcw', 'master mariner', 'able seaman certification',
+      'twic', 'gmdss certified'
+    ]
+  },
+
+  landscaping: {
+    titles: [
+      'landscaper', 'landscape designer', 'groundskeeper', 'grounds manager',
+      'lawn care technician', 'arborist', 'tree climber', 'irrigation technician',
+      'landscape foreman', 'horticulturist', 'greenhouse grower', 'turf manager',
+      'golf course superintendent'
+    ],
+    primary: [
+      'landscaping', 'lawn care', 'grounds maintenance', 'mowing', 'pruning',
+      'tree removal', 'tree care', 'irrigation systems', 'hardscape', 'softscape',
+      'planting', 'fertilization', 'weed control', 'turf', 'sod',
+      'landscape design', 'grounds crew', 'seasonal cleanup', 'snow removal',
+      'horticulture', 'plant health', 'nursery stock'
+    ],
+    secondary: [
+      'zero-turn mowers', 'skid steer', 'chainsaw certified', 'backpack blower',
+      'irrigation controllers', 'pesticide license', 'isa arborist'
+    ],
+    certifications: [
+      'isa certified arborist', 'pesticide applicator', 'landscape industry certified',
+      'irrigation certified'
+    ]
+  },
+
+  janitorial: {
+    titles: [
+      'custodian', 'janitor', 'housekeeper', 'housekeeping supervisor',
+      'cleaning technician', 'environmental services technician', 'evs technician',
+      'custodial supervisor', 'building services worker', 'sanitation worker',
+      'facilities cleaner', 'porter'
+    ],
+    primary: [
+      'cleaning', 'custodial', 'sanitizing', 'disinfecting', 'floor care',
+      'buffing', 'stripping and waxing', 'carpet cleaning', 'restrooms',
+      'trash removal', 'housekeeping', 'environmental services', 'deep cleaning',
+      'terminal cleaning', 'green cleaning', 'cleaning schedules', 'inspections cleaning',
+      'chemical safety', 'osha cleaning', 'bloodborne pathogens'
+    ],
+    secondary: [
+      'floor machines', 'auto scrubber', 'extractor', 'sds sheets', 'ppe',
+      'cims certified', 'issa', 'hospital grade disinfectant'
+    ],
+    certifications: [
+      'cims', 'issa certification', 'bloodborne pathogen certified', 'osha 10'
+    ]
   }
 };
 
@@ -1888,6 +2103,21 @@ export const SUB_INDUSTRY_TAXONOMY: Record<string, Array<{ id: string; label: st
     { id: 'k12', label: 'K-12 Teaching', signals: ['classroom management', 'lesson plans', 'iep', 'differentiated instruction', 'parent conferences', 'grade level', 'state standards'], minSignals: 2 },
     { id: 'higher_ed_admin', label: 'Higher Ed Administration', signals: ['student affairs', 'enrollment', 'academic advising', 'financial aid', 'accreditation', 'registrar', 'student success'], minSignals: 2 },
     { id: 'edtech', label: 'EdTech / Instructional Design', signals: ['instructional design', 'lms', 'e-learning', 'curriculum development', 'articulate', 'canvas', 'scorm', 'course design'], minSignals: 2 },
+  ],
+  retail: [
+    { id: 'store_ops', label: 'Store Operations', signals: ['store manager', 'floor', 'scheduling associates', 'shrink', 'loss prevention', 'pos', 'opening and closing', 'planograms'], minSignals: 2 },
+    { id: 'merchandising', label: 'Buying / Merchandising', signals: ['buying', 'assortment', 'vendor negotiations', 'open to buy', 'markdowns', 'sell-through', 'category management', 'private label'], minSignals: 2 },
+    { id: 'retail_corporate', label: 'Retail Corporate', signals: ['omnichannel', 'store rollout', 'district', 'regional', 'retail analytics', 'same-store sales', 'comp sales'], minSignals: 2 },
+  ],
+  hospitality: [
+    { id: 'hotel_ops', label: 'Hotel Operations', signals: ['front desk', 'occupancy', 'revpar', 'adr', 'housekeeping', 'guest services', 'pms', 'reservations'], minSignals: 2 },
+    { id: 'food_beverage', label: 'Food & Beverage', signals: ['f&b', 'restaurant', 'covers', 'menu', 'bar', 'banquet', 'catering', 'food cost'], minSignals: 2 },
+    { id: 'events_venues', label: 'Events & Venues', signals: ['banquet event orders', 'group sales', 'room blocks', 'conferences', 'weddings', 'av'], minSignals: 2 },
+  ],
+  government: [
+    { id: 'federal', label: 'Federal', signals: ['federal', 'gs-', 'security clearance', 'dod', 'agency', 'usajobs', 'far', 'contracting officer'], minSignals: 2 },
+    { id: 'state_local', label: 'State / Municipal', signals: ['municipal', 'city council', 'county', 'ordinance', 'public works', 'constituent services', 'state agency'], minSignals: 2 },
+    { id: 'military_civilian', label: 'Military / Defense', signals: ['military', 'veteran', 'deployment', 'battalion', 'squadron', 'defense contractor', 'ts/sci'], minSignals: 2 },
   ],
 };
 
@@ -2248,6 +2478,41 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['event planning', 'venues', 'vendor management'],
     ['run of show', 'event logistics', 'av production'],
     ['registration', 'attendees', 'sponsorship']
+  ],
+  administrative: [
+    ['calendar management', 'travel arrangements', 'expense reports'],
+    ['executive support', 'scheduling', 'correspondence'],
+    ['front desk', 'phone screening', 'data entry']
+  ],
+  library: [
+    ['cataloging', 'circulation', 'collection development'],
+    ['archives', 'metadata', 'digitization'],
+    ['reference services', 'patrons', 'interlibrary loan']
+  ],
+  clergy: [
+    ['ministry', 'congregation', 'sermons'],
+    ['pastoral care', 'worship services', 'bible study'],
+    ['youth ministry', 'outreach', 'discipleship']
+  ],
+  mining: [
+    ['mining', 'ore', 'extraction'],
+    ['drilling and blasting', 'msha', 'mine safety'],
+    ['crushing', 'milling', 'tailings']
+  ],
+  maritime: [
+    ['vessel', 'navigation', 'watchkeeping'],
+    ['cargo operations', 'port operations', 'mooring'],
+    ['engine room', 'deck operations', 'voyage planning']
+  ],
+  landscaping: [
+    ['lawn care', 'mowing', 'fertilization'],
+    ['pruning', 'tree care', 'irrigation systems'],
+    ['landscape design', 'hardscape', 'planting']
+  ],
+  janitorial: [
+    ['cleaning', 'sanitizing', 'disinfecting'],
+    ['floor care', 'buffing', 'carpet cleaning'],
+    ['housekeeping', 'environmental services', 'trash removal']
   ]
 };
 
@@ -2477,6 +2742,43 @@ const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleS
   // Event planners share marketing/hospitality vocabulary.
   event_planning: [
     { negativeFor: 'marketing', requiredTitleSignal: true },
+    { negativeFor: 'hospitality', requiredTitleSignal: true }
+  ],
+  // EAs support execs in every field — the SUPPORTED field must not steal
+  // (an EA to a CFO mentions budgets; an EA at a law firm mentions legal).
+  administrative: [
+    { negativeFor: 'hr', requiredTitleSignal: true },
+    { negativeFor: 'finance', requiredTitleSignal: true },
+    { negativeFor: 'legal', requiredTitleSignal: true },
+    { negativeFor: 'customer_success', requiredTitleSignal: true }
+  ],
+  // Librarians share research/education vocabulary.
+  library: [
+    { negativeFor: 'education', requiredTitleSignal: true },
+    { negativeFor: 'academia', requiredTitleSignal: true }
+  ],
+  // Chaplains share counseling vocabulary with social work.
+  clergy: [
+    { negativeFor: 'social_work', requiredTitleSignal: true },
+    { negativeFor: 'education', requiredTitleSignal: true }
+  ],
+  // Mining shares heavy-industry vocabulary with energy and manufacturing.
+  mining: [
+    { negativeFor: 'energy', requiredTitleSignal: true },
+    { negativeFor: 'manufacturing', requiredTitleSignal: true }
+  ],
+  // Maritime shares shipping vocabulary with logistics.
+  maritime: [
+    { negativeFor: 'logistics', requiredTitleSignal: true }
+  ],
+  // Groundskeepers share trades/agriculture vocabulary.
+  landscaping: [
+    { negativeFor: 'agriculture', requiredTitleSignal: true },
+    { negativeFor: 'skilled_trades', requiredTitleSignal: true }
+  ],
+  // Custodial shares facilities vocabulary with trades and hospitality housekeeping.
+  janitorial: [
+    { negativeFor: 'skilled_trades', requiredTitleSignal: true },
     { negativeFor: 'hospitality', requiredTitleSignal: true }
   ]
 };
@@ -3179,7 +3481,7 @@ function extractEducationSignals(resumeText: string): Array<{ industry: string; 
     results.push({ industry: 'healthcare', boost: 12, signal: 'Degree: D.O.' });
   }
   if (has('pharm.d.') || has('doctor of pharmacy') || /\bpharmd\b/.test(text)) {
-    results.push({ industry: 'healthcare', boost: 10, signal: 'Degree: Pharm.D.' });
+    results.push({ industry: 'pharmacy', boost: 12, signal: 'Degree: Pharm.D.' });
   }
   if (has('d.p.t.') || has('doctor of physical therapy') || /\bdpt\b/.test(text)) {
     results.push({ industry: 'healthcare', boost: 9, signal: 'Degree: D.P.T.' });
@@ -3251,6 +3553,56 @@ function extractEducationSignals(resumeText: string): Array<{ industry: string; 
   // Teaching certifications → education
   if (has('teaching credential') || has('teaching certificate') || has('state teaching license') || has('b.s. education') || has('b.a. education') || has('bachelor of education') || has('master of education') || has('m.ed.') || has('m.a.t.')) {
     results.push({ industry: 'education', boost: 8, signal: 'Credential: Teaching license/education degree' });
+  }
+
+  // ── Expansion-batch degrees — the table must know every industry we detect ──
+  if (has('dvm') || has('doctor of veterinary medicine') || has('vmd')) {
+    results.push({ industry: 'veterinary', boost: 12, signal: 'Degree: D.V.M.' });
+  }
+  if (has('dds') || has('dmd') || has('doctor of dental')) {
+    results.push({ industry: 'dental', boost: 12, signal: 'Degree: D.D.S./D.M.D.' });
+  }
+  if (has('msw') || has('master of social work') || has('bsw')) {
+    results.push({ industry: 'social_work', boost: 10, signal: 'Degree: M.S.W./B.S.W.' });
+  }
+  if (has('mlis') || has('master of library')) {
+    results.push({ industry: 'library', boost: 12, signal: 'Degree: M.L.I.S.' });
+  }
+  if (has('m.div') || has('mdiv') || has('master of divinity') || has('theology degree') || has('seminary')) {
+    results.push({ industry: 'clergy', boost: 10, signal: 'Degree: M.Div./Seminary' });
+  }
+  if (has('march') || has('master of architecture') || has('bachelor of architecture')) {
+    results.push({ industry: 'architecture', boost: 10, signal: 'Degree: Architecture' });
+  }
+  if (has('criminal justice degree') || (has('criminal justice') && (has('b.s.') || has('bachelor') || has('associate')))) {
+    results.push({ industry: 'law_enforcement', boost: 6, signal: 'Degree: Criminal Justice' });
+  }
+  if (has('environmental science') && (has('b.s.') || has('bachelor') || has('master'))) {
+    results.push({ industry: 'environmental', boost: 6, signal: 'Degree: Environmental Science' });
+  }
+  if (has('journalism degree') || (has('journalism') && (has('b.a.') || has('bachelor')))) {
+    results.push({ industry: 'media', boost: 6, signal: 'Degree: Journalism' });
+  }
+  if (has('culinary arts') && (has('degree') || has('diploma') || has('associate'))) {
+    results.push({ industry: 'culinary', boost: 8, signal: 'Degree: Culinary Arts' });
+  }
+  if (has('kinesiology') || has('exercise science')) {
+    results.push({ industry: 'fitness', boost: 6, signal: 'Degree: Kinesiology/Exercise Science' });
+  }
+  if (has('agronomy degree') || has('animal science') || (has('agriculture') && has('bachelor'))) {
+    results.push({ industry: 'agriculture', boost: 6, signal: 'Degree: Agriculture/Animal Science' });
+  }
+  if (has('game design degree') || (has('game design') && (has('b.s.') || has('bachelor')))) {
+    results.push({ industry: 'gaming', boost: 6, signal: 'Degree: Game Design' });
+  }
+  if (has('construction management') && (has('b.s.') || has('bachelor') || has('degree'))) {
+    results.push({ industry: 'construction_management', boost: 8, signal: 'Degree: Construction Management' });
+  }
+  if (has('early childhood education') && (has('degree') || has('associate') || has('bachelor'))) {
+    results.push({ industry: 'childcare', boost: 8, signal: 'Degree: Early Childhood Education' });
+  }
+  if (has('mortuary') || has('funeral service degree')) {
+    results.push({ industry: 'general', boost: 0, signal: 'Degree: Mortuary Science' });
   }
 
   return results;
@@ -3494,6 +3846,22 @@ const ROLE_LOCKS: Array<{ pattern: RegExp; industry: string; label: string }> = 
   { pattern: /\b(translator|interpreter\b|localization specialist|localization manager|medical interpreter|court interpreter|conference interpreter|subtitler|transcreation)\b/i, industry: 'translation', label: 'translation title' },
   // Event planning
   { pattern: /\b(event planner|event coordinator|wedding planner|conference planner|meeting planner|event producer|special events manager|trade show manager)\b/i, industry: 'event_planning', label: 'event planning title' },
+  // Administrative / office support
+  { pattern: /\b(executive assistant|administrative assistant|admin assistant|office manager|office administrator|receptionist|data entry clerk|office coordinator|administrative coordinator|personal assistant|legal secretary|virtual assistant)\b/i, industry: 'administrative', label: 'administrative title' },
+  // Drivers → logistics
+  { pattern: /\b(truck driver|cdl driver|otr driver|delivery driver|bus driver|route driver|courier\b|owner operator|forklift operator)\b/i, industry: 'logistics', label: 'driver title' },
+  // Library / archives
+  { pattern: /\b(librarian|library assistant|library technician|archivist|reference librarian|cataloging librarian|records manager)\b/i, industry: 'library', label: 'library title' },
+  // Clergy / religious work
+  { pattern: /\b(pastor|minister\b|priest|rabbi|imam|chaplain|youth pastor|worship leader|deacon|missionary)\b/i, industry: 'clergy', label: 'clergy title' },
+  // Mining
+  { pattern: /\b(mining engineer|mine manager|underground miner|blaster\b|mine surveyor|mill operator|quarry manager)\b/i, industry: 'mining', label: 'mining title' },
+  // Maritime
+  { pattern: /\b(ship captain|deck officer|chief mate|able seaman|deckhand|marine engineer|harbor pilot|tugboat captain|merchant mariner|boatswain)\b/i, industry: 'maritime', label: 'maritime title' },
+  // Landscaping / grounds
+  { pattern: /\b(landscaper|landscape designer|groundskeeper|grounds manager|lawn care technician|arborist|tree climber|irrigation technician|horticulturist|golf course superintendent)\b/i, industry: 'landscaping', label: 'landscaping title' },
+  // Janitorial / custodial
+  { pattern: /\b(custodian|janitor\b|housekeeping supervisor|environmental services technician|evs technician|custodial supervisor|sanitation worker)\b/i, industry: 'janitorial', label: 'janitorial title' },
 ];
 
 // ─── MULTILINGUAL TITLE LOCKS ────────────────────────────────────────────────
@@ -3521,7 +3889,40 @@ const MULTILINGUAL_TITLE_LOCKS: Array<{ pattern: RegExp; industry: string; label
   // Skilled trades
   { pattern: /\b(electricista|klempner|elektriker|installateur|électricien|plombier|eletricista|encanador|elektricien|loodgieter)\b/i, industry: 'skilled_trades', label: 'trade title (non-EN)' },
   // Hospitality
-  { pattern: /\b(cocinero|chef de cocina|koch\b|köchin|cuisinier|chef de cuisine|cozinheiro|kok\b|hotelmanager|gerente de hotel)\b/i, industry: 'hospitality', label: 'hospitality title (non-EN)' },
+  { pattern: /\b(cocinero|chef de cocina|koch\b|köchin|cuisinier|chef de cuisine|cozinheiro|kok\b|hotelmanager|gerente de hotel)\b/i, industry: 'culinary', label: 'culinary title (non-EN)' },
+  // Customer service
+  { pattern: /\b(atención al cliente|servicio al cliente|kundendienst|kundenservice|service client|atendimento ao cliente|klantenservice)\b/i, industry: 'customer_success', label: 'support title (non-EN)' },
+  // Logistics / drivers
+  { pattern: /\b(camionero|conductor de camión|lkw-fahrer|berufskraftfahrer|chauffeur routier|motorista de caminhão|vrachtwagenchauffeur|almacenista|lagerist|magasinier)\b/i, industry: 'logistics', label: 'driver/warehouse title (non-EN)' },
+  // Administrative
+  { pattern: /\b(asistente administrativo|asistente ejecutiva|secretaria|bürokauffrau|bürokaufmann|assistante de direction|assistente administrativo|secretaresse|administratief medewerker)\b/i, industry: 'administrative', label: 'administrative title (non-EN)' },
+  // Janitorial / cleaning
+  { pattern: /\b(limpieza|conserje|reinigungskraft|hausmeister|agent d'entretien|femme de ménage|auxiliar de limpeza|schoonmaker)\b/i, industry: 'janitorial', label: 'cleaning title (non-EN)' },
+  // Childcare
+  { pattern: /\b(niñera|educadora infantil|erzieherin|kinderpfleger|assistante maternelle|éducatrice|educadora de infância|pedagogisch medewerker)\b/i, industry: 'childcare', label: 'childcare title (non-EN)' },
+  // Beauty
+  { pattern: /\b(peluquera|peluquero|estilista|friseur|friseurin|coiffeur|coiffeuse|esthéticienne|cabeleireira|kapper|schoonheidsspecialiste)\b/i, industry: 'beauty', label: 'beauty title (non-EN)' },
+  // Tagalog titles
+  { pattern: /\b(guro\b|titser)\b/i, industry: 'education', label: 'teaching title (TL)' },
+  { pattern: /\b(nars\b|narses)\b/i, industry: 'healthcare', label: 'nursing title (TL)' },
+  { pattern: /\b(abogado tl|abugado)\b/i, industry: 'legal', label: 'legal title (TL)' },
+  { pattern: /\b(tsuper|drayber)\b/i, industry: 'logistics', label: 'driver title (TL)' },
+  { pattern: /\b(kusinero|kusinera|tagaluto)\b/i, industry: 'culinary', label: 'culinary title (TL)' },
+  { pattern: /\b(kasambahay|tagalinis)\b/i, industry: 'janitorial', label: 'cleaning title (TL)' },
+];
+
+// Hindi Devanagari titles need per-role routing (single regex above can't
+// carry multiple industries) — resolved here before the generic pass.
+const HINDI_TITLE_LOCKS: Array<{ pattern: RegExp; industry: string; label: string }> = [
+  { pattern: /(नर्स|परिचारिका)/u, industry: 'healthcare', label: 'nursing title (HI)' },
+  { pattern: /(चिकित्सक|डॉक्टर)/u, industry: 'healthcare', label: 'physician title (HI)' },
+  { pattern: /(शिक्षक|शिक्षिका|अध्यापक|अध्यापिका)/u, industry: 'education', label: 'teaching title (HI)' },
+  { pattern: /(इंजीनियर|अभियंता)/u, industry: 'engineering', label: 'engineering title (HI)' },
+  { pattern: /(लेखाकार|मुनीम)/u, industry: 'finance', label: 'accounting title (HI)' },
+  { pattern: /(वकील|अधिवक्ता)/u, industry: 'legal', label: 'legal title (HI)' },
+  { pattern: /(रसोइया|शेफ|बावर्ची)/u, industry: 'culinary', label: 'culinary title (HI)' },
+  { pattern: /(चालक|ड्राइवर)/u, industry: 'logistics', label: 'driver title (HI)' },
+  { pattern: /(फार्मासिस्ट|औषधालय)/u, industry: 'pharmacy', label: 'pharmacy title (HI)' },
 ];
 
 // ─── CERTIFICATION-BASED INDUSTRY LOCKING ────────────────────────────────────
@@ -3586,7 +3987,7 @@ const ASPIRATIONAL_CONTEXT = /\b(aspiring|seeking|objective|goal|hoping to|looki
 
 // Third-party phrasing means someone ELSE holds the role — "collaborated with
 // attorneys" must not lock legal for the candidate.
-const THIRD_PARTY_CONTEXT = /\b(work(ed|ing)? (closely )?with|supported?|supporting|liaised? with|collaborat\w+ with|partner\w* with|coordinat\w+ with|assist\w+|reporting to|on behalf of|for (the|our|their)|clients? includ\w+|alongside|team of)\s*$/i;
+const THIRD_PARTY_CONTEXT = /\b(work(ed|ing)? (closely )?with|supported?|supporting|liaised? with|collaborat\w+ with|partner\w* with|coordinat\w+ with|assist\w+|assistant to( the)?|secretary to( the)?|reporting to|reported to|on behalf of|for (the|our|their)|clients? includ\w+|alongside|team of|to the|to a\b|to our)\s*$/i;
 
 /**
  * True when the role-lock match at `index` in `text` is a genuine claim of the
@@ -3629,13 +4030,17 @@ function applyRoleFirstAnchoring(
   // making them the strongest possible signal. No context checks needed.
   const titlesText = jobTitles.join('\n').toLowerCase();
   if (titlesText.trim()) {
-    const titleLock = findGenuineLock(ROLE_LOCKS, titlesText) ?? findGenuineLock(MULTILINGUAL_TITLE_LOCKS, titlesText);
+    const titleLock = findGenuineLock(ROLE_LOCKS, titlesText)
+      ?? findGenuineLock(MULTILINGUAL_TITLE_LOCKS, titlesText)
+      ?? findGenuineLock(HINDI_TITLE_LOCKS, titlesText);
     if (titleLock) return titleLock;
   }
   // Pass 2: resume header/summary — weaker signal, so aspirational and
   // third-party phrasing is filtered out before a match can lock.
   const headText = resumeText.substring(0, 500).toLowerCase();
-  return findGenuineLock(ROLE_LOCKS, headText) ?? findGenuineLock(MULTILINGUAL_TITLE_LOCKS, headText);
+  return findGenuineLock(ROLE_LOCKS, headText)
+    ?? findGenuineLock(MULTILINGUAL_TITLE_LOCKS, headText)
+    ?? findGenuineLock(HINDI_TITLE_LOCKS, headText);
 }
 
 // ─── FIX #4: REQUIRED ANCHOR TERMS ──────────────────────────────────────────
@@ -3694,6 +4099,13 @@ const REQUIRED_ANCHORS: Record<string, string[]> = {
   ecommerce: ['ecommerce', 'e-commerce', 'online', 'marketplace', 'shopify', 'amazon', 'conversion'],
   translation: ['translation', 'interpretation', 'language', 'localization', 'bilingual', 'linguistic'],
   event_planning: ['events', 'event', 'venues', 'attendees', 'planning', 'vendors', 'logistics'],
+  administrative: ['office', 'administrative', 'scheduling', 'calendar', 'support', 'coordination', 'executive'],
+  library: ['library', 'cataloging', 'archives', 'collection', 'patrons', 'circulation'],
+  clergy: ['ministry', 'church', 'congregation', 'pastoral', 'worship', 'spiritual', 'parish'],
+  mining: ['mining', 'mine', 'ore', 'underground', 'quarry', 'extraction', 'msha'],
+  maritime: ['vessel', 'ship', 'maritime', 'marine', 'port', 'deck', 'navigation'],
+  landscaping: ['landscaping', 'lawn', 'grounds', 'trees', 'irrigation', 'planting', 'horticulture'],
+  janitorial: ['cleaning', 'custodial', 'housekeeping', 'sanitizing', 'janitorial', 'floor care'],
 };
 
 function checkRequiredAnchors(industry: string, resumeText: string): boolean {

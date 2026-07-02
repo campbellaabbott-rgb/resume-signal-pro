@@ -303,6 +303,48 @@ const cases: GoldenCase[] = [
     resume: `Jo Best\nParalegal\n${EXPERIENCE}\nParalegal, Smith & Co (2021-present)\n- Legal research and case files`,
   },
 
+  // ── Coverage batch: admin, drivers, and smaller fields ───────────────────
+  {
+    name: "executive assistant (HR/finance trap)",
+    expected: "administrative",
+    resume: `Meg Cole\nExecutive Assistant\n${EXPERIENCE}\nExecutive Assistant to CFO, FinCorp (2018-present)\n- Calendar management, travel arrangements and expense reports for C-suite\n- Meeting coordination, minutes and correspondence, inbox management\nSKILLS\nOutlook, Concur, scheduling`,
+  },
+  {
+    name: "truck driver (must land in logistics)",
+    expected: "logistics",
+    resume: `Ray Boone\nOTR Truck Driver\n${EXPERIENCE}\nCDL Driver, Schneider National (2015-present)\n- 1.8M accident-free miles hauling dry van freight across 48 states\n- DOT compliance, hours of service logs, pre-trip inspections, load securement\nLICENSES\nCDL Class A`,
+  },
+  {
+    name: "librarian (education/academia trap)",
+    expected: "library",
+    resume: `Ann Page\nReference Librarian\n${EXPERIENCE}\nReference Librarian, City Public Library (2017-present)\n- Reference services and library instruction for 500 patrons weekly\n- Cataloging in MARC records, collection development and interlibrary loan\nEDUCATION\nMLIS`,
+  },
+  {
+    name: "pastor (social work trap)",
+    expected: "clergy",
+    resume: `Rev. Sam Ford\nSenior Pastor\n${EXPERIENCE}\nSenior Pastor, Grace Community Church (2012-present)\n- Preached weekly sermons for a congregation of 400, pastoral care and counseling\n- Led discipleship programs, bible study groups and mission trips\nEDUCATION\nMaster of Divinity`,
+  },
+  {
+    name: "mining engineer (energy trap)",
+    expected: "mining",
+    resume: `Ida Ross\nMining Engineer\n${EXPERIENCE}\nMining Engineer, Copper Ridge Mine (2018-present)\n- Mine planning for open pit operations, drilling and blasting design\n- MSHA compliance, ground control and ventilation planning\nCERTIFICATIONS\nMSHA certification`,
+  },
+  {
+    name: "deck officer (logistics trap)",
+    expected: "maritime",
+    resume: `Leo Hunt\nChief Mate\n${EXPERIENCE}\nChief Mate, Crowley Maritime (2016-present)\n- Watchkeeping and navigation on 600-ft product tankers, cargo operations\n- Mooring operations, voyage planning, SOLAS and MARPOL compliance\nLICENSES\nUSCG license, STCW`,
+  },
+  {
+    name: "groundskeeper (agriculture/trades trap)",
+    expected: "landscaping",
+    resume: `Gil Moss\nGrounds Manager\n${EXPERIENCE}\nGroundskeeper, Fairview Golf Club (2016-present)\n- Turf management, mowing, fertilization and irrigation systems for 18 holes\n- Tree care, pruning and seasonal planting programs\nCERTIFICATIONS\nPesticide applicator license`,
+  },
+  {
+    name: "custodian (trades trap)",
+    expected: "janitorial",
+    resume: `Pat Ives\nCustodial Supervisor\n${EXPERIENCE}\nCustodian, Unified School District (2014-present)\n- Floor care including stripping and waxing, buffing and carpet cleaning\n- Sanitizing and disinfecting classrooms, restrooms and common areas\nCERTIFICATIONS\nBloodborne pathogen certified`,
+  },
+
   // ── Context guards ───────────────────────────────────────────────────────
   {
     name: "aspiring nurse in summary must NOT lock healthcare",
