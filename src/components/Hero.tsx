@@ -52,7 +52,7 @@ function HeroStatsBar() {
           <Target className="w-4 h-4 text-primary" />
         </div>
         <div className="text-left">
-          <p className="text-lg sm:text-xl font-bold text-foreground">52</p>
+          <p className="text-lg sm:text-xl font-bold text-foreground">59</p>
           <p className="text-xs text-muted-foreground">{t('hero.stats.industriesCovered', 'Industries covered')}</p>
         </div>
       </div>
