@@ -2944,6 +2944,30 @@
     "roleLockDetection": {
       "title": "Role-specific detection for 50+ job titles",
       "description": "Over 50 unambiguous job titles now hard-lock the correct industry regardless of what else appears on the resume — registered nurses, attorneys, teachers, product managers, data engineers, ML engineers, and many more. A nurse with SQL in her skills can no longer be classified as a data scientist."
+    },
+    "fiftyNineIndustries": {
+      "title": "59 setores — incluindo os que todos ignoram",
+      "description": "A cobertura agora inclui categorias que a maioria das ferramentas pula completamente: administração e suporte de escritório (assistentes executivas, gerentes de escritório, recepcionistas), motoristas (caminhão, entrega, ônibus), biblioteconomia, ministério religioso, mineração, marítimo, paisagismo e limpeza. Cada uma com sua biblioteca de palavras-chave, reconhecimento de cargos, detecção de licenças e benchmarks. Uma 'Assistente Executiva do CFO' agora é lida corretamente como administrativa — não como finanças."
+    },
+    "resumeXray": {
+      "title": "Raio-X do currículo: seu documento, anotado",
+      "description": "O relatório agora mostra seu próprio currículo, linha por linha, com a análise desenhada nele: bullets fracos recebem sublinhado vermelho (motivo ao passar o mouse), bullets sem números recebem marcação âmbar, e suas palavras mais fortes são destacadas em verde."
+    },
+    "emailMyReport": {
+      "title": "Enviar meu relatório por e-mail",
+      "description": "Um clique envia seu resumo — veredito, pontuação, detalhamento, principais problemas e seu plano de melhorias — para sua caixa de entrada em um e-mail bem desenhado. Apenas os resultados da análise são enviados, nunca seu currículo, e sem e-mails de acompanhamento a menos que você peça."
+    },
+    "scanReliability": {
+      "title": "Análises que nunca falham — e não mudam de ideia",
+      "description": "Duas melhorias de confiabilidade: se o revisor de IA estiver indisponível, você agora recebe um relatório automatizado completo em vez de uma página de erro. E o mesmo currículo recebe a mesma classificação de setor toda vez: detecções de alta confiança são lembradas."
+    },
+    "multilingualDetection": {
+      "title": "Detecção de setor em 8 idiomas",
+      "description": "Cargos em espanhol, alemão, francês, português, holandês, hindi e tagalo agora ancoram a detecção como os em inglês — uma 'Krankenschwester' trava saúde, um 'electricista' trava ofícios especializados."
+    },
+    "reportVisualPolish": {
+      "title": "Um relatório que parece um painel",
+      "description": "Sua pontuação agora sobe animada com a cor passando de vermelho para âmbar e verde. Seu percentil é desenhado em uma curva de distribuição real com a zona dos 25% superiores sombreada. Cada reescrita mostra exatamente o que mudou — exclusões riscadas em vermelho, adições em verde. E um resumo em PDF de uma página está a um clique."
     }
   },
   "sampleReportPreview": {

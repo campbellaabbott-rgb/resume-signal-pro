@@ -2944,6 +2944,30 @@
     "roleLockDetection": {
       "title": "Role-specific detection for 50+ job titles",
       "description": "Over 50 unambiguous job titles now hard-lock the correct industry regardless of what else appears on the resume — registered nurses, attorneys, teachers, product managers, data engineers, ML engineers, and many more. A nurse with SQL in her skills can no longer be classified as a data scientist."
+    },
+    "fiftyNineIndustries": {
+      "title": "59 na industriya — kasama ang mga karaniwang binabalewala",
+      "description": "Sakop na ngayon ang mga kategoryang tuluyang nilalaktawan ng karamihan ng tool: administratibo at office support (executive assistant, office manager, receptionist), mga driver (trak, delivery, bus), library science, ministeryo, pagmimina, maritime, landscaping, at paglilinis. Bawat isa ay may sariling keyword library, pagkilala sa job title, pagtukoy ng lisensya, at benchmark. Ang 'Executive Assistant sa CFO' ay tama nang binabasa bilang administratibo — hindi finance."
+    },
+    "resumeXray": {
+      "title": "Resume X-Ray: ang iyong dokumento, may anotasyon",
+      "description": "Ipinapakita na ngayon ng ulat ang iyong resume mismo, bawat linya, na may pagsusuring nakaguhit dito: ang mahihinang bullet ay may pulang salungguhit (dahilan kapag hinover), ang mga bullet na walang numero ay may amber na marka, at ang iyong pinakamalalakas na salita ay naka-highlight sa berde."
+    },
+    "emailMyReport": {
+      "title": "I-email ang aking ulat",
+      "description": "Isang click ang magpapadala ng iyong buod — hatol, iskor, breakdown, pangunahing isyu, at plano ng pag-aayos — sa iyong inbox bilang maayos na email. Tanging mga resulta ng pagsusuri lang ang ipinapadala, hindi kailanman ang iyong resume."
+    },
+    "scanReliability": {
+      "title": "Mga scan na hindi nabibigo — at hindi nagbabago ng isip",
+      "description": "Dalawang upgrade sa pagiging maaasahan: kung hindi available ang AI reviewer, makakatanggap ka na ngayon ng kumpletong automated na ulat sa halip na error page. At ang parehong resume ay nakakakuha ng parehong klasipikasyon ng industriya sa bawat pagkakataon."
+    },
+    "multilingualDetection": {
+      "title": "Pagtukoy ng industriya sa 8 wika",
+      "description": "Ang mga job title sa Espanyol, Aleman, Pranses, Portuges, Dutch, Hindi, at Tagalog ay nag-aangkla na ngayon ng pagtukoy tulad ng Ingles — ang 'nars' ay nagta-lock ng healthcare, ang 'tsuper' ay logistics, ang 'guro' ay edukasyon."
+    },
+    "reportVisualPolish": {
+      "title": "Ulat na parang dashboard",
+      "description": "Ang iyong iskor ay bumibilang na pataas habang nagbabago ang kulay mula pula hanggang berde. Ang iyong percentile ay iginuguhit sa tunay na distribution curve. Bawat rewrite ay nagpapakita kung ano mismo ang nagbago — mga tinanggal na naka-strikethrough sa pula, mga idinagdag sa berde. At isang one-page na PDF summary ay isang click lang."
     }
   },
   "sampleReportPreview": {

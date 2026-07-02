@@ -2944,6 +2944,30 @@
     "roleLockDetection": {
       "title": "Role-specific detection for 50+ job titles",
       "description": "Over 50 unambiguous job titles now hard-lock the correct industry regardless of what else appears on the resume — registered nurses, attorneys, teachers, product managers, data engineers, ML engineers, and many more. A nurse with SQL in her skills can no longer be classified as a data scientist."
+    },
+    "fiftyNineIndustries": {
+      "title": "59 sectoren — ook die welke anderen negeren",
+      "description": "De dekking omvat nu beroepsgroepen die de meeste cv-tools volledig overslaan: administratie en officesupport (executive assistants, officemanagers, receptionisten), chauffeurs (vrachtwagen, bezorging, bus), bibliotheekwetenschap, kerkelijk werk, mijnbouw, maritiem, hoveniers en schoonmaak. Elk met een eigen trefwoordbibliotheek, functietitelherkenning, licentiedetectie en benchmarks. Een 'Executive Assistant van de CFO' wordt nu correct gelezen als administratief — niet als finance."
+    },
+    "resumeXray": {
+      "title": "Cv-röntgenfoto: je eigen document, geannoteerd",
+      "description": "Het rapport toont nu je cv zelf, regel voor regel, met de analyse er direct op: zwakke bullets krijgen een rode onderstreping (reden bij hover), bullets zonder cijfers een amberkleurige markering, en je sterkste woorden worden groen gemarkeerd."
+    },
+    "emailMyReport": {
+      "title": "E-mail mijn rapport",
+      "description": "Eén klik stuurt je scansamenvatting — oordeel, score, uitsplitsing, hoofdproblemen en je verbeterplan — als strak vormgegeven e-mail naar je inbox. Alleen de analyseresultaten worden verstuurd, nooit je cv, en geen vervolgmails tenzij je erom vraagt."
+    },
+    "scanReliability": {
+      "title": "Scans die nooit falen — en niet van gedachten veranderen",
+      "description": "Twee betrouwbaarheidsupgrades: als de AI-beoordelaar niet beschikbaar is, krijg je nu een volledig geautomatiseerd rapport in plaats van een foutpagina. En hetzelfde cv krijgt nu elke keer dezelfde sectorclassificatie: detecties met hoge zekerheid worden onthouden."
+    },
+    "multilingualDetection": {
+      "title": "Sectordetectie in 8 talen",
+      "description": "Functietitels in het Spaans, Duits, Frans, Portugees, Nederlands, Hindi en Tagalog verankeren de detectie nu net als Engelse — een 'Krankenschwester' vergrendelt zorg, een 'electricista' vakmanschap."
+    },
+    "reportVisualPolish": {
+      "title": "Een rapport dat leest als een dashboard",
+      "description": "Je score telt nu op terwijl de kleur van rood via amber naar groen verschuift. Je percentiel wordt getekend op een echte verdelingscurve met de top-25%-zone gearceerd. Elke herschrijving toont precies wat er veranderde — verwijderingen doorgestreept in rood, toevoegingen in groen. En een PDF-samenvatting van één pagina is één klik verwijderd."
     }
   },
   "sampleReportPreview": {

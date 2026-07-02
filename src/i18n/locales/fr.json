@@ -2944,6 +2944,30 @@
     "roleLockDetection": {
       "title": "Role-specific detection for 50+ job titles",
       "description": "Over 50 unambiguous job titles now hard-lock the correct industry regardless of what else appears on the resume — registered nurses, attorneys, teachers, product managers, data engineers, ML engineers, and many more. A nurse with SQL in her skills can no longer be classified as a data scientist."
+    },
+    "fiftyNineIndustries": {
+      "title": "59 secteurs — y compris ceux que les autres ignorent",
+      "description": "La couverture inclut désormais les catégories que la plupart des outils sautent entièrement : administration et support de bureau (assistantes de direction, office managers, réceptionnistes), conducteurs (camion, livraison, bus), bibliothéconomie, ministère religieux, mines, maritime, paysagisme et entretien. Chacune avec sa bibliothèque de mots-clés, sa reconnaissance de titres, sa détection de licences et ses référentiels. Une 'Assistante de direction du CFO' est désormais correctement lue comme administrative — pas comme finance."
+    },
+    "resumeXray": {
+      "title": "Radiographie du CV : votre document, annoté",
+      "description": "Le rapport affiche désormais votre CV lui-même, ligne par ligne, avec l'analyse dessinée dessus : les puces faibles sont soulignées en rouge (raison au survol), les puces sans chiffres marquées en orange, et vos mots forts surlignés en vert."
+    },
+    "emailMyReport": {
+      "title": "Recevoir mon rapport par e-mail",
+      "description": "Un clic envoie votre synthèse — verdict, score, ventilation, problèmes principaux et plan d'action minute par minute — dans votre boîte mail sous forme d'e-mail soigné. Seuls les résultats d'analyse sont envoyés, jamais votre CV, et aucun e-mail de suivi sans votre demande."
+    },
+    "scanReliability": {
+      "title": "Des analyses qui n’échouent jamais — et ne changent pas d’avis",
+      "description": "Deux améliorations de fiabilité : si le relecteur IA est indisponible, vous recevez désormais un rapport automatisé complet au lieu d'une page d'erreur. Et le même CV reçoit désormais la même classification sectorielle à chaque fois : les détections à haute confiance sont mémorisées."
+    },
+    "multilingualDetection": {
+      "title": "Détection sectorielle en 8 langues",
+      "description": "Les intitulés de poste en espagnol, allemand, français, portugais, néerlandais, hindi et tagalog ancrent désormais la détection comme les intitulés anglais — une 'Krankenschwester' verrouille la santé, un 'electricista' les métiers spécialisés."
+    },
+    "reportVisualPolish": {
+      "title": "Un rapport qui se lit comme un tableau de bord",
+      "description": "Votre score s'anime en montant, la couleur passant du rouge à l'orange au vert. Votre percentile est tracé sur une vraie courbe de distribution avec la zone des 25 % supérieurs ombrée. Chaque réécriture montre exactement ce qui a changé — suppressions barrées en rouge, ajouts en vert. Et un résumé PDF d'une page est à un clic."
     }
   },
   "sampleReportPreview": {

@@ -2944,6 +2944,30 @@
     "roleLockDetection": {
       "title": "Role-specific detection for 50+ job titles",
       "description": "Over 50 unambiguous job titles now hard-lock the correct industry regardless of what else appears on the resume — registered nurses, attorneys, teachers, product managers, data engineers, ML engineers, and many more. A nurse with SQL in her skills can no longer be classified as a data scientist."
+    },
+    "fiftyNineIndustries": {
+      "title": "59 Branchen — auch die, die andere Tools ignorieren",
+      "description": "Die Abdeckung umfasst jetzt Berufsgruppen, die die meisten Lebenslauf-Tools komplett übergehen: Verwaltung und Büro (Assistenz, Office Management, Empfang), Fahrer (LKW, Lieferung, Bus), Bibliothekswesen, kirchliche Arbeit, Bergbau, Seefahrt, Garten- und Landschaftsbau sowie Gebäudereinigung. Jede mit eigener Keyword-Bibliothek, Jobtitel-Erkennung, Lizenzerkennung und Benchmarks. Eine 'Assistentin des CFO' wird jetzt korrekt als Verwaltung erkannt — nicht als Finanzwesen."
+    },
+    "resumeXray": {
+      "title": "Lebenslauf-Röntgen: Ihr Dokument, direkt annotiert",
+      "description": "Der Bericht zeigt jetzt Ihren Lebenslauf selbst, Zeile für Zeile, mit der Analyse direkt darauf: schwache Aufzählungspunkte werden rot unterstrichen (Grund beim Überfahren), Punkte ohne Zahlen gelb markiert, Ihre stärksten Wörter grün hervorgehoben."
+    },
+    "emailMyReport": {
+      "title": "Bericht per E-Mail erhalten",
+      "description": "Ein Klick sendet Ihre Scan-Zusammenfassung — Urteil, Punktzahl, Aufschlüsselung, Hauptprobleme und Ihren Verbesserungsplan — als sauber gestaltete E-Mail in Ihren Posteingang. Es werden nur die Analyseergebnisse gesendet, nie Ihr Lebenslauf, und keine Folge-E-Mails ohne Ihre Zustimmung."
+    },
+    "scanReliability": {
+      "title": "Scans, die nie fehlschlagen — und ihre Meinung nicht ändern",
+      "description": "Zwei Zuverlässigkeits-Upgrades: Ist der KI-Prüfer nicht verfügbar, erhalten Sie jetzt einen vollständigen automatisierten Bericht statt einer Fehlerseite. Und derselbe Lebenslauf erhält jetzt jedes Mal dieselbe Branchenklassifizierung — erneutes Scannen kann das Ergebnis nicht mehr kippen."
+    },
+    "multilingualDetection": {
+      "title": "Branchenerkennung in 8 Sprachen",
+      "description": "Jobtitel auf Spanisch, Deutsch, Französisch, Portugiesisch, Niederländisch, Hindi und Tagalog verankern die Branchenerkennung jetzt genauso wie englische — eine 'Krankenschwester' wird als Gesundheitswesen erkannt, ein 'electricista' als Handwerk."
+    },
+    "reportVisualPolish": {
+      "title": "Ein Bericht wie ein Dashboard",
+      "description": "Ihre Punktzahl zählt jetzt hoch, während die Farbe von Rot über Gelb nach Grün wechselt. Ihr Perzentil wird auf einer echten Verteilungskurve dargestellt. Jede Umformulierung zeigt genau, was sich geändert hat — Streichungen rot, Ergänzungen grün. Und eine einseitige PDF-Zusammenfassung ist einen Klick entfernt."
     }
   },
   "sampleReportPreview": {

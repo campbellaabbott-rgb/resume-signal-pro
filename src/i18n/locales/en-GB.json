@@ -2944,6 +2944,30 @@
     "roleLockDetection": {
       "title": "Role-specific detection for 50+ job titles",
       "description": "Over 50 unambiguous job titles now hard-lock the correct industry regardless of what else appears on the resume — registered nurses, attorneys, teachers, product managers, data engineers, ML engineers, and many more. A nurse with SQL in her skills can no longer be classified as a data scientist."
+    },
+    "fiftyNineIndustries": {
+      "title": "59 industries — including the ones everyone else ignores",
+      "description": "Coverage now includes the job categories most CV tools skip entirely: administrative and office support (executive assistants, office managers, receptionists), drivers (lorry, delivery, bus), library science, clergy and ministry, mining, maritime, landscaping, and janitorial services. Each comes with its own keyword library, job-title recognition, licence detection, and score benchmarks. An 'Executive Assistant to the CFO' is now correctly read as administrative — not finance."
+    },
+    "resumeXray": {
+      "title": "CV X-Ray: your actual document, annotated",
+      "description": "The report now shows your CV itself, line by line, with the analysis drawn directly on it: weak bullets get a red underline with the reason on hover, bullets with no numbers get an amber flag, and your strongest power words are highlighted green. It stops feeling like advice and starts feeling like an X-ray of your document."
+    },
+    "emailMyReport": {
+      "title": "Email me my report",
+      "description": "One click sends your scan summary — verdict, score, breakdown bars, top issues, and your minute-by-minute fix plan — to your inbox as a cleanly designed email, so you can work through the fixes later. Only the analysis results are sent, never your CV, and there are no follow-up emails unless you ask."
+    },
+    "scanReliability": {
+      "title": "Scans that never fail — and never change their mind",
+      "description": "Two reliability upgrades. First, if our AI reviewer is ever unavailable, you now get a full automated report (score, issues, quick wins) with a note and a free rescan hint — never an error page. Second, the same CV now gets the same industry classification every single time: high-confidence detections are remembered, so rescanning can't flip the answer."
+    },
+    "multilingualDetection": {
+      "title": "Industry detection in 8 languages",
+      "description": "Job titles in Spanish, German, French, Portuguese, Dutch, Hindi, and Tagalog now anchor industry detection just like English ones — a 'Krankenschwester' locks healthcare, an 'electricista' locks skilled trades. Coverage spans healthcare, legal, education, trades, hospitality, drivers, admin, childcare, beauty, and cleaning roles."
+    },
+    "reportVisualPolish": {
+      "title": "A report that reads like a dashboard",
+      "description": "Your score now counts up with colour shifting from red through amber to green as it climbs. Your percentile is drawn on a real distribution curve with the top-25% zone shaded. Every bullet rewrite shows exactly what changed — deletions struck in red, additions highlighted in green, like a code review. And a one-page PDF summary of your whole report is one click away."
     }
   },
   "sampleReportPreview": {
