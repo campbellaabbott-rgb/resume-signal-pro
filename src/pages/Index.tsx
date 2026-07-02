@@ -79,7 +79,7 @@ interface FreeKeywordResult {
   resumeLength: { currentPages: number; recommendedPages: number; verdict: "too_short" | "just_right" | "too_long" };
   wordCount?: { current: number; idealMin: number; idealMax: number; verdict: "too_few" | "ideal" | "too_many" };
   experienceLevel?: { level: "entry" | "mid" | "senior" | "executive"; yearsEstimate: string };
-  sectionCheck?: { hasContact: boolean; hasSummary: boolean; hasExperience: boolean; hasEducation: boolean; hasSkills: boolean; missingSections: string[] };
+  sectionCheck?: { hasContact: boolean; hasSummary: boolean; hasExperience: boolean; hasEducation: boolean; hasSkills: boolean; missingSections: string[]; sectionQuality?: { summary?: "strong" | "adequate" | "thin" | "missing"; experience?: "strong" | "adequate" | "thin" | "missing"; skills?: "strong" | "adequate" | "thin" | "missing"; education?: "strong" | "adequate" | "thin" | "missing" } };
   contactInfo?: { hasEmail: boolean; hasPhone: boolean; hasLinkedIn: boolean; missingItems: string[] };
   topStrength?: { title: string; description: string };
   quantificationScore?: { score: number; verdict: "weak" | "average" | "strong"; tip: string };
@@ -88,14 +88,14 @@ interface FreeKeywordResult {
   bulletImpactScore?: { score: number; verdict: "responsibility_heavy" | "balanced" | "achievement_focused"; tip: string };
   keywordDensity?: { level: "sparse" | "moderate" | "dense"; explanation: string };
   improvementPotential?: { level: "low" | "medium" | "high"; estimatedScoreIncrease: number; topPriority: string };
-  redFlags: { issue: string; impact: string }[];
+  redFlags: { issue: string; impact: string; severity?: "critical" | "moderate" | "minor" }[];
   keywords: { keyword: string; reason: string }[];
   topSkipReasons?: string[];
-  powerWords?: string[];
+  powerWords?: Array<string | { word: string; why: string }>;
   weakPhrases?: { phrase: string; suggestion: string }[];
   timelineAnalysis?: { avgTenure: string; progression: "stagnant" | "steady" | "rapid" | "unclear"; hasGaps: boolean; gapNote?: string; totalYears: string };
   industryBenchmark?: { industryAvg: number; comparison: "below" | "at" | "above"; percentile: string };
-  quickWins?: { fix: string; timeEstimate: string; impact: "low" | "medium" | "high" }[];
+  quickWins?: { fix: string; timeEstimate: string; impact: "low" | "medium" | "high"; scoreImpact?: number; category?: string }[];
   sampleRewrite?: { before: string; after: string; improvement: string };
   careerSituation?: {
     situation: "career_changer" | "returning_to_workforce" | "military_transition" | "recent_grad" | "standard";
@@ -265,6 +265,16 @@ interface FreeKeywordResult {
     rolesDetected: number;
     summary: string;
   };
+  // 10 reporting improvements
+  scoreBreakdown?: { keywords: number; format: number; quantification: number };
+  additionalRewrites?: Array<{ before: string; after: string; improvement: string }>;
+  nextBestAction?: { action: string; why: string; estimatedImpact: string } | null;
+  recruiterFirstPassSummary?: string | null;
+  formatGradeDrivers?: Array<{ driver: string; impact: string }>;
+  // redFlags already exists but now items include severity
+  // powerWords already exists but now items are { word: string; why: string }
+  // quickWins already exists but now items include scoreImpact + category
+  // sectionCheck already exists but now includes sectionQuality per section
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
@@ -823,6 +833,12 @@ const Index = () => {
           unquantifiedBulletsDetected: (result as any).unquantifiedBulletsDetected,
           bulletQuantRate: (result as any).bulletQuantRate,
           projectedScore: (result as any).projectedScore,
+          // 10 reporting improvements
+          scoreBreakdown: (result as any).scoreBreakdown,
+          additionalRewrites: (result as any).additionalRewrites,
+          nextBestAction: (result as any).nextBestAction,
+          recruiterFirstPassSummary: (result as any).recruiterFirstPassSummary,
+          formatGradeDrivers: (result as any).formatGradeDrivers,
         });
 
         // Track scan completed in funnel
@@ -951,8 +967,14 @@ const Index = () => {
           jobMatchSummary: data.jobMatchSummary,
           industryDetection: data.industryDetection,
           careerSituation: data.careerSituation,
+          // 10 reporting improvements
+          scoreBreakdown: data.scoreBreakdown,
+          additionalRewrites: data.additionalRewrites,
+          nextBestAction: data.nextBestAction,
+          recruiterFirstPassSummary: data.recruiterFirstPassSummary,
+          formatGradeDrivers: data.formatGradeDrivers,
         });
-        
+
         toast({
           title: t('homepage.toast.jobAnalysisComplete'),
           description: t('homepage.toast.jobAnalysisCompleteDescription', { jobTitle, jobCompany }),
@@ -1440,6 +1462,11 @@ const Index = () => {
                 gatedKeywords={freeKeywordResult.gatedKeywords}
                 detectionQualityScore={freeKeywordResult.detectionQualityScore}
                 resumeTimeline={freeKeywordResult.resumeTimeline}
+                scoreBreakdown={freeKeywordResult.scoreBreakdown}
+                additionalRewrites={freeKeywordResult.additionalRewrites}
+                nextBestAction={freeKeywordResult.nextBestAction ?? undefined}
+                recruiterFirstPassSummary={freeKeywordResult.recruiterFirstPassSummary ?? undefined}
+                formatGradeDrivers={freeKeywordResult.formatGradeDrivers}
               />
               
               {/* Score-based package recommendation */}

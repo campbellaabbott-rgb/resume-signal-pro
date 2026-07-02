@@ -399,6 +399,12 @@ interface SectionCheck {
   hasEducation: boolean;
   hasSkills: boolean;
   missingSections: string[];
+  sectionQuality?: {
+    summary?: "strong" | "adequate" | "thin" | "missing";
+    experience?: "strong" | "adequate" | "thin" | "missing";
+    skills?: "strong" | "adequate" | "thin" | "missing";
+    education?: "strong" | "adequate" | "thin" | "missing";
+  };
 }
 
 interface ContactInfo {
@@ -427,6 +433,7 @@ interface ActionVerbGrade {
 interface RedFlag {
   issue: string;
   impact: string;
+  severity?: "critical" | "moderate" | "minor";
 }
 
 interface ReadabilityScore {
@@ -475,6 +482,8 @@ interface QuickWin {
   fix: string;
   timeEstimate: string;
   impact: "low" | "medium" | "high";
+  scoreImpact?: number;
+  category?: string;
 }
 
 interface SampleRewrite {
@@ -643,7 +652,7 @@ interface FreeKeywordResultsProps {
   onGetJobAnalysis?: (jobTitle: string, jobCompany: string) => void;
   isLoading?: boolean;
   topSkipReasons?: string[];
-  powerWords?: string[];
+  powerWords?: Array<string | { word: string; why: string }>;
   weakPhrases?: WeakPhrase[];
   timelineAnalysis?: TimelineAnalysis;
   industryBenchmark?: IndustryBenchmark;
@@ -720,6 +729,12 @@ interface FreeKeywordResultsProps {
     rolesDetected: number;
     summary: string;
   };
+  // 10 reporting improvements
+  scoreBreakdown?: { keywords: number; format: number; quantification: number };
+  additionalRewrites?: Array<{ before: string; after: string; improvement: string }>;
+  nextBestAction?: { action: string; why: string; estimatedImpact: string };
+  recruiterFirstPassSummary?: string;
+  formatGradeDrivers?: Array<{ driver: string; impact: string }>;
 }
 
 export function FreeKeywordResults({
@@ -802,6 +817,11 @@ export function FreeKeywordResults({
   gatedKeywords,
   detectionQualityScore,
   resumeTimeline,
+  scoreBreakdown,
+  additionalRewrites,
+  nextBestAction,
+  recruiterFirstPassSummary,
+  formatGradeDrivers,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -2994,13 +3014,20 @@ export function FreeKeywordResults({
               <h4 className="font-semibold text-success">{t('freeResults.powerWords.title')}</h4>
             </div>
             <div className="flex flex-wrap gap-2">
-              {powerWords.map((word, index) => (
-                <span key={index} className="px-3 py-1 bg-success/10 text-success text-sm font-medium rounded-full border border-success/20">
-                  {word}
-                </span>
-              ))}
+              {powerWords.map((word, index) => {
+                const label = typeof word === 'string' ? word : word.word;
+                const why = typeof word === 'object' ? word.why : undefined;
+                return (
+                  <span key={index} title={why} className="px-3 py-1 bg-success/10 text-success text-sm font-medium rounded-full border border-success/20 cursor-default" style={why ? { textDecorationLine: 'underline', textDecorationStyle: 'dotted' } : undefined}>
+                    {label}
+                  </span>
+                );
+              })}
             </div>
-            <p className="text-xs text-success/70 mt-3">{t('freeResults.powerWords.keepUsing')}</p>
+            {powerWords.some(w => typeof w === 'object' && (w as { why?: string }).why) && (
+              <p className="text-xs text-success/60 mt-2">Hover each word to see why it stands out.</p>
+            )}
+            <p className="text-xs text-success/70 mt-1">{t('freeResults.powerWords.keepUsing')}</p>
           </div>
         )}
 
@@ -3310,7 +3337,7 @@ export function FreeKeywordResults({
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">{win.fix}</p>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <span className="text-xs text-muted-foreground">⏱️ {win.timeEstimate}</span>
                     <span className={cn(
                       "text-xs px-2 py-0.5 rounded-full",
@@ -3319,6 +3346,14 @@ export function FreeKeywordResults({
                     )}>
                       {t('freeResults.quickWins.impact', { level: win.impact })}
                     </span>
+                    {win.scoreImpact != null && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                        +{win.scoreImpact} pts
+                      </span>
+                    )}
+                    {win.category && (
+                      <span className="text-xs text-muted-foreground capitalize">{win.category}</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -3339,6 +3374,32 @@ export function FreeKeywordResults({
               <PremiumPackageButton variant="control" isPrimary section="quick_wins" />
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Projected Score Gap — shown when we have a meaningful improvement estimate */}
+      {projectedScore && projectedScore > atsScoreEstimate + 3 && (
+        <div className="rounded-2xl border border-success/30 bg-success/5 p-5 mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-4 h-4 text-success" />
+            <h4 className="font-semibold text-foreground text-sm">Your Score Potential</h4>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-foreground">{atsScoreEstimate}</p>
+              <p className="text-xs text-muted-foreground">Current</p>
+            </div>
+            <div className="flex-1 flex items-center gap-1">
+              <div className="flex-1 h-1 rounded-full bg-muted" />
+              <span className="text-xs font-semibold text-success px-1">+{projectedScore - atsScoreEstimate} pts</span>
+              <div className="flex-1 h-1 rounded-full bg-success/40" />
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-success">{projectedScore}</p>
+              <p className="text-xs text-muted-foreground">After fixes</p>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">Estimated after addressing top quick wins above.</p>
         </div>
       )}
 
@@ -3377,6 +3438,129 @@ export function FreeKeywordResults({
             <Lock className="w-3 h-3 text-primary" />
             <span className="text-xs text-primary">{t('freeResults.sampleRewrite.cta', { price: priceDisplay })}</span>
           </div>
+        </div>
+      )}
+
+      {/* ── Score Breakdown ─────────────────────────────────────────────────── */}
+      {scoreBreakdown && (
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+          <h4 className="font-semibold text-foreground text-sm">Score Breakdown</h4>
+          {(["keywords", "format", "quantification"] as const).map((key) => {
+            const val = scoreBreakdown[key];
+            const colors = { keywords: "bg-primary", format: "bg-warning", quantification: "bg-success" };
+            const labels = { keywords: "Keyword Match", format: "Format", quantification: "Quantification" };
+            return (
+              <div key={key} className="space-y-1">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{labels[key]}</span>
+                  <span className="font-medium text-foreground">{val}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div className={`h-full rounded-full ${colors[key]}`} style={{ width: `${Math.min(val, 100)}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Additional Rewrites ──────────────────────────────────────────────── */}
+      {additionalRewrites && additionalRewrites.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+          <h4 className="font-semibold text-foreground text-sm">More Bullet Rewrites</h4>
+          {additionalRewrites.map((rw, i) => (
+            <div key={i} className="space-y-2">
+              <div className="rounded-lg bg-destructive/5 border border-destructive/20 p-3">
+                <p className="text-[10px] font-semibold text-destructive uppercase tracking-wide mb-1">Before</p>
+                <p className="text-sm text-foreground italic">"{rw.before}"</p>
+              </div>
+              <div className="rounded-lg bg-success/5 border border-success/20 p-3">
+                <p className="text-[10px] font-semibold text-success uppercase tracking-wide mb-1">After</p>
+                <p className="text-sm text-foreground font-medium">"{rw.after}"</p>
+              </div>
+              {rw.improvement && (
+                <p className="text-xs text-muted-foreground px-1">
+                  <span className="font-medium text-foreground">Why better:</span> {rw.improvement}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Format Grade Drivers ─────────────────────────────────────────────── */}
+      {formatGradeDrivers && formatGradeDrivers.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h4 className="font-semibold text-foreground text-sm mb-3">What's Driving Your Format Grade</h4>
+          <div className="space-y-2">
+            {formatGradeDrivers.map((d, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="w-2 h-2 rounded-full bg-warning shrink-0 mt-1.5" />
+                <div>
+                  <span className="text-sm text-foreground font-medium">{d.driver}</span>
+                  {d.impact && <span className="text-xs text-muted-foreground ml-2">— {d.impact}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Section Quality Signals ──────────────────────────────────────────── */}
+      {sectionCheck?.sectionQuality && Object.keys(sectionCheck.sectionQuality).length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h4 className="font-semibold text-foreground text-sm mb-3">Section Quality</h4>
+          <div className="grid grid-cols-2 gap-2">
+            {(["summary", "experience", "skills", "education"] as const).map((sec) => {
+              const q = sectionCheck.sectionQuality?.[sec];
+              if (!q) return null;
+              const cfg = {
+                strong: { color: "text-success", bg: "bg-success/10 border-success/20", dot: "bg-success" },
+                adequate: { color: "text-primary", bg: "bg-primary/10 border-primary/20", dot: "bg-primary" },
+                thin: { color: "text-warning", bg: "bg-warning/10 border-warning/20", dot: "bg-warning" },
+                missing: { color: "text-destructive", bg: "bg-destructive/10 border-destructive/20", dot: "bg-destructive" },
+              }[q];
+              return (
+                <div key={sec} className={`flex items-center gap-2 rounded-lg border p-2 ${cfg.bg}`}>
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />
+                  <div>
+                    <p className="text-xs font-semibold text-foreground capitalize">{sec}</p>
+                    <p className={`text-[10px] capitalize ${cfg.color}`}>{q}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Recruiter First-Pass Summary ─────────────────────────────────────── */}
+      {recruiterFirstPassSummary && (
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <User className="w-4 h-4 text-primary" />
+            <h4 className="font-semibold text-foreground text-sm">How a Recruiter Sees You (6-Second Scan)</h4>
+          </div>
+          <p className="text-sm text-foreground/90 leading-relaxed italic">"{recruiterFirstPassSummary}"</p>
+        </div>
+      )}
+
+      {/* ── Next Best Action ─────────────────────────────────────────────────── */}
+      {nextBestAction && (
+        <div className="rounded-2xl border-2 border-primary bg-primary/5 p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <Zap className="w-4 h-4 text-primary" />
+            <h4 className="font-semibold text-primary text-sm uppercase tracking-wide">Your #1 Next Action</h4>
+          </div>
+          <p className="text-base font-semibold text-foreground mb-1">{nextBestAction.action}</p>
+          {nextBestAction.why && (
+            <p className="text-xs text-muted-foreground mb-2">{nextBestAction.why}</p>
+          )}
+          {nextBestAction.estimatedImpact && (
+            <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
+              Est. impact: {nextBestAction.estimatedImpact}
+            </span>
+          )}
         </div>
       )}
 

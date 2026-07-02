@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 interface RedFlag {
   issue: string;
   impact: string;
+  severity?: "critical" | "moderate" | "minor";
 }
 
 interface KeywordSuggestion {
@@ -24,6 +25,10 @@ interface KeywordSuggestion {
 // --- Severity helpers ---
 
 function inferSeverity(flag: RedFlag, index: number): "critical" | "major" | "minor" {
+  // Use AI-supplied severity when available (AI uses "moderate" → map to "major")
+  if (flag.severity === "critical") return "critical";
+  if (flag.severity === "moderate") return "major";
+  if (flag.severity === "minor") return "minor";
   const text = (flag.issue + " " + flag.impact).toLowerCase();
   if (text.includes("missing") || text.includes("no ") || text.includes("lack") || text.includes("absent") || text.includes("without") || index === 0) return "critical";
   if (text.includes("weak") || text.includes("unclear") || text.includes("vague") || text.includes("inconsistent") || index === 1) return "major";

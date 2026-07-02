@@ -1409,11 +1409,18 @@ CRITICAL LANGUAGE HANDLING:
 
 **PERSONALIZED FEEDBACK STYLE:**
 - topStrength: Start with "[Name], your biggest asset is..." and reference a SPECIFIC achievement from their resume
-- redFlags: Frame as "Here's what's holding you back, [Name]..." and explain WHY recruiters care
-- quickWins: Make these HYPER-SPECIFIC to their resume (e.g., "Add the revenue number from your Acme Corp role" not "Add more metrics")
+- redFlags: Frame as "Here's what's holding you back, [Name]..." and explain WHY recruiters care. Order by severity (critical first). Each MUST include a severity field: critical | moderate | minor.
+- quickWins: Make these HYPER-SPECIFIC to their resume (e.g., "Add the revenue number from your Acme Corp role" not "Add more metrics"). Include scoreImpact (realistic pts estimate) and category. Order highest scoreImpact first.
 - sampleRewrite: Use an ACTUAL bullet from their resume and show the transformation
+- additionalRewrites: 2 more bullet rewrites beyond sampleRewrite. Must use actual bullet text from the resume as "before". Different bullets from sampleRewrite.
 - keywords: Suggest keywords that make sense for THEIR specific background and target roles
 - careerSituationAdvice: Speak directly to their situation with empathy and actionable steps
+- scoreBreakdown: Three sub-scores (keywords 0-100, format 0-100, quantification 0-100) that are mathematically consistent with atsScoreEstimate. A 60/100 overall can't have all three sub-scores at 80+.
+- nextBestAction: The single most impactful action for THIS specific candidate. Name a specific section, company, or bullet. One clear imperative sentence.
+- recruiterFirstPassSummary: 2-3 sentences written as a recruiter speaking after a 6-second scan. First impression, first question, pass/fail verdict. Be honest — if the resume would struggle, say so clearly but constructively.
+- powerWords: Each entry must include the word AND a one-line "why" explaining why it's effective for this specific role/industry.
+- formatGradeDrivers: 2-3 specific issues that drove the format grade. Name the actual problem found (e.g. "3-column layout will break in Workday's ATS parser"), not generic advice.
+- sectionCheck.sectionQuality: Rate each section strong | adequate | thin | missing based on actual content depth, not just presence.
 - personalizedCareerInsights: This is where you REALLY shine:
   * suggestedHeadline: Create a compelling headline USING THEIR NAME and their strongest positioning
   * nextRoleSuggestions: Suggest realistic next roles based on THEIR specific trajectory - not generic advice
@@ -1855,6 +1862,18 @@ ${resumeText.substring(0, 20000)}
                 },
                 formatGrade: { type: "string" },
                 formatIssue: { type: "string" },
+                formatGradeDrivers: {
+                  type: "array",
+                  description: "2-3 specific reasons that drove the format grade. Each must name the actual issue found, not generic advice.",
+                  items: {
+                    type: "object",
+                    properties: {
+                      driver: { type: "string", description: "The specific formatting issue found (e.g. 'Inconsistent bullet lengths — some 1 line, some 4 lines')." },
+                      impact: { type: "string", description: "critical | moderate | minor" }
+                    },
+                    required: ["driver", "impact"]
+                  }
+                },
                 resumeLength: {
                   type: "object",
                   properties: {
@@ -1890,9 +1909,20 @@ ${resumeText.substring(0, 20000)}
                     hasSummary: { type: "boolean" },
                     hasExperience: { type: "boolean" },
                     hasEducation: { type: "boolean" },
-                    hasSkills: { type: "boolean" }
+                    hasSkills: { type: "boolean" },
+                    sectionQuality: {
+                      type: "object",
+                      description: "Quality signal per section: 'strong' | 'adequate' | 'thin' | 'missing'. 'thin' = section exists but needs more content or specificity.",
+                      properties: {
+                        summary: { type: "string", description: "strong | adequate | thin | missing" },
+                        experience: { type: "string", description: "strong | adequate | thin | missing" },
+                        skills: { type: "string", description: "strong | adequate | thin | missing" },
+                        education: { type: "string", description: "strong | adequate | thin | missing" }
+                      },
+                      required: ["summary", "experience", "skills", "education"]
+                    }
                   },
-                  required: ["hasContact", "hasSummary", "hasExperience", "hasEducation", "hasSkills"]
+                  required: ["hasContact", "hasSummary", "hasExperience", "hasEducation", "hasSkills", "sectionQuality"]
                 },
                 contactInfo: {
                   type: "object",
@@ -1934,9 +1964,10 @@ ${resumeText.substring(0, 20000)}
                     type: "object",
                     properties: {
                       issue: { type: "string" },
-                      impact: { type: "string" }
+                      impact: { type: "string" },
+                      severity: { type: "string", description: "critical | moderate | minor. critical = will cause ATS filter or recruiter skip. moderate = hurts chances but won't auto-reject. minor = polish issue." }
                     },
-                    required: ["issue", "impact"]
+                    required: ["issue", "impact", "severity"]
                   }
                 },
                 keywords: {
@@ -1988,7 +2019,18 @@ ${resumeText.substring(0, 20000)}
                   required: ["level", "estimatedScoreIncrease", "topPriority"]
                 },
                 topSkipReasons: { type: "array", items: { type: "string" } },
-                powerWords: { type: "array", items: { type: "string" } },
+                powerWords: {
+                  type: "array",
+                  description: "5 strong action verbs or power words tailored to this candidate's industry and level. Each entry includes the word and a one-line reason why it works.",
+                  items: {
+                    type: "object",
+                    properties: {
+                      word: { type: "string" },
+                      why: { type: "string", description: "One sentence: why this word is effective for this specific role/industry. E.g. 'Signals ownership and initiative, not just task completion.'" }
+                    },
+                    required: ["word", "why"]
+                  }
+                },
                 weakPhrases: {
                   type: "array",
                   items: {
@@ -2021,16 +2063,42 @@ ${resumeText.substring(0, 20000)}
                   },
                   required: ["industryAvg", "comparison", "screeningRisk", "riskNote"]
                 },
+                scoreBreakdown: {
+                  type: "object",
+                  description: "The three sub-scores that explain the overall ATS score. Each is 0-100. They should be consistent with atsScoreEstimate — a 40/100 atsScoreEstimate must not have all three sub-scores above 70.",
+                  properties: {
+                    keywords: { type: "number", description: "0-100: how well this resume covers must-have keywords for the industry/role. Low = missing multiple critical terms. High = covers most or all primary keywords." },
+                    format: { type: "number", description: "0-100: ATS parse-friendliness. Penalize: tables, headers/footers, columns, graphics, unusual fonts, missing section headers. Reward: clean linear layout, standard section labels, consistent bullet style." },
+                    quantification: { type: "number", description: "0-100: percentage of bullets that include a measurable metric (number, %, $, time saved). 0 metrics = 0-20. A few = 30-50. Most bullets quantified = 70-90." }
+                  },
+                  required: ["keywords", "format", "quantification"]
+                },
                 quickWins: {
                   type: "array",
+                  description: "Exactly 3 quick wins, ordered by scoreImpact descending (highest impact first). Each must reference a specific detail from this resume.",
                   items: {
                     type: "object",
                     properties: {
                       fix: { type: "string" },
                       timeEstimate: { type: "string" },
-                      impact: { type: "string" }
+                      impact: { type: "string" },
+                      scoreImpact: { type: "number", description: "Estimated ATS score increase (0-15) if this fix is made. Be realistic — adding one keyword is worth 2-4 pts, fixing all quantification is worth 8-12 pts." },
+                      category: { type: "string", description: "keywords | quantification | format | structure | clarity" }
                     },
-                    required: ["fix", "timeEstimate", "impact"]
+                    required: ["fix", "timeEstimate", "impact", "scoreImpact", "category"]
+                  }
+                },
+                additionalRewrites: {
+                  type: "array",
+                  description: "2 additional bullet rewrites beyond the main sampleRewrite. Pick the next 2 weakest bullets (weak opener OR unquantified). Must use the candidate's ACTUAL bullet text as 'before'.",
+                  items: {
+                    type: "object",
+                    properties: {
+                      before: { type: "string" },
+                      after: { type: "string" },
+                      improvement: { type: "string", description: "One sentence explaining the key technique used in the rewrite." }
+                    },
+                    required: ["before", "after", "improvement"]
                   }
                 },
                 sampleRewrite: {
@@ -2041,6 +2109,20 @@ ${resumeText.substring(0, 20000)}
                     improvement: { type: "string" }
                   },
                   required: ["before", "after", "improvement"]
+                },
+                nextBestAction: {
+                  type: "object",
+                  description: "The single most impactful action this specific candidate should take on their resume RIGHT NOW. Be concrete — name the specific section, bullet, or keyword. This is the synthesis moment: one clear directive based on everything above.",
+                  properties: {
+                    action: { type: "string", description: "One sentence imperative. E.g. 'Add the revenue number to your Salesforce role at Acme Corp — that single change moves you from unquantified to credible.'" },
+                    why: { type: "string", description: "One sentence explaining why this specific action has the highest leverage for THIS candidate." },
+                    estimatedImpact: { type: "string", description: "e.g. '+8 ATS points' or 'moves you from below-average to average for your industry'" }
+                  },
+                  required: ["action", "why", "estimatedImpact"]
+                },
+                recruiterFirstPassSummary: {
+                  type: "string",
+                  description: "Write 2-3 sentences in first-person, as if a recruiter is speaking about this resume after a 6-second glance. What do they immediately notice? What's their first impression? What question does the resume leave unanswered? E.g. 'In the first 6 seconds, I see [role] with [years] at [recognizable company]. My first question is [gap or ambiguity]. The resume [passes/struggles] my initial scan because [reason].'"
                 },
                 atsCompatibility: {
                   type: "object",
@@ -2155,7 +2237,8 @@ ${resumeText.substring(0, 20000)}
               required: [
                 "detectedLanguage", "industry", "atsScoreEstimate", "formatGrade",
                 "experienceLevel", "sectionCheck", "contactInfo", "topStrength",
-                "redFlags", "keywords", "industryBenchmark", "quickWins", "sampleRewrite"
+                "redFlags", "keywords", "industryBenchmark", "quickWins", "sampleRewrite",
+                "scoreBreakdown", "nextBestAction", "recruiterFirstPassSummary"
               ]
             }
           }
@@ -2506,23 +2589,55 @@ ${resumeText.substring(0, 20000)}
     );
 
     // Build response with analysis data (use actual values, slice arrays)
-    // Projected score: estimate how much the ATS score would improve if the user
-    // addressed the top quick wins + fixed their weak bullets. Each quick win is
-    // worth ~4-6 pts; each confirmed weak bullet fix is worth ~2-3 pts. Cap at 95.
-    const qwCount = (analysis.quickWins || []).length;
-    const weakBulletCount = bulletAnalysis.weakBullets.length + (bulletAnalysis.quantRate < 40 ? bulletAnalysis.unquantifiedBullets.length : 0);
-    const projectedScoreRaw = analysis.atsScoreEstimate + qwCount * 5 + Math.min(weakBulletCount, 3) * 3;
-    const projectedScore = Math.min(95, Math.round(projectedScoreRaw));
+
+    // Sort quick wins by scoreImpact descending before slicing
+    const sortedQuickWins = (analysis.quickWins || [])
+      .sort((a: { scoreImpact?: number }, b: { scoreImpact?: number }) => (b.scoreImpact ?? 0) - (a.scoreImpact ?? 0));
+
+    // Sort red flags by severity (critical → moderate → minor)
+    const severityOrder: Record<string, number> = { critical: 0, moderate: 1, minor: 2 };
+    const sortedRedFlags = (analysis.redFlags || [])
+      .sort((a: { severity?: string }, b: { severity?: string }) =>
+        (severityOrder[a.severity ?? 'minor'] ?? 2) - (severityOrder[b.severity ?? 'minor'] ?? 2))
+      .slice(0, 3);
+
+    // Compute projected score using quick win scoreImpact values when available
+    const qwScoreImpact = sortedQuickWins.slice(0, 3)
+      .reduce((sum: number, w: { scoreImpact?: number }) => sum + (w.scoreImpact ?? 4), 0);
+    const weakBulletImpact = Math.min(bulletAnalysis.weakBullets.length + (bulletAnalysis.quantRate < 40 ? bulletAnalysis.unquantifiedBullets.length : 0), 3) * 3;
+    const projectedScore = Math.min(95, Math.round(analysis.atsScoreEstimate + qwScoreImpact + weakBulletImpact));
+
+    // Compute server-side scoreBreakdown as a fallback if AI didn't return one
+    const ruleBreakdown = (() => {
+      const lower = resumeText.toLowerCase();
+      const kwList = INDUSTRY_KEYWORDS[finalIndustry];
+      const primaryHits = kwList ? kwList.primary.filter((kw: string) => lower.includes(kw)).length : 0;
+      const primaryTotal = kwList ? Math.max(kwList.primary.length, 1) : 1;
+      const keywordsScore = Math.round((primaryHits / primaryTotal) * 100);
+      const bullets = resumeText.split('\n').filter(l => /^[•\-*‣◦⁃∙]/.test(l.trim()) || (l.trim().length > 30 && l.trim().length < 300));
+      const quantScore = bullets.length > 0
+        ? Math.round((bullets.filter(b => /\d/.test(b)).length / bullets.length) * 100)
+        : 40;
+      const hasColumns = /table|column/i.test(resumeText);
+      const hasHeaders = /\b(experience|education|skills|summary)\b/i.test(resumeText);
+      const formatScore = hasColumns ? 45 : hasHeaders ? 75 : 60;
+      return { keywords: keywordsScore, format: formatScore, quantification: quantScore };
+    })();
 
     const responseData: Record<string, unknown> = {
       success: true,
       ...analysis,
-      redFlags: (analysis.redFlags || []).slice(0, 3),
+      redFlags: sortedRedFlags,
       keywords,
       topSkipReasons: (analysis.topSkipReasons || []).slice(0, 5),
       powerWords: (analysis.powerWords || []).slice(0, 5),
       weakPhrases: (analysis.weakPhrases || []).slice(0, 4),
-      quickWins: (analysis.quickWins || []).slice(0, 3),
+      quickWins: sortedQuickWins.slice(0, 3),
+      additionalRewrites: (analysis.additionalRewrites || []).slice(0, 2),
+      scoreBreakdown: analysis.scoreBreakdown || ruleBreakdown,
+      nextBestAction: analysis.nextBestAction || null,
+      recruiterFirstPassSummary: analysis.recruiterFirstPassSummary || null,
+      formatGradeDrivers: (analysis.formatGradeDrivers || []).slice(0, 3),
       // Rule-based pre-detected weak bullets — surfaced directly in the UI so users
       // see their ACTUAL problem bullets by name, not just generic advice
       weakBulletsDetected: bulletAnalysis.weakBullets.slice(0, 3).map(b => ({
