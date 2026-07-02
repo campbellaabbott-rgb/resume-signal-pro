@@ -896,3 +896,351 @@ export function formatCompetitiveGapForPrompt(gap: CompetitiveGapResult, industr
   lines.push('</competitive_keyword_analysis>');
   return lines.join('\n');
 }
+
+// ─── 6. RESUME TIMELINE EXTRACTION ──────────────────────────────────────────
+
+export interface TimelineEntry {
+  title: string;
+  company?: string;
+  startYear: number;
+  endYear: number | null; // null = present
+  durationMonths: number;
+}
+
+export interface TimelineResult {
+  entries: TimelineEntry[];
+  totalExperienceMonths: number;
+  gapPeriods: Array<{ afterTitle: string; monthsGap: number }>;
+  longestTenureMonths: number;
+  averageTenureMonths: number;
+  hasSignificantGap: boolean; // gap > 6 months
+  hasShortTenures: boolean;   // any role < 12 months
+  formattedSummary: string;
+}
+
+const MONTH_MAP: Record<string, number> = {
+  jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3,
+  apr: 4, april: 4, may: 5, jun: 6, june: 6, jul: 7, july: 7,
+  aug: 8, august: 8, sep: 9, sept: 9, september: 9, oct: 10, october: 10,
+  nov: 11, november: 11, dec: 12, december: 12,
+};
+
+function parseYearMonth(raw: string): { year: number; month: number } {
+  const lower = raw.toLowerCase().trim();
+  // "Jan 2020" / "January 2020"
+  for (const [name, m] of Object.entries(MONTH_MAP)) {
+    const re = new RegExp(`${name}[a-z]*[\\s,/]+([12]\\d{3})`);
+    const match = lower.match(re);
+    if (match) return { year: parseInt(match[1]), month: m };
+  }
+  // "2020/01" or "01/2020"
+  const slash1 = lower.match(/(\d{1,2})[\/\-]([12]\d{3})/);
+  if (slash1) return { year: parseInt(slash1[2]), month: parseInt(slash1[1]) };
+  // Bare year
+  const bareYear = lower.match(/([12]\d{3})/);
+  if (bareYear) return { year: parseInt(bareYear[1]), month: 6 }; // mid-year estimate
+  return { year: 2020, month: 1 };
+}
+
+/**
+ * Extract employment timeline from resume text — parses date ranges like
+ * "Jan 2020 – Mar 2022", "2019 - Present", "03/2021 to 08/2023".
+ */
+export function extractTimeline(resumeText: string): TimelineResult {
+  const lines = resumeText.split('\n').map(l => l.trim()).filter(Boolean);
+  const now = new Date();
+  const nowYear = now.getFullYear();
+  const nowMonth = now.getMonth() + 1;
+
+  // Regex to catch date ranges on a line
+  const RANGE_RE = /([A-Za-z]+[\s,\/]*[12]\d{3}|[12]\d{3})\s*[–—\-–to]+\s*([A-Za-z]+[\s,\/]*[12]\d{3}|present|current|now)/i;
+  const YEAR_ONLY_RANGE = /([12]\d{3})\s*[–—\-–]+\s*([12]\d{3}|present|current|now)/i;
+
+  const entries: TimelineEntry[] = [];
+  let currentTitle = '';
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const isTitleLine = /\b(manager|director|engineer|developer|analyst|specialist|consultant|executive|lead|vp|president|associate|senior|principal|architect|designer|coordinator|administrator|officer|nurse|teacher|attorney|accountant|researcher|scientist|founder|ceo|cfo|cto|intern|head of|staff)\b/i.test(line) && line.length < 120;
+    if (isTitleLine) currentTitle = line;
+
+    const m = line.match(RANGE_RE) || line.match(YEAR_ONLY_RANGE);
+    if (!m) continue;
+
+    const start = parseYearMonth(m[1]);
+    const endRaw = m[2].toLowerCase().trim();
+    let endYear: number | null;
+    let endMonth: number;
+
+    if (/present|current|now/.test(endRaw)) {
+      endYear = null;
+      endMonth = nowMonth;
+    } else {
+      const parsed = parseYearMonth(m[2]);
+      endYear = parsed.year;
+      endMonth = parsed.month;
+    }
+
+    const actualEndYear = endYear ?? nowYear;
+    const actualEndMonth = endMonth;
+    const durationMonths = Math.max(1,
+      (actualEndYear - start.year) * 12 + (actualEndMonth - start.month)
+    );
+
+    entries.push({
+      title: currentTitle || 'Role',
+      startYear: start.year,
+      endYear,
+      durationMonths,
+    });
+  }
+
+  // Sort chronologically (oldest first for gap detection)
+  entries.sort((a, b) => a.startYear - b.startYear);
+
+  // Detect gaps between consecutive roles
+  const gapPeriods: Array<{ afterTitle: string; monthsGap: number }> = [];
+  for (let i = 1; i < entries.length; i++) {
+    const prev = entries[i - 1];
+    const curr = entries[i];
+    const prevEndYear = prev.endYear ?? nowYear;
+    const prevEndMonth = 6;
+    const currStartMonths = curr.startYear * 12 + 1;
+    const prevEndMonths = prevEndYear * 12 + prevEndMonth;
+    const gap = currStartMonths - prevEndMonths;
+    if (gap > 2) {
+      gapPeriods.push({ afterTitle: prev.title, monthsGap: gap });
+    }
+  }
+
+  const totalExperienceMonths = entries.reduce((sum, e) => sum + e.durationMonths, 0);
+  const longestTenureMonths = entries.length > 0 ? Math.max(...entries.map(e => e.durationMonths)) : 0;
+  const averageTenureMonths = entries.length > 0 ? Math.round(totalExperienceMonths / entries.length) : 0;
+  const hasSignificantGap = gapPeriods.some(g => g.monthsGap > 6);
+  const hasShortTenures = entries.some(e => e.durationMonths < 12);
+
+  let formattedSummary = '';
+  if (entries.length === 0) {
+    formattedSummary = 'No date ranges detected in resume — AI should not assume tenure.';
+  } else {
+    const yearsTotal = (totalExperienceMonths / 12).toFixed(1);
+    const avgYears = (averageTenureMonths / 12).toFixed(1);
+    const parts = [`${entries.length} role(s) detected, ~${yearsTotal} years total experience`];
+    if (averageTenureMonths > 0) parts.push(`avg tenure ${avgYears} years`);
+    if (hasSignificantGap) parts.push(`⚠️ employment gap(s) detected: ${gapPeriods.filter(g => g.monthsGap > 6).map(g => `~${Math.round(g.monthsGap)} months after "${g.afterTitle}"`).join(', ')}`);
+    if (hasShortTenures) parts.push('⚠️ one or more roles < 12 months (job-hopping signal)');
+    formattedSummary = parts.join(' | ');
+  }
+
+  return { entries, totalExperienceMonths, gapPeriods, longestTenureMonths, averageTenureMonths, hasSignificantGap, hasShortTenures, formattedSummary };
+}
+
+export function formatTimelineForPrompt(timeline: TimelineResult): string {
+  if (timeline.entries.length === 0) return '';
+  const lines = ['\n<timeline_context>'];
+  lines.push(`  <summary>${timeline.formattedSummary}</summary>`);
+  if (timeline.hasSignificantGap) {
+    lines.push(`  <gaps>Employment gaps detected. Flag in redFlags if > 6 months unexplained. Advise candidate to address with a consulting/freelance/upskilling entry or brief explanation in summary.</gaps>`);
+  }
+  if (timeline.hasShortTenures) {
+    lines.push(`  <short_tenures>One or more roles < 12 months. Flag as potential recruiter concern. Advise candidate to add context (contract role, startup folded, layoff) to prevent ATS filtering.</short_tenures>`);
+  }
+  lines.push(`  <roles_parsed>${timeline.entries.map(e => `${e.title} (${e.startYear}–${e.endYear ?? 'present'}, ${Math.round(e.durationMonths / 12 * 10) / 10}yr)`).join(' → ')}</roles_parsed>`);
+  lines.push('</timeline_context>');
+  return lines.join('\n');
+}
+
+// ─── 7. KEYWORD FREQUENCY WEIGHTS (gap prioritization) ───────────────────────
+
+// Relative frequency in job postings per industry × seniority tier.
+// Scale: 3 = appears in 80%+ of postings, 2 = 50-79%, 1 = 20-49%.
+// Used to sort missing keywords so the highest-impact gaps appear first.
+
+const KEYWORD_FREQUENCY: Record<string, Record<string, number>> = {
+  technology: {
+    'python': 3, 'javascript': 3, 'typescript': 3, 'react': 3, 'node.js': 3,
+    'aws': 3, 'docker': 3, 'kubernetes': 3, 'sql': 3, 'git': 3,
+    'rest api': 3, 'ci/cd': 3, 'microservices': 2, 'terraform': 2,
+    'graphql': 2, 'redis': 2, 'postgresql': 2, 'mongodb': 2,
+    'agile': 2, 'scrum': 2, 'system design': 2, 'code review': 2,
+    'unit testing': 2, 'java': 2, 'go': 2, 'rust': 1, 'kafka': 1,
+  },
+  finance: {
+    'financial modeling': 3, 'excel': 3, 'valuation': 3, 'dcf': 3,
+    'bloomberg': 2, 'python': 2, 'sql': 2, 'powerpoint': 2,
+    'financial analysis': 3, 'budgeting': 2, 'forecasting': 2,
+    'variance analysis': 2, 'p&l': 2, 'balance sheet': 2,
+    'cash flow': 2, 'ifrs': 1, 'gaap': 2, 'cfa': 1, 'series 7': 1,
+    'risk management': 2, 'due diligence': 2, 'm&a': 2,
+  },
+  data_science: {
+    'python': 3, 'machine learning': 3, 'sql': 3, 'pandas': 3, 'numpy': 2,
+    'scikit-learn': 2, 'tensorflow': 2, 'pytorch': 2, 'statistics': 3,
+    'a/b testing': 2, 'data visualization': 2, 'tableau': 2, 'r': 2,
+    'spark': 2, 'hypothesis testing': 2, 'regression': 2, 'nlp': 2,
+    'feature engineering': 2, 'model deployment': 1, 'mlflow': 1,
+  },
+  marketing: {
+    'google analytics': 3, 'seo': 3, 'paid media': 2, 'content strategy': 2,
+    'social media': 3, 'email marketing': 3, 'hubspot': 2, 'salesforce': 2,
+    'campaign management': 2, 'a/b testing': 2, 'conversion rate': 2,
+    'roi': 3, 'brand management': 2, 'copywriting': 2, 'data analysis': 2,
+    'growth hacking': 1, 'seo/sem': 2, 'facebook ads': 2, 'google ads': 2,
+  },
+  sales: {
+    'salesforce': 3, 'crm': 3, 'pipeline management': 3, 'quota': 3,
+    'account executive': 2, 'cold outreach': 2, 'prospecting': 2,
+    'revenue': 3, 'forecast': 2, 'b2b': 2, 'saas': 2, 'closing': 2,
+    'negotiation': 2, 'discovery': 2, 'outreach': 2, 'objection handling': 2,
+    'meddic': 1, 'meddpicc': 1, 'challenger': 1, 'spin selling': 1,
+  },
+  consulting: {
+    'project management': 3, 'stakeholder management': 3, 'powerpoint': 3,
+    'excel': 3, 'strategy': 3, 'process improvement': 2, 'change management': 2,
+    'workshop facilitation': 2, 'business analysis': 3, 'requirements gathering': 2,
+    'agile': 2, 'deliverables': 2, 'client management': 3, 'cost reduction': 2,
+    'kpi': 2, 'benchmarking': 2, 'roi analysis': 2,
+  },
+  healthcare: {
+    'patient care': 3, 'ehr': 3, 'epic': 2, 'clinical documentation': 2,
+    'hipaa': 3, 'bls': 2, 'acls': 2, 'icd-10': 2, 'medication administration': 2,
+    'care coordination': 2, 'interdisciplinary': 2, 'quality improvement': 2,
+    'evidence-based practice': 2, 'patient safety': 2, 'triage': 2,
+  },
+  product_management: {
+    'product roadmap': 3, 'user stories': 3, 'agile': 3, 'scrum': 3,
+    'stakeholder management': 3, 'kpi': 3, 'a/b testing': 2, 'data analysis': 2,
+    'go-to-market': 2, 'product strategy': 3, 'prioritization': 2,
+    'discovery': 2, 'jira': 2, 'confluence': 2, 'figma': 2, 'sql': 2,
+    'okrs': 2, 'metrics': 2, 'mvp': 2, 'product-led growth': 1,
+  },
+};
+
+/**
+ * Return a frequency weight (3/2/1/0) for a keyword in the given industry.
+ * Also checks bigram/trigram partial matches.
+ */
+export function getKeywordFrequencyWeight(keyword: string, industry: string): number {
+  const table = KEYWORD_FREQUENCY[industry];
+  if (!table) return 1;
+  const norm = keyword.toLowerCase().trim();
+  // Exact match
+  if (table[norm] !== undefined) return table[norm];
+  // Partial: keyword contains a high-freq term or vice versa
+  for (const [kw, freq] of Object.entries(table)) {
+    if (norm.includes(kw) || kw.includes(norm)) return freq;
+  }
+  return 1;
+}
+
+/**
+ * Sort missing keywords by frequency weight descending, then alphabetically.
+ */
+export function prioritizeKeywordGaps(
+  missingKeywords: string[],
+  industry: string
+): Array<{ keyword: string; weight: number }> {
+  return missingKeywords
+    .map(kw => ({ keyword: kw, weight: getKeywordFrequencyWeight(kw, industry) }))
+    .sort((a, b) => b.weight - a.weight || a.keyword.localeCompare(b.keyword));
+}
+
+// ─── 8. PHRASE-LEVEL KEYWORD MATCHING ────────────────────────────────────────
+
+/**
+ * Bigram and trigram phrases commonly found in job descriptions.
+ * These are frequently split by naive word-by-word matching, causing false "missing" results.
+ */
+const PHRASE_PATTERNS: Record<string, RegExp[]> = {
+  technology: [
+    /\bmachine\s+learning\b/i, /\bdeep\s+learning\b/i, /\bci[\s\/]cd\b/i,
+    /\brest(?:ful)?\s+api\b/i, /\bsystem\s+design\b/i, /\bcode\s+review\b/i,
+    /\btest[\s\-]driven\b/i, /\bfull[\s\-]?stack\b/i, /\bfront[\s\-]?end\b/i,
+    /\bback[\s\-]?end\b/i, /\bdata\s+structures\b/i, /\bobject[\s\-]oriented\b/i,
+    /\bversion\s+control\b/i, /\bagile\s+methodology\b/i,
+  ],
+  finance: [
+    /\bfinancial\s+model(?:ing)?\b/i, /\bdiscounted\s+cash\s+flow\b/i,
+    /\bprofit\s+(?:and\s+)?loss\b/i, /\bp\s*[&+]\s*l\b/i,
+    /\bcash\s+flow\b/i, /\bdue\s+diligence\b/i, /\brisk\s+management\b/i,
+    /\bbalance\s+sheet\b/i, /\bworking\s+capital\b/i, /\bm\s*[&+]\s*a\b/i,
+  ],
+  data_science: [
+    /\ba[\s\/]b\s+test(?:ing)?\b/i, /\bfeature\s+engineer(?:ing)?\b/i,
+    /\bneural\s+network\b/i, /\bnatural\s+language\s+processing\b/i,
+    /\bcomputer\s+vision\b/i, /\bhypothesis\s+test(?:ing)?\b/i,
+    /\bmodel\s+deploy(?:ment)?\b/i, /\btime\s+series\b/i,
+  ],
+  marketing: [
+    /\bsearch\s+engine\s+optim(?:ization)?\b/i, /\bcontent\s+market(?:ing)?\b/i,
+    /\bsocial\s+media\s+market(?:ing)?\b/i, /\bemail\s+market(?:ing)?\b/i,
+    /\bpaid\s+(?:search|media|social)\b/i, /\bconversion\s+rate\s+optim(?:ization)?\b/i,
+    /\bcustomer\s+acqui(?:sition|red)\b/i, /\bbrand\s+awareness\b/i,
+  ],
+  sales: [
+    /\bpipeline\s+management\b/i, /\baccount\s+(?:executive|management)\b/i,
+    /\bbusiness\s+development\b/i, /\bcold\s+(?:call(?:ing)?|outreach)\b/i,
+    /\bquota\s+(?:attainment|achievement)\b/i, /\bstakeholder\s+(?:management|engagement)\b/i,
+    /\bsales\s+cycle\b/i, /\bchurn\s+(?:rate|reduction)\b/i,
+  ],
+  consulting: [
+    /\bproject\s+management\b/i, /\bchange\s+management\b/i,
+    /\bprocess\s+improvement\b/i, /\bstakeholder\s+management\b/i,
+    /\bbusiness\s+analysis\b/i, /\brequirements\s+gather(?:ing)?\b/i,
+    /\bcost\s+reduc(?:tion|ing)\b/i, /\bworkshop\s+facilitat(?:ion|ing)\b/i,
+  ],
+  product_management: [
+    /\bproduct\s+roadmap\b/i, /\bgo[\s\-]to[\s\-]market\b/i,
+    /\buser\s+stor(?:y|ies)\b/i, /\bproduct[\s\-]led\s+growth\b/i,
+    /\ba[\s\/]b\s+test(?:ing)?\b/i, /\bstakeholder\s+management\b/i,
+    /\bproduct\s+strateg(?:y|ies)\b/i, /\bocr?\s+framework\b/i,
+  ],
+};
+
+/**
+ * Check whether a multi-word phrase appears in resume text using phrase-aware matching.
+ * Handles hyphenation, spacing variants, and abbreviations better than simple includes().
+ */
+export function phraseMatchesResume(phrase: string, resumeText: string): boolean {
+  const lower = resumeText.toLowerCase();
+  const norm = phrase.toLowerCase().trim();
+
+  // 1. Direct substring (fast path)
+  if (lower.includes(norm)) return true;
+
+  // 2. No-space variant ("fullstack", "cicd")
+  if (lower.includes(norm.replace(/[\s\-\/]+/g, ''))) return true;
+
+  // 3. Hyphen ↔ space swap
+  if (lower.includes(norm.replace(/\s+/g, '-'))) return true;
+  if (lower.includes(norm.replace(/-/g, ' '))) return true;
+
+  // 4. Abbreviation expansion — "ml" ↔ "machine learning"
+  const abbrevMap: Record<string, string> = {
+    'ml': 'machine learning', 'dl': 'deep learning', 'nlp': 'natural language processing',
+    'cv': 'computer vision', 'ux': 'user experience', 'ui': 'user interface',
+    'p&l': 'profit and loss', 'pl': 'profit and loss', 'm&a': 'mergers and acquisitions',
+    'dcf': 'discounted cash flow', 'roi': 'return on investment', 'kpi': 'key performance indicator',
+    'seo': 'search engine optimization', 'sem': 'search engine marketing',
+    'crm': 'customer relationship management', 'ehr': 'electronic health records',
+    'ci/cd': 'continuous integration', 'oop': 'object oriented programming',
+  };
+  if (abbrevMap[norm] && lower.includes(abbrevMap[norm])) return true;
+  // Check if phrase matches an abbreviation in the resume
+  for (const [abbrev, expanded] of Object.entries(abbrevMap)) {
+    if (norm === expanded && lower.includes(abbrev)) return true;
+  }
+
+  return false;
+}
+
+/**
+ * Check all pre-defined phrase patterns for an industry — returns matched phrases.
+ * Used to supplement single-word keyword matching with compound phrases.
+ */
+export function findPhraseMatches(resumeText: string, industry: string): string[] {
+  const patterns = PHRASE_PATTERNS[industry] || [];
+  return patterns
+    .filter(p => p.test(resumeText))
+    .map(p => p.source.replace(/\\b|\\s\+|\?|\(.*?\)|\\|\/i/g, ' ').trim().substring(0, 40));
+}

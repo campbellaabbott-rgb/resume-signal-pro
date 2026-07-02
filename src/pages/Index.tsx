@@ -254,6 +254,17 @@ interface FreeKeywordResult {
     presentHighFrequency: string[];
     gapScore: number;
   };
+  gatedKeywords?: Array<{ keyword: string; category: string; gated: true }>;
+  detectionQualityScore?: number;
+  resumeTimeline?: {
+    totalExperienceMonths: number;
+    hasSignificantGap: boolean;
+    hasShortTenures: boolean;
+    gapPeriods: Array<{ afterTitle: string; monthsGap: number }>;
+    averageTenureMonths: number;
+    rolesDetected: number;
+    summary: string;
+  };
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
@@ -804,6 +815,9 @@ const Index = () => {
           careerTrajectory: (result as any).careerTrajectory,
           atsSystem: (result as any).atsSystem,
           competitiveGap: (result as any).competitiveGap,
+          gatedKeywords: (result as any).gatedKeywords,
+          detectionQualityScore: (result as any).detectionQualityScore,
+          resumeTimeline: (result as any).resumeTimeline,
           // Bullet analysis
           weakBulletsDetected: (result as any).weakBulletsDetected,
           unquantifiedBulletsDetected: (result as any).unquantifiedBulletsDetected,
@@ -1423,6 +1437,9 @@ const Index = () => {
                 careerTrajectory={freeKeywordResult.careerTrajectory}
                 atsSystemDetected={freeKeywordResult.atsSystem}
                 competitiveGap={freeKeywordResult.competitiveGap}
+                gatedKeywords={freeKeywordResult.gatedKeywords}
+                detectionQualityScore={freeKeywordResult.detectionQualityScore}
+                resumeTimeline={freeKeywordResult.resumeTimeline}
               />
               
               {/* Score-based package recommendation */}

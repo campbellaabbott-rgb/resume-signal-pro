@@ -709,6 +709,17 @@ interface FreeKeywordResultsProps {
   careerTrajectory?: { trajectory: string; promotionCount: number; industryTransitionDetected: boolean; fromIndustry: string | null; progressionSummary: string };
   atsSystemDetected?: { system: string; name: string; parsingStrength: string } | null;
   competitiveGap?: { missingHighFrequency: string[]; presentHighFrequency: string[]; gapScore: number };
+  gatedKeywords?: Array<{ keyword: string; category: string; gated: true }>;
+  detectionQualityScore?: number;
+  resumeTimeline?: {
+    totalExperienceMonths: number;
+    hasSignificantGap: boolean;
+    hasShortTenures: boolean;
+    gapPeriods: Array<{ afterTitle: string; monthsGap: number }>;
+    averageTenureMonths: number;
+    rolesDetected: number;
+    summary: string;
+  };
 }
 
 export function FreeKeywordResults({
@@ -788,6 +799,9 @@ export function FreeKeywordResults({
   careerTrajectory,
   atsSystemDetected,
   competitiveGap,
+  gatedKeywords,
+  detectionQualityScore,
+  resumeTimeline,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1503,9 +1517,22 @@ export function FreeKeywordResults({
         visitorId={localStorage.getItem('ab_visitor_id') || undefined}
       />
 
+      {/* ── DETECTION CONFIDENCE WARNING (improvement #7) ── */}
+      {detectionQualityScore !== undefined && detectionQualityScore < 45 && (
+        <div className="rounded-2xl border border-warning/30 bg-warning/5 p-4 mb-5 flex items-start gap-3">
+          <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-foreground mb-0.5">Industry auto-detected — does this look right?</p>
+            <p className="text-xs text-muted-foreground">
+              We detected <span className="font-medium text-foreground">{effectiveIndustry.replace(/_/g, ' ')}</span> based on limited signals. If that's wrong, use the industry selector above — it changes every recommendation below.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Returning User Insights - shown for users who have scanned before */}
-      <ReturningUserInsights 
-        currentScore={atsScoreEstimate} 
+      <ReturningUserInsights
+        currentScore={atsScoreEstimate}
         currentIndustry={effectiveIndustry}
       />
 
@@ -3223,6 +3250,47 @@ export function FreeKeywordResults({
         </div>
       )}
 
+      {/* ── RESUME TIMELINE CARD (improvement #5) ── */}
+      {resumeTimeline && (resumeTimeline.hasSignificantGap || resumeTimeline.hasShortTenures) && (
+        <div className="rounded-2xl border border-warning/30 bg-warning/5 p-5 mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-4 h-4 text-warning" />
+            <h4 className="font-semibold text-foreground">Employment Timeline</h4>
+            {resumeTimeline.rolesDetected > 0 && (
+              <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-warning/15 text-warning font-medium">
+                {resumeTimeline.rolesDetected} role{resumeTimeline.rolesDetected !== 1 ? 's' : ''} detected
+              </span>
+            )}
+          </div>
+          {resumeTimeline.hasSignificantGap && (
+            <div className="mb-2 p-2.5 rounded-lg bg-warning/10 border border-warning/20">
+              <p className="text-xs font-semibold text-warning mb-0.5">Employment gap detected</p>
+              <p className="text-xs text-muted-foreground">
+                Gaps longer than 6 months are flagged by many ATS systems. Add a brief explanation in your summary (freelance consulting, caregiving, upskilling) or add a short consulting/contract entry.
+              </p>
+              {resumeTimeline.gapPeriods.filter(g => g.monthsGap > 6).map((g, i) => (
+                <p key={i} className="text-xs text-warning mt-1 font-medium">
+                  ~{Math.round(g.monthsGap)} months after "{g.afterTitle.substring(0, 50)}"
+                </p>
+              ))}
+            </div>
+          )}
+          {resumeTimeline.hasShortTenures && (
+            <div className="p-2.5 rounded-lg bg-warning/10 border border-warning/20">
+              <p className="text-xs font-semibold text-warning mb-0.5">Short tenure detected</p>
+              <p className="text-xs text-muted-foreground">
+                One or more roles under 12 months may raise recruiter questions. Add context (contract role, startup folded, layoff) to prevent filtering.
+              </p>
+            </div>
+          )}
+          {resumeTimeline.averageTenureMonths > 0 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Average tenure: {(resumeTimeline.averageTenureMonths / 12).toFixed(1)} years · Total detected: {(resumeTimeline.totalExperienceMonths / 12).toFixed(1)} years
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Quick Wins */}
       {quickWins.length > 0 && (
         <div className="rounded-2xl bg-primary/5 border border-primary/20 p-5 mb-5">
@@ -3578,6 +3646,35 @@ export function FreeKeywordResults({
         keywordFixPrice={isLocalCurrency ? `$${PRODUCTS.basicKeywordFix.priceUsd} ≈ ${formatPrice(PRODUCTS.basicKeywordFix.priceUsd)}` : `$${PRODUCTS.basicKeywordFix.priceUsd}`}
       />
 
+      {/* ── GATED KEYWORDS (improvement #8) — blurred pills showing there's more ── */}
+      {gatedKeywords && gatedKeywords.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-5 mb-5 relative overflow-hidden">
+          <div className="flex items-center gap-2 mb-3">
+            <Lock className="w-4 h-4 text-muted-foreground" />
+            <h4 className="font-semibold text-foreground">+ {gatedKeywords.length} more high-priority keywords</h4>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            These appear in 50–80% of job postings for your role — the top-quartile candidates have all of them.
+          </p>
+          <div className="flex flex-wrap gap-2 mb-4 select-none pointer-events-none">
+            {gatedKeywords.slice(0, 6).map((kw, i) => (
+              <span
+                key={i}
+                className="text-sm px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium blur-[5px]"
+                aria-hidden="true"
+              >
+                {kw.keyword}
+              </span>
+            ))}
+          </div>
+          <button
+            onClick={() => handleUpgradeClick('gated_keywords')}
+            className="w-full text-center text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+          >
+            Unlock all {gatedKeywords.length} keywords →
+          </button>
+        </div>
+      )}
 
       {/* Email Capture */}
       <div className="rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 p-5 mb-5">
