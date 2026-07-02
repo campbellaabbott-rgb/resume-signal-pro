@@ -18,6 +18,8 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "freeAccounts", date: "2026-07-02", tags: ["new"] },
+  { id: "accountToolkit", date: "2026-07-02", tags: ["new"] },
   { id: "fiftyNineIndustries", date: "2026-07-02", tags: ["new"] },
   { id: "resumeXray", date: "2026-07-02", tags: ["new"] },
   { id: "emailMyReport", date: "2026-07-02", tags: ["new"] },

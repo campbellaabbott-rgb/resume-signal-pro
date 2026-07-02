@@ -73,7 +73,7 @@ export default function Account() {
       supabase.from("user_scans").select("*").order("created_at", { ascending: false }).limit(50),
       supabase.functions.invoke("get-account-data").catch(() => ({ data: null })),
       supabase.from("user_applications").select("*").order("created_at", { ascending: false }).limit(100),
-      supabase.from("user_profiles").select("target_score").maybeSingle(),
+      supabase.from("user_profiles").select("target_score").eq("user_id", session.user.id).maybeSingle(),
     ]);
     let cloudScans = (scansRes.data as UserScan[] | null) ?? [];
 

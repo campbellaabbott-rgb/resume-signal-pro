@@ -721,33 +721,26 @@ const Index = () => {
           result = await waitForBackgroundScan(contentToAnalyze, 8000);
         }
         
+        // Prefetched results come from the streaming fork, which returns the
+        // OLD report shape (no verdict/roadmap/panel fields). Only use them if
+        // they carry the enriched shape — otherwise run a real scan.
+        if (result && !(result as { reportVerdict?: unknown }).reportVerdict) {
+          console.log('[FreeScan] Discarding prefetched result — legacy shape without enriched report fields');
+          result = null;
+        }
         if (result) {
           console.log('[FreeScan] Using prefetched background scan result');
           setIsCachedResult(true);
         }
       }
-      
-      // If no prefetch result, run the streaming scan
-      if (!result) {
-        result = await startStreamingScan(contentToAnalyze, {
-          jobDescriptionText: jobDescriptionText || undefined,
-          honeypot,
-          skipCache,
-          onProgress: (progress) => {
-            console.log('[StreamingScan] Progress:', progress.stage, progress.progress + '%');
-          },
-          onComplete: (data) => {
-            console.log('[StreamingScan] Complete:', data.atsScoreEstimate);
-          },
-          onError: (error) => {
-            console.error('[StreamingScan] Error:', error);
-          },
-        });
-      }
 
-      // Fallback to non-streaming endpoint if streaming failed
+      // PRIMARY: the enriched non-streaming endpoint. It returns the full
+      // report (verdict, fix roadmap, recruiter panel, X-ray data, exec scope)
+      // and — because supabase.functions.invoke attaches the session JWT —
+      // signed-in users get their higher daily scan limit. The streaming fork
+      // below is a fallback only until it reaches feature parity.
       if (!result) {
-        console.log('[FreeScan] Streaming failed, falling back to resilient non-streaming endpoint');
+        console.log('[FreeScan] Running enriched non-streaming scan');
         const scanResult = await resilientCallers.freeKeywordScan({
           resumeText: contentToAnalyze,
           jobDescriptionText: jobDescriptionText || undefined,
@@ -767,18 +760,40 @@ const Index = () => {
             setShowRateLimitUpsell(true);
             return;
           }
-          trackApiError('free-keyword-scan', 500, scanResult.error.description);
-          toast({
-            title: scanResult.error.title,
-            description: scanResult.error.description,
-            variant: "destructive",
+
+          // FALLBACK: the streaming fork. Older report shape (fewer cards) but
+          // keeps scans working if the primary endpoint is down.
+          console.warn('[FreeScan] Primary endpoint failed, falling back to streaming scan');
+          const streamResult = await startStreamingScan(contentToAnalyze, {
+            jobDescriptionText: jobDescriptionText || undefined,
+            honeypot,
+            skipCache,
+            onProgress: (progress) => {
+              console.log('[StreamingScan] Progress:', progress.stage, progress.progress + '%');
+            },
+            onError: (error) => {
+              console.error('[StreamingScan] Error:', error);
+            },
           });
-          return;
+          if (streamResult) {
+            result = streamResult;
+          } else {
+            trackApiError('free-keyword-scan', 500, scanResult.error.description);
+            toast({
+              title: scanResult.error.title,
+              description: scanResult.error.description,
+              variant: "destructive",
+            });
+            return;
+          }
         }
 
         const data = scanResult.data as any;
-        // Convert fallback response to streaming result format
-        if (data?.success) {
+        // Convert primary response to the result shape (skip if the streaming
+        // fallback above already produced a result)
+        if (result) {
+          // streaming fallback result already set
+        } else if (data?.success) {
           result = {
             success: true,
             cached: data.cached,

@@ -3501,6 +3501,24 @@ ${resumeText.substring(0, 20000)}
     });
     
     trackPerformance(requestStartTime, 'free-keyword-scan', true, { atsScore: analysis.atsScoreEstimate, industry: analysis.industry }, clientIp);
+
+    // Owner notification for each completed scan (fire and forget).
+    // Disable by setting NOTIFY_SCANS=false in function secrets.
+    if ((Deno.env.get('NOTIFY_SCANS') ?? 'true') !== 'false') {
+      EdgeRuntime.waitUntil(
+        fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/notify-owner`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'scan',
+            score: analysis.atsScoreEstimate,
+            industry: finalIndustry,
+            country: country ?? null,
+            authed: isAuthedUser,
+          }),
+        }).catch((e) => console.warn('[FREE-KEYWORD-SCAN] Owner notify failed:', e))
+      );
+    }
     
     return new Response(
       JSON.stringify(responseData),

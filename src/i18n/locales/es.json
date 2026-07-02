@@ -2969,6 +2969,14 @@
     "reportVisualPolish": {
       "title": "Un informe que se lee como un panel de control",
       "description": "Tu puntuación ahora sube animada con el color pasando de rojo a ámbar a verde. Tu percentil se dibuja en una curva de distribución real con la zona del 25% superior sombreada. Cada reescritura muestra exactamente qué cambió — eliminaciones tachadas en rojo, adiciones en verde. Y un resumen PDF de una página está a un clic."
+    },
+    "freeAccounts": {
+      "title": "Cuentas gratis: tus puntuaciones, créditos y compras en un solo lugar",
+      "description": "Crea una cuenta gratis y cada escaneo se guarda en tu panel personal: última y mejor puntuación, gráfico de evolución, saldo de créditos e historial de compras — las compras anteriores aparecen automáticamente si te registras con el mismo correo. Inicia sesión con contraseña o con un enlace mágico de un clic. Tu currículum sigue sin almacenarse nunca, y el escaneo gratis funciona igual sin cuenta."
+    },
+    "accountToolkit": {
+      "title": "Un kit de búsqueda de empleo integrado en tu cuenta",
+      "description": "Los usuarios registrados ahora tienen 15 escaneos gratis al día (antes 7) más cuatro herramientas nuevas: una lista de correcciones persistente para marcar arreglos antes de reescanear; una meta de puntuación con barra de progreso dibujada en tu gráfico; un registro de candidaturas con estado y la puntuación con la que aplicaste; y comparación de escaneos — elige dos y ve exactamente qué mejoró."
     }
   },
   "sampleReportPreview": {

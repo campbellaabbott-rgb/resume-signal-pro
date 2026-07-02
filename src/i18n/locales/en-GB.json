@@ -2969,6 +2969,14 @@
     "reportVisualPolish": {
       "title": "A report that reads like a dashboard",
       "description": "Your score now counts up with colour shifting from red through amber to green as it climbs. Your percentile is drawn on a real distribution curve with the top-25% zone shaded. Every bullet rewrite shows exactly what changed — deletions struck in red, additions highlighted in green, like a code review. And a one-page PDF summary of your whole report is one click away."
+    },
+    "freeAccounts": {
+      "title": "Free accounts: your scores, credits and purchases in one place",
+      "description": "Create a free account and every scan you run is saved to your personal dashboard: latest and best score, a score-over-time chart, your scan credit balance, and your full purchase history — past purchases appear automatically if you register with the same email. Sign in with a password or a one-click magic link. Your CV itself is still never stored, and the free scan works exactly the same without an account."
+    },
+    "accountToolkit": {
+      "title": "A job-search toolkit built into your account",
+      "description": "Signed-in users now get 15 free scans a day (up from 7) plus four new tools: a persistent fix checklist that saves your scan's fix plan and lets you tick items off before rescanning; a target score goal with a progress bar drawn right on your score chart; an application tracker for logging where you've applied, with status updates and the score you applied with; and scan compare — pick any two scans to see exactly what improved."
     }
   },
   "sampleReportPreview": {

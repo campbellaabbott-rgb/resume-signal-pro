@@ -128,3 +128,6 @@ verify_jwt = false
 
 [functions.send-market-pulse]
 verify_jwt = false
+
+[functions.notify-owner]
+verify_jwt = false

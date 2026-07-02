@@ -2969,6 +2969,14 @@
     "reportVisualPolish": {
       "title": "Een rapport dat leest als een dashboard",
       "description": "Je score telt nu op terwijl de kleur van rood via amber naar groen verschuift. Je percentiel wordt getekend op een echte verdelingscurve met de top-25%-zone gearceerd. Elke herschrijving toont precies wat er veranderde — verwijderingen doorgestreept in rood, toevoegingen in groen. En een PDF-samenvatting van één pagina is één klik verwijderd."
+    },
+    "freeAccounts": {
+      "title": "Gratis accounts: je scores, credits en aankopen op één plek",
+      "description": "Maak een gratis account en elke scan wordt opgeslagen in je persoonlijke dashboard: laatste en beste score, een scoreverloop-grafiek, je credit-saldo en je aankoopgeschiedenis — eerdere aankopen verschijnen automatisch als je je registreert met hetzelfde e-mailadres. Log in met wachtwoord of een magic link. Je cv wordt nog steeds nooit opgeslagen, en de gratis scan werkt zonder account precies hetzelfde."
+    },
+    "accountToolkit": {
+      "title": "Een sollicitatie-toolkit ingebouwd in je account",
+      "description": "Ingelogde gebruikers krijgen nu 15 gratis scans per dag (was 7) plus vier nieuwe tools: een blijvende fix-checklist om verbeteringen af te vinken vóór je herscan; een doelscore met voortgangsbalk in je grafiek; een sollicitatietracker met status en de score waarmee je solliciteerde; en scanvergelijking — kies twee scans en zie precies wat verbeterde."
     }
   },
   "sampleReportPreview": {

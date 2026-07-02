@@ -2969,6 +2969,14 @@
     "reportVisualPolish": {
       "title": "Ulat na parang dashboard",
       "description": "Ang iyong iskor ay bumibilang na pataas habang nagbabago ang kulay mula pula hanggang berde. Ang iyong percentile ay iginuguhit sa tunay na distribution curve. Bawat rewrite ay nagpapakita kung ano mismo ang nagbago — mga tinanggal na naka-strikethrough sa pula, mga idinagdag sa berde. At isang one-page na PDF summary ay isang click lang."
+    },
+    "freeAccounts": {
+      "title": "Libreng account: ang iyong mga iskor, credits at binili sa iisang lugar",
+      "description": "Gumawa ng libreng account at bawat scan ay naitatala sa iyong personal na dashboard: pinakabago at pinakamataas na iskor, graph ng iskor sa paglipas ng panahon, balanse ng credits, at kasaysayan ng mga binili — awtomatikong lalabas ang mga dating binili kung magrerehistro ka gamit ang parehong email. Mag-sign in gamit ang password o one-click na magic link. Hindi pa rin kailanman iniimbak ang iyong resume."
+    },
+    "accountToolkit": {
+      "title": "Toolkit sa paghahanap ng trabaho sa loob ng iyong account",
+      "description": "Ang mga naka-sign in ay may 15 libreng scan bawat araw na ngayon (dating 7) at apat na bagong tool: persistent na fix checklist; target na iskor na may progress bar; application tracker na may status at ang iskor noong nag-apply ka; at paghahambing ng scan — pumili ng dalawa at makita kung ano mismo ang bumuti."
     }
   },
   "sampleReportPreview": {

@@ -2969,6 +2969,14 @@
     "reportVisualPolish": {
       "title": "Ein Bericht wie ein Dashboard",
       "description": "Ihre Punktzahl zählt jetzt hoch, während die Farbe von Rot über Gelb nach Grün wechselt. Ihr Perzentil wird auf einer echten Verteilungskurve dargestellt. Jede Umformulierung zeigt genau, was sich geändert hat — Streichungen rot, Ergänzungen grün. Und eine einseitige PDF-Zusammenfassung ist einen Klick entfernt."
+    },
+    "freeAccounts": {
+      "title": "Kostenlose Konten: Punktzahlen, Guthaben und Käufe an einem Ort",
+      "description": "Mit einem kostenlosen Konto wird jeder Scan in Ihrem persönlichen Dashboard gespeichert: aktuelle und beste Punktzahl, Verlaufsdiagramm, Scan-Guthaben und Kaufhistorie — frühere Käufe erscheinen automatisch, wenn Sie sich mit derselben E-Mail registrieren. Anmeldung per Passwort oder Magic Link. Ihr Lebenslauf selbst wird weiterhin nie gespeichert, und der kostenlose Scan funktioniert ohne Konto genauso."
+    },
+    "accountToolkit": {
+      "title": "Ein Jobsuche-Toolkit direkt im Konto",
+      "description": "Angemeldete Nutzer erhalten jetzt 15 kostenlose Scans pro Tag (statt 7) plus vier neue Werkzeuge: eine persistente Checkliste mit dem Verbesserungsplan Ihres Scans zum Abhaken vor dem Rescan; ein Zielpunktzahl-Ziel mit Fortschrittsbalken direkt im Diagramm; einen Bewerbungs-Tracker mit Status und der Punktzahl, mit der Sie sich beworben haben; und Scan-Vergleich — zwei beliebige Scans nebeneinander."
     }
   },
   "sampleReportPreview": {

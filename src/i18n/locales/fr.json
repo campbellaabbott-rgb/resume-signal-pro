@@ -2969,6 +2969,14 @@
     "reportVisualPolish": {
       "title": "Un rapport qui se lit comme un tableau de bord",
       "description": "Votre score s'anime en montant, la couleur passant du rouge à l'orange au vert. Votre percentile est tracé sur une vraie courbe de distribution avec la zone des 25 % supérieurs ombrée. Chaque réécriture montre exactement ce qui a changé — suppressions barrées en rouge, ajouts en vert. Et un résumé PDF d'une page est à un clic."
+    },
+    "freeAccounts": {
+      "title": "Comptes gratuits : scores, crédits et achats au même endroit",
+      "description": "Créez un compte gratuit et chaque analyse est enregistrée dans votre tableau de bord : dernier et meilleur score, courbe d'évolution, solde de crédits et historique d'achats — vos achats passés apparaissent automatiquement si vous vous inscrivez avec le même e-mail. Connexion par mot de passe ou lien magique en un clic. Votre CV n'est toujours jamais stocké, et l'analyse gratuite fonctionne à l'identique sans compte."
+    },
+    "accountToolkit": {
+      "title": "Une boîte à outils de recherche d'emploi intégrée au compte",
+      "description": "Les utilisateurs connectés ont désormais 15 analyses gratuites par jour (au lieu de 7) plus quatre nouveaux outils : une check-list de corrections persistante à cocher avant de réanalyser ; un objectif de score avec barre de progression tracée sur votre courbe ; un suivi de candidatures avec statut et le score au moment de postuler ; et la comparaison d'analyses — choisissez-en deux pour voir ce qui s'est amélioré."
     }
   },
   "sampleReportPreview": {

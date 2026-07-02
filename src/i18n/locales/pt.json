@@ -2969,6 +2969,14 @@
     "reportVisualPolish": {
       "title": "Um relatório que parece um painel",
       "description": "Sua pontuação agora sobe animada com a cor passando de vermelho para âmbar e verde. Seu percentil é desenhado em uma curva de distribuição real com a zona dos 25% superiores sombreada. Cada reescrita mostra exatamente o que mudou — exclusões riscadas em vermelho, adições em verde. E um resumo em PDF de uma página está a um clique."
+    },
+    "freeAccounts": {
+      "title": "Contas grátis: suas pontuações, créditos e compras em um só lugar",
+      "description": "Crie uma conta grátis e cada análise é salva no seu painel pessoal: última e melhor pontuação, gráfico de evolução, saldo de créditos e histórico de compras — compras anteriores aparecem automaticamente se você se registrar com o mesmo e-mail. Entre com senha ou com um link mágico de um clique. Seu currículo continua nunca sendo armazenado, e a análise grátis funciona igual sem conta."
+    },
+    "accountToolkit": {
+      "title": "Um kit de busca de emprego dentro da sua conta",
+      "description": "Usuários registrados agora têm 15 análises grátis por dia (antes 7) mais quatro novas ferramentas: uma checklist de correções persistente para marcar antes de reescanear; uma meta de pontuação com barra de progresso no seu gráfico; um rastreador de candidaturas com status e a pontuação com que você aplicou; e comparação de análises — escolha duas e veja exatamente o que melhorou."
     }
   },
   "sampleReportPreview": {
