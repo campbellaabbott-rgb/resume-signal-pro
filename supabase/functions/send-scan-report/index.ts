@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
 
     const resend = new Resend(RESEND_API_KEY);
     const { error } = await resend.emails.send({
-      from: "Resume Booster <reports@resumebooster.app>",
+      from: "Resume Booster <reports@resumebooster.work>",
       to: [email],
       subject: `Your resume scored ${Math.round(body.score)}/100 — here's your fix plan`,
       html,
