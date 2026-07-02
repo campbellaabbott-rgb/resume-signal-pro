@@ -7,6 +7,7 @@ import { Mail, Lock, Loader2, UserPlus, LogIn } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Auth() {
   const { session, signIn, signUp } = useAuth();
@@ -17,6 +18,13 @@ export default function Auth() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [showResend, setShowResend] = useState(false);
+
+  const resendConfirmation = async () => {
+    const { error: err } = await supabase.auth.resend({ type: "signup", email: email.trim() });
+    setNotice(err ? null : "Confirmation email resent — check your inbox.");
+    setError(err ? err.message : null);
+  };
 
   useEffect(() => {
     if (session) navigate("/account", { replace: true });
@@ -38,9 +46,12 @@ export default function Auth() {
     const { error: err } = await fn(email.trim(), password);
     setBusy(false);
     if (err) {
-      setError(err);
+      setError(/email not confirmed/i.test(err)
+        ? "Your email isn't confirmed yet — check your inbox for the confirmation link (it may be in spam)."
+        : err);
+      setShowResend(/email not confirmed/i.test(err));
     } else if (mode === "signup") {
-      setNotice("Account created. If email confirmation is enabled, check your inbox to activate it — then sign in.");
+      setNotice("Account created! Check your inbox for a confirmation link, then come back and sign in.");
     }
   };
 
@@ -83,6 +94,11 @@ export default function Auth() {
             </div>
 
             {error && <p className="text-xs text-destructive mb-3">{error}</p>}
+            {showResend && (
+              <button onClick={resendConfirmation} className="text-xs text-primary hover:underline mb-3 block">
+                Resend confirmation email
+              </button>
+            )}
             {notice && <p className="text-xs text-success mb-3">{notice}</p>}
 
             <button

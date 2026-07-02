@@ -76,14 +76,19 @@ export default function Account() {
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
       <main className="flex-1 container max-w-3xl pt-24 pb-16">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Your account</h1>
-            <p className="text-xs text-muted-foreground">{user?.email}</p>
+        <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-5 mb-6 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
+            <span className="text-lg font-bold text-primary uppercase">{user?.email?.[0] ?? "?"}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold text-foreground truncate">{user?.email}</h1>
+            <p className="text-xs text-muted-foreground">
+              Member since {user?.created_at ? new Date(user.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" }) : "today"}
+            </p>
           </div>
           <button
             onClick={async () => { await signOut(); navigate("/"); }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
           >
             <LogOut className="w-3.5 h-3.5" /> Sign out
           </button>
@@ -92,18 +97,20 @@ export default function Account() {
         {/* Stat tiles */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           <div className="rounded-2xl border border-border bg-card p-4 text-center">
-            <p className="text-2xl font-bold text-foreground">{latest ? latest.ats_score : "—"}</p>
-            <p className="text-[11px] text-muted-foreground">Latest score{delta != null && (
-              <span className={delta >= 0 ? "text-success" : "text-destructive"}> ({delta >= 0 ? "+" : ""}{delta})</span>
+            <p className={`text-3xl font-bold ${latest ? (latest.ats_score >= 70 ? "text-success" : latest.ats_score >= 50 ? "text-warning" : "text-destructive") : "text-muted-foreground"}`}>
+              {latest ? latest.ats_score : "—"}
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Latest score{delta != null && (
+              <span className={delta >= 0 ? "text-success font-semibold" : "text-destructive font-semibold"}> ({delta >= 0 ? "+" : ""}{delta})</span>
             )}</p>
           </div>
           <div className="rounded-2xl border border-border bg-card p-4 text-center">
-            <p className="text-2xl font-bold text-foreground">{best ?? "—"}</p>
-            <p className="text-[11px] text-muted-foreground">Best score</p>
+            <p className="text-3xl font-bold text-foreground">{best ?? "—"}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">🏆 Best score</p>
           </div>
-          <div className="rounded-2xl border border-border bg-card p-4 text-center">
-            <p className="text-2xl font-bold text-foreground">{fetching ? "…" : account?.credits ?? 0}</p>
-            <p className="text-[11px] text-muted-foreground">Scan credits</p>
+          <div className="rounded-2xl border border-warning/25 bg-warning/5 p-4 text-center">
+            <p className="text-3xl font-bold text-foreground">{fetching ? "…" : account?.credits ?? 0}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">🪙 Scan credits</p>
           </div>
         </div>
 
@@ -158,7 +165,9 @@ export default function Account() {
             </div>
             <p className="text-3xl font-bold text-foreground mb-1">{fetching ? "…" : account?.credits ?? 0}</p>
             <p className="text-xs text-muted-foreground mb-3">Credits are linked to your email and never expire.</p>
-            <Link to="/pricing" className="text-xs text-primary hover:underline">Get more credits →</Link>
+            <Link to="/pricing" className="inline-block px-3.5 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
+              Get more credits →
+            </Link>
           </div>
           <div className="rounded-2xl border border-border bg-card p-5">
             <div className="flex items-center gap-2 mb-2">
