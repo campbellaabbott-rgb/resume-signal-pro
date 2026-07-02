@@ -990,8 +990,346 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
     certifications: [
       'pmp', 'cfe', 'cgfm', 'cpa', 'security clearance', 'dau', 'fac-c'
     ]
+  },
+
+  cybersecurity: {
+    titles: [
+      'security engineer', 'security analyst', 'soc analyst', 'penetration tester',
+      'pentester', 'red team', 'blue team', 'security architect', 'ciso',
+      'information security', 'infosec', 'threat analyst', 'incident responder',
+      'vulnerability analyst', 'security consultant', 'application security',
+      'appsec engineer', 'cloud security engineer', 'grc analyst',
+      'security operations', 'cyber defense analyst', 'malware analyst',
+      'forensics analyst', 'security researcher'
+    ],
+    primary: [
+      'penetration testing', 'vulnerability', 'incident response', 'siem',
+      'threat hunting', 'threat intelligence', 'security operations center',
+      'soc', 'malware', 'phishing', 'zero trust', 'endpoint detection',
+      'edr', 'xdr', 'ids', 'ips', 'firewall', 'security posture',
+      'attack surface', 'red teaming', 'exploit', 'cve', 'patch management',
+      'security audit', 'risk assessment', 'compliance framework',
+      'security controls', 'encryption', 'identity and access management', 'iam'
+    ],
+    secondary: [
+      'splunk', 'crowdstrike', 'sentinelone', 'palo alto', 'fortinet',
+      'nessus', 'qualys', 'burp suite', 'metasploit', 'wireshark', 'kali',
+      'nist', 'iso 27001', 'soc 2', 'mitre att&ck', 'owasp', 'pci dss',
+      'hipaa compliance', 'fedramp', 'devsecops', 'sast', 'dast'
+    ],
+    certifications: [
+      'cissp', 'ceh', 'oscp', 'security+', 'comptia security', 'gsec',
+      'gcih', 'cism', 'ccsp', 'gpen', 'cisa'
+    ]
+  },
+
+  logistics: {
+    titles: [
+      'supply chain manager', 'logistics manager', 'logistics coordinator',
+      'warehouse manager', 'operations manager', 'procurement manager',
+      'demand planner', 'supply planner', 'inventory manager',
+      'transportation manager', 'fleet manager', 'distribution manager',
+      'freight broker', 'customs broker', 'import export specialist',
+      'supply chain analyst', 'logistics analyst', 'materials manager',
+      'fulfillment manager', 'shipping coordinator', 'dispatcher'
+    ],
+    primary: [
+      'supply chain', 'logistics', 'warehouse', 'inventory', 'procurement',
+      'freight', 'shipping', 'distribution', 'fulfillment', 'transportation',
+      'demand planning', 'forecasting', 'on-time delivery', 'otif',
+      'inventory turnover', 'stock levels', 'purchase orders', '3pl',
+      'carrier', 'lanes', 'ltl', 'ftl', 'last mile', 'cross-docking',
+      'kitting', 'cycle count', 'lead time', 'reorder point', 'safety stock'
+    ],
+    secondary: [
+      'sap', 'oracle scm', 'wms', 'tms', 'erp', 'edi', 'netsuite',
+      'manhattan', 'blue yonder', 'kinaxis', 'incoterms', 'customs',
+      'bill of lading', 'sku', 'rfid', 'barcode scanning', 'lean',
+      'six sigma', 'kaizen', 'jit', 'just-in-time'
+    ],
+    certifications: [
+      'cscp', 'cpim', 'cltd', 'apics', 'cips', 'lean six sigma',
+      'six sigma green belt', 'six sigma black belt'
+    ]
+  },
+
+  real_estate: {
+    titles: [
+      'real estate agent', 'realtor', 'broker', 'real estate broker',
+      'property manager', 'leasing agent', 'leasing consultant',
+      'real estate analyst', 'acquisitions analyst', 'asset manager',
+      'commercial real estate', 'transaction coordinator', 'escrow officer',
+      'title officer', 'appraiser', 'real estate developer',
+      'mortgage loan officer', 'loan originator', 'underwriter'
+    ],
+    primary: [
+      'listings', 'closings', 'escrow', 'mls', 'buyers', 'sellers',
+      'property management', 'leasing', 'tenants', 'landlord', 'rent roll',
+      'occupancy rate', 'noi', 'net operating income', 'cap rate',
+      'appraisal', 'comps', 'comparative market analysis', 'cma',
+      'transaction volume', 'sales volume', 'commission', 'open house',
+      'residential', 'commercial property', 'multifamily', 'square feet',
+      'acquisitions', 'dispositions', 'due diligence', 'title'
+    ],
+    secondary: [
+      'zillow', 'redfin', 'costar', 'loopnet', 'yardi', 'appfolio',
+      'buildium', 'dotloop', 'docusign', 'fha', 'va loan', 'conventional loan',
+      'refinance', 'hoa', 'cam charges', 'triple net', 'nnn', '1031 exchange'
+    ],
+    certifications: [
+      'real estate license', 'brokers license', 'ccim', 'crs', 'gri',
+      'abr', 'sior', 'cpm', 'nmls'
+    ]
+  },
+
+  insurance: {
+    titles: [
+      'insurance agent', 'insurance broker', 'underwriter', 'claims adjuster',
+      'claims examiner', 'actuary', 'actuarial analyst', 'risk manager',
+      'insurance sales', 'account manager insurance', 'benefits consultant',
+      'claims manager', 'loss control', 'insurance producer'
+    ],
+    primary: [
+      'underwriting', 'claims', 'premiums', 'policies', 'policyholders',
+      'coverage', 'deductible', 'liability', 'property and casualty', 'p&c',
+      'life insurance', 'health insurance', 'annuities', 'reinsurance',
+      'loss ratio', 'combined ratio', 'risk assessment', 'actuarial',
+      'book of business', 'renewals', 'endorsements', 'binders',
+      'subrogation', 'adjusting', 'claims processing', 'quoting'
+    ],
+    secondary: [
+      'guidewire', 'duck creek', 'applied epic', 'ams360', 'acord',
+      'iso forms', 'naic', 'state filings', 'workers compensation',
+      'workers comp', 'commercial lines', 'personal lines', 'e&o',
+      'errors and omissions', 'umbrella policy', 'excess liability'
+    ],
+    certifications: [
+      'cpcu', 'clu', 'chfc', 'arm', 'ains', 'cic', 'insurance license',
+      'series 6', 'series 63', 'fsa', 'asa', 'acas', 'fcas'
+    ]
+  },
+
+  nonprofit: {
+    titles: [
+      'program director', 'executive director', 'development director',
+      'grant writer', 'grants manager', 'fundraising manager', 'major gifts officer',
+      'volunteer coordinator', 'community outreach', 'advocacy director',
+      'development associate', 'donor relations', 'program coordinator nonprofit',
+      'nonprofit manager', 'philanthropy officer', 'impact manager'
+    ],
+    primary: [
+      'fundraising', 'grants', 'donors', 'donor cultivation', 'major gifts',
+      'annual fund', 'capital campaign', 'stewardship', 'philanthropy',
+      'nonprofit', 'non-profit', 'ngo', '501c3', '501(c)(3)', 'mission-driven',
+      'volunteers', 'community outreach', 'advocacy', 'program delivery',
+      'impact measurement', 'beneficiaries', 'grant proposals', 'grant reporting',
+      'board of directors', 'gala', 'annual appeal', 'planned giving',
+      'endowment', 'restricted funds', 'in-kind donations'
+    ],
+    secondary: [
+      'raisers edge', 'salesforce nonprofit', 'bloomerang', 'donorperfect',
+      'classy', 'givebutter', 'foundation grants', 'federal grants',
+      'united way', 'americorps', 'peace corps', 'community foundation',
+      'theory of change', 'logic model', 'outcomes measurement'
+    ],
+    certifications: [
+      'cfre', 'grant professional certified', 'gpc', 'cnp', 'nonprofit management'
+    ]
+  },
+
+  biotech: {
+    titles: [
+      'research scientist', 'lab technician', 'laboratory technician',
+      'research associate', 'clinical research coordinator', 'clinical research associate',
+      'cra', 'bench scientist', 'bioinformatics scientist', 'process development',
+      'quality control analyst', 'qc analyst', 'regulatory affairs specialist',
+      'formulation scientist', 'principal scientist', 'postdoctoral',
+      'postdoc', 'lab manager', 'biostatistician', 'medical science liaison', 'msl'
+    ],
+    primary: [
+      'assay', 'pcr', 'qpcr', 'elisa', 'western blot', 'cell culture',
+      'clinical trials', 'protocol', 'gmp', 'glp', 'gcp', 'ind', 'nda submission',
+      'fda submission', 'preclinical', 'in vitro', 'in vivo', 'crispr',
+      'sequencing', 'ngs', 'flow cytometry', 'chromatography', 'hplc',
+      'mass spectrometry', 'antibody', 'protein purification', 'molecular biology',
+      'drug discovery', 'pharmacokinetics', 'toxicology', 'bioprocess',
+      'upstream', 'downstream processing', 'batch records', 'sop'
+    ],
+    secondary: [
+      'benchling', 'labware', 'lims', 'graphpad', 'prism', 'biorender',
+      'pubmed', 'clinicaltrials.gov', 'irb', 'informed consent', 'cro',
+      'cdmo', 'biologics', 'small molecule', 'gene therapy', 'cell therapy',
+      'monoclonal', 'immunoassay', 'stability studies'
+    ],
+    certifications: [
+      'rac', 'ccrp', 'ccra', 'socra', 'acrp', 'aseptic', 'phd', 'ms biology'
+    ]
+  },
+
+  aviation: {
+    titles: [
+      'pilot', 'commercial pilot', 'airline pilot', 'first officer', 'captain',
+      'flight attendant', 'air traffic controller', 'aircraft mechanic',
+      'a&p mechanic', 'avionics technician', 'flight instructor', 'cfi',
+      'aircraft dispatcher', 'ground operations', 'ramp agent', 'airport operations',
+      'aviation safety', 'aerospace engineer', 'flight test engineer'
+    ],
+    primary: [
+      'flight hours', 'faa', 'part 121', 'part 135', 'part 91', 'type rating',
+      'aircraft', 'airframe', 'powerplant', 'preflight', 'flight operations',
+      'crew resource management', 'crm aviation', 'sops', 'checkride',
+      'instrument rating', 'multi-engine', 'turbine', 'jet', 'rotorcraft',
+      'airworthiness', 'maintenance logs', 'inspections', 'faa regulations',
+      'atc', 'ifr', 'vfr', 'nomex', 'ground school', 'simulator'
+    ],
+    secondary: [
+      'boeing', 'airbus', 'cessna', 'embraer', 'gulfstream', 'pratt whitney',
+      'ge aviation', 'rolls royce', 'foreflight', 'jeppesen', 'metar', 'notam',
+      'tsa', 'icao', 'easa', 'safety management system', 'sms aviation'
+    ],
+    certifications: [
+      'atp', 'commercial pilot license', 'cpl', 'ppl', 'cfi', 'cfii', 'mei',
+      'a&p license', 'ia', 'faa certificate', 'medical certificate', 'type rated'
+    ]
+  },
+
+  energy: {
+    titles: [
+      'petroleum engineer', 'drilling engineer', 'reservoir engineer',
+      'field engineer', 'plant operator', 'power plant operator',
+      'lineman', 'utility technician', 'solar installer', 'solar technician',
+      'wind technician', 'energy analyst', 'energy manager', 'grid operator',
+      'transmission engineer', 'substation technician', 'pipeline operator',
+      'hse manager', 'landman', 'energy trader'
+    ],
+    primary: [
+      'oil and gas', 'upstream', 'midstream', 'downstream', 'drilling',
+      'wellsite', 'rig', 'completion', 'fracking', 'hydraulic fracturing',
+      'production optimization', 'reservoir', 'pipeline', 'refinery',
+      'renewable energy', 'solar', 'wind', 'photovoltaic', 'pv systems',
+      'battery storage', 'grid', 'transmission', 'distribution', 'substation',
+      'megawatt', 'kilowatt', 'power generation', 'turbine', 'utility scale',
+      'energy efficiency', 'hse', 'process safety', 'lockout tagout'
+    ],
+    secondary: [
+      'scada', 'osha 30', 'api standards', 'asme', 'nerc', 'ferc',
+      'interconnection', 'ppa', 'power purchase agreement', 'net metering',
+      'inverters', 'petra', 'aries', 'pvsyst', 'helioscope', 'osisoft', 'pi system'
+    ],
+    certifications: [
+      'nabcep', 'osha 30', 'osha 10', 'pe license', 'gwo', 'twic', 'h2s alive',
+      'well control', 'iwcf', 'nerc certification'
+    ]
+  },
+
+  skilled_trades: {
+    titles: [
+      'electrician', 'journeyman electrician', 'master electrician',
+      'plumber', 'journeyman plumber', 'hvac technician', 'hvac installer',
+      'carpenter', 'welder', 'pipefitter', 'millwright', 'machinist',
+      'heavy equipment operator', 'crane operator', 'ironworker', 'mason',
+      'construction foreman', 'superintendent', 'project superintendent',
+      'general contractor', 'construction manager', 'estimator',
+      'maintenance technician', 'facilities technician', 'diesel mechanic',
+      'automotive technician', 'auto mechanic', 'service technician'
+    ],
+    primary: [
+      'electrical', 'wiring', 'conduit', 'circuits', 'breaker panels',
+      'plumbing', 'piping', 'fixtures', 'hvac', 'refrigeration', 'ductwork',
+      'welding', 'fabrication', 'blueprint reading', 'blueprints', 'schematics',
+      'installation', 'troubleshooting', 'preventive maintenance', 'repair',
+      'residential', 'commercial construction', 'industrial', 'job site',
+      'safety compliance', 'osha', 'code compliance', 'nec', 'building codes',
+      'apprenticeship', 'journeyman', 'punch list', 'change orders', 'rough-in'
+    ],
+    secondary: [
+      'hand tools', 'power tools', 'multimeter', 'megger', 'mig', 'tig',
+      'stick welding', 'brazing', 'soldering', 'forklift', 'scissor lift',
+      'boom lift', 'rigging', 'epa 608', 'backflow', 'low voltage',
+      'fire alarm', 'sprinkler systems', 'service calls', 'work orders'
+    ],
+    certifications: [
+      'journeyman license', 'master license', 'epa 608', 'osha 10', 'osha 30',
+      'aws certified welder', 'nccer', 'ase certified', 'cdl', 'nate certified',
+      'epa universal'
+    ]
+  },
+
+  customer_success: {
+    titles: [
+      'customer support specialist', 'customer service representative',
+      'support engineer', 'technical support', 'help desk', 'service desk',
+      'support analyst', 'customer experience', 'cx manager',
+      'customer care', 'call center', 'contact center', 'support team lead',
+      'escalation manager', 'tier 2 support', 'tier 3 support'
+    ],
+    primary: [
+      'customer support', 'tickets', 'ticket resolution', 'sla', 'csat',
+      'nps', 'first response time', 'resolution time', 'escalations',
+      'knowledge base', 'troubleshooting', 'customer inquiries', 'call volume',
+      'average handle time', 'aht', 'first call resolution', 'fcr',
+      'customer satisfaction', 'support queue', 'live chat', 'phone support',
+      'email support', 'omnichannel', 'deflection', 'self-service'
+    ],
+    secondary: [
+      'zendesk', 'freshdesk', 'intercom', 'servicenow', 'jira service desk',
+      'salesforce service cloud', 'kustomer', 'gorgias', 'gladly',
+      'talkdesk', 'five9', 'genesys', 'nice', 'quality assurance', 'qa scores',
+      'workforce management', 'wfm', 'crm'
+    ],
+    certifications: [
+      'itil', 'hdi', 'comptia a+', 'customer service certification'
+    ]
   }
 };
+
+// ── Sub-industry taxonomy ─────────────────────────────────────────────────
+// Second-level specialization within a detected industry. Detected by signal
+// counting over the resume text; requires minSignals hits to claim the sub-industry.
+export const SUB_INDUSTRY_TAXONOMY: Record<string, Array<{ id: string; label: string; signals: string[]; minSignals: number }>> = {
+  healthcare: [
+    { id: 'clinical', label: 'Clinical Care', signals: ['patient care', 'bedside', 'charting', 'vitals', 'medication administration', 'triage', 'acute care', 'icu', 'emergency', 'rn', 'nursing'], minSignals: 2 },
+    { id: 'healthcare_admin', label: 'Healthcare Administration', signals: ['medical billing', 'coding', 'icd-10', 'cpt', 'claims', 'prior authorization', 'revenue cycle', 'practice management', 'hipaa compliance', 'credentialing'], minSignals: 2 },
+    { id: 'pharma', label: 'Pharmaceutical', signals: ['pharmaceutical', 'pharma sales', 'formulary', 'prescribers', 'territory', 'drug launch', 'medical affairs', 'pharmacovigilance'], minSignals: 2 },
+    { id: 'health_tech', label: 'Health Technology', signals: ['ehr', 'emr', 'epic', 'cerner', 'health tech', 'telehealth', 'interoperability', 'hl7', 'fhir', 'digital health'], minSignals: 2 },
+  ],
+  technology: [
+    { id: 'frontend', label: 'Frontend Engineering', signals: ['react', 'vue', 'angular', 'css', 'typescript', 'ui components', 'responsive design', 'accessibility', 'webpack', 'vite'], minSignals: 3 },
+    { id: 'backend', label: 'Backend Engineering', signals: ['api design', 'microservices', 'database', 'postgresql', 'redis', 'kafka', 'grpc', 'rest api', 'scalability', 'distributed systems'], minSignals: 3 },
+    { id: 'devops', label: 'DevOps / Platform', signals: ['kubernetes', 'terraform', 'ci/cd', 'docker', 'infrastructure as code', 'observability', 'monitoring', 'sre', 'reliability', 'deployment pipelines'], minSignals: 3 },
+    { id: 'mobile', label: 'Mobile Engineering', signals: ['ios', 'android', 'swift', 'kotlin', 'react native', 'flutter', 'app store', 'mobile app'], minSignals: 2 },
+  ],
+  finance: [
+    { id: 'accounting', label: 'Accounting', signals: ['general ledger', 'month-end close', 'reconciliation', 'accounts payable', 'accounts receivable', 'journal entries', 'gaap', 'audit support'], minSignals: 2 },
+    { id: 'fpa', label: 'FP&A', signals: ['budgeting', 'forecasting', 'variance analysis', 'financial modeling', 'fp&a', 'headcount planning', 'board deck'], minSignals: 2 },
+    { id: 'ib_pe', label: 'Investment Banking / PE', signals: ['m&a', 'due diligence', 'lbo', 'dcf', 'pitch book', 'deal execution', 'valuation', 'private equity', 'investment banking'], minSignals: 2 },
+    { id: 'banking', label: 'Retail / Commercial Banking', signals: ['loan origination', 'credit analysis', 'branch', 'teller', 'deposits', 'commercial lending', 'kyc', 'aml'], minSignals: 2 },
+  ],
+  marketing: [
+    { id: 'growth', label: 'Growth / Performance Marketing', signals: ['paid acquisition', 'cac', 'roas', 'google ads', 'meta ads', 'conversion rate', 'a/b testing', 'funnel optimization'], minSignals: 2 },
+    { id: 'content_brand', label: 'Content / Brand Marketing', signals: ['content strategy', 'editorial', 'brand voice', 'storytelling', 'copywriting', 'thought leadership', 'social media strategy'], minSignals: 2 },
+    { id: 'product_marketing', label: 'Product Marketing', signals: ['positioning', 'messaging', 'go-to-market', 'launch', 'sales enablement', 'competitive intelligence', 'win/loss'], minSignals: 2 },
+  ],
+  engineering: [
+    { id: 'civil', label: 'Civil / Structural', signals: ['civil engineering', 'structural', 'autocad civil', 'site development', 'stormwater', 'geotechnical', 'roadway', 'surveying'], minSignals: 2 },
+    { id: 'mechanical', label: 'Mechanical', signals: ['solidworks', 'mechanical design', 'cad modeling', 'gd&t', 'thermal analysis', 'fea', 'prototyping', 'tolerance'], minSignals: 2 },
+    { id: 'electrical_eng', label: 'Electrical', signals: ['circuit design', 'pcb', 'schematic capture', 'embedded systems', 'firmware', 'power electronics', 'signal integrity'], minSignals: 2 },
+  ],
+};
+
+export function detectSubIndustry(industry: string, resumeText: string): { id: string; label: string; matchedSignals: string[] } | null {
+  const subs = SUB_INDUSTRY_TAXONOMY[industry];
+  if (!subs) return null;
+  const lower = resumeText.toLowerCase();
+  let best: { id: string; label: string; matchedSignals: string[] } | null = null;
+  for (const sub of subs) {
+    const matched = sub.signals.filter(s => lower.includes(s));
+    if (matched.length >= sub.minSignals && (!best || matched.length > best.matchedSignals.length)) {
+      best = { id: sub.id, label: sub.label, matchedSignals: matched };
+    }
+  }
+  return best;
+}
 
 // Co-occurrence patterns - keywords that appear together strongly indicate an industry
 const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
@@ -1298,6 +1636,12 @@ interface DetectionResult {
   techStack?: string[];
   /** Degree/credential signals found in education section */
   educationSignals?: string[];
+  /** Sub-industry specialization within the detected industry, e.g. { id: 'clinical', label: 'Clinical Care' } */
+  subIndustry?: { id: string; label: string; matchedSignals: string[] };
+  /** Industry the job description (when provided) points to, if different from the resume */
+  jdIndustry?: string;
+  /** Blend percentages when the candidate straddles two industries, e.g. { primaryPct: 60, secondaryPct: 40 } */
+  industryBlend?: { primaryPct: number; secondaryPct: number };
 }
 
 interface SectionMatch {
@@ -2220,7 +2564,66 @@ const ROLE_LOCKS: Array<{ pattern: RegExp; industry: string; label: string }> = 
   { pattern: /\b(hr business partner|hrbp|recruiter|talent acquisition|head of recruiting|director.*hr|vp.*hr|chief people officer|cpo.*people|hr director|hr manager|people operations|compensation analyst|benefits administrator|employee relations|hris analyst|workforce planning|organizational development)\b/i, industry: 'hr', label: 'HR title' },
   // Creative / Design
   { pattern: /\b(ux designer|ui designer|product designer|graphic designer|visual designer|brand designer|motion designer|creative director|art director|illustrator.*designer|interaction designer|user experience researcher|ux researcher|design lead|head of design)\b/i, industry: 'creative', label: 'design title' },
+  // Cybersecurity
+  { pattern: /\b(security engineer|security analyst|soc analyst|penetration tester|pentester|ciso|security architect|incident responder|threat analyst|vulnerability analyst|application security engineer|appsec engineer|malware analyst|forensics analyst)\b/i, industry: 'cybersecurity', label: 'security title' },
+  // Logistics / Supply chain
+  { pattern: /\b(supply chain manager|supply chain analyst|logistics coordinator|logistics manager|demand planner|supply planner|freight broker|customs broker|transportation manager|fleet manager|fulfillment manager|dispatcher)\b/i, industry: 'logistics', label: 'logistics title' },
+  // Real estate
+  { pattern: /\b(real estate agent|realtor|real estate broker|leasing agent|leasing consultant|property manager|escrow officer|title officer|appraiser|mortgage loan officer|loan originator|transaction coordinator)\b/i, industry: 'real_estate', label: 'real estate title' },
+  // Insurance
+  { pattern: /\b(claims adjuster|claims examiner|actuary|actuarial analyst|insurance agent|insurance broker|insurance producer|insurance underwriter)\b/i, industry: 'insurance', label: 'insurance title' },
+  // Nonprofit
+  { pattern: /\b(grant writer|grants manager|development director|major gifts officer|fundraising manager|volunteer coordinator|donor relations|philanthropy officer|executive director.*nonprofit)\b/i, industry: 'nonprofit', label: 'nonprofit title' },
+  // Biotech / Lab science
+  { pattern: /\b(research scientist|lab technician|laboratory technician|research associate|clinical research coordinator|clinical research associate|bench scientist|bioinformatics scientist|biostatistician|medical science liaison|qc analyst|postdoc|postdoctoral)\b/i, industry: 'biotech', label: 'lab science title' },
+  // Aviation
+  { pattern: /\b(commercial pilot|airline pilot|first officer|flight attendant|air traffic controller|aircraft mechanic|a&p mechanic|avionics technician|flight instructor|aircraft dispatcher)\b/i, industry: 'aviation', label: 'aviation title' },
+  // Energy
+  { pattern: /\b(petroleum engineer|drilling engineer|reservoir engineer|power plant operator|lineman|solar installer|solar technician|wind technician|grid operator|pipeline operator|substation technician|landman|energy trader)\b/i, industry: 'energy', label: 'energy title' },
+  // Skilled trades
+  { pattern: /\b(electrician|journeyman|plumber|hvac technician|hvac installer|welder|pipefitter|millwright|machinist|carpenter|crane operator|ironworker|diesel mechanic|automotive technician|auto mechanic|maintenance technician)\b/i, industry: 'skilled_trades', label: 'trade title' },
+  // Customer support (distinct from sales-flavored customer success)
+  { pattern: /\b(customer support specialist|customer service representative|support engineer|technical support engineer|help desk|service desk analyst|call center|contact center|escalation manager|tier [23] support)\b/i, industry: 'customer_success', label: 'support title' },
 ];
+
+// ─── CERTIFICATION-BASED INDUSTRY LOCKING ────────────────────────────────────
+// Licenses/certifications that are near-unambiguous industry signals. Weaker
+// than a role lock (people change fields) but a strong anchor: adds a large
+// boost rather than force-locking.
+const CERT_LOCKS: Array<{ pattern: RegExp; industry: string; label: string; boost: number }> = [
+  { pattern: /\b(registered nurse|rn license|bsn|msn|nclex|licensed practical nurse|lpn|cna certified)\b/i, industry: 'healthcare', label: 'nursing credential', boost: 15 },
+  { pattern: /\b(md\b|do\b|board certified physician|usmle|medical license)\b/i, industry: 'healthcare', label: 'physician credential', boost: 15 },
+  { pattern: /\b(cpa\b|certified public accountant|cfa\b|chartered financial analyst|series 7|series 63|series 65|series 66|frm\b)\b/i, industry: 'finance', label: 'finance credential', boost: 12 },
+  { pattern: /\b(juris doctor|jd degree|bar admission|admitted to the bar|state bar|paralegal certificate)\b/i, industry: 'legal', label: 'legal credential', boost: 15 },
+  { pattern: /\b(pmp certified|pmp\b|csm\b|certified scrum|safe agilist|pspo|psm i+\b)\b/i, industry: 'product_management', label: 'PM credential', boost: 6 },
+  { pattern: /\b(pe license|professional engineer|eit\b|fe exam|fundamentals of engineering)\b/i, industry: 'engineering', label: 'engineering credential', boost: 12 },
+  { pattern: /\b(cissp|oscp|ceh\b|gsec|gcih|cism\b|comptia security\+)\b/i, industry: 'cybersecurity', label: 'security credential', boost: 12 },
+  { pattern: /\b(shrm-cp|shrm-scp|phr\b|sphr\b|gphr)\b/i, industry: 'hr', label: 'HR credential', boost: 12 },
+  { pattern: /\b(cscp|cpim|cltd|apics certified)\b/i, industry: 'logistics', label: 'supply chain credential', boost: 12 },
+  { pattern: /\b(real estate license|brokers license|ccim|nmls|crs\b|gri\b)\b/i, industry: 'real_estate', label: 'real estate credential', boost: 12 },
+  { pattern: /\b(cpcu|fcas|acas|fsa\b|asa\b|insurance license)\b/i, industry: 'insurance', label: 'insurance credential', boost: 12 },
+  { pattern: /\b(cfre|grant professional certified)\b/i, industry: 'nonprofit', label: 'fundraising credential', boost: 12 },
+  { pattern: /\b(atp certificate|commercial pilot license|cfi\b|cfii|a&p license|faa certificate)\b/i, industry: 'aviation', label: 'aviation credential', boost: 14 },
+  { pattern: /\b(journeyman license|master electrician|epa 608|aws certified welder|nccer|ase certified|nate certified)\b/i, industry: 'skilled_trades', label: 'trade credential', boost: 14 },
+  { pattern: /\b(nabcep|nerc certification|iwcf|h2s alive)\b/i, industry: 'energy', label: 'energy credential', boost: 12 },
+  { pattern: /\b(teaching license|teaching credential|state certified teacher|praxis)\b/i, industry: 'education', label: 'teaching credential', boost: 14 },
+];
+
+function applyCertLocks(scores: Array<{ industry: string; score: number; signals: string[] }>, resumeText: string): void {
+  const text = resumeText.toLowerCase();
+  for (const lock of CERT_LOCKS) {
+    if (lock.pattern.test(text)) {
+      const entry = scores.find(s => s.industry === lock.industry);
+      if (entry) {
+        entry.score += lock.boost;
+        entry.signals.unshift(`Cert-lock: ${lock.label} (+${lock.boost})`);
+      } else {
+        scores.push({ industry: lock.industry, score: lock.boost, signals: [`Cert-lock: ${lock.label}`] });
+      }
+      console.log(`[INDUSTRY-DETECTION] Cert-lock applied: ${lock.label} → ${lock.industry} (+${lock.boost})`);
+    }
+  }
+}
 
 /**
  * Check if any job title on the resume matches a role-lock pattern.
@@ -2264,6 +2667,16 @@ const REQUIRED_ANCHORS: Record<string, string[]> = {
   retail: ['retail', 'store', 'sales', 'customer', 'inventory', 'merchandise', 'floor'],
   hospitality: ['hotel', 'guest', 'hospitality', 'food', 'beverage', 'restaurant', 'catering', 'reservations'],
   government: ['policy', 'government', 'federal', 'public', 'regulation', 'agency', 'compliance'],
+  cybersecurity: ['security', 'threat', 'vulnerability', 'incident', 'soc', 'siem', 'penetration', 'cyber'],
+  logistics: ['supply chain', 'logistics', 'warehouse', 'inventory', 'freight', 'shipping', 'distribution', 'procurement'],
+  real_estate: ['real estate', 'property', 'listings', 'escrow', 'leasing', 'tenants', 'closings', 'mortgage'],
+  insurance: ['insurance', 'claims', 'underwriting', 'policies', 'premiums', 'coverage', 'actuarial'],
+  nonprofit: ['nonprofit', 'non-profit', 'fundraising', 'grants', 'donors', 'volunteers', 'mission', 'philanthropy'],
+  biotech: ['lab', 'laboratory', 'research', 'assay', 'clinical', 'scientific', 'biology', 'samples', 'protocol'],
+  aviation: ['aircraft', 'flight', 'aviation', 'faa', 'pilot', 'airline', 'airport', 'airframe'],
+  energy: ['energy', 'oil', 'gas', 'power', 'solar', 'wind', 'utility', 'grid', 'drilling', 'pipeline'],
+  skilled_trades: ['electrical', 'plumbing', 'hvac', 'welding', 'construction', 'maintenance', 'installation', 'repair', 'trade'],
+  customer_success: ['customer', 'support', 'tickets', 'service', 'csat', 'help desk', 'resolution'],
 };
 
 function checkRequiredAnchors(industry: string, resumeText: string): boolean {
@@ -2379,6 +2792,37 @@ export function detectIndustry(
     }
     scores.sort((a, b) => b.score - a.score);
     console.log(`[INDUSTRY-DETECTION] Role-lock applied: "${roleLocks.matchedTitle}" → ${roleLocks.industry}`);
+  }
+
+  // === CERTIFICATION-BASED LOCKING ===
+  // Licenses (RN, CPA, PE, CISSP…) are near-unambiguous anchors — large boost.
+  applyCertLocks(scores, resumeText);
+  scores.sort((a, b) => b.score - a.score);
+
+  // === JD-FIRST INDUSTRY OVERRIDE ===
+  // When a job description is provided, the TARGET role's industry should anchor
+  // the analysis — a teacher applying to an edtech PM role should be analyzed
+  // against PM expectations, not education. Compute the JD's own top industry;
+  // if it's strong and differs from the resume's top, boost it heavily.
+  let jdIndustry: string | undefined;
+  if (jobDescriptionText && jobDescriptionText.trim().length > 100) {
+    let jdTop: { industry: string; score: number } | null = null;
+    for (const industry of Object.keys(INDUSTRY_KEYWORDS)) {
+      const r = calculateJobPostingScore(jobDescriptionText, industry);
+      if (!jdTop || r.score > jdTop.score) jdTop = { industry, score: r.score };
+    }
+    if (jdTop && jdTop.score >= 5) {
+      jdIndustry = jdTop.industry;
+      if (jdTop.industry !== scores[0].industry && !roleLocks) {
+        const entry = scores.find(s => s.industry === jdTop!.industry);
+        if (entry) {
+          entry.score += 10;
+          entry.signals.unshift(`JD-first anchor: target role is ${jdTop.industry} (+10)`);
+        }
+        scores.sort((a, b) => b.score - a.score);
+        console.log(`[INDUSTRY-DETECTION] JD-first anchor: target role industry "${jdTop.industry}" (JD score ${jdTop.score})`);
+      }
+    }
   }
 
   // === FIX #1: THIN RESUME BRANCH ===
@@ -2525,6 +2969,21 @@ export function detectIndustry(
   // === SUB-ROLE DETECTION ===
   const subRole = detectSubRole(finalIndustry, resumeText);
 
+  // === SUB-INDUSTRY TAXONOMY ===
+  const subIndustry = detectSubIndustry(finalIndustry, resumeText) ?? undefined;
+
+  // === HYBRID INDUSTRY BLEND ===
+  // When a strong secondary exists, express the split as percentages so the
+  // report can say "reads 60% data / 40% marketing".
+  let industryBlend: { primaryPct: number; secondaryPct: number } | undefined;
+  if (secondaryIndustry && secondaryScore && finalScore > 0) {
+    const total = finalScore + secondaryScore;
+    industryBlend = {
+      primaryPct: Math.round((finalScore / total) * 100),
+      secondaryPct: Math.round((secondaryScore / total) * 100),
+    };
+  }
+
   // === TECH STACK EXTRACTION (tech-family industries only) ===
   const isTechFamily = ['technology', 'machine_learning', 'data_engineering', 'data_science'].includes(finalIndustry);
   const techStack = isTechFamily ? extractTechStack(resumeText) : undefined;
@@ -2550,6 +3009,9 @@ export function detectIndustry(
     subRole,
     techStack,
     educationSignals: educationSignalStrings.length > 0 ? educationSignalStrings : undefined,
+    subIndustry,
+    jdIndustry,
+    industryBlend,
   };
 }
 
@@ -2562,6 +3024,9 @@ export function formatDetectionForPrompt(result: DetectionResult): string {
     : '';
     
   const subRoleNote = result.subRole ? `\n- Detected Sub-Role: ${result.subRole}` : '';
+  const subIndustryNote = result.subIndustry ? `\n- Sub-Industry Specialization: ${result.subIndustry.label} (signals: ${result.subIndustry.matchedSignals.slice(0, 4).join(', ')}) — tailor keywords, benchmarks, and advice to this specialization, not the broad industry.` : '';
+  const jdIndustryNote = result.jdIndustry && result.jdIndustry !== result.industry ? `\n- TARGET ROLE INDUSTRY (from job description): ${result.jdIndustry} — the candidate is applying INTO this field. Frame gaps and advice as a transition toward ${result.jdIndustry} expectations.` : '';
+  const blendNote = result.industryBlend && result.secondaryIndustry ? `\n- Industry Blend: resume reads ~${result.industryBlend.primaryPct}% ${result.industry} / ~${result.industryBlend.secondaryPct}% ${result.secondaryIndustry}.` : '';
   const techStackNote = result.techStack && result.techStack.length > 0 ? `\n- Tech Stack Detected: ${result.techStack.join(', ')} — use these specific technologies when suggesting keywords or rewrites` : '';
   const eduNote = result.educationSignals && result.educationSignals.length > 0 ? `\n- Education Signals: ${result.educationSignals.join('; ')}` : '';
 
@@ -2570,7 +3035,7 @@ export function formatDetectionForPrompt(result: DetectionResult): string {
 - Detected Industry: ${result.industry.toUpperCase()}
 - Confidence: ${result.confidence}
 - Score: ${result.score.toFixed(1)}
-- Key Signals: ${result.signals.join('; ')}${subRoleNote}${techStackNote}${eduNote}${multiIndustryNote}
+- Key Signals: ${result.signals.join('; ')}${subRoleNote}${subIndustryNote}${jdIndustryNote}${blendNote}${techStackNote}${eduNote}${multiIndustryNote}
 ${result.alternativeIndustries.length > 0 ? `- Alternative industries: ${result.alternativeIndustries.map(a => `${a.industry}(${a.score.toFixed(1)})${a.reason ? ` — ${a.reason}` : ''}`).join(', ')}` : ''}
 
 CRITICAL INSTRUCTION: The pre-detection algorithm has analyzed job titles, keyword frequency, section weights, co-occurrence patterns, and education credentials.

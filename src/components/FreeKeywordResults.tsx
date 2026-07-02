@@ -6,7 +6,7 @@ import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useTodayScanCount } from "@/hooks/use-shared-data";
 import { useABTest } from "@/hooks/use-ab-test";
 import { 
-  Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, 
+  Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, ListChecks,
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
   TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket,
@@ -744,6 +744,20 @@ interface FreeKeywordResultsProps {
   titleLevelMismatch?: { detected: boolean; claimedLevel: string; bulletLevel: string; icVerbs: string[]; tip: string };
   toneAudit?: { passiveCount: number; activeCount: number; firstPersonCount: number; passiveRatio: number; verdict: 'too_passive' | 'mixed' | 'active' };
   sectionWordCounts?: Record<string, { current: number; idealMin: number; idealMax: number; verdict: 'too_few' | 'ideal' | 'too_many' }>;
+  // Personalization & coverage batch
+  subIndustry?: { id: string; label: string; matchedSignals: string[] };
+  jdTargetIndustry?: string;
+  industryBlend?: { primary: string; secondary: string; primaryPct: number; secondaryPct: number };
+  interviewLikelihood?: { band: 'strong' | 'moderate' | 'low' | 'very_low'; composite: number; topFactor: string };
+  competitorSilhouette?: {
+    archetype: { quantifiedBullets: number; leadershipSignals: number; keywordCoveragePct: number };
+    user: { quantifiedBullets: number; leadershipSignals: number; keywordCoveragePct: number };
+  };
+  fixRoadmap?: {
+    steps: Array<{ order: number; step: string; minutes: number; scoreImpact: number; projectedScoreAfter: number }>;
+    totalMinutes: number;
+    finalProjectedScore: number;
+  };
 }
 
 export function FreeKeywordResults({
@@ -837,6 +851,12 @@ export function FreeKeywordResults({
   titleLevelMismatch,
   toneAudit,
   sectionWordCounts,
+  subIndustry,
+  jdTargetIndustry,
+  industryBlend,
+  interviewLikelihood,
+  competitorSilhouette,
+  fixRoadmap,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1562,6 +1582,36 @@ export function FreeKeywordResults({
               We detected <span className="font-medium text-foreground">{effectiveIndustry.replace(/_/g, ' ')}</span> based on limited signals. If that's wrong, use the industry selector above — it changes every recommendation below.
             </p>
           </div>
+        </div>
+      )}
+
+      {/* ── Specialization, hybrid blend & target-industry context ── */}
+      {(subIndustry || industryBlend || jdTargetIndustry) && (
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 mb-5 space-y-2">
+          {subIndustry && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary font-semibold">
+                Specialization: {subIndustry.label}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Detected from: {subIndustry.matchedSignals.slice(0, 3).join(', ')}
+              </span>
+            </div>
+          )}
+          {industryBlend && (
+            <p className="text-xs text-foreground/80">
+              {candidateName ? `${candidateName.split(' ')[0]}, your` : 'Your'} resume reads as{' '}
+              <span className="font-semibold text-foreground">{industryBlend.primaryPct}% {industryBlend.primary.replace(/_/g, ' ')}</span>
+              {' / '}
+              <span className="font-semibold text-foreground">{industryBlend.secondaryPct}% {industryBlend.secondary.replace(/_/g, ' ')}</span>
+              {' '}— recruiters in both fields will consider you, and the advice below covers both.
+            </p>
+          )}
+          {jdTargetIndustry && (
+            <p className="text-xs text-foreground/80">
+              The job you're targeting sits in <span className="font-semibold text-foreground">{jdTargetIndustry.replace(/_/g, ' ')}</span> — gaps below are framed as a transition into that field.
+            </p>
+          )}
         </div>
       )}
 
@@ -3512,6 +3562,71 @@ export function FreeKeywordResults({
         </div>
       )}
 
+      {/* ── Interview Likelihood ─────────────────────────────────────────────── */}
+      {interviewLikelihood && (
+        <div className={cn(
+          "rounded-2xl border p-5",
+          interviewLikelihood.band === 'strong' ? "border-success/30 bg-success/5" :
+          interviewLikelihood.band === 'moderate' ? "border-primary/30 bg-primary/5" :
+          "border-destructive/30 bg-destructive/5"
+        )}>
+          <div className="flex items-center gap-2 mb-2">
+            <Target className="w-4 h-4 text-foreground" />
+            <h4 className="font-semibold text-foreground text-sm">Interview Callback Likelihood</h4>
+            <span className={cn(
+              "ml-auto text-xs px-2 py-0.5 rounded-full font-semibold capitalize",
+              interviewLikelihood.band === 'strong' ? "bg-success/15 text-success" :
+              interviewLikelihood.band === 'moderate' ? "bg-primary/15 text-primary" :
+              "bg-destructive/15 text-destructive"
+            )}>
+              {interviewLikelihood.band.replace('_', ' ')}
+            </span>
+          </div>
+          <div className="h-2 rounded-full bg-muted overflow-hidden mb-2">
+            <div
+              className={cn(
+                "h-full rounded-full",
+                interviewLikelihood.band === 'strong' ? "bg-success" :
+                interviewLikelihood.band === 'moderate' ? "bg-primary" : "bg-destructive"
+              )}
+              style={{ width: `${interviewLikelihood.composite}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Biggest factor:</span> {interviewLikelihood.topFactor}
+          </p>
+        </div>
+      )}
+
+      {/* ── Competitor Silhouette ────────────────────────────────────────────── */}
+      {competitorSilhouette && (
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h4 className="font-semibold text-foreground text-sm mb-1">You vs. a Top-Quartile Candidate</h4>
+          <p className="text-xs text-muted-foreground mb-3">
+            What shortlisted {industry.replace(/_/g, ' ')} resumes typically show, next to {candidateName ? `${candidateName.split(' ')[0]}'s` : 'your'} resume today.
+          </p>
+          <div className="space-y-3">
+            {([
+              { label: 'Quantified bullets', them: competitorSilhouette.archetype.quantifiedBullets, you: competitorSilhouette.user.quantifiedBullets, max: 12 },
+              { label: 'Leadership signals', them: competitorSilhouette.archetype.leadershipSignals, you: competitorSilhouette.user.leadershipSignals, max: 8 },
+              { label: 'Keyword coverage %', them: competitorSilhouette.archetype.keywordCoveragePct, you: competitorSilhouette.user.keywordCoveragePct, max: 100 },
+            ]).map((row, i) => (
+              <div key={i} className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-foreground font-medium">{row.label}</span>
+                  <span className="text-muted-foreground">You: <span className={cn("font-semibold", row.you >= row.them ? "text-success" : "text-destructive")}>{row.you}</span> · Top quartile: <span className="font-semibold text-foreground">{row.them}</span></span>
+                </div>
+                <div className="relative h-2 rounded-full bg-muted overflow-hidden">
+                  <div className="absolute h-full rounded-full bg-primary/80" style={{ width: `${Math.min((row.you / row.max) * 100, 100)}%` }} />
+                  <div className="absolute h-full w-0.5 bg-foreground/70" style={{ left: `${Math.min((row.them / row.max) * 100, 100)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-2">Dark marker = top-quartile benchmark.</p>
+        </div>
+      )}
+
       {/* ── Skill Gap Heat Map ───────────────────────────────────────────────── */}
       {keywords.length > 0 && keywords.some(k => k.frequencyWeight != null) && (
         <div className="rounded-2xl border border-border bg-card p-5">
@@ -3727,6 +3842,38 @@ export function FreeKeywordResults({
             <h4 className="font-semibold text-foreground text-sm">How a Recruiter Sees You (6-Second Scan)</h4>
           </div>
           <p className="text-sm text-foreground/90 leading-relaxed italic">"{recruiterFirstPassSummary}"</p>
+        </div>
+      )}
+
+      {/* ── Fix Roadmap ──────────────────────────────────────────────────────── */}
+      {fixRoadmap && fixRoadmap.steps.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <ListChecks className="w-4 h-4 text-primary" />
+            <h4 className="font-semibold text-foreground text-sm">
+              {candidateName ? `${candidateName.split(' ')[0]}'s` : 'Your'} {fixRoadmap.totalMinutes}-Minute Fix Plan
+            </h4>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Work top to bottom — ordered by points gained per minute. Finishing all steps takes you from {atsScoreEstimate} to ~{fixRoadmap.finalProjectedScore}.
+          </p>
+          <div className="space-y-2">
+            {fixRoadmap.steps.map((s) => (
+              <div key={s.order} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30 border border-border/50">
+                <div className="shrink-0 w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-bold">
+                  {s.order}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-foreground">{s.step}</p>
+                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                    <span>⏱️ ~{s.minutes} min</span>
+                    <span className="px-1.5 py-0.5 rounded-full bg-success/10 text-success font-semibold">+{s.scoreImpact} pts</span>
+                    <span className="ml-auto">→ score ~{s.projectedScoreAfter}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

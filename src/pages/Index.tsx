@@ -278,6 +278,20 @@ interface FreeKeywordResult {
   titleLevelMismatch?: { detected: boolean; claimedLevel: string; bulletLevel: string; icVerbs: string[]; tip: string } | null;
   toneAudit?: { passiveCount: number; activeCount: number; firstPersonCount: number; passiveRatio: number; verdict: 'too_passive' | 'mixed' | 'active' };
   sectionWordCounts?: Record<string, { current: number; idealMin: number; idealMax: number; verdict: 'too_few' | 'ideal' | 'too_many' }>;
+  // Personalization & coverage batch
+  subIndustry?: { id: string; label: string; matchedSignals: string[] } | null;
+  jdTargetIndustry?: string | null;
+  industryBlend?: { primary: string; secondary: string; primaryPct: number; secondaryPct: number } | null;
+  interviewLikelihood?: { band: 'strong' | 'moderate' | 'low' | 'very_low'; composite: number; topFactor: string };
+  competitorSilhouette?: {
+    archetype: { quantifiedBullets: number; leadershipSignals: number; keywordCoveragePct: number };
+    user: { quantifiedBullets: number; leadershipSignals: number; keywordCoveragePct: number };
+  };
+  fixRoadmap?: {
+    steps: Array<{ order: number; step: string; minutes: number; scoreImpact: number; projectedScoreAfter: number }>;
+    totalMinutes: number;
+    finalProjectedScore: number;
+  };
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
@@ -849,6 +863,13 @@ const Index = () => {
           titleLevelMismatch: (result as any).titleLevelMismatch,
           toneAudit: (result as any).toneAudit,
           sectionWordCounts: (result as any).sectionWordCounts,
+          // Personalization & coverage batch
+          subIndustry: (result as any).subIndustry,
+          jdTargetIndustry: (result as any).jdTargetIndustry,
+          industryBlend: (result as any).industryBlend,
+          interviewLikelihood: (result as any).interviewLikelihood,
+          competitorSilhouette: (result as any).competitorSilhouette,
+          fixRoadmap: (result as any).fixRoadmap,
         });
 
         // Track scan completed in funnel
@@ -990,6 +1011,13 @@ const Index = () => {
           titleLevelMismatch: data.titleLevelMismatch,
           toneAudit: data.toneAudit,
           sectionWordCounts: data.sectionWordCounts,
+          // Personalization & coverage batch
+          subIndustry: data.subIndustry,
+          jdTargetIndustry: data.jdTargetIndustry,
+          industryBlend: data.industryBlend,
+          interviewLikelihood: data.interviewLikelihood,
+          competitorSilhouette: data.competitorSilhouette,
+          fixRoadmap: data.fixRoadmap,
         });
 
         toast({
@@ -1490,6 +1518,12 @@ const Index = () => {
                 titleLevelMismatch={freeKeywordResult.titleLevelMismatch ?? undefined}
                 toneAudit={freeKeywordResult.toneAudit}
                 sectionWordCounts={freeKeywordResult.sectionWordCounts}
+                subIndustry={freeKeywordResult.subIndustry ?? undefined}
+                jdTargetIndustry={freeKeywordResult.jdTargetIndustry ?? undefined}
+                industryBlend={freeKeywordResult.industryBlend ?? undefined}
+                interviewLikelihood={freeKeywordResult.interviewLikelihood}
+                competitorSilhouette={freeKeywordResult.competitorSilhouette}
+                fixRoadmap={freeKeywordResult.fixRoadmap}
               />
               
               {/* Score-based package recommendation */}

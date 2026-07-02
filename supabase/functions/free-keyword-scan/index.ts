@@ -933,6 +933,9 @@ const INDUSTRY_ATS_BENCHMARKS: Record<string, number> = {
   sales: 64, hr: 67, education: 63, manufacturing: 65, engineering: 67,
   creative: 60, product_management: 69, retail: 62, hospitality: 60,
   government: 65, general: 65,
+  cybersecurity: 69, logistics: 64, real_estate: 61, insurance: 66,
+  nonprofit: 62, biotech: 68, aviation: 66, energy: 65,
+  skilled_trades: 58, customer_success: 62,
 };
 
 /**
@@ -1383,6 +1386,33 @@ narrative text is the correct and expected output for a weak resume.
 4. Write in a WARM, ENCOURAGING yet HONEST tone
 5. Acknowledge STRENGTHS before improvements
 6. Frame gaps as OPPORTUNITIES with clear paths forward
+7. VERBATIM QUOTE RULE: Every red flag, weak phrase, quick win, and rewrite MUST quote at least one
+   exact phrase from the resume (in quotation marks). A finding that could apply to any resume is a
+   FAILED finding — rewrite it until it cites their actual words. Example: NOT "your bullets lack
+   metrics" but "your bullet 'Managed social media accounts' names no audience size, growth, or
+   engagement numbers."
+8. SENIORITY-CALIBRATED TONE: Match advice to the detected seniority level.
+   - executive: never suggest "add more keywords" — focus on scope, P&L, board-level outcomes,
+     strategic narrative. Assume they know resume basics.
+   - senior: focus on leadership evidence, cross-functional impact, and differentiation from peers.
+   - mid: balance keyword coverage with impact framing; emphasize promotion-readiness signals.
+   - entry: be concrete and instructional — explain WHY each fix matters, suggest projects,
+     coursework, and internship framing. Never ask about P&L, direct reports, or budget ownership.
+9. ROLE-SPECIFIC FRAMING: Every section header context and advice sentence should reference their
+   DETECTED ROLE, not the generic industry (e.g., "for a Senior Data Engineer resume" not "for a
+   technology resume").
+10. CAREER-SITUATION DEEP TEMPLATES: When careerSituation is not "standard", the tailoredAdvice
+   MUST follow the situation-specific playbook:
+   - military_transition: include a skills-translation mapping (military term → civilian equivalent
+     found in or implied by their resume), flag jargon like MOS codes/unit names that recruiters
+     won't parse, and lead with clearance value if present.
+   - career_changer: include a transferable-skills mapping (old-field skill → new-field application),
+     identify their strongest "bridge" experience, and recommend a summary rewrite that frames the
+     change as intentional.
+   - returning_to_workforce: address the gap directly with framing language, prioritize recency
+     signals (certs, courses, freelance), and advise a skills-forward format.
+   - recent_grad: elevate projects/internships/coursework to experience-level treatment, and flag
+     any high-school-era content to cut.
 
 **CRITICAL: READ THE ENTIRE RESUME CAREFULLY BEFORE RESPONDING**
 Before generating ANY output, complete these steps IN ORDER:
@@ -2880,6 +2910,100 @@ ${resumeText.substring(0, 20000)}
       return result;
     })();
     responseData.sectionWordCounts = sectionWordCounts;
+
+    // ── Personalization & coverage batch ────────────────────────────────────
+
+    // Sub-industry specialization + JD target industry + hybrid blend
+    responseData.subIndustry = industryDetection.subIndustry ?? null;
+    responseData.jdTargetIndustry = industryDetection.jdIndustry && industryDetection.jdIndustry !== finalIndustry
+      ? industryDetection.jdIndustry : null;
+    responseData.industryBlend = industryDetection.industryBlend && industryDetection.secondaryIndustry
+      ? {
+          primary: finalIndustry,
+          secondary: industryDetection.secondaryIndustry,
+          primaryPct: industryDetection.industryBlend.primaryPct,
+          secondaryPct: industryDetection.industryBlend.secondaryPct,
+        }
+      : null;
+
+    // Interview likelihood — one band synthesized from pass rate, percentile, red flags
+    const interviewLikelihood = (() => {
+      const criticalFlags = sortedRedFlags.filter((f: { severity?: string }) => f.severity === 'critical').length;
+      // Weighted composite 0–100
+      const composite = Math.round(
+        applicationPassRate * 0.45 +
+        peerPercentile * 0.35 +
+        Math.max(0, 20 - criticalFlags * 8)
+      );
+      const band = composite >= 70 ? 'strong' : composite >= 50 ? 'moderate' : composite >= 30 ? 'low' : 'very_low';
+      let topFactor: string;
+      if (criticalFlags > 0) topFactor = `${criticalFlags} critical red flag${criticalFlags > 1 ? 's' : ''} dragging you down`;
+      else if (applicationPassRate < 50) topFactor = 'ATS auto-rejection risk is your biggest blocker';
+      else if (peerPercentile < 40) topFactor = 'keyword coverage trails your peer group';
+      else topFactor = 'strong fundamentals — polish quantification to stand out';
+      return { band, composite, topFactor };
+    })();
+    responseData.interviewLikelihood = interviewLikelihood;
+
+    // Competitor silhouette — top-quartile archetype vs this resume
+    const competitorSilhouette = (() => {
+      const bullets = resumeText.split('\n').filter(l => /^[•\-*‣◦⁃∙]/.test(l.trim()));
+      const quantifiedBullets = bullets.filter(b => /\d/.test(b)).length;
+      const LEADERSHIP_VERBS = /\b(led|managed|directed|mentored|coached|owned|drove|spearheaded|oversaw|headed|built the team|hired)\b/gi;
+      const leadershipSignals = (resumeText.match(LEADERSHIP_VERBS) || []).length;
+      const kwList = INDUSTRY_KEYWORDS[finalIndustry];
+      const lower = resumeText.toLowerCase();
+      const kwCoverage = kwList
+        ? Math.round((kwList.primary.filter((kw: string) => lower.includes(kw)).length / Math.max(kwList.primary.length, 1)) * 100)
+        : 50;
+      return {
+        archetype: {
+          quantifiedBullets: 8,
+          leadershipSignals: 3,
+          keywordCoveragePct: 70,
+        },
+        user: {
+          quantifiedBullets,
+          leadershipSignals: Math.min(leadershipSignals, 15),
+          keywordCoveragePct: kwCoverage,
+        },
+      };
+    })();
+    responseData.competitorSilhouette = competitorSilhouette;
+
+    // Fix roadmap — one ordered work plan combining quick wins + weak bullets + keywords
+    const fixRoadmap = (() => {
+      const steps: Array<{ step: string; minutes: number; scoreImpact: number }> = [];
+      for (const w of sortedQuickWins.slice(0, 3) as Array<{ fix: string; timeEstimate?: string; scoreImpact?: number }>) {
+        const mins = parseInt((w.timeEstimate || '10').match(/\d+/)?.[0] || '10', 10);
+        steps.push({ step: w.fix, minutes: Math.min(mins, 30), scoreImpact: w.scoreImpact ?? 4 });
+      }
+      if (bulletAnalysis.weakBullets.length > 0) {
+        steps.push({
+          step: `Rewrite your ${Math.min(bulletAnalysis.weakBullets.length, 3)} weakest bullets using the before/after examples above`,
+          minutes: 15,
+          scoreImpact: 5,
+        });
+      }
+      const kwNames = (keywords as Array<{ keyword: string }>).slice(0, 3).map(k => k.keyword);
+      if (kwNames.length > 0) {
+        steps.push({
+          step: `Work "${kwNames.join('", "')}" into your summary and experience bullets`,
+          minutes: 10,
+          scoreImpact: 6,
+        });
+      }
+      // Order by impact-per-minute, cap at 5 steps, add cumulative projection
+      steps.sort((a, b) => (b.scoreImpact / b.minutes) - (a.scoreImpact / a.minutes));
+      let cumulative = analysis.atsScoreEstimate;
+      const plan = steps.slice(0, 5).map((s, i) => {
+        cumulative = Math.min(95, cumulative + s.scoreImpact);
+        return { order: i + 1, ...s, projectedScoreAfter: cumulative };
+      });
+      const totalMinutes = plan.reduce((sum, s) => sum + s.minutes, 0);
+      return { steps: plan, totalMinutes, finalProjectedScore: cumulative };
+    })();
+    responseData.fixRoadmap = fixRoadmap;
 
     // Log successful completion metric
     logScanMetric(metricCtx, 'completed', {
