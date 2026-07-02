@@ -87,7 +87,7 @@ const formatIndustryName = (ind: string): string => {
 };
 
 // Get available industries for correction
-const getAvailableIndustries = (): { value: string; label: string }[] => {
+export const getAvailableIndustries = (): { value: string; label: string }[] => {
   const industries = Object.keys(INDUSTRY_KEYWORDS).map(key => ({
     value: key,
     label: INDUSTRY_KEYWORDS[key].name

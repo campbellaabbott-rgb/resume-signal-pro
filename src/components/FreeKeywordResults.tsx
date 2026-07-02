@@ -42,6 +42,7 @@ import { ShareableScoreCard } from "./ShareableScoreCard";
 import { ResumeXRay } from "./ResumeXRay";
 import { EmailReportCapture } from "./EmailReportCapture";
 import { CardErrorBoundary } from "./CardErrorBoundary";
+import { getAvailableIndustries } from "./IndustryConfidenceIndicator";
 import { diffWords } from "@/lib/diff-words";
 import { ScoreHero } from "./scorecard/ScoreHero";
 import { MetricCardsGrid } from "./scorecard/MetricCardsGrid";
@@ -776,6 +777,10 @@ export interface FreeKeywordResultsProps {
     missing: string[];
   };
   resumeTriggeredQuestions?: Array<{ question: string; trigger: string; howToPrepare: string }>;
+  /** User-stated situation from the pre-scan intent capture */
+  scanSituation?: string;
+  /** Persist confirmed labels (industry/experience) to the user's remembered context */
+  onContextConfirm?: (ctx: { confirmedIndustry?: string | null; confirmedExperience?: string | null }) => void;
   recruiterPanel?: {
     screener: { verdict: string; wouldPass?: boolean };
     hiringManager: { verdict: string; biggestDoubt?: string };
@@ -886,6 +891,8 @@ export function FreeKeywordResults({
   executiveScopeCheck,
   resumeTriggeredQuestions,
   recruiterPanel,
+  scanSituation,
+  onContextConfirm,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1172,7 +1179,27 @@ export function FreeKeywordResults({
   // Safe defaults
   const resumeLength = resumeLengthProp || { currentPages: 1, recommendedPages: 1, verdict: "just_right" as const };
   const wordCount = wordCountProp || { current: 500, idealMin: 400, idealMax: 600, verdict: "ideal" as const };
-  const experienceLevel = experienceLevelProp || { level: "mid" as const, yearsEstimate: "3-5 years" };
+  const [correctedExperience, setCorrectedExperience] = useState<string | null>(null);
+  const experienceLevelBase = experienceLevelProp || { level: "mid" as const, yearsEstimate: "3-5 years" };
+  const experienceLevel = correctedExperience
+    ? { ...experienceLevelBase, level: correctedExperience as typeof experienceLevelBase.level }
+    : experienceLevelBase;
+
+  const confirmExperience = async (level: string) => {
+    if (level === experienceLevelBase.level) { setCorrectedExperience(null); return; }
+    setCorrectedExperience(level);
+    onContextConfirm?.({ confirmedExperience: level });
+    try {
+      await supabase.rpc('log_seniority_correction' as never, {
+        p_detected_level: experienceLevelBase.level,
+        p_corrected_level: level,
+        p_detected_years: experienceLevelBase.yearsEstimate ?? null,
+        p_industry: effectiveIndustry,
+        p_resume_text_length: resumeText?.length ?? null,
+        p_visitor_id: localStorage.getItem('ab_visitor_id') || null,
+      } as never);
+    } catch { /* non-blocking */ }
+  };
 
   const computedTotalYears = deriveTotalExperienceText();
   const computedQuantificationScore = !quantificationScoreProp && resumeText ? computeQuantificationFromText() : null;
@@ -1570,6 +1597,73 @@ export function FreeKeywordResults({
           </div>
         </div>
       )}
+
+      {/* ── Detection confirmation strip — confirmed labels are 100% accurate ── */}
+      <div className="rounded-xl border border-border/60 bg-card/60 px-4 py-2.5 mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+        <span className="text-muted-foreground">We read this as:</span>
+        <label className="flex items-center gap-1.5">
+          <span className="text-muted-foreground">Industry</span>
+          <select
+            value={effectiveIndustry}
+            onChange={(e) => { handleIndustryChange(e.target.value); onContextConfirm?.({ confirmedIndustry: e.target.value }); }}
+            className="bg-transparent border border-border/60 rounded-md px-1.5 py-0.5 text-foreground font-medium capitalize cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40"
+            aria-label="Confirm or correct detected industry"
+          >
+            {getAvailableIndustries().map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </label>
+        <label className="flex items-center gap-1.5">
+          <span className="text-muted-foreground">Level</span>
+          <select
+            value={experienceLevel.level}
+            onChange={(e) => confirmExperience(e.target.value)}
+            className="bg-transparent border border-border/60 rounded-md px-1.5 py-0.5 text-foreground font-medium capitalize cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40"
+            aria-label="Confirm or correct detected experience level"
+          >
+            <option value="entry">Entry</option>
+            <option value="mid">Mid</option>
+            <option value="senior">Senior</option>
+            <option value="executive">Executive</option>
+          </select>
+        </label>
+        {experienceLevel.yearsEstimate && <span className="text-muted-foreground">~{experienceLevel.yearsEstimate}</span>}
+        <span className="text-muted-foreground/60 ml-auto hidden sm:inline">Corrections retrain our detection</span>
+      </div>
+
+      {/* ── Intent-adaptive spotlight — the report leads with what THEY came for ── */}
+      {scanSituation && (() => {
+        const spotlight = ({
+          actively_applying: {
+            title: "🎯 You're actively applying — here's your fastest path",
+            body: fixRoadmap && fixRoadmap.steps.length > 0
+              ? `Your ${fixRoadmap.totalMinutes}-minute fix plan below takes this resume from ${atsScoreEstimate} to ~${fixRoadmap.finalProjectedScore}. Do it before your next application, then check the interview questions your resume will trigger.`
+              : "Start with the fix plan and the interview questions your resume will trigger — both below.",
+          },
+          exploring: {
+            title: "🧭 You're exploring — here's where you stand",
+            body: peerPercentile != null
+              ? `You're at the ${peerPercentile}th percentile for ${effectiveIndustry.replace(/_/g, " ")} candidates. The market intelligence and career trajectory sections below show what's rising in your field and where your profile points next.`
+              : "The market intelligence and career trajectory sections below show what's rising in your field and where your profile points next.",
+          },
+          career_change: {
+            title: "🔄 You're changing careers — framing is everything",
+            body: dualIndustryComparison
+              ? `Your resume reads two ways — see the side-by-side comparison below to pick your stronger lane, then use the transition advice to reframe your transferable experience.`
+              : "The career-situation advice below focuses on reframing your transferable experience for the new field.",
+          },
+          first_job: {
+            title: "🌱 First job — your projects ARE your experience",
+            body: "Advice below is calibrated for entry level: elevating projects and internships, and the exact keywords entry screeners look for. Nobody expects P&L ownership — ignore any tool that does.",
+          },
+        } as Record<string, { title: string; body: string }>)[scanSituation];
+        if (!spotlight) return null;
+        return (
+          <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4 mb-4">
+            <p className="text-sm font-semibold text-foreground mb-1">{spotlight.title}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">{spotlight.body}</p>
+          </div>
+        );
+      })()}
 
       {/* Dashboard-style Score Hero */}
       <ScoreHero

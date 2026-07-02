@@ -323,6 +323,47 @@ const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx'
 const Index = () => {
   const { t } = useTranslation();
   const { session } = useAuth();
+  // Per-scan user context: stated intent + target role, confirmed labels.
+  const [scanContext, setScanContext] = useState<{
+    situation: string | null;
+    targetRole: string;
+    confirmedIndustry: string | null;
+    confirmedExperience: string | null;
+  }>({ situation: null, targetRole: "", confirmedIndustry: null, confirmedExperience: null });
+
+  // Signed-in users start already-calibrated: remembered context prefills the scan.
+  useEffect(() => {
+    if (!session) return;
+    supabaseClient
+      .from("user_profiles")
+      .select("situation, target_role, confirmed_industry, confirmed_experience")
+      .eq("user_id", session.user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setScanContext(prev => ({
+          situation: prev.situation ?? (data as { situation?: string }).situation ?? null,
+          targetRole: prev.targetRole || ((data as { target_role?: string }).target_role ?? ""),
+          confirmedIndustry: prev.confirmedIndustry ?? (data as { confirmed_industry?: string }).confirmed_industry ?? null,
+          confirmedExperience: prev.confirmedExperience ?? (data as { confirmed_experience?: string }).confirmed_experience ?? null,
+        }));
+      });
+  }, [session]);
+
+  const persistScanContext = (ctx: Partial<typeof scanContext>) => {
+    const next = { ...scanContext, ...ctx };
+    setScanContext(next);
+    if (session) {
+      supabaseClient.from("user_profiles").upsert({
+        user_id: session.user.id,
+        situation: next.situation,
+        target_role: next.targetRole || null,
+        confirmed_industry: next.confirmedIndustry,
+        confirmed_experience: next.confirmedExperience,
+        updated_at: new Date().toISOString(),
+      }).then(({ error }) => { if (error) console.warn("[ScanContext] persist failed:", error.message); });
+    }
+  };
   const [isLoading, setIsLoading] = useState(false);
   const [isFreeScanLoading, setIsFreeScanLoading] = useState(false);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
@@ -746,6 +787,12 @@ const Index = () => {
           jobDescriptionText: jobDescriptionText || undefined,
           honeypot,
           skipCache,
+          userContext: {
+            situation: scanContext.situation || undefined,
+            targetRole: scanContext.targetRole || undefined,
+            confirmedIndustry: scanContext.confirmedIndustry || undefined,
+            confirmedExperience: scanContext.confirmedExperience || undefined,
+          },
         });
 
         if (scanResult.error) {
@@ -1489,6 +1536,39 @@ const Index = () => {
           streamingProgress={streamingProgress}
         />
         
+        {/* Pre-scan intent capture — stated context beats inference */}
+        {(resumeText || selectedFile) && !freeKeywordResult && (
+          <section className="container max-w-2xl -mt-2 mb-6">
+            <div className="rounded-2xl border border-border bg-card/60 p-4">
+              <p className="text-xs font-semibold text-foreground mb-2">Make your scan specific to you <span className="text-muted-foreground font-normal">(optional, 5 seconds)</span></p>
+              <div className="flex flex-wrap gap-1.5 mb-2.5">
+                {([
+                  { id: "actively_applying", label: "🎯 Actively applying" },
+                  { id: "exploring", label: "🧭 Exploring options" },
+                  { id: "career_change", label: "🔄 Changing careers" },
+                  { id: "first_job", label: "🌱 First job" },
+                ]).map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => persistScanContext({ situation: scanContext.situation === opt.id ? null : opt.id })}
+                    className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${scanContext.situation === opt.id ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <input
+                value={scanContext.targetRole}
+                onChange={(e) => setScanContext(prev => ({ ...prev, targetRole: e.target.value }))}
+                onBlur={() => persistScanContext({})}
+                placeholder="Target role (e.g. Senior Data Engineer) — sharpens keywords & benchmarks"
+                maxLength={80}
+                className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </div>
+          </section>
+        )}
+
         {/* Mini Pricing Cards - Featured packages */}
         <MiniPricingCards />
 
@@ -1631,6 +1711,8 @@ const Index = () => {
                 executiveScopeCheck={freeKeywordResult.executiveScopeCheck ?? undefined}
                 resumeTriggeredQuestions={freeKeywordResult.resumeTriggeredQuestions}
                 recruiterPanel={freeKeywordResult.recruiterPanel ?? undefined}
+                scanSituation={scanContext.situation ?? undefined}
+                onContextConfirm={(ctx) => persistScanContext(ctx)}
               />
               </CardErrorBoundary>
               
