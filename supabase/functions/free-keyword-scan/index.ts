@@ -1,5 +1,5 @@
 const serve = (handler: (req: Request) => Response | Promise<Response>) => Deno.serve(handler);
-import { detectIndustry, formatDetectionForPrompt, buildDynamicCorrectionBoosts, INDUSTRY_KEYWORDS } from "./industry-detection.ts";
+import { detectIndustry, formatDetectionForPrompt, buildDynamicCorrectionBoosts, INDUSTRY_KEYWORDS, detectSubIndustry } from "./industry-detection.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import {
   detectCountryFromResume,
@@ -2776,10 +2776,14 @@ ${resumeText.substring(0, 20000)}
 
     // ── New reporting improvements ───────────────────────────────────────────
 
-    // 1. ATS Parse Preview — simulate what an ATS would extract
+    // 1. ATS Parse Preview — simulate what an ATS would extract.
+    // Strip decorative characters (icons, bullets, control chars) but KEEP all
+    // unicode letters — resumes in Spanish/German/Hindi etc. must stay readable.
     const atsParsedPreview = (() => {
       const cleaned = resumeText
-        .replace(/[^\x20-\x7E\n]/g, ' ')   // strip non-ASCII
+        .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, ' ') // emoji & symbol icons
+        .replace(/[•‣◦⁃∙▪►★☆✓✔]/g, '-')     // decorative bullets → plain dash
+        .replace(/[\x00-\x08\x0B-\x1F\x7F]/g, ' ') // control chars
         .replace(/\|/g, ' ')                // table separators
         .replace(/_{2,}/g, ' ')             // underline dividers
         .replace(/\t/g, ' ')               // tabs → space
@@ -2811,9 +2815,10 @@ ${resumeText.substring(0, 20000)}
     responseData.keywords = keywordsWithFreq;
 
     // 3. Peer percentile — where this score sits vs industry median
-    const benchmarkMedian = INDUSTRY_ATS_BENCHMARKS[finalIndustry] ?? 65;
+    // (benchmarkMedian name is taken by the prompt-anchor const in this same scope)
+    const percentileMedian = INDUSTRY_ATS_BENCHMARKS[finalIndustry] ?? 65;
     const stdDev = 12; // typical spread across candidates we've seen
-    const zScore = (analysis.atsScoreEstimate - benchmarkMedian) / stdDev;
+    const zScore = (analysis.atsScoreEstimate - percentileMedian) / stdDev;
     // Normal CDF approximation (Abramowitz & Stegun)
     const normalCDF = (z: number) => {
       const t = 1 / (1 + 0.2316419 * Math.abs(z));
@@ -2916,8 +2921,12 @@ ${resumeText.substring(0, 20000)}
 
     // ── Personalization & coverage batch ────────────────────────────────────
 
-    // Sub-industry specialization + JD target industry + hybrid blend
-    responseData.subIndustry = industryDetection.subIndustry ?? null;
+    // Sub-industry specialization + JD target industry + hybrid blend.
+    // Recompute against finalIndustry — the AI can override the server-detected
+    // industry, and the specialization must match what the report actually uses.
+    responseData.subIndustry = finalIndustry === industryDetection.industry
+      ? (industryDetection.subIndustry ?? null)
+      : (detectSubIndustry(finalIndustry, resumeText) ?? null);
     responseData.jdTargetIndustry = industryDetection.jdIndustry && industryDetection.jdIndustry !== finalIndustry
       ? industryDetection.jdIndustry : null;
     responseData.industryBlend = industryDetection.industryBlend && industryDetection.secondaryIndustry

@@ -1593,9 +1593,11 @@ export function FreeKeywordResults({
               <span className="text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary font-semibold">
                 Specialization: {subIndustry.label}
               </span>
-              <span className="text-xs text-muted-foreground">
-                Detected from: {subIndustry.matchedSignals.slice(0, 3).join(', ')}
-              </span>
+              {subIndustry.matchedSignals?.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  Detected from: {subIndustry.matchedSignals.slice(0, 3).join(', ')}
+                </span>
+              )}
             </div>
           )}
           {industryBlend && (
@@ -3539,8 +3541,8 @@ export function FreeKeywordResults({
                 "rounded-xl border p-3 text-center",
                 peerPercentile >= 60 ? "border-success/30 bg-success/5" : peerPercentile >= 40 ? "border-warning/30 bg-warning/5" : "border-destructive/30 bg-destructive/5"
               )}>
-                <p className="text-2xl font-bold text-foreground">{peerPercentile}<span className="text-sm font-normal text-muted-foreground">th</span></p>
-                <p className="text-xs text-muted-foreground mt-0.5">Percentile vs {industry} candidates</p>
+                <p className="text-2xl font-bold text-foreground">{peerPercentile}<span className="text-sm font-normal text-muted-foreground">{(() => { const v = peerPercentile % 100; if (v >= 11 && v <= 13) return 'th'; return ['th', 'st', 'nd', 'rd'][v % 10] ?? 'th'; })()}</span></p>
+                <p className="text-xs text-muted-foreground mt-0.5">Percentile vs {industry.replace(/_/g, ' ')} candidates</p>
                 <p className={cn("text-[10px] font-semibold mt-1", peerPercentile >= 60 ? "text-success" : peerPercentile >= 40 ? "text-warning" : "text-destructive")}>
                   {peerPercentile >= 70 ? "Top tier" : peerPercentile >= 50 ? "Above average" : peerPercentile >= 30 ? "Below average" : "Bottom tier"}
                 </p>

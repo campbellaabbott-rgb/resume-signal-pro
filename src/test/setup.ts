@@ -19,6 +19,11 @@ if (typeof window !== "undefined") {
 }
 import { readdirSync, unlinkSync } from "fs";
 
+// Initialize i18n with the bundled English resources so components using
+// useTranslation() render real English text in tests instead of raw keys.
+// Placed after the localStorage mock above — the language detector reads it.
+import "@/i18n";
+
 // jsdom doesn't implement window.matchMedia at all — any component using the
 // standard useIsMobile()-style hook (matchMedia-based responsive detection)
 // throws without this shim. Always reports "not mobile" by default.
