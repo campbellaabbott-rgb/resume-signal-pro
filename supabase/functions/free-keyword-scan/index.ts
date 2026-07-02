@@ -939,6 +939,10 @@ const INDUSTRY_ATS_BENCHMARKS: Record<string, number> = {
   pharmacy: 67, dental: 63, veterinary: 63, fitness: 59, media: 62,
   telecom: 65, agriculture: 60, sports_management: 61, entertainment: 60,
   academia: 66,
+  construction_management: 64, architecture: 65, social_work: 62,
+  childcare: 58, beauty: 57, culinary: 59, law_enforcement: 62,
+  environmental: 66, gaming: 66, ecommerce: 65, translation: 63,
+  event_planning: 61,
 };
 
 /**

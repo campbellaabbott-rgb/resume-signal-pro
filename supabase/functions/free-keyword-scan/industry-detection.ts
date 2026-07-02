@@ -1522,6 +1522,315 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
     certifications: [
       'phd', 'doctorate', 'edd', 'postdoc', 'fulbright'
     ]
+  },
+
+  construction_management: {
+    titles: [
+      'construction manager', 'project manager construction', 'construction project manager',
+      'site manager', 'construction superintendent', 'assistant superintendent',
+      'preconstruction manager', 'construction estimator', 'senior estimator',
+      'construction scheduler', 'field engineer construction', 'project engineer construction',
+      'construction executive', 'vp of construction', 'owner representative'
+    ],
+    primary: [
+      'general contractor', 'subcontractors', 'construction schedule', 'critical path',
+      'rfis', 'submittals', 'change orders', 'punch list', 'closeout',
+      'preconstruction', 'value engineering', 'bid packages', 'hard bid',
+      'design-build', 'ground-up', 'tenant improvement', 'commercial construction',
+      'construction budget', 'cost codes', 'draws', 'pay applications',
+      'safety program', 'toolbox talks', 'site logistics', 'trade coordination'
+    ],
+    secondary: [
+      'procore', 'plangrid', 'bluebeam', 'primavera p6', 'ms project',
+      'buildertrend', 'sage 300', 'aia billing', 'csi divisions', 'leed',
+      'osha 30', 'davis-bacon', 'prevailing wage', 'bonding', 'liens'
+    ],
+    certifications: [
+      'ccm', 'pmp construction', 'leed ap', 'osha 30', 'cqm', 'dbia',
+      'general contractor license', 'procore certified'
+    ]
+  },
+
+  architecture: {
+    titles: [
+      'architect', 'project architect', 'architectural designer', 'design architect',
+      'landscape architect', 'interior designer', 'interior architect',
+      'architectural drafter', 'bim manager', 'design principal', 'studio director',
+      'urban planner', 'urban designer'
+    ],
+    primary: [
+      'architectural design', 'schematic design', 'design development',
+      'construction documents', 'construction administration', 'space planning',
+      'building codes', 'zoning', 'entitlements', 'programming architecture',
+      'master planning', 'facade', 'building envelope', 'adaptive reuse',
+      'renderings', 'design reviews', 'client presentations design',
+      'specifications', 'ada compliance', 'egress', 'permit sets', 'redlines'
+    ],
+    secondary: [
+      'revit', 'autocad', 'sketchup', 'rhino', 'grasshopper', 'enscape',
+      'lumion', 'vray', 'adobe creative suite', 'bluebeam', 'bim 360',
+      'leed', 'well building', 'passive house', 'net zero'
+    ],
+    certifications: [
+      'licensed architect', 'ra license', 'aia', 'ncarb', 'leed ap',
+      'ncidq', 'well ap', 'are exams'
+    ]
+  },
+
+  social_work: {
+    titles: [
+      'social worker', 'clinical social worker', 'case manager', 'case worker',
+      'therapist', 'counselor', 'mental health counselor', 'family therapist',
+      'substance abuse counselor', 'behavioral health specialist', 'crisis counselor',
+      'school counselor', 'psychologist', 'psychotherapist', 'child welfare specialist',
+      'community health worker', 'victim advocate'
+    ],
+    primary: [
+      'case management', 'caseload', 'clients social', 'counseling', 'therapy sessions',
+      'treatment plans', 'assessments psychosocial', 'crisis intervention',
+      'behavioral health', 'mental health', 'substance abuse', 'trauma-informed',
+      'cbt', 'dbt', 'group therapy', 'individual therapy', 'family services',
+      'child welfare', 'foster care', 'home visits', 'referrals services',
+      'discharge planning', 'safety planning', 'mandated reporting', 'advocacy clients'
+    ],
+    secondary: [
+      'dsm-5', 'ehr behavioral', 'medicaid billing', 'hipaa', 'progress notes',
+      'soap notes', 'wraparound services', 'community resources', 'iep meetings',
+      'court testimony', 'guardianship', 'aps', 'cps'
+    ],
+    certifications: [
+      'lcsw', 'lmsw', 'msw', 'lpc', 'lmhc', 'lmft', 'cadc', 'casac',
+      'licensed psychologist', 'bcba'
+    ]
+  },
+
+  childcare: {
+    titles: [
+      'preschool teacher', 'daycare teacher', 'early childhood educator',
+      'childcare provider', 'nanny', 'infant teacher', 'toddler teacher',
+      'childcare director', 'preschool director', 'montessori teacher',
+      'head start teacher', 'assistant teacher childcare', 'au pair'
+    ],
+    primary: [
+      'early childhood', 'child development', 'preschool', 'toddlers', 'infants',
+      'lesson plans preschool', 'circle time', 'developmentally appropriate',
+      'parent communication', 'diapering', 'potty training', 'nap time',
+      'classroom management preschool', 'social emotional development',
+      'fine motor', 'gross motor', 'school readiness', 'play-based learning',
+      'child-teacher ratios', 'licensing compliance childcare', 'daily reports'
+    ],
+    secondary: [
+      'brightwheel', 'procare', 'himama', 'creative curriculum', 'teaching strategies gold',
+      'naeyc', 'head start standards', 'cacfp', 'first aid cpr', 'safe sleep',
+      'mandated reporter', 'background check'
+    ],
+    certifications: [
+      'cda', 'child development associate', 'ece units', 'cpr certified',
+      'first aid', 'montessori certified', 'naeyc'
+    ]
+  },
+
+  beauty: {
+    titles: [
+      'hair stylist', 'hairdresser', 'barber', 'cosmetologist', 'esthetician',
+      'nail technician', 'makeup artist', 'salon manager', 'spa manager',
+      'lash technician', 'massage therapist', 'salon owner', 'colorist'
+    ],
+    primary: [
+      'clients beauty', 'color services', 'balayage', 'highlights', 'cuts',
+      'styling', 'blowouts', 'facials', 'waxing', 'skincare treatments',
+      'manicures', 'pedicures', 'gel', 'acrylics', 'lash extensions',
+      'client retention salon', 'rebooking', 'retail sales salon', 'upselling services',
+      'sanitation', 'consultations beauty', 'bridal', 'color correction'
+    ],
+    secondary: [
+      'vagaro', 'booksy', 'square appointments', 'glossgenius', 'instagram portfolio',
+      'product knowledge', 'redken', 'olaplex', 'dermalogica', 'state board',
+      'booth rental', 'commission salon'
+    ],
+    certifications: [
+      'cosmetology license', 'barber license', 'esthetician license',
+      'nail technician license', 'massage therapy license', 'lmt'
+    ]
+  },
+
+  culinary: {
+    titles: [
+      'chef', 'executive chef', 'sous chef', 'head chef', 'chef de partie',
+      'line cook', 'prep cook', 'pastry chef', 'baker', 'kitchen manager',
+      'culinary director', 'private chef', 'catering chef', 'grill cook'
+    ],
+    primary: [
+      'menu development', 'food cost', 'kitchen operations', 'mise en place',
+      'food safety', 'haccp', 'inventory kitchen', 'ordering food', 'plating',
+      'expediting', 'stations kitchen', 'covers', 'service kitchen', 'banquets',
+      'recipe development', 'scratch cooking', 'butchery', 'sauces',
+      'labor cost kitchen', 'waste reduction', 'specials', 'tastings', 'brigade'
+    ],
+    secondary: [
+      'servsafe', 'health inspections', 'sysco', 'us foods', 'toast pos',
+      'fine dining', 'farm to table', 'michelin', 'james beard', 'catering',
+      'volume cooking', 'dietary restrictions', 'allergens'
+    ],
+    certifications: [
+      'servsafe', 'culinary degree', 'cia graduate', 'acf certified',
+      'certified executive chef', 'food handler'
+    ]
+  },
+
+  law_enforcement: {
+    titles: [
+      'police officer', 'patrol officer', 'detective', 'sergeant police',
+      'lieutenant police', 'sheriff deputy', 'state trooper', 'correctional officer',
+      'probation officer', 'parole officer', 'security officer', 'security guard',
+      'loss prevention officer', 'private investigator', 'fraud investigator',
+      'crime scene investigator', 'dispatcher 911'
+    ],
+    primary: [
+      'law enforcement', 'patrol', 'arrests', 'investigations criminal', 'incident reports',
+      'evidence collection', 'crime scenes', 'interviews suspects', 'traffic stops',
+      'community policing', 'use of force', 'de-escalation', 'surveillance',
+      'case files', 'court testimony', 'search warrants', 'probable cause',
+      'inmate supervision', 'security patrols', 'access control', 'cctv monitoring',
+      'emergency response', 'first responder'
+    ],
+    secondary: [
+      'ncic', 'cad systems', 'body camera', 'firearms qualified', 'defensive tactics',
+      'miranda', 'chain of custody', 'k9', 'swat', 'field training officer',
+      'post certified', 'axon', 'report writing'
+    ],
+    certifications: [
+      'post certification', 'peace officer', 'firearms certification',
+      'guard card', 'pi license', 'cpr aed', 'first responder certified'
+    ]
+  },
+
+  environmental: {
+    titles: [
+      'environmental scientist', 'environmental engineer', 'environmental consultant',
+      'sustainability manager', 'sustainability analyst', 'ehs specialist',
+      'environmental compliance specialist', 'ecologist', 'conservation scientist',
+      'environmental health specialist', 'esg analyst', 'climate analyst',
+      'wildlife biologist', 'hydrologist'
+    ],
+    primary: [
+      'environmental compliance', 'sustainability', 'esg', 'carbon footprint',
+      'emissions', 'ghg inventory', 'environmental impact', 'remediation',
+      'site assessments', 'phase i', 'phase ii', 'wetlands', 'stormwater',
+      'permitting environmental', 'nepa', 'epa regulations', 'clean water act',
+      'sampling', 'field work environmental', 'conservation', 'habitat',
+      'renewable', 'circular economy', 'lca', 'life cycle assessment'
+    ],
+    secondary: [
+      'gis', 'arcgis', 'ghg protocol', 'cdp reporting', 'gri standards',
+      'tcfd', 'science based targets', 'iso 14001', 'phase i esa',
+      'astm standards', 'groundwater monitoring', 'air quality'
+    ],
+    certifications: [
+      'pe environmental', 'cep', 'chmm', 'leed ap', 'gri certified',
+      'wetland delineation', 'hazwoper', '40-hour hazwoper'
+    ]
+  },
+
+  gaming: {
+    titles: [
+      'game designer', 'game developer', 'gameplay programmer', 'level designer',
+      'game producer', 'technical artist', 'game artist', '3d artist games',
+      'narrative designer', 'game writer', 'qa tester games', 'game qa',
+      'live ops manager', 'community manager gaming', 'esports manager'
+    ],
+    primary: [
+      'game design', 'gameplay', 'level design', 'game mechanics', 'player experience',
+      'live ops', 'monetization games', 'f2p', 'player retention', 'game economy',
+      'balancing', 'playtesting', 'game builds', 'shipping titles', 'launched games',
+      'console', 'pc games', 'mobile games', 'multiplayer', 'matchmaking',
+      'game engine', 'shaders', 'rigging', 'animation games', 'cinematics'
+    ],
+    secondary: [
+      'unity', 'unreal engine', 'unreal', 'c++ games', 'c# unity', 'blueprints',
+      'perforce', 'jira games', 'steam', 'playstation', 'xbox', 'nintendo',
+      'game analytics', 'a/b testing games', 'battle pass', 'gacha', 'blender', 'maya'
+    ],
+    certifications: [
+      'unity certified', 'unreal certified', 'game design degree'
+    ]
+  },
+
+  ecommerce: {
+    titles: [
+      'ecommerce manager', 'e-commerce manager', 'ecommerce director',
+      'marketplace manager', 'amazon seller', 'amazon account manager',
+      'shopify manager', 'digital merchandiser', 'ecommerce analyst',
+      'dtc manager', 'online store manager', 'catalog manager'
+    ],
+    primary: [
+      'ecommerce', 'e-commerce', 'online sales', 'conversion rate', 'aov',
+      'average order value', 'cart abandonment', 'product listings', 'pdp',
+      'marketplace', 'amazon fba', 'seller central', 'buy box', 'listings optimization',
+      'merchandising online', 'promotions ecommerce', 'checkout optimization',
+      'fulfillment', 'returns rate', 'customer lifetime value', 'ltv',
+      'dtc', 'direct to consumer', 'subscription commerce', 'dropshipping'
+    ],
+    secondary: [
+      'shopify', 'shopify plus', 'woocommerce', 'magento', 'bigcommerce',
+      'amazon ads', 'helium 10', 'jungle scout', 'klaviyo', 'google shopping',
+      'meta ads', 'tiktok shop', 'walmart marketplace', 'ebay', 'etsy',
+      'gorgias', 'recharge', 'a+ content'
+    ],
+    certifications: [
+      'google analytics certified', 'meta blueprint', 'amazon advertising certified',
+      'shopify partner'
+    ]
+  },
+
+  translation: {
+    titles: [
+      'translator', 'interpreter', 'localization specialist', 'localization manager',
+      'medical interpreter', 'court interpreter', 'conference interpreter',
+      'subtitler', 'transcreation specialist', 'linguist', 'language specialist'
+    ],
+    primary: [
+      'translation', 'interpretation', 'localization', 'source language',
+      'target language', 'simultaneous interpretation', 'consecutive interpretation',
+      'sight translation', 'transcreation', 'proofreading translation', 'editing translation',
+      'terminology management', 'glossaries', 'style guides translation', 'cat tools',
+      'translation memory', 'subtitling', 'dubbing', 'transcription',
+      'words per day', 'language pairs', 'fluent', 'native speaker'
+    ],
+    secondary: [
+      'sdl trados', 'memoq', 'smartling', 'lokalise', 'crowdin', 'wordfast',
+      'xtm', 'phrase', 'mt post-editing', 'machine translation', 'qa translation',
+      'remote interpretation', 'vri', 'opi'
+    ],
+    certifications: [
+      'ata certified', 'certified translator', 'court certified interpreter',
+      'cchi', 'nbcmi', 'dele', 'dalf', 'jlpt'
+    ]
+  },
+
+  event_planning: {
+    titles: [
+      'event planner', 'event coordinator', 'event manager', 'wedding planner',
+      'conference planner', 'meeting planner', 'event producer', 'event director',
+      'special events manager', 'trade show manager', 'venue manager',
+      'events marketing manager'
+    ],
+    primary: [
+      'event planning', 'event production', 'vendor management events', 'venues',
+      'site selection', 'event budgets', 'run of show', 'event logistics',
+      'attendees', 'registration events', 'catering coordination', 'av production',
+      'floor plans events', 'sponsorship events', 'trade shows', 'conferences',
+      'galas', 'weddings', 'corporate events', 'post-event', 'event timelines',
+      'contracts vendors', 'room blocks', 'banquet event orders', 'beo'
+    ],
+    secondary: [
+      'cvent', 'eventbrite', 'bizzabo', 'hopin', 'whova', 'social tables',
+      'allseated', 'hotel contracts', 'f&b minimums', 'attrition', 'force majeure',
+      'hybrid events', 'virtual events'
+    ],
+    certifications: [
+      'cmp', 'certified meeting professional', 'csep', 'cwep', 'dmcp'
+    ]
   }
 };
 
@@ -1556,6 +1865,29 @@ export const SUB_INDUSTRY_TAXONOMY: Record<string, Array<{ id: string; label: st
     { id: 'civil', label: 'Civil / Structural', signals: ['civil engineering', 'structural', 'autocad civil', 'site development', 'stormwater', 'geotechnical', 'roadway', 'surveying'], minSignals: 2 },
     { id: 'mechanical', label: 'Mechanical', signals: ['solidworks', 'mechanical design', 'cad modeling', 'gd&t', 'thermal analysis', 'fea', 'prototyping', 'tolerance'], minSignals: 2 },
     { id: 'electrical_eng', label: 'Electrical', signals: ['circuit design', 'pcb', 'schematic capture', 'embedded systems', 'firmware', 'power electronics', 'signal integrity'], minSignals: 2 },
+  ],
+  sales: [
+    { id: 'new_business', label: 'New Business / AE', signals: ['closed won', 'quota', 'net new', 'discovery call', 'demos', 'pipeline generation', 'outbound', 'cold calling'], minSignals: 3 },
+    { id: 'account_management', label: 'Account Management / CS', signals: ['renewals', 'churn', 'expansion revenue', 'upsell', 'customer success', 'nrr', 'account health', 'qbrs'], minSignals: 2 },
+    { id: 'sales_development', label: 'Sales Development (SDR/BDR)', signals: ['sdr', 'bdr', 'meetings booked', 'qualified opportunities', 'prospecting', 'sequences', 'outreach'], minSignals: 2 },
+    { id: 'sales_leadership', label: 'Sales Leadership', signals: ['sales team', 'quota attainment team', 'hiring reps', 'sales coaching', 'forecast', 'territory planning', 'sales strategy'], minSignals: 2 },
+  ],
+  legal: [
+    { id: 'litigation', label: 'Litigation', signals: ['litigation', 'depositions', 'discovery', 'motions', 'trial', 'pleadings', 'hearings'], minSignals: 2 },
+    { id: 'corporate_law', label: 'Corporate / Transactional', signals: ['m&a', 'due diligence', 'contracts drafting', 'corporate governance', 'securities', 'transactional', 'closing documents'], minSignals: 2 },
+    { id: 'compliance_law', label: 'Compliance / Regulatory', signals: ['regulatory compliance', 'risk management', 'policies', 'audits', 'gdpr', 'investigations internal'], minSignals: 2 },
+    { id: 'paralegal_ops', label: 'Paralegal / Legal Ops', signals: ['paralegal', 'legal research', 'case files', 'e-filing', 'legal operations', 'docketing', 'billing legal'], minSignals: 2 },
+  ],
+  hr: [
+    { id: 'recruiting', label: 'Talent Acquisition', signals: ['full-cycle recruiting', 'sourcing', 'candidates', 'offers extended', 'time to fill', 'ats recruiting', 'talent pipeline'], minSignals: 2 },
+    { id: 'hrbp', label: 'HR Business Partner', signals: ['employee relations', 'performance management', 'org design', 'workforce planning', 'coaching managers', 'engagement surveys'], minSignals: 2 },
+    { id: 'comp_ben', label: 'Compensation & Benefits', signals: ['compensation', 'benefits administration', 'salary bands', 'job leveling', 'open enrollment', 'equity compensation', 'merit cycles'], minSignals: 2 },
+    { id: 'people_ops', label: 'People Operations', signals: ['onboarding', 'hris', 'payroll', 'hr policies', 'compliance hr', 'offboarding', 'people analytics'], minSignals: 2 },
+  ],
+  education: [
+    { id: 'k12', label: 'K-12 Teaching', signals: ['classroom management', 'lesson plans', 'iep', 'differentiated instruction', 'parent conferences', 'grade level', 'state standards'], minSignals: 2 },
+    { id: 'higher_ed_admin', label: 'Higher Ed Administration', signals: ['student affairs', 'enrollment', 'academic advising', 'financial aid', 'accreditation', 'registrar', 'student success'], minSignals: 2 },
+    { id: 'edtech', label: 'EdTech / Instructional Design', signals: ['instructional design', 'lms', 'e-learning', 'curriculum development', 'articulate', 'canvas', 'scorm', 'course design'], minSignals: 2 },
   ],
 };
 
@@ -1856,6 +2188,66 @@ const CO_OCCURRENCE_PATTERNS: Record<string, string[][]> = {
     ['publications', 'peer-reviewed', 'citations'],
     ['grant funding', 'principal investigator', 'nsf'],
     ['tenure', 'dissertation', 'graduate students']
+  ],
+  construction_management: [
+    ['rfis', 'submittals', 'change orders'],
+    ['subcontractors', 'punch list', 'closeout'],
+    ['preconstruction', 'estimating', 'bid packages']
+  ],
+  architecture: [
+    ['schematic design', 'design development', 'construction documents'],
+    ['revit', 'building codes', 'specifications'],
+    ['space planning', 'renderings', 'permit sets']
+  ],
+  social_work: [
+    ['case management', 'treatment plans', 'crisis intervention'],
+    ['counseling', 'behavioral health', 'assessments'],
+    ['child welfare', 'home visits', 'mandated reporting']
+  ],
+  childcare: [
+    ['early childhood', 'child development', 'preschool'],
+    ['lesson plans', 'circle time', 'parent communication'],
+    ['infants', 'toddlers', 'daily reports']
+  ],
+  beauty: [
+    ['color services', 'cuts', 'styling'],
+    ['facials', 'waxing', 'skincare'],
+    ['client retention', 'rebooking', 'consultations']
+  ],
+  culinary: [
+    ['menu development', 'food cost', 'kitchen operations'],
+    ['mise en place', 'plating', 'expediting'],
+    ['food safety', 'haccp', 'inventory']
+  ],
+  law_enforcement: [
+    ['patrol', 'arrests', 'incident reports'],
+    ['investigations', 'evidence collection', 'court testimony'],
+    ['security patrols', 'access control', 'cctv']
+  ],
+  environmental: [
+    ['environmental compliance', 'permitting', 'remediation'],
+    ['sustainability', 'esg', 'emissions'],
+    ['site assessments', 'sampling', 'groundwater']
+  ],
+  gaming: [
+    ['game design', 'gameplay', 'level design'],
+    ['unity', 'unreal', 'game engine'],
+    ['live ops', 'player retention', 'monetization']
+  ],
+  ecommerce: [
+    ['conversion rate', 'aov', 'cart abandonment'],
+    ['amazon fba', 'seller central', 'buy box'],
+    ['shopify', 'product listings', 'fulfillment']
+  ],
+  translation: [
+    ['translation', 'localization', 'target language'],
+    ['interpretation', 'simultaneous', 'consecutive'],
+    ['cat tools', 'translation memory', 'terminology']
+  ],
+  event_planning: [
+    ['event planning', 'venues', 'vendor management'],
+    ['run of show', 'event logistics', 'av production'],
+    ['registration', 'attendees', 'sponsorship']
   ]
 };
 
@@ -2035,6 +2427,57 @@ const DISAMBIGUATION_RULES: Record<string, { negativeFor: string; requiredTitleS
   entertainment: [
     { negativeFor: 'product_management', requiredTitleSignal: true },
     { negativeFor: 'creative', requiredTitleSignal: true }
+  ],
+  // Construction managers share project vocabulary with PM and trade vocabulary with trades.
+  construction_management: [
+    { negativeFor: 'product_management', requiredTitleSignal: true },
+    { negativeFor: 'skilled_trades', requiredTitleSignal: true },
+    { negativeFor: 'engineering', requiredTitleSignal: true }
+  ],
+  // Architects share design vocabulary with creative and building vocabulary with construction.
+  architecture: [
+    { negativeFor: 'creative', requiredTitleSignal: true },
+    { negativeFor: 'construction_management', requiredTitleSignal: true },
+    { negativeFor: 'engineering', requiredTitleSignal: true }
+  ],
+  // Social workers share clinical vocabulary with healthcare.
+  social_work: [
+    { negativeFor: 'healthcare', requiredTitleSignal: true },
+    { negativeFor: 'education', requiredTitleSignal: true }
+  ],
+  // Childcare shares teaching vocabulary with K-12 education.
+  childcare: [
+    { negativeFor: 'education', requiredTitleSignal: true }
+  ],
+  // Chefs share hospitality vocabulary — hospitality mgmt needs a title to steal.
+  culinary: [
+    { negativeFor: 'hospitality', requiredTitleSignal: true }
+  ],
+  // Officers share government/compliance vocabulary.
+  law_enforcement: [
+    { negativeFor: 'government', requiredTitleSignal: true },
+    { negativeFor: 'legal', requiredTitleSignal: true }
+  ],
+  // Environmental roles share engineering/compliance vocabulary.
+  environmental: [
+    { negativeFor: 'engineering', requiredTitleSignal: true },
+    { negativeFor: 'government', requiredTitleSignal: true },
+    { negativeFor: 'energy', requiredTitleSignal: true }
+  ],
+  // Game devs mention code constantly — technology must not steal without a title.
+  gaming: [
+    { negativeFor: 'technology', requiredTitleSignal: true },
+    { negativeFor: 'creative', requiredTitleSignal: true }
+  ],
+  // Ecommerce shares marketing/retail vocabulary heavily.
+  ecommerce: [
+    { negativeFor: 'marketing', requiredTitleSignal: true },
+    { negativeFor: 'retail', requiredTitleSignal: true }
+  ],
+  // Event planners share marketing/hospitality vocabulary.
+  event_planning: [
+    { negativeFor: 'marketing', requiredTitleSignal: true },
+    { negativeFor: 'hospitality', requiredTitleSignal: true }
   ]
 };
 
@@ -3023,6 +3466,30 @@ const ROLE_LOCKS: Array<{ pattern: RegExp; industry: string; label: string }> = 
   { pattern: /\b(film producer|tv producer|line producer|showrunner|casting director|production coordinator|assistant director|stage manager|gaffer|post production supervisor)\b/i, industry: 'entertainment', label: 'production title' },
   // Academia / Research
   { pattern: /\b(assistant professor|associate professor|full professor|research fellow|principal investigator|postdoctoral researcher|department chair|adjunct professor|visiting scholar)\b/i, industry: 'academia', label: 'academic title' },
+  // Construction management (distinct from hands-on trades)
+  { pattern: /\b(construction manager|construction project manager|construction superintendent|preconstruction manager|construction estimator|project engineer construction|construction executive)\b/i, industry: 'construction_management', label: 'construction management title' },
+  // Architecture
+  { pattern: /\b(architect\b(?!ure)|project architect|architectural designer|landscape architect|interior designer|bim manager|urban planner)\b/i, industry: 'architecture', label: 'architecture title' },
+  // Social work / mental health
+  { pattern: /\b(social worker|clinical social worker|mental health counselor|family therapist|substance abuse counselor|behavioral health specialist|school counselor|psychotherapist|child welfare specialist|victim advocate|probation officer)\b/i, industry: 'social_work', label: 'social work title' },
+  // Childcare / early education
+  { pattern: /\b(preschool teacher|daycare teacher|early childhood educator|childcare provider|nanny|infant teacher|toddler teacher|childcare director|montessori teacher|head start teacher)\b/i, industry: 'childcare', label: 'childcare title' },
+  // Beauty / cosmetology
+  { pattern: /\b(hair stylist|hairdresser|barber\b|cosmetologist|esthetician|nail technician|makeup artist|lash technician|massage therapist|colorist)\b/i, industry: 'beauty', label: 'beauty title' },
+  // Culinary
+  { pattern: /\b(executive chef|sous chef|head chef|chef de partie|line cook|prep cook|pastry chef|kitchen manager|culinary director|private chef)\b/i, industry: 'culinary', label: 'culinary title' },
+  // Law enforcement / security
+  { pattern: /\b(police officer|patrol officer|detective|sheriff deputy|state trooper|correctional officer|parole officer|security officer|security guard|loss prevention officer|private investigator|crime scene investigator)\b/i, industry: 'law_enforcement', label: 'law enforcement title' },
+  // Environmental / sustainability
+  { pattern: /\b(environmental scientist|environmental engineer|environmental consultant|sustainability manager|sustainability analyst|ehs specialist|ecologist|conservation scientist|esg analyst|wildlife biologist|hydrologist)\b/i, industry: 'environmental', label: 'environmental title' },
+  // Gaming
+  { pattern: /\b(game designer|game developer|gameplay programmer|level designer|game producer|technical artist|narrative designer|game writer|live ops manager|esports manager)\b/i, industry: 'gaming', label: 'gaming title' },
+  // Ecommerce
+  { pattern: /\b(ecommerce manager|e-commerce manager|ecommerce director|marketplace manager|amazon account manager|shopify manager|digital merchandiser|dtc manager|online store manager)\b/i, industry: 'ecommerce', label: 'ecommerce title' },
+  // Translation / localization
+  { pattern: /\b(translator|interpreter\b|localization specialist|localization manager|medical interpreter|court interpreter|conference interpreter|subtitler|transcreation)\b/i, industry: 'translation', label: 'translation title' },
+  // Event planning
+  { pattern: /\b(event planner|event coordinator|wedding planner|conference planner|meeting planner|event producer|special events manager|trade show manager)\b/i, industry: 'event_planning', label: 'event planning title' },
 ];
 
 // ─── MULTILINGUAL TITLE LOCKS ────────────────────────────────────────────────
@@ -3074,6 +3541,19 @@ const CERT_LOCKS: Array<{ pattern: RegExp; industry: string; label: string; boos
   { pattern: /\b(journeyman license|master electrician|epa 608|aws certified welder|nccer|ase certified|nate certified)\b/i, industry: 'skilled_trades', label: 'trade credential', boost: 14 },
   { pattern: /\b(nabcep|nerc certification|iwcf|h2s alive)\b/i, industry: 'energy', label: 'energy credential', boost: 12 },
   { pattern: /\b(teaching license|teaching credential|state certified teacher|praxis)\b/i, industry: 'education', label: 'teaching credential', boost: 14 },
+  { pattern: /\b(pharmd|rph\b|cpht|ptcb)\b/i, industry: 'pharmacy', label: 'pharmacy credential', boost: 15 },
+  { pattern: /\b(dds\b|dmd\b|rdh\b|registered dental)\b/i, industry: 'dental', label: 'dental credential', boost: 15 },
+  { pattern: /\b(dvm\b|vmd\b|cvt\b|rvt\b|lvt\b)\b/i, industry: 'veterinary', label: 'veterinary credential', boost: 15 },
+  { pattern: /\b(lcsw|lmsw|msw\b|lpc\b|lmhc|lmft|casac|bcba)\b/i, industry: 'social_work', label: 'clinical social work credential', boost: 15 },
+  { pattern: /\b(cosmetology license|barber license|esthetician license|nail technician license)\b/i, industry: 'beauty', label: 'cosmetology credential', boost: 15 },
+  { pattern: /\b(servsafe|certified executive chef|acf certified|culinary institute)\b/i, industry: 'culinary', label: 'culinary credential', boost: 10 },
+  { pattern: /\b(post certification|post certified|peace officer standards|guard card)\b/i, industry: 'law_enforcement', label: 'law enforcement credential', boost: 13 },
+  { pattern: /\b(licensed architect|ncarb|aia member|ncidq)\b/i, industry: 'architecture', label: 'architecture credential', boost: 14 },
+  { pattern: /\b(ccm\b|dbia|leed ap)\b/i, industry: 'construction_management', label: 'construction credential', boost: 8 },
+  { pattern: /\b(hazwoper|chmm\b|cep\b)\b/i, industry: 'environmental', label: 'environmental credential', boost: 12 },
+  { pattern: /\b(ata certified|court certified interpreter|cchi\b|nbcmi)\b/i, industry: 'translation', label: 'translation credential', boost: 14 },
+  { pattern: /\b(cmp\b|certified meeting professional|csep)\b/i, industry: 'event_planning', label: 'events credential', boost: 12 },
+  { pattern: /\b(cda\b|child development associate)\b/i, industry: 'childcare', label: 'childcare credential', boost: 13 },
 ];
 
 function applyCertLocks(scores: Array<{ industry: string; score: number; signals: string[] }>, resumeText: string): void {
@@ -3161,6 +3641,18 @@ const REQUIRED_ANCHORS: Record<string, string[]> = {
   sports_management: ['athletes', 'coaching', 'sports', 'team', 'recruiting', 'athletic', 'game'],
   entertainment: ['production', 'film', 'set', 'talent', 'casting', 'crew', 'shoot'],
   academia: ['research', 'publications', 'university', 'academic', 'teaching', 'grant', 'faculty'],
+  construction_management: ['construction', 'contractor', 'subcontractor', 'jobsite', 'project', 'build', 'site'],
+  architecture: ['design', 'architectural', 'building', 'drawings', 'revit', 'planning', 'construction documents'],
+  social_work: ['clients', 'case', 'counseling', 'therapy', 'mental health', 'treatment', 'social'],
+  childcare: ['children', 'child', 'preschool', 'classroom', 'parents', 'early childhood', 'care'],
+  beauty: ['clients', 'salon', 'hair', 'skin', 'nails', 'beauty', 'spa', 'services'],
+  culinary: ['kitchen', 'food', 'menu', 'chef', 'cooking', 'culinary', 'restaurant'],
+  law_enforcement: ['enforcement', 'security', 'patrol', 'officer', 'investigations', 'safety', 'incident'],
+  environmental: ['environmental', 'sustainability', 'compliance', 'emissions', 'conservation', 'esg', 'remediation'],
+  gaming: ['game', 'games', 'gameplay', 'player', 'unity', 'unreal', 'studio'],
+  ecommerce: ['ecommerce', 'e-commerce', 'online', 'marketplace', 'shopify', 'amazon', 'conversion'],
+  translation: ['translation', 'interpretation', 'language', 'localization', 'bilingual', 'linguistic'],
+  event_planning: ['events', 'event', 'venues', 'attendees', 'planning', 'vendors', 'logistics'],
 };
 
 function checkRequiredAnchors(industry: string, resumeText: string): boolean {
