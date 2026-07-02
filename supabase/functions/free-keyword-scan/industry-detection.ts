@@ -3399,11 +3399,13 @@ function buildAlternativeReason(primaryIndustry: string, altIndustry: string, re
 // Order matters: more specific patterns first.
 const ROLE_LOCKS: Array<{ pattern: RegExp; industry: string; label: string }> = [
   // Healthcare — clinical titles
-  { pattern: /\b(registered nurse|rn\b|nurse practitioner|np\b|clinical nurse|charge nurse|staff nurse|travel nurse|lpn|lvn|cna|phlebotomist|medical assistant|radiologic technologist|respiratory therapist|occupational therapist|physical therapist|speech.*therapist|pharmacist|pharmacy technician|dental hygienist|dentist|physician|surgeon|cardiologist|oncologist|radiologist|psychiatrist|anesthesiologist|hospitalist|attending physician|intern.*medicine|pediatrician|obstetrician|gynecologist|emt|paramedic|medical director|chief medical officer|cmo\b)\b/i, industry: 'healthcare', label: 'clinical title' },
+  { pattern: /\b(registered nurse|rn\b|nurse practitioner|np\b|clinical nurse|charge nurse|staff nurse|travel nurse|lpn|lvn|cna|phlebotomist|medical assistant|radiologic technologist|respiratory therapist|occupational therapist|physical therapist|speech.*therapist|physician|surgeon|cardiologist|oncologist|radiologist|psychiatrist|anesthesiologist|hospitalist|attending physician|intern.*medicine|pediatrician|obstetrician|gynecologist|emt|paramedic|medical director|chief medical officer|cmo\b)\b/i, industry: 'healthcare', label: 'clinical title' },
   // Legal — attorney/counsel titles
   { pattern: /\b(attorney|lawyer|counsel|associate.*law|partner.*law|paralegal|legal.*assistant|law.*clerk|public defender|prosecutor|district attorney|solicitor|barrister|in-house counsel|general counsel|chief legal officer|clo\b|deputy general counsel|associate general counsel)\b/i, industry: 'legal', label: 'legal title' },
   // Education — teaching titles
-  { pattern: /\b(teacher|classroom teacher|k-12 teacher|substitute teacher|adjunct professor|professor|lecturer|instructor.*university|dean.*academic|principal.*school|school principal|vice principal|curriculum specialist|instructional coach|special education teacher|esl teacher|tutor|librarian.*school|school counselor)\b/i, industry: 'education', label: 'education title' },
+  // "professor/lecturer" belong to academia; "preschool/daycare teacher" to childcare —
+  // this lock only claims K-12-style teaching titles.
+  { pattern: /\b((?<!preschool )(?<!daycare )(?<!montessori )(?<!infant )(?<!toddler )teacher|classroom teacher|k-12 teacher|substitute teacher|dean.*academic|principal.*school|school principal|vice principal|curriculum specialist|instructional coach|special education teacher|esl teacher|tutor|librarian.*school|school counselor)\b/i, industry: 'education', label: 'education title' },
   // Product management — PM-specific (distinct from "manager")
   { pattern: /\b(product manager|senior product manager|principal product manager|staff product manager|director of product|vp of product|chief product officer|cpo\b|group product manager|associate product manager|technical product manager|product lead)\b/i, industry: 'product_management', label: 'PM title' },
   // Data Engineering — distinct from data science
@@ -3417,9 +3419,11 @@ const ROLE_LOCKS: Array<{ pattern: RegExp; industry: string; label: string }> = 
   // Retail
   { pattern: /\b(store manager|retail manager|assistant store manager|floor manager|department manager.*retail|merchandise manager|store director|district manager.*retail|loss prevention|visual merchandiser|retail buyer|category manager.*retail|store associate|retail associate|cashier|sales associate.*retail)\b/i, industry: 'retail', label: 'retail title' },
   // Hospitality
-  { pattern: /\b(hotel manager|general manager.*hotel|front desk manager|food and beverage manager|f&b manager|executive chef|sous chef|restaurant manager|banquet manager|event coordinator.*hotel|catering manager|concierge|revenue manager.*hotel|housekeeping manager|room service)\b/i, industry: 'hospitality', label: 'hospitality title' },
+  // Chef titles belong to culinary — this lock claims hotel/venue MANAGEMENT roles.
+  { pattern: /\b(hotel manager|general manager.*hotel|front desk manager|food and beverage manager|f&b manager|restaurant manager|banquet manager|event coordinator.*hotel|catering manager|concierge|revenue manager.*hotel|housekeeping manager|room service)\b/i, industry: 'hospitality', label: 'hospitality title' },
   // Manufacturing / Supply Chain
-  { pattern: /\b(manufacturing engineer|process engineer.*manufacturing|plant manager|production manager|quality engineer|quality assurance engineer|qc manager|lean engineer|six sigma.*engineer|supply chain manager|logistics manager|warehouse manager|operations manager.*manufacturing|industrial engineer|process improvement.*manufacturing)\b/i, industry: 'manufacturing', label: 'manufacturing title' },
+  // Supply chain / logistics / warehouse titles belong to the logistics industry now.
+  { pattern: /\b(manufacturing engineer|process engineer.*manufacturing|plant manager|production manager|quality engineer|quality assurance engineer|qc manager|lean engineer|six sigma.*engineer|operations manager.*manufacturing|industrial engineer|process improvement.*manufacturing)\b/i, industry: 'manufacturing', label: 'manufacturing title' },
   // Government / Public sector
   { pattern: /\b(policy analyst|foreign service officer|intelligence analyst|program analyst.*government|government contractor|public administrator|city manager|county manager|legislative aide|congressional staffer|federal agent|intelligence officer|security clearance.*analyst)\b/i, industry: 'government', label: 'government title' },
   // HR
@@ -3576,25 +3580,62 @@ function applyCertLocks(scores: Array<{ industry: string; score: number; signals
  * Check if any job title on the resume matches a role-lock pattern.
  * Returns the first match or null.
  */
+// Aspirational phrasing means the candidate WANTS the role, not that they hold it —
+// "aspiring nurse seeking opportunities" in a summary must not lock healthcare.
+const ASPIRATIONAL_CONTEXT = /\b(aspiring|seeking|objective|goal|hoping to|looking to become|transitioning (in)?to|future|would like to be|dream of|interested in becoming|pursuing a career (as|in))\b/i;
+
+// Third-party phrasing means someone ELSE holds the role — "collaborated with
+// attorneys" must not lock legal for the candidate.
+const THIRD_PARTY_CONTEXT = /\b(work(ed|ing)? (closely )?with|supported?|supporting|liaised? with|collaborat\w+ with|partner\w* with|coordinat\w+ with|assist\w+|reporting to|on behalf of|for (the|our|their)|clients? includ\w+|alongside|team of)\s*$/i;
+
+/**
+ * True when the role-lock match at `index` in `text` is a genuine claim of the
+ * role rather than an aspiration or a reference to someone else.
+ */
+function isGenuineRoleMatch(text: string, index: number): boolean {
+  // Look at the ~40 chars before the match for third-party phrasing…
+  const before = text.slice(Math.max(0, index - 40), index);
+  if (THIRD_PARTY_CONTEXT.test(before)) return false;
+  // …and at the containing line for aspirational phrasing
+  const lineStart = text.lastIndexOf('\n', index) + 1;
+  const lineEnd = text.indexOf('\n', index);
+  const line = text.slice(lineStart, lineEnd === -1 ? undefined : lineEnd);
+  if (ASPIRATIONAL_CONTEXT.test(line)) return false;
+  return true;
+}
+
+function findGenuineLock(
+  locks: Array<{ pattern: RegExp; industry: string; label: string }>,
+  text: string,
+): { industry: string; matchedTitle: string } | null {
+  for (const lock of locks) {
+    // Global copy so we can walk past aspirational/third-party matches to a genuine one
+    const re = new RegExp(lock.pattern.source, lock.pattern.flags.includes('g') ? lock.pattern.flags : lock.pattern.flags + 'g');
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      if (isGenuineRoleMatch(text, m.index)) {
+        return { industry: lock.industry, matchedTitle: m[0].trim() };
+      }
+    }
+  }
+  return null;
+}
+
 function applyRoleFirstAnchoring(
   jobTitles: string[],
   resumeText: string,
 ): { industry: string; matchedTitle: string } | null {
-  const allText = [...jobTitles, resumeText.substring(0, 500)].join('\n').toLowerCase();
-  for (const lock of ROLE_LOCKS) {
-    const m = allText.match(lock.pattern);
-    if (m) {
-      return { industry: lock.industry, matchedTitle: m[0].trim() };
-    }
+  // Pass 1: extracted job titles only — these come from real employment entries,
+  // making them the strongest possible signal. No context checks needed.
+  const titlesText = jobTitles.join('\n').toLowerCase();
+  if (titlesText.trim()) {
+    const titleLock = findGenuineLock(ROLE_LOCKS, titlesText) ?? findGenuineLock(MULTILINGUAL_TITLE_LOCKS, titlesText);
+    if (titleLock) return titleLock;
   }
-  // Non-English titles lock the same way — resumes arrive in 10 languages
-  for (const lock of MULTILINGUAL_TITLE_LOCKS) {
-    const m = allText.match(lock.pattern);
-    if (m) {
-      return { industry: lock.industry, matchedTitle: m[0].trim() };
-    }
-  }
-  return null;
+  // Pass 2: resume header/summary — weaker signal, so aspirational and
+  // third-party phrasing is filtered out before a match can lock.
+  const headText = resumeText.substring(0, 500).toLowerCase();
+  return findGenuineLock(ROLE_LOCKS, headText) ?? findGenuineLock(MULTILINGUAL_TITLE_LOCKS, headText);
 }
 
 // ─── FIX #4: REQUIRED ANCHOR TERMS ──────────────────────────────────────────
@@ -3746,7 +3787,35 @@ export function detectIndustry(
       signals
     });
   }
-  
+
+  // === RECENCY WEIGHTING ===
+  // Resumes are reverse-chronological: the text right after the experience
+  // heading is the CURRENT role. A 2015-2018 marketing era must not outweigh
+  // a 2021-present data era — detection should reflect who the candidate is now.
+  {
+    const lowerAll = resumeText.toLowerCase();
+    const expHeading = lowerAll.search(/\b(work experience|professional experience|employment history|experience|work history)\b/);
+    if (expHeading !== -1) {
+      const recentBlock = lowerAll.slice(expHeading, expHeading + 1200);
+      for (const entry of scores) {
+        const kw = INDUSTRY_KEYWORDS[entry.industry];
+        if (!kw) continue;
+        let recentHits = 0;
+        for (const title of kw.titles) {
+          if (recentBlock.includes(title)) recentHits += 2; // a recent TITLE is the strongest recency signal
+        }
+        for (const term of kw.primary) {
+          if (recentBlock.includes(term)) recentHits += 1;
+        }
+        if (recentHits > 0) {
+          const boost = Math.min(recentHits * 0.5, 4);
+          entry.score += boost;
+          if (entry.signals.length < 10) entry.signals.push(`Recent-role emphasis (+${boost.toFixed(1)})`);
+        }
+      }
+    }
+  }
+
   // Sort by score
   scores.sort((a, b) => b.score - a.score);
 

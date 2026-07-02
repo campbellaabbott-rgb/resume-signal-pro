@@ -39,6 +39,9 @@ import { emailSchema } from "@/lib/security-validation";
 import { InteractiveChecklist } from "./InteractiveChecklist";
 import { AISummary } from "./AISummary";
 import { ShareableScoreCard } from "./ShareableScoreCard";
+import { ResumeXRay } from "./ResumeXRay";
+import { EmailReportCapture } from "./EmailReportCapture";
+import { diffWords } from "@/lib/diff-words";
 import { ScoreHero } from "./scorecard/ScoreHero";
 import { MetricCardsGrid } from "./scorecard/MetricCardsGrid";
 import { RedFlagsSection, KeywordsSection } from "./scorecard/RedFlagsKeywords";
@@ -3582,7 +3585,21 @@ export function FreeKeywordResults({
               <p className="text-xs text-success font-medium mb-1">{t('freeResults.sampleRewrite.after')}</p>
               <p className="text-sm text-foreground font-medium">"{sampleRewrite.after}"</p>
             </div>
-            
+
+            {/* Word-level diff — the transformation legible in one glance */}
+            <div className="p-3 rounded-xl bg-background/50 border border-border/50">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">What changed</p>
+              <p className="text-sm leading-relaxed">
+                {diffWords(sampleRewrite.before, sampleRewrite.after).map((seg, i) => (
+                  seg.type === 'removed'
+                    ? <span key={i} className="text-destructive/80 line-through mr-1">{seg.text}</span>
+                    : seg.type === 'added'
+                      ? <span key={i} className="text-success font-medium bg-success/10 rounded px-0.5 mr-1">{seg.text}</span>
+                      : <span key={i} className="text-muted-foreground mr-1">{seg.text}</span>
+                ))}
+              </p>
+            </div>
+
             <div className="text-center p-2 rounded-lg bg-background/50 border border-border/50">
               <p className="text-xs text-muted-foreground">
                 <span className="font-medium text-foreground">{t('freeResults.sampleRewrite.whyBetter')}</span> {sampleRewrite.improvement}
@@ -3595,6 +3612,16 @@ export function FreeKeywordResults({
             <span className="text-xs text-primary">{t('freeResults.sampleRewrite.cta', { price: priceDisplay })}</span>
           </div>
         </div>
+      )}
+
+      {/* ── Resume X-Ray — their actual document, annotated inline ─────────── */}
+      {resumeText && (weakBulletsDetected.length > 0 || unquantifiedBulletsDetected.length > 0 || powerWords.length > 0) && (
+        <ResumeXRay
+          resumeText={resumeText}
+          weakBullets={weakBulletsDetected}
+          unquantifiedBullets={unquantifiedBulletsDetected}
+          powerWords={powerWords}
+        />
       )}
 
       {/* ── Score Breakdown ─────────────────────────────────────────────────── */}
@@ -3650,6 +3677,28 @@ export function FreeKeywordResults({
               </div>
             )}
           </div>
+          {/* Percentile bell curve — "you're here, they're there" in one glance */}
+          {peerPercentile != null && (() => {
+            const W = 300, H = 70, sigma = 18, mu = 50;
+            const pts = Array.from({ length: 61 }, (_, i) => {
+              const x = (i / 60) * 100;
+              const y = Math.exp(-((x - mu) ** 2) / (2 * sigma ** 2));
+              return `${(x / 100) * W},${H - 8 - y * (H - 18)}`;
+            }).join(' ');
+            const markerX = (peerPercentile / 100) * W;
+            const topQuartileX = (75 / 100) * W;
+            return (
+              <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-16" role="img" aria-label={`Score distribution: you are at the ${peerPercentile}th percentile`}>
+                {/* top-quartile zone */}
+                <rect x={topQuartileX} y={6} width={W - topQuartileX} height={H - 14} className="fill-success/10" rx={3} />
+                <polyline points={pts} className="fill-none stroke-muted-foreground/50" strokeWidth={1.5} />
+                <line x1={markerX} y1={4} x2={markerX} y2={H - 8} className={cn("stroke-2", peerPercentile >= 60 ? "stroke-success" : peerPercentile >= 40 ? "stroke-warning" : "stroke-destructive")} />
+                <circle cx={markerX} cy={4} r={3} className={cn(peerPercentile >= 60 ? "fill-success" : peerPercentile >= 40 ? "fill-warning" : "fill-destructive")} />
+                <text x={Math.min(Math.max(markerX, 18), W - 18)} y={H} textAnchor="middle" className="fill-current text-[9px] text-muted-foreground">You</text>
+                <text x={topQuartileX + (W - topQuartileX) / 2} y={14} textAnchor="middle" className="fill-current text-[8px] text-success">Top 25%</text>
+              </svg>
+            );
+          })()}
           <p className="text-[10px] text-muted-foreground">
             Methodology: percentile is a normal-distribution estimate against your industry's median ATS score; pass rate is banded from your score against common ATS filter thresholds. Both are estimates, not guarantees.
           </p>
@@ -3873,7 +3922,15 @@ export function FreeKeywordResults({
               </div>
               <div className="rounded-lg bg-success/5 border border-success/20 p-3">
                 <p className="text-[10px] font-semibold text-success uppercase tracking-wide mb-1">After</p>
-                <p className="text-sm text-foreground font-medium">"{rw.after}"</p>
+                <p className="text-sm leading-relaxed">
+                  {diffWords(rw.before, rw.after).map((seg, j) => (
+                    seg.type === 'removed'
+                      ? <span key={j} className="text-destructive/70 line-through mr-1">{seg.text}</span>
+                      : seg.type === 'added'
+                        ? <span key={j} className="text-success font-medium bg-success/10 rounded px-0.5 mr-1">{seg.text}</span>
+                        : <span key={j} className="text-foreground mr-1">{seg.text}</span>
+                  ))}
+                </p>
               </div>
               {rw.improvement && (
                 <p className="text-xs text-muted-foreground px-1">
@@ -4011,6 +4068,21 @@ export function FreeKeywordResults({
           </button>
         </div>
       )}
+
+      {/* ── Email me my report — first lead-capture touchpoint ──────────────── */}
+      <EmailReportCapture
+        payload={{
+          verdict: reportVerdict,
+          score: atsScoreEstimate,
+          projectedScore: projectedScore ?? null,
+          scoreBreakdown: scoreBreakdown ?? null,
+          peerPercentile: peerPercentile ?? null,
+          applicationPassRate: applicationPassRate ?? null,
+          redFlags: redFlags.map(f => ({ issue: f.issue })),
+          fixRoadmap: fixRoadmap ?? null,
+          industry: effectiveIndustry,
+        }}
+      />
 
       {/* ── Next Best Action ─────────────────────────────────────────────────── */}
       {nextBestAction && (

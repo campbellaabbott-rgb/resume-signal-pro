@@ -49,16 +49,28 @@ function RadialGauge({ score, size = 140, strokeWidth = 10 }: { score: number; s
   const arcLength = circumference * 0.75;
   const offset = arcLength - (arcLength * animatedScore) / 100;
 
+  // Eased count-up: the number climbs with the arc, and the color transitions
+  // red → amber → green as it passes each band, landing on the final verdict.
   useEffect(() => {
-    const timer = setTimeout(() => setAnimatedScore(score), 100);
-    return () => clearTimeout(timer);
+    const duration = 1200;
+    const start = performance.now();
+    let raf: number;
+    const tick = (now: number) => {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+      setAnimatedScore(Math.round(score * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, [score]);
 
   // Bands match the scoring rubric in free-keyword-scan/index.ts (85/70/50) so the
   // visual treatment doesn't soften a score the model has already judged as weak.
+  // Color follows the ANIMATED value so it visibly shifts bands during the climb.
   const getColor = () => {
-    if (score >= 70) return "hsl(var(--success))";
-    if (score >= 50) return "hsl(var(--warning))";
+    if (animatedScore >= 70) return "hsl(var(--success))";
+    if (animatedScore >= 50) return "hsl(var(--warning))";
     return "hsl(var(--destructive))";
   };
 

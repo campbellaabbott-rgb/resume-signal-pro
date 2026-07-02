@@ -1,0 +1,279 @@
+// Golden regression suite for the industry detection engine.
+//
+// The engine (52 industries, role locks, cert locks, disambiguation, anchors,
+// recency weighting) had no automated coverage — every keyword-table change
+// risked silently breaking existing detection. These synthetic fixtures pin
+// the expected classification for representative resumes plus the known
+// crossover traps. If a table change flips one of these, the suite fails and
+// the change gets reviewed instead of shipped blind.
+//
+// Fixtures are intentionally SHORT. Real resumes give the engine far more
+// signal, so a pass here is a floor, not a ceiling.
+
+import { describe, it, expect } from "vitest";
+import { detectIndustry } from "../../supabase/functions/free-keyword-scan/industry-detection.ts";
+
+interface GoldenCase {
+  name: string;
+  resume: string;
+  expected: string;
+  /** Accept any of these (for genuinely ambiguous hybrids) */
+  acceptAlso?: string[];
+}
+
+const EXPERIENCE = "PROFESSIONAL EXPERIENCE";
+
+const cases: GoldenCase[] = [
+  // ── Core industries ──────────────────────────────────────────────────────
+  {
+    name: "software engineer",
+    expected: "technology",
+    resume: `Jane Doe\nSenior Software Engineer\n${EXPERIENCE}\nSenior Software Engineer, Acme (2021-present)\n- Built REST API services in Python, deployed to AWS with Docker and CI/CD\n- Designed database schema in PostgreSQL, improved query performance 40%\nSKILLS\nPython, AWS, Docker, PostgreSQL, Kubernetes`,
+  },
+  {
+    name: "registered nurse with SQL in skills (classic trap)",
+    expected: "healthcare",
+    resume: `Maria Lopez, RN\nRegistered Nurse\n${EXPERIENCE}\nRegistered Nurse, ICU, Mercy Hospital (2019-present)\n- Provided patient care for 6-bed ICU, medication administration and charting\n- Triage and vitals monitoring in acute care setting\nSKILLS\nSQL, Excel, Epic EHR, patient care, nursing`,
+  },
+  {
+    name: "account executive at SaaS company (tech vocabulary trap)",
+    expected: "sales",
+    resume: `Tom Chen\nEnterprise Account Executive\n${EXPERIENCE}\nAccount Executive, CloudCo SaaS (2020-present)\n- Exceeded quota 4 quarters running, closed won $2.1M ARR in enterprise deals\n- Ran discovery calls and demos of our API integration platform\n- Managed pipeline in Salesforce, prospecting and outbound sequences\nSKILLS\nSalesforce, APIs, software platforms`,
+  },
+  {
+    name: "attorney",
+    expected: "legal",
+    resume: `Sarah Kim, JD\nAttorney\n${EXPERIENCE}\nAssociate Attorney, Baker Firm (2018-present)\n- Drafted motions and pleadings for commercial litigation matters\n- Managed discovery and depositions, second-chaired two trials\nEDUCATION\nJuris Doctor, admitted to the bar (State Bar of California)`,
+  },
+  {
+    name: "elementary teacher",
+    expected: "education",
+    resume: `Amy Ruiz\nElementary Teacher\n${EXPERIENCE}\n3rd Grade Teacher, Lincoln Elementary (2017-present)\n- Developed lesson plans aligned to state standards for 28 students\n- Classroom management, parent conferences, IEP participation\nCERTIFICATIONS\nState teaching license`,
+  },
+  {
+    name: "financial analyst",
+    expected: "finance",
+    resume: `Raj Patel\nFinancial Analyst\n${EXPERIENCE}\nFP&A Analyst, RetailCorp (2020-present)\n- Built financial models for budgeting and forecasting, variance analysis\n- Monthly close support and board deck preparation\nSKILLS\nExcel, financial modeling, forecasting`,
+  },
+  {
+    name: "product manager",
+    expected: "product_management",
+    resume: `Lee Wong\nSenior Product Manager\n${EXPERIENCE}\nProduct Manager, AppCo (2019-present)\n- Owned product roadmap, wrote user stories and managed backlog\n- Launched 3 features, ran stakeholder reviews and A/B tests\nSKILLS\nJira, roadmapping, user research`,
+  },
+  {
+    name: "data scientist",
+    expected: "data_science",
+    resume: `Ana Silva\nData Scientist\n${EXPERIENCE}\nData Scientist, FinTech Inc (2021-present)\n- Built churn prediction models in Python, statistical analysis and experiments\n- Presented insights to leadership, A/B experiment design\nSKILLS\nPython, pandas, scikit-learn, SQL`,
+  },
+  {
+    name: "marketing manager",
+    expected: "marketing",
+    resume: `Nina Brown\nMarketing Manager\n${EXPERIENCE}\nDigital Marketing Manager, BrandCo (2019-present)\n- Ran paid campaigns across Google Ads and Meta, improved ROAS 35%\n- Led SEO and content strategy, grew organic traffic 3x\nSKILLS\nGoogle Ads, SEO, HubSpot`,
+  },
+  {
+    name: "recruiter",
+    expected: "hr",
+    resume: `Omar Hassan\nSenior Recruiter\n${EXPERIENCE}\nTalent Acquisition Specialist, TechCorp (2020-present)\n- Full-cycle recruiting for engineering roles, 40 hires per year\n- Sourcing, screening, offers, and onboarding coordination\nSKILLS\nGreenhouse, LinkedIn Recruiter, hiring`,
+  },
+
+  // ── Newer industries (batch 1) ───────────────────────────────────────────
+  {
+    name: "security engineer (technology trap)",
+    expected: "cybersecurity",
+    resume: `Ken Ito\nSecurity Engineer\n${EXPERIENCE}\nSecurity Engineer, BankCo (2020-present)\n- Ran incident response and threat hunting in Splunk SIEM\n- Vulnerability management and penetration testing coordination\nCERTIFICATIONS\nCISSP, Security+`,
+  },
+  {
+    name: "supply chain manager",
+    expected: "logistics",
+    resume: `Dana White\nSupply Chain Manager\n${EXPERIENCE}\nSupply Chain Manager, RetailCo (2018-present)\n- Managed inventory and demand planning across 4 warehouses\n- Negotiated freight carrier contracts, improved on-time delivery to 97%\nSKILLS\nSAP, WMS, forecasting`,
+  },
+  {
+    name: "realtor (sales trap)",
+    expected: "real_estate",
+    resume: `Paula Green\nRealtor\n${EXPERIENCE}\nReal Estate Agent, Keller Homes (2017-present)\n- Closed 45 transactions totaling $18M in sales volume, managed listings and escrow\n- Ran open houses, comparative market analysis for sellers\nLICENSES\nReal estate license`,
+  },
+  {
+    name: "claims adjuster",
+    expected: "insurance",
+    resume: `Bill Ford\nClaims Adjuster\n${EXPERIENCE}\nSenior Claims Adjuster, StateSure (2016-present)\n- Investigated and settled property claims, managed coverage decisions\n- Handled subrogation and worked within policy limits\nSKILLS\nGuidewire, claims processing`,
+  },
+  {
+    name: "grant writer",
+    expected: "nonprofit",
+    resume: `Eve Adams\nGrants Manager\n${EXPERIENCE}\nGrant Writer, Community Foundation (2019-present)\n- Secured $2.4M in foundation and federal grants, wrote proposals and reports\n- Managed donor stewardship and annual fund appeals\nSKILLS\nRaisers Edge, fundraising`,
+  },
+  {
+    name: "research associate biotech",
+    expected: "biotech",
+    resume: `Ming Zhao\nResearch Associate\n${EXPERIENCE}\nResearch Associate II, GeneTx (2021-present)\n- Ran PCR, ELISA and cell culture assays under GMP\n- Maintained batch records and SOPs, flow cytometry analysis\nEDUCATION\nMS Biology`,
+  },
+  {
+    name: "commercial pilot",
+    expected: "aviation",
+    resume: `Jack Reed\nCommercial Pilot\n${EXPERIENCE}\nFirst Officer, Regional Air (2019-present)\n- 3,200 flight hours, Part 121 operations, instrument rating\n- Type rated E175, crew resource management\nCERTIFICATIONS\nATP certificate, FAA first class medical`,
+  },
+  {
+    name: "solar technician",
+    expected: "energy",
+    resume: `Sam Cole\nSolar Installer\n${EXPERIENCE}\nSolar Technician, SunPro (2020-present)\n- Installed residential photovoltaic systems and inverters, 200+ installs\n- Commissioning, grid interconnection paperwork\nCERTIFICATIONS\nNABCEP, OSHA 10`,
+  },
+  {
+    name: "electrician",
+    expected: "skilled_trades",
+    resume: `Luis Ortiz\nJourneyman Electrician\n${EXPERIENCE}\nElectrician, Volt Bros (2015-present)\n- Wiring, conduit and breaker panel installs for commercial construction\n- Blueprint reading, NEC code compliance, troubleshooting\nLICENSES\nJourneyman license, OSHA 30`,
+  },
+  {
+    name: "support specialist (sales trap)",
+    expected: "customer_success",
+    resume: `Tia Moore\nCustomer Support Specialist\n${EXPERIENCE}\nSupport Specialist, AppCo (2021-present)\n- Resolved 60 tickets/day in Zendesk, maintained 96% CSAT within SLA\n- Wrote knowledge base articles, cut first response time 30%\nSKILLS\nZendesk, live chat, escalations`,
+  },
+
+  // ── Newer industries (batch 2) ───────────────────────────────────────────
+  {
+    name: "pharmacist (healthcare trap)",
+    expected: "pharmacy",
+    resume: `Kim Tran, PharmD\nPharmacist\n${EXPERIENCE}\nStaff Pharmacist, MedRx (2018-present)\n- Dispensing and verification of 400 prescriptions daily, patient counseling\n- Immunizations, medication therapy management, controlled substances compliance\nLICENSES\nPharmD, RPh`,
+  },
+  {
+    name: "dental hygienist",
+    expected: "dental",
+    resume: `Joy Park, RDH\nDental Hygienist\n${EXPERIENCE}\nDental Hygienist, Smile Dental (2019-present)\n- Prophylaxis, scaling and root planing, radiographs for 10 patients daily\n- Patient education and periodontal charting in Dentrix\nLICENSES\nRDH`,
+  },
+  {
+    name: "vet tech",
+    expected: "veterinary",
+    resume: `Ben Diaz\nVeterinary Technician\n${EXPERIENCE}\nVet Tech, Paws Clinic (2020-present)\n- Anesthesia monitoring and surgical assistance for canine and feline patients\n- Vaccinations, lab diagnostics, client education\nCERTIFICATIONS\nCVT`,
+  },
+  {
+    name: "personal trainer",
+    expected: "fitness",
+    resume: `Alexis Ray\nPersonal Trainer\n${EXPERIENCE}\nPersonal Trainer, FitLife Gym (2019-present)\n- Designed strength training programs, fitness assessments for 30 clients\n- 85% client retention, session packages and program design\nCERTIFICATIONS\nNASM, CPR`,
+  },
+  {
+    name: "journalist (marketing trap)",
+    expected: "media",
+    resume: `Cara Boyd\nStaff Reporter\n${EXPERIENCE}\nReporter, City Herald (2018-present)\n- Beat reporting on city hall, 400+ bylines, breaking news coverage\n- Investigative features, source development, AP style editing\nSKILLS\nFOIA requests, fact-checking`,
+  },
+  {
+    name: "fiber technician",
+    expected: "telecom",
+    resume: `Ray Nunez\nFiber Optic Technician\n${EXPERIENCE}\nFiber Technician, NetLink (2019-present)\n- Fiber splicing and OTDR testing for FTTH buildouts\n- Installed and turned up DOCSIS and VoIP services\nCERTIFICATIONS\nBICSI`,
+  },
+  {
+    name: "farm manager",
+    expected: "agriculture",
+    resume: `Hank Miller\nFarm Manager\n${EXPERIENCE}\nFarm Manager, Miller Farms (2014-present)\n- Managed 2,400 acres of corn and soybean crops, planting through harvest\n- Livestock operations, irrigation scheduling, yield mapping\nCERTIFICATIONS\nPesticide applicator license, CDL`,
+  },
+  {
+    name: "athletic director",
+    expected: "sports_management",
+    resume: `Coach Dan Wells\nAthletic Director\n${EXPERIENCE}\nAthletic Director, State University (2017-present)\n- Oversaw 14 athletic programs, NCAA compliance and recruiting coordination\n- Game day operations, season tickets and sponsorships growth\nSKILLS\nHudl, Teamworks`,
+  },
+  {
+    name: "film producer",
+    expected: "entertainment",
+    resume: `Mia Fox\nLine Producer\n${EXPERIENCE}\nLine Producer, Studio X (2018-present)\n- Managed production budgets and call sheets for episodic TV\n- Crew management through principal photography and wrap\nSKILLS\nMovie Magic, SAG-AFTRA compliance`,
+  },
+  {
+    name: "professor (education trap)",
+    expected: "academia",
+    resume: `Dr. Ida Nash\nAssociate Professor\n${EXPERIENCE}\nAssociate Professor, State University (2015-present)\n- 32 peer-reviewed publications, NSF grant funding as principal investigator\n- Supervised 6 graduate students, dissertation committees, tenure achieved 2020\nEDUCATION\nPhD`,
+  },
+
+  // ── Newest industries (batch 3) ──────────────────────────────────────────
+  {
+    name: "construction superintendent (trades/PM trap)",
+    expected: "construction_management",
+    resume: `Gus Hall\nConstruction Superintendent\n${EXPERIENCE}\nSuperintendent, BuildCorp (2016-present)\n- Managed subcontractors on $40M ground-up commercial projects\n- RFIs, submittals, change orders, punch list and closeout\nSKILLS\nProcore, Primavera P6, OSHA 30`,
+  },
+  {
+    name: "project architect (creative trap)",
+    expected: "architecture",
+    resume: `Zoe Lin\nProject Architect\n${EXPERIENCE}\nProject Architect, Studio A (2018-present)\n- Led schematic design through construction documents for mixed-use projects\n- Building code analysis, permit sets, construction administration\nSKILLS\nRevit, AutoCAD\nLICENSES\nLicensed architect, NCARB`,
+  },
+  {
+    name: "clinical social worker (healthcare trap)",
+    expected: "social_work",
+    resume: `Ann Reyes, LCSW\nClinical Social Worker\n${EXPERIENCE}\nTherapist, Family Services (2019-present)\n- Managed caseload of 45 clients, treatment plans and crisis intervention\n- Individual and group therapy using CBT, trauma-informed care\nLICENSES\nLCSW`,
+  },
+  {
+    name: "preschool teacher (education trap)",
+    expected: "childcare",
+    resume: `Beth Cook\nPreschool Teacher\n${EXPERIENCE}\nLead Preschool Teacher, Little Steps (2018-present)\n- Play-based learning for 16 toddlers, developmentally appropriate lesson plans\n- Parent communication, daily reports, circle time\nCERTIFICATIONS\nCDA, CPR certified`,
+  },
+  {
+    name: "hair stylist",
+    expected: "beauty",
+    resume: `Gigi Marsh\nHair Stylist\n${EXPERIENCE}\nStylist, Luxe Salon (2017-present)\n- Color services, balayage and cuts for 200+ regular clients\n- 90% rebooking rate, retail sales and consultations\nLICENSES\nCosmetology license`,
+  },
+  {
+    name: "sous chef (hospitality trap)",
+    expected: "culinary",
+    resume: `Nico Bell\nSous Chef\n${EXPERIENCE}\nSous Chef, The Grove (2019-present)\n- Ran line for 300-cover service, expediting and station management\n- Menu development, food cost control to 28%, HACCP compliance\nCERTIFICATIONS\nServSafe`,
+  },
+  {
+    name: "police officer (government trap)",
+    expected: "law_enforcement",
+    resume: `Officer Ed Stone\nPolice Officer\n${EXPERIENCE}\nPatrol Officer, Metro PD (2015-present)\n- Patrol operations, arrests and incident reports, community policing\n- Evidence collection and court testimony, field training officer\nCERTIFICATIONS\nPOST certification`,
+  },
+  {
+    name: "sustainability analyst (engineering trap)",
+    expected: "environmental",
+    resume: `Ivy Chen\nSustainability Analyst\n${EXPERIENCE}\nESG Analyst, GreenCorp (2021-present)\n- Built GHG inventory and emissions reporting under GHG Protocol\n- CDP and GRI sustainability reporting, carbon footprint reduction roadmap\nSKILLS\nGHG Protocol, GRI standards`,
+  },
+  {
+    name: "game designer (technology trap)",
+    expected: "gaming",
+    resume: `Kai Wolf\nGame Designer\n${EXPERIENCE}\nGame Designer, PixelForge (2020-present)\n- Designed gameplay systems and level design for shipped mobile titles\n- Balanced game economy, live ops events, player retention +18%\nSKILLS\nUnity, C#, playtesting`,
+  },
+  {
+    name: "ecommerce manager (marketing trap)",
+    expected: "ecommerce",
+    resume: `Lola Reed\nEcommerce Manager\n${EXPERIENCE}\nEcommerce Manager, HomeGoods DTC (2020-present)\n- Grew Shopify revenue 60%, improved conversion rate and AOV\n- Managed Amazon Seller Central, FBA and buy box strategy\nSKILLS\nShopify Plus, Klaviyo`,
+  },
+  {
+    name: "medical interpreter",
+    expected: "translation",
+    resume: `Yuri Sato\nMedical Interpreter\n${EXPERIENCE}\nMedical Interpreter, City Health (2019-present)\n- Simultaneous and consecutive interpretation for patient visits (EN-JA)\n- Terminology management and sight translation of consent forms\nCERTIFICATIONS\nCCHI certified`,
+  },
+  {
+    name: "event planner (hospitality trap)",
+    expected: "event_planning",
+    resume: `Rita Vale\nEvent Planner\n${EXPERIENCE}\nEvent Manager, Summit Events (2018-present)\n- Produced 40 corporate events and conferences yearly, 5,000+ attendees\n- Vendor management, run of show, event budgets to $1.2M, BEOs\nCERTIFICATIONS\nCMP`,
+  },
+
+  // ── Context guards ───────────────────────────────────────────────────────
+  {
+    name: "aspiring nurse in summary must NOT lock healthcare",
+    expected: "customer_success",
+    resume: `Pat Doe\nSUMMARY\nAspiring registered nurse seeking opportunities in healthcare\n${EXPERIENCE}\nCustomer Support Specialist, TelCo (2019-present)\n- Resolved 70 tickets daily in Zendesk with 95% CSAT within SLA\n- Escalations handling, knowledge base authoring, live chat support\nSKILLS\nZendesk, call center`,
+  },
+  {
+    name: "worked WITH attorneys must NOT lock legal",
+    expected: "hr",
+    acceptAlso: ["consulting"],
+    resume: `Sue King\nHR Business Partner\n${EXPERIENCE}\nHR Business Partner, BigCo (2018-present)\n- Employee relations and performance management for 400-person org\n- Worked closely with attorneys on workplace investigations\n- Workforce planning and engagement surveys\nSKILLS\nWorkday, employee relations`,
+  },
+  {
+    name: "recency: recent data role beats older marketing era",
+    expected: "data_science",
+    acceptAlso: ["technology", "data_engineering"],
+    resume: `Val Moss\nData Analyst\n${EXPERIENCE}\nData Analyst, ShopCo (2021-present)\n- Statistical analysis and churn models in Python, dashboards in SQL\n- Experiment design and insights reporting for product teams\nMarketing Manager, AdCo (2015-2018)\n- Ran campaigns, brand and social media content, advertising budgets\nSKILLS\nPython, SQL, Tableau`,
+  },
+];
+
+describe("industry detection golden corpus", () => {
+  for (const c of cases) {
+    it(c.name, () => {
+      const result = detectIndustry(c.resume);
+      const acceptable = [c.expected, ...(c.acceptAlso ?? [])];
+      expect(acceptable, `detected "${result.industry}" (score ${result.score.toFixed(1)}; signals: ${result.signals.join(" | ")})`).toContain(result.industry);
+    });
+  }
+
+  it("returns telemetry with top3 and margin on every result", () => {
+    const result = detectIndustry(cases[0].resume);
+    expect(result.telemetry?.top3.length).toBeGreaterThan(0);
+    expect(result.telemetry?.marginRatio).toBeGreaterThan(0);
+  });
+});

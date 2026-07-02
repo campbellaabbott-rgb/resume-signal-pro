@@ -122,3 +122,6 @@ verify_jwt = false
 
 [functions.generate-graduate-gameplan]
 verify_jwt = false
+
+[functions.send-scan-report]
+verify_jwt = false
