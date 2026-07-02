@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/seo/SEO";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
@@ -915,6 +915,9 @@ const Index = () => {
             industry: result.industry || null,
             verdict: (result as any).reportVerdict ?? null,
             red_flag_count: (result.redFlags || []).length,
+            fix_plan: (result as any).fixRoadmap?.steps
+              ? (result as any).fixRoadmap.steps.map((st: { step: string }) => ({ step: st.step, done: false }))
+              : null,
           }).then(({ error }) => {
             if (error) console.warn('[Account] Failed to save scan to history:', error.message);
           });
@@ -1479,6 +1482,19 @@ const Index = () => {
           <section id="free-results" className="py-12 scroll-mt-20" data-results-section="true">
             <div className="container space-y-4">
               <ResumeLanguageSuggestion detectedLanguage={freeKeywordResult.detectedLanguage} />
+              {!session && (
+                <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  <p className="text-xs text-muted-foreground flex-1">
+                    <span className="font-semibold text-foreground">Don't lose this score.</span> Create a free account to track your progress across scans, keep your fix checklist, and get 15 free scans a day instead of 7.
+                  </p>
+                  <Link
+                    to="/auth"
+                    className="shrink-0 inline-block px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
+                  >
+                    Create free account
+                  </Link>
+                </div>
+              )}
               {freeKeywordResult.partialResults && (
                 <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 flex items-start gap-2">
                   <span className="text-warning text-sm shrink-0">⚠️</span>

@@ -20,6 +20,23 @@ export default function Auth() {
   const [notice, setNotice] = useState<string | null>(null);
   const [showResend, setShowResend] = useState(false);
 
+  const sendMagicLink = async () => {
+    setError(null);
+    setNotice(null);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) {
+      setError("Enter your email above first, then request the link.");
+      return;
+    }
+    setBusy(true);
+    const { error: err } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { emailRedirectTo: `${window.location.origin}/account` },
+    });
+    setBusy(false);
+    if (err) setError(err.message);
+    else setNotice("Magic link sent — click it in your inbox and you're in. No password needed.");
+  };
+
   const resendConfirmation = async () => {
     const { error: err } = await supabase.auth.resend({ type: "signup", email: email.trim() });
     setNotice(err ? null : "Confirmation email resent — check your inbox.");
@@ -108,6 +125,15 @@ export default function Auth() {
             >
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : mode === "signup" ? <UserPlus className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
               {mode === "signup" ? "Create free account" : "Sign in"}
+            </button>
+
+            <button
+              onClick={sendMagicLink}
+              disabled={busy}
+              className="mt-2 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border text-foreground font-medium text-sm hover:border-primary/40 hover:bg-primary/5 disabled:opacity-60 transition-colors"
+            >
+              <Mail className="w-4 h-4" />
+              Email me a sign-in link instead
             </button>
 
             <button

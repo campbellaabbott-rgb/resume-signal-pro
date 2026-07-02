@@ -1,15 +1,20 @@
-// Account dashboard: score history over time, scan credits, and purchases.
-// Scans come straight from user_scans (RLS: own rows). Credits and purchases
-// key by email in service-role tables, so they're fetched through the
-// get-account-data edge function using the caller's JWT.
+// Account dashboard: score history, target goal, fix checklist, scan compare,
+// application tracker, credits, and purchases. Scans/profile/applications come
+// straight from RLS-protected tables; credits and purchases key by email in
+// service-role tables and are fetched through the get-account-data function.
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { TrendingUp, Coins, ShoppingBag, LogOut, Loader2, ScanSearch } from "lucide-react";
+import {
+  TrendingUp, Coins, ShoppingBag, LogOut, Loader2, ScanSearch, Target,
+  ListChecks, GitCompare, Briefcase, Plus, Trash2, AlertTriangle,
+} from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+
+interface FixItem { step: string; done: boolean }
 
 interface UserScan {
   id: string;
@@ -17,7 +22,18 @@ interface UserScan {
   projected_score: number | null;
   industry: string | null;
   verdict: string | null;
+  red_flag_count: number | null;
+  fix_plan: FixItem[] | null;
   created_at: string;
+}
+
+interface Application {
+  id: string;
+  company: string;
+  role: string;
+  status: string;
+  scan_score: number | null;
+  applied_at: string;
 }
 
 interface AccountData {
@@ -25,31 +41,134 @@ interface AccountData {
   purchases: Array<{ product: string; date: string }>;
 }
 
+const APP_STATUSES = ["applied", "interviewing", "offer", "rejected"] as const;
+const STATUS_STYLES: Record<string, string> = {
+  applied: "bg-primary/10 text-primary",
+  interviewing: "bg-warning/10 text-warning",
+  offer: "bg-success/10 text-success",
+  rejected: "bg-muted text-muted-foreground",
+};
+
 export default function Account() {
   const { session, user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const [scans, setScans] = useState<UserScan[]>([]);
   const [account, setAccount] = useState<AccountData | null>(null);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [targetScore, setTargetScore] = useState<number | null>(null);
   const [fetching, setFetching] = useState(true);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [newApp, setNewApp] = useState({ company: "", role: "" });
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!loading && !session) navigate("/auth", { replace: true });
   }, [loading, session, navigate]);
 
-  useEffect(() => {
+  const loadAll = useCallback(async () => {
     if (!session) return;
-    (async () => {
-      setFetching(true);
-      const [scansRes, accountRes] = await Promise.all([
-        supabase.from("user_scans").select("*").order("created_at", { ascending: false }).limit(50),
-        supabase.functions.invoke("get-account-data").catch(() => ({ data: null, error: true })),
-      ]);
-      if (scansRes.data) setScans(scansRes.data as UserScan[]);
-      const acc = (accountRes as { data?: { credits?: number; purchases?: AccountData["purchases"] } }).data;
-      setAccount({ credits: acc?.credits ?? 0, purchases: acc?.purchases ?? [] });
-      setFetching(false);
-    })();
+    setFetching(true);
+    const [scansRes, accountRes, appsRes, profileRes] = await Promise.all([
+      supabase.from("user_scans").select("*").order("created_at", { ascending: false }).limit(50),
+      supabase.functions.invoke("get-account-data").catch(() => ({ data: null })),
+      supabase.from("user_applications").select("*").order("created_at", { ascending: false }).limit(100),
+      supabase.from("user_profiles").select("target_score").maybeSingle(),
+    ]);
+    let cloudScans = (scansRes.data as UserScan[] | null) ?? [];
+
+    // One-time import: local scan history from before the account existed.
+    // Runs when the cloud is empty and localStorage has entries; marks itself
+    // done so it never duplicates.
+    try {
+      const importedFlag = localStorage.getItem("scan_history_imported");
+      const rawLocal = localStorage.getItem("rb_scan_history");
+      if (!importedFlag && cloudScans.length === 0 && rawLocal) {
+        const parsed = JSON.parse(rawLocal);
+        const entries: Array<{ atsScore?: number; industry?: string | null; timestamp?: number | string }> =
+          Array.isArray(parsed?.entries) ? parsed.entries : [];
+        const rows = entries
+          .filter(e => typeof e.atsScore === "number")
+          .slice(0, 25)
+          .map(e => ({
+            user_id: session.user.id,
+            ats_score: e.atsScore as number,
+            industry: e.industry ?? null,
+            created_at: e.timestamp ? new Date(e.timestamp).toISOString() : new Date().toISOString(),
+          }));
+        if (rows.length > 0) {
+          const { error } = await supabase.from("user_scans").insert(rows);
+          if (!error) {
+            localStorage.setItem("scan_history_imported", "1");
+            const refreshed = await supabase.from("user_scans").select("*").order("created_at", { ascending: false }).limit(50);
+            cloudScans = (refreshed.data as UserScan[] | null) ?? cloudScans;
+          }
+        } else {
+          localStorage.setItem("scan_history_imported", "1");
+        }
+      }
+    } catch (e) {
+      console.warn("[Account] history import skipped:", e);
+    }
+
+    setScans(cloudScans);
+    setApplications((appsRes.data as Application[] | null) ?? []);
+    setTargetScore((profileRes.data as { target_score?: number } | null)?.target_score ?? null);
+    const acc = (accountRes as { data?: { credits?: number; purchases?: AccountData["purchases"] } }).data;
+    setAccount({ credits: acc?.credits ?? 0, purchases: acc?.purchases ?? [] });
+    setFetching(false);
   }, [session]);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  const saveTarget = async (value: number) => {
+    if (!session) return;
+    setTargetScore(value);
+    await supabase.from("user_profiles").upsert({ user_id: session.user.id, target_score: value, updated_at: new Date().toISOString() });
+  };
+
+  const toggleFixItem = async (scanId: string, index: number) => {
+    const scan = scans.find(s => s.id === scanId);
+    if (!scan?.fix_plan) return;
+    const updated = scan.fix_plan.map((f, i) => i === index ? { ...f, done: !f.done } : f);
+    setScans(scans.map(s => s.id === scanId ? { ...s, fix_plan: updated } : s));
+    await supabase.from("user_scans").update({ fix_plan: updated }).eq("id", scanId);
+  };
+
+  const addApplication = async () => {
+    if (!session || !newApp.company.trim()) return;
+    const { data } = await supabase.from("user_applications").insert({
+      user_id: session.user.id,
+      company: newApp.company.trim(),
+      role: newApp.role.trim(),
+      scan_score: scans[0]?.ats_score ?? null,
+    }).select().single();
+    if (data) setApplications([data as Application, ...applications]);
+    setNewApp({ company: "", role: "" });
+  };
+
+  const updateAppStatus = async (id: string, status: string) => {
+    setApplications(applications.map(a => a.id === id ? { ...a, status } : a));
+    await supabase.from("user_applications").update({ status }).eq("id", id);
+  };
+
+  const deleteApplication = async (id: string) => {
+    setApplications(applications.filter(a => a.id !== id));
+    await supabase.from("user_applications").delete().eq("id", id);
+  };
+
+  const deleteAccount = async () => {
+    setDeleting(true);
+    const { data, error } = await supabase.functions.invoke("delete-account").catch(() => ({ data: null, error: true }));
+    if (!error && (data as { success?: boolean })?.success) {
+      await signOut();
+      navigate("/");
+    } else {
+      setDeleting(false);
+      setConfirmDelete(false);
+      alert("Account deletion failed — please contact support.");
+    }
+  };
 
   if (loading || !session) {
     return (
@@ -62,8 +181,22 @@ export default function Account() {
   const best = scans.length ? Math.max(...scans.map(s => s.ats_score)) : null;
   const latest = scans[0] ?? null;
   const delta = scans.length >= 2 ? scans[0].ats_score - scans[1].ats_score : null;
+  const goal = targetScore ?? 80;
+  const goalProgress = latest ? Math.min(100, Math.round((latest.ats_score / goal) * 100)) : 0;
+  const goalHit = latest != null && latest.ats_score >= goal;
+  const latestFixPlan = scans.find(s => s.fix_plan && s.fix_plan.length > 0);
+  const doneFixes = latestFixPlan?.fix_plan?.filter(f => f.done).length ?? 0;
 
-  // Simple inline score-over-time chart (oldest → newest)
+  const compareScans = compareIds
+    .map(id => scans.find(s => s.id === id))
+    .filter((s): s is UserScan => !!s)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+  const toggleCompare = (id: string) => {
+    setCompareIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev.slice(-1), id]);
+  };
+
+  // Score-over-time chart (oldest → newest)
   const chartScans = [...scans].reverse();
   const W = 560, H = 120;
   const points = chartScans.map((s, i) => {
@@ -71,11 +204,13 @@ export default function Account() {
     const y = H - 12 - (s.ats_score / 100) * (H - 28);
     return { x, y, score: s.ats_score };
   });
+  const goalY = H - 12 - (goal / 100) * (H - 28);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
       <main className="flex-1 container max-w-3xl pt-24 pb-16">
+        {/* Identity */}
         <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-5 mb-6 flex items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
             <span className="text-lg font-bold text-primary uppercase">{user?.email?.[0] ?? "?"}</span>
@@ -114,7 +249,73 @@ export default function Account() {
           </div>
         </div>
 
-        {/* Score history */}
+        {/* Target score goal */}
+        <div className={`rounded-2xl border p-5 mb-6 ${goalHit ? "border-success/40 bg-success/5" : "border-border bg-card"}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <Target className={`w-4 h-4 ${goalHit ? "text-success" : "text-primary"}`} />
+            <h2 className="font-semibold text-foreground text-sm">Target score</h2>
+            <div className="ml-auto flex items-center gap-1.5">
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={goal}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  if (Number.isFinite(v) && v >= 1 && v <= 100) saveTarget(v);
+                }}
+                className="w-16 px-2 py-1 rounded-lg bg-background border border-border text-sm text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/40"
+                aria-label="Target ATS score"
+              />
+            </div>
+          </div>
+          {goalHit ? (
+            <p className="text-sm text-success font-semibold">🎉 Goal hit — your latest scan beat your target. Raise the bar?</p>
+          ) : (
+            <>
+              <div className="h-2.5 rounded-full bg-muted overflow-hidden mb-1">
+                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${goalProgress}%` }} />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {latest ? `${latest.ats_score} of ${goal} — ${Math.max(0, goal - latest.ats_score)} points to go.` : "Run a scan to start tracking progress toward your goal."}
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* Fix checklist */}
+        {latestFixPlan?.fix_plan && (
+          <div className="rounded-2xl border border-border bg-card p-5 mb-6">
+            <div className="flex items-center gap-2 mb-1">
+              <ListChecks className="w-4 h-4 text-primary" />
+              <h2 className="font-semibold text-foreground text-sm">Your fix checklist</h2>
+              <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                {doneFixes}/{latestFixPlan.fix_plan.length} done
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">From your scan on {new Date(latestFixPlan.created_at).toLocaleDateString()}. Check items off as you fix them, then rescan to see the lift.</p>
+            <div className="space-y-1.5">
+              {latestFixPlan.fix_plan.map((f, i) => (
+                <label key={i} className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border/50 cursor-pointer hover:bg-muted/20 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={f.done}
+                    onChange={() => toggleFixItem(latestFixPlan.id, i)}
+                    className="mt-0.5 accent-primary"
+                  />
+                  <span className={`text-sm ${f.done ? "text-muted-foreground line-through" : "text-foreground"}`}>{f.step}</span>
+                </label>
+              ))}
+            </div>
+            {doneFixes === latestFixPlan.fix_plan.length && (
+              <Link to="/#upload" className="mt-3 inline-block px-4 py-2 rounded-lg bg-success text-success-foreground text-xs font-semibold hover:bg-success/90 transition-colors">
+                All done — rescan to see your new score →
+              </Link>
+            )}
+          </div>
+        )}
+
+        {/* Score history + compare */}
         <div className="rounded-2xl border border-border bg-card p-5 mb-6">
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp className="w-4 h-4 text-primary" />
@@ -133,31 +334,135 @@ export default function Account() {
             <>
               {points.length >= 2 && (
                 <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-28 mb-3" role="img" aria-label="ATS score over time">
-                  <polyline
-                    points={points.map(p => `${p.x},${p.y}`).join(" ")}
-                    className="fill-none stroke-primary"
-                    strokeWidth={2}
-                  />
+                  <line x1={10} y1={goalY} x2={W - 10} y2={goalY} className="stroke-success/40" strokeWidth={1} strokeDasharray="4 4" />
+                  <text x={W - 12} y={goalY - 4} textAnchor="end" className="fill-current text-[9px] text-success/70">goal {goal}</text>
+                  <polyline points={points.map(p => `${p.x},${p.y}`).join(" ")} className="fill-none stroke-primary" strokeWidth={2} />
                   {points.map((p, i) => (
                     <circle key={i} cx={p.x} cy={p.y} r={3} className={p.score >= 70 ? "fill-success" : p.score >= 50 ? "fill-warning" : "fill-destructive"} />
                   ))}
                 </svg>
               )}
+              {scans.length >= 2 && (
+                <p className="text-[11px] text-muted-foreground mb-2 flex items-center gap-1">
+                  <GitCompare className="w-3 h-3" /> Select two scans to compare them.
+                </p>
+              )}
               <div className="space-y-1.5 max-h-56 overflow-y-auto">
                 {scans.map((s) => (
-                  <div key={s.id} className="flex items-center gap-3 text-sm border border-border/50 rounded-lg px-3 py-2">
+                  <label key={s.id} className={`flex items-center gap-3 text-sm border rounded-lg px-3 py-2 cursor-pointer transition-colors ${compareIds.includes(s.id) ? "border-primary/50 bg-primary/5" : "border-border/50 hover:bg-muted/20"}`}>
+                    {scans.length >= 2 && (
+                      <input
+                        type="checkbox"
+                        checked={compareIds.includes(s.id)}
+                        onChange={() => toggleCompare(s.id)}
+                        className="accent-primary"
+                      />
+                    )}
                     <span className={`font-bold w-8 ${s.ats_score >= 70 ? "text-success" : s.ats_score >= 50 ? "text-warning" : "text-destructive"}`}>{s.ats_score}</span>
                     <span className="text-muted-foreground text-xs capitalize flex-1 truncate">{(s.industry ?? "").replace(/_/g, " ")}</span>
                     <span className="text-[11px] text-muted-foreground shrink-0">{new Date(s.created_at).toLocaleDateString()}</span>
-                  </div>
+                  </label>
                 ))}
               </div>
+
+              {/* Compare panel */}
+              {compareScans.length === 2 && (() => {
+                const [a, b] = compareScans;
+                const rows = [
+                  { label: "ATS score", a: a.ats_score, b: b.ats_score },
+                  { label: "Projected score", a: a.projected_score ?? "—", b: b.projected_score ?? "—" },
+                  { label: "Red flags", a: a.red_flag_count ?? "—", b: b.red_flag_count ?? "—", invert: true },
+                ];
+                return (
+                  <div className="mt-3 rounded-xl border border-primary/25 bg-primary/5 p-4">
+                    <p className="text-xs font-semibold text-foreground mb-2">
+                      {new Date(a.created_at).toLocaleDateString()} → {new Date(b.created_at).toLocaleDateString()}
+                    </p>
+                    <div className="space-y-1.5">
+                      {rows.map((r, i) => {
+                        const diff = typeof r.a === "number" && typeof r.b === "number" ? r.b - r.a : null;
+                        const good = diff != null && (r.invert ? diff < 0 : diff > 0);
+                        const bad = diff != null && (r.invert ? diff > 0 : diff < 0);
+                        return (
+                          <div key={i} className="flex items-center text-sm">
+                            <span className="text-muted-foreground text-xs w-32">{r.label}</span>
+                            <span className="text-foreground font-medium">{r.a}</span>
+                            <span className="text-muted-foreground mx-2">→</span>
+                            <span className="text-foreground font-medium">{r.b}</span>
+                            {diff != null && diff !== 0 && (
+                              <span className={`ml-2 text-xs font-semibold ${good ? "text-success" : bad ? "text-destructive" : "text-muted-foreground"}`}>
+                                ({diff > 0 ? "+" : ""}{diff})
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
             </>
           )}
         </div>
 
+        {/* Application tracker */}
+        <div className="rounded-2xl border border-border bg-card p-5 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Briefcase className="w-4 h-4 text-primary" />
+            <h2 className="font-semibold text-foreground text-sm">Application tracker</h2>
+            <span className="ml-auto text-xs text-muted-foreground">{applications.length} tracked</span>
+          </div>
+          <div className="flex gap-2 mb-3">
+            <input
+              value={newApp.company}
+              onChange={(e) => setNewApp({ ...newApp, company: e.target.value })}
+              placeholder="Company"
+              className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <input
+              value={newApp.role}
+              onChange={(e) => setNewApp({ ...newApp, role: e.target.value })}
+              onKeyDown={(e) => { if (e.key === "Enter") addApplication(); }}
+              placeholder="Role"
+              className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            <button
+              onClick={addApplication}
+              disabled={!newApp.company.trim()}
+              className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Add
+            </button>
+          </div>
+          {applications.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Track where you've applied — status, dates, and the score you applied with, all in one place.</p>
+          ) : (
+            <div className="space-y-1.5 max-h-64 overflow-y-auto">
+              {applications.map((a) => (
+                <div key={a.id} className="flex items-center gap-2 border border-border/50 rounded-lg px-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{a.company}{a.role ? <span className="text-muted-foreground font-normal"> · {a.role}</span> : null}</p>
+                    <p className="text-[11px] text-muted-foreground">{new Date(a.applied_at).toLocaleDateString()}{a.scan_score ? ` · applied with score ${a.scan_score}` : ""}</p>
+                  </div>
+                  <select
+                    value={a.status}
+                    onChange={(e) => updateAppStatus(a.id, e.target.value)}
+                    className={`text-xs px-2 py-1 rounded-full border-0 font-semibold cursor-pointer ${STATUS_STYLES[a.status] ?? STATUS_STYLES.applied}`}
+                    aria-label="Application status"
+                  >
+                    {APP_STATUSES.map(st => <option key={st} value={st}>{st}</option>)}
+                  </select>
+                  <button onClick={() => deleteApplication(a.id)} aria-label="Delete application" className="text-muted-foreground/50 hover:text-destructive transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Credits + purchases */}
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-2 gap-4 mb-6">
           <div className="rounded-2xl border border-border bg-card p-5">
             <div className="flex items-center gap-2 mb-2">
               <Coins className="w-4 h-4 text-warning" />
@@ -189,6 +494,43 @@ export default function Account() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Danger zone */}
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/[0.03] p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+            <h2 className="font-semibold text-foreground text-sm">Delete account</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Permanently deletes your account, scan history, checklist, goal, and applications. Purchase records are retained for accounting. This cannot be undone.
+          </p>
+          {!confirmDelete ? (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="px-3.5 py-2 rounded-lg border border-destructive/30 text-destructive text-xs font-semibold hover:bg-destructive/10 transition-colors"
+            >
+              Delete my account
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={deleteAccount}
+                disabled={deleting}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-destructive text-white text-xs font-semibold hover:bg-destructive/90 disabled:opacity-60 transition-colors"
+              >
+                {deleting && <Loader2 className="w-3 h-3 animate-spin" />}
+                Yes, permanently delete everything
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+                className="px-3.5 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       </main>
       <Footer />

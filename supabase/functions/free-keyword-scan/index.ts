@@ -402,6 +402,7 @@ const corsHeaders = {
 const MAX_RESUME_LENGTH = 50000;
 const MAX_JOB_DESCRIPTION_LENGTH = 15000;
 const FREE_SCANS_PER_DAY = 7;
+const SIGNED_IN_SCANS_PER_DAY = 15; // registered users get more — accounts must be worth having
 
 // Blocked country codes (ISO 3166-1 alpha-2)
 const BLOCKED_COUNTRIES = new Set(['RU', 'NG', 'PK']);
@@ -1276,6 +1277,20 @@ serve(async (req) => {
 
     // OPTIMIZATION: Run rate limit checks, country lookup, AND industry corrections DB query ALL IN PARALLEL
     // This saves ~300-500ms by not waiting for each sequentially
+    // Signed-in users get a higher daily limit — the concrete reason to register.
+    // The frontend client attaches the session JWT automatically when logged in.
+    let isAuthedUser = false;
+    try {
+      const authHeader = req.headers.get('Authorization') ?? '';
+      const jwt = authHeader.replace(/^Bearer\s+/i, '');
+      // Anon key requests carry the anon token; a user session carries a longer user JWT
+      if (jwt && jwt !== (Deno.env.get('SUPABASE_ANON_KEY') ?? '')) {
+        const { data: { user: authedUser } } = await supabase.auth.getUser(jwt);
+        isAuthedUser = !!authedUser?.id;
+      }
+    } catch { /* anonymous */ }
+    const dailyScanLimit = isAuthedUser ? SIGNED_IN_SCANS_PER_DAY : FREE_SCANS_PER_DAY;
+
     const [
       globalRateLimitResult,
       functionRateLimitResult,
@@ -1289,7 +1304,7 @@ serve(async (req) => {
       supabase.rpc('check_rate_limit', {
         p_function: 'free-keyword-scan',
         p_ip: clientIp,
-        p_max_requests: FREE_SCANS_PER_DAY,
+        p_max_requests: dailyScanLimit,
         p_window_minutes: 1440 // 24 hours
       }),
       // Load dynamic correction boosts from DB — aggregate counts per original→target pair
@@ -1361,19 +1376,21 @@ serve(async (req) => {
         .eq('ip_address', clientIp)
         .maybeSingle();
       
-      const scansUsed = usageData?.request_count || FREE_SCANS_PER_DAY;
+      const scansUsed = usageData?.request_count || dailyScanLimit;
       const windowStart = usageData?.window_start ? new Date(usageData.window_start) : new Date();
       const resetTime = new Date(windowStart.getTime() + 24 * 60 * 60 * 1000);
       const hoursUntilReset = Math.max(1, Math.ceil((resetTime.getTime() - Date.now()) / (1000 * 60 * 60)));
       
-      console.log(`[FREE-KEYWORD-SCAN] Rate limit exceeded for IP: ${clientIp} (${scansUsed}/${FREE_SCANS_PER_DAY} used)`);
+      console.log(`[FREE-KEYWORD-SCAN] Rate limit exceeded for IP: ${clientIp} (${scansUsed}/${dailyScanLimit} used, authed=${isAuthedUser})`);
       
       return new Response(
         JSON.stringify({ 
-          error: `You've used all ${FREE_SCANS_PER_DAY} free scans for today. Your limit resets in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`,
+          error: isAuthedUser
+            ? `You've used all ${dailyScanLimit} free scans for today. Your limit resets in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`
+            : `You've used all ${dailyScanLimit} free scans for today. Create a free account for ${SIGNED_IN_SCANS_PER_DAY}/day, or come back in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`,
           rateLimited: true,
           scansUsed,
-          scansLimit: FREE_SCANS_PER_DAY,
+          scansLimit: dailyScanLimit,
           hoursUntilReset,
           resetTime: resetTime.toISOString()
         }),
