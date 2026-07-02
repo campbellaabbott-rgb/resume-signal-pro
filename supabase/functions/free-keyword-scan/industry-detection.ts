@@ -2069,6 +2069,7 @@ export const SUB_INDUSTRY_TAXONOMY: Record<string, Array<{ id: string; label: st
     { id: 'accounting', label: 'Accounting', signals: ['general ledger', 'month-end close', 'reconciliation', 'accounts payable', 'accounts receivable', 'journal entries', 'gaap', 'audit support'], minSignals: 2 },
     { id: 'fpa', label: 'FP&A', signals: ['budgeting', 'forecasting', 'variance analysis', 'financial modeling', 'fp&a', 'headcount planning', 'board deck'], minSignals: 2 },
     { id: 'ib_pe', label: 'Investment Banking / PE', signals: ['m&a', 'due diligence', 'lbo', 'dcf', 'pitch book', 'deal execution', 'valuation', 'private equity', 'investment banking'], minSignals: 2 },
+    { id: 'venture_capital', label: 'Venture Capital', signals: ['venture capital', 'deal sourcing', 'investment thesis', 'term sheet', 'seed stage', 'series a', 'portfolio companies', 'lp relations', 'board seats', 'deal flow'], minSignals: 3 },
     { id: 'banking', label: 'Retail / Commercial Banking', signals: ['loan origination', 'credit analysis', 'branch', 'teller', 'deposits', 'commercial lending', 'kyc', 'aml'], minSignals: 2 },
   ],
   marketing: [
@@ -3646,6 +3647,9 @@ const TECH_SUB_ROLES: Array<{ role: string; signals: string[]; minSignals: numbe
 ];
 
 const FINANCE_SUB_ROLES: Array<{ role: string; signals: string[]; minSignals: number }> = [
+  // VC before PE: VC resumes mention "venture capital" and "portfolio company"
+  // both, and the more specific investor profile should win.
+  { role: 'Venture Capital Investor', signals: ['venture capital', 'seed stage', 'series a', 'series b', 'deal sourcing', 'investment thesis', 'term sheet', 'cap table', 'portfolio support', 'lp relations', 'limited partners', 'board seats', 'board observer', 'pre-seed', 'follow-on', 'dry powder', 'founder relationships', 'deal flow'], minSignals: 3 },
   { role: 'Investment Banker', signals: ['investment banking', 'ib', 'm&a', 'mergers and acquisitions', 'capital markets', 'ipo', 'lbo', 'leveraged buyout', 'dcf', 'pitchbook', 'deal team', 'bulge bracket', 'boutique bank', 'fairness opinion'], minSignals: 2 },
   { role: 'Private Equity', signals: ['private equity', 'pe', 'portfolio company', 'fund management', 'carried interest', 'carry', 'deal sourcing', 'lbo model', 'buyout', 'growth equity', 'venture capital', 'vc', 'cap table'], minSignals: 2 },
   { role: 'Asset Manager', signals: ['assets under management', 'aum', 'portfolio management', 'equity research', 'alpha', 'bloomberg terminal', 'factor model', 'fixed income', 'hedge fund', 'long/short', 'sharpe ratio', 'attribution analysis'], minSignals: 2 },
@@ -3767,7 +3771,7 @@ const ROLE_LOCKS: Array<{ pattern: RegExp; industry: string; label: string }> = 
   // Data Science
   { pattern: /\b(data scientist|senior data scientist|staff data scientist|principal data scientist|lead data scientist|quantitative analyst|quant analyst|research analyst.*data|statistician)\b/i, industry: 'data_science', label: 'data science title' },
   // Finance — specific finance roles not in technology
-  { pattern: /\b(investment banker|investment banking analyst|investment banking associate|private equity analyst|private equity associate|venture capital analyst|portfolio manager|fund manager|hedge fund|equity researcher|credit analyst|loan officer|underwriter|financial analyst|fp&a analyst|fp&a manager|financial planning|treasury analyst|risk analyst|compliance officer|aml analyst|chief financial officer|cfo\b|controller.*finance|vp.*finance|director.*finance)\b/i, industry: 'finance', label: 'finance title' },
+  { pattern: /\b(investment banker|investment banking analyst|investment banking associate|private equity analyst|private equity associate|venture capital analyst|venture capital associate|venture capital principal|venture partner|general partner.*(fund|capital|ventures)|investment partner|managing partner.*(fund|capital|ventures)|principal.*(ventures|capital)|portfolio manager|fund manager|hedge fund|equity researcher|credit analyst|loan officer|underwriter|financial analyst|fp&a analyst|fp&a manager|financial planning|treasury analyst|risk analyst|compliance officer|aml analyst|chief financial officer|cfo\b|controller.*finance|vp.*finance|director.*finance)\b/i, industry: 'finance', label: 'finance title' },
   // Retail
   { pattern: /\b(store manager|retail manager|assistant store manager|floor manager|department manager.*retail|merchandise manager|store director|district manager.*retail|loss prevention|visual merchandiser|retail buyer|category manager.*retail|store associate|retail associate|cashier|sales associate.*retail)\b/i, industry: 'retail', label: 'retail title' },
   // Hospitality

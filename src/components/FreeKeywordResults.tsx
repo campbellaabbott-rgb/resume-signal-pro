@@ -6,7 +6,7 @@ import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useTodayScanCount } from "@/hooks/use-shared-data";
 import { useABTest } from "@/hooks/use-ab-test";
 import { 
-  Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, ListChecks,
+  Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, ListChecks, Award,
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
   TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket,
@@ -769,6 +769,12 @@ export interface FreeKeywordResultsProps {
     secondary: { industry: string; score: number; keywordCoveragePct: number; benchmarkMedian: number };
   };
   premiumTeaser?: { rewritePreview: string; totalRewritesAvailable: number };
+  executiveScopeCheck?: {
+    level: string;
+    signals: { teamSize: string | null; budgetOrPL: string | null; revenueImpact: string | null; boardExposure: boolean; strategicLanguage: boolean };
+    presentCount: number;
+    missing: string[];
+  };
 }
 
 export function FreeKeywordResults({
@@ -871,6 +877,7 @@ export function FreeKeywordResults({
   reportVerdict,
   dualIndustryComparison,
   premiumTeaser,
+  executiveScopeCheck,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -3810,6 +3817,50 @@ export function FreeKeywordResults({
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* ── Executive Scope Check — senior/exec resumes are judged on scope ── */}
+      {executiveScopeCheck && (
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <Award className="w-4 h-4 text-primary" />
+            <h4 className="font-semibold text-foreground text-sm">Executive Scope Check</h4>
+            <span className={cn(
+              "ml-auto text-xs px-2 py-0.5 rounded-full font-semibold",
+              executiveScopeCheck.presentCount >= 4 ? "bg-success/10 text-success" :
+              executiveScopeCheck.presentCount >= 2 ? "bg-warning/10 text-warning" : "bg-destructive/10 text-destructive"
+            )}>
+              {executiveScopeCheck.presentCount}/5 scope signals
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            At the {executiveScopeCheck.level} level, recruiters screen for scope evidence before anything else.
+          </p>
+          <div className="space-y-1.5">
+            {([
+              { label: "Team size", value: executiveScopeCheck.signals.teamSize },
+              { label: "Budget / P&L ownership", value: executiveScopeCheck.signals.budgetOrPL },
+              { label: "Quantified business impact", value: executiveScopeCheck.signals.revenueImpact },
+              { label: "Board / governance exposure", value: executiveScopeCheck.signals.boardExposure ? "present" : null },
+              { label: "Strategic-scope language", value: executiveScopeCheck.signals.strategicLanguage ? "present" : null },
+            ]).map((row, i) => (
+              <div key={i} className="flex items-start gap-2 text-sm">
+                {row.value
+                  ? <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
+                  : <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />}
+                <span className="text-foreground">{row.label}</span>
+                {row.value && row.value !== "present" && (
+                  <span className="text-xs text-muted-foreground truncate">— "{row.value}"</span>
+                )}
+              </div>
+            ))}
+          </div>
+          {executiveScopeCheck.missing.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-3">
+              <span className="font-medium text-foreground">Add next:</span> {executiveScopeCheck.missing[0]}
+            </p>
+          )}
         </div>
       )}
 

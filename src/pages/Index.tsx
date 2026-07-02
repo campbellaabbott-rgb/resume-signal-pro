@@ -302,6 +302,12 @@ interface FreeKeywordResult {
   premiumTeaser?: { rewritePreview: string; totalRewritesAvailable: number } | null;
   reportCompleteness?: number;
   partialResults?: boolean;
+  executiveScopeCheck?: {
+    level: string;
+    signals: { teamSize: string | null; budgetOrPL: string | null; revenueImpact: string | null; boardExposure: boolean; strategicLanguage: boolean };
+    presentCount: number;
+    missing: string[];
+  } | null;
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
@@ -886,6 +892,7 @@ const Index = () => {
           premiumTeaser: (result as any).premiumTeaser,
           reportCompleteness: (result as any).reportCompleteness,
           partialResults: (result as any).partialResults,
+          executiveScopeCheck: (result as any).executiveScopeCheck,
         });
 
         // Track scan completed in funnel
@@ -1565,6 +1572,7 @@ const Index = () => {
                 reportVerdict={freeKeywordResult.reportVerdict ?? undefined}
                 dualIndustryComparison={freeKeywordResult.dualIndustryComparison ?? undefined}
                 premiumTeaser={freeKeywordResult.premiumTeaser ?? undefined}
+                executiveScopeCheck={freeKeywordResult.executiveScopeCheck ?? undefined}
               />
               </CardErrorBoundary>
               

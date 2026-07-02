@@ -345,6 +345,24 @@ const cases: GoldenCase[] = [
     resume: `Pat Ives\nCustodial Supervisor\n${EXPERIENCE}\nCustodian, Unified School District (2014-present)\n- Floor care including stripping and waxing, buffing and carpet cleaning\n- Sanitizing and disinfecting classrooms, restrooms and common areas\nCERTIFICATIONS\nBloodborne pathogen certified`,
   },
 
+  // ── Executive & investor resumes ─────────────────────────────────────────
+  {
+    name: "VC partner",
+    expected: "finance",
+    resume: `Vera Long\nPartner, Ridge Ventures\n${EXPERIENCE}\nInvestment Partner, Ridge Ventures (2018-present)\n- Sourced and led 14 seed stage and series a investments from a $120M fund\n- Developed investment thesis for vertical SaaS, negotiated term sheets\n- Hold 6 board seats, manage lp relations and portfolio support\nGeneral Partner track record: 3 exits, deal flow of 400 companies/year`,
+  },
+  {
+    name: "CFO (executive finance)",
+    expected: "finance",
+    resume: `Neil Marsh\nChief Financial Officer\n${EXPERIENCE}\nCFO, GrowthCo (2019-present)\n- Own $85M P&L and annual budget; led an organization of 45 across FP&A, accounting and treasury\n- Board presentations quarterly; led due diligence for two acquisitions\n- Drove financial transformation cutting close cycle from 12 to 4 days\nEDUCATION\nMBA, CPA`,
+  },
+  {
+    name: "COO with operations vocabulary stays leadership-plausible",
+    expected: "consulting",
+    acceptAlso: ["manufacturing", "logistics", "finance", "product_management", "general"],
+    resume: `Rita Vaughn\nChief Operating Officer\n${EXPERIENCE}\nCOO, ScaleWorks (2017-present)\n- Led an organization of 220 across operations, strategy and transformation\n- Owned $40M budget, presented operating model changes to the board of directors\n- Drove turnaround delivering $15M in cost savings`,
+  },
+
   // ── Context guards ───────────────────────────────────────────────────────
   {
     name: "aspiring nurse in summary must NOT lock healthcare",
