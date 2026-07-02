@@ -3905,7 +3905,7 @@ const MULTILINGUAL_TITLE_LOCKS: Array<{ pattern: RegExp; industry: string; label
   // Tagalog titles
   { pattern: /\b(guro\b|titser)\b/i, industry: 'education', label: 'teaching title (TL)' },
   { pattern: /\b(nars\b|narses)\b/i, industry: 'healthcare', label: 'nursing title (TL)' },
-  { pattern: /\b(abogado tl|abugado)\b/i, industry: 'legal', label: 'legal title (TL)' },
+  { pattern: /\b(abugado|manananggol)\b/i, industry: 'legal', label: 'legal title (TL)' },
   { pattern: /\b(tsuper|drayber)\b/i, industry: 'logistics', label: 'driver title (TL)' },
   { pattern: /\b(kusinero|kusinera|tagaluto)\b/i, industry: 'culinary', label: 'culinary title (TL)' },
   { pattern: /\b(kasambahay|tagalinis)\b/i, industry: 'janitorial', label: 'cleaning title (TL)' },

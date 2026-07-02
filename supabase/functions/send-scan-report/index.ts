@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
     if (body.fixRoadmap && body.fixRoadmap.steps.length > 0) {
       rows.push(`
         <h3 style="font-size:13px;color:#111;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.5px">✅ Your ${escapeHtml(body.fixRoadmap.totalMinutes)}-minute fix plan</h3>
-        ${body.fixRoadmap.steps.map(s => `
+        ${body.fixRoadmap.steps.slice(0, 8).map(s => `
           <div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin:0 0 6px">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
               <td style="font-size:13px;color:#333;line-height:1.4"><b style="color:#2563eb">${escapeHtml(s.order ?? "")}.</b> ${escapeHtml(s.step)}</td>

@@ -260,9 +260,15 @@ function normalizeIndustry(raw: string | undefined | null): string {
   if (INDUSTRY_ALIASES[underscored]) return INDUSTRY_ALIASES[underscored];
   if (INDUSTRY_ALIASES[spaced]) return INDUSTRY_ALIASES[spaced];
 
-  // Partial match check (substring)
+  // Partial match check — restricted to aliases of 5+ chars matched at word
+  // boundaries. Short aliases ("it", "pr", "ai", "ml") as raw substrings
+  // misfire badly: "hospITality management" → technology, "PRoduct design"
+  // → marketing.
   for (const [alias, industry] of Object.entries(INDUSTRY_ALIASES)) {
-    if (normalized.includes(alias) || alias.includes(normalized)) {
+    if (alias.length < 5) continue;
+    const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const boundary = new RegExp(`(?:^|[\\s_/-])${escaped}(?:$|[\\s_/-])`);
+    if (boundary.test(normalized) || (normalized.length >= 5 && alias.includes(normalized))) {
       return industry;
     }
   }
