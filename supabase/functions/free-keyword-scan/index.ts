@@ -2744,6 +2744,143 @@ ${resumeText.substring(0, 20000)}
       summary: timeline.formattedSummary,
     };
 
+    // ── New reporting improvements ───────────────────────────────────────────
+
+    // 1. ATS Parse Preview — simulate what an ATS would extract
+    const atsParsedPreview = (() => {
+      const cleaned = resumeText
+        .replace(/[^\x20-\x7E\n]/g, ' ')   // strip non-ASCII
+        .replace(/\|/g, ' ')                // table separators
+        .replace(/_{2,}/g, ' ')             // underline dividers
+        .replace(/\t/g, ' ')               // tabs → space
+        .replace(/ {3,}/g, ' ')            // collapse wide spaces (column gaps)
+        .replace(/\n{3,}/g, '\n\n')        // collapse blank lines
+        .trim();
+      // Return first ~600 chars as the "ATS view"
+      return cleaned.length > 600 ? cleaned.slice(0, 600) + '…' : cleaned;
+    })();
+    responseData.atsParsedPreview = atsParsedPreview;
+
+    // 2. Keyword placement advice — suggest which section each missing keyword should go in
+    const SKILLS_KEYWORDS = new Set(['python', 'sql', 'excel', 'tableau', 'powerbi', 'javascript', 'react', 'java', 'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'git', 'salesforce', 'sap', 'jira', 'confluence', 'figma', 'sketch', 'photoshop', 'illustrator', 'matlab', 'r ', 'spss', 'stata', 'tensorflow', 'pytorch', 'spark', 'hadoop', 'kafka', 'airflow', 'dbt', 'snowflake', 'databricks', 'looker', 'google analytics', 'hubspot', 'marketo', 'zendesk', 'servicenow']);
+    const SUMMARY_KEYWORDS = new Set(['leadership', 'strategy', 'innovation', 'transformation', 'vision', 'executive', 'cross-functional', 'stakeholder', 'p&l', 'budget', 'team building']);
+    const keywordsWithPlacement = (keywords as { keyword: string; reason: string; category?: string }[]).map(k => {
+      const kl = k.keyword.toLowerCase();
+      let suggestedSection: 'summary' | 'experience' | 'skills' = 'experience';
+      if ([...SKILLS_KEYWORDS].some(sk => kl.includes(sk))) suggestedSection = 'skills';
+      else if ([...SUMMARY_KEYWORDS].some(sw => kl.includes(sw))) suggestedSection = 'summary';
+      return { ...k, suggestedSection };
+    });
+    responseData.keywords = keywordsWithPlacement;
+
+    // Also add frequency weights to visible keywords so frontend can show heat map
+    const keywordsWithFreq = keywordsWithPlacement.map(k => ({
+      ...k,
+      frequencyWeight: getKeywordFrequencyWeight(k.keyword, finalIndustry),
+    }));
+    responseData.keywords = keywordsWithFreq;
+
+    // 3. Peer percentile — where this score sits vs industry median
+    const benchmarkMedian = INDUSTRY_ATS_BENCHMARKS[finalIndustry] ?? 65;
+    const stdDev = 12; // typical spread across candidates we've seen
+    const zScore = (analysis.atsScoreEstimate - benchmarkMedian) / stdDev;
+    // Normal CDF approximation (Abramowitz & Stegun)
+    const normalCDF = (z: number) => {
+      const t = 1 / (1 + 0.2316419 * Math.abs(z));
+      const poly = t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+      const p = 1 - (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * z * z) * poly;
+      return z >= 0 ? p : 1 - p;
+    };
+    const peerPercentile = Math.max(1, Math.min(99, Math.round(normalCDF(zScore) * 100)));
+    responseData.peerPercentile = peerPercentile;
+
+    // 4. Application pass rate — estimate % of ATS that would pass the resume
+    const score = analysis.atsScoreEstimate;
+    const applicationPassRate = score >= 80 ? 85
+      : score >= 70 ? 68
+      : score >= 60 ? 48
+      : score >= 50 ? 30
+      : 15;
+    responseData.applicationPassRate = applicationPassRate;
+
+    // 5. Title-to-level mismatch detection
+    const DIRECTOR_PLUS_TITLES = /\b(director|vp|vice president|svp|evp|chief|cto|cfo|cmo|ceo|head of|managing director|general manager|partner)\b/i;
+    const IC_LANGUAGE_PATTERNS = /\b(assisted|supported|helped|worked with|collaborated on|contributed to|participated in|attended|shadowed|drafted for review)\b/i;
+    const titleLevelMismatch = (() => {
+      const claimsLeadership = DIRECTOR_PLUS_TITLES.test(resumeText.slice(0, 800));
+      const hasICLanguage = IC_LANGUAGE_PATTERNS.test(resumeText);
+      if (!claimsLeadership || !hasICLanguage) return null;
+      // Find the IC verbs actually used
+      const icMatches: string[] = [];
+      const icRe = /\b(assisted|supported|helped|worked with|collaborated on|contributed to|participated in)\b/gi;
+      let m: RegExpExecArray | null;
+      while ((m = icRe.exec(resumeText)) !== null && icMatches.length < 3) icMatches.push(m[0]);
+      return {
+        detected: true,
+        claimedLevel: 'Director+',
+        bulletLevel: 'Individual Contributor',
+        icVerbs: icMatches,
+        tip: `Your title signals leadership but bullets use IC language (${icMatches.join(', ')}). Replace with ownership verbs: Led, Owned, Drove, Directed.`,
+      };
+    })();
+    responseData.titleLevelMismatch = titleLevelMismatch;
+
+    // 6. Tone / voice audit — passive vs active, first-person pronouns
+    const toneAudit = (() => {
+      const lines = resumeText.split('\n').filter(l => l.trim().length > 20);
+      const PASSIVE_PATTERN = /\b(was|were|been|is|are|being)\s+\w+ed\b/gi;
+      const ACTIVE_VERB_PATTERN = /^[•\-*‣◦⁃∙]?\s*([A-Z][a-z]+)/g;
+      const FIRST_PERSON_PATTERN = /\b(I |I'm |my |me |myself )\b/gi;
+      let passiveCount = 0;
+      let firstPersonCount = 0;
+      for (const line of lines) {
+        passiveCount += (line.match(PASSIVE_PATTERN) || []).length;
+        firstPersonCount += (line.match(FIRST_PERSON_PATTERN) || []).length;
+      }
+      const bulletLines = lines.filter(l => /^[•\-*‣◦⁃∙]/.test(l.trim()));
+      const activeCount = bulletLines.filter(l => {
+        const firstWord = l.trim().replace(/^[•\-*‣◦⁃∙]\s*/, '').split(/\s+/)[0] || '';
+        return firstWord.length > 2 && /^[A-Z]/.test(firstWord) && !PASSIVE_PATTERN.test(firstWord);
+      }).length;
+      const passiveRatio = (passiveCount + activeCount) > 0
+        ? Math.round((passiveCount / (passiveCount + activeCount)) * 100)
+        : 0;
+      const verdict = passiveRatio > 40 ? 'too_passive' : passiveRatio > 20 ? 'mixed' : 'active';
+      return { passiveCount, activeCount, firstPersonCount, passiveRatio, verdict };
+    })();
+    responseData.toneAudit = toneAudit;
+
+    // 7. Section word counts with targets
+    const sectionWordCounts = (() => {
+      const lower = resumeText.toLowerCase();
+      const sections: Record<string, { pattern: RegExp; idealMin: number; idealMax: number }> = {
+        summary: { pattern: /\b(summary|objective|profile|about me)\b/, idealMin: 40, idealMax: 120 },
+        experience: { pattern: /\b(experience|work history|employment)\b/, idealMin: 200, idealMax: 450 },
+        skills: { pattern: /\b(skills|technologies|tools|competencies)\b/, idealMin: 30, idealMax: 100 },
+        education: { pattern: /\b(education|academic|degree|university)\b/, idealMin: 20, idealMax: 80 },
+      };
+      const result: Record<string, { current: number; idealMin: number; idealMax: number; verdict: 'too_few' | 'ideal' | 'too_many' }> = {};
+      const lines = resumeText.split('\n');
+      let currentSection: string | null = null;
+      const sectionWords: Record<string, number> = {};
+      for (const line of lines) {
+        const ll = line.toLowerCase().trim();
+        for (const [name, cfg] of Object.entries(sections)) {
+          if (cfg.pattern.test(ll) && ll.length < 40) { currentSection = name; break; }
+        }
+        if (currentSection) {
+          sectionWords[currentSection] = (sectionWords[currentSection] || 0) + line.trim().split(/\s+/).filter(Boolean).length;
+        }
+      }
+      for (const [name, cfg] of Object.entries(sections)) {
+        const current = sectionWords[name] || 0;
+        const verdict = current === 0 ? 'too_few' : current < cfg.idealMin ? 'too_few' : current > cfg.idealMax ? 'too_many' : 'ideal';
+        result[name] = { current, idealMin: cfg.idealMin, idealMax: cfg.idealMax, verdict };
+      }
+      return result;
+    })();
+    responseData.sectionWordCounts = sectionWordCounts;
+
     // Log successful completion metric
     logScanMetric(metricCtx, 'completed', {
       outputValid: true,

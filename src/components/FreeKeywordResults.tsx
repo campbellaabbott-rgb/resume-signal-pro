@@ -372,6 +372,8 @@ interface KeywordSuggestion {
   reason: string;
   category?: "tool" | "skill" | "certification" | "methodology" | "metric" | "regulation";
   impact?: "critical" | "high" | "medium";
+  frequencyWeight?: number;
+  suggestedSection?: 'summary' | 'experience' | 'skills';
 }
 
 interface ResumeLength {
@@ -729,12 +731,19 @@ interface FreeKeywordResultsProps {
     rolesDetected: number;
     summary: string;
   };
-  // 10 reporting improvements
+  // 10 reporting improvements (batch 1)
   scoreBreakdown?: { keywords: number; format: number; quantification: number };
   additionalRewrites?: Array<{ before: string; after: string; improvement: string }>;
   nextBestAction?: { action: string; why: string; estimatedImpact: string };
   recruiterFirstPassSummary?: string;
   formatGradeDrivers?: Array<{ driver: string; impact: string }>;
+  // 10 reporting improvements (batch 2)
+  atsParsedPreview?: string;
+  peerPercentile?: number;
+  applicationPassRate?: number;
+  titleLevelMismatch?: { detected: boolean; claimedLevel: string; bulletLevel: string; icVerbs: string[]; tip: string };
+  toneAudit?: { passiveCount: number; activeCount: number; firstPersonCount: number; passiveRatio: number; verdict: 'too_passive' | 'mixed' | 'active' };
+  sectionWordCounts?: Record<string, { current: number; idealMin: number; idealMax: number; verdict: 'too_few' | 'ideal' | 'too_many' }>;
 }
 
 export function FreeKeywordResults({
@@ -822,6 +831,12 @@ export function FreeKeywordResults({
   nextBestAction,
   recruiterFirstPassSummary,
   formatGradeDrivers,
+  atsParsedPreview,
+  peerPercentile,
+  applicationPassRate,
+  titleLevelMismatch,
+  toneAudit,
+  sectionWordCounts,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -3461,6 +3476,176 @@ export function FreeKeywordResults({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── Peer Percentile + Application Pass Rate ─────────────────────────── */}
+      {(peerPercentile != null || applicationPassRate != null) && (
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+          <h4 className="font-semibold text-foreground text-sm">How You Compare</h4>
+          <div className="grid grid-cols-2 gap-3">
+            {peerPercentile != null && (
+              <div className={cn(
+                "rounded-xl border p-3 text-center",
+                peerPercentile >= 60 ? "border-success/30 bg-success/5" : peerPercentile >= 40 ? "border-warning/30 bg-warning/5" : "border-destructive/30 bg-destructive/5"
+              )}>
+                <p className="text-2xl font-bold text-foreground">{peerPercentile}<span className="text-sm font-normal text-muted-foreground">th</span></p>
+                <p className="text-xs text-muted-foreground mt-0.5">Percentile vs {industry} candidates</p>
+                <p className={cn("text-[10px] font-semibold mt-1", peerPercentile >= 60 ? "text-success" : peerPercentile >= 40 ? "text-warning" : "text-destructive")}>
+                  {peerPercentile >= 70 ? "Top tier" : peerPercentile >= 50 ? "Above average" : peerPercentile >= 30 ? "Below average" : "Bottom tier"}
+                </p>
+              </div>
+            )}
+            {applicationPassRate != null && (
+              <div className={cn(
+                "rounded-xl border p-3 text-center",
+                applicationPassRate >= 70 ? "border-success/30 bg-success/5" : applicationPassRate >= 50 ? "border-warning/30 bg-warning/5" : "border-destructive/30 bg-destructive/5"
+              )}>
+                <p className="text-2xl font-bold text-foreground">{applicationPassRate}<span className="text-sm font-normal text-muted-foreground">%</span></p>
+                <p className="text-xs text-muted-foreground mt-0.5">Est. ATS pass rate</p>
+                <p className={cn("text-[10px] font-semibold mt-1", applicationPassRate >= 70 ? "text-success" : applicationPassRate >= 50 ? "text-warning" : "text-destructive")}>
+                  {applicationPassRate >= 70 ? "Likely to pass" : applicationPassRate >= 50 ? "At risk" : "High rejection risk"}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Skill Gap Heat Map ───────────────────────────────────────────────── */}
+      {keywords.length > 0 && keywords.some(k => k.frequencyWeight != null) && (
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h4 className="font-semibold text-foreground text-sm mb-3">Keyword Gap Heat Map</h4>
+          <p className="text-xs text-muted-foreground mb-3">Bar width = how often this keyword appears in job postings for your role.</p>
+          <div className="space-y-2">
+            {keywords.map((kw, i) => {
+              const w = kw.frequencyWeight ?? 1;
+              const pct = w === 3 ? 100 : w === 2 ? 65 : 35;
+              const color = w === 3 ? "bg-destructive" : w === 2 ? "bg-warning" : "bg-muted-foreground/50";
+              const label = w === 3 ? "Very common" : w === 2 ? "Common" : "Occasional";
+              const sectionBadge = kw.suggestedSection
+                ? ({ summary: "Summary", experience: "Experience", skills: "Skills" })[kw.suggestedSection]
+                : null;
+              return (
+                <div key={i} className="space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-foreground">{kw.keyword}</span>
+                    <div className="flex items-center gap-1.5">
+                      {sectionBadge && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-primary/30 bg-primary/10 text-primary">
+                          → {sectionBadge}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-muted-foreground">{label}</span>
+                    </div>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Title-to-Level Mismatch ──────────────────────────────────────────── */}
+      {titleLevelMismatch?.detected && (
+        <div className="rounded-2xl border border-warning/30 bg-warning/5 p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-4 h-4 text-warning" />
+            <h4 className="font-semibold text-foreground text-sm">Title vs. Bullet Language Mismatch</h4>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Your title signals <strong>{titleLevelMismatch.claimedLevel}</strong> but your bullets read like <strong>{titleLevelMismatch.bulletLevel}</strong> work.
+          </p>
+          {titleLevelMismatch.icVerbs.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {titleLevelMismatch.icVerbs.map((v, i) => (
+                <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/25 line-through">{v}</span>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-foreground/80">{titleLevelMismatch.tip}</p>
+        </div>
+      )}
+
+      {/* ── Tone / Voice Audit ───────────────────────────────────────────────── */}
+      {toneAudit && (
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <h4 className="font-semibold text-foreground text-sm">Tone & Voice Audit</h4>
+            <span className={cn(
+              "ml-auto text-xs px-2 py-0.5 rounded-full font-semibold",
+              toneAudit.verdict === 'active' ? "bg-success/10 text-success" : toneAudit.verdict === 'mixed' ? "bg-warning/10 text-warning" : "bg-destructive/10 text-destructive"
+            )}>
+              {toneAudit.verdict === 'active' ? "Strong active voice" : toneAudit.verdict === 'mixed' ? "Mixed voice" : "Too passive"}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-lg bg-muted/40 p-2">
+              <p className="text-lg font-bold text-foreground">{toneAudit.activeCount}</p>
+              <p className="text-[10px] text-muted-foreground">Active bullets</p>
+            </div>
+            <div className={cn("rounded-lg p-2", toneAudit.passiveCount > 3 ? "bg-destructive/10" : "bg-muted/40")}>
+              <p className={cn("text-lg font-bold", toneAudit.passiveCount > 3 ? "text-destructive" : "text-foreground")}>{toneAudit.passiveCount}</p>
+              <p className="text-[10px] text-muted-foreground">Passive phrases</p>
+            </div>
+            <div className={cn("rounded-lg p-2", toneAudit.firstPersonCount > 2 ? "bg-warning/10" : "bg-muted/40")}>
+              <p className={cn("text-lg font-bold", toneAudit.firstPersonCount > 2 ? "text-warning" : "text-foreground")}>{toneAudit.firstPersonCount}</p>
+              <p className="text-[10px] text-muted-foreground">"I / My" count</p>
+            </div>
+          </div>
+          {toneAudit.firstPersonCount > 2 && (
+            <p className="text-xs text-warning mt-2">Most resume guides recommend removing first-person pronouns — ATS and recruiters expect a third-person implied style.</p>
+          )}
+          {toneAudit.verdict === 'too_passive' && (
+            <p className="text-xs text-destructive mt-2">Replace passive phrases ("was responsible for", "was involved in") with strong action verbs ("Led", "Built", "Drove").</p>
+          )}
+        </div>
+      )}
+
+      {/* ── Section Word Count Audit ─────────────────────────────────────────── */}
+      {sectionWordCounts && Object.keys(sectionWordCounts).length > 0 && (
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <h4 className="font-semibold text-foreground text-sm mb-3">Section Length Audit</h4>
+          <div className="space-y-3">
+            {(["summary", "experience", "skills", "education"] as const).map((sec) => {
+              const s = sectionWordCounts[sec];
+              if (!s) return null;
+              const pct = s.idealMax > 0 ? Math.min(100, Math.round((s.current / s.idealMax) * 100)) : 0;
+              const color = s.verdict === 'ideal' ? "bg-success" : s.verdict === 'too_many' ? "bg-warning" : "bg-destructive";
+              const badge = s.verdict === 'ideal' ? "text-success" : s.verdict === 'too_many' ? "text-warning" : "text-destructive";
+              const label = s.verdict === 'ideal' ? "Good" : s.verdict === 'too_many' ? "Too long" : s.current === 0 ? "Missing" : "Too short";
+              return (
+                <div key={sec} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-foreground capitalize font-medium">{sec}</span>
+                    <span className="text-muted-foreground">{s.current} words <span className="text-muted-foreground/60">(target {s.idealMin}–{s.idealMax})</span></span>
+                    <span className={cn("font-semibold", badge)}>{label}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── ATS Parse Preview ────────────────────────────────────────────────── */}
+      {atsParsedPreview && (
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="w-4 h-4 text-muted-foreground" />
+            <h4 className="font-semibold text-foreground text-sm">ATS Parse Preview</h4>
+            <span className="ml-auto text-xs text-muted-foreground">What the ATS actually reads</span>
+          </div>
+          <pre className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed max-h-40 overflow-y-auto">
+            {atsParsedPreview}
+          </pre>
+          <p className="text-xs text-muted-foreground mt-2">Formatting (bold, columns, icons) is stripped. If your name, title, or key sections don't appear clearly here, an ATS may miss them.</p>
         </div>
       )}
 

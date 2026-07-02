@@ -89,7 +89,7 @@ interface FreeKeywordResult {
   keywordDensity?: { level: "sparse" | "moderate" | "dense"; explanation: string };
   improvementPotential?: { level: "low" | "medium" | "high"; estimatedScoreIncrease: number; topPriority: string };
   redFlags: { issue: string; impact: string; severity?: "critical" | "moderate" | "minor" }[];
-  keywords: { keyword: string; reason: string }[];
+  keywords: { keyword: string; reason: string; frequencyWeight?: number; suggestedSection?: 'summary' | 'experience' | 'skills' }[];
   topSkipReasons?: string[];
   powerWords?: Array<string | { word: string; why: string }>;
   weakPhrases?: { phrase: string; suggestion: string }[];
@@ -265,16 +265,19 @@ interface FreeKeywordResult {
     rolesDetected: number;
     summary: string;
   };
-  // 10 reporting improvements
+  // 10 reporting improvements (batch 1)
   scoreBreakdown?: { keywords: number; format: number; quantification: number };
   additionalRewrites?: Array<{ before: string; after: string; improvement: string }>;
   nextBestAction?: { action: string; why: string; estimatedImpact: string } | null;
   recruiterFirstPassSummary?: string | null;
   formatGradeDrivers?: Array<{ driver: string; impact: string }>;
-  // redFlags already exists but now items include severity
-  // powerWords already exists but now items are { word: string; why: string }
-  // quickWins already exists but now items include scoreImpact + category
-  // sectionCheck already exists but now includes sectionQuality per section
+  // 10 new reporting improvements (batch 2)
+  atsParsedPreview?: string;
+  peerPercentile?: number;
+  applicationPassRate?: number;
+  titleLevelMismatch?: { detected: boolean; claimedLevel: string; bulletLevel: string; icVerbs: string[]; tip: string } | null;
+  toneAudit?: { passiveCount: number; activeCount: number; firstPersonCount: number; passiveRatio: number; verdict: 'too_passive' | 'mixed' | 'active' };
+  sectionWordCounts?: Record<string, { current: number; idealMin: number; idealMax: number; verdict: 'too_few' | 'ideal' | 'too_many' }>;
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
@@ -833,12 +836,19 @@ const Index = () => {
           unquantifiedBulletsDetected: (result as any).unquantifiedBulletsDetected,
           bulletQuantRate: (result as any).bulletQuantRate,
           projectedScore: (result as any).projectedScore,
-          // 10 reporting improvements
+          // 10 reporting improvements (batch 1)
           scoreBreakdown: (result as any).scoreBreakdown,
           additionalRewrites: (result as any).additionalRewrites,
           nextBestAction: (result as any).nextBestAction,
           recruiterFirstPassSummary: (result as any).recruiterFirstPassSummary,
           formatGradeDrivers: (result as any).formatGradeDrivers,
+          // 10 reporting improvements (batch 2)
+          atsParsedPreview: (result as any).atsParsedPreview,
+          peerPercentile: (result as any).peerPercentile,
+          applicationPassRate: (result as any).applicationPassRate,
+          titleLevelMismatch: (result as any).titleLevelMismatch,
+          toneAudit: (result as any).toneAudit,
+          sectionWordCounts: (result as any).sectionWordCounts,
         });
 
         // Track scan completed in funnel
@@ -967,12 +977,19 @@ const Index = () => {
           jobMatchSummary: data.jobMatchSummary,
           industryDetection: data.industryDetection,
           careerSituation: data.careerSituation,
-          // 10 reporting improvements
+          // 10 reporting improvements (batch 1)
           scoreBreakdown: data.scoreBreakdown,
           additionalRewrites: data.additionalRewrites,
           nextBestAction: data.nextBestAction,
           recruiterFirstPassSummary: data.recruiterFirstPassSummary,
           formatGradeDrivers: data.formatGradeDrivers,
+          // 10 reporting improvements (batch 2)
+          atsParsedPreview: data.atsParsedPreview,
+          peerPercentile: data.peerPercentile,
+          applicationPassRate: data.applicationPassRate,
+          titleLevelMismatch: data.titleLevelMismatch,
+          toneAudit: data.toneAudit,
+          sectionWordCounts: data.sectionWordCounts,
         });
 
         toast({
@@ -1467,6 +1484,12 @@ const Index = () => {
                 nextBestAction={freeKeywordResult.nextBestAction ?? undefined}
                 recruiterFirstPassSummary={freeKeywordResult.recruiterFirstPassSummary ?? undefined}
                 formatGradeDrivers={freeKeywordResult.formatGradeDrivers}
+                atsParsedPreview={freeKeywordResult.atsParsedPreview}
+                peerPercentile={freeKeywordResult.peerPercentile}
+                applicationPassRate={freeKeywordResult.applicationPassRate}
+                titleLevelMismatch={freeKeywordResult.titleLevelMismatch ?? undefined}
+                toneAudit={freeKeywordResult.toneAudit}
+                sectionWordCounts={freeKeywordResult.sectionWordCounts}
               />
               
               {/* Score-based package recommendation */}
