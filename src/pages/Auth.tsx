@@ -24,7 +24,7 @@ function trackAuth(event: string, detail?: string) {
 }
 
 export default function Auth() {
-  const { session, signIn, signUp, signInWithGoogle, sessionExpired } = useAuth();
+  const { session, signIn, signUp, sessionExpired } = useAuth();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signup");
   // Prefill from anything the user already gave us: their session history,
