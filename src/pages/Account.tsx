@@ -229,21 +229,47 @@ export default function Account() {
           </button>
         </div>
 
+        {/* First-visit activation checklist — an empty dashboard should feel
+            like a starting line, not a broken page */}
+        {scans.length === 0 && !fetching && (
+          <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 to-transparent p-6 mb-6">
+            <h2 className="text-lg font-bold text-foreground mb-1">Welcome! Let's get your first score 🎯</h2>
+            <p className="text-xs text-muted-foreground mb-4">Three steps and your dashboard comes alive:</p>
+            <div className="space-y-2 mb-4">
+              {[
+                { n: 1, text: "Run a free scan — it saves here automatically", done: false },
+                { n: 2, text: "Set your target score (we've suggested 80)", done: targetScore != null },
+                { n: 3, text: "Work the fix checklist, then rescan to watch your score climb", done: false },
+              ].map(step => (
+                <div key={step.n} className="flex items-center gap-2.5 text-sm">
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${step.done ? "bg-success text-success-foreground" : "bg-primary/15 text-primary"}`}>
+                    {step.done ? "✓" : step.n}
+                  </span>
+                  <span className={step.done ? "text-muted-foreground line-through" : "text-foreground"}>{step.text}</span>
+                </div>
+              ))}
+            </div>
+            <Link to="/#upload" className="inline-block px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
+              Scan my resume free →
+            </Link>
+          </div>
+        )}
+
         {/* Stat tiles */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           <div className="rounded-2xl border border-border bg-card p-4 text-center">
-            <p className={`text-3xl font-bold ${latest ? (latest.ats_score >= 70 ? "text-success" : latest.ats_score >= 50 ? "text-warning" : "text-destructive") : "text-muted-foreground"}`}>
-              {latest ? latest.ats_score : "—"}
+            <p className={`text-3xl font-bold ${latest ? (latest.ats_score >= 70 ? "text-success" : latest.ats_score >= 50 ? "text-warning" : "text-destructive") : "text-muted-foreground/40"}`}>
+              {latest ? latest.ats_score : "?"}
             </p>
             <p className="text-[11px] text-muted-foreground mt-0.5">Latest score{delta != null && (
               <span className={delta >= 0 ? "text-success font-semibold" : "text-destructive font-semibold"}> ({delta >= 0 ? "+" : ""}{delta})</span>
             )}</p>
           </div>
           <div className="rounded-2xl border border-border bg-card p-4 text-center">
-            <p className="text-3xl font-bold text-foreground">{best ?? "—"}</p>
+            <p className={`text-3xl font-bold ${best != null ? "text-foreground" : "text-muted-foreground/40"}`}>{best ?? "?"}</p>
             <p className="text-[11px] text-muted-foreground mt-0.5">🏆 Best score</p>
           </div>
-          <div className="rounded-2xl border border-warning/25 bg-warning/5 p-4 text-center">
+          <div className={`rounded-2xl border p-4 text-center ${(account?.credits ?? 0) > 0 ? "border-warning/25 bg-warning/5" : "border-border bg-card"}`}>
             <p className="text-3xl font-bold text-foreground">{fetching ? "…" : account?.credits ?? 0}</p>
             <p className="text-[11px] text-muted-foreground mt-0.5">🪙 Scan credits</p>
           </div>
@@ -273,12 +299,18 @@ export default function Account() {
             <p className="text-sm text-success font-semibold">🎉 Goal hit — your latest scan beat your target. Raise the bar?</p>
           ) : (
             <>
-              <div className="h-2.5 rounded-full bg-muted overflow-hidden mb-1">
-                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${goalProgress}%` }} />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {latest ? `${latest.ats_score} of ${goal} — ${Math.max(0, goal - latest.ats_score)} points to go.` : "Run a scan to start tracking progress toward your goal."}
-              </p>
+              {latest ? (
+                <>
+                  <div className="h-2.5 rounded-full bg-muted overflow-hidden mb-1">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${goalProgress}%` }} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {latest.ats_score} of {goal} — {Math.max(0, goal - latest.ats_score)} points to go.
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">Your first scan starts the progress bar toward {goal}.</p>
+              )}
             </>
           )}
         </div>

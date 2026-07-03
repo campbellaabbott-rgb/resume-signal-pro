@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Mail, Lock, Loader2, UserPlus, LogIn } from "lucide-react";
+import { Mail, Lock, Loader2, UserPlus, LogIn, Eye, EyeOff } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +19,7 @@ export default function Auth() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [showResend, setShowResend] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const sendMagicLink = async () => {
     setError(null);
@@ -65,15 +66,28 @@ export default function Auth() {
     const { error: err } = await fn(email.trim(), password);
     setBusy(false);
     if (err) {
+      if (/already registered|already exists/i.test(err) && mode === "signup") {
+        // Not an error at all — help them straight into sign-in
+        setMode("signin");
+        setNotice("You already have an account with this email — enter your password to sign in, or use the sign-in link below.");
+        return;
+      }
       const friendly = /email not confirmed/i.test(err)
         ? "Your email isn't confirmed yet — check your inbox for the confirmation link (it may be in spam)."
         : /rate limit/i.test(err)
           ? "Too many email attempts in a short time — please wait a few minutes and try again. (If this keeps happening, try the sign-in link option instead.)"
-          : err;
+          : /invalid login credentials/i.test(err)
+            ? "That email and password don't match. Double-check the password, or use \"Email me a sign-in link\" below — no password needed."
+            : /weak password|should be at least/i.test(err)
+              ? "That password is too weak — use at least 8 characters."
+              : err;
       setError(friendly);
       setShowResend(/email not confirmed/i.test(err));
     } else if (mode === "signup") {
-      setNotice("Account created! Check your inbox for a confirmation link, then come back and sign in.");
+      // With email confirmation disabled, a session arrives immediately and the
+      // redirect effect takes over. Only mention the inbox when there's no session.
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s) setNotice("Account created! Check your inbox for a confirmation link, then come back and sign in.");
     }
   };
 
@@ -106,13 +120,21 @@ export default function Auth() {
             <div className="relative mb-4">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
                 placeholder="At least 8 characters"
-                className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="w-full pl-9 pr-10 py-2.5 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
 
             {error && <p className="text-xs text-destructive mb-3">{error}</p>}
