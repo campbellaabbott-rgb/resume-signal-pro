@@ -1285,6 +1285,8 @@ serve(async (req) => {
     // Signed-in users get a higher daily limit — the concrete reason to register.
     // The frontend client attaches the session JWT automatically when logged in.
     let isAuthedUser = false;
+    let authedUserEmail: string | null = null;
+    let creditUsedEmail: string | null = null;
     try {
       const authHeader = req.headers.get('Authorization') ?? '';
       const jwt = authHeader.replace(/^Bearer\s+/i, '');
@@ -1292,6 +1294,7 @@ serve(async (req) => {
       if (jwt && jwt !== (Deno.env.get('SUPABASE_ANON_KEY') ?? '')) {
         const { data: { user: authedUser } } = await supabase.auth.getUser(jwt);
         isAuthedUser = !!authedUser?.id;
+        authedUserEmail = authedUser?.email?.toLowerCase() ?? null;
       }
     } catch { /* anonymous */ }
     const dailyScanLimit = isAuthedUser ? SIGNED_IN_SCANS_PER_DAY : FREE_SCANS_PER_DAY;
@@ -1373,6 +1376,27 @@ serve(async (req) => {
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } else if (!functionRateLimitResult.data) {
+      // Purchased scan credits buy scans PAST the daily limit — redeem before
+      // rejecting. Email comes from the session (signed-in) or from the
+      // browser-remembered purchase email sent by the client.
+      const creditEmail = authedUserEmail
+        ?? ((typeof body.creditEmail === 'string' && body.creditEmail.includes('@'))
+          ? body.creditEmail.toLowerCase().trim().slice(0, 200)
+          : null);
+      if (creditEmail) {
+        try {
+          const { data: used } = await supabase.rpc('use_scan_credit', { p_email: creditEmail });
+          if (used === true) {
+            creditUsedEmail = creditEmail;
+            console.log(`[FREE-KEYWORD-SCAN] Rate limit reached — redeemed 1 purchased credit for ${creditEmail}`);
+          }
+        } catch (e) {
+          console.warn('[FREE-KEYWORD-SCAN] Credit redemption failed:', e);
+        }
+      }
+      if (creditUsedEmail) {
+        // Credit redeemed — fall through and run the scan.
+      } else {
       // Get current usage for helpful error message (non-blocking detail fetch)
       const { data: usageData } = await supabase
         .from('rate_limits')
@@ -1391,8 +1415,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: isAuthedUser
-            ? `You've used all ${dailyScanLimit} free scans for today. Your limit resets in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`
-            : `You've used all ${dailyScanLimit} free scans for today. Create a free account for ${SIGNED_IN_SCANS_PER_DAY}/day, or come back in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`,
+            ? `You've used all ${dailyScanLimit} free scans for today. Get a Scan Pack to keep going, or your limit resets in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`
+            : `You've used all ${dailyScanLimit} free scans for today. Create a free account for ${SIGNED_IN_SCANS_PER_DAY}/day, get a Scan Pack, or come back in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`,
           rateLimited: true,
           scansUsed,
           scansLimit: dailyScanLimit,
@@ -1401,6 +1425,7 @@ serve(async (req) => {
         }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+      }
     }
 
     // Check if job description provided
@@ -3498,6 +3523,15 @@ ${resumeText.substring(0, 20000)}
     })();
     responseData.reportCompleteness = reportCompleteness.pct;
     responseData.partialResults = usedRuleBasedFallback;
+
+    // Purchased-credit redemption receipt
+    if (creditUsedEmail) {
+      responseData.creditUsed = true;
+      try {
+        const { data: remaining } = await supabase.rpc('get_scan_credits', { p_email: creditUsedEmail });
+        responseData.creditsRemaining = typeof remaining === 'number' ? remaining : null;
+      } catch { responseData.creditsRemaining = null; }
+    }
 
     // Executive scope check — senior/executive resumes only
     responseData.executiveScopeCheck = executiveScopeCheck;

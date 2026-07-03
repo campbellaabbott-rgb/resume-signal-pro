@@ -793,6 +793,9 @@ const Index = () => {
             confirmedIndustry: scanContext.confirmedIndustry || undefined,
             confirmedExperience: scanContext.confirmedExperience || undefined,
           },
+          // Purchased-credit redemption for anonymous users: the email they
+          // bought the scan pack with (signed-in users redeem via their JWT).
+          creditEmail: localStorage.getItem('scanCreditsEmail') || undefined,
         });
 
         if (scanResult.error) {
@@ -884,6 +887,18 @@ const Index = () => {
       }
 
       if (result?.success) {
+        // Purchased-credit redemption receipt
+        if ((result as any).creditUsed) {
+          const remaining = (result as any).creditsRemaining;
+          toast({
+            title: "Scan credit used",
+            description: remaining != null
+              ? `You were past today's free limit, so 1 purchased credit covered this scan — ${remaining} remaining.`
+              : "You were past today's free limit, so 1 purchased credit covered this scan.",
+          });
+          window.dispatchEvent(new CustomEvent('scanCreditsEmailUpdated', { detail: { email: localStorage.getItem('scanCreditsEmail') } }));
+        }
+
         // Track if this was a cached result
         setIsCachedResult(!!result.cached);
         
