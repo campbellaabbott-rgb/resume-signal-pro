@@ -105,6 +105,28 @@ Deno.serve(async (req) => {
       const rescanUrl = `${SITE_URL}/?utm_source=email&utm_medium=market_pulse&utm_campaign=rescan`;
       const industryLabel = sub.industry.replace(/_/g, " ");
 
+      // Personal progress — accounts with scan history get THEIR trend, not
+      // just their industry's. Service-role RPC resolves scores by email.
+      let progressHtml = "";
+      try {
+        const { data: trend } = await supabase.rpc("get_user_score_trend", { p_email: sub.email });
+        if (Array.isArray(trend) && trend.length >= 2) {
+          const newest = trend[0].ats_score;
+          const oldest = trend[trend.length - 1].ats_score;
+          const diff = newest - oldest;
+          const diffColor = diff >= 0 ? "#16a34a" : "#dc2626";
+          progressHtml = `
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin:0 0 16px">
+        <h3 style="font-size:12px;color:#111;margin:0 0 6px;text-transform:uppercase;letter-spacing:0.5px">Your progress</h3>
+        <p style="font-size:13px;color:#444;margin:0">
+          Across your last ${trend.length} scans: <b>${escapeHtml(oldest)}</b> → <b>${escapeHtml(newest)}</b>
+          <span style="color:${diffColor};font-weight:700">(${diff >= 0 ? "+" : ""}${escapeHtml(diff)})</span>
+          ${diff > 0 ? " — keep going." : diff === 0 ? " — a fresh scan against this month's keywords could move it." : " — worth a fresh look at the fix plan."}
+        </p>
+      </div>`;
+        }
+      } catch { /* progress is a bonus, never blocks the pulse */ }
+
       const kwPills = (words: string[], bg: string, color: string) =>
         words.map(w => `<span style="display:inline-block;background:${bg};color:${color};font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;margin:0 4px 6px 0">${escapeHtml(w)}</span>`).join("");
 
@@ -117,6 +139,7 @@ Deno.serve(async (req) => {
     </div>
     <div style="background:#fff;border-radius:14px;padding:26px 24px;border:1px solid #e2e8f0">
       <p style="font-size:15px;color:#111;font-weight:600;margin:0 0 12px">Here's what ${escapeHtml(industryLabel)} job postings are screening for right now.</p>
+      ${progressHtml}
       ${digest.mustHave.length ? `<h3 style="font-size:12px;color:#111;margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px">In 80%+ of postings</h3><div>${kwPills(digest.mustHave, "#fef2f2", "#dc2626")}</div>` : ""}
       ${digest.common.length ? `<h3 style="font-size:12px;color:#111;margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px">In 50–79% of postings</h3><div>${kwPills(digest.common, "#fffbeb", "#d97706")}</div>` : ""}
       <p style="font-size:13px;color:#444;margin:16px 0 0">${sub.last_score ? `Your last scan scored <b>${escapeHtml(sub.last_score)}/100</b>. ` : ""}Resumes drift out of date as postings change — a fresh scan takes about 60 seconds and is free.</p>

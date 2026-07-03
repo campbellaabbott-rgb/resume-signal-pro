@@ -24,6 +24,7 @@ interface UserScan {
   verdict: string | null;
   red_flag_count: number | null;
   fix_plan: FixItem[] | null;
+  label: string | null;
   created_at: string;
 }
 
@@ -155,6 +156,54 @@ export default function Account() {
   const deleteApplication = async (id: string) => {
     setApplications(applications.filter(a => a.id !== id));
     await supabase.from("user_applications").delete().eq("id", id);
+  };
+
+  const [newPassword, setNewPassword] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [settingsMsg, setSettingsMsg] = useState<string | null>(null);
+  const [labelEditing, setLabelEditing] = useState<string | null>(null);
+  const [labelDraft, setLabelDraft] = useState("");
+
+  const changePassword = async () => {
+    if (newPassword.length < 8) { setSettingsMsg("Password must be at least 8 characters."); return; }
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setSettingsMsg(error ? error.message : "Password updated ✓");
+    if (!error) setNewPassword("");
+  };
+
+  const changeEmail = async () => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(newEmail.trim())) { setSettingsMsg("Enter a valid new email address."); return; }
+    const { error } = await supabase.auth.updateUser({ email: newEmail.trim() });
+    setSettingsMsg(error
+      ? error.message
+      : "Email change requested — check BOTH inboxes for confirmation links. Note: credits and purchases stay linked to your old email.");
+    if (!error) setNewEmail("");
+  };
+
+  const exportData = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      account: { email: user?.email, memberSince: user?.created_at },
+      targetScore,
+      scans,
+      applications,
+      credits: account?.credits ?? 0,
+      purchases: account?.purchases ?? [],
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "resume-booster-data.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const saveLabel = async (scanId: string) => {
+    const label = labelDraft.trim().slice(0, 60) || null;
+    setScans(scans.map(s => s.id === scanId ? { ...s, label } : s));
+    setLabelEditing(null);
+    await supabase.from("user_scans").update({ label }).eq("id", scanId);
   };
 
   const deleteAccount = async () => {
@@ -391,7 +440,32 @@ export default function Account() {
                       />
                     )}
                     <span className={`font-bold w-8 ${s.ats_score >= 70 ? "text-success" : s.ats_score >= 50 ? "text-warning" : "text-destructive"}`}>{s.ats_score}</span>
-                    <span className="text-muted-foreground text-xs capitalize flex-1 truncate">{(s.industry ?? "").replace(/_/g, " ")}</span>
+                    <span className="text-muted-foreground text-xs flex-1 truncate">
+                      {labelEditing === s.id ? (
+                        <input
+                          autoFocus
+                          value={labelDraft}
+                          onChange={(e) => setLabelDraft(e.target.value)}
+                          onBlur={() => saveLabel(s.id)}
+                          onKeyDown={(e) => { if (e.key === "Enter") saveLabel(s.id); if (e.key === "Escape") setLabelEditing(null); }}
+                          onClick={(e) => e.preventDefault()}
+                          maxLength={60}
+                          placeholder="Name this version…"
+                          className="w-full bg-background border border-border rounded px-1.5 py-0.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+                        />
+                      ) : (
+                        <button
+                          onClick={(e) => { e.preventDefault(); setLabelEditing(s.id); setLabelDraft(s.label ?? ""); }}
+                          className="text-left hover:text-foreground transition-colors"
+                          title="Click to name this version"
+                        >
+                          {s.label
+                            ? <span className="text-foreground font-medium">{s.label}</span>
+                            : <span className="capitalize">{(s.industry ?? "").replace(/_/g, " ")}</span>}
+                          <span className="text-muted-foreground/40 ml-1">✎</span>
+                        </button>
+                      )}
+                    </span>
                     <span className="text-[11px] text-muted-foreground shrink-0">{new Date(s.created_at).toLocaleDateString()}</span>
                   </label>
                 ))}
@@ -526,6 +600,43 @@ export default function Account() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Settings: password / email / export */}
+        <div className="rounded-2xl border border-border bg-card p-5 mb-6">
+          <h2 className="font-semibold text-foreground text-sm mb-3">⚙️ Account settings</h2>
+          <div className="grid sm:grid-cols-2 gap-4 mb-3">
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1">Change password</label>
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New password (8+ chars)"
+                  className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <button onClick={changePassword} disabled={!newPassword} className="shrink-0 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors">Update</button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1">Change email</label>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="new@email.com"
+                  className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <button onClick={changeEmail} disabled={!newEmail} className="shrink-0 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors">Update</button>
+              </div>
+            </div>
+          </div>
+          {settingsMsg && <p className={`text-xs mb-3 ${/✓/.test(settingsMsg) ? "text-success" : "text-muted-foreground"}`}>{settingsMsg}</p>}
+          <button onClick={exportData} className="text-xs text-primary hover:underline">
+            ⬇️ Download all my data (JSON)
+          </button>
         </div>
 
         {/* Danger zone */}

@@ -43,6 +43,7 @@ export function EmailReportCapture({ payload }: EmailReportCaptureProps) {
       if (error || !(data as { success?: boolean })?.success) {
         throw new Error((data as { error?: string })?.error || error?.message || "send failed");
       }
+      localStorage.setItem("rb_last_email", trimmed);
       setStatus("sent");
     } catch (e) {
       console.error("[EmailReport] send failed:", e);
