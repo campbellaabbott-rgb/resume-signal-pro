@@ -45,6 +45,27 @@ serve(async (req) => {
       });
     }
 
+    // Cache-first: a pro_subscribers row refreshed within the last hour skips
+    // the Stripe round trip entirely — this endpoint fires on every /pricing
+    // and /account view, and Stripe rate limits are not a thing to discover
+    // on a high-traffic day. `force: true` in the body bypasses (used right
+    // after checkout returns).
+    try {
+      const { data: row } = await supabase
+        .from("pro_subscribers")
+        .select("status, current_period_end, updated_at")
+        .eq("email", email)
+        .maybeSingle();
+      if (row && new Date(row.updated_at).getTime() > Date.now() - 3600 * 1000) {
+        const active = ["active", "trialing"].includes(row.status) &&
+          (!row.current_period_end || new Date(row.current_period_end).getTime() > Date.now() - 24 * 3600 * 1000);
+        return new Response(
+          JSON.stringify({ active, status: row.status, currentPeriodEnd: row.current_period_end, cached: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    } catch (_) { /* fall through to live check */ }
+
     const status = await checkProByEmail(stripe, supabase, email);
     return new Response(
       JSON.stringify({ active: status.active, status: status.status, currentPeriodEnd: status.currentPeriodEnd }),

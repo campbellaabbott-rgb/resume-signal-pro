@@ -1499,6 +1499,38 @@ serve(async (req) => {
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(normalized));
       return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
     })();
+    // === FULL-REPORT CACHE ===
+    // Identical resume + JD + stated context + engine version → serve the
+    // finished report instantly (rescans, repeat uploads, shared samples).
+    // Rule-based-fallback and partial reports are never cached.
+    const REPORT_ENGINE_VERSION = 'scan-v2026-07-04';
+    const reportCacheKey = await (async () => {
+      const ctx = (body.userContext ?? {}) as Record<string, unknown>;
+      const ctxPart = ['situation', 'targetRole', 'confirmedIndustry', 'confirmedExperience']
+        .map(k => typeof ctx[k] === 'string' ? (ctx[k] as string).toLowerCase().trim() : '')
+        .join('|');
+      const jdPart = typeof jobDescriptionText === 'string' ? jobDescriptionText.replace(/\s+/g, ' ').trim().toLowerCase() : '';
+      const raw = `${resumeHash}|${jdPart}|${ctxPart}|${REPORT_ENGINE_VERSION}`;
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+      return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+    })();
+    try {
+      const { data: cached } = await supabase
+        .from('scan_report_cache')
+        .select('report, created_at')
+        .eq('cache_key', reportCacheKey)
+        .maybeSingle();
+      if (cached?.report && new Date(cached.created_at).getTime() > Date.now() - 7 * 24 * 3600 * 1000) {
+        console.log(`[FREE-KEYWORD-SCAN] Report cache HIT (${reportCacheKey.slice(0, 12)}…) — served instantly`);
+        return new Response(
+          JSON.stringify({ ...(cached.report as Record<string, unknown>), cachedReport: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } catch (e) {
+      console.warn('[FREE-KEYWORD-SCAN] Report cache read failed (continuing):', e);
+    }
+
     let pinnedIndustry: string | null = null;
     try {
       const { data: pin } = await supabase
@@ -3969,6 +4001,21 @@ ${resumeText.substring(0, 20000)}
       );
     }
     
+    // Cache the finished report for identical rescans (full AI reports only —
+    // fallback/partial reports would freeze a degraded experience for 7 days).
+    if (!usedRuleBasedFallback && !responseData.partialResults) {
+      EdgeRuntime.waitUntil(
+        supabase.from('scan_report_cache').upsert({
+          cache_key: reportCacheKey,
+          report: responseData,
+          engine_version: REPORT_ENGINE_VERSION,
+          created_at: new Date().toISOString(),
+        }).then(({ error }: { error: { message: string } | null }) => {
+          if (error) console.warn('[FREE-KEYWORD-SCAN] Report cache write failed:', error.message);
+        })
+      );
+    }
+
     return new Response(
       JSON.stringify(responseData),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
