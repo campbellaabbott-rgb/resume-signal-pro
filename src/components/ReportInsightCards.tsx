@@ -249,6 +249,50 @@ export function CareerBridgeCard({
   );
 }
 
+// ---------- Freelance / project-career guidance ----------
+
+export function FreelanceGuidanceCard({
+  guidance,
+}: {
+  guidance: { positioning: string; projectsAsExperience: Array<{ project: string; presentAs: string }>; employerTransition?: string };
+}) {
+  if (!guidance?.projectsAsExperience?.length) return null;
+  return (
+    <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/5 to-transparent p-5 sm:p-6">
+      <h3 className="font-semibold text-foreground mb-1">💼 Your freelance work, positioned like a career</h3>
+      <p className="text-xs text-muted-foreground mb-4">
+        ATS parsers and recruiters misread scattered gigs. Here's how to present yours as one coherent track — using your actual projects.
+      </p>
+
+      <div className="rounded-lg bg-background/50 border border-border p-3 mb-4">
+        <p className="text-xs font-semibold text-foreground mb-1">Position it as</p>
+        <p className="text-xs text-muted-foreground">{guidance.positioning}</p>
+      </div>
+
+      <p className="text-xs font-semibold text-foreground mb-2">Turn projects into experience bullets</p>
+      <div className="space-y-2 mb-4">
+        {guidance.projectsAsExperience.slice(0, 4).map((p, i) => (
+          <div key={i} className="rounded-lg border border-border p-2.5 text-xs">
+            <p className="text-muted-foreground mb-1">📁 {p.project}</p>
+            <p className="text-foreground font-medium flex items-start gap-1.5">
+              <ArrowRight className="w-3.5 h-3.5 text-success shrink-0 mt-0.5" />
+              <span>{p.presentAs}</span>
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {guidance.employerTransition && guidance.employerTransition.trim().length > 0 && (
+        <div className="rounded-lg bg-warning/5 border border-warning/25 p-3">
+          <p className="text-xs text-foreground">
+            <span className="font-semibold">Moving to employment or a new field?</span> {guidance.employerTransition}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------- Score audit trail ----------
 
 export function ScoreAuditCard({

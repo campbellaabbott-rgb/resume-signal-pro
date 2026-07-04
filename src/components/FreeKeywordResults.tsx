@@ -40,7 +40,7 @@ import { InteractiveChecklist } from "./InteractiveChecklist";
 import { AISummary } from "./AISummary";
 import { ShareableScoreCard } from "./ShareableScoreCard";
 import { ResumeXRay } from "./ResumeXRay";
-import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard } from "./ReportInsightCards";
+import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard, FreelanceGuidanceCard } from "./ReportInsightCards";
 import { EmailReportCapture } from "./EmailReportCapture";
 import { CardErrorBoundary } from "./CardErrorBoundary";
 import { getAvailableIndustries } from "./IndustryConfidenceIndicator";
@@ -800,6 +800,11 @@ export interface FreeKeywordResultsProps {
   industryNeedsConfirmation?: boolean;
   /** Full-text vs recent-role detection disagreed — likely career transition */
   industryTransition?: { historical: string; recent: string } | null;
+  freelanceGuidance?: {
+    positioning: string;
+    projectsAsExperience: Array<{ project: string; presentAs: string }>;
+    employerTransition?: string;
+  } | null;
 }
 
 export function FreeKeywordResults({
@@ -913,6 +918,7 @@ export function FreeKeywordResults({
   benchmarkIndustry,
   industryNeedsConfirmation,
   industryTransition,
+  freelanceGuidance,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1695,6 +1701,10 @@ export function FreeKeywordResults({
             title: "🌱 First job — your projects ARE your experience",
             body: "Advice below is calibrated for entry level: elevating projects and internships, and the exact keywords entry screeners look for. Nobody expects P&L ownership — ignore any tool that does.",
           },
+          freelance: {
+            title: "💼 Freelancing — package the portfolio like a career",
+            body: "Independent work confuses ATS parsers and skeptical recruiters. The freelance guidance below shows how to position your client work as one coherent track and turn projects into experience bullets with real scope.",
+          },
         } as Record<string, { title: string; body: string }>)[scanSituation];
         if (!spotlight) return null;
         return (
@@ -1802,6 +1812,13 @@ export function FreeKeywordResults({
       {careerChangeBridge && (
         <div className="mt-4">
           <CareerBridgeCard bridge={careerChangeBridge} />
+        </div>
+      )}
+
+      {/* Freelance / project-career guidance */}
+      {freelanceGuidance && (
+        <div className="mt-4">
+          <FreelanceGuidanceCard guidance={freelanceGuidance} />
         </div>
       )}
 

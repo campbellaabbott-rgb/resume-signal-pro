@@ -345,6 +345,11 @@ interface FreeKeywordResult {
   benchmarkIndustry?: string | null;
   industryNeedsConfirmation?: boolean;
   industryTransition?: { historical: string; recent: string } | null;
+  freelanceGuidance?: {
+    positioning: string;
+    projectsAsExperience: Array<{ project: string; presentAs: string }>;
+    employerTransition?: string;
+  } | null;
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
@@ -1020,6 +1025,7 @@ const Index = () => {
           benchmarkIndustry: (result as any).benchmarkIndustry,
           industryNeedsConfirmation: (result as any).industryNeedsConfirmation,
           industryTransition: (result as any).industryTransition,
+          freelanceGuidance: (result as any).freelanceGuidance,
         });
 
         // Save to cloud scan history for signed-in users (fire and forget)
@@ -1595,6 +1601,7 @@ const Index = () => {
                   { id: "exploring", label: "🧭 Exploring options" },
                   { id: "career_change", label: "🔄 Changing careers" },
                   { id: "first_job", label: "🌱 First job" },
+                  { id: "freelance", label: "💼 Freelancing" },
                 ]).map(opt => (
                   <button
                     key={opt.id}
@@ -1797,6 +1804,7 @@ const Index = () => {
                 benchmarkIndustry={freeKeywordResult.benchmarkIndustry ?? undefined}
                 industryNeedsConfirmation={freeKeywordResult.industryNeedsConfirmation}
                 industryTransition={freeKeywordResult.industryTransition ?? undefined}
+                freelanceGuidance={freeKeywordResult.freelanceGuidance ?? undefined}
                 scanSituation={scanContext.situation ?? undefined}
                 onContextConfirm={(ctx) => persistScanContext(ctx)}
               />
