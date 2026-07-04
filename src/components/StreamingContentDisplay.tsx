@@ -97,7 +97,7 @@ export function StreamingContentDisplay({
             </h3>
             <p className="text-sm text-muted-foreground">
               {isStreaming 
-                ? t('streamingContent.characters', { count: content.length.toLocaleString() }) 
+                ? t('streamingContent.characters', { count: content.length }) 
                 : isComplete 
                   ? t('streamingContent.ready') 
                   : resolvedSubtitle}

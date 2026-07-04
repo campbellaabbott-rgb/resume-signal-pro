@@ -917,7 +917,7 @@ export function FreeKeywordResults({
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const { trackButtonClick } = useConversionTracking();
-  const { data: scanCountData } = useTodayScanCount();
+  const scanCountData = useTodayScanCount();
   const { variant: contentDepthVariant, trackConversion: trackContentDepthConversion } = useABTest('free_content_depth');
   const gateDeepInsights = contentDepthVariant === 'gated';
   const [email, setEmail] = useState("");

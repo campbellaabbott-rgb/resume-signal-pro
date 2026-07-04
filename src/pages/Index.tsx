@@ -1816,7 +1816,7 @@ const Index = () => {
                   industry={freeKeywordResult.industry || ""}
                   atsScore={freeKeywordResult.atsScoreEstimate || 0}
                   hadJobDescription={!!jobDescriptionText}
-                  resumeWordCount={freeKeywordResult.wordCount}
+                  resumeWordCount={freeKeywordResult.wordCount?.current}
                 />
               </div>
             </div>

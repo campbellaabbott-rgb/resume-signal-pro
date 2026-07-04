@@ -99,6 +99,7 @@ interface EnhancedAnalysisDisplayProps {
 
 // Mobile-friendly tooltip
 const InfoTooltip = ({ title, description }: { title: string; description: string }) => {
+  const { t } = useTranslation();
   const [showMobile, setShowMobile] = useState(false);
   const isMobile = useIsMobile();
   

@@ -19,6 +19,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { computeImpactAnalysis } from "../../supabase/functions/_shared/impact-ratio";
 
 interface Role {
@@ -45,6 +46,43 @@ interface Candidate {
 }
 
 const JURISDICTIONS = ["OTHER", "NYC", "IL", "CA", "EU"] as const;
+
+const isStringArray = (value: Json | null): value is string[] =>
+  Array.isArray(value) && value.every((item) => typeof item === "string");
+
+const toSignals = (value: Json | null): Candidate["signals"] => {
+  if (!Array.isArray(value)) return null;
+  return value.filter((item): item is { factor: string; direction: string; evidence: string } =>
+    typeof item === "object" && item !== null && !Array.isArray(item) &&
+    typeof item.factor === "string" && typeof item.direction === "string" && typeof item.evidence === "string"
+  );
+};
+
+const toExclusions = (value: Json | null): Candidate["exclusions_applied"] => {
+  if (!Array.isArray(value)) return null;
+  return value.filter((item): item is { feature: string; count: number } =>
+    typeof item === "object" && item !== null && !Array.isArray(item) &&
+    typeof item.feature === "string" && typeof item.count === "number"
+  );
+};
+
+const toCandidate = (row: {
+  id: string; file_name: string | null; score: number | null; flags: Json | null;
+  signals: Json | null; interview_questions: Json | null; level_read: string | null;
+  exclusions_applied: Json | null; status: string; model_version: string | null; created_at: string;
+}): Candidate => ({
+  id: row.id,
+  file_name: row.file_name,
+  score: row.score,
+  flags: isStringArray(row.flags) ? row.flags : null,
+  signals: toSignals(row.signals),
+  interview_questions: isStringArray(row.interview_questions) ? row.interview_questions : null,
+  level_read: row.level_read,
+  exclusions_applied: toExclusions(row.exclusions_applied),
+  status: row.status === "advanced" || row.status === "rejected" ? row.status : "pending",
+  model_version: row.model_version,
+  created_at: row.created_at,
+});
 
 // Candidate-notice templates. Informational tooling, not legal advice —
 // customers should have counsel confirm final wording.
@@ -159,7 +197,7 @@ export default function Shortlist() {
       supabase.from("shortlist_candidates").select("*").eq("role_id", roleId).order("score", { ascending: false }),
       supabase.from("shortlist_demographics").select("*"),
     ]);
-    setCandidates((cands as Candidate[] | null) ?? []);
+    setCandidates(cands?.map(toCandidate) ?? []);
     const demoMap: typeof demographics = {};
     for (const d of (demos as Array<{ candidate_id: string; sex?: string; race_ethnicity?: string }> | null) ?? []) {
       demoMap[d.candidate_id] = { sex: d.sex, race_ethnicity: d.race_ethnicity };
