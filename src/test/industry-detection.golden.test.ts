@@ -363,6 +363,25 @@ const cases: GoldenCase[] = [
     resume: `Rita Vaughn\nChief Operating Officer\n${EXPERIENCE}\nCOO, ScaleWorks (2017-present)\n- Led an organization of 220 across operations, strategy and transformation\n- Owned $40M budget, presented operating model changes to the board of directors\n- Drove turnaround delivering $15M in cost savings`,
   },
 
+  // ── Additional crossover traps ───────────────────────────────────────────
+  {
+    name: "office manager at a construction company stays administrative",
+    expected: "administrative",
+    acceptAlso: ["construction_management"],
+    resume: `Dee Ford\nOffice Manager\n${EXPERIENCE}\nOffice Manager, BuildRight Construction (2018-present)\n- Calendar management, scheduling and expense reports for 3 executives\n- Front desk coverage, office supplies, meeting coordination and minutes\nSKILLS\nOutlook, QuickBooks entry, scheduling`,
+  },
+  {
+    name: "customer success manager with revenue metrics goes to sales",
+    expected: "sales",
+    acceptAlso: ["customer_success"],
+    resume: `Kim Soo\nCustomer Success Manager\n${EXPERIENCE}\nCSM, SaaSCo (2020-present)\n- Owned $2.4M renewal book, drove 118% net revenue retention through upsell and expansion revenue\n- Ran QBRs and account health reviews, reduced churn 20%\nSKILLS\nSalesforce, Gainsight`,
+  },
+  {
+    name: "warehouse associate lands in logistics",
+    expected: "logistics",
+    resume: `Ed Reyes\nWarehouse Associate\n${EXPERIENCE}\nWarehouse Associate, FulfillCo (2019-present)\n- Picking and packing 400 orders daily, cycle counts and receiving\n- Certified forklift operator, maintained 99.8% inventory accuracy in WMS\nCERTIFICATIONS\nForklift certified, OSHA 10`,
+  },
+
   // ── Context guards ───────────────────────────────────────────────────────
   {
     name: "aspiring nurse in summary must NOT lock healthcare",

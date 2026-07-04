@@ -602,6 +602,17 @@ export default function Account() {
           </div>
         </div>
 
+        {/* Cross-link: the employer-side product */}
+        <div className="rounded-2xl border border-border bg-gradient-to-r from-primary/5 to-transparent p-5 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-foreground mb-0.5">Hiring? Screen candidates with Shortlist <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-semibold uppercase align-middle ml-1">Beta</span></p>
+            <p className="text-xs text-muted-foreground">Paste a job description and a stack of resumes — get a ranked, explainable shortlist with a built-in compliance audit trail. Free during beta.</p>
+          </div>
+          <Link to="/shortlist" className="shrink-0 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
+            Open Shortlist →
+          </Link>
+        </div>
+
         {/* Settings: password / email / export */}
         <div className="rounded-2xl border border-border bg-card p-5 mb-6">
           <h2 className="font-semibold text-foreground text-sm mb-3">⚙️ Account settings</h2>

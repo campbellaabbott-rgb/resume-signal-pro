@@ -3524,6 +3524,25 @@ ${resumeText.substring(0, 20000)}
     responseData.reportCompleteness = reportCompleteness.pct;
     responseData.partialResults = usedRuleBasedFallback;
 
+    // Parse-quality gate — bad extraction is the biggest silent accuracy
+    // killer: a mangled PDF produces a confidently wrong report. Score the
+    // extraction and tell the user when the scan may be unreliable.
+    responseData.parseQuality = (() => {
+      const words = resumeText.split(/\s+/).filter(Boolean);
+      const wordCount = words.length;
+      const letters = (resumeText.match(/[a-zA-ZÀ-ÿ\u0900-\u097F]/g) || []).length;
+      const letterRatio = resumeText.length > 0 ? letters / resumeText.length : 0;
+      const garbage = (resumeText.match(/[\uFFFD\u0000-\u0008\u000E-\u001F]|(.)\2{5,}/g) || []).length;
+      const hasSections = /\b(experience|education|skills|summary|employment)\b/i.test(resumeText);
+      const issues: string[] = [];
+      if (wordCount < 120) issues.push(`only ${wordCount} words extracted`);
+      if (letterRatio < 0.55) issues.push('unusually low text-to-symbol ratio');
+      if (garbage > 5) issues.push('garbled characters detected');
+      if (!hasSections) issues.push('no standard resume sections found');
+      const verdict = issues.length >= 2 ? 'poor' : issues.length === 1 ? 'fair' : 'good';
+      return { verdict, wordCount, issues };
+    })();
+
     // Purchased-credit redemption receipt
     if (creditUsedEmail) {
       responseData.creditUsed = true;

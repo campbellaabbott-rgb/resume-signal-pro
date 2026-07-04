@@ -2115,6 +2115,11 @@ export const SUB_INDUSTRY_TAXONOMY: Record<string, Array<{ id: string; label: st
     { id: 'food_beverage', label: 'Food & Beverage', signals: ['f&b', 'restaurant', 'covers', 'menu', 'bar', 'banquet', 'catering', 'food cost'], minSignals: 2 },
     { id: 'events_venues', label: 'Events & Venues', signals: ['banquet event orders', 'group sales', 'room blocks', 'conferences', 'weddings', 'av'], minSignals: 2 },
   ],
+  logistics: [
+    { id: 'driver', label: 'Driver / Transportation', signals: ['cdl', 'otr', 'routes', 'deliveries', 'dot compliance', 'hours of service', 'pre-trip', 'accident-free', 'freight hauling'], minSignals: 2 },
+    { id: 'warehouse_ops', label: 'Warehouse Operations', signals: ['forklift', 'picking', 'packing', 'cycle count', 'wms', 'pallet', 'receiving', 'shipping dock', 'inventory accuracy'], minSignals: 2 },
+    { id: 'supply_chain_planning', label: 'Supply Chain Planning', signals: ['demand planning', 'forecasting', 's&op', 'safety stock', 'procurement', 'supplier management', 'lead time'], minSignals: 2 },
+  ],
   government: [
     { id: 'federal', label: 'Federal', signals: ['federal', 'gs-', 'security clearance', 'dod', 'agency', 'usajobs', 'far', 'contracting officer'], minSignals: 2 },
     { id: 'state_local', label: 'State / Municipal', signals: ['municipal', 'city council', 'county', 'ordinance', 'public works', 'constituent services', 'state agency'], minSignals: 2 },

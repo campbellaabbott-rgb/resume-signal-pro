@@ -99,6 +99,45 @@ export default function Shortlist() {
   const [showNewRole, setShowNewRole] = useState(false);
   const [candidateText, setCandidateText] = useState("");
   const [candidateName, setCandidateName] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [decisionLog, setDecisionLog] = useState<Record<string, Array<{ action: string; actor_email: string | null; old_value: string | null; new_value: string | null; reason: string | null; created_at: string }>>>({});
+
+  // PDF/DOCX upload → existing parser functions → text into the evaluate box
+  const handleFile = async (file: File) => {
+    setError(null);
+    if (file.size > 10 * 1024 * 1024) { setError("File too large (10MB max)."); return; }
+    const ext = file.name.toLowerCase().split(".").pop();
+    if (ext === "txt") {
+      setCandidateText(await file.text());
+      setCandidateName(file.name);
+      return;
+    }
+    const fnName = ext === "pdf" ? "parse-pdf" : (ext === "docx" || ext === "doc") ? "parse-docx" : null;
+    if (!fnName) { setError("Supported formats: PDF, DOCX, TXT — or paste the text."); return; }
+    setParsing(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    const { data, error: err } = await supabase.functions.invoke(fnName, { body: formData })
+      .catch(() => ({ data: null, error: { message: "parse failed" } }));
+    setParsing(false);
+    const text = (data as { text?: string })?.text;
+    if (err || !text || text.trim().length < 100) {
+      setError("Couldn't extract enough text from that file — try DOCX or paste the text directly.");
+      return;
+    }
+    setCandidateText(text);
+    setCandidateName(file.name);
+  };
+
+  // Per-candidate decision history — the audit trail, visible in the UI
+  const loadDecisionLog = async (candidateId: string) => {
+    if (decisionLog[candidateId]) return;
+    const { data } = await supabase.from("shortlist_decisions")
+      .select("action, actor_email, old_value, new_value, reason, created_at")
+      .eq("candidate_id", candidateId)
+      .order("created_at", { ascending: false });
+    setDecisionLog(prev => ({ ...prev, [candidateId]: (data as never[]) ?? [] }));
+  };
   const [evaluating, setEvaluating] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [decisionReason, setDecisionReason] = useState("");
@@ -196,7 +235,9 @@ export default function Shortlist() {
     await supabase.from("shortlist_candidates").update({ status: newStatus }).eq("id", candidate.id);
     setDecisionReason("");
     setError(null);
+    setDecisionLog(prev => { const n = { ...prev }; delete n[candidate.id]; return n; });
     if (activeRole) loadCandidates(activeRole.id);
+    loadDecisionLog(candidate.id);
   };
 
   const overrideScore = async (candidate: Candidate, newScore: number) => {
@@ -415,6 +456,15 @@ export default function Shortlist() {
               <h3 className="font-semibold text-foreground text-sm mb-2">Add candidate</h3>
               <input value={candidateName} onChange={e => setCandidateName(e.target.value)} placeholder="Reference (e.g. file name or candidate #) — optional"
                 className="w-full mb-2 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+              <div className="flex items-center gap-2 mb-2">
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 cursor-pointer transition-colors">
+                  {parsing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  Upload PDF / DOCX / TXT
+                  <input type="file" accept=".pdf,.docx,.doc,.txt" className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+                </label>
+                <span className="text-[10px] text-muted-foreground">or paste below</span>
+              </div>
               <textarea value={candidateText} onChange={e => setCandidateText(e.target.value)} rows={5} placeholder="Paste the candidate's resume text…"
                 className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
               <div className="flex items-center gap-3 mt-2">
@@ -430,7 +480,7 @@ export default function Shortlist() {
             <div className="space-y-2">
               {candidates.map((c, idx) => (
                 <div key={c.id} className="rounded-2xl border border-border bg-card">
-                  <button onClick={() => setExpanded(expanded === c.id ? null : c.id)} className="w-full flex items-center gap-3 p-4 text-left">
+                  <button onClick={() => { const next = expanded === c.id ? null : c.id; setExpanded(next); if (next) loadDecisionLog(c.id); }} className="w-full flex items-center gap-3 p-4 text-left">
                     <span className="text-xs text-muted-foreground w-6">#{idx + 1}</span>
                     <span className={`text-xl font-bold w-10 ${(c.score ?? 0) >= 70 ? "text-success" : (c.score ?? 0) >= 50 ? "text-warning" : "text-destructive"}`}>{c.score ?? "—"}</span>
                     <div className="flex-1 min-w-0">
@@ -488,6 +538,23 @@ export default function Shortlist() {
                             className="flex-1 px-2 py-1 rounded bg-background border border-border text-xs text-foreground" />
                         </div>
                       </div>
+
+                      {/* Decision history — the audit trail, human-readable */}
+                      {(decisionLog[c.id] ?? []).length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-foreground mb-1">Decision history</p>
+                          <div className="space-y-0.5 max-h-32 overflow-y-auto">
+                            {(decisionLog[c.id] ?? []).map((d, i) => (
+                              <p key={i} className="text-[11px] text-muted-foreground">
+                                <span className="text-foreground font-medium">{d.action.replace(/_/g, " ")}</span>
+                                {d.old_value && d.new_value ? ` (${d.old_value} → ${d.new_value})` : ""}
+                                {d.reason ? ` — "${d.reason}"` : ""}
+                                {" · "}{d.actor_email ?? "unknown"} · {new Date(d.created_at).toLocaleString()}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* HITL decision bar */}
                       <div className="flex flex-wrap items-center gap-2 pt-1">

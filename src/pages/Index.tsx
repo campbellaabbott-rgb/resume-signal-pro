@@ -304,6 +304,7 @@ interface FreeKeywordResult {
   premiumTeaser?: { rewritePreview: string; totalRewritesAvailable: number } | null;
   reportCompleteness?: number;
   partialResults?: boolean;
+  parseQuality?: { verdict: 'good' | 'fair' | 'poor'; wordCount: number; issues: string[] };
   executiveScopeCheck?: {
     level: string;
     signals: { teamSize: string | null; budgetOrPL: string | null; revenueImpact: string | null; boardExposure: boolean; strategicLanguage: boolean };
@@ -978,6 +979,7 @@ const Index = () => {
           premiumTeaser: (result as any).premiumTeaser,
           reportCompleteness: (result as any).reportCompleteness,
           partialResults: (result as any).partialResults,
+          parseQuality: (result as any).parseQuality,
           executiveScopeCheck: (result as any).executiveScopeCheck,
           resumeTriggeredQuestions: (result as any).resumeTriggeredQuestions,
           recruiterPanel: (result as any).recruiterPanel,
@@ -1603,6 +1605,22 @@ const Index = () => {
                   >
                     Create free account
                   </Link>
+                </div>
+              )}
+              {freeKeywordResult.parseQuality && freeKeywordResult.parseQuality.verdict !== 'good' && (
+                <div className={`rounded-xl border p-4 flex items-start gap-2 ${freeKeywordResult.parseQuality.verdict === 'poor' ? 'border-destructive/30 bg-destructive/5' : 'border-warning/30 bg-warning/5'}`}>
+                  <span className="text-sm shrink-0">{freeKeywordResult.parseQuality.verdict === 'poor' ? '🚫' : '⚠️'}</span>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">
+                      {freeKeywordResult.parseQuality.verdict === 'poor'
+                        ? 'This resume may not have extracted correctly'
+                        : 'Extraction quality note'}
+                    </span>
+                    {' — '}{freeKeywordResult.parseQuality.issues.join('; ')}.{' '}
+                    {freeKeywordResult.parseQuality.verdict === 'poor'
+                      ? 'The scores below may be unreliable. Try uploading a DOCX instead, or paste the resume text directly.'
+                      : 'If the report looks off, try pasting the text directly.'}
+                  </p>
                 </div>
               )}
               {freeKeywordResult.partialResults && (
