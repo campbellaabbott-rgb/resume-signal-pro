@@ -2766,6 +2766,46 @@
     }
   },
   "changelogEntries": {
+    "proSubscription": {
+      "title": "Resume Booster Pro — todas as ferramentas, uma assinatura",
+      "description": "Novo plano de acesso total por US$ 45/mês: todas as ferramentas pagas incluídas (Análise Completa, Correção de Palavras-Chave, Cartas de Apresentação, Coach de Entrevista e mais), escaneamentos diários ilimitados e cada nova ferramenta incluída automaticamente. Cancele quando quiser."
+    },
+    "scoreSimulator": {
+      "title": "Veja sua pontuação antes de corrigir qualquer coisa",
+      "description": "O relatório agora inclui um simulador interativo: marque as correções que pretende fazer e veja sua pontuação ATS projetada atualizar na hora — para saber quais correções valem seu tempo."
+    },
+    "weakestBullets": {
+      "title": "Seus 3 bullets mais fracos, avaliados e reescritos",
+      "description": "O escaneamento agora cita literalmente seus três bullets mais fracos, avalia cada um de A a F em métricas, verbos e escopo, e mostra uma reescrita melhorada baseada apenas no que já está no seu currículo."
+    },
+    "atsVendorChecks": {
+      "title": "Como Workday, Greenhouse, Lever e iCIMS leem seu currículo",
+      "description": "Cada grande ATS processa currículos de forma diferente. Seu relatório agora mostra, fornecedor por fornecedor, como sua formatação sobrevive a cada sistema — e o que mudar caso contrário."
+    },
+    "careerChangeBridge": {
+      "title": "Quem muda de carreira ganha um mapa de transferência",
+      "description": "Mudando de área? O relatório agora detecta transições e mostra quais habilidades se transferem como estão, quais linhas reformular e a maior lacuna de credibilidade a fechar."
+    },
+    "scoreAuditTrail": {
+      "title": "Por que essa pontuação? Cada ponto justificado",
+      "description": "Uma nova auditoria expansível mostra exatamente de onde vem sua pontuação ATS — cobertura de palavras-chave, formatação, impacto quantificado e sinais de conteúdo, com pontos que somam seu total."
+    },
+    "shareScoreCard": {
+      "title": "Compartilhe sua pontuação",
+      "description": "Um clique baixa um cartão de pontuação limpo — pontuação, setor e percentil, sem conteúdo do currículo — pronto para compartilhar."
+    },
+    "verifiedReportClaims": {
+      "title": "Cada citação do seu relatório agora é verificada",
+      "description": "Antes de exibir seu relatório, cada citação do seu currículo é comparada com o texto real — o que não corresponde é removido e reconstruído a partir de análise verificada."
+    },
+    "smarterIndustryDetection": {
+      "title": "Detecção de setor mais precisa",
+      "description": "133 novas variantes de cargos em 45 setores, desempate para casos apertados, detecção automática de transição de carreira e um ciclo de feedback que aprende com suas correções — além de comparativos calibrados ao setor da vaga desejada."
+    },
+    "fasterFrontPage": {
+      "title": "Página inicial mais rápida com envio instantâneo",
+      "description": "A página inicial agora carrega muito menos código e você pode soltar seu currículo direto no topo — sem rolar a página."
+    },
     "tenNewIndustries": {
       "title": "10 novos setores agora totalmente suportados",
       "description": "O scanner agora tem bibliotecas de palavras-chave dedicadas, reconhecimento de cargos, tabelas de certificações e benchmarks de pontuação para mais 10 áreas: cibersegurança, logística e cadeia de suprimentos, imóveis, seguros, organizações sem fins lucrativos, biotecnologia e ciência de laboratório, aviação, energia, ofícios especializados (eletricistas, encanadores, HVAC, soldadores e mais) e atendimento ao cliente. Se você trabalha em uma dessas áreas, sua análise não é mais espremida em uma categoria vagamente relacionada — palavras-chave, alertas e benchmarks agora são específicos da sua profissão real."

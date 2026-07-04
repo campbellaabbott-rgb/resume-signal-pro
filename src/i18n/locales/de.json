@@ -2766,6 +2766,46 @@
     }
   },
   "changelogEntries": {
+    "proSubscription": {
+      "title": "Resume Booster Pro — alle Tools, ein Abo",
+      "description": "Neuer All-Access-Plan für 45 $/Monat: alle kostenpflichtigen Tools inklusive (Komplettanalyse, Keyword-Fix, Anschreiben, Interview-Coach und mehr), unbegrenzte tägliche Scans und jedes neue Tool automatisch enthalten. Jederzeit kündbar."
+    },
+    "scoreSimulator": {
+      "title": "Sieh deinen Score, bevor du etwas änderst",
+      "description": "Der Bericht enthält jetzt einen interaktiven Simulator: Hake die geplanten Korrekturen ab und sieh sofort, wie sich dein prognostizierter ATS-Score ändert — so weißt du, welche Korrekturen sich lohnen."
+    },
+    "weakestBullets": {
+      "title": "Deine 3 schwächsten Stichpunkte — benotet und umgeschrieben",
+      "description": "Der Scan zitiert jetzt deine drei schwächsten Stichpunkte wörtlich, benotet jeden von A bis F nach Kennzahlen, Verben und Umfang und zeigt eine verbesserte Version, die nur auf deinem Lebenslauf basiert."
+    },
+    "atsVendorChecks": {
+      "title": "Wie Workday, Greenhouse, Lever & iCIMS deinen Lebenslauf lesen",
+      "description": "Jedes große ATS verarbeitet Lebensläufe anders. Dein Bericht zeigt jetzt pro Anbieter, wie dein Format jedes System übersteht — und was du ändern solltest, falls nicht."
+    },
+    "careerChangeBridge": {
+      "title": "Quereinsteiger erhalten eine Transfer-Karte",
+      "description": "Wechselst du das Feld? Der Bericht erkennt jetzt Übergänge und zeigt, welche Fähigkeiten direkt übertragbar sind, welche Zeilen du umformulieren solltest und welche Glaubwürdigkeitslücke du zuerst schließen musst."
+    },
+    "scoreAuditTrail": {
+      "title": "Warum dieser Score? Jeder Punkt belegt",
+      "description": "Eine neue aufklappbare Aufschlüsselung zeigt genau, woher dein ATS-Score kommt — Keyword-Abdeckung, Format, quantifizierte Wirkung und Inhaltssignale, deren Punkte sich zu deinem Gesamtwert summieren."
+    },
+    "shareScoreCard": {
+      "title": "Teile deinen Score",
+      "description": "Ein Klick lädt eine übersichtliche Score-Karte herunter — Score, Branche und Perzentil, ohne Lebenslaufinhalte — bereit zum Teilen."
+    },
+    "verifiedReportClaims": {
+      "title": "Jedes Zitat in deinem Bericht ist jetzt verifiziert",
+      "description": "Bevor dein Bericht angezeigt wird, wird jedes angebliche Zitat aus deinem Lebenslauf mit dem tatsächlichen Text abgeglichen — was nicht übereinstimmt, wird entfernt und aus verifizierter Analyse neu aufgebaut."
+    },
+    "smarterIndustryDetection": {
+      "title": "Präzisere Branchenerkennung",
+      "description": "133 neue Jobtitel-Varianten in 45 Branchen, ein Tiebreaker für knappe Fälle, automatische Erkennung von Karrierewechseln und eine Feedback-Schleife, die aus deinen Korrekturen lernt — plus Benchmarks, die sich an der Branche deiner Zielstelle orientieren."
+    },
+    "fasterFrontPage": {
+      "title": "Schnellere Startseite mit Sofort-Upload",
+      "description": "Die Startseite lädt jetzt deutlich weniger Code, und du kannst deinen Lebenslauf direkt oben ablegen — ohne Scrollen, ohne Suchen."
+    },
     "tenNewIndustries": {
       "title": "10 neue Branchen werden jetzt vollständig unterstützt",
       "description": "Der Scanner verfügt jetzt über eigene Keyword-Bibliotheken, Jobtitel-Erkennung, Zertifizierungstabellen und Bewertungs-Benchmarks für 10 weitere Bereiche: Cybersicherheit, Logistik & Supply Chain, Immobilien, Versicherungen, Non-Profit & Fundraising, Biotech & Laborwissenschaft, Luftfahrt, Energie, Handwerksberufe (Elektriker, Klempner, HLK, Schweißer und mehr) und Kundensupport. Wer in einem dieser Bereiche arbeitet, wird nicht mehr in eine nur lose verwandte Kategorie gepresst — Keywords, Warnsignale und Benchmarks sind jetzt spezifisch für den tatsächlichen Beruf."

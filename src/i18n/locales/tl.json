@@ -2766,6 +2766,46 @@
     }
   },
   "changelogEntries": {
+    "proSubscription": {
+      "title": "Resume Booster Pro — lahat ng tool, isang subscription",
+      "description": "Bagong $45/buwan na all-access plan: kasama ang lahat ng bayad na tool (Full Analysis, Keyword Fix, Cover Letters, Interview Coach, at iba pa), walang limitasyong pang-araw-araw na scan, at bawat bagong tool na ilulunsad namin — awtomatikong kasama. Kanselahin anumang oras."
+    },
+    "scoreSimulator": {
+      "title": "Makita ang iyong score bago mag-ayos",
+      "description": "May interactive simulator na ngayon ang report: i-check ang mga aayusin mo at panoorin ang iyong projected ATS score na mag-update agad — para malaman kung aling ayos ang sulit sa iyong oras."
+    },
+    "weakestBullets": {
+      "title": "Ang 3 pinakamahinang bullet mo, may grado at muling isinulat",
+      "description": "Sinisipi na ngayon ng scan nang verbatim ang tatlong pinakamahinang bullet point mo, binibigyan ng gradong A–F batay sa metrics, verbs, at saklaw, at nagpapakita ng pinahusay na bersyon mula lamang sa laman ng iyong resume."
+    },
+    "atsVendorChecks": {
+      "title": "Paano binabasa ng Workday, Greenhouse, Lever at iCIMS ang resume mo",
+      "description": "Magkakaiba ang pagbasa ng bawat malaking ATS. Ipinapakita na ngayon ng report mo, bawat vendor, kung paano nakakalusot ang format mo sa bawat sistema — at kung ano ang babaguhin kung hindi."
+    },
+    "careerChangeBridge": {
+      "title": "May transfer map ang mga nagpapalit ng karera",
+      "description": "Lumilipat ng larangan? Natutukoy na ngayon ng report ang mga transisyon at ipinapakita kung aling skills ang direktang dala-dala, aling linya ang dapat baguhin, at ang pinakamalaking puwang sa kredibilidad na dapat punan."
+    },
+    "scoreAuditTrail": {
+      "title": "Bakit ganito ang score? May paliwanag ang bawat puntos",
+      "description": "Ipinapakita ng bagong expandable audit kung saan eksaktong nanggagaling ang iyong ATS score — keyword coverage, format, quantified impact, at content signals, na ang mga puntos ay nagsusuma sa iyong kabuuan."
+    },
+    "shareScoreCard": {
+      "title": "Ibahagi ang iyong score",
+      "description": "Isang click para ma-download ang malinis na score card — score, industriya, at percentile, walang laman ng resume — handang ibahagi kahit saan."
+    },
+    "verifiedReportClaims": {
+      "title": "Beripikado na ngayon ang bawat sipi sa iyong report",
+      "description": "Bago ipakita ang report, bawat umano'y sipi mula sa resume mo ay itinutugma sa aktwal na teksto — ang hindi tumugma ay tinatanggal at muling binubuo mula sa beripikadong pagsusuri."
+    },
+    "smarterIndustryDetection": {
+      "title": "Mas tumpak na industry detection",
+      "description": "133 bagong job-title variant sa 45 industriya, tiebreaker para sa maliliit na agwat, awtomatikong pagtukoy ng career transition, at feedback loop na natututo sa iyong mga koreksyon — pati benchmarks na nakaangkop sa industriya ng target mong trabaho."
+    },
+    "fasterFrontPage": {
+      "title": "Mas mabilis na front page na may instant upload",
+      "description": "Mas kaunti na ang code na nilo-load ng homepage, at maaari mo nang ihulog ang resume mo mismo sa itaas — hindi na kailangang mag-scroll."
+    },
     "tenNewIndustries": {
       "title": "10 bagong industriya ang ganap nang suportado",
       "description": "Ang scanner ay mayroon na ngayong sariling keyword library, pagkilala sa job title, talahanayan ng sertipikasyon, at scoring benchmark para sa 10 pang larangan: cybersecurity, logistics at supply chain, real estate, insurance, nonprofit at fundraising, biotech at lab science, aviation, enerhiya, skilled trades (electrician, tubero, HVAC, welder at iba pa), at customer support. Kung nagtatrabaho ka sa isa sa mga larangang ito, hindi na ipinipilit ang iyong scan sa malayong kategorya — ang mga keyword, babala, at benchmark ay tugma na sa iyong tunay na propesyon."

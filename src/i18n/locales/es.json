@@ -2766,6 +2766,46 @@
     }
   },
   "changelogEntries": {
+    "proSubscription": {
+      "title": "Resume Booster Pro: todas las herramientas, una suscripción",
+      "description": "Nuevo plan de acceso total por $45/mes: todas las herramientas de pago incluidas (Análisis Completo, Corrección de Palabras Clave, Cartas de Presentación, Entrenador de Entrevistas y más), escaneos diarios ilimitados y cada nueva herramienta que lancemos, incluida automáticamente. Cancela cuando quieras."
+    },
+    "scoreSimulator": {
+      "title": "Ve tu puntuación antes de corregir nada",
+      "description": "El informe ahora incluye un simulador interactivo: marca las correcciones que planeas hacer y observa cómo se actualiza tu puntuación ATS proyectada al instante, para saber qué correcciones valen tu tiempo."
+    },
+    "weakestBullets": {
+      "title": "Tus 3 viñetas más débiles, calificadas y reescritas",
+      "description": "El escaneo ahora cita textualmente tus tres viñetas más débiles, califica cada una de A a F según métricas, verbos y alcance, y muestra una versión mejorada construida solo con lo que ya está en tu currículum."
+    },
+    "atsVendorChecks": {
+      "title": "Cómo leen tu currículum Workday, Greenhouse, Lever e iCIMS",
+      "description": "Cada ATS principal analiza los currículums de forma diferente. Tu informe ahora muestra una verificación por proveedor de cómo tu formato sobrevive a cada sistema, y qué cambiar si no lo hace."
+    },
+    "careerChangeBridge": {
+      "title": "Mapa de transición para quienes cambian de carrera",
+      "description": "¿Cambias de campo? El informe ahora detecta transiciones y muestra qué habilidades se transfieren tal cual, qué líneas reformular para el nuevo campo y la mayor brecha de credibilidad a cerrar."
+    },
+    "scoreAuditTrail": {
+      "title": "¿Por qué esta puntuación? Cada punto justificado",
+      "description": "Una nueva auditoría expandible muestra exactamente de dónde viene tu puntuación ATS: cobertura de palabras clave, formato, impacto cuantificado y señales de contenido, cada uno con puntos que suman tu total."
+    },
+    "shareScoreCard": {
+      "title": "Comparte tu puntuación",
+      "description": "Un clic descarga una imagen limpia con tu puntuación, industria y percentil, sin contenido de tu currículum, lista para compartir donde quieras."
+    },
+    "verifiedReportClaims": {
+      "title": "Cada cita de tu informe ahora está verificada",
+      "description": "Antes de mostrar tu informe, cada cita de tu currículum se compara con el texto real: lo que no coincide se elimina y se reconstruye a partir de análisis verificado. Lo que el informe dice de tu currículum está realmente en tu currículum."
+    },
+    "smarterIndustryDetection": {
+      "title": "Detección de industria más precisa",
+      "description": "133 nuevas variantes de títulos en 45 industrias, un desempate para casos dudosos, detección automática de transiciones de carrera y un ciclo de retroalimentación que aprende de tus correcciones, además de comparativas calibradas a la industria de tu empleo objetivo cuando pegas una oferta."
+    },
+    "fasterFrontPage": {
+      "title": "Una portada más rápida con carga instantánea",
+      "description": "La página de inicio ahora carga mucho menos código y puedes soltar tu currículum directamente en la portada: sin desplazarte ni buscar el cuadro de carga."
+    },
     "tenNewIndustries": {
       "title": "10 nuevas industrias con soporte completo",
       "description": "El escáner ahora cuenta con bibliotecas de palabras clave dedicadas, reconocimiento de títulos de puesto, tablas de certificaciones y puntos de referencia para 10 campos más: ciberseguridad, logística y cadena de suministro, bienes raíces, seguros, organizaciones sin fines de lucro, biotecnología y ciencia de laboratorio, aviación, energía, oficios especializados (electricistas, plomeros, HVAC, soldadores y más) y atención al cliente. Si trabajas en uno de estos campos, tu escaneo ya no se fuerza en una categoría vagamente relacionada: las palabras clave, alertas y comparativas ahora son específicas de tu profesión real."

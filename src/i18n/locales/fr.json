@@ -2766,6 +2766,46 @@
     }
   },
   "changelogEntries": {
+    "proSubscription": {
+      "title": "Resume Booster Pro — tous les outils, un seul abonnement",
+      "description": "Nouveau forfait tout accès à 45 $/mois : tous les outils payants inclus (Analyse Complète, Correction de Mots-Clés, Lettres de Motivation, Coach d'Entretien et plus), scans quotidiens illimités et chaque nouvel outil inclus automatiquement. Résiliable à tout moment."
+    },
+    "scoreSimulator": {
+      "title": "Voyez votre score avant de corriger quoi que ce soit",
+      "description": "Le rapport inclut désormais un simulateur interactif : cochez les corrections prévues et regardez votre score ATS projeté se mettre à jour instantanément — pour savoir quelles corrections valent votre temps."
+    },
+    "weakestBullets": {
+      "title": "Vos 3 puces les plus faibles, notées et réécrites",
+      "description": "Le scan cite désormais mot pour mot vos trois puces les plus faibles, note chacune de A à F selon les chiffres, les verbes et la portée, et propose une réécriture améliorée fondée uniquement sur votre CV."
+    },
+    "atsVendorChecks": {
+      "title": "Comment Workday, Greenhouse, Lever et iCIMS lisent votre CV",
+      "description": "Chaque grand ATS analyse les CV différemment. Votre rapport montre désormais, fournisseur par fournisseur, comment votre mise en forme traverse chaque système — et quoi changer sinon."
+    },
+    "careerChangeBridge": {
+      "title": "Une carte de transfert pour les reconversions",
+      "description": "Vous changez de domaine ? Le rapport détecte désormais les transitions et montre quelles compétences se transfèrent telles quelles, quelles lignes reformuler et le principal écart de crédibilité à combler."
+    },
+    "scoreAuditTrail": {
+      "title": "Pourquoi ce score ? Chaque point justifié",
+      "description": "Un nouvel audit dépliable montre exactement d'où vient votre score ATS — couverture des mots-clés, mise en forme, impact chiffré et signaux de contenu, dont les points s'additionnent jusqu'à votre total."
+    },
+    "shareScoreCard": {
+      "title": "Partagez votre score",
+      "description": "Un clic télécharge une carte de score épurée — score, secteur et percentile, sans aucun contenu de votre CV — prête à partager."
+    },
+    "verifiedReportClaims": {
+      "title": "Chaque citation de votre rapport est désormais vérifiée",
+      "description": "Avant l'affichage de votre rapport, chaque citation supposée de votre CV est confrontée au texte réel — ce qui ne correspond pas est retiré et reconstruit à partir d'une analyse vérifiée."
+    },
+    "smarterIndustryDetection": {
+      "title": "Détection de secteur plus précise",
+      "description": "133 nouvelles variantes d'intitulés dans 45 secteurs, un départage des cas serrés, la détection automatique des reconversions et une boucle de retour qui apprend de vos corrections — plus des références calibrées sur le secteur du poste visé."
+    },
+    "fasterFrontPage": {
+      "title": "Une page d'accueil plus rapide avec dépôt instantané",
+      "description": "La page d'accueil charge désormais beaucoup moins de code, et vous pouvez déposer votre CV directement en haut de page — sans défilement."
+    },
     "tenNewIndustries": {
       "title": "10 nouveaux secteurs désormais entièrement pris en charge",
       "description": "Le scanner dispose désormais de bibliothèques de mots-clés dédiées, de reconnaissance des intitulés de poste, de tables de certifications et de référentiels de notation pour 10 domaines supplémentaires : cybersécurité, logistique et chaîne d'approvisionnement, immobilier, assurance, associatif et collecte de fonds, biotech et sciences de laboratoire, aviation, énergie, métiers spécialisés (électriciens, plombiers, CVC, soudeurs et plus) et support client. Si vous travaillez dans l'un de ces domaines, votre analyse n'est plus forcée dans une catégorie vaguement liée — mots-clés, alertes et référentiels sont désormais propres à votre métier réel."

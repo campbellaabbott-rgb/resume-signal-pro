@@ -2766,6 +2766,46 @@
     }
   },
   "changelogEntries": {
+    "proSubscription": {
+      "title": "Resume Booster Pro — alle tools, één abonnement",
+      "description": "Nieuw all-access plan voor $45/maand: alle betaalde tools inbegrepen (Volledige Analyse, Keyword Fix, Sollicitatiebrieven, Interview Coach en meer), onbeperkt dagelijks scannen en elke nieuwe tool automatisch inbegrepen. Altijd opzegbaar."
+    },
+    "scoreSimulator": {
+      "title": "Zie je score voordat je iets aanpast",
+      "description": "Het rapport bevat nu een interactieve simulator: vink de verbeteringen aan die je wilt doorvoeren en zie je verwachte ATS-score direct veranderen — zo weet je welke verbeteringen je tijd waard zijn."
+    },
+    "weakestBullets": {
+      "title": "Je 3 zwakste bullets, beoordeeld en herschreven",
+      "description": "De scan citeert nu letterlijk je drie zwakste bulletpoints, geeft elk een cijfer van A tot F op cijfers, werkwoorden en reikwijdte, en toont een verbeterde herschrijving op basis van alleen jouw cv."
+    },
+    "atsVendorChecks": {
+      "title": "Hoe Workday, Greenhouse, Lever & iCIMS je cv lezen",
+      "description": "Elk groot ATS verwerkt cv's anders. Je rapport toont nu per leverancier hoe jouw opmaak elk systeem doorstaat — en wat je moet aanpassen als dat niet zo is."
+    },
+    "careerChangeBridge": {
+      "title": "Carrièreswitchers krijgen een overstapkaart",
+      "description": "Verander je van vakgebied? Het rapport detecteert nu overgangen en toont welke vaardigheden direct overdraagbaar zijn, welke regels je moet herformuleren en welke geloofwaardigheidskloof je eerst moet dichten."
+    },
+    "scoreAuditTrail": {
+      "title": "Waarom deze score? Elk punt verantwoord",
+      "description": "Een nieuwe uitklapbare audit laat precies zien waar je ATS-score vandaan komt — keyworddekking, opmaak, gekwantificeerde impact en inhoudssignalen, met punten die optellen tot je totaal."
+    },
+    "shareScoreCard": {
+      "title": "Deel je score",
+      "description": "Eén klik downloadt een strakke scorekaart — je score, branche en percentiel, zonder cv-inhoud — klaar om te delen."
+    },
+    "verifiedReportClaims": {
+      "title": "Elk citaat in je rapport is nu geverifieerd",
+      "description": "Voordat je rapport wordt getoond, wordt elk vermeend citaat uit je cv vergeleken met de echte tekst — wat niet klopt wordt verwijderd en opnieuw opgebouwd uit geverifieerde analyse."
+    },
+    "smarterIndustryDetection": {
+      "title": "Scherpere branchedetectie",
+      "description": "133 nieuwe functietitel-varianten in 45 branches, een tiebreaker voor twijfelgevallen, automatische detectie van carrièreswitches en een feedbackloop die leert van jouw correcties — plus benchmarks afgestemd op de branche van je doelfunctie."
+    },
+    "fasterFrontPage": {
+      "title": "Een snellere voorpagina met direct uploaden",
+      "description": "De homepage laadt nu aanzienlijk minder code en je kunt je cv direct bovenaan neerzetten — zonder scrollen of zoeken naar het uploadvak."
+    },
     "tenNewIndustries": {
       "title": "10 nieuwe sectoren nu volledig ondersteund",
       "description": "De scanner heeft nu eigen trefwoordbibliotheken, functietitelherkenning, certificeringstabellen en scorebenchmarks voor 10 extra vakgebieden: cybersecurity, logistiek & supply chain, vastgoed, verzekeringen, non-profit & fondsenwerving, biotech & laboratoriumwetenschap, luchtvaart, energie, vakmanschap (elektriciens, loodgieters, HVAC, lassers en meer) en klantenservice. Werk je in een van deze vakgebieden, dan wordt je scan niet langer in een vaag verwante categorie geperst — trefwoorden, waarschuwingen en benchmarks zijn nu specifiek voor jouw echte beroep."

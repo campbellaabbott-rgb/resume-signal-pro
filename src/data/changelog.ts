@@ -18,6 +18,16 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "proSubscription", date: "2026-07-04", tags: ["new"] },
+  { id: "scoreSimulator", date: "2026-07-04", tags: ["new"] },
+  { id: "weakestBullets", date: "2026-07-04", tags: ["new"] },
+  { id: "atsVendorChecks", date: "2026-07-04", tags: ["new"] },
+  { id: "careerChangeBridge", date: "2026-07-04", tags: ["new"] },
+  { id: "scoreAuditTrail", date: "2026-07-04", tags: ["new"] },
+  { id: "shareScoreCard", date: "2026-07-04", tags: ["new"] },
+  { id: "verifiedReportClaims", date: "2026-07-04", tags: ["improved"] },
+  { id: "smarterIndustryDetection", date: "2026-07-04", tags: ["improved"] },
+  { id: "fasterFrontPage", date: "2026-07-04", tags: ["improved"] },
   { id: "freeAccounts", date: "2026-07-02", tags: ["new"] },
   { id: "accountToolkit", date: "2026-07-02", tags: ["new"] },
   { id: "fiftyNineIndustries", date: "2026-07-02", tags: ["new"] },

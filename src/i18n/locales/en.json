@@ -2766,6 +2766,46 @@
     }
   },
   "changelogEntries": {
+    "proSubscription": {
+      "title": "Resume Booster Pro — every tool, one subscription",
+      "description": "New $45/month all-access plan: every paid tool included (Full Analysis, Keyword Fix, Cover Letters, Interview Coach, and more), unlimited daily scans, and every new tool we launch — included automatically. Cancel anytime."
+    },
+    "scoreSimulator": {
+      "title": "See your score before you fix anything",
+      "description": "The report now includes an interactive simulator: check off the fixes you plan to make and watch your projected ATS score update instantly — so you know which fixes are worth your time before you touch your resume."
+    },
+    "weakestBullets": {
+      "title": "Your 3 weakest bullets, graded and rewritten",
+      "description": "The scan now quotes your three weakest bullet points verbatim, grades each one A–F on metrics, verbs, and scope, and shows an improved rewrite built only from what's already on your resume."
+    },
+    "atsVendorChecks": {
+      "title": "How Workday, Greenhouse, Lever & iCIMS read your resume",
+      "description": "Each major ATS parses resumes differently. Your report now shows a vendor-by-vendor check of how your specific formatting survives each system — and what to change if it doesn't."
+    },
+    "careerChangeBridge": {
+      "title": "Career changers get a transfer map",
+      "description": "Switching fields? The report now detects transitions and shows which of your skills carry over as-is, which lines to reword for the new field, and the single biggest credibility gap to close."
+    },
+    "scoreAuditTrail": {
+      "title": "Why this score? Every point accounted for",
+      "description": "A new expandable audit shows exactly where your ATS score comes from — keyword coverage, format, quantified impact, and content signals, each with earned points that sum to your total."
+    },
+    "shareScoreCard": {
+      "title": "Share your score",
+      "description": "One click downloads a clean score-card image — your score, industry, and percentile, with no resume content on it — ready to share anywhere."
+    },
+    "verifiedReportClaims": {
+      "title": "Every quote in your report is now verified",
+      "description": "Before your report is shown, every claimed quote from your resume is checked against the actual text — anything that doesn't match is removed and rebuilt from verified analysis. What the report says about your resume is really in your resume."
+    },
+    "smarterIndustryDetection": {
+      "title": "Sharper industry detection",
+      "description": "133 new job-title variants across 45 industries, a tiebreaker for close calls, automatic career-transition detection, and a feedback loop that learns from your corrections — plus benchmarks that calibrate to your target job's industry when you paste a job description."
+    },
+    "fasterFrontPage": {
+      "title": "A faster front page with instant upload",
+      "description": "The homepage now loads dramatically less code up front, and you can drop your resume directly in the hero — no scrolling, no hunting for the upload box."
+    },
     "tenNewIndustries": {
       "title": "10 new industries now fully supported",
       "description": "The scanner now has dedicated keyword libraries, job-title recognition, certification tables, and scoring benchmarks for 10 more fields: cybersecurity, logistics & supply chain, real estate, insurance, nonprofit & fundraising, biotech & lab science, aviation, energy, skilled trades (electricians, plumbers, HVAC, welders and more), and customer support. If you work in one of these fields, your scan is no longer squeezed into a loosely-related category — keywords, red flags, and benchmarks are now specific to your actual profession."
