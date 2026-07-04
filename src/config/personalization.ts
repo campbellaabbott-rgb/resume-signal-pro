@@ -516,7 +516,6 @@ export const INDUSTRY_CONFIGS: Record<string, IndustryConfig> = {
     preferredFormat: 'Reverse chronological with dedicated Technical Skills section listing all tools and platforms',
     atsNotes: 'Data eng roles use Greenhouse and Lever. Tool names are primary ATS filters — Snowflake, dbt, Airflow, Spark are exact-match keywords.',
     topSkills: ['Apache Airflow', 'dbt', 'Apache Spark', 'Snowflake/BigQuery', 'Python', 'SQL', 'Kafka', 'Databricks'],
-    certifications: ['Databricks Certified DE Associate', 'Snowflake Core', 'AWS Certified Data Analytics', 'GCP Professional Data Engineer', 'Azure Data Engineer Associate', 'dbt Certified'],
     commonMistakes: [
       '"Built ETL pipelines" without naming the orchestration tool, warehouse, or scale',
       'Missing data volume metrics — recruiters filter by scale (GB vs PB is a different role)',

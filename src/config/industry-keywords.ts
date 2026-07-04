@@ -1553,7 +1553,7 @@ export function findIndustryConfig(industryName: string): IndustryKeywordConfig 
     // Data Science
     'data_science': 'data_science', 'data_analytics': 'data_science',
     'quantitative_analytics': 'data_science', 'product_analytics': 'data_science',
-    'growth_analytics': 'data_science', 'marketing_analytics': 'data_science',
+    'growth_analytics': 'data_science',
     // Machine Learning / AI
     'ai_ml': 'machine_learning', 'ml_engineering': 'machine_learning',
     'deep_learning': 'machine_learning', 'nlp_engineering': 'machine_learning',

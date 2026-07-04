@@ -25,7 +25,7 @@ export function ScanFeedback({
     if (submitted || loading) return;
     setLoading(true);
     try {
-      await supabase.rpc("record_scan_feedback", {
+      await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<unknown>)("record_scan_feedback", {
         p_visitor_id: visitorId ?? null,
         p_rating: rating,
         p_industry: industry,

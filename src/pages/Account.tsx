@@ -13,6 +13,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 
 interface FixItem { step: string; done: boolean }
@@ -42,6 +43,28 @@ interface AccountData {
   credits: number;
   purchases: Array<{ product: string; date: string }>;
 }
+
+const toFixPlan = (value: Json | null | undefined): FixItem[] | null => {
+  if (!Array.isArray(value)) return null;
+  const items = value.filter((item): item is { step: string; done?: boolean } =>
+    typeof item === "object" && item !== null && !Array.isArray(item) && typeof item.step === "string"
+  );
+  return items.map((item) => ({ step: item.step, done: item.done === true }));
+};
+
+const mapScanRow = (row: { id: string; ats_score: number; projected_score: number | null; industry: string | null; verdict: string | null; red_flag_count: number | null; fix_plan: Json | null; label: string | null; created_at: string }): UserScan => ({
+  id: row.id,
+  ats_score: row.ats_score,
+  projected_score: row.projected_score,
+  industry: row.industry,
+  verdict: row.verdict,
+  red_flag_count: row.red_flag_count,
+  fix_plan: toFixPlan(row.fix_plan),
+  label: row.label,
+  created_at: row.created_at,
+});
+
+const fixPlanToJson = (items: FixItem[]): Json => items.map((item) => ({ step: item.step, done: item.done }));
 
 const APP_STATUSES = ["applied", "interviewing", "offer", "rejected"] as const;
 const STATUS_STYLES: Record<string, string> = {
@@ -77,7 +100,7 @@ export default function Account() {
       supabase.from("user_applications").select("*").order("created_at", { ascending: false }).limit(100),
       supabase.from("user_profiles").select("target_score").eq("user_id", session.user.id).maybeSingle(),
     ]);
-    let cloudScans = (scansRes.data as UserScan[] | null) ?? [];
+    let cloudScans = scansRes.data?.map(mapScanRow) ?? [];
 
     // One-time import: local scan history from before the account existed.
     // Runs when the cloud is empty and localStorage has entries; marks itself
@@ -103,7 +126,7 @@ export default function Account() {
           if (!error) {
             localStorage.setItem("scan_history_imported", "1");
             const refreshed = await supabase.from("user_scans").select("*").order("created_at", { ascending: false }).limit(50);
-            cloudScans = (refreshed.data as UserScan[] | null) ?? cloudScans;
+            cloudScans = refreshed.data?.map(mapScanRow) ?? cloudScans;
           }
         } else {
           localStorage.setItem("scan_history_imported", "1");
@@ -134,7 +157,7 @@ export default function Account() {
     if (!scan?.fix_plan) return;
     const updated = scan.fix_plan.map((f, i) => i === index ? { ...f, done: !f.done } : f);
     setScans(scans.map(s => s.id === scanId ? { ...s, fix_plan: updated } : s));
-    await supabase.from("user_scans").update({ fix_plan: updated }).eq("id", scanId);
+    await supabase.from("user_scans").update({ fix_plan: fixPlanToJson(updated) }).eq("id", scanId);
   };
 
   const addApplication = async () => {

@@ -917,7 +917,7 @@ export function FreeKeywordResults({
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const { trackButtonClick } = useConversionTracking();
-  const { data: scanCountData } = useTodayScanCount();
+  const scanCountData = useTodayScanCount();
   const { variant: contentDepthVariant, trackConversion: trackContentDepthConversion } = useABTest('free_content_depth');
   const gateDeepInsights = contentDepthVariant === 'gated';
   const [email, setEmail] = useState("");
@@ -4900,7 +4900,7 @@ export function FreeKeywordResults({
                 <div key={i} className={`w-5 h-5 rounded-full ${c} border-2 border-background`} />
               ))}
             </div>
-            <span>{t('freeResults.cta.socialProof', { count: scanCountData.inflatedCount.toLocaleString() })}</span>
+            <span>{t('freeResults.cta.socialProof', { count: scanCountData.inflatedCount })}</span>
           </div>
         )}
 

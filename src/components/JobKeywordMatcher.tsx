@@ -35,6 +35,7 @@ const categoryMeta: Record<MissingSkillDetail["category"], { label: string; icon
 };
 
 function CopyButton({ text }: { text: string }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
