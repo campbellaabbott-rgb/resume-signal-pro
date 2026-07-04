@@ -11,7 +11,13 @@ project_id = "bwhdazbotpblihdxcmho"
     verify_jwt = false
   [functions.check-error-spikes]
     verify_jwt = false
+  [functions.check-subscription]
+    verify_jwt = false
   [functions.create-checkout]
+    verify_jwt = false
+  [functions.create-portal-session]
+    verify_jwt = false
+  [functions.create-subscription-checkout]
     verify_jwt = false
   [functions.create-product-checkout]
     verify_jwt = false

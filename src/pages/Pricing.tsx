@@ -14,6 +14,7 @@ import { useCurrency } from "@/hooks/use-currency";
 import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { AddOnsShowcase } from "@/components/AddOnsShowcase";
+import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 
 const productIcons: Record<string, React.ElementType> = {
   basicKeywordFix: FileText,
@@ -75,7 +76,7 @@ export default function Pricing() {
           <div className="text-center mb-16">
             <Badge variant="secondary" className="mb-4">
               <Star className="w-3 h-3 mr-1" />
-              {t('pricingPage.noSubscriptions')}
+              Pay per tool, or go Pro for everything
             </Badge>
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               {t('pricingPage.titlePrefix')} <span className="text-primary">{t('pricingPage.titleHighlight')}</span>
@@ -99,6 +100,11 @@ export default function Pricing() {
               <Check className="w-4 h-4 text-primary" />
               <span>{t('pricingPage.stripeProtected')}</span>
             </div>
+          </div>
+
+          {/* Pro subscription — all tools, one price */}
+          <div className="max-w-xl mx-auto mb-16">
+            <ProSubscriptionCard />
           </div>
 
           {/* $5 Add-Ons Section */}

@@ -13,6 +13,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 
 interface FixItem { step: string; done: boolean }
 
@@ -565,6 +566,11 @@ export default function Account() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Pro subscription */}
+        <div className="mb-6">
+          <ProSubscriptionCard compact />
         </div>
 
         {/* Credits + purchases */}

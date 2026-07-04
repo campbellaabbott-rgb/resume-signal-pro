@@ -81,10 +81,74 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
 
-    // Retrieve checkout session
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ['line_items', 'customer']
-    });
+    // Pro subscription grants: sessionId "pro_<uuid>" refers to a server-issued
+    // row in pro_grants (created by create-product-checkout only when the email
+    // has an active Pro subscription). Synthesize the same shape a paid Stripe
+    // session would have so the rest of the flow (single-use claim, delivery
+    // logging, generation) runs unchanged.
+    let session: {
+      payment_status: string;
+      customer_email: string | null;
+      amount_total: number | null;
+      metadata: Record<string, string>;
+      line_items?: { data?: Array<{ quantity?: number | null }> };
+    };
+    if (typeof sessionId === "string" && sessionId.startsWith("pro_")) {
+      const grantId = sessionId.slice(4);
+      const supabaseGrant = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { data: grant } = await supabaseGrant
+        .from("pro_grants")
+        .select("*")
+        .eq("id", grantId)
+        .maybeSingle();
+      if (!grant) {
+        return new Response(
+          JSON.stringify({ error: "Invalid session" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      // Re-verify the subscription is still active before honoring the grant.
+      const { data: proRow } = await supabaseGrant
+        .from("pro_subscribers")
+        .select("status, current_period_end")
+        .eq("email", grant.email)
+        .maybeSingle();
+      const proActive = !!proRow && ["active", "trialing"].includes(proRow.status) &&
+        (!proRow.current_period_end || new Date(proRow.current_period_end).getTime() > Date.now() - 24 * 3600 * 1000);
+      if (!proActive) {
+        return new Response(
+          JSON.stringify({ error: "Subscription is not active" }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      await supabaseGrant
+        .from("pro_grants")
+        .update({ consumed_at: new Date().toISOString() })
+        .eq("id", grantId)
+        .is("consumed_at", null);
+      session = {
+        payment_status: "paid",
+        customer_email: grant.email,
+        amount_total: 0,
+        metadata: {
+          product_type: grant.product_type || "",
+          product_name: grant.product_name || "",
+          customer_email: grant.email,
+          session_id: grant.resume_session_id || "",
+          credits: grant.credits != null ? String(grant.credits) : "",
+          job_title: grant.job_title || "",
+          job_company: grant.job_company || "",
+          referral_code: "",
+          language: grant.language || "en",
+        },
+      };
+      logStep("Pro grant verified", { grantId, productType: session.metadata.product_type });
+    } else {
+      // Retrieve checkout session
+      session = await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ['line_items', 'customer']
+      }) as unknown as typeof session;
+    }
 
     logStep("Session retrieved", { 
       status: session.payment_status,

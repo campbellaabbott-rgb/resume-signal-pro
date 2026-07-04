@@ -1287,6 +1287,7 @@ serve(async (req) => {
     let isAuthedUser = false;
     let authedUserEmail: string | null = null;
     let creditUsedEmail: string | null = null;
+    let proBypass = false; // active Pro subscriber past the daily limit
     try {
       const authHeader = req.headers.get('Authorization') ?? '';
       const jwt = authHeader.replace(/^Bearer\s+/i, '');
@@ -1383,7 +1384,27 @@ serve(async (req) => {
         ?? ((typeof body.creditEmail === 'string' && body.creditEmail.includes('@'))
           ? body.creditEmail.toLowerCase().trim().slice(0, 200)
           : null);
+      // Pro subscribers ($45/mo) get unlimited scans — check the cache before
+      // burning purchased credits.
       if (creditEmail) {
+        try {
+          const { data: proRow } = await supabase
+            .from('pro_subscribers')
+            .select('status, current_period_end')
+            .eq('email', creditEmail)
+            .maybeSingle();
+          const proActive = !!proRow && ['active', 'trialing'].includes(proRow.status) &&
+            (!proRow.current_period_end || new Date(proRow.current_period_end).getTime() > Date.now() - 24 * 3600 * 1000);
+          if (proActive) {
+            creditUsedEmail = null; // no credit consumed
+            console.log(`[FREE-KEYWORD-SCAN] Rate limit reached — Pro subscriber ${creditEmail}, scan allowed`);
+            proBypass = true;
+          }
+        } catch (e) {
+          console.warn('[FREE-KEYWORD-SCAN] Pro check failed:', e);
+        }
+      }
+      if (creditEmail && !proBypass) {
         try {
           const { data: used } = await supabase.rpc('use_scan_credit', { p_email: creditEmail });
           if (used === true) {
@@ -1394,8 +1415,8 @@ serve(async (req) => {
           console.warn('[FREE-KEYWORD-SCAN] Credit redemption failed:', e);
         }
       }
-      if (creditUsedEmail) {
-        // Credit redeemed — fall through and run the scan.
+      if (creditUsedEmail || proBypass) {
+        // Credit redeemed or Pro subscriber — fall through and run the scan.
       } else {
       // Get current usage for helpful error message (non-blocking detail fetch)
       const { data: usageData } = await supabase

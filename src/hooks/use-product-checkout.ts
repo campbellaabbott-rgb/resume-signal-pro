@@ -52,6 +52,9 @@ export function useProductCheckout() {
       const { data, error } = await supabase.functions.invoke('create-product-checkout', {
         body: {
           productId: productId,
+          // Known email lets the server include the product free for active
+          // Pro subscribers (and prefills Stripe checkout otherwise).
+          email: localStorage.getItem('scanCreditsEmail') || localStorage.getItem('rb_last_email') || undefined,
           sessionId: opts.sessionId,
           jobTitle: opts.jobTitle,
           jobCompany: opts.jobCompany,
@@ -80,10 +83,15 @@ export function useProductCheckout() {
         // Track in funnel
         trackCheckoutStarted(productId, product.priceUsd);
         
-        toast({
-          title: "Redirecting to Checkout",
-          description: "Taking you to Stripe checkout…",
-        });
+        toast(data.proIncluded
+          ? {
+              title: "Included with Pro",
+              description: "No charge — this tool is part of your subscription. Preparing it now…",
+            }
+          : {
+              title: "Redirecting to Checkout",
+              description: "Taking you to Stripe checkout…",
+            });
         window.location.assign(data.url);
         return data.url;
       }

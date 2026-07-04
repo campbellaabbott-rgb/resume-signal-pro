@@ -125,6 +125,59 @@ serve(async (req) => {
     const SUPPORTED_LANGUAGES = ['en', 'en-GB', 'es', 'hi', 'tl', 'de', 'fr', 'fr-CA', 'nl', 'pt'];
     const sanitizedLanguage = typeof language === 'string' && SUPPORTED_LANGUAGES.includes(language) ? language : 'en';
 
+    // Pro subscribers get every tool included: instead of a Stripe session,
+    // issue a single-use server-side grant and send them straight to the
+    // success page. Cache-only check keeps this path fast; the cache is
+    // refreshed by check-subscription and the subscription checkout flow.
+    if (normalizedEmail) {
+      try {
+        const supabase = createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+          { auth: { persistSession: false } },
+        );
+        const { data: proRow } = await supabase
+          .from("pro_subscribers")
+          .select("status, current_period_end")
+          .eq("email", normalizedEmail)
+          .maybeSingle();
+        const proActive = !!proRow && ["active", "trialing"].includes(proRow.status) &&
+          (!proRow.current_period_end || new Date(proRow.current_period_end).getTime() > Date.now() - 24 * 3600 * 1000);
+        if (proActive) {
+          const { data: grant, error: grantError } = await supabase
+            .from("pro_grants")
+            .insert({
+              email: normalizedEmail,
+              product_id: productId,
+              product_type: product.productType,
+              product_name: product.name,
+              credits: product.credits ?? null,
+              resume_session_id: sessionId || null,
+              job_title: sanitizedJobTitle || null,
+              job_company: sanitizedJobCompany || null,
+              language: sanitizedLanguage,
+            })
+            .select("id")
+            .single();
+          if (!grantError && grant) {
+            console.log(`[CREATE-PRODUCT-CHECKOUT] Pro grant ${grant.id} issued to ${normalizedEmail} for ${product.name}`);
+            return new Response(
+              JSON.stringify({
+                url: `${origin}/product-success?session_id=pro_${grant.id}&product=${productId}`,
+                sessionId: `pro_${grant.id}`,
+                proIncluded: true,
+              }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+            );
+          }
+          console.error("[CREATE-PRODUCT-CHECKOUT] Pro grant insert failed, falling back to Stripe:", grantError?.message);
+        }
+      } catch (proErr) {
+        // Pro check is best-effort — never block a paying customer.
+        console.error("[CREATE-PRODUCT-CHECKOUT] Pro check failed:", proErr);
+      }
+    }
+
     // Create Stripe session - THE ONLY blocking call
     const session = await stripe.checkout.sessions.create({
       customer_email: normalizedEmail || undefined,
