@@ -1641,6 +1641,9 @@ CRITICAL LANGUAGE HANDLING:
   * hiringManager (skeptical): which specific claim they doubt most and what evidence is missing.
   * hrScreener (level/comp): what seniority level this resume READS as (which may differ from the title claimed) — this persona catches level mismatches.
   The three verdicts must NOT agree by default — real committees disagree, and divergence is the insight.
+- weakestBullets: Find the 3 genuinely WEAKEST bullets in the resume (vague duties, no numbers, passive phrasing). Quote each VERBATIM, grade it A-F on quantified impact + verb strength + scope clarity, list its specific issues, and rewrite it to A-grade. Rewrites must only use facts in the resume; use [brackets] for numbers the candidate must supply. Never invent achievements.
+- careerChangeBridge: Include ONLY if the resume shows a real industry/career transition (stated goal, mixed history, or aspirational summary). Skip it entirely for candidates progressing within one field. carryOver items must name where in the resume each skill appears.
+- industryVote: Your one-word industry verdict from the VALID INDUSTRIES list, judged by the roles actually HELD. Ignore aspirations, target roles, and client industries. Be honest about confidence — "low" is a valid answer for genuinely ambiguous resumes.
 - formatGradeDrivers: 2-3 specific issues that drove the format grade. Name the actual problem found (e.g. "3-column layout will break in Workday's ATS parser"), not generic advice.
 - sectionCheck.sectionQuality: Rate each section strong | adequate | thin | missing based on actual content depth, not just presence.
 - personalizedCareerInsights: This is where you REALLY shine:
@@ -2490,6 +2493,42 @@ ${resumeText.substring(0, 20000)}
                   },
                   required: ["screener", "hiringManager", "hrScreener"]
                 },
+                weakestBullets: {
+                  type: "array",
+                  description: "The 3 WEAKEST bullet points in this resume, quoted verbatim, each graded and rewritten. Grade on: quantified impact, action verb strength, and scope clarity. Pick genuinely weak bullets — vague duties, no numbers, passive phrasing.",
+                  items: {
+                    type: "object",
+                    properties: {
+                      original: { type: "string", description: "The bullet quoted VERBATIM from the resume." },
+                      grade: { type: "string", description: "Letter grade: A, B, C, D, or F." },
+                      issues: { type: "array", items: { type: "string" }, description: "1-3 short specific issues (e.g. 'no metric', 'passive voice', 'unclear scope')." },
+                      rewrite: { type: "string", description: "The same bullet rewritten to A-grade using ONLY facts present or plausibly inferable from the resume. Use [brackets] for numbers the candidate must fill in." }
+                    },
+                    required: ["original", "grade", "issues", "rewrite"]
+                  }
+                },
+                careerChangeBridge: {
+                  type: "object",
+                  description: "ONLY include when the resume shows a career/industry transition (stated or evident from history). Transferable-skills analysis from the source industry to the target.",
+                  properties: {
+                    fromField: { type: "string", description: "Where they're coming from, plain words." },
+                    toField: { type: "string", description: "Where they're heading, plain words." },
+                    carryOver: { type: "array", items: { type: "string" }, description: "3-6 skills/experiences from this resume that transfer directly — name where each appears in the resume." },
+                    needsReframing: { type: "array", items: { type: "object", properties: { current: { type: "string" }, reframed: { type: "string" } }, required: ["current", "reframed"] }, description: "2-3 resume lines that would land better reworded for the target field: current phrasing -> reframed phrasing." },
+                    gapToClose: { type: "string", description: "The single biggest credibility gap for the target field and the fastest way to close it." }
+                  },
+                  required: ["fromField", "toField", "carryOver", "needsReframing", "gapToClose"]
+                },
+                industryVote: {
+                  type: "object",
+                  description: "Your independent judgment of this resume's PRIMARY industry. Choose the single best fit based on the roles actually held (not aspirations, not clients served).",
+                  properties: {
+                    industry: { type: "string", description: "One industry slug from the provided list." },
+                    confidence: { type: "string", description: "high | medium | low" },
+                    reason: { type: "string", description: "One sentence: the strongest evidence for this call." }
+                  },
+                  required: ["industry", "confidence", "reason"]
+                },
                 nextBestAction: {
                   type: "object",
                   description: "The single most impactful action this specific candidate should take on their resume RIGHT NOW. Be concrete — name the specific section, bullet, or keyword. This is the synthesis moment: one clear directive based on everything above.",
@@ -2766,6 +2805,30 @@ ${resumeText.substring(0, 20000)}
       detectionSource = 'server_general_fallback';
     }
 
+    // === LLM TIEBREAKER ON LOW-MARGIN CALLS ===
+    // When the rule engine's top-2 candidates are nearly tied (marginRatio
+    // close to 1), the structured industryVote — judged on roles actually
+    // held — breaks the tie. It may only pick among the engine's own top-3
+    // candidates, so a hallucinated vote can never introduce a new industry.
+    {
+      const vote = (analysis as { industryVote?: { industry?: unknown; confidence?: unknown; reason?: unknown } }).industryVote;
+      const voteIndustry = vote && typeof vote.industry === 'string' ? vote.industry.toLowerCase().trim() : null;
+      const voteConfident = vote && (vote.confidence === 'high' || vote.confidence === 'medium');
+      const margin = industryDetection.telemetry?.marginRatio;
+      const lowMargin = typeof margin === 'number' && margin > 0 && margin < 1.3;
+      if (voteIndustry && voteConfident && lowMargin
+        && industryDetection.confidence !== 'high'
+        && voteIndustry !== finalIndustry
+        && VALID_INDUSTRIES.includes(voteIndustry)) {
+        const top3 = industryDetection.telemetry?.top3?.map(t => t.industry) ?? [];
+        if (top3.includes(voteIndustry)) {
+          console.log(`[FREE-KEYWORD-SCAN] Tiebreaker vote: "${finalIndustry}" → "${voteIndustry}" (margin=${margin}, reason: ${typeof vote.reason === 'string' ? vote.reason.slice(0, 120) : 'n/a'})`);
+          finalIndustry = voteIndustry;
+          detectionSource = 'llm_tiebreaker_low_margin';
+        }
+      }
+    }
+
     // === APPLY USER-CONFIRMED INDUSTRY ===
     // The candidate explicitly confirmed their industry this scan — that beats
     // detection AND the AI. Validated against the known industry list.
@@ -2826,8 +2889,22 @@ ${resumeText.substring(0, 20000)}
     const aiAts = typeof analysis.atsScoreEstimate === 'number' ? analysis.atsScoreEstimate : ruleBasedAts;
     analysis.atsScoreEstimate = Math.max(ruleBasedAts - 12, Math.min(ruleBasedAts + 12, aiAts));
 
+    // JD-aware arbitration: when the candidate supplied a job description in
+    // a DIFFERENT industry than their resume reads as, benchmark against where
+    // they're going (the JD's industry) — the user told us the target — while
+    // keeping the resume's industry for the narrative analysis. A user-confirmed
+    // industry still wins outright.
+    const benchmarkIndustry = (!confirmedIndustry
+      && industryDetection.jdIndustry
+      && industryDetection.jdIndustry !== finalIndustry
+      && INDUSTRY_ATS_BENCHMARKS[industryDetection.jdIndustry] !== undefined)
+      ? industryDetection.jdIndustry : finalIndustry;
+    if (benchmarkIndustry !== finalIndustry) {
+      console.log(`[FREE-KEYWORD-SCAN] JD arbitration: benchmarking against "${benchmarkIndustry}" (resume reads as "${finalIndustry}")`);
+    }
+
     // Replace hallucinated industry benchmark average with the real lookup value.
-    const benchmarkAvg = INDUSTRY_ATS_BENCHMARKS[finalIndustry] ?? INDUSTRY_ATS_BENCHMARKS['general'];
+    const benchmarkAvg = INDUSTRY_ATS_BENCHMARKS[benchmarkIndustry] ?? INDUSTRY_ATS_BENCHMARKS['general'];
     if (analysis.industryBenchmark) {
       analysis.industryBenchmark.industryAvg = benchmarkAvg;
       // Re-derive comparison label so it stays consistent with the corrected score.
@@ -3063,6 +3140,22 @@ ${resumeText.substring(0, 20000)}
           analysis.recruiterPanel = null;
         }
       }
+      analysis.weakestBullets = asArr(analysis.weakestBullets, (b: unknown) =>
+        !!b && typeof (b as { original?: unknown }).original === 'string'
+          && typeof (b as { rewrite?: unknown }).rewrite === 'string'
+          && typeof (b as { grade?: unknown }).grade === 'string').slice(0, 3);
+      if (analysis.careerChangeBridge) {
+        const cb = analysis.careerChangeBridge as { fromField?: unknown; toField?: unknown; carryOver?: unknown };
+        if (typeof cb.fromField !== 'string' || typeof cb.toField !== 'string' || !Array.isArray(cb.carryOver) || cb.carryOver.length === 0) {
+          analysis.careerChangeBridge = null;
+        }
+      }
+      if (analysis.industryVote) {
+        const iv = analysis.industryVote as { industry?: unknown; confidence?: unknown };
+        if (typeof iv.industry !== 'string' || !VALID_INDUSTRIES.includes((iv.industry as string).toLowerCase().trim())) {
+          analysis.industryVote = null;
+        }
+      }
     }
 
     // Build response with analysis data (use actual values, slice arrays)
@@ -3263,7 +3356,8 @@ ${resumeText.substring(0, 20000)}
 
     // 3. Peer percentile — where this score sits vs industry median
     // (benchmarkMedian name is taken by the prompt-anchor const in this same scope)
-    const percentileMedian = INDUSTRY_ATS_BENCHMARKS[finalIndustry] ?? 65;
+    const percentileMedian = INDUSTRY_ATS_BENCHMARKS[benchmarkIndustry] ?? 65;
+    responseData.benchmarkIndustry = benchmarkIndustry !== finalIndustry ? benchmarkIndustry : null;
     const stdDev = 12; // typical spread across candidates we've seen
     const zScore = (analysis.atsScoreEstimate - percentileMedian) / stdDev;
     // Normal CDF approximation (Abramowitz & Stegun)
@@ -3579,6 +3673,31 @@ ${resumeText.substring(0, 20000)}
     // Questions this resume will trigger + the recruiter panel verdicts
     responseData.resumeTriggeredQuestions = (analysis.resumeTriggeredQuestions || []).slice(0, 3);
     responseData.recruiterPanel = analysis.recruiterPanel ?? null;
+
+    // Weakest bullets (graded + rewritten) and the career-change bridge
+    responseData.weakestBullets = analysis.weakestBullets ?? [];
+    responseData.careerChangeBridge = analysis.careerChangeBridge ?? null;
+
+    // "Why this score" audit trail — deterministic, derived from the same
+    // sub-scores the report shows, so every point is accounted for.
+    responseData.scoreAudit = (() => {
+      const sb = (analysis.scoreBreakdown ?? {}) as { keywords?: number; format?: number; quantification?: number };
+      const clamp01 = (n: unknown) => typeof n === 'number' ? Math.max(0, Math.min(100, n)) : 50;
+      const kw = clamp01(sb.keywords), fmt = clamp01(sb.format), quant = clamp01(sb.quantification);
+      const total = analysis.atsScoreEstimate;
+      // Three weighted components + a residual bucket so items always sum to the score.
+      const kwPts = Math.round(kw * 0.35), fmtPts = Math.round(fmt * 0.30), quantPts = Math.round(quant * 0.25);
+      const residual = total - kwPts - fmtPts - quantPts;
+      const missingCount = (responseData.keywords || []).length;
+      const flagCount = sortedRedFlags.length;
+      const items = [
+        { label: 'Keyword coverage', earned: kwPts, possible: 35, detail: missingCount > 0 ? `${missingCount} expected ${benchmarkIndustry} keywords missing` : 'Strong keyword coverage for your industry' },
+        { label: 'Format & parseability', earned: fmtPts, possible: 30, detail: typeof analysis.formatIssue === 'string' && analysis.formatIssue ? analysis.formatIssue : 'No blocking format issues found' },
+        { label: 'Quantified impact', earned: quantPts, possible: 25, detail: `${bulletAnalysis.quantRate}% of your bullets carry a number — recruiters anchor on metrics` },
+        { label: 'Content signals', earned: Math.max(0, Math.min(10, residual)), possible: 10, detail: flagCount > 0 ? `${flagCount} red flag${flagCount === 1 ? '' : 's'} weighed against strengths` : 'Verbs, structure, and section depth' },
+      ];
+      return { total, items };
+    })();
 
     // Critical-field repair: an incomplete report gets missing essentials
     // synthesized from rule-based data instead of shipping thin.

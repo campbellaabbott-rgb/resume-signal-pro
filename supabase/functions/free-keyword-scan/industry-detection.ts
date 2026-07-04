@@ -1017,20 +1017,26 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'grant manager', 'grant writer', 'budget analyst', 'legislative analyst',
       'compliance officer', 'regulatory affairs', 'public affairs officer',
       'military officer', 'military enlisted', 'veteran', 'law enforcement',
-      'firefighter', 'emergency manager', 'public health official'
+      'firefighter', 'emergency manager', 'public health official',
+      'company commander', 'platoon leader', 'battalion commander',
+      'executive officer', 'squad leader', 'first sergeant', 'commanding officer'
     ],
     primary: [
       'policy', 'regulation', 'compliance', 'public sector', 'government',
       'federal', 'state', 'municipal', 'grant', 'funding', 'appropriation',
       'budget', 'fiscal', 'taxpayer', 'constituent', 'stakeholder',
       'procurement', 'rfp', 'rfq', 'contract', 'far', 'dfar',
-      'program', 'initiative', 'legislation', 'ordinance', 'statute'
+      'program', 'initiative', 'legislation', 'ordinance', 'statute',
+      'us army', 'us navy', 'us air force', 'us marine', 'us coast guard',
+      'deployment', 'battalion', 'brigade', 'platoon', 'squadron', 'soldier'
     ],
     secondary: [
       'usajobs', 'gs level', 'gs-', 'security clearance', 'top secret',
       'secret clearance', 'ts/sci', 'dod', 'department of', 'agency',
       'foia', 'apa', 'administrative procedure', 'public comment',
-      'interagency', 'cross-agency', 'oversight', 'audit', 'inspector general'
+      'interagency', 'cross-agency', 'oversight', 'audit', 'inspector general',
+      'operational readiness', 'meritorious service', 'active duty', 'deployed',
+      'convoy', 'garrison', 'combat', 'reserve duty', 'national guard'
     ],
     certifications: [
       'pmp', 'cfe', 'cgfm', 'cpa', 'security clearance', 'dau', 'fac-c'

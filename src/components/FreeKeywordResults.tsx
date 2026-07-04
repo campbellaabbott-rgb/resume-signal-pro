@@ -40,6 +40,7 @@ import { InteractiveChecklist } from "./InteractiveChecklist";
 import { AISummary } from "./AISummary";
 import { ShareableScoreCard } from "./ShareableScoreCard";
 import { ResumeXRay } from "./ResumeXRay";
+import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard } from "./ReportInsightCards";
 import { EmailReportCapture } from "./EmailReportCapture";
 import { CardErrorBoundary } from "./CardErrorBoundary";
 import { getAvailableIndustries } from "./IndustryConfidenceIndicator";
@@ -786,6 +787,15 @@ export interface FreeKeywordResultsProps {
     hiringManager: { verdict: string; biggestDoubt?: string };
     hrScreener: { verdict: string; levelRead?: string };
   };
+  weakestBullets?: Array<{ original: string; grade: string; issues: string[]; rewrite: string }>;
+  careerChangeBridge?: {
+    fromField: string; toField: string; carryOver: string[];
+    needsReframing: Array<{ current: string; reframed: string }>;
+    gapToClose: string;
+  } | null;
+  scoreAudit?: { total: number; items: Array<{ label: string; earned: number; possible: number; detail: string }> } | null;
+  /** When the JD's industry differs from the resume's, benchmarks use this */
+  benchmarkIndustry?: string | null;
 }
 
 export function FreeKeywordResults({
@@ -893,6 +903,10 @@ export function FreeKeywordResults({
   recruiterPanel,
   scanSituation,
   onContextConfirm,
+  weakestBullets,
+  careerChangeBridge,
+  scoreAudit,
+  benchmarkIndustry,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -959,6 +973,16 @@ export function FreeKeywordResults({
   const handleIndustryChange = (newIndustry: string) => {
     setCorrectedIndustry(newIndustry);
     onIndustryChange?.(newIndustry);
+    // Feed the detection feedback loop: recurring detected→corrected pairs
+    // surface in the weekly digest and become disambiguation rules.
+    if (industry && newIndustry !== industry) {
+      supabase.rpc('log_industry_correction' as never, {
+        p_detected: industry,
+        p_corrected: newIndustry,
+        p_source: 'report_confirmation_strip',
+        p_confidence: null,
+      } as never).then(() => {}, () => {});
+    }
     toast({
       title: t('freeResults.industryUpdated'),
       description: t('freeResults.industryUpdatedDescription', { industry: newIndustry.replace(/_/g, ' ') }),
@@ -1711,6 +1735,13 @@ export function FreeKeywordResults({
         </div>
       )}
 
+      {/* Vendor-specific parse behavior (Workday/Greenhouse/Lever/iCIMS) */}
+      {resumeText && (
+        <div className="mb-4">
+          <AtsVendorChecksCard resumeText={resumeText} multiColumnDetected={multiColumnDetected} />
+        </div>
+      )}
+
       {/* Section Navigation */}
       <SectionNav sections={navSections} className="mb-4" />
 
@@ -1732,6 +1763,31 @@ export function FreeKeywordResults({
         improvementPotential={improvementPotential}
         resumeHash={currentScan?.resumeHash}
       />
+
+      {/* Why this score — deterministic audit trail */}
+      {scoreAudit && (
+        <div className="mt-4">
+          <ScoreAuditCard audit={scoreAudit} />
+        </div>
+      )}
+
+      {/* JD-industry arbitration note */}
+      {benchmarkIndustry && (
+        <div className="mt-3 rounded-xl border border-primary/25 bg-primary/5 p-3">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">Heads up:</span> your job description is in{' '}
+            <span className="font-semibold text-foreground">{benchmarkIndustry.replace(/_/g, ' ')}</span> while your resume reads as{' '}
+            <span className="font-semibold text-foreground">{effectiveIndustry.replace(/_/g, ' ')}</span> — so benchmarks and keyword expectations below are calibrated to where you're <em>going</em>, not where you've been.
+          </p>
+        </div>
+      )}
+
+      {/* Career-change bridge — transferable skills map */}
+      {careerChangeBridge && (
+        <div className="mt-4">
+          <CareerBridgeCard bridge={careerChangeBridge} />
+        </div>
+      )}
 
       {/* Enhanced Analysis Display - Resume Type, Dual Scoring, Usage Recommendations */}
       <EnhancedAnalysisDisplay
@@ -3587,6 +3643,16 @@ export function FreeKeywordResults({
         </div>
       )}
 
+      {/* Interactive score simulator — check fixes, watch the projection */}
+      {quickWins.length > 0 && (
+        <div className="mb-5">
+          <ScoreSimulatorCard
+            atsScore={atsScoreEstimate}
+            fixes={quickWins.slice(0, 5).map(w => ({ label: w.fix, impact: w.scoreImpact ?? (w.impact === 'high' ? 6 : w.impact === 'medium' ? 4 : 2) }))}
+          />
+        </div>
+      )}
+
       {/* Quick Wins */}
       {quickWins.length > 0 && (
         <div className="rounded-2xl bg-primary/5 border border-primary/20 p-5 mb-5">
@@ -3721,6 +3787,13 @@ export function FreeKeywordResults({
             <Lock className="w-3 h-3 text-primary" />
             <span className="text-xs text-primary">{t('freeResults.sampleRewrite.cta', { price: priceDisplay })}</span>
           </div>
+        </div>
+      )}
+
+      {/* ── Weakest bullets, graded + rewritten ─────────────────────────────── */}
+      {weakestBullets && weakestBullets.length > 0 && (
+        <div className="mb-5">
+          <WeakestBulletsCard bullets={weakestBullets} />
         </div>
       )}
 
@@ -4324,6 +4397,11 @@ export function FreeKeywordResults({
           )}
         </div>
       )}
+
+      {/* Shareable score card */}
+      <div className="mb-5">
+        <ShareScoreCard atsScore={atsScoreEstimate} industry={effectiveIndustry} percentile={peerPercentile ?? undefined} />
+      </div>
 
       {/* Testimonial right before the upsell decision — by this point in the
           page, any trust built on the homepage is several scrolls behind the

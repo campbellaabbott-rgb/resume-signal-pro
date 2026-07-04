@@ -334,6 +334,14 @@ interface FreeKeywordResult {
     hiringManager: { verdict: string; biggestDoubt?: string };
     hrScreener: { verdict: string; levelRead?: string };
   } | null;
+  weakestBullets?: Array<{ original: string; grade: string; issues: string[]; rewrite: string }>;
+  careerChangeBridge?: {
+    fromField: string; toField: string; carryOver: string[];
+    needsReframing: Array<{ current: string; reframed: string }>;
+    gapToClose: string;
+  } | null;
+  scoreAudit?: { total: number; items: Array<{ label: string; earned: number; possible: number; detail: string }> } | null;
+  benchmarkIndustry?: string | null;
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
@@ -1003,6 +1011,10 @@ const Index = () => {
           executiveScopeCheck: (result as any).executiveScopeCheck,
           resumeTriggeredQuestions: (result as any).resumeTriggeredQuestions,
           recruiterPanel: (result as any).recruiterPanel,
+          weakestBullets: (result as any).weakestBullets,
+          careerChangeBridge: (result as any).careerChangeBridge,
+          scoreAudit: (result as any).scoreAudit,
+          benchmarkIndustry: (result as any).benchmarkIndustry,
         });
 
         // Save to cloud scan history for signed-in users (fire and forget)
@@ -1770,6 +1782,10 @@ const Index = () => {
                 executiveScopeCheck={freeKeywordResult.executiveScopeCheck ?? undefined}
                 resumeTriggeredQuestions={freeKeywordResult.resumeTriggeredQuestions}
                 recruiterPanel={freeKeywordResult.recruiterPanel ?? undefined}
+                weakestBullets={freeKeywordResult.weakestBullets}
+                careerChangeBridge={freeKeywordResult.careerChangeBridge ?? undefined}
+                scoreAudit={freeKeywordResult.scoreAudit ?? undefined}
+                benchmarkIndustry={freeKeywordResult.benchmarkIndustry ?? undefined}
                 scanSituation={scanContext.situation ?? undefined}
                 onContextConfirm={(ctx) => persistScanContext(ctx)}
               />

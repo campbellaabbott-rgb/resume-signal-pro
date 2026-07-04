@@ -400,6 +400,37 @@ const cases: GoldenCase[] = [
     acceptAlso: ["technology", "data_engineering"],
     resume: `Val Moss\nData Analyst\n${EXPERIENCE}\nData Analyst, ShopCo (2021-present)\n- Statistical analysis and churn models in Python, dashboards in SQL\n- Experiment design and insights reporting for product teams\nMarketing Manager, AdCo (2015-2018)\n- Ran campaigns, brand and social media content, advertising budgets\nSKILLS\nPython, SQL, Tableau`,
   },
+
+  // ── Adversarial: known-hard crossover classes ────────────────────────────
+  {
+    name: "technical recruiter AT a tech company is HR, not technology",
+    expected: "hr",
+    acceptAlso: ["recruiting"],
+    resume: `Nina Patel\nSenior Technical Recruiter\n${EXPERIENCE}\nSenior Technical Recruiter, CloudScale Inc (2020-present)\n- Full-cycle recruiting for software engineering and DevOps roles\n- Sourced candidates for Python, Kubernetes, and AWS positions via LinkedIn Recruiter\n- Managed ATS pipeline in Greenhouse, ran intake meetings with hiring managers\n- Negotiated offers and improved offer-accept rate to 87%\nSKILLS\nGreenhouse, LinkedIn Recruiter, sourcing, offer negotiation`,
+  },
+  {
+    name: "sales engineer is sales-side, not pure engineering",
+    expected: "sales",
+    acceptAlso: ["technology"],
+    resume: `Omar Reyes\nSenior Sales Engineer\n${EXPERIENCE}\nSales Engineer, DataPlatform Co (2019-present)\n- Ran technical discovery and proof-of-concept demos for enterprise prospects\n- Partnered with account executives to close $3.4M in new ARR\n- Answered RFPs and security questionnaires, built demo environments\n- Presented architecture overviews to CTO-level buyers\nSKILLS\nSalesforce, demos, POCs, solution architecture`,
+  },
+  {
+    name: "clinical data scientist leans clinical/pharma, not generic data",
+    expected: "pharmacy",
+    acceptAlso: ["healthcare", "data_science", "biotech"],
+    resume: `Dr. Lena Fischer\nClinical Data Scientist\n${EXPERIENCE}\nClinical Data Scientist, NovaTherapeutics (2020-present)\n- Analyzed Phase II/III clinical trial data under GCP and FDA 21 CFR Part 11\n- Built survival models for oncology endpoints in R, submitted to regulatory review\n- Worked with biostatisticians on SDTM/ADaM datasets and CDISC standards\nSKILLS\nR, SAS, CDISC, clinical trials, biostatistics`,
+  },
+  {
+    name: "military-to-civilian transition reads on held roles, not target",
+    expected: "government",
+    acceptAlso: ["logistics", "operations", "security"],
+    resume: `James Carter\nOperations Leader | Transitioning Veteran\nSeeking program management roles in technology\n${EXPERIENCE}\nCompany Commander, US Army (2016-2023)\n- Led 120-soldier logistics company; accountable for $14M in equipment\n- Planned and executed supply convoy operations across three deployments\n- Awarded Meritorious Service Medal for operational readiness improvements\nSKILLS\nLeadership, logistics planning, risk management`,
+  },
+  {
+    name: "management consultant with four client industries stays consulting",
+    expected: "consulting",
+    resume: `Aisha Bello\nEngagement Manager\n${EXPERIENCE}\nEngagement Manager, Strategy Partners LLP (2018-present)\n- Led client engagements across healthcare payers, retail banking, ecommerce, and energy\n- Built market-entry strategy for a pharma client; sized TAM and pricing corridors\n- Managed 4-consultant case teams, owned steering-committee readouts and workstreams\n- Developed due-diligence models for private equity clients\nSKILLS\nStrategy, client delivery, workstream management, PowerPoint, financial modeling`,
+  },
 ];
 
 describe("industry detection golden corpus", () => {
