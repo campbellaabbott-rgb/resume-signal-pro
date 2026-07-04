@@ -89,9 +89,12 @@ export function useProSubscription() {
         }
         throw new Error(data?.error || "No checkout URL returned");
       } catch (e) {
+        const raw = e instanceof Error ? e.message : "";
         toast({
           title: "Couldn't start checkout",
-          description: e instanceof Error ? e.message : "Please try again.",
+          description: /edge function|failed to send|fetch/i.test(raw)
+            ? "Subscriptions are briefly unavailable — please try again in a few minutes."
+            : raw || "Please try again.",
           variant: "destructive",
         });
         return false;

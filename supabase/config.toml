@@ -27,6 +27,12 @@ project_id = "bwhdazbotpblihdxcmho"
     verify_jwt = false
   [functions.create-test-checkout]
     verify_jwt = false
+  [functions.delete-account]
+    verify_jwt = false
+  [functions.get-account-data]
+    verify_jwt = false
+  [functions.shortlist-evaluate]
+    verify_jwt = false
   [functions.free-keyword-scan]
     verify_jwt = false
   [functions.free-keyword-scan-stream]
