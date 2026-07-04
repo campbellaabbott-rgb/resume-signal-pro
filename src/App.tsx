@@ -4,9 +4,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import Auth from "./pages/Auth";
-import Account from "./pages/Account";
-import Shortlist from "./pages/Shortlist";
 import { FloatingHelpButton } from "./components/FloatingHelpButton";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { LanguageDebugBanner } from "./components/LanguageDebugBanner";
@@ -17,6 +14,9 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 // code for /pricing, /terms, internal dashboards, etc. — these were all previously
 // bundled into one ~3.3MB chunk regardless of which route was actually visited.
 import Index from "./pages/Index";
+const Auth = lazy(() => import("./pages/Auth"));
+const Account = lazy(() => import("./pages/Account"));
+const Shortlist = lazy(() => import("./pages/Shortlist"));
 const Success = lazy(() => import("./pages/Success"));
 const ProductSuccess = lazy(() => import("./pages/ProductSuccess"));
 const PaymentFailed = lazy(() => import("./pages/PaymentFailed"));

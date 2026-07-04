@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/seo/SEO";
 import { useSearchParams, Link } from "react-router-dom";
@@ -14,16 +14,27 @@ import { Footer } from "@/components/Footer";
 import { FAQ } from "@/components/FAQ";
 import { ComparisonTable } from "@/components/ComparisonTable";
 import { ValueComparison } from "@/components/ValueComparison";
-import { FreeKeywordResults } from "@/components/FreeKeywordResults";
+// The report UI (~4,300 lines plus chart/diff deps) only renders after a scan
+// completes — keeping it out of the landing bundle cuts first-paint JS for the
+// visitors most likely to bounce. Same for the post-scan modals below.
+const FreeKeywordResults = lazy(() =>
+  import("@/components/FreeKeywordResults").then((m) => ({ default: m.FreeKeywordResults }))
+);
 import { StickyBottomCTA } from "@/components/StickyBottomCTA";
 import { FinalCTA } from "@/components/FinalCTA";
-import { RateLimitUpsell } from "@/components/RateLimitUpsell";
-import { TailoredResumeModal } from "@/components/TailoredResumeModal";
+const RateLimitUpsell = lazy(() =>
+  import("@/components/RateLimitUpsell").then((m) => ({ default: m.RateLimitUpsell }))
+);
+const TailoredResumeModal = lazy(() =>
+  import("@/components/TailoredResumeModal").then((m) => ({ default: m.TailoredResumeModal }))
+);
 import { ResumeLanguageSuggestion } from "@/components/ResumeLanguageSuggestion";
 import { CardErrorBoundary } from "@/components/CardErrorBoundary";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase as supabaseClient } from "@/integrations/supabase/client";
-import { ProductSelectionModal } from "@/components/ProductSelectionModal";
+const ProductSelectionModal = lazy(() =>
+  import("@/components/ProductSelectionModal").then((m) => ({ default: m.ProductSelectionModal }))
+);
 
 import { LiveActivityIndicator } from "@/components/LiveActivityIndicator";
 import { LazySection } from "@/components/LazySection";
@@ -34,7 +45,9 @@ import { HowItWorks } from "@/components/HowItWorks";
 import { MiniPricingCards } from "@/components/MiniPricingCards";
 import { TrustIndicators } from "@/components/TrustIndicators";
 
-import { ScoreBasedPackageRecommendation } from "@/components/ScoreBasedPackageRecommendation";
+const ScoreBasedPackageRecommendation = lazy(() =>
+  import("@/components/ScoreBasedPackageRecommendation").then((m) => ({ default: m.ScoreBasedPackageRecommendation }))
+);
 import { FloatingUploadButton, FloatingSeeReportButton } from "@/components/FloatingUploadButton";
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
 import { useToast } from "@/hooks/use-toast";
@@ -62,8 +75,12 @@ import { useErrorTracking } from "@/hooks/use-error-tracking";
 import { useAffiliateTracking, getStoredReferralCode } from "@/hooks/use-affiliate-auth";
 import { useStreamingScan, type StreamProgress, clearAllClientScanCaches } from "@/hooks/use-streaming-scan";
 import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
-import { ScanFeedback } from "@/components/ScanFeedback";
-import { LinkedInInsights } from "@/components/LinkedInInsights";
+const ScanFeedback = lazy(() =>
+  import("@/components/ScanFeedback").then((m) => ({ default: m.ScanFeedback }))
+);
+const LinkedInInsights = lazy(() =>
+  import("@/components/LinkedInInsights").then((m) => ({ default: m.LinkedInInsights }))
+);
 
 interface FreeKeywordResult {
   detectedLanguage?: { code: string; name: string } | null;
@@ -722,6 +739,9 @@ const Index = () => {
     // NOTE: onClick handlers pass a MouseEvent as the first arg; only treat explicit `true` as skipCache.
     const skipCache = skipCacheArg === true;
     const overrideText = typeof skipCacheArg === "string" ? skipCacheArg : undefined;
+
+    // Warm the lazy report chunk while the scan runs so results render instantly.
+    import("@/components/FreeKeywordResults").catch(() => {});
     const contentToAnalyze = (overrideText ?? resumeText).trim();
 
     // If the scan was triggered from the paste box, persist it so the UI preview + session stay in sync.
@@ -1514,7 +1534,7 @@ const Index = () => {
       <Header />
 
       <main id="main-content" className="pt-[88px]" role="main">
-        <Hero />
+        <Hero onFileSelect={handleFileSelect} />
         
         {/* Trust Indicators - Right after hero for credibility */}
         <TrustIndicators />
@@ -1592,6 +1612,13 @@ const Index = () => {
         {/* Free Keyword Results */}
         {freeKeywordResult && (
           <section id="free-results" className="py-12 scroll-mt-20" data-results-section="true">
+            <Suspense
+              fallback={
+                <div className="container py-8 text-center text-sm text-muted-foreground animate-pulse">
+                  Preparing your report…
+                </div>
+              }
+            >
             <div className="container space-y-4">
               <ResumeLanguageSuggestion detectedLanguage={freeKeywordResult.detectedLanguage} />
               {!session && (
@@ -1772,9 +1799,10 @@ const Index = () => {
                 />
               </div>
             </div>
+            </Suspense>
           </section>
         )}
-        
+
         <AnalysisPreview />
         
         <ComparisonTable />
@@ -1823,26 +1851,37 @@ const Index = () => {
       
       {/* Rate Limit Upsell Modal */}
       {showRateLimitUpsell && (
-        <RateLimitUpsell onClose={() => setShowRateLimitUpsell(false)} />
+        <Suspense fallback={null}>
+          <RateLimitUpsell onClose={() => setShowRateLimitUpsell(false)} />
+        </Suspense>
       )}
-      
-      {/* Tailored Resume Modal */}
-      <TailoredResumeModal
-        isOpen={showTailoredResumeModal}
-        onClose={() => {
-          setShowTailoredResumeModal(false);
-          setTailoredResumeContent(null);
-        }}
-        content={tailoredResumeContent}
-        isLoading={isGeneratingTailored}
-      />
-      
+
+      {/* Tailored Resume Modal — mounted only once opened so its chunk stays
+          out of the landing bundle */}
+      {(showTailoredResumeModal || tailoredResumeContent) && (
+        <Suspense fallback={null}>
+          <TailoredResumeModal
+            isOpen={showTailoredResumeModal}
+            onClose={() => {
+              setShowTailoredResumeModal(false);
+              setTailoredResumeContent(null);
+            }}
+            content={tailoredResumeContent}
+            isLoading={isGeneratingTailored}
+          />
+        </Suspense>
+      )}
+
       {/* Product Selection Modal */}
-      <ProductSelectionModal
-        open={showProductModal}
-        onOpenChange={setShowProductModal}
-        sessionId={preStoredSessionId || undefined}
-      />
+      {showProductModal && (
+        <Suspense fallback={null}>
+          <ProductSelectionModal
+            open={showProductModal}
+            onOpenChange={setShowProductModal}
+            sessionId={preStoredSessionId || undefined}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

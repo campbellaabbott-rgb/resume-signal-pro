@@ -118,11 +118,12 @@ function AddOnsTeaser() {
   );
 }
 
-export function Hero() {
+export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | Promise<void> }) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const isMobile = useIsMobile();
   const [showAtsInfo, setShowAtsInfo] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   
   const { variant: socialProofVariant, trackConversion: trackSocialProof } = useABTest('social_proof_placement');
   const { variant: layoutVariant, trackConversion: trackLayout } = useABTest('hero_layout');
@@ -190,6 +191,57 @@ export function Hero() {
     );
   };
 
+  // Handle a resume dropped/picked directly in the hero — visitors get to the
+  // product without a single scroll, which is the point of putting it here.
+  const handleHeroFile = (file: File | undefined | null) => {
+    if (!file || !onFileSelect) return;
+    trackSocialProof({ action: 'hero_dropzone_upload' });
+    trackLayout({ action: 'hero_dropzone_upload', layout: layoutVariant });
+    void onFileSelect(file);
+    // Bring the uploader (with the loaded file, intent chips, and scan button)
+    // into view so the next step is obvious.
+    setTimeout(() => {
+      document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+  };
+
+  // Render the drop zone directly under the CTA (all variants)
+  const renderDropZone = () => {
+    if (!onFileSelect) return null;
+    return (
+      <label
+        className={`mt-3 flex w-full sm:max-w-md mx-auto cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-3 text-xs sm:text-sm transition-colors ${
+          isDragOver
+            ? 'border-success bg-success/10 text-foreground'
+            : 'border-border text-muted-foreground hover:border-success/60 hover:text-foreground'
+        }`}
+        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+        onDragLeave={() => setIsDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragOver(false);
+          handleHeroFile(e.dataTransfer.files?.[0]);
+        }}
+      >
+        <FileText className="w-4 h-4 shrink-0" />
+        <span>
+          {isDragOver
+            ? t('hero.dropzoneActive', 'Drop it — scanning is seconds away')
+            : t('hero.dropzone', 'Or drop your resume here — PDF, DOCX, or TXT')}
+        </span>
+        <input
+          type="file"
+          accept=".pdf,.docx,.doc,.txt,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          className="sr-only"
+          onChange={(e) => {
+            handleHeroFile(e.target.files?.[0]);
+            e.target.value = '';
+          }}
+        />
+      </label>
+    );
+  };
+
   // Render trust indicators
   const renderTrustIndicators = (compact = false) => (
     <div className={`flex flex-wrap items-center justify-center text-muted-foreground ${
@@ -247,6 +299,7 @@ export function Hero() {
             {/* CTA */}
             <div className="mb-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
               {renderCTA('md')}
+              {renderDropZone()}
               {renderTrustIndicators()}
             </div>
 
@@ -320,6 +373,7 @@ export function Hero() {
             {/* CTA */}
             <div className="mb-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
               {renderCTA('md')}
+              {renderDropZone()}
               {renderTrustIndicators()}
             </div>
 
@@ -477,6 +531,7 @@ export function Hero() {
           {/* PRIMARY CTA - Large and unmissable */}
           <div className={`animate-fade-in ${isUltraCompact ? 'mb-3' : isCompactLayout ? 'mb-4' : 'mb-6'}`} style={{ animationDelay: isUltraCompact ? "0.05s" : "0.15s" }}>
             {renderCTA(isUltraCompact ? 'sm' : isCompactLayout ? 'md' : 'lg')}
+            {renderDropZone()}
             {renderTrustIndicators(isUltraCompact)}
             {!isUltraCompact && isOriginalLayout && (
               <div className="mt-2 flex justify-center">
