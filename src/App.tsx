@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Auth from "./pages/Auth";
 import Account from "./pages/Account";
+import Shortlist from "./pages/Shortlist";
 import { FloatingHelpButton } from "./components/FloatingHelpButton";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { LanguageDebugBanner } from "./components/LanguageDebugBanner";
@@ -50,6 +51,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/shortlist" element={<Shortlist />} />
           <Route path="/success" element={<Success />} />
           <Route path="/product-success" element={<ProductSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
