@@ -20,7 +20,7 @@
     "subheading": "Erhalten Sie ehrliches Recruiter-Feedback zu Ihrem Lebenslauf. Keine Floskeln – nur konkrete Verbesserungen, die zum Job führen.",
     "price": "25 $",
     "oneTime": "einmalig",
-    "nofees": "Kein Abo • Keine versteckten Kosten • Sofortige Ergebnisse",
+    "nofees": "Pro Tool zahlen oder Pro holen • Keine versteckten Kosten • Sofortige Ergebnisse",
     "roi": "Ein Vorstellungsgespräch = 25 $ amortisiert",
     "trusted": "Vertrauen von",
     "jobSeekers": "Bewerbern",
@@ -52,7 +52,7 @@
     "benefits": {
       "seniorRoles": "Entwickelt für Senior-Positionen, Manager und kompetitive Rollen",
       "atsCompatible": "Funktioniert mit allen ATS-Systemen (Workday, Greenhouse, Lever & 50+ mehr)",
-      "oneTime": "Einmalige Zahlung (kein Abo)",
+      "oneTime": "Pro Tool zahlen — oder mit Pro alles freischalten",
       "private": "Lebensläufe werden nie gespeichert oder geteilt"
     },
     "stats": {
@@ -368,7 +368,7 @@
       },
       "subscription": {
         "question": "Ist das ein Abo?",
-        "answer": "Nein. Resume Booster ist eine einmalige Zahlung von 25 $. Keine Abos, keine wiederkehrenden Kosten."
+        "answer": "Jedes Tool ist eine einmalige Zahlung. Wer alles möchte, kann Resume Booster Pro als optionales Abo für 45 $/Monat abschließen — jederzeit kündbar."
       },
       "share": {
         "question": "Kann ich meine Analyse teilen?",
@@ -702,7 +702,7 @@
       "linkedin": "LinkedIn-Profil-Optimierung"
     },
     "oneTime": "einmalig",
-    "guarantee": "Sofortige Ergebnisse • Kein Abo",
+    "guarantee": "Sofortige Ergebnisse • Pro Tool zahlen oder Pro holen",
     "button": "Jetzt Analyse erhalten",
     "roi": "Ein Vorstellungsgespräch = 25 $ amortisiert"
   },
@@ -2607,8 +2607,8 @@
   },
   "pricingPage": {
     "metaTitle": "Preise — Resume Booster",
-    "metaDescription": "Pläne vom 1-$-Keyword-Fix bis zum 25-$-Career-Snapshot. Einmalzahlung, kein Abo. Lebenslauf-Überarbeitungen auf Recruiter-Niveau.",
-    "noSubscriptions": "Einmalzahlungen • Keine Abos",
+    "metaDescription": "Pläne vom 1-$-Keyword-Fix bis zum 25-$-Career-Snapshot. Pro Tool zahlen oder mit Pro alles erhalten. Lebenslauf-Überarbeitungen auf Recruiter-Niveau.",
+    "noSubscriptions": "Pro Tool zahlen • Oder mit Pro alles erhalten",
     "titlePrefix": "Wähle deinen",
     "titleHighlight": "Lebenslauf-Boost",
     "subtitle": "Von schnellen Korrekturen bis zu kompletten Karrierepaketen. Einmal zahlen, für immer nutzen.",
@@ -2624,7 +2624,7 @@
     "requiresUpload": "Erfordert das Hochladen deines Lebenslaufs zur Analyse",
     "whyResumeBooster": "Warum Resume Booster?",
     "questions": "Fragen?",
-    "allProductsOneTime": "Alle Produkte sind Einmalkäufe mit sofortigem Zugang.",
+    "allProductsOneTime": "Jedes Tool ist ein Einmalkauf mit sofortigem Zugang — oder hol dir alles mit Resume Booster Pro.",
     "freeScanLink": "kostenlosen Scan",
     "seeScoreFirst": "um zuerst deine Punktzahl zu sehen.",
     "tryFreeScanFirst": "Zuerst kostenlosen Scan ausprobieren"
@@ -2681,7 +2681,7 @@
     "companyLabel": "Unternehmen",
     "companyPlaceholder": "z. B. Google",
     "redirecting": "Weiterleitung zur Kasse...",
-    "secureCheckout": "Sicherer Checkout mit Stripe. Einmalige Zahlung, kein Abo."
+    "secureCheckout": "Sicherer Checkout mit Stripe. Pro Tool zahlen oder mit Pro alles erhalten."
   },
   "checkoutOverlay": {
     "steps": {

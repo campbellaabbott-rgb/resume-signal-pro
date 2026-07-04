@@ -20,7 +20,7 @@
     "subheading": "Get brutally honest, recruiter-grade feedback on your resume. No fluff, no sugar-coating — just actionable fixes that get you hired.",
     "price": "$25",
     "oneTime": "one-time",
-    "nofees": "No subscriptions • No hidden fees • Instant results",
+    "nofees": "Pay per tool or go Pro • No hidden fees • Instant results",
     "roi": "One interview = $25 paid for itself",
     "trusted": "Trusted by",
     "jobSeekers": "job seekers",
@@ -52,7 +52,7 @@
     "benefits": {
       "seniorRoles": "Built for senior ICs, managers, and competitive roles",
       "atsCompatible": "Works on all ATS systems (Workday, Greenhouse, Lever & 50+ more)",
-      "oneTime": "One-time payment (no subscription)",
+      "oneTime": "Pay per tool — or go Pro for everything",
       "private": "Resumes are never stored or shared"
     },
     "stats": {
@@ -368,7 +368,7 @@
       },
       "subscription": {
         "question": "Is this a subscription?",
-        "answer": "No. Resume Booster is a one-time payment of $25. There are no subscriptions, recurring charges, or upsells."
+        "answer": "Each tool is a one-time payment. If you want everything, Resume Booster Pro is an optional $45/mo subscription — cancel anytime."
       },
       "share": {
         "question": "Can I share my analysis with others?",
@@ -702,7 +702,7 @@
       "linkedin": "LinkedIn profile optimization"
     },
     "oneTime": "one-time",
-    "guarantee": "Instant results • No subscription",
+    "guarantee": "Instant results • Pay per tool or go Pro",
     "button": "Get My Analysis Now",
     "roi": "One interview = $25 paid for itself"
   },
@@ -2607,8 +2607,8 @@
   },
   "pricingPage": {
     "metaTitle": "Pricing — Resume Booster",
-    "metaDescription": "Plans from $1 Keyword Fix to $25 Career Snapshot. Pay once, no subscription. Recruiter-grade resume rewrites.",
-    "noSubscriptions": "One-time payments • No subscriptions",
+    "metaDescription": "Plans from $1 Keyword Fix to $25 Career Snapshot. Pay per tool, or go Pro for everything. Recruiter-grade resume rewrites.",
+    "noSubscriptions": "Pay per tool • Or go Pro for everything",
     "titlePrefix": "Choose Your",
     "titleHighlight": "Resume Boost",
     "subtitle": "From quick fixes to complete career packages. Pay once, use forever.",
@@ -2624,7 +2624,7 @@
     "requiresUpload": "Requires uploading your resume to analyze",
     "whyResumeBooster": "Why Resume Booster?",
     "questions": "Questions?",
-    "allProductsOneTime": "All products are one-time purchases with instant access.",
+    "allProductsOneTime": "Every tool is a one-time purchase with instant access — or unlock them all with Resume Booster Pro.",
     "freeScanLink": "free scan",
     "seeScoreFirst": "to see your score first.",
     "tryFreeScanFirst": "Try Free Scan First"
@@ -2681,7 +2681,7 @@
     "companyLabel": "Company",
     "companyPlaceholder": "e.g., Google",
     "redirecting": "Redirecting to checkout...",
-    "secureCheckout": "Secure checkout powered by Stripe. One-time payment, no subscription."
+    "secureCheckout": "Secure checkout powered by Stripe. Pay per tool, or go Pro for everything."
   },
   "checkoutOverlay": {
     "steps": {

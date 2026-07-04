@@ -20,7 +20,7 @@
     "subheading": "Obtenha feedback honesto e de nível profissional sobre o seu currículo. Sem rodeios — apenas correções práticas que o ajudam a ser contratado.",
     "price": "$25",
     "oneTime": "pagamento único",
-    "nofees": "Sem subscrições • Sem taxas ocultas • Resultados instantâneos",
+    "nofees": "Pague por ferramenta ou torne-se Pro • Sem taxas ocultas • Resultados instantâneos",
     "roi": "Uma entrevista = $25 que se paga sozinho",
     "trusted": "Confiado por",
     "jobSeekers": "candidatos",
@@ -46,7 +46,7 @@
     "benefits": {
       "seniorRoles": "Criado para perfis sénior, gestores e cargos competitivos",
       "atsCompatible": "Funciona em todos os ATS (Workday, Greenhouse, Lever e 50+ mais)",
-      "oneTime": "Pagamento único (sem subscrição)",
+      "oneTime": "Pague por ferramenta — ou torne-se Pro para ter tudo",
       "private": "Currículos nunca são guardados nem partilhados"
     },
     "stats": {
@@ -369,7 +369,7 @@
       },
       "subscription": {
         "question": "Isto é uma subscrição?",
-        "answer": "Não. O Resume Booster é um pagamento único de $25. Não há subscrições, cobranças recorrentes ou vendas adicionais."
+        "answer": "Cada ferramenta é um pagamento único. Se quiser tudo, o Resume Booster Pro é uma subscrição opcional de $45/mês — cancele quando quiser."
       },
       "share": {
         "question": "Posso partilhar a minha análise com outros?",
@@ -702,7 +702,7 @@
       "linkedin": "Otimização do perfil LinkedIn"
     },
     "oneTime": "pagamento único",
-    "guarantee": "Resultados instantâneos • Sem subscrição",
+    "guarantee": "Resultados instantâneos • Pague por ferramenta ou torne-se Pro",
     "button": "Obter a Minha Análise Agora",
     "roi": "Uma entrevista = $25 que se paga sozinho"
   },
@@ -2607,8 +2607,8 @@
   },
   "pricingPage": {
     "metaTitle": "Preços — Resume Booster",
-    "metaDescription": "Planos desde $1 para a Correção de Palavras-chave até $25 para o Career Snapshot. Pagamento único, sem subscrição. Reescritas de currículo ao nível de recrutador.",
-    "noSubscriptions": "Pagamentos únicos • Sem subscrições",
+    "metaDescription": "Planos desde $1 para a Correção de Palavras-chave até $25 para o Career Snapshot. Pague por ferramenta ou torne-se Pro para ter tudo. Reescritas de currículo ao nível de recrutador.",
+    "noSubscriptions": "Pague por ferramenta • Ou torne-se Pro para ter tudo",
     "titlePrefix": "Escolha o seu",
     "titleHighlight": "Impulso de Currículo",
     "subtitle": "De correções rápidas a pacotes de carreira completos. Pague uma vez, use para sempre.",
@@ -2624,7 +2624,7 @@
     "requiresUpload": "Requer o envio do seu currículo para análise",
     "whyResumeBooster": "Porquê o Resume Booster?",
     "questions": "Dúvidas?",
-    "allProductsOneTime": "Todos os produtos são compras únicas com acesso instantâneo.",
+    "allProductsOneTime": "Cada ferramenta é uma compra única com acesso instantâneo — ou desbloqueie tudo com o Resume Booster Pro.",
     "freeScanLink": "verificação gratuita",
     "seeScoreFirst": "para ver primeiro a sua pontuação.",
     "tryFreeScanFirst": "Experimentar primeiro a verificação gratuita"
@@ -2681,7 +2681,7 @@
     "companyLabel": "Empresa",
     "companyPlaceholder": "ex.: Google",
     "redirecting": "A redirecionar para o pagamento...",
-    "secureCheckout": "Checkout seguro com tecnologia Stripe. Pagamento único, sem subscrição."
+    "secureCheckout": "Checkout seguro com tecnologia Stripe. Pague por ferramenta ou torne-se Pro para ter tudo."
   },
   "checkoutOverlay": {
     "steps": {

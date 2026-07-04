@@ -20,7 +20,7 @@
     "subheading": "Krijg eerlijke recruiter-feedback op je CV. Geen onzin – alleen concrete verbeteringen die je aan een baan helpen.",
     "price": "$ 25",
     "oneTime": "eenmalig",
-    "nofees": "Geen abonnement • Geen verborgen kosten • Directe resultaten",
+    "nofees": "Betaal per tool of ga Pro • Geen verborgen kosten • Directe resultaten",
     "roi": "Eén gesprek = $ 25 terugverdiend",
     "trusted": "Vertrouwd door",
     "jobSeekers": "werkzoekenden",
@@ -46,7 +46,7 @@
     "benefits": {
       "seniorRoles": "Gemaakt voor senior profielen, managers en competitieve rollen",
       "atsCompatible": "Werkt op alle ATS-systemen (Workday, Greenhouse, Lever & 50+ meer)",
-      "oneTime": "Eenmalige betaling (geen abonnement)",
+      "oneTime": "Betaal per tool — of ga Pro voor alles",
       "private": "Cv’s worden nooit opgeslagen of gedeeld"
     },
     "stats": {
@@ -368,7 +368,7 @@
       },
       "subscription": {
         "question": "Is dit een abonnement?",
-        "answer": "Nee. Resume Booster is een eenmalige betaling van $ 25. Geen abonnementen, geen terugkerende kosten."
+        "answer": "Elke tool is een eenmalige betaling. Wil je alles, dan is Resume Booster Pro een optioneel abonnement van $45/maand — op elk moment opzegbaar."
       },
       "share": {
         "question": "Kan ik mijn analyse delen?",
@@ -702,7 +702,7 @@
       "linkedin": "LinkedIn-profiel optimalisatie"
     },
     "oneTime": "eenmalig",
-    "guarantee": "Directe resultaten • Geen abonnement",
+    "guarantee": "Directe resultaten • Betaal per tool of ga Pro",
     "button": "Mijn analyse nu",
     "roi": "Eén gesprek = $ 25 terugverdiend"
   },
@@ -2607,8 +2607,8 @@
   },
   "pricingPage": {
     "metaTitle": "Prijzen — Resume Booster",
-    "metaDescription": "Pakketten vanaf $1 voor de Keyword Fix tot $25 voor Career Snapshot. Eenmalige betaling, geen abonnement. Cv-herschrijvingen op recruiterniveau.",
-    "noSubscriptions": "Eenmalige betalingen • Geen abonnementen",
+    "metaDescription": "Pakketten vanaf $1 voor de Keyword Fix tot $25 voor Career Snapshot. Betaal per tool, of ga Pro voor alles. Cv-herschrijvingen op recruiterniveau.",
+    "noSubscriptions": "Betaal per tool • Of ga Pro voor alles",
     "titlePrefix": "Kies je",
     "titleHighlight": "Cv-boost",
     "subtitle": "Van snelle correcties tot complete carrièrepakketten. Eenmaal betalen, voor altijd gebruiken.",
@@ -2624,7 +2624,7 @@
     "requiresUpload": "Vereist het uploaden van je cv voor analyse",
     "whyResumeBooster": "Waarom Resume Booster?",
     "questions": "Vragen?",
-    "allProductsOneTime": "Alle producten zijn eenmalige aankopen met directe toegang.",
+    "allProductsOneTime": "Elke tool is een eenmalige aankoop met directe toegang — of ontgrendel alles met Resume Booster Pro.",
     "freeScanLink": "gratis scan",
     "seeScoreFirst": "om eerst je score te zien.",
     "tryFreeScanFirst": "Probeer eerst de gratis scan"
@@ -2681,7 +2681,7 @@
     "companyLabel": "Bedrijf",
     "companyPlaceholder": "bijv. Google",
     "redirecting": "Doorverwijzen naar afrekenen...",
-    "secureCheckout": "Veilig afrekenen via Stripe. Eenmalige betaling, geen abonnement."
+    "secureCheckout": "Veilig afrekenen via Stripe. Betaal per tool, of ga Pro voor alles."
   },
   "checkoutOverlay": {
     "steps": {

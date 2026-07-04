@@ -20,7 +20,7 @@
     "subheading": "Obtenez un feedback honnête et professionnel sur votre CV. Pas de blabla – des corrections concrètes pour décrocher un emploi.",
     "price": "25 $",
     "oneTime": "paiement unique",
-    "nofees": "Sans abonnement • Sans frais cachés • Résultats instantanés",
+    "nofees": "Payez par outil ou passez Pro • Sans frais cachés • Résultats instantanés",
     "roi": "Un entretien = 25 $ rentabilisés",
     "trusted": "Fait confiance par",
     "jobSeekers": "chercheurs d'emploi",
@@ -46,7 +46,7 @@
     "benefits": {
       "seniorRoles": "Conçu pour les profils seniors, managers et postes compétitifs",
       "atsCompatible": "Fonctionne avec tous les ATS (Workday, Greenhouse, Lever et 50+ autres)",
-      "oneTime": "Paiement unique (sans abonnement)",
+      "oneTime": "Payez par outil — ou passez Pro pour tout avoir",
       "private": "Les CV ne sont jamais stockés ni partagés"
     },
     "stats": {
@@ -368,7 +368,7 @@
       },
       "subscription": {
         "question": "Est-ce un abonnement ?",
-        "answer": "Non. Resume Booster est un paiement unique de 25 $. Pas d'abonnements, pas de frais récurrents."
+        "answer": "Chaque outil est un paiement unique. Pour tout débloquer, Resume Booster Pro est un abonnement optionnel à 45 $/mois — résiliable à tout moment."
       },
       "share": {
         "question": "Puis-je partager mon analyse ?",
@@ -702,7 +702,7 @@
       "linkedin": "Optimisation du profil LinkedIn"
     },
     "oneTime": "paiement unique",
-    "guarantee": "Résultats instantanés • Sans abonnement",
+    "guarantee": "Résultats instantanés • Payez par outil ou passez Pro",
     "button": "Obtenir mon analyse",
     "roi": "Un entretien = 25 $ rentabilisés"
   },
@@ -2607,8 +2607,8 @@
   },
   "pricingPage": {
     "metaTitle": "Tarifs — Resume Booster",
-    "metaDescription": "Formules de 1$ pour la correction de mots-clés à 25$ pour Career Snapshot. Paiement unique, sans abonnement. Réécritures de CV au niveau recruteur.",
-    "noSubscriptions": "Paiements uniques • Sans abonnement",
+    "metaDescription": "Formules de 1$ pour la correction de mots-clés à 25$ pour Career Snapshot. Payez par outil ou passez Pro pour tout avoir. Réécritures de CV au niveau recruteur.",
+    "noSubscriptions": "Payez par outil • Ou passez Pro pour tout avoir",
     "titlePrefix": "Choisissez votre",
     "titleHighlight": "Boost de CV",
     "subtitle": "Des corrections rapides aux forfaits de carrière complets. Payez une fois, utilisez pour toujours.",
@@ -2624,7 +2624,7 @@
     "requiresUpload": "Nécessite de téléverser votre CV pour l'analyser",
     "whyResumeBooster": "Pourquoi Resume Booster ?",
     "questions": "Des questions ?",
-    "allProductsOneTime": "Tous les produits sont des achats uniques avec accès instantané.",
+    "allProductsOneTime": "Chaque outil est un achat unique avec accès instantané — ou débloquez tout avec Resume Booster Pro.",
     "freeScanLink": "scan gratuit",
     "seeScoreFirst": "pour voir d'abord votre score.",
     "tryFreeScanFirst": "Essayer le scan gratuit d'abord"
@@ -2681,7 +2681,7 @@
     "companyLabel": "Entreprise",
     "companyPlaceholder": "ex. : Google",
     "redirecting": "Redirection vers le paiement...",
-    "secureCheckout": "Paiement sécurisé propulsé par Stripe. Paiement unique, sans abonnement."
+    "secureCheckout": "Paiement sécurisé propulsé par Stripe. Payez par outil ou passez Pro pour tout avoir."
   },
   "checkoutOverlay": {
     "steps": {

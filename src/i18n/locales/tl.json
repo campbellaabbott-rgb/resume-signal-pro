@@ -20,7 +20,7 @@
     "subheading": "Kumuha ng tapat at recruiter-level na feedback sa iyong resume. Walang paliguy-ligoy — praktikal na mga pagwawasto lamang na makakatulong sa iyo na ma-hire.",
     "price": "$25",
     "oneTime": "isang beses lang",
-    "nofees": "Walang subscription • Walang nakatagong bayad • Instant na resulta",
+    "nofees": "Magbayad kada tool o mag-Pro • Walang nakatagong bayad • Instant na resulta",
     "roi": "Isang interview = Bawi na ang $25",
     "trusted": "Pinagkakatiwalaan ng",
     "jobSeekers": "mga naghahanap ng trabaho",
@@ -46,7 +46,7 @@
     "benefits": {
       "seniorRoles": "Para sa senior roles, managers, at competitive positions",
       "atsCompatible": "Gumagana sa lahat ng ATS (Workday, Greenhouse, Lever at 50+ pa)",
-      "oneTime": "Isang beses na bayad (walang subscription)",
+      "oneTime": "Magbayad kada tool — o mag-Pro para sa lahat",
       "private": "Hindi namin ini-store o sini-share ang resume"
     },
     "stats": {
@@ -368,7 +368,7 @@
       },
       "subscription": {
         "question": "Ito ba ay subscription?",
-        "answer": "Hindi. Ang Resume Booster ay isang beses na bayad na $25. Walang subscriptions, paulit-ulit na charges, o upsells."
+        "answer": "Bawat tool ay isang beses na bayad. Kung gusto mo ang lahat, ang Resume Booster Pro ay opsyonal na subscription na $45/buwan — kanselahin anumang oras."
       },
       "share": {
         "question": "Maaari ko bang ibahagi ang aking pagsusuri sa iba?",
@@ -702,7 +702,7 @@
       "linkedin": "LinkedIn profile optimization"
     },
     "oneTime": "isang beses lang",
-    "guarantee": "Instant na resulta • Walang subscription",
+    "guarantee": "Instant na resulta • Magbayad kada tool o mag-Pro",
     "button": "Kunin ang Aking Analysis Ngayon",
     "roi": "Isang interview = $25 na-recover"
   },
@@ -2607,8 +2607,8 @@
   },
   "pricingPage": {
     "metaTitle": "Pagpepresyo — Resume Booster",
-    "metaDescription": "Mga plano mula $1 Keyword Fix hanggang $25 Career Snapshot. Magbayad isang beses, walang subscription. Mga resume rewrite sa antas ng recruiter.",
-    "noSubscriptions": "Isang-pagkakataong bayad • Walang subscription",
+    "metaDescription": "Mga plano mula $1 Keyword Fix hanggang $25 Career Snapshot. Magbayad kada tool, o mag-Pro para sa lahat. Mga resume rewrite sa antas ng recruiter.",
+    "noSubscriptions": "Magbayad kada tool • O mag-Pro para sa lahat",
     "titlePrefix": "Piliin ang Iyong",
     "titleHighlight": "Resume Boost",
     "subtitle": "Mula sa mabilisang ayos hanggang kumpletong career package. Magbayad isang beses, gamitin habambuhay.",
@@ -2624,7 +2624,7 @@
     "requiresUpload": "Kailangang i-upload ang iyong resume para masuri",
     "whyResumeBooster": "Bakit Resume Booster?",
     "questions": "Mga Tanong?",
-    "allProductsOneTime": "Lahat ng produkto ay isang-pagkakataong bili na may instant na access.",
+    "allProductsOneTime": "Bawat tool ay isang-pagkakataong bili na may instant na access — o i-unlock lahat gamit ang Resume Booster Pro.",
     "freeScanLink": "libreng scan",
     "seeScoreFirst": "para makita muna ang iyong score.",
     "tryFreeScanFirst": "Subukan Muna ang Libreng Scan"
@@ -2681,7 +2681,7 @@
     "companyLabel": "Kumpanya",
     "companyPlaceholder": "hal., Google",
     "redirecting": "Inireredirect sa checkout...",
-    "secureCheckout": "Secure na checkout na pinapagana ng Stripe. Isang-pagkakataong bayad, walang subscription."
+    "secureCheckout": "Secure na checkout na pinapagana ng Stripe. Magbayad kada tool, o mag-Pro para sa lahat."
   },
   "checkoutOverlay": {
     "steps": {

@@ -459,7 +459,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                       </div>
                       <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
                         <Check className="w-4 h-4 text-success flex-shrink-0" />
-                        <span>{t('hero.benefits.oneTime', 'One-time payment (no subscription)')}</span>
+                        <span>{t('hero.benefits.oneTime', 'Pay per tool — or go Pro for everything')}</span>
                       </div>
                       <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
                         <Check className="w-4 h-4 text-success flex-shrink-0" />
@@ -491,7 +491,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                     </div>
                     <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
                       <Check className="w-4 h-4 text-success flex-shrink-0" />
-                      <span>{t('hero.benefits.oneTime', 'One-time payment (no subscription)')}</span>
+                      <span>{t('hero.benefits.oneTime', 'Pay per tool — or go Pro for everything')}</span>
                     </div>
                     <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
                       <Check className="w-4 h-4 text-success flex-shrink-0" />
