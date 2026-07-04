@@ -361,7 +361,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'salesforce developer', 'salesforce engineer', 'salesforce architect',
       'it manager', 'it director', 'vp of engineering', 'head of engineering',
       'database administrator', 'dba', 'network administrator',
-      'it support', 'help desk', 'desktop support', 'it specialist'
+      'it support', 'help desk', 'desktop support', 'it specialist',
+      'staff software engineer', 'test automation engineer', 'infrastructure engineer', 'it support specialist', 'help desk technician', 'release engineer'
     ],
     primary: [
       'code', 'coding', 'programming', 'develop', 'development',
@@ -405,7 +406,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'database engineer', 'database administrator', 'dba',
       'streaming engineer', 'real-time data engineer', 'lakehouse engineer',
       'data reliability engineer', 'reverse etl engineer',
-      'analytics engineer', 'dbt engineer', 'data integration engineer'
+      'analytics engineer', 'dbt engineer', 'data integration engineer',
+      'data warehouse developer', 'big data engineer'
     ],
     primary: [
       'etl', 'elt', 'pipeline', 'data pipeline', 'data warehouse', 'data lake',
@@ -495,7 +497,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'applied ml engineer', 'applied ai engineer',
       'computer vision engineer', 'nlp engineer', 'speech engineer',
       'recommendation systems engineer', 'ranking engineer',
-      'ai product engineer', 'multimodal engineer'
+      'ai product engineer', 'multimodal engineer',
+      'applied scientist'
     ],
     primary: [
       'machine learning', 'deep learning', 'neural network', 'model training',
@@ -542,7 +545,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'demand generation', 'demand gen', 'campaign manager', 'creative director',
       'marketing operations manager', 'marketing ops', 'revenue marketing manager',
       'lifecycle marketing manager', 'crm manager', 'retention marketing',
-      'growth engineer' // growth engineers use marketing signals AND tech — see disambiguation rule
+      'growth engineer', // growth engineers use marketing signals AND tech — see disambiguation rule
+      'growth marketer', 'demand generation manager', 'performance marketing manager', 'field marketing manager', 'brand strategist', 'affiliate marketing manager'
     ],
     primary: [
       'campaign', 'campaigns', 'brand awareness', 'brand strategy',
@@ -585,7 +589,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'registered investment advisor', 'ria', 'wealth manager', 'private wealth manager',
       'cfp', 'certified financial planner', 'financial consultant', 'retirement planner',
       'head of operations', 'vp operations', 'director of operations', 'chief operating officer',
-      'investment operations', 'fund operations', 'trade operations', 'securities operations'
+      'investment operations', 'fund operations', 'trade operations', 'securities operations',
+      'fp&a analyst', 'treasury analyst', 'equity research analyst', 'financial controller', 'staff accountant', 'accounts payable specialist', 'accounts receivable specialist', 'internal auditor', 'bookkeeper'
     ],
     primary: [
       'financial statements', 'balance sheet', 'income statement', 'cash flow',
@@ -635,7 +640,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'health information manager', 'medical coder', 'medical biller',
       'patient access representative', 'medical receptionist',
       'director of nursing', 'don', 'chief nursing officer', 'cno',
-      'hospitalist', 'intensivist', 'anesthesiologist', 'crna'
+      'hospitalist', 'intensivist', 'anesthesiologist', 'crna',
+      'physician assistant', 'patient care technician', 'licensed practical nurse'
     ],
     primary: [
       'patient care', 'patient', 'patients', 'clinical', 'bedside',
@@ -665,7 +671,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'compensation analyst', 'benefits manager', 'total rewards',
       'learning and development', 'l&d', 'training manager',
       'employee relations', 'hr operations', 'people operations',
-      'people partner', 'head of people'
+      'people partner', 'head of people',
+      'people operations manager', 'talent acquisition specialist', 'benefits administrator', 'hris analyst', 'chief people officer', 'dei manager', 'learning and development manager', 'employee relations specialist'
     ],
     primary: [
       'recruiting', 'recruitment', 'hiring', 'talent', 'candidates',
@@ -706,7 +713,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'associate general counsel', 'chief legal officer', 'clo',
       'legal operations manager', 'legal ops', 'contract specialist',
       'regulatory affairs manager', 'regulatory counsel',
-      'privacy counsel', 'data privacy attorney', 'fintech counsel'
+      'privacy counsel', 'data privacy attorney', 'fintech counsel',
+      'contracts manager', 'litigation associate', 'patent agent', 'court clerk'
     ],
     primary: [
       'legal', 'law', 'litigation', 'contract', 'contracts',
@@ -749,7 +757,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'adjunct professor', 'adjunct instructor', 'visiting lecturer',
       'department chair', 'associate dean', 'provost',
       'director of education', 'education coordinator', 'training coordinator',
-      'corporate trainer', 'learning specialist'
+      'corporate trainer', 'learning specialist',
+      'curriculum developer', 'instructional designer'
     ],
     primary: [
       'teaching', 'instruction', 'curriculum', 'lesson plan', 'lesson plans',
@@ -777,15 +786,16 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'quality engineer', 'industrial engineer', 'systems engineer',
       'aerospace engineer', 'environmental engineer', 'biomedical engineer',
       'pe', 'professional engineer', 'engineering manager',
-      'reliability engineer', 'test engineer', 'field engineer',
+      'equipment reliability engineer', 'maintenance reliability engineer', 'test engineer', 'field engineer',
       'maintenance engineer', 'controls engineer', 'automation engineer',
       'materials engineer', 'nuclear engineer', 'marine engineer',
       'geological engineer', 'mining engineer', 'safety engineer',
       'packaging engineer', 'validation engineer', 'commissioning engineer',
       'r&d engineer', 'research engineer', 'applications engineer',
       'construction manager', 'construction project manager', 'site manager',
-      'site superintendent', 'general contractor', 'construction superintendent'
+      'site superintendent', 'general contractor', 'construction superintendent',
       // NOTE: 'editor' is NOT an engineering title — do NOT add it
+      'geotechnical engineer', 'hvac engineer', 'piping engineer', 'instrumentation engineer', 'mechatronics engineer'
     ],
     primary: [
       'engineering', 'design', 'analysis', 'testing', 'prototype',
@@ -823,7 +833,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'cpo', 'associate product manager', 'apm', 'product lead',
       'product owner', 'program manager', 'technical program manager', 'tpm',
       'scrum master', 'agile coach', 'release train engineer', 'rte',
-      'portfolio manager', 'product director', 'product strategist'
+      'portfolio manager', 'product director', 'product strategist',
+      'technical product manager', 'product operations manager'
     ],
     primary: [
       'product roadmap', 'roadmap', 'product strategy', 'product vision',
@@ -868,7 +879,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       // Pre-sales and client-facing architects who consult rather than build
       'solutions architect', 'presales architect', 'presales engineer',
       'pre-sales architect', 'pre-sales engineer', 'customer success architect',
-      'enterprise architect' // when co-occurring with client/engagement signals
+      'enterprise architect', // when co-occurring with client/engagement signals
+      'principal consultant', 'implementation consultant', 'engagement director'
     ],
     primary: [
       'consulting', 'advisory', 'client', 'clients', 'engagement',
@@ -903,7 +915,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'content creator', 'social media creator',
       'ux researcher', 'user researcher', 'ux research lead', 'design researcher',
       'interaction designer', 'experience designer', 'service designer',
-      'design lead', 'design manager', 'head of design', 'vp of design'
+      'design lead', 'design manager', 'head of design', 'vp of design',
+      'presentation designer', 'design systems designer'
     ],
     primary: [
       'design', 'creative', 'visual', 'branding', 'brand identity',
@@ -933,7 +946,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'sales associate', 'retail associate', 'cashier', 'customer service representative',
       'visual merchandiser', 'loss prevention', 'inventory specialist',
       'buyer', 'merchandise planner', 'category manager', 'brand ambassador',
-      'department manager', 'team lead', 'shift supervisor', 'floor manager'
+      'department manager', 'team lead', 'shift supervisor', 'floor manager',
+      'merchandiser', 'store director', 'inventory planner', 'loss prevention manager', 'retail buyer'
     ],
     primary: [
       'sales floor', 'point of sale', 'pos system', 'pos terminal', 'inventory', 'merchandise', 'merchandising',
@@ -959,7 +973,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'food and beverage manager', 'f&b manager', 'restaurant manager', 'chef',
       'executive chef', 'sous chef', 'line cook', 'server', 'bartender',
       'event coordinator', 'banquet manager', 'catering manager', 'revenue manager',
-      'reservations manager', 'director of operations', 'hospitality manager'
+      'reservations manager', 'director of operations', 'hospitality manager',
+      'housekeeping supervisor', 'food and beverage director', 'hotel general manager'
     ],
     primary: [
       'guest satisfaction', 'guest experience', 'check-in', 'check-out',
@@ -985,7 +1000,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'production supervisor', 'shift supervisor', 'line supervisor', 'team leader',
       'maintenance technician', 'maintenance manager', 'industrial engineer',
       'supply chain manager', 'logistics coordinator', 'warehouse manager',
-      'assembly technician', 'machine operator', 'cnc operator'
+      'assembly technician', 'machine operator', 'cnc operator',
+      'cnc machinist', 'quality inspector', 'assembler', 'process technician', 'tooling engineer'
     ],
     primary: [
       'production', 'manufacturing', 'assembly', 'fabrication', 'machining',
@@ -1051,7 +1067,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'vulnerability analyst', 'security consultant', 'application security',
       'appsec engineer', 'cloud security engineer', 'grc analyst',
       'security operations', 'cyber defense analyst', 'malware analyst',
-      'forensics analyst', 'security researcher'
+      'forensics analyst', 'security researcher',
+      'threat intelligence analyst', 'application security engineer'
     ],
     primary: [
       'penetration testing', 'vulnerability', 'incident response', 'siem',
@@ -1086,7 +1103,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       // Driver roles — huge resume volume that previously had no home
       'truck driver', 'cdl driver', 'otr driver', 'delivery driver',
       'bus driver', 'route driver', 'courier', 'owner operator',
-      'forklift operator', 'warehouse associate', 'package handler'
+      'forklift operator', 'warehouse associate', 'package handler',
+      'distribution center manager', 'transportation coordinator', 'import export coordinator'
     ],
     primary: [
       'supply chain', 'logistics', 'warehouse', 'inventory', 'procurement',
@@ -1117,7 +1135,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'real estate analyst', 'acquisitions analyst', 'asset manager',
       'commercial real estate', 'transaction coordinator', 'escrow officer',
       'title officer', 'appraiser', 'real estate developer',
-      'mortgage loan officer', 'loan originator', 'underwriter'
+      'mortgage loan officer', 'loan originator', 'underwriter',
+      'title examiner', 'property inspector'
     ],
     primary: [
       'listings', 'closings', 'escrow', 'mls', 'buyers', 'sellers',
@@ -1144,7 +1163,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'insurance agent', 'insurance broker', 'underwriter', 'claims adjuster',
       'claims examiner', 'actuary', 'actuarial analyst', 'risk manager',
       'insurance sales', 'account manager insurance', 'benefits consultant',
-      'claims manager', 'loss control', 'insurance producer'
+      'claims manager', 'loss control', 'insurance producer',
+      'underwriting assistant'
     ],
     primary: [
       'underwriting', 'claims', 'premiums', 'policies', 'policyholders',
@@ -1172,7 +1192,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'grant writer', 'grants manager', 'fundraising manager', 'major gifts officer',
       'volunteer coordinator', 'community outreach', 'advocacy director',
       'development associate', 'donor relations', 'program coordinator nonprofit',
-      'nonprofit manager', 'philanthropy officer', 'impact manager'
+      'nonprofit manager', 'philanthropy officer', 'impact manager',
+      'grants coordinator', 'advocacy manager'
     ],
     primary: [
       'fundraising', 'grants', 'donors', 'donor cultivation', 'major gifts',
@@ -1201,7 +1222,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'cra', 'bench scientist', 'bioinformatics scientist', 'process development',
       'quality control analyst', 'qc analyst', 'regulatory affairs specialist',
       'formulation scientist', 'principal scientist', 'postdoctoral',
-      'postdoc', 'lab manager', 'biostatistician', 'medical science liaison', 'msl'
+      'postdoc', 'lab manager', 'biostatistician', 'medical science liaison', 'msl',
+      'bioprocess engineer', 'validation specialist', 'cell culture technician'
     ],
     primary: [
       'assay', 'pcr', 'qpcr', 'elisa', 'western blot', 'cell culture',
@@ -1229,7 +1251,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'flight attendant', 'air traffic controller', 'aircraft mechanic',
       'a&p mechanic', 'avionics technician', 'flight instructor', 'cfi',
       'aircraft dispatcher', 'ground operations', 'ramp agent', 'airport operations',
-      'aviation safety', 'aerospace engineer', 'flight test engineer'
+      'aviation safety', 'aerospace engineer', 'flight test engineer',
+      'flight dispatcher', 'aerospace technician'
     ],
     primary: [
       'flight hours', 'faa', 'part 121', 'part 135', 'part 91', 'type rating',
@@ -1257,7 +1280,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'lineman', 'utility technician', 'solar installer', 'solar technician',
       'wind technician', 'energy analyst', 'energy manager', 'grid operator',
       'transmission engineer', 'substation technician', 'pipeline operator',
-      'hse manager', 'landman', 'energy trader'
+      'hse manager', 'landman', 'energy trader',
+      'solar project developer', 'wind farm manager'
     ],
     primary: [
       'oil and gas', 'upstream', 'midstream', 'downstream', 'drilling',
@@ -1288,7 +1312,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'construction foreman', 'superintendent', 'project superintendent',
       'general contractor', 'construction manager', 'estimator',
       'maintenance technician', 'facilities technician', 'diesel mechanic',
-      'automotive technician', 'auto mechanic', 'service technician'
+      'automotive technician', 'auto mechanic', 'service technician',
+      'elevator mechanic', 'sheet metal worker', 'wind turbine technician', 'solar installer', 'locksmith', 'glazier'
     ],
     primary: [
       'electrical', 'wiring', 'conduit', 'circuits', 'breaker panels',
@@ -1318,7 +1343,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'support engineer', 'technical support', 'help desk', 'service desk',
       'support analyst', 'customer experience', 'cx manager',
       'customer care', 'call center', 'contact center', 'support team lead',
-      'escalation manager', 'tier 2 support', 'tier 3 support'
+      'escalation manager', 'tier 2 support', 'tier 3 support',
+      'implementation specialist', 'onboarding specialist', 'technical account manager', 'customer experience manager', 'customer success operations'
     ],
     primary: [
       'customer support', 'tickets', 'ticket resolution', 'sla', 'csat',
@@ -1344,7 +1370,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'pharmacist', 'clinical pharmacist', 'staff pharmacist', 'pharmacy manager',
       'pharmacy technician', 'pharm tech', 'pharmacy intern', 'pharmacist in charge',
       'retail pharmacist', 'hospital pharmacist', 'oncology pharmacist',
-      'pharmacy director', 'medication safety'
+      'pharmacy director', 'medication safety',
+      'pharmacovigilance specialist', 'compounding technician'
     ],
     primary: [
       'prescriptions', 'dispensing', 'medication therapy', 'drug interactions',
@@ -1367,7 +1394,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
     titles: [
       'dentist', 'dental hygienist', 'dental assistant', 'orthodontist',
       'oral surgeon', 'endodontist', 'periodontist', 'dental office manager',
-      'treatment coordinator', 'registered dental assistant', 'rda'
+      'treatment coordinator', 'registered dental assistant', 'rda',
+      'dental lab technician'
     ],
     primary: [
       'dental', 'patients dental', 'cleanings', 'prophylaxis', 'restorative',
@@ -1390,7 +1418,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
     titles: [
       'veterinarian', 'veterinary technician', 'vet tech', 'veterinary assistant',
       'veterinary nurse', 'practice manager veterinary', 'kennel technician',
-      'emergency veterinarian', 'associate veterinarian', 'relief veterinarian'
+      'emergency veterinarian', 'associate veterinarian', 'relief veterinarian',
+      'animal care technician', 'equine veterinarian', 'veterinary practice manager'
     ],
     primary: [
       'veterinary', 'animals', 'canine', 'feline', 'small animal', 'large animal',
@@ -1438,7 +1467,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'journalist', 'reporter', 'editor', 'news editor', 'managing editor',
       'staff writer', 'correspondent', 'news anchor', 'producer news',
       'broadcast journalist', 'photojournalist', 'copy editor', 'columnist',
-      'editor in chief', 'news director', 'assignment editor'
+      'editor in chief', 'news director', 'assignment editor',
+      'podcast producer', 'video editor', 'social media producer', 'broadcast technician'
     ],
     primary: [
       'reporting', 'breaking news', 'bylines', 'sources', 'interviews journalism',
@@ -1462,7 +1492,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'telecommunications engineer', 'telecom technician', 'network technician telecom',
       'rf engineer', 'fiber optic technician', 'tower climber', 'osp engineer',
       'central office technician', 'noc technician', 'field service technician telecom',
-      'wireless engineer', 'voip engineer', 'telecom project manager'
+      'wireless engineer', 'voip engineer', 'telecom project manager',
+      'fiber technician', 'network technician', 'noc engineer', 'tower technician'
     ],
     primary: [
       'telecommunications', 'fiber optic', 'fiber splicing', 'otdr', '5g', 'lte',
@@ -1487,7 +1518,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'farm manager', 'ranch manager', 'agronomist', 'crop consultant',
       'agricultural technician', 'farm operator', 'livestock manager',
       'precision agriculture specialist', 'greenhouse manager', 'harvest manager',
-      'agricultural sales', 'feed mill operator', 'dairy manager'
+      'agricultural sales', 'feed mill operator', 'dairy manager',
+      'ranch hand'
     ],
     primary: [
       'crops', 'harvest', 'planting', 'yield', 'acres', 'irrigation',
@@ -1512,7 +1544,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'athletic director', 'sports coach', 'head coach', 'assistant coach',
       'sports agent', 'team manager sports', 'recruiting coordinator',
       'sports marketing manager', 'stadium operations', 'ticket sales sports',
-      'player development', 'scout', 'sports information director'
+      'player development', 'scout', 'sports information director',
+      'team operations manager'
     ],
     primary: [
       'athletes', 'recruiting athletes', 'game day operations', 'season tickets',
@@ -1537,7 +1570,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'film producer', 'tv producer', 'production manager', 'production coordinator',
       'director film', 'assistant director', 'line producer', 'showrunner',
       'casting director', 'talent manager', 'stage manager', 'production assistant',
-      'gaffer', 'grip', 'sound mixer', 'editor film', 'post production supervisor'
+      'gaffer', 'grip', 'sound mixer', 'editor film', 'post production supervisor',
+      'talent agent'
     ],
     primary: [
       'production', 'pre-production', 'post-production', 'on set', 'call sheets',
@@ -1561,7 +1595,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'professor', 'assistant professor', 'associate professor', 'lecturer',
       'research fellow', 'principal investigator', 'postdoctoral researcher',
       'research director', 'department chair', 'dean', 'academic advisor',
-      'research coordinator', 'adjunct professor', 'visiting scholar'
+      'research coordinator', 'adjunct professor', 'visiting scholar',
+      'lab manager'
     ],
     primary: [
       'research', 'publications', 'peer-reviewed', 'journal articles', 'grants research',
@@ -1587,7 +1622,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'site manager', 'construction superintendent', 'assistant superintendent',
       'preconstruction manager', 'construction estimator', 'senior estimator',
       'construction scheduler', 'field engineer construction', 'project engineer construction',
-      'construction executive', 'vp of construction', 'owner representative'
+      'construction executive', 'vp of construction', 'owner representative',
+      'punch list coordinator'
     ],
     primary: [
       'general contractor', 'subcontractors', 'construction schedule', 'critical path',
@@ -1640,7 +1676,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'therapist', 'counselor', 'mental health counselor', 'family therapist',
       'substance abuse counselor', 'behavioral health specialist', 'crisis counselor',
       'school counselor', 'psychologist', 'psychotherapist', 'child welfare specialist',
-      'community health worker', 'victim advocate'
+      'community health worker', 'victim advocate',
+      'licensed clinical social worker', 'family advocate'
     ],
     primary: [
       'case management', 'caseload', 'clients social', 'counseling', 'therapy sessions',
@@ -1715,7 +1752,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
     titles: [
       'chef', 'executive chef', 'sous chef', 'head chef', 'chef de partie',
       'line cook', 'prep cook', 'pastry chef', 'baker', 'kitchen manager',
-      'culinary director', 'private chef', 'catering chef', 'grill cook'
+      'culinary director', 'private chef', 'catering chef', 'grill cook',
+      'food stylist'
     ],
     primary: [
       'menu development', 'food cost', 'kitchen operations', 'mise en place',
@@ -1741,7 +1779,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'lieutenant police', 'sheriff deputy', 'state trooper', 'correctional officer',
       'probation officer', 'parole officer', 'security officer', 'security guard',
       'loss prevention officer', 'private investigator', 'fraud investigator',
-      'crime scene investigator', 'dispatcher 911'
+      'crime scene investigator', 'dispatcher 911',
+      'corrections officer', 'crime analyst', '911 dispatcher'
     ],
     primary: [
       'law enforcement', 'patrol', 'arrests', 'investigations criminal', 'incident reports',
@@ -1794,7 +1833,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'game designer', 'game developer', 'gameplay programmer', 'level designer',
       'game producer', 'technical artist', 'game artist', '3d artist games',
       'narrative designer', 'game writer', 'qa tester games', 'game qa',
-      'live ops manager', 'community manager gaming', 'esports manager'
+      'live ops manager', 'community manager gaming', 'esports manager',
+      'gameplay engineer'
     ],
     primary: [
       'game design', 'gameplay', 'level design', 'game mechanics', 'player experience',
@@ -1818,7 +1858,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'ecommerce manager', 'e-commerce manager', 'ecommerce director',
       'marketplace manager', 'amazon seller', 'amazon account manager',
       'shopify manager', 'digital merchandiser', 'ecommerce analyst',
-      'dtc manager', 'online store manager', 'catalog manager'
+      'dtc manager', 'online store manager', 'catalog manager',
+      'ecommerce merchandiser', 'digital shelf analyst', 'dropshipping manager'
     ],
     primary: [
       'ecommerce', 'e-commerce', 'online sales', 'conversion rate', 'aov',
@@ -1844,7 +1885,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
     titles: [
       'translator', 'interpreter', 'localization specialist', 'localization manager',
       'medical interpreter', 'court interpreter', 'conference interpreter',
-      'subtitler', 'transcreation specialist', 'linguist', 'language specialist'
+      'subtitler', 'transcreation specialist', 'linguist', 'language specialist',
+      'localization project manager'
     ],
     primary: [
       'translation', 'interpretation', 'localization', 'source language',
@@ -1870,7 +1912,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'event planner', 'event coordinator', 'event manager', 'wedding planner',
       'conference planner', 'meeting planner', 'event producer', 'event director',
       'special events manager', 'trade show manager', 'venue manager',
-      'events marketing manager'
+      'events marketing manager',
+      'conference producer', 'event operations manager'
     ],
     primary: [
       'event planning', 'event production', 'vendor management events', 'venues',
@@ -1897,7 +1940,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'data entry clerk', 'data entry specialist', 'office coordinator',
       'administrative coordinator', 'executive coordinator', 'personal assistant',
       'secretary', 'legal secretary', 'clerical', 'office assistant',
-      'operations assistant', 'administrative specialist', 'virtual assistant'
+      'operations assistant', 'administrative specialist', 'virtual assistant',
+      'front office coordinator'
     ],
     primary: [
       'calendar management', 'scheduling', 'travel arrangements', 'expense reports',
@@ -1924,7 +1968,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'librarian', 'library assistant', 'library technician', 'archivist',
       'library director', 'reference librarian', 'cataloging librarian',
       'youth services librarian', 'digital archivist', 'records manager',
-      'metadata librarian', 'collections manager'
+      'metadata librarian', 'collections manager',
+      'cataloger'
     ],
     primary: [
       'library', 'cataloging', 'circulation', 'reference services', 'collection development',
@@ -1967,7 +2012,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
     titles: [
       'mining engineer', 'mine manager', 'underground miner', 'driller mining',
       'blaster', 'geologist mining', 'mine surveyor', 'mill operator',
-      'heavy equipment operator mining', 'shift supervisor mining', 'quarry manager'
+      'heavy equipment operator mining', 'shift supervisor mining', 'quarry manager',
+      'drill operator', 'blasting technician', 'mineral processing engineer'
     ],
     primary: [
       'mining', 'underground', 'open pit', 'ore', 'extraction', 'drilling and blasting',
@@ -1988,7 +2034,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
     titles: [
       'ship captain', 'deck officer', 'chief mate', 'able seaman', 'deckhand',
       'marine engineer', 'port captain', 'harbor pilot', 'tugboat captain',
-      'vessel operator', 'merchant mariner', 'boatswain', 'port operations manager'
+      'vessel operator', 'merchant mariner', 'boatswain', 'port operations manager',
+      'marine surveyor'
     ],
     primary: [
       'maritime', 'vessel', 'ship', 'navigation', 'watchkeeping', 'mooring',
@@ -2036,7 +2083,8 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
       'custodian', 'janitor', 'housekeeper', 'housekeeping supervisor',
       'cleaning technician', 'environmental services technician', 'evs technician',
       'custodial supervisor', 'building services worker', 'sanitation worker',
-      'facilities cleaner', 'porter'
+      'facilities cleaner', 'porter',
+      'facilities technician'
     ],
     primary: [
       'cleaning', 'custodial', 'sanitizing', 'disinfecting', 'floor care',
@@ -2864,6 +2912,11 @@ function extractSections(resumeText: string): {
     'illustrator', 'photographer', 'videographer', 'animator', 'housekeeper',
     // Technical / trade roles
     'technician', 'technologist', 'mechanic', 'electrician', 'welder', 'operator',
+    // Service / civic / long-tail role nouns (matching the expanded title lists)
+    'dispatcher', 'instructor', 'pastor', 'arborist', 'machinist', 'hygienist',
+    'esthetician', 'phlebotomist', 'realtor', 'broker', 'deckhand', 'custodian',
+    'groundskeeper', 'barber', 'stylist', 'interpreter', 'translator', 'archivist',
+    'clerk', 'inspector', 'surveyor', 'assembler', 'miner', 'dietitian', 'librarian',
   ];
   
   const employers: string[] = [];
@@ -3050,6 +3103,8 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
   // FALSE POSITIVE TITLE PATTERNS — prevent specific title words from matching wrong industries
   const FALSE_POSITIVE_TITLES: Record<string, string[]> = {
     engineering: ['editor', 'photo editor', 'video editor', 'copy editor', 'managing editor', 'editor-in-chief', 'content editor'],
+    // Public-safety dispatchers are law enforcement, not freight
+    logistics: ['911 dispatcher', 'police dispatcher', 'fire dispatcher', 'public safety dispatcher', 'emergency dispatcher'],
   };
   const falsePositives = FALSE_POSITIVE_TITLES[industry] || [];
   
@@ -3800,7 +3855,7 @@ const ROLE_LOCKS: Array<{ pattern: RegExp; industry: string; label: string }> = 
   // Cybersecurity
   { pattern: /\b(security engineer|security analyst|soc analyst|penetration tester|pentester|ciso|security architect|incident responder|threat analyst|vulnerability analyst|application security engineer|appsec engineer|malware analyst|forensics analyst)\b/i, industry: 'cybersecurity', label: 'security title' },
   // Logistics / Supply chain
-  { pattern: /\b(supply chain manager|supply chain analyst|logistics coordinator|logistics manager|demand planner|supply planner|freight broker|customs broker|transportation manager|fleet manager|fulfillment manager|dispatcher)\b/i, industry: 'logistics', label: 'logistics title' },
+  { pattern: /\b(supply chain manager|supply chain analyst|logistics coordinator|logistics manager|demand planner|supply planner|freight broker|customs broker|transportation manager|fleet manager|fulfillment manager|(?<!911 )(?<!police )(?<!fire )(?<!public safety )dispatcher)\b/i, industry: 'logistics', label: 'logistics title' },
   // Real estate
   { pattern: /\b(real estate agent|realtor|real estate broker|leasing agent|leasing consultant|property manager|escrow officer|title officer|appraiser|mortgage loan officer|loan originator|transaction coordinator)\b/i, industry: 'real_estate', label: 'real estate title' },
   // Insurance

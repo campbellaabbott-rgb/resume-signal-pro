@@ -401,6 +401,39 @@ const cases: GoldenCase[] = [
     resume: `Val Moss\nData Analyst\n${EXPERIENCE}\nData Analyst, ShopCo (2021-present)\n- Statistical analysis and churn models in Python, dashboards in SQL\n- Experiment design and insights reporting for product teams\nMarketing Manager, AdCo (2015-2018)\n- Ran campaigns, brand and social media content, advertising budgets\nSKILLS\nPython, SQL, Tableau`,
   },
 
+  // ── Title-coverage expansion (133 new title variants) ───────────────────
+  {
+    name: "site reliability engineer",
+    expected: "technology",
+    resume: `Kim Park\nSite Reliability Engineer\n${EXPERIENCE}\nSite Reliability Engineer, StreamCo (2021-present)\n- On-call incident response, SLO/error-budget management for 200 microservices\n- Terraform infrastructure, Kubernetes cluster upgrades, observability with Prometheus\nSKILLS\nKubernetes, Terraform, Prometheus, Go`,
+  },
+  {
+    name: "nurse practitioner",
+    expected: "healthcare",
+    resume: `Dana Wells, NP\nNurse Practitioner\n${EXPERIENCE}\nFamily Nurse Practitioner, Community Clinic (2019-present)\n- Primary care panel of 1,200 patients: diagnosis, treatment plans, prescriptions\n- Chronic disease management and preventive screenings\nCERTIFICATIONS\nFNP-BC, DEA licensure`,
+  },
+  {
+    name: "soc analyst",
+    expected: "cybersecurity",
+    resume: `Ravi Nair\nSOC Analyst\n${EXPERIENCE}\nSOC Analyst II, SecureOps (2021-present)\n- Triaged SIEM alerts in Splunk, escalated confirmed incidents per playbooks\n- Threat hunting with EDR telemetry, phishing investigation and containment\nSKILLS\nSplunk, CrowdStrike, MITRE ATT&CK`,
+  },
+  {
+    name: "fp&a analyst",
+    expected: "finance",
+    resume: `Lea Wong\nFP&A Analyst\n${EXPERIENCE}\nFP&A Analyst, RetailCorp (2020-present)\n- Built annual operating plan and rolling forecasts, variance analysis vs budget\n- Monthly close support and board reporting packages in Adaptive Insights\nSKILLS\nExcel, Adaptive Insights, SQL`,
+  },
+  {
+    name: "arborist lands in landscaping",
+    expected: "landscaping",
+    resume: `Sam Oak\nCertified Arborist\n${EXPERIENCE}\nArborist, GreenCanopy Tree Care (2018-present)\n- Tree pruning, removals, and cabling for residential and municipal clients\n- Plant health care assessments, pest and disease diagnosis\nCERTIFICATIONS\nISA Certified Arborist`,
+  },
+  {
+    name: "911 dispatcher lands in law enforcement",
+    expected: "law_enforcement",
+    acceptAlso: ["government"],
+    resume: `Pat Rivera\n911 Dispatcher\n${EXPERIENCE}\n911 Dispatcher, County Communications Center (2017-present)\n- Answered emergency calls, dispatched police, fire, and EMS units via CAD\n- Maintained radio traffic logs and officer status during critical incidents\nCERTIFICATIONS\nAPCO Public Safety Telecommunicator`,
+  },
+
   // ── Adversarial: known-hard crossover classes ────────────────────────────
   {
     name: "technical recruiter AT a tech company is HR, not technology",
