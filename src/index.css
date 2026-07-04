@@ -439,9 +439,9 @@
   }
   
   /* Reduce complex blur effects on mobile for performance */
-  .blur-\\[150px\\],
-  .blur-\\[100px\\],
-  .blur-\\[80px\\] {
+  .blur-\[150px\],
+  .blur-\[100px\],
+  .blur-\[80px\] {
     filter: blur(50px);
   }
 }

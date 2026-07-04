@@ -3663,6 +3663,7 @@ export function FreeKeywordResults({
       {quickWins.length > 0 && (
         <div className="mb-5">
           <ScoreSimulatorCard
+            key={`sim-${atsScoreEstimate}-${quickWins.length}`}
             atsScore={atsScoreEstimate}
             fixes={quickWins.slice(0, 5).map(w => ({ label: w.fix, impact: w.scoreImpact ?? (w.impact === 'high' ? 6 : w.impact === 'medium' ? 4 : 2) }))}
           />

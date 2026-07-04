@@ -32,13 +32,15 @@ export async function checkProByEmail(
   for (const customer of customers.data) {
     const subs = await stripe.subscriptions.list({ customer: customer.id, status: "all", limit: 10 });
     for (const sub of subs.data) {
+      // Stripe API 2025+ moved current_period_end from the subscription to
+      // its items — read whichever is populated.
+      const periodEnd = (sub as unknown as { current_period_end?: number }).current_period_end
+        ?? (sub.items?.data?.[0] as unknown as { current_period_end?: number } | undefined)?.current_period_end;
       if (ACTIVE_STATUSES.has(sub.status)) {
         result = {
           active: true,
           status: sub.status,
-          currentPeriodEnd: sub.current_period_end
-            ? new Date(sub.current_period_end * 1000).toISOString()
-            : null,
+          currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
           stripeCustomerId: customer.id,
         };
         break;
