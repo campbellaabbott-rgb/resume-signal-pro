@@ -405,14 +405,9 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
       <div className="container relative">
         <div className="max-w-3xl mx-auto text-center">
           
-          {/* IMMEDIATE SOCIAL PROOF - Hide in ultra-compact above fold */}
-          {!isUltraCompact && (
-            <div className={`animate-fade-in ${isCompactLayout ? 'mb-4' : 'mb-6'}`}>
-              <HeroStatsBar />
-            </div>
-          )}
-
-          {/* VALUE-FIRST HEADLINE - Always show */}
+          {/* VALUE-FIRST HEADLINE - Always show. The stats bar, benefit
+              bullets, and chips render BELOW the CTA so the scan entry point
+              is visible without scrolling. */}
           <div className={`animate-fade-in ${isUltraCompact ? 'mb-3' : isCompactLayout ? 'mb-4 sm:mb-6' : 'mb-8'}`} style={{ animationDelay: "0.05s" }}>
             <h1
               id="hero-heading"
@@ -442,6 +437,29 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
               </p>
             )}
 
+          </div>
+
+          {/* PRIMARY CTA - Large and unmissable, directly under the headline */}
+          <div className={`animate-fade-in ${isUltraCompact ? 'mb-3' : isCompactLayout ? 'mb-4' : 'mb-6'}`} style={{ animationDelay: isUltraCompact ? "0.05s" : "0.1s" }}>
+            {renderCTA(isUltraCompact ? 'sm' : isCompactLayout ? 'md' : 'lg')}
+            {renderDropZone()}
+            {renderTrustIndicators(isUltraCompact)}
+            {!isUltraCompact && isOriginalLayout && (
+              <div className="mt-2 flex justify-center">
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Check className="w-4 h-4 text-success" />
+                  {t('hero.actionableFixes', 'Actionable fixes included')}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Stats bar — below the CTA on every variant now */}
+          <div className="mb-6 animate-fade-in" style={{ animationDelay: "0.15s" }}>
+            <HeroStatsBar />
+          </div>
+
+          <div className={`animate-fade-in ${isUltraCompact ? 'mb-3' : isCompactLayout ? 'mb-4 sm:mb-6' : 'mb-8'}`} style={{ animationDelay: "0.2s" }}>
             {/* Key selling points - hide in ultra-compact */}
             {!isUltraCompact && (
               <>
@@ -527,29 +545,6 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
               )}
             </>
           )}
-
-          {/* PRIMARY CTA - Large and unmissable */}
-          <div className={`animate-fade-in ${isUltraCompact ? 'mb-3' : isCompactLayout ? 'mb-4' : 'mb-6'}`} style={{ animationDelay: isUltraCompact ? "0.05s" : "0.15s" }}>
-            {renderCTA(isUltraCompact ? 'sm' : isCompactLayout ? 'md' : 'lg')}
-            {renderDropZone()}
-            {renderTrustIndicators(isUltraCompact)}
-            {!isUltraCompact && isOriginalLayout && (
-              <div className="mt-2 flex justify-center">
-                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <Check className="w-4 h-4 text-success" />
-                  {t('hero.actionableFixes', 'Actionable fixes included')}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Show social proof BELOW the CTA for ultra-compact */}
-          {isUltraCompact && (
-            <div className="mb-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-              <HeroStatsBar />
-            </div>
-          )}
-
 
           {/* TESTIMONIAL - Single powerful quote */}
           <div className="mb-8 animate-fade-in" style={{ animationDelay: "0.25s" }}>

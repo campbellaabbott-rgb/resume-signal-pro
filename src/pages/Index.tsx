@@ -1536,12 +1536,6 @@ const Index = () => {
       <main id="main-content" className="pt-[88px]" role="main">
         <Hero onFileSelect={handleFileSelect} />
         
-        {/* Trust Indicators - Right after hero for credibility */}
-        <TrustIndicators />
-        
-        {/* How It Works - shown before uploader on all screen sizes */}
-        <HowItWorks />
-
         {/* Hidden honeypot field for bot detection */}
         <input
           type="text"
@@ -1605,6 +1599,11 @@ const Index = () => {
             </div>
           </section>
         )}
+
+        {/* Trust Indicators + How It Works — moved below the uploader so the
+            free scan is the first thing visitors can act on */}
+        <TrustIndicators />
+        <HowItWorks />
 
         {/* Mini Pricing Cards - Featured packages */}
         <MiniPricingCards />
