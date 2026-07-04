@@ -434,6 +434,18 @@ const cases: GoldenCase[] = [
     resume: `Pat Rivera\n911 Dispatcher\n${EXPERIENCE}\n911 Dispatcher, County Communications Center (2017-present)\n- Answered emergency calls, dispatched police, fire, and EMS units via CAD\n- Maintained radio traffic logs and officer status during critical incidents\nCERTIFICATIONS\nAPCO Public Safety Telecommunicator`,
   },
 
+  // ── License-driven thin resumes (new grads / trades) ────────────────────
+  {
+    name: "new-grad nurse with NCLEX and no work history",
+    expected: "healthcare",
+    resume: `Amy Torres, BSN\nRecent Graduate\nEDUCATION\nBachelor of Science in Nursing, State University (2026)\nPassed NCLEX-RN, RN license pending\nCLINICAL ROTATIONS\n- Med-surg and ICU rotations, 400 clinical hours\nSKILLS\nVitals, charting, patient communication`,
+  },
+  {
+    name: "journeyman electrician with thin bullets",
+    expected: "skilled_trades",
+    resume: `Rob Diaz\nJourneyman Electrician\nCERTIFICATIONS\nJourneyman electrician license, OSHA 30\nPROFESSIONAL EXPERIENCE\nElectrician, Diaz Electric (2020-present)\n- Residential and light commercial wiring\n- Panel upgrades and code compliance`,
+  },
+
   // ── Adversarial: known-hard crossover classes ────────────────────────────
   {
     name: "technical recruiter AT a tech company is HR, not technology",

@@ -44,6 +44,7 @@ import { type JobEntry } from "@/components/JobSelector";
 import { HowItWorks } from "@/components/HowItWorks";
 import { MiniPricingCards } from "@/components/MiniPricingCards";
 import { TrustIndicators } from "@/components/TrustIndicators";
+import { WhatYouGetSection } from "@/components/WhatYouGetSection";
 
 const ScoreBasedPackageRecommendation = lazy(() =>
   import("@/components/ScoreBasedPackageRecommendation").then((m) => ({ default: m.ScoreBasedPackageRecommendation }))
@@ -1615,6 +1616,10 @@ const Index = () => {
             </div>
           </section>
         )}
+
+        {/* What the free scan delivers — expectation-setting before upload,
+            hidden once a report is on screen */}
+        {!freeKeywordResult && <WhatYouGetSection />}
 
         {/* Trust Indicators + How It Works — moved below the uploader so the
             free scan is the first thing visitors can act on */}

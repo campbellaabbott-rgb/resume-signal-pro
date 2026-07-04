@@ -3669,6 +3669,69 @@ function extractEducationSignals(resumeText: string): Array<{ industry: string; 
     results.push({ industry: 'general', boost: 0, signal: 'Degree: Mortuary Science' });
   }
 
+  // ── Professional licenses — often the ONLY strong signal on new-grad and
+  // trade resumes, where work history is thin but the credential is decisive.
+  if (has('pe license') || has('professional engineer license') || has('licensed professional engineer')) {
+    results.push({ industry: 'engineering', boost: 10, signal: 'License: Professional Engineer (PE)' });
+  }
+  if (/\bcdl\b/.test(text) || has('commercial driver')) {
+    results.push({ industry: 'logistics', boost: 8, signal: 'License: CDL' });
+  }
+  if (has('cosmetology license') || has('licensed cosmetologist') || has('barber license') || has('esthetician license')) {
+    results.push({ industry: 'beauty', boost: 12, signal: 'License: Cosmetology/Barber/Esthetics' });
+  }
+  if (has('real estate license') || has('licensed realtor') || has('real estate broker license')) {
+    results.push({ industry: 'real_estate', boost: 10, signal: 'License: Real estate' });
+  }
+  if (has('rn license') || has('registered nurse license') || has('nclex')) {
+    results.push({ industry: 'healthcare', boost: 10, signal: 'License: RN/NCLEX' });
+  }
+  if (/\bemt\b/.test(text) || has('paramedic certification') || has('licensed paramedic')) {
+    results.push({ industry: 'healthcare', boost: 8, signal: 'License: EMT/Paramedic' });
+  }
+  if (has('journeyman electrician') || has('master electrician') || has('journeyman plumber') || has('master plumber') || has('hvac certification') || has('epa 608')) {
+    results.push({ industry: 'skilled_trades', boost: 12, signal: 'License: Trade (electrician/plumber/HVAC)' });
+  }
+  if (has('airframe and powerplant') || has('a&p license') || has('commercial pilot license') || has('cfi certificate') || has('atp certificate')) {
+    results.push({ industry: 'aviation', boost: 12, signal: 'License: FAA (A&P/pilot)' });
+  }
+  if (has('ase certified') || has('ase master')) {
+    results.push({ industry: 'skilled_trades', boost: 8, signal: 'Certification: ASE (automotive)' });
+  }
+  if (has('property and casualty license') || has('p&c license') || has('licensed insurance agent') || has('life and health license')) {
+    results.push({ industry: 'insurance', boost: 10, signal: 'License: Insurance (P&C / L&H)' });
+  }
+  if (/\blcsw\b/.test(text) || has('licensed clinical social worker') || /\blmsw\b/.test(text)) {
+    results.push({ industry: 'social_work', boost: 12, signal: 'License: LCSW/LMSW' });
+  }
+  if (/\bshrm-cp\b/.test(text) || /\bshrm-scp\b/.test(text) || /\bphr\b/.test(text) || /\bsphr\b/.test(text)) {
+    results.push({ industry: 'hr', boost: 10, signal: 'Certification: SHRM/PHR' });
+  }
+  if (has('doctor of optometry') || (has('optometry') && /\bo\.d\./.test(text))) {
+    results.push({ industry: 'healthcare', boost: 10, signal: 'Degree: O.D. (Optometry)' });
+  }
+  if (has('doctor of chiropractic') || (has('chiropract') && /\bd\.c\./.test(text))) {
+    results.push({ industry: 'healthcare', boost: 10, signal: 'Degree: D.C. (Chiropractic)' });
+  }
+  if (has('master of public health') || /\bmph\b/.test(text)) {
+    results.push({ industry: 'healthcare', boost: 6, signal: 'Degree: MPH' });
+  }
+  if (has('master of public administration')) {
+    results.push({ industry: 'government', boost: 6, signal: 'Degree: MPA' });
+  }
+  if (/\bbfa\b/.test(text) || has('bachelor of fine arts')) {
+    results.push({ industry: 'creative', boost: 6, signal: 'Degree: BFA' });
+  }
+  if (has('hospitality management') && (has('degree') || has('bachelor') || has('associate'))) {
+    results.push({ industry: 'hospitality', boost: 8, signal: 'Degree: Hospitality Management' });
+  }
+  if (has('supply chain management') && (has('degree') || has('bachelor') || has('master'))) {
+    results.push({ industry: 'logistics', boost: 7, signal: 'Degree: Supply Chain Management' });
+  }
+  if (has('agronomy') || (has('agricultural science') && has('degree'))) {
+    results.push({ industry: 'agriculture', boost: 7, signal: 'Degree: Agronomy/Ag Science' });
+  }
+
   return results;
 }
 
