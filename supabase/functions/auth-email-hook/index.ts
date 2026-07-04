@@ -1,3 +1,4 @@
+// deploy-stamp: 2026-07-04T18:44Z
 import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { parseEmailWebhookPayload } from 'npm:@lovable.dev/email-js'

@@ -1,3 +1,4 @@
+// deploy-stamp: 2026-07-04T18:44Z
 // Owner notifications: emails the site owner when a new account is created
 // (fired by a DB trigger on auth.users) or a scan completes (fired by
 // free-keyword-scan). Recipient is fixed server-side, so the worst abuse case

@@ -1,3 +1,4 @@
+// deploy-stamp: 2026-07-04T18:44Z
 // Account data for the signed-in user: scan credits and purchase history.
 // Both are keyed by email in service-role tables, so this function verifies
 // the caller's JWT, extracts their email, and reads on their behalf.

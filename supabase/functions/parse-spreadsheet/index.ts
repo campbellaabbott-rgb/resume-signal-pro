@@ -1,3 +1,4 @@
+// deploy-stamp: 2026-07-04T18:44Z
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
 
 const corsHeaders = {

@@ -1,3 +1,4 @@
+// deploy-stamp: 2026-07-04T18:44Z
 // Returns the caller's Resume Booster Pro status. Accepts either a signed-in
 // user's JWT (preferred) or an explicit email in the body (used right after
 // checkout before the user has an account). Live-checks Stripe and refreshes

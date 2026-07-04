@@ -1,3 +1,4 @@
+// deploy-stamp: 2026-07-04T18:44Z
 const serve = (handler: (req: Request) => Response | Promise<Response>) => Deno.serve(handler);
 import { detectIndustry, formatDetectionForPrompt, buildDynamicCorrectionBoosts, INDUSTRY_KEYWORDS, detectSubIndustry } from "./industry-detection.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";

@@ -1,3 +1,4 @@
+// deploy-stamp: 2026-07-04T18:44Z
 // Shortlist evaluation: redact → score → persist the audit row.
 //
 // Compliance-critical properties (see COMPLIANCE.md):

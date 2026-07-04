@@ -1,3 +1,4 @@
+// deploy-stamp: 2026-07-04T18:44Z
 // Sends the free scan summary to the user's email — our first lead-capture
 // touchpoint. Uses the same Resend setup as send-analysis-email and stores
 // the address in the leads table so follow-up campaigns have a source.

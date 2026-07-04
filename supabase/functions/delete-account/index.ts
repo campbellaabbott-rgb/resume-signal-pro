@@ -1,3 +1,4 @@
+// deploy-stamp: 2026-07-04T18:44Z
 // GDPR account deletion: verifies the caller's JWT and deletes their auth
 // user. user_scans / user_profiles / user_applications rows cascade via FK.
 // Email-keyed purchase records are retained (legal/accounting basis), but the

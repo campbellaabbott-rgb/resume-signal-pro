@@ -1,3 +1,4 @@
+// deploy-stamp: 2026-07-04T18:44Z
 import { getServiceClient } from "../_shared/supabase-client.ts";
 
 const corsHeaders = {

@@ -1,3 +1,4 @@
+// deploy-stamp: 2026-07-04T18:44Z
 // Market pulse — the product's retention loop. Sends each opted-in subscriber
 // a short email with the current must-have keywords for their industry and a
 // free-rescan nudge. Trigger on a schedule (Supabase dashboard cron or any

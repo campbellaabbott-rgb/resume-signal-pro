@@ -1,3 +1,4 @@
+// deploy-stamp: 2026-07-04T18:44Z
 // Opens the Stripe customer billing portal so Pro subscribers can update
 // their card or cancel. Requires a signed-in user (JWT) — the portal exposes
 // billing details, so an email in the body is not enough.

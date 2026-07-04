@@ -1,3 +1,4 @@
+// deploy-stamp: 2026-07-04T18:44Z
 // Weekly digest of industry-detection corrections. Fired by pg_cron
 // (Mondays 09:15 UTC). Aggregates detected→corrected pairs from the last 7
 // days and emails the owner — recurring pairs are candidates for new

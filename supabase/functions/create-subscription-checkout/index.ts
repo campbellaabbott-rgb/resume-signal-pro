@@ -1,3 +1,4 @@
+// deploy-stamp: 2026-07-04T18:44Z
 // Creates a Stripe Checkout session for Resume Booster Pro — $45/month,
 // all current and future consumer tools included. Uses inline recurring
 // price_data so no Price object needs to exist in the Stripe dashboard.

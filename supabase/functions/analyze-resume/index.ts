@@ -1,3 +1,4 @@
+// deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
