@@ -317,6 +317,45 @@ export type Database = {
         }
         Relationships: []
       }
+      detection_telemetry: {
+        Row: {
+          confidence: string | null
+          created_at: string
+          grounding_drops: number | null
+          id: string
+          industry: string | null
+          margin_ratio: number | null
+          source: string | null
+          tiebreaker_used: boolean | null
+          transition_detected: boolean | null
+          used_fallback: boolean | null
+        }
+        Insert: {
+          confidence?: string | null
+          created_at?: string
+          grounding_drops?: number | null
+          id?: string
+          industry?: string | null
+          margin_ratio?: number | null
+          source?: string | null
+          tiebreaker_used?: boolean | null
+          transition_detected?: boolean | null
+          used_fallback?: boolean | null
+        }
+        Update: {
+          confidence?: string | null
+          created_at?: string
+          grounding_drops?: number | null
+          id?: string
+          industry?: string | null
+          margin_ratio?: number | null
+          source?: string | null
+          tiebreaker_used?: boolean | null
+          transition_detected?: boolean | null
+          used_fallback?: boolean | null
+        }
+        Relationships: []
+      }
       email_logs: {
         Row: {
           created_at: string
@@ -650,6 +689,33 @@ export type Database = {
         }
         Relationships: []
       }
+      market_pulse_subscribers: {
+        Row: {
+          email: string
+          industry: string
+          last_score: number | null
+          last_sent_at: string | null
+          subscribed_at: string
+          unsubscribed_at: string | null
+        }
+        Insert: {
+          email: string
+          industry?: string
+          last_score?: number | null
+          last_sent_at?: string | null
+          subscribed_at?: string
+          unsubscribed_at?: string | null
+        }
+        Update: {
+          email?: string
+          industry?: string
+          last_score?: number | null
+          last_sent_at?: string | null
+          subscribed_at?: string
+          unsubscribed_at?: string | null
+        }
+        Relationships: []
+      }
       parse_failures: {
         Row: {
           created_at: string
@@ -716,6 +782,75 @@ export type Database = {
           id?: string
           metadata?: Json | null
           payment_intent_id?: string
+        }
+        Relationships: []
+      }
+      pro_grants: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          credits: number | null
+          email: string
+          id: string
+          job_company: string | null
+          job_title: string | null
+          language: string | null
+          product_id: string
+          product_name: string | null
+          product_type: string | null
+          resume_session_id: string | null
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          credits?: number | null
+          email: string
+          id?: string
+          job_company?: string | null
+          job_title?: string | null
+          language?: string | null
+          product_id: string
+          product_name?: string | null
+          product_type?: string | null
+          resume_session_id?: string | null
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          credits?: number | null
+          email?: string
+          id?: string
+          job_company?: string | null
+          job_title?: string | null
+          language?: string | null
+          product_id?: string
+          product_name?: string | null
+          product_type?: string | null
+          resume_session_id?: string | null
+        }
+        Relationships: []
+      }
+      pro_subscribers: {
+        Row: {
+          current_period_end: string | null
+          email: string
+          status: string
+          stripe_customer_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          current_period_end?: string | null
+          email: string
+          status?: string
+          stripe_customer_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          current_period_end?: string | null
+          email?: string
+          status?: string
+          stripe_customer_id?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -887,6 +1022,33 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_industry_pins: {
+        Row: {
+          confidence: string
+          created_at: string
+          industry: string
+          resume_hash: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          confidence?: string
+          created_at?: string
+          industry: string
+          resume_hash: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          confidence?: string
+          created_at?: string
+          industry?: string
+          resume_hash?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       scan_metrics: {
         Row: {
           ai_model: string | null
@@ -938,6 +1100,251 @@ export type Database = {
           scan_type?: string
           status?: string
           visitor_id?: string | null
+        }
+        Relationships: []
+      }
+      seniority_corrections: {
+        Row: {
+          corrected_level: string
+          created_at: string
+          detected_level: string
+          detected_years: string | null
+          id: string
+          industry: string | null
+          resume_text_length: number | null
+          visitor_id: string | null
+        }
+        Insert: {
+          corrected_level: string
+          created_at?: string
+          detected_level: string
+          detected_years?: string | null
+          id?: string
+          industry?: string | null
+          resume_text_length?: number | null
+          visitor_id?: string | null
+        }
+        Update: {
+          corrected_level?: string
+          created_at?: string
+          detected_level?: string
+          detected_years?: string | null
+          id?: string
+          industry?: string | null
+          resume_text_length?: number | null
+          visitor_id?: string | null
+        }
+        Relationships: []
+      }
+      shortlist_candidates: {
+        Row: {
+          candidate_jurisdiction: string | null
+          created_at: string
+          exclusions_applied: Json | null
+          file_name: string | null
+          flags: Json | null
+          id: string
+          interview_questions: Json | null
+          jd_version: number
+          level_read: string | null
+          model_version: string | null
+          owner_id: string
+          parsed_fields: Json | null
+          redacted_text: string | null
+          role_id: string
+          score: number | null
+          signals: Json | null
+          status: string
+        }
+        Insert: {
+          candidate_jurisdiction?: string | null
+          created_at?: string
+          exclusions_applied?: Json | null
+          file_name?: string | null
+          flags?: Json | null
+          id?: string
+          interview_questions?: Json | null
+          jd_version?: number
+          level_read?: string | null
+          model_version?: string | null
+          owner_id: string
+          parsed_fields?: Json | null
+          redacted_text?: string | null
+          role_id: string
+          score?: number | null
+          signals?: Json | null
+          status?: string
+        }
+        Update: {
+          candidate_jurisdiction?: string | null
+          created_at?: string
+          exclusions_applied?: Json | null
+          file_name?: string | null
+          flags?: Json | null
+          id?: string
+          interview_questions?: Json | null
+          jd_version?: number
+          level_read?: string | null
+          model_version?: string | null
+          owner_id?: string
+          parsed_fields?: Json | null
+          redacted_text?: string | null
+          role_id?: string
+          score?: number | null
+          signals?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shortlist_candidates_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "shortlist_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shortlist_decisions: {
+        Row: {
+          action: string
+          actor_email: string | null
+          candidate_id: string
+          created_at: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          owner_id: string
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          candidate_id: string
+          created_at?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          owner_id: string
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          candidate_id?: string
+          created_at?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          owner_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shortlist_decisions_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "shortlist_candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shortlist_demographics: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          owner_id: string
+          race_ethnicity: string | null
+          sex: string | null
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          owner_id: string
+          race_ethnicity?: string | null
+          sex?: string | null
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          owner_id?: string
+          race_ethnicity?: string | null
+          sex?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shortlist_demographics_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: true
+            referencedRelation: "shortlist_candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shortlist_notices: {
+        Row: {
+          content: string
+          id: string
+          jurisdiction: string
+          notice_type: string
+          owner_id: string
+          role_id: string
+          sent_at: string
+        }
+        Insert: {
+          content: string
+          id?: string
+          jurisdiction: string
+          notice_type: string
+          owner_id: string
+          role_id: string
+          sent_at?: string
+        }
+        Update: {
+          content?: string
+          id?: string
+          jurisdiction?: string
+          notice_type?: string
+          owner_id?: string
+          role_id?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shortlist_notices_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "shortlist_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shortlist_roles: {
+        Row: {
+          created_at: string
+          id: string
+          jd_text: string
+          jd_version: number
+          jurisdiction: string
+          owner_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          jd_text: string
+          jd_version?: number
+          jurisdiction?: string
+          owner_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          jd_text?: string
+          jd_version?: number
+          jurisdiction?: string
+          owner_id?: string
+          title?: string
         }
         Relationships: []
       }
@@ -1010,6 +1417,69 @@ export type Database = {
         }
         Relationships: []
       }
+      user_applications: {
+        Row: {
+          applied_at: string
+          company: string
+          created_at: string
+          id: string
+          role: string
+          scan_score: number | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string
+          company: string
+          created_at?: string
+          id?: string
+          role?: string
+          scan_score?: number | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          applied_at?: string
+          company?: string
+          created_at?: string
+          id?: string
+          role?: string
+          scan_score?: number | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          confirmed_experience: string | null
+          confirmed_industry: string | null
+          situation: string | null
+          target_role: string | null
+          target_score: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confirmed_experience?: string | null
+          confirmed_industry?: string | null
+          situation?: string | null
+          target_role?: string | null
+          target_score?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confirmed_experience?: string | null
+          confirmed_industry?: string | null
+          situation?: string | null
+          target_role?: string | null
+          target_score?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_scan_credits: {
         Row: {
           created_at: string
@@ -1034,6 +1504,45 @@ export type Database = {
           id?: string
           total_credits_purchased?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_scans: {
+        Row: {
+          ats_score: number
+          created_at: string
+          fix_plan: Json | null
+          id: string
+          industry: string | null
+          label: string | null
+          projected_score: number | null
+          red_flag_count: number | null
+          user_id: string
+          verdict: string | null
+        }
+        Insert: {
+          ats_score: number
+          created_at?: string
+          fix_plan?: Json | null
+          id?: string
+          industry?: string | null
+          label?: string | null
+          projected_score?: number | null
+          red_flag_count?: number | null
+          user_id: string
+          verdict?: string | null
+        }
+        Update: {
+          ats_score?: number
+          created_at?: string
+          fix_plan?: Json | null
+          id?: string
+          industry?: string | null
+          label?: string | null
+          projected_score?: number | null
+          red_flag_count?: number | null
+          user_id?: string
+          verdict?: string | null
         }
         Relationships: []
       }
@@ -1475,6 +1984,13 @@ export type Database = {
         }[]
       }
       get_today_scan_count: { Args: never; Returns: number }
+      get_user_score_trend: {
+        Args: { p_email: string }
+        Returns: {
+          ats_score: number
+          created_at: string
+        }[]
+      }
       get_visitor_error_history: {
         Args: { p_visitor_id: string }
         Returns: {
@@ -1631,6 +2147,17 @@ export type Database = {
           p_visitor_id?: string
         }
         Returns: string
+      }
+      log_seniority_correction: {
+        Args: {
+          p_corrected_level: string
+          p_detected_level: string
+          p_detected_years?: string
+          p_industry?: string
+          p_resume_text_length?: number
+          p_visitor_id?: string
+        }
+        Returns: boolean
       }
       log_webhook_event: {
         Args: {
