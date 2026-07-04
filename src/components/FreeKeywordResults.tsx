@@ -4900,7 +4900,7 @@ export function FreeKeywordResults({
                 <div key={i} className={`w-5 h-5 rounded-full ${c} border-2 border-background`} />
               ))}
             </div>
-            <span>{t('freeResults.cta.socialProof', { count: scanCountData.inflatedCount.toLocaleString() })}</span>
+            <span>{t('freeResults.cta.socialProof', { count: scanCountData.inflatedCount })}</span>
           </div>
         )}
 
