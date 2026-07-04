@@ -796,6 +796,10 @@ export interface FreeKeywordResultsProps {
   scoreAudit?: { total: number; items: Array<{ label: string; earned: number; possible: number; detail: string }> } | null;
   /** When the JD's industry differs from the resume's, benchmarks use this */
   benchmarkIndustry?: string | null;
+  /** Detection wasn't high-confidence — make the confirmation strip prominent */
+  industryNeedsConfirmation?: boolean;
+  /** Full-text vs recent-role detection disagreed — likely career transition */
+  industryTransition?: { historical: string; recent: string } | null;
 }
 
 export function FreeKeywordResults({
@@ -907,6 +911,8 @@ export function FreeKeywordResults({
   careerChangeBridge,
   scoreAudit,
   benchmarkIndustry,
+  industryNeedsConfirmation,
+  industryTransition,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1623,7 +1629,17 @@ export function FreeKeywordResults({
       )}
 
       {/* ── Detection confirmation strip — confirmed labels are 100% accurate ── */}
-      <div className="rounded-xl border border-border/60 bg-card/60 px-4 py-2.5 mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+      {industryNeedsConfirmation && !correctedIndustry && (
+        <div className="rounded-xl border border-warning/40 bg-warning/10 px-4 py-2.5 mb-2 text-xs text-foreground">
+          <span className="font-semibold">Quick check:</span> we weren't fully sure of your industry on this one
+          {industryTransition ? (
+            <> — your history reads as <span className="font-semibold capitalize">{industryTransition.historical.replace(/_/g, ' ')}</span> but your latest role reads as <span className="font-semibold capitalize">{industryTransition.recent.replace(/_/g, ' ')}</span>. Confirm below and the whole report recalibrates.</>
+          ) : (
+            <>. Confirm or correct it below — benchmarks and keywords sharpen instantly.</>
+          )}
+        </div>
+      )}
+      <div className={`rounded-xl border px-4 py-2.5 mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs ${industryNeedsConfirmation && !correctedIndustry ? 'border-warning/50 bg-warning/5 ring-1 ring-warning/30' : 'border-border/60 bg-card/60'}`}>
         <span className="text-muted-foreground">We read this as:</span>
         <label className="flex items-center gap-1.5">
           <span className="text-muted-foreground">Industry</span>

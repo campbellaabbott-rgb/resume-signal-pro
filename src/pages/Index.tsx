@@ -342,6 +342,8 @@ interface FreeKeywordResult {
   } | null;
   scoreAudit?: { total: number; items: Array<{ label: string; earned: number; possible: number; detail: string }> } | null;
   benchmarkIndustry?: string | null;
+  industryNeedsConfirmation?: boolean;
+  industryTransition?: { historical: string; recent: string } | null;
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
@@ -1015,6 +1017,8 @@ const Index = () => {
           careerChangeBridge: (result as any).careerChangeBridge,
           scoreAudit: (result as any).scoreAudit,
           benchmarkIndustry: (result as any).benchmarkIndustry,
+          industryNeedsConfirmation: (result as any).industryNeedsConfirmation,
+          industryTransition: (result as any).industryTransition,
         });
 
         // Save to cloud scan history for signed-in users (fire and forget)
@@ -1786,6 +1790,8 @@ const Index = () => {
                 careerChangeBridge={freeKeywordResult.careerChangeBridge ?? undefined}
                 scoreAudit={freeKeywordResult.scoreAudit ?? undefined}
                 benchmarkIndustry={freeKeywordResult.benchmarkIndustry ?? undefined}
+                industryNeedsConfirmation={freeKeywordResult.industryNeedsConfirmation}
+                industryTransition={freeKeywordResult.industryTransition ?? undefined}
                 scanSituation={scanContext.situation ?? undefined}
                 onContextConfirm={(ctx) => persistScanContext(ctx)}
               />
