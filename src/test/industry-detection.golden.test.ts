@@ -434,6 +434,24 @@ const cases: GoldenCase[] = [
     resume: `Pat Rivera\n911 Dispatcher\n${EXPERIENCE}\n911 Dispatcher, County Communications Center (2017-present)\n- Answered emergency calls, dispatched police, fire, and EMS units via CAD\n- Maintained radio traffic logs and officer status during critical incidents\nCERTIFICATIONS\nAPCO Public Safety Telecommunicator`,
   },
 
+  // ── Spanish keyword parity — fully Spanish resumes, no English signal ────
+  {
+    name: "spanish: enfermera resume detects healthcare",
+    expected: "healthcare",
+    resume: `María González\nEnfermera\nEXPERIENCIA PROFESIONAL\nEnfermera, Hospital Central (2019-presente)\n- Atención médica directa a pacientes en urgencias, toma de signos vitales\n- Administración de medicamentos y registro en historia clínica\n- Apoyo en quirófano y cuidados intensivos\nHABILIDADES\nEnfermería, atención al paciente, urgencias`,
+  },
+  {
+    name: "spanish: contador resume detects finance",
+    expected: "finance",
+    resume: `Carlos Ruiz\nContador\nEXPERIENCIA PROFESIONAL\nContador General, Grupo Andino (2018-presente)\n- Elaboración de estados financieros mensuales y conciliación bancaria\n- Gestión de cuentas por pagar, cuentas por cobrar y nómina\n- Preparación de impuestos y apoyo en auditoría externa\nHABILIDADES\nContabilidad, facturación, presupuesto`,
+  },
+  {
+    name: "spanish: vendedora resume detects sales",
+    expected: "sales",
+    acceptAlso: ["retail"],
+    resume: `Lucía Fernández\nEjecutiva de Ventas\nEXPERIENCIA PROFESIONAL\nEjecutiva de Ventas, Distribuidora Norte (2020-presente)\n- Gestión de cartera de clientes y prospección de nuevos mercados\n- Cumplimiento de metas trimestrales, cierre de ventas corporativas\n- Negociación comercial con cuentas clave\nHABILIDADES\nVentas, negociación, atención al cliente`,
+  },
+
   // ── License-driven thin resumes (new grads / trades) ────────────────────
   {
     name: "new-grad nurse with NCLEX and no work history",

@@ -40,7 +40,7 @@ import { InteractiveChecklist } from "./InteractiveChecklist";
 import { AISummary } from "./AISummary";
 import { ShareableScoreCard } from "./ShareableScoreCard";
 import { ResumeXRay } from "./ResumeXRay";
-import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard, FreelanceGuidanceCard } from "./ReportInsightCards";
+import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard, FreelanceGuidanceCard, IndustryChecksCard } from "./ReportInsightCards";
 import { EmailReportCapture } from "./EmailReportCapture";
 import { CardErrorBoundary } from "./CardErrorBoundary";
 import { getAvailableIndustries } from "./IndustryConfidenceIndicator";
@@ -807,6 +807,7 @@ export interface FreeKeywordResultsProps {
   } | null;
   /** Present when benchmarks come from our real scan corpus, not estimates */
   realBenchmark?: { n: number; median: number; p25: number; p75: number; industry: string } | null;
+  industrySpecificChecks?: { industry: string; items: Array<{ label: string; present: boolean; note: string }> } | null;
 }
 
 export function FreeKeywordResults({
@@ -922,6 +923,7 @@ export function FreeKeywordResults({
   industryTransition,
   freelanceGuidance,
   realBenchmark,
+  industrySpecificChecks,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1768,6 +1770,13 @@ export function FreeKeywordResults({
       {resumeText && (
         <div className="mb-4">
           <ATSParseSimulator resumeText={resumeText} multiColumnDetected={multiColumnDetected} />
+        </div>
+      )}
+
+      {/* Field-specific screener checks (portfolio, clearance, license, publications) */}
+      {industrySpecificChecks && (
+        <div className="mb-4">
+          <IndustryChecksCard checks={industrySpecificChecks} />
         </div>
       )}
 

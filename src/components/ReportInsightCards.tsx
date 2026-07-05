@@ -249,6 +249,36 @@ export function CareerBridgeCard({
   );
 }
 
+// ---------- Industry-specific checks ----------
+
+export function IndustryChecksCard({
+  checks,
+}: {
+  checks: { industry: string; items: Array<{ label: string; present: boolean; note: string }> };
+}) {
+  if (!checks?.items?.length) return null;
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+      <h3 className="font-semibold text-foreground mb-1">
+        What {checks.industry.replace(/_/g, ' ')} screeners look for
+      </h3>
+      <p className="text-xs text-muted-foreground mb-4">
+        Field-specific checks beyond keywords — these are pass/fail signals in your industry.
+      </p>
+      <div className="space-y-2.5">
+        {checks.items.map((item) => (
+          <div key={item.label} className={`rounded-xl border p-3 ${item.present ? 'border-border bg-background/40' : 'border-warning/30 bg-warning/5'}`}>
+            <p className="text-xs font-semibold text-foreground mb-0.5">
+              {item.present ? '✅' : '⚠️'} {item.label}
+            </p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">{item.note}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ---------- Freelance / project-career guidance ----------
 
 export function FreelanceGuidanceCard({

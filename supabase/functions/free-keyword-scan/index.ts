@@ -3976,6 +3976,75 @@ ${resumeText.substring(0, 20000)}
     // Executive scope check — senior/executive resumes only
     responseData.executiveScopeCheck = executiveScopeCheck;
 
+    // Industry-specific checks: what screeners in THIS field look for beyond
+    // keywords. Rule-based and deterministic — a designer's report should not
+    // read like a nurse's.
+    responseData.industrySpecificChecks = (() => {
+      const text = resumeText.toLowerCase();
+      const items: Array<{ label: string; present: boolean; note: string }> = [];
+      const has = (re: RegExp) => re.test(text);
+
+      const PORTFOLIO_FIELDS = ['creative', 'media', 'gaming', 'entertainment', 'architecture'];
+      const CODE_FIELDS = ['technology', 'data_science', 'data_engineering', 'machine_learning', 'cybersecurity'];
+      const RESEARCH_FIELDS = ['academia', 'biotech'];
+      const CLEARANCE_FIELDS = ['government', 'aviation', 'cybersecurity'];
+      const LICENSE_FIELDS = ['healthcare', 'legal', 'skilled_trades', 'finance', 'pharmacy', 'dental', 'real_estate', 'insurance', 'social_work', 'veterinary', 'law_enforcement'];
+
+      if (PORTFOLIO_FIELDS.includes(finalIndustry)) {
+        const present = has(/\b(portfolio|behance|dribbble|artstation|vimeo|showreel|reel)\b/);
+        items.push({
+          label: 'Portfolio link',
+          present,
+          note: present
+            ? "Portfolio found — make sure it's in the header, not buried at the end."
+            : 'Creative screeners look for a portfolio link before reading a single bullet. Add one to your header.',
+        });
+      }
+      if (CODE_FIELDS.includes(finalIndustry)) {
+        const present = has(/\b(github|gitlab|bitbucket)\b/);
+        items.push({
+          label: 'Code / project link',
+          present,
+          note: present
+            ? 'Code link found — pin your strongest repos so it holds up to a click.'
+            : 'A GitHub (or similar) link is expected in this field — even a few solid repos beats none.',
+        });
+      }
+      if (RESEARCH_FIELDS.includes(finalIndustry)) {
+        const present = has(/\b(publications?|doi|journal|peer.?reviewed|citations?|first author)\b/);
+        items.push({
+          label: 'Publications section',
+          present,
+          note: present
+            ? 'Publications found — list venues or citation counts for your strongest work.'
+            : 'Research screeners look for a publications section. Include papers, posters, or preprints — with venues.',
+        });
+      }
+      if (CLEARANCE_FIELDS.includes(finalIndustry)) {
+        const present = has(/\b(security clearance|top secret|ts\/sci|secret clearance|public trust)\b/);
+        items.push({
+          label: 'Security clearance',
+          present,
+          note: present
+            ? "Clearance stated — keep it in the header; it's often the first filter."
+            : 'If you hold or held a clearance, state it explicitly — many roles filter on it before anything else.',
+        });
+      }
+      if (LICENSE_FIELDS.includes(finalIndustry)) {
+        const early = resumeText.slice(0, 1200).toLowerCase();
+        const present = /\b(licensed?|licensure|certified|registered|board.?certified|rn|cpa|bar admission)\b/.test(early);
+        items.push({
+          label: 'License / credential visibility',
+          present,
+          note: present
+            ? 'Credential visible near the top — exactly where screeners check first.'
+            : 'In licensed fields the credential must be visible in the top third of page one — next to your name, not on page two.',
+        });
+      }
+
+      return items.length > 0 ? { industry: finalIndustry, items } : null;
+    })();
+
     // Questions this resume will trigger + the recruiter panel verdicts
     responseData.resumeTriggeredQuestions = (analysis.resumeTriggeredQuestions || []).slice(0, 3);
     responseData.recruiterPanel = analysis.recruiterPanel ?? null;
