@@ -144,6 +144,11 @@ export function ResumeRoast({ resumeText, industry, currentRole }: ResumeRoastPr
                   <span className="text-xs font-semibold text-foreground">{roast.target}</span>
                   <span className="text-[10px]">{config.emoji}</span>
                 </div>
+                {(roast as { quote?: string }).quote && (
+                  <p className="text-[11px] text-muted-foreground mb-1.5 pl-2 border-l-2 border-destructive/40 font-mono">
+                    "{(roast as { quote?: string }).quote}"
+                  </p>
+                )}
                 <p className="text-xs text-foreground/90 italic mb-2">"{roast.roast}"</p>
                 <div className="flex items-start gap-1.5 pt-2 border-t border-border/30">
                   <AlertTriangle className="w-3 h-3 text-muted-foreground shrink-0 mt-0.5" />
