@@ -100,7 +100,9 @@ export async function exportResumeBuilderPDF(resume: BuilderResume): Promise<voi
   if (resume.experience.length > 0) {
     addSectionHeading("Experience");
     for (const entry of resume.experience) {
-      ensureSpace(6);
+      // Keep-together: never orphan a job title at the bottom of a page —
+      // require room for title + company + first bullet before starting.
+      ensureSpace(16);
       pdf.setFontSize(10.5);
       pdf.setFont("helvetica", "bold");
       pdf.text(entry.title || "Role", margin, y);
@@ -120,15 +122,19 @@ export async function exportResumeBuilderPDF(resume: BuilderResume): Promise<voi
       }
 
       pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9.5);
       for (const bullet of entry.bullets) {
         if (!bullet.trim()) continue;
-        const bulletLines = pdf.splitTextToSize(`•  ${bullet}`, contentWidth - 3);
-        for (const line of bulletLines) {
+        // Hanging indent: wrapped lines align under the bullet's text, not
+        // under the bullet glyph.
+        const bulletIndent = 4;
+        const bulletLines = pdf.splitTextToSize(bullet, contentWidth - bulletIndent);
+        bulletLines.forEach((line: string, i: number) => {
           ensureSpace(5);
-          pdf.setFontSize(9.5);
-          pdf.text(line, margin + 1, y);
+          if (i === 0) pdf.text("•", margin + 1, y);
+          pdf.text(line, margin + 1 + bulletIndent, y);
           y += 4.6;
-        }
+        });
       }
       y += 2;
     }
@@ -176,58 +182,74 @@ export async function exportResumeBuilderPDF(resume: BuilderResume): Promise<voi
   pdf.save(fileName);
 }
 
-export async function exportResumeBuilderDocx(resume: BuilderResume): Promise<void> {
-  const { Document, Packer, Paragraph, TextRun, HeadingLevel } = await import("docx");
+export async function buildResumeDocxDocument(resume: BuilderResume) {
+  const { Document, Paragraph, TextRun, BorderStyle, TabStopType } = await import("docx");
+
+  // Typography constants (docx sizes are half-points). One consistent scale —
+  // the output should read like a professionally typeset resume, not a Word
+  // default theme: black headings with a hairline rule (never Word's blue
+  // built-in heading styles), right-aligned dates at the true right margin.
+  const NAME_SIZE = 32;      // 16pt
+  const TITLE_SIZE = 22;     // 11pt
+  const HEADING_SIZE = 21;   // 10.5pt
+  const BODY_SIZE = 21;      // 10.5pt
+  const META_SIZE = 18;      // 9pt
+  const FONT = "Calibri";
+  // Right tab at the right margin: 8.5" page - 2x1" margins = 6.5" = 9360 twips
+  const RIGHT_TAB = 9360;
+
+  const run = (text: string, opts: { bold?: boolean; italics?: boolean; size?: number; color?: string } = {}) =>
+    new TextRun({ text, font: FONT, size: opts.size ?? BODY_SIZE, bold: opts.bold, italics: opts.italics, color: opts.color });
 
   const children: InstanceType<typeof Paragraph>[] = [];
 
-  children.push(
-    new Paragraph({
-      children: [new TextRun({ text: resume.contact.fullName || "Your Name", bold: true, size: 32 })],
-    })
-  );
+  children.push(new Paragraph({ children: [run(resume.contact.fullName || "Your Name", { bold: true, size: NAME_SIZE })], spacing: { after: 40 } }));
 
   if (resume.contact.title) {
-    children.push(new Paragraph({ children: [new TextRun({ text: resume.contact.title, size: 22 })] }));
+    children.push(new Paragraph({ children: [run(resume.contact.title, { size: TITLE_SIZE, color: "444444" })], spacing: { after: 40 } }));
   }
 
   const contactLine = [resume.contact.email, resume.contact.phone, resume.contact.location, resume.contact.linkedIn, resume.contact.website]
     .filter(Boolean)
     .join("  •  ");
   if (contactLine) {
-    children.push(new Paragraph({ children: [new TextRun({ text: contactLine, size: 18, color: "595959" })] }));
+    children.push(new Paragraph({ children: [run(contactLine, { size: META_SIZE, color: "595959" })], spacing: { after: 120 } }));
   }
 
   const addHeading = (text: string) => {
-    children.push(new Paragraph({ text: "" }));
-    children.push(new Paragraph({ text: text.toUpperCase(), heading: HeadingLevel.HEADING_2 }));
+    children.push(new Paragraph({
+      children: [run(text.toUpperCase(), { bold: true, size: HEADING_SIZE })],
+      spacing: { before: 240, after: 100 },
+      border: { bottom: { color: "999999", style: BorderStyle.SINGLE, size: 4, space: 2 } },
+    }));
   };
+
+  const entryHeader = (left: string, dateRange: string) =>
+    new Paragraph({
+      children: [
+        run(left, { bold: true, size: TITLE_SIZE }),
+        ...(dateRange ? [new TextRun({ text: "\t", font: FONT }), run(dateRange, { size: META_SIZE, color: "595959" })] : []),
+      ],
+      tabStops: [{ type: TabStopType.RIGHT, position: RIGHT_TAB }],
+      spacing: { before: 120, after: 20 },
+    });
 
   if (resume.summary) {
     addHeading("Summary");
-    children.push(new Paragraph({ children: [new TextRun({ text: resume.summary, size: 21 })] }));
+    children.push(new Paragraph({ children: [run(resume.summary)], spacing: { after: 60 } }));
   }
 
   if (resume.experience.length > 0) {
     addHeading("Experience");
     for (const entry of resume.experience) {
-      const dateRange = formatDateRange(entry.startDate, entry.endDate);
-      children.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: entry.title || "Role", bold: true, size: 22 }),
-            ...(dateRange ? [new TextRun({ text: `\t${dateRange}`, size: 18, color: "595959" })] : []),
-          ],
-          tabStops: [{ type: "right" as const, position: 9000 }],
-        })
-      );
+      children.push(entryHeader(entry.title || "Role", formatDateRange(entry.startDate, entry.endDate)));
       const companyLine = [entry.company, entry.location].filter(Boolean).join(" — ");
       if (companyLine) {
-        children.push(new Paragraph({ children: [new TextRun({ text: companyLine, italics: true, size: 21 })] }));
+        children.push(new Paragraph({ children: [run(companyLine, { italics: true, size: META_SIZE + 2 })], spacing: { after: 40 } }));
       }
       for (const bullet of entry.bullets) {
         if (!bullet.trim()) continue;
-        children.push(new Paragraph({ text: bullet, bullet: { level: 0 } }));
+        children.push(new Paragraph({ children: [run(bullet)], bullet: { level: 0 }, spacing: { after: 30 } }));
       }
     }
   }
@@ -236,39 +258,35 @@ export async function exportResumeBuilderDocx(resume: BuilderResume): Promise<vo
     addHeading("Education");
     for (const entry of resume.education) {
       const degreeLine = [entry.degree, entry.field].filter(Boolean).join(", ");
-      const dateRange = formatDateRange(entry.startDate, entry.endDate);
-      children.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: degreeLine || entry.school, bold: true, size: 22 }),
-            ...(dateRange ? [new TextRun({ text: `\t${dateRange}`, size: 18, color: "595959" })] : []),
-          ],
-          tabStops: [{ type: "right" as const, position: 9000 }],
-        })
-      );
+      children.push(entryHeader(degreeLine || entry.school, formatDateRange(entry.startDate, entry.endDate)));
       if (degreeLine && entry.school) {
-        children.push(new Paragraph({ children: [new TextRun({ text: entry.school, italics: true, size: 21 })] }));
+        children.push(new Paragraph({ children: [run(entry.school, { italics: true, size: META_SIZE + 2 })], spacing: { after: 40 } }));
       }
       if (entry.details) {
-        children.push(new Paragraph({ children: [new TextRun({ text: entry.details, size: 20 })] }));
+        children.push(new Paragraph({ children: [run(entry.details, { size: META_SIZE + 2 })], spacing: { after: 40 } }));
       }
     }
   }
 
   if (resume.skills.length > 0) {
     addHeading("Skills");
-    children.push(new Paragraph({ children: [new TextRun({ text: resume.skills.join("  •  "), size: 20 })] }));
+    children.push(new Paragraph({ children: [run(resume.skills.join("  •  "))], spacing: { after: 60 } }));
   }
 
   if (resume.certifications.length > 0) {
     addHeading("Certifications");
-    children.push(new Paragraph({ children: [new TextRun({ text: resume.certifications.join("  •  "), size: 20 })] }));
+    children.push(new Paragraph({ children: [run(resume.certifications.join("  •  "))], spacing: { after: 60 } }));
   }
 
-  const doc = new Document({
+  return new Document({
+    styles: { default: { document: { run: { font: FONT, size: BODY_SIZE } } } },
     sections: [{ properties: {}, children }],
   });
+}
 
+export async function exportResumeBuilderDocx(resume: BuilderResume): Promise<void> {
+  const { Packer } = await import("docx");
+  const doc = await buildResumeDocxDocument(resume);
   const blob = await Packer.toBlob(doc);
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
