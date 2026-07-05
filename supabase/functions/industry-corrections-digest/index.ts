@@ -28,7 +28,7 @@ serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
-    const { data: stats, error } = await supabase.rpc("get_industry_correction_stats", { p_days: 7 });
+    const { data: stats, error } = await supabase.rpc("get_industry_correction_stats", { p_days_back: 7 });
     if (error) throw error;
 
     if (!stats || stats.length === 0) {
