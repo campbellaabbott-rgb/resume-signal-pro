@@ -2766,6 +2766,10 @@
     }
   },
   "changelogEntries": {
+    "scanOutageFix": {
+      "title": "Corrigido: uma breve interrupção do escaneamento — e a brecha que a permitiu",
+      "description": "Por um curto período hoje, escaneamentos gratuitos retornavam erro devido a um defeito em uma nova versão. Está corrigido, e adicionamos uma verificação automática mais profunda ao nosso processo de lançamento que captura toda essa classe de bug antes de publicar — e, no processo, encontramos e corrigimos uma falha antiga no nosso detector de texto corrompido. Transparência é o produto; isso inclui nossos erros."
+    },
     "freelanceBoostLaunch": {
       "title": "Novo produto: Freelance Boost",
       "description": "Transforme projetos freelance, trabalhos de gig e side hustles em experiência de currículo de nível recrutador. Formulário guiado (sem currículo), seus projetos traduzidos para a linguagem da área-alvo, a estrutura certa para sua situação, tratamento honesto de lacunas e cobertura de palavras-chave contra a vaga-alvo. Importe seu perfil do Upwork/Fiverr ou o PDF do LinkedIn para preencher automaticamente. US$ 29, pagamento único."

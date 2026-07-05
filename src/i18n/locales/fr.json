@@ -2766,6 +2766,10 @@
     }
   },
   "changelogEntries": {
+    "scanOutageFix": {
+      "title": "Corrigé : une brève panne du scanner — et la faille qui l'a permise",
+      "description": "Pendant une courte période aujourd'hui, les scans gratuits renvoyaient une erreur due à un défaut d'une nouvelle version. C'est corrigé, et nous avons ajouté à notre processus de publication une vérification automatique plus profonde qui intercepte toute cette classe de bugs avant la mise en ligne — et au passage, nous avons trouvé et corrigé un défaut ancien de notre détecteur de texte corrompu. La transparence est le produit ; cela inclut nos erreurs."
+    },
     "freelanceBoostLaunch": {
       "title": "Nouveau produit : Freelance Boost",
       "description": "Transformez projets freelance, missions et side projects en expérience de CV de niveau recruteur. Questionnaire guidé (sans CV), vos projets traduits dans le langage du domaine visé, la bonne structure pour votre situation, une gestion honnête des trous et la couverture des mots-clés de votre offre cible. Importez votre profil Upwork/Fiverr ou le PDF LinkedIn pour préremplir. 29 $, paiement unique."

@@ -2766,6 +2766,10 @@
     }
   },
   "changelogEntries": {
+    "scanOutageFix": {
+      "title": "Opgelost: een korte scanstoring — en het gat dat die mogelijk maakte",
+      "description": "Gedurende een kort venster vandaag gaven gratis scans een fout door een defect in een nieuwe release. Het is opgelost, en we hebben een diepere automatische controle aan ons releaseproces toegevoegd die deze hele klasse bugs onderschept vóór publicatie — en onderweg vonden en repareerden we ook een oude fout in onze detector voor verminkte tekst. Transparantie is het product; ook over onze fouten."
+    },
     "freelanceBoostLaunch": {
       "title": "Nieuw product: Freelance Boost",
       "description": "Zet freelanceprojecten, gigwerk en side hustles om in cv-ervaring op recruiterniveau. Begeleide intake (geen cv nodig), je projecten vertaald naar de taal van je doelveld, de juiste structuur voor jouw situatie, eerlijke gap-afhandeling en keyworddekking tegen je doelvacature. Importeer je Upwork/Fiverr-profieltekst of LinkedIn-PDF om het formulier voor te vullen. $29, eenmalig."

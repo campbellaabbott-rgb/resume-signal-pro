@@ -2766,6 +2766,10 @@
     }
   },
   "changelogEntries": {
+    "scanOutageFix": {
+      "title": "Naayos: maikling pagkawala ng scan — at ang butas na nagpahintulot nito",
+      "description": "Sa maikling panahon ngayong araw, nagbabalik ng error ang mga libreng scan dahil sa depekto ng bagong release. Naayos na ito, at nagdagdag kami ng mas malalim na awtomatikong pagsusuri sa aming release process na sumasalo sa buong klaseng ito ng bug bago mai-publish — at sa proseso, natagpuan at naayos din namin ang matagal nang depekto sa aming garbled-text detector. Ang transparency ang produkto; kasama diyan ang aming mga pagkakamali."
+    },
     "freelanceBoostLaunch": {
       "title": "Bagong produkto: Freelance Boost",
       "description": "Gawing recruiter-grade na karanasan sa resume ang mga freelance project, gig work, at side hustle. Guided na intake (hindi kailangan ng resume), mga proyektong isinalin sa wika ng target na larangan, tamang istruktura para sa sitwasyon mo, tapat na gap handling, at keyword coverage laban sa target na posting. I-import ang Upwork/Fiverr profile text o LinkedIn PDF para paunang punan ang form. $29, isang beses."

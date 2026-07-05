@@ -2766,6 +2766,10 @@
     }
   },
   "changelogEntries": {
+    "scanOutageFix": {
+      "title": "Fixed: a brief scan outage — and the gap that allowed it",
+      "description": "For a short window today, free scans returned an error due to a defect in a new release. It's fixed, and we've added a deeper automated check to our release process that catches this entire class of bug before it ships — plus, in the process, we found and fixed a long-standing flaw in our garbled-text detector. Transparency is the product; that includes our mistakes."
+    },
     "freelanceBoostLaunch": {
       "title": "New product: Freelance Boost",
       "description": "Turn freelance projects, gig work, and side hustles into recruiter-grade resume experience. A guided intake (no resume needed), your projects translated into the target field's language, the right structure chosen for your situation, honest gap handling, and keyword coverage against your target posting. Import your Upwork/Fiverr profile text or LinkedIn PDF to pre-fill the form. $29, one-time."

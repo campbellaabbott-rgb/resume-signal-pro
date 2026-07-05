@@ -2766,6 +2766,10 @@
     }
   },
   "changelogEntries": {
+    "scanOutageFix": {
+      "title": "Behoben: ein kurzer Scan-Ausfall — und die Lücke, die ihn ermöglichte",
+      "description": "Heute lieferten Gratis-Scans für ein kurzes Zeitfenster einen Fehler, verursacht durch einen Defekt in einem neuen Release. Er ist behoben, und unser Release-Prozess hat jetzt eine tiefere automatische Prüfung, die diese ganze Fehlerklasse vor der Veröffentlichung abfängt — dabei fanden und behoben wir zudem einen alten Fehler in unserem Erkennungssystem für beschädigten Text. Transparenz ist das Produkt; das schließt unsere Fehler ein."
+    },
     "freelanceBoostLaunch": {
       "title": "Neues Produkt: Freelance Boost",
       "description": "Verwandle Freelance-Projekte, Gig-Arbeit und Side Hustles in Lebenslauf-Erfahrung auf Recruiter-Niveau. Geführte Eingabe (kein Lebenslauf nötig), deine Projekte in die Sprache des Zielfelds übersetzt, die richtige Struktur für deine Situation, ehrliche Lückenbehandlung und Keyword-Abdeckung gegen deine Zielanzeige. Importiere dein Upwork/Fiverr-Profil oder das LinkedIn-PDF zum Vorbefüllen. 29 $, einmalig."
