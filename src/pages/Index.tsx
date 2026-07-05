@@ -44,6 +44,7 @@ import { HowItWorks } from "@/components/HowItWorks";
 import { MiniPricingCards } from "@/components/MiniPricingCards";
 import { TrustIndicators } from "@/components/TrustIndicators";
 import { WhatYouGetSection } from "@/components/WhatYouGetSection";
+import { WhyNotChatGPT } from "@/components/WhyNotChatGPT";
 
 const ScoreBasedPackageRecommendation = lazy(() =>
   import("@/components/ScoreBasedPackageRecommendation").then((m) => ({ default: m.ScoreBasedPackageRecommendation }))
@@ -1851,9 +1852,12 @@ const Index = () => {
         )}
 
         <AnalysisPreview />
-        
+
         <ComparisonTable />
-        
+
+        {/* The question skeptics actually ask — answered honestly */}
+        <WhyNotChatGPT />
+
         <SocialProof />
         
         <FAQ />
