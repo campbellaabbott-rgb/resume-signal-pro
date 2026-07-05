@@ -2766,6 +2766,30 @@
     }
   },
   "changelogEntries": {
+    "fasterScans": {
+      "title": "Faster scans — and instant rescans",
+      "description": "Two engine upgrades: repeat scans of the same resume now return in about a second, and the analysis pipeline was rebuilt to run its AI passes in parallel on a faster model, cutting fresh-scan wait times substantially."
+    },
+    "freelanceGuidance": {
+      "title": "Freelancers get their own playbook",
+      "description": "The scan now detects freelance and project-based careers (or tell it with the new Freelancing chip) and shows how to position client work as one coherent track — your actual projects turned into experience bullets, plus advice for moving into employment."
+    },
+    "spanishDetection": {
+      "title": "Full Spanish resume support",
+      "description": "Industry detection now reads fully Spanish resumes natively — around 200 Spanish job titles and industry terms across 15 fields (enfermería, contabilidad, ventas, obra civil and more), not just translated headings."
+    },
+    "industryScreenerChecks": {
+      "title": "What screeners in YOUR field look for",
+      "description": "New field-specific checks: portfolio links for creative roles, GitHub for engineers, publications for researchers, security clearance for government work, and license visibility for healthcare, legal, trades and 8 more licensed fields — each with exactly what to fix."
+    },
+    "realBenchmarks": {
+      "title": "Benchmarks from real scans",
+      "description": "As each industry accumulates enough scans on our platform, your score comparison switches from estimates to the actual distribution of real resumes scanned here — and the report tells you when that's the case."
+    },
+    "builderExports": {
+      "title": "Resume Builder exports, professionally typeset",
+      "description": "DOCX exports now use clean black section headings with hairline rules (no more default Word styling), dates aligned to the true right margin, and a consistent type scale. PDF exports fixed page-break orphans and bullet indentation."
+    },
     "proSubscription": {
       "title": "Resume Booster Pro — every tool, one subscription",
       "description": "New $45/month all-access plan: every paid tool included (Full Analysis, Keyword Fix, Cover Letters, Interview Coach, and more), unlimited daily scans, and every new tool we launch — included automatically. Cancel anytime."

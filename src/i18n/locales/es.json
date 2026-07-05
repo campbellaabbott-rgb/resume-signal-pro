@@ -2766,6 +2766,30 @@
     }
   },
   "changelogEntries": {
+    "fasterScans": {
+      "title": "Escaneos más rápidos y reescaneos instantáneos",
+      "description": "Dos mejoras del motor: repetir el escaneo del mismo currículum ahora responde en un segundo, y el análisis se rediseñó para ejecutar sus pasadas de IA en paralelo con un modelo más rápido, reduciendo bastante la espera."
+    },
+    "freelanceGuidance": {
+      "title": "Los freelancers tienen su propia guía",
+      "description": "El escaneo ahora detecta carreras freelance y por proyectos (o indícalo con el nuevo chip de Freelance) y muestra cómo presentar el trabajo con clientes como una trayectoria coherente — tus proyectos reales convertidos en viñetas de experiencia."
+    },
+    "spanishDetection": {
+      "title": "Soporte completo para currículums en español",
+      "description": "La detección de industria ahora lee currículums totalmente en español de forma nativa: unos 200 títulos y términos en español en 15 sectores (enfermería, contabilidad, ventas, obra civil y más)."
+    },
+    "industryScreenerChecks": {
+      "title": "Lo que buscan los reclutadores de TU sector",
+      "description": "Nuevas verificaciones por sector: portafolio para roles creativos, GitHub para ingeniería, publicaciones para investigación, credencial de seguridad para gobierno y visibilidad de licencias en salud, derecho, oficios y 8 campos más."
+    },
+    "realBenchmarks": {
+      "title": "Comparativas con escaneos reales",
+      "description": "A medida que cada industria acumula suficientes escaneos en nuestra plataforma, tu comparación de puntuación pasa de estimaciones a la distribución real de currículums escaneados aquí — y el informe te lo indica."
+    },
+    "builderExports": {
+      "title": "Exportaciones del Creador de Currículums con tipografía profesional",
+      "description": "Las exportaciones DOCX ahora usan encabezados negros limpios con línea fina (adiós al estilo azul de Word), fechas alineadas al margen derecho real y una escala tipográfica uniforme. El PDF corrige saltos de página y sangrías."
+    },
     "proSubscription": {
       "title": "Resume Booster Pro: todas las herramientas, una suscripción",
       "description": "Nuevo plan de acceso total por $45/mes: todas las herramientas de pago incluidas (Análisis Completo, Corrección de Palabras Clave, Cartas de Presentación, Entrenador de Entrevistas y más), escaneos diarios ilimitados y cada nueva herramienta que lancemos, incluida automáticamente. Cancela cuando quieras."

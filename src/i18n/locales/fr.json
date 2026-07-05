@@ -2766,6 +2766,30 @@
     }
   },
   "changelogEntries": {
+    "fasterScans": {
+      "title": "Des scans plus rapides — et des rescans instantanés",
+      "description": "Deux améliorations du moteur : rescanner le même CV répond désormais en une seconde environ, et l'analyse exécute ses passes d'IA en parallèle sur un modèle plus rapide — attente nettement réduite."
+    },
+    "freelanceGuidance": {
+      "title": "Les freelances ont leur propre guide",
+      "description": "Le scan détecte désormais les carrières freelance et par projets (ou indiquez-le avec la nouvelle puce Freelance) et montre comment présenter le travail client comme un parcours cohérent — vos vrais projets transformés en puces d'expérience."
+    },
+    "spanishDetection": {
+      "title": "Prise en charge complète des CV en espagnol",
+      "description": "La détection de secteur lit désormais nativement les CV entièrement en espagnol — environ 200 intitulés et termes espagnols dans 15 secteurs."
+    },
+    "industryScreenerChecks": {
+      "title": "Ce que recherchent les recruteurs de VOTRE secteur",
+      "description": "Nouvelles vérifications par domaine : portfolio pour les créatifs, GitHub pour les ingénieurs, publications pour les chercheurs, habilitation de sécurité pour le public et visibilité des licences dans 11 domaines réglementés."
+    },
+    "realBenchmarks": {
+      "title": "Des références issues de vrais scans",
+      "description": "Dès qu'un secteur accumule assez de scans sur notre plateforme, votre comparaison de score passe des estimations à la distribution réelle des CV scannés ici — et le rapport vous le précise."
+    },
+    "builderExports": {
+      "title": "Exports du Créateur de CV, typographie professionnelle",
+      "description": "Les exports DOCX utilisent désormais des titres noirs épurés avec filet fin (fini le style Word par défaut), des dates alignées sur la vraie marge droite et une échelle typographique cohérente. Le PDF corrige les veuves et les retraits."
+    },
     "proSubscription": {
       "title": "Resume Booster Pro — tous les outils, un seul abonnement",
       "description": "Nouveau forfait tout accès à 45 $/mois : tous les outils payants inclus (Analyse Complète, Correction de Mots-Clés, Lettres de Motivation, Coach d'Entretien et plus), scans quotidiens illimités et chaque nouvel outil inclus automatiquement. Résiliable à tout moment."

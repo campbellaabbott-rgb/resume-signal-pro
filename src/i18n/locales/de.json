@@ -2766,6 +2766,30 @@
     }
   },
   "changelogEntries": {
+    "fasterScans": {
+      "title": "Schnellere Scans — und sofortige Rescans",
+      "description": "Zwei Engine-Upgrades: Wiederholte Scans desselben Lebenslaufs antworten jetzt in etwa einer Sekunde, und die Analyse führt ihre KI-Durchläufe parallel auf einem schnelleren Modell aus — deutlich kürzere Wartezeiten."
+    },
+    "freelanceGuidance": {
+      "title": "Freelancer bekommen ihr eigenes Playbook",
+      "description": "Der Scan erkennt jetzt Freelance- und Projektkarrieren (oder wähle den neuen Freelancing-Chip) und zeigt, wie du Kundenarbeit als kohärente Laufbahn präsentierst — deine echten Projekte als Erfahrungs-Bulletpoints."
+    },
+    "spanishDetection": {
+      "title": "Volle Unterstützung für spanische Lebensläufe",
+      "description": "Die Branchenerkennung liest jetzt vollständig spanische Lebensläufe nativ — rund 200 spanische Jobtitel und Fachbegriffe in 15 Branchen."
+    },
+    "industryScreenerChecks": {
+      "title": "Worauf Screener in DEINEM Feld achten",
+      "description": "Neue branchenspezifische Checks: Portfolio für Kreative, GitHub für Entwickler, Publikationen für Forschende, Sicherheitsfreigabe für Behörden und Lizenz-Sichtbarkeit für Gesundheit, Recht, Handwerk und 8 weitere Felder."
+    },
+    "realBenchmarks": {
+      "title": "Benchmarks aus echten Scans",
+      "description": "Sobald eine Branche genug Scans auf unserer Plattform gesammelt hat, vergleicht dein Report gegen die tatsächliche Verteilung echter Lebensläufe — und sagt dir, wenn das der Fall ist."
+    },
+    "builderExports": {
+      "title": "Resume-Builder-Exporte, professionell gesetzt",
+      "description": "DOCX-Exporte nutzen jetzt klare schwarze Überschriften mit Haarlinie (kein Word-Standardblau mehr), Datumsangaben am echten rechten Rand und eine konsistente Typografie. PDF-Exporte beheben Seitenumbruch- und Einzugsfehler."
+    },
     "proSubscription": {
       "title": "Resume Booster Pro — alle Tools, ein Abo",
       "description": "Neuer All-Access-Plan für 45 $/Monat: alle kostenpflichtigen Tools inklusive (Komplettanalyse, Keyword-Fix, Anschreiben, Interview-Coach und mehr), unbegrenzte tägliche Scans und jedes neue Tool automatisch enthalten. Jederzeit kündbar."

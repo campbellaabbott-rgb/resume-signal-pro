@@ -2766,6 +2766,30 @@
     }
   },
   "changelogEntries": {
+    "fasterScans": {
+      "title": "Escaneamentos mais rápidos — e reescaneamentos instantâneos",
+      "description": "Duas melhorias no motor: repetir o escaneamento do mesmo currículo agora responde em cerca de um segundo, e a análise executa suas passagens de IA em paralelo num modelo mais rápido — espera bem menor."
+    },
+    "freelanceGuidance": {
+      "title": "Freelancers ganham seu próprio manual",
+      "description": "O escaneamento agora detecta carreiras freelance e por projetos (ou indique com o novo chip Freelance) e mostra como apresentar o trabalho com clientes como uma trajetória coerente — seus projetos reais viram bullets de experiência."
+    },
+    "spanishDetection": {
+      "title": "Suporte completo a currículos em espanhol",
+      "description": "A detecção de setor agora lê currículos totalmente em espanhol de forma nativa — cerca de 200 cargos e termos em espanhol em 15 setores."
+    },
+    "industryScreenerChecks": {
+      "title": "O que os recrutadores do SEU setor procuram",
+      "description": "Novas verificações por área: portfólio para criativos, GitHub para engenheiros, publicações para pesquisadores, credencial de segurança para governo e visibilidade de licenças em 11 áreas regulamentadas."
+    },
+    "realBenchmarks": {
+      "title": "Comparativos de escaneamentos reais",
+      "description": "Conforme cada setor acumula escaneamentos suficientes na plataforma, sua comparação de pontuação passa de estimativas para a distribuição real de currículos escaneados aqui — e o relatório avisa quando isso acontece."
+    },
+    "builderExports": {
+      "title": "Exportações do Criador de Currículos com tipografia profissional",
+      "description": "As exportações DOCX agora usam títulos pretos limpos com fio fino (chega do estilo padrão do Word), datas alinhadas à margem direita real e escala tipográfica consistente. O PDF corrige quebras de página e recuos."
+    },
     "proSubscription": {
       "title": "Resume Booster Pro — todas as ferramentas, uma assinatura",
       "description": "Novo plano de acesso total por US$ 45/mês: todas as ferramentas pagas incluídas (Análise Completa, Correção de Palavras-Chave, Cartas de Apresentação, Coach de Entrevista e mais), escaneamentos diários ilimitados e cada nova ferramenta incluída automaticamente. Cancele quando quiser."

@@ -2766,6 +2766,30 @@
     }
   },
   "changelogEntries": {
+    "fasterScans": {
+      "title": "Snellere scans — en directe herscans",
+      "description": "Twee engine-upgrades: hetzelfde cv opnieuw scannen antwoordt nu in ongeveer een seconde, en de analyse draait zijn AI-passes parallel op een sneller model — aanzienlijk kortere wachttijden."
+    },
+    "freelanceGuidance": {
+      "title": "Freelancers krijgen hun eigen draaiboek",
+      "description": "De scan herkent nu freelance- en projectcarrières (of kies de nieuwe Freelance-chip) en toont hoe je klantwerk als één samenhangend traject presenteert — jouw echte projecten als ervaringsbullets."
+    },
+    "spanishDetection": {
+      "title": "Volledige ondersteuning voor Spaanse cv's",
+      "description": "Branchedetectie leest nu volledig Spaanse cv's native — zo'n 200 Spaanse functietitels en vaktermen in 15 branches."
+    },
+    "industryScreenerChecks": {
+      "title": "Waar screeners in JOUW vakgebied op letten",
+      "description": "Nieuwe vakspecifieke checks: portfolio voor creatieven, GitHub voor engineers, publicaties voor onderzoekers, security clearance voor overheid en licentie-zichtbaarheid in 11 gereguleerde velden."
+    },
+    "realBenchmarks": {
+      "title": "Benchmarks uit echte scans",
+      "description": "Zodra een branche genoeg scans op ons platform heeft, vergelijkt je rapport tegen de werkelijke verdeling van echte cv's — en meldt het wanneer dat zo is."
+    },
+    "builderExports": {
+      "title": "Resume Builder-exports, professioneel gezet",
+      "description": "DOCX-exports gebruiken nu strakke zwarte koppen met een dunne lijn (geen standaard Word-stijl meer), datums op de echte rechtermarge en een consistente typografie. PDF-exports verhelpen paginabreuk- en inspringfouten."
+    },
     "proSubscription": {
       "title": "Resume Booster Pro — alle tools, één abonnement",
       "description": "Nieuw all-access plan voor $45/maand: alle betaalde tools inbegrepen (Volledige Analyse, Keyword Fix, Sollicitatiebrieven, Interview Coach en meer), onbeperkt dagelijks scannen en elke nieuwe tool automatisch inbegrepen. Altijd opzegbaar."

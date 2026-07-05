@@ -2766,6 +2766,30 @@
     }
   },
   "changelogEntries": {
+    "fasterScans": {
+      "title": "Mas mabilis na scan — at instant na rescan",
+      "description": "Dalawang upgrade sa engine: ang pag-scan muli ng parehong resume ay sumasagot na sa loob ng isang segundo, at ang pagsusuri ay nagpapatakbo ng mga AI pass nang magkasabay sa mas mabilis na model — kapansin-pansing mas maikling paghihintay."
+    },
+    "freelanceGuidance": {
+      "title": "May sariling gabay ang mga freelancer",
+      "description": "Natutukoy na ngayon ng scan ang freelance at project-based na karera (o sabihin gamit ang bagong Freelancing chip) at ipinapakita kung paano ipresenta ang trabaho sa kliyente bilang isang buong karera — ang totoo mong mga proyekto na ginawang experience bullets."
+    },
+    "spanishDetection": {
+      "title": "Buong suporta sa mga resume sa Espanyol",
+      "description": "Nababasa na ngayon ng industry detection ang buong-Espanyol na resume — humigit-kumulang 200 Spanish na titulo at termino sa 15 industriya."
+    },
+    "industryScreenerChecks": {
+      "title": "Ang hinahanap ng mga screener sa IYONG larangan",
+      "description": "Bagong field-specific na checks: portfolio para sa creative, GitHub para sa engineers, publications para sa researchers, security clearance para sa gobyerno, at visibility ng lisensya sa 11 regulated na larangan."
+    },
+    "realBenchmarks": {
+      "title": "Benchmark mula sa totoong scan",
+      "description": "Kapag sapat na ang naipong scan ng isang industriya sa platform, ang paghahambing ng score mo ay lilipat mula sa tantiya patungo sa aktwal na distribusyon ng totoong resume — at sasabihin ng report kung ganoon na."
+    },
+    "builderExports": {
+      "title": "Resume Builder exports, propesyonal ang pagkaka-typeset",
+      "description": "Ang DOCX exports ay gumagamit na ng malinis na itim na heading na may manipis na linya (wala nang default na asul ng Word), mga petsa sa tunay na kanang margin, at pare-parehong typography. Naayos din ang page-break at indent ng PDF."
+    },
     "proSubscription": {
       "title": "Resume Booster Pro — lahat ng tool, isang subscription",
       "description": "Bagong $45/buwan na all-access plan: kasama ang lahat ng bayad na tool (Full Analysis, Keyword Fix, Cover Letters, Interview Coach, at iba pa), walang limitasyong pang-araw-araw na scan, at bawat bagong tool na ilulunsad namin — awtomatikong kasama. Kanselahin anumang oras."
