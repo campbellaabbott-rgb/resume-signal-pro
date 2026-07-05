@@ -2240,29 +2240,12 @@ ${resumeText.substring(0, 20000)}
       };
     };
 
-    let usedModel = MODEL_FALLBACK_ORDER[0];
-    for (const modelId of MODEL_FALLBACK_ORDER) {
-      usedModel = modelId;
-      console.log(`[FREE-KEYWORD-SCAN] Trying model: ${modelId}`);
-      try {
-        const candidate = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: modelId,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "submit_analysis",
-            description: "Submit resume analysis",
-            parameters: {
+    // === PARALLEL CORE + ENRICHMENT AI CALLS ===
+    // One giant 45-field call took 40-110s because generation time scales with
+    // output size. Two smaller calls run CONCURRENTLY: the core report fields
+    // and the deep-dive enrichment fields. Wall clock = max(core, enrich)
+    // instead of the sum — roughly half the previous latency, same response.
+    const FULL_ANALYSIS_PARAMETERS: { type: string; properties: Record<string, unknown>; required: string[] } = {
               type: "object",
               properties: {
                 detectedLanguage: { 
@@ -2761,62 +2744,114 @@ ${resumeText.substring(0, 20000)}
                 "redFlags", "keywords", "industryBenchmark", "quickWins", "sampleRewrite",
                 "scoreBreakdown", "nextBestAction", "recruiterFirstPassSummary"
               ]
-            }
+            };
+
+    // Deep-dive fields that don't block the main report render. Everything
+    // else (score, keywords, verdict inputs, industry) stays in the core call.
+    const ENRICHMENT_KEYS = [
+      'recruiterPanel', 'resumeTriggeredQuestions', 'weakestBullets',
+      'careerChangeBridge', 'freelanceGuidance', 'additionalRewrites',
+      'personalizedCareerInsights', 'atsCompatibility', 'recruiterFirstPassSummary',
+      'topSkipReasons', 'weakPhrases', 'nextBestAction',
+    ].filter(k => k in FULL_ANALYSIS_PARAMETERS.properties);
+    const CORE_KEYS = Object.keys(FULL_ANALYSIS_PARAMETERS.properties).filter(k => !ENRICHMENT_KEYS.includes(k));
+
+    const buildToolSchema = (keys: string[]) => ({
+      type: 'object',
+      properties: Object.fromEntries(Object.entries(FULL_ANALYSIS_PARAMETERS.properties).filter(([k]) => keys.includes(k))),
+      required: FULL_ANALYSIS_PARAMETERS.required.filter((k) => keys.includes(k)),
+    });
+
+    const runAnalysisCall = async (
+      schema: ReturnType<typeof buildToolSchema>,
+      roleNote: string,
+      label: string,
+    ): Promise<{ analysis: Record<string, unknown> | null; response: Response | null; model: string }> => {
+      let resp: Response | null = null;
+      let model = MODEL_FALLBACK_ORDER[0];
+      for (const modelId of MODEL_FALLBACK_ORDER) {
+        model = modelId;
+        try {
+          const candidate = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: modelId,
+              messages: [
+                { role: "system", content: systemPrompt + roleNote },
+                { role: "user", content: userPrompt }
+              ],
+              tools: [{
+                type: "function",
+                function: { name: "submit_analysis", description: "Submit resume analysis", parameters: schema }
+              }],
+              tool_choice: { type: "function", function: { name: "submit_analysis" } }
+            }),
+          });
+          if (candidate.ok || candidate.status === 400 || candidate.status === 429) {
+            resp = candidate;
+            break;
           }
-        }],
-        tool_choice: { type: "function", function: { name: "submit_analysis" } }
-      }),
-        });
-        if (candidate.ok || candidate.status === 400 || candidate.status === 429) {
-          aiResponse = candidate;
-          break;
+          console.warn(`[FREE-KEYWORD-SCAN] (${label}) Model ${modelId} returned ${candidate.status}, trying next fallback`);
+          resp = candidate;
+        } catch (err) {
+          console.warn(`[FREE-KEYWORD-SCAN] (${label}) Model ${modelId} threw: ${err}, trying next fallback`);
         }
-        console.warn(`[FREE-KEYWORD-SCAN] Model ${modelId} returned ${candidate.status}, trying next fallback`);
-        aiResponse = candidate;
-      } catch (err) {
-        console.warn(`[FREE-KEYWORD-SCAN] Model ${modelId} threw: ${err}, trying next fallback`);
       }
-    }
+      let parsed: Record<string, unknown> | null = null;
+      if (resp?.ok) {
+        try {
+          const aiResult = await resp.json();
+          const toolCalls = aiResult.choices?.[0]?.message?.tool_calls;
+          if (toolCalls && toolCalls.length > 0) {
+            parsed = JSON.parse(toolCalls[0].function.arguments);
+          }
+        } catch (e) {
+          console.error(`[FREE-KEYWORD-SCAN] (${label}) Failed to parse tool call:`, e);
+        }
+      }
+      return { analysis: parsed, response: resp, model };
+    };
+
+    const CORE_NOTE = `\n\n**CALL SCOPE:** This call produces the CORE report fields only — exactly the fields in the provided schema. A parallel call handles the deep-dive fields (recruiter panel, triggered questions, bullet grading); do not attempt to include them.`;
+    const ENRICH_NOTE = `\n\n**CALL SCOPE:** This call produces the DEEP-DIVE fields only — exactly the fields in the provided schema (recruiter panel, triggered questions, weakest bullets, career guidance). A parallel call handles scores and keywords; do not re-score or include fields outside the schema.`;
+
+    const callStart = Date.now();
+    const [coreRes, enrichRes] = await Promise.all([
+      runAnalysisCall(buildToolSchema(CORE_KEYS), CORE_NOTE, 'core'),
+      runAnalysisCall(buildToolSchema(ENRICHMENT_KEYS), ENRICH_NOTE, 'enrich'),
+    ]);
+    console.log(`[FREE-KEYWORD-SCAN] Parallel calls completed in ${Date.now() - callStart}ms (core: ${coreRes.analysis ? 'ok' : 'FAILED'}, enrich: ${enrichRes.analysis ? 'ok' : 'failed — report ships without deep-dive fields'})`);
+
+    let usedModel = coreRes.model;
+    aiResponse = coreRes.response;
 
     let analysis: any = null;
-
-    if (!aiResponse) {
-      console.error("[FREE-KEYWORD-SCAN] All AI models failed — serving rule-based fallback report");
-      analysis = buildRuleBasedFallbackAnalysis();
-    } else if (!aiResponse.ok) {
-      // Log detailed error for debugging
-      let errorBody = '';
-      try {
-        errorBody = await aiResponse.text();
-      } catch (e) {
-        errorBody = 'Could not read error body';
-      }
-      console.error("[FREE-KEYWORD-SCAN] AI Gateway error:", aiResponse.status, "Body:", errorBody);
-
-      if (aiResponse.status === 429) {
-        // Busy is genuinely transient — a user retry in seconds beats a degraded report
-        return new Response(
-          JSON.stringify({ error: "Service busy. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // 400s and 5xxs: serve the rule-based report instead of an error page
-      analysis = buildRuleBasedFallbackAnalysis();
+    if (coreRes.analysis) {
+      // Enrichment failure is non-fatal: the report ships without deep-dive
+      // fields (all optional in the frontend) instead of falling back entirely.
+      analysis = { ...coreRes.analysis, ...(enrichRes.analysis ?? {}) };
     }
 
-    if (!analysis && aiResponse) {
-      const aiResult = await aiResponse.json();
-      console.log("[FREE-KEYWORD-SCAN] AI response received");
-
-      // Extract tool call result
-      const toolCalls = aiResult.choices?.[0]?.message?.tool_calls;
-      if (toolCalls && toolCalls.length > 0) {
-        try {
-          analysis = JSON.parse(toolCalls[0].function.arguments);
-        } catch (e) {
-          console.error("[FREE-KEYWORD-SCAN] Failed to parse tool call:", e);
+    if (!analysis) {
+      if (!aiResponse) {
+        console.error("[FREE-KEYWORD-SCAN] All AI models failed — serving rule-based fallback report");
+        analysis = buildRuleBasedFallbackAnalysis();
+      } else if (!aiResponse.ok) {
+        let errorBody = '';
+        try { errorBody = await aiResponse.text(); } catch (_e) { errorBody = 'Could not read error body'; }
+        console.error("[FREE-KEYWORD-SCAN] AI Gateway error:", aiResponse.status, "Body:", errorBody);
+        if (aiResponse.status === 429) {
+          // Busy is genuinely transient — a user retry in seconds beats a degraded report
+          return new Response(
+            JSON.stringify({ error: "Service busy. Please try again in a moment." }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
+        analysis = buildRuleBasedFallbackAnalysis();
       }
     }
 
