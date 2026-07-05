@@ -18,6 +18,9 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "freelanceBoostLaunch", date: "2026-07-05", tags: ["new"] },
+  { id: "roastUpgrade", date: "2026-07-05", tags: ["improved"] },
+  { id: "reliabilityAtScale", date: "2026-07-05", tags: ["improved"] },
   { id: "diagnosticReport", date: "2026-07-05", tags: ["new"] },
   { id: "onetSourcing", date: "2026-07-05", tags: ["new"] },
   { id: "honestScoring", date: "2026-07-05", tags: ["improved"] },

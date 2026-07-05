@@ -2766,6 +2766,18 @@
     }
   },
   "changelogEntries": {
+    "freelanceBoostLaunch": {
+      "title": "Nuevo producto: Freelance Boost",
+      "description": "Convierte proyectos freelance, trabajos por encargo y side hustles en experiencia de currículum de nivel reclutador. Cuestionario guiado (sin currículum), tus proyectos traducidos al lenguaje del campo objetivo, la estructura correcta para tu situación, manejo honesto de huecos y cobertura de palabras clave contra tu oferta. Importa tu perfil de Upwork/Fiverr o el PDF de LinkedIn para precargar el formulario. $29, pago único."
+    },
+    "roastUpgrade": {
+      "title": "El Resume Roast ahora sí quema",
+      "description": "El Roast se reconstruyó con oficio real de comedia: cada golpe cita tu currículum textualmente y desmonta exactamente esas palabras — y cualquier roast basado en una cita inventada se descarta antes de que lo veas. El consejo serio de reclutador sigue a cada golpe."
+    },
+    "reliabilityAtScale": {
+      "title": "Preparado para multitudes",
+      "description": "Con mucho tráfico la plataforma ahora se degrada con elegancia en lugar de ralentizarse: superada la capacidad, los escaneos reciben al instante el informe determinista completo con un reescaneo mejorado por IA gratis minutos después — sin tiempos de espera eternos."
+    },
     "diagnosticReport": {
       "title": "Tu escaneo gratuito ahora es un informe diagnóstico",
       "description": "El informe se rediseñó con estructura de diagnóstico: encabezado con un ID único de informe (reescanear el mismo documento lo reproduce), un resumen de hallazgos — críticos, advertencias, aprobados — antes del detalle, hallazgos sin interrupciones y todas las ofertas consolidadas en una sección final de Próximos Pasos."

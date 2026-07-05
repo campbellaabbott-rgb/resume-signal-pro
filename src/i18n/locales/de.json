@@ -2766,6 +2766,18 @@
     }
   },
   "changelogEntries": {
+    "freelanceBoostLaunch": {
+      "title": "Neues Produkt: Freelance Boost",
+      "description": "Verwandle Freelance-Projekte, Gig-Arbeit und Side Hustles in Lebenslauf-Erfahrung auf Recruiter-Niveau. Geführte Eingabe (kein Lebenslauf nötig), deine Projekte in die Sprache des Zielfelds übersetzt, die richtige Struktur für deine Situation, ehrliche Lückenbehandlung und Keyword-Abdeckung gegen deine Zielanzeige. Importiere dein Upwork/Fiverr-Profil oder das LinkedIn-PDF zum Vorbefüllen. 29 $, einmalig."
+    },
+    "roastUpgrade": {
+      "title": "Der Resume Roast brennt jetzt wirklich",
+      "description": "Der Roast wurde mit echtem Comedy-Handwerk neu gebaut: Jeder Treffer zitiert deinen Lebenslauf wörtlich und zerlegt genau diese Worte — und jeder Roast auf Basis eines erfundenen Zitats fliegt raus, bevor du ihn siehst. Die ernsthafte Recruiter-Einsicht folgt jedem Schlag."
+    },
+    "reliabilityAtScale": {
+      "title": "Gebaut für Andrang",
+      "description": "Bei starkem Traffic degradiert die Plattform jetzt elegant statt langsam zu werden: Über der Kapazität erhalten Scans sofort den vollständigen deterministischen Bericht mit einem kostenlosen KI-Rescan Minuten später — keine Timeouts, keine Minutenwartezeiten."
+    },
     "diagnosticReport": {
       "title": "Dein Gratis-Scan ist jetzt ein Diagnosebericht",
       "description": "Der Bericht wurde als Diagnose strukturiert: Kopfbereich mit eindeutiger Berichts-ID (derselbe Lebenslauf reproduziert sie), eine Befundübersicht — kritisch, Warnungen, bestanden — vor allen Details, unterbrechungsfreie Befunde und alle Angebote gebündelt in einem klar markierten Abschnitt am Ende."

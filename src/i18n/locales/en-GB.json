@@ -2766,6 +2766,18 @@
     }
   },
   "changelogEntries": {
+    "freelanceBoostLaunch": {
+      "title": "New product: Freelance Boost",
+      "description": "Turn freelance projects, gig work, and side hustles into recruiter-grade resume experience. A guided intake (no resume needed), your projects translated into the target field's language, the right structure chosen for your situation, honest gap handling, and keyword coverage against your target posting. Import your Upwork/Fiverr profile text or LinkedIn PDF to pre-fill the form. $29, one-time."
+    },
+    "roastUpgrade": {
+      "title": "Resume Roast actually roasts now",
+      "description": "The Roast was rebuilt around real roast-comedy craft: every burn quotes your actual resume verbatim and dismantles exactly those words — and any roast built on an invented quote is thrown out before you see it. The serious recruiter insight still follows every hit."
+    },
+    "reliabilityAtScale": {
+      "title": "Built for crowds",
+      "description": "Under heavy traffic the platform now degrades gracefully instead of slowing down: past capacity, scans instantly receive the full deterministic report with a free AI-enhanced rescan minutes later — no timeouts, no multi-minute waits, ever."
+    },
     "diagnosticReport": {
       "title": "Your free scan is now a diagnostic report",
       "description": "The report has been redesigned around a diagnostic structure: a specimen header with a unique report ID (rescanning the same document reproduces it), a findings summary — critical, warnings, passed — before any detail, findings that run uninterrupted, and all offers consolidated in one clearly-marked Next Steps section at the end."

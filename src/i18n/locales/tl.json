@@ -2766,6 +2766,18 @@
     }
   },
   "changelogEntries": {
+    "freelanceBoostLaunch": {
+      "title": "Bagong produkto: Freelance Boost",
+      "description": "Gawing recruiter-grade na karanasan sa resume ang mga freelance project, gig work, at side hustle. Guided na intake (hindi kailangan ng resume), mga proyektong isinalin sa wika ng target na larangan, tamang istruktura para sa sitwasyon mo, tapat na gap handling, at keyword coverage laban sa target na posting. I-import ang Upwork/Fiverr profile text o LinkedIn PDF para paunang punan ang form. $29, isang beses."
+    },
+    "roastUpgrade": {
+      "title": "Totoong nanunuya na ang Resume Roast",
+      "description": "Muling itinayo ang Roast gamit ang tunay na comedy craft: bawat tira ay sumisipi nang verbatim sa resume mo at binabaklas mismo ang mga salitang iyon — at anumang roast na nakabatay sa imbentong sipi ay tinatanggal bago mo pa makita. Sinusundan pa rin ng seryosong payo ng recruiter ang bawat tama."
+    },
+    "reliabilityAtScale": {
+      "title": "Handa sa dagsa",
+      "description": "Sa mabigat na traffic, maayos nang bumababa ang platform sa halip na bumagal: lampas sa kapasidad, agad nakakatanggap ang mga scan ng buong deterministic na report na may libreng AI-enhanced na rescan makalipas ang ilang minuto — walang timeout kailanman."
+    },
     "diagnosticReport": {
       "title": "Ang libreng scan mo ay isa nang diagnostic report",
       "description": "Ni-redesign ang report sa diagnostic na istruktura: header na may natatanging report ID (ang muling pag-scan ng parehong dokumento ay magre-reproduce nito), buod ng mga natuklasan — kritikal, babala, pasado — bago ang detalye, tuloy-tuloy na findings, at lahat ng alok ay pinagsama sa isang malinaw na seksyon sa dulo."

@@ -2766,6 +2766,18 @@
     }
   },
   "changelogEntries": {
+    "freelanceBoostLaunch": {
+      "title": "Nieuw product: Freelance Boost",
+      "description": "Zet freelanceprojecten, gigwerk en side hustles om in cv-ervaring op recruiterniveau. Begeleide intake (geen cv nodig), je projecten vertaald naar de taal van je doelveld, de juiste structuur voor jouw situatie, eerlijke gap-afhandeling en keyworddekking tegen je doelvacature. Importeer je Upwork/Fiverr-profieltekst of LinkedIn-PDF om het formulier voor te vullen. $29, eenmalig."
+    },
+    "roastUpgrade": {
+      "title": "De Resume Roast brandt nu echt",
+      "description": "De Roast is herbouwd met echt comedy-vakmanschap: elke sneer citeert je cv letterlijk en ontleedt precies die woorden — en elke roast op basis van een verzonnen citaat wordt weggegooid voordat je hem ziet. Het serieuze recruiterinzicht volgt elke klap."
+    },
+    "reliabilityAtScale": {
+      "title": "Gebouwd voor drukte",
+      "description": "Bij zware drukte degradeert het platform nu sierlijk in plaats van traag te worden: boven capaciteit krijgen scans direct het volledige deterministische rapport met minuten later een gratis AI-herscan — nooit time-outs of minutenlang wachten."
+    },
     "diagnosticReport": {
       "title": "Je gratis scan is nu een diagnostisch rapport",
       "description": "Het rapport is herontworpen met een diagnostische structuur: een kop met uniek rapport-ID (hetzelfde document opnieuw scannen reproduceert het), een bevindingenoverzicht — kritiek, waarschuwingen, geslaagd — vóór alle details, ononderbroken bevindingen en alle aanbiedingen gebundeld in één duidelijk gemarkeerde slotsectie."

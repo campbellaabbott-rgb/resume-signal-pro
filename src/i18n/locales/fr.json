@@ -2766,6 +2766,18 @@
     }
   },
   "changelogEntries": {
+    "freelanceBoostLaunch": {
+      "title": "Nouveau produit : Freelance Boost",
+      "description": "Transformez projets freelance, missions et side projects en expérience de CV de niveau recruteur. Questionnaire guidé (sans CV), vos projets traduits dans le langage du domaine visé, la bonne structure pour votre situation, une gestion honnête des trous et la couverture des mots-clés de votre offre cible. Importez votre profil Upwork/Fiverr ou le PDF LinkedIn pour préremplir. 29 $, paiement unique."
+    },
+    "roastUpgrade": {
+      "title": "Le Resume Roast pique vraiment désormais",
+      "description": "Le Roast a été reconstruit avec un vrai savoir-faire comique : chaque pique cite votre CV mot pour mot et démonte exactement ces mots — et toute pique fondée sur une citation inventée est écartée avant que vous la voyiez. Le conseil sérieux de recruteur suit chaque coup."
+    },
+    "reliabilityAtScale": {
+      "title": "Conçu pour la foule",
+      "description": "Sous forte affluence, la plateforme se dégrade désormais avec élégance au lieu de ralentir : au-delà de la capacité, les scans reçoivent instantanément le rapport déterministe complet avec un re-scan IA gratuit quelques minutes après — jamais de délais interminables."
+    },
     "diagnosticReport": {
       "title": "Votre scan gratuit est désormais un rapport de diagnostic",
       "description": "Le rapport a été repensé en structure diagnostique : en-tête avec identifiant unique (rescanner le même document le reproduit), synthèse des constats — critiques, avertissements, validés — avant tout détail, constats sans interruption et toutes les offres regroupées dans une section finale clairement identifiée."
