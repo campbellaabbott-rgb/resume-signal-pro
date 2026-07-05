@@ -45,6 +45,9 @@ export default function FreelanceBoost() {
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<BoostResult | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
+  const [importText, setImportText] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   // Restore draft
   useEffect(() => {
@@ -103,6 +106,55 @@ export default function FreelanceBoost() {
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
+
+  const applyImport = (data: { projects: ProjectIntake[]; suggestedTargetRole: string; employmentTimeline: string; sourceGuess: string }) => {
+    if (data.projects.length) {
+      // Fill empty slots first, then append up to 5 total
+      const existing = projects.filter(p => p.deliverable.trim());
+      setProjects([...existing, ...data.projects].slice(0, 5).map(p => ({ ...emptyProject(), ...p })));
+    }
+    if (data.suggestedTargetRole && !targetRole.trim()) setTargetRole(data.suggestedTargetRole);
+    if (data.employmentTimeline && !employmentTimeline.trim()) setEmploymentTimeline(data.employmentTimeline);
+    toast({
+      title: `Imported ${data.projects.length} project${data.projects.length === 1 ? "" : "s"}${data.sourceGuess !== "unknown" ? ` from your ${data.sourceGuess} profile` : ""}`,
+      description: "Review each card — fill in outcomes and problems where the profile didn't say. Empty boxes mean we didn't guess.",
+    });
+    setImportOpen(false);
+    setImportText("");
+  };
+
+  const runImport = async (text: string) => {
+    setImporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("import-freelance-profile", { body: { profileText: text } });
+      if (error || !data?.success) throw new Error(data?.error || error?.message || "Import failed");
+      if (!data.data.projects.length) {
+        toast({ title: "Nothing importable found", description: "The text didn't contain recognizable projects — the manual form below works just as well.", variant: "destructive" });
+        return;
+      }
+      applyImport(data.data);
+    } catch (e) {
+      toast({ title: "Import failed", description: e instanceof Error ? e.message : "Try pasting the text directly.", variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const importPdf = async (file: File | undefined | null) => {
+    if (!file) return;
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data, error } = await supabase.functions.invoke("parse-pdf", { body: formData });
+      const text = (data as { text?: string })?.text;
+      if (error || !text) throw new Error("Couldn't read that PDF — try pasting the text instead.");
+      await runImport(text);
+    } catch (e) {
+      toast({ title: "Import failed", description: e instanceof Error ? e.message : "Try pasting the text directly.", variant: "destructive" });
+      setImporting(false);
+    }
+  };
 
   const intakeComplete = targetRole.trim().length > 1 && projects.some(p => p.deliverable.trim() && p.clientType.trim());
 
@@ -197,6 +249,45 @@ export default function FreelanceBoost() {
           {/* Intake */}
           {!result && !generating && (
             <>
+              {/* Profile import — paste-your-own-data, deliberately not a fake
+                  "Connect Upwork" integration (no platform offers profile APIs) */}
+              <div className="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-6">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <h2 className="font-semibold text-foreground text-sm">Start faster: import from your profile</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Copy your Upwork, Fiverr, or portfolio profile text (or upload LinkedIn's "Save to PDF") — we'll pre-fill the project cards for you to review.
+                    </p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => setImportOpen(!importOpen)}>
+                    {importOpen ? "Close" : "Import"}
+                  </Button>
+                </div>
+                {importOpen && (
+                  <div className="mt-3 space-y-2">
+                    <Textarea
+                      value={importText}
+                      onChange={e => setImportText(e.target.value)}
+                      placeholder="Paste your full profile text here — gigs, portfolio items, reviews, everything…"
+                      className="min-h-[120px] text-sm"
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button size="sm" onClick={() => runImport(importText)} disabled={importing || importText.trim().length < 80} className="gap-1.5">
+                        {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                        Extract projects
+                      </Button>
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border text-xs cursor-pointer hover:border-primary/40 transition-colors">
+                        or upload profile PDF
+                        <input type="file" accept=".pdf,application/pdf" className="sr-only" onChange={e => { importPdf(e.target.files?.[0]); e.target.value = ""; }} />
+                      </label>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Only what's in your text gets used — fields your profile doesn't answer stay empty for you to fill. Nothing is fetched from any platform.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div className="rounded-2xl border border-border bg-card p-5 mb-6">
                 <h2 className="font-semibold text-foreground mb-3">1. Your target</h2>
                 <div className="space-y-3">
