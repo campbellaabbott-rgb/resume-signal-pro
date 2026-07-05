@@ -1247,6 +1247,10 @@ serve(async (req) => {
   }
 
   const clientIp = getClientIp(req);
+  // Hoisted above the try: the outer catch's error-metric logging references
+  // this — declaring it inside the try made every error path throw a
+  // ReferenceError while logging, masking the real failure.
+  let usedModel: string = MODEL_FALLBACK_ORDER[0];
 
   try {
     // Resolve country and parse the request body in parallel — getCountryCode can
@@ -2915,7 +2919,7 @@ ${resumeText.substring(0, 20000)}
       );
     }
 
-    let usedModel = coreRes?.model ?? MODEL_FALLBACK_ORDER[0];
+    usedModel = coreRes?.model ?? MODEL_FALLBACK_ORDER[0];
     aiResponse = coreRes?.response ?? null;
 
     let analysis: any = null;
@@ -3119,7 +3123,7 @@ ${resumeText.substring(0, 20000)}
     // spans the rule-based computation and the (clamped) AI estimate — showing
     // it is more honest than false single-point precision, and preempts
     // "I got 61 yesterday and 63 today".
-    responseData.scoreBand = {
+    const scoreBandComputed = {
       low: Math.max(1, Math.min(ruleBasedAts, analysis.atsScoreEstimate) - 2),
       high: Math.min(99, Math.max(ruleBasedAts, analysis.atsScoreEstimate) + 2),
     };
@@ -4073,6 +4077,8 @@ ${resumeText.substring(0, 20000)}
 
     // Executive scope check — senior/executive resumes only
     responseData.executiveScopeCheck = executiveScopeCheck;
+
+    responseData.scoreBand = scoreBandComputed;
 
     // Keyword expectation provenance — exact (job description), citable
     // (O*NET), or modeled (our tables).
