@@ -2819,12 +2819,29 @@ ${resumeText.substring(0, 20000)}
     const CORE_NOTE = `\n\n**CALL SCOPE:** This call produces the CORE report fields only — exactly the fields in the provided schema. A parallel call handles the deep-dive fields (recruiter panel, triggered questions, bullet grading); do not attempt to include them.`;
     const ENRICH_NOTE = `\n\n**CALL SCOPE:** This call produces the DEEP-DIVE fields only — exactly the fields in the provided schema (recruiter panel, triggered questions, weakest bullets, career guidance). A parallel call handles scores and keywords; do not re-score or include fields outside the schema.`;
 
+    // Per-call timing so we can tell whether parallelism is real. If the
+    // gateway serializes on one API key, `enrich` won't start until `core`
+    // finishes and enrich's startOffset will be ~= core's duration. If a
+    // fallback chain fires on one side, that call's duration blows up alone.
     const callStart = Date.now();
+    const timed = async <T extends { analysis: unknown; model: string }>(label: string, p: Promise<T>) => {
+      const t0 = Date.now();
+      const startOffset = t0 - callStart;
+      const r = await p;
+      return Object.assign(r, { _label: label, _startOffset: startOffset, _durationMs: Date.now() - t0 });
+    };
     const [coreRes, enrichRes] = await Promise.all([
-      runAnalysisCall(buildToolSchema(CORE_KEYS), CORE_NOTE, 'core'),
-      runAnalysisCall(buildToolSchema(ENRICHMENT_KEYS), ENRICH_NOTE, 'enrich'),
+      timed('core',   runAnalysisCall(buildToolSchema(CORE_KEYS),       CORE_NOTE,   'core')),
+      timed('enrich', runAnalysisCall(buildToolSchema(ENRICHMENT_KEYS), ENRICH_NOTE, 'enrich')),
     ]);
-    console.log(`[FREE-KEYWORD-SCAN] Parallel calls completed in ${Date.now() - callStart}ms (core: ${coreRes.analysis ? 'ok' : 'FAILED'}, enrich: ${enrichRes.analysis ? 'ok' : 'failed — report ships without deep-dive fields'})`);
+    const totalMs = Date.now() - callStart;
+    const parallelism = totalMs > 0 ? (coreRes._durationMs + enrichRes._durationMs) / totalMs : 0;
+    console.log(
+      `[FREE-KEYWORD-SCAN] Parallel calls completed in ${totalMs}ms ` +
+      `(core: ${coreRes.analysis ? 'ok' : 'FAILED'} start+${coreRes._startOffset}ms dur=${coreRes._durationMs}ms model=${coreRes.model}, ` +
+      `enrich: ${enrichRes.analysis ? 'ok' : 'failed — report ships without deep-dive fields'} start+${enrichRes._startOffset}ms dur=${enrichRes._durationMs}ms model=${enrichRes.model}) ` +
+      `parallelism=${parallelism.toFixed(2)}x`
+    );
 
     let usedModel = coreRes.model;
     aiResponse = coreRes.response;

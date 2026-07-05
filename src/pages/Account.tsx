@@ -143,7 +143,7 @@ export default function Account() {
     }
 
     setScans(cloudScans);
-    setApplications((appsRes.data as Application[] | null) ?? []);
+    setApplications((appsRes.data as unknown as Application[] | null) ?? []);
     setTargetScore((profileRes.data as { target_score?: number } | null)?.target_score ?? null);
     const acc = (accountRes as { data?: { credits?: number; purchases?: AccountData["purchases"] } }).data;
     setAccount({ credits: acc?.credits ?? 0, purchases: acc?.purchases ?? [] });
@@ -178,7 +178,7 @@ export default function Account() {
       scan_id: version?.id ?? null,
       scan_score: version?.ats_score ?? null,
     }).select().single();
-    if (data) setApplications([data as Application, ...applications]);
+    if (data) setApplications([data as unknown as Application, ...applications]);
     setNewApp({ company: "", role: "" });
   };
 
