@@ -33,6 +33,10 @@ interface ScanReportRequest {
   fixRoadmap?: { steps: Array<{ order: number; step: string; minutes: number; scoreImpact: number }>; totalMinutes: number } | null;
   industry?: string;
   subscribePulse?: boolean;
+  reportId?: string | null;
+  scoreBand?: { low: number; high: number } | null;
+  findingsSummary?: { critical: number; warnings: number; passed: number } | null;
+  keywordSource?: { source: string; occupation?: string; code?: string } | null;
 }
 
 Deno.serve(async (req) => {
@@ -112,6 +116,13 @@ Deno.serve(async (req) => {
 
     const rows: string[] = [];
 
+    if (body.reportId) {
+      rows.push(`<p style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#888;margin:0 0 4px">Resume Diagnostic Report &nbsp;·&nbsp; #${escapeHtml(body.reportId)} &nbsp;·&nbsp; ${new Date().toLocaleDateString()}</p>`);
+    }
+    if (body.findingsSummary) {
+      const fs = body.findingsSummary;
+      rows.push(`<p style="font-size:13px;margin:0 0 10px"><span style="color:#dc2626;font-weight:700">${escapeHtml(fs.critical)} critical</span> &nbsp;·&nbsp; <span style="color:#d97706;font-weight:700">${escapeHtml(fs.warnings)} warning${fs.warnings === 1 ? "" : "s"}</span> &nbsp;·&nbsp; <span style="color:#16a34a;font-weight:700">${escapeHtml(fs.passed)} passed</span></p>`);
+    }
     if (body.verdict) {
       rows.push(`<p style="font-size:15px;line-height:1.55;color:#111;font-weight:600;margin:0 0 12px">${escapeHtml(body.verdict)}</p>`);
     }
@@ -122,6 +133,7 @@ Deno.serve(async (req) => {
         <div style="font-size:52px;font-weight:800;color:${scoreColor};line-height:1">${escapeHtml(score)}<span style="font-size:18px;font-weight:400;color:#888">/100</span></div>
         <div style="display:inline-block;background:${scoreColor};color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;margin-top:8px;letter-spacing:0.5px;text-transform:uppercase">${scoreLabel}</div>
         ${body.projectedScore && Math.round(body.projectedScore) > score ? `<div style="font-size:13px;color:#16a34a;margin-top:10px;font-weight:600">↗ Projected ~${escapeHtml(Math.round(body.projectedScore))} after your fix plan</div>` : ""}
+        ${body.scoreBand ? `<div style="font-size:11px;color:#888;margin-top:6px">Modeling band ${escapeHtml(Math.round(body.scoreBand.low))}–${escapeHtml(Math.round(body.scoreBand.high))} — spans our deterministic calculation and the AI estimate</div>` : ""}
       </div>`);
 
     // Breakdown bars
@@ -169,6 +181,12 @@ Deno.serve(async (req) => {
               </td>
             </tr></table>
           </div>`).join("")}`);
+    }
+
+    if (body.keywordSource?.source === "onet" && body.keywordSource.code) {
+      rows.push(`<p style="font-size:11px;color:#888;margin:14px 0 0">Keyword expectations sourced from O*NET ${escapeHtml(body.keywordSource.code)} (U.S. Department of Labor${body.keywordSource.occupation ? ` — ${escapeHtml(body.keywordSource.occupation)}` : ""}). Every quoted line in your full report is verified against your resume.</p>`);
+    } else if (body.keywordSource?.source === "job_description") {
+      rows.push(`<p style="font-size:11px;color:#888;margin:14px 0 0">Keyword analysis matched against the job posting you provided. Every quoted line in your full report is verified against your resume.</p>`);
     }
 
     const preheader = `Your resume scored ${score}/100 — ${body.fixRoadmap?.totalMinutes ? `a ${body.fixRoadmap.totalMinutes}-minute fix plan is inside.` : "your fix plan is inside."}`;

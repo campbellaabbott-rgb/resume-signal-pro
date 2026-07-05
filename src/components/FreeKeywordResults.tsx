@@ -1660,18 +1660,28 @@ export function FreeKeywordResults({
                   doc.text(wrapped, margin, y);
                   y += wrapped.length * (size * 1.35) + 4;
                 };
-                line('Resume Booster — Free Scan Summary', 16, true, [37, 99, 235]);
-                line(new Date().toLocaleDateString(), 9, false, [120, 120, 120]);
-                y += 6;
+                // Diagnostic anatomy — same specimen header, findings
+                // triage, band, and provenance as the on-screen report.
+                line('RESUME DIAGNOSTIC REPORT', 15, true, [30, 30, 30]);
+                if (reportMeta) {
+                  line(`Report #${reportMeta.reportId}  ·  ${new Date(reportMeta.generatedAt).toLocaleDateString()}  ·  Engine ${reportMeta.engineVersion}`, 8.5, false, [120, 120, 120]);
+                  line(`Subject: ${candidateName || 'Candidate'}  ·  Industry: ${reportMeta.industry.replace(/_/g, ' ')} (${reportMeta.industryConfidence} confidence)  ·  Benchmarks: ${reportMeta.benchmarkSource === 'measured' ? 'measured from real scans' : 'industry estimates'}`, 8.5, false, [120, 120, 120]);
+                } else {
+                  line(new Date().toLocaleDateString(), 9, false, [120, 120, 120]);
+                }
+                y += 8;
                 line(reportVerdict, 11, true);
                 y += 4;
-                line(`ATS Score: ${atsScoreEstimate}/100${projectedScore ? `  →  ${projectedScore} after fixes` : ''}`, 12, true);
+                line(`ATS Score: ${atsScoreEstimate}/100${scoreBand ? `  (modeling band ${scoreBand.low}–${scoreBand.high})` : ''}${projectedScore ? `  →  ${projectedScore} after fixes` : ''}`, 12, true);
                 if (scoreBreakdown) line(`Breakdown — Keywords: ${scoreBreakdown.keywords}%  ·  Format: ${scoreBreakdown.format}%  ·  Quantification: ${scoreBreakdown.quantification}%`, 10);
                 if (peerPercentile != null) line(`Peer percentile: ${peerPercentile} of 100 ${industry.replace(/_/g, ' ')} candidates  ·  Est. ATS pass rate: ${applicationPassRate ?? '—'}%`, 10);
                 y += 6;
-                if (redFlags.length > 0) {
-                  line('Top issues found:', 11, true);
-                  redFlags.slice(0, 3).forEach((f, i) => line(`${i + 1}. ${f.issue}`, 10));
+                {
+                  const crit = findings.filter(f => f.severity === 'critical');
+                  const warn = findings.filter(f => f.severity === 'warning');
+                  const passN = findings.filter(f => f.severity === 'pass').length;
+                  line(`Findings: ${crit.length} critical  ·  ${warn.length} warnings  ·  ${passN} passed`, 11, true);
+                  [...crit, ...warn].slice(0, 6).forEach(f => line(`${f.severity === 'critical' ? '✗' : '!'}  ${f.label}`, 9.5, false, f.severity === 'critical' ? [180, 40, 40] : [160, 110, 20]));
                   y += 4;
                 }
                 if (fixRoadmap && fixRoadmap.steps.length > 0) {
@@ -1679,9 +1689,10 @@ export function FreeKeywordResults({
                   fixRoadmap.steps.forEach(s => line(`${s.order}. ${s.step} (~${s.minutes} min, +${s.scoreImpact} pts)`, 10));
                   y += 4;
                 }
-                line('Locked in this summary (Premium): full rewrites, all keywords, red-flag fixes', 10, true, [180, 100, 20]);
-                line('Get the full report at resumebooster.app', 9, false, [120, 120, 120]);
-                doc.save('resume-scan-summary.pdf');
+                if (keywordSource?.source === 'onet') line(`Keyword expectations sourced from O*NET ${keywordSource.code} (U.S. Department of Labor — ${keywordSource.occupation}).`, 8.5, false, [120, 120, 120]);
+                if (keywordSource?.source === 'job_description') line('Keyword analysis matched against the job posting you provided.', 8.5, false, [120, 120, 120]);
+                line('Every quoted line in the full report is verified against your resume. Full detail: resumebooster.work', 8.5, false, [120, 120, 120]);
+                doc.save(`resume-diagnostic-${reportMeta?.reportId ?? 'report'}.pdf`);
                 trackButtonClick('download_pdf_summary', 'verdict_hero');
               }}
               className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/15 text-primary text-xs font-semibold hover:bg-primary/25 transition-colors"
@@ -4467,6 +4478,15 @@ export function FreeKeywordResults({
           redFlags: redFlags.map(f => ({ issue: f.issue })),
           fixRoadmap: fixRoadmap ?? null,
           industry: effectiveIndustry,
+          // Diagnostic anatomy — same report ID/band/triage as on-screen and PDF
+          reportId: reportMeta?.reportId ?? null,
+          scoreBand: scoreBand ?? null,
+          findingsSummary: {
+            critical: findings.filter(f => f.severity === 'critical').length,
+            warnings: findings.filter(f => f.severity === 'warning').length,
+            passed: findings.filter(f => f.severity === 'pass').length,
+          },
+          keywordSource: keywordSource ?? null,
         }}
       />
 
