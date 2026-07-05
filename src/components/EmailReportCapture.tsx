@@ -18,6 +18,10 @@ interface EmailReportCaptureProps {
     redFlags: Array<{ issue: string }>;
     fixRoadmap: { steps: Array<{ order: number; step: string; minutes: number; scoreImpact: number; projectedScoreAfter: number }>; totalMinutes: number; finalProjectedScore: number } | null;
     industry: string;
+    reportId?: string | null;
+    scoreBand?: { low: number; high: number } | null;
+    findingsSummary?: { critical: number; warnings: number; passed: number } | null;
+    keywordSource?: { source: 'job_description' | 'onet' | 'model'; occupation?: string; code?: string } | null;
   };
 }
 
