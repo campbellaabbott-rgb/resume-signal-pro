@@ -209,6 +209,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
   const renderDropZone = () => {
     if (!onFileSelect) return null;
     return (
+      <>
       <label
         className={`mt-3 flex w-full sm:max-w-md mx-auto cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-3 text-xs sm:text-sm transition-colors ${
           isDragOver
@@ -239,6 +240,19 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
           }}
         />
       </label>
+      {/* First-viewport answer to the question every visitor silently asks */}
+      <div className="mt-3 flex justify-center">
+        <button
+          onClick={() => {
+            trackLayout({ action: 'why_not_chatgpt_click', layout: layoutVariant });
+            document.getElementById('why-not-chatgpt')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-primary/40 bg-primary/10 text-primary text-xs sm:text-sm font-semibold hover:bg-primary/20 transition-colors"
+        >
+          Why use this instead of ChatGPT or Claude? →
+        </button>
+      </div>
+      </>
     );
   };
 

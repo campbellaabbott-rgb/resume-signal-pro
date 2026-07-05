@@ -45,7 +45,7 @@ const DIFFERENCES = [
 
 export function WhyNotChatGPT() {
   return (
-    <section className="py-16 border-t border-border" aria-labelledby="why-not-chat-heading">
+    <section id="why-not-chatgpt" className="py-16 border-t border-border scroll-mt-24" aria-labelledby="why-not-chat-heading">
       <div className="container max-w-5xl">
         <div className="text-center mb-10">
           <h2 id="why-not-chat-heading" className="text-2xl md:text-3xl font-bold mb-3">
