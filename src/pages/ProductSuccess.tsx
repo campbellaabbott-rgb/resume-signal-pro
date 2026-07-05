@@ -56,6 +56,7 @@ import { AIGenerationProgress } from "@/components/AIGenerationProgress";
 import { useStreamingGeneration } from "@/hooks/use-streaming-generation";
 import { StreamingContentDisplay } from "@/components/StreamingContentDisplay";
 import { autoFixContent } from "@/lib/content-autofix";
+import { RewriteStudio } from "@/components/rewrite/RewriteStudio";
 
 // Map product keys to icons
 const productIcons: Record<string, React.ElementType> = {
@@ -71,6 +72,7 @@ const productIcons: Record<string, React.ElementType> = {
   interviewCoach: MessageSquare,
   careerPathSimulator: TrendingUp,
   applyAssistant: Send,
+  resumeRewrite: Crown,
 };
 
 // Product-specific next steps and how-it-works info. Title/description text lives in
@@ -87,7 +89,8 @@ const productInfoIcons: Record<string, { nextSteps: React.ElementType[] }> = {
   graduateGamePlan: { nextSteps: [CheckCircle2, Target, Calendar] },
   interviewCoach: { nextSteps: [MessageSquare, Target, TrendingUp] },
   careerPathSimulator: { nextSteps: [TrendingUp, Target, Calendar] },
-  applyAssistant: { nextSteps: [FileText, Send, Download] }
+  applyAssistant: { nextSteps: [FileText, Send, Download] },
+  resumeRewrite: { nextSteps: [FileText, Check, Download] }
 };
 
 function getProductInfo(t: (key: string, options?: Record<string, unknown>) => unknown, key: string) {
@@ -160,6 +163,9 @@ export default function ProductSuccess() {
   // own content on demand (same components used for free on the scan results page) —
   // they just need the resume text, not a pre-generated payload.
   const [coachResumeText, setCoachResumeText] = useState<string | null>(null);
+  // Complete Resume Rewrite is a self-contained studio (generate → review →
+  // parse proof → download) — like the coach widgets it only needs the inputs.
+  const [rewriteSession, setRewriteSession] = useState<{ resumeText: string; jobDescription?: string } | null>(null);
   const [applyPackageData, setApplyPackageData] = useState<ApplyPackageData | null>(null);
   const [applyCoverLetter, setApplyCoverLetter] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'resume' | 'coverLetter'>('resume');
@@ -219,6 +225,14 @@ export default function ProductSuccess() {
         variant: "destructive"
       });
       return false;
+    }
+
+    // Complete Resume Rewrite: no server call needed here — the RewriteStudio
+    // component drives its own generation once it has the resume text.
+    if (productKey === 'resumeRewrite') {
+      setRewriteSession({ resumeText, jobDescription: jobDescription || undefined });
+      setIsRecoveryMode(false);
+      return true;
     }
 
     // Apply Assistant needs two parallel calls and a required (not optional) job
@@ -864,6 +878,16 @@ export default function ProductSuccess() {
           const sessionData = getResumeFromSession();
           if (sessionData.resumeText) {
             setCoachResumeText(sessionData.resumeText);
+          } else {
+            setIsRecoveryMode(true);
+          }
+        }
+
+        // Complete Resume Rewrite — self-contained studio; hand it the inputs.
+        if (productKey === 'resumeRewrite') {
+          const sessionData = getResumeFromSession();
+          if (sessionData.resumeText) {
+            setRewriteSession({ resumeText: sessionData.resumeText, jobDescription: sessionData.jobDescriptionText || undefined });
           } else {
             setIsRecoveryMode(true);
           }
@@ -1546,6 +1570,28 @@ export default function ProductSuccess() {
           </section>
         )}
 
+        {/* Generated Content Section - Complete Resume Rewrite */}
+        {productKey === 'resumeRewrite' && rewriteSession && (
+          <section className="py-12 border-t border-border/50">
+            <div className="container max-w-4xl">
+              <div className="text-center mb-8">
+                <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
+                  <Crown className="w-3 h-3 mr-1" />
+                  Flagship
+                </Badge>
+                <h2 className="text-2xl font-bold mb-2">Your Complete Resume Rewrite</h2>
+                <p className="text-muted-foreground">
+                  Review every change, fill in your real numbers, then download the finished document.
+                </p>
+              </div>
+              <RewriteStudio
+                resumeText={rewriteSession.resumeText}
+                jobDescription={rewriteSession.jobDescription}
+              />
+            </div>
+          </section>
+        )}
+
         {/* AI Generation Progress Overlay for Recovery Mode */}
         <AIGenerationProgress 
           isVisible={isRegenerating} 
@@ -1574,7 +1620,7 @@ export default function ProductSuccess() {
         )}
 
         {/* No Generated Content - Show Inline Upload Recovery */}
-        {(isKeywordFix || isCoverLetter || isPremiumPackage || isAtsDefense || isCareerSnapshot || isGraduateGamePlan || isInterviewCoach || isCareerPathSimulator || isApplyAssistant) && !generatedContent && !atsDefenseData && !careerSnapshotData && !graduateGamePlanData && !coachResumeText && !applyPackageData && !verificationError && !isVerifying && !isRegenerating && (
+        {(isKeywordFix || isCoverLetter || isPremiumPackage || isAtsDefense || isCareerSnapshot || isGraduateGamePlan || isInterviewCoach || isCareerPathSimulator || isApplyAssistant || productKey === 'resumeRewrite') && !generatedContent && !atsDefenseData && !careerSnapshotData && !graduateGamePlanData && !coachResumeText && !applyPackageData && !rewriteSession && !verificationError && !isVerifying && !isRegenerating && (
           <section className="py-12 border-t border-border/50">
             <div className="container max-w-2xl">
               <div className="p-8 rounded-2xl bg-muted/50 border border-border">

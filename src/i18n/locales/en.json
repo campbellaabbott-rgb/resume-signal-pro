@@ -2092,6 +2092,30 @@
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "On This Page"
+      },
+      "resumeRewrite": {
+        "howItWorks": [
+          "Our AI rewrote every bullet of your resume — using only your real experience",
+          "An anti-fabrication check verified every claim against your original resume",
+          "You review each change like tracked changes, and fill in any [placeholder] numbers",
+          "An independent open-source parser shows what an ATS extracts from both versions"
+        ],
+        "nextSteps": [
+          {
+            "title": "Review Every Change",
+            "description": "Accept, edit, or reject each rewritten bullet below"
+          },
+          {
+            "title": "Fill In Your Numbers",
+            "description": "Replace the highlighted [placeholders] with your real metrics"
+          },
+          {
+            "title": "Download Your Resume",
+            "description": "Export the finished, ATS-safe document as DOCX or PDF"
+          }
+        ],
+        "deliveryTime": "Instant",
+        "deliveryMethod": "On This Page"
       }
     }
   },

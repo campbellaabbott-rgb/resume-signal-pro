@@ -254,6 +254,7 @@ async function triggerProductDelivery(
         case 'basic_keyword_fix': endpoint = 'generate-keyword-fix'; break;
         case 'cover_letter': endpoint = 'generate-cover-letter'; body.tone = 'professional'; break;
         case 'premium_package': endpoint = 'generate-premium-package'; break;
+        case 'resume_rewrite': endpoint = 'generate-resume-rewrite'; break;
         case 'graduate_gameplan': endpoint = 'generate-graduate-gameplan'; break;
         case 'career_snapshot': endpoint = 'generate-career-snapshot'; break;
         // generate-ats-defense independently re-verifies payment via a real

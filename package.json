@@ -31,6 +31,7 @@
     "@tanstack/react-query": "^5.83.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "compromise": "^14.15.1",
     "date-fns": "^3.6.0",
     "docx": "^9.7.1",
     "html2canvas": "^1.4.1",

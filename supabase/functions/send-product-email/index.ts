@@ -206,6 +206,22 @@ const productInfo: Record<string, {
       "Export both documents as PDF or Word",
       "Apply on the employer's site yourself"
     ]
+  },
+  resume_rewrite: {
+    emoji: "✍️",
+    tagline: "Your complete resume rewrite — reviewed by you, verified line by line",
+    howItWorks: [
+      "Our AI rewrote every bullet using only your real experience",
+      "An anti-fabrication check verified every claim against your original resume",
+      "You review each change and fill in any [placeholder] metrics",
+      "An independent open-source parser confirms what an ATS extracts from both versions"
+    ],
+    nextSteps: [
+      "Return to the success page to review your tracked changes",
+      "Approve, edit, or reject each rewritten bullet",
+      "Fill in the bracketed placeholders with your real numbers",
+      "Download your finished resume as DOCX or PDF"
+    ]
   }
 };
 

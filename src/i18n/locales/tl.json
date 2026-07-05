@@ -2092,6 +2092,30 @@
         ],
         "deliveryTime": "Instant",
         "deliveryMethod": "Sa Pahinang Ito"
+      },
+      "resumeRewrite": {
+        "howItWorks": [
+          "Isinulat muli ng aming AI ang bawat punto ng iyong resume — gamit lamang ang totoo mong karanasan",
+          "Isang anti-fabrication check ang nag-verify ng bawat claim laban sa orihinal mong resume",
+          "Susuriin mo ang bawat pagbabago tulad ng tracked changes at pupunan ang mga [placeholder] na numero",
+          "Ipinapakita ng isang independent na open-source parser kung ano ang nakukuha ng ATS mula sa dalawang bersyon"
+        ],
+        "nextSteps": [
+          {
+            "title": "Suriin ang Bawat Pagbabago",
+            "description": "Tanggapin, i-edit, o tanggihan ang bawat muling isinulat na punto"
+          },
+          {
+            "title": "Punan ang Iyong mga Numero",
+            "description": "Palitan ang mga naka-highlight na [placeholder] ng totoo mong metrics"
+          },
+          {
+            "title": "I-download ang Iyong Resume",
+            "description": "I-export ang tapos na, ATS-safe na dokumento bilang DOCX o PDF"
+          }
+        ],
+        "deliveryTime": "Agad-agad",
+        "deliveryMethod": "Sa Pahinang Ito"
       }
     }
   },

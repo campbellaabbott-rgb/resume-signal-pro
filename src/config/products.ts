@@ -90,6 +90,23 @@ export const PRODUCTS = {
       'Instant download'
     ]
   },
+  resumeRewrite: {
+    id: 'resume_rewrite',
+    name: 'Complete Resume Rewrite',
+    description: 'Your resume completely rewritten and delivered as a finished, ATS-safe document — with every change shown for your approval before download',
+    priceUsd: 19,
+    priceId: null, // Inline price per checkout (same pattern as applyAssistant)
+    features: [
+      'Full rewrite of every bullet, delivered as finished DOCX + PDF',
+      'Uses only your real experience — unverifiable numbers are never invented',
+      'Tracked changes: approve, edit, or reject every rewrite before download',
+      'Unknown metrics arrive as [placeholders] only you fill in',
+      'Independent parse proof — an open-source ATS parser reads both versions',
+      'ATS-safe single-column layout with standard headings'
+    ],
+    badge: 'Flagship',
+    tagline: 'Not suggestions. A finished resume you can send today.'
+  },
   premiumPackage: {
     id: 'premium_package',
     name: 'Premium Resume Package',

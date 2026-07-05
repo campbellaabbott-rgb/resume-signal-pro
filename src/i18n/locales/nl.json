@@ -2092,6 +2092,30 @@
         ],
         "deliveryTime": "Direct",
         "deliveryMethod": "Op deze pagina"
+      },
+      "resumeRewrite": {
+        "howItWorks": [
+          "Onze AI heeft elk punt van je cv herschreven — uitsluitend op basis van je echte ervaring",
+          "Een anti-verzinselcontrole heeft elke bewering geverifieerd tegen je originele cv",
+          "Je beoordeelt elke wijziging zoals bij wijzigingen bijhouden en vult ontbrekende [plaatshouder]-cijfers in",
+          "Een onafhankelijke open-source parser toont wat een ATS uit beide versies haalt"
+        ],
+        "nextSteps": [
+          {
+            "title": "Beoordeel elke wijziging",
+            "description": "Accepteer, bewerk of verwerp elk herschreven punt"
+          },
+          {
+            "title": "Vul je cijfers in",
+            "description": "Vervang de gemarkeerde [plaatshouders] door je echte cijfers"
+          },
+          {
+            "title": "Download je cv",
+            "description": "Exporteer het afgewerkte, ATS-veilige document als DOCX of PDF"
+          }
+        ],
+        "deliveryTime": "Direct",
+        "deliveryMethod": "Op deze pagina"
       }
     }
   },

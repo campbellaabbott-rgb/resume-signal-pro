@@ -64,6 +64,11 @@ const PRODUCTS: Record<string, { priceId?: string; priceData?: { unitAmount: num
     priceData: { unitAmount: 700, currency: "usd" }, // $7.00
     name: "Apply Assistant",
     productType: "apply_assistant"
+  },
+  resumeRewrite: {
+    priceData: { unitAmount: 1900, currency: "usd" }, // $19.00
+    name: "Complete Resume Rewrite",
+    productType: "resume_rewrite"
   }
 };
 

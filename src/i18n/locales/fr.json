@@ -2092,6 +2092,30 @@
         ],
         "deliveryTime": "Instantané",
         "deliveryMethod": "Sur cette page"
+      },
+      "resumeRewrite": {
+        "howItWorks": [
+          "Notre IA a réécrit chaque point de votre CV — en utilisant uniquement votre expérience réelle",
+          "Un contrôle anti-fabrication a vérifié chaque affirmation par rapport à votre CV original",
+          "Vous examinez chaque modification comme un suivi des modifications et complétez les nombres [entre crochets]",
+          "Un parseur open source indépendant montre ce qu'un ATS extrait des deux versions"
+        ],
+        "nextSteps": [
+          {
+            "title": "Examinez chaque modification",
+            "description": "Acceptez, modifiez ou rejetez chaque point réécrit"
+          },
+          {
+            "title": "Renseignez vos chiffres",
+            "description": "Remplacez les [espaces réservés] surlignés par vos vraies métriques"
+          },
+          {
+            "title": "Téléchargez votre CV",
+            "description": "Exportez le document final, compatible ATS, en DOCX ou PDF"
+          }
+        ],
+        "deliveryTime": "Instantané",
+        "deliveryMethod": "Sur cette page"
       }
     }
   },

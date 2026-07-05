@@ -2092,6 +2092,30 @@
         ],
         "deliveryTime": "Sofort",
         "deliveryMethod": "Auf dieser Seite"
+      },
+      "resumeRewrite": {
+        "howItWorks": [
+          "Unsere KI hat jeden Punkt Ihres Lebenslaufs neu geschrieben — ausschließlich auf Basis Ihrer echten Erfahrung",
+          "Eine Anti-Erfindungs-Prüfung hat jede Aussage mit Ihrem Original-Lebenslauf abgeglichen",
+          "Sie prüfen jede Änderung wie im Änderungsmodus und ergänzen fehlende [Platzhalter]-Zahlen",
+          "Ein unabhängiger Open-Source-Parser zeigt, was ein ATS aus beiden Versionen extrahiert"
+        ],
+        "nextSteps": [
+          {
+            "title": "Jede Änderung prüfen",
+            "description": "Akzeptieren, bearbeiten oder verwerfen Sie jeden neu geschriebenen Punkt"
+          },
+          {
+            "title": "Ihre Zahlen eintragen",
+            "description": "Ersetzen Sie die markierten [Platzhalter] durch Ihre echten Kennzahlen"
+          },
+          {
+            "title": "Lebenslauf herunterladen",
+            "description": "Exportieren Sie das fertige, ATS-sichere Dokument als DOCX oder PDF"
+          }
+        ],
+        "deliveryTime": "Sofort",
+        "deliveryMethod": "Auf dieser Seite"
       }
     }
   },

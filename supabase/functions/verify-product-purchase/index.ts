@@ -33,6 +33,8 @@ function buildGenerationRequest(
       return { endpoint: 'generate-cover-letter', body: { resumeText, jobDescription: jobDescriptionText, jobTitle: jobTitle || 'Professional Position', jobCompany, tone: 'professional', language } };
     case 'premium_package':
       return { endpoint: 'generate-premium-package', body: { resumeText, jobDescription: jobDescriptionText, jobTitle: jobTitle || 'Target Position', jobCompany, language } };
+    case 'resume_rewrite':
+      return { endpoint: 'generate-resume-rewrite', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany } };
     case 'graduate_gameplan':
       return { endpoint: 'generate-graduate-gameplan', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany, language } };
     case 'career_snapshot':

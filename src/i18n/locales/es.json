@@ -2092,6 +2092,30 @@
         ],
         "deliveryTime": "Instantáneo",
         "deliveryMethod": "En esta página"
+      },
+      "resumeRewrite": {
+        "howItWorks": [
+          "Nuestra IA reescribió cada punto de tu currículum — usando solo tu experiencia real",
+          "Una verificación antifabricación comparó cada afirmación con tu currículum original",
+          "Revisas cada cambio como control de cambios y completas los números [marcados]",
+          "Un parser independiente de código abierto muestra lo que un ATS extrae de ambas versiones"
+        ],
+        "nextSteps": [
+          {
+            "title": "Revisa cada cambio",
+            "description": "Acepta, edita o rechaza cada punto reescrito"
+          },
+          {
+            "title": "Completa tus números",
+            "description": "Reemplaza los [marcadores] resaltados con tus métricas reales"
+          },
+          {
+            "title": "Descarga tu currículum",
+            "description": "Exporta el documento final, seguro para ATS, en DOCX o PDF"
+          }
+        ],
+        "deliveryTime": "Instantáneo",
+        "deliveryMethod": "En esta página"
       }
     }
   },

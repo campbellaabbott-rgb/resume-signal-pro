@@ -20,6 +20,7 @@ const productIcons: Record<string, React.ElementType> = {
   basicKeywordFix: FileText,
   coverLetter: FileText,
   premiumPackage: Crown,
+  resumeRewrite: Crown,
   careerBundle: Package,
   fullAnalysis: Sparkles,
   scanPack: Zap,
@@ -34,6 +35,7 @@ const productIcons: Record<string, React.ElementType> = {
 
 // Premium products (shown in main grid)
 const productOrder: ProductId[] = [
+  'resumeRewrite',
   'careerSnapshot',
   'graduateGamePlan',
   'atsDefense',
@@ -119,7 +121,9 @@ export default function Pricing() {
             {productOrder.map((key) => {
               const product = PRODUCTS[key];
               const Icon = productIcons[key] || Sparkles;
-              const isPremium = key === 'premiumPackage';
+              // Flagship highlight moved from premiumPackage to the Complete
+              // Resume Rewrite — it replaces it as the hero product.
+              const isPremium = key === 'resumeRewrite';
               const isCareerSnapshot = key === 'careerSnapshot';
               const isLoadingThis = isLoading && currentProduct === key;
               
