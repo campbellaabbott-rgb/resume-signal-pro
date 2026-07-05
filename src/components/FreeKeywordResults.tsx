@@ -10,7 +10,7 @@ import {
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
   TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket,
-  BarChart3, Shield, Search, Settings2, Eye, Flame, FileEdit, Send, Quote
+  BarChart3, Shield, Search, Settings2, Eye, Flame, FileEdit, Send
 } from "lucide-react";
 import { LockedPremiumInsight } from "./LockedPremiumInsight";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
