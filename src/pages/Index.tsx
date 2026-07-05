@@ -762,6 +762,10 @@ const Index = () => {
 
     // If the scan was triggered from the paste box, persist it so the UI preview + session stay in sync.
     if (overrideText && overrideText.trim() && overrideText.trim() !== resumeText) {
+      // Funnel: the paste-box scan button skips handleTextSubmit, so upload
+      // events must fire here or the whole paste cohort is invisible.
+      trackUploadStarted('pasted_text');
+      trackUploadCompleted(overrideText.trim().length);
       const normalized = overrideText.trim();
       setResumeText(normalized);
       saveResumeToSession(normalized, linkedInText || undefined, jobDescriptionText || undefined);
@@ -1308,6 +1312,10 @@ const Index = () => {
   }, [toast]);
 
   const handleTextSubmit = (text: string, linkedIn?: string, jobDescription?: string) => {
+    // Funnel: the paste path is an upload too — without these events the
+    // activation rate undercounts the entire paste cohort.
+    trackUploadStarted('pasted_text');
+    trackUploadCompleted(text.length);
     setResumeText(text);
     setResumeMultiColumnDetected(undefined); // No layout data for pasted text
     setFreeKeywordResult(null);
