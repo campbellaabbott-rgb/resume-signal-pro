@@ -35,6 +35,10 @@ const Trust = lazy(() => import("./pages/Trust"));
 const ResumeBuilder = lazy(() => import("./pages/ResumeBuilder"));
 const Changelog = lazy(() => import("./pages/Changelog"));
 const FreelanceBoost = lazy(() => import("./pages/FreelanceBoost"));
+const IndustriesIndex = lazy(() => import("./pages/IndustriesIndex"));
+const IndustryKeywords = lazy(() => import("./pages/IndustryKeywords"));
+const AtsVendorGuide = lazy(() => import("./pages/AtsVendorGuide"));
+const VsJobscan = lazy(() => import("./pages/VsJobscan"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -71,6 +75,10 @@ const App = () => (
           <Route path="/builder" element={<ResumeBuilder />} />
           <Route path="/changelog" element={<Changelog />} />
           <Route path="/freelance-boost" element={<FreelanceBoost />} />
+          <Route path="/industries" element={<IndustriesIndex />} />
+          <Route path="/industries/:slug" element={<IndustryKeywords />} />
+          <Route path="/ats/:vendor" element={<AtsVendorGuide />} />
+          <Route path="/vs/jobscan" element={<VsJobscan />} />
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

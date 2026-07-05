@@ -1571,6 +1571,16 @@ const Index = () => {
         onRetry={checkoutError && !checkoutUrl ? handleRetryCheckout : undefined}
         onClose={handleCloseCheckout}
       />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        name: "Resume Booster",
+        url: "https://resumebooster.work",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web",
+        description: "Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across 59 industries and 10 languages.",
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free resume scan — no signup required" },
+      }) }} />
       <SEO title="Resume Booster: Free ATS Resume Scan" description="Free AI resume scan: ATS score, missing keywords, red flags, and recruiter-grade fixes in under 30 seconds." path="/" />
       <Header />
 
