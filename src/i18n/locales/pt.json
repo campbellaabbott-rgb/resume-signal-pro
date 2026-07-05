@@ -2766,6 +2766,22 @@
     }
   },
   "changelogEntries": {
+    "diagnosticReport": {
+      "title": "Seu escaneamento gratuito agora é um relatório diagnóstico",
+      "description": "O relatório foi redesenhado com estrutura de diagnóstico: cabeçalho com ID único (reescanear o mesmo documento o reproduz), resumo de achados — críticos, avisos, aprovados — antes de qualquer detalhe, achados sem interrupções e todas as ofertas consolidadas numa seção final claramente marcada."
+    },
+    "onetSourcing": {
+      "title": "Expectativas de palavras-chave com fonte: o Departamento do Trabalho dos EUA",
+      "description": "Escaneamentos sem vaga agora extraem habilidades esperadas do O*NET — o banco de dados ocupacional do Departamento do Trabalho — com fonte e código exibidos no relatório. Uma vaga colada continua tendo prioridade sobre tudo."
+    },
+    "honestScoring": {
+      "title": "Pontuação honesta: faixas, procedência e extração real",
+      "description": "Sua pontuação agora mostra sua faixa de modelagem em vez de falsa precisão pontual. Cada relatório informa de onde vêm suas expectativas — a vaga exata, O*NET ou nosso modelo. E ao enviar um arquivo, a prévia é rotulada pelo que é: o texto realmente extraído do documento."
+    },
+    "reportEverywhere": {
+      "title": "O mesmo relatório na tela, em PDF e no seu e-mail",
+      "description": "O PDF para download e o relatório por e-mail agora carregam a estrutura diagnóstica completa — mesmo ID, resumo de achados, faixa de pontuação e atribuições de fonte da versão na tela."
+    },
     "fasterScans": {
       "title": "Escaneamentos mais rápidos — e reescaneamentos instantâneos",
       "description": "Duas melhorias no motor: repetir o escaneamento do mesmo currículo agora responde em cerca de um segundo, e a análise executa suas passagens de IA em paralelo num modelo mais rápido — espera bem menor."

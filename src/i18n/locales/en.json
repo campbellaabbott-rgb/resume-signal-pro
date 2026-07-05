@@ -2766,6 +2766,22 @@
     }
   },
   "changelogEntries": {
+    "diagnosticReport": {
+      "title": "Your free scan is now a diagnostic report",
+      "description": "The report has been redesigned around a diagnostic structure: a specimen header with a unique report ID (rescanning the same document reproduces it), a findings summary — critical, warnings, passed — before any detail, findings that run uninterrupted, and all offers consolidated in one clearly-marked Next Steps section at the end."
+    },
+    "onetSourcing": {
+      "title": "Keyword expectations, sourced from the U.S. Department of Labor",
+      "description": "Resume-only scans now draw expected skills and technologies from O*NET — the Department of Labor's occupational database — with the source and occupation code shown in your report. A pasted job posting still overrides everything: the employer's actual ask beats any database."
+    },
+    "honestScoring": {
+      "title": "Honest scoring: bands, provenance, and real extraction",
+      "description": "Your score now shows its modeling band instead of false single-point precision. Every report states where its expectations came from — the exact job posting, O*NET, or our model. And when you upload a file, the parse preview is labeled for what it is: the actual text extracted from your document, the same operation an ATS performs."
+    },
+    "reportEverywhere": {
+      "title": "The same report on screen, in PDF, and in your inbox",
+      "description": "The downloadable PDF and the emailed report now carry the full diagnostic structure — same report ID, findings summary, score band, and source attributions as the on-screen version. One consistent document you can save, print, or forward."
+    },
     "fasterScans": {
       "title": "Faster scans — and instant rescans",
       "description": "Two engine upgrades: repeat scans of the same resume now return in about a second, and the analysis pipeline was rebuilt to run its AI passes in parallel on a faster model, cutting fresh-scan wait times substantially."

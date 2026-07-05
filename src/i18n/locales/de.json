@@ -2766,6 +2766,22 @@
     }
   },
   "changelogEntries": {
+    "diagnosticReport": {
+      "title": "Dein Gratis-Scan ist jetzt ein Diagnosebericht",
+      "description": "Der Bericht wurde als Diagnose strukturiert: Kopfbereich mit eindeutiger Berichts-ID (derselbe Lebenslauf reproduziert sie), eine Befundübersicht — kritisch, Warnungen, bestanden — vor allen Details, unterbrechungsfreie Befunde und alle Angebote gebündelt in einem klar markierten Abschnitt am Ende."
+    },
+    "onetSourcing": {
+      "title": "Keyword-Erwartungen mit Quelle: US-Arbeitsministerium",
+      "description": "Scans ohne Stellenanzeige beziehen erwartete Skills jetzt aus O*NET — der Berufsdatenbank des US-Arbeitsministeriums — mit Quelle und Berufscode im Bericht. Eine eingefügte Stellenanzeige hat weiterhin Vorrang vor allem."
+    },
+    "honestScoring": {
+      "title": "Ehrliche Bewertung: Bänder, Herkunft, echte Extraktion",
+      "description": "Dein Score zeigt jetzt sein Modellierungsband statt falscher Punktgenauigkeit. Jeder Bericht nennt die Herkunft seiner Erwartungen — die konkrete Stellenanzeige, O*NET oder unser Modell. Bei Datei-Uploads ist die Vorschau als das gekennzeichnet, was sie ist: der tatsächlich extrahierte Text."
+    },
+    "reportEverywhere": {
+      "title": "Derselbe Bericht auf dem Bildschirm, als PDF und im Postfach",
+      "description": "PDF-Download und E-Mail-Bericht tragen jetzt die volle Diagnosestruktur — gleiche Berichts-ID, Befundübersicht, Score-Band und Quellenangaben wie die Bildschirmversion."
+    },
     "fasterScans": {
       "title": "Schnellere Scans — und sofortige Rescans",
       "description": "Zwei Engine-Upgrades: Wiederholte Scans desselben Lebenslaufs antworten jetzt in etwa einer Sekunde, und die Analyse führt ihre KI-Durchläufe parallel auf einem schnelleren Modell aus — deutlich kürzere Wartezeiten."

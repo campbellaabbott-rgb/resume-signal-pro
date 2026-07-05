@@ -2766,6 +2766,22 @@
     }
   },
   "changelogEntries": {
+    "diagnosticReport": {
+      "title": "Tu escaneo gratuito ahora es un informe diagnóstico",
+      "description": "El informe se rediseñó con estructura de diagnóstico: encabezado con un ID único de informe (reescanear el mismo documento lo reproduce), un resumen de hallazgos — críticos, advertencias, aprobados — antes del detalle, hallazgos sin interrupciones y todas las ofertas consolidadas en una sección final de Próximos Pasos."
+    },
+    "onetSourcing": {
+      "title": "Expectativas de palabras clave con fuente: el Departamento de Trabajo de EE. UU.",
+      "description": "Los escaneos sin oferta laboral ahora toman las habilidades esperadas de O*NET — la base de datos ocupacional del Departamento de Trabajo — con la fuente y el código mostrados en tu informe. Una oferta pegada sigue teniendo prioridad sobre todo."
+    },
+    "honestScoring": {
+      "title": "Puntuación honesta: bandas, procedencia y extracción real",
+      "description": "Tu puntuación ahora muestra su banda de modelado en lugar de una falsa precisión de un solo punto. Cada informe indica de dónde vienen sus expectativas — la oferta exacta, O*NET o nuestro modelo. Y al subir un archivo, la vista previa se etiqueta como lo que es: el texto realmente extraído de tu documento."
+    },
+    "reportEverywhere": {
+      "title": "El mismo informe en pantalla, en PDF y en tu correo",
+      "description": "El PDF descargable y el informe por correo ahora llevan la estructura diagnóstica completa — mismo ID, resumen de hallazgos, banda de puntuación y atribuciones de fuente que la versión en pantalla."
+    },
     "fasterScans": {
       "title": "Escaneos más rápidos y reescaneos instantáneos",
       "description": "Dos mejoras del motor: repetir el escaneo del mismo currículum ahora responde en un segundo, y el análisis se rediseñó para ejecutar sus pasadas de IA en paralelo con un modelo más rápido, reduciendo bastante la espera."

@@ -2766,6 +2766,22 @@
     }
   },
   "changelogEntries": {
+    "diagnosticReport": {
+      "title": "Je gratis scan is nu een diagnostisch rapport",
+      "description": "Het rapport is herontworpen met een diagnostische structuur: een kop met uniek rapport-ID (hetzelfde document opnieuw scannen reproduceert het), een bevindingenoverzicht — kritiek, waarschuwingen, geslaagd — vóór alle details, ononderbroken bevindingen en alle aanbiedingen gebundeld in één duidelijk gemarkeerde slotsectie."
+    },
+    "onetSourcing": {
+      "title": "Keyword-verwachtingen met bron: het Amerikaanse ministerie van Arbeid",
+      "description": "Scans zonder vacature halen verwachte vaardigheden nu uit O*NET — de beroependatabase van het ministerie van Arbeid — met bron en beroepscode in je rapport. Een geplakte vacature gaat nog altijd vóór alles."
+    },
+    "honestScoring": {
+      "title": "Eerlijke scores: bandbreedtes, herkomst en echte extractie",
+      "description": "Je score toont nu zijn modelleringsbandbreedte in plaats van valse puntprecisie. Elk rapport vermeldt waar zijn verwachtingen vandaan komen — de exacte vacature, O*NET of ons model. En bij een geüpload bestand is de voorvertoning gelabeld als wat het is: de werkelijk geëxtraheerde tekst."
+    },
+    "reportEverywhere": {
+      "title": "Hetzelfde rapport op scherm, als PDF en in je inbox",
+      "description": "De download-PDF en het gemailde rapport dragen nu de volledige diagnostische structuur — zelfde rapport-ID, bevindingenoverzicht, scorebandbreedte en bronvermeldingen als de schermversie."
+    },
     "fasterScans": {
       "title": "Snellere scans — en directe herscans",
       "description": "Twee engine-upgrades: hetzelfde cv opnieuw scannen antwoordt nu in ongeveer een seconde, en de analyse draait zijn AI-passes parallel op een sneller model — aanzienlijk kortere wachttijden."

@@ -2766,6 +2766,22 @@
     }
   },
   "changelogEntries": {
+    "diagnosticReport": {
+      "title": "Votre scan gratuit est désormais un rapport de diagnostic",
+      "description": "Le rapport a été repensé en structure diagnostique : en-tête avec identifiant unique (rescanner le même document le reproduit), synthèse des constats — critiques, avertissements, validés — avant tout détail, constats sans interruption et toutes les offres regroupées dans une section finale clairement identifiée."
+    },
+    "onetSourcing": {
+      "title": "Des attentes de mots-clés sourcées : le Département du Travail américain",
+      "description": "Les scans sans offre d'emploi tirent désormais les compétences attendues d'O*NET — la base de données professionnelle du Département du Travail — avec la source et le code affichés dans votre rapport. Une offre collée garde la priorité sur tout."
+    },
+    "honestScoring": {
+      "title": "Notation honnête : fourchettes, provenance et extraction réelle",
+      "description": "Votre score affiche désormais sa fourchette de modélisation plutôt qu'une fausse précision. Chaque rapport indique d'où viennent ses attentes — l'offre exacte, O*NET ou notre modèle. Et à l'upload d'un fichier, l'aperçu est étiqueté pour ce qu'il est : le texte réellement extrait de votre document."
+    },
+    "reportEverywhere": {
+      "title": "Le même rapport à l'écran, en PDF et dans votre boîte mail",
+      "description": "Le PDF téléchargeable et le rapport par e-mail portent désormais la structure diagnostique complète — même identifiant, synthèse des constats, fourchette de score et attributions de sources que la version à l'écran."
+    },
     "fasterScans": {
       "title": "Des scans plus rapides — et des rescans instantanés",
       "description": "Deux améliorations du moteur : rescanner le même CV répond désormais en une seconde environ, et l'analyse exécute ses passes d'IA en parallèle sur un modèle plus rapide — attente nettement réduite."

@@ -2766,6 +2766,22 @@
     }
   },
   "changelogEntries": {
+    "diagnosticReport": {
+      "title": "Ang libreng scan mo ay isa nang diagnostic report",
+      "description": "Ni-redesign ang report sa diagnostic na istruktura: header na may natatanging report ID (ang muling pag-scan ng parehong dokumento ay magre-reproduce nito), buod ng mga natuklasan — kritikal, babala, pasado — bago ang detalye, tuloy-tuloy na findings, at lahat ng alok ay pinagsama sa isang malinaw na seksyon sa dulo."
+    },
+    "onetSourcing": {
+      "title": "Mga inaasahang keyword, mula sa U.S. Department of Labor",
+      "description": "Ang mga scan na walang job posting ay kumukuha na ng inaasahang skills mula sa O*NET — ang occupational database ng Department of Labor — na may source at code na ipinapakita sa report. Ang naka-paste na job posting ay nangingibabaw pa rin sa lahat."
+    },
+    "honestScoring": {
+      "title": "Tapat na scoring: band, pinagmulan, at totoong extraction",
+      "description": "Ipinapakita na ngayon ng score mo ang modeling band nito sa halip na maling isang-puntong katiyakan. Sinasabi ng bawat report kung saan nanggaling ang mga inaasahan nito — ang eksaktong job posting, O*NET, o ang aming model. At sa file upload, naka-label ang preview bilang kung ano talaga ito: ang aktwal na na-extract na teksto."
+    },
+    "reportEverywhere": {
+      "title": "Parehong report sa screen, sa PDF, at sa inbox mo",
+      "description": "Ang nada-download na PDF at ang nai-email na report ay may buo nang diagnostic na istruktura — parehong report ID, buod ng findings, score band, at mga source attribution gaya ng bersyon sa screen."
+    },
     "fasterScans": {
       "title": "Mas mabilis na scan — at instant na rescan",
       "description": "Dalawang upgrade sa engine: ang pag-scan muli ng parehong resume ay sumasagot na sa loob ng isang segundo, at ang pagsusuri ay nagpapatakbo ng mga AI pass nang magkasabay sa mas mabilis na model — kapansin-pansing mas maikling paghihintay."
