@@ -929,6 +929,12 @@ export function FreeKeywordResults({
   const scanCountData = useTodayScanCount();
   const { variant: contentDepthVariant, trackConversion: trackContentDepthConversion } = useABTest('free_content_depth');
   const gateDeepInsights = contentDepthVariant === 'gated';
+  // Diagnostic-report layout test: findings run uninterrupted; every offer is
+  // consolidated into one "Next steps" section at the end; professional tone.
+  const { variant: reportLayoutVariant, trackConversion: trackReportLayout } = useABTest('report_layout');
+  const diagnosticLayout = reportLayoutVariant === 'diagnostic';
+  // Strip decorative emoji from headings in the diagnostic variant
+  const tone = (s: string) => diagnosticLayout ? s.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\s*/gu, '').trim() : s;
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -1046,6 +1052,7 @@ export function FreeKeywordResults({
 
   // Track which CTA converts, then trigger checkout
   const handleUpgradeClick = (source: string) => {
+    trackReportLayout({ action: 'upgrade_click', source });
     trackButtonClick('fullAnalysis', source);
     trackContentDepthConversion({ source });
     onGetFullAnalysis();
@@ -1561,7 +1568,7 @@ export function FreeKeywordResults({
   return (
     <TooltipProvider delayDuration={200}>
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
-      {showExitOffer && (
+      {showExitOffer && !diagnosticLayout && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
           <div className="relative w-full max-w-sm bg-card border border-border rounded-2xl shadow-2xl p-6 animate-slide-up">
             <button
@@ -1712,7 +1719,7 @@ export function FreeKeywordResults({
         if (!spotlight) return null;
         return (
           <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4 mb-4">
-            <p className="text-sm font-semibold text-foreground mb-1">{spotlight.title}</p>
+            <p className="text-sm font-semibold text-foreground mb-1">{tone(spotlight.title)}</p>
             <p className="text-xs text-muted-foreground leading-relaxed">{spotlight.body}</p>
           </div>
         );
@@ -1951,7 +1958,8 @@ export function FreeKeywordResults({
 
       </div> {/* end section-overview */}
 
-      {/* Compact Action CTA */}
+      {/* Compact Action CTA — interleaved urgency; hidden in the diagnostic layout */}
+      {!diagnosticLayout && (
       <div className="rounded-xl bg-gradient-to-r from-destructive/10 to-destructive/5 border border-destructive/20 p-4 mb-5">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <div className="flex-1">
@@ -1982,6 +1990,7 @@ export function FreeKeywordResults({
           </div>
         </div>
       </div>
+      )}
 
       {/* Job Match Section - Show when job description was provided */}
       {jobMatchScore !== undefined && jobMatchGrade && (
@@ -2679,7 +2688,7 @@ export function FreeKeywordResults({
                       {isBelow
                         ? "Resumes that score in the top 25% get 3× more interview callbacks in your field."
                         : "Top-quartile resumes in your field get called back 2× more often."}
-                      {" "}<button onClick={() => handleUpgradeClick('peer_percentile_cta')} className="text-primary font-semibold hover:underline">See what's holding you back →</button>
+                      {!diagnosticLayout && <>{" "}<button onClick={() => handleUpgradeClick('peer_percentile_cta')} className="text-primary font-semibold hover:underline">See what's holding you back →</button></>}
                     </p>
                   </div>
                 )}
@@ -4324,7 +4333,7 @@ export function FreeKeywordResults({
       )}
 
       {/* ── Premium receipt — a REAL computed artifact, blurred at the gate ── */}
-      {premiumTeaser && (
+      {premiumTeaser && !diagnosticLayout && (
         <div className="rounded-2xl border border-primary/30 bg-card p-5 relative overflow-hidden">
           <div className="flex items-center gap-2 mb-2">
             <Lock className="w-4 h-4 text-primary" />
@@ -4419,12 +4428,14 @@ export function FreeKeywordResults({
               </div>
             ))}
           </div>
+          {!diagnosticLayout && (
           <button
             onClick={() => handleUpgradeClick('triggered_questions')}
             className="mt-3 w-full text-center text-xs text-primary hover:underline"
           >
             Get full answers and mock-interview practice with the Interview Coach →
           </button>
+          )}
         </div>
       )}
 
@@ -4455,7 +4466,38 @@ export function FreeKeywordResults({
       {/* Credibility: no invented testimonials. Trust here comes from the
           audit trail and verifiable checks above, not manufactured quotes. */}
 
-      {/* Score-Gated Premium Insights */}
+      {/* Diagnostic layout: all offers live here, after the findings end */}
+      {diagnosticLayout && (
+        <div className="rounded-2xl border border-border bg-card p-6 mb-6">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Next steps</p>
+          <h3 className="font-semibold text-foreground mb-1">If you want help executing the fixes above</h3>
+          <p className="text-xs text-muted-foreground mb-4">
+            The diagnosis above is complete and free. These are the paid tools that do the work for you — no pressure, the fix plan stands on its own.
+          </p>
+          <div className="space-y-2.5">
+            <button onClick={() => handleUpgradeClick('next_steps_full_analysis')} className="w-full flex items-center justify-between rounded-xl border border-border p-3.5 text-left hover:border-primary/50 transition-colors">
+              <span>
+                <span className="block text-sm font-medium text-foreground">Full Analysis — every bullet rewritten</span>
+                <span className="block text-xs text-muted-foreground">Applies the fixes from this report to your actual resume content.</span>
+              </span>
+              <span className="text-sm font-semibold text-primary shrink-0 ml-3">{priceDisplay}</span>
+            </button>
+            <button onClick={() => handleUpgradeClick('next_steps_interview_coach')} className="w-full flex items-center justify-between rounded-xl border border-border p-3.5 text-left hover:border-primary/50 transition-colors">
+              <span>
+                <span className="block text-sm font-medium text-foreground">Interview Coach — answers to the questions above</span>
+                <span className="block text-xs text-muted-foreground">Preparation for the exact questions this resume will trigger.</span>
+              </span>
+              <span className="text-sm font-semibold text-primary shrink-0 ml-3">$5</span>
+            </button>
+            <Link to="/pricing" className="block text-center text-xs text-muted-foreground hover:text-foreground pt-1">
+              See everything, including the all-access plan →
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Score-Gated Premium Insights — pure upsell; moved to Next Steps in diagnostic */}
+      {!diagnosticLayout && (
       <div className="space-y-4 mb-6">
         <LockedPremiumInsight
           title={t('freeResults.bulletRewriteSection.title')}
@@ -4539,6 +4581,7 @@ export function FreeKeywordResults({
           isLoading={isLoading}
         />
       </div>
+      )}
 
       {/* Detailed Section Check */}
       <div className="rounded-2xl bg-card border border-border p-5 mb-5">

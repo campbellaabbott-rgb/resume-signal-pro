@@ -49,6 +49,15 @@ export const AB_TESTS = {
     name: 'free_content_depth',
     variants: ['control', 'gated'] as const,
   },
+  // Diagnostic-report layout: does separating diagnosis from commerce convert
+  // better than interleaved upsells?
+  // - control: current layout (locked insights and offers woven between findings)
+  // - diagnostic: findings run uninterrupted, professional tone (no emoji
+  //   headers), all offers consolidated into one "Next steps" section at the end
+  report_layout: {
+    name: 'report_layout',
+    variants: ['control', 'diagnostic'] as const,
+  },
 } as const;
 
 type TestName = keyof typeof AB_TESTS;
