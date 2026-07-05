@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check:functions": "bash scripts/check-functions.sh"
   },
   "dependencies": {
     "@lovable.dev/cloud-auth-js": "^1.1.2",

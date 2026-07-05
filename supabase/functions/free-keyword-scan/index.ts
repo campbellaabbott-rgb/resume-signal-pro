@@ -3342,7 +3342,7 @@ ${resumeText.substring(0, 20000)}
         !!f && typeof (f as { issue?: unknown }).issue === 'string' && typeof (f as { impact?: unknown }).impact === 'string');
       analysis.quickWins = asArr(analysis.quickWins, (w: unknown) =>
         !!w && typeof (w as { fix?: unknown }).fix === 'string')
-        .map((w: { fix: string; timeEstimate?: unknown; impact?: unknown; scoreImpact?: unknown; category?: unknown }) => ({
+        .map((w: any) => ({
           ...w,
           timeEstimate: asStr(w.timeEstimate) ?? '10 min',
           impact: ['low', 'medium', 'high'].includes(w.impact as string) ? w.impact : 'medium',
@@ -4055,7 +4055,7 @@ ${resumeText.substring(0, 20000)}
       const wordCount = words.length;
       const letters = (resumeText.match(/[a-zA-ZÀ-ÿ\u0900-\u097F]/g) || []).length;
       const letterRatio = resumeText.length > 0 ? letters / resumeText.length : 0;
-      const garbage = (resumeText.match(/[\uFFFD\u0000-\u0008\u000E-\u001F]|(.)\2{5,}/g) || []).length;
+      const garbage = (resumeText.match(/[\uFFFD\u0000-\u0008\u000E-\u001F]|(.)\1{5,}/g) || []).length;
       const hasSections = /\b(experience|education|skills|summary|employment)\b/i.test(resumeText);
       const issues: string[] = [];
       if (wordCount < 120) issues.push(`only ${wordCount} words extracted`);
@@ -4190,7 +4190,7 @@ ${resumeText.substring(0, 20000)}
       // Three weighted components + a residual bucket so items always sum to the score.
       const kwPts = Math.round(kw * 0.35), fmtPts = Math.round(fmt * 0.30), quantPts = Math.round(quant * 0.25);
       const residual = total - kwPts - fmtPts - quantPts;
-      const missingCount = (responseData.keywords || []).length;
+      const missingCount = ((responseData.keywords as unknown[] | undefined) || []).length;
       const flagCount = sortedRedFlags.length;
       const items = [
         { label: 'Keyword coverage', earned: kwPts, possible: 35, detail: missingCount > 0 ? `${missingCount} expected ${benchmarkIndustry} keywords missing` : 'Strong keyword coverage for your industry' },

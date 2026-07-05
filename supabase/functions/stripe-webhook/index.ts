@@ -199,8 +199,8 @@ async function triggerProductDelivery(
   );
 
   const generationStart = Date.now();
-  let generatedContent = null;
-  let generationError = null;
+  let generatedContent: any = null;
+  let generationError: string | null = null;
 
   try {
     if (productType === 'apply_assistant') {
@@ -432,13 +432,13 @@ serve(async (req) => {
               // race failed completely silently instead of just being a harmless,
               // logged no-op.
               EdgeRuntime.waitUntil(
-                supabase.rpc('record_affiliate_conversion', {
+                Promise.resolve(supabase.rpc('record_affiliate_conversion', {
                   p_referral_code: referralCode,
                   p_stripe_session_id: session.id,
                   p_product_name: session.metadata?.product_name || productType || 'Product',
                   p_sale_amount: session.amount_total,
                   p_commission_override: commissionCents
-                }).then(({ error }: { error: { message: string } | null }) => {
+                })).then(({ error }: { error: { message: string } | null }) => {
                   if (error) {
                     logStep("Affiliate conversion recording failed (likely already recorded by verify-product-purchase)", { error: error.message });
                   }

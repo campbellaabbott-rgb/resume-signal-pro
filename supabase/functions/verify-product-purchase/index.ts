@@ -220,7 +220,7 @@ serve(async (req) => {
     }
 
     // If content generation is requested and we have resume data
-    let generatedContent = null;
+    let generatedContent: any = null;
     
     if (generateContent && resumeSessionId) {
       logStep("Content generation requested", { productType, resumeSessionId });

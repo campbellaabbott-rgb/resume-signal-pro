@@ -252,6 +252,7 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
   },
   'SG:finance': {
     marketSummary: 'Singapore is the leading financial centre in APAC. MAS-regulated institutions, family offices, and fintech all thriving. Strong demand for risk, compliance, and quant roles.',
+    cvNorms: ['2-page CVs are standard', 'Stating nationality/PR status is common and speeds screening', 'No photo expected'],
     hotSkills: ['Python', 'Bloomberg', 'Excel', 'SQL', 'MAS compliance', 'ISDA'],
     risingKeywords: ['Digital asset regulation', 'MAS FEAT principles', 'ESG finance', 'payments modernisation'],
     salaryContext: 'VP-level banking roles SGD $180-280K; quant roles $200-350K',
