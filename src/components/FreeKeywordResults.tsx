@@ -930,11 +930,15 @@ export function FreeKeywordResults({
   const { trackButtonClick } = useConversionTracking();
   const scanCountData = useTodayScanCount();
   const { variant: contentDepthVariant, trackConversion: trackContentDepthConversion } = useABTest('free_content_depth');
-  const gateDeepInsights = contentDepthVariant === 'gated';
-  // Diagnostic-report layout test: findings run uninterrupted; every offer is
-  // consolidated into one "Next steps" section at the end; professional tone.
-  const { variant: reportLayoutVariant, trackConversion: trackReportLayout } = useABTest('report_layout');
-  const diagnosticLayout = reportLayoutVariant === 'diagnostic';
+  // Diagnostic layout supersedes the gated-content experiment: locked/blurred
+  // cards mid-report are interleaved commerce, which the layout decision
+  // rejected. Deep insights render ungated for everyone.
+  const gateDeepInsights = false;
+  void contentDepthVariant;
+  // Diagnostic-report layout — promoted from A/B test to the default by owner
+  // decision (2026-07-05): findings run uninterrupted, every offer lives in
+  // the "Next steps" section at the end, professional tone throughout.
+  const diagnosticLayout = true;
   // Strip decorative emoji from headings in the diagnostic variant
   const tone = (s: string) => diagnosticLayout ? s.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\s*/gu, '').trim() : s;
   const [email, setEmail] = useState("");
@@ -1054,7 +1058,6 @@ export function FreeKeywordResults({
 
   // Track which CTA converts, then trigger checkout
   const handleUpgradeClick = (source: string) => {
-    trackReportLayout({ action: 'upgrade_click', source });
     trackButtonClick('fullAnalysis', source);
     trackContentDepthConversion({ source });
     onGetFullAnalysis();

@@ -16,6 +16,10 @@ import { queueABEvent } from '@/hooks/use-shared-data';
 // CONCLUDED TESTS - Winners declared, kept for reference
 // These are no longer active but documented for historical tracking
 export const CONCLUDED_TESTS = {
+  // Concluded by owner decision after testing the interleaved layout live:
+  // findings run uninterrupted, offers consolidated at the end, no emoji
+  // headers. See FreeKeywordResults `diagnosticLayout`.
+  report_layout: { winner: 'diagnostic', concludedAt: '2026-07-05' },
   hero_cta: { winner: 'control', concludedAt: '2025-12-22' },
   pricing_display: { winner: 'control', concludedAt: '2025-12-22' },
   free_scan_cta: { winner: 'control', concludedAt: '2025-12-22' },
@@ -48,15 +52,6 @@ export const AB_TESTS = {
   free_content_depth: {
     name: 'free_content_depth',
     variants: ['control', 'gated'] as const,
-  },
-  // Diagnostic-report layout: does separating diagnosis from commerce convert
-  // better than interleaved upsells?
-  // - control: current layout (locked insights and offers woven between findings)
-  // - diagnostic: findings run uninterrupted, professional tone (no emoji
-  //   headers), all offers consolidated into one "Next steps" section at the end
-  report_layout: {
-    name: 'report_layout',
-    variants: ['control', 'diagnostic'] as const,
   },
 } as const;
 
