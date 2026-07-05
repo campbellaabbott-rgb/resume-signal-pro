@@ -1424,6 +1424,7 @@ export type Database = {
           created_at: string
           id: string
           role: string
+          scan_id: string | null
           scan_score: number | null
           status: string
           user_id: string
@@ -1434,6 +1435,7 @@ export type Database = {
           created_at?: string
           id?: string
           role?: string
+          scan_id?: string | null
           scan_score?: number | null
           status?: string
           user_id: string
@@ -1444,6 +1446,7 @@ export type Database = {
           created_at?: string
           id?: string
           role?: string
+          scan_id?: string | null
           scan_score?: number | null
           status?: string
           user_id?: string

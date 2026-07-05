@@ -1,8 +1,12 @@
 # Pro Redesign: Job-Application Workspace ($45/mo)
 
-**Status: design only — gated.** Do not build until Pro has organic subscribers
-or funnel data supports the investment (owner decision). This doc exists so the
-build can start immediately once the gate clears.
+**Status: built (2026-07-05).** Owner overrode the gate ("build it"). Shipped
+scope differs from the plan below in one way: `user_scans` already acts as the
+version store (labels, scores, fix plans, compare panel), so applications link
+to scans via `user_applications.scan_id` instead of a new `resume_versions`
+table. See migration `20260705120000_application_resume_version.sql`, the
+tracker changes in `src/pages/Account.tsx`, and the copy rewrite in
+`src/components/ProSubscriptionCard.tsx`.
 
 ## The problem with the current pitch
 

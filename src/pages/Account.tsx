@@ -35,9 +35,14 @@ interface Application {
   company: string;
   role: string;
   status: string;
+  scan_id: string | null;
   scan_score: number | null;
   applied_at: string;
 }
+
+// Display name for a saved scan acting as a resume version.
+const versionName = (s: UserScan) =>
+  s.label ?? `${(s.industry ?? "resume").replace(/_/g, " ")} · ${new Date(s.created_at).toLocaleDateString()}`;
 
 interface AccountData {
   credits: number;
@@ -84,6 +89,7 @@ export default function Account() {
   const [fetching, setFetching] = useState(true);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [newApp, setNewApp] = useState({ company: "", role: "" });
+  const [newAppScanId, setNewAppScanId] = useState<string>("latest");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -162,11 +168,15 @@ export default function Account() {
 
   const addApplication = async () => {
     if (!session || !newApp.company.trim()) return;
+    const version = newAppScanId === "latest"
+      ? scans[0]
+      : scans.find(s => s.id === newAppScanId);
     const { data } = await supabase.from("user_applications").insert({
       user_id: session.user.id,
       company: newApp.company.trim(),
       role: newApp.role.trim(),
-      scan_score: scans[0]?.ats_score ?? null,
+      scan_id: version?.id ?? null,
+      scan_score: version?.ats_score ?? null,
     }).select().single();
     if (data) setApplications([data as Application, ...applications]);
     setNewApp({ company: "", role: "" });
@@ -564,6 +574,22 @@ export default function Account() {
               <Plus className="w-4 h-4" /> Add
             </button>
           </div>
+          {scans.length > 0 && (
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[11px] text-muted-foreground shrink-0">Resume version sent:</span>
+              <select
+                value={newAppScanId}
+                onChange={(e) => setNewAppScanId(e.target.value)}
+                className="flex-1 min-w-0 px-2 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                aria-label="Resume version used for this application"
+              >
+                <option value="latest">Latest scan ({scans[0].ats_score}{scans[0].label ? ` · ${scans[0].label}` : ""})</option>
+                {scans.map((s) => (
+                  <option key={s.id} value={s.id}>{versionName(s)} — score {s.ats_score}</option>
+                ))}
+              </select>
+            </div>
+          )}
           {applications.length === 0 ? (
             <p className="text-xs text-muted-foreground">Track where you've applied — status, dates, and the score you applied with, all in one place.</p>
           ) : (
@@ -572,7 +598,14 @@ export default function Account() {
                 <div key={a.id} className="flex items-center gap-2 border border-border/50 rounded-lg px-3 py-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{a.company}{a.role ? <span className="text-muted-foreground font-normal"> · {a.role}</span> : null}</p>
-                    <p className="text-[11px] text-muted-foreground">{new Date(a.applied_at).toLocaleDateString()}{a.scan_score ? ` · applied with score ${a.scan_score}` : ""}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {new Date(a.applied_at).toLocaleDateString()}
+                      {(() => {
+                        const v = a.scan_id ? scans.find(s => s.id === a.scan_id) : null;
+                        if (v) return ` · sent "${versionName(v)}" (score ${a.scan_score ?? v.ats_score})`;
+                        return a.scan_score ? ` · applied with score ${a.scan_score}` : "";
+                      })()}
+                    </p>
                   </div>
                   <select
                     value={a.status}
@@ -589,6 +622,42 @@ export default function Account() {
               ))}
             </div>
           )}
+
+          {/* Which resume gets interviews: outcomes grouped by the version sent */}
+          {(() => {
+            const linked = applications.filter(a => a.scan_id);
+            if (linked.length === 0) return null;
+            const byVersion = new Map<string, { sent: number; interviews: number; offers: number }>();
+            for (const a of linked) {
+              const stat = byVersion.get(a.scan_id!) ?? { sent: 0, interviews: 0, offers: 0 };
+              stat.sent += 1;
+              if (a.status === "interviewing" || a.status === "offer") stat.interviews += 1;
+              if (a.status === "offer") stat.offers += 1;
+              byVersion.set(a.scan_id!, stat);
+            }
+            const rows = [...byVersion.entries()]
+              .map(([id, stat]) => ({ scan: scans.find(s => s.id === id), ...stat }))
+              .filter((r): r is typeof r & { scan: UserScan } => !!r.scan)
+              .sort((x, y) => y.interviews / y.sent - x.interviews / x.sent || y.sent - x.sent);
+            if (rows.length === 0) return null;
+            return (
+              <div className="mt-4 rounded-xl border border-primary/25 bg-primary/5 p-4">
+                <p className="text-xs font-semibold text-foreground mb-2">Which resume gets interviews</p>
+                <div className="space-y-1.5">
+                  {rows.map((r) => (
+                    <div key={r.scan.id} className="flex items-center gap-2 text-xs">
+                      <span className="text-foreground font-medium flex-1 truncate">{versionName(r.scan)}</span>
+                      <span className="text-muted-foreground shrink-0">{r.sent} sent</span>
+                      <span className={`shrink-0 font-semibold ${r.interviews > 0 ? "text-success" : "text-muted-foreground"}`}>
+                        {r.interviews} interview{r.interviews !== 1 ? "s" : ""}{r.offers > 0 ? ` · ${r.offers} offer${r.offers !== 1 ? "s" : ""}` : ""}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-2">Update application statuses above — this table learns which version of your resume actually lands interviews.</p>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Pro subscription */}

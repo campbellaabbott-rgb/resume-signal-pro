@@ -7,10 +7,10 @@ import { cn } from "@/lib/utils";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
 
 const PRO_PERKS = [
-  "Every paid tool included — Full Analysis, Keyword Fix, Cover Letters, Premium Package",
-  "Interview Coach, Career Path Simulator, ATS Defense, Apply Assistant",
-  "Unlimited resume scans, every day",
-  "Every new tool we ship, included automatically",
+  "Unlimited scans — tailor a resume version to every job you apply to",
+  "Track every application against the exact resume version you sent",
+  "See which of your resume versions actually lands interviews",
+  "Every paid tool included — Full Analysis, Keyword Fix, Cover Letters, Interview Coach, and all future tools, automatically",
   "Cancel anytime from your account",
 ];
 
@@ -44,7 +44,7 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
         <div>
           <h3 className="font-bold text-xl">Resume Booster Pro</h3>
           <p className="text-sm text-muted-foreground">
-            Everything we make, one subscription. New tools included the day they launch.
+            Your whole job search in one workspace — plus every tool we make, now and future, included.
           </p>
         </div>
       </div>
