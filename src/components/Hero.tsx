@@ -546,29 +546,8 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
             </>
           )}
 
-          {/* TESTIMONIAL - Single powerful quote */}
-          <div className="mb-8 animate-fade-in" style={{ animationDelay: "0.25s" }}>
-            <div className="max-w-md mx-auto px-5 py-4 rounded-2xl bg-card/60 border border-border/40">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-success/20 flex items-center justify-center">
-                  <span className="text-sm font-bold text-foreground">SK</span>
-                </div>
-                <div className="text-left">
-                  <p className="text-sm text-foreground italic leading-relaxed">
-                    "{t('hero.testimonialQuote')}"
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <p className="text-xs text-muted-foreground">{t('hero.testimonialAuthorName')}</p>
-                    <div className="flex items-center gap-0.5">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="w-3 h-3 text-warning fill-warning" />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Credibility: verifiable product facts only — no invented
+              testimonials. Every number here is checkable in the product. */}
 
           {/* ATS EXPLAINER - Collapsible for curious users */}
           <div className="mb-8 animate-fade-in" style={{ animationDelay: "0.3s" }}>

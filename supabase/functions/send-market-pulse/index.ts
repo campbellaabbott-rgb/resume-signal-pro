@@ -7,7 +7,7 @@
 
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { KEYWORD_FREQUENCY } from "../free-keyword-scan/market-intelligence.ts";
+import { KEYWORD_FREQUENCY } from "../_shared/market-intelligence.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -36,7 +36,6 @@ const ProductSelectionModal = lazy(() =>
   import("@/components/ProductSelectionModal").then((m) => ({ default: m.ProductSelectionModal }))
 );
 
-import { LiveActivityIndicator } from "@/components/LiveActivityIndicator";
 import { LazySection } from "@/components/LazySection";
 
 import { type JobEntry } from "@/components/JobSelector";
@@ -350,6 +349,7 @@ interface FreeKeywordResult {
     projectsAsExperience: Array<{ project: string; presentAs: string }>;
     employerTransition?: string;
   } | null;
+  realBenchmark?: { n: number; median: number; p25: number; p75: number; industry: string } | null;
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
@@ -1026,6 +1026,7 @@ const Index = () => {
           industryNeedsConfirmation: (result as any).industryNeedsConfirmation,
           industryTransition: (result as any).industryTransition,
           freelanceGuidance: (result as any).freelanceGuidance,
+          realBenchmark: (result as any).realBenchmark,
         });
 
         // Save to cloud scan history for signed-in users (fire and forget)
@@ -1805,6 +1806,7 @@ const Index = () => {
                 industryNeedsConfirmation={freeKeywordResult.industryNeedsConfirmation}
                 industryTransition={freeKeywordResult.industryTransition ?? undefined}
                 freelanceGuidance={freeKeywordResult.freelanceGuidance ?? undefined}
+                realBenchmark={freeKeywordResult.realBenchmark ?? undefined}
                 scanSituation={scanContext.situation ?? undefined}
                 onContextConfirm={(ctx) => persistScanContext(ctx)}
               />

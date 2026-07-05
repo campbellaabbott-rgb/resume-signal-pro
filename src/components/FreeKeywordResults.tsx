@@ -805,6 +805,8 @@ export interface FreeKeywordResultsProps {
     projectsAsExperience: Array<{ project: string; presentAs: string }>;
     employerTransition?: string;
   } | null;
+  /** Present when benchmarks come from our real scan corpus, not estimates */
+  realBenchmark?: { n: number; median: number; p25: number; p75: number; industry: string } | null;
 }
 
 export function FreeKeywordResults({
@@ -919,6 +921,7 @@ export function FreeKeywordResults({
   industryNeedsConfirmation,
   industryTransition,
   freelanceGuidance,
+  realBenchmark,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1794,6 +1797,18 @@ export function FreeKeywordResults({
       {scoreAudit && (
         <div className="mt-4">
           <ScoreAuditCard audit={scoreAudit} />
+        </div>
+      )}
+
+      {/* Real-corpus benchmark badge — only shown when the comparison data
+          is our own observed distribution, not an estimate */}
+      {realBenchmark && (
+        <div className="mt-3 rounded-xl border border-success/25 bg-success/5 p-3">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">Real benchmark:</span> comparisons in this report are measured against{' '}
+            <span className="font-semibold text-foreground">{realBenchmark.n.toLocaleString()} actual {realBenchmark.industry.replace(/_/g, ' ')} resumes</span>{' '}
+            scanned here in the last 6 months (median {Math.round(realBenchmark.median)}, middle half {Math.round(realBenchmark.p25)}–{Math.round(realBenchmark.p75)}) — not industry estimates.
+          </p>
         </div>
       )}
 
@@ -4437,30 +4452,8 @@ export function FreeKeywordResults({
         <ShareScoreCard atsScore={atsScoreEstimate} industry={effectiveIndustry} percentile={peerPercentile ?? undefined} />
       </div>
 
-      {/* Testimonial right before the upsell decision — by this point in the
-          page, any trust built on the homepage is several scrolls behind the
-          user. Reuses the same approved copy already shown in SocialProof.tsx
-          rather than inventing new testimonial content. Lightly matched to
-          the user's situation rather than always showing the same one. */}
-      {(() => {
-        const testimonialKey = experienceLevel.level === "entry"
-          ? "graduate"
-          : effectiveIndustry.includes("tech") || effectiveIndustry.includes("engineer") || effectiveIndustry === "software"
-            ? "engineer"
-            : "pm";
-        const testimonialName = testimonialKey === "graduate" ? "Alex T." : testimonialKey === "engineer" ? "David K." : "Sarah M.";
-        return (
-          <div className="mb-6 p-4 rounded-xl bg-card/50 border border-border/50">
-            <Quote className="w-5 h-5 text-primary/30 mb-2" />
-            <p className="text-sm text-foreground/90 italic mb-2">
-              "{t(`socialProof.testimonials.${testimonialKey}.quote`)}"
-            </p>
-            <p className="text-xs text-muted-foreground">
-              — {testimonialName}, {t(`socialProof.testimonials.${testimonialKey}.role`)}
-            </p>
-          </div>
-        );
-      })()}
+      {/* Credibility: no invented testimonials. Trust here comes from the
+          audit trail and verifiable checks above, not manufactured quotes. */}
 
       {/* Score-Gated Premium Insights */}
       <div className="space-y-4 mb-6">

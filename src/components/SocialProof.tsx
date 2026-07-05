@@ -1,69 +1,58 @@
-import { useTranslation } from "react-i18next";
-import { Quote, Briefcase, GraduationCap, Code, MessageCircle } from "lucide-react";
+import { Scale, ShieldCheck, FileSearch, Globe2 } from "lucide-react";
 
-const testimonials = [
-  { key: "engineer", icon: Code, name: "David K.", location: "San Francisco" },
-  { key: "pm", icon: Briefcase, name: "Sarah M.", location: "New York" },
-  { key: "graduate", icon: GraduationCap, name: "Alex T.", location: "Austin" },
-  { key: "reddit", icon: MessageCircle, name: "Michael R.", location: "Chicago" },
+// Credibility section. Every claim here is verifiable inside the product
+// itself — no invented testimonials, no unsourced percentages. If a claim
+// can't be checked by clicking around the site, it doesn't belong here.
+const TRUST_POINTS = [
+  {
+    icon: Scale,
+    title: "Every point accounted for",
+    body: "Your ATS score comes with a full audit trail — keyword coverage, format, quantified impact — each with earned points that sum to your total. No black box.",
+  },
+  {
+    icon: FileSearch,
+    title: "Quotes verified against your resume",
+    body: "Before your report renders, every claimed quote from your resume is checked against the actual text. Anything the AI can't back up is removed.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Your resume is never stored",
+    body: "Free scans run in memory. Accounts keep your scores, credits, and purchases — never your documents.",
+  },
+  {
+    icon: Globe2,
+    title: "59 industries, 10 languages",
+    body: "From software to skilled trades, with detection tested against a pinned regression suite that runs on every change — including the hard cases most tools misread.",
+  },
 ];
 
 export function SocialProof() {
-  const { t } = useTranslation();
-
-  const stats = [
-    { value: "10K+", labelKey: "socialProof.stats.analyzed" },
-    { value: "89%", labelKey: "socialProof.stats.betterResults" },
-    { value: "30s", labelKey: "socialProof.stats.deliveryTime" },
-  ];
-
   return (
     <section className="py-20 relative overflow-hidden">
-      {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-card/30 to-transparent pointer-events-none" />
-      
+
       <div className="container relative">
-        {/* Stats */}
-        <div className="flex flex-wrap justify-center gap-8 md:gap-16 mb-16">
-          {stats.map((stat) => (
-            <div key={stat.labelKey} className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-primary mb-1">{stat.value}</div>
-              <div className="text-sm text-muted-foreground">{t(stat.labelKey)}</div>
+        <div className="text-center mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold mb-2">Built to be checked</h2>
+          <p className="text-sm text-muted-foreground max-w-xl mx-auto">
+            We don't do fake testimonials or invented statistics. Every claim below is verifiable in the product itself.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+          {TRUST_POINTS.map((point) => (
+            <div
+              key={point.title}
+              className="relative p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/20 transition-colors"
+            >
+              <div className="p-2 rounded-lg bg-primary/10 w-fit mb-4">
+                <point.icon className="w-5 h-5 text-primary" />
+              </div>
+              <p className="text-sm font-semibold text-foreground mb-2">{point.title}</p>
+              <p className="text-foreground/80 leading-relaxed text-sm">{point.body}</p>
             </div>
           ))}
         </div>
-
-        {/* Testimonials */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-          {testimonials.map((testimonial) => {
-            const Icon = testimonial.icon;
-            return (
-              <div
-                key={testimonial.key}
-                className="relative p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/20 transition-colors group"
-              >
-                <Quote className="w-8 h-8 text-primary/20 mb-4 group-hover:text-primary/30 transition-colors" />
-                <p className="text-foreground/90 mb-6 leading-relaxed text-sm">
-                  "{t(`socialProof.testimonials.${testimonial.key}.quote`)}"
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Icon className="w-4 h-4 text-primary" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-foreground">{testimonial.name}</div>
-                    <div className="text-xs text-muted-foreground">{t(`socialProof.testimonials.${testimonial.key}.role`)} · {testimonial.location}</div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Trust message */}
-        <p className="text-center text-sm text-muted-foreground mt-12 max-w-md mx-auto">
-          {t('socialProof.trustMessage')}
-        </p>
       </div>
     </section>
   );
