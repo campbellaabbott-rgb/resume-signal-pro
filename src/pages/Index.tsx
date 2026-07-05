@@ -352,6 +352,7 @@ interface FreeKeywordResult {
   } | null;
   realBenchmark?: { n: number; median: number; p25: number; p75: number; industry: string } | null;
   industrySpecificChecks?: { industry: string; items: Array<{ label: string; present: boolean; note: string }> } | null;
+  reportMeta?: { reportId: string; engineVersion: string; generatedAt: string; industry: string; industryConfidence: string; detectionSource?: string; benchmarkSource: string } | null;
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
@@ -1034,6 +1035,7 @@ const Index = () => {
           freelanceGuidance: (result as any).freelanceGuidance,
           realBenchmark: (result as any).realBenchmark,
           industrySpecificChecks: (result as any).industrySpecificChecks,
+          reportMeta: (result as any).reportMeta,
         });
 
         // Save to cloud scan history for signed-in users (fire and forget)
@@ -1819,6 +1821,8 @@ const Index = () => {
                 freelanceGuidance={freeKeywordResult.freelanceGuidance ?? undefined}
                 realBenchmark={freeKeywordResult.realBenchmark ?? undefined}
                 industrySpecificChecks={freeKeywordResult.industrySpecificChecks ?? undefined}
+                reportMeta={freeKeywordResult.reportMeta ?? undefined}
+                parseQuality={freeKeywordResult.parseQuality ?? undefined}
                 scanSituation={scanContext.situation ?? undefined}
                 onContextConfirm={(ctx) => persistScanContext(ctx)}
               />

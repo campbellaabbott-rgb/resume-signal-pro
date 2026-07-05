@@ -249,6 +249,82 @@ export function CareerBridgeCard({
   );
 }
 
+// ---------- Diagnostic header (specimen block) ----------
+
+export function DiagnosticHeader({
+  meta,
+  candidateName,
+}: {
+  meta: { reportId: string; engineVersion: string; generatedAt: string; industry: string; industryConfidence: string; benchmarkSource: string };
+  candidateName?: string;
+}) {
+  const fields: Array<[string, string]> = [
+    ["Report", `#${meta.reportId}`],
+    ["Date", new Date(meta.generatedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })],
+    ["Subject", candidateName || "Candidate"],
+    ["Industry", `${meta.industry.replace(/_/g, " ")} (${meta.industryConfidence} confidence)`],
+    ["Benchmarks", meta.benchmarkSource === "measured" ? "measured from real scans" : "industry estimates"],
+    ["Engine", meta.engineVersion],
+  ];
+  return (
+    <div className="rounded-2xl border border-border bg-card/80 px-5 py-4 mb-4">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Resume Diagnostic Report</p>
+        <span className="text-[10px] px-2 py-0.5 rounded-full border border-border text-muted-foreground font-mono">#{meta.reportId}</span>
+      </div>
+      <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1.5">
+        {fields.map(([k, v]) => (
+          <div key={k} className="flex items-baseline gap-1.5 min-w-0">
+            <dt className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">{k}</dt>
+            <dd className="text-xs text-foreground truncate capitalize">{v}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="text-[10px] text-muted-foreground mt-3 pt-2 border-t border-border/60">
+        Rescanning this exact document reproduces this report ID — results are deterministic where marked, and every quoted line is verified against the document.
+      </p>
+    </div>
+  );
+}
+
+// ---------- Findings index ----------
+
+export interface Finding {
+  severity: "critical" | "warning" | "pass";
+  label: string;
+}
+
+export function FindingsIndex({ findings }: { findings: Finding[] }) {
+  if (!findings.length) return null;
+  const critical = findings.filter(f => f.severity === "critical");
+  const warning = findings.filter(f => f.severity === "warning");
+  const passed = findings.filter(f => f.severity === "pass");
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 mb-4">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <h3 className="font-semibold text-foreground text-sm">Findings at a glance</h3>
+        <div className="flex items-center gap-3 text-xs">
+          <span className="text-destructive font-semibold">{critical.length} critical</span>
+          <span className="text-warning font-semibold">{warning.length} warning{warning.length === 1 ? "" : "s"}</span>
+          <span className="text-success font-semibold">{passed.length} passed</span>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        {[...critical, ...warning].slice(0, 7).map((f, i) => (
+          <div key={i} className="flex items-start gap-2 text-xs">
+            <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${f.severity === "critical" ? "bg-destructive" : "bg-warning"}`} />
+            <span className="text-foreground">{f.label}</span>
+          </div>
+        ))}
+        {critical.length + warning.length === 0 && (
+          <p className="text-xs text-muted-foreground">No critical findings — details on what's working are in the sections below.</p>
+        )}
+      </div>
+      <p className="text-[10px] text-muted-foreground mt-3">Full detail for every finding appears in the sections below, in order of severity.</p>
+    </div>
+  );
+}
+
 // ---------- Industry-specific checks ----------
 
 export function IndustryChecksCard({

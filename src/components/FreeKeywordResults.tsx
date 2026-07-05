@@ -40,7 +40,7 @@ import { InteractiveChecklist } from "./InteractiveChecklist";
 import { AISummary } from "./AISummary";
 import { ShareableScoreCard } from "./ShareableScoreCard";
 import { ResumeXRay } from "./ResumeXRay";
-import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard, FreelanceGuidanceCard, IndustryChecksCard } from "./ReportInsightCards";
+import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard, FreelanceGuidanceCard, IndustryChecksCard, DiagnosticHeader, FindingsIndex, computeVendorChecks, type Finding } from "./ReportInsightCards";
 import { EmailReportCapture } from "./EmailReportCapture";
 import { CardErrorBoundary } from "./CardErrorBoundary";
 import { getAvailableIndustries } from "./IndustryConfidenceIndicator";
@@ -808,6 +808,8 @@ export interface FreeKeywordResultsProps {
   /** Present when benchmarks come from our real scan corpus, not estimates */
   realBenchmark?: { n: number; median: number; p25: number; p75: number; industry: string } | null;
   industrySpecificChecks?: { industry: string; items: Array<{ label: string; present: boolean; note: string }> } | null;
+  reportMeta?: { reportId: string; engineVersion: string; generatedAt: string; industry: string; industryConfidence: string; benchmarkSource: string } | null;
+  parseQuality?: { verdict: 'good' | 'fair' | 'poor'; wordCount: number; issues: string[] } | null;
 }
 
 export function FreeKeywordResults({
@@ -924,6 +926,8 @@ export function FreeKeywordResults({
   freelanceGuidance,
   realBenchmark,
   industrySpecificChecks,
+  reportMeta,
+  parseQuality,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1570,6 +1574,34 @@ export function FreeKeywordResults({
     return sections;
   }, [jobMatchScore, t]);
 
+  // Findings index — one deterministic severity roll-up across every check
+  // the report runs. Derived entirely from data already on screen.
+  const findings: Finding[] = (() => {
+    const out: Finding[] = [];
+    if (parseQuality?.verdict === 'poor') out.push({ severity: 'critical', label: 'Resume text may not have extracted correctly — scores below could be unreliable' });
+    else if (parseQuality?.verdict === 'fair') out.push({ severity: 'warning', label: 'Extraction quality is imperfect — verify the parse preview below' });
+    for (const flag of (redFlags || []).slice(0, 3)) {
+      const sev = (flag as { severity?: string }).severity === 'critical' ? 'critical' : 'warning';
+      const title = (flag as { title?: string; flag?: string }).title || (flag as { flag?: string }).flag;
+      if (title) out.push({ severity: sev, label: title });
+    }
+    if (!contactInfo.hasEmail) out.push({ severity: 'critical', label: 'No email address detected — screeners cannot contact you' });
+    if (!contactInfo.hasPhone) out.push({ severity: 'warning', label: 'No phone number detected' });
+    for (const item of industrySpecificChecks?.items || []) {
+      out.push(item.present ? { severity: 'pass', label: item.label } : { severity: 'warning', label: `${item.label}: missing — see field-specific checks` });
+    }
+    if (resumeText) {
+      for (const v of computeVendorChecks({ resumeText, multiColumnDetected })) {
+        out.push(v.status === 'fail' ? { severity: 'critical', label: `${v.vendor} parsing: likely failure` } : v.status === 'warn' ? { severity: 'warning', label: `${v.vendor} parsing: needs review` } : { severity: 'pass', label: `${v.vendor} parsing` });
+      }
+    }
+    if ((weakestBullets?.length ?? 0) > 0) out.push({ severity: 'warning', label: `${weakestBullets!.length} bullet${weakestBullets!.length === 1 ? '' : 's'} graded D or below — rewrites provided` });
+    if (typeof quantificationScore === 'number' && quantificationScore < 40) out.push({ severity: 'warning', label: 'Under 40% of bullets carry a number — recruiters anchor on metrics' });
+    else if (typeof quantificationScore === 'number' && quantificationScore >= 60) out.push({ severity: 'pass', label: 'Quantified impact' });
+    if (sectionCheck.hasExperience && sectionCheck.hasEducation && sectionCheck.hasSkills) out.push({ severity: 'pass', label: 'Core sections present' });
+    return out;
+  })();
+
   return (
     <TooltipProvider delayDuration={200}>
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
@@ -1648,6 +1680,9 @@ export function FreeKeywordResults({
           </div>
         </div>
       )}
+
+      {/* Specimen header — report ID, engine, provenance */}
+      {reportMeta && <DiagnosticHeader meta={reportMeta} candidateName={candidateName} />}
 
       {/* ── Detection confirmation strip — confirmed labels are 100% accurate ── */}
       {industryNeedsConfirmation && !correctedIndustry && (
@@ -1797,6 +1832,9 @@ export function FreeKeywordResults({
       {/* SECTION: Overview */}
       {/* ═══════════════════════════════════════════════════════════ */}
       <div id="section-overview">
+
+      {/* Findings index — severity roll-up of every check */}
+      <FindingsIndex findings={findings} />
 
       {/* AI-Generated Summary */}
       <AISummary

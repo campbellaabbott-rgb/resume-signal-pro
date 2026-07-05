@@ -3999,6 +3999,19 @@ ${resumeText.substring(0, 20000)}
     // Executive scope check — senior/executive resumes only
     responseData.executiveScopeCheck = executiveScopeCheck;
 
+    // Diagnostic report metadata — the "specimen header": report ID (resume
+    // hash prefix, stable across rescans of the same document), engine
+    // version, timestamp, detection confidence, benchmark provenance.
+    responseData.reportMeta = {
+      reportId: resumeHash.slice(0, 12).toUpperCase(),
+      engineVersion: REPORT_ENGINE_VERSION,
+      generatedAt: new Date().toISOString(),
+      industry: finalIndustry,
+      industryConfidence: finalConfidence,
+      detectionSource,
+      benchmarkSource: responseData.realBenchmark ? 'measured' : 'estimate',
+    };
+
     // Industry-specific checks: what screeners in THIS field look for beyond
     // keywords. Rule-based and deterministic — a designer's report should not
     // read like a nurse's.
