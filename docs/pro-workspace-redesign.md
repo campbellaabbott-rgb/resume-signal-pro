@@ -59,3 +59,14 @@ included"), not the headline.
 - [ ] funnel data showing Pro-card views → checkout starts at a rate where
       better conversion would matter (i.e., traffic exists, framing is the
       bottleneck)
+
+## Owner decision (2026-07-05)
+
+Gate remains **closed**: zero Pro subscribers so far. Owner requirement for
+whenever this ships: the all-access element — every paid product *and every
+future product* included — must stay a headline part of the Pro pitch, not a
+footnote. Amend pillar ordering accordingly at build time: workspace loop
+first, "everything we make, now and future, included" as the co-headline
+rather than fine print. Until the workspace features exist, the live
+`ProSubscriptionCard` copy stays on the all-access framing (do not advertise
+unbuilt features).
