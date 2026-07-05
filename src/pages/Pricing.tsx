@@ -33,12 +33,15 @@ const productIcons: Record<string, React.ElementType> = {
 };
 
 // Premium products (shown in main grid)
+// Flagship-first: the complete rewrite package leads; single-purpose tools
+// follow. Order is a merchandising decision — the strongest deliverable
+// (rewritten resume content) earns the first slot.
 const productOrder: ProductId[] = [
+  'premiumPackage',
+  'atsDefense',
   'careerSnapshot',
   'graduateGamePlan',
-  'atsDefense',
   'applyAssistant',
-  'premiumPackage',
   'fullAnalysis',
   'coverLetter',
 ];

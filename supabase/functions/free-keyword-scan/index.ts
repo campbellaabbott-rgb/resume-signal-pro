@@ -3613,8 +3613,30 @@ ${resumeText.substring(0, 20000)}
 
     // 3. Peer percentile — where this score sits vs industry median
     // (benchmarkMedian name is taken by the prompt-anchor const in this same scope)
-    const percentileMedian = INDUSTRY_ATS_BENCHMARKS[benchmarkIndustry] ?? 65;
+    let percentileMedian = INDUSTRY_ATS_BENCHMARKS[benchmarkIndustry] ?? 65;
     responseData.benchmarkIndustry = benchmarkIndustry !== finalIndustry ? benchmarkIndustry : null;
+
+    // Real-corpus benchmark: once this industry has >=150 completed scans in
+    // the last 180 days, benchmark against OUR OWN observed distribution and
+    // say so — a verifiable claim, unlike the estimate table.
+    responseData.realBenchmark = null;
+    try {
+      const { data: dist } = await supabase.rpc('get_real_score_distribution', { p_industry: benchmarkIndustry });
+      const row = Array.isArray(dist) ? dist[0] : dist;
+      if (row && Number(row.n) >= 150 && row.median !== null) {
+        percentileMedian = Number(row.median);
+        responseData.realBenchmark = {
+          n: Number(row.n),
+          median: Number(row.median),
+          p25: Number(row.p25),
+          p75: Number(row.p75),
+          industry: benchmarkIndustry,
+        };
+        console.log(`[FREE-KEYWORD-SCAN] Real benchmark: ${row.n} scans, median ${row.median} for ${benchmarkIndustry}`);
+      }
+    } catch (e) {
+      console.warn('[FREE-KEYWORD-SCAN] Real distribution lookup failed (using estimates):', e);
+    }
     const stdDev = 12; // typical spread across candidates we've seen
     const zScore = (analysis.atsScoreEstimate - percentileMedian) / stdDev;
     // Normal CDF approximation (Abramowitz & Stegun)
