@@ -178,7 +178,7 @@ export default function Account() {
       scan_id: version?.id ?? null,
       scan_score: version?.ats_score ?? null,
     }).select().single();
-    if (data) setApplications([data as Application, ...applications]);
+    if (data) setApplications([data as unknown as Application, ...applications]);
     setNewApp({ company: "", role: "" });
   };
 
