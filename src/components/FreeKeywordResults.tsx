@@ -810,6 +810,12 @@ export interface FreeKeywordResultsProps {
   industrySpecificChecks?: { industry: string; items: Array<{ label: string; present: boolean; note: string }> } | null;
   reportMeta?: { reportId: string; engineVersion: string; generatedAt: string; industry: string; industryConfidence: string; benchmarkSource: string } | null;
   parseQuality?: { verdict: 'good' | 'fair' | 'poor'; wordCount: number; issues: string[] } | null;
+  /** Honest score band spanning the rule-based computation and AI estimate */
+  scoreBand?: { low: number; high: number } | null;
+  /** A real job posting was part of this scan — keyword analysis is exact */
+  hadJobDescription?: boolean;
+  /** Text came from a real file extraction, not pasted text */
+  sourceWasFile?: boolean;
 }
 
 export function FreeKeywordResults({
@@ -928,6 +934,9 @@ export function FreeKeywordResults({
   industrySpecificChecks,
   reportMeta,
   parseQuality,
+  scoreBand,
+  hadJobDescription,
+  sourceWasFile,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1807,7 +1816,7 @@ export function FreeKeywordResults({
       {/* Mechanical ATS Parse Simulation — distinct from the AI judgment below */}
       {resumeText && (
         <div className="mb-4">
-          <ATSParseSimulator resumeText={resumeText} multiColumnDetected={multiColumnDetected} />
+          <ATSParseSimulator resumeText={resumeText} multiColumnDetected={multiColumnDetected} isActualExtraction={sourceWasFile} />
         </div>
       )}
 
@@ -1835,6 +1844,30 @@ export function FreeKeywordResults({
 
       {/* Findings index — severity roll-up of every check */}
       <FindingsIndex findings={findings} />
+
+      {/* Score band — no real screening process resolves to one integer */}
+      {scoreBand && (
+        <p className="text-[11px] text-muted-foreground -mt-2 mb-4 px-1">
+          Score {atsScoreEstimate} sits in a modeling band of {scoreBand.low}–{scoreBand.high}. The band spans our deterministic
+          calculation and the AI estimate — single-point precision would be false confidence.
+        </p>
+      )}
+
+      {/* Realism nudge: modeled vs exact expectations */}
+      {!hadJobDescription && (
+        <div className="rounded-xl border border-primary/25 bg-primary/5 p-3.5 mb-4 flex flex-col sm:flex-row sm:items-center gap-2.5">
+          <p className="text-xs text-muted-foreground flex-1">
+            <span className="font-semibold text-foreground">This scan modeled expectations for {effectiveIndustry.replace(/_/g, ' ')} generally.</span>{' '}
+            Paste a real job posting and the keyword analysis becomes exact — matched against what that employer actually asked for, not an industry model.
+          </p>
+          <button
+            onClick={() => document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="shrink-0 text-xs font-semibold text-primary hover:underline text-left"
+          >
+            Add a job posting →
+          </button>
+        </div>
+      )}
 
       {/* AI-Generated Summary */}
       <AISummary

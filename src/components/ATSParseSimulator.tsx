@@ -7,6 +7,9 @@ import { useTranslation } from "react-i18next";
 interface ATSParseSimulatorProps {
   resumeText: string;
   multiColumnDetected?: boolean;
+  /** True when the text came from a real file extraction (PDF/DOCX upload) —
+      the analyzed text IS what an ATS receives, not a simulation of it. */
+  isActualExtraction?: boolean;
 }
 
 const statusConfig: Record<ParseCheckStatus, { icon: typeof CheckCircle2; className: string; bg: string }> = {
@@ -18,7 +21,7 @@ const statusConfig: Record<ParseCheckStatus, { icon: typeof CheckCircle2; classN
 // This is deliberately visually distinct from the AI-narrative sections elsewhere
 // on the page — it's showing mechanical, reproducible findings (the same
 // extracted text every check runs against), not a model's holistic judgment.
-export function ATSParseSimulator({ resumeText, multiColumnDetected }: ATSParseSimulatorProps) {
+export function ATSParseSimulator({ resumeText, multiColumnDetected, isActualExtraction }: ATSParseSimulatorProps) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(true);
 
@@ -43,7 +46,9 @@ export function ATSParseSimulator({ resumeText, multiColumnDetected }: ATSParseS
           <div>
             <h3 className="font-bold text-foreground">{t('atsParseSimulator.title')}</h3>
             <p className="text-xs text-muted-foreground">
-              {t('atsParseSimulator.subtitle')}
+              {isActualExtraction
+                ? "This is the actual text extracted from your uploaded file — the same operation an ATS performs. Not a simulation."
+                : t('atsParseSimulator.subtitle')}
             </p>
           </div>
         </div>

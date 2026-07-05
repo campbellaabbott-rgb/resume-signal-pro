@@ -3049,6 +3049,15 @@ ${resumeText.substring(0, 20000)}
     const aiAts = typeof analysis.atsScoreEstimate === 'number' ? analysis.atsScoreEstimate : ruleBasedAts;
     analysis.atsScoreEstimate = Math.max(ruleBasedAts - 12, Math.min(ruleBasedAts + 12, aiAts));
 
+    // Score band: no real screening process resolves to one integer. The band
+    // spans the rule-based computation and the (clamped) AI estimate — showing
+    // it is more honest than false single-point precision, and preempts
+    // "I got 61 yesterday and 63 today".
+    responseData.scoreBand = {
+      low: Math.max(1, Math.min(ruleBasedAts, analysis.atsScoreEstimate) - 2),
+      high: Math.min(99, Math.max(ruleBasedAts, analysis.atsScoreEstimate) + 2),
+    };
+
     // JD-aware arbitration: when the candidate supplied a job description in
     // a DIFFERENT industry than their resume reads as, benchmark against where
     // they're going (the JD's industry) — the user told us the target — while
