@@ -15,6 +15,11 @@ import { SUB_INDUSTRY_TAXONOMY } from "../../supabase/functions/free-keyword-sca
 
 const label = (slug: string) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
+// Keyword chips: short tokens are abbreviations (OR, ICU, EHR, GAAP) — render
+// them uppercase; "Or" alone reads like a stray conjunction. Longer terms keep
+// CSS title-casing.
+const displayKeyword = (k: string) => (k.length <= 4 && !k.includes(" ") ? k.toUpperCase() : k);
+
 // Mirrors the scanner's field-specific screener checks (kept in sync manually;
 // the scanner's version lives in free-keyword-scan/index.ts)
 const SCREENER_NOTES: Record<string, string> = {
@@ -122,7 +127,7 @@ export default function IndustryKeywords() {
             </p>
             <div className="flex flex-wrap gap-1.5">
               {keywords.map((k) => (
-                <span key={k} className="px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground capitalize">{k}</span>
+                <span key={k} className={`px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground ${k.length <= 4 && !k.includes(" ") ? "" : "capitalize"}`}>{displayKeyword(k)}</span>
               ))}
             </div>
           </section>
