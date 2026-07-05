@@ -332,14 +332,34 @@ const alertLastSent: Record<string, number> = {};
 async function sendAlertEmail(alertType: string, subject: string, details: Record<string, unknown>) {
   const now = Date.now();
   const lastSent = alertLastSent[alertType] || 0;
-  
+
   if (now - lastSent < ALERT_COOLDOWN_MS) {
     console.log(`[ALERT] Skipping ${alertType} alert (cooldown active)`);
     return;
   }
-  
+
   alertLastSent[alertType] = now;
-  
+
+  // The in-memory cooldown above is per-isolate: under load, dozens of
+  // concurrent isolates each think they're sending the "first" alert and the
+  // owner gets hundreds of emails. Durable dedupe via the atomic
+  // check_rate_limit RPC: max 2 emails per alert type per hour, globally.
+  try {
+    const client = getServiceClient();
+    if (client) {
+      const { data: allowed } = await client.rpc('check_rate_limit', {
+        p_function: `alert:${alertType}`,
+        p_ip: 'global',
+        p_max_requests: 2,
+        p_window_minutes: 60,
+      });
+      if (allowed === false) {
+        console.log(`[ALERT] Skipping ${alertType} alert (global hourly cap)`);
+        return;
+      }
+    }
+  } catch (_e) { /* dedupe is best-effort — never block a real alert */ }
+
   try {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) return;
@@ -2837,38 +2857,72 @@ ${resumeText.substring(0, 20000)}
     const CORE_NOTE = `\n\n**CALL SCOPE:** This call produces the CORE report fields only — exactly the fields in the provided schema. A parallel call handles the deep-dive fields (recruiter panel, triggered questions, bullet grading); do not attempt to include them.`;
     const ENRICH_NOTE = `\n\n**CALL SCOPE:** This call produces the DEEP-DIVE fields only — exactly the fields in the provided schema (recruiter panel, triggered questions, weakest bullets, career guidance). A parallel call handles scores and keywords; do not re-score or include fields outside the schema.`;
 
-    // Per-call timing so we can tell whether parallelism is real. If the
-    // gateway serializes on one API key, `enrich` won't start until `core`
-    // finishes and enrich's startOffset will be ~= core's duration. If a
-    // fallback chain fires on one side, that call's duration blows up alone.
-    const callStart = Date.now();
-    const timed = async <T extends { analysis: unknown; model: string }>(label: string, p: Promise<T>) => {
-      const t0 = Date.now();
-      const startOffset = t0 - callStart;
-      const r = await p;
-      return Object.assign(r, { _label: label, _startOffset: startOffset, _durationMs: Date.now() - t0 });
-    };
-    const [coreRes, enrichRes] = await Promise.all([
-      timed('core',   runAnalysisCall(buildToolSchema(CORE_KEYS),       CORE_NOTE,   'core')),
-      timed('enrich', runAnalysisCall(buildToolSchema(ENRICHMENT_KEYS), ENRICH_NOTE, 'enrich')),
-    ]);
-    const totalMs = Date.now() - callStart;
-    const parallelism = totalMs > 0 ? (coreRes._durationMs + enrichRes._durationMs) / totalMs : 0;
-    console.log(
-      `[FREE-KEYWORD-SCAN] Parallel calls completed in ${totalMs}ms ` +
-      `(core: ${coreRes.analysis ? 'ok' : 'FAILED'} start+${coreRes._startOffset}ms dur=${coreRes._durationMs}ms model=${coreRes.model}, ` +
-      `enrich: ${enrichRes.analysis ? 'ok' : 'failed — report ships without deep-dive fields'} start+${enrichRes._startOffset}ms dur=${enrichRes._durationMs}ms model=${enrichRes.model}) ` +
-      `parallelism=${parallelism.toFixed(2)}x`
-    );
+    // === GLOBAL CONCURRENCY LIMITER (load-shed) ===
+    // The AI gateway is the only real bottleneck under load: beyond its
+    // capacity, calls queue into retry chains and users wait minutes. Past
+    // MAX_CONCURRENT_AI_SCANS in-flight scans, overflow is served the instant
+    // rule-based report through the existing partial-results path (full
+    // deterministic findings + "rescan free in a few minutes" note).
+    // Fails OPEN: if the slot RPC is missing or errors, scans proceed normally.
+    const MAX_CONCURRENT_AI_SCANS = Number(Deno.env.get('MAX_CONCURRENT_AI_SCANS') ?? '40');
+    let scanSlotId: string | null = null;
+    let loadShedded = false;
+    try {
+      const { data: slot, error: slotErr } = await supabase.rpc('acquire_scan_slot', { p_max: MAX_CONCURRENT_AI_SCANS, p_ttl_seconds: 180 });
+      if (!slotErr && slot === null) loadShedded = true;
+      else if (!slotErr && typeof slot === 'string') scanSlotId = slot;
+    } catch (_slotError) { /* fail open — never block scans on the limiter */ }
 
-    let usedModel = coreRes.model;
-    aiResponse = coreRes.response;
+    type TimedCall = Awaited<ReturnType<typeof runAnalysisCall>> & { _label?: string; _startOffset?: number; _durationMs?: number };
+    let coreRes: TimedCall | null = null;
+    let enrichRes: TimedCall | null = null;
+
+    if (loadShedded) {
+      console.log(`[FREE-KEYWORD-SCAN] LOAD-SHED: ${MAX_CONCURRENT_AI_SCANS} AI scans already in flight — serving instant rule-based report`);
+    } else {
+      // Per-call timing so we can tell whether parallelism is real. If the
+      // gateway serializes on one API key, `enrich` won't start until `core`
+      // finishes and enrich's startOffset will be ~= core's duration. If a
+      // fallback chain fires on one side, that call's duration blows up alone.
+      const callStart = Date.now();
+      const timed = async <T extends { analysis: unknown; model: string }>(label: string, p: Promise<T>) => {
+        const t0 = Date.now();
+        const startOffset = t0 - callStart;
+        const r = await p;
+        return Object.assign(r, { _label: label, _startOffset: startOffset, _durationMs: Date.now() - t0 });
+      };
+      try {
+        [coreRes, enrichRes] = await Promise.all([
+          timed('core',   runAnalysisCall(buildToolSchema(CORE_KEYS),       CORE_NOTE,   'core')),
+          timed('enrich', runAnalysisCall(buildToolSchema(ENRICHMENT_KEYS), ENRICH_NOTE, 'enrich')),
+        ]);
+      } finally {
+        // Always release the slot — including on throw — so crashed scans
+        // don't hold capacity (TTL is the backstop for hard crashes).
+        if (scanSlotId) {
+          EdgeRuntime.waitUntil(
+            supabase.rpc('release_scan_slot', { p_id: scanSlotId }).then(() => {}, () => {})
+          );
+        }
+      }
+      const totalMs = Date.now() - callStart;
+      const parallelism = totalMs > 0 ? ((coreRes._durationMs ?? 0) + (enrichRes._durationMs ?? 0)) / totalMs : 0;
+      console.log(
+        `[FREE-KEYWORD-SCAN] Parallel calls completed in ${totalMs}ms ` +
+        `(core: ${coreRes.analysis ? 'ok' : 'FAILED'} start+${coreRes._startOffset}ms dur=${coreRes._durationMs}ms model=${coreRes.model}, ` +
+        `enrich: ${enrichRes.analysis ? 'ok' : 'failed — report ships without deep-dive fields'} start+${enrichRes._startOffset}ms dur=${enrichRes._durationMs}ms model=${enrichRes.model}) ` +
+        `parallelism=${parallelism.toFixed(2)}x`
+      );
+    }
+
+    let usedModel = coreRes?.model ?? MODEL_FALLBACK_ORDER[0];
+    aiResponse = coreRes?.response ?? null;
 
     let analysis: any = null;
-    if (coreRes.analysis) {
+    if (coreRes?.analysis) {
       // Enrichment failure is non-fatal: the report ships without deep-dive
       // fields (all optional in the frontend) instead of falling back entirely.
-      analysis = { ...coreRes.analysis, ...(enrichRes.analysis ?? {}) };
+      analysis = { ...coreRes.analysis, ...(enrichRes?.analysis ?? {}) };
     }
 
     if (!analysis) {
