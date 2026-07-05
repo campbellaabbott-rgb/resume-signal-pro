@@ -339,7 +339,10 @@ export function IndustryChecksCard({
         What {checks.industry.replace(/_/g, ' ')} screeners look for
       </h3>
       <p className="text-xs text-muted-foreground mb-4">
-        Field-specific checks beyond keywords — these are pass/fail signals in your industry.
+        Field-specific checks beyond keywords — these are pass/fail signals in your industry.{' '}
+        <a href={`/industries/${checks.industry}`} className="text-primary hover:underline">
+          See everything screeners expect in {checks.industry.replace(/_/g, ' ')} →
+        </a>
       </p>
       <div className="space-y-2.5">
         {checks.items.map((item) => (

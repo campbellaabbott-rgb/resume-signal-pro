@@ -1,20 +1,26 @@
 # Resume Booster
 
-> AI-powered resume optimization with recruiter-trained feedback. Free ATS scan plus paid deep-dive packages that rewrite resumes, generate cover letters, and prep candidates for interviews.
+> Free diagnostic resume scanner with verified output: an ATS score with a full point-by-point audit trail, every quoted line checked against the actual resume, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), and keyword expectations sourced from the U.S. Department of Labor's O*NET database. 59 industries, 10 languages including full Spanish detection.
 
-Resume Booster scans resumes against ATS (Applicant Tracking System) rules and recruiter heuristics, returning a score, missing keywords, red flags, and recommended fixes. Free scans run instantly; paid products ($1–$25) deliver tailored resume rewrites, cover letters, interview prep, and career-path simulations.
+What makes it different from asking a chatbot: results are measured and reproducible (same document → same report ID), scores show honest modeling bands instead of single-point precision, every resume quote is verified before display, and keyword expectations carry provenance (exact job posting > O*NET citation > model). Free scan requires no signup and resumes are never stored.
 
-## Pages
+Paid tools are one-time purchases ($3–29): resume rewrites, cover letters, interview coaching, Freelance Boost (turns freelance/gig projects into recruiter-grade experience sections for career changers). Optional all-access subscription.
 
-- [Home](/): Free resume scan, ATS score, keyword matching, and red-flag detection.
-- [Pricing](/pricing): Product tiers from Keyword Fix to Career Snapshot premium package.
-- [Resume Builder](/builder): Free guided resume builder with PDF export.
-- [Methodology](/methodology): How the ATS scoring and recruiter-feedback engine works.
-- [Trust](/trust): Security, privacy, and data-handling practices.
-- [Changelog](/changelog): Product updates and new features.
-- [Affiliates](/affiliates): 20% commission affiliate program.
+## Key pages
+
+- [Free resume scan](/): Full diagnostic report in ~20 seconds — score with audit trail, weakest bullets graded and rewritten, recruiter panel, interview questions the resume will trigger, ATS vendor checks.
+- [Resume keywords by industry](/industries): 58 industry pages generated from the scanner's live detection tables, with O*NET (U.S. Dept. of Labor) citations.
+- [Freelance Boost](/freelance-boost): Guided flow converting freelance projects, gig work, and side hustles into recruiter-grade resume experience. $29 one-time.
+- [Resume Builder](/builder): Free structured builder with professionally typeset PDF and DOCX export.
+- [Workday parsing guide](/ats/workday), [Greenhouse](/ats/greenhouse), [Lever](/ats/lever), [iCIMS](/ats/icims): How each major ATS actually parses resumes.
+- [vs Jobscan](/vs/jobscan), [vs Teal](/vs/teal), [vs Rezi](/vs/rezi), [vs Kickresume](/vs/kickresume), [vs Enhancv](/vs/enhancv): Honest comparisons that name where competitors win.
+- [Pricing](/pricing): One-time tools and the all-access plan.
+- [Methodology](/methodology): How scoring and detection work.
+- [Trust](/trust): Privacy and data handling — resumes are never stored.
+- [Changelog](/changelog): Ships multiple times weekly; includes honest postmortems.
 
 ## Optional
 
-- [Privacy Policy](/privacy): Data retention and privacy practices.
-- [Terms of Service](/terms): Terms governing use of the service.
+- [Privacy Policy](/privacy)
+- [Terms of Service](/terms)
+- [Shortlist](/shortlist): Employer-side candidate screening with a compliance-first audit trail (NYC LL144, IL HB 3773 aware).

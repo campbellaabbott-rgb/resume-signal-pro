@@ -11,6 +11,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { INDUSTRY_KEYWORDS } from "../../supabase/functions/free-keyword-scan/industry-detection";
 import { ONET_EXPECTATIONS } from "../../supabase/functions/free-keyword-scan/onet-expectations";
+import { SUB_INDUSTRY_TAXONOMY } from "../../supabase/functions/free-keyword-scan/industry-detection";
 
 const label = (slug: string) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -146,6 +147,20 @@ export default function IndustryKeywords() {
             </section>
           )}
 
+          {(SUB_INDUSTRY_TAXONOMY[slug]?.length ?? 0) > 0 && (
+            <section className="mb-8">
+              <h2 className="text-xl font-bold mb-2">Specializations our scanner distinguishes within {name.toLowerCase()}</h2>
+              <div className="space-y-2">
+                {SUB_INDUSTRY_TAXONOMY[slug].map((sub) => (
+                  <div key={sub.id} className="rounded-xl border border-border bg-card p-3">
+                    <p className="text-sm font-medium text-foreground">{sub.label}</p>
+                    <p className="text-xs text-muted-foreground capitalize">Signals: {sub.signals.slice(0, 6).join(", ")}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {SCREENER_NOTES[slug] && (
             <section className="rounded-2xl border border-warning/30 bg-warning/5 p-5 mb-8">
               <h2 className="font-semibold text-foreground mb-1 flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-warning" />What screeners check first in {name.toLowerCase()}</h2>
@@ -163,6 +178,15 @@ export default function IndustryKeywords() {
               Scan my resume free <ArrowRight className="w-4 h-4" />
             </Link>
           </section>
+
+          <nav className="mt-8 flex flex-wrap gap-2 text-xs" aria-label="Related industries">
+            {Object.keys(INDUSTRY_KEYWORDS).filter((s2) => s2 !== slug).sort().slice(0, 8).map((s2) => (
+              <Link key={s2} to={`/industries/${s2}`} className="px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors capitalize">
+                {label(s2)} keywords →
+              </Link>
+            ))}
+            <Link to="/industries" className="px-3 py-1.5 rounded-full border border-primary/40 text-primary hover:bg-primary/10 transition-colors">All industries</Link>
+          </nav>
 
           <p className="text-[11px] text-muted-foreground mt-8">
             Methodology: keyword and title lists come directly from the detection tables our scanner runs on every {name.toLowerCase()} resume,
