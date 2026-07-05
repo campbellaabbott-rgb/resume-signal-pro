@@ -1097,9 +1097,15 @@ function calculateRuleBasedAtsScore(
 // Retry helper for AI API calls with exponential backoff
 const MAX_AI_RETRIES = 2;
 const AI_RETRY_DELAY_MS = 2000;
+// Flash-first: production logs showed both parallel calls bound by
+// gemini-2.5-pro's 45-95s tail latency on heavy structured output. Flash is
+// several times faster on the same workload, and the post-call safety nets
+// (rule-based score clamp, claim grounding, consistency validation, schema
+// coercion) were built precisely so model choice can't corrupt the report.
+// Pro stays second as the quality fallback.
 const MODEL_FALLBACK_ORDER = [
-  'google/gemini-2.5-pro',
   'google/gemini-2.5-flash',
+  'google/gemini-2.5-pro',
   'openai/gpt-4o-mini',
 ];
 
