@@ -359,7 +359,10 @@ interface FreeKeywordResult {
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
 
-const Index = () => {
+// `landing` renders this same page (real scanner included) under a head-term
+// SEO route like /resume-checker — unique title/description/FAQ per query
+// intent, one scan implementation. See src/data/tool-landings.ts.
+const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLanding } = {}) => {
   const { t } = useTranslation();
   const { session } = useAuth();
   // Per-scan user context: stated intent + target role, confirmed labels.
@@ -1581,12 +1584,45 @@ const Index = () => {
         description: "Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across 59 industries and 10 languages.",
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free resume scan — no signup required" },
       }) }} />
-      <SEO title="Resume Booster: Free ATS Resume Scan" description="Free AI resume scan: ATS score, missing keywords, red flags, and recruiter-grade fixes in under 30 seconds." path="/" />
+      <SEO
+        title={landing?.title ?? "Resume Booster: Free ATS Resume Scan"}
+        description={landing?.description ?? "Free AI resume scan: ATS score, missing keywords, red flags, and recruiter-grade fixes in under 30 seconds."}
+        path={landing?.path ?? "/"}
+      />
+      {landing && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: landing.faqs.map((f) => ({
+            "@type": "Question",
+            name: f.q,
+            acceptedAnswer: { "@type": "Answer", text: f.a },
+          })),
+        }) }} />
+      )}
       <Header />
 
       <main id="main-content" className="pt-[88px]" role="main">
         <Hero onFileSelect={handleFileSelect} />
-        
+
+        {/* Landing-variant copy: the query-specific promise, right under the tool */}
+        {landing && !freeKeywordResult && (
+          <section className="container max-w-2xl -mt-2 mb-8">
+            <div className="rounded-2xl border border-border bg-card/60 p-5">
+              <h2 className="text-lg font-bold text-foreground mb-1.5">{landing.heading}</h2>
+              <p className="text-sm text-muted-foreground mb-3">{landing.intro}</p>
+              <ul className="space-y-1.5">
+                {landing.bullets.map((b) => (
+                  <li key={b} className="text-sm text-muted-foreground flex items-start gap-2">
+                    <span className="text-success mt-0.5">✓</span>
+                    <span>{b}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
+
         {/* Hidden honeypot field for bot detection */}
         <input
           type="text"
@@ -1883,7 +1919,25 @@ const Index = () => {
         <SocialProof />
         
         <FAQ />
-        
+
+        {/* Landing-variant FAQs rendered visibly — the FAQPage JSON-LD above
+            must match on-page content or Google ignores it */}
+        {landing && (
+          <section className="py-10 border-t border-border">
+            <div className="container max-w-2xl">
+              <h2 className="text-2xl font-bold text-center mb-6">Common questions</h2>
+              <div className="space-y-4">
+                {landing.faqs.map((f) => (
+                  <div key={f.q} className="rounded-2xl border border-border bg-card p-5">
+                    <h3 className="font-semibold text-foreground mb-1.5">{f.q}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{f.a}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Value Comparison - before final CTA */}
         <section className="py-12 border-t border-border">
           <div className="container max-w-2xl">

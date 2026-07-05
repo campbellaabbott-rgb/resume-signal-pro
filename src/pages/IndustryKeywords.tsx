@@ -12,6 +12,7 @@ import { Footer } from "@/components/Footer";
 import { INDUSTRY_KEYWORDS } from "../../supabase/functions/free-keyword-scan/industry-detection";
 import { ONET_EXPECTATIONS } from "../../supabase/functions/free-keyword-scan/onet-expectations";
 import { SUB_INDUSTRY_TAXONOMY } from "../../supabase/functions/free-keyword-scan/industry-detection";
+import { rolesForIndustry } from "@/data/roles";
 
 const label = (slug: string) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -183,6 +184,19 @@ export default function IndustryKeywords() {
               Scan my resume free <ArrowRight className="w-4 h-4" />
             </Link>
           </section>
+
+          {rolesForIndustry(slug).length > 0 && (
+            <section className="mb-8">
+              <h2 className="text-xl font-bold mb-2">Role-specific keyword guides</h2>
+              <div className="flex flex-wrap gap-1.5">
+                {rolesForIndustry(slug).map((r) => (
+                  <Link key={r.slug} to={`/roles/${r.slug}`} className="px-3 py-1.5 rounded-full border border-primary/40 text-primary text-sm hover:bg-primary/10 transition-colors">
+                    {r.title} resume keywords →
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
           <nav className="mt-8 flex flex-wrap gap-2 text-xs" aria-label="Related industries">
             {Object.keys(INDUSTRY_KEYWORDS).filter((s2) => s2 !== slug).sort().slice(0, 8).map((s2) => (

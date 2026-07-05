@@ -73,6 +73,24 @@ export default function Pricing() {
   return (
     <div className="min-h-screen bg-background">
       <SEO title={t('pricingPage.metaTitle')} description={t('pricingPage.metaDescription')} path="/pricing" />
+      {/* SoftwareApplication + AggregateOffer — eligible for price rich results
+          on "resume scanner pricing"-type queries. Prices mirror PRODUCTS. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "Resume Booster",
+        url: "https://resumebooster.work",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web",
+        description: "Free diagnostic resume scan plus one-time paid tools and an optional all-access subscription.",
+        offers: {
+          "@type": "AggregateOffer",
+          priceCurrency: "USD",
+          lowPrice: "0",
+          highPrice: "59",
+          offerCount: Object.keys(PRODUCTS).length + 1,
+        },
+      }) }} />
       <Header />
 
       <main className="pt-32 pb-20">

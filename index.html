@@ -51,80 +51,18 @@
     <meta name="twitter:image" content="https://resumebooster.work/og-image.png" />
     <meta name="twitter:image:alt" content="Resume Booster - AI-powered resume analysis" />
 
-    <!-- Structured Data - Product -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Product",
-      "name": "Resume Booster Analysis",
-      "description": "AI-powered resume analysis with ATS-optimized bullet points, stronger action verbs, keyword suggestions, and red flag detection.",
-      "image": "https://resumebooster.work/og-image.png",
-      "brand": {
-        "@type": "Brand",
-        "name": "Resume Booster"
-      },
-      "offers": {
-        "@type": "Offer",
-        "price": "25.00",
-        "priceCurrency": "USD",
-        "availability": "https://schema.org/InStock",
-        "priceValidUntil": "2026-12-31"
-      },
-      "category": "Career Services",
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.8",
-        "reviewCount": "150"
-      }
-    }
-    </script>
-
-    <!-- Structured Data - FAQPage -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "How does Resume Booster work?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Upload your resume (PDF, DOCX, or paste text), complete a secure payment, and receive AI-powered feedback in under 30 seconds. The analysis includes ATS-optimized bullets, action verb improvements, keyword suggestions, and red flag detection."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What formats are supported?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Resume Booster accepts PDF, DOCX (Microsoft Word), and plain text files. You can also paste your resume content directly."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is my resume data secure?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes, your resume is processed securely and is not stored permanently. Payment is handled by Stripe, the industry leader in payment security."
-          }
-        }
-      ]
-    }
-    </script>
-
-    <!-- Structured Data - WebSite for Sitelinks -->
+    <!-- Structured Data - WebSite. Route-specific schema (WebApplication,
+         FAQPage, HowTo, etc.) is injected per-page by React; the static head
+         must stay generic because it ships on every route. The old static
+         Product block carried an invented aggregateRating (fake review markup
+         risks a Google manual action) and a site-wide FAQPage that conflicted
+         with per-page FAQs — both removed deliberately; do not re-add. -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
       "name": "Resume Booster",
-      "url": "https://resumebooster.work",
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": "https://resumebooster.work/?q={search_term_string}",
-        "query-input": "required name=search_term_string"
-      }
+      "url": "https://resumebooster.work"
     }
     </script>
   </head>

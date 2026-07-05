@@ -69,6 +69,19 @@ export default function Methodology() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <SEO title={t('methodologyPage.metaTitle')} description={t('methodologyPage.metaDescription')} path="/methodology" />
+      {/* HowTo schema mirroring the on-page "how the analysis works" steps */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        name: "How Resume Booster analyzes your resume",
+        description: "The steps our free resume scan runs on every upload: parsing, industry detection, keyword analysis, and transparent scoring.",
+        step: analysisSteps.map((s, i) => ({
+          "@type": "HowToStep",
+          position: i + 1,
+          name: s.title,
+          text: s.description,
+        })),
+      }) }} />
       <Header />
 
       <main className="pt-20">

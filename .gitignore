@@ -27,3 +27,7 @@ dist-ssr
 # under Node/jsdom in tests (rather than triggering a browser download) —
 # safety net so test-generated PDFs never get committed again.
 /*.pdf
+
+# Agent worktrees and local CI experiments — never commit
+New Folder With Items/.claude/
+.github/

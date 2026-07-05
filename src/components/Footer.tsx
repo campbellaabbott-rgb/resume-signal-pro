@@ -24,6 +24,9 @@ export function Footer() {
         {/* Resources — internal links matter for SEO: pages reachable only via
             sitemap rank far worse than internally-linked ones */}
         <nav aria-label="Resources" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground mb-8 pb-8 border-b border-border/50">
+          <Link to="/resume-checker" className="hover:text-foreground transition-colors">Free resume checker</Link>
+          <Link to="/ats-resume-test" className="hover:text-foreground transition-colors">ATS resume test</Link>
+          <Link to="/resume-score" className="hover:text-foreground transition-colors">Resume score</Link>
           <Link to="/industries" className="hover:text-foreground transition-colors">Resume keywords by industry</Link>
           <Link to="/ats/workday" className="hover:text-foreground transition-colors">Workday ATS guide</Link>
           <Link to="/ats/greenhouse" className="hover:text-foreground transition-colors">Greenhouse guide</Link>

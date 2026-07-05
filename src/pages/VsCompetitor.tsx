@@ -15,6 +15,32 @@ export default function VsCompetitor() {
   const c = slug ? COMPETITORS[slug] : undefined;
   if (!slug || !c) return <Navigate to="/" replace />;
 
+  // FAQs derived from the comparison rows themselves — same honesty rules,
+  // including a question whose answer is where the competitor wins. Rendered
+  // visibly below AND as FAQPage JSON-LD (Google requires both to match).
+  const wins = c.rows.filter((r) => r.usWins);
+  const losses = c.rows.filter((r) => !r.usWins);
+  const faqs = [
+    {
+      q: `Is Resume Booster a good free alternative to ${c.name}?`,
+      a: `For resume analysis, yes: the free scan is a full diagnostic report — score with audit trail, missing keywords, weak bullets rewritten, per-vendor ATS checks — with no sign-up. ${c.name} is stronger in other areas (see below), so the honest answer depends on what you need most.`,
+    },
+    {
+      q: `Where does Resume Booster beat ${c.name}?`,
+      a: wins.map((r) => `${r.dim}: ${r.us}`).join(" "),
+    },
+    {
+      q: `Where is ${c.name} better than Resume Booster?`,
+      a: losses.length > 0
+        ? losses.map((r) => `${r.dim}: ${r.them}`).join(" ")
+        : `${c.name}'s public product changes over time; run both free tiers and compare.`,
+    },
+    {
+      q: `How much does Resume Booster cost compared to ${c.name}?`,
+      a: `Resume Booster's diagnostic scan is free with no sign-up; paid tools are $3–29 one-time with an optional all-access subscription. ${c.name} uses a subscription model (as of mid-2026 — check their site for current pricing).`,
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       <SEO
@@ -22,6 +48,15 @@ export default function VsCompetitor() {
         description={`How Resume Booster's free diagnostic scan compares to ${c.name}: free-tier depth, score transparency, verified output — and where ${c.name} is genuinely stronger.`}
         path={`/vs/${slug}`}
       />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faqs.map((f) => ({
+          "@type": "Question",
+          name: f.q,
+          acceptedAnswer: { "@type": "Answer", text: f.a },
+        })),
+      }) }} />
       <Header />
       <main className="pt-28 pb-20">
         <div className="container max-w-3xl">
@@ -58,6 +93,18 @@ export default function VsCompetitor() {
               </div>
             ))}
           </div>
+
+          <section className="mb-10">
+            <h2 className="text-2xl font-bold mb-4">Common questions</h2>
+            <div className="space-y-3">
+              {faqs.map((f) => (
+                <div key={f.q} className="rounded-2xl border border-border bg-card p-4">
+                  <h3 className="font-semibold text-foreground text-sm mb-1.5">{f.q}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{f.a}</p>
+                </div>
+              ))}
+            </div>
+          </section>
 
           <section className="rounded-2xl border-2 border-primary bg-card p-6 text-center">
             <h2 className="text-xl font-bold mb-2">The comparison that matters: run both, free</h2>

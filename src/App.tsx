@@ -14,6 +14,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 // code for /pricing, /terms, internal dashboards, etc. — these were all previously
 // bundled into one ~3.3MB chunk regardless of which route was actually visited.
 import Index from "./pages/Index";
+import { TOOL_LANDINGS } from "@/data/tool-landings";
 const Auth = lazy(() => import("./pages/Auth"));
 const Account = lazy(() => import("./pages/Account"));
 const Shortlist = lazy(() => import("./pages/Shortlist"));
@@ -40,6 +41,7 @@ const IndustryKeywords = lazy(() => import("./pages/IndustryKeywords"));
 const AtsVendorGuide = lazy(() => import("./pages/AtsVendorGuide"));
 const VsCompetitor = lazy(() => import("./pages/VsCompetitor"));
 const IndustryKeywordsEs = lazy(() => import("./pages/IndustryKeywordsEs"));
+const RoleKeywords = lazy(() => import("./pages/RoleKeywords"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -81,6 +83,12 @@ const App = () => (
           <Route path="/ats/:vendor" element={<AtsVendorGuide />} />
           <Route path="/vs/:slug" element={<VsCompetitor />} />
           <Route path="/es/industrias/:slug" element={<IndustryKeywordsEs />} />
+          <Route path="/roles/:slug" element={<RoleKeywords />} />
+          {/* Head-term landing pages: the real scanner under query-specific SEO
+              copy (see src/data/tool-landings.ts) */}
+          <Route path="/resume-checker" element={<Index landing={TOOL_LANDINGS["resume-checker"]} />} />
+          <Route path="/ats-resume-test" element={<Index landing={TOOL_LANDINGS["ats-resume-test"]} />} />
+          <Route path="/resume-score" element={<Index landing={TOOL_LANDINGS["resume-score"]} />} />
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
