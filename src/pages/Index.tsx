@@ -354,6 +354,7 @@ interface FreeKeywordResult {
   industrySpecificChecks?: { industry: string; items: Array<{ label: string; present: boolean; note: string }> } | null;
   reportMeta?: { reportId: string; engineVersion: string; generatedAt: string; industry: string; industryConfidence: string; detectionSource?: string; benchmarkSource: string } | null;
   scoreBand?: { low: number; high: number } | null;
+  keywordSource?: { source: 'job_description' | 'onet' | 'model'; occupation?: string; code?: string } | null;
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
@@ -1038,6 +1039,7 @@ const Index = () => {
           industrySpecificChecks: (result as any).industrySpecificChecks,
           reportMeta: (result as any).reportMeta,
           scoreBand: (result as any).scoreBand,
+          keywordSource: (result as any).keywordSource,
         });
 
         // Save to cloud scan history for signed-in users (fire and forget)
@@ -1828,6 +1830,7 @@ const Index = () => {
                 scoreBand={freeKeywordResult.scoreBand ?? undefined}
                 hadJobDescription={!!jobDescriptionText}
                 sourceWasFile={!!selectedFile}
+                keywordSource={freeKeywordResult.keywordSource ?? undefined}
                 scanSituation={scanContext.situation ?? undefined}
                 onContextConfirm={(ctx) => persistScanContext(ctx)}
               />

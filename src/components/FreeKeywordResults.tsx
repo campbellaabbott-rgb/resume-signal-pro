@@ -816,6 +816,8 @@ export interface FreeKeywordResultsProps {
   hadJobDescription?: boolean;
   /** Text came from a real file extraction, not pasted text */
   sourceWasFile?: boolean;
+  /** Provenance of keyword expectations: employer's posting, O*NET, or model */
+  keywordSource?: { source: 'job_description' | 'onet' | 'model'; occupation?: string; code?: string } | null;
 }
 
 export function FreeKeywordResults({
@@ -937,6 +939,7 @@ export function FreeKeywordResults({
   scoreBand,
   hadJobDescription,
   sourceWasFile,
+  keywordSource,
 }: FreeKeywordResultsProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1850,6 +1853,19 @@ export function FreeKeywordResults({
         <p className="text-[11px] text-muted-foreground -mt-2 mb-4 px-1">
           Score {atsScoreEstimate} sits in a modeling band of {scoreBand.low}–{scoreBand.high}. The band spans our deterministic
           calculation and the AI estimate — single-point precision would be false confidence.
+        </p>
+      )}
+
+      {/* Keyword expectation provenance */}
+      {keywordSource?.source === 'onet' && (
+        <p className="text-[11px] text-muted-foreground mb-3 px-1">
+          Keyword expectations for this scan are sourced from <span className="font-medium text-foreground">O*NET {keywordSource.code}</span> —
+          the U.S. Department of Labor's occupational database entry for <span className="font-medium text-foreground capitalize">{keywordSource.occupation}</span> — not just our own model.
+        </p>
+      )}
+      {keywordSource?.source === 'job_description' && (
+        <p className="text-[11px] text-muted-foreground mb-3 px-1">
+          Keyword analysis on this scan is <span className="font-medium text-foreground">exact</span> — matched against the job posting you provided, and every suggestion is verified to appear in it.
         </p>
       )}
 

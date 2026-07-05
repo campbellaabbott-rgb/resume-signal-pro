@@ -1,6 +1,7 @@
 // deploy-stamp: 2026-07-04T18:44Z
 const serve = (handler: (req: Request) => Response | Promise<Response>) => Deno.serve(handler);
 import { detectIndustry, formatDetectionForPrompt, buildDynamicCorrectionBoosts, INDUSTRY_KEYWORDS, detectSubIndustry } from "./industry-detection.ts";
+import { getOnetExpectation } from "./onet-expectations.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import {
   detectCountryFromResume,
@@ -2030,6 +2031,17 @@ Include the freelanceGuidance field. This resume represents independent/client/p
 **DETECTION CONFIDENCE NOTE:** ${transitionDetected
       ? `This resume shows signals of a career transition (history reads "${industryDetection.industry}", most recent role reads "${splitDetection!.industry}"). Do NOT assert a single industry as fact — acknowledge the transition, frame advice for someone moving between fields, and include the careerChangeBridge.`
       : `Industry detection confidence is LOW for this resume. Hedge industry-specific claims ("if you're targeting X…"), avoid stating the industry as settled fact, and keep benchmark language soft.`}` : '';
+    // Resume-only scans: source keyword expectations from O*NET (U.S. Dept.
+    // of Labor) instead of purely our own tables — citable beats modeled.
+    // A provided job description overrides this entirely.
+    const onetExpectation = !hasJobDescription ? getOnetExpectation(industryDetection.industry) : null;
+    const onetHint = onetExpectation ? `
+
+**EXPECTED SKILLS FOR THIS OCCUPATION (source: O*NET ${onetExpectation.code}, U.S. Department of Labor — ${onetExpectation.occupation}):**
+Core skills: ${onetExpectation.skills.join(', ')}
+Common technologies: ${onetExpectation.technologies.join(', ')}
+Treat this as the authoritative baseline for keyword expectations on this resume-only scan. Prioritize missing-keyword suggestions FROM this list (plus close variants already adjacent to the candidate's actual experience). Do not invent niche keywords outside it.` : '';
+
     console.log(`[FREE-KEYWORD-SCAN] Seniority: ${seniorityDetection.level} (${seniorityDetection.yearsEstimate}) | Title: "${seniorityDetection.primaryTitle}" | Confidence: ${seniorityDetection.confidence}`);
 
     // ── EXECUTIVE SCOPE CHECK ────────────────────────────────────────────────
@@ -2172,14 +2184,14 @@ ${resumeText.substring(0, 20000)}
 
 <job_description>
 ${truncatedJobDescription}
-</job_description>${corpusHint}${bulletHint}${seniorityHint}${execModeHint}${userContextHint}${confidenceHint}${freelanceHint}${contactHint}${gapHint}${geoHint}${skillsRecencyHint}${careerTrajHint}${atsHint}${compGapHint}${timelineHint}${phraseHint}${sparseNote}`
+</job_description>${corpusHint}${bulletHint}${seniorityHint}${execModeHint}${userContextHint}${confidenceHint}${freelanceHint}${onetHint}${contactHint}${gapHint}${geoHint}${skillsRecencyHint}${careerTrajHint}${atsHint}${compGapHint}${timelineHint}${phraseHint}${sparseNote}`
       : `Analyze this resume comprehensively:
 
 ${sectionStructure}
 
 <resume>
 ${resumeText.substring(0, 20000)}
-</resume>${corpusHint}${bulletHint}${seniorityHint}${execModeHint}${userContextHint}${confidenceHint}${freelanceHint}${contactHint}${gapHint}${geoHint}${skillsRecencyHint}${careerTrajHint}${atsHint}${compGapHint}${timelineHint}${phraseHint}${sparseNote}`;
+</resume>${corpusHint}${bulletHint}${seniorityHint}${execModeHint}${userContextHint}${confidenceHint}${freelanceHint}${onetHint}${contactHint}${gapHint}${geoHint}${skillsRecencyHint}${careerTrajHint}${atsHint}${compGapHint}${timelineHint}${phraseHint}${sparseNote}`;
 
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -4007,6 +4019,14 @@ ${resumeText.substring(0, 20000)}
 
     // Executive scope check — senior/executive resumes only
     responseData.executiveScopeCheck = executiveScopeCheck;
+
+    // Keyword expectation provenance — exact (job description), citable
+    // (O*NET), or modeled (our tables).
+    responseData.keywordSource = hasJobDescription
+      ? { source: 'job_description' }
+      : onetExpectation
+        ? { source: 'onet', occupation: onetExpectation.occupation, code: onetExpectation.code }
+        : { source: 'model' };
 
     // Diagnostic report metadata — the "specimen header": report ID (resume
     // hash prefix, stable across rescans of the same document), engine
