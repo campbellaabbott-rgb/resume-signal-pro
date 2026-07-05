@@ -1103,6 +1103,42 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_report_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          engine_version: string | null
+          report: Json
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          engine_version?: string | null
+          report: Json
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          engine_version?: string | null
+          report?: Json
+        }
+        Relationships: []
+      }
+      scan_slots: {
+        Row: {
+          id: string
+          started_at: string
+        }
+        Insert: {
+          id?: string
+          started_at?: string
+        }
+        Update: {
+          id?: string
+          started_at?: string
+        }
+        Relationships: []
+      }
       seniority_corrections: {
         Row: {
           corrected_level: string
@@ -1424,6 +1460,7 @@ export type Database = {
           created_at: string
           id: string
           role: string
+          scan_id: string | null
           scan_score: number | null
           status: string
           user_id: string
@@ -1434,6 +1471,7 @@ export type Database = {
           created_at?: string
           id?: string
           role?: string
+          scan_id?: string | null
           scan_score?: number | null
           status?: string
           user_id: string
@@ -1444,11 +1482,20 @@ export type Database = {
           created_at?: string
           id?: string
           role?: string
+          scan_id?: string | null
           scan_score?: number | null
           status?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_applications_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "user_scans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_profiles: {
         Row: {
@@ -1584,6 +1631,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acquire_scan_slot: {
+        Args: { p_max: number; p_ttl_seconds: number }
+        Returns: string
+      }
       add_scan_credits: {
         Args: { p_credits: number; p_email: string }
         Returns: boolean
@@ -1852,13 +1903,12 @@ export type Database = {
         }[]
       }
       get_industry_correction_stats: {
-        Args: { p_days_back?: number }
+        Args: { p_days?: number }
         Returns: {
-          avg_confidence: string
-          common_signals: string[]
-          corrected_to: string
-          correction_count: number
-          original_industry: string
+          corrected: string
+          corrections: number
+          detected: string
+          last_seen: string
         }[]
       }
       get_industry_detection_stats: {
@@ -1925,6 +1975,15 @@ export type Database = {
           recent_limits: Json
           total_limited: number
           unique_ips: number
+        }[]
+      }
+      get_real_score_distribution: {
+        Args: { p_industry: string }
+        Returns: {
+          median: number
+          n: number
+          p25: number
+          p75: number
         }[]
       }
       get_scan_credits: { Args: { p_email: string }; Returns: number }
@@ -2080,20 +2139,30 @@ export type Database = {
         }
         Returns: string
       }
-      log_industry_correction: {
-        Args: {
-          p_ai_suggested_industry?: string
-          p_corrected_industry: string
-          p_detection_source?: string
-          p_ip_country?: string
-          p_original_confidence?: string
-          p_original_industry: string
-          p_resume_text_length?: number
-          p_server_signals?: string[]
-          p_visitor_id?: string
-        }
-        Returns: string
-      }
+      log_industry_correction:
+        | {
+            Args: {
+              p_confidence?: string
+              p_corrected: string
+              p_detected: string
+              p_source?: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_ai_suggested_industry?: string
+              p_corrected_industry: string
+              p_detection_source?: string
+              p_ip_country?: string
+              p_original_confidence?: string
+              p_original_industry: string
+              p_resume_text_length?: number
+              p_server_signals?: string[]
+              p_visitor_id?: string
+            }
+            Returns: string
+          }
       log_industry_detection: {
         Args: {
           p_ai_suggested_industry?: string
@@ -2226,6 +2295,7 @@ export type Database = {
         Args: { p_email: string; p_password: string }
         Returns: Json
       }
+      release_scan_slot: { Args: { p_id: string }; Returns: undefined }
       save_free_scan_lead: {
         Args: { p_ats_score?: number; p_email: string; p_industry?: string }
         Returns: boolean
