@@ -47,6 +47,8 @@ project_id = "bwhdazbotpblihdxcmho"
     verify_jwt = false
   [functions.generate-cover-letter-stream]
     verify_jwt = false
+  [functions.generate-freelance-boost]
+    verify_jwt = false
   [functions.generate-graduate-gameplan]
     verify_jwt = false
   [functions.generate-keyword-fix]

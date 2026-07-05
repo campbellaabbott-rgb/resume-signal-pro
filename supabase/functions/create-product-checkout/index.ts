@@ -64,6 +64,16 @@ const PRODUCTS: Record<string, { priceId?: string; priceData?: { unitAmount: num
     priceData: { unitAmount: 700, currency: "usd" }, // $7.00
     name: "Apply Assistant",
     productType: "apply_assistant"
+  },
+  freelanceBoost: {
+    priceData: { unitAmount: 2900, currency: "usd" }, // $29.00
+    name: "Freelance Boost",
+    productType: "freelance_boost"
+  },
+  freelanceTransitionPro: {
+    priceData: { unitAmount: 5900, currency: "usd" }, // $59.00
+    name: "Freelance Boost — Transition Pro",
+    productType: "freelance_transition_pro"
   }
 };
 
@@ -164,7 +174,9 @@ serve(async (req) => {
             console.log(`[CREATE-PRODUCT-CHECKOUT] Pro grant ${grant.id} issued to ${normalizedEmail} for ${product.name}`);
             return new Response(
               JSON.stringify({
-                url: `${origin}/product-success?session_id=pro_${grant.id}&product=${productId}`,
+                url: productId.startsWith('freelance')
+                  ? `${origin}/freelance-boost?session_id=pro_${grant.id}`
+                  : `${origin}/product-success?session_id=pro_${grant.id}&product=${productId}`,
                 sessionId: `pro_${grant.id}`,
                 proIncluded: true,
               }),
@@ -198,7 +210,11 @@ serve(async (req) => {
       mode: "payment",
       allow_promotion_codes: true,
       automatic_tax: { enabled: false },
-      success_url: `${origin}/product-success?session_id={CHECKOUT_SESSION_ID}&product=${productId}`,
+      // Freelance Boost is a guided flow — return the buyer to it so
+      // generation runs against their saved intake, not the generic page.
+      success_url: productId.startsWith('freelance')
+        ? `${origin}/freelance-boost?session_id={CHECKOUT_SESSION_ID}`
+        : `${origin}/product-success?session_id={CHECKOUT_SESSION_ID}&product=${productId}`,
       cancel_url: `${origin}/payment-failed?product=${productId}`,
       metadata: {
         product_type: product.productType,

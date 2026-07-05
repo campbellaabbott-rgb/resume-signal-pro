@@ -173,6 +173,24 @@ export const PRODUCTS = {
     ],
     badge: 'Human-Reviewed',
     tagline: 'We do the prep work. You stay in control of every submission.'
+  },
+  freelanceBoost: {
+    id: 'freelance_boost',
+    name: 'Freelance Boost',
+    description: 'Turn freelance projects, gig work, and side hustles into recruiter-grade resume experience — built for career changers who\'ve already done the work, just not the job title',
+    priceUsd: 29,
+    priceId: null, // inline price per checkout
+    features: [
+      'Guided project intake — no resume needed to start',
+      'Up to 5 projects translated into your target field\'s language',
+      'Recruiter-grade achievement bullets (verb + scope + outcome + metric)',
+      'The right structure chosen for you: consolidated role, projects section, or hybrid',
+      'Overlap and gap handling — labeled honestly, never hidden',
+      'Keyword match against your target job posting',
+      'Export-ready experience section'
+    ],
+    badge: 'For Career Changers',
+    tagline: 'You already did the work. Get credit for it.'
   }
 } as const;
 
