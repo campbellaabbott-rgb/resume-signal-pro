@@ -47,7 +47,9 @@ const results = await Promise.all(
       const res = await fetch(`${URL_}/functions/v1/free-keyword-scan`, {
         method: "POST",
         headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ resumeText: makeResume(i) }),
+        // synthetic:true → logged as scan_type='synthetic', kept out of the
+        // published score stats (get_public_scan_insights and friends).
+        body: JSON.stringify({ resumeText: makeResume(i), synthetic: true }),
         signal: AbortSignal.timeout(180_000),
       });
       const ms = Date.now() - start;

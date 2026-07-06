@@ -60,6 +60,9 @@ try {
   const t0 = Date.now();
   const r = await post("free-keyword-scan", {
     resumeText: `Sam Ortiz\nsam@email.com\n\nEXPERIENCE\nStaff Accountant, Meridian LLC (2021-present)\n- Closed monthly books for 8 entities in QuickBooks\n- Cut close cycle from 10 to 6 days\n\nCERTIFICATIONS\nCPA, Texas\n\nEDUCATION\nBS Accounting (smoke-fixed-corpus)`,
+    // Logged as scan_type='synthetic' so smoke scans stay out of the
+    // published score stats (get_public_scan_insights and friends).
+    synthetic: true,
   });
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
   if (r.status === 429) {

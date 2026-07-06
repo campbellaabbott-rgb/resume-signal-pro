@@ -1273,6 +1273,13 @@ serve(async (req) => {
     const heartbeatSecret = Deno.env.get('HEARTBEAT_SECRET');
     const isHeartbeatProbe = !!heartbeatSecret &&
       req.headers.get('x-heartbeat-secret') === heartbeatSecret;
+    // Synthetic-scan marker: our own scripts (post-publish-smoke.mjs,
+    // load-test-scan.mjs) send synthetic:true so their scans land in
+    // scan_metrics as scan_type='synthetic' instead of 'free' and stay out
+    // of the published score statistics (get_public_scan_insights,
+    // get_real_score_distribution filter to real scan types). No secret
+    // needed: spoofing the flag only removes a scan from our own stats.
+    const isSyntheticScan = body.synthetic === true;
     // Optional per-scan context the user stated or confirmed — beats inference.
     const userContext: {
       situation?: string; targetRole?: string;
@@ -1388,7 +1395,7 @@ serve(async (req) => {
     const metricCtx: ScanMetricContext = {
       supabase,
       startTime: requestStartTime,
-      scanType: 'free',
+      scanType: isSyntheticScan ? 'synthetic' : isHeartbeatProbe ? 'heartbeat' : 'free',
       cacheHit: false,
       ipCountry: country || null,
       visitorId: clientIp,
