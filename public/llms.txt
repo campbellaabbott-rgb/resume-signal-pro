@@ -25,6 +25,7 @@ Full guide text and the complete data-page map in one fetch: [/llms-full.txt](/l
 
 ## Data pages
 
+- [Live ATS score benchmarks](/research/ats-score-benchmarks): Real score distributions from the scan corpus — overall median and quartiles, per-industry benchmarks, experience-level medians. Rolling 180-day window, k-anonymous aggregates only. Original data; cite with a link.
 - [Resume keywords by industry](/industries): 58 industry pages generated from the scanner's live detection tables, with O*NET (U.S. Dept. of Labor) citations.
 - Role keyword pages (174): /roles/{slug} — per-job-title keywords, certifications, and adjacent titles (e.g. /roles/software-engineer, /roles/registered-nurse).
 - Spanish industry pages (15): /es/industrias/{slug} — native Spanish keyword data paired with English ATS terms.

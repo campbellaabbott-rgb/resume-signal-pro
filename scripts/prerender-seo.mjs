@@ -398,6 +398,99 @@ export { GUIDES } from "../src/data/guides";
     }
   }
 
+  // ---- /research/ats-score-benchmarks (live data study) ----
+  {
+    // Bake real numbers at build time via the same public aggregate RPC the
+    // page calls in the browser. If the RPC isn't reachable (migration not
+    // yet published, offline build), prerender the qualitative copy only —
+    // the browser fetch fills the numbers in. Never invent figures here.
+    let ins = null;
+    try {
+      const env = readFileSync(join(root, ".env"), "utf8");
+      const supaUrl = env.match(/^VITE_SUPABASE_URL\s*=\s*"?([^"\s]+)/m)?.[1];
+      const anonKey = env.match(/^VITE_SUPABASE_PUBLISHABLE_KEY\s*=\s*"?([^"\s]+)/m)?.[1];
+      if (supaUrl && anonKey) {
+        const res = await fetch(`${supaUrl}/rest/v1/rpc/get_public_scan_insights`, {
+          method: "POST",
+          headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json" },
+          body: "{}",
+          signal: AbortSignal.timeout(8000),
+        });
+        if (res.ok) ins = await res.json();
+        if (!ins?.overall?.n) ins = null;
+      }
+    } catch (e) {
+      console.warn(`[prerender-seo] score insights unavailable at build time (${e.message}) — prerendering without numbers`);
+    }
+    const o = ins?.overall;
+    const studyFaqs = [
+      { q: "What is a good ATS score?", a: "Judge your score against the live distribution on this page, not a folklore threshold: the median and quartiles come from real scans in the last 180 days. Scoring above the 75th percentile means most resumes being checked right now score below yours; below the 25th percentile means parsing or keyword problems are very likely holding you back." },
+      { q: "Do ATS systems themselves show scores like this?", a: "Mostly no. Most ATS platforms rank and filter by recruiter searches rather than assigning a universal score. A resume score — ours included — is a diagnostic model of how well your resume will survive parsing and keyword search, not a number Workday or Greenhouse shows a recruiter." },
+      { q: "Where do these numbers come from?", a: "From completed scans run by real users on this site over a rolling 180-day window. Only aggregates are published: each industry or experience bucket must contain at least 25 scans before it appears, and no individual resume, score, or location is ever exposed." },
+      { q: "Why might this sample skew low or high?", a: "People who check their resume are often mid-job-search and suspect something is wrong, so the sample likely skews toward resumes with fixable problems. Treat the percentiles as a benchmark of active job seekers, not of every employed professional's resume." },
+    ];
+    write({
+      path: "/research/ats-score-benchmarks",
+      title: "What's a Good ATS Score? Live Benchmarks From Real Scans",
+      description: "Real ATS score benchmarks, updated live from our scan corpus: overall median and quartiles, per-industry distributions, and experience-level medians — not folklore thresholds.",
+      jsonLd: [
+        {
+          "@context": "https://schema.org",
+          "@type": "Article",
+          headline: "ATS resume score benchmarks from real scans",
+          description: "Live score distributions from real resume scans: overall median and quartiles, per-industry benchmarks, and experience-level medians over a rolling 180-day window.",
+          author: { "@type": "Organization", name: "Resume Booster", url: SITE },
+          publisher: { "@type": "Organization", name: "Resume Booster" },
+          mainEntityOfPage: `${SITE}/research/ats-score-benchmarks`,
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "Dataset",
+          name: "Resume Booster ATS score benchmarks",
+          description: "Aggregated ATS score distributions (median, quartiles, decile histogram) from real resume scans, by industry and experience level. Rolling 180-day window; buckets published only at n ≥ 25.",
+          creator: { "@type": "Organization", name: "Resume Booster", url: SITE },
+          url: `${SITE}/research/ats-score-benchmarks`,
+          isAccessibleForFree: true,
+        },
+        faqLd(studyFaqs),
+      ],
+      content: `
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Guides", href: "/guides" }, { name: "ATS score benchmarks" }])}
+        <article>
+        <h1 class="text-3xl font-bold mb-3">What's a good ATS score? Live benchmarks from real scans</h1>
+        <p class="text-xs text-muted-foreground mb-6">Computed live from our scan corpus (rolling 180-day window${ins ? `, as of ${esc(ins.as_of)}` : ""}) · Aggregates only, minimum 25 scans per bucket</p>
+        <section class="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-8"><h2 class="text-sm font-semibold text-foreground mb-1.5">The short answer</h2><p class="text-sm text-muted-foreground leading-relaxed">${
+          o
+            ? esc(`Across the last ${o.n.toLocaleString("en-US")} completed scans, the median resume scored ${o.median}, with the middle half of resumes landing between ${o.p25} and ${o.p75}.${o.pct_80_plus != null ? ` Only ${o.pct_80_plus}% scored 80 or higher — so a score in the 80s is genuinely strong, not table stakes.` : ""} There is no universal pass mark: use the distribution below to see where you actually stand.`)
+            : "There is no universal “good” ATS score — the honest benchmark is where you fall in the distribution of real resumes being scanned right now. This page computes that distribution live from our scan corpus: overall median and quartiles, per-industry benchmarks, and experience-level medians."
+        }</p></section>
+        ${
+          ins
+            ? `
+        <section class="mb-10"><h2 class="text-xl font-bold mb-3">How real resumes score</h2>
+          <p class="text-sm text-muted-foreground leading-relaxed mb-4">Each row is a 10-point score band across every completed scan in the current window.</p>
+          <table class="w-full text-sm"><thead><tr class="text-left text-xs text-muted-foreground"><th class="p-2">Score band</th><th class="p-2">Scans</th><th class="p-2">Share</th></tr></thead><tbody>
+          ${ins.histogram.map((h) => `<tr class="border-b border-border"><td class="p-2 text-foreground">${h.bucket}–${h.bucket + 9}</td><td class="p-2 text-muted-foreground">${h.n.toLocaleString("en-US")}</td><td class="p-2 text-muted-foreground">${o ? Math.round((1000 * h.n) / o.n) / 10 : 0}%</td></tr>`).join("")}
+          </tbody></table></section>
+        ${ins.industries.length ? `<section class="mb-10"><h2 class="text-xl font-bold mb-3">Benchmarks by industry</h2>
+          <p class="text-sm text-muted-foreground leading-relaxed mb-4">Median and middle-half range (25th–75th percentile) per detected industry, minimum 25 scans each.</p>
+          <table class="w-full text-sm"><thead><tr class="text-left text-xs text-muted-foreground"><th class="p-2">Industry</th><th class="p-2">Median</th><th class="p-2">Middle half</th><th class="p-2">Scans</th></tr></thead><tbody>
+          ${ins.industries.map((r) => `<tr class="border-b border-border"><td class="p-2 text-foreground">${esc(label(r.industry))}</td><td class="p-2 font-semibold text-foreground">${r.median}</td><td class="p-2 text-muted-foreground">${r.p25}–${r.p75}</td><td class="p-2 text-muted-foreground">${r.n.toLocaleString("en-US")}</td></tr>`).join("")}
+          </tbody></table></section>` : ""}
+        ${ins.experience.length ? `<section class="mb-10"><h2 class="text-xl font-bold mb-3">By experience level</h2>
+          <ul class="space-y-1.5">${ins.experience.map((r) => `<li class="text-sm text-muted-foreground">${esc(label(r.level))}: median <strong class="text-foreground">${r.median}</strong> across ${r.n.toLocaleString("en-US")} scans</li>`).join("")}</ul></section>` : ""}`
+            : `<section class="mb-10"><p class="text-sm text-muted-foreground leading-relaxed">The live tables — overall distribution by 10-point band, per-industry medians with middle-half ranges, and experience-level medians — load directly from the scan corpus when this page is opened in a browser.</p></section>`
+        }
+        <section class="mb-10"><h2 class="text-xl font-bold mb-3">How to read these numbers honestly</h2>
+          <p class="text-sm text-muted-foreground leading-relaxed mb-3">Two caveats we insist on. First, this sample self-selects: people scan resumes when they suspect a problem, so the distribution likely sits below the true population of working professionals. Second, any resume score — ours included — is a model with error bars, not a measurement; <a href="/guides/what-resume-score-means" class="text-primary">what a resume score actually means</a> explains how to read one without being fooled by false precision.</p>
+          <p class="text-sm text-muted-foreground leading-relaxed">What the data is good for: ranking yourself against real peers instead of a made-up "75 is passing" threshold, and seeing that industry context matters — the same resume quality scores differently against different keyword expectations. Our <a href="/methodology" class="text-primary">methodology</a> covers how the score itself is computed.</p></section>
+        <section class="mb-10"><h2 class="text-xl font-bold mb-4">Common questions</h2><div class="space-y-3">${studyFaqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4"><h3 class="font-semibold text-foreground text-sm mb-1.5">${esc(f.q)}</h3><p class="text-xs text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>
+        ${cta("See where your resume lands in this distribution — free", "The full diagnostic in about 20 seconds: your score with an audit trail, missing keywords, and per-vendor parsing checks. No signup, resume never stored.", "Run the free scan")}
+        <nav class="mt-6 flex flex-wrap gap-2 text-xs">${pill("/guides/what-resume-score-means", "What a resume score actually means →")}${pill("/guides/why-resumes-get-rejected", "Why resumes get rejected →")}${pill("/industries", "Keywords by industry →")}</nav>
+        </article>`,
+    });
+  }
+
   // ---- Homepage (also the SPA fallback — see renderFile notes) ----
   write({
     isFallback: true,
@@ -485,6 +578,7 @@ export { GUIDES } from "../src/data/guides";
     }
     lines.push("");
     lines.push("## Data pages (from the scanner's live detection tables)");
+    lines.push(`- Live ATS score benchmarks: ${SITE}/research/ats-score-benchmarks — real score distributions (median, quartiles, per-industry, per-experience-level) computed from the scan corpus over a rolling 180-day window; k-anonymous aggregates only.`);
     lines.push(`- Industry keyword pages (58): ${SITE}/industries/{slug} — keywords, recognized titles, certifications, O*NET-sourced skills per industry. Index: ${SITE}/industries`);
     lines.push(`- Role keyword pages (${Object.keys(D.ROLE_PAGES).length}): ${SITE}/roles/{slug} — per-job-title keyword and certification data.`);
     lines.push(`- Spanish industry pages (15): ${SITE}/es/industrias/{slug} — native Spanish keyword data with English ATS terms.`);

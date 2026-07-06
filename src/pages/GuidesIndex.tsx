@@ -25,6 +25,20 @@ export default function GuidesIndex() {
             the documented behavior of real ATS parsers. Where the popular advice is wrong, we say so.
           </p>
           <div className="space-y-3">
+            <Link
+              to="/research/ats-score-benchmarks"
+              className="block rounded-2xl border border-primary/40 bg-primary/5 p-5 hover:border-primary transition-colors"
+            >
+              <h2 className="font-semibold text-foreground mb-1 flex items-center justify-between gap-3">
+                What's a good ATS score? Live benchmarks from real scans
+                <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Original data, computed live from our scan corpus: overall median and quartiles, per-industry
+                benchmarks, and experience-level medians — not folklore thresholds.
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">Live data study · Updates as scans complete</p>
+            </Link>
             {guides.map((g) => (
               <Link
                 key={g.slug}

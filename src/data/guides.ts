@@ -373,6 +373,7 @@ export const GUIDES: Record<string, Guide> = {
     ],
     related: [
       { label: "Get your score with the full audit trail — free", href: "/resume-score" },
+      { label: "Live score benchmarks from real scans", href: "/research/ats-score-benchmarks" },
       { label: "Our scoring methodology", href: "/methodology" },
       { label: "Why resumes get rejected", href: "/guides/why-resumes-get-rejected" },
     ],
