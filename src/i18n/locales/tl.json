@@ -2766,6 +2766,18 @@
     }
   },
   "changelogEntries": {
+    "homepageLiveStats": {
+      "title": "Totoong estadistika ng scan, mismo sa homepage",
+      "description": "Ipinapakita na ngayon ng homepage kung paano talaga pumupuntos ang mga totoong resume: live na median, gitnang saklaw, bahagdan ng nakakuha ng 80 pataas, at ang buong distribusyon ng iskor — mula sa parehong pampublikong datos ng aming benchmark na pag-aaral. Kung hindi ma-load ang live na datos, walang ipinapakita ang seksyon sa halip na gumawa ng imbentong numero."
+    },
+    "scoreBenchmarksStudy": {
+      "title": "Ano ang magandang ATS score? Nasasagot na ngayon gamit ang live na datos",
+      "description": "May bagong research page na naglalathala ng totoong mga benchmark ng iskor na kinakalkula nang live mula sa mga scan sa site na ito: pangkalahatang median at quartiles, distribusyon bawat industriya, at median bawat antas ng karanasan sa loob ng umuusad na 180-araw na window. Pawang pinagsama-samang datos lamang — hindi bababa sa 25 scan bawat pangkat, at hinding-hindi inilalantad ang datos ng indibidwal na resume."
+    },
+    "syntheticScanExclusion": {
+      "title": "Hindi na kasama sa estadistika ang sarili naming mga test scan",
+      "description": "Ang mga monitoring probe at load test na pinapatakbo namin para panatilihing maayos ang scanner ay minamarkahan na ngayon bilang test traffic at hindi kasama sa lahat ng inilalathalang estadistika; retroactive ding inalis ang mga lumang test scan. Ang mga benchmark na nakikita mo ay totoong mga resume lamang."
+    },
     "scanOutageFix": {
       "title": "Naayos: maikling pagkawala ng scan — at ang butas na nagpahintulot nito",
       "description": "Sa maikling panahon ngayong araw, nagbabalik ng error ang mga libreng scan dahil sa depekto ng bagong release. Naayos na ito, at nagdagdag kami ng mas malalim na awtomatikong pagsusuri sa aming release process na sumasalo sa buong klaseng ito ng bug bago mai-publish — at sa proseso, natagpuan at naayos din namin ang matagal nang depekto sa aming garbled-text detector. Ang transparency ang produkto; kasama diyan ang aming mga pagkakamali."

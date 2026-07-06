@@ -2766,6 +2766,18 @@
     }
   },
   "changelogEntries": {
+    "homepageLiveStats": {
+      "title": "Echte scanstatistieken, direct op de voorpagina",
+      "description": "De homepage toont nu hoe echte cv's daadwerkelijk scoren: live mediaan, middelste bereik, aandeel met 80 of hoger en de volledige scoreverdeling — uit dezelfde openbare data als ons benchmarkonderzoek. Als de live data niet geladen kan worden, toont de sectie niets in plaats van verzonnen cijfers."
+    },
+    "scoreBenchmarksStudy": {
+      "title": "Wat is een goede ATS-score? Nu beantwoord met live data",
+      "description": "Een nieuwe onderzoekspagina publiceert echte scorebenchmarks, live berekend uit de scans op deze site: totale mediaan en kwartielen, verdelingen per sector en medianen per ervaringsniveau over een rollend venster van 180 dagen. Alleen aggregaten — minimaal 25 scans per groep, en er worden nooit gegevens van individuele cv's blootgelegd."
+    },
+    "syntheticScanExclusion": {
+      "title": "Onze eigen testscans tellen niet meer mee in de statistieken",
+      "description": "De monitoringtests en belastingtests die we uitvoeren om de scanner gezond te houden, worden nu gemarkeerd als testverkeer en uitgesloten van alle gepubliceerde statistieken; eerdere testscans zijn ook met terugwerkende kracht verwijderd. De benchmarks tonen alleen nog echte cv's."
+    },
     "scanOutageFix": {
       "title": "Opgelost: een korte scanstoring — en het gat dat die mogelijk maakte",
       "description": "Gedurende een kort venster vandaag gaven gratis scans een fout door een defect in een nieuwe release. Het is opgelost, en we hebben een diepere automatische controle aan ons releaseproces toegevoegd die deze hele klasse bugs onderschept vóór publicatie — en onderweg vonden en repareerden we ook een oude fout in onze detector voor verminkte tekst. Transparantie is het product; ook over onze fouten."

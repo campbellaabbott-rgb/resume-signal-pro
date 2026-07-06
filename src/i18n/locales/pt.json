@@ -2766,6 +2766,18 @@
     }
   },
   "changelogEntries": {
+    "homepageLiveStats": {
+      "title": "Estatísticas reais de escaneamento, direto na página inicial",
+      "description": "A página inicial agora mostra como os currículos reais pontuam: mediana ao vivo, faixa central, percentual com 80 ou mais e a distribuição completa de pontuações — dos mesmos dados públicos do nosso estudo de referência. Se os dados ao vivo não puderem ser carregados, a seção não mostra nada em vez de números inventados."
+    },
+    "scoreBenchmarksStudy": {
+      "title": "O que é uma boa pontuação ATS? Agora respondido com dados ao vivo",
+      "description": "Uma nova página de pesquisa publica referências reais de pontuação calculadas ao vivo a partir dos escaneamentos deste site: mediana e quartis gerais, distribuições por setor e medianas por nível de experiência numa janela móvel de 180 dias. Apenas agregados — no mínimo 25 escaneamentos por grupo, e nenhum dado de currículo individual é exposto."
+    },
+    "syntheticScanExclusion": {
+      "title": "Nossos próprios escaneamentos de teste não contam mais nas estatísticas",
+      "description": "As sondas de monitoramento e os testes de carga que executamos para manter o scanner saudável agora são marcados como tráfego de teste e excluídos de todas as estatísticas publicadas; escaneamentos de teste antigos também foram removidos retroativamente. As referências refletem apenas currículos reais."
+    },
     "scanOutageFix": {
       "title": "Corrigido: uma breve interrupção do escaneamento — e a brecha que a permitiu",
       "description": "Por um curto período hoje, escaneamentos gratuitos retornavam erro devido a um defeito em uma nova versão. Está corrigido, e adicionamos uma verificação automática mais profunda ao nosso processo de lançamento que captura toda essa classe de bug antes de publicar — e, no processo, encontramos e corrigimos uma falha antiga no nosso detector de texto corrompido. Transparência é o produto; isso inclui nossos erros."

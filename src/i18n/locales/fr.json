@@ -2766,6 +2766,18 @@
     }
   },
   "changelogEntries": {
+    "homepageLiveStats": {
+      "title": "Les vraies statistiques de scan, directement sur la page d'accueil",
+      "description": "La page d'accueil montre désormais comment les CV réels sont notés : médiane en direct, plage médiane, part des scores de 80 ou plus et distribution complète des scores — issues des mêmes données publiques que notre étude de référence. Si les données en direct ne peuvent pas être chargées, la section n'affiche rien plutôt que des chiffres inventés."
+    },
+    "scoreBenchmarksStudy": {
+      "title": "Qu'est-ce qu'un bon score ATS ? Désormais répondu avec des données en direct",
+      "description": "Une nouvelle page de recherche publie de vrais référentiels de scores calculés en direct à partir des scans de ce site : médiane et quartiles globaux, distributions par secteur et médianes par niveau d'expérience sur une fenêtre glissante de 180 jours. Uniquement des agrégats — au moins 25 scans par groupe, et aucune donnée de CV individuel n'est jamais exposée."
+    },
+    "syntheticScanExclusion": {
+      "title": "Nos propres scans de test ne comptent plus dans les statistiques",
+      "description": "Les sondes de surveillance et les tests de charge que nous exécutons pour garder le scanner en bonne santé sont désormais marqués comme trafic de test et exclus de toutes les statistiques publiées ; les anciens scans de test ont aussi été retirés rétroactivement. Les référentiels affichés ne reflètent que de vrais CV."
+    },
     "scanOutageFix": {
       "title": "Corrigé : une brève panne du scanner — et la faille qui l'a permise",
       "description": "Pendant une courte période aujourd'hui, les scans gratuits renvoyaient une erreur due à un défaut d'une nouvelle version. C'est corrigé, et nous avons ajouté à notre processus de publication une vérification automatique plus profonde qui intercepte toute cette classe de bugs avant la mise en ligne — et au passage, nous avons trouvé et corrigé un défaut ancien de notre détecteur de texte corrompu. La transparence est le produit ; cela inclut nos erreurs."

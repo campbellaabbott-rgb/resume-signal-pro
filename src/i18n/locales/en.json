@@ -2766,6 +2766,18 @@
     }
   },
   "changelogEntries": {
+    "homepageLiveStats": {
+      "title": "Real scan statistics, right on the front page",
+      "description": "The homepage now shows how real resumes actually score: live median, middle-half range, share scoring 80 or higher, and the full score distribution — drawn from the same public data as our benchmark study. If the live data can't be loaded, the section shows nothing rather than invented numbers."
+    },
+    "scoreBenchmarksStudy": {
+      "title": "What's a good ATS score? Now answered with live data",
+      "description": "A new research page publishes real score benchmarks computed live from scans on this site: overall median and quartiles, per-industry distributions, and experience-level medians over a rolling 180-day window. Aggregates only — at least 25 scans per bucket, and no individual resume data is ever exposed."
+    },
+    "syntheticScanExclusion": {
+      "title": "Our own test scans no longer count in the stats",
+      "description": "The monitoring probes and load tests we run to keep the scanner healthy are now tagged as test traffic and excluded from every published statistic, and past test scans were retroactively removed. The benchmarks you see reflect real resumes only."
+    },
     "scanOutageFix": {
       "title": "Fixed: a brief scan outage — and the gap that allowed it",
       "description": "For a short window today, free scans returned an error due to a defect in a new release. It's fixed, and we've added a deeper automated check to our release process that catches this entire class of bug before it ships — plus, in the process, we found and fixed a long-standing flaw in our garbled-text detector. Transparency is the product; that includes our mistakes."

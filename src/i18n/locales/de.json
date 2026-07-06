@@ -2766,6 +2766,18 @@
     }
   },
   "changelogEntries": {
+    "homepageLiveStats": {
+      "title": "Echte Scan-Statistiken direkt auf der Startseite",
+      "description": "Die Startseite zeigt jetzt, wie echte Lebensläufe tatsächlich abschneiden: Live-Median, mittlerer Bereich, Anteil mit 80 oder mehr Punkten und die vollständige Punkteverteilung — aus denselben öffentlichen Daten wie unsere Benchmark-Studie. Wenn die Live-Daten nicht geladen werden können, zeigt der Abschnitt nichts an, statt erfundene Zahlen."
+    },
+    "scoreBenchmarksStudy": {
+      "title": "Was ist ein guter ATS-Score? Jetzt mit Live-Daten beantwortet",
+      "description": "Eine neue Research-Seite veröffentlicht echte Score-Benchmarks, live berechnet aus den Scans dieser Seite: Median und Quartile insgesamt, Verteilungen pro Branche und Mediane nach Erfahrungsstufe über ein rollierendes 180-Tage-Fenster. Nur Aggregate — mindestens 25 Scans pro Gruppe, und niemals werden Daten einzelner Lebensläufe offengelegt."
+    },
+    "syntheticScanExclusion": {
+      "title": "Unsere eigenen Testscans zählen nicht mehr in den Statistiken",
+      "description": "Die Monitoring-Proben und Lasttests, mit denen wir den Scanner gesund halten, werden jetzt als Testverkehr markiert und aus allen veröffentlichten Statistiken ausgeschlossen; frühere Testscans wurden rückwirkend entfernt. Die Benchmarks zeigen nur noch echte Lebensläufe."
+    },
     "scanOutageFix": {
       "title": "Behoben: ein kurzer Scan-Ausfall — und die Lücke, die ihn ermöglichte",
       "description": "Heute lieferten Gratis-Scans für ein kurzes Zeitfenster einen Fehler, verursacht durch einen Defekt in einem neuen Release. Er ist behoben, und unser Release-Prozess hat jetzt eine tiefere automatische Prüfung, die diese ganze Fehlerklasse vor der Veröffentlichung abfängt — dabei fanden und behoben wir zudem einen alten Fehler in unserem Erkennungssystem für beschädigten Text. Transparenz ist das Produkt; das schließt unsere Fehler ein."
