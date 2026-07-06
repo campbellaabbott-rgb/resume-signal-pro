@@ -60,7 +60,9 @@
       "gotInterviews": "Bekamen Vorstellungsgespräche",
       "industriesCovered": "Abgedeckte Branchen",
       "checksPerScan": "Prüfungen pro Scan",
-      "languagesSupported": "Unterstützte Sprachen"
+      "languagesSupported": "Unterstützte Sprachen",
+      "resumesScanned": "Gescannte Lebensläufe",
+      "countries": "Länder"
     },
     "chips": {
       "scan": "30-Sekunden-Scan",

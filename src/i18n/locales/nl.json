@@ -54,7 +54,9 @@
       "gotInterviews": "Kreeg interviews",
       "industriesCovered": "Sectoren gedekt",
       "checksPerScan": "Controles per scan",
-      "languagesSupported": "Ondersteunde talen"
+      "languagesSupported": "Ondersteunde talen",
+      "resumesScanned": "Gescande cv's",
+      "countries": "Landen"
     },
     "chips": {
       "scan": "Scan in 30 seconden",

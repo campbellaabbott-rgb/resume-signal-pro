@@ -54,7 +54,9 @@
       "gotInterviews": "इंटरव्यू मिले",
       "industriesCovered": "कवर किए गए उद्योग",
       "checksPerScan": "प्रति स्कैन जाँचें",
-      "languagesSupported": "समर्थित भाषाएँ"
+      "languagesSupported": "समर्थित भाषाएँ",
+      "resumesScanned": "स्कैन किए गए रिज़्यूमे",
+      "countries": "देश"
     },
     "chips": {
       "scan": "30-सेकंड स्कैन",

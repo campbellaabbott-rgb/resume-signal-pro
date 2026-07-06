@@ -443,6 +443,12 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   const [floatingScanTrigger, setFloatingScanTrigger] = useState(0);
   const [freeKeywordResult, setFreeKeywordResult] = useState<FreeKeywordResult | null>(null);
   const [isCachedResult, setIsCachedResult] = useState(false);
+
+  // Tell the hero's live scan counter a scan just finished so it refetches
+  // immediately instead of waiting for its next poll.
+  useEffect(() => {
+    if (freeKeywordResult) window.dispatchEvent(new Event("scan-completed"));
+  }, [freeKeywordResult]);
   const [honeypot, setHoneypot] = useState<string>(""); // Honeypot field for bot detection
   const [preStoredSessionId, setPreStoredSessionId] = useState<string | null>(null);
   const [uploadedJobs, setUploadedJobs] = useState<JobEntry[]>([]);

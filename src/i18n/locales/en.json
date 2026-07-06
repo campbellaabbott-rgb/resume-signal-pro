@@ -60,7 +60,9 @@
       "gotInterviews": "Got interviews",
       "industriesCovered": "Industries covered",
       "checksPerScan": "Checks per scan",
-      "languagesSupported": "Languages supported"
+      "languagesSupported": "Languages supported",
+      "resumesScanned": "Resumes scanned",
+      "countries": "Countries"
     },
     "chips": {
       "scan": "30-second scan",

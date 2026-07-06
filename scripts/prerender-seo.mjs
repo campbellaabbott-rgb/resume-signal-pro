@@ -404,19 +404,25 @@ export { GUIDES } from "../src/data/guides";
   // yet published, offline build), prerender the qualitative copy only —
   // the browser fetch fills the numbers in. Never invent figures here.
   let scanInsights = null;
+  let scanTotals = null;
   try {
     const env = readFileSync(join(root, ".env"), "utf8");
     const supaUrl = env.match(/^VITE_SUPABASE_URL\s*=\s*"?([^"\s]+)/m)?.[1];
     const anonKey = env.match(/^VITE_SUPABASE_PUBLISHABLE_KEY\s*=\s*"?([^"\s]+)/m)?.[1];
     if (supaUrl && anonKey) {
-      const res = await fetch(`${supaUrl}/rest/v1/rpc/get_public_scan_insights`, {
-        method: "POST",
-        headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json" },
-        body: "{}",
-        signal: AbortSignal.timeout(8000),
-      });
-      if (res.ok) scanInsights = await res.json();
+      const rpc = async (fn) => {
+        const res = await fetch(`${supaUrl}/rest/v1/rpc/${fn}`, {
+          method: "POST",
+          headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json" },
+          body: "{}",
+          signal: AbortSignal.timeout(8000),
+        });
+        return res.ok ? res.json() : null;
+      };
+      scanInsights = await rpc("get_public_scan_insights");
       if (!scanInsights?.overall?.n) scanInsights = null;
+      scanTotals = await rpc("get_scan_totals").catch(() => null);
+      if (!scanTotals?.total_scans) scanTotals = null;
     }
   } catch (e) {
     console.warn(`[prerender-seo] score insights unavailable at build time (${e.message}) — prerendering without numbers`);
@@ -533,7 +539,7 @@ export { GUIDES } from "../src/data/guides";
       </section>
       ${scanInsights?.overall ? `<section class="mb-8">
         <h2 class="text-xl font-bold mb-3">How real resumes actually score</h2>
-        <p class="text-sm text-muted-foreground leading-relaxed">Live from our scan corpus (as of ${scanInsights.as_of}, rolling ${scanInsights.window_days}-day window): across ${scanInsights.overall.n.toLocaleString("en-US")} completed scans, the median resume scored <strong class="text-foreground">${scanInsights.overall.median}</strong>, with the middle half between ${scanInsights.overall.p25} and ${scanInsights.overall.p75}${scanInsights.overall.pct_80_plus != null ? `; only ${scanInsights.overall.pct_80_plus}% scored 80 or higher` : ""}. Aggregates only, no individual resume data — full per-industry and experience-level distributions in the <a href="/research/ats-score-benchmarks" class="text-primary">live benchmark study</a>.</p>
+        <p class="text-sm text-muted-foreground leading-relaxed">Live from our scan corpus (as of ${scanInsights.as_of}, rolling ${scanInsights.window_days}-day window): across ${scanInsights.overall.n.toLocaleString("en-US")} completed scans, the median resume scored <strong class="text-foreground">${scanInsights.overall.median}</strong>, with the middle half between ${scanInsights.overall.p25} and ${scanInsights.overall.p75}${scanInsights.overall.pct_80_plus != null ? `; only ${scanInsights.overall.pct_80_plus}% scored 80 or higher` : ""}. Aggregates only, no individual resume data — full per-industry and experience-level distributions in the <a href="/research/ats-score-benchmarks" class="text-primary">live benchmark study</a>.${scanTotals ? ` All-time, the scanner has completed ${scanTotals.total_scans.toLocaleString("en-US")} scans${scanTotals.countries > 1 ? ` from ${scanTotals.countries.toLocaleString("en-US")} countries` : ""}.` : ""}</p>
       </section>` : ""}
       <section class="mb-8">
         <h2 class="text-xl font-bold mb-3">Free tools and data</h2>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Sparkles, Info, X, ArrowRight, Package, Award, Check } from "lucide-react";
+import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Sparkles, Info, X, ArrowRight, Package, Award, Check, ScanSearch, Globe2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
@@ -39,11 +40,50 @@ function AnimatedResultPreview() {
   );
 }
 
+// Live scan totals from the corpus (all-time completed scans + countries),
+// via the aggregate-only get_scan_totals RPC. Fetched on mount, refreshed
+// every 60s while the tab is visible, and immediately when a scan completes
+// on this page (Index dispatches "scan-completed"). Renders nothing until
+// real numbers arrive — no hardcoded or invented counts, ever.
+function useScanTotals() {
+  const [totals, setTotals] = useState<{ total_scans: number; countries: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      if (document.hidden) return;
+      // RPC created in migration 20260706200000; not yet in generated client types.
+      (supabase.rpc as unknown as (fn: string) => PromiseLike<{ data: unknown; error: unknown }>)(
+        "get_scan_totals"
+      ).then(
+        ({ data, error }) => {
+          const d = data as { total_scans?: number; countries?: number } | null;
+          if (!cancelled && !error && typeof d?.total_scans === "number" && d.total_scans > 0) {
+            setTotals({ total_scans: d.total_scans, countries: d.countries ?? 0 });
+          }
+        },
+        () => {}
+      );
+    };
+    load();
+    const interval = setInterval(load, 60_000);
+    window.addEventListener("scan-completed", load);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      window.removeEventListener("scan-completed", load);
+    };
+  }, []);
+
+  return totals;
+}
+
 // Hero stats bar — verifiable product facts, not manufactured social proof.
 // Every number here is checkable in the product itself (industry list, scan
 // report, language picker), which is what actually builds credibility.
 function HeroStatsBar() {
   const { t } = useTranslation();
+  const totals = useScanTotals();
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 py-3 px-4 rounded-2xl bg-gradient-to-r from-card/80 via-card/60 to-card/80 border border-border/40 backdrop-blur-sm">
@@ -76,6 +116,34 @@ function HeroStatsBar() {
           <p className="text-xs text-muted-foreground">{t('hero.stats.languagesSupported', 'Languages supported')}</p>
         </div>
       </div>
+      {totals && (
+        <>
+          <div className="w-px h-10 bg-border/50 hidden sm:block" />
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/20">
+              <ScanSearch className="w-4 h-4 text-primary" />
+            </div>
+            <div className="text-left">
+              <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{totals.total_scans.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">{t('hero.stats.resumesScanned', 'Resumes scanned')}</p>
+            </div>
+          </div>
+          {totals.countries > 1 && (
+            <>
+              <div className="w-px h-10 bg-border/50 hidden sm:block" />
+              <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-success/20">
+                  <Globe2 className="w-4 h-4 text-success" />
+                </div>
+                <div className="text-left">
+                  <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums">{totals.countries.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">{t('hero.stats.countries', 'Countries')}</p>
+                </div>
+              </div>
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }

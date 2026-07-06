@@ -54,7 +54,9 @@
       "gotInterviews": "Conseguiram entrevistas",
       "industriesCovered": "Setores cobertos",
       "checksPerScan": "Verificações por análise",
-      "languagesSupported": "Idiomas suportados"
+      "languagesSupported": "Idiomas suportados",
+      "resumesScanned": "Currículos escaneados",
+      "countries": "Países"
     },
     "chips": {
       "scan": "Análise em 30 segundos",

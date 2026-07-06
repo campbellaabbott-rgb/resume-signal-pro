@@ -54,7 +54,9 @@
       "gotInterviews": "Nakakuha ng interviews",
       "industriesCovered": "Mga industriyang saklaw",
       "checksPerScan": "Mga pagsusuri bawat scan",
-      "languagesSupported": "Mga suportadong wika"
+      "languagesSupported": "Mga suportadong wika",
+      "resumesScanned": "Mga na-scan na resume",
+      "countries": "Mga bansa"
     },
     "chips": {
       "scan": "30-second scan",
