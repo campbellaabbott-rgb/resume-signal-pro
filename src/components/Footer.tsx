@@ -28,6 +28,7 @@ export function Footer() {
           <Link to="/ats-resume-test" className="hover:text-foreground transition-colors">ATS resume test</Link>
           <Link to="/resume-score" className="hover:text-foreground transition-colors">Resume score</Link>
           <Link to="/industries" className="hover:text-foreground transition-colors">Resume keywords by industry</Link>
+          <Link to="/guides" className="hover:text-foreground transition-colors">Resume &amp; ATS guides</Link>
           <Link to="/ats/workday" className="hover:text-foreground transition-colors">Workday ATS guide</Link>
           <Link to="/ats/greenhouse" className="hover:text-foreground transition-colors">Greenhouse guide</Link>
           <Link to="/ats/lever" className="hover:text-foreground transition-colors">Lever guide</Link>

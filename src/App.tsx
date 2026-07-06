@@ -42,6 +42,8 @@ const AtsVendorGuide = lazy(() => import("./pages/AtsVendorGuide"));
 const VsCompetitor = lazy(() => import("./pages/VsCompetitor"));
 const IndustryKeywordsEs = lazy(() => import("./pages/IndustryKeywordsEs"));
 const RoleKeywords = lazy(() => import("./pages/RoleKeywords"));
+const GuidesIndex = lazy(() => import("./pages/GuidesIndex"));
+const GuideArticle = lazy(() => import("./pages/GuideArticle"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -84,6 +86,8 @@ const App = () => (
           <Route path="/vs/:slug" element={<VsCompetitor />} />
           <Route path="/es/industrias/:slug" element={<IndustryKeywordsEs />} />
           <Route path="/roles/:slug" element={<RoleKeywords />} />
+          <Route path="/guides" element={<GuidesIndex />} />
+          <Route path="/guides/:slug" element={<GuideArticle />} />
           {/* Head-term landing pages: the real scanner under query-specific SEO
               copy (see src/data/tool-landings.ts) */}
           <Route path="/resume-checker" element={<Index landing={TOOL_LANDINGS["resume-checker"]} />} />

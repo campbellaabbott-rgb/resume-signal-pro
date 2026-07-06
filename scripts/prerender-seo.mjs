@@ -39,6 +39,7 @@ export { COMPETITORS } from "../src/data/competitors";
 export { VENDORS } from "../src/data/ats-vendors";
 export { ES_INDUSTRIES, isSpanish } from "../src/data/es-industries";
 export { SCREENER_NOTES } from "../src/data/screener-notes";
+export { GUIDES } from "../src/data/guides";
 `);
   const bundle = join(root, "scripts", ".prerender-data.mjs");
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
@@ -122,7 +123,13 @@ export { SCREENER_NOTES } from "../src/data/screener-notes";
     </div>`;
 
   // ---- Head surgery on the template ----
-  const renderFile = ({ path, title, description, content, jsonLd = [], hreflang = null, lang = null }) => {
+  // `isFallback` marks the root index.html, which doubles as the SPA fallback
+  // for every non-prerendered route: it gets NO canonical (a canonical of "/"
+  // on /pricing would tell non-Google engines /pricing is a duplicate) and an
+  // inline script that clears the static homepage content immediately when
+  // the browser path isn't "/" (crawlers don't run it; JS users on other
+  // routes get the same blank-then-render they had before).
+  const renderFile = ({ path, title, description, content, jsonLd = [], hreflang = null, lang = null, isFallback = false }) => {
     let html = template;
     html = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`);
     html = html.replace(/(<meta name="description" content=")[^"]*(")/, `$1${esc(description)}$2`);
@@ -132,7 +139,7 @@ export { SCREENER_NOTES } from "../src/data/screener-notes";
     html = html.replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${esc(description)}$2`);
     if (lang) html = html.replace(/<html lang="[^"]*"/, `<html lang="${lang}"`);
 
-    let headExtra = `<link rel="canonical" href="${SITE}${path}" />\n<meta name="x-prerendered" content="1" />\n`;
+    let headExtra = `${isFallback ? "" : `<link rel="canonical" href="${SITE}${path}" />\n`}<meta name="x-prerendered" content="1" />\n`;
     if (hreflang) {
       headExtra += `<link rel="alternate" hreflang="en" href="${SITE}${hreflang.en}" />\n`;
       headExtra += `<link rel="alternate" hreflang="es" href="${SITE}${hreflang.es}" />\n`;
@@ -140,8 +147,15 @@ export { SCREENER_NOTES } from "../src/data/screener-notes";
     }
     for (const ld of jsonLd) headExtra += `<script type="application/ld+json">${JSON.stringify(ld)}</script>\n`;
     html = html.replace("</head>", `${headExtra}</head>`);
-    html = html.replace('<div id="root"></div>', `<div id="root">${shell(content, lang)}</div>`);
+    const clearScript = isFallback
+      ? `<script>if(location.pathname!=="/"){var r=document.getElementById("root");if(r)r.innerHTML="";}</script>`
+      : "";
+    html = html.replace('<div id="root"></div>', `<div id="root">${shell(content, lang)}</div>${clearScript}`);
 
+    if (isFallback) {
+      writeFileSync(join(dist, "index.html"), html);
+      return;
+    }
     // Write BOTH layouts: <path>/index.html (served for "/path/") and
     // <path>.html (what sirv-style servers — vite preview included — resolve
     // for the extensionless "/path" our links and sitemap actually use).
@@ -329,7 +343,113 @@ export { SCREENER_NOTES } from "../src/data/screener-notes";
     });
   }
 
-  console.log(`[prerender-seo] Wrote ${count} static HTML pages into dist/`);
+  // ---- /guides index + articles ----
+  {
+    const guides = Object.values(D.GUIDES);
+    write({
+      path: "/guides",
+      title: "Resume & ATS Guides — From Real Scanner Data",
+      description: "How ATS systems actually work, how resumes really get rejected, and how to fix yours — every guide grounded in the checks our scanner runs, not folklore.",
+      content: `
+        <h1 class="text-3xl font-bold mb-3">Resume &amp; ATS guides</h1>
+        <p class="text-muted-foreground mb-8">No recycled folklore: every guide below is grounded in the checks our scanner runs on real resumes and the documented behavior of real ATS parsers. Where the popular advice is wrong, we say so.</p>
+        <div class="space-y-3">${guides.map((g) => `
+          <a href="/guides/${g.slug}" class="block rounded-2xl border border-border bg-card p-5">
+            <h2 class="font-semibold text-foreground mb-1">${esc(g.h1)}</h2>
+            <p class="text-sm text-muted-foreground">${esc(g.description)}</p>
+            <p class="text-xs text-muted-foreground mt-2">${g.minutes} min read · Updated ${g.updated}</p>
+          </a>`).join("")}</div>`,
+    });
+
+    for (const g of guides) {
+      const jsonLd = [{
+        "@context": "https://schema.org",
+        "@type": "Article",
+        headline: g.h1,
+        description: g.description,
+        dateModified: g.updated,
+        author: { "@type": "Organization", name: "Resume Booster", url: SITE },
+        publisher: { "@type": "Organization", name: "Resume Booster" },
+        mainEntityOfPage: `${SITE}/guides/${g.slug}`,
+      }];
+      if (g.faqs?.length) jsonLd.push(faqLd(g.faqs));
+      write({
+        path: `/guides/${g.slug}`,
+        title: g.title,
+        description: g.description,
+        jsonLd,
+        content: `
+          ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Guides", href: "/guides" }, { name: g.h1 }])}
+          <article>
+          <h1 class="text-3xl font-bold mb-3">${esc(g.h1)}</h1>
+          <p class="text-xs text-muted-foreground mb-8">${g.minutes} min read · Updated ${g.updated} · Grounded in the checks our scanner runs on every resume</p>
+          ${g.sections.map((s) => `
+            <section class="mb-8">
+              <h2 class="text-xl font-bold mb-3">${esc(s.h2)}</h2>
+              ${s.paras.map((p) => `<p class="text-sm text-muted-foreground leading-relaxed mb-3">${esc(p)}</p>`).join("")}
+              ${s.bullets ? `<ul class="space-y-1.5 mt-1">${s.bullets.map((b) => `<li class="text-sm text-muted-foreground">✓ ${esc(b)}</li>`).join("")}</ul>` : ""}
+            </section>`).join("")}
+          ${g.faqs?.length ? `<section class="mb-10"><h2 class="text-xl font-bold mb-4">Common questions</h2><div class="space-y-3">${g.faqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4"><h3 class="font-semibold text-foreground text-sm mb-1.5">${esc(f.q)}</h3><p class="text-xs text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>` : ""}
+          ${cta("See where your resume actually stands — free", "The full diagnostic in about 20 seconds: parsing, keywords, structure, and red flags — with every finding quoted from your actual document. No signup, resume never stored.", "Run the free scan")}
+          <nav class="mt-6 flex flex-wrap gap-2 text-xs">${g.related.map((r) => pill(r.href, `${r.label} →`)).join("")}</nav>
+          </article>`,
+      });
+    }
+  }
+
+  // ---- Homepage (also the SPA fallback — see renderFile notes) ----
+  write({
+    isFallback: true,
+    path: "/",
+    title: "Resume Booster | Free ATS Resume Scan — Recruiter-Grade Feedback",
+    description: "Free diagnostic resume scan in ~20 seconds: ATS score with an audit trail, missing keywords, weak bullets rewritten, per-vendor parsing checks. No sign-up, resume never stored.",
+    jsonLd: [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        name: "Resume Booster",
+        url: SITE,
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web",
+        description: "Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across 59 industries and 10 languages.",
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free resume scan — no signup required" },
+      },
+    ],
+    content: `
+      <h1 class="text-3xl font-bold mb-3">Is your resume being rejected by ATS bots?</h1>
+      <p class="text-muted-foreground mb-6">Find out in about 20 seconds. Our free scan simulates how applicant tracking systems parse your resume and shows exactly what's costing you interviews — score with a full audit trail, missing keywords, weak bullets rewritten, and per-vendor checks for Workday, Greenhouse, Lever, and iCIMS. No sign-up; your resume is never stored.</p>
+      ${cta("Check my resume now — free", "Upload or paste your resume and get the complete diagnostic report. 7 scans a day free, 15 with a free account.", "Check my resume free")}
+      <section class="mt-10 mb-8">
+        <h2 class="text-xl font-bold mb-3">What the free scan covers</h2>
+        <ul class="space-y-1.5">
+          <li class="text-sm text-muted-foreground">✓ ATS parse simulation — see the text extraction from your actual file</li>
+          <li class="text-sm text-muted-foreground">✓ Score with its modeling band and a point-by-point audit trail</li>
+          <li class="text-sm text-muted-foreground">✓ Missing keywords from your job posting, or your occupation's O*NET profile</li>
+          <li class="text-sm text-muted-foreground">✓ Weakest bullets identified and rewritten</li>
+          <li class="text-sm text-muted-foreground">✓ Industry detection across 58 fields, including Spanish-language resumes</li>
+          <li class="text-sm text-muted-foreground">✓ Red flags: gaps, vague duties, date inconsistencies, credential visibility</li>
+        </ul>
+      </section>
+      <section class="mb-8">
+        <h2 class="text-xl font-bold mb-3">Why use this instead of ChatGPT or Claude?</h2>
+        <p class="text-sm text-muted-foreground leading-relaxed mb-3">A general chatbot gives useful generic advice, and if that's all you need, use it — it's free too. This scanner does the parts a chat can't: it runs your actual file through real text extraction (the step that silently breaks resumes), checks documented per-vendor ATS behaviors, verifies every quoted finding against your document so nothing is invented, scores against a consistent rubric with a reproducible report ID, and cites its keyword sources (your posting, or U.S. Department of Labor O*NET data).</p>
+      </section>
+      <section class="mb-8">
+        <h2 class="text-xl font-bold mb-3">Free tools and data</h2>
+        <div class="flex flex-wrap gap-2 text-xs">
+          ${pill("/resume-checker", "Free resume checker →")}
+          ${pill("/ats-resume-test", "ATS resume test →")}
+          ${pill("/resume-score", "Resume score →")}
+          ${pill("/industries", "Keywords for 58 industries →")}
+          ${pill("/guides", "Resume & ATS guides →")}
+          ${pill("/es/revisar-curriculum", "Revisar currículum (español) →")}
+          ${pill("/builder", "Free resume builder →")}
+          ${pill("/methodology", "How the scoring works →")}
+        </div>
+      </section>`,
+  });
+
+  console.log(`[prerender-seo] Wrote ${count} static HTML pages into dist/ (+ homepage fallback)`);
 } catch (err) {
   // Never block a publish: a failed prerender just means SPA-only pages,
   // which is the pre-existing status quo, not an outage.

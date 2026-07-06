@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:functions": "bash scripts/check-functions.sh",
-    "smoke": "node scripts/post-publish-smoke.mjs"
+    "smoke": "node scripts/post-publish-smoke.mjs",
+    "indexnow": "node scripts/indexnow-ping.mjs"
   },
   "dependencies": {
     "@lovable.dev/cloud-auth-js": "^1.1.2",
