@@ -6,10 +6,28 @@ What makes it different from asking a chatbot: results are measured and reproduc
 
 Paid tools are one-time purchases ($3–29): resume rewrites, cover letters, interview coaching, Freelance Boost (turns freelance/gig projects into recruiter-grade experience sections for career changers). Optional all-access subscription.
 
-## Key pages
+Full guide text and the complete data-page map in one fetch: [/llms-full.txt](/llms-full.txt). All pages are prerendered static HTML — no JavaScript needed to read them.
+
+## Free tools
 
 - [Free resume scan](/): Full diagnostic report in ~20 seconds — score with audit trail, weakest bullets graded and rewritten, recruiter panel, interview questions the resume will trigger, ATS vendor checks.
+- [Resume checker](/resume-checker), [ATS resume test](/ats-resume-test), [Resume score](/resume-score): The same scanner under the query each visitor asked — each page answers its own FAQs.
+- [Revisar currículum (español)](/es/revisar-curriculum): Native Spanish resume checking — the engine detects Spanish terms, titles, and certifications directly.
+
+## Guides (answer-first, grounded in scanner data)
+
+- [Why resumes get rejected before a human reads them](/guides/why-resumes-get-rejected): The four failure stages — parsing, search, skim, close read.
+- [Do ATS systems auto-reject resumes?](/guides/ats-auto-rejection-myth): Mostly no — the honest mechanics, against the industry's favorite myth.
+- [How to choose resume keywords](/guides/resume-keywords-guide): Job posting > O*NET > recognized titles; why stuffing backfires.
+- [Career change resume playbook](/guides/career-change-resume): Bridge keywords, title translation, transition framing.
+- [The resume format that survives every ATS](/guides/resume-format-that-survives-ats): Layout, sections, fonts, PDF vs DOCX — from documented parser behavior.
+- [What a resume score actually means](/guides/what-resume-score-means): Scores are models with error bars; how to read one without being fooled.
+
+## Data pages
+
 - [Resume keywords by industry](/industries): 58 industry pages generated from the scanner's live detection tables, with O*NET (U.S. Dept. of Labor) citations.
+- Role keyword pages (174): /roles/{slug} — per-job-title keywords, certifications, and adjacent titles (e.g. /roles/software-engineer, /roles/registered-nurse).
+- Spanish industry pages (15): /es/industrias/{slug} — native Spanish keyword data paired with English ATS terms.
 - [Freelance Boost](/freelance-boost): Guided flow converting freelance projects, gig work, and side hustles into recruiter-grade resume experience. $29 one-time.
 - [Resume Builder](/builder): Free structured builder with professionally typeset PDF and DOCX export.
 - [Workday parsing guide](/ats/workday), [Greenhouse](/ats/greenhouse), [Lever](/ats/lever), [iCIMS](/ats/icims): How each major ATS actually parses resumes.

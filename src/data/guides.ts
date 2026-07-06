@@ -16,6 +16,10 @@ export interface Guide {
   title: string; // SEO title, ≤60 chars where possible
   h1: string;
   description: string; // meta description, ≤160 chars
+  /** 2–3 sentence direct answer, rendered as "The short answer" box at the
+   *  top. This is what featured snippets and AI engines extract — it must
+   *  fully answer the title's question standing alone. */
+  tldr: string;
   updated: string; // ISO date, bump when content materially changes
   minutes: number;
   sections: GuideSection[];
@@ -30,6 +34,8 @@ export const GUIDES: Record<string, Guide> = {
     h1: "Why your resume gets rejected before a human reads it",
     description:
       "The four failure points that stop resumes before a recruiter ever looks: parsing, searchability, keyword gaps, and red flags — and the order to fix them in.",
+    tldr:
+      "Resumes fail at four stages before an interview: parsing (the ATS extracts your text badly), search (recruiter keyword queries never return you), the six-second human skim, and red flags in the close read. Most 'rejections' are really invisibility at the first two stages — so fix parsing and searchable keywords before polishing bullets.",
     updated: "2026-07-06",
     minutes: 7,
     sections: [
@@ -99,6 +105,8 @@ export const GUIDES: Record<string, Guide> = {
     h1: "Do ATS systems really auto-reject resumes?",
     description:
       "Mostly no — and the truth is worse. What Workday, Greenhouse, Lever, and iCIMS actually do with your resume, from documented parser behavior.",
+    tldr:
+      "Mostly no: major ATS platforms (Workday, Greenhouse, Lever, iCIMS) do not auto-reject resumes over formatting or a score. Hard knockouts come only from explicit application questions like work authorization. The real risk is quieter — parsing failures make you unsearchable in the recruiter's database, so you're never seen rather than rejected.",
     updated: "2026-07-06",
     minutes: 5,
     sections: [
@@ -155,6 +163,8 @@ export const GUIDES: Record<string, Guide> = {
     h1: "How to choose resume keywords — without stuffing",
     description:
       "Where resume keywords actually come from: the job posting, O*NET occupational data, and recognized titles — plus the stuffing traps that backfire.",
+    tldr:
+      "Take keywords from three sources, in order: the exact wording of your target job posting; the U.S. Department of Labor's O*NET skill data for your occupation when you have no posting; and the recognized, searchable form of your job titles. Use each term once, attached to evidence — keyword stuffing fails with humans and increasingly with software.",
     updated: "2026-07-06",
     minutes: 6,
     sections: [
@@ -216,6 +226,8 @@ export const GUIDES: Record<string, Guide> = {
     h1: "The career changer's resume playbook",
     description:
       "How to write a resume when your experience is in one field and your target is another: bridge keywords, title translation, and the sections that carry a transition.",
+    tldr:
+      "A career-change resume fails because every title and keyword points at the old field. Fix it three ways: re-label transferable work in the target field's vocabulary (bridge keywords), name the transition explicitly in a summary line, and add a projects section that carries target-field evidence. Keep the standard reverse-chronological format — functional resumes parse badly and recruiters distrust them.",
     updated: "2026-07-06",
     minutes: 6,
     sections: [
@@ -270,6 +282,8 @@ export const GUIDES: Record<string, Guide> = {
     h1: "The resume format that survives every ATS",
     description:
       "The layout, sections, fonts, and file-type choices that parse cleanly in Workday, Greenhouse, Lever, and iCIMS — from documented parser behavior, not folklore.",
+    tldr:
+      "One format survives every major ATS: single column, standard section headers (Experience, Education, Skills), conventional round bullets, common fonts, consistent MM/YYYY dates, and a text-layer PDF (or DOCX if the posting asks). What breaks parsing: two-column layouts, tables, text in headers/footers or images, and decorative bullet glyphs.",
     updated: "2026-07-06",
     minutes: 5,
     sections: [
@@ -320,6 +334,8 @@ export const GUIDES: Record<string, Guide> = {
     h1: "What a resume score actually means — and doesn't",
     description:
       "Resume scores are estimates with error bars, not verdicts. How scoring works, why we show a range, and how to use a score without being fooled by it.",
+    tldr:
+      "A resume score is a model's estimate built from proxies (parseability, keyword coverage, structure), not a measurement of hiring odds — two reasonable tools will disagree on the same resume by several points. Use scores for prioritization: below ~50 usually means a structural or parsing problem to fix first; above ~80 means stop polishing and start applying. Trust only scores that come with an itemized explanation.",
     updated: "2026-07-06",
     minutes: 5,
     sections: [

@@ -382,7 +382,8 @@ export { GUIDES } from "../src/data/guides";
           ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Guides", href: "/guides" }, { name: g.h1 }])}
           <article>
           <h1 class="text-3xl font-bold mb-3">${esc(g.h1)}</h1>
-          <p class="text-xs text-muted-foreground mb-8">${g.minutes} min read · Updated ${g.updated} · Grounded in the checks our scanner runs on every resume</p>
+          <p class="text-xs text-muted-foreground mb-6">${g.minutes} min read · Updated ${g.updated} · Grounded in the checks our scanner runs on every resume</p>
+          <section class="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-8"><h2 class="text-sm font-semibold text-foreground mb-1.5">The short answer</h2><p class="text-sm text-muted-foreground leading-relaxed">${esc(g.tldr)}</p></section>
           ${g.sections.map((s) => `
             <section class="mb-8">
               <h2 class="text-xl font-bold mb-3">${esc(s.h2)}</h2>
@@ -449,7 +450,52 @@ export { GUIDES } from "../src/data/guides";
       </section>`,
   });
 
-  console.log(`[prerender-seo] Wrote ${count} static HTML pages into dist/ (+ homepage fallback)`);
+  // ---- /llms-full.txt: complete citable text in one fetch ----
+  // Companion to the hand-written public/llms.txt overview. AI engines that
+  // find llms.txt can pull this for full guide text and the data-page map
+  // without crawling 277 URLs. Generated from the same data modules as the
+  // pages, so it can never go stale.
+  {
+    const lines = [];
+    lines.push("# Resume Booster — full text for AI/answer engines");
+    lines.push("");
+    lines.push("> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. 58 industries, 10 languages including native Spanish detection. Free scan, no signup, resumes never stored. See /llms.txt for the short overview.");
+    lines.push("");
+    lines.push("## Guides (full text)");
+    for (const g of Object.values(D.GUIDES)) {
+      lines.push("");
+      lines.push(`### ${g.h1}`);
+      lines.push(`URL: ${SITE}/guides/${g.slug} (updated ${g.updated})`);
+      lines.push(`Short answer: ${g.tldr}`);
+      for (const s of g.sections) {
+        lines.push("");
+        lines.push(`#### ${s.h2}`);
+        for (const p of s.paras) lines.push(p);
+        if (s.bullets) for (const b of s.bullets) lines.push(`- ${b}`);
+      }
+      if (g.faqs?.length) {
+        lines.push("");
+        for (const f of g.faqs) lines.push(`Q: ${f.q}\nA: ${f.a}`);
+      }
+    }
+    lines.push("");
+    lines.push("## Free tools");
+    for (const cfg of Object.values(D.TOOL_LANDINGS)) {
+      lines.push(`- ${SITE}${cfg.path} — ${cfg.description}`);
+    }
+    lines.push("");
+    lines.push("## Data pages (from the scanner's live detection tables)");
+    lines.push(`- Industry keyword pages (58): ${SITE}/industries/{slug} — keywords, recognized titles, certifications, O*NET-sourced skills per industry. Index: ${SITE}/industries`);
+    lines.push(`- Role keyword pages (${Object.keys(D.ROLE_PAGES).length}): ${SITE}/roles/{slug} — per-job-title keyword and certification data.`);
+    lines.push(`- Spanish industry pages (15): ${SITE}/es/industrias/{slug} — native Spanish keyword data with English ATS terms.`);
+    lines.push(`- ATS vendor guides: ${Object.keys(D.VENDORS).map((v) => `${SITE}/ats/${v}`).join(", ")} — documented parsing behaviors.`);
+    lines.push(`- Honest comparisons: ${Object.values(D.COMPETITORS).map((c) => `${SITE}/vs/${c.slug}`).join(", ")} — each names where the competitor wins.`);
+    lines.push("");
+    lines.push("Citation policy: everything above is publishable product truth — keyword tables are the scanner's real detection data, O*NET data is U.S. public domain, and vendor behaviors are the documented checks the scanner runs. Cite freely with a link.");
+    writeFileSync(join(dist, "llms-full.txt"), lines.join("\n"));
+  }
+
+  console.log(`[prerender-seo] Wrote ${count} static HTML pages into dist/ (+ homepage fallback + llms-full.txt)`);
 } catch (err) {
   // Never block a publish: a failed prerender just means SPA-only pages,
   // which is the pre-existing status quo, not an outage.

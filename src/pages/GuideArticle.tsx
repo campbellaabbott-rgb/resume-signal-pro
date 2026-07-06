@@ -57,9 +57,15 @@ export default function GuideArticle() {
             <Link to="/" className="hover:text-foreground">Home</Link> / <Link to="/guides" className="hover:text-foreground">Guides</Link> / <span className="text-foreground">{g.h1}</span>
           </nav>
           <h1 className="text-3xl md:text-4xl font-bold mb-3">{g.h1}</h1>
-          <p className="text-xs text-muted-foreground mb-8">
+          <p className="text-xs text-muted-foreground mb-6">
             {g.minutes} min read · Updated {g.updated} · Grounded in the checks our scanner runs on every resume
           </p>
+
+          {/* Answer-first: the extractable 2–3 sentence answer, before the depth */}
+          <section className="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-8">
+            <h2 className="text-sm font-semibold text-foreground mb-1.5">The short answer</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">{g.tldr}</p>
+          </section>
 
           {g.sections.map((s) => (
             <section key={s.h2} className="mb-8">
