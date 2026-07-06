@@ -398,30 +398,33 @@ export { GUIDES } from "../src/data/guides";
     }
   }
 
+  // Bake real numbers at build time via the same public aggregate RPC the
+  // browser pages call. Used by /research/ats-score-benchmarks AND the
+  // homepage stats section below. If the RPC isn't reachable (migration not
+  // yet published, offline build), prerender the qualitative copy only —
+  // the browser fetch fills the numbers in. Never invent figures here.
+  let scanInsights = null;
+  try {
+    const env = readFileSync(join(root, ".env"), "utf8");
+    const supaUrl = env.match(/^VITE_SUPABASE_URL\s*=\s*"?([^"\s]+)/m)?.[1];
+    const anonKey = env.match(/^VITE_SUPABASE_PUBLISHABLE_KEY\s*=\s*"?([^"\s]+)/m)?.[1];
+    if (supaUrl && anonKey) {
+      const res = await fetch(`${supaUrl}/rest/v1/rpc/get_public_scan_insights`, {
+        method: "POST",
+        headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json" },
+        body: "{}",
+        signal: AbortSignal.timeout(8000),
+      });
+      if (res.ok) scanInsights = await res.json();
+      if (!scanInsights?.overall?.n) scanInsights = null;
+    }
+  } catch (e) {
+    console.warn(`[prerender-seo] score insights unavailable at build time (${e.message}) — prerendering without numbers`);
+  }
+
   // ---- /research/ats-score-benchmarks (live data study) ----
   {
-    // Bake real numbers at build time via the same public aggregate RPC the
-    // page calls in the browser. If the RPC isn't reachable (migration not
-    // yet published, offline build), prerender the qualitative copy only —
-    // the browser fetch fills the numbers in. Never invent figures here.
-    let ins = null;
-    try {
-      const env = readFileSync(join(root, ".env"), "utf8");
-      const supaUrl = env.match(/^VITE_SUPABASE_URL\s*=\s*"?([^"\s]+)/m)?.[1];
-      const anonKey = env.match(/^VITE_SUPABASE_PUBLISHABLE_KEY\s*=\s*"?([^"\s]+)/m)?.[1];
-      if (supaUrl && anonKey) {
-        const res = await fetch(`${supaUrl}/rest/v1/rpc/get_public_scan_insights`, {
-          method: "POST",
-          headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json" },
-          body: "{}",
-          signal: AbortSignal.timeout(8000),
-        });
-        if (res.ok) ins = await res.json();
-        if (!ins?.overall?.n) ins = null;
-      }
-    } catch (e) {
-      console.warn(`[prerender-seo] score insights unavailable at build time (${e.message}) — prerendering without numbers`);
-    }
+    const ins = scanInsights;
     const o = ins?.overall;
     const studyFaqs = [
       { q: "What is a good ATS score?", a: "Judge your score against the live distribution on this page, not a folklore threshold: the median and quartiles come from real scans in the last 180 days. Scoring above the 75th percentile means most resumes being checked right now score below yours; below the 25th percentile means parsing or keyword problems are very likely holding you back." },
@@ -528,6 +531,10 @@ export { GUIDES } from "../src/data/guides";
         <h2 class="text-xl font-bold mb-3">Why use this instead of ChatGPT or Claude?</h2>
         <p class="text-sm text-muted-foreground leading-relaxed mb-3">A general chatbot gives useful generic advice, and if that's all you need, use it — it's free too. This scanner does the parts a chat can't: it runs your actual file through real text extraction (the step that silently breaks resumes), checks documented per-vendor ATS behaviors, verifies every quoted finding against your document so nothing is invented, scores against a consistent rubric with a reproducible report ID, and cites its keyword sources (your posting, or U.S. Department of Labor O*NET data).</p>
       </section>
+      ${scanInsights?.overall ? `<section class="mb-8">
+        <h2 class="text-xl font-bold mb-3">How real resumes actually score</h2>
+        <p class="text-sm text-muted-foreground leading-relaxed">Live from our scan corpus (as of ${scanInsights.as_of}, rolling ${scanInsights.window_days}-day window): across ${scanInsights.overall.n.toLocaleString("en-US")} completed scans, the median resume scored <strong class="text-foreground">${scanInsights.overall.median}</strong>, with the middle half between ${scanInsights.overall.p25} and ${scanInsights.overall.p75}${scanInsights.overall.pct_80_plus != null ? `; only ${scanInsights.overall.pct_80_plus}% scored 80 or higher` : ""}. Aggregates only, no individual resume data — full per-industry and experience-level distributions in the <a href="/research/ats-score-benchmarks" class="text-primary">live benchmark study</a>.</p>
+      </section>` : ""}
       <section class="mb-8">
         <h2 class="text-xl font-bold mb-3">Free tools and data</h2>
         <div class="flex flex-wrap gap-2 text-xs">

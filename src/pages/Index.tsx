@@ -10,6 +10,7 @@ import { Hero } from "@/components/Hero";
 import { ResumeUploader } from "@/components/ResumeUploader";
 import { AnalysisPreview } from "@/components/AnalysisPreview";
 import { SocialProof } from "@/components/SocialProof";
+import { LiveScanStats } from "@/components/LiveScanStats";
 import { Footer } from "@/components/Footer";
 import { FAQ } from "@/components/FAQ";
 import { ComparisonTable } from "@/components/ComparisonTable";
@@ -1935,7 +1936,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         <WhyNotChatGPT />
 
         <SocialProof />
-        
+
+        {/* Real corpus statistics — the transparency claim above, made concrete */}
+        <LiveScanStats />
+
         <FAQ />
 
         {/* Landing-variant FAQs rendered visibly — the FAQPage JSON-LD above
