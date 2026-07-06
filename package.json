@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check:functions": "bash scripts/check-functions.sh"
+    "check:functions": "bash scripts/check-functions.sh",
+    "smoke": "node scripts/post-publish-smoke.mjs"
   },
   "dependencies": {
     "@lovable.dev/cloud-auth-js": "^1.1.2",

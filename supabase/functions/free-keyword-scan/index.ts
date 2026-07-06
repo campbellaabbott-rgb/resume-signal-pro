@@ -324,7 +324,9 @@ const VERY_SLOW_THRESHOLD = 70000; // 70s - Gemini Pro model takes 40-60s typica
 const FUNCTION_NAME = 'free-keyword-scan';
 
 
-const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "admin@resumebooster.com";
+// Fallback must be a real inbox — admin@resumebooster.com was a dead letter
+// on a domain we don't use (.com; the site is .work).
+const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "resumeboostersupp@gmail.com";
 const ALERT_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour between alerts per type
 const alertLastSent: Record<string, number> = {};
 
@@ -1262,6 +1264,15 @@ serve(async (req) => {
       req.json()
     ]);
     const { resumeText, jobDescriptionText, honeypot } = body;
+    // Synthetic-monitoring bypass: scan-heartbeat probes this function end to
+    // end on a schedule, which would exhaust the per-IP daily limit and turn
+    // every later probe into a false "down". Honored ONLY when the header
+    // matches the HEARTBEAT_SECRET env var (never shipped to clients); with
+    // the secret unset there is no bypass path at all. Skips the 429 branches
+    // below — nothing else (concurrency slots, caching, scoring stay honest).
+    const heartbeatSecret = Deno.env.get('HEARTBEAT_SECRET');
+    const isHeartbeatProbe = !!heartbeatSecret &&
+      req.headers.get('x-heartbeat-secret') === heartbeatSecret;
     // Optional per-scan context the user stated or confirmed — beats inference.
     const userContext: {
       situation?: string; targetRole?: string;
@@ -1393,7 +1404,7 @@ serve(async (req) => {
         JSON.stringify({ error: 'Service temporarily unavailable. Please try again shortly.' }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    } else if (!globalRateLimitResult.data) {
+    } else if (!globalRateLimitResult.data && !isHeartbeatProbe) {
       console.log(`[FREE-KEYWORD-SCAN] Global rate limit exceeded for IP: ${clientIp}`);
       return new Response(
         JSON.stringify({ error: 'Too many requests. Please try again later.', rateLimited: true }),
@@ -1408,7 +1419,7 @@ serve(async (req) => {
         JSON.stringify({ error: 'Service temporarily unavailable. Please try again shortly.' }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    } else if (!functionRateLimitResult.data) {
+    } else if (!functionRateLimitResult.data && !isHeartbeatProbe) {
       // Purchased scan credits buy scans PAST the daily limit — redeem before
       // rejecting. Email comes from the session (signed-in) or from the
       // browser-remembered purchase email sent by the client.

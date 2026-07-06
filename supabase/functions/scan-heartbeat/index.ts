@@ -206,6 +206,66 @@ serve(async (req) => {
       });
     }
 
+    // Check 5: END-TO-END scan through the real deployed function. The
+    // component checks above can all pass while free-keyword-scan itself is
+    // crashed or stale-deployed (exactly the July 4 outage) — this is the
+    // check that would have caught it. Sends x-heartbeat-secret so the scan
+    // function skips per-IP daily limits (see HEARTBEAT_SECRET there); if the
+    // secret isn't configured, a 429 counts as alive-but-unverified, not down.
+    const e2eStart = Date.now();
+    try {
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+      const heartbeatSecret = Deno.env.get('HEARTBEAT_SECRET');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 75000);
+      const scanResp = await fetch(`${supabaseUrl}/functions/v1/free-keyword-scan`, {
+        method: 'POST',
+        headers: {
+          'apikey': anonKey,
+          'Authorization': `Bearer ${anonKey}`,
+          'Content-Type': 'application/json',
+          ...(heartbeatSecret ? { 'x-heartbeat-secret': heartbeatSecret } : {}),
+        },
+        body: JSON.stringify({ resumeText: TEST_RESUME }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const e2eTime = Date.now() - e2eStart;
+
+      if (scanResp.status === 429) {
+        // Alive (the limiter answered coherently) but the report path is
+        // unverified this cycle. Don't page for this.
+        checks.push({ name: 'e2e_scan', passed: true, responseTimeMs: e2eTime, error: 'rate-limited: alive but report unverified (set HEARTBEAT_SECRET)' });
+      } else if (!scanResp.ok) {
+        const bodyText = (await scanResp.text()).substring(0, 200);
+        checks.push({ name: 'e2e_scan', passed: false, responseTimeMs: e2eTime, error: `HTTP ${scanResp.status}: ${bodyText}` });
+        overallStatus = 'down';
+        errorMessage = errorMessage || `E2E scan: HTTP ${scanResp.status}`;
+      } else {
+        const scanJson = await scanResp.json();
+        const anatomyOk = typeof scanJson.atsScoreEstimate === 'number' && !!scanJson.reportMeta?.reportId;
+        checks.push({
+          name: 'e2e_scan',
+          passed: anatomyOk,
+          responseTimeMs: e2eTime,
+          error: anatomyOk ? undefined : 'Response missing atsScoreEstimate/reportMeta',
+        });
+        if (!anatomyOk) {
+          overallStatus = 'degraded';
+          errorMessage = errorMessage || 'E2E scan: 200 but malformed report';
+        }
+      }
+    } catch (e) {
+      checks.push({
+        name: 'e2e_scan',
+        passed: false,
+        responseTimeMs: Date.now() - e2eStart,
+        error: e instanceof Error ? e.message : 'Unknown error',
+      });
+      overallStatus = 'down';
+      errorMessage = errorMessage || `E2E scan: ${e instanceof Error ? e.message : 'Unknown'}`;
+    }
+
     // Calculate total response time and adjust status based on latency
     const totalTime = Date.now() - startTime;
     if (overallStatus === 'healthy' && totalTime > DEGRADED_RESPONSE_TIME_MS) {
@@ -290,9 +350,33 @@ async function sendHeartbeatAlert(
 ): Promise<void> {
   try {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "admin@resumebooster.com";
-    
+    // Fallback must be a real inbox: the old admin@resumebooster.com default
+    // was a dead letter on a domain we don't even use (.com, site is .work).
+    const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "resumeboostersupp@gmail.com";
+
     if (!RESEND_API_KEY) return;
+
+    // Durable dedupe, same pattern as free-keyword-scan's alerts: on a 10-min
+    // schedule an outage would otherwise mean 6 emails/hour. check_rate_limit
+    // is atomic and global across isolates; cap 2/hour. Best-effort — a
+    // dedupe failure must never swallow a real alert.
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (supabaseUrl && serviceKey) {
+        const dedupeClient = createClient(supabaseUrl, serviceKey);
+        const { data: allowed } = await dedupeClient.rpc('check_rate_limit', {
+          p_function: 'alert:heartbeat',
+          p_ip: 'global',
+          p_max_requests: 2,
+          p_window_minutes: 60,
+        });
+        if (allowed === false) {
+          console.log('[SCAN-HEARTBEAT] Alert suppressed (2/hour global cap)');
+          return;
+        }
+      }
+    } catch (_e) { /* fall through and send */ }
 
     const failedChecks = checks.filter(c => !c.passed);
     const statusEmoji = status === 'down' ? '🔴' : '🟡';
