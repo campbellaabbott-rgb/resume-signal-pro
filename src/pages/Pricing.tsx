@@ -93,7 +93,7 @@ export default function Pricing() {
       }) }} />
       <Header />
 
-      <main className="pt-32 pb-20">
+      <main className="pt-24 pb-20">
         <div className="container max-w-6xl">
           {/* Hero */}
           <div className="text-center mb-16">

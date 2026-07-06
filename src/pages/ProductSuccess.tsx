@@ -914,7 +914,7 @@ export default function ProductSuccess() {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="pt-24 pb-20">
+        <main className="pt-16 pb-20">
           <div className="container max-w-4xl">
             {/* Streaming Header */}
             <div className="text-center mb-8">
@@ -1036,7 +1036,7 @@ export default function ProductSuccess() {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="pt-24 pb-20">
+      <main className="pt-16 pb-20">
         {/* Success Header */}
         <section className="py-12 relative overflow-hidden">
           <div className="absolute inset-0 pointer-events-none">

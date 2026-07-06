@@ -34,7 +34,7 @@ export default function AtsVendorGuide() {
       />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: faqLd }} />
       <Header />
-      <main className="pt-28 pb-20">
+      <main className="pt-20 pb-20">
         <div className="container max-w-3xl">
           <nav className="text-xs text-muted-foreground mb-4">
             <Link to="/" className="hover:text-foreground">Home</Link> / <span className="text-foreground">ATS guides</span> / <span className="text-foreground">{data.name}</span>

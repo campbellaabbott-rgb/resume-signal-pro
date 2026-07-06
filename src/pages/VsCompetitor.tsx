@@ -58,7 +58,7 @@ export default function VsCompetitor() {
         })),
       }) }} />
       <Header />
-      <main className="pt-28 pb-20">
+      <main className="pt-20 pb-20">
         <div className="container max-w-3xl">
           <h1 className="text-3xl md:text-4xl font-bold mb-3">Resume Booster vs {c.name}</h1>
           <p className="text-muted-foreground mb-2">

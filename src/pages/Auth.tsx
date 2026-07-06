@@ -125,7 +125,7 @@ export default function Auth() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
-      <main className="flex-1 flex items-center justify-center px-4 pt-24 pb-16">
+      <main className="flex-1 flex items-center justify-center px-4 pt-16 pb-16">
         <div className="w-full max-w-sm">
           <div className="rounded-2xl border border-border bg-card p-6">
             <h1 className="text-xl font-bold text-foreground mb-1">

@@ -51,7 +51,7 @@ export default function GuideArticle() {
         <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: b }} />
       ))}
       <Header />
-      <main className="pt-28 pb-20">
+      <main className="pt-20 pb-20">
         <article className="container max-w-3xl">
           <nav className="text-xs text-muted-foreground mb-4">
             <Link to="/" className="hover:text-foreground">Home</Link> / <Link to="/guides" className="hover:text-foreground">Guides</Link> / <span className="text-foreground">{g.h1}</span>

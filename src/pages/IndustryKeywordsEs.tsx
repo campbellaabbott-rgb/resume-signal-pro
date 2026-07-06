@@ -35,7 +35,7 @@ export default function IndustryKeywordsEs() {
       <link rel="alternate" hrefLang="es" href={`https://resumebooster.work/es/industrias/${slug}`} />
       <link rel="alternate" hrefLang="x-default" href={`https://resumebooster.work/industries/${slug}`} />
       <Header />
-      <main className="pt-28 pb-20">
+      <main className="pt-20 pb-20">
         <div className="container max-w-3xl">
           <nav className="text-xs text-muted-foreground mb-4">
             <Link to="/" className="hover:text-foreground">Inicio</Link> / <Link to="/industries" className="hover:text-foreground">Industrias</Link> / <span className="text-foreground">{name}</span>

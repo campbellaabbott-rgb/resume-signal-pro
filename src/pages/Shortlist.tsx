@@ -370,7 +370,7 @@ export default function Shortlist() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
-      <main className="flex-1 container max-w-4xl pt-24 pb-16">
+      <main className="flex-1 container max-w-4xl pt-16 pb-16">
         <div className="flex items-center gap-3 mb-1">
           <Briefcase className="w-5 h-5 text-primary" />
           <h1 className="text-2xl font-bold text-foreground">Shortlist</h1>

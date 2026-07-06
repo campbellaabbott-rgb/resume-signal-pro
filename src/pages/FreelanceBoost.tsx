@@ -190,7 +190,7 @@ export default function FreelanceBoost() {
     <div className="min-h-screen bg-background">
       <SEO title="Freelance Boost — Turn Projects Into Resume Experience" description="Turn freelance projects, gig work, and side hustles into recruiter-grade resume experience. Built for career changers who've already done the work." path="/freelance-boost" />
       <Header />
-      <main className="pt-28 pb-20">
+      <main className="pt-20 pb-20">
         <div className="container max-w-3xl">
           <div className="text-center mb-10">
             <h1 className="text-3xl md:text-4xl font-bold mb-3">Your freelance work counts.<br />Make recruiters see it.</h1>

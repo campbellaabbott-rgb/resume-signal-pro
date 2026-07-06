@@ -65,7 +65,7 @@ export default function Trust() {
       <SEO title={t('trustPage.metaTitle')} description={t('trustPage.metaDescription')} path="/trust" />
       <Header />
 
-      <main className="min-h-screen pt-28">
+      <main className="min-h-screen pt-20">
         {/* Hero Section */}
         <section className="py-16 md:py-24 bg-gradient-to-b from-primary/5 via-background to-background">
           <div className="container">

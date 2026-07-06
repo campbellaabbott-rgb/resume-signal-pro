@@ -129,7 +129,7 @@ export default function ResumeBuilder() {
     <div className="min-h-screen bg-background">
       <SEO title="Free Resume Builder — Resume Booster" description="Build an ATS-friendly resume in minutes with our free guided builder. Export to PDF, no signup required." path="/builder" />
       <Header />
-      <main className="pt-24 pb-20">
+      <main className="pt-16 pb-20">
         <div className="container max-w-6xl">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
             <div>

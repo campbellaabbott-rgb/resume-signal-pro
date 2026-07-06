@@ -292,7 +292,7 @@ export default function Account() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
-      <main className="flex-1 container max-w-3xl pt-24 pb-16">
+      <main className="flex-1 container max-w-3xl pt-16 pb-16">
         {/* Identity */}
         <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-5 mb-6 flex items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">

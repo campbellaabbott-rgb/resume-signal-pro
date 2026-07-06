@@ -1621,7 +1621,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       )}
       <Header />
 
-      <main id="main-content" className="pt-[88px]" role="main">
+      <main id="main-content" className="pt-16" role="main">
         <Hero onFileSelect={handleFileSelect} />
 
         {/* Landing-variant copy: the query-specific promise, right under the tool */}

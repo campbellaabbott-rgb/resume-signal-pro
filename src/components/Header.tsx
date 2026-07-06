@@ -40,10 +40,6 @@ export function Header() {
     return (
     <>
       <div className="fixed top-0 left-0 right-0 z-[60]">
-        {/* Beta Banner */}
-        <div className="bg-primary text-primary-foreground text-center py-1.5 text-xs font-medium tracking-wide">
-          🚀 {t('header.betaBanner')}
-        </div>
         <header className="bg-background border-b border-border/50" role="banner">
         <div className="container">
         <nav className="flex items-center justify-between h-16" aria-label={t('header.mainNavAriaLabel')}>

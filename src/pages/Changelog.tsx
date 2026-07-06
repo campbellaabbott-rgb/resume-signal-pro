@@ -33,7 +33,7 @@ export default function Changelog() {
     <div className="min-h-screen bg-background">
       <SEO title={t('changelogPage.metaTitle')} description={t('changelogPage.metaDescription')} path="/changelog" />
       <Header />
-      <main className="pt-28 pb-20">
+      <main className="pt-20 pb-20">
         <div className="container max-w-2xl">
           <div className="text-center mb-12">
             <h1 className="text-3xl md:text-4xl font-bold mb-3">{t('changelogPage.title')}</h1>
