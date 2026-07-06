@@ -1,0 +1,337 @@
+#!/usr/bin/env node
+// Build-time prerender of the ~260 data-driven SEO routes into real HTML
+// files under dist/. Runs automatically after `vite build` (see the
+// prerender-seo plugin in vite.config.ts).
+//
+// Why: the SPA serves an empty <div id="root"> to every crawler. Google
+// renders JS (slowly, via its render queue); Bing, DuckDuckGo, and most AI
+// crawlers effectively don't. These files give every crawler full content
+// plus correct per-route <head> tags (title/description/canonical/hreflang/
+// JSON-LD) that react-helmet can only set client-side.
+//
+// How it stays safe:
+// - Content is generated from the SAME data modules the React pages import,
+//   so pages and prerender can't drift apart on facts.
+// - Each file is the built index.html with head tags swapped and content
+//   injected into #root — all script tags intact, so a real visitor still
+//   gets the full SPA (React re-renders over the static content on load).
+// - Any failure logs loudly but exits 0: a broken prerender must never block
+//   a publish. Worst case is the pre-existing status quo (SPA-only).
+
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { execSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const dist = join(root, "dist");
+const SITE = "https://resumebooster.work";
+
+try {
+  // ---- Bundle the pure-data modules for Node import ----
+  const entry = join(root, "scripts", ".prerender-data-entry.ts");
+  writeFileSync(entry, `
+export { INDUSTRY_KEYWORDS, SUB_INDUSTRY_TAXONOMY } from "../supabase/functions/free-keyword-scan/industry-detection";
+export { ONET_EXPECTATIONS } from "../supabase/functions/free-keyword-scan/onet-expectations";
+export { ROLE_PAGES, rolesForIndustry } from "../src/data/roles";
+export { TOOL_LANDINGS } from "../src/data/tool-landings";
+export { COMPETITORS } from "../src/data/competitors";
+export { VENDORS } from "../src/data/ats-vendors";
+export { ES_INDUSTRIES, isSpanish } from "../src/data/es-industries";
+export { SCREENER_NOTES } from "../src/data/screener-notes";
+`);
+  const bundle = join(root, "scripts", ".prerender-data.mjs");
+  execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
+  const D = await import(bundle + `?t=${Date.now()}`);
+
+  const template = readFileSync(join(dist, "index.html"), "utf8");
+  if (!template.includes('<div id="root"></div>')) {
+    throw new Error('dist/index.html does not contain <div id="root"></div> — template shape changed');
+  }
+
+  // ---- Helpers ----
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const label = (slug) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const displayKeyword = (k) => (k.length <= 4 && !k.includes(" ") ? k.toUpperCase() : k);
+  const uniq = (a) => [...new Set(a)];
+
+  const chip = (text, cls = "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground capitalize") =>
+    `<span class="${cls}">${esc(text)}</span>`;
+  const chips = (arr, cls) => `<div class="flex flex-wrap gap-1.5">${arr.map((k) => chip(k, cls)).join("")}</div>`;
+  const kwChips = (arr) =>
+    `<div class="flex flex-wrap gap-1.5">${arr
+      .map((k) => chip(displayKeyword(k), `px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground${k.length <= 4 && !k.includes(" ") ? "" : " capitalize"}`))
+      .join("")}</div>`;
+  const pill = (href, text) =>
+    `<a href="${href}" class="px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground transition-colors">${esc(text)}</a>`;
+  const cta = (heading, body, buttonText) => `
+    <section class="rounded-2xl border-2 border-primary bg-card p-6 text-center">
+      <h2 class="text-xl font-bold mb-2">${esc(heading)}</h2>
+      <p class="text-sm text-muted-foreground mb-4 max-w-md mx-auto">${esc(body)}</p>
+      <a href="/" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold">${esc(buttonText)}</a>
+    </section>`;
+  const onetBlock = (onet, heading = "Core skills per the U.S. Department of Labor") =>
+    onet
+      ? `<section class="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-6">
+          <h2 class="font-semibold text-foreground mb-1">${esc(heading)}</h2>
+          <p class="text-xs text-muted-foreground mb-3">Source: O*NET ${esc(onet.code)} — ${esc(onet.occupation)} (onetonline.org, public domain)</p>
+          ${chips(onet.skills, "px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium capitalize")}
+          <div class="mt-2">${chips(onet.technologies, "px-2.5 py-1 rounded-full border border-border text-xs text-foreground")}</div>
+        </section>`
+      : "";
+  const breadcrumbNav = (parts) =>
+    `<nav class="text-xs text-muted-foreground mb-4">${parts
+      .map((p, i) => (p.href && i < parts.length - 1 ? `<a href="${p.href}" class="hover:text-foreground">${esc(p.name)}</a>` : `<span class="text-foreground">${esc(p.name)}</span>`))
+      .join(" / ")}</nav>`;
+  const breadcrumbLd = (items) => ({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((it, i) => ({ "@type": "ListItem", position: i + 1, name: it.name, item: `${SITE}${it.path}` })),
+  });
+  const faqLd = (faqs) => ({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+  });
+
+  // Static shell around page content: simple header/footer so crawlers see
+  // site-wide internal links. The SPA replaces all of it on hydration.
+  const shell = (contentHtml, lang) => `
+    <div class="min-h-screen bg-background" ${lang ? `lang="${lang}"` : ""}>
+      <header class="py-4 border-b border-border"><div class="container flex items-center justify-between">
+        <a href="/" class="font-bold text-foreground">Resume Booster</a>
+        <nav class="flex gap-4 text-sm text-muted-foreground">
+          <a href="/resume-checker" class="hover:text-foreground">Resume checker</a>
+          <a href="/industries" class="hover:text-foreground">Industries</a>
+          <a href="/pricing" class="hover:text-foreground">Pricing</a>
+        </nav>
+      </div></header>
+      <main class="pt-10 pb-20"><div class="container max-w-3xl">${contentHtml}</div></main>
+      <footer class="py-10 border-t border-border"><div class="container">
+        <nav class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
+          <a href="/resume-checker" class="hover:text-foreground">Free resume checker</a>
+          <a href="/ats-resume-test" class="hover:text-foreground">ATS resume test</a>
+          <a href="/resume-score" class="hover:text-foreground">Resume score</a>
+          <a href="/industries" class="hover:text-foreground">Resume keywords by industry</a>
+          <a href="/ats/workday" class="hover:text-foreground">Workday ATS guide</a>
+          <a href="/vs/jobscan" class="hover:text-foreground">vs Jobscan</a>
+          <a href="/methodology" class="hover:text-foreground">Methodology</a>
+          <a href="/pricing" class="hover:text-foreground">Pricing</a>
+        </nav>
+      </div></footer>
+    </div>`;
+
+  // ---- Head surgery on the template ----
+  const renderFile = ({ path, title, description, content, jsonLd = [], hreflang = null, lang = null }) => {
+    let html = template;
+    html = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`);
+    html = html.replace(/(<meta name="description" content=")[^"]*(")/, `$1${esc(description)}$2`);
+    html = html.replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${esc(title)}$2`);
+    html = html.replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${esc(description)}$2`);
+    html = html.replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${esc(title)}$2`);
+    html = html.replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${esc(description)}$2`);
+    if (lang) html = html.replace(/<html lang="[^"]*"/, `<html lang="${lang}"`);
+
+    let headExtra = `<link rel="canonical" href="${SITE}${path}" />\n<meta name="x-prerendered" content="1" />\n`;
+    if (hreflang) {
+      headExtra += `<link rel="alternate" hreflang="en" href="${SITE}${hreflang.en}" />\n`;
+      headExtra += `<link rel="alternate" hreflang="es" href="${SITE}${hreflang.es}" />\n`;
+      headExtra += `<link rel="alternate" hreflang="x-default" href="${SITE}${hreflang.en}" />\n`;
+    }
+    for (const ld of jsonLd) headExtra += `<script type="application/ld+json">${JSON.stringify(ld)}</script>\n`;
+    html = html.replace("</head>", `${headExtra}</head>`);
+    html = html.replace('<div id="root"></div>', `<div id="root">${shell(content, lang)}</div>`);
+
+    // Write BOTH layouts: <path>/index.html (served for "/path/") and
+    // <path>.html (what sirv-style servers — vite preview included — resolve
+    // for the extensionless "/path" our links and sitemap actually use).
+    // Together they cover every static-host convention.
+    const outDir = join(dist, ...path.split("/").filter(Boolean));
+    mkdirSync(outDir, { recursive: true });
+    writeFileSync(join(outDir, "index.html"), html);
+    writeFileSync(join(dist, ...path.split("/").filter(Boolean)) + ".html", html);
+  };
+
+  let count = 0;
+  const write = (page) => { renderFile(page); count++; };
+
+  // ---- /industries index ----
+  {
+    const slugs = Object.keys(D.INDUSTRY_KEYWORDS).sort();
+    write({
+      path: "/industries",
+      title: "Resume Keywords by Industry — 59 Fields Covered",
+      description: "ATS keywords, recognized job titles, and expected certifications for 59 industries — straight from the detection engine of a real resume scanner. Nursing to software to skilled trades.",
+      content: `
+        <h1 class="text-3xl font-bold mb-3">Resume keywords, by industry</h1>
+        <p class="text-muted-foreground mb-8">Every page below is generated from the live data our scanner uses — the keywords it weights, the titles it recognizes, the certifications it anchors on, and (where available) skills sourced from the U.S. Department of Labor's O*NET database. ${slugs.length} industries, updated whenever the engine improves.</p>
+        <div class="grid sm:grid-cols-2 gap-2.5">${slugs.map((s) => `<a href="/industries/${s}" class="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground"><span class="capitalize">${esc(label(s))}</span></a>`).join("")}</div>
+        <div class="mt-8">${cta("See how your resume scores — free", "Full diagnostic report in seconds. No signup, resume never stored.", "Scan my resume free")}</div>`,
+    });
+  }
+
+  // ---- /industries/:slug (58) ----
+  for (const [slug, data] of Object.entries(D.INDUSTRY_KEYWORDS)) {
+    const name = label(slug);
+    const keywords = uniq(data.primary).slice(0, 24);
+    const titles = uniq(data.titles).slice(0, 18);
+    const certs = uniq(data.certifications).slice(0, 12);
+    const onet = D.ONET_EXPECTATIONS[slug];
+    const subs = D.SUB_INDUSTRY_TAXONOMY[slug] || [];
+    const roles = D.rolesForIndustry(slug);
+    const note = D.SCREENER_NOTES[slug];
+    const related = Object.keys(D.INDUSTRY_KEYWORDS).filter((s) => s !== slug).sort().slice(0, 8);
+    write({
+      path: `/industries/${slug}`,
+      // hreflang must be declared on BOTH sides of a language pair or
+      // crawlers ignore it — the ES pages already point here.
+      hreflang: D.ES_INDUSTRIES[slug] ? { en: `/industries/${slug}`, es: `/es/industrias/${slug}` } : null,
+      title: `${name} Resume Keywords — What ATS Systems Look For`,
+      description: `${keywords.slice(0, 6).join(", ")} and more: the actual keywords, job titles, and certifications our resume scanner's ${name.toLowerCase()} detection engine checks for. Free scan included.`,
+      jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Industries", path: "/industries" }, { name, path: `/industries/${slug}` }])],
+      content: `
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Industries", href: "/industries" }, { name }])}
+        <h1 class="text-3xl font-bold mb-3">${esc(name)} Resume Keywords &amp; ATS Expectations</h1>
+        <p class="text-muted-foreground mb-8">This isn't an article — it's the live data our resume scanner uses to analyze ${esc(name.toLowerCase())} resumes. When the engine improves, this page updates with it.</p>
+        ${onetBlock(onet)}
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">Keywords ATS systems expect on ${esc(name.toLowerCase())} resumes</h2>${kwChips(keywords)}</section>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">Job titles recruiters recognize in this field</h2>${chips(titles, "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>
+        ${certs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Certifications that anchor a ${esc(name.toLowerCase())} resume</h2>${chips(certs, "px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase")}</section>` : ""}
+        ${subs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Specializations our scanner distinguishes within ${esc(name.toLowerCase())}</h2><div class="space-y-2">${subs.map((sub) => `<div class="rounded-xl border border-border bg-card p-3"><p class="text-sm font-medium text-foreground">${esc(sub.label)}</p><p class="text-xs text-muted-foreground capitalize">Signals: ${esc(sub.signals.slice(0, 6).join(", "))}</p></div>`).join("")}</div></section>` : ""}
+        ${note ? `<section class="rounded-2xl border border-warning/30 bg-warning/5 p-5 mb-8"><h2 class="font-semibold text-foreground mb-1">What screeners check first in ${esc(name.toLowerCase())}</h2><p class="text-sm text-muted-foreground">${esc(note)}</p></section>` : ""}
+        ${cta(`See how your resume scores against this data — free`, "A full diagnostic report in seconds: missing keywords, ATS parsing, weakest bullets rewritten, and a fix plan. No signup, resume never stored.", "Scan my resume free")}
+        ${roles.length ? `<section class="mt-8"><h2 class="text-xl font-bold mb-2">Role-specific keyword guides</h2><div class="flex flex-wrap gap-1.5">${roles.map((r) => `<a href="/roles/${r.slug}" class="px-3 py-1.5 rounded-full border border-primary/40 text-primary text-sm">${esc(r.title)} resume keywords →</a>`).join("")}</div></section>` : ""}
+        <nav class="mt-8 flex flex-wrap gap-2 text-xs">${related.map((s) => pill(`/industries/${s}`, `${label(s)} keywords →`)).join("")}${pill("/industries", "All industries")}</nav>
+        <p class="text-xs text-muted-foreground mt-8">Methodology: keyword and title lists come directly from the detection tables our scanner runs on every ${esc(name.toLowerCase())} resume, validated by a pinned regression suite. O*NET data is public domain from the U.S. Department of Labor. See <a href="/methodology" class="underline">our methodology</a>.</p>`,
+    });
+  }
+
+  // ---- /roles/:slug (~174) ----
+  for (const role of Object.values(D.ROLE_PAGES)) {
+    const data = D.INDUSTRY_KEYWORDS[role.industry];
+    if (!data) continue;
+    const indName = label(role.industry);
+    const keywords = uniq(data.primary).slice(0, 20);
+    const certs = uniq(data.certifications).slice(0, 10);
+    const onet = D.ONET_EXPECTATIONS[role.industry];
+    const relatedTitles = uniq(data.titles).filter((t) => t.toLowerCase() !== role.title.toLowerCase()).slice(0, 10);
+    const siblings = D.rolesForIndustry(role.industry).filter((r) => r.slug !== role.slug);
+    write({
+      path: `/roles/${role.slug}`,
+      title: `${role.title} Resume Keywords — What ATS Systems Look For`,
+      description: `${keywords.slice(0, 5).join(", ")} and more: the keywords, certifications, and titles our scanner checks on ${role.title.toLowerCase()} resumes. Free ATS scan included.`,
+      jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Industries", path: "/industries" }, { name: indName, path: `/industries/${role.industry}` }, { name: role.title, path: `/roles/${role.slug}` }])],
+      content: `
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Industries", href: "/industries" }, { name: indName, href: `/industries/${role.industry}` }, { name: role.title }])}
+        <h1 class="text-3xl font-bold mb-3">${esc(role.title)} Resume Keywords &amp; ATS Expectations</h1>
+        <p class="text-muted-foreground mb-8">This is the live data our resume scanner uses when it detects a ${esc(role.title.toLowerCase())} resume — the keyword tables, certifications, and titles from our ${esc(indName.toLowerCase())} detection engine.</p>
+        ${onetBlock(onet)}
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">Keywords ATS systems expect on a ${esc(role.title.toLowerCase())} resume</h2>${kwChips(keywords)}</section>
+        ${certs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Certifications that anchor a ${esc(role.title.toLowerCase())} resume</h2>${chips(certs, "px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase")}</section>` : ""}
+        ${relatedTitles.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Adjacent titles recruiters search alongside "${esc(role.title)}"</h2>${chips(relatedTitles, "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>` : ""}
+        ${cta(`Scan your ${role.title.toLowerCase()} resume against this data — free`, "A full diagnostic report in seconds: missing keywords, ATS parsing, weakest bullets rewritten, and a fix plan. No signup, resume never stored.", "Scan my resume free")}
+        <nav class="mt-8 flex flex-wrap gap-2 text-xs">${siblings.map((r) => pill(`/roles/${r.slug}`, `${r.title} keywords →`)).join("")}${pill(`/industries/${role.industry}`, `All ${indName} keywords →`)}</nav>
+        <p class="text-xs text-muted-foreground mt-8">Methodology: these lists come directly from the detection tables our scanner runs on every ${esc(indName.toLowerCase())} resume, validated by a pinned regression suite. See <a href="/methodology" class="underline">our methodology</a>.</p>`,
+    });
+  }
+
+  // ---- /vs/:slug (5) ----
+  for (const c of Object.values(D.COMPETITORS)) {
+    const wins = c.rows.filter((r) => r.usWins);
+    const losses = c.rows.filter((r) => !r.usWins);
+    const faqs = [
+      { q: `Is Resume Booster a good free alternative to ${c.name}?`, a: `For resume analysis, yes: the free scan is a full diagnostic report with no sign-up. ${c.name} is stronger in other areas, so the honest answer depends on what you need most.` },
+      { q: `Where does Resume Booster beat ${c.name}?`, a: wins.map((r) => `${r.dim}: ${r.us}`).join(" ") },
+      { q: `Where is ${c.name} better than Resume Booster?`, a: losses.length ? losses.map((r) => `${r.dim}: ${r.them}`).join(" ") : `${c.name}'s public product changes over time; run both free tiers and compare.` },
+    ];
+    write({
+      path: `/vs/${c.slug}`,
+      title: `Resume Booster vs ${c.name} — An Honest Comparison`,
+      description: `How Resume Booster's free diagnostic scan compares to ${c.name}: free-tier depth, score transparency, verified output — and where ${c.name} is genuinely stronger.`,
+      jsonLd: [faqLd(faqs)],
+      content: `
+        <h1 class="text-3xl font-bold mb-3">Resume Booster vs ${esc(c.name)}</h1>
+        <p class="text-muted-foreground mb-2">${esc(c.intro)} An honest comparison — including the rows where ${esc(c.name)} is stronger. Every claim in our column is verifiable by running one free scan; claims about ${esc(c.name)} reflect their public product as of mid-2026 and may change.</p>
+        <p class="text-xs text-muted-foreground mb-8">${esc(c.name)} is a trademark of its owner; we're not affiliated.</p>
+        <div class="space-y-3 mb-10">${c.rows.map((r) => `
+          <div class="rounded-2xl border border-border bg-card p-4">
+            <p class="text-xs font-semibold uppercase text-muted-foreground mb-2">${esc(r.dim)}</p>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <div class="rounded-xl p-3 border ${r.usWins ? "border-success/25 bg-success/5" : "border-border"}"><p class="text-xs font-semibold text-foreground mb-1">Resume Booster</p><p class="text-xs text-muted-foreground">${esc(r.us)}</p></div>
+              <div class="rounded-xl p-3 border ${!r.usWins ? "border-primary/25 bg-primary/5" : "border-border"}"><p class="text-xs font-semibold text-foreground mb-1">${esc(c.name)}</p><p class="text-xs text-muted-foreground">${esc(r.them)}</p></div>
+            </div>
+          </div>`).join("")}</div>
+        <section class="mb-10"><h2 class="text-2xl font-bold mb-4">Common questions</h2><div class="space-y-3">${faqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4"><h3 class="font-semibold text-foreground text-sm mb-1.5">${esc(f.q)}</h3><p class="text-xs text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>
+        ${cta("The comparison that matters: run both, free", "Our free scan gives you the full diagnostic — no signup, no gating, resume never stored. Compare the reports yourself; that's the honest test.", "Run the free scan")}
+        <nav class="mt-6 flex flex-wrap gap-2 text-xs">${Object.values(D.COMPETITORS).filter((o) => o.slug !== c.slug).map((o) => pill(`/vs/${o.slug}`, `vs ${o.name} →`)).join("")}</nav>`,
+    });
+  }
+
+  // ---- /ats/:vendor (4) ----
+  for (const [vendor, data] of Object.entries(D.VENDORS)) {
+    write({
+      path: `/ats/${vendor}`,
+      title: `${data.headline} | Resume Booster`,
+      description: data.behaviors[0].a.slice(0, 155),
+      jsonLd: [faqLd(data.behaviors)],
+      content: `
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "ATS guides" }, { name: data.name }])}
+        <h1 class="text-3xl font-bold mb-3">${esc(data.headline)}</h1>
+        <p class="text-muted-foreground mb-8">These are the documented parsing behaviors our scanner tests every resume against — not speculation. The free scan runs these exact checks on your file.</p>
+        <div class="space-y-5 mb-10">${data.behaviors.map((b) => `<section class="rounded-2xl border border-border bg-card p-5"><h2 class="font-semibold text-foreground mb-2">${esc(b.q)}</h2><p class="text-sm text-muted-foreground">${esc(b.a)}</p></section>`).join("")}</div>
+        ${cta(`Test your resume against ${data.name} — free`, `Our free scan checks your actual file against ${data.name}'s parsing behaviors plus 24+ other checks. No signup, resume never stored.`, "Run the free check")}
+        <nav class="mt-6 flex flex-wrap gap-2 text-xs">${Object.keys(D.VENDORS).filter((v) => v !== vendor).map((v) => pill(`/ats/${v}`, `${D.VENDORS[v].name} guide →`)).join("")}</nav>`,
+    });
+  }
+
+  // ---- /es/industrias/:slug (15) ----
+  for (const [slug, name] of Object.entries(D.ES_INDUSTRIES)) {
+    const data = D.INDUSTRY_KEYWORDS[slug];
+    if (!data) continue;
+    const esKeywords = uniq(data.primary.filter(D.isSpanish)).slice(0, 20);
+    const esTitles = uniq(data.titles.filter(D.isSpanish)).slice(0, 14);
+    const enKeywords = uniq(data.primary.filter((t) => !D.isSpanish(t))).slice(0, 14);
+    const onet = D.ONET_EXPECTATIONS[slug];
+    write({
+      path: `/es/industrias/${slug}`,
+      lang: "es",
+      hreflang: { en: `/industries/${slug}`, es: `/es/industrias/${slug}` },
+      title: `Palabras Clave para Currículum de ${name} — Qué Buscan los ATS`,
+      description: `${esKeywords.slice(0, 5).join(", ")} y más: las palabras clave, títulos y certificaciones que nuestro escáner de currículums busca en el sector de ${name.toLowerCase()}. Escaneo gratis incluido.`,
+      content: `
+        ${breadcrumbNav([{ name: "Inicio", href: "/" }, { name: "Industrias", href: "/industries" }, { name }])}
+        <h1 class="text-3xl font-bold mb-3">Palabras clave para currículum de ${esc(name)}</h1>
+        <p class="text-muted-foreground mb-8">Esto no es un artículo — son los datos reales que nuestro escáner usa para analizar currículums de ${esc(name.toLowerCase())}, incluida la detección nativa en español.</p>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">Términos en español que nuestro motor reconoce</h2>${chips(esKeywords)}</section>
+        ${esTitles.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Títulos profesionales reconocidos</h2>${chips(esTitles, "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>` : ""}
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">Términos en inglés que los ATS también esperan</h2>${chips(enKeywords)}</section>
+        ${onetBlock(onet, "Habilidades clave según el Departamento de Trabajo de EE. UU.")}
+        ${cta("Escanea tu currículum gratis — también en español", "Informe diagnóstico completo en segundos: palabras clave faltantes, cómo leen tu archivo los sistemas ATS, tus viñetas más débiles reescritas y un plan de mejoras. Sin registro; tu currículum nunca se guarda.", "Escanear mi currículum gratis")}
+        <nav class="mt-8 flex flex-wrap gap-2 text-xs">${Object.entries(D.ES_INDUSTRIES).filter(([s]) => s !== slug).slice(0, 8).map(([s, n]) => pill(`/es/industrias/${s}`, `${n} →`)).join("")}${pill("/es/revisar-curriculum", "Revisar mi currículum gratis →")}${pill(`/industries/${slug}`, "English version →")}</nav>`,
+    });
+  }
+
+  // ---- Tool landing pages (4, incl. Spanish) ----
+  for (const cfg of Object.values(D.TOOL_LANDINGS)) {
+    write({
+      path: cfg.path,
+      lang: cfg.lang || null,
+      hreflang: cfg.alternates || null,
+      title: cfg.title,
+      description: cfg.description,
+      jsonLd: [faqLd(cfg.faqs)],
+      content: `
+        <h1 class="text-3xl font-bold mb-3">${esc(cfg.heading)}</h1>
+        <p class="text-muted-foreground mb-6">${esc(cfg.intro)}</p>
+        <ul class="space-y-1.5 mb-8">${cfg.bullets.map((b) => `<li class="text-sm text-muted-foreground">✓ ${esc(b)}</li>`).join("")}</ul>
+        ${cta(cfg.lang === "es" ? "Escanea tu currículum gratis" : "Run the free scan now", cfg.lang === "es" ? "Informe completo en unos 20 segundos. Sin registro; tu currículum nunca se guarda." : "Full diagnostic report in about 20 seconds. No sign-up, resume never stored.", cfg.lang === "es" ? "Escanear mi currículum gratis" : "Scan my resume free")}
+        <section class="mt-10"><h2 class="text-2xl font-bold mb-4">${cfg.lang === "es" ? "Preguntas frecuentes" : "Common questions"}</h2><div class="space-y-4">${cfg.faqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-5"><h3 class="font-semibold text-foreground mb-1.5">${esc(f.q)}</h3><p class="text-sm text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>`,
+    });
+  }
+
+  console.log(`[prerender-seo] Wrote ${count} static HTML pages into dist/`);
+} catch (err) {
+  // Never block a publish: a failed prerender just means SPA-only pages,
+  // which is the pre-existing status quo, not an outage.
+  console.error("[prerender-seo] FAILED (build continues, pages stay SPA-only):", err);
+}

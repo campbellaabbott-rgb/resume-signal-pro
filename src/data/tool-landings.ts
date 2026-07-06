@@ -13,12 +13,54 @@ export interface ToolLanding {
   intro: string;
   bullets: string[];
   faqs: Array<{ q: string; a: string }>;
+  /** Page language; switches the whole app chrome via i18n. Default "en". */
+  lang?: "es";
+  /** hreflang pairing: absolute paths of the language siblings. */
+  alternates?: { en: string; es: string };
 }
 
 export const TOOL_LANDINGS: Record<string, ToolLanding> = {
+  "revisar-curriculum": {
+    slug: "revisar-curriculum",
+    path: "/es/revisar-curriculum",
+    lang: "es",
+    alternates: { en: "/resume-checker", es: "/es/revisar-curriculum" },
+    title: "Revisar Currículum Gratis — Análisis ATS Completo en Español",
+    description:
+      "Revisa tu currículum gratis en unos 20 segundos: puntaje ATS con auditoría detallada, palabras clave faltantes, viñetas débiles reescritas. Detección nativa en español. Sin registro; tu currículum nunca se guarda.",
+    heading: "Un revisor de currículum que muestra su trabajo — también en español",
+    intro:
+      "Sube o pega tu currículum arriba y recibe el diagnóstico completo, no un adelanto. Nuestro motor detecta currículums en español de forma nativa — términos, títulos profesionales y certificaciones en tu idioma — algo que casi ningún otro escáner ATS ofrece.",
+    bullets: [
+      "Sin registro y sin correo electrónico para el informe completo",
+      "Tu currículum se analiza en memoria y nunca se guarda",
+      "Puntaje con auditoría detallada: cada punto rastreable a un hallazgo",
+      "Detección nativa en español en 15 industrias, además de 10 idiomas",
+      "Funciona con o sin oferta de trabajo (expectativas por ocupación del Departamento de Trabajo de EE. UU.)",
+    ],
+    faqs: [
+      {
+        q: "¿Este revisor de currículum es realmente gratis?",
+        a: "Sí — el informe de diagnóstico completo es gratis y sin registro: puntaje con auditoría, palabras clave faltantes, viñetas débiles reescritas y verificaciones por sistema ATS (Workday, Greenhouse, Lever, iCIMS). Tienes 7 escaneos al día (15 con una cuenta gratuita).",
+      },
+      {
+        q: "¿Funciona con currículums en español?",
+        a: "Sí, de forma nativa. El motor reconoce términos, títulos profesionales y certificaciones en español directamente — no traduce tu documento. Si postulas a empresas con sistemas ATS en inglés, el informe también señala qué términos en inglés suman peso.",
+      },
+      {
+        q: "¿Guardan mi currículum?",
+        a: "No. Tu currículum se procesa en memoria para generar el informe y no se almacena. El informe lleva un identificador reproducible para que verifiques que un re-escaneo del mismo archivo produce resultados consistentes.",
+      },
+      {
+        q: "¿Cómo se calcula el puntaje?",
+        a: "Un analizador ATS basado en reglas y un análisis de IA corren en paralelo; el informe muestra el puntaje combinado con su banda de modelado y una auditoría punto por punto. Cada cita se verifica contra tu documento real antes de llegar al informe.",
+      },
+    ],
+  },
   "resume-checker": {
     slug: "resume-checker",
     path: "/resume-checker",
+    alternates: { en: "/resume-checker", es: "/es/revisar-curriculum" },
     title: "Free Resume Checker — No Sign-Up, Full Report",
     description:
       "Check your resume free in about 20 seconds: ATS score with an audit trail, missing keywords, weak bullets rewritten, per-vendor parsing checks. No sign-up, resume never stored.",

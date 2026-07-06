@@ -363,7 +363,18 @@ const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx'
 // SEO route like /resume-checker — unique title/description/FAQ per query
 // intent, one scan implementation. See src/data/tool-landings.ts.
 const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLanding } = {}) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+
+  // Spanish landing routes flip the whole app chrome to Spanish — the visitor
+  // searched in Spanish; showing an English page under a Spanish URL would be
+  // a bait-and-switch. Reverting on unmount would fight the manual language
+  // switcher, so we only set, never unset.
+  useEffect(() => {
+    if (landing?.lang === "es" && i18n.language !== "es") {
+      i18n.changeLanguage("es");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [landing?.lang]);
   const { session } = useAuth();
   // Per-scan user context: stated intent + target role, confirmed labels.
   const [scanContext, setScanContext] = useState<{
@@ -1589,6 +1600,13 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         description={landing?.description ?? "Free AI resume scan: ATS score, missing keywords, red flags, and recruiter-grade fixes in under 30 seconds."}
         path={landing?.path ?? "/"}
       />
+      {landing?.alternates && (
+        <>
+          <link rel="alternate" hrefLang="en" href={`https://resumebooster.work${landing.alternates.en}`} />
+          <link rel="alternate" hrefLang="es" href={`https://resumebooster.work${landing.alternates.es}`} />
+          <link rel="alternate" hrefLang="x-default" href={`https://resumebooster.work${landing.alternates.en}`} />
+        </>
+      )}
       {landing && (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
           "@context": "https://schema.org",

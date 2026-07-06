@@ -11,28 +11,7 @@ import { Footer } from "@/components/Footer";
 import { INDUSTRY_KEYWORDS } from "../../supabase/functions/free-keyword-scan/industry-detection";
 import { ONET_EXPECTATIONS } from "../../supabase/functions/free-keyword-scan/onet-expectations";
 
-// Spanish display names + the industries with native Spanish keyword data
-const ES_INDUSTRIES: Record<string, string> = {
-  healthcare: "Salud y Enfermería",
-  technology: "Tecnología",
-  finance: "Finanzas y Contabilidad",
-  sales: "Ventas",
-  education: "Educación",
-  legal: "Derecho",
-  hospitality: "Hotelería",
-  culinary: "Cocina y Gastronomía",
-  logistics: "Logística",
-  construction_management: "Construcción",
-  skilled_trades: "Oficios Especializados",
-  manufacturing: "Manufactura",
-  hr: "Recursos Humanos",
-  administrative: "Administración",
-  retail: "Ventas Minoristas",
-};
-
-// Spanish terms are merged into the primary arrays at engine init — filter
-// them back out for display (accented/Spanish-only tokens).
-const isSpanish = (t: string) => /[áéíóúñü]/.test(t) || /\b(de|para|del|al)\b/.test(t);
+import { ES_INDUSTRIES, isSpanish } from "@/data/es-industries";
 
 export default function IndustryKeywordsEs() {
   const { slug } = useParams();
@@ -127,6 +106,9 @@ export default function IndustryKeywordsEs() {
                 {n} →
               </Link>
             ))}
+            <Link to="/es/revisar-curriculum" className="px-3 py-1.5 rounded-full border border-primary/40 text-primary hover:bg-primary/10 transition-colors">
+              Revisar mi currículum gratis →
+            </Link>
             <Link to={`/industries/${slug}`} className="px-3 py-1.5 rounded-full border border-primary/40 text-primary hover:bg-primary/10 transition-colors">
               English version →
             </Link>
@@ -138,4 +120,3 @@ export default function IndustryKeywordsEs() {
   );
 }
 
-export { ES_INDUSTRIES };

@@ -89,6 +89,7 @@ const App = () => (
           <Route path="/resume-checker" element={<Index landing={TOOL_LANDINGS["resume-checker"]} />} />
           <Route path="/ats-resume-test" element={<Index landing={TOOL_LANDINGS["ats-resume-test"]} />} />
           <Route path="/resume-score" element={<Index landing={TOOL_LANDINGS["resume-score"]} />} />
+          <Route path="/es/revisar-curriculum" element={<Index landing={TOOL_LANDINGS["revisar-curriculum"]} />} />
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

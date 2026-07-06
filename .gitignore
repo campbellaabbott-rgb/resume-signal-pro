@@ -31,3 +31,5 @@ dist-ssr
 # Agent worktrees and local CI experiments — never commit
 New Folder With Items/.claude/
 .github/
+scripts/.prerender-data-entry.ts
+scripts/.prerender-data.mjs
