@@ -32,7 +32,11 @@ if (!keyResp.ok || keyBody !== KEY) {
   process.exit(1);
 }
 
-const resp = await fetch("https://api.indexnow.org/indexnow", {
+// Bing's endpoint, not api.indexnow.org: the aggregator returned 403 for a
+// freshly-created key while Bing accepted the identical payload (2026-07-06).
+// Protocol-wise it makes no difference — any participating engine shares
+// submissions with all the others.
+const resp = await fetch("https://www.bing.com/indexnow", {
   method: "POST",
   headers: { "Content-Type": "application/json; charset=utf-8" },
   body: JSON.stringify({ host: HOST, key: KEY, keyLocation: keyUrl, urlList: urls }),
