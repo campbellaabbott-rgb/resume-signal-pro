@@ -2767,6 +2767,26 @@
     }
   },
   "changelogEntries": {
+    "rescanRitual": {
+      "title": "Veja seu antes/depois — corrija, exporte, reescaneie",
+      "description": "Ao exportar do editor, você recebe a oferta de reescanear essa versão exata com um clique. O novo relatório abre com o delta: '58 → 74, alertas 5 → 2 — mesma régua nas duas vezes.' Melhoria medida, não presumida."
+    },
+    "applicationFit": {
+      "title": "Verifique o encaixe de cada candidatura com a versão que você enviou",
+      "description": "No seu rastreador de candidaturas, cole a vaga e veja quais palavras-chave reconhecidas a versão enviada cobre — e quais faltam. Determinístico e reproduzível: o dicionário são as próprias tabelas de detecção do nosso scanner, sem IA."
+    },
+    "fixPlanDrip": {
+      "title": "Seu plano de correções em sequência de 7 dias — estritamente opcional",
+      "description": "Nova opção desmarcada por padrão ao enviar o relatório por e-mail: suas principais correções no dia 2, o restante no dia 4 e um lembrete de reescaneio no dia 6. Três e-mails no total, construídos do seu plano real, com cancelamento em um clique que anula também os restantes."
+    },
+    "personalOutcomeAnalytics": {
+      "title": "Sua própria taxa de entrevistas, por faixa de pontuação",
+      "description": "Com 5+ candidaturas com status, sua conta mostra a taxa de entrevistas das suas próprias candidaturas agrupada por pontuação do currículo — sua evidência pessoal do que funciona, com a honestidade que amostras pequenas exigem."
+    },
+    "emailSuppressionFix": {
+      "title": "Corrigido: cancelar inscrição agora anula também e-mails na fila",
+      "description": "Nossa fila de e-mails não consultava a lista de supressão antes de enviar — cancelamentos, devoluções e reclamações não valiam plenamente para a fila. Agora todo e-mail não crítico consulta a lista na hora do envio. Encontrado ao construir a sequência do plano; corrigido para tudo."
+    },
     "outcomeTracking": {
       "title": "Conte como foi — começa a medição de resultados",
       "description": "Após cada análise você pode informar — anonimamente — se aquele currículo rendeu entrevistas, no próprio relatório ou no resumo por e-mail. Com respostas suficientes, publicaremos dados medidos de pontuação-para-entrevista, em vez do folclore que este setor costuma vender."

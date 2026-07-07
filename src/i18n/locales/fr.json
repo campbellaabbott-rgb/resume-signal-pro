@@ -2767,6 +2767,26 @@
     }
   },
   "changelogEntries": {
+    "rescanRitual": {
+      "title": "Voyez votre avant/après — corrigez, exportez, rescannez",
+      "description": "En exportant depuis l'éditeur, un rescan en un clic de cette version exacte vous est proposé. Le nouveau rapport s'ouvre sur le delta : « 58 → 74, signaux d'alerte 5 → 2 — même grille les deux fois. » Une amélioration mesurée, pas seulement ressentie."
+    },
+    "applicationFit": {
+      "title": "Vérifiez l'adéquation de chaque candidature avec la version envoyée",
+      "description": "Dans votre suivi de candidatures, collez l'offre d'emploi et voyez quels mots-clés reconnus la version envoyée couvre — et lesquels manquent. Déterministe et reproductible : le dictionnaire est celui de nos tables de détection, sans IA."
+    },
+    "fixPlanDrip": {
+      "title": "Votre plan de correctifs en séquence de 7 jours — strictement opt-in",
+      "description": "Nouvelle option décochée par défaut à l'envoi du rapport par e-mail : vos correctifs majeurs au jour 2, le reste au jour 4, un rappel de rescan au jour 6. Trois e-mails au total, bâtis sur votre vrai plan, avec désinscription en un clic qui annule aussi les e-mails restants."
+    },
+    "personalOutcomeAnalytics": {
+      "title": "Votre propre taux d'entretiens, par tranche de score",
+      "description": "Après 5+ candidatures avec statuts, votre compte affiche le taux d'entretiens de vos propres candidatures groupé par score de CV — votre preuve personnelle de ce qui fonctionne, présentée avec l'honnêteté qu'imposent les petits échantillons."
+    },
+    "emailSuppressionFix": {
+      "title": "Corrigé : la désinscription annule désormais aussi les e-mails en file",
+      "description": "Notre file d'e-mails ne vérifiait pas la liste de suppression avant envoi — désinscriptions, rebonds et plaintes n'étaient pas pleinement appliqués au courrier en file. Désormais chaque e-mail non critique vérifie la liste au moment de l'envoi. Découvert en construisant la séquence du plan ; corrigé pour tout."
+    },
     "outcomeTracking": {
       "title": "Dites-nous comment ça s'est passé — le suivi des résultats commence",
       "description": "Après chaque scan, vous pouvez signaler — anonymement — si ce CV a décroché des entretiens, depuis le rapport ou votre résumé par e-mail. Avec assez de réponses, nous publierons des données mesurées score-entretien, plutôt que le folklore que vend habituellement ce secteur."

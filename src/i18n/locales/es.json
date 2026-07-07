@@ -2767,6 +2767,26 @@
     }
   },
   "changelogEntries": {
+    "rescanRitual": {
+      "title": "Mira tu antes y después — corrige, exporta, reescanea",
+      "description": "Al exportar desde el editor se te ofrece reescanear esa versión exacta con un clic. El nuevo informe abre con la diferencia: '58 → 74, señales de alerta 5 → 2 — misma rúbrica ambas veces.' Una mejora que se mide, no que se supone."
+    },
+    "applicationFit": {
+      "title": "Comprueba el ajuste de cada postulación con la versión que enviaste",
+      "description": "En tu registro de postulaciones, pega la oferta de trabajo y ve qué palabras clave reconocidas cubre la versión del currículum que enviaste — y cuáles faltan. Determinístico y reproducible: el diccionario son las propias tablas de detección de nuestro escáner, sin IA."
+    },
+    "fixPlanDrip": {
+      "title": "Tu plan de mejoras como secuencia de 7 días — estrictamente opcional",
+      "description": "Nueva opción desmarcada por defecto al enviarte el informe por correo: tus mejoras principales el día 2, el resto el día 4 y un recordatorio de reescaneo el día 6. Tres correos en total, construidos con tu plan real, con baja en un clic que cancela también los restantes."
+    },
+    "personalOutcomeAnalytics": {
+      "title": "Tu propia tasa de entrevistas, por rango de puntaje",
+      "description": "Con 5+ postulaciones con estado registrado, tu cuenta muestra la tasa de entrevistas de tus propias postulaciones agrupada por puntaje del currículum — tu evidencia personal de qué funciona, con la honestidad que exigen las muestras pequeñas."
+    },
+    "emailSuppressionFix": {
+      "title": "Corregido: darse de baja ahora cancela también los correos en cola",
+      "description": "Nuestra cola de correos no consultaba la lista de supresión antes de enviar — bajas, rebotes y quejas no se aplicaban del todo al correo en cola. Ahora cada correo no crítico consulta la lista al momento de enviar. Lo encontramos construyendo la secuencia del plan; quedó corregido para todo."
+    },
     "outcomeTracking": {
       "title": "Cuéntanos cómo te fue — comienza la medición de resultados",
       "description": "Después de cada escaneo puedes reportar — de forma anónima — si ese currículum consiguió entrevistas, desde el informe o desde tu resumen por correo. Con suficientes respuestas publicaremos datos medidos de puntaje-a-entrevista, en lugar del folclore que suele vender esta industria."

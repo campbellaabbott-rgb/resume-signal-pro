@@ -2767,6 +2767,26 @@
     }
   },
   "changelogEntries": {
+    "rescanRitual": {
+      "title": "Sehen Sie Ihr Vorher/Nachher — korrigieren, exportieren, neu scannen",
+      "description": "Beim Export aus dem Editor wird ein Ein-Klick-Rescan genau dieser Version angeboten. Der neue Bericht beginnt mit dem Delta: „58 → 74, Warnsignale 5 → 2 — beide Male dieselbe Rubrik.“ Messbare Verbesserung statt Gefühl."
+    },
+    "applicationFit": {
+      "title": "Prüfen Sie jede Bewerbung gegen die tatsächlich gesendete Version",
+      "description": "Fügen Sie im Bewerbungs-Tracker die Stellenanzeige ein und sehen Sie, welche erkannten Keywords die gesendete Lebenslauf-Version abdeckt — und welche fehlen. Deterministisch und reproduzierbar: Das Wörterbuch sind die Erkennungstabellen unseres Scanners, ohne KI."
+    },
+    "fixPlanDrip": {
+      "title": "Ihr Fix-Plan als 7-Tage-Sequenz — strikt opt-in",
+      "description": "Neue, standardmäßig NICHT angekreuzte Option beim E-Mail-Versand des Berichts: Ihre Top-Fixes an Tag 2, der Rest an Tag 4, eine Rescan-Erinnerung an Tag 6. Drei E-Mails insgesamt, gebaut aus Ihrem echten Plan, mit Ein-Klick-Abmeldung, die auch die verbleibenden storniert."
+    },
+    "personalOutcomeAnalytics": {
+      "title": "Ihre eigene Interview-Quote, nach Score-Band",
+      "description": "Ab 5+ Bewerbungen mit Status zeigt Ihr Konto die Interview-Quote Ihrer eigenen Bewerbungen gruppiert nach Lebenslauf-Score — Ihr persönlicher Beleg, was funktioniert, ehrlich gerahmt für kleine Stichproben."
+    },
+    "emailSuppressionFix": {
+      "title": "Behoben: Abmelden storniert jetzt auch E-Mails in der Warteschlange",
+      "description": "Unsere E-Mail-Warteschlange prüfte vor dem Senden nicht die Sperrliste — Abmeldungen, Bounces und Beschwerden griffen bei eingereihter Post nicht vollständig. Jetzt prüft jede nicht sicherheitsrelevante E-Mail die Liste zum Sendezeitpunkt. Beim Bau der Plan-Sequenz gefunden; für alles behoben."
+    },
     "outcomeTracking": {
       "title": "Sagen Sie uns, wie es lief — die Ergebnismessung beginnt",
       "description": "Nach jedem Scan können Sie — anonym — melden, ob dieser Lebenslauf zu Vorstellungsgesprächen geführt hat, direkt im Bericht oder aus Ihrer E-Mail-Zusammenfassung. Mit genügend Antworten veröffentlichen wir gemessene Score-zu-Interview-Daten statt der üblichen Branchenfolklore."

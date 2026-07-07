@@ -2767,6 +2767,26 @@
     }
   },
   "changelogEntries": {
+    "rescanRitual": {
+      "title": "Tingnan ang iyong before/after — ayusin, i-export, i-rescan",
+      "description": "Sa pag-export mula sa builder, inaalok ka ng one-click rescan ng eksaktong bersyong iyon. Bumubukas ang bagong report sa pagkakaiba: '58 → 74, mga babala 5 → 2 — parehong sukatan sa dalawang beses.' Pagbuting nasusukat, hindi lang nararamdaman."
+    },
+    "applicationFit": {
+      "title": "Suriin ang tugma ng bawat aplikasyon sa bersyong ipinadala mo",
+      "description": "Sa iyong application tracker, i-paste ang job posting at makita kung aling mga kilalang keyword ang saklaw ng ipinadalang bersyon ng resume — at alin ang kulang. Deterministiko at nauulit: ang diksyunaryo ay ang mismong detection tables ng aming scanner, walang AI."
+    },
+    "fixPlanDrip": {
+      "title": "Ang iyong fix plan bilang 7-araw na serye — mahigpit na opt-in",
+      "description": "Bagong opsyon na hindi naka-check bilang default kapag ipina-email ang report: ang iyong pangunahing mga ayos sa araw 2, ang iba sa araw 4, at paalala ng rescan sa araw 6. Tatlong email lahat, mula sa iyong tunay na plano, may one-click unsubscribe na kumakansela rin sa mga natitira."
+    },
+    "personalOutcomeAnalytics": {
+      "title": "Ang sarili mong interview rate, ayon sa score band",
+      "description": "Kapag 5+ aplikasyon na may status na ang naitala, ipapakita ng iyong account ang interview rate ng sarili mong mga aplikasyon na naka-grupo ayon sa score ng resume — ang iyong personal na ebidensya kung ano ang gumagana, na may tapat na babala sa maliliit na sample."
+    },
+    "emailSuppressionFix": {
+      "title": "Naayos: ang pag-unsubscribe ay kumakansela na rin sa mga naka-queue na email",
+      "description": "Hindi tinitingnan ng aming email queue ang suppression list bago magpadala — kaya hindi lubos na naipapatupad ang unsubscribe, bounce, at reklamo sa naka-queue na mail. Ngayon, bawat di-kritikal na email ay tumitingin sa listahan sa oras ng pagpapadala. Natuklasan habang ginagawa ang serye ng plano; naayos para sa lahat."
+    },
     "outcomeTracking": {
       "title": "Sabihin sa amin kung kumusta — nagsisimula ang pagsukat ng resulta",
       "description": "Pagkatapos ng bawat scan, maaari mo nang iulat — nang anonymous — kung nakakuha ng interview ang resume na iyon, mismo sa report o mula sa iyong email na buod. Kapag sapat na ang mga sagot, maglalathala kami ng nasukat na datos ng score-to-interview, sa halip na ang kathang karaniwang ibinebenta ng industriyang ito."

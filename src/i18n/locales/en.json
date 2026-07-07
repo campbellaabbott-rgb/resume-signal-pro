@@ -2767,6 +2767,26 @@
     }
   },
   "changelogEntries": {
+    "rescanRitual": {
+      "title": "See your before/after — fix, export, rescan",
+      "description": "Export from the builder and you're offered a one-click rescan of that exact version. The new report opens with the delta: '58 → 74, red flags 5 → 2 — same rubric both times.' Improvement you can measure, not just feel."
+    },
+    "applicationFit": {
+      "title": "Check any application's fit against the version you actually sent",
+      "description": "In your application tracker, paste the job posting and see which recognized keywords the resume version you sent covers — and which are missing. Deterministic and reproducible: the dictionary is our scanner's own detection tables, no AI involved."
+    },
+    "fixPlanDrip": {
+      "title": "Your fix plan as a 7-day sequence — strictly opt-in",
+      "description": "A new unchecked-by-default option when you email yourself a report: your top fixes on day 2, the rest on day 4, a rescan reminder on day 6. Three emails total, built from your actual fix roadmap, with one-click unsubscribe that cancels the remaining ones too."
+    },
+    "personalOutcomeAnalytics": {
+      "title": "Your own interview rate, by score band",
+      "description": "Once you've tracked 5+ applications with statuses, your account shows the interview rate of your own applications grouped by resume score — your personal evidence of what works, with honest small-sample framing."
+    },
+    "emailSuppressionFix": {
+      "title": "Fixed: unsubscribing now cancels queued emails too",
+      "description": "Our email queue wasn't checking the suppression list before sending — so bounces, complaints, and unsubscribes weren't fully enforced for queued mail. Now every non-security email checks the list at send time. Found while building the fix-plan sequence; fixed for everything."
+    },
     "outcomeTracking": {
       "title": "Tell us how it went — outcome tracking begins",
       "description": "After every scan you can now report — anonymously — whether that resume got interviews, right in the report or from your emailed summary. As answers accumulate we'll publish measured score-to-interview data instead of the folklore this industry usually sells."

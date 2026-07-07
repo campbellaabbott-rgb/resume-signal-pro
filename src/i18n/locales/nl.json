@@ -2767,6 +2767,26 @@
     }
   },
   "changelogEntries": {
+    "rescanRitual": {
+      "title": "Zie je voor/na — fix, exporteer, rescan",
+      "description": "Bij export uit de editor krijg je een één-klik-rescan van precies die versie aangeboden. Het nieuwe rapport opent met de delta: '58 → 74, waarschuwingen 5 → 2 — beide keren dezelfde meetlat.' Verbetering die je meet, niet aanneemt."
+    },
+    "applicationFit": {
+      "title": "Check de fit van elke sollicitatie met de verzonden versie",
+      "description": "Plak in je sollicitatietracker de vacature en zie welke herkende trefwoorden de verzonden cv-versie dekt — en welke ontbreken. Deterministisch en reproduceerbaar: het woordenboek zijn de detectietabellen van onze scanner zelf, zonder AI."
+    },
+    "fixPlanDrip": {
+      "title": "Je fixplan als 7-daagse reeks — strikt opt-in",
+      "description": "Nieuwe, standaard níét aangevinkte optie bij het e-mailen van je rapport: je topfixes op dag 2, de rest op dag 4, een rescan-herinnering op dag 6. Drie e-mails totaal, gebouwd uit je echte plan, met één-klik-afmelden dat ook de resterende annuleert."
+    },
+    "personalOutcomeAnalytics": {
+      "title": "Je eigen interviewpercentage, per scoreband",
+      "description": "Vanaf 5+ sollicitaties met status toont je account het interviewpercentage van je eigen sollicitaties, gegroepeerd op cv-score — jouw persoonlijke bewijs van wat werkt, eerlijk geframed voor kleine aantallen."
+    },
+    "emailSuppressionFix": {
+      "title": "Opgelost: afmelden annuleert nu ook e-mails in de wachtrij",
+      "description": "Onze e-mailwachtrij controleerde de suppressielijst niet vóór verzending — afmeldingen, bounces en klachten golden niet volledig voor wachtrijmail. Nu controleert elke niet-kritieke e-mail de lijst op verzendmoment. Gevonden bij het bouwen van de planreeks; overal opgelost."
+    },
     "outcomeTracking": {
       "title": "Vertel ons hoe het ging — resultaatmeting begint",
       "description": "Na elke scan kun je — anoniem — melden of dat cv sollicitatiegesprekken opleverde, direct in het rapport of vanuit je e-mailsamenvatting. Met genoeg antwoorden publiceren we gemeten score-naar-gesprek-data in plaats van de folklore die deze branche meestal verkoopt."
