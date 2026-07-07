@@ -223,12 +223,25 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
     }
   }, [getBackgroundScanResult]);
 
+  // DISABLED 2026-07-06 (audit finding): the background scan hits the
+  // streaming fork, which (a) registers rate limits under the SAME
+  // 'free-keyword-scan' key as the real scanner and (b) returns the legacy
+  // report shape, which Index.tsx discards 100% of the time (no
+  // reportVerdict). Net effect was every paste burning one of the user's 7
+  // daily scan slots plus a full AI scan for a result that was always thrown
+  // away — users effectively got ~3 scans/day and we paid double per scan.
+  // The cache-clearing side effects below still run (they're correct); only
+  // the wasteful server call is skipped. Re-enable by pointing
+  // runBackgroundScan at the enriched primary endpoint once the click path
+  // can reliably consume its result (and the double-slot problem is solved).
+  const PREFETCH_ENABLED = false;
+
   // Trigger background scan with debounce (call on text change/upload)
   const triggerBackgroundScan = useCallback((text: string, jobDesc?: string, hp?: string) => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-    
+
     // Immediately clear stale cache if resume changed (before debounce)
     const newHash = getSimpleHash(text);
     if (lastResumeHashRef.current && lastResumeHashRef.current !== newHash) {
@@ -239,7 +252,9 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
       backgroundScanAbortRef.current?.abort();
       isScanningRef.current = false;
     }
-    
+
+    if (!PREFETCH_ENABLED) return;
+
     debounceTimerRef.current = setTimeout(() => {
       runBackgroundScan(text, jobDesc, hp);
     }, DEBOUNCE_MS);

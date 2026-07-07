@@ -22,7 +22,9 @@ const prerenderSeo = (): Plugin => ({
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    // PORT lets the preview harness assign a free port (multiple sessions run
+    // dev servers against this repo); default stays 8080 for humans.
+    port: Number(process.env.PORT) || 8080,
   },
   plugins: [react(), mode === "development" && componentTagger(), prerenderSeo()].filter(Boolean),
   resolve: {
