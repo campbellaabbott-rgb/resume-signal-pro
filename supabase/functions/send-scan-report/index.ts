@@ -205,6 +205,13 @@ Deno.serve(async (req) => {
         <a href="${ctaUrl}" style="display:inline-block;background:#2563eb;color:#fff;font-size:15px;font-weight:700;padding:13px 30px;border-radius:10px;text-decoration:none">Get the full analysis →</a>
         <div style="margin-top:10px"><a href="${rescanUrl}" style="font-size:12px;color:#64748b;text-decoration:underline">Made the fixes? Rescan free to see your new score</a></div>
       </div>
+      ${body.reportId ? `
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center">
+        <p style="font-size:12px;color:#64748b;margin:0 0 8px">Applied with this resume? One click helps us measure which scores actually land interviews (anonymous):</p>
+        <a href="https://resumebooster.work/?outcome=interview&rid=${escapeHtml(body.reportId)}" style="font-size:12px;color:#2563eb;text-decoration:underline;margin:0 6px">🎉 Got interviews</a>
+        <a href="https://resumebooster.work/?outcome=no_response&rid=${escapeHtml(body.reportId)}" style="font-size:12px;color:#2563eb;text-decoration:underline;margin:0 6px">📭 No response</a>
+        <a href="https://resumebooster.work/?outcome=rejected&rid=${escapeHtml(body.reportId)}" style="font-size:12px;color:#2563eb;text-decoration:underline;margin:0 6px">❌ Rejected</a>
+      </div>` : ""}
     </div>
     <p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:16px;line-height:1.5">
       Your resume was never stored — this summary contains only the analysis results you requested.<br>

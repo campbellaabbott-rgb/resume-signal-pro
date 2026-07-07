@@ -42,22 +42,71 @@ function saveDraft(resume: BuilderResume) {
   }
 }
 
+// Scan→builder handoff payload written by the report's "Open in builder with
+// fixes applied" button. Rewrites are applied to matching bullets after AI
+// extraction; keywords render as a suggestion strip (never auto-inserted —
+// only the user can honestly claim a skill).
+interface ScanFixes {
+  rewrites: Array<{ before: string; after: string }>;
+  keywords: string[];
+  reportId: string | null;
+}
+
+const normalizeBullet = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+function applyScanRewrites(resume: BuilderResume, rewrites: ScanFixes["rewrites"]): { resume: BuilderResume; applied: number } {
+  let applied = 0;
+  const normalized = rewrites.map((r) => ({ key: normalizeBullet(r.before), after: r.after }));
+  const experience = resume.experience.map((entry) => ({
+    ...entry,
+    bullets: entry.bullets.map((b) => {
+      const nb = normalizeBullet(b);
+      if (!nb) return b;
+      const hit = normalized.find((r) => r.key && (r.key === nb || nb.includes(r.key) || r.key.includes(nb)));
+      if (hit) {
+        applied += 1;
+        return hit.after;
+      }
+      return b;
+    }),
+  }));
+  return { resume: { ...resume, experience }, applied };
+}
+
 export default function ResumeBuilder() {
   const [resume, setResume] = useState<BuilderResume>(() => loadDraft() || createEmptyResume());
   const [isPrefilling, setIsPrefilling] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
+  const [scanKeywords, setScanKeywords] = useState<string[]>([]);
   const hasAttemptedPrefillRef = useRef(false);
   const { toast } = useToast();
 
   // On first load, if there's no existing draft but the user has a resume from a
   // recent scan/analysis, offer to prefill the builder from it via AI extraction.
+  // When the report's "fixes applied" handoff is present, it takes priority —
+  // including over an existing draft (with confirmation, since that's destructive).
   useEffect(() => {
     if (hasAttemptedPrefillRef.current) return;
     hasAttemptedPrefillRef.current = true;
 
+    let fixes: ScanFixes | null = null;
+    try {
+      const raw = sessionStorage.getItem("rb_scan_fixes");
+      if (raw) fixes = JSON.parse(raw) as ScanFixes;
+    } catch { /* malformed payload — treat as absent */ }
+
     const existingDraft = loadDraft();
-    if (existingDraft) return;
+    if (existingDraft && !fixes) return;
+    if (existingDraft && fixes) {
+      const replace = window.confirm(
+        "Replace your current builder draft with the resume from your scan, with the report's fixes applied?",
+      );
+      if (!replace) {
+        try { sessionStorage.removeItem("rb_scan_fixes"); } catch { /* ignore */ }
+        return;
+      }
+    }
 
     const sessionData = getResumeFromSession();
     if (!sessionData.resumeText || sessionData.resumeText.trim().length < 50) return;
@@ -70,10 +119,21 @@ export default function ResumeBuilder() {
           console.error("[ResumeBuilder] Prefill failed:", error || data?.error);
           return;
         }
-        setResume(normalizeBuilderResume(data));
+        let next = normalizeBuilderResume(data);
+        let appliedCount = 0;
+        if (fixes?.rewrites?.length) {
+          const result = applyScanRewrites(next, fixes.rewrites);
+          next = result.resume;
+          appliedCount = result.applied;
+        }
+        if (fixes?.keywords?.length) setScanKeywords(fixes.keywords);
+        try { sessionStorage.removeItem("rb_scan_fixes"); } catch { /* ignore */ }
+        setResume(next);
         toast({
-          title: "Resume imported",
-          description: "We've prefilled the builder from your most recent resume — edit anything below.",
+          title: appliedCount > 0 ? `Resume imported — ${appliedCount} fix${appliedCount === 1 ? "" : "es"} from your report applied` : "Resume imported",
+          description: appliedCount > 0
+            ? "Rewritten bullets from your diagnostic are in place. Keyword suggestions from the scan are listed above the editor."
+            : "We've prefilled the builder from your most recent resume — edit anything below.",
         });
       })
       .catch((err) => {
@@ -158,6 +218,21 @@ export default function ResumeBuilder() {
             <div className="mb-6 flex items-center gap-2 px-4 py-3 rounded-lg bg-primary/5 border border-primary/20 text-sm text-muted-foreground">
               <Sparkles className="w-4 h-4 text-primary animate-pulse shrink-0" />
               Importing your most recent resume into the builder...
+            </div>
+          )}
+
+          {scanKeywords.length > 0 && (
+            <div className="mb-6 px-4 py-3 rounded-lg bg-card border border-border">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <p className="text-xs font-semibold text-foreground">Keywords your scan found missing — work them in where they're true</p>
+                <button onClick={() => setScanKeywords([])} className="text-xs text-muted-foreground hover:text-foreground shrink-0">dismiss</button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {scanKeywords.map((k) => (
+                  <span key={k} className="px-2.5 py-1 rounded-full border border-primary/30 bg-primary/5 text-xs text-foreground">{k}</span>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-2">We never auto-insert keywords — only you can honestly claim a skill.</p>
             </div>
           )}
 

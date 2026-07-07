@@ -28,6 +28,9 @@ interface BoostResult {
   projects: Array<{ clientLabel: string; relevance: number; bullets: string[]; keywordsCovered: string[] }>;
   transitionParagraph: string; gapHandling: string;
   keywordCoverage: { covered: string[]; total: number } | null;
+  // Transition Pro ($59) extras — absent on the base product
+  transitionCoverLetter?: string;
+  linkedinAbout?: string;
 }
 
 const DRAFT_KEY = "freelanceBoostIntake";
@@ -158,12 +161,12 @@ export default function FreelanceBoost() {
 
   const intakeComplete = targetRole.trim().length > 1 && projects.some(p => p.deliverable.trim() && p.clientType.trim());
 
-  const startCheckout = async () => {
+  const startCheckout = async (tier: "freelanceBoost" | "freelanceTransitionPro" = "freelanceBoost") => {
     if (!intakeComplete) {
       toast({ title: "Almost there", description: "Add your target role and at least one project (who it was for + what you delivered).", variant: "destructive" });
       return;
     }
-    await purchaseProduct("freelanceBoost" as never, { ctaSection: "freelance_boost_page" });
+    await purchaseProduct(tier as never, { ctaSection: "freelance_boost_page" });
   };
 
   const copySection = () => {
@@ -238,6 +241,24 @@ export default function FreelanceBoost() {
                 <div className="mt-4 rounded-lg border border-border p-3">
                   <p className="text-xs font-semibold text-foreground mb-1">Cover-letter transition paragraph</p>
                   <p className="text-xs text-muted-foreground">{result.transitionParagraph}</p>
+                </div>
+              )}
+              {result.transitionCoverLetter && (
+                <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <p className="text-xs font-semibold text-foreground">Complete transition cover letter <span className="text-primary">(Transition Pro)</span></p>
+                    <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => navigator.clipboard?.writeText(result.transitionCoverLetter!)}>Copy</Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground whitespace-pre-line">{result.transitionCoverLetter}</p>
+                </div>
+              )}
+              {result.linkedinAbout && (
+                <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <p className="text-xs font-semibold text-foreground">LinkedIn About section <span className="text-primary">(Transition Pro)</span></p>
+                    <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => navigator.clipboard?.writeText(result.linkedinAbout!)}>Copy</Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground whitespace-pre-line">{result.linkedinAbout}</p>
                 </div>
               )}
               <div className="mt-4 flex flex-wrap gap-2">
@@ -341,15 +362,29 @@ export default function FreelanceBoost() {
               </div>
 
               <div className="rounded-2xl border-2 border-primary bg-card p-6 text-center">
-                <p className="font-semibold text-foreground mb-1">3. Get your experience section — $29, one-time</p>
+                <p className="font-semibold text-foreground mb-1">3. Get your experience section — one-time, no subscription</p>
                 <p className="text-xs text-muted-foreground mb-4 max-w-md mx-auto">
                   Recruiter-grade bullets in your target field's vocabulary, the right structure for your situation,
-                  honest date handling, and keyword coverage against your posting. No subscription.
+                  honest date handling, and keyword coverage against your posting.
                 </p>
-                <Button onClick={startCheckout} disabled={checkoutLoading} size="lg" className="gap-2">
-                  {checkoutLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                  Boost my experience — $29
-                </Button>
+                <div className="grid sm:grid-cols-2 gap-3 max-w-lg mx-auto text-left">
+                  <div className="rounded-xl border border-border p-4 flex flex-col">
+                    <p className="text-sm font-semibold text-foreground">Boost</p>
+                    <p className="text-xs text-muted-foreground mb-3 flex-1">The complete experience section: translated bullets, structure, dates, keyword coverage.</p>
+                    <Button onClick={() => startCheckout("freelanceBoost")} disabled={checkoutLoading} size="sm" className="gap-1.5 w-full">
+                      {checkoutLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      Boost my experience — $29
+                    </Button>
+                  </div>
+                  <div className="rounded-xl border border-primary/50 bg-primary/5 p-4 flex flex-col">
+                    <p className="text-sm font-semibold text-foreground">Transition Pro</p>
+                    <p className="text-xs text-muted-foreground mb-3 flex-1">Everything in Boost, plus a complete transition cover letter and a LinkedIn About section — all grounded in your real projects.</p>
+                    <Button onClick={() => startCheckout("freelanceTransitionPro")} disabled={checkoutLoading} size="sm" variant="outline" className="gap-1.5 w-full border-primary/50">
+                      {checkoutLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      Full transition kit — $59
+                    </Button>
+                  </div>
+                </div>
                 <p className="text-[11px] text-muted-foreground mt-3">
                   Your answers stay on this device until you purchase. We never invent clients, payments, or metrics —
                   honest framing is the whole product.

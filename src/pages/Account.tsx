@@ -9,6 +9,7 @@ import {
   TrendingUp, Coins, ShoppingBag, LogOut, Loader2, ScanSearch, Target,
   ListChecks, GitCompare, Briefcase, Plus, Trash2, AlertTriangle,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,6 +29,10 @@ interface UserScan {
   fix_plan: FixItem[] | null;
   label: string | null;
   created_at: string;
+  // Present only when the user explicitly saved the document with this
+  // version (the opt-in exception to "never stored").
+  resume_text?: string | null;
+  report_id?: string | null;
 }
 
 interface Application {
@@ -57,7 +62,7 @@ const toFixPlan = (value: Json | null | undefined): FixItem[] | null => {
   return items.map((item) => ({ step: item.step, done: item.done === true }));
 };
 
-const mapScanRow = (row: { id: string; ats_score: number; projected_score: number | null; industry: string | null; verdict: string | null; red_flag_count: number | null; fix_plan: Json | null; label: string | null; created_at: string }): UserScan => ({
+const mapScanRow = (row: { id: string; ats_score: number; projected_score: number | null; industry: string | null; verdict: string | null; red_flag_count: number | null; fix_plan: Json | null; label: string | null; created_at: string; resume_text?: string | null; report_id?: string | null }): UserScan => ({
   id: row.id,
   ats_score: row.ats_score,
   projected_score: row.projected_score,
@@ -67,6 +72,8 @@ const mapScanRow = (row: { id: string; ats_score: number; projected_score: numbe
   fix_plan: toFixPlan(row.fix_plan),
   label: row.label,
   created_at: row.created_at,
+  resume_text: row.resume_text ?? null,
+  report_id: row.report_id ?? null,
 });
 
 const fixPlanToJson = (items: FixItem[]): Json => items.map((item) => ({ step: item.step, done: item.done }));
@@ -500,6 +507,21 @@ export default function Account() {
                         </button>
                       )}
                     </span>
+                    {s.resume_text && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          navigator.clipboard?.writeText(s.resume_text!).then(
+                            () => toast.success("Copied — the exact document you saved with this version."),
+                            () => { /* clipboard unavailable */ },
+                          );
+                        }}
+                        className="text-[11px] text-primary shrink-0 hover:underline"
+                        title="You saved the document with this version — copy its text"
+                      >
+                        📄 copy
+                      </button>
+                    )}
                     <span className="text-[11px] text-muted-foreground shrink-0">{new Date(s.created_at).toLocaleDateString()}</span>
                   </label>
                 ))}

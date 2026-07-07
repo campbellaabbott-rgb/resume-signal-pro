@@ -191,6 +191,21 @@ export const PRODUCTS = {
     ],
     badge: 'For Career Changers',
     tagline: 'You already did the work. Get credit for it.'
+  },
+  freelanceTransitionPro: {
+    id: 'freelance_transition_pro',
+    name: 'Freelance Boost — Transition Pro',
+    description: 'Everything in Freelance Boost, plus the two documents a career change actually requires: a complete transition cover letter and a LinkedIn About section — all grounded in your real projects, nothing invented',
+    priceUsd: 59,
+    priceId: null, // inline price per checkout
+    features: [
+      'Everything in Freelance Boost ($29)',
+      'Complete transition cover letter (250–320 words) built from your real projects',
+      'LinkedIn About section in your target field\'s vocabulary',
+      'Same integrity rules: no invented clients, metrics, or credentials'
+    ],
+    badge: 'Full Transition Kit',
+    tagline: 'The resume section, the letter, and the profile — one intake.'
   }
 } as const;
 

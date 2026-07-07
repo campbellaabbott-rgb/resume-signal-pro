@@ -169,7 +169,20 @@ serve(async (req) => {
 
     const toneDesc = toneDescriptions[tone] || toneDescriptions.professional;
 
-    const systemPrompt = `You are a former hiring manager at Google, Amazon, and McKinsey who now coaches executives on personal branding. You've written thousands of cover letters that landed interviews. Your letters sound like they were written by a thoughtful, articulate human - not AI.
+    // Letter language matches the EMPLOYER's language (see the design note
+    // above — this is an externally-facing document). A Spanish job posting
+    // gets a Spanish letter; detection is a cheap stopword/accent heuristic
+    // over the posting text, never the UI language.
+    const jdSample = `${jobDescription || ""} ${jobTitle || ""}`.toLowerCase();
+    const spanishSignals = (jdSample.match(/[áéíóúñü]/g) || []).length +
+      (jdSample.match(/\b(el|la|los|las|de|del|para|con|empresa|puesto|experiencia|requisitos|buscamos|responsabilidades)\b/g) || []).length;
+    const englishSignals = (jdSample.match(/\b(the|and|with|for|experience|requirements|responsibilities|we|you|team)\b/g) || []).length;
+    const jobIsSpanish = spanishSignals >= 8 && spanishSignals > englishSignals * 1.5;
+    const languageNote = jobIsSpanish
+      ? "\n\nLANGUAGE: The job posting is in Spanish. Write the ENTIRE letter in natural, professional Spanish (español) — not a translation-sounding letter. Keep company and product names as given."
+      : "";
+
+    const systemPrompt = `You are a former hiring manager at Google, Amazon, and McKinsey who now coaches executives on personal branding. You've written thousands of cover letters that landed interviews. Your letters sound like they were written by a thoughtful, articulate human - not AI.${languageNote}
 
 ${personalizationContext ? `CANDIDATE CONTEXT:
 ${personalizationContext}

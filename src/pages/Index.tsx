@@ -462,6 +462,32 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   const { toast } = useToast();
   const { currency } = useCurrency();
   const [searchParams] = useSearchParams();
+
+  // Outcome links from the scan-report email land here (?outcome=&rid=).
+  // Record via the same anonymous RPC the in-report buttons use, thank the
+  // visitor, and clean the URL so refreshes don't re-record.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const outcome = params.get("outcome");
+    const rid = params.get("rid");
+    if (!outcome || !rid || !["interview", "no_response", "rejected"].includes(outcome)) return;
+    let visitor = "unknown";
+    try {
+      visitor = localStorage.getItem("rb_visitor_id") ?? crypto.randomUUID();
+      localStorage.setItem("rb_visitor_id", visitor);
+    } catch { /* ignore */ }
+    (supabase.rpc as unknown as (fn: string, args: object) => PromiseLike<unknown>)(
+      "record_scan_outcome",
+      { p_report_id: rid, p_outcome: outcome, p_ip: visitor },
+    ).then(
+      () => toast({ title: "Recorded — thank you", description: "Anonymous outcome saved. Every answer sharpens the benchmarks we publish." }),
+      () => { /* best-effort */ },
+    );
+    params.delete("outcome");
+    params.delete("rid");
+    window.history.replaceState({}, "", window.location.pathname + (params.toString() ? `?${params}` : ""));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { verifyPurchase } = useScanCredits();
   const { trackButtonClick, trackCheckoutInitiated } = useConversionTracking();
   const { trackRateLimitError, trackApiError } = useErrorTracking();

@@ -13,6 +13,8 @@ import {
   BarChart3, Shield, Search, Settings2, Eye, Flame, FileEdit, Send
 } from "lucide-react";
 import { LockedPremiumInsight } from "./LockedPremiumInsight";
+import { ScanOutcomeAsk } from "./ScanOutcomeAsk";
+import { SaveResumeVersion } from "./SaveResumeVersion";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { PersonalizedInsights } from "./PersonalizedInsights";
 import { ElevatorPitchGenerator } from "./ElevatorPitchGenerator";
@@ -4584,6 +4586,45 @@ export function FreeKeywordResults({
 
       {/* Credibility: no invented testimonials. Trust here comes from the
           audit trail and verifiable checks above, not manufactured quotes. */}
+
+      {/* Outcome loop + version saving: the report's data flywheel */}
+      {reportMeta?.reportId && <ScanOutcomeAsk reportId={reportMeta.reportId} />}
+      {resumeText && resumeText.trim().length > 100 && (
+        <SaveResumeVersion resumeText={resumeText} score={atsScoreEstimate} reportId={reportMeta?.reportId} />
+      )}
+
+      {/* Diagnosis → treatment: hand the builder this resume plus every
+          rewrite from the report. sessionStorage carries the payload; the
+          builder applies matching bullet rewrites and shows missing keywords. */}
+      {resumeText && resumeText.trim().length > 100 && (
+        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 mb-6">
+          <p className="text-sm font-semibold text-foreground mb-0.5">Turn this diagnosis into a finished resume</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            Open the free builder with your resume loaded and this report's bullet rewrites already applied —
+            then export a cleanly typeset PDF or DOCX.
+          </p>
+          <Link
+            to="/builder"
+            onClick={() => {
+              try {
+                sessionStorage.setItem('rb_resume_text', resumeText);
+                const rewrites = [
+                  ...(weakestBullets ?? []).map((b) => ({ before: b.original, after: b.rewrite })),
+                  ...(additionalRewrites ?? []).map((r) => ({ before: r.before, after: r.after })),
+                ].filter((r) => r.before && r.after);
+                sessionStorage.setItem('rb_scan_fixes', JSON.stringify({
+                  rewrites,
+                  keywords: (keywords ?? []).slice(0, 12).map((k) => k.keyword),
+                  reportId: reportMeta?.reportId ?? null,
+                }));
+              } catch { /* session storage unavailable — builder still opens */ }
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+          >
+            Open in builder with fixes applied →
+          </Link>
+        </div>
+      )}
 
       {/* Diagnostic layout: all offers live here, after the findings end */}
       {diagnosticLayout && (

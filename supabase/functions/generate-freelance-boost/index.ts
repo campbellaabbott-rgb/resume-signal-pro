@@ -94,11 +94,13 @@ serve(async (req) => {
     // ── Payment verification ────────────────────────────────────────────────
     const VALID_TYPES = ["freelance_boost", "freelance_transition_pro"];
     let paid = false;
+    let productType = "freelance_boost";
     if (body.sessionId.startsWith("pro_")) {
       const { data: grant } = await supabase.from("pro_grants").select("email, product_type").eq("id", body.sessionId.slice(4)).maybeSingle();
       if (grant && VALID_TYPES.includes(grant.product_type)) {
         const { data: sub } = await supabase.from("pro_subscribers").select("status").eq("email", grant.email).maybeSingle();
         paid = !!sub && ["active", "trialing"].includes(sub.status);
+        productType = grant.product_type;
       }
     } else {
       const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -106,7 +108,11 @@ serve(async (req) => {
       const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
       const session = await stripe.checkout.sessions.retrieve(body.sessionId);
       paid = session.payment_status === "paid" && VALID_TYPES.includes(session.metadata?.product_type ?? "");
+      productType = session.metadata?.product_type ?? "freelance_boost";
     }
+    // Transition Pro ($59) adds two career-change deliverables on top of the
+    // base resume section — generated in the same call, same grounding rules.
+    const isTransitionPro = productType === "freelance_transition_pro";
     if (!paid) {
       return new Response(JSON.stringify({ error: "Payment required" }), {
         status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -159,7 +165,9 @@ Rewrite the freelancer's casual terms into the target field's professional terms
     }
   ],
   "transitionParagraph": "3-4 sentence cover-letter paragraph explaining the transition, grounded in the projects — confident, no apology for the freelance path",
-  "gapHandling": "one sentence on how dates/overlap should be labeled for THIS situation"
+  "gapHandling": "one sentence on how dates/overlap should be labeled for THIS situation"${isTransitionPro ? `,
+  "transitionCoverLetter": "a COMPLETE 250-320 word cover letter for the target role: opening that names the transition as a strength, middle grounded ONLY in the intake projects (reuse their real deliverables and outcomes — no new facts), confident close. No invented employers, metrics, or credentials. No banned phrasings.",
+  "linkedinAbout": "a 100-140 word first-person LinkedIn About section in the target field's vocabulary, grounded ONLY in intake facts — no invented claims"` : ""}
 }`;
 
     const userPrompt = `TARGET ROLE: ${body.targetRole}${postingBlock}
@@ -230,6 +238,10 @@ ${p.repeatOrReferral ? `Repeat/referral: ${p.repeatOrReferral}` : ""}`).join("\n
           transitionParagraph: out.transitionParagraph ?? "",
           gapHandling: out.gapHandling ?? "",
           keywordCoverage,
+          ...(isTransitionPro ? {
+            transitionCoverLetter: out.transitionCoverLetter ?? "",
+            linkedinAbout: out.linkedinAbout ?? "",
+          } : {}),
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
