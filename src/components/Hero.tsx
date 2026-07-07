@@ -40,9 +40,9 @@ function AnimatedResultPreview() {
   );
 }
 
-// Live scan totals from the corpus (all-time completed scans + countries),
+// Live scan totals from the corpus (all-time scans conducted + countries),
 // via the aggregate-only get_scan_totals RPC. Fetched on mount, refreshed
-// every 60s while the tab is visible, and immediately when a scan completes
+// every 30s while the tab is visible, and immediately when a scan completes
 // on this page (Index dispatches "scan-completed"). Renders nothing until
 // real numbers arrive — no hardcoded or invented counts, ever.
 function useScanTotals() {
@@ -66,7 +66,7 @@ function useScanTotals() {
       );
     };
     load();
-    const interval = setInterval(load, 60_000);
+    const interval = setInterval(load, 30_000);
     window.addEventListener("scan-completed", load);
     return () => {
       cancelled = true;
