@@ -2767,6 +2767,38 @@
     }
   },
   "changelogEntries": {
+    "outcomeTracking": {
+      "title": "Conte como foi — começa a medição de resultados",
+      "description": "Após cada análise você pode informar — anonimamente — se aquele currículo rendeu entrevistas, no próprio relatório ou no resumo por e-mail. Com respostas suficientes, publicaremos dados medidos de pontuação-para-entrevista, em vez do folclore que este setor costuma vender."
+    },
+    "savedVersions": {
+      "title": "Salve versões do currículo — e veja qual consegue entrevistas",
+      "description": "Com uma conta, você pode salvar o documento exato de qualquer análise (só quando você pedir — a análise grátis continua sem armazenar seu currículo). Marque cada candidatura com a versão enviada e sua conta mostra qual versão realmente consegue entrevistas."
+    },
+    "builderFixHandoff": {
+      "title": "Um clique do diagnóstico ao currículo corrigido",
+      "description": "O relatório agora termina com 'Abrir no editor com as correções aplicadas': seu currículo chega ao editor gratuito com os tópicos reescritos já no lugar e as palavras-chave ausentes sugeridas ao lado. Nunca inserimos palavras-chave automaticamente — só você pode afirmar uma habilidade com honestidade."
+    },
+    "transitionProTier": {
+      "title": "Transition Pro: o kit completo de transição de carreira",
+      "description": "O nível de US$ 59 agora é genuinamente mais que o de US$ 29: tudo do Freelance Boost, mais uma carta de apresentação de transição completa e uma seção 'Sobre' do LinkedIn — construídas com seus projetos reais, sob as mesmas regras de não inventar nada."
+    },
+    "spanishCoverLetters": {
+      "title": "Vaga em espanhol? Carta de apresentação em espanhol",
+      "description": "As cartas de apresentação agora detectam o idioma da vaga e escrevem espanhol natural e profissional quando a vaga está em espanhol. Os relatórios de análise sempre responderam no idioma do seu currículo."
+    },
+    "scanLimitDoubleCountFix": {
+      "title": "Corrigido: análises contavam em dobro no seu limite diário",
+      "description": "Uma pré-análise em segundo plano consumia silenciosamente uma segunda vaga diária — executando uma análise completa cujos resultados nunca eram exibidos. Se você já atingiu o limite mais rápido que o esperado, era por isso. Suas análises grátis diárias agora são exatamente as que anunciamos."
+    },
+    "guidesLaunch": {
+      "title": "Seis guias que dizem a verdade sobre ATS",
+      "description": "Novos guias baseados nas verificações que nosso scanner realmente executa — incluindo um que desmente o mito de que '75% dos currículos são rejeitados por robôs'. Cada um abre com uma resposta curta e direta. Sem folclore reciclado."
+    },
+    "outageSentinel": {
+      "title": "Quedas agora são detectadas em minutos, não em horas",
+      "description": "Um sentinela de monitoramento executa uma análise real no sistema em produção a cada 10 minutos e nos alerta assim que algo quebra, com um reforço independente fora da nossa própria infraestrutura. Após a queda de 4 de julho prometemos correções estruturais — aqui estão."
+    },
     "homepageLiveStats": {
       "title": "Estatísticas reais de escaneamento, direto na página inicial",
       "description": "A página inicial agora mostra como os currículos reais pontuam: mediana ao vivo, faixa central, percentual com 80 ou mais e a distribuição completa de pontuações — dos mesmos dados públicos do nosso estudo de referência. Se os dados ao vivo não puderem ser carregados, a seção não mostra nada em vez de números inventados."

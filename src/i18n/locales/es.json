@@ -2767,6 +2767,38 @@
     }
   },
   "changelogEntries": {
+    "outcomeTracking": {
+      "title": "Cuéntanos cómo te fue — comienza la medición de resultados",
+      "description": "Después de cada escaneo puedes reportar — de forma anónima — si ese currículum consiguió entrevistas, desde el informe o desde tu resumen por correo. Con suficientes respuestas publicaremos datos medidos de puntaje-a-entrevista, en lugar del folclore que suele vender esta industria."
+    },
+    "savedVersions": {
+      "title": "Guarda versiones de tu currículum — y ve cuál consigue entrevistas",
+      "description": "Con una cuenta puedes guardar el documento exacto de cualquier escaneo (solo cuando tú lo pides — el escaneo gratis sigue sin almacenar tu currículum). Etiqueta cada postulación con la versión que enviaste y tu cuenta te muestra cuál consigue entrevistas."
+    },
+    "builderFixHandoff": {
+      "title": "Un clic del diagnóstico al currículum corregido",
+      "description": "El informe ahora termina con 'Abrir en el editor con las correcciones aplicadas': tu currículum llega al editor gratuito con las viñetas reescritas del informe ya en su lugar y las palabras clave faltantes sugeridas al lado. Nunca insertamos palabras clave automáticamente — solo tú puedes afirmar una habilidad con honestidad."
+    },
+    "transitionProTier": {
+      "title": "Transition Pro: el kit completo para cambiar de carrera",
+      "description": "El nivel de $59 ahora es genuinamente más que el de $29: todo lo de Freelance Boost, más una carta de presentación de transición completa y una sección 'Acerca de' para LinkedIn — construidas con tus proyectos reales bajo las mismas reglas de no inventar nada."
+    },
+    "spanishCoverLetters": {
+      "title": "¿Oferta de trabajo en español? Carta de presentación en español",
+      "description": "Las cartas de presentación ahora detectan el idioma de la oferta y escriben español natural y profesional cuando la oferta está en español. Los informes de escaneo siempre han respondido en el idioma de tu currículum."
+    },
+    "scanLimitDoubleCountFix": {
+      "title": "Corregido: los escaneos contaban doble contra tu límite diario",
+      "description": "Un pre-escaneo en segundo plano consumía silenciosamente un segundo cupo diario — y ejecutaba un análisis completo cuyos resultados nunca se mostraban. Si alguna vez alcanzaste el límite antes de lo esperado, esta era la razón. Tus escaneos gratis diarios ahora son exactamente los que anunciamos."
+    },
+    "guidesLaunch": {
+      "title": "Seis guías que te dicen la verdad sobre los ATS",
+      "description": "Nuevas guías basadas en las verificaciones que nuestro escáner realmente ejecuta — incluida una que desmiente el mito de que 'el 75% de los currículums son rechazados por bots'. Cada una abre con una respuesta corta y directa. Sin folclore reciclado."
+    },
+    "outageSentinel": {
+      "title": "Las caídas ahora se detectan en minutos, no en horas",
+      "description": "Un centinela de monitoreo ejecuta un escaneo real por el sistema en vivo cada 10 minutos y nos alerta en cuanto algo falla, con un respaldo independiente fuera de nuestra propia infraestructura. Tras la caída del 4 de julio prometimos arreglos estructurales — aquí están."
+    },
     "homepageLiveStats": {
       "title": "Estadísticas reales de escaneo, directamente en la portada",
       "description": "La página principal ahora muestra cómo puntúan realmente los currículums: mediana en vivo, rango del 50% central, porcentaje con 80 o más y la distribución completa de puntuaciones — con los mismos datos públicos de nuestro estudio de referencia. Si los datos en vivo no se pueden cargar, la sección no muestra nada en lugar de cifras inventadas."

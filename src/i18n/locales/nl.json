@@ -2767,6 +2767,38 @@
     }
   },
   "changelogEntries": {
+    "outcomeTracking": {
+      "title": "Vertel ons hoe het ging — resultaatmeting begint",
+      "description": "Na elke scan kun je — anoniem — melden of dat cv sollicitatiegesprekken opleverde, direct in het rapport of vanuit je e-mailsamenvatting. Met genoeg antwoorden publiceren we gemeten score-naar-gesprek-data in plaats van de folklore die deze branche meestal verkoopt."
+    },
+    "savedVersions": {
+      "title": "Bewaar cv-versies — en zie welke gesprekken oplevert",
+      "description": "Met een account kun je het exacte document achter elke scan bewaren (alleen op jouw verzoek — de gratis scan slaat je cv nog steeds nooit op). Label elke sollicitatie met de verzonden versie en je account laat zien welke versie echt gesprekken oplevert."
+    },
+    "builderFixHandoff": {
+      "title": "Eén klik van diagnose naar een verbeterd cv",
+      "description": "Het rapport eindigt nu met 'Openen in de editor met toegepaste correcties': je cv verschijnt in de gratis editor met de herschreven bullets al op hun plek en ontbrekende trefwoorden als suggestie ernaast. We voegen trefwoorden nooit automatisch toe — alleen jij kunt een vaardigheid eerlijk claimen."
+    },
+    "transitionProTier": {
+      "title": "Transition Pro: de complete carrièreswitch-kit",
+      "description": "Het niveau van $59 is nu echt meer dan dat van $29: alles uit Freelance Boost, plus een complete overstap-sollicitatiebrief en een LinkedIn 'Info'-sectie — gebouwd op je echte projecten, volgens dezelfde regels: niets verzinnen."
+    },
+    "spanishCoverLetters": {
+      "title": "Spaanse vacature? Spaanse sollicitatiebrief",
+      "description": "Sollicitatiebrieven herkennen nu de taal van de vacature en schrijven natuurlijk, professioneel Spaans wanneer de vacature Spaans is. Scanrapporten antwoordden altijd al in de taal van je cv."
+    },
+    "scanLimitDoubleCountFix": {
+      "title": "Opgelost: scans telden dubbel voor je daglimiet",
+      "description": "Een achtergrond-voorscan verbruikte stilletjes een tweede dagplek — en draaide een volledige analyse waarvan de resultaten nooit werden getoond. Als je ooit sneller dan verwacht tegen de limiet aanliep: dit was waarom. Je gratis scans per dag zijn nu precies wat we beloven."
+    },
+    "guidesLaunch": {
+      "title": "Zes gidsen die de waarheid vertellen over ATS",
+      "description": "Nieuwe gidsen gebaseerd op de checks die onze scanner echt uitvoert — waaronder één die de mythe '75% van de cv's wordt door bots afgewezen' ontkracht. Elke gids opent met een kort, direct antwoord. Geen gerecyclede folklore."
+    },
+    "outageSentinel": {
+      "title": "Storingen worden nu in minuten ontdekt, niet in uren",
+      "description": "Een monitoringwachter draait elke 10 minuten een echte scan door het live systeem en waarschuwt ons zodra iets breekt, met een onafhankelijke back-up buiten onze eigen infrastructuur. Na de storing van 4 juli beloofden we structurele fixes — hier zijn ze."
+    },
     "homepageLiveStats": {
       "title": "Echte scanstatistieken, direct op de voorpagina",
       "description": "De homepage toont nu hoe echte cv's daadwerkelijk scoren: live mediaan, middelste bereik, aandeel met 80 of hoger en de volledige scoreverdeling — uit dezelfde openbare data als ons benchmarkonderzoek. Als de live data niet geladen kan worden, toont de sectie niets in plaats van verzonnen cijfers."

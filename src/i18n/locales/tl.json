@@ -2767,6 +2767,38 @@
     }
   },
   "changelogEntries": {
+    "outcomeTracking": {
+      "title": "Sabihin sa amin kung kumusta — nagsisimula ang pagsukat ng resulta",
+      "description": "Pagkatapos ng bawat scan, maaari mo nang iulat — nang anonymous — kung nakakuha ng interview ang resume na iyon, mismo sa report o mula sa iyong email na buod. Kapag sapat na ang mga sagot, maglalathala kami ng nasukat na datos ng score-to-interview, sa halip na ang kathang karaniwang ibinebenta ng industriyang ito."
+    },
+    "savedVersions": {
+      "title": "Mag-save ng mga bersyon ng resume — at alamin kung alin ang nakakakuha ng interview",
+      "description": "Sa isang account, maaari mong i-save ang eksaktong dokumento ng anumang scan (kapag hiniling mo lang — hindi pa rin kailanman iniimbak ng libreng scan ang iyong resume). I-tag ang bawat aplikasyon ng bersyong ipinadala mo, at ipapakita ng iyong account kung aling bersyon talaga ang nakakakuha ng interview."
+    },
+    "builderFixHandoff": {
+      "title": "Isang click mula diagnosis patungo sa naayos na resume",
+      "description": "Ang report ay nagtatapos na ngayon sa 'Buksan sa builder nang may mga inilapat na ayos': dadating ang iyong resume sa libreng builder nang nakalagay na ang mga muling isinulat na bullet at may mungkahing nawawalang keywords sa tabi. Hindi kami kailanman awtomatikong naglalagay ng keywords — ikaw lang ang makapagsasabi nang tapat ng isang kasanayan."
+    },
+    "transitionProTier": {
+      "title": "Transition Pro: ang kumpletong career-change kit",
+      "description": "Ang $59 na antas ay tunay nang higit sa $29: lahat ng nasa Freelance Boost, dagdag ang kumpletong transition cover letter at LinkedIn 'About' section — mula sa iyong tunay na mga proyekto, sa ilalim ng parehong panuntunan: walang iimbentuhin."
+    },
+    "spanishCoverLetters": {
+      "title": "Job posting sa Espanyol? Cover letter sa Espanyol",
+      "description": "Natutukoy na ngayon ng mga cover letter ang wika ng job posting at sumusulat ng natural at propesyonal na Espanyol kapag Espanyol ang posting. Ang mga scan report ay laging sumasagot sa wika ng iyong resume."
+    },
+    "scanLimitDoubleCountFix": {
+      "title": "Naayos: dobleng binibilang ang mga scan sa iyong pang-araw-araw na limitasyon",
+      "description": "Isang background pre-scan ang tahimik na kumokonsumo ng pangalawang slot kada araw — at nagpapatakbo ng buong pagsusuri na hindi kailanman ipinapakita ang resulta. Kung naabot mo man ang limitasyon nang mas mabilis kaysa inaasahan, ito ang dahilan. Ang iyong libreng scan kada araw ay eksakto nang gaya ng aming ipinangako."
+    },
+    "guidesLaunch": {
+      "title": "Anim na gabay na nagsasabi ng totoo tungkol sa ATS",
+      "description": "Mga bagong gabay batay sa mga pagsusuring talagang pinapatakbo ng aming scanner — kabilang ang isa na nagpapabulaan sa alamat na '75% ng mga resume ay tinatanggihan ng bots'. Bawat isa ay nagbubukas sa maikli at direktang sagot. Walang paulit-ulit na kathang-isip."
+    },
+    "outageSentinel": {
+      "title": "Ang mga pagkasira ay nahuhuli na sa minuto, hindi oras",
+      "description": "Isang monitoring sentinel ang nagpapatakbo ng tunay na scan sa live na sistema bawat 10 minuto at nag-aalerto sa amin sa sandaling may masira, may kasamang independiyenteng backstop sa labas ng aming sariling imprastraktura. Pagkatapos ng pagkasira noong Hulyo 4, nangako kami ng mga istrukturang ayos — narito na ang mga ito."
+    },
     "homepageLiveStats": {
       "title": "Totoong estadistika ng scan, mismo sa homepage",
       "description": "Ipinapakita na ngayon ng homepage kung paano talaga pumupuntos ang mga totoong resume: live na median, gitnang saklaw, bahagdan ng nakakuha ng 80 pataas, at ang buong distribusyon ng iskor — mula sa parehong pampublikong datos ng aming benchmark na pag-aaral. Kung hindi ma-load ang live na datos, walang ipinapakita ang seksyon sa halip na gumawa ng imbentong numero."

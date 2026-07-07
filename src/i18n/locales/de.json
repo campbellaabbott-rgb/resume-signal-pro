@@ -2767,6 +2767,38 @@
     }
   },
   "changelogEntries": {
+    "outcomeTracking": {
+      "title": "Sagen Sie uns, wie es lief — die Ergebnismessung beginnt",
+      "description": "Nach jedem Scan können Sie — anonym — melden, ob dieser Lebenslauf zu Vorstellungsgesprächen geführt hat, direkt im Bericht oder aus Ihrer E-Mail-Zusammenfassung. Mit genügend Antworten veröffentlichen wir gemessene Score-zu-Interview-Daten statt der üblichen Branchenfolklore."
+    },
+    "savedVersions": {
+      "title": "Lebenslauf-Versionen speichern — und sehen, welche Interviews bringt",
+      "description": "Mit einem Konto können Sie das exakte Dokument hinter jedem Scan speichern (nur auf Ihren Wunsch — der Gratis-Scan speichert Ihren Lebenslauf weiterhin nie). Markieren Sie jede Bewerbung mit der gesendeten Version, und Ihr Konto zeigt, welche Version tatsächlich Interviews bringt."
+    },
+    "builderFixHandoff": {
+      "title": "Ein Klick von der Diagnose zum korrigierten Lebenslauf",
+      "description": "Der Bericht endet jetzt mit „Im Editor mit angewendeten Korrekturen öffnen“: Ihr Lebenslauf landet im kostenlosen Editor mit den bereits umgeschriebenen Stichpunkten und den fehlenden Keywords als Vorschlag daneben. Wir fügen Keywords nie automatisch ein — nur Sie können eine Fähigkeit ehrlich beanspruchen."
+    },
+    "transitionProTier": {
+      "title": "Transition Pro: das komplette Umstiegs-Kit",
+      "description": "Die 59-$-Stufe ist jetzt wirklich mehr als die 29-$-Stufe: alles aus Freelance Boost, plus ein vollständiges Übergangs-Anschreiben und eine LinkedIn-„Info“-Sektion — aus Ihren echten Projekten, nach denselben Regeln: nichts wird erfunden."
+    },
+    "spanishCoverLetters": {
+      "title": "Spanische Stellenanzeige? Spanisches Anschreiben",
+      "description": "Anschreiben erkennen jetzt die Sprache der Stellenanzeige und schreiben natürliches, professionelles Spanisch, wenn die Anzeige spanisch ist. Scan-Berichte antworten seit jeher in der Sprache Ihres Lebenslaufs."
+    },
+    "scanLimitDoubleCountFix": {
+      "title": "Behoben: Scans zählten doppelt gegen Ihr Tageslimit",
+      "description": "Ein Hintergrund-Vorscan verbrauchte still einen zweiten Tagesplatz — und führte eine vollständige Analyse aus, deren Ergebnisse nie angezeigt wurden. Falls Sie das Limit je schneller als erwartet erreicht haben: Das war der Grund. Ihre täglichen Gratis-Scans entsprechen jetzt exakt dem, was wir versprechen."
+    },
+    "guidesLaunch": {
+      "title": "Sechs Guides, die die Wahrheit über ATS sagen",
+      "description": "Neue Guides, gestützt auf die Prüfungen, die unser Scanner wirklich ausführt — darunter einer, der den Mythos „75 % der Lebensläufe werden von Bots abgelehnt“ widerlegt. Jeder beginnt mit einer kurzen, direkten Antwort. Keine recycelte Folklore."
+    },
+    "outageSentinel": {
+      "title": "Ausfälle werden jetzt in Minuten statt Stunden erkannt",
+      "description": "Ein Monitoring-Wächter führt alle 10 Minuten einen echten Scan durch das Live-System und alarmiert uns, sobald etwas bricht — plus eine unabhängige Absicherung außerhalb unserer eigenen Infrastruktur. Nach dem Ausfall vom 4. Juli hatten wir strukturelle Fixes versprochen — hier sind sie."
+    },
     "homepageLiveStats": {
       "title": "Echte Scan-Statistiken direkt auf der Startseite",
       "description": "Die Startseite zeigt jetzt, wie echte Lebensläufe tatsächlich abschneiden: Live-Median, mittlerer Bereich, Anteil mit 80 oder mehr Punkten und die vollständige Punkteverteilung — aus denselben öffentlichen Daten wie unsere Benchmark-Studie. Wenn die Live-Daten nicht geladen werden können, zeigt der Abschnitt nichts an, statt erfundene Zahlen."

@@ -2767,6 +2767,38 @@
     }
   },
   "changelogEntries": {
+    "outcomeTracking": {
+      "title": "Dites-nous comment ça s'est passé — le suivi des résultats commence",
+      "description": "Après chaque scan, vous pouvez signaler — anonymement — si ce CV a décroché des entretiens, depuis le rapport ou votre résumé par e-mail. Avec assez de réponses, nous publierons des données mesurées score-entretien, plutôt que le folklore que vend habituellement ce secteur."
+    },
+    "savedVersions": {
+      "title": "Enregistrez des versions de CV — et voyez laquelle décroche des entretiens",
+      "description": "Avec un compte, vous pouvez enregistrer le document exact de chaque scan (uniquement à votre demande — le scan gratuit ne stocke toujours pas votre CV). Étiquetez chaque candidature avec la version envoyée et votre compte montre laquelle décroche des entretiens."
+    },
+    "builderFixHandoff": {
+      "title": "Un clic du diagnostic au CV corrigé",
+      "description": "Le rapport se termine désormais par « Ouvrir dans l'éditeur avec les corrections appliquées » : votre CV arrive dans l'éditeur gratuit avec les puces réécrites déjà en place et les mots-clés manquants suggérés à côté. Nous n'insérons jamais de mots-clés automatiquement — vous seul pouvez revendiquer honnêtement une compétence."
+    },
+    "transitionProTier": {
+      "title": "Transition Pro : le kit complet de reconversion",
+      "description": "Le niveau à 59 $ est désormais réellement supérieur à celui à 29 $ : tout Freelance Boost, plus une lettre de motivation de transition complète et une section « À propos » LinkedIn — construites à partir de vos vrais projets, sans rien inventer."
+    },
+    "spanishCoverLetters": {
+      "title": "Offre d'emploi en espagnol ? Lettre de motivation en espagnol",
+      "description": "Les lettres de motivation détectent désormais la langue de l'offre et écrivent un espagnol naturel et professionnel quand l'offre est en espagnol. Les rapports de scan ont toujours répondu dans la langue de votre CV."
+    },
+    "scanLimitDoubleCountFix": {
+      "title": "Corrigé : les scans comptaient double dans votre limite quotidienne",
+      "description": "Un pré-scan en arrière-plan consommait discrètement un second crédit quotidien — et exécutait une analyse complète dont les résultats n'étaient jamais affichés. Si vous avez déjà atteint la limite plus vite que prévu, c'était la raison. Vos scans gratuits quotidiens correspondent désormais exactement à ce que nous annonçons."
+    },
+    "guidesLaunch": {
+      "title": "Six guides qui disent la vérité sur les ATS",
+      "description": "Nouveaux guides fondés sur les vérifications que notre scanner exécute réellement — dont un qui démonte le mythe des « 75 % de CV rejetés par des robots ». Chacun s'ouvre sur une réponse courte et directe. Pas de folklore recyclé."
+    },
+    "outageSentinel": {
+      "title": "Les pannes sont désormais détectées en minutes, pas en heures",
+      "description": "Une sentinelle de surveillance exécute un vrai scan sur le système en production toutes les 10 minutes et nous alerte dès qu'un problème survient, avec un dispositif de secours indépendant de notre infrastructure. Après la panne du 4 juillet, nous avions promis des correctifs structurels — les voici."
+    },
     "homepageLiveStats": {
       "title": "Les vraies statistiques de scan, directement sur la page d'accueil",
       "description": "La page d'accueil montre désormais comment les CV réels sont notés : médiane en direct, plage médiane, part des scores de 80 ou plus et distribution complète des scores — issues des mêmes données publiques que notre étude de référence. Si les données en direct ne peuvent pas être chargées, la section n'affiche rien plutôt que des chiffres inventés."

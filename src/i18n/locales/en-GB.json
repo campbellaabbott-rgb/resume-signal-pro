@@ -2767,6 +2767,38 @@
     }
   },
   "changelogEntries": {
+    "outcomeTracking": {
+      "title": "Tell us how it went — outcome tracking begins",
+      "description": "After every scan you can now report — anonymously — whether that resume got interviews, right in the report or from your emailed summary. As answers accumulate we'll publish measured score-to-interview data instead of the folklore this industry usually sells."
+    },
+    "savedVersions": {
+      "title": "Save resume versions — and see which one lands interviews",
+      "description": "Signed-in users can save the exact document behind any scan (only when you ask — the free scan still never stores your resume). Tag each application with the version you sent, and your account shows which version actually gets interviews."
+    },
+    "builderFixHandoff": {
+      "title": "One click from diagnosis to a fixed resume",
+      "description": "The report now ends with 'Open in builder with fixes applied': your resume lands in the free builder with the report's bullet rewrites already in place and missing keywords suggested alongside. We never auto-insert keywords — only you can honestly claim a skill."
+    },
+    "transitionProTier": {
+      "title": "Transition Pro: the complete career-change kit",
+      "description": "The $59 tier is now genuinely more than the $29 one: everything in Freelance Boost, plus a complete transition cover letter and a LinkedIn About section — built from your real projects under the same no-invention rules."
+    },
+    "spanishCoverLetters": {
+      "title": "Spanish job posting? Spanish cover letter",
+      "description": "Cover letters now detect the language of the job posting and write natural, professional Spanish when the posting is Spanish. Scan reports have always answered in your resume's language."
+    },
+    "scanLimitDoubleCountFix": {
+      "title": "Fixed: scans were counting twice against your daily limit",
+      "description": "A background pre-scan was quietly consuming a second daily slot — and running a full analysis whose results were never shown. If you ever hit the scan limit faster than expected, this was why. Your free scans per day are now exactly what we advertise."
+    },
+    "guidesLaunch": {
+      "title": "Six guides that tell you the truth about ATS",
+      "description": "New guides grounded in the checks our scanner actually runs — including one debunking the '75% of resumes are rejected by bots' myth our industry loves. Each opens with a short, direct answer. No recycled folklore."
+    },
+    "outageSentinel": {
+      "title": "Outages now get caught in minutes, not hours",
+      "description": "A monitoring sentinel runs a real scan through the live system every 10 minutes and alerts us the moment anything breaks, with an independent backstop outside our own infrastructure. After the July 4th outage we promised structural fixes — this is them."
+    },
     "homepageLiveStats": {
       "title": "Real scan statistics, right on the front page",
       "description": "The homepage now shows how real resumes actually score: live median, middle-half range, share scoring 80 or higher, and the full score distribution — drawn from the same public data as our benchmark study. If the live data can't be loaded, the section shows nothing rather than invented numbers."
