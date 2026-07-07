@@ -217,9 +217,21 @@ export function getProduct(id: ProductId) {
   return PRODUCTS[id];
 }
 
+// Catalog pruning: products in this list stay purchasable (existing links,
+// success pages, and grants keep working) but disappear from pricing and
+// showcase surfaces. Populate from real sales data — a wall of twelve SKUs
+// converts worse than a short ladder, and zero-sellers earn their spot here.
+// Ask Lovable's agent: select product_type, count(*) from purchases group by 1
+// (or the product_purchases table) and hide the zeros.
+export const HIDDEN_PRODUCT_IDS: ProductId[] = [];
+
+export function isProductHidden(id: ProductId): boolean {
+  return (HIDDEN_PRODUCT_IDS as readonly ProductId[]).includes(id);
+}
+
 // Get all purchasable products (for display)
 export function getAllProducts() {
-  return Object.values(PRODUCTS);
+  return Object.values(PRODUCTS).filter((p) => !HIDDEN_PRODUCT_IDS.some((id) => PRODUCTS[id] === p));
 }
 
 // Get $5 add-on products (Resume Roast is free with scanner)

@@ -249,6 +249,29 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Suppression gate: honor unsubscribes/bounces/complaints for queued
+      // mail. Matters most for delayed sends (the fix-plan drip) — a user who
+      // unsubscribes on day 2 must not get the day-4 and day-6 emails that
+      // were enqueued before they opted out. Auth emails (password resets)
+      // are exempt: they're user-initiated security mail.
+      if (queue !== 'auth_emails') {
+        const { data: suppressed } = await supabase
+          .from('suppressed_emails')
+          .select('email')
+          .eq('email', String(payload.to || '').toLowerCase())
+          .maybeSingle()
+        if (suppressed) {
+          await supabase.from('email_send_log').insert({
+            message_id: payload.message_id,
+            template_name: payload.label || queue,
+            recipient_email: payload.to,
+            status: 'suppressed',
+          })
+          await supabase.rpc('delete_email', { queue_name: queue, message_id: msg.msg_id })
+          continue
+        }
+      }
+
       try {
         await sendLovableEmail(
           {

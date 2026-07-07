@@ -6,7 +6,7 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, Sparkles, FileText, Crown, Package, Loader2, ArrowRight, Star, Shield, Zap, ShieldCheck, Flame, MessageSquare, TrendingUp, Send, Briefcase } from "lucide-react";
-import { PRODUCTS, ProductId } from "@/config/products";
+import { PRODUCTS, ProductId, isProductHidden } from "@/config/products";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { cn } from "@/lib/utils";
 import { ValueComparison } from "@/components/ValueComparison";
@@ -37,7 +37,7 @@ const productIcons: Record<string, React.ElementType> = {
 // Flagship-first: the complete rewrite package leads; single-purpose tools
 // follow. Order is a merchandising decision — the strongest deliverable
 // (rewritten resume content) earns the first slot.
-const productOrder: ProductId[] = [
+const productOrder: ProductId[] = ([
   'premiumPackage',
   'freelanceBoost',
   'atsDefense',
@@ -46,7 +46,7 @@ const productOrder: ProductId[] = [
   'applyAssistant',
   'fullAnalysis',
   'coverLetter',
-];
+] as ProductId[]).filter((id) => !isProductHidden(id));
 
 export default function Pricing() {
   const { t } = useTranslation();

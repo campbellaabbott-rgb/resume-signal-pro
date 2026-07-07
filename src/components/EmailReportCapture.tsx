@@ -31,6 +31,9 @@ export function EmailReportCapture({ payload }: EmailReportCaptureProps) {
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [subscribePulse, setSubscribePulse] = useState(true);
+  // Off by default — the drip is a commitment; defaulting it on would be the
+  // dark pattern the rest of the product refuses to be.
+  const [dripOptIn, setDripOptIn] = useState(false);
 
   const send = async () => {
     const trimmed = email.trim();
@@ -42,7 +45,7 @@ export function EmailReportCapture({ payload }: EmailReportCaptureProps) {
     setErrorMsg(null);
     try {
       const { data, error } = await supabase.functions.invoke("send-scan-report", {
-        body: { email: trimmed, subscribePulse, ...payload },
+        body: { email: trimmed, subscribePulse, dripOptIn, ...payload },
       });
       if (error || !(data as { success?: boolean })?.success) {
         throw new Error((data as { error?: string })?.error || error?.message || "send failed");
@@ -103,6 +106,17 @@ export function EmailReportCapture({ payload }: EmailReportCaptureProps) {
         />
         <span className="text-xs text-muted-foreground">
           {t('freeResults.enterprise.pulseOptIn', 'Also send me a monthly market pulse: the keywords rising in my industry, with a free rescan link. Unsubscribe anytime.')}
+        </span>
+      </label>
+      <label className="flex items-start gap-2 mt-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={dripOptIn}
+          onChange={(e) => setDripOptIn(e.target.checked)}
+          className="mt-0.5 accent-primary"
+        />
+        <span className="text-xs text-muted-foreground">
+          {t('freeResults.enterprise.dripOptIn', 'Break my fix plan into a 7-day sequence: your top fixes on day 2, the rest on day 4, and a rescan reminder on day 6. Three emails total, cancel anytime.')}
         </span>
       </label>
       <p className="text-[10px] text-muted-foreground mt-2">{t('freeResults.enterprise.emailPrivacy', 'Only the analysis results are emailed — never your resume. No spam.')}</p>

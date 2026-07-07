@@ -43,6 +43,9 @@ interface Application {
   scan_id: string | null;
   scan_score: number | null;
   applied_at: string;
+  job_posting?: string | null;
+  fit_pct?: number | null;
+  fit_missing?: string[] | null;
 }
 
 // Display name for a saved scan acting as a resume version.
@@ -97,6 +100,32 @@ export default function Account() {
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [newApp, setNewApp] = useState({ company: "", role: "" });
   const [newAppScanId, setNewAppScanId] = useState<string>("latest");
+  const [fitOpenId, setFitOpenId] = useState<string | null>(null);
+  const [fitPosting, setFitPosting] = useState("");
+  const [fitLoading, setFitLoading] = useState(false);
+
+  // Per-application posting fit: deterministic keyword coverage of the sent
+  // version, computed by the application-fit function and stored on the row.
+  const runFitCheck = async (a: Application, version: UserScan) => {
+    if (!version.resume_text || fitPosting.trim().length < 100) return;
+    setFitLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("application-fit", {
+        body: { jobPosting: fitPosting, resumeText: version.resume_text },
+      });
+      if (error || !data?.success) {
+        toast.error("Fit check failed — the feature may still be deploying. Try again shortly.");
+        return;
+      }
+      const { pct, missing } = data.data as { pct: number | null; missing: string[] };
+      setApplications(applications.map(x => x.id === a.id ? { ...x, fit_pct: pct, fit_missing: missing, job_posting: fitPosting } : x));
+      await supabase.from("user_applications").update({
+        job_posting: fitPosting.slice(0, 20000), fit_pct: pct, fit_missing: missing,
+      } as never).eq("id", a.id);
+    } finally {
+      setFitLoading(false);
+    }
+  };
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -615,20 +644,27 @@ export default function Account() {
           {applications.length === 0 ? (
             <p className="text-xs text-muted-foreground">Track where you've applied — status, dates, and the score you applied with, all in one place.</p>
           ) : (
-            <div className="space-y-1.5 max-h-64 overflow-y-auto">
-              {applications.map((a) => (
-                <div key={a.id} className="flex items-center gap-2 border border-border/50 rounded-lg px-3 py-2">
+            <div className="space-y-1.5 max-h-96 overflow-y-auto">
+              {applications.map((a) => {
+                const version = a.scan_id ? scans.find(s => s.id === a.scan_id) : null;
+                return (
+                <div key={a.id} className="border border-border/50 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{a.company}{a.role ? <span className="text-muted-foreground font-normal"> · {a.role}</span> : null}</p>
                     <p className="text-[11px] text-muted-foreground">
                       {new Date(a.applied_at).toLocaleDateString()}
-                      {(() => {
-                        const v = a.scan_id ? scans.find(s => s.id === a.scan_id) : null;
-                        if (v) return ` · sent "${versionName(v)}" (score ${a.scan_score ?? v.ats_score})`;
-                        return a.scan_score ? ` · applied with score ${a.scan_score}` : "";
-                      })()}
+                      {version ? ` · sent "${versionName(version)}" (score ${a.scan_score ?? version.ats_score})` : (a.scan_score ? ` · applied with score ${a.scan_score}` : "")}
                     </p>
                   </div>
+                  {version?.resume_text && (
+                    <button
+                      onClick={() => { setFitOpenId(fitOpenId === a.id ? null : a.id); setFitPosting(a.job_posting ?? ""); }}
+                      className={`text-[11px] px-2 py-1 rounded-full border shrink-0 transition-colors ${a.fit_pct != null ? (a.fit_pct >= 70 ? "border-success/40 text-success" : "border-warning/40 text-warning") : "border-border text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {a.fit_pct != null ? `fit ${a.fit_pct}%` : "check fit"}
+                    </button>
+                  )}
                   <select
                     value={a.status}
                     onChange={(e) => updateAppStatus(a.id, e.target.value)}
@@ -640,8 +676,41 @@ export default function Account() {
                   <button onClick={() => deleteApplication(a.id)} aria-label="Delete application" className="text-muted-foreground/50 hover:text-destructive transition-colors">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
+                  </div>
+                  {fitOpenId === a.id && version?.resume_text && (
+                    <div className="mt-2 pt-2 border-t border-border/50">
+                      <p className="text-[11px] text-muted-foreground mb-1.5">
+                        Paste the job posting — we check which recognized keywords the version you sent actually covers. Deterministic, no AI.
+                      </p>
+                      <textarea
+                        value={fitPosting}
+                        onChange={(e) => setFitPosting(e.target.value)}
+                        rows={3}
+                        placeholder="Paste the job posting here…"
+                        className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground mb-1.5"
+                      />
+                      <button
+                        onClick={() => runFitCheck(a, version)}
+                        disabled={fitLoading || fitPosting.trim().length < 100}
+                        className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-50"
+                      >
+                        {fitLoading ? "Checking…" : "Check fit"}
+                      </button>
+                      {a.fit_pct != null && (a.fit_missing?.length ?? 0) > 0 && (
+                        <div className="mt-2">
+                          <p className="text-[11px] text-muted-foreground mb-1">Missing from the version you sent:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {(a.fit_missing ?? []).slice(0, 12).map(k => (
+                              <span key={k} className="px-2 py-0.5 rounded-full border border-warning/40 text-warning text-[11px]">{k}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -677,6 +746,45 @@ export default function Account() {
                   ))}
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-2">Update application statuses above — this table learns which version of your resume actually lands interviews.</p>
+              </div>
+            );
+          })()}
+
+          {/* Personal outcome analytics: YOUR interview rate by score band —
+              the outcome dataset paying each user back individually. Only
+              shown once there's enough signal to mean anything. */}
+          {(() => {
+            const decided = applications.filter(a => a.scan_score != null && a.status !== "applied");
+            if (decided.length < 5) return null;
+            const bands: Array<{ label: string; min: number; max: number }> = [
+              { label: "80+", min: 80, max: 101 },
+              { label: "65–79", min: 65, max: 80 },
+              { label: "50–64", min: 50, max: 65 },
+              { label: "under 50", min: 0, max: 50 },
+            ];
+            const rows = bands
+              .map(b => {
+                const apps = decided.filter(a => (a.scan_score as number) >= b.min && (a.scan_score as number) < b.max);
+                const wins = apps.filter(a => a.status === "interviewing" || a.status === "offer").length;
+                return { ...b, sent: apps.length, wins };
+              })
+              .filter(r => r.sent > 0);
+            if (rows.length < 2) return null;
+            return (
+              <div className="mt-4 rounded-xl border border-border bg-card/60 p-4">
+                <p className="text-xs font-semibold text-foreground mb-2">Your interview rate by score band</p>
+                <div className="space-y-1.5">
+                  {rows.map(r => (
+                    <div key={r.label} className="flex items-center gap-2 text-xs">
+                      <span className="text-foreground font-medium w-20 shrink-0">Score {r.label}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
+                        <div className="h-full bg-success" style={{ width: `${Math.round((r.wins / r.sent) * 100)}%` }} />
+                      </div>
+                      <span className="text-muted-foreground shrink-0">{r.wins}/{r.sent} interviews</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-2">Measured from your own applications — small samples, so read direction, not decimals.</p>
               </div>
             );
           })()}

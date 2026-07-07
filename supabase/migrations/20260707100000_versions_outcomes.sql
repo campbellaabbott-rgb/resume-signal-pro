@@ -20,6 +20,13 @@ ALTER TABLE public.user_scans
   ADD COLUMN IF NOT EXISTS resume_text text,
   ADD COLUMN IF NOT EXISTS report_id text;
 
+-- ── Per-application job-posting fit (computed by the application-fit
+--    function; stored so the tracker shows coverage without re-pasting) ────
+ALTER TABLE public.user_applications
+  ADD COLUMN IF NOT EXISTS job_posting text,
+  ADD COLUMN IF NOT EXISTS fit_pct int,
+  ADD COLUMN IF NOT EXISTS fit_missing jsonb;
+
 -- ── Anonymous outcome reports ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.scan_outcomes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -67,3 +74,23 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.record_scan_outcome(text, text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.record_scan_outcome(text, text, text) TO anon, authenticated;
+
+-- ── Delayed email enqueue (for the opt-in 7-day fix plan) ─────────────────
+-- Same as enqueue_email but with pgmq's native delay: the message becomes
+-- visible to process-email-queue only after delay_seconds. Service-role only.
+CREATE OR REPLACE FUNCTION public.enqueue_email_delayed(
+  queue_name TEXT,
+  payload JSONB,
+  delay_seconds INT
+) RETURNS BIGINT
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN pgmq.send(queue_name, payload, delay_seconds);
+EXCEPTION WHEN undefined_table THEN
+  PERFORM pgmq.create(queue_name);
+  RETURN pgmq.send(queue_name, payload, delay_seconds);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.enqueue_email_delayed(TEXT, JSONB, INT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.enqueue_email_delayed(TEXT, JSONB, INT) TO service_role;

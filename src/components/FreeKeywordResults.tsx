@@ -963,7 +963,7 @@ export function FreeKeywordResults({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const { toast } = useToast();
-  const { addScanEntry, setUserEmail, isReturningUser, getLatestScan } = useScanHistory();
+  const { addScanEntry, setUserEmail, isReturningUser, getLatestScan, getPreviousScan } = useScanHistory();
   const [hasRecordedScan, setHasRecordedScan] = useState(false);
   const [correctedIndustry, setCorrectedIndustry] = useState<string | null>(null);
   const [showExitOffer, setShowExitOffer] = useState(false);
@@ -1708,6 +1708,39 @@ export function FreeKeywordResults({
 
       {/* Specimen header — report ID, engine, provenance */}
       {reportMeta && <DiagnosticHeader meta={reportMeta} candidateName={candidateName} />}
+
+      {/* The fix→verify payoff: when this person scanned before, lead with
+          what changed. Same-candidate guard keeps household/multi-resume
+          usage from producing nonsense deltas. */}
+      {(() => {
+        const prev = getPreviousScan();
+        if (!hasRecordedScan || !prev) return null;
+        const sameCandidate = (prev.candidateName ?? null) === (candidateName ?? null);
+        if (!sameCandidate) return null;
+        const delta = atsScoreEstimate - prev.atsScore;
+        const prevFlags = prev.redFlagCount ?? null;
+        const flagsNow = redFlagsProp?.length ?? null;
+        return (
+          <div className={`rounded-2xl border p-4 mb-6 ${delta > 0 ? "border-success/40 bg-success/5" : delta < 0 ? "border-warning/40 bg-warning/5" : "border-border bg-card/60"}`}>
+            <p className="text-sm font-semibold text-foreground">
+              Since your last scan: {prev.atsScore} → {atsScoreEstimate}
+              {delta !== 0 && (
+                <span className={delta > 0 ? "text-success" : "text-warning"}> ({delta > 0 ? "+" : ""}{delta})</span>
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {prevFlags != null && flagsNow != null && prevFlags !== flagsNow
+                ? `Red flags ${prevFlags} → ${flagsNow}. `
+                : ""}
+              {delta > 0
+                ? "The fixes registered — this is the measured improvement, same rubric both times."
+                : delta < 0
+                  ? "Lower than last time — usually a different target or trimmed content. The findings below explain each point."
+                  : "No score change — the findings below show what would move it."}
+            </p>
+          </div>
+        );
+      })()}
 
       {/* ── Detection confirmation strip — confirmed labels are 100% accurate ── */}
       {industryNeedsConfirmation && !correctedIndustry && (

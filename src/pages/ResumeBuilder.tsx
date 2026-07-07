@@ -54,6 +54,34 @@ interface ScanFixes {
 
 const normalizeBullet = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
+// Plain-text serialization for the rescan ritual: the exported document goes
+// back through the real scanner so the improvement is measured, not assumed.
+function builderResumeToText(r: BuilderResume): string {
+  const lines: string[] = [];
+  const c = r.contact;
+  if (c.fullName) lines.push(c.fullName);
+  if (c.title) lines.push(c.title);
+  lines.push([c.email, c.phone, c.location, c.linkedIn, c.website].filter(Boolean).join(" | "));
+  if (r.summary) lines.push("", "SUMMARY", r.summary);
+  if (r.experience.length) {
+    lines.push("", "EXPERIENCE");
+    for (const e of r.experience) {
+      lines.push(`${e.title}${e.company ? `, ${e.company}` : ""}${e.location ? ` — ${e.location}` : ""} (${[e.startDate, e.endDate].filter(Boolean).join(" - ")})`);
+      for (const b of e.bullets.filter(Boolean)) lines.push(`- ${b}`);
+    }
+  }
+  if (r.education.length) {
+    lines.push("", "EDUCATION");
+    for (const e of r.education) {
+      lines.push([[e.degree, e.field].filter(Boolean).join(" in "), e.school, [e.startDate, e.endDate].filter(Boolean).join(" - ")].filter(Boolean).join(", "));
+      if (e.details) lines.push(e.details);
+    }
+  }
+  if (r.skills.length) lines.push("", "SKILLS", r.skills.join(", "));
+  if (r.certifications.length) lines.push("", "CERTIFICATIONS", r.certifications.join(", "));
+  return lines.join("\n");
+}
+
 function applyScanRewrites(resume: BuilderResume, rewrites: ScanFixes["rewrites"]): { resume: BuilderResume; applied: number } {
   let applied = 0;
   const normalized = rewrites.map((r) => ({ key: normalizeBullet(r.before), after: r.after }));
@@ -79,6 +107,7 @@ export default function ResumeBuilder() {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [scanKeywords, setScanKeywords] = useState<string[]>([]);
+  const [showRescanCta, setShowRescanCta] = useState(false);
   const hasAttemptedPrefillRef = useRef(false);
   const { toast } = useToast();
 
@@ -164,6 +193,7 @@ export default function ResumeBuilder() {
       }
       const { exportResumeBuilderPDF } = await import("@/lib/resume-builder-export");
       await exportResumeBuilderPDF(resume);
+      setShowRescanCta(true);
     } catch (err) {
       console.error("[ResumeBuilder] PDF export failed:", err);
       toast({ title: "Export failed", description: "Could not generate the PDF. Please try again.", variant: "destructive" });
@@ -177,6 +207,7 @@ export default function ResumeBuilder() {
     try {
       const { exportResumeBuilderDocx } = await import("@/lib/resume-builder-export");
       await exportResumeBuilderDocx(resume);
+      setShowRescanCta(true);
     } catch (err) {
       console.error("[ResumeBuilder] DOCX export failed:", err);
       toast({ title: "Export failed", description: "Could not generate the Word document. Please try again.", variant: "destructive" });
@@ -218,6 +249,25 @@ export default function ResumeBuilder() {
             <div className="mb-6 flex items-center gap-2 px-4 py-3 rounded-lg bg-primary/5 border border-primary/20 text-sm text-muted-foreground">
               <Sparkles className="w-4 h-4 text-primary animate-pulse shrink-0" />
               Importing your most recent resume into the builder...
+            </div>
+          )}
+
+          {showRescanCta && (
+            <div className="mb-6 px-4 py-3 rounded-lg bg-success/5 border border-success/30 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Exported — now verify the fixes worked</p>
+                <p className="text-xs text-muted-foreground">Rescan this exact version free and see the before/after score, same rubric both times.</p>
+              </div>
+              <Button
+                size="sm"
+                className="shrink-0"
+                onClick={() => {
+                  try { sessionStorage.setItem("rb_resume_text", builderResumeToText(resume)); } catch { /* ignore */ }
+                  window.location.href = "/?rescan=1#upload";
+                }}
+              >
+                Rescan this version →
+              </Button>
             </div>
           )}
 
