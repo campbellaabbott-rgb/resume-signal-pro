@@ -42,6 +42,9 @@ interface BoostRequest {
   overlapsEmployment?: boolean;
   returningToFullTime?: boolean;
   totalClientsOverall?: number;
+  /** 'fractional' = executive portfolio rules (umbrella entry, engagement
+   *  scope, P&L vocabulary); default 'freelance' = gig/project rules. */
+  workMode?: "freelance" | "fractional";
 }
 
 const BANNED_PHRASES = [/\bhelped with\b/i, /\bworked on\b/i, /\bwas responsible for\b/i, /\bresponsible for\b/i, /\bvarious clients\b/i, /\bmisc\.? projects\b/i];
@@ -49,6 +52,18 @@ const BANNED_PHRASES = [/\bhelped with\b/i, /\bworked on\b/i, /\bwas responsible
 // Section 2 of the playbook, verbatim as code.
 function decideStructure(req: BoostRequest): { structure: string; header: string; note: string } {
   const n = req.projects.length;
+  // Fractional/interim leadership always gets the portfolio umbrella —
+  // concurrent senior engagements under one entry is the convention, and it
+  // preempts the job-hopping misread regardless of situation.
+  if (req.workMode === "fractional") {
+    return {
+      structure: "fractional_portfolio",
+      header: `Fractional ${req.targetRole || "Executive"}`,
+      note: n > 1
+        ? "Fractional leadership: one umbrella portfolio entry with per-engagement scope lines — concurrent engagements are the format, never hidden and never split into look-alike 'jobs'."
+        : "Fractional/interim engagement: umbrella entry with explicit scope — reads as leadership continuity, not a gap or a gig.",
+    };
+  }
   if (req.overlapsEmployment) {
     return {
       structure: "consolidated_part_time",
@@ -127,7 +142,17 @@ serve(async (req) => {
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
     const postingBlock = body.jobPosting ? `\n<job_posting>\n${body.jobPosting.slice(0, 8000)}\n</job_posting>` : "";
-    const systemPrompt = `You are a recruiter-grade resume writer specializing in translating freelance/gig/side-hustle work into the professional vocabulary of a target field.
+    const isFractional = body.workMode === "fractional";
+    const fractionalBlock = isFractional ? `
+
+## FRACTIONAL / INTERIM LEADERSHIP MODE (overrides gig-flavored guidance)
+This candidate is a fractional or interim LEADER, not a gig worker. Adjust:
+- VOCABULARY: executive scope first — P&L owned, budget, headcount, board/investor reporting, stage (e.g. "Series B", "PE-backed"). Use ONLY figures present in the intake; senior readers spot invented scope instantly.
+- ENGAGEMENT LABELS: company stage/size framing ("PE-backed healthcare services company, ~$40M revenue") — never confidential names unless the intake gives them.
+- CONCURRENCY: overlapping engagements are the format. Frame them as a portfolio under the umbrella header — never apologize for or hide simultaneity.
+- NO RESCUE LADDER TONE: fractional leaders have hard numbers. If the intake lacks a metric for an engagement, prefer scope facts (team size, reporting line, duration) over soft qualitative rescues.
+- transitionParagraph: if the target is a FULL-TIME role, frame the portfolio as continuity of leadership at breadth ("led finance through three consecutive Series A-to-B transitions"); if pitching further fractional work, breadth IS the asset.` : "";
+    const systemPrompt = `You are a recruiter-grade resume writer specializing in translating ${isFractional ? "fractional/interim leadership engagements" : "freelance/gig/side-hustle work"} into the professional vocabulary of a target field.${fractionalBlock}
 
 ## THE FORMULA (every bullet)
 [Target-field action verb] + [deliverable in the TARGET field's vocabulary] + [scope: clients/budget/timeline/volume] + [outcome with metric or concrete change]

@@ -131,11 +131,12 @@ export default function ResumeBuilder() {
           header: string; structure: string; scopeStatement?: string;
           projects: Array<{ clientLabel: string; bullets: string[] }>;
         };
-        const entries = boost.structure.startsWith("consolidated")
+        const isUmbrella = boost.structure.startsWith("consolidated") || boost.structure === "fractional_portfolio";
+        const entries = isUmbrella
           ? [{
               ...createEmptyExperienceEntry(),
               title: boost.header,
-              company: "Independent / Freelance",
+              company: boost.structure === "fractional_portfolio" ? "Independent practice" : "Independent / Freelance",
               bullets: [
                 ...(boost.scopeStatement ? [boost.scopeStatement] : []),
                 ...boost.projects.flatMap(p => p.bullets),

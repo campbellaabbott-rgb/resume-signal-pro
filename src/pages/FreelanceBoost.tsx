@@ -45,6 +45,10 @@ export default function FreelanceBoost() {
   const [jobPosting, setJobPosting] = useState("");
   const [employmentTimeline, setEmploymentTimeline] = useState("");
   const [situation, setSituation] = useState<"primary" | "alongside" | "returning">("alongside");
+  // 'fractional' switches generation to executive-portfolio rules: umbrella
+  // entry, per-engagement scope, P&L/headcount vocabulary — same product,
+  // different translation.
+  const [workMode, setWorkMode] = useState<"freelance" | "fractional">("freelance");
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<BoostResult | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
@@ -63,13 +67,14 @@ export default function FreelanceBoost() {
         if (d.jobPosting) setJobPosting(d.jobPosting);
         if (d.employmentTimeline) setEmploymentTimeline(d.employmentTimeline);
         if (d.situation) setSituation(d.situation);
+        if (d.workMode) setWorkMode(d.workMode);
       }
     } catch { /* fresh start */ }
   }, []);
   // Persist draft
   useEffect(() => {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ projects, targetRole, jobPosting, employmentTimeline, situation }));
-  }, [projects, targetRole, jobPosting, employmentTimeline, situation]);
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ projects, targetRole, jobPosting, employmentTimeline, situation, workMode }));
+  }, [projects, targetRole, jobPosting, employmentTimeline, situation, workMode]);
 
   // Returned from checkout with a paid session → generate
   const sessionId = params.get("session_id");
@@ -96,6 +101,7 @@ export default function FreelanceBoost() {
             overlapsEmployment: d.situation === "alongside",
             returningToFullTime: d.situation === "returning",
             totalClientsOverall: d.projects.length,
+            workMode: d.workMode === "fractional" ? "fractional" : "freelance",
           },
         });
         if (error || !data?.success) throw new Error(data?.error || error?.message || "Generation failed");
@@ -200,6 +206,10 @@ export default function FreelanceBoost() {
             <p className="text-muted-foreground max-w-xl mx-auto">
               Freelance Boost turns your projects, contracts, and side hustles into recruiter-grade resume experience —
               built for career changers who've already done the work, just not the job title.
+            </p>
+            <p className="text-sm text-muted-foreground max-w-xl mx-auto mt-2">
+              Also built for <span className="text-foreground font-medium">fractional and interim leaders</span> — concurrent
+              engagements framed as the portfolio they are, never as job-hopping.
             </p>
           </div>
 
@@ -341,6 +351,18 @@ export default function FreelanceBoost() {
                         <button key={id} onClick={() => setSituation(id)} className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${situation === id ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>{label}</button>
                       ))}
                     </div>
+                    <p className="text-xs font-semibold text-foreground mt-3 mb-1">What kind of independent work?</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {([["freelance", "Freelance / gigs / projects"], ["fractional", "Fractional or interim leadership"]] as const).map(([id, label]) => (
+                        <button key={id} onClick={() => setWorkMode(id)} className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${workMode === id ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>{label}</button>
+                      ))}
+                    </div>
+                    {workMode === "fractional" && (
+                      <p className="text-[11px] text-muted-foreground mt-1.5">
+                        Fractional mode writes an executive portfolio: umbrella entry, per-engagement scope (P&L, budget, headcount),
+                        and concurrent engagements framed as the portfolio they are — never as job-hopping.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

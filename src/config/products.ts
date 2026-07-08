@@ -182,6 +182,7 @@ export const PRODUCTS = {
     priceId: null, // inline price per checkout
     features: [
       'Guided project intake — no resume needed to start',
+      'Fractional/interim leadership mode: portfolio entry with per-engagement scope',
       'Up to 5 projects translated into your target field\'s language',
       'Recruiter-grade achievement bullets (verb + scope + outcome + metric)',
       'The right structure chosen for you: consolidated role, projects section, or hybrid',

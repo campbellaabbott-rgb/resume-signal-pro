@@ -397,6 +397,73 @@ export const GUIDES: Record<string, Guide> = {
     ],
   },
 
+  "fractional-roles-on-resume": {
+    slug: "fractional-roles-on-resume",
+    title: "How to Put Fractional Roles on Your Resume (CFO, CMO, CTO)",
+    h1: "How to put fractional roles on your resume",
+    description:
+      "Concurrent engagements without the job-hopper misread: the umbrella portfolio entry, per-engagement scope lines, where advisory roles sit, and framing fractional work when applying full-time.",
+    tldr:
+      "Fractional roles belong under ONE umbrella entry — 'Fractional CFO — concurrent engagements, 2022–present' — with each engagement as a scope line beneath it ('PE-backed healthcare services company, ~$40M revenue: owned FP&A and board reporting'), never as separate look-alike jobs, which reads as instability in a six-second skim. Lead every line with executive scope (P&L, budget, headcount, stage), keep client names out unless you have permission, and when applying to a full-time role, frame the portfolio as continuity of leadership at breadth — not as a collection of short stints.",
+    updated: "2026-07-08",
+    minutes: 6,
+    sections: [
+      {
+        h2: "The misread you're fighting",
+        paras: [
+          "A fractional CFO serving three companies at once has a stronger leadership record than most full-time peers — and a resume that traditional screening reads as chaos: overlapping dates, multiple 'employers,' short-looking tenures. Automated parsers thread concurrent roles badly, and a rushed human skim files them under job-hopper.",
+          "Our scanner detects fractional and interim signals for exactly this reason: overlapping senior engagements are a portfolio, not instability, and the analysis should say so instead of flagging phantom red flags. The formatting fix below makes the same point to every other reader.",
+        ],
+      },
+      {
+        h2: "The umbrella entry: one role, many engagements",
+        paras: [
+          "Structure the whole fractional chapter as a single experience entry: title ('Fractional CFO' — or 'Portfolio CFO' in UK usage), a practice framing ('Independent practice' or your LLC's name), and the full date range. The concurrency then lives INSIDE the entry, where it reads as the format rather than a contradiction.",
+          "Each engagement becomes a labeled scope line or short block beneath: company framing by stage and size, not name — 'Series B fintech, 85 employees', 'PE-backed services group, ~$40M revenue' — followed by what you owned and what changed. Client confidentiality is the norm at this level; recruiters fully accept stage-and-size framing, and it often reads stronger than an unknown company name would.",
+        ],
+      },
+      {
+        h2: "Executive scope is the vocabulary",
+        paras: [
+          "Fractional resumes fail when they read like consulting gigs. The difference is scope language: P&L owned, budget managed, headcount led, reporting line ('reported to the board', 'partnered with the CEO through the raise'), and stage transitions carried. 'Advised on finance processes' is a consultant; 'owned the finance function through a Series A-to-B transition, built the first FP&A hire plan, cut close from 12 to 5 days' is a fractional CFO.",
+          "Use only numbers you actually have — senior readers spot invented scope instantly, and every figure should survive 'walk me through that.' Unlike early-career gig work, fractional engagements almost always HAVE hard numbers; the work is surfacing them, not rescuing their absence.",
+        ],
+      },
+      {
+        h2: "Where boards and advisory roles go",
+        paras: [
+          "Board seats, advisory roles, and NED positions dilute the umbrella entry if mixed into it — they're governance, not operating work. Give them a separate short section ('Board & Advisory') below the portfolio entry, one line each. This keeps the operating portfolio clean and makes the governance layer legible as a deliberate part of the career, not filler.",
+        ],
+      },
+      {
+        h2: "Applying full-time again: the framing problem",
+        paras: [
+          "The hardest fractional resume is the one aimed at a full-time role, because the reader's quiet question is 'will they stay?'. Answer it in the framing: the portfolio entry demonstrates continuity of leadership — same function, sustained across companies and stages — and the summary line names the move explicitly ('Fractional CFO across five growth-stage companies, now seeking one full-time seat to build long-term').",
+          "Going the other direction — pitching fractional work — the same portfolio inverts: breadth becomes the asset, and the engagement scope lines are your case studies.",
+        ],
+      },
+    ],
+    faqs: [
+      {
+        q: "Should I list each fractional engagement as a separate job?",
+        a: "No — separate entries with overlapping dates are the single biggest source of the job-hopper misread. One umbrella entry with per-engagement scope lines keeps the dates coherent and the portfolio legible.",
+      },
+      {
+        q: "Do I name the client companies?",
+        a: "Only with permission. Stage-and-size framing ('PE-backed healthcare services company, ~$40M revenue') is the accepted convention at this level and often reads stronger than an unfamiliar name.",
+      },
+      {
+        q: "Can a tool structure this for me?",
+        a: "Yes — Freelance Boost has a fractional mode: give it your engagements and it writes the umbrella entry, per-engagement scope lines, and a transition paragraph aimed at either a full-time seat or further fractional work. It uses only the facts you provide — invented scope would be spotted instantly at this level, so we never generate any.",
+      },
+    ],
+    related: [
+      { label: "Freelance Boost (fractional mode) — structure it for me", href: "/freelance-boost" },
+      { label: "How to put freelance work on your resume", href: "/guides/freelance-work-on-resume" },
+      { label: "Scan your resume free", href: "/" },
+    ],
+  },
+
   "what-resume-score-means": {
     slug: "what-resume-score-means",
     title: "What a Resume Score Actually Means (and Doesn't)",
