@@ -1265,6 +1265,11 @@ serve(async (req) => {
       req.json()
     ]);
     const { resumeText, jobDescriptionText, honeypot } = body;
+    // Target market the candidate is applying TO (ISO-2). Optional; overrides
+    // residence-detected country for standards when the user states it.
+    const validTargetCountry = (typeof body.targetCountry === 'string' && /^[A-Za-z]{2}$/.test(body.targetCountry))
+      ? body.targetCountry.toUpperCase()
+      : null;
     // Synthetic-monitoring bypass: scan-heartbeat probes this function end to
     // end on a schedule, which would exhaust the per-IP daily limit and turn
     // every later probe into a false "down". Honored ONLY when the header
@@ -2168,7 +2173,8 @@ This resume must be judged as ${seniorityDetection.level === 'executive' ? 'a C-
 
     // 1. Geo: detect country from resume text; fall back to IP country
     const resumeGeo = detectCountryFromResume(resumeText);
-    const effectiveCountry = resumeGeo.country || country || 'US';
+    // Precedence: target country (applying-to) → resume-detected → IP → US.
+    const effectiveCountry = validTargetCountry || resumeGeo.country || country || 'US';
     const geoHint = formatGeoContextForPrompt(effectiveCountry, industryDetection.industry, resumeGeo);
     const marketInsight = getMarketInsight(effectiveCountry, industryDetection.industry);
     console.log(`[FREE-KEYWORD-SCAN] Geo: ${effectiveCountry} (resume: ${resumeGeo.country || 'none'}, ip: ${country || 'none'}, source: ${resumeGeo.source})`);
@@ -4159,7 +4165,7 @@ ${resumeText.substring(0, 20000)}
     // sections), keyed by the scanner's geo-resolved country. Deterministic —
     // no AI cost. Null when country unknown or not covered.
     try {
-      responseData.countryStandards = evaluateCountryStandards(resumeText, country);
+      responseData.countryStandards = evaluateCountryStandards(resumeText, effectiveCountry);
     } catch (e) {
       console.warn('[FREE-KEYWORD-SCAN] Country standards evaluation failed:', e);
       responseData.countryStandards = null;

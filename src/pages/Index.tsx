@@ -438,6 +438,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   };
   const [linkedInText, setLinkedInText] = useState<string>("");
   const [jobDescriptionText, setJobDescriptionText] = useState<string>("");
+  // ISO-2 country the candidate is applying TO. Empty = auto-detect from the
+  // résumé (phone/city) or IP. Set when the user is targeting a specific
+  // market, so they get that market's standards instead of their residence's.
+  const [targetCountry, setTargetCountry] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showFloatingScan, setShowFloatingScan] = useState(false); // Only true after fresh upload / paste-ready
   const [floatingScanTrigger, setFloatingScanTrigger] = useState(0);
@@ -880,6 +884,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           jobDescriptionText: jobDescriptionText || undefined,
           honeypot,
           skipCache,
+          targetCountry: targetCountry || undefined,
           userContext: {
             situation: scanContext.situation || undefined,
             targetRole: scanContext.targetRole || undefined,
@@ -911,6 +916,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             jobDescriptionText: jobDescriptionText || undefined,
             honeypot,
             skipCache,
+            targetCountry: targetCountry || undefined,
             onProgress: (progress) => {
               console.log('[StreamingScan] Progress:', progress.stage, progress.progress + '%');
             },
@@ -1735,6 +1741,27 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 maxLength={80}
                 className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
+              {/* Applying-in country. Overrides résumé/IP detection so someone
+                  targeting a market abroad gets that market's résumé standards
+                  (photo norms, personal-data expectations, references, etc.). */}
+              <select
+                value={targetCountry}
+                onChange={(e) => setTargetCountry(e.target.value)}
+                aria-label="Country you're applying in"
+                className="w-full mt-2 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                <option value="">🌍 Applying in… (auto-detect country standards)</option>
+                {([
+                  ["US", "United States"], ["GB", "United Kingdom"], ["CA", "Canada"], ["AU", "Australia"],
+                  ["IE", "Ireland"], ["NZ", "New Zealand"], ["DE", "Germany"], ["FR", "France"],
+                  ["NL", "Netherlands"], ["ES", "Spain"], ["IT", "Italy"], ["CH", "Switzerland"],
+                  ["SE", "Sweden"], ["PL", "Poland"], ["AE", "United Arab Emirates"], ["SA", "Saudi Arabia"],
+                  ["IN", "India"], ["SG", "Singapore"], ["JP", "Japan"], ["HK", "Hong Kong"],
+                  ["ZA", "South Africa"], ["BR", "Brazil"], ["MX", "Mexico"], ["PH", "Philippines"],
+                ] as [string, string][]).map(([code, label]) => (
+                  <option key={code} value={code}>{label}</option>
+                ))}
+              </select>
             </div>
           </section>
         )}

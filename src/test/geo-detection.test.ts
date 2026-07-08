@@ -1,0 +1,69 @@
+// Geo detection tests for detectCountryFromResume (market-intelligence.ts).
+// Locks in: the expanded dialing-code + city coverage, and — critically — the
+// robust phone matcher that stops résumé growth stats ("+200%", "+300%") from
+// masquerading as country codes (+20 Egypt, +30 Greece), plus the euro
+// dead-end removal.
+import { describe, it, expect } from "vitest";
+import { detectCountryFromResume } from "../../supabase/functions/free-keyword-scan/market-intelligence";
+
+describe("detectCountryFromResume — phone codes", () => {
+  it("detects newly-added dialing codes", () => {
+    expect(detectCountryFromResume("Contact: +351 21 123 4567").country).toBe("PT");
+    expect(detectCountryFromResume("Tel +54 11 4123 4567").country).toBe("AR");
+    expect(detectCountryFromResume("Phone: +966 50 123 4567").country).toBe("SA");
+    expect(detectCountryFromResume("+63 917 123 4567").country).toBe("PH");
+    expect(detectCountryFromResume("+380 44 123 4567").country).toBe("UA");
+    expect(detectCountryFromResume("+90 212 123 4567").country).toBe("TR");
+    expect(detectCountryFromResume("+52 55 1234 5678").country).toBe("MX");
+  });
+
+  it("still detects the original codes", () => {
+    expect(detectCountryFromResume("+44 20 7946 0958").country).toBe("GB");
+    expect(detectCountryFromResume("+49 30 12345678").country).toBe("DE");
+    expect(detectCountryFromResume("+61 2 9374 4000").country).toBe("AU");
+  });
+
+  it("reports a phone match as high confidence from the phone source", () => {
+    const r = detectCountryFromResume("Reach me at +34 91 123 4567");
+    expect(r.country).toBe("ES");
+    expect(r.confidence).toBe("high");
+    expect(r.source).toBe("phone");
+  });
+});
+
+describe("detectCountryFromResume — growth-stat false positives", () => {
+  it("does NOT read '+200%' as Egypt, '+300%' as Greece, or '+79%' as Russia", () => {
+    expect(detectCountryFromResume("Grew revenue +200% YoY").country).not.toBe("EG");
+    expect(detectCountryFromResume("Increased signups by +300%").country).not.toBe("GR");
+    expect(detectCountryFromResume("Improved conversion +79% in Q3").country).not.toBe("RU");
+  });
+
+  it("resolves a growth-stat résumé by its US city, not a spurious country", () => {
+    const r = detectCountryFromResume("Senior Manager, San Francisco. Drove +250% pipeline growth.");
+    expect(r.country).toBe("US");
+  });
+});
+
+describe("detectCountryFromResume — city fallback + euro fix", () => {
+  it("detects added city markets when no phone is present", () => {
+    expect(detectCountryFromResume("Based in Paris, France").country).toBe("FR");
+    expect(detectCountryFromResume("Amsterdam, Netherlands").country).toBe("NL");
+    expect(detectCountryFromResume("Located in Tokyo").country).toBe("JP");
+    expect(detectCountryFromResume("São Paulo, Brazil").country).toBe("BR");
+  });
+
+  it("does NOT misfire 'New Mexico' as Mexico", () => {
+    expect(detectCountryFromResume("Engineer in Albuquerque, New Mexico, USA").country).not.toBe("MX");
+  });
+
+  it("keeps unambiguous single-currency detection working (£ → GB)", () => {
+    const r = detectCountryFromResume("Total compensation £45,000 per annum");
+    expect(r.country).toBe("GB");
+  });
+
+  it("no longer resolves a bare euro amount to the dead 'EU' pseudo-country", () => {
+    const r = detectCountryFromResume("Managed an annual budget of €2M");
+    expect(r.country).not.toBe("EU");
+    expect(r.country).toBeNull();
+  });
+});

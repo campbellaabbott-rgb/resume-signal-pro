@@ -13,9 +13,11 @@ const CLIENT_CACHE_KEY_PREFIX = 'resume_scan_cache_v2_';
 const CLIENT_CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours (reduced from 24)
 
 // Generate cache key from resume text using SHA-256-like robust hash
-async function generateClientCacheKey(resumeText: string, jobDescription?: string): Promise<string> {
-  // Normalize content for consistent hashing
-  const normalized = (resumeText + '|JD|' + (jobDescription || ''))
+async function generateClientCacheKey(resumeText: string, jobDescription?: string, targetCountry?: string): Promise<string> {
+  // Normalize content for consistent hashing. Target country is part of the key
+  // so a re-scan with a different applying-to country isn't served the stale
+  // report (country changes the standards evaluated).
+  const normalized = (resumeText + '|JD|' + (jobDescription || '') + '|TC|' + (targetCountry || ''))
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
@@ -149,6 +151,8 @@ interface StreamingScanOptions {
   jobDescriptionText?: string;
   honeypot?: string;
   skipCache?: boolean;
+  /** ISO-2 country the candidate is applying TO; overrides residence detection for country-specific standards. */
+  targetCountry?: string;
   maxRetries?: number;
   retryDelay?: number;
   onProgress?: (progress: StreamProgress) => void;
@@ -180,7 +184,7 @@ export function useStreamingScan() {
     const retryDelay = options?.retryDelay ?? DEFAULT_RETRY_DELAY;
     
     // Step 0: Check client-side cache first (instant, 0ms latency)
-    const clientCacheKey = await generateClientCacheKey(resumeText, options?.jobDescriptionText);
+    const clientCacheKey = await generateClientCacheKey(resumeText, options?.jobDescriptionText, options?.targetCountry);
     
     // If skipCache is true, clear the localStorage cache for this resume
     if (options?.skipCache) {
@@ -293,6 +297,7 @@ export function useStreamingScan() {
             jobDescriptionText: options?.jobDescriptionText,
             honeypot: options?.honeypot,
             skipCache: options?.skipCache,
+            targetCountry: options?.targetCountry,
             language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })(),
           }),
           signal: controllerForThisAttempt.signal,

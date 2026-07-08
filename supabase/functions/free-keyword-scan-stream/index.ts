@@ -1,6 +1,12 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { detectIndustry as detectIndustryShared } from "./industry-detection.ts";
+// Geo: the UI calls ONLY this streaming function, so country detection and the
+// 52-market resume standards must run HERE to reach users (the non-stream
+// free-keyword-scan has copies but is never invoked by the client). Modules are
+// byte-identical copies of free-keyword-scan/*.ts — keep them in sync.
+import { detectCountryFromResume } from "./market-intelligence.ts";
+import { evaluateCountryStandards } from "./country-standards.ts";
 const serve = Deno.serve;
 
 // Declare EdgeRuntime for background tasks
@@ -7314,7 +7320,13 @@ serve(async (req) => {
   // Process in background while streaming progress
   EdgeRuntime.waitUntil((async () => {
     try {
-      const { resumeText, jobDescriptionText, honeypot, skipCache, skipAdminEmail, language } = await req.json();
+      const { resumeText, jobDescriptionText, honeypot, skipCache, skipAdminEmail, language, targetCountry } = await req.json();
+      // Target market the candidate is applying TO (ISO-2). Optional; when the
+      // user states it, it overrides residence-detected country for standards —
+      // someone applying abroad needs the destination market's expectations.
+      const validTargetCountry = (typeof targetCountry === 'string' && /^[A-Za-z]{2}$/.test(targetCountry))
+        ? targetCountry.toUpperCase()
+        : null;
 
       // Debug: Log first 100 chars of resume to verify correct text is being sent
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Resume preview (first 100 chars): ${resumeText?.substring(0, 100)?.replace(/\n/g, ' ')}`);
@@ -8381,9 +8393,33 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       }
       
       // Build response with computed fields merged
+      // Geo + country-specific resume standards (52 markets). Deterministic, no
+      // AI cost. Precedence: target country (applying-to) → resume-detected →
+      // IP → US. Fully guarded: any failure yields nulls and the scan proceeds
+      // exactly as before.
+      let countryStandardsResult = null;
+      let geoResult = null;
+      try {
+        const resumeGeo = detectCountryFromResume(resumeText);
+        const effectiveCountry = validTargetCountry || resumeGeo.country || ipCountry || 'US';
+        countryStandardsResult = evaluateCountryStandards(resumeText, effectiveCountry);
+        geoResult = {
+          country: effectiveCountry,
+          source: validTargetCountry ? 'target' : resumeGeo.source,
+          targetCountry: validTargetCountry,
+          detectedCountry: resumeGeo.country,
+          confidence: validTargetCountry ? 'high' : resumeGeo.confidence,
+        };
+      } catch (geoErr) {
+        console.warn('[FREE-KEYWORD-SCAN-STREAM] Geo/country-standards failed:', (geoErr as Error).message);
+      }
+
       const responseData = {
         success: true,
         ...sanitizedAnalysis,
+        // Country-specific resume standards + geo resolution (computed above)
+        countryStandards: countryStandardsResult,
+        geo: geoResult,
         // New fields for improved analysis
         resumeType,
         seniorityLevel: seniority,
