@@ -26,9 +26,9 @@
     "seeSample": "Bekijk voorbeeldanalyse",
     "whyBetter": "Waarom beter dan ChatGPT?",
     "problemBadge": "De meeste cv's worden eerst door software gescreend",
-    "mainHeading": "Wordt je CV",
-    "mainHeadingHighlight": "Afgewezen door ATS-Bots?",
-    "atsTooltip": "ATS (Applicant Tracking Systems) zijn AI-bots die CV's scannen en filteren voordat een mens ze ziet. Meer dan 98% van de Fortune 500-bedrijven gebruikt ze.",
+    "mainHeading": "Is je cv",
+    "mainHeadingHighlight": "onzichtbaar voor recruiters?",
+    "atsTooltip": "ATS (Applicant Tracking Systems) zetten je cv om in een database die recruiters doorzoeken. Ze wijzen zelden automatisch af — maar slechte parsing of ontbrekende trefwoorden betekent dat zoekopdrachten je nooit tonen. Meer dan 98% van de Fortune 500-bedrijven gebruikt ze.",
     "mainSubheading": "Ontdek het in 30 seconden. Krijg je ATS-score en zie precies wat je sollicitatiegesprekken kost.",
     "ctaButton": "Check mijn CV nu",
     "freeBadge": "GRATIS",
@@ -99,7 +99,7 @@
     "benefitLed": {
       "painBadge": "De #1 reden waarom gekwalificeerde kandidaten worden afgewezen",
       "painHeadingPrefix": "De meeste cv's worden",
-      "painHeadingHighlight": "afgewezen door ATS-bots",
+      "painHeadingHighlight": "onzichtbaar in recruiter-zoekopdrachten",
       "painSubheading": "Voordat een mens ze ooit ziet. Is jouw cv er een van?",
       "solutionLabel": "De oplossing",
       "solutionHeadingHighlight": "directe ATS-bestendige verbeteringen",
@@ -110,7 +110,7 @@
     "worksOnAllAts": "Werkt met alle ATS",
     "atsExplainerToggle": "Grote werkgevers screenen cv's met ATS-software voordat een mens ze leest",
     "atsExplainerBoldLead": "ATS (Applicant Tracking Systems)",
-    "atsExplainerRest": "zijn AI-bots die cv's scannen en filteren voordat een mens ze ooit ziet. Meer dan 98% van de Fortune 500-bedrijven gebruikt ze.",
+    "atsExplainerRest": "zetten je cv om in een database die recruiters doorzoeken. Ze wijzen zelden automatisch af — het echte risico is dat slechte parsing of ontbrekende trefwoorden je onvindbaar maken. Meer dan 98% van de Fortune 500 gebruikt ze.",
     "atsExplainerSystems": "We analyseren tegen Workday, Greenhouse, Lever, Taleo, iCIMS en 50+ meer.",
     "seeMethodology": "Bekijk onze methodologie",
     "packagesTeaserPrefix": "Meer nodig dan een scan?",
@@ -1041,7 +1041,7 @@
       "atsScore": {
         "title": "AI-ATS-score",
         "description": "Onze AI simuleert hoe moderne AI-gestuurde sollicitantvolgsystemen je cv scannen — dezelfde technologie die 98% van de Fortune 500-bedrijven gebruikt.",
-        "whyMatters": "Een lage score betekent dat je cv mogelijk nooit een menselijke recruiter bereikt."
+        "whyMatters": "Een lage score betekent dat parsing- of trefwoordgaten je waarschijnlijk buiten de zoekopdrachten houden die recruiters echt uitvoeren."
       },
       "format": {
         "title": "Opmaakcijfer",
@@ -1220,7 +1220,7 @@
       "nice": "Leuk"
     },
     "atRiskOrNeedsImprovement": {
-      "atRisk": "Risico om uitgefilterd te worden",
+      "atRisk": "Risico om gemist te worden in recruiter-zoekopdrachten",
       "needsImprovement": "Moet beter om te kunnen concurreren"
     },
     "personalizedTipsSection": {
@@ -3184,7 +3184,7 @@
     "clickToExplore": "Klik om te verkennen",
     "atsScore": "ATS-compatibiliteitsscore",
     "needsImprovement": "Vereist verbetering",
-    "filteredOut": "Je cv kan door 73 % van de ATS-systemen worden gefilterd",
+    "filteredOut": "Parsing- en trefwoordgaten kunnen dit cv buiten de meeste recruiter-zoekopdrachten houden",
     "missingKeywords": "Ontbrekende zoekwoorden",
     "plusMore": "+8 meer",
     "atsParsing": "ATS-parseproblemen gevonden",
@@ -3613,7 +3613,7 @@
     "autoRejected": "⚠️ Je CV wordt automatisch afgewezen",
     "filtered": "ATS-systemen filteren je eruit voordat recruiters je sollicitatie zien",
     "critical": "Kritiek",
-    "stat75": "Cv's met een lage score worden veel vaker uitgefilterd vóór menselijke beoordeling",
+    "stat75": "Cv's met een lage score worden veel vaker gemist in zoekopdrachten vóór enige menselijke beoordeling",
     "rewriteDesc": "Volledige herschrijving + ATS-optimalisatie + sollicitatiebrief",
     "rewriteGain": "30-40 punten",
     "quickFix": "Snelle ATS-zoekwoordoptimalisatie",

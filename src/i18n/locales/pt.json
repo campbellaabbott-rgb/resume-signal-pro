@@ -26,9 +26,9 @@
     "seeSample": "Ver Análise de Exemplo",
     "whyBetter": "Porquê Melhor que o ChatGPT?",
     "problemBadge": "A maioria dos currículos é filtrada primeiro por software",
-    "mainHeading": "O Seu Currículo Está a Ser",
-    "mainHeadingHighlight": "Rejeitado pelos Bots ATS?",
-    "atsTooltip": "ATS (Applicant Tracking Systems) são bots de IA que analisam e filtram currículos antes de um humano os ver. Mais de 98% das empresas Fortune 500 os utilizam.",
+    "mainHeading": "Seu currículo está",
+    "mainHeadingHighlight": "invisível para os recrutadores?",
+    "atsTooltip": "Os ATS (sistemas de rastreamento de candidatos) transformam seu currículo em um banco de dados que os recrutadores pesquisam. Raramente rejeitam automaticamente — mas um parsing ruim ou palavras-chave ausentes fazem as buscas nunca mostrarem você. Mais de 98% das empresas Fortune 500 os usam.",
     "mainSubheading": "Descubra em 30 segundos. Obtenha a sua pontuação ATS e veja exatamente o que lhe está a custar entrevistas.",
     "ctaButton": "Verificar o Meu Currículo Agora",
     "freeBadge": "GRÁTIS",
@@ -99,7 +99,7 @@
     "benefitLed": {
       "painBadge": "O motivo nº 1 pelo qual candidatos qualificados são rejeitados",
       "painHeadingPrefix": "A maioria dos currículos é",
-      "painHeadingHighlight": "rejeitados por bots de ATS",
+      "painHeadingHighlight": "invisíveis nas buscas dos recrutadores",
       "painSubheading": "Antes de um humano sequer vê-los. O seu é um deles?",
       "solutionLabel": "A solução",
       "solutionHeadingHighlight": "correções instantâneas à prova de ATS",
@@ -110,7 +110,7 @@
     "worksOnAllAts": "Funciona com todos os ATS",
     "atsExplainerToggle": "Grandes empregadores filtram currículos com software ATS antes de um humano lê-los",
     "atsExplainerBoldLead": "ATS (Sistemas de Rastreamento de Candidatos)",
-    "atsExplainerRest": "são bots de IA que escaneiam e filtram currículos antes de um humano vê-los. Mais de 98% das empresas Fortune 500 os usam.",
+    "atsExplainerRest": "transformam seu currículo em um banco de dados que os recrutadores pesquisam. Raramente rejeitam automaticamente — o risco real é um parsing ruim ou palavras-chave ausentes tornarem você inencontrável. Mais de 98% das Fortune 500 os usam.",
     "atsExplainerSystems": "Analisamos com base em Workday, Greenhouse, Lever, Taleo, iCIMS e mais de 50 outros sistemas.",
     "seeMethodology": "Ver a nossa metodologia",
     "packagesTeaserPrefix": "Precisa de mais do que uma verificação?",
@@ -1041,7 +1041,7 @@
       "atsScore": {
         "title": "Pontuação de IA-ATS",
         "description": "A nossa IA simula como os sistemas modernos de rastreamento de candidatos com IA analisam o seu currículo — a mesma tecnologia usada por 98% das empresas da Fortune 500.",
-        "whyMatters": "Uma pontuação baixa significa que o seu currículo pode nunca chegar a um recrutador humano."
+        "whyMatters": "Uma pontuação baixa significa que falhas de parsing ou lacunas de palavras-chave provavelmente deixam você fora das buscas que os recrutadores realmente fazem."
       },
       "format": {
         "title": "Nota de Formato",
@@ -1220,7 +1220,7 @@
       "nice": "Desejável"
     },
     "atRiskOrNeedsImprovement": {
-      "atRisk": "Em risco de ser filtrado",
+      "atRisk": "Em risco de passar despercebido nas buscas dos recrutadores",
       "needsImprovement": "Precisa de melhorar para competir"
     },
     "personalizedTipsSection": {
@@ -3184,7 +3184,7 @@
     "clickToExplore": "Clique para explorar",
     "atsScore": "Pontuação de compatibilidade ATS",
     "needsImprovement": "Precisa de melhorias",
-    "filteredOut": "Seu currículo pode ser filtrado por 73 % dos sistemas ATS",
+    "filteredOut": "Falhas de parsing e palavras-chave podem deixar este currículo fora da maioria das buscas de recrutadores",
     "missingKeywords": "Palavras-chave ausentes",
     "plusMore": "+8 mais",
     "atsParsing": "Problemas de análise ATS encontrados",
@@ -3613,7 +3613,7 @@
     "autoRejected": "⚠️ Seu currículo está sendo automaticamente rejeitado",
     "filtered": "Sistemas ATS estão filtrando você antes que recrutadores vejam sua candidatura",
     "critical": "Crítico",
-    "stat75": "Currículos com pontuação baixa têm muito mais chances de serem filtrados antes de uma análise humana",
+    "stat75": "Currículos com pontuação baixa têm muito mais chance de passar despercebidos nas buscas antes de qualquer revisão humana",
     "rewriteDesc": "Reescrita completa + otimização ATS + carta de apresentação",
     "rewriteGain": "30-40 pontos",
     "quickFix": "Otimização rápida de palavras-chave ATS",

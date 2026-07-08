@@ -26,9 +26,9 @@
     "seeSample": "Beispielanalyse ansehen",
     "whyBetter": "Warum besser als ChatGPT?",
     "problemBadge": "Die meisten Lebensläufe werden zuerst von Software geprüft",
-    "mainHeading": "Wird Ihr Lebenslauf",
-    "mainHeadingHighlight": "von ATS-Bots abgelehnt?",
-    "atsTooltip": "ATS (Applicant Tracking Systems) sind KI-Bots, die Lebensläufe scannen und filtern, bevor sie ein Mensch sieht. Über 98% der Fortune-500-Unternehmen nutzen sie.",
+    "mainHeading": "Ist Ihr Lebenslauf",
+    "mainHeadingHighlight": "für Recruiter unsichtbar?",
+    "atsTooltip": "ATS (Bewerbermanagementsysteme) überführen Ihren Lebenslauf in eine Datenbank, die Recruiter durchsuchen. Sie lehnen selten automatisch ab — aber schlechtes Parsing oder fehlende Keywords bedeuten, dass Suchen Sie nie anzeigen. Über 98 % der Fortune-500-Unternehmen nutzen sie.",
     "mainSubheading": "Finden Sie es in 30 Sekunden heraus. Erhalten Sie Ihren ATS-Score und sehen Sie genau, was Sie Vorstellungsgespräche kostet.",
     "ctaButton": "Lebenslauf jetzt prüfen",
     "freeBadge": "GRATIS",
@@ -99,7 +99,7 @@
     "benefitLed": {
       "painBadge": "Der Hauptgrund, warum qualifizierte Kandidaten abgelehnt werden",
       "painHeadingPrefix": "Die meisten Lebensläufe werden",
-      "painHeadingHighlight": "von ATS-Bots abgelehnt",
+      "painHeadingHighlight": "in Recruiter-Suchen unsichtbar",
       "painSubheading": "Bevor ein Mensch sie je sieht. Ist deiner einer davon?",
       "solutionLabel": "Die Lösung",
       "solutionHeadingHighlight": "sofortige ATS-sichere Korrekturen",
@@ -110,7 +110,7 @@
     "worksOnAllAts": "Funktioniert mit allen ATS",
     "atsExplainerToggle": "Große Arbeitgeber filtern Lebensläufe mit ATS-Software, bevor ein Mensch sie liest",
     "atsExplainerBoldLead": "ATS (Applicant Tracking Systems)",
-    "atsExplainerRest": "sind KI-Bots, die Lebensläufe scannen und filtern, bevor ein Mensch sie je sieht. Über 98 % der Fortune-500-Unternehmen nutzen sie.",
+    "atsExplainerRest": "überführen Ihren Lebenslauf in eine Datenbank, die Recruiter durchsuchen. Sie lehnen selten automatisch ab — das echte Risiko ist, durch schlechtes Parsing oder fehlende Keywords unauffindbar zu werden. Über 98 % der Fortune 500 nutzen sie.",
     "atsExplainerSystems": "Wir analysieren gegen Workday, Greenhouse, Lever, Taleo, iCIMS & 50+ weitere.",
     "seeMethodology": "Unsere Methodik ansehen",
     "packagesTeaserPrefix": "Brauchst du mehr als einen Scan?",
@@ -1041,7 +1041,7 @@
       "atsScore": {
         "title": "AI-ATS-Score",
         "description": "Unsere KI simuliert, wie moderne KI-gestützte Bewerbermanagementsysteme deinen Lebenslauf scannen — dieselbe Technologie, die 98 % der Fortune-500-Unternehmen verwenden.",
-        "whyMatters": "Ein niedriger Score bedeutet, dass dein Lebenslauf möglicherweise nie einen menschlichen Recruiter erreicht."
+        "whyMatters": "Ein niedriger Score bedeutet, dass Parsing- oder Keyword-Lücken Sie wahrscheinlich aus den Suchen heraushalten, die Recruiter tatsächlich ausführen."
       },
       "format": {
         "title": "Format-Note",
@@ -1220,7 +1220,7 @@
       "nice": "Nett"
     },
     "atRiskOrNeedsImprovement": {
-      "atRisk": "Risiko, herausgefiltert zu werden",
+      "atRisk": "Risiko, in Recruiter-Suchen übersehen zu werden",
       "needsImprovement": "Verbesserung nötig, um wettbewerbsfähig zu sein"
     },
     "personalizedTipsSection": {
@@ -3184,7 +3184,7 @@
     "clickToExplore": "Zum Erkunden klicken",
     "atsScore": "ATS-Kompatibilitätspunktzahl",
     "needsImprovement": "Verbesserungsbedarf",
-    "filteredOut": "Dein Lebenslauf könnte von 73 % der ATS-Systeme herausgefiltert werden",
+    "filteredOut": "Parsing- und Keyword-Lücken können diesen Lebenslauf aus den meisten Recruiter-Suchen heraushalten",
     "missingKeywords": "Fehlende Schlüsselwörter",
     "plusMore": "+8 weitere",
     "atsParsing": "ATS-Parsing-Probleme gefunden",
@@ -3613,7 +3613,7 @@
     "autoRejected": "⚠️ Dein Lebenslauf wird automatisch abgelehnt",
     "filtered": "ATS-Systeme filtern dich heraus, bevor Recruiter deine Bewerbung sehen",
     "critical": "Kritisch",
-    "stat75": "Lebensläufe mit niedriger Punktzahl werden deutlich häufiger aussortiert, bevor ein Mensch sie prüft",
+    "stat75": "Lebensläufe mit niedrigem Score werden weit häufiger in Recruiter-Suchen übersehen, bevor ein Mensch sie liest",
     "rewriteDesc": "Komplette Umschreibung + ATS-Optimierung + Anschreiben",
     "rewriteGain": "30-40 Punkte",
     "quickFix": "Schnelle ATS-Schlüsselwortoptimierung",

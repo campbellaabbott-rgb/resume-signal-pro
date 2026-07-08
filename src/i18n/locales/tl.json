@@ -26,9 +26,9 @@
     "seeSample": "Tingnan ang Sample Analysis",
     "whyBetter": "Bakit Mas Maganda sa ChatGPT?",
     "problemBadge": "Karamihan ng resume ay sinasala muna ng software",
-    "mainHeading": "Ang Iyong Resume ba ay",
-    "mainHeadingHighlight": "Tinatanggihan ng ATS Bots?",
-    "atsTooltip": "Ang ATS (Applicant Tracking Systems) ay mga AI bot na nag-i-scan at nag-fi-filter ng mga resume bago makita ng tao. Higit sa 98% ng mga Fortune 500 na kumpanya ang gumagamit nito.",
+    "mainHeading": "Ang resume mo ba ay",
+    "mainHeadingHighlight": "hindi nakikita ng mga recruiter?",
+    "atsTooltip": "Ginagawang database ng ATS (Applicant Tracking Systems) ang resume mo na hinahanapan ng mga recruiter. Bihira silang awtomatikong tumanggi — pero ang maling parsing o kulang na keywords ay nangangahulugang hindi ka kailanman lalabas sa paghahanap. Mahigit 98% ng Fortune 500 ang gumagamit nito.",
     "mainSubheading": "Alamin sa 30 segundo. Kunin ang iyong ATS score at tingnan kung ano ang nagpapababa ng iyong mga interview.",
     "ctaButton": "I-check ang Aking Resume Ngayon",
     "freeBadge": "LIBRE",
@@ -99,7 +99,7 @@
     "benefitLed": {
       "painBadge": "Ang #1 dahilan kung bakit na-reject ang mga kwalipikadong kandidato",
       "painHeadingPrefix": "Karamihan ng resume ay",
-      "painHeadingHighlight": "na-reject ng mga ATS bot",
+      "painHeadingHighlight": "hindi nakikita sa paghahanap ng mga recruiter",
       "painSubheading": "Bago pa man makita ng tao. Isa ba ang iyo sa mga ito?",
       "solutionLabel": "Ang solusyon",
       "solutionHeadingHighlight": "instant na ATS-proof na ayos",
@@ -110,7 +110,7 @@
     "worksOnAllAts": "Gumagana sa lahat ng ATS",
     "atsExplainerToggle": "Malalaking employer ay nagsasala ng resume gamit ang ATS software bago pa ito basahin ng tao",
     "atsExplainerBoldLead": "ATS (Applicant Tracking Systems)",
-    "atsExplainerRest": "ay mga AI bot na sumasala at nag-scan ng mga resume bago pa makita ng tao. Mahigit 98% ng mga Fortune 500 company ang gumagamit nito.",
+    "atsExplainerRest": "ginagawang database ang resume mo na hinahanapan ng mga recruiter. Bihira silang awtomatikong tumanggi — ang tunay na panganib ay ang maling parsing o kulang na keywords na nagpapawala sa iyo sa paghahanap. Mahigit 98% ng Fortune 500 ang gumagamit nito.",
     "atsExplainerSystems": "Sinusuri namin laban sa Workday, Greenhouse, Lever, Taleo, iCIMS at 50+ pa.",
     "seeMethodology": "Tingnan ang aming methodology",
     "packagesTeaserPrefix": "Kailangan ng higit pa sa scan?",
@@ -1041,7 +1041,7 @@
       "atsScore": {
         "title": "AI-ATS Score",
         "description": "Sinisimulate ng aming AI kung paano ni-scan ang iyong resume ng mga modernong AI-powered Applicant Tracking System — ang parehong teknolohiyang ginagamit ng 98% ng Fortune 500 companies.",
-        "whyMatters": "Ang mababang score ay nangangahulugan na ang iyong resume ay posibleng hindi makarating sa isang tao na recruiter."
+        "whyMatters": "Ang mababang score ay nangangahulugang malamang na inilalayo ka ng mga puwang sa parsing o keywords sa mga paghahanap na talagang ginagawa ng mga recruiter."
       },
       "format": {
         "title": "Format Grade",
@@ -1220,7 +1220,7 @@
       "nice": "Bonus"
     },
     "atRiskOrNeedsImprovement": {
-      "atRisk": "May panganib na ma-filter out",
+      "atRisk": "Nanganganib na hindi mapansin sa paghahanap ng mga recruiter",
       "needsImprovement": "Kailangan ng pagpapabuti para makompetensya"
     },
     "personalizedTipsSection": {
@@ -3184,7 +3184,7 @@
     "clickToExplore": "I-click para tuklasin",
     "atsScore": "Marka ng ATS Compatibility",
     "needsImprovement": "Kailangan ng Pagpapabuti",
-    "filteredOut": "Ang iyong resume ay maaaring i-filter ng 73% ng mga ATS system",
+    "filteredOut": "Maaaring mailayo ng mga puwang sa parsing at keywords ang resume na ito sa karamihan ng paghahanap ng mga recruiter",
     "missingKeywords": "Mga Nawawalang Keyword",
     "plusMore": "+8 pa",
     "atsParsing": "Nahanap na mga Isyu sa ATS Parsing",
@@ -3613,7 +3613,7 @@
     "autoRejected": "⚠️ Ang iyong resume ay awtomatikong tinatanggihan",
     "filtered": "Ang mga ATS system ay nafi-filter ka bago makita ng mga recruiter ang iyong aplikasyon",
     "critical": "Kritikal",
-    "stat75": "Ang mga resume na mababa ang score ay mas malamang masala bago pa marating ang taong magrerebyu",
+    "stat75": "Ang mga resume na mababa ang score ay mas malamang na hindi mapansin sa paghahanap bago pa ang anumang pagsusuri ng tao",
     "rewriteDesc": "Kumpletong muling pagsulat + ATS optimization + cover letter",
     "rewriteGain": "30-40 puntos",
     "quickFix": "Mabilis na ATS keyword optimization",

@@ -94,7 +94,7 @@ const metricTooltips: Record<string, { title: string; description: string; whyMa
   atsScore: {
     title: "AI-ATS Score",
     description: "Our AI simulates how modern AI-powered Applicant Tracking Systems scan your resume.",
-    whyMatters: "A low score means your resume may never reach a human recruiter."
+    whyMatters: "A low score means parsing or keyword gaps are likely keeping you out of the searches recruiters actually run."
   },
   format: {
     title: "Format Grade",
@@ -321,7 +321,7 @@ export function MetricCardsGrid({
       label: t('freeScan.atsScore'),
       tooltipKey: "atsScore",
       value: `${atsScoreEstimate}/100`,
-      subtext: atsScoreEstimate >= 80 ? "✓ Great! You'll pass most ATS" : atsScoreEstimate >= 60 ? "⚠ May get filtered out" : "✗ High rejection risk",
+      subtext: atsScoreEstimate >= 80 ? "✓ Solid — searchable and parseable" : atsScoreEstimate >= 60 ? "⚠ Keyword gaps may hide you from searches" : "✗ Likely invisible in recruiter searches",
       status: statusFromScore(atsScoreEstimate, 80, 60),
       progress: atsScoreEstimate,
     },

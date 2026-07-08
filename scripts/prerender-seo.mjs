@@ -519,7 +519,7 @@ export { GUIDES } from "../src/data/guides";
       },
     ],
     content: `
-      <h1 class="text-3xl font-bold mb-3">Is your resume being rejected by ATS bots?</h1>
+      <h1 class="text-3xl font-bold mb-3">Is your resume invisible to recruiters?</h1>
       <p class="text-muted-foreground mb-6">Find out in about 20 seconds. Our free scan simulates how applicant tracking systems parse your resume and shows exactly what's costing you interviews — score with a full audit trail, missing keywords, weak bullets rewritten, and per-vendor checks for Workday, Greenhouse, Lever, and iCIMS. No sign-up; your resume is never stored.</p>
       ${cta("Check my resume now — free", "Upload or paste your resume and get the complete diagnostic report. 7 scans a day free, 15 with a free account.", "Check my resume free")}
       <section class="mt-10 mb-8">

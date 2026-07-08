@@ -76,13 +76,13 @@ const emailTemplates: EmailTemplate[] = [
     useCase: 'First outreach to your network',
     body: `Hi [Name],
 
-I recently discovered an amazing tool that scans your resume against ATS (Applicant Tracking Systems) - the software that 75% of companies use to filter candidates before a human ever sees their application.
+I recently discovered a tool that scans your resume the way ATS software (Applicant Tracking Systems — what most mid-size and large employers use) actually processes it.
 
-Most people don't realize their resume is getting rejected by robots, not recruiters!
+Here's the part most people miss: ATS rarely rejects anyone. It parses your resume into a database recruiters search — and if your file parses badly or lacks the right keywords, you simply never show up. No rejection, just silence.
 
 You can get a FREE scan here: {{REFERRAL_LINK}}
 
-It takes 30 seconds and shows you exactly what's wrong with your resume formatting, keywords, and structure.
+It takes 30 seconds and shows the actual parse of your file plus the keywords you're missing.
 
 I thought of you because [personalize: you mentioned job hunting / you're in a competitive field / etc].
 
@@ -100,9 +100,9 @@ Best,
 
 I know you've been looking for a new [role type] position, and I wanted to share something that might help.
 
-Did you know that over 70% of resumes never get seen by a human? They get filtered out by ATS software before recruiters even look at them.
+Here's something most job seekers don't know: applications rarely get "rejected" by ATS software — they just never surface. The ATS parses your resume into a database, recruiters search it, and a badly-parsed or keyword-thin resume never appears in the results. You get silence instead of a no.
 
-There's a free tool that scans your resume and tells you exactly how to fix it: {{REFERRAL_LINK}}
+There's a free tool that shows you exactly how your file parses and what's missing: {{REFERRAL_LINK}}
 
 It literally takes 30 seconds and could be the difference between getting interviews and getting ghosted.
 
@@ -115,14 +115,15 @@ Worth checking out!
     name: 'LinkedIn Post',
     subject: 'LinkedIn Post Template',
     useCase: 'Share on LinkedIn to reach your network',
-    body: `🚨 Job seekers: Your resume might be getting rejected before a human ever sees it.
+    body: `🚨 Job seekers: your resume probably isn't being rejected. It's invisible — which is worse, because nobody tells you.
 
-Here's the reality:
-• 75% of resumes are filtered out by ATS software
-• Most people have no idea their formatting is wrong
-• Simple fixes can 3x your interview rate
+Here's how it actually works:
+• ATS software parses your resume into a database
+• Recruiters search that database by keywords and titles
+• Bad parsing or missing keywords = you never appear in results
+• No rejection email. Just silence.
 
-I found a free tool that scans your resume in 30 seconds and shows you exactly what to fix: {{REFERRAL_LINK}}
+I found a free tool that shows the actual parse of your file and the searches you're missing from — 30 seconds: {{REFERRAL_LINK}}
 
 If you're job hunting (or know someone who is), this is worth 30 seconds of your time.
 
@@ -135,9 +136,9 @@ If you're job hunting (or know someone who is), this is worth 30 seconds of your
     useCase: 'For newsletter creators and bloggers',
     body: `**Tool of the Week: Free ATS Resume Scanner**
 
-If you're applying to jobs online, there's a 75% chance your resume is being filtered by ATS (Applicant Tracking System) software before a human ever sees it.
+If you're applying to jobs online, your resume goes through ATS (Applicant Tracking System) software that parses it into a database recruiters search. The quiet failure isn't rejection — it's never appearing in those searches because your file parsed badly or lacks the keywords recruiters type.
 
-I've been recommending this free scanner to readers, and the feedback has been incredible:
+This free scanner shows you the actual parse of your file and exactly what's missing:
 
 → Get your free scan: {{REFERRAL_LINK}}
 
@@ -157,20 +158,20 @@ Try it out and let me know what you think!`,
     name: 'Twitter/X Thread',
     subject: 'Twitter Thread Template',
     useCase: 'Share as a Twitter/X thread',
-    body: `🧵 Your resume is probably getting rejected by robots. Here's how to fix it (free):
+    body: `🧵 Your resume probably isn't getting rejected by robots. It's worse: it's invisible. Here's how to fix it (free):
 
-1/ Over 75% of resumes never reach a human. They're filtered out by ATS (Applicant Tracking Systems).
+1/ The "ATS auto-rejects 75% of resumes" stat you've seen everywhere? Mostly myth. ATS systems rarely reject anyone.
 
-2/ The worst part? Most people have no idea. They think they're getting rejected by recruiters when they're actually getting rejected by software.
+2/ What actually happens is quieter: the ATS parses your resume into a database, recruiters search that database — and if your file parsed badly or lacks the right keywords, you never appear. No rejection email. Nothing. You're just not in the results.
 
-3/ Common ATS killers:
-• Wrong file format
-• Fancy fonts/graphics
-• Missing keywords
-• Poor section headers
-• Tables and columns
+3/ Common invisibility causes:
+• Two-column layouts that scramble parsing
+• Text in headers/footers (often skipped)
+• Missing the exact keywords recruiters search
+• Non-standard section headers
+• Tables and graphics
 
-4/ I found a free tool that scans your resume in 30 seconds and tells you exactly what to fix:
+4/ I found a free tool that shows you the actual parse of your file plus what searches you're missing from — 30 seconds, no signup:
 
 {{REFERRAL_LINK}}
 

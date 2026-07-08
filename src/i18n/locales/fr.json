@@ -27,8 +27,8 @@
     "whyBetter": "Pourquoi mieux que ChatGPT ?",
     "problemBadge": "La plupart des CV sont d'abord filtrés par un logiciel",
     "mainHeading": "Votre CV est-il",
-    "mainHeadingHighlight": "Rejeté par les Bots ATS ?",
-    "atsTooltip": "Les ATS (Applicant Tracking Systems) sont des bots IA qui analysent et filtrent les CV avant qu'un humain ne les voie. Plus de 98% des entreprises Fortune 500 les utilisent.",
+    "mainHeadingHighlight": "invisible pour les recruteurs ?",
+    "atsTooltip": "Les ATS (systèmes de suivi des candidatures) transforment votre CV en base de données que les recruteurs interrogent. Ils rejettent rarement automatiquement — mais un mauvais parsing ou des mots-clés manquants font que les recherches ne vous affichent jamais. Plus de 98 % des entreprises du Fortune 500 les utilisent.",
     "mainSubheading": "Découvrez-le en 30 secondes. Obtenez votre score ATS et voyez exactement ce qui vous coûte des entretiens.",
     "ctaButton": "Analyser mon CV maintenant",
     "freeBadge": "GRATUIT",
@@ -99,7 +99,7 @@
     "benefitLed": {
       "painBadge": "La raison n°1 pour laquelle des candidats qualifiés sont rejetés",
       "painHeadingPrefix": "La plupart des CV sont",
-      "painHeadingHighlight": "rejetés par des robots ATS",
+      "painHeadingHighlight": "invisibles dans les recherches des recruteurs",
       "painSubheading": "Avant même qu'un humain ne les voie. Le vôtre en fait-il partie ?",
       "solutionLabel": "La solution",
       "solutionHeadingHighlight": "des corrections instantanées à l'épreuve des ATS",
@@ -110,7 +110,7 @@
     "worksOnAllAts": "Fonctionne avec tous les ATS",
     "atsExplainerToggle": "Les grands employeurs filtrent les CV avec un logiciel ATS avant qu'un humain ne les lise",
     "atsExplainerBoldLead": "ATS (Applicant Tracking Systems)",
-    "atsExplainerRest": "sont des robots IA qui analysent et filtrent les CV avant qu'un humain ne les voie. Plus de 98 % des entreprises du Fortune 500 les utilisent.",
+    "atsExplainerRest": "transforment votre CV en base de données que les recruteurs interrogent. Ils rejettent rarement automatiquement — le vrai risque est qu'un mauvais parsing ou des mots-clés manquants vous rendent introuvable. Plus de 98 % du Fortune 500 les utilisent.",
     "atsExplainerSystems": "Nous analysons par rapport à Workday, Greenhouse, Lever, Taleo, iCIMS et plus de 50 autres.",
     "seeMethodology": "Voir notre méthodologie",
     "packagesTeaserPrefix": "Besoin de plus qu'un scan ?",
@@ -1041,7 +1041,7 @@
       "atsScore": {
         "title": "Score IA-ATS",
         "description": "Notre IA simule comment les systèmes modernes de suivi des candidatures alimentés par l'IA analysent votre CV — la même technologie utilisée par 98 % des entreprises du Fortune 500.",
-        "whyMatters": "Un score faible signifie que votre CV pourrait ne jamais atteindre un recruteur humain."
+        "whyMatters": "Un score bas signifie que des lacunes de parsing ou de mots-clés vous excluent probablement des recherches que les recruteurs effectuent réellement."
       },
       "format": {
         "title": "Note de mise en forme",
@@ -1220,7 +1220,7 @@
       "nice": "Agréable"
     },
     "atRiskOrNeedsImprovement": {
-      "atRisk": "Risque d'être filtré",
+      "atRisk": "Risque de passer inaperçu dans les recherches des recruteurs",
       "needsImprovement": "Doit être amélioré pour être compétitif"
     },
     "personalizedTipsSection": {
@@ -3184,7 +3184,7 @@
     "clickToExplore": "Cliquer pour explorer",
     "atsScore": "Score de compatibilité ATS",
     "needsImprovement": "Nécessite des améliorations",
-    "filteredOut": "Votre CV pourrait être filtré par 73 % des systèmes ATS",
+    "filteredOut": "Des lacunes de parsing et de mots-clés peuvent exclure ce CV de la plupart des recherches de recruteurs",
     "missingKeywords": "Mots-clés manquants",
     "plusMore": "+8 autres",
     "atsParsing": "Problèmes d’analyse ATS détectés",
@@ -3613,7 +3613,7 @@
     "autoRejected": "⚠️ Votre CV est automatiquement rejeté",
     "filtered": "Les systèmes ATS vous filtrent avant que les recruteurs voient votre candidature",
     "critical": "Critique",
-    "stat75": "Les CV mal notés ont beaucoup plus de risques d'être filtrés avant toute lecture humaine",
+    "stat75": "Les CV mal notés ont bien plus de chances de passer inaperçus dans les recherches avant toute lecture humaine",
     "rewriteDesc": "Réécriture complète + optimisation ATS + lettre de motivation",
     "rewriteGain": "30-40 points",
     "quickFix": "Optimisation rapide des mots-clés ATS",

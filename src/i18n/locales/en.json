@@ -26,9 +26,9 @@
     "seeSample": "See Sample Analysis",
     "whyBetter": "Why Better Than ChatGPT?",
     "problemBadge": "Most resumes are screened by software first",
-    "mainHeading": "Is Your Resume Being",
-    "mainHeadingHighlight": "Rejected by ATS Bots?",
-    "atsTooltip": "ATS (Applicant Tracking Systems) are AI bots that scan and filter resumes before a human ever sees them. Over 98% of Fortune 500 companies use them.",
+    "mainHeading": "Is Your Resume",
+    "mainHeadingHighlight": "Invisible to Recruiters?",
+    "atsTooltip": "ATS (Applicant Tracking Systems) parse your resume into a database recruiters search. They rarely auto-reject — but bad parsing or missing keywords means searches never surface you. Over 98% of Fortune 500 companies use them.",
     "mainSubheading": "Find out in 30 seconds. Our AI simulates how ATS systems scan your resume and shows exactly what's costing you interviews.",
     "ctaButton": "Check My Resume Now",
     "freeBadge": "FREE",
@@ -99,7 +99,7 @@
     "benefitLed": {
       "painBadge": "The #1 reason qualified candidates get rejected",
       "painHeadingPrefix": "Most resumes are",
-      "painHeadingHighlight": "rejected by ATS bots",
+      "painHeadingHighlight": "invisible to recruiter searches",
       "painSubheading": "Before a human ever sees them. Is yours one of them?",
       "solutionLabel": "The solution",
       "solutionHeadingHighlight": "instant ATS-proof fixes",
@@ -110,7 +110,7 @@
     "worksOnAllAts": "Works on all ATS",
     "atsExplainerToggle": "Large employers screen resumes with ATS software before a human reads them",
     "atsExplainerBoldLead": "ATS (Applicant Tracking Systems)",
-    "atsExplainerRest": "are AI bots that scan and filter resumes before a human ever sees them. Over 98% of Fortune 500 companies use them.",
+    "atsExplainerRest": "parse your resume into a database recruiters search. They rarely auto-reject — the real risk is bad parsing or missing keywords making you unsearchable. Over 98% of Fortune 500 companies use them.",
     "atsExplainerSystems": "We analyze against Workday, Greenhouse, Lever, Taleo, iCIMS & 50+ more.",
     "seeMethodology": "See our methodology",
     "packagesTeaserPrefix": "Need more than a scan?",
@@ -1041,7 +1041,7 @@
       "atsScore": {
         "title": "AI-ATS Score",
         "description": "Our AI simulates how modern AI-powered Applicant Tracking Systems scan your resume—the same technology 98% of Fortune 500 companies use.",
-        "whyMatters": "A low score means your resume may never reach a human recruiter."
+        "whyMatters": "A low score means parsing or keyword gaps are likely keeping you out of the searches recruiters actually run."
       },
       "format": {
         "title": "Format Grade",
@@ -1220,7 +1220,7 @@
       "nice": "Nice"
     },
     "atRiskOrNeedsImprovement": {
-      "atRisk": "At risk of being filtered out",
+      "atRisk": "At risk of being missed in recruiter searches",
       "needsImprovement": "Needs improvement to compete"
     },
     "personalizedTipsSection": {
@@ -3184,7 +3184,7 @@
     "clickToExplore": "Click to explore",
     "atsScore": "ATS Compatibility Score",
     "needsImprovement": "Needs Improvement",
-    "filteredOut": "Your resume may be filtered out by 73% of ATS systems",
+    "filteredOut": "Parsing and keyword gaps may keep this resume out of most recruiter searches",
     "missingKeywords": "Missing Keywords",
     "plusMore": "+8 more",
     "atsParsing": "ATS Parsing Issues Found",
@@ -3613,7 +3613,7 @@
     "autoRejected": "⚠️ Your resume is being auto-rejected",
     "filtered": "ATS systems are filtering you out before recruiters see your application",
     "critical": "Critical",
-    "stat75": "Low-scoring resumes are far more likely to be filtered out before a human review",
+    "stat75": "Low-scoring resumes are far more likely to be missed in recruiter searches before any human review",
     "rewriteDesc": "Complete rewrite + ATS optimization + cover letter",
     "rewriteGain": "30-40 points",
     "quickFix": "Quick ATS keyword optimization",
