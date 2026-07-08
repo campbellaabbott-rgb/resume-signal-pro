@@ -2767,6 +2767,26 @@
     }
   },
   "changelogEntries": {
+    "countryStandards": {
+      "title": "Ihr Bericht kennt jetzt die lokalen Regeln: Standards aus 52 Ländern",
+      "description": "Sie scannen aus Deutschland, Japan oder dem Golf? Ihr Bericht enthält jetzt die Normen Ihres Markts — Fotoregeln (der heikelste Unterschied: in Tokio erwartet, in Toronto ein Ausschlusskriterium), Erwartungen an persönliche Daten und marktspezifische Prüfungen wie Polens RODO-Klausel, Italiens Datenschutz-Einwilligung und die Visa-Status-Zeile im Golf. Verifiziert Juli 2026; schwächer belegte Märkte sind als Richtwert markiert."
+    },
+    "fractionalMode": {
+      "title": "Fractional Leader: parallele Mandate sind ein Portfolio, kein Jobhopping",
+      "description": "Der Scanner erkennt jetzt Fractional- und Interim-Führung — überlappende Senior-Mandate werden nicht mehr als Instabilität fehlgedeutet. Und Freelance Boost hat einen Fractional-Modus: ein Portfolio-Dacheintrag mit Scope je Mandat (P&L, Teamgröße, Phase), gebaut nur aus Ihren Zahlen. Dazu ein neuer Guide zur Strukturierung."
+    },
+    "freelanceUpgrades": {
+      "title": "Freelance Boost: sehen Sie die Transformation vor dem Kauf",
+      "description": "Die Seite zeigt jetzt ein gekennzeichnetes Vorher/Nachher-Beispiel der Übersetzung. Fügen Sie ein Upwork-artiges Profil in den Gratis-Scanner ein, sagt er die Wahrheit — „das ist ein Profil, kein Lebenslauf“ — und leitet zum richtigen Werkzeug. Ergebnisse lassen sich jetzt direkt als echte Einträge in den Editor einfügen, bereit für den formatierten Export."
+    },
+    "honestMetricsFix": {
+      "title": "Behoben: einige Berichtskacheln zeigten Standardwerte statt Ihrer Daten",
+      "description": "Ein internes Audit ergab: Wenn die Analyse bestimmte Metriken wegließ, füllte der Bericht sie still mit identischen Werten für alle — inklusive einer nie realen ATS-Kompatibilitätsliste. Alles entfernt: Diese Metriken sind jetzt Pflicht in der Analyse, Wort-/Seitenzahlen stammen aus Ihrem echten Dokument, und was wir nicht messen können, wird ausgeblendet statt erfunden. Wir veröffentlichen das, weil Vertrauen das Produkt ist."
+    },
+    "coachButtonFix": {
+      "title": "Behoben: der 5-$-Interview-Coach-Button öffnete den 25-$-Checkout",
+      "description": "Das Angebot „Interview Coach — 5 $“ am Berichtsende führte in den 25-$-Checkout der Vollanalyse. Jetzt kauft es genau das, was draufsteht. Falls betroffen: Melden Sie sich für eine Rückerstattung — ohne Fragen."
+    },
     "shareCards": {
       "title": "Teilen Sie Ihr Vorher/Nachher — und Ihren Roast",
       "description": "Ein Tipp öffnet jetzt das Teilen-Menü Ihres Telefons mit einem sauberen Bild im Anhang. Nach dem Korrigieren erneut gescannt? Die Karte wird zu Ihrem Fortschritt: „58 → 74, beide Male dieselbe Rubrik.“ Und der Resume Roast bekommt endlich das teilbare Bild, das er verdient — Spruch und Schärfegrad, nie Lebenslauf-Inhalte auf irgendeiner Karte."

@@ -2767,6 +2767,26 @@
     }
   },
   "changelogEntries": {
+    "countryStandards": {
+      "title": "Your report now knows local rules: 52-country resume standards",
+      "description": "Scanning from Germany, Japan, or the Gulf? Your report now includes your market's norms — photo rules (the highest-stakes difference: a photo is expected in Tokyo and gets you discarded in Toronto), personal-data expectations, and market-specific checks like Poland's RODO clause, Italy's privacy consent, and Gulf visa-status lines. Verified July 2026; softer markets are labeled as directional."
+    },
+    "fractionalMode": {
+      "title": "Fractional leaders: concurrent roles are a portfolio, not job-hopping",
+      "description": "The scanner now recognizes fractional and interim leadership — overlapping senior engagements no longer get misread as instability. And Freelance Boost gained a fractional mode: an umbrella portfolio entry with per-engagement scope (P&L, headcount, stage), built only from figures you provide. Plus a new guide on structuring fractional roles."
+    },
+    "freelanceUpgrades": {
+      "title": "Freelance Boost: see the transformation before you pay",
+      "description": "The intake page now shows a labeled before/after example of what the translation actually produces. Paste an Upwork-style profile into the free scanner and it says the honest thing — 'this is a profile, not a resume' — and routes you to the right tool. And results now insert directly into the builder as real experience entries, ready for typeset export."
+    },
+    "honestMetricsFix": {
+      "title": "Fixed: some report tiles showed defaults instead of your data",
+      "description": "An internal audit found that when the analysis omitted certain metrics, the report quietly filled them with identical defaults for everyone — including a per-ATS compatibility list that was never real. All of it is gone: those metrics are now required from the analysis, word/page counts derive from your actual document, and anything we can't measure is hidden instead of invented. We publish this because trust is the product."
+    },
+    "coachButtonFix": {
+      "title": "Fixed: the $5 Interview Coach button opened the $25 checkout",
+      "description": "The 'Interview Coach — $5' offer at the end of the report was routing into the $25 Full Analysis checkout. It now buys exactly what it says. If this happened to you, contact us for a refund — no questions."
+    },
     "shareCards": {
       "title": "Share your before/after — and your roast",
       "description": "One tap now opens your phone's share sheet with a clean image attached. Rescanned after fixing? The card becomes your improvement: '58 → 74, same rubric both times.' And the Resume Roast finally gets the shareable image it deserves — burn quote, spice level, no resume content ever on any card."

@@ -2767,6 +2767,26 @@
     }
   },
   "changelogEntries": {
+    "countryStandards": {
+      "title": "Votre rapport connaît désormais les règles locales : standards de 52 pays",
+      "description": "Vous scannez depuis l'Allemagne, le Japon ou le Golfe ? Votre rapport inclut désormais les normes de votre marché — règles de photo (la différence la plus sensible : attendue à Tokyo, éliminatoire à Toronto), attentes en données personnelles et vérifications spécifiques comme la clause RODO polonaise, le consentement italien et la ligne de statut de visa du Golfe. Vérifié en juillet 2026 ; les marchés moins documentés sont marqués comme indicatifs."
+    },
+    "fractionalMode": {
+      "title": "Dirigeants fractionnés : des rôles simultanés forment un portefeuille, pas de l'instabilité",
+      "description": "Le scanner reconnaît désormais le leadership fractionné et intérimaire — les mandats seniors qui se chevauchent ne sont plus lus comme de l'instabilité. Et Freelance Boost gagne un mode fractionné : une entrée portefeuille avec le périmètre par mandat (P&L, effectifs, stade), bâtie uniquement sur vos chiffres. Plus un nouveau guide pour structurer ces rôles."
+    },
+    "freelanceUpgrades": {
+      "title": "Freelance Boost : voyez la transformation avant de payer",
+      "description": "La page d'accueil montre désormais un exemple étiqueté avant/après de ce que produit la traduction. Collez un profil type Upwork dans le scanner gratuit et il dit la vérité — « ceci est un profil, pas un CV » — et vous oriente vers le bon outil. Et les résultats s'insèrent directement dans l'éditeur comme de vraies expériences, prêtes à exporter."
+    },
+    "honestMetricsFix": {
+      "title": "Corrigé : certaines tuiles du rapport affichaient des valeurs par défaut au lieu de vos données",
+      "description": "Un audit interne a révélé que lorsque l'analyse omettait certaines métriques, le rapport les remplissait en silence avec des valeurs identiques pour tous — y compris une liste de compatibilité par ATS qui n'a jamais été réelle. Tout cela a disparu : ces métriques sont désormais exigées de l'analyse, les comptes de mots/pages dérivent de votre document réel, et ce que nous ne pouvons pas mesurer est masqué plutôt qu'inventé. Nous le publions parce que la confiance est le produit."
+    },
+    "coachButtonFix": {
+      "title": "Corrigé : le bouton Interview Coach à 5 $ ouvrait le paiement à 25 $",
+      "description": "L'offre « Interview Coach — 5 $ » en fin de rapport menait au paiement de l'Analyse Complète à 25 $. Elle achète désormais exactement ce qu'elle annonce. Si cela vous est arrivé, contactez-nous pour un remboursement — sans questions."
+    },
     "shareCards": {
       "title": "Partagez votre avant/après — et votre roast",
       "description": "Un geste ouvre désormais la feuille de partage de votre téléphone avec une image propre en pièce jointe. Rescanné après correction ? La carte devient votre progression : « 58 → 74, même grille les deux fois. » Et le Resume Roast reçoit enfin l'image partageable qu'il mérite — la punchline et le niveau de piquant, sans jamais aucun contenu de votre CV sur les cartes."

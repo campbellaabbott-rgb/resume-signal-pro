@@ -2767,6 +2767,26 @@
     }
   },
   "changelogEntries": {
+    "countryStandards": {
+      "title": "Je rapport kent nu de lokale regels: standaarden uit 52 landen",
+      "description": "Scan je vanuit Duitsland, Japan of de Golf? Je rapport bevat nu de normen van jouw markt — fotoregels (het gevoeligste verschil: verwacht in Tokio, afwijzingsgrond in Toronto), verwachtingen rond persoonsgegevens en marktspecifieke checks zoals de Poolse RODO-clausule, de Italiaanse privacytoestemming en de visumstatusregel in de Golf. Geverifieerd juli 2026; dunner onderbouwde markten zijn gemarkeerd als richtinggevend."
+    },
+    "fractionalMode": {
+      "title": "Fractional leiders: gelijktijdige rollen zijn een portfolio, geen jobhoppen",
+      "description": "De scanner herkent nu fractional en interim leiderschap — overlappende senior opdrachten worden niet langer als instabiliteit gelezen. En Freelance Boost kreeg een fractional-modus: één paraplu-portfolio-item met scope per opdracht (P&L, teamgrootte, fase), gebouwd op alleen jouw cijfers. Plus een nieuwe gids."
+    },
+    "freelanceUpgrades": {
+      "title": "Freelance Boost: zie de transformatie vóór je betaalt",
+      "description": "De pagina toont nu een gelabeld voor/na-voorbeeld van wat de vertaling oplevert. Plak een Upwork-achtig profiel in de gratis scanner en hij zegt het eerlijk — 'dit is een profiel, geen cv' — en wijst je naar het juiste gereedschap. Resultaten voeg je nu direct in de editor in als echte werkervaring, klaar voor nette export."
+    },
+    "honestMetricsFix": {
+      "title": "Opgelost: sommige rapporttegels toonden standaardwaarden in plaats van jouw data",
+      "description": "Een interne audit vond dat wanneer de analyse bepaalde metrics wegliet, het rapport ze stilletjes vulde met identieke waarden voor iedereen — inclusief een nooit echte ATS-compatibiliteitslijst. Alles is weg: die metrics zijn nu verplicht in de analyse, woord-/paginatellingen komen uit je echte document, en wat we niet kunnen meten verbergen we in plaats van verzinnen. We publiceren dit omdat vertrouwen het product is."
+    },
+    "coachButtonFix": {
+      "title": "Opgelost: de $5 Interview Coach-knop opende de $25-checkout",
+      "description": "Het aanbod 'Interview Coach — $5' aan het einde van het rapport leidde naar de $25-checkout van de Volledige Analyse. Hij koopt nu precies wat er staat. Overkwam dit jou? Neem contact op voor terugbetaling — zonder vragen."
+    },
     "shareCards": {
       "title": "Deel je voor/na — en je roast",
       "description": "Eén tik opent nu het deelmenu van je telefoon met een strakke afbeelding als bijlage. Opnieuw gescand na het fixen? De kaart wordt je vooruitgang: '58 → 74, beide keren dezelfde meetlat.' En de Resume Roast krijgt eindelijk de deelbare afbeelding die hij verdient — de sneer en het pittigheidsniveau, nooit cv-inhoud op welke kaart dan ook."

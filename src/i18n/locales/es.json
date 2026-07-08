@@ -2767,6 +2767,26 @@
     }
   },
   "changelogEntries": {
+    "countryStandards": {
+      "title": "Tu informe ahora conoce las reglas locales: estándares de 52 países",
+      "description": "¿Escaneas desde Alemania, Japón o el Golfo? Tu informe ahora incluye las normas de tu mercado — reglas de foto (la diferencia más delicada: en Tokio la foto se espera y en Toronto te descarta), expectativas de datos personales y verificaciones específicas como la cláusula RODO de Polonia, el consentimiento de privacidad de Italia y la línea de estatus de visa del Golfo. Verificado en julio de 2026; los mercados con menos fuentes se marcan como orientativos."
+    },
+    "fractionalMode": {
+      "title": "Líderes fraccionales: los roles simultáneos son un portafolio, no inestabilidad",
+      "description": "El escáner ahora reconoce liderazgo fraccional e interino — los compromisos senior superpuestos ya no se malinterpretan como inestabilidad. Y Freelance Boost ganó un modo fraccional: una entrada paraguas de portafolio con alcance por compromiso (P&L, equipo, etapa), construida solo con las cifras que tú aportas. Además, una nueva guía para estructurar roles fraccionales."
+    },
+    "freelanceUpgrades": {
+      "title": "Freelance Boost: mira la transformación antes de pagar",
+      "description": "La página de inicio ahora muestra un ejemplo etiquetado de antes y después de lo que produce la traducción. Pega un perfil estilo Upwork en el escáner gratuito y te dice la verdad — 'esto es un perfil, no un currículum' — y te dirige a la herramienta correcta. Y los resultados ahora se insertan directamente en el editor como experiencia real, listos para exportar con formato."
+    },
+    "honestMetricsFix": {
+      "title": "Corregido: algunas tarjetas del informe mostraban valores por defecto en lugar de tus datos",
+      "description": "Una auditoría interna encontró que cuando el análisis omitía ciertas métricas, el informe las rellenaba en silencio con valores idénticos para todos — incluida una lista de compatibilidad por ATS que nunca fue real. Todo eso desapareció: esas métricas ahora son obligatorias en el análisis, los conteos de palabras/páginas se derivan de tu documento real, y lo que no podemos medir se oculta en lugar de inventarse. Lo publicamos porque la confianza es el producto."
+    },
+    "coachButtonFix": {
+      "title": "Corregido: el botón de Interview Coach de $5 abría el checkout de $25",
+      "description": "La oferta 'Interview Coach — $5' al final del informe dirigía al checkout del Análisis Completo de $25. Ahora compra exactamente lo que dice. Si te ocurrió, contáctanos para un reembolso — sin preguntas."
+    },
     "shareCards": {
       "title": "Comparte tu antes y después — y tu roast",
       "description": "Un toque abre la hoja de compartir de tu teléfono con una imagen limpia adjunta. ¿Reescaneaste tras corregir? La tarjeta se convierte en tu mejora: '58 → 74, misma rúbrica ambas veces.' Y el Resume Roast por fin tiene la imagen compartible que merece — la frase más picante y el nivel de picante, sin contenido de tu currículum en ninguna tarjeta."

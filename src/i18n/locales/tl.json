@@ -2767,6 +2767,26 @@
     }
   },
   "changelogEntries": {
+    "countryStandards": {
+      "title": "Alam na ng iyong report ang lokal na patakaran: pamantayan ng 52 bansa",
+      "description": "Nag-i-scan mula sa Germany, Japan, o Gulf? Kasama na ngayon sa iyong report ang mga pamantayan ng iyong merkado — mga patakaran sa litrato (ang pinakasensitibong pagkakaiba: inaasahan sa Tokyo, dahilan ng pagtanggi sa Toronto), inaasahan sa personal na datos, at mga tseke tulad ng RODO clause ng Poland, privacy consent ng Italy, at visa-status na linya ng Gulf. Na-verify noong Hulyo 2026; ang mga merkadong may kaunting sources ay may markang directional."
+    },
+    "fractionalMode": {
+      "title": "Fractional na lider: ang sabay-sabay na tungkulin ay portfolio, hindi pagpapalipat-lipat",
+      "description": "Nakikilala na ng scanner ang fractional at interim na pamumuno — hindi na binabasa bilang kawalang-tatag ang magkakapatong na senior na engagement. At may fractional mode na ang Freelance Boost: isang umbrella portfolio entry na may saklaw bawat engagement (P&L, koponan, yugto), mula lamang sa mga bilang na ibinigay mo. May bagong gabay pa."
+    },
+    "freelanceUpgrades": {
+      "title": "Freelance Boost: makita ang transpormasyon bago magbayad",
+      "description": "Ipinapakita na ngayon ng page ang may-label na before/after na halimbawa ng aktwal na resulta. I-paste ang Upwork-style na profile sa libreng scanner at sasabihin nito ang totoo — 'profile ito, hindi resume' — at itturo ka sa tamang tool. At ang mga resulta ay direkta nang naipapasok sa builder bilang tunay na karanasan, handa sa maayos na export."
+    },
+    "honestMetricsFix": {
+      "title": "Naayos: may mga report tile na nagpapakita ng default sa halip na iyong datos",
+      "description": "Natuklasan ng internal audit na kapag hindi nagbalik ang pagsusuri ng ilang sukatan, tahimik itong pinupunan ng report ng magkakaparehong halaga para sa lahat — kabilang ang listahan ng ATS compatibility na hindi kailanman totoo. Wala na ang lahat ng iyon: sapilitan na ang mga sukatang iyon sa pagsusuri, ang bilang ng salita/pahina ay galing sa iyong tunay na dokumento, at ang hindi namin masusukat ay itinatago sa halip na imbentuhin. Inilalathala namin ito dahil tiwala ang produkto."
+    },
+    "coachButtonFix": {
+      "title": "Naayos: ang $5 Interview Coach na button ay nagbubukas ng $25 checkout",
+      "description": "Ang alok na 'Interview Coach — $5' sa dulo ng report ay tumutungo sa $25 Full Analysis checkout. Binibili na nito ngayon ang eksaktong nakasaad. Kung nangyari ito sa iyo, makipag-ugnayan para sa refund — walang tanong."
+    },
     "shareCards": {
       "title": "I-share ang iyong before/after — at ang iyong roast",
       "description": "Isang tap na lang ay bubukas na ang share sheet ng iyong telepono na may kalakip na malinis na imahe. Nag-rescan pagkatapos mag-ayos? Ang card ay nagiging iyong pag-unlad: '58 → 74, parehong sukatan sa dalawang beses.' At sa wakas, nakuha na ng Resume Roast ang nararapat na shareable na imahe — ang matalim na banat at spice level, walang kahit anong laman ng resume sa alinmang card."
