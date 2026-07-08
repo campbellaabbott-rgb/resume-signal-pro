@@ -9,7 +9,8 @@
     "changelog": "What's New",
     "homeAriaLabel": "Resume Booster - Home",
     "getStartedAriaLabel": "Get started - scroll to upload section",
-    "mainNavAriaLabel": "Main navigation"
+    "mainNavAriaLabel": "Main navigation",
+    "guides": "Guides"
   },
   "hero": {
     "badge": "AI-Powered Resume Analysis",

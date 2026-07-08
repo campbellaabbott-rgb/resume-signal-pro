@@ -9,7 +9,8 @@
     "changelog": "Neuigkeiten",
     "homeAriaLabel": "Resume Booster - Startseite",
     "getStartedAriaLabel": "Jetzt starten - zum Upload-Bereich scrollen",
-    "mainNavAriaLabel": "Hauptnavigation"
+    "mainNavAriaLabel": "Hauptnavigation",
+    "guides": "Ratgeber"
   },
   "hero": {
     "badge": "KI-gestützte Lebenslauf-Analyse",

@@ -9,7 +9,8 @@
     "changelog": "नया क्या है",
     "homeAriaLabel": "Resume Booster - होम",
     "getStartedAriaLabel": "शुरू करें - अपलोड सेक्शन पर स्क्रॉल करें",
-    "mainNavAriaLabel": "मुख्य नेविगेशन"
+    "mainNavAriaLabel": "मुख्य नेविगेशन",
+    "guides": "गाइड"
   },
   "hero": {
     "badge": "AI-संचालित रिज़्यूमे विश्लेषण",

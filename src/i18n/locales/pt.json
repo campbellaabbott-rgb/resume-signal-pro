@@ -9,7 +9,8 @@
     "changelog": "Novidades",
     "homeAriaLabel": "Resume Booster - Início",
     "getStartedAriaLabel": "Comece agora - role até a secção de envio",
-    "mainNavAriaLabel": "Navegação principal"
+    "mainNavAriaLabel": "Navegação principal",
+    "guides": "Guias"
   },
   "hero": {
     "badge": "Análise de Currículo com IA",

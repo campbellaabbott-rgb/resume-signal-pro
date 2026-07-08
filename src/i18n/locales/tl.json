@@ -9,7 +9,8 @@
     "changelog": "Bago",
     "homeAriaLabel": "Resume Booster - Home",
     "getStartedAriaLabel": "Magsimula - mag-scroll sa upload section",
-    "mainNavAriaLabel": "Main navigation"
+    "mainNavAriaLabel": "Main navigation",
+    "guides": "Mga Gabay"
   },
   "hero": {
     "badge": "AI-Powered Resume Analysis",

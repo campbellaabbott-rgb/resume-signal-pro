@@ -9,7 +9,8 @@
     "changelog": "Nieuw",
     "homeAriaLabel": "Resume Booster - Home",
     "getStartedAriaLabel": "Aan de slag - scroll naar de uploadsectie",
-    "mainNavAriaLabel": "Hoofdnavigatie"
+    "mainNavAriaLabel": "Hoofdnavigatie",
+    "guides": "Gidsen"
   },
   "hero": {
     "badge": "AI-gestuurde CV-analyse",

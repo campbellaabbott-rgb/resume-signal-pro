@@ -1,4 +1,4 @@
-import { Sparkles, CreditCard, Package, Shield, Megaphone } from "lucide-react";
+import { Sparkles, CreditCard, Package, Shield, Megaphone, BookOpen } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -63,13 +63,18 @@ export function Header() {
             </Link>
             
             <div className="hidden sm:flex items-center">
+              {/* How-it-works now lives inside /trust (methodology summary
+                  embedded there); its slot goes to the guides library. */}
               <Button
                 variant="ghost"
                 size="sm"
                 asChild
-                className="gap-2 text-muted-foreground hover:text-foreground"
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
               >
-                <Link to="/methodology">{t('header.howItWorks')}</Link>
+                <Link to="/guides">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  {t('header.guides')}
+                </Link>
               </Button>
               <Button
                 variant="ghost"

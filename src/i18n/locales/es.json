@@ -9,7 +9,8 @@
     "changelog": "Novedades",
     "homeAriaLabel": "Resume Booster - Inicio",
     "getStartedAriaLabel": "Empezar - desplazarse a la sección de carga",
-    "mainNavAriaLabel": "Navegación principal"
+    "mainNavAriaLabel": "Navegación principal",
+    "guides": "Guías"
   },
   "hero": {
     "badge": "Análisis de CV con IA",

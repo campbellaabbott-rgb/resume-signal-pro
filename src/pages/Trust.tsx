@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { SocialProof } from "@/components/SocialProof";
+import { HowItWorks } from "@/components/HowItWorks";
 import { FAQ } from "@/components/FAQ";
 import { ResumeBeforeAfter } from "@/components/ResumeBeforeAfter";
 
@@ -150,6 +151,10 @@ export default function Trust() {
         </section>
 
         {/* Methodology Link */}
+        {/* How it works — condensed here from the old header tab; the full
+            methodology deep-dive stays one click below. */}
+        <HowItWorks />
+
         <section className="py-12 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5">
           <div className="container">
             <div className="max-w-3xl mx-auto text-center">
