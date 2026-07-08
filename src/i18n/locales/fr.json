@@ -2767,6 +2767,14 @@
     }
   },
   "changelogEntries": {
+    "shareCards": {
+      "title": "Partagez votre avant/après — et votre roast",
+      "description": "Un geste ouvre désormais la feuille de partage de votre téléphone avec une image propre en pièce jointe. Rescanné après correction ? La carte devient votre progression : « 58 → 74, même grille les deux fois. » Et le Resume Roast reçoit enfin l'image partageable qu'il mérite — la punchline et le niveau de piquant, sans jamais aucun contenu de votre CV sur les cartes."
+    },
+    "fallbackParity": {
+      "title": "Le scanner de secours est désormais aussi bon que le principal",
+      "description": "Notre scanner de secours avait dérivé : tables de détection anciennes et modèle plus lent (environ 32 s contre 20 s). Il utilise désormais exactement les mêmes données de détection que le principal — espagnol compris — et l'ordre de modèles le plus rapide. Vous ne le rencontreriez qu'en cas de panne ; la rencontre serait désormais bien meilleure."
+    },
     "paidDeliverablesAudit": {
       "title": "Nous avons audité nos propres produits payants comme un éditeur impitoyable",
       "description": "Nous avons généré et relu chaque livrable phare. Constats, corrigés le jour même : les lettres pouvaient contenir des [espaces réservés entre crochets] — désormais bannis ; les lettres doivent arriver prêtes à envoyer. La réécriture premium a un jour inventé une URL LinkedIn — une garde d'intégrité au niveau du code supprime désormais tout contact absent de votre original, en plus de consignes plus strictes. Les réponses types du coach d'entretien restent désormais ancrées dans votre vrai CV."

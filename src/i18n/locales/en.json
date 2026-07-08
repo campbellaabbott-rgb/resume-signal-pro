@@ -2767,6 +2767,14 @@
     }
   },
   "changelogEntries": {
+    "shareCards": {
+      "title": "Share your before/after — and your roast",
+      "description": "One tap now opens your phone's share sheet with a clean image attached. Rescanned after fixing? The card becomes your improvement: '58 → 74, same rubric both times.' And the Resume Roast finally gets the shareable image it deserves — burn quote, spice level, no resume content ever on any card."
+    },
+    "fallbackParity": {
+      "title": "The backup scanner is now as good as the main one",
+      "description": "Our emergency fallback scanner had drifted: older detection tables and a slower model (about 32s vs 20s). It now runs the exact same detection data as the primary — Spanish included — and the faster model order. You'd only ever meet it during an outage; now it would be a much better meeting."
+    },
     "paidDeliverablesAudit": {
       "title": "We audited our own paid products like a ruthless editor",
       "description": "We generated and reviewed every flagship deliverable. Findings, fixed the same day: cover letters could contain [bracketed placeholders] — now banned; letters must arrive send-ready. The premium rewrite once invented a LinkedIn URL — now a code-level contact-integrity guard strips any contact detail not present in your original, on top of stricter prompts. Interview-coach sample answers now stay grounded in your real resume."

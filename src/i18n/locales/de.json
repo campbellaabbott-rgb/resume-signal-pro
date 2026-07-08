@@ -2767,6 +2767,14 @@
     }
   },
   "changelogEntries": {
+    "shareCards": {
+      "title": "Teilen Sie Ihr Vorher/Nachher — und Ihren Roast",
+      "description": "Ein Tipp öffnet jetzt das Teilen-Menü Ihres Telefons mit einem sauberen Bild im Anhang. Nach dem Korrigieren erneut gescannt? Die Karte wird zu Ihrem Fortschritt: „58 → 74, beide Male dieselbe Rubrik.“ Und der Resume Roast bekommt endlich das teilbare Bild, das er verdient — Spruch und Schärfegrad, nie Lebenslauf-Inhalte auf irgendeiner Karte."
+    },
+    "fallbackParity": {
+      "title": "Der Ersatz-Scanner ist jetzt so gut wie der Haupt-Scanner",
+      "description": "Unser Notfall-Scanner war abgedriftet: ältere Erkennungstabellen und ein langsameres Modell (ca. 32 s statt 20 s). Er nutzt jetzt exakt dieselben Erkennungsdaten wie der primäre — Spanisch inklusive — und die schnellere Modellreihenfolge. Man begegnet ihm nur bei einem Ausfall; jetzt wäre es eine deutlich bessere Begegnung."
+    },
     "paidDeliverablesAudit": {
       "title": "Wir haben unsere eigenen Bezahlprodukte wie ein gnadenloser Lektor geprüft",
       "description": "Wir haben jedes Flaggschiff-Ergebnis erzeugt und geprüft. Befunde, am selben Tag behoben: Anschreiben konnten [Platzhalter in Klammern] enthalten — jetzt verboten; Briefe müssen versandfertig ankommen. Die Premium-Neufassung erfand einmal eine LinkedIn-URL — jetzt entfernt eine Integritätsprüfung auf Code-Ebene jedes Kontaktdetail, das nicht im Original steht, zusätzlich zu strengeren Vorgaben. Die Musterantworten des Interview-Coaches bleiben jetzt in Ihrem echten Lebenslauf verankert."

@@ -2767,6 +2767,14 @@
     }
   },
   "changelogEntries": {
+    "shareCards": {
+      "title": "I-share ang iyong before/after — at ang iyong roast",
+      "description": "Isang tap na lang ay bubukas na ang share sheet ng iyong telepono na may kalakip na malinis na imahe. Nag-rescan pagkatapos mag-ayos? Ang card ay nagiging iyong pag-unlad: '58 → 74, parehong sukatan sa dalawang beses.' At sa wakas, nakuha na ng Resume Roast ang nararapat na shareable na imahe — ang matalim na banat at spice level, walang kahit anong laman ng resume sa alinmang card."
+    },
+    "fallbackParity": {
+      "title": "Ang backup scanner ay kasinghusay na ngayon ng pangunahin",
+      "description": "Naiwan na ang aming emergency scanner: mas lumang detection tables at mas mabagal na modelo (mga 32s laban sa 20s). Ngayon, pinapatakbo na nito ang eksaktong parehong detection data ng pangunahin — kasama ang Espanyol — at ang mas mabilis na pagkakasunod ng modelo. Makakasalubong mo lang ito sa panahon ng outage; ngayon, mas maayos na ang pagtatagpong iyon."
+    },
     "paidDeliverablesAudit": {
       "title": "In-audit namin ang sarili naming mga bayad na produkto tulad ng isang mabagsik na editor",
       "description": "Binuo at sinuri namin ang bawat pangunahing deliverable. Mga natuklasan, naayos sa parehong araw: ang mga cover letter ay maaaring maglaman ng [mga placeholder sa bracket] — ipinagbabawal na ngayon; dapat dumating na handang ipadala ang mga liham. Minsang nag-imbento ng LinkedIn URL ang premium rewrite — ngayon, isang code-level na contact-integrity guard ang nag-aalis ng anumang detalye ng contact na wala sa iyong orihinal, dagdag sa mas mahigpit na mga tagubilin. Ang mga sample na sagot ng interview coach ay nananatili nang nakaugat sa iyong tunay na resume."

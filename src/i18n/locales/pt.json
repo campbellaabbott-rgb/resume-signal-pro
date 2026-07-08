@@ -2767,6 +2767,14 @@
     }
   },
   "changelogEntries": {
+    "shareCards": {
+      "title": "Compartilhe seu antes/depois — e seu roast",
+      "description": "Um toque agora abre a folha de compartilhamento do seu celular com uma imagem limpa anexada. Reescaneou depois de corrigir? O cartão vira sua melhoria: '58 → 74, mesma régua nas duas vezes.' E o Resume Roast finalmente ganha a imagem compartilhável que merece — a frase e o nível de pimenta, sem nunca haver conteúdo do currículo em nenhum cartão."
+    },
+    "fallbackParity": {
+      "title": "O scanner reserva agora é tão bom quanto o principal",
+      "description": "Nosso scanner de emergência tinha ficado para trás: tabelas de detecção antigas e um modelo mais lento (cerca de 32s contra 20s). Agora usa exatamente os mesmos dados de detecção do principal — espanhol incluído — e a ordem de modelos mais rápida. Você só o encontraria durante uma queda; agora seria um encontro bem melhor."
+    },
     "paidDeliverablesAudit": {
       "title": "Auditamos nossos próprios produtos pagos como um editor implacável",
       "description": "Geramos e revisamos cada entregável principal. Achados, corrigidos no mesmo dia: as cartas podiam conter [marcadores entre colchetes] — agora banidos; as cartas devem chegar prontas para enviar. A reescrita premium chegou a inventar uma URL do LinkedIn — agora uma proteção em nível de código remove qualquer contato ausente do seu original, além de instruções mais rígidas. As respostas de exemplo do coach de entrevistas agora permanecem fiéis ao seu currículo real."

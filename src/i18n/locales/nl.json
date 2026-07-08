@@ -2767,6 +2767,14 @@
     }
   },
   "changelogEntries": {
+    "shareCards": {
+      "title": "Deel je voor/na — en je roast",
+      "description": "Eén tik opent nu het deelmenu van je telefoon met een strakke afbeelding als bijlage. Opnieuw gescand na het fixen? De kaart wordt je vooruitgang: '58 → 74, beide keren dezelfde meetlat.' En de Resume Roast krijgt eindelijk de deelbare afbeelding die hij verdient — de sneer en het pittigheidsniveau, nooit cv-inhoud op welke kaart dan ook."
+    },
+    "fallbackParity": {
+      "title": "De reservescanner is nu net zo goed als de hoofdscanner",
+      "description": "Onze noodscanner was weggedreven: oudere detectietabellen en een trager model (zo'n 32s versus 20s). Hij draait nu exact dezelfde detectiedata als de primaire — Spaans inbegrepen — en de snellere modelvolgorde. Je zou hem alleen tijdens een storing tegenkomen; dat treffen is nu een stuk beter."
+    },
     "paidDeliverablesAudit": {
       "title": "We hebben onze eigen betaalde producten geauditeerd als een meedogenloze redacteur",
       "description": "We genereerden en beoordeelden elk vlaggenschip-resultaat. Bevindingen, dezelfde dag opgelost: brieven konden [placeholders tussen haken] bevatten — nu verboden; brieven moeten verzendklaar aankomen. De premium-herschrijving verzon ooit een LinkedIn-URL — nu verwijdert een integriteitscheck op codeniveau elk contactgegeven dat niet in je origineel staat, bovenop strengere instructies. De voorbeeldantwoorden van de interviewcoach blijven nu geworteld in je echte cv."
