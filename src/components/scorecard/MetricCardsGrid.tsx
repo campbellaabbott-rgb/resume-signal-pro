@@ -275,15 +275,15 @@ interface MetricCardsGridProps {
   atsScoreEstimate: number;
   formatGrade: string;
   quantificationScore: QuantificationScore;
-  actionVerbGrade: ActionVerbGrade;
-  resumeLength: ResumeLength;
-  wordCount: WordCount;
+  actionVerbGrade?: ActionVerbGrade;
+  resumeLength?: ResumeLength;
+  wordCount?: WordCount;
   sectionCheck: SectionCheck;
   contactInfo: ContactInfo;
-  readabilityScore: ReadabilityScore;
+  readabilityScore?: ReadabilityScore;
   bulletImpactScore: BulletImpactScore;
-  keywordDensity: KeywordDensity;
-  improvementPotential: ImprovementPotential;
+  keywordDensity?: KeywordDensity;
+  improvementPotential?: ImprovementPotential;
   topStrength: TopStrength;
   redFlags: RedFlag[];
 }
@@ -311,8 +311,8 @@ export function MetricCardsGrid({
   const sectionPresent = [sectionCheck.hasContact, sectionCheck.hasSummary, sectionCheck.hasExperience, sectionCheck.hasEducation, sectionCheck.hasSkills].filter(Boolean).length;
   const contactPresent = [contactInfo.hasEmail, contactInfo.hasPhone, contactInfo.hasLinkedIn].filter(Boolean).length;
 
-  const densityScore = keywordDensity.level === "dense" ? 90 : keywordDensity.level === "moderate" ? 55 : 25;
-  const densityStatus: Status = keywordDensity.level === "dense" ? "success" : keywordDensity.level === "moderate" ? "warning" : "destructive";
+  const densityScore = keywordDensity ? (keywordDensity.level === "dense" ? 90 : keywordDensity.level === "moderate" ? 55 : 25) : 0;
+  const densityStatus: Status = keywordDensity ? (keywordDensity.level === "dense" ? "success" : keywordDensity.level === "moderate" ? "warning" : "destructive") : "muted";
 
   // Build card data
   const primaryCards: MetricCardProps[] = [
@@ -342,33 +342,35 @@ export function MetricCardsGrid({
       status: statusFromScore(quantificationScore.score, 60, 40),
       progress: quantificationScore.score,
     },
-    {
+    // Tiles below hide when the scan didn't return the metric — never
+    // fabricated (audit 2026-07-08).
+    ...(actionVerbGrade ? [{
       icon: Pencil,
       label: t('freeScan.verbs'),
       tooltipKey: "verbs",
       value: `${actionVerbGrade.grade} — ${gradeLabel(actionVerbGrade.grade)}`,
       subtext: actionVerbGrade.grade === "A" ? "✓ Strong, powerful verbs" : actionVerbGrade.grade === "B" ? "✓ Good variety of verbs" : actionVerbGrade.grade === "C" ? "⚠ Use stronger words" : "✗ Weak verbs hurt impact",
       status: statusFromGrade(actionVerbGrade.grade),
-    },
+    }] : []),
   ];
 
   const structureCards: MetricCardProps[] = [
-    {
+    ...(resumeLength ? [{
       icon: FileText,
       label: t('freeScan.pages'),
       tooltipKey: "pages",
       value: `${resumeLength.currentPages} / ${resumeLength.recommendedPages}`,
       subtext: resumeLength.verdict === "just_right" ? "✓ Perfect length for your level" : resumeLength.verdict === "too_short" ? "⚠ Add more accomplishments" : "⚠ Recruiters may skip long resumes",
-      status: resumeLength.verdict === "just_right" ? "success" : "warning",
-    },
-    {
+      status: (resumeLength.verdict === "just_right" ? "success" : "warning") as Status,
+    }] : []),
+    ...(wordCount ? [{
       icon: Type,
       label: t('freeScan.words'),
       tooltipKey: "words",
       value: `${wordCount.current}`,
       subtext: wordCount.verdict === "ideal" ? `✓ Sweet spot: ${wordCount.idealMin}-${wordCount.idealMax}` : wordCount.verdict === "too_few" ? "⚠ Looks thin — add content" : "⚠ Too dense — trim fat",
-      status: wordCount.verdict === "ideal" ? "success" : "warning",
-    },
+      status: (wordCount.verdict === "ideal" ? "success" : "warning") as Status,
+    }] : []),
     {
       icon: LayoutList,
       label: t('freeScan.sections'),
@@ -390,7 +392,7 @@ export function MetricCardsGrid({
   ];
 
   const advancedCards: MetricCardProps[] = [
-    {
+    ...(readabilityScore ? [{
       icon: FileText,
       label: t('freeScan.readability'),
       tooltipKey: "readability",
@@ -398,7 +400,7 @@ export function MetricCardsGrid({
       subtext: readabilityScore.verdict === "easy_to_scan" ? "✓ Quick 6-second scan friendly" : readabilityScore.verdict === "readable" ? "⚠ Some sections hard to scan" : "✗ Recruiters will skip this",
       status: statusFromScore(readabilityScore.score, 70, 45),
       progress: readabilityScore.score,
-    },
+    }] : []),
     {
       icon: Target,
       label: t('freeScan.bulletImpact'),
@@ -408,7 +410,7 @@ export function MetricCardsGrid({
       status: statusFromScore(bulletImpactScore.score, 60, 40),
       progress: bulletImpactScore.score,
     },
-    {
+    ...(keywordDensity ? [{
       icon: Hash,
       label: t('freeScan.keywordDensity'),
       tooltipKey: "keywordDensity",
@@ -416,15 +418,15 @@ export function MetricCardsGrid({
       subtext: keywordDensity.level === "dense" ? "✓ ATS will find your skills" : keywordDensity.level === "moderate" ? "⚠ Add more industry terms" : "✗ Missing key search terms",
       status: densityStatus,
       progress: densityScore,
-    },
-    {
+    }] : []),
+    ...(improvementPotential ? [{
       icon: Zap,
       label: t('freeScan.improvementPotential'),
       tooltipKey: "improvementPotential",
       value: `+${improvementPotential.estimatedScoreIncrease} pts`,
       subtext: improvementPotential.level === "high" ? "🚀 Big gains possible!" : improvementPotential.level === "medium" ? "📈 Room to improve" : "✓ Already optimized",
-      status: improvementPotential.level === "low" ? "success" : improvementPotential.level === "medium" ? "warning" : "muted",
-    },
+      status: (improvementPotential.level === "low" ? "success" : improvementPotential.level === "medium" ? "warning" : "muted") as Status,
+    }] : []),
   ];
 
   return (

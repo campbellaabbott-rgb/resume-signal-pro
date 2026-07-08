@@ -2817,7 +2817,13 @@ ${resumeText.substring(0, 20000)}
                 "detectedLanguage", "industry", "atsScoreEstimate", "formatGrade",
                 "experienceLevel", "sectionCheck", "contactInfo", "topStrength",
                 "redFlags", "keywords", "industryBenchmark", "quickWins", "sampleRewrite",
-                "scoreBreakdown", "nextBestAction", "recruiterFirstPassSummary"
+                "scoreBreakdown", "nextBestAction", "recruiterFirstPassSummary",
+                // Audit 2026-07-08: these six were schema-optional, so the
+                // model routinely omitted them and the frontend papered over
+                // the absence with identical hardcoded values for every user.
+                // Required = real values on every full scan.
+                "resumeLength", "wordCount", "actionVerbGrade", "readabilityScore",
+                "keywordDensity", "improvementPotential"
               ]
             };
 

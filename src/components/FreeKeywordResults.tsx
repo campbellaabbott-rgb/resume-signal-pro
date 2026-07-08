@@ -502,18 +502,16 @@ interface SampleRewrite {
   improvement: string;
 }
 
-interface AtsSystemRating {
-  name: string;
-  score: number;
-  reason?: string;
-  issue?: string;
-}
-
+// Matches what the scan actually returns (atsCompatibility): an overall
+// rating plus best-for/worst-for context. The old shape here (per-vendor
+// arrays with numeric scores) was never sent by the server — the card fell
+// back to identical hardcoded vendor scores for every user. Real per-vendor
+// behavior lives in AtsVendorChecksCard (deterministic, documented checks).
 interface AtsSystemCompatibility {
-  bestSystems: AtsSystemRating[];
-  worstSystems: AtsSystemRating[];
-  overallRating: "poor" | "fair" | "good" | "excellent";
-  topIssue: string;
+  overallRating: string; // "Poor" | "Fair" | "Good" | "Excellent" (any case)
+  topIssue?: string;
+  bestFor?: string;
+  worstFor?: string;
 }
 
 interface ApplicationRecommendation {
@@ -1250,8 +1248,19 @@ export function FreeKeywordResults({
   };
 
   // Safe defaults
-  const resumeLength = resumeLengthProp || { currentPages: 1, recommendedPages: 1, verdict: "just_right" as const };
-  const wordCount = wordCountProp || { current: 500, idealMin: 400, idealMax: 600, verdict: "ideal" as const };
+  // Honest fallbacks only (audit 2026-07-08): when the scan omits these
+  // fields, derive from the actual resume text instead of showing every user
+  // the same invented numbers. Non-derivable metrics fall through as null and
+  // their tiles hide.
+  const realWordCount = (resumeText ?? "").split(/\s+/).filter(Boolean).length;
+  const resumeLength = resumeLengthProp || (realWordCount > 0 ? (() => {
+    const pages = Math.max(1, Math.ceil(realWordCount / 550));
+    const recommended = (experienceLevelProp?.level === "senior" || experienceLevelProp?.level === "executive") ? 2 : 1;
+    return { currentPages: pages, recommendedPages: recommended, verdict: (pages > recommended ? "too_long" : pages < recommended ? "too_short" : "just_right") as "too_short" | "just_right" | "too_long" };
+  })() : null);
+  const wordCount = wordCountProp || (realWordCount > 0
+    ? { current: realWordCount, idealMin: 400, idealMax: 850, verdict: (realWordCount < 400 ? "too_few" : realWordCount > 850 ? "too_many" : "ideal") as "too_few" | "ideal" | "too_many" }
+    : null);
   const [correctedExperience, setCorrectedExperience] = useState<string | null>(null);
   const experienceLevelBase = experienceLevelProp || { level: "mid" as const, yearsEstimate: "3-5 years" };
   const experienceLevel = correctedExperience
@@ -1303,14 +1312,15 @@ export function FreeKeywordResults({
     quantificationScoreProp ||
     computedQuantificationScore ||
     ({ score: 0, verdict: "average" as const, tip: "Quantification could not be detected from this text." } satisfies QuantificationScore);
-  const actionVerbGrade = actionVerbGradeProp || { grade: "B", issue: "Good variety" };
-  const readabilityScore = readabilityScoreProp || { score: 65, verdict: "readable" as const, issue: "Some long sentences" };
+  // Not derivable client-side — null hides the tile rather than fabricating.
+  const actionVerbGrade = actionVerbGradeProp || null;
+  const readabilityScore = readabilityScoreProp || null;
   const bulletImpactScore =
     bulletImpactScoreProp ||
     computedBulletImpactScore ||
     ({ score: 0, verdict: "balanced" as const, tip: "Bullet impact could not be detected from this text." } satisfies BulletImpactScore);
-  const keywordDensity = keywordDensityProp || { level: "moderate" as const, explanation: "Good keyword presence" };
-  const improvementPotential = improvementPotentialProp || { level: "medium" as const, estimatedScoreIncrease: 15, topPriority: "Add quantified achievements" };
+  const keywordDensity = keywordDensityProp || null;
+  const improvementPotential = improvementPotentialProp || null;
   const redFlags = redFlagsProp || [];
   const topSkipReasons = topSkipReasonsProp || [];
   const powerWords = powerWordsProp || [];
@@ -1319,19 +1329,11 @@ export function FreeKeywordResults({
   const industryBenchmark = industryBenchmarkProp || { industryAvg: 72, comparison: "at" as const, percentile: "Top 50%" };
   const quickWins = quickWinsProp || [];
   const sampleRewrite = sampleRewriteProp;
-  const atsSystemCompatibility = atsSystemCompatibilityProp || {
-    bestSystems: [
-      { name: "Greenhouse", score: 85, reason: "Clean format" },
-      { name: "Lever", score: 82, reason: "Good structure" },
-      { name: "Workday", score: 78, reason: "Standard layout" }
-    ],
-    worstSystems: [
-      { name: "Taleo", score: 55, issue: "Complex formatting" },
-      { name: "iCIMS", score: 60, issue: "Header parsing" }
-    ],
-    overallRating: "good" as const,
-    topIssue: "Some ATS may struggle with your header format"
-  };
+  // No fallback, deliberately: the old hardcoded default showed every user
+  // the same invented per-vendor scores. Absent data now hides the section.
+  const atsSystemCompatibility = atsSystemCompatibilityProp
+    ? { ...atsSystemCompatibilityProp, overallRating: atsSystemCompatibilityProp.overallRating?.toLowerCase?.() ?? "fair" }
+    : null;
 
   const getScoreColor = (score: number) => {
     if (score >= 70) return "text-success";
@@ -2697,7 +2699,7 @@ export function FreeKeywordResults({
           industry={industry}
           experienceLevel={getExperienceLevelLabel(experienceLevel.level)}
           topStrength={topStrength.title}
-          improvementPotential={improvementPotential.estimatedScoreIncrease}
+          improvementPotential={improvementPotential?.estimatedScoreIncrease}
         />
       </div>
 
@@ -3432,7 +3434,9 @@ export function FreeKeywordResults({
         </CollapsibleSection>
       )}
 
-      {/* ATS System Compatibility */}
+      {/* ATS System Compatibility — hidden entirely when the scan didn't
+          return the assessment (never fabricated) */}
+      {atsSystemCompatibility && (
       <CollapsibleSection
         id="ats-compatibility"
         title={t('freeResults.atsParsingSection.title')}
@@ -3469,60 +3473,28 @@ export function FreeKeywordResults({
           </p>
         </div>
 
-        {/* Best & Worst Systems Grid - Using bands instead of exact percentages */}
+        {/* Best-for / worst-for context from the actual analysis. Per-vendor
+            behavior (Workday/Greenhouse/Lever/iCIMS) is covered by the
+            deterministic vendor-checks card — no invented vendor scores here. */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          {/* Best Systems */}
-          <div className="p-4 rounded-xl bg-success/5 border border-success/20">
-            <div className="flex items-center gap-2 mb-3">
-              <CheckCircle className="w-4 h-4 text-success" />
-              <span className="text-sm font-semibold text-success">{t('freeResults.atsParsingSection.worksBestWith')}</span>
+          {atsSystemCompatibility.bestFor && (
+            <div className="p-4 rounded-xl bg-success/5 border border-success/20">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="w-4 h-4 text-success" />
+                <span className="text-sm font-semibold text-success">Where this resume competes well</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">{atsSystemCompatibility.bestFor}</p>
             </div>
-            <div className="space-y-2">
-              {(atsSystemCompatibility.bestSystems || []).map((system, index) => (
-                <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-background/50">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground">{system.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{system.reason}</span>
-                    <span className={cn(
-                      "text-xs font-bold px-2 py-0.5 rounded",
-                      system.score >= 80 ? "bg-success/20 text-success" :
-                      system.score >= 60 ? "bg-warning/20 text-warning" : "bg-destructive/20 text-destructive"
-                    )}>
-                      {system.score >= 80 ? t('freeResults.confidenceLevel.high') : system.score >= 60 ? t('freeResults.confidenceLevel.medium') : t('freeResults.confidenceLevel.low')}
-                    </span>
-                  </div>
-                </div>
-              ))}
+          )}
+          {atsSystemCompatibility.worstFor && (
+            <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-destructive" />
+                <span className="text-sm font-semibold text-destructive">Where it will struggle</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">{atsSystemCompatibility.worstFor}</p>
             </div>
-          </div>
-
-          {/* Worst Systems */}
-          <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20">
-            <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle className="w-4 h-4 text-destructive" />
-              <span className="text-sm font-semibold text-destructive">{t('freeResults.atsParsingSection.mayHaveIssues')}</span>
-            </div>
-            <div className="space-y-2">
-              {(atsSystemCompatibility.worstSystems || []).map((system, index) => (
-                <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-background/50">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground">{system.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{system.issue}</span>
-                    <span className={cn(
-                      "text-xs font-bold px-2 py-0.5 rounded",
-                      system.score >= 70 ? "bg-warning/20 text-warning" : "bg-destructive/20 text-destructive"
-                    )}>
-                      {system.score >= 70 ? t('freeResults.confidenceLevel.medium') : t('freeResults.confidenceLevel.low')}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Disclaimer about estimates */}
@@ -3558,6 +3530,7 @@ export function FreeKeywordResults({
         </div>
       </div>
       </CollapsibleSection>
+      )}
 
       {/* Power Words & Weak Phrases */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
