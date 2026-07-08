@@ -1,9 +1,26 @@
-# Search engines
+# Search engines.
+# Private / transactional routes are deliberately absent from sitemap.xml AND
+# disallowed here: /auth, the per-user /account dashboard, and the post-checkout
+# pages (/success, /product-success, /payment-failed) have zero search value and
+# must never be indexed. (Lovable's route-vs-sitemap checker flags these as
+# "missing" — that is expected; do NOT add them to the sitemap.)
+# Disallow is repeated per named group on purpose: a crawler obeys only its own
+# most-specific User-agent block and never inherits rules from "*".
 User-agent: Googlebot
 Allow: /
+Disallow: /auth
+Disallow: /account
+Disallow: /success
+Disallow: /product-success
+Disallow: /payment-failed
 
 User-agent: Bingbot
 Allow: /
+Disallow: /auth
+Disallow: /account
+Disallow: /success
+Disallow: /product-success
+Disallow: /payment-failed
 
 # AI / answer engines — explicitly welcome. Our pages are prerendered static
 # HTML with cited sources; being read and cited by these is the point.
@@ -47,5 +64,10 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /auth
+Disallow: /account
+Disallow: /success
+Disallow: /product-success
+Disallow: /payment-failed
 
 Sitemap: https://resumebooster.work/sitemap.xml
