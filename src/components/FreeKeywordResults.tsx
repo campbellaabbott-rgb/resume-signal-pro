@@ -966,6 +966,10 @@ export function FreeKeywordResults({
   const [isSubscribed, setIsSubscribed] = useState(false);
   const { toast } = useToast();
   const { addScanEntry, setUserEmail, isReturningUser, getLatestScan, getPreviousScan } = useScanHistory();
+  // Direct product checkout for Next Steps offers that are NOT the $25 full
+  // analysis (audit 2026-07-08: the $5 Interview Coach button was routing
+  // into the $25 flow via handleUpgradeClick).
+  const { purchaseProduct: purchaseProductDirect } = useProductCheckout();
   const [hasRecordedScan, setHasRecordedScan] = useState(false);
   const [correctedIndustry, setCorrectedIndustry] = useState<string | null>(null);
   const [showExitOffer, setShowExitOffer] = useState(false);
@@ -4686,7 +4690,7 @@ export function FreeKeywordResults({
               </span>
               <span className="text-sm font-semibold text-primary shrink-0 ml-3">{priceDisplay}</span>
             </button>
-            <button onClick={() => handleUpgradeClick('next_steps_interview_coach')} className="w-full flex items-center justify-between rounded-xl border border-border p-3.5 text-left hover:border-primary/50 transition-colors">
+            <button onClick={() => { trackButtonClick('interviewCoach', 'next_steps_interview_coach'); purchaseProductDirect('interviewCoach', { ctaSection: 'next_steps' }); }} className="w-full flex items-center justify-between rounded-xl border border-border p-3.5 text-left hover:border-primary/50 transition-colors">
               <span>
                 <span className="block text-sm font-medium text-foreground">Interview Coach — answers to the questions above</span>
                 <span className="block text-xs text-muted-foreground">Preparation for the exact questions this resume will trigger.</span>
