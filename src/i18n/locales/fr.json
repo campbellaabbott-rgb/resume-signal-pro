@@ -2767,6 +2767,14 @@
     }
   },
   "changelogEntries": {
+    "paidDeliverablesAudit": {
+      "title": "Nous avons audité nos propres produits payants comme un éditeur impitoyable",
+      "description": "Nous avons généré et relu chaque livrable phare. Constats, corrigés le jour même : les lettres pouvaient contenir des [espaces réservés entre crochets] — désormais bannis ; les lettres doivent arriver prêtes à envoyer. La réécriture premium a un jour inventé une URL LinkedIn — une garde d'intégrité au niveau du code supprime désormais tout contact absent de votre original, en plus de consignes plus strictes. Les réponses types du coach d'entretien restent désormais ancrées dans votre vrai CV."
+    },
+    "typesetDelivery": {
+      "title": "Les réécritures premium deviennent de vrais documents",
+      "description": "Le CV réécrit du Pack Premium peut désormais s'ouvrir directement dans l'éditeur gratuit — un clic et c'est un PDF ou un document Word professionnellement mis en page, prêt à envoyer, au lieu de texte sur une page web."
+    },
     "rescanRitual": {
       "title": "Voyez votre avant/après — corrigez, exportez, rescannez",
       "description": "En exportant depuis l'éditeur, un rescan en un clic de cette version exacte vous est proposé. Le nouveau rapport s'ouvre sur le delta : « 58 → 74, signaux d'alerte 5 → 2 — même grille les deux fois. » Une amélioration mesurée, pas seulement ressentie."

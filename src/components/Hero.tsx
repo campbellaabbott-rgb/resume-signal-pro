@@ -50,13 +50,19 @@ function useScanTotals() {
 
   useEffect(() => {
     let cancelled = false;
+    // When the RPC doesn't exist yet (migration not published), every visitor
+    // would otherwise re-poll a guaranteed 404 every 30s for their whole
+    // session — stop permanently on the first "function not found".
+    let gone = false;
     const load = () => {
-      if (document.hidden) return;
+      if (document.hidden || gone) return;
       // RPC created in migration 20260706200000; not yet in generated client types.
       (supabase.rpc as unknown as (fn: string) => PromiseLike<{ data: unknown; error: unknown }>)(
         "get_scan_totals"
       ).then(
         ({ data, error }) => {
+          const err = error as { code?: string } | null;
+          if (err?.code === "PGRST202") { gone = true; return; }
           const d = data as { total_scans?: number; countries?: number } | null;
           if (!cancelled && !error && typeof d?.total_scans === "number" && d.total_scans > 0) {
             setTotals({ total_scans: d.total_scans, countries: d.countries ?? 0 });

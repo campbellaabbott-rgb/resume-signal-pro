@@ -77,6 +77,15 @@ These rules MUST be followed perfectly. Violations are unacceptable:
 - DO NOT invent new achievements, numbers, tools, locations, titles, or claims
 - Only enhance wording and add ATS-friendly keywords that fit the existing facts
 
+### CONTACT LINE — COPY ONLY, NEVER ADD:
+- The contact header may contain ONLY items present in the original resume
+- NEVER invent or add a LinkedIn URL, portfolio, website, phone, or email that isn't in the original
+- If the original has no LinkedIn, the rewrite has no LinkedIn — same for every contact field
+
+### NO PLACEHOLDERS — SEND-READY:
+- NEVER output bracketed fill-ins like [Hiring Manager Name], [Company Name], or [mention a specific...] anywhere in the resume or the letter
+- Hiring manager unknown → "Dear Hiring Manager,". Company unknown → write about "your team" and the role's challenges; never gesture at facts you don't have
+
 ## OUTPUT FORMAT
 You will output content in TWO sections, clearly marked:
 

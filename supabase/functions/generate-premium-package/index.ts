@@ -399,6 +399,12 @@ YOUR OUTPUT MUST BE AT LEAST AS LONG AS THE INPUT:
 ## ⚠️ CRITICAL DATA ACCURACY RULES ⚠️
 COPY ALL DATA EXACTLY FROM THE ORIGINAL:
 
+### CONTACT LINE — COPY ONLY, NEVER ADD:
+- The contact header may contain ONLY items present in the original resume
+- NEVER invent or add a LinkedIn URL, portfolio, website, phone number, or email that isn't in the original — a fabricated linkedin.com/in/... link is a firing offense
+- If the original has no LinkedIn, the rewrite has no LinkedIn. Same for every contact field
+- NEVER output bracketed placeholders like [LinkedIn] or [Phone]
+
 ### NUMBERS & METRICS:
 - "$20,000,000" stays "$20,000,000" (NEVER "$20,,000" or "$,000")
 - "67 warehouses" with proper spacing (NEVER "across67")
@@ -512,6 +518,13 @@ Your writing must:
 - Reference concrete numbers and accomplishments
 - Show you understand the specific company's challenges
 - Sound like someone the hiring manager would want to have coffee with
+
+### NO PLACEHOLDERS — SEND-READY:
+- NEVER output bracketed fill-ins like [Hiring Manager Name], [Company Name], or [mention a specific...]. The buyer must be able to send this letter without editing a single bracket.
+- Hiring manager unknown → "Dear Hiring Manager,". Company unknown → write about "your team" and the role's challenges from the job description; never gesture at facts you don't have.
+
+### GROUNDING — ONLY THE CANDIDATE'S REAL FACTS:
+- Every metric, outcome, and claim about the candidate must appear in their resume. Never invent outcomes the resume doesn't state. Connect and frame real facts; never extend them.
 
 ## STRUCTURE (350-450 words, 4 paragraphs):
 
@@ -661,6 +674,45 @@ Write a cover letter that sounds like it was written by this specific person - c
     }
 
     logStep("Both results parsed");
+
+    // Contact-integrity guard: deterministically strip any URL, email, or
+    // phone-shaped string in the output that does not appear in the original
+    // resume. The prompt forbids inventing contact details, but the audit
+    // caught a fabricated linkedin.com/in/... slipping through — prompts ask,
+    // code enforces (same philosophy as the free scan's grounding filter).
+    const stripInventedContact = (text: string, original: string): { text: string; removed: string[] } => {
+      const removed: string[] = [];
+      const origLower = original.toLowerCase();
+      const patterns = [
+        /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s|,)]+/gi,
+        /(?:https?:\/\/)?(?:www\.)?(?:github\.com|behance\.net|dribbble\.com)\/[^\s|,)]+/gi,
+        /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi,
+        /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}/g,
+      ];
+      let out = text;
+      for (const re of patterns) {
+        out = out.replace(re, (match) => {
+          if (origLower.includes(match.toLowerCase())) return match;
+          removed.push(match);
+          return '';
+        });
+      }
+      // Tidy contact-line separators left dangling by a removal (" | | ", trailing "|")
+      if (removed.length > 0) {
+        out = out.replace(/\s*\|\s*(?=\||$)/gm, '').replace(/\|\s*$/gm, '').replace(/^\s*\|\s*/gm, '');
+      }
+      return { text: out, removed };
+    };
+    const resumeContactGuard = stripInventedContact(resumeResult.rewrittenResume || '', resumeText);
+    if (resumeContactGuard.removed.length > 0) {
+      resumeResult.rewrittenResume = resumeContactGuard.text;
+      logStep("Contact-integrity guard removed invented items", { removed: resumeContactGuard.removed });
+    }
+    const letterContactGuard = stripInventedContact(coverLetterResult.coverLetter || '', resumeText);
+    if (letterContactGuard.removed.length > 0) {
+      coverLetterResult.coverLetter = letterContactGuard.text;
+      logStep("Contact-integrity guard (letter) removed invented items", { removed: letterContactGuard.removed });
+    }
 
     // Auto-fix common corruption patterns before validation
     const resumeFix = autoFixContent(resumeResult.rewrittenResume || '', resumeText);

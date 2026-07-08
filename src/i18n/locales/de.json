@@ -2767,6 +2767,14 @@
     }
   },
   "changelogEntries": {
+    "paidDeliverablesAudit": {
+      "title": "Wir haben unsere eigenen Bezahlprodukte wie ein gnadenloser Lektor geprüft",
+      "description": "Wir haben jedes Flaggschiff-Ergebnis erzeugt und geprüft. Befunde, am selben Tag behoben: Anschreiben konnten [Platzhalter in Klammern] enthalten — jetzt verboten; Briefe müssen versandfertig ankommen. Die Premium-Neufassung erfand einmal eine LinkedIn-URL — jetzt entfernt eine Integritätsprüfung auf Code-Ebene jedes Kontaktdetail, das nicht im Original steht, zusätzlich zu strengeren Vorgaben. Die Musterantworten des Interview-Coaches bleiben jetzt in Ihrem echten Lebenslauf verankert."
+    },
+    "typesetDelivery": {
+      "title": "Premium-Neufassungen werden jetzt echte Dokumente",
+      "description": "Der neu geschriebene Lebenslauf des Premium-Pakets lässt sich jetzt direkt im kostenlosen Editor öffnen — ein Klick, und er ist ein professionell gesetztes PDF- oder Word-Dokument, versandfertig, statt Text auf einer Webseite."
+    },
     "rescanRitual": {
       "title": "Sehen Sie Ihr Vorher/Nachher — korrigieren, exportieren, neu scannen",
       "description": "Beim Export aus dem Editor wird ein Ein-Klick-Rescan genau dieser Version angeboten. Der neue Bericht beginnt mit dem Delta: „58 → 74, Warnsignale 5 → 2 — beide Male dieselbe Rubrik.“ Messbare Verbesserung statt Gefühl."

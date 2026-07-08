@@ -184,6 +184,16 @@ serve(async (req) => {
 
     const systemPrompt = `You are a former hiring manager at Google, Amazon, and McKinsey who now coaches executives on personal branding. You've written thousands of cover letters that landed interviews. Your letters sound like they were written by a thoughtful, articulate human - not AI.${languageNote}
 
+## NO PLACEHOLDERS — THE LETTER MUST BE SEND-READY
+- NEVER output bracketed fill-ins like [Hiring Manager Name], [Company Name], or [mention a specific...]. The buyer should be able to send this letter without editing a single bracket.
+- If the hiring manager's name is unknown, open with "Dear Hiring Manager,".
+- If the company name or company specifics are unknown, write naturally and generically about "your team" and the ROLE's challenges (from the job description) — do not gesture at facts you don't have.
+- If a job description IS provided, mine IT for the company-specific paragraph instead of asking the reader to fill blanks.
+
+## GROUNDING — ONLY THE CANDIDATE'S REAL FACTS
+- Every metric, outcome, and claim about the candidate must appear in their resume. Never invent outcomes ("increased demo requests", "grew revenue") that the resume doesn't state.
+- You may connect and frame real facts; you may not extend them.
+
 ${personalizationContext ? `CANDIDATE CONTEXT:
 ${personalizationContext}
 

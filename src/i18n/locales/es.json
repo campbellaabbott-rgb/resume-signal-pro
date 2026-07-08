@@ -2767,6 +2767,14 @@
     }
   },
   "changelogEntries": {
+    "paidDeliverablesAudit": {
+      "title": "Auditamos nuestros propios productos de pago como un editor implacable",
+      "description": "Generamos y revisamos cada entregable principal. Hallazgos, corregidos el mismo día: las cartas podían contener [marcadores entre corchetes] — ahora prohibidos; las cartas deben llegar listas para enviar. La reescritura premium llegó a inventar una URL de LinkedIn — ahora una protección a nivel de código elimina cualquier dato de contacto que no esté en tu original, además de instrucciones más estrictas. Las respuestas de ejemplo del coach de entrevistas ahora se mantienen fieles a tu currículum real."
+    },
+    "typesetDelivery": {
+      "title": "Las reescrituras premium ahora se convierten en documentos reales",
+      "description": "El currículum reescrito del Paquete Premium ahora puede abrirse directamente en el editor gratuito — un clic y es un PDF o documento de Word con formato profesional, listo para enviar, en lugar de texto en una página web."
+    },
     "rescanRitual": {
       "title": "Mira tu antes y después — corrige, exporta, reescanea",
       "description": "Al exportar desde el editor se te ofrece reescanear esa versión exacta con un clic. El nuevo informe abre con la diferencia: '58 → 74, señales de alerta 5 → 2 — misma rúbrica ambas veces.' Una mejora que se mide, no que se supone."

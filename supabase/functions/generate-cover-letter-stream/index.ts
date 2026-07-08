@@ -59,7 +59,15 @@ RULES:
 - Use contractions naturally
 - Vary sentence length
 - Include specific numbers from the resume
-- AVOID: synergy, leverage, passionate, excited, dynamic`;
+- AVOID: synergy, leverage, passionate, excited, dynamic
+
+NO PLACEHOLDERS — SEND-READY:
+- NEVER output bracketed fill-ins like [Hiring Manager Name], [Company Name], or [mention a specific...]. The reader must be able to send this without editing a single bracket.
+- Hiring manager unknown → "Dear Hiring Manager,". Company unknown → write about "your team" and the role's challenges from the job description; never gesture at facts you don't have.
+
+GROUNDING — ONLY THE CANDIDATE'S REAL FACTS:
+- Every metric, outcome, and claim about the candidate must appear in their resume. Never invent outcomes the resume doesn't state. Connect and frame real facts; never extend them.
+- Never invent contact details (LinkedIn, phone, email) anywhere in the letter.`;
 
     const userPrompt = `Write a compelling cover letter.
 

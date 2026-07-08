@@ -1387,6 +1387,27 @@ export default function ProductSuccess() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Typeset delivery: the same content as a real document.
+                      Seeds the builder (which parses + applies professional
+                      PDF/DOCX typography) instead of leaving the $25
+                      deliverable as text on a webpage. */}
+                  <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Turn this into a typeset document</p>
+                      <p className="text-xs text-muted-foreground">Open your rewritten resume in the free builder — professionally formatted PDF and Word export, ready to send.</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => {
+                        try { sessionStorage.setItem('rb_resume_text', premiumData.resume.rewrittenResume); } catch { /* ignore */ }
+                        window.location.href = '/builder';
+                      }}
+                    >
+                      Open in builder →
+                    </Button>
+                  </div>
                 </div>
               )}
 

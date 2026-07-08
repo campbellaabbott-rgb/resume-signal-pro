@@ -2767,6 +2767,14 @@
     }
   },
   "changelogEntries": {
+    "paidDeliverablesAudit": {
+      "title": "We audited our own paid products like a ruthless editor",
+      "description": "We generated and reviewed every flagship deliverable. Findings, fixed the same day: cover letters could contain [bracketed placeholders] — now banned; letters must arrive send-ready. The premium rewrite once invented a LinkedIn URL — now a code-level contact-integrity guard strips any contact detail not present in your original, on top of stricter prompts. Interview-coach sample answers now stay grounded in your real resume."
+    },
+    "typesetDelivery": {
+      "title": "Premium rewrites now become real documents",
+      "description": "The Premium Package's rewritten resume can now open directly in the free builder — one click and it's a professionally typeset PDF or Word document, ready to send, instead of text on a webpage."
+    },
     "rescanRitual": {
       "title": "See your before/after — fix, export, rescan",
       "description": "Export from the builder and you're offered a one-click rescan of that exact version. The new report opens with the delta: '58 → 74, red flags 5 → 2 — same rubric both times.' Improvement you can measure, not just feel."

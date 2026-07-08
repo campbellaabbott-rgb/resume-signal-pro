@@ -2767,6 +2767,14 @@
     }
   },
   "changelogEntries": {
+    "paidDeliverablesAudit": {
+      "title": "We hebben onze eigen betaalde producten geauditeerd als een meedogenloze redacteur",
+      "description": "We genereerden en beoordeelden elk vlaggenschip-resultaat. Bevindingen, dezelfde dag opgelost: brieven konden [placeholders tussen haken] bevatten — nu verboden; brieven moeten verzendklaar aankomen. De premium-herschrijving verzon ooit een LinkedIn-URL — nu verwijdert een integriteitscheck op codeniveau elk contactgegeven dat niet in je origineel staat, bovenop strengere instructies. De voorbeeldantwoorden van de interviewcoach blijven nu geworteld in je echte cv."
+    },
+    "typesetDelivery": {
+      "title": "Premium-herschrijvingen worden nu echte documenten",
+      "description": "Het herschreven cv van het Premium Pakket opent nu direct in de gratis builder — één klik en het is een professioneel opgemaakte PDF of Word-document, klaar om te versturen, in plaats van tekst op een webpagina."
+    },
     "rescanRitual": {
       "title": "Zie je voor/na — fix, exporteer, rescan",
       "description": "Bij export uit de editor krijg je een één-klik-rescan van precies die versie aangeboden. Het nieuwe rapport opent met de delta: '58 → 74, waarschuwingen 5 → 2 — beide keren dezelfde meetlat.' Verbetering die je meet, niet aanneemt."

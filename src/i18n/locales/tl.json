@@ -2767,6 +2767,14 @@
     }
   },
   "changelogEntries": {
+    "paidDeliverablesAudit": {
+      "title": "In-audit namin ang sarili naming mga bayad na produkto tulad ng isang mabagsik na editor",
+      "description": "Binuo at sinuri namin ang bawat pangunahing deliverable. Mga natuklasan, naayos sa parehong araw: ang mga cover letter ay maaaring maglaman ng [mga placeholder sa bracket] — ipinagbabawal na ngayon; dapat dumating na handang ipadala ang mga liham. Minsang nag-imbento ng LinkedIn URL ang premium rewrite — ngayon, isang code-level na contact-integrity guard ang nag-aalis ng anumang detalye ng contact na wala sa iyong orihinal, dagdag sa mas mahigpit na mga tagubilin. Ang mga sample na sagot ng interview coach ay nananatili nang nakaugat sa iyong tunay na resume."
+    },
+    "typesetDelivery": {
+      "title": "Ang mga premium rewrite ay nagiging tunay na dokumento na",
+      "description": "Ang muling isinulat na resume ng Premium Package ay maaari nang buksan nang direkta sa libreng builder — isang click at ito ay isang propesyonal na naka-typeset na PDF o Word na dokumento, handang ipadala, sa halip na teksto sa isang webpage."
+    },
     "rescanRitual": {
       "title": "Tingnan ang iyong before/after — ayusin, i-export, i-rescan",
       "description": "Sa pag-export mula sa builder, inaalok ka ng one-click rescan ng eksaktong bersyong iyon. Bumubukas ang bagong report sa pagkakaiba: '58 → 74, mga babala 5 → 2 — parehong sukatan sa dalawang beses.' Pagbuting nasusukat, hindi lang nararamdaman."

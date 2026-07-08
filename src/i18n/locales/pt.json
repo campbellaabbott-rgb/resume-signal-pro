@@ -2767,6 +2767,14 @@
     }
   },
   "changelogEntries": {
+    "paidDeliverablesAudit": {
+      "title": "Auditamos nossos próprios produtos pagos como um editor implacável",
+      "description": "Geramos e revisamos cada entregável principal. Achados, corrigidos no mesmo dia: as cartas podiam conter [marcadores entre colchetes] — agora banidos; as cartas devem chegar prontas para enviar. A reescrita premium chegou a inventar uma URL do LinkedIn — agora uma proteção em nível de código remove qualquer contato ausente do seu original, além de instruções mais rígidas. As respostas de exemplo do coach de entrevistas agora permanecem fiéis ao seu currículo real."
+    },
+    "typesetDelivery": {
+      "title": "Reescritas premium agora viram documentos de verdade",
+      "description": "O currículo reescrito do Pacote Premium agora pode abrir diretamente no editor gratuito — um clique e vira um PDF ou documento Word com formatação profissional, pronto para enviar, em vez de texto numa página web."
+    },
     "rescanRitual": {
       "title": "Veja seu antes/depois — corrija, exporte, reescaneie",
       "description": "Ao exportar do editor, você recebe a oferta de reescanear essa versão exata com um clique. O novo relatório abre com o delta: '58 → 74, alertas 5 → 2 — mesma régua nas duas vezes.' Melhoria medida, não presumida."
