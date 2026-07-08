@@ -2,6 +2,7 @@
 const serve = (handler: (req: Request) => Response | Promise<Response>) => Deno.serve(handler);
 import { detectIndustry, formatDetectionForPrompt, buildDynamicCorrectionBoosts, INDUSTRY_KEYWORDS, detectSubIndustry } from "./industry-detection.ts";
 import { getOnetExpectation } from "./onet-expectations.ts";
+import { evaluateCountryStandards } from "./country-standards.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import {
   detectCountryFromResume,
@@ -4105,6 +4106,18 @@ ${resumeText.substring(0, 20000)}
       : onetExpectation
         ? { source: 'onet', occupation: onetExpectation.occupation, code: onetExpectation.code }
         : { source: 'model' };
+
+    // Country-specific resume standards (52 markets, verified July 2026):
+    // photo norms, personal-data expectations, market boilerplate checks
+    // (RODO clause, Italian privacy consent, Gulf visa status, references
+    // sections), keyed by the scanner's geo-resolved country. Deterministic —
+    // no AI cost. Null when country unknown or not covered.
+    try {
+      responseData.countryStandards = evaluateCountryStandards(resumeText, country);
+    } catch (e) {
+      console.warn('[FREE-KEYWORD-SCAN] Country standards evaluation failed:', e);
+      responseData.countryStandards = null;
+    }
 
     // Diagnostic report metadata — the "specimen header": report ID (resume
     // hash prefix, stable across rescans of the same document), engine

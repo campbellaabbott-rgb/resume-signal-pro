@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { ChevronDown, Download, Share2, Wrench, ArrowRight, Scale } from "lucide-react";
+import { ChevronDown, Download, Share2, Wrench, ArrowRight, Scale, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 /* ============================================================
@@ -321,6 +321,88 @@ export function FindingsIndex({ findings }: { findings: Finding[] }) {
         )}
       </div>
       <p className="text-[10px] text-muted-foreground mt-3">Full detail for every finding appears in the sections below, in order of severity.</p>
+    </div>
+  );
+}
+
+// ---------- Country resume standards ----------
+
+export interface CountryStandardsData {
+  iso: string;
+  country: string;
+  confidence: "high" | "medium";
+  docTerm: string;
+  paper: string;
+  lengthNote: string;
+  photoNorm: "expected" | "common" | "optional" | "discouraged" | "never";
+  photoAdvice: string;
+  personalDataNote: string;
+  conventions: string[];
+  structuredFormNote?: string;
+  splitMarketNote?: string;
+  advisories: Array<{ severity: "critical" | "warning" | "info"; check: string; message: string }>;
+}
+
+const flagEmoji = (iso: string) =>
+  iso.length === 2 ? String.fromCodePoint(...[...iso.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)) : "";
+
+// Local norms for the scanner's geo-resolved country — photo rules,
+// personal-data expectations, and market boilerplate checks (RODO, Italian
+// privacy consent, Gulf visa status, references). Data from a 52-country
+// standards review verified July 2026; medium-confidence markets are labeled
+// as directional. Photo advice is always advisory: text extraction can't see
+// images, and the card says so.
+export function CountryStandardsCard({ data }: { data: CountryStandardsData }) {
+  const sevStyle = {
+    critical: "border-destructive/40 bg-destructive/5",
+    warning: "border-warning/40 bg-warning/5",
+    info: "border-border bg-card/60",
+  } as const;
+  const sevDot = { critical: "text-destructive", warning: "text-warning", info: "text-muted-foreground" } as const;
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+      <div className="flex items-center gap-2 mb-1 flex-wrap">
+        <Globe className="w-4 h-4 text-primary" />
+        <h3 className="font-semibold text-foreground text-sm">
+          {flagEmoji(data.iso)} Local standards: {data.country}
+        </h3>
+        {data.confidence === "medium" && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full border border-border text-muted-foreground">directional — fewer sources for this market</span>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        {data.docTerm} · {data.paper} · {data.lengthNote}. From our 52-country standards review (July 2026).
+      </p>
+
+      {data.structuredFormNote && (
+        <div className="rounded-xl border border-warning/40 bg-warning/5 p-3 mb-2.5">
+          <p className="text-xs text-foreground">{data.structuredFormNote}</p>
+        </div>
+      )}
+
+      <div className="space-y-2 mb-3">
+        {data.advisories.map((a) => (
+          <div key={a.check} className={`rounded-xl border p-3 ${sevStyle[a.severity]}`}>
+            <p className="text-xs text-foreground">
+              <span className={`font-semibold ${sevDot[a.severity]}`}>{a.severity === "critical" ? "● " : a.severity === "warning" ? "● " : "○ "}</span>
+              {a.message}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-xs text-muted-foreground mb-1"><span className="font-semibold text-foreground">Personal data here:</span> {data.personalDataNote}</p>
+      {data.conventions.length > 0 && (
+        <ul className="mt-1.5 space-y-1">
+          {data.conventions.map((c) => (
+            <li key={c} className="text-xs text-muted-foreground flex items-start gap-1.5"><span className="text-primary mt-0.5">•</span><span>{c}</span></li>
+          ))}
+        </ul>
+      )}
+      {data.splitMarketNote && (
+        <p className="text-[11px] text-muted-foreground mt-2.5 border-t border-border/50 pt-2">{data.splitMarketNote}</p>
+      )}
     </div>
   );
 }

@@ -42,7 +42,7 @@ import { InteractiveChecklist } from "./InteractiveChecklist";
 import { AISummary } from "./AISummary";
 import { ShareableScoreCard } from "./ShareableScoreCard";
 import { ResumeXRay } from "./ResumeXRay";
-import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard, FreelanceGuidanceCard, IndustryChecksCard, DiagnosticHeader, FindingsIndex, computeVendorChecks, type Finding } from "./ReportInsightCards";
+import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard, FreelanceGuidanceCard, IndustryChecksCard, CountryStandardsCard, DiagnosticHeader, FindingsIndex, computeVendorChecks, type Finding } from "./ReportInsightCards";
 import { EmailReportCapture } from "./EmailReportCapture";
 import { CardErrorBoundary } from "./CardErrorBoundary";
 import { getAvailableIndustries } from "./IndustryConfidenceIndicator";
@@ -810,6 +810,7 @@ export interface FreeKeywordResultsProps {
   /** Present when benchmarks come from our real scan corpus, not estimates */
   realBenchmark?: { n: number; median: number; p25: number; p75: number; industry: string } | null;
   industrySpecificChecks?: { industry: string; items: Array<{ label: string; present: boolean; note: string }> } | null;
+  countryStandards?: import("./ReportInsightCards").CountryStandardsData | null;
   reportMeta?: { reportId: string; engineVersion: string; generatedAt: string; industry: string; industryConfidence: string; benchmarkSource: string } | null;
   parseQuality?: { verdict: 'good' | 'fair' | 'poor'; wordCount: number; issues: string[] } | null;
   /** Honest score band spanning the rule-based computation and AI estimate */
@@ -936,6 +937,7 @@ export function FreeKeywordResults({
   freelanceGuidance,
   realBenchmark,
   industrySpecificChecks,
+  countryStandards,
   reportMeta,
   parseQuality,
   scoreBand,
@@ -1873,6 +1875,14 @@ export function FreeKeywordResults({
       {industrySpecificChecks && (
         <div className="mb-4">
           <IndustryChecksCard checks={industrySpecificChecks} />
+        </div>
+      )}
+
+      {/* Country-specific resume standards for the scanner's geo-resolved
+          market (photo norms, personal-data rules, local boilerplate) */}
+      {countryStandards && (
+        <div className="mb-4">
+          <CountryStandardsCard data={countryStandards} />
         </div>
       )}
 
