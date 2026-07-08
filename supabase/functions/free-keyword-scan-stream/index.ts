@@ -7365,7 +7365,7 @@ serve(async (req) => {
         ipCountry,
         visitorId: clientIp,
         inputLength: resumeText.length,
-        aiModel: 'google/gemini-2.5-pro'
+        aiModel: 'google/gemini-2.5-flash'
       };
 
       // Rate limiting
@@ -7823,11 +7823,14 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         ? `Analyze this ${resumeType.label} for the target job:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>\n\n<job_description>\n${truncatedJobDescription}\n</job_description>`
         : `Analyze this ${resumeType.label}:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>`;
 
-      // AI request with retry logic
+      // AI request with retry logic. Flash-first to match the primary
+      // scanner: the pro-first order made this path's p50 latency 32s vs the
+      // primary's ~20s, which matters exactly when this fallback is carrying
+      // traffic because the primary is down.
       const AI_MODELS = [
-        "google/gemini-2.5-pro",
-        "openai/gpt-5",           // Fallback 1
-        "google/gemini-2.5-flash" // Fallback 2 (faster, cheaper)
+        "google/gemini-2.5-flash",
+        "google/gemini-2.5-pro",  // Fallback 1
+        "openai/gpt-4o-mini"      // Fallback 2
       ];
       const MAX_RETRIES = 3;
       const RETRY_DELAYS = [1000, 2000, 4000]; // Exponential backoff

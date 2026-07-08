@@ -82,6 +82,68 @@ export function ResumeRoast({ resumeText, industry, currentRole }: ResumeRoastPr
     setTimeout(() => setCopiedTweet(false), 2000);
   };
 
+  // Roast card image: the burn + spice score as a shareable PNG. The roast is
+  // the most naturally shareable thing the platform produces — give it legs.
+  // Native share sheet on mobile, download fallback elsewhere.
+  const shareRoastCard = () => {
+    if (!data?.tweetableRoast) return;
+    const W = 1200, H = 630;
+    const canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, "#1a0b0b");
+    bg.addColorStop(1, "#2a1010");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.fillStyle = "#f87171";
+    ctx.font = "bold 40px system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("🔥 MY RESUME GOT ROASTED", 80, 110);
+
+    // Wrapped roast quote
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "italic 600 44px Georgia, serif";
+    const words = `“${data.tweetableRoast}”`.split(" ");
+    let line = "", y = 210;
+    for (const w of words) {
+      const test = line ? `${line} ${w}` : w;
+      if (ctx.measureText(test).width > W - 160 && line) {
+        ctx.fillText(line, 80, y);
+        line = w; y += 62;
+        if (y > 430) { line += "…"; break; }
+      } else {
+        line = test;
+      }
+    }
+    ctx.fillText(line, 80, y);
+
+    ctx.fillStyle = "#fbbf24";
+    ctx.font = "600 34px system-ui, sans-serif";
+    ctx.fillText(`Spice level: ${data.spiceScore}/10 ${"🌶".repeat(Math.min(5, Math.ceil(data.spiceScore / 2)))}`, 80, 520);
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "600 28px system-ui, sans-serif";
+    ctx.fillText("Get roasted free → resumebooster.work", 80, 575);
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], "resume-roast.png", { type: "image/png" });
+      const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
+      if (nav.share && nav.canShare?.({ files: [file] })) {
+        nav.share({ files: [file], title: "My resume got roasted", text: "Get roasted free at resumebooster.work 🔥" }).catch(() => { /* cancelled */ });
+      } else {
+        const a = document.createElement("a");
+        a.download = "resume-roast.png";
+        a.href = canvas.toDataURL("image/png");
+        a.click();
+        toast({ title: "Roast card saved", description: "Post it — the link's on the image 🔥" });
+      }
+    }, "image/png");
+  };
+
   if (!data) {
     return (
       <div className="text-center py-6 space-y-3">
@@ -177,10 +239,16 @@ export function ResumeRoast({ resumeText, industry, currentRole }: ResumeRoastPr
         <div className="rounded-xl bg-muted/20 border border-border/50 p-3">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[10px] font-semibold text-muted-foreground uppercase">Shareable Roast</span>
-            <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={copyTweet}>
-              {copiedTweet ? <CheckCircle className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-              {copiedTweet ? "Copied" : "Copy"}
-            </Button>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={shareRoastCard}>
+                <Share2 className="w-3 h-3" />
+                Image
+              </Button>
+              <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1" onClick={copyTweet}>
+                {copiedTweet ? <CheckCircle className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                {copiedTweet ? "Copied" : "Copy"}
+              </Button>
+            </div>
           </div>
           <p className="text-xs text-foreground italic">"{data.tweetableRoast}"</p>
         </div>

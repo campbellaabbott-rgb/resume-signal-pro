@@ -4614,7 +4614,17 @@ export function FreeKeywordResults({
 
       {/* Shareable score card */}
       <div className="mb-5">
-        <ShareScoreCard atsScore={atsScoreEstimate} industry={effectiveIndustry} percentile={peerPercentile ?? undefined} />
+        <ShareScoreCard
+          atsScore={atsScoreEstimate}
+          industry={effectiveIndustry}
+          percentile={peerPercentile ?? undefined}
+          previousScore={(() => {
+            // Same-candidate guard as the delta banner: a household member's
+            // earlier scan must not produce a bogus before/after card.
+            const prev = getPreviousScan();
+            return prev && (prev.candidateName ?? null) === (candidateName ?? null) ? prev.atsScore : undefined;
+          })()}
+        />
       </div>
 
       {/* Credibility: no invented testimonials. Trust here comes from the

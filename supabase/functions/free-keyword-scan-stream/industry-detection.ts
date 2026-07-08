@@ -2100,6 +2100,81 @@ export const INDUSTRY_KEYWORDS: Record<string, { primary: string[]; secondary: s
   }
 };
 
+// ── Spanish keyword parity ────────────────────────────────────────────────
+// Title locks catch Spanish job titles, but the keyword tables above are
+// English-only, so fully Spanish resumes previously scored on titles alone.
+// These terms are merged into each industry's primary list at module init —
+// they cannot collide with English resumes (accented/Spanish-only tokens).
+const SPANISH_INDUSTRY_TERMS: Record<string, { primary: string[]; titles: string[] }> = {
+  healthcare: {
+    primary: ['enfermería', 'paciente', 'pacientes', 'atención médica', 'hospitalario', 'urgencias', 'quirófano', 'historia clínica', 'signos vitales', 'medicamentos', 'cuidados intensivos', 'consulta médica', 'diagnóstico', 'tratamiento médico'],
+    titles: ['enfermera', 'enfermero', 'médico', 'médica', 'auxiliar de enfermería', 'fisioterapeuta', 'terapeuta ocupacional'],
+  },
+  technology: {
+    primary: ['desarrollo de software', 'programación', 'aplicaciones web', 'base de datos', 'desarrollo web', 'sistemas informáticos', 'soporte técnico', 'infraestructura tecnológica'],
+    titles: ['desarrollador', 'desarrolladora', 'programador', 'programadora', 'ingeniero de software', 'ingeniera de software', 'analista de sistemas'],
+  },
+  finance: {
+    primary: ['contabilidad', 'estados financieros', 'presupuesto', 'auditoría', 'cuentas por pagar', 'cuentas por cobrar', 'conciliación bancaria', 'facturación', 'nómina', 'análisis financiero', 'tesorería', 'impuestos'],
+    titles: ['contador', 'contadora', 'contable', 'analista financiero', 'auditor', 'auditora', 'tesorero'],
+  },
+  sales: {
+    primary: ['ventas', 'cartera de clientes', 'cumplimiento de metas', 'prospección', 'cierre de ventas', 'atención al cliente', 'cuota de ventas', 'negociación comercial', 'punto de venta'],
+    titles: ['vendedor', 'vendedora', 'ejecutivo de ventas', 'ejecutiva de ventas', 'asesor comercial', 'asesora comercial', 'gerente de ventas'],
+  },
+  education: {
+    primary: ['docencia', 'plan de estudios', 'aula', 'alumnos', 'enseñanza', 'evaluación educativa', 'planificación de clases', 'educación primaria', 'educación secundaria'],
+    titles: ['maestro', 'maestra', 'profesor', 'profesora', 'docente', 'educadora', 'director escolar'],
+  },
+  legal: {
+    primary: ['derecho', 'litigios', 'contratos legales', 'asesoría jurídica', 'juzgado', 'demandas', 'expedientes legales', 'derecho laboral', 'derecho mercantil'],
+    titles: ['abogado', 'abogada', 'asistente legal', 'asesor jurídico', 'notario'],
+  },
+  hospitality: {
+    primary: ['hotelería', 'recepción de hotel', 'huéspedes', 'reservaciones', 'servicio al huésped', 'turismo', 'restaurante', 'banquetes'],
+    titles: ['recepcionista', 'mesero', 'mesera', 'camarero', 'camarera', 'gerente de hotel', 'anfitrión'],
+  },
+  culinary: {
+    primary: ['cocina profesional', 'preparación de alimentos', 'menú', 'repostería', 'panadería', 'higiene alimentaria', 'cocina caliente', 'cocina fría'],
+    titles: ['cocinero', 'cocinera', 'chef ejecutivo', 'jefe de cocina', 'ayudante de cocina', 'repostero', 'panadero'],
+  },
+  logistics: {
+    primary: ['logística', 'cadena de suministro', 'almacén', 'inventario', 'despacho', 'transporte de carga', 'distribución', 'montacargas', 'recepción de mercancía'],
+    titles: ['almacenista', 'chofer', 'conductor', 'operador de montacargas', 'jefe de almacén', 'coordinador logístico'],
+  },
+  construction_management: {
+    primary: ['obra civil', 'construcción', 'supervisión de obra', 'presupuesto de obra', 'planos', 'contratistas', 'seguridad en obra', 'edificación'],
+    titles: ['maestro de obra', 'supervisor de obra', 'residente de obra', 'jefe de obra'],
+  },
+  skilled_trades: {
+    primary: ['electricidad', 'plomería', 'fontanería', 'soldadura', 'mantenimiento industrial', 'instalaciones eléctricas', 'refrigeración', 'aire acondicionado'],
+    titles: ['electricista', 'plomero', 'fontanero', 'soldador', 'soldadora', 'técnico de mantenimiento', 'mecánico'],
+  },
+  manufacturing: {
+    primary: ['producción industrial', 'línea de producción', 'control de calidad', 'maquinaria industrial', 'planta de producción', 'ensamblaje', 'manufactura'],
+    titles: ['operario', 'operaria', 'operador de producción', 'supervisor de producción', 'jefe de planta'],
+  },
+  hr: {
+    primary: ['recursos humanos', 'reclutamiento', 'selección de personal', 'capacitación', 'relaciones laborales', 'nómina de personal', 'clima laboral', 'contratación'],
+    titles: ['reclutador', 'reclutadora', 'generalista de recursos humanos', 'jefe de personal'],
+  },
+  administrative: {
+    primary: ['asistencia administrativa', 'gestión de agenda', 'archivo de documentos', 'atención telefónica', 'oficina', 'redacción de documentos', 'apoyo administrativo'],
+    titles: ['secretaria', 'secretario', 'asistente administrativo', 'asistente administrativa', 'auxiliar administrativo', 'recepcionista de oficina'],
+  },
+  retail: {
+    primary: ['tienda', 'mostrador', 'caja registradora', 'exhibición de productos', 'atención en piso', 'venta minorista', 'inventario de tienda'],
+    titles: ['cajero', 'cajera', 'dependiente', 'encargado de tienda', 'gerente de tienda'],
+  },
+};
+for (const [industry, terms] of Object.entries(SPANISH_INDUSTRY_TERMS)) {
+  const entry = INDUSTRY_KEYWORDS[industry];
+  if (entry) {
+    entry.primary.push(...terms.primary);
+    entry.titles.push(...terms.titles);
+  }
+}
+
 // ── Sub-industry taxonomy ─────────────────────────────────────────────────
 // Second-level specialization within a detected industry. Detected by signal
 // counting over the resume text; requires minSignals hits to claim the sub-industry.
@@ -2914,6 +2989,14 @@ function extractSections(resumeText: string): {
     'esthetician', 'phlebotomist', 'realtor', 'broker', 'deckhand', 'custodian',
     'groundskeeper', 'barber', 'stylist', 'interpreter', 'translator', 'archivist',
     'clerk', 'inspector', 'surveyor', 'assembler', 'miner', 'dietitian', 'librarian',
+    // Spanish role nouns — without these, Spanish title lines are never
+    // recognized as titles and the Spanish keyword tables can't anchor
+    'enfermera', 'enfermero', 'médico', 'ingeniero', 'ingeniera', 'contador',
+    'contadora', 'abogado', 'abogada', 'vendedor', 'vendedora', 'maestro',
+    'maestra', 'profesor', 'profesora', 'gerente', 'analista', 'desarrollador',
+    'cocinero', 'cocinera', 'electricista', 'secretaria', 'cajero', 'cajera',
+    'operario', 'supervisor', 'coordinador', 'coordinadora', 'técnico', 'técnica',
+    'asistente', 'auxiliar', 'jefe', 'jefa', 'director', 'directora', 'asesor', 'asesora',
   ];
   
   const employers: string[] = [];
@@ -4021,7 +4104,10 @@ const MULTILINGUAL_TITLE_LOCKS: Array<{ pattern: RegExp; industry: string; label
   // Hospitality
   { pattern: /\b(cocinero|chef de cocina|koch\b|köchin|cuisinier|chef de cuisine|cozinheiro|kok\b|hotelmanager|gerente de hotel)\b/i, industry: 'culinary', label: 'culinary title (non-EN)' },
   // Customer service
-  { pattern: /\b(atención al cliente|servicio al cliente|kundendienst|kundenservice|service client|atendimento ao cliente|klantenservice)\b/i, industry: 'customer_success', label: 'support title (non-EN)' },
+  // "atención/servicio al cliente" alone is a generic skill phrase every
+  // sales/retail/hospitality resume lists — only lock when it's an actual
+  // role title (representante/agente/ejecutivo de ...).
+  { pattern: /\b((representante|agente|asesora?|ejecutiv[oa]) de (atención|servicio) al cliente|kundendienst|kundenservice|service client|atendimento ao cliente|klantenservice)\b/i, industry: 'customer_success', label: 'support title (non-EN)' },
   // Logistics / drivers
   { pattern: /\b(camionero|conductor de camión|lkw-fahrer|berufskraftfahrer|chauffeur routier|motorista de caminhão|vrachtwagenchauffeur|almacenista|lagerist|magasinier)\b/i, industry: 'logistics', label: 'driver/warehouse title (non-EN)' },
   // Administrative
