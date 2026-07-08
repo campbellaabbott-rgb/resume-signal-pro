@@ -811,6 +811,7 @@ export interface FreeKeywordResultsProps {
   realBenchmark?: { n: number; median: number; p25: number; p75: number; industry: string } | null;
   industrySpecificChecks?: { industry: string; items: Array<{ label: string; present: boolean; note: string }> } | null;
   countryStandards?: import("./ReportInsightCards").CountryStandardsData | null;
+  platformProfileDetected?: { signals: string[] } | null;
   reportMeta?: { reportId: string; engineVersion: string; generatedAt: string; industry: string; industryConfidence: string; benchmarkSource: string } | null;
   parseQuality?: { verdict: 'good' | 'fair' | 'poor'; wordCount: number; issues: string[] } | null;
   /** Honest score band spanning the rule-based computation and AI estimate */
@@ -938,6 +939,7 @@ export function FreeKeywordResults({
   realBenchmark,
   industrySpecificChecks,
   countryStandards,
+  platformProfileDetected,
   reportMeta,
   parseQuality,
   scoreBand,
@@ -1710,6 +1712,22 @@ export function FreeKeywordResults({
 
       {/* Specimen header — report ID, engine, provenance */}
       {reportMeta && <DiagnosticHeader meta={reportMeta} candidateName={candidateName} />}
+
+      {/* Honest routing: a platform profile isn't a resume, and scoring it as
+          one misleads. Say so at the very top and point at the right tool. */}
+      {platformProfileDetected && (
+        <div className="rounded-2xl border border-primary/40 bg-primary/5 p-4 mb-6">
+          <p className="text-sm font-semibold text-foreground mb-0.5">This looks like a freelance platform profile, not a resume</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            We detected {platformProfileDetected.signals.slice(0, 3).join(", ")} — the markers of a profile export.
+            The score below treats this as a resume, which understates you: recruiters need your projects translated
+            into employer language, not platform stats. That's exactly what Freelance Boost does.
+          </p>
+          <Link to="/freelance-boost" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
+            Turn this profile into resume experience →
+          </Link>
+        </div>
+      )}
 
       {/* The fix→verify payoff: when this person scanned before, lead with
           what changed. Same-candidate guard keeps household/multi-resume

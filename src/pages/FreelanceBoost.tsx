@@ -262,6 +262,25 @@ export default function FreelanceBoost() {
                 </div>
               )}
               <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    // Hand the generated section to the builder: consolidated
+                    // structures become one entry; projects_section becomes
+                    // one entry per project. Appended to any existing draft.
+                    try {
+                      sessionStorage.setItem("rb_boost_insert", JSON.stringify({
+                        header: result.header,
+                        structure: result.structure,
+                        scopeStatement: result.scopeStatement,
+                        projects: result.projects.map(p => ({ clientLabel: p.clientLabel, bullets: p.bullets })),
+                      }));
+                    } catch { /* session unavailable — button still navigates */ }
+                    window.location.href = "/builder";
+                  }}
+                >
+                  Insert into my resume (builder) <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                </Button>
                 <Button size="sm" variant="outline" asChild><Link to="/?utm_source=freelance_boost">Scan the result free <ArrowRight className="w-3.5 h-3.5 ml-1" /></Link></Button>
               </div>
             </div>
@@ -359,6 +378,32 @@ export default function FreelanceBoost() {
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Proof before purchase: what the transformation actually looks
+                  like. Clearly labeled illustrative — the formula shown is the
+                  real one the engine applies, but this is not a customer's data. */}
+              <div className="rounded-2xl border border-border bg-card p-5 mb-6">
+                <p className="text-sm font-semibold text-foreground mb-3">What the transformation looks like</p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-destructive mb-1.5">What freelancers write</p>
+                    <p className="text-xs text-muted-foreground italic">"Made websites for various small businesses. Did some Shopify stores and helped with their online marketing."</p>
+                  </div>
+                  <div className="rounded-xl border border-success/30 bg-success/5 p-3.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-success mb-1.5">What recruiters read</p>
+                    <ul className="space-y-1.5">
+                      <li className="text-xs text-foreground">• Designed and shipped 9 responsive Shopify storefronts for retail and service clients over 14 months</li>
+                      <li className="text-xs text-foreground">• Rebuilt a bakery chain's e-commerce checkout, replacing a manual phone-order process</li>
+                      <li className="text-xs text-foreground">• Retained by 4 clients for follow-on marketing engagements</li>
+                    </ul>
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-3">
+                  Illustrative example. Every bullet follows the same formula — target-field verb + deliverable + scope + outcome —
+                  but yours are built <span className="text-foreground font-medium">only from your real intake answers</span>. If you give us no
+                  metric, we don't invent one; an honest bullet beats a fabricated one, always.
+                </p>
               </div>
 
               <div className="rounded-2xl border-2 border-primary bg-card p-6 text-center">

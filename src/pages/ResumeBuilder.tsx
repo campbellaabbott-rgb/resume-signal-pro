@@ -14,6 +14,7 @@ import { getResumeFromSession } from "@/hooks/use-session-resume";
 import {
   BuilderResume,
   createEmptyResume,
+  createEmptyExperienceEntry,
   normalizeBuilderResume,
 } from "@/types/resume-builder";
 import { ExperienceEditor } from "@/components/builder/ExperienceEditor";
@@ -118,6 +119,47 @@ export default function ResumeBuilder() {
   useEffect(() => {
     if (hasAttemptedPrefillRef.current) return;
     hasAttemptedPrefillRef.current = true;
+
+    // Freelance Boost handoff: append the purchased experience section to
+    // whatever draft exists (never overwrites — these are ADDITIONAL entries).
+    // Takes priority over prefill because the user explicitly clicked insert.
+    try {
+      const boostRaw = sessionStorage.getItem("rb_boost_insert");
+      if (boostRaw) {
+        sessionStorage.removeItem("rb_boost_insert");
+        const boost = JSON.parse(boostRaw) as {
+          header: string; structure: string; scopeStatement?: string;
+          projects: Array<{ clientLabel: string; bullets: string[] }>;
+        };
+        const entries = boost.structure.startsWith("consolidated")
+          ? [{
+              ...createEmptyExperienceEntry(),
+              title: boost.header,
+              company: "Independent / Freelance",
+              bullets: [
+                ...(boost.scopeStatement ? [boost.scopeStatement] : []),
+                ...boost.projects.flatMap(p => p.bullets),
+              ],
+            }]
+          : boost.projects.map(p => ({
+              ...createEmptyExperienceEntry(),
+              title: boost.header,
+              company: p.clientLabel,
+              bullets: p.bullets,
+            }));
+        const base = loadDraft() || createEmptyResume();
+        // Drop the placeholder empty entry a fresh builder starts with.
+        const existing = base.experience.filter(e => e.title || e.company || e.bullets.some(Boolean));
+        setResume({ ...base, experience: [...entries, ...existing] });
+        toast({
+          title: `Freelance section inserted — ${entries.length} ${entries.length === 1 ? "entry" : "entries"} added`,
+          description: "Add your dates to each entry, then export a typeset PDF or Word document.",
+        });
+        return;
+      }
+    } catch (e) {
+      console.error("[ResumeBuilder] Boost insert failed:", e);
+    }
 
     let fixes: ScanFixes | null = null;
     try {

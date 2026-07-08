@@ -328,6 +328,75 @@ export const GUIDES: Record<string, Guide> = {
     ],
   },
 
+  "freelance-work-on-resume": {
+    slug: "freelance-work-on-resume",
+    title: "How to Put Freelance Work on Your Resume (Upwork, Fiverr, Gigs)",
+    h1: "How to put freelance work on your resume",
+    description:
+      "The structure decision (one consolidated role vs. a projects section), the bullet formula that translates gigs into employer language, and what to do when a project has no metrics.",
+    tldr:
+      "Freelance work belongs on your resume as real experience, structured by one decision: continuous freelancing with a coherent focus becomes ONE consolidated role ('Independent UX Consultant, 2021–present') with project bullets under it; scattered or part-time projects become a 'Selected Projects' section. Write every bullet as verb + deliverable + scope + outcome, translate platform language into employer language ('made websites' → 'designed and shipped responsive marketing sites'), and never paste platform stats like Job Success % — recruiters don't hire profiles, they hire experience.",
+    updated: "2026-07-08",
+    minutes: 6,
+    sections: [
+      {
+        h2: "The mistake: pasting your profile",
+        paras: [
+          "Freelancers usually get this wrong in one of two directions: hiding the freelance years entirely (leaving a gap that reads worse than the truth), or pasting their platform profile — Job Success score, hourly rate, badges — into a resume. Recruiters don't hire profiles. A 98% Job Success score means nothing to an ATS keyword search and little to a screener; the client problems you solved mean everything.",
+          "The fix is translation, not decoration: your gigs are real experience that needs to be written in the language of the field you're applying to. Our scanner detects platform-profile exports for exactly this reason — scoring one as a resume understates the person behind it.",
+        ],
+      },
+      {
+        h2: "The structure decision: one role or a projects section?",
+        paras: [
+          "This is the choice that shapes everything else, and it follows rules, not taste. If your freelancing is continuous (roughly a year or more) with a coherent focus, consolidate it into ONE role entry: 'Independent Marketing Consultant — 2021–present', with your best project outcomes as bullets underneath. It reads like a job because it was one.",
+          "If your projects are scattered across fields, part-time alongside a job, or shorter-term, use a 'Selected Projects' section instead — each project gets a client-type label ('retail e-commerce client', never confidential names without permission) and one to three bullets. Alongside employment, this section sits below your work history; as your main activity, it sits on top.",
+          "Never list ten gigs as ten separate 'jobs' — that reads as instability to a six-second skim, which is the exact opposite of what the work proves.",
+        ],
+      },
+      {
+        h2: "The bullet formula",
+        paras: [
+          "Every freelance bullet should carry four parts: a target-field action verb, the deliverable in the TARGET field's vocabulary, the scope (clients, budget, volume, timeline), and an outcome. 'Made websites for small businesses' becomes 'Designed and shipped 9 responsive Shopify storefronts for retail clients over 14 months.'",
+          "The vocabulary translation matters as much as the structure: you're proving you already speak the field's language. A recruiter reading 'built booking plugin' files you under hobbyist; reading 'developed and deployed a custom scheduling integration for a 12-location dental group' files you under engineer.",
+        ],
+      },
+      {
+        h2: "No metrics? Use the rescue ladder — never invent one",
+        paras: [
+          "Most gig work never measured revenue impact, and inventing numbers is both wrong and detectable in interviews. When a project has no headline metric, step down this ladder and take the first rung you honestly have: a client business result (time saved, leads generated) → a scope figure (pages, users, records, budget) → speed ('delivered in 3 weeks') → repeat business ('retained for 3 follow-on engagements') → a concrete qualitative change ('replacing a manual spreadsheet process').",
+          "A bullet with no number at all is still fine. An honest bullet beats a fabricated one, always — and every claim in your resume should survive the question 'tell me more about that.'",
+        ],
+      },
+      {
+        h2: "Dates, overlaps, and the 'gap' that isn't",
+        paras: [
+          "Freelancing alongside employment overlaps honestly: keep both entries with their real dates. Freelancing between jobs is not a gap — it's the consolidated role above, dated like any other. What kills applications isn't the freelance chapter; it's the unlabeled hole where recruiters are left to imagine something worse.",
+          "One more honesty rule that doubles as self-protection: client names appear only with permission; otherwise use industry-plus-size framing ('a national bakery chain'), which recruiters fully accept.",
+        ],
+      },
+    ],
+    faqs: [
+      {
+        q: "Should I put Upwork or Fiverr on my resume?",
+        a: "The platform name is optional context, never the substance. 'Independent Consultant (via Upwork)' is fine in the role line if you like, but the bullets must stand entirely on client problems and outcomes — platform badges, Job Success scores, and hourly rates don't belong on a resume.",
+      },
+      {
+        q: "Is freelance work taken seriously by recruiters?",
+        a: "Written as outcomes for real clients, yes — increasingly so. Written as a list of gigs or a pasted profile, no. The difference is entirely in the translation: field vocabulary, scope, and results.",
+      },
+      {
+        q: "Can a tool do this translation for me?",
+        a: "Ours does: Freelance Boost ($29) takes a guided project intake — or a pasted platform profile — and applies exactly the structure rules and bullet formula in this guide, using only facts you provide. It never invents clients, metrics, or outcomes; if you give it no number, it writes an honest bullet without one.",
+      },
+    ],
+    related: [
+      { label: "Freelance Boost — do this translation for me", href: "/freelance-boost" },
+      { label: "Career changer's resume playbook", href: "/guides/career-change-resume" },
+      { label: "Scan your resume free", href: "/" },
+    ],
+  },
+
   "what-resume-score-means": {
     slug: "what-resume-score-means",
     title: "What a Resume Score Actually Means (and Doesn't)",

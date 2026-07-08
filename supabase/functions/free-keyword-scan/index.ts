@@ -4107,6 +4107,32 @@ ${resumeText.substring(0, 20000)}
         ? { source: 'onet', occupation: onetExpectation.occupation, code: onetExpectation.code }
         : { source: 'model' };
 
+    // Platform-profile detection: when someone pastes an Upwork/Fiverr-style
+    // profile export instead of a resume, the honest response isn't a
+    // mediocre score — it's telling them this is a profile and routing them
+    // to the tool built for exactly this. Deterministic, ≥2 distinct signals.
+    try {
+      const profileSignals: string[] = [];
+      const lower = resumeText.toLowerCase();
+      const signalTests: Array<[string, RegExp]> = [
+        ["job success score", /\bjob success( score)?\b/i],
+        ["platform badge", /\b(top rated plus|top rated|rising talent|level (one|two|1|2) seller)\b/i],
+        ["hourly rate", /\$\s?\d+(\.\d+)?\s?\/\s?(hr|hour)\b/i],
+        ["platform totals", /\btotal (hours|jobs|earnings)\b/i],
+        ["platform name", /\b(upwork|fiverr|freelancer\.com|toptal|peopleperhour)\b/i],
+        ["response stats", /\bresponse (time|rate)\s*[:\-]/i],
+        ["client reviews", /\b(client (review|feedback)s?|★|⭐|5\.0 out of)\b/i],
+      ];
+      for (const [label, re] of signalTests) {
+        if (re.test(lower)) profileSignals.push(label);
+      }
+      responseData.platformProfileDetected = profileSignals.length >= 2
+        ? { signals: profileSignals }
+        : null;
+    } catch (_e) {
+      responseData.platformProfileDetected = null;
+    }
+
     // Country-specific resume standards (52 markets, verified July 2026):
     // photo norms, personal-data expectations, market boilerplate checks
     // (RODO clause, Italian privacy consent, Gulf visa status, references
