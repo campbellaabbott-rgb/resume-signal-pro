@@ -28,19 +28,39 @@ serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
-    const { data: stats, error } = await supabase.rpc("get_industry_correction_stats", { p_days_back: 7 });
+    // Param name must match the CURRENT function signature (p_days). The
+    // 2026-07-07 digest went out as "NaN corrections / undefined→undefined"
+    // because this call used p_days_back and matched a stale function
+    // returning different column names — CREATE OR REPLACE can't rename a
+    // parameter, so the old signature had survived every "fix" migration.
+    // Migration 20260708090000 drops-and-recreates; the mapping below is
+    // additionally defensive against BOTH known column sets so a stale DB
+    // can never produce a garbage email again.
+    const { data: stats, error } = await supabase.rpc("get_industry_correction_stats", { p_days: 7 });
     if (error) throw error;
 
-    if (!stats || stats.length === 0) {
+    type StatRow = {
+      detected?: string; corrected?: string; corrections?: number | string;
+      original_industry?: string; corrected_industry?: string; correction_count?: number | string;
+    };
+    const normalized = ((stats ?? []) as StatRow[])
+      .map((r) => ({
+        detected: r.detected ?? r.original_industry ?? "unknown",
+        corrected: r.corrected ?? r.corrected_industry ?? "unknown",
+        corrections: Number(r.corrections ?? r.correction_count ?? 0),
+      }))
+      .filter((r) => Number.isFinite(r.corrections) && r.corrections > 0);
+
+    if (normalized.length === 0) {
       console.log("[CORRECTIONS-DIGEST] No corrections this week — skipping email");
       return new Response(JSON.stringify({ sent: false, reason: "no_corrections" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const total = stats.reduce((s: number, r: { corrections: number }) => s + Number(r.corrections), 0);
-    const rows = stats
-      .map((r: { detected: string; corrected: string; corrections: number }) =>
+    const total = normalized.reduce((s, r) => s + r.corrections, 0);
+    const rows = normalized
+      .map((r) =>
         `<tr><td style="padding:6px 12px;border-bottom:1px solid #eee">${r.detected}</td><td style="padding:6px 12px;border-bottom:1px solid #eee">→ ${r.corrected}</td><td style="padding:6px 12px;border-bottom:1px solid #eee;text-align:right"><b>${r.corrections}×</b></td></tr>`)
       .join("");
 
@@ -60,8 +80,8 @@ serve(async (req) => {
         </div>`,
     });
 
-    console.log(`[CORRECTIONS-DIGEST] Sent digest: ${total} corrections across ${stats.length} pairs`);
-    return new Response(JSON.stringify({ sent: true, total, pairs: stats.length }), {
+    console.log(`[CORRECTIONS-DIGEST] Sent digest: ${total} corrections across ${normalized.length} pairs`);
+    return new Response(JSON.stringify({ sent: true, total, pairs: normalized.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
