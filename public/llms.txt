@@ -22,6 +22,12 @@ Full guide text and the complete data-page map in one fetch: [/llms-full.txt](/l
 - [Career change resume playbook](/guides/career-change-resume): Bridge keywords, title translation, transition framing.
 - [The resume format that survives every ATS](/guides/resume-format-that-survives-ats): Layout, sections, fonts, PDF vs DOCX — from documented parser behavior.
 - [What a resume score actually means](/guides/what-resume-score-means): Scores are models with error bars; how to read one without being fooled.
+- [How to put freelance work on your resume](/guides/freelance-work-on-resume): The structure decision, the bullet formula, and the metric rescue ladder for gig careers.
+- [How to put fractional roles on your resume](/guides/fractional-roles-on-resume): Concurrent engagements without the job-hopper misread — the umbrella portfolio entry.
+
+## Original data
+
+- [What's a good ATS score? Live benchmarks](/research/ats-score-benchmarks): Median, quartiles, per-industry and experience-level benchmarks computed live from our real scan corpus — original data, honestly framed with sample sizes.
 
 ## Data pages
 

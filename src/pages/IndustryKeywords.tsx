@@ -22,6 +22,7 @@ const label = (slug: string) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => 
 const displayKeyword = (k: string) => (k.length <= 4 && !k.includes(" ") ? k.toUpperCase() : k);
 
 import { SCREENER_NOTES } from "@/data/screener-notes";
+import { buildIndustryFaqs } from "@/data/industry-faqs";
 
 export default function IndustryKeywords() {
   const { slug } = useParams();
@@ -52,6 +53,7 @@ export default function IndustryKeywords() {
   const keywords = [...new Set(data.primary)].slice(0, 24);
   const titles = [...new Set(data.titles)].slice(0, 18);
   const certs = [...new Set(data.certifications)].slice(0, 12);
+  const faqs = buildIndustryFaqs({ name, keywords, certifications: certs, screenerNote: SCREENER_NOTES[slug] });
 
   return (
     <div className="min-h-screen bg-background">
@@ -61,6 +63,13 @@ export default function IndustryKeywords() {
         path={`/industries/${slug}`}
       />
       {structured && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structured }} />}
+      {faqs.length > 0 && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: faqs.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+        }) }} />
+      )}
       <Header />
       <main className="pt-20 pb-20">
         <div className="container max-w-3xl">
@@ -156,6 +165,23 @@ export default function IndustryKeywords() {
               Scan my resume free <ArrowRight className="w-4 h-4" />
             </Link>
           </section>
+
+          {/* Visible FAQ content — must match the FAQPage JSON-LD or Google
+              ignores the markup. Answers are the same live data shown above,
+              phrased as the questions people actually search. */}
+          {faqs.length > 0 && (
+            <section className="mb-8">
+              <h2 className="text-xl font-bold mb-3">Common questions</h2>
+              <div className="space-y-3">
+                {faqs.map((f) => (
+                  <div key={f.q} className="rounded-2xl border border-border bg-card p-4">
+                    <h3 className="font-semibold text-foreground text-sm mb-1.5">{f.q}</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{f.a}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {rolesForIndustry(slug).length > 0 && (
             <section className="mb-8">

@@ -27,6 +27,15 @@ export default function GuideArticle() {
         publisher: { "@type": "Organization", name: "Resume Booster" },
         mainEntityOfPage: `https://resumebooster.work/guides/${g.slug}`,
       },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: "https://resumebooster.work/" },
+          { "@type": "ListItem", position: 2, name: "Guides", item: "https://resumebooster.work/guides" },
+          { "@type": "ListItem", position: 3, name: g.h1, item: `https://resumebooster.work/guides/${g.slug}` },
+        ],
+      },
     ];
     if (g.faqs?.length) {
       blocks.push({
