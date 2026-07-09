@@ -3913,8 +3913,15 @@ ${resumeText.substring(0, 20000)}
       : null;
 
     // Confidence-aware UX flags: the report UI makes the confirmation strip
-    // prominent when the industry call isn't settled.
-    responseData.industryNeedsConfirmation = finalConfidence !== 'high';
+    // prominent when the industry call isn't settled. Confirm on non-high
+    // confidence OR a genuinely close runner-up. The runner-up case matters
+    // because the top confidence branch is title-only (a strong title + score>=10
+    // is "high" with NO margin check vs #2) — so a health-tech resume reads as
+    // high-confidence healthcare while machine_learning sits ~40% behind, the
+    // exact ambiguity that shows up as healthcare→ML in the correction logs.
+    const detBlend = industryDetection.industryBlend;
+    const closeRunnerUp = !!detBlend && (detBlend.primaryPct - detBlend.secondaryPct) <= 20;
+    responseData.industryNeedsConfirmation = finalConfidence !== 'high' || closeRunnerUp;
     responseData.industryTransition = transitionDetected
       ? { historical: industryDetection.industry, recent: splitDetection!.industry }
       : null;
