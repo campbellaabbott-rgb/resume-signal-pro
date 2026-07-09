@@ -324,6 +324,15 @@ interface FreeKeywordResult {
   reportCompleteness?: number;
   partialResults?: boolean;
   parseQuality?: { verdict: 'good' | 'fair' | 'poor'; wordCount: number; issues: string[] };
+  // Emitted by the scan backend but previously never declared here NOR mapped
+  // below, so the cards that read them stayed permanently dark (caught only
+  // once the real `tsc -p tsconfig.app.json` gate was run).
+  countryStandards?: import("@/components/ReportInsightCards").CountryStandardsData | null;
+  platformProfileDetected?: { signals: string[] } | null;
+  // atsCompatibility has no backend source yet ({overallRating,bestFor,worstFor}
+  // is emitted by nothing); declared so it type-checks — the card fails safe to
+  // hidden until a producer exists.
+  atsCompatibility?: { overallRating: string; topIssue?: string; bestFor?: string; worstFor?: string } | null;
   executiveScopeCheck?: {
     level: string;
     signals: { teamSize: string | null; budgetOrPL: string | null; revenueImpact: string | null; boardExposure: boolean; strategicLanguage: boolean };
@@ -1078,6 +1087,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           reportCompleteness: (result as any).reportCompleteness,
           partialResults: (result as any).partialResults,
           parseQuality: (result as any).parseQuality,
+          // Country standards + platform-profile detection — emitted by both scan
+          // paths; must be mapped here or their cards never render.
+          countryStandards: (result as any).countryStandards,
+          platformProfileDetected: (result as any).platformProfileDetected,
           executiveScopeCheck: (result as any).executiveScopeCheck,
           resumeTriggeredQuestions: (result as any).resumeTriggeredQuestions,
           recruiterPanel: (result as any).recruiterPanel,
@@ -1237,6 +1250,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           titleAlignment: data.titleAlignment,
           jobMatchSummary: data.jobMatchSummary,
           industryDetection: data.industryDetection,
+          countryStandards: data.countryStandards,
+          platformProfileDetected: data.platformProfileDetected,
+          parseQuality: data.parseQuality,
           careerSituation: data.careerSituation,
           // 10 reporting improvements (batch 1)
           scoreBreakdown: data.scoreBreakdown,
