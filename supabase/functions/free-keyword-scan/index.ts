@@ -3919,8 +3919,14 @@ ${resumeText.substring(0, 20000)}
     // is "high" with NO margin check vs #2) — so a health-tech resume reads as
     // high-confidence healthcare while machine_learning sits ~40% behind, the
     // exact ambiguity that shows up as healthcare→ML in the correction logs.
+    // <=30 = ~65/35 or closer (a genuinely two-industry resume). Pressure-tested:
+    // clear single-industry resumes produce no blend at all, so this doesn't
+    // over-fire on them; it targets the cross-functional cases (e.g. the
+    // marketing/business-development split seen in the correction logs). NOTE it
+    // still can't catch the health-tech→ML case — a background role-lock/cert-lock
+    // suppresses the ML secondary entirely, which is a separate detection issue.
     const detBlend = industryDetection.industryBlend;
-    const closeRunnerUp = !!detBlend && (detBlend.primaryPct - detBlend.secondaryPct) <= 20;
+    const closeRunnerUp = !!detBlend && (detBlend.primaryPct - detBlend.secondaryPct) <= 30;
     responseData.industryNeedsConfirmation = finalConfidence !== 'high' || closeRunnerUp;
     responseData.industryTransition = transitionDetected
       ? { historical: industryDetection.industry, recent: splitDetection!.industry }
