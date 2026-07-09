@@ -1,15 +1,22 @@
 #!/usr/bin/env node
-// Post-publish smoke test: run this after EVERY Lovable publish.
+// Post-publish DEPLOY VERIFIER — run after EVERY Lovable publish.
 //
 //   node scripts/post-publish-smoke.mjs
+//   # optional: force a guaranteed (non-rate-limited) freshness scan
+//   HEARTBEAT_SECRET=… node scripts/post-publish-smoke.mjs
 //
-// Verifies the things Lovable has silently botched before: edge functions
-// actually deployed (not stale 404s), the scanner returns a well-formed
-// diagnostic report, checkout sessions get created, the frontend serves, and
-// the heartbeat sentinel is answering. Exit 0 = safe to walk away; exit 1 =
-// something specific is broken and printed below.
+// Catches the deploy gaps Lovable has silently shipped before — the July 2026
+// incidents where "publish" updated the frontend but NOT the edge functions
+// (stale code) or the DB migrations (missing RPCs/tables), and nothing noticed
+// for days/weeks because every consumer degraded quietly:
+//   1. functions respond but run STALE code   → engine-version mismatch (2b)
+//   2. migrations never applied               → RPCs/tables 404 PGRST202/205 (7)
+//   3. the scanner's report is malformed      → (2)
+//   4. checkout / heartbeat / frontend / prerender regressions → (3–6)
 //
-// Costs at most one real AI scan (none if the cache or rate limiter answers).
+// Exit 0 = safe to walk away; exit 1 = something specific is broken below.
+// Costs at most one AI scan (skipped if the rate limiter answers and no
+// HEARTBEAT_SECRET is provided).
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -20,7 +27,15 @@ const env = readFileSync(join(root, ".env"), "utf8");
 const grab = (k) => env.match(new RegExp(`${k}="?([^"\\n]+)`))?.[1];
 const URL_BASE = grab("VITE_SUPABASE_URL");
 const KEY = grab("VITE_SUPABASE_PUBLISHABLE_KEY");
+const HEARTBEAT = process.env.HEARTBEAT_SECRET; // optional: bypasses per-IP rate limit so freshness is always verifiable
 const SITE = "https://resumebooster.work";
+
+// The engine version this checkout expects live. Bumped on meaningful backend
+// changes; if a deployed scan reports an OLDER value, the functions didn't ship.
+const COMMITTED_ENGINE = (readFileSync(join(root, "supabase/functions/free-keyword-scan/index.ts"), "utf8")
+  .match(/REPORT_ENGINE_VERSION = '([^']+)'/) || [])[1];
+
+const CORPUS = `Sam Ortiz\nsam@email.com\n\nEXPERIENCE\nStaff Accountant, Meridian LLC (2021-present)\n- Closed monthly books for 8 entities in QuickBooks\n- Cut close cycle from 10 to 6 days\n\nCERTIFICATIONS\nCPA, Texas\n\nEDUCATION\nBS Accounting (deploy-verify-corpus)`;
 
 const results = [];
 const record = (name, ok, detail = "") => {
@@ -29,13 +44,15 @@ const record = (name, ok, detail = "") => {
 };
 
 const hdrs = { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" };
-const post = (fn, body, ms = 90000) =>
+const post = (fn, body, ms = 90000, extra = {}) =>
   fetch(`${URL_BASE}/functions/v1/${fn}`, {
-    method: "POST", headers: hdrs, body: JSON.stringify(body),
+    method: "POST", headers: { ...hdrs, ...extra }, body: JSON.stringify(body),
     signal: AbortSignal.timeout(ms),
   });
 
-// ---- 1. Every user-facing function answers OPTIONS (404 = stale deploy) ----
+// ---- 1. Every user-facing function answers OPTIONS (404 = not deployed at all) ----
+// Only proves the function RESPONDS, not that it runs CURRENT code — the
+// engine-version check (2b) is the real staleness signal.
 const FUNCTIONS = [
   "free-keyword-scan", "create-product-checkout", "verify-product-purchase",
   "generate-freelance-boost", "import-freelance-profile", "generate-resume-roast",
@@ -52,33 +69,53 @@ const optionsChecks = await Promise.all(FUNCTIONS.map(async (fn) => {
   }
 }));
 const missing = optionsChecks.filter((c) => !c.ok);
-record("edge functions deployed", missing.length === 0,
+record("edge functions respond", missing.length === 0,
   missing.length ? `NOT deployed: ${missing.map((c) => c.fn).join(", ")}` : `${FUNCTIONS.length}/${FUNCTIONS.length}`);
 
 // ---- 2. Real scan returns a well-formed diagnostic report ----
+let deployedEngine = null;
+let scanFields = null;
 try {
   const t0 = Date.now();
-  const r = await post("free-keyword-scan", {
-    resumeText: `Sam Ortiz\nsam@email.com\n\nEXPERIENCE\nStaff Accountant, Meridian LLC (2021-present)\n- Closed monthly books for 8 entities in QuickBooks\n- Cut close cycle from 10 to 6 days\n\nCERTIFICATIONS\nCPA, Texas\n\nEDUCATION\nBS Accounting (smoke-fixed-corpus)`,
-    // Logged as scan_type='synthetic' so smoke scans stay out of the
-    // published score stats (get_public_scan_insights and friends).
-    synthetic: true,
-  });
+  // Prefer the heartbeat bypass (guaranteed run, logged as scan_type='heartbeat'
+  // so it stays out of published stats). Without the secret, fall back to
+  // synthetic:true (also excluded from stats) which may hit the per-IP limit.
+  const r = await post("free-keyword-scan",
+    HEARTBEAT ? { resumeText: CORPUS } : { resumeText: CORPUS, synthetic: true },
+    90000,
+    HEARTBEAT ? { "x-heartbeat-secret": HEARTBEAT } : {});
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
   if (r.status === 429) {
-    record("free scan end-to-end", true, `rate-limited from this IP — function alive, report unverified (${secs}s)`);
+    record("free scan end-to-end", true, `rate-limited from this IP — function alive, report+freshness UNVERIFIED (set HEARTBEAT_SECRET to force) (${secs}s)`);
   } else if (!r.ok) {
     record("free scan end-to-end", false, `HTTP ${r.status}: ${(await r.text()).slice(0, 150)}`);
   } else {
     const j = await r.json();
+    deployedEngine = j.reportMeta?.engineVersion || null;
+    scanFields = { parseQuality: "parseQuality" in j, countryStandards: "countryStandards" in j };
     const anatomy = typeof j.atsScoreEstimate === "number" && j.reportMeta?.reportId && j.scoreBand;
     record("free scan end-to-end", !!anatomy,
       anatomy
-        ? `score ${j.atsScoreEstimate}, report ${j.reportMeta.reportId}, engine ${j.reportMeta.engineVersion}, ${secs}s`
+        ? `score ${j.atsScoreEstimate}, report ${j.reportMeta.reportId}, engine ${deployedEngine}, ${secs}s`
         : "200 but missing atsScoreEstimate/reportMeta/scoreBand");
   }
 } catch (e) {
   record("free scan end-to-end", false, String(e));
+}
+
+// ---- 2b. Engine-version FRESHNESS (stale-function detector) ----
+// This is the check that would have caught the functions sitting 5 days stale.
+if (!COMMITTED_ENGINE) {
+  record("engine version fresh", false, "could not read committed REPORT_ENGINE_VERSION from source");
+} else if (!deployedEngine) {
+  record("engine version fresh", true, `UNVERIFIED (no scan response; rate-limited?) — committed ${COMMITTED_ENGINE}; re-run with HEARTBEAT_SECRET`);
+} else {
+  const fresh = deployedEngine === COMMITTED_ENGINE;
+  record("engine version fresh", fresh,
+    fresh ? `deployed ${deployedEngine} == committed`
+          : `STALE FUNCTIONS: deployed ${deployedEngine} != committed ${COMMITTED_ENGINE} — functions did NOT deploy`);
+  const staleFields = scanFields ? Object.entries(scanFields).filter(([, v]) => !v).map(([k]) => k) : [];
+  if (staleFields.length) record("scan emits current fields", false, `missing keys: ${staleFields.join(", ")} — deployed function predates them`);
 }
 
 // ---- 3. Checkout session creation (no charge — just session validity) ----
@@ -116,19 +153,49 @@ try {
 }
 
 // ---- 6. Prerendered SEO pages actually served (informational) ----
-// If the host serves the SPA shell instead, pages still work via JS —
-// crawlers just don't get static HTML. Report as PASS either way, with the
-// truth in the detail so we know whether the prerender layer is live.
 try {
   const r = await fetch(`${SITE}/industries/healthcare`, { signal: AbortSignal.timeout(10000) });
   const html = await r.text();
-  const served = html.includes('x-prerendered');
+  const served = html.includes("x-prerendered");
   record("prerendered pages served", true, served
     ? "static HTML live — all crawlers see content"
     : "host serving SPA fallback — Google-only rendering (investigate hosting config)");
 } catch (e) {
   record("prerendered pages served", false, String(e));
 }
+
+// ---- 7. Migrations APPLIED — critical DB objects reachable (PGRST202/205 = unapplied) ----
+// The check that would have caught the benchmarks page, scan counter and outcome
+// tracking silently offline for weeks. Add an entry here whenever a migration
+// ships an RPC/table the app depends on.
+const rpcState = async (name, body) => {
+  try {
+    const r = await fetch(`${URL_BASE}/rest/v1/rpc/${name}`, { method: "POST", headers: hdrs, body: JSON.stringify(body || {}), signal: AbortSignal.timeout(15000) });
+    return (await r.json().catch(() => ({})))?.code === "PGRST202" ? "MISSING" : "ok";
+  } catch { return "error"; }
+};
+const tableState = async (name) => {
+  try {
+    const r = await fetch(`${URL_BASE}/rest/v1/${name}?select=count`, { headers: { ...hdrs, Prefer: "count=exact" }, signal: AbortSignal.timeout(15000) });
+    return (await r.json().catch(() => ({})))?.code === "PGRST205" ? "MISSING" : "ok";
+  } catch { return "error"; }
+};
+const dbObjects = {
+  "get_scan_totals()": await rpcState("get_scan_totals"),
+  "get_public_scan_insights()": await rpcState("get_public_scan_insights"),
+  "get_real_score_distribution()": await rpcState("get_real_score_distribution", { p_industry: "technology" }),
+  "get_industry_score_benchmark()": await rpcState("get_industry_score_benchmark", { p_industry: "technology", p_score: 70 }),
+  // A call (not a table check) so a PARTIALLY-applied migration — table present,
+  // function missing, exactly what happened — is still caught. Writes one
+  // identifiable probe row (report_id "deploy-verify-probe"); harmless.
+  "record_scan_outcome()": await rpcState("record_scan_outcome", { p_report_id: "deploy-verify-probe", p_outcome: "interview", p_ip: "deploy-verify" }),
+  "table scan_outcomes": await tableState("scan_outcomes"),
+};
+const dbMissing = Object.entries(dbObjects).filter(([, v]) => v === "MISSING").map(([k]) => k);
+record("migrations applied (critical DB objects)", dbMissing.length === 0,
+  dbMissing.length
+    ? `NOT APPLIED: ${dbMissing.join(", ")} — run pending migrations in Lovable's SQL editor, then \`notify pgrst, 'reload schema'\``
+    : `${Object.keys(dbObjects).length} objects reachable`);
 
 // ---- Verdict ----
 const failures = results.filter((r) => !r.ok);
