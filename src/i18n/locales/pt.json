@@ -2780,6 +2780,10 @@
     }
   },
   "changelogEntries": {
+    "previewBeforePay": {
+      "title": "Veja uma amostra real de qualquer ferramenta paga antes de comprar",
+      "description": "Chega de comprar às cegas. Cada ferramenta paga agora gera uma amostra real do que você receberia — criada a partir do seu próprio currículo — antes de pagar. O Interview Coach mostra uma pergunta real, as ferramentas de reescrita mostram um antes e depois autêntico de uma das suas linhas, e o Freelance Boost transforma um dos seus projetos em uma linha de nível profissional. A mesma integridade da versão paga: se o seu currículo não sustenta uma métrica, não a inventamos."
+    },
     "sharperPaidProducts": {
       "title": "Freelance Boost e Interview Coach mais afiados",
       "description": "Ambos agora são gerados com nosso modelo mais capaz — resultados visivelmente mais fortes e específicos nas seções de currículo e na preparação para entrevistas que você paga. A mesma abordagem fundamentada e sem detalhes inventados; com um motor melhor por trás."

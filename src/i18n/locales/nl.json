@@ -2780,6 +2780,10 @@
     }
   },
   "changelogEntries": {
+    "previewBeforePay": {
+      "title": "Bekijk een echt voorbeeld van elke betaalde tool voordat je koopt",
+      "description": "Niet langer blind kopen. Elke betaalde tool genereert nu een echt voorproefje van wat je zou krijgen — gemaakt op basis van je eigen cv — voordat je betaalt. Interview Coach toont één echte vraag, de herschrijftools tonen een echte voor-en-na van een van je regels, en Freelance Boost maakt van een van je projecten een regel op recruiterniveau. Dezelfde integriteit als de betaalde versie: als je cv een cijfer niet onderbouwt, verzinnen we het niet."
+    },
     "sharperPaidProducts": {
       "title": "Scherpere Freelance Boost & Interview Coach",
       "description": "Beide worden nu gegenereerd met ons meest capabele model — merkbaar sterkere, specifiekere output voor de cv-secties en interviewvoorbereiding waarvoor je betaalt. Dezelfde gefundeerde aanpak zonder verzonnen details; met een betere motor erachter."

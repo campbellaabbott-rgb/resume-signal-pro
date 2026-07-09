@@ -2780,6 +2780,10 @@
     }
   },
   "changelogEntries": {
+    "previewBeforePay": {
+      "title": "Voyez un vrai échantillon de chaque outil payant avant d'acheter",
+      "description": "Fini d'acheter à l'aveugle. Chaque outil payant génère désormais un véritable extrait de ce que vous obtiendriez — à partir de votre propre CV — avant de payer. Interview Coach affiche une vraie question, les outils de réécriture montrent un avant-après authentique de l'une de vos lignes, et Freelance Boost transforme l'un de vos projets en une ligne de niveau recruteur. La même intégrité que la version payante : si votre CV ne justifie pas un chiffre, nous ne l'inventons pas."
+    },
     "sharperPaidProducts": {
       "title": "Freelance Boost et Interview Coach plus pointus",
       "description": "Les deux sont désormais générés avec notre modèle le plus performant — des résultats nettement plus solides et précis pour les sections de CV et la préparation aux entretiens que vous payez. Même approche fondée et sans détails inventés ; un meilleur moteur derrière."

@@ -2780,6 +2780,10 @@
     }
   },
   "changelogEntries": {
+    "previewBeforePay": {
+      "title": "Sehen Sie eine echte Probe jedes kostenpflichtigen Tools vor dem Kauf",
+      "description": "Schluss mit dem Blindkauf. Jedes kostenpflichtige Tool erzeugt jetzt vor der Zahlung eine echte Kostprobe dessen, was Sie bekommen würden — erstellt aus Ihrem eigenen Lebenslauf. Interview Coach zeigt eine echte Frage, die Umschreib-Tools zeigen ein echtes Vorher-Nachher einer Ihrer Zeilen, und Freelance Boost macht aus einem Ihrer Projekte eine Zeile auf Recruiter-Niveau. Dieselbe Integrität wie in der Bezahlversion: Wenn Ihr Lebenslauf eine Kennzahl nicht hergibt, erfinden wir sie nicht."
+    },
     "sharperPaidProducts": {
       "title": "Schärferer Freelance Boost & Interview Coach",
       "description": "Beide werden jetzt mit unserem leistungsfähigsten Modell erzeugt — deutlich stärkere, konkretere Ergebnisse bei den Lebenslauf-Abschnitten und der Interviewvorbereitung, für die Sie zahlen. Gleicher fundierter Ansatz ohne erfundene Details; nur mit einem besseren Motor dahinter."

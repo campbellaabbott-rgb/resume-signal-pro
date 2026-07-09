@@ -2780,6 +2780,10 @@
     }
   },
   "changelogEntries": {
+    "previewBeforePay": {
+      "title": "See a real sample of any paid tool before you buy",
+      "description": "No more buying blind. Every paid tool now generates a real slice of what you'd get — built from your own résumé — before you pay. Interview Coach shows one real question, the rewrite tools show a true before-and-after of one of your own bullets, and Freelance Boost turns one of your projects into a recruiter-grade line. Same integrity as the paid version: if your résumé doesn't support a metric, we won't invent one."
+    },
     "sharperPaidProducts": {
       "title": "Sharper Freelance Boost & Interview Coach",
       "description": "Both now generate with our most capable model — noticeably stronger, more specific output on the resume sections and interview prep you pay for. Same grounded, nothing-invented approach; better engine behind it."
