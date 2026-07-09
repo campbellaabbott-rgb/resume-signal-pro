@@ -7,6 +7,7 @@ import { detectIndustry as detectIndustryShared } from "./industry-detection.ts"
 // byte-identical copies of free-keyword-scan/*.ts — keep them in sync.
 import { detectCountryFromResume } from "./market-intelligence.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
+import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
 const serve = Deno.serve;
 
 // Declare EdgeRuntime for background tasks
@@ -7831,9 +7832,12 @@ BEFORE ANALYSIS: Extract name → identify MOST RECENT ROLE TITLE first → find
 
 OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywords (ONLY truly missing ones), red flags. Address candidate by name. Be accurate - don't flag content that exists or suggest keywords already present.`;
 
-      const userPrompt = hasJobDescription 
-        ? `Analyze this ${resumeType.label} for the target job:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>\n\n<job_description>\n${truncatedJobDescription}\n</job_description>`
-        : `Analyze this ${resumeType.label}:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>`;
+      // Deterministic structure scaffold — grounds the model so it can't
+      // hallucinate a missing section/contact/role the raw text contains.
+      const structureHint = formatStructureForPrompt(parseResumeStructure(resumeText));
+      const userPrompt = hasJobDescription
+        ? `Analyze this ${resumeType.label} for the target job:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>${structureHint}\n\n<job_description>\n${truncatedJobDescription}\n</job_description>`
+        : `Analyze this ${resumeType.label}:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>${structureHint}`;
 
       // AI request with retry logic. Flash-first to match the primary
       // scanner: the pro-first order made this path's p50 latency 32s vs the
@@ -8420,6 +8424,9 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         // Country-specific resume standards + geo resolution (computed above)
         countryStandards: countryStandardsResult,
         geo: geoResult,
+        // Extraction-quality gate — parity with the primary path so fallback
+        // scans also warn when a mangled PDF makes the report unreliable.
+        parseQuality: computeParseQuality(resumeText),
         // New fields for improved analysis
         resumeType,
         seniorityLevel: seniority,

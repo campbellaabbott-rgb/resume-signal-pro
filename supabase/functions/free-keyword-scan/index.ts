@@ -3,6 +3,7 @@ const serve = (handler: (req: Request) => Response | Promise<Response>) => Deno.
 import { detectIndustry, formatDetectionForPrompt, buildDynamicCorrectionBoosts, INDUSTRY_KEYWORDS, detectSubIndustry } from "./industry-detection.ts";
 import { getOnetExpectation } from "./onet-expectations.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
+import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import {
   detectCountryFromResume,
@@ -2176,6 +2177,9 @@ This resume must be judged as ${seniorityDetection.level === 'executive' ? 'a C-
     // Precedence: target country (applying-to) → resume-detected → IP → US.
     const effectiveCountry = validTargetCountry || resumeGeo.country || country || 'US';
     const geoHint = formatGeoContextForPrompt(effectiveCountry, industryDetection.industry, resumeGeo);
+    // Deterministic structure scaffold — grounds the model so it can't hallucinate
+    // a missing section/contact/role that the raw text actually contains.
+    const structureHint = formatStructureForPrompt(parseResumeStructure(resumeText));
     const marketInsight = getMarketInsight(effectiveCountry, industryDetection.industry);
     console.log(`[FREE-KEYWORD-SCAN] Geo: ${effectiveCountry} (resume: ${resumeGeo.country || 'none'}, ip: ${country || 'none'}, source: ${resumeGeo.source})`);
 
@@ -2247,14 +2251,14 @@ ${resumeText.substring(0, 20000)}
 
 <job_description>
 ${truncatedJobDescription}
-</job_description>${corpusHint}${bulletHint}${seniorityHint}${execModeHint}${userContextHint}${confidenceHint}${freelanceHint}${onetHint}${contactHint}${gapHint}${geoHint}${skillsRecencyHint}${careerTrajHint}${atsHint}${compGapHint}${timelineHint}${phraseHint}${sparseNote}`
+</job_description>${corpusHint}${bulletHint}${seniorityHint}${execModeHint}${userContextHint}${confidenceHint}${freelanceHint}${onetHint}${contactHint}${gapHint}${geoHint}${structureHint}${skillsRecencyHint}${careerTrajHint}${atsHint}${compGapHint}${timelineHint}${phraseHint}${sparseNote}`
       : `Analyze this resume comprehensively:
 
 ${sectionStructure}
 
 <resume>
 ${resumeText.substring(0, 20000)}
-</resume>${corpusHint}${bulletHint}${seniorityHint}${execModeHint}${userContextHint}${confidenceHint}${freelanceHint}${onetHint}${contactHint}${gapHint}${geoHint}${skillsRecencyHint}${careerTrajHint}${atsHint}${compGapHint}${timelineHint}${phraseHint}${sparseNote}`;
+</resume>${corpusHint}${bulletHint}${seniorityHint}${execModeHint}${userContextHint}${confidenceHint}${freelanceHint}${onetHint}${contactHint}${gapHint}${geoHint}${structureHint}${skillsRecencyHint}${careerTrajHint}${atsHint}${compGapHint}${timelineHint}${phraseHint}${sparseNote}`;
 
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -4093,23 +4097,9 @@ ${resumeText.substring(0, 20000)}
     responseData.partialResults = usedRuleBasedFallback;
 
     // Parse-quality gate — bad extraction is the biggest silent accuracy
-    // killer: a mangled PDF produces a confidently wrong report. Score the
-    // extraction and tell the user when the scan may be unreliable.
-    responseData.parseQuality = (() => {
-      const words = resumeText.split(/\s+/).filter(Boolean);
-      const wordCount = words.length;
-      const letters = (resumeText.match(/[a-zA-ZÀ-ÿ\u0900-\u097F]/g) || []).length;
-      const letterRatio = resumeText.length > 0 ? letters / resumeText.length : 0;
-      const garbage = (resumeText.match(/[\uFFFD\u0000-\u0008\u000E-\u001F]|(.)\1{5,}/g) || []).length;
-      const hasSections = /\b(experience|education|skills|summary|employment)\b/i.test(resumeText);
-      const issues: string[] = [];
-      if (wordCount < 120) issues.push(`only ${wordCount} words extracted`);
-      if (letterRatio < 0.55) issues.push('unusually low text-to-symbol ratio');
-      if (garbage > 5) issues.push('garbled characters detected');
-      if (!hasSections) issues.push('no standard resume sections found');
-      const verdict = issues.length >= 2 ? 'poor' : issues.length === 1 ? 'fair' : 'good';
-      return { verdict, wordCount, issues };
-    })();
+    // killer: a mangled PDF produces a confidently wrong report. Shared with
+    // the stream fork so both paths warn identically (see resume-structure.ts).
+    responseData.parseQuality = computeParseQuality(resumeText);
 
     // Purchased-credit redemption receipt
     if (creditUsedEmail) {
