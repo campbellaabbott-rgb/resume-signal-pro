@@ -1,4 +1,16 @@
 {
+  "productPreview": {
+    "seeSample": "अपने रिज़्यूमे से एक नमूना देखें",
+    "generating": "आपका नमूना तैयार किया जा रहा है…",
+    "previewBadge": "पूर्वावलोकन",
+    "beforeLabel": "आपका मौजूदा संस्करण",
+    "afterLabel": "पुनर्लेखित",
+    "fullIncludes": "पूरे {{name}} में शामिल है:",
+    "unlockCta": "{{name}} अनलॉक करें — {{price}}",
+    "error": "अभी नमूना तैयार नहीं हो सका।",
+    "tryAgain": "पुनः प्रयास करें",
+    "tryAnother": "दूसरा आज़माएं"
+  },
   "header": {
     "tagline": "रिक्रूटर-स्तर AI फीडबैक",
     "getStarted": "शुरू करें",

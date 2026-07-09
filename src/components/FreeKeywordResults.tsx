@@ -5050,8 +5050,8 @@ export function FreeKeywordResults({
         </div>
       </div>
 
-      {/* $5 Add-Ons Section */}
-      <AddOnsShowcase variant="compact" className="mb-5" />
+      {/* $5 Add-Ons Section — with live "preview from your résumé" now that the scan gives us the text + industry */}
+      <AddOnsShowcase variant="compact" className="mb-5" resumeText={resumeText} industry={industry} />
       <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 border-2 border-primary p-6 mb-5 relative overflow-hidden shadow-xl shadow-primary/20">
         <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />

@@ -1,4 +1,16 @@
 {
+  "productPreview": {
+    "seeSample": "Beispiel aus Ihrem Lebenslauf ansehen",
+    "generating": "Ihr Beispiel wird erstellt…",
+    "previewBadge": "Vorschau",
+    "beforeLabel": "Ihre aktuelle Version",
+    "afterLabel": "Überarbeitet",
+    "fullIncludes": "Das vollständige {{name}} enthält:",
+    "unlockCta": "{{name}} freischalten — {{price}}",
+    "error": "Beispiel konnte gerade nicht erstellt werden.",
+    "tryAgain": "Erneut versuchen",
+    "tryAnother": "Anderes ausprobieren"
+  },
   "header": {
     "tagline": "Recruiter-KI-Feedback",
     "getStarted": "Jetzt starten",

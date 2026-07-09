@@ -15,6 +15,9 @@ import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { AddOnsShowcase } from "@/components/AddOnsShowcase";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
+import { ProductPreview } from "@/components/ProductPreview";
+import { getResumeFromSession } from "@/hooks/use-session-resume";
+import { useState } from "react";
 
 const productIcons: Record<string, React.ElementType> = {
   basicKeywordFix: FileText,
@@ -52,6 +55,9 @@ export default function Pricing() {
   const { t } = useTranslation();
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
   const { formatPrice, isLocalCurrency } = useCurrency();
+  // If the visitor scanned a resume this session, every tool can preview itself
+  // with their real content. Read once — sessionStorage doesn't change under us.
+  const [sessionResume] = useState(() => getResumeFromSession());
   
   // Track scroll depth for drop-off analysis
   useScrollDepth('pricing');
@@ -131,7 +137,12 @@ export default function Pricing() {
           </div>
 
           {/* $5 Add-Ons Section */}
-          <AddOnsShowcase variant="full" className="mb-12" />
+          <AddOnsShowcase
+            variant="full"
+            className="mb-12"
+            resumeText={sessionResume.resumeText}
+            jobDescription={sessionResume.jobDescriptionText ?? undefined}
+          />
 
           {/* Premium Products Grid */}
           <div className="text-center mb-8">
@@ -242,6 +253,14 @@ export default function Pricing() {
                       {t('pricingPage.requiresUpload')}
                     </p>
                   )}
+
+                  {/* Preview-before-pay — shows only when a scanned résumé is in session */}
+                  <ProductPreview
+                    productId={key}
+                    resumeText={sessionResume.resumeText}
+                    jobDescription={sessionResume.jobDescriptionText ?? undefined}
+                    className="mt-3"
+                  />
                 </div>
               );
             })}

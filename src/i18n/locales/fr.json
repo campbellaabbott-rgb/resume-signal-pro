@@ -1,4 +1,16 @@
 {
+  "productPreview": {
+    "seeSample": "Voir un exemple avec votre CV",
+    "generating": "Génération de votre exemple…",
+    "previewBadge": "Aperçu",
+    "beforeLabel": "Votre version actuelle",
+    "afterLabel": "Réécrit",
+    "fullIncludes": "{{name}} complet comprend :",
+    "unlockCta": "Débloquer {{name}} — {{price}}",
+    "error": "Impossible de générer un exemple pour le moment.",
+    "tryAgain": "Réessayer",
+    "tryAnother": "Essayer un autre"
+  },
   "header": {
     "tagline": "Feedback IA niveau recruteur",
     "getStarted": "Commencer",

@@ -16,6 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { useToast } from "@/hooks/use-toast";
+import { ProductPreview } from "@/components/ProductPreview";
+import { getResumeFromSession } from "@/hooks/use-session-resume";
 
 interface ProjectIntake {
   clientType: string; problem: string; deliverable: string; toolsSkills: string;
@@ -39,6 +41,9 @@ export default function FreelanceBoost() {
   const [params] = useSearchParams();
   const { purchaseProduct, isLoading: checkoutLoading } = useProductCheckout();
   const { toast } = useToast();
+  // A preview lights up only if the visitor scanned a resume earlier this
+  // session; the intake flow itself needs no resume, so this stays hidden then.
+  const [sessionResume] = useState(() => getResumeFromSession());
 
   const [projects, setProjects] = useState<ProjectIntake[]>([emptyProject()]);
   const [targetRole, setTargetRole] = useState("");
@@ -452,6 +457,12 @@ export default function FreelanceBoost() {
                     </Button>
                   </div>
                 </div>
+                <ProductPreview
+                  productId="freelanceTransitionPro"
+                  resumeText={sessionResume.resumeText}
+                  jobDescription={sessionResume.jobDescriptionText ?? undefined}
+                  className="mt-4 max-w-lg mx-auto text-left"
+                />
                 <p className="text-[11px] text-muted-foreground mt-3">
                   Your answers stay on this device until you purchase. We never invent clients, payments, or metrics —
                   honest framing is the whole product.

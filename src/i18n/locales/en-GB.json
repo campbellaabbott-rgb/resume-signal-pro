@@ -1,4 +1,16 @@
 {
+  "productPreview": {
+    "seeSample": "See a sample from your résumé",
+    "generating": "Generating your sample…",
+    "previewBadge": "Preview",
+    "beforeLabel": "Your current version",
+    "afterLabel": "Rewritten",
+    "fullIncludes": "The full {{name}} includes:",
+    "unlockCta": "Unlock {{name}} — {{price}}",
+    "error": "Couldn't generate a sample right now.",
+    "tryAgain": "Try again",
+    "tryAnother": "Try another"
+  },
   "header": {
     "tagline": "Recruiter-grade AI feedback",
     "getStarted": "Get Started",

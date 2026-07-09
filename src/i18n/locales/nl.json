@@ -1,4 +1,16 @@
 {
+  "productPreview": {
+    "seeSample": "Bekijk een voorbeeld uit je cv",
+    "generating": "Je voorbeeld wordt gemaakt…",
+    "previewBadge": "Voorbeeld",
+    "beforeLabel": "Je huidige versie",
+    "afterLabel": "Herschreven",
+    "fullIncludes": "De volledige {{name}} bevat:",
+    "unlockCta": "{{name}} ontgrendelen — {{price}}",
+    "error": "Kon nu geen voorbeeld genereren.",
+    "tryAgain": "Opnieuw proberen",
+    "tryAnother": "Probeer een andere"
+  },
   "header": {
     "tagline": "Recruiter-niveau AI-feedback",
     "getStarted": "Aan de slag",

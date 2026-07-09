@@ -61,6 +61,8 @@ project_id = "bwhdazbotpblihdxcmho"
     verify_jwt = false
   [functions.generate-premium-package-stream]
     verify_jwt = false
+  [functions.generate-product-preview]
+    verify_jwt = false
   [functions.generate-summary]
     verify_jwt = false
   [functions.generate-tailored-resume]

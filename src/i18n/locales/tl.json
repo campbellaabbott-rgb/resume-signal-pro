@@ -1,4 +1,16 @@
 {
+  "productPreview": {
+    "seeSample": "Tingnan ang sample mula sa iyong resume",
+    "generating": "Ginagawa ang iyong sample…",
+    "previewBadge": "Preview",
+    "beforeLabel": "Ang kasalukuyang bersyon mo",
+    "afterLabel": "Muling isinulat",
+    "fullIncludes": "Kasama sa buong {{name}}:",
+    "unlockCta": "I-unlock ang {{name}} — {{price}}",
+    "error": "Hindi makabuo ng sample ngayon.",
+    "tryAgain": "Subukan muli",
+    "tryAnother": "Sumubok ng iba"
+  },
   "header": {
     "tagline": "Recruiter-grade AI feedback",
     "getStarted": "Magsimula",

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { PRODUCTS, ProductId } from "@/config/products";
 import { useCurrency } from "@/hooks/use-currency";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
+import { ProductPreview } from "@/components/ProductPreview";
 
 const addOnProducts: { key: ProductId; icon: React.ElementType }[] = [
   { key: 'interviewCoach', icon: MessageSquare },
@@ -17,9 +18,14 @@ interface AddOnsShowcaseProps {
   variant?: 'compact' | 'full';
   sessionId?: string;
   className?: string;
+  // When a resume is in context (e.g. after a scan), each add-on shows a
+  // "see a sample from your résumé" preview before purchase.
+  resumeText?: string | null;
+  industry?: string;
+  jobDescription?: string;
 }
 
-export function AddOnsShowcase({ variant = 'compact', sessionId, className }: AddOnsShowcaseProps) {
+export function AddOnsShowcase({ variant = 'compact', sessionId, className, resumeText, industry, jobDescription }: AddOnsShowcaseProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
@@ -49,27 +55,39 @@ export function AddOnsShowcase({ variant = 'compact', sessionId, className }: Ad
             const isLoadingThis = isLoading && currentProduct === key;
             
             return (
-              <button
+              <div
                 key={key}
-                onClick={() => handlePurchase(key)}
-                disabled={isLoading}
-                className={cn(
-                  "flex items-center gap-3 p-3 rounded-xl border bg-card/50 hover:bg-card hover:border-primary/50 transition-all text-left w-full",
-                  isLoadingThis && "opacity-50"
-                )}
+                className="rounded-xl border bg-card/50 hover:border-primary/50 transition-all"
               >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <Icon className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm text-foreground">{product.name}</span>
-                    <span className="text-xs font-bold text-primary">${product.priceUsd}</span>
+                <button
+                  onClick={() => handlePurchase(key)}
+                  disabled={isLoading}
+                  className={cn(
+                    "flex items-center gap-3 p-3 text-left w-full",
+                    isLoadingThis && "opacity-50"
+                  )}
+                >
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Icon className="w-5 h-5 text-primary" />
                   </div>
-                  <p className="text-xs text-muted-foreground truncate">{product.description}</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
-              </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-foreground">{product.name}</span>
+                      <span className="text-xs font-bold text-primary">${product.priceUsd}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{product.description}</p>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                </button>
+                <ProductPreview
+                  productId={key}
+                  resumeText={resumeText}
+                  industry={industry}
+                  jobDescription={jobDescription}
+                  sessionId={sessionId}
+                  className="px-3 pb-3"
+                />
+              </div>
             );
           })}
         </div>
@@ -140,6 +158,14 @@ export function AddOnsShowcase({ variant = 'compact', sessionId, className }: Ad
                 {isLoadingThis ? t('addOnsShowcase.processing') : t('addOnsShowcase.getForPrice', { price: product.priceUsd })}
                 <ArrowRight className="w-4 h-4" />
               </Button>
+              <ProductPreview
+                productId={key}
+                resumeText={resumeText}
+                industry={industry}
+                jobDescription={jobDescription}
+                sessionId={sessionId}
+                className="mt-3"
+              />
             </div>
           );
         })}
