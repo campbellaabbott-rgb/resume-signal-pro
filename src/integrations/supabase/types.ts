@@ -1103,6 +1103,30 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_outcomes: {
+        Row: {
+          created_at: string
+          id: string
+          ip_hash: string
+          outcome: string
+          report_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_hash: string
+          outcome: string
+          report_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_hash?: string
+          outcome?: string
+          report_id?: string
+        }
+        Relationships: []
+      }
       scan_report_cache: {
         Row: {
           cache_key: string
@@ -1458,7 +1482,10 @@ export type Database = {
           applied_at: string
           company: string
           created_at: string
+          fit_missing: Json | null
+          fit_pct: number | null
           id: string
+          job_posting: string | null
           role: string
           scan_id: string | null
           scan_score: number | null
@@ -1469,7 +1496,10 @@ export type Database = {
           applied_at?: string
           company: string
           created_at?: string
+          fit_missing?: Json | null
+          fit_pct?: number | null
           id?: string
+          job_posting?: string | null
           role?: string
           scan_id?: string | null
           scan_score?: number | null
@@ -1480,7 +1510,10 @@ export type Database = {
           applied_at?: string
           company?: string
           created_at?: string
+          fit_missing?: Json | null
+          fit_pct?: number | null
           id?: string
+          job_posting?: string | null
           role?: string
           scan_id?: string | null
           scan_score?: number | null
@@ -1564,6 +1597,8 @@ export type Database = {
           label: string | null
           projected_score: number | null
           red_flag_count: number | null
+          report_id: string | null
+          resume_text: string | null
           user_id: string
           verdict: string | null
         }
@@ -1576,6 +1611,8 @@ export type Database = {
           label?: string | null
           projected_score?: number | null
           red_flag_count?: number | null
+          report_id?: string | null
+          resume_text?: string | null
           user_id: string
           verdict?: string | null
         }
@@ -1588,6 +1625,8 @@ export type Database = {
           label?: string | null
           projected_score?: number | null
           red_flag_count?: number | null
+          report_id?: string | null
+          resume_text?: string | null
           user_id?: string
           verdict?: string | null
         }
@@ -1713,6 +1752,10 @@ export type Database = {
       email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
+        Returns: number
+      }
+      enqueue_email_delayed: {
+        Args: { delay_seconds: number; payload: Json; queue_name: string }
         Returns: number
       }
       get_ab_test_stats: {
@@ -1925,6 +1968,19 @@ export type Database = {
           total_detections: number
         }[]
       }
+      get_industry_score_benchmark: {
+        Args: {
+          p_days_back?: number
+          p_industry: string
+          p_min_sample_size?: number
+          p_score: number
+        }
+        Returns: {
+          industry_avg: number
+          percentile: number
+          sample_size: number
+        }[]
+      }
       get_parse_failure_stats: {
         Args: { p_hours_back?: number }
         Returns: {
@@ -1946,6 +2002,7 @@ export type Database = {
           total_attempts: number
         }[]
       }
+      get_public_scan_insights: { Args: never; Returns: Json }
       get_purchased_content_by_email: {
         Args: { p_email: string }
         Returns: {
@@ -2034,6 +2091,7 @@ export type Database = {
           validation_errors: number
         }[]
       }
+      get_scan_totals: { Args: never; Returns: Json }
       get_temp_resume: {
         Args: { p_session_id: string }
         Returns: {
@@ -2291,6 +2349,10 @@ export type Database = {
             }
             Returns: boolean
           }
+      record_scan_outcome: {
+        Args: { p_ip: string; p_outcome: string; p_report_id: string }
+        Returns: boolean
+      }
       register_affiliate: {
         Args: { p_email: string; p_password: string }
         Returns: Json
