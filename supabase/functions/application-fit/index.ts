@@ -4,7 +4,7 @@
 // when it's both (a) in the posting and (b) a term the engine actually knows.
 // No AI call, so it's fast, free, and always explainable.
 
-import { INDUSTRY_KEYWORDS } from "../free-keyword-scan/industry-detection.ts";
+import { INDUSTRY_KEYWORDS } from "../_shared/industry-detection.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
