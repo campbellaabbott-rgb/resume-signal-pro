@@ -93,6 +93,18 @@ serve(async (req) => {
       improvementPotential
     } = await req.json();
 
+    // Input guard. This endpoint is unauthenticated (verify_jwt=false) and calls
+    // the AI, so without this an empty/garbage body would still burn a model call
+    // (or return a stale cached summary keyed on all-undefined). atsScore is the
+    // anchor — every real scan result carries it. Matches the validation every
+    // sibling generate-* function already has.
+    if (typeof atsScore !== 'number') {
+      return new Response(JSON.stringify({ error: "Scan data (atsScore) is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Initialize Supabase for caching
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
