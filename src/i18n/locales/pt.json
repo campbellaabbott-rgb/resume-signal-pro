@@ -2780,6 +2780,10 @@
     }
   },
   "changelogEntries": {
+    "sharperDetection": {
+      "title": "Detecção mais precisa de localização e setor",
+      "description": "Seu relatório agora segue o mercado em que você realmente está, mesmo que seu currículo cite outras cidades. Damos mais peso a sinais reais (onde você está autorizado a trabalhar, seu sistema de ensino, seu telefone) do que a uma menção passageira de cidade, então um candidato dos EUA que \"liderou o lançamento em Londres\" continua sendo comparado ao mercado americano. Currículos multifuncionais também revelam um segundo campo real — um Diretor de Vendas que também foi Gerente de Marketing tem os dois cobertos."
+    },
     "previewBeforePay": {
       "title": "Veja uma amostra real de qualquer ferramenta paga antes de comprar",
       "description": "Chega de comprar às cegas. Cada ferramenta paga agora gera uma amostra real do que você receberia — criada a partir do seu próprio currículo — antes de pagar. O Interview Coach mostra uma pergunta real, as ferramentas de reescrita mostram um antes e depois autêntico de uma das suas linhas, e o Freelance Boost transforma um dos seus projetos em uma linha de nível profissional. A mesma integridade da versão paga: se o seu currículo não sustenta uma métrica, não a inventamos."

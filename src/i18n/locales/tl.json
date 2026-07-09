@@ -2780,6 +2780,10 @@
     }
   },
   "changelogEntries": {
+    "sharperDetection": {
+      "title": "Mas matalas na pagtukoy ng lokasyon at industriya",
+      "description": "Ang iyong ulat ay sumusunod na ngayon sa merkado kung saan ka talaga, kahit na may binabanggit na ibang lungsod ang iyong resume. Mas binibigyang-timbang namin ang tunay na senyales (kung saan ka awtorisadong magtrabaho, ang iyong sistema ng edukasyon, ang iyong telepono) kaysa sa basta pagbanggit ng lungsod, kaya ang isang kandidatong US na \"namuno sa London launch\" ay ihahambing pa rin sa merkado ng US. Ang mga multi-functional na resume ay nagpapakita rin ng tunay na pangalawang larangan — ang isang Sales Director na naging Marketing Manager din ay nasasaklaw sa dalawa."
+    },
     "previewBeforePay": {
       "title": "Tingnan ang tunay na sample ng anumang bayad na tool bago bumili",
       "description": "Wala nang bulag na pagbili. Bawat bayad na tool ay bumubuo na ngayon ng tunay na sample ng makukuha mo — gawa mula sa sarili mong resume — bago ka magbayad. Ang Interview Coach ay nagpapakita ng isang tunay na tanong, ang mga rewrite tool ay nagpapakita ng totoong bago-at-pagkatapos ng isa sa iyong mga linya, at ang Freelance Boost ay ginagawang recruiter-level na linya ang isa sa iyong mga proyekto. Kaparehong integridad ng bayad na bersyon: kung hindi sinusuportahan ng iyong resume ang isang metric, hindi namin ito iimbento."

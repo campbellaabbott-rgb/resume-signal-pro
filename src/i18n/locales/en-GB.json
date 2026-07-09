@@ -2780,6 +2780,10 @@
     }
   },
   "changelogEntries": {
+    "sharperDetection": {
+      "title": "Sharper location & industry detection",
+      "description": "Your report now follows the market you're actually in — even if your résumé name-drops other cities. We weigh real signals (where you're authorized to work, your education system, your phone number) over a passing city mention, so a US candidate who \"led the London launch\" is still benchmarked against the US market. Cross-functional résumés also surface a genuine second field — a Sales Director who was also a Marketing Manager gets both covered."
+    },
     "previewBeforePay": {
       "title": "See a real sample of any paid tool before you buy",
       "description": "No more buying blind. Every paid tool now generates a real slice of what you'd get — built from your own résumé — before you pay. Interview Coach shows one real question, the rewrite tools show a true before-and-after of one of your own bullets, and Freelance Boost turns one of your projects into a recruiter-grade line. Same integrity as the paid version: if your résumé doesn't support a metric, we won't invent one."

@@ -2780,6 +2780,10 @@
     }
   },
   "changelogEntries": {
+    "sharperDetection": {
+      "title": "Scherpere locatie- en sectordetectie",
+      "description": "Je rapport volgt nu de markt waar je echt zit, ook als je cv andere steden noemt. We wegen echte signalen (waar je mag werken, je opleidingssysteem, je telefoonnummer) zwaarder dan een terloopse vermelding van een stad, zodat een Amerikaanse kandidaat die \"de lancering in Londen leidde\" nog steeds met de Amerikaanse markt wordt vergeleken. Multifunctionele cv's tonen ook een echt tweede vakgebied — een Sales Director die ook Marketing Manager was, krijgt beide gedekt."
+    },
     "previewBeforePay": {
       "title": "Bekijk een echt voorbeeld van elke betaalde tool voordat je koopt",
       "description": "Niet langer blind kopen. Elke betaalde tool genereert nu een echt voorproefje van wat je zou krijgen — gemaakt op basis van je eigen cv — voordat je betaalt. Interview Coach toont één echte vraag, de herschrijftools tonen een echte voor-en-na van een van je regels, en Freelance Boost maakt van een van je projecten een regel op recruiterniveau. Dezelfde integriteit als de betaalde versie: als je cv een cijfer niet onderbouwt, verzinnen we het niet."
