@@ -2768,6 +2768,26 @@
     }
   },
   "changelogEntries": {
+    "reportCardsFix": {
+      "title": "Corregido: partes de tu informe no aparecían",
+      "description": "Un error de visualización ocultaba en silencio varias secciones del informe en algunos análisis: los estándares de currículum por país, el desglose del análisis ATS, las mejoras rápidas y la puntuación ATS frente a reclutador, entre otras. Ya han vuelto. También añadimos una protección automática para que una sección entera no vuelva a desaparecer sin avisar."
+    },
+    "targetMarketScan": {
+      "title": "¿Buscas trabajo en el extranjero? Tu informe ahora sigue al empleo, no a tu país",
+      "description": "¿Apuntas a un puesto en otro país? Elige dónde te postulas y el análisis revisa tu currículum según las normas de ese mercado —expectativas sobre foto y datos personales, referencias y más— en lugar de suponer tu ubicación actual. También ampliamos la detección automática de país para que más currículums reciban las reglas locales correctas por sí solos."
+    },
+    "groundedAnalysis": {
+      "title": "Menos avisos falsos de «te falta esto»",
+      "description": "Antes de analizar, el escáner ahora mapea la estructura real de tu currículum —secciones, puestos con fechas, datos de contacto— por lo que es mucho menos probable que te diga que falta algo cuando en realidad está. Y cuando un PDF no se extrae correctamente, ahora te avisamos de que los resultados pueden no ser fiables en lugar de puntuar un texto ilegible."
+    },
+    "guidesTab": {
+      "title": "Todas nuestras guías en un solo lugar",
+      "description": "Una nueva pestaña de Guías reúne todos los tutoriales que hemos escrito: por qué se rechazan los currículums, cómo elegir las palabras clave adecuadas, currículums para cambio de carrera y freelance, y más. «Cómo funciona» ahora está en la página de Confianza, junto a nuestra metodología."
+    },
+    "honestClaims": {
+      "title": "Nuestras afirmaciones ahora coinciden con nuestra propia investigación",
+      "description": "Revisamos todo el sitio y reescribimos cualquier cosa que exagerara cómo funciona el filtrado de currículums. Sin estadísticas inventadas ni tácticas de miedo: lo que te decimos coincide con lo que nuestro propio análisis del comportamiento de los ATS realmente muestra."
+    },
     "countryStandards": {
       "title": "Tu informe ahora conoce las reglas locales: estándares de 52 países",
       "description": "¿Escaneas desde Alemania, Japón o el Golfo? Tu informe ahora incluye las normas de tu mercado — reglas de foto (la diferencia más delicada: en Tokio la foto se espera y en Toronto te descarta), expectativas de datos personales y verificaciones específicas como la cláusula RODO de Polonia, el consentimiento de privacidad de Italia y la línea de estatus de visa del Golfo. Verificado en julio de 2026; los mercados con menos fuentes se marcan como orientativos."

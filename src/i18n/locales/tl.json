@@ -2768,6 +2768,26 @@
     }
   },
   "changelogEntries": {
+    "reportCardsFix": {
+      "title": "Naayos: may mga bahagi ng report mo na hindi lumalabas",
+      "description": "May display bug na tahimik na nagtatago ng ilang seksyon ng report sa ilang scan — kabilang ang country-specific na pamantayan ng resume, ang ATS parsing breakdown, ang quick wins, at ang ATS-vs-recruiter score. Bumalik na silang lahat. Nagdagdag din kami ng automated na proteksyon para hindi na muling mawala nang tahimik ang isang buong seksyon."
+    },
+    "targetMarketScan": {
+      "title": "Nag-a-apply sa ibang bansa? Sinusunod na ng report mo ang trabaho, hindi ang bansang tinitirhan mo",
+      "description": "May target na posisyon sa ibang bansa? Piliin kung saan ka nag-a-apply at susuriin ng scan ang resume mo batay sa pamantayan ng merkadong iyon — inaasahan sa larawan at personal na datos, references, at iba pa — sa halip na ipagpalagay ang kasalukuyang lokasyon mo. Pinalawak din namin ang automatic na pagtukoy ng bansa para mas maraming resume ang kusang makakuha ng tamang lokal na patakaran."
+    },
+    "groundedAnalysis": {
+      "title": "Mas kaunting maling 'kulang ka nito' na babala",
+      "description": "Bago mag-analyze, mina-map na ngayon ng scanner ang totoong istruktura ng resume mo — mga seksyon, mga posisyong may petsa, contact details — kaya mas maliit ang tsansang sabihin nitong may kulang gayong nariyan naman. At kapag hindi malinis na na-extract ang isang PDF, binabalaan ka na namin na maaaring hindi mapagkakatiwalaan ang resulta sa halip na i-score ang magulong teksto."
+    },
+    "guidesTab": {
+      "title": "Lahat ng gabay namin sa iisang lugar",
+      "description": "Kinokolekta ng bagong Guides tab ang lahat ng how-to na isinulat namin — kung bakit natatanggihan ang mga resume, pagpili ng tamang keyword, mga resume para sa career-change at freelance, at iba pa. Ang 'How It Works' ay nasa Trust page na ngayon, katabi ng aming metodolohiya."
+    },
+    "honestClaims": {
+      "title": "Ang mga sinasabi namin ay tugma na sa sarili naming pananaliksik",
+      "description": "Sinuri namin ang buong site at muling isinulat ang anumang nagpalabis sa kung paano gumagana ang screening ng resume. Walang gawa-gawang estadistika at walang takot-takutan — ang sinasabi namin sa iyo ay tugma sa aktwal na ipinapakita ng sarili naming pagsusuri sa asal ng ATS."
+    },
     "countryStandards": {
       "title": "Alam na ng iyong report ang lokal na patakaran: pamantayan ng 52 bansa",
       "description": "Nag-i-scan mula sa Germany, Japan, o Gulf? Kasama na ngayon sa iyong report ang mga pamantayan ng iyong merkado — mga patakaran sa litrato (ang pinakasensitibong pagkakaiba: inaasahan sa Tokyo, dahilan ng pagtanggi sa Toronto), inaasahan sa personal na datos, at mga tseke tulad ng RODO clause ng Poland, privacy consent ng Italy, at visa-status na linya ng Gulf. Na-verify noong Hulyo 2026; ang mga merkadong may kaunting sources ay may markang directional."

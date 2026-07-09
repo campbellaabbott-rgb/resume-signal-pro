@@ -2768,6 +2768,26 @@
     }
   },
   "changelogEntries": {
+    "reportCardsFix": {
+      "title": "Opgelost: delen van je rapport werden niet getoond",
+      "description": "Een weergavefout verborg bij sommige scans stilletjes meerdere rapportsecties — waaronder de landspecifieke cv-normen, de ATS-parsinganalyse, de quick wins en de ATS-versus-recruiterscore. Ze zijn allemaal terug. We hebben ook een automatische controle toegevoegd zodat een hele sectie niet nog eens ongemerkt kan verdwijnen."
+    },
+    "targetMarketScan": {
+      "title": "Solliciteer je in het buitenland? Je rapport volgt nu de baan, niet je thuisland",
+      "description": "Mik je op een functie in een ander land? Kies waar je solliciteert en de scan toetst je cv aan de normen van die markt — verwachtingen rond foto en persoonsgegevens, referenties en meer — in plaats van je huidige locatie aan te nemen. We hebben ook de automatische landdetectie uitgebreid, zodat meer cv's vanzelf de juiste lokale regels krijgen."
+    },
+    "groundedAnalysis": {
+      "title": "Minder valse 'dit ontbreekt'-meldingen",
+      "description": "Vóór de analyse brengt de scanner nu de echte structuur van je cv in kaart — secties, functies met datums, contactgegevens — waardoor het veel minder snel meldt dat iets ontbreekt terwijl het er wel staat. En als een pdf niet goed wordt uitgelezen, waarschuwen we je nu dat de resultaten onbetrouwbaar kunnen zijn in plaats van onleesbare tekst te beoordelen."
+    },
+    "guidesTab": {
+      "title": "Al onze gidsen op één plek",
+      "description": "Een nieuw tabblad Gidsen verzamelt al onze how-to's — waarom cv's worden afgewezen, de juiste zoekwoorden kiezen, cv's voor loopbaanwissel en freelance, en meer. 'Hoe het werkt' staat nu op de Vertrouwen-pagina, naast onze methodologie."
+    },
+    "honestClaims": {
+      "title": "Onze beweringen komen nu overeen met ons eigen onderzoek",
+      "description": "We hebben de hele site nagelopen en alles herschreven wat overdreef hoe cv-screening werkt. Geen verzonnen statistieken en geen bangmakerij — wat we je vertellen komt overeen met wat onze eigen analyse van ATS-gedrag daadwerkelijk laat zien."
+    },
     "countryStandards": {
       "title": "Je rapport kent nu de lokale regels: standaarden uit 52 landen",
       "description": "Scan je vanuit Duitsland, Japan of de Golf? Je rapport bevat nu de normen van jouw markt — fotoregels (het gevoeligste verschil: verwacht in Tokio, afwijzingsgrond in Toronto), verwachtingen rond persoonsgegevens en marktspecifieke checks zoals de Poolse RODO-clausule, de Italiaanse privacytoestemming en de visumstatusregel in de Golf. Geverifieerd juli 2026; dunner onderbouwde markten zijn gemarkeerd als richtinggevend."

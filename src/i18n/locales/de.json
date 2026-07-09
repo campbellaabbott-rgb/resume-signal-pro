@@ -2768,6 +2768,26 @@
     }
   },
   "changelogEntries": {
+    "reportCardsFix": {
+      "title": "Behoben: Teile Ihres Berichts wurden nicht angezeigt",
+      "description": "Ein Anzeigefehler blendete bei manchen Scans still mehrere Berichtsabschnitte aus – darunter die länderspezifischen Lebenslauf-Standards, die ATS-Parsing-Analyse, die Quick Wins und den ATS-vs.-Recruiter-Score. Sie sind alle wieder da. Außerdem haben wir eine automatische Absicherung ergänzt, damit ein ganzer Abschnitt nicht erneut unbemerkt verschwindet."
+    },
+    "targetMarketScan": {
+      "title": "Bewerbung im Ausland? Ihr Bericht richtet sich jetzt nach dem Job, nicht nach Ihrem Heimatland",
+      "description": "Zielen Sie auf eine Stelle in einem anderen Land? Wählen Sie aus, wo Sie sich bewerben, und die Analyse prüft Ihren Lebenslauf anhand der Normen dieses Marktes – Erwartungen zu Foto und persönlichen Daten, Referenzen und mehr – statt Ihren aktuellen Standort anzunehmen. Außerdem haben wir die automatische Ländererkennung erweitert, damit mehr Lebensläufe von selbst die richtigen lokalen Regeln erhalten."
+    },
+    "groundedAnalysis": {
+      "title": "Weniger falsche „das fehlt Ihnen“-Hinweise",
+      "description": "Vor der Analyse erfasst der Scanner jetzt die echte Struktur Ihres Lebenslaufs – Abschnitte, datierte Positionen, Kontaktdaten – und meldet dadurch deutlich seltener etwas als fehlend, das eigentlich vorhanden ist. Und wenn ein PDF nicht sauber ausgelesen wird, warnen wir Sie jetzt, dass die Ergebnisse unzuverlässig sein können, statt wirren Text zu bewerten."
+    },
+    "guidesTab": {
+      "title": "Alle unsere Ratgeber an einem Ort",
+      "description": "Ein neuer Ratgeber-Tab bündelt alle unsere Anleitungen – warum Lebensläufe abgelehnt werden, die richtigen Keywords wählen, Lebensläufe für Quereinstieg und Freelancing und mehr. „So funktioniert's“ finden Sie jetzt auf der Vertrauens-Seite neben unserer Methodik."
+    },
+    "honestClaims": {
+      "title": "Unsere Aussagen decken sich jetzt mit unserer eigenen Forschung",
+      "description": "Wir haben die gesamte Website überprüft und alles neu formuliert, was übertrieb, wie das Lebenslauf-Screening funktioniert. Keine erfundenen Statistiken und keine Angstmache – was wir Ihnen sagen, deckt sich mit dem, was unsere eigene Analyse des ATS-Verhaltens tatsächlich zeigt."
+    },
     "countryStandards": {
       "title": "Ihr Bericht kennt jetzt die lokalen Regeln: Standards aus 52 Ländern",
       "description": "Sie scannen aus Deutschland, Japan oder dem Golf? Ihr Bericht enthält jetzt die Normen Ihres Markts — Fotoregeln (der heikelste Unterschied: in Tokio erwartet, in Toronto ein Ausschlusskriterium), Erwartungen an persönliche Daten und marktspezifische Prüfungen wie Polens RODO-Klausel, Italiens Datenschutz-Einwilligung und die Visa-Status-Zeile im Golf. Verifiziert Juli 2026; schwächer belegte Märkte sind als Richtwert markiert."

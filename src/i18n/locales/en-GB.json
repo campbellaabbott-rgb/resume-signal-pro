@@ -2768,6 +2768,26 @@
     }
   },
   "changelogEntries": {
+    "reportCardsFix": {
+      "title": "Fixed: parts of your report weren't showing",
+      "description": "A display bug quietly hid several report sections on some scans — country-specific resume standards, the ATS parsing breakdown, quick wins, and the ATS-vs-recruiter score among them. They're all back. We also added an automated safeguard so a whole section can't silently go missing again."
+    },
+    "targetMarketScan": {
+      "title": "Applying abroad? Your report now follows the job, not your home country",
+      "description": "Targeting a role in another country? Choose where you're applying and the scan checks your resume against that market's norms — photo and personal-data expectations, references, and more — instead of assuming your current location. We also expanded automatic country detection so more resumes get the right local rules on their own."
+    },
+    "groundedAnalysis": {
+      "title": "Fewer false 'you're missing this' flags",
+      "description": "Before analyzing, the scanner now maps your resume's real structure — sections, dated roles, contact details — so it's much less likely to tell you something is missing when it's actually there. And when a PDF doesn't extract cleanly, we now warn you the results may be unreliable instead of scoring scrambled text."
+    },
+    "guidesTab": {
+      "title": "All our guides in one place",
+      "description": "A new Guides tab collects every how-to we've written — why resumes get rejected, choosing the right keywords, career-change and freelance resumes, and more. 'How It Works' now lives on the Trust page next to our methodology."
+    },
+    "honestClaims": {
+      "title": "Our claims now match our own research",
+      "description": "We reviewed the whole site and rewrote anything that overstated how resume screening works. No invented statistics and no scare tactics — what we tell you lines up with what our own analysis of ATS behavior actually shows."
+    },
     "countryStandards": {
       "title": "Your report now knows local rules: 52-country resume standards",
       "description": "Scanning from Germany, Japan, or the Gulf? Your report now includes your market's norms — photo rules (the highest-stakes difference: a photo is expected in Tokyo and gets you discarded in Toronto), personal-data expectations, and market-specific checks like Poland's RODO clause, Italy's privacy consent, and Gulf visa-status lines. Verified July 2026; softer markets are labeled as directional."

@@ -2768,6 +2768,26 @@
     }
   },
   "changelogEntries": {
+    "reportCardsFix": {
+      "title": "Corrigido: partes do seu relatório não apareciam",
+      "description": "Um erro de exibição ocultava silenciosamente várias seções do relatório em alguns scans — os padrões de currículo por país, a análise de parsing ATS, as melhorias rápidas e a pontuação ATS vs. recrutador, entre outras. Todas voltaram. Também adicionamos uma proteção automática para que uma seção inteira não desapareça de novo sem aviso."
+    },
+    "targetMarketScan": {
+      "title": "Candidatando-se no exterior? Seu relatório agora segue a vaga, não seu país",
+      "description": "Mirando uma vaga em outro país? Escolha onde está se candidatando e a análise avalia seu currículo pelas normas daquele mercado — expectativas de foto e dados pessoais, referências e mais — em vez de supor sua localização atual. Também ampliamos a detecção automática de país para que mais currículos recebam as regras locais certas sozinhos."
+    },
+    "groundedAnalysis": {
+      "title": "Menos alertas falsos de «está faltando isto»",
+      "description": "Antes de analisar, o scanner agora mapeia a estrutura real do seu currículo — seções, cargos com datas, dados de contato — então é bem menos provável que diga que algo está faltando quando na verdade está lá. E quando um PDF não é extraído corretamente, agora avisamos que os resultados podem não ser confiáveis em vez de pontuar um texto embaralhado."
+    },
+    "guidesTab": {
+      "title": "Todos os nossos guias em um só lugar",
+      "description": "Uma nova aba de Guias reúne todos os tutoriais que escrevemos — por que currículos são rejeitados, como escolher as palavras-chave certas, currículos para mudança de carreira e freelance, e mais. «Como funciona» agora fica na página de Confiança, ao lado da nossa metodologia."
+    },
+    "honestClaims": {
+      "title": "Nossas afirmações agora coincidem com nossa própria pesquisa",
+      "description": "Revisamos o site inteiro e reescrevemos tudo o que exagerava como funciona a triagem de currículos. Sem estatísticas inventadas e sem táticas de medo — o que dizemos a você corresponde ao que nossa própria análise do comportamento dos ATS realmente mostra."
+    },
     "countryStandards": {
       "title": "Seu relatório agora conhece as regras locais: padrões de 52 países",
       "description": "Escaneando da Alemanha, do Japão ou do Golfo? Seu relatório agora inclui as normas do seu mercado — regras de foto (a diferença mais delicada: esperada em Tóquio, eliminatória em Toronto), expectativas de dados pessoais e verificações específicas como a cláusula RODO da Polônia, o consentimento de privacidade da Itália e a linha de status de visto do Golfo. Verificado em julho de 2026; mercados com menos fontes são marcados como direcionais."

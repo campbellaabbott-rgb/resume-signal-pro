@@ -2768,6 +2768,26 @@
     }
   },
   "changelogEntries": {
+    "reportCardsFix": {
+      "title": "Corrigé : certaines parties de votre rapport ne s'affichaient pas",
+      "description": "Un bug d'affichage masquait discrètement plusieurs sections du rapport sur certains scans : les standards de CV par pays, l'analyse du parsing ATS, les gains rapides et le score ATS/recruteur, entre autres. Elles sont toutes de retour. Nous avons aussi ajouté une protection automatique pour qu'une section entière ne puisse plus disparaître silencieusement."
+    },
+    "targetMarketScan": {
+      "title": "Vous postulez à l'étranger ? Votre rapport suit l'emploi, pas votre pays",
+      "description": "Vous visez un poste dans un autre pays ? Indiquez où vous postulez et l'analyse évalue votre CV selon les normes de ce marché — attentes sur la photo et les données personnelles, références, etc. — au lieu de supposer votre localisation actuelle. Nous avons aussi étendu la détection automatique du pays pour que davantage de CV obtiennent d'eux-mêmes les bonnes règles locales."
+    },
+    "groundedAnalysis": {
+      "title": "Moins de fausses alertes « il vous manque ceci »",
+      "description": "Avant l'analyse, l'outil cartographie désormais la vraie structure de votre CV — sections, postes datés, coordonnées — il est donc bien moins susceptible de signaler comme manquant un élément qui est en réalité présent. Et quand un PDF ne s'extrait pas correctement, nous vous prévenons désormais que les résultats peuvent être peu fiables plutôt que de noter un texte illisible."
+    },
+    "guidesTab": {
+      "title": "Tous nos guides au même endroit",
+      "description": "Un nouvel onglet Guides rassemble tous nos tutoriels — pourquoi les CV sont rejetés, comment choisir les bons mots-clés, les CV de reconversion et de freelance, et plus encore. « Comment ça marche » se trouve désormais sur la page Confiance, à côté de notre méthodologie."
+    },
+    "honestClaims": {
+      "title": "Nos affirmations correspondent désormais à nos propres recherches",
+      "description": "Nous avons passé en revue tout le site et réécrit tout ce qui exagérait le fonctionnement du tri des CV. Aucune statistique inventée ni tactique alarmiste : ce que nous vous disons correspond à ce que notre propre analyse du comportement des ATS montre réellement."
+    },
     "countryStandards": {
       "title": "Votre rapport connaît désormais les règles locales : standards de 52 pays",
       "description": "Vous scannez depuis l'Allemagne, le Japon ou le Golfe ? Votre rapport inclut désormais les normes de votre marché — règles de photo (la différence la plus sensible : attendue à Tokyo, éliminatoire à Toronto), attentes en données personnelles et vérifications spécifiques comme la clause RODO polonaise, le consentement italien et la ligne de statut de visa du Golfe. Vérifié en juillet 2026 ; les marchés moins documentés sont marqués comme indicatifs."
