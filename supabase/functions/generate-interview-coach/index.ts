@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
+import { callAIWithModelFallback } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 
 const corsHeaders = {
@@ -95,22 +96,17 @@ Target Role: ${role}
 
 Create questions that reference their ACTUAL experience from the resume.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro", // paid deliverable — pro over flash for quality
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        temperature: 0.7,
-        max_tokens: isPremium ? 9000 : 4000,
-        response_format: { type: "json_object" }
-      }),
+    // Paid deliverable — pro-first, with fallback (pro → flash → gpt-5-mini)
+    // so a transient model error never hard-fails a paying customer.
+    const { response } = await callAIWithModelFallback(apiKey, {
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.7,
+      maxTokens: isPremium ? 9000 : 4000,
+      jsonResponse: true,
+      context: "INTERVIEW-COACH",
     });
 
     if (!response.ok) {
@@ -171,22 +167,16 @@ async function handleEvaluate(req: Request, apiKey: string, resumeText: string) 
   "recruiterReaction": "What the interviewer would think hearing this"
 }${buildLanguageInstruction(language)}`;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-pro", // paid deliverable — pro over flash for quality
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `Question (${category}): ${question}\n\nCandidate's Answer: ${answer}\n\nResume context:\n<resume>\n${resumeText}\n</resume>\n\nEvaluate this answer.` }
-      ],
-      temperature: 0.5,
-      max_tokens: 1500,
-      response_format: { type: "json_object" }
-    }),
+  // Same fallback chain as question generation — answer scoring is also paid.
+  const { response } = await callAIWithModelFallback(apiKey, {
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: `Question (${category}): ${question}\n\nCandidate's Answer: ${answer}\n\nResume context:\n<resume>\n${resumeText}\n</resume>\n\nEvaluate this answer.` }
+    ],
+    temperature: 0.5,
+    maxTokens: 1500,
+    jsonResponse: true,
+    context: "INTERVIEW-COACH-EVAL",
   });
 
   const rateLimitResponse = await checkAiGatewayResponse(response, corsHeaders);

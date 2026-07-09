@@ -15,6 +15,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { callAIWithModelFallback } from "../_shared/ai-fallback.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -211,20 +212,15 @@ Duration/when: ${p.duration}
 ${p.paymentBand ? `Payment band (context only, do not display): ${p.paymentBand}` : ""}
 ${p.repeatOrReferral ? `Repeat/referral: ${p.repeatOrReferral}` : ""}`).join("\n")}`;
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        // $29 flagship product — runs on pro to match its price and its
-        // document-writing siblings (cover-letter, tailored-resume), not the
-        // flash it shipped on. Prompt was already recruiter-grade; the model
-        // was the ceiling.
-        model: "google/gemini-2.5-pro",
-        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-        temperature: 0.5,
-        max_tokens: 3000,
-        response_format: { type: "json_object" },
-      }),
+    // $29 flagship product — pro-first for quality, but NEVER hard-fail a
+    // paying customer on a transient model error: falls back pro → flash →
+    // gpt-5-mini (429 on one model advances to the next; 402 credits stops).
+    const { response: aiRes } = await callAIWithModelFallback(apiKey, {
+      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+      temperature: 0.5,
+      maxTokens: 3000,
+      jsonResponse: true,
+      context: "FREELANCE-BOOST",
     });
     if (!aiRes.ok) throw new Error(`AI gateway ${aiRes.status}`);
     const aiJson = await aiRes.json();
