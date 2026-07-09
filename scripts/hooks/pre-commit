@@ -1,0 +1,22 @@
+#!/bin/sh
+# Frontend typecheck gate. Runs ONLY when staged src/*.ts(x) files change, so
+# edge-function / doc / config commits stay fast.
+#
+# Why this exists: the root tsconfig.json is solution-style ("files": []), so
+# `tsc --noEmit` compiles nothing and always passes. The real gate is
+# `npm run typecheck` (tsc -p tsconfig.app.json). Without this hook, frontend
+# type errors ship silently (the vite build doesn't type-check either). This
+# caught 3 shipped errors + a whole class of dark-card bugs on 2026-07-09.
+#
+# Bypass for an intentional WIP commit with:  git commit --no-verify
+
+if git diff --cached --name-only --diff-filter=ACM | grep -qE '^src/.*\.(ts|tsx)$'; then
+  echo "[pre-commit] src changed — running frontend typecheck…"
+  if ! npm run --silent typecheck; then
+    echo "[pre-commit] ✗ typecheck FAILED — commit blocked."
+    echo "             Fix the errors above, or bypass with: git commit --no-verify"
+    exit 1
+  fi
+  echo "[pre-commit] ✓ typecheck passed"
+fi
+exit 0

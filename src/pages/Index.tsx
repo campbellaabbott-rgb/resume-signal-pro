@@ -329,9 +329,8 @@ interface FreeKeywordResult {
   // once the real `tsc -p tsconfig.app.json` gate was run).
   countryStandards?: import("@/components/ReportInsightCards").CountryStandardsData | null;
   platformProfileDetected?: { signals: string[] } | null;
-  // atsCompatibility has no backend source yet ({overallRating,bestFor,worstFor}
-  // is emitted by nothing); declared so it type-checks — the card fails safe to
-  // hidden until a producer exists.
+  // Emitted by the AI (the `atsCompatibility` object in the analysis schema);
+  // reaches the report via the ...result spread and drives the ATS-parsing card.
   atsCompatibility?: { overallRating: string; topIssue?: string; bestFor?: string; worstFor?: string } | null;
   executiveScopeCheck?: {
     level: string;
