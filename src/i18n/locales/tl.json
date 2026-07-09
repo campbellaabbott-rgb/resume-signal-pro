@@ -2768,6 +2768,14 @@
     }
   },
   "changelogEntries": {
+    "sharperPaidProducts": {
+      "title": "Mas matalas na Freelance Boost at Interview Coach",
+      "description": "Pareho na ngayong ginagawa gamit ang aming pinakamahusay na modelo — kapansin-pansing mas matibay at mas espesipikong output sa mga seksyon ng resume at paghahanda sa interview na binabayaran mo. Parehong nakabatay-sa-katotohanan, walang gawa-gawang detalye; mas magandang makina lang sa likod."
+    },
+    "smarterIndustryConfirm": {
+      "title": "Nagtatanong na ang scan kapag talagang malabo ang larangan mo",
+      "description": "Kung sumasaklaw ang resume mo sa dalawang larangan — halimbawa marketing at business development, o klinikal na trabaho at data science — hihilingin na ngayon ng scan na kumpirmahin mo ang industriya bago magpasya, sa halip na tahimik na pumili ng isa at magkamali."
+    },
     "liveBenchmarks": {
       "title": "Tingnan kung paano nag-iiskor ang totoong resume: live na ATS benchmarks",
       "description": "Ipinapakita na ngayon ng benchmarks page ang live na ATS-score distributions mula sa aming totoong scan corpus — pangkalahatang median at quartiles, benchmarks kada industriya, at median kada antas ng karanasan, bawat isa may sample size. At ang scan counter sa homepage ay sumasalamin na ngayon sa totoong all-time total."

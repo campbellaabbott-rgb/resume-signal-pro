@@ -2768,6 +2768,14 @@
     }
   },
   "changelogEntries": {
+    "sharperPaidProducts": {
+      "title": "Scherpere Freelance Boost & Interview Coach",
+      "description": "Beide worden nu gegenereerd met ons meest capabele model — merkbaar sterkere, specifiekere output voor de cv-secties en interviewvoorbereiding waarvoor je betaalt. Dezelfde gefundeerde aanpak zonder verzonnen details; met een betere motor erachter."
+    },
+    "smarterIndustryConfirm": {
+      "title": "De scan vraagt het na als je vakgebied echt twijfelachtig is",
+      "description": "Als je cv twee vakgebieden bestrijkt — bijvoorbeeld marketing en business development, of klinisch werk en data science — vraagt de scan je nu om de branche te bevestigen voordat hij kiest, in plaats van er stilletjes één te pakken en het mis te hebben."
+    },
     "liveBenchmarks": {
       "title": "Zie hoe echte cv's scoren: live ATS-benchmarks",
       "description": "De benchmarkpagina toont nu live ATS-scoreverdelingen uit ons echte scancorpus — algemene mediaan en kwartielen, benchmarks per branche en medianen per ervaringsniveau, elk met steekproefgrootte. En de scanteller op de homepage weerspiegelt nu het echte totaal aller tijden."

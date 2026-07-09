@@ -2768,6 +2768,14 @@
     }
   },
   "changelogEntries": {
+    "sharperPaidProducts": {
+      "title": "Freelance Boost e Interview Coach mais afiados",
+      "description": "Ambos agora são gerados com nosso modelo mais capaz — resultados visivelmente mais fortes e específicos nas seções de currículo e na preparação para entrevistas que você paga. A mesma abordagem fundamentada e sem detalhes inventados; com um motor melhor por trás."
+    },
+    "smarterIndustryConfirm": {
+      "title": "A análise agora pergunta quando sua área é realmente incerta",
+      "description": "Se seu currículo abrange duas áreas — por exemplo, marketing e desenvolvimento de negócios, ou trabalho clínico e ciência de dados —, a análise agora pede que você confirme o setor antes de decidir, em vez de escolher um silenciosamente e arriscar errar."
+    },
     "liveBenchmarks": {
       "title": "Veja como currículos reais pontuam: benchmarks de ATS ao vivo",
       "description": "A página de benchmarks agora mostra distribuições de pontuação de ATS ao vivo do nosso corpus real de análises — mediana e quartis gerais, benchmarks por setor e medianas por nível de experiência, cada um com seu tamanho de amostra. E o contador de análises da página inicial agora reflete o total real acumulado."

@@ -2768,6 +2768,14 @@
     }
   },
   "changelogEntries": {
+    "sharperPaidProducts": {
+      "title": "Sharper Freelance Boost & Interview Coach",
+      "description": "Both now generate with our most capable model — noticeably stronger, more specific output on the resume sections and interview prep you pay for. Same grounded, nothing-invented approach; better engine behind it."
+    },
+    "smarterIndustryConfirm": {
+      "title": "The scan now asks when your field is a genuine toss-up",
+      "description": "If your resume straddles two fields — say marketing and business development, or clinical work and data science — the scan now flags the industry for you to confirm before committing, instead of quietly picking one and risking the wrong call."
+    },
     "liveBenchmarks": {
       "title": "See how real resumes score: live ATS benchmarks",
       "description": "The benchmarks page now shows live ATS-score distributions from our real scan corpus — overall median and quartiles, per-industry benchmarks, and experience-level medians, each labeled with its sample size. The homepage scan counter now reflects the real all-time total too."

@@ -2768,6 +2768,14 @@
     }
   },
   "changelogEntries": {
+    "sharperPaidProducts": {
+      "title": "Schärferer Freelance Boost & Interview Coach",
+      "description": "Beide werden jetzt mit unserem leistungsfähigsten Modell erzeugt — deutlich stärkere, konkretere Ergebnisse bei den Lebenslauf-Abschnitten und der Interviewvorbereitung, für die Sie zahlen. Gleicher fundierter Ansatz ohne erfundene Details; nur mit einem besseren Motor dahinter."
+    },
+    "smarterIndustryConfirm": {
+      "title": "Der Scan fragt nach, wenn Ihr Feld wirklich uneindeutig ist",
+      "description": "Wenn Ihr Lebenslauf zwei Felder umspannt — etwa Marketing und Business Development oder klinische Arbeit und Data Science —, bittet der Scan Sie jetzt, die Branche zu bestätigen, bevor er sich festlegt, statt still eine zu wählen und danebenzuliegen."
+    },
     "liveBenchmarks": {
       "title": "Sehen Sie, wie echte Lebensläufe abschneiden: Live-ATS-Benchmarks",
       "description": "Die Benchmark-Seite zeigt jetzt Live-ATS-Score-Verteilungen aus unserem echten Scan-Korpus – Gesamtmedian und Quartile, Benchmarks pro Branche und Mediane pro Erfahrungsstufe, jeweils mit Stichprobengröße. Und der Scan-Zähler auf der Startseite spiegelt jetzt den echten Gesamtwert aller Zeiten wider."

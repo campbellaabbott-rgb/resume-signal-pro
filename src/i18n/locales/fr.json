@@ -2768,6 +2768,14 @@
     }
   },
   "changelogEntries": {
+    "sharperPaidProducts": {
+      "title": "Freelance Boost et Interview Coach plus pointus",
+      "description": "Les deux sont désormais générés avec notre modèle le plus performant — des résultats nettement plus solides et précis pour les sections de CV et la préparation aux entretiens que vous payez. Même approche fondée et sans détails inventés ; un meilleur moteur derrière."
+    },
+    "smarterIndustryConfirm": {
+      "title": "L'analyse vous consulte quand votre domaine est vraiment incertain",
+      "description": "Si votre CV chevauche deux domaines — par exemple marketing et développement commercial, ou travail clinique et science des données —, l'analyse vous demande désormais de confirmer le secteur avant de trancher, au lieu d'en choisir un en silence au risque de se tromper."
+    },
     "liveBenchmarks": {
       "title": "Voyez comment les vrais CV se classent : benchmarks ATS en direct",
       "description": "La page de benchmarks affiche désormais des distributions de scores ATS en direct issues de notre corpus réel d'analyses — médiane et quartiles globaux, benchmarks par secteur et médianes par niveau d'expérience, chacun avec sa taille d'échantillon. Et le compteur d'analyses de la page d'accueil reflète maintenant le vrai total cumulé."
