@@ -98,7 +98,9 @@ const LANGUAGE_WORDS: Record<string, { name: string; words: string[] }> = {
  * English resume must not flip the report language.
  */
 export function detectResumeLanguage(resumeText: string): ResumeLanguageResult {
-  const text = resumeText.toLowerCase();
+  // Normalize typographic apostrophes (U+2019/U+2018, what Word/Docs insert)
+  // to straight quotes so list entries like "d'expérience" match real resumes.
+  const text = resumeText.toLowerCase().replace(/[‘’]/g, "'");
 
   // Script-based: Devanagari → Hindi (certain, no stopwords needed)
   const devanagari = (resumeText.match(/[ऀ-ॿ]/g) || []).length;

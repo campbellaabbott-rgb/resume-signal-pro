@@ -25,6 +25,13 @@ describe("detectResumeLanguage — non-English resumes", () => {
     expect(r.language).toBe("fr");
   });
 
+  it("detects French with typographic apostrophes (Word/Docs use U+2019, not ')", () => {
+    const r = detectResumeLanguage(
+      "Responsable marketing avec 8 ans d’expérience en gestion de marque pour des entreprises SaaS. Augmentation du trafic organique grâce au contenu. Compétences : campagnes, réseaux sociaux. Formation : Master.",
+    );
+    expect(r.language).toBe("fr");
+  });
+
   it("detects Spanish", () => {
     const r = detectResumeLanguage(
       "Gerente de marketing con 8 años de experiencia en desarrollo de marca y gestión de equipo. Responsable de campañas para la empresa. Habilidades: ventas, mejora continua. Educación: Licenciatura. Logros: aumenté el trabajo del equipo.",

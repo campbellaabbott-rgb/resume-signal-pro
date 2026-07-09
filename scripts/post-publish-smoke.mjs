@@ -98,6 +98,17 @@ try {
       anatomy
         ? `score ${j.atsScoreEstimate}, report ${j.reportMeta.reportId}, engine ${deployedEngine}, ${secs}s`
         : "200 but missing atsScoreEstimate/reportMeta/scoreBand");
+    // The scan has a deterministic fallback, so score/reportId/scoreBand all
+    // pass even when the AI gateway is down (proven 2026-07-09: this check said
+    // PASS score 41 during a 402 out-of-credits outage — users were getting
+    // empty reports). Assert real AI prose is present so a degraded scan FAILS.
+    const aiProse = [j.topStrength, j.quickWins, j.redFlags]
+      .map((v) => JSON.stringify(v ?? "").length)
+      .reduce((a, b) => Math.max(a, b), 0);
+    record("AI generation live", aiProse > 60,
+      aiProse > 60
+        ? `AI-written report content present (${aiProse} chars in largest field)`
+        : `AI CONTENT MISSING (largest AI field: ${aiProse} chars) — gateway down or out of credits? Check Lovable AI credits + scan-heartbeat`);
   }
 } catch (e) {
   record("free scan end-to-end", false, String(e));

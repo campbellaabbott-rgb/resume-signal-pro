@@ -42,8 +42,16 @@ export function ProductPreview({
   const runGenerate = () =>
     generate(productId, resumeText as string, { industry, jobDescription });
 
-  const buy = () =>
+  const buy = () => {
+    // fullAnalysis has no entry in create-product-checkout's product map — it
+    // sells through the main scan flow. Without this branch the unlock button
+    // 400s ("Invalid product selected"). Mirrors Pricing.tsx's handlePurchase.
+    if ("useMainCheckout" in product && product.useMainCheckout) {
+      window.location.href = "/#upload";
+      return;
+    }
     purchaseProduct(productId, { sessionId, ctaSection: "product_preview" });
+  };
 
   // Idle state — the entry-point button.
   if (!preview && !isLoading && !error) {
