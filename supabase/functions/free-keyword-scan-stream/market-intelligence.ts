@@ -85,104 +85,133 @@ export interface GeoDetectionResult {
   country: string | null;
   confidence: 'high' | 'medium' | 'low';
   signals: string[];
-  source: 'phone' | 'address' | 'institution' | 'currency' | 'ip' | 'none';
+  source: 'phone' | 'address' | 'institution' | 'currency' | 'work_authorization' | 'education' | 'ip' | 'none';
 }
 
+// City/address regexes as a weighted list so multiple signals ACCUMULATE
+// instead of first-match-winning. Weight 2 = "a place is named" — a city in a
+// bullet ("expanded into the London market") is real but weak evidence of where
+// the CANDIDATE is, so stronger signals (phone, work authorization, education)
+// can outvote a lone city mention. This is the core precision fix.
+const CITY_SIGNALS: Array<{ re: RegExp; country: string; label: string }> = [
+  { re: UK_SIGNALS, country: 'GB', label: 'UK city or postcode' },
+  { re: CA_SIGNALS, country: 'CA', label: 'Canadian city/province' },
+  { re: AU_SIGNALS, country: 'AU', label: 'Australian city/state' },
+  { re: DE_SIGNALS, country: 'DE', label: 'German city or company suffix' },
+  { re: IN_SIGNALS, country: 'IN', label: 'Indian city' },
+  { re: SG_SIGNALS, country: 'SG', label: 'Singapore location' },
+  { re: UAE_SIGNALS, country: 'AE', label: 'UAE location' },
+  { re: FR_SIGNALS, country: 'FR', label: 'French city' },
+  { re: ES_SIGNALS, country: 'ES', label: 'Spanish city' },
+  { re: IT_SIGNALS, country: 'IT', label: 'Italian city' },
+  { re: NL_SIGNALS, country: 'NL', label: 'Dutch city' },
+  { re: JP_SIGNALS, country: 'JP', label: 'Japanese city' },
+  { re: KR_SIGNALS, country: 'KR', label: 'Korean city' },
+  { re: MX_SIGNALS, country: 'MX', label: 'Mexican city' },
+  { re: BR_SIGNALS, country: 'BR', label: 'Brazilian city' },
+];
+const US_CITY = /\b(new york|san francisco|los angeles|chicago|boston|seattle|austin|denver|atlanta|miami|brooklyn|manhattan|bay area|silicon valley|washington,? d\.?c\.?)\b/i;
+
+// Work-authorization / citizenship phrases — the single most reliable signal,
+// because it states the country the candidate can actually work in. Phrases are
+// specific enough to avoid false positives (the pronoun "us" only matches inside
+// "authorized to work in the US").
+const WORK_AUTH: Array<{ re: RegExp; country: string; label: string }> = [
+  { re: /\bauthori[sz]ed to work in (the )?(united states|us|u\.s\.|usa|america)\b/i, country: 'US', label: 'US work authorization stated' },
+  { re: /\b(u\.?s\.? citizen|green card holder|us permanent resident|authori[sz]ed for employment in the u\.?s)\b/i, country: 'US', label: 'US citizenship/residency stated' },
+  { re: /\b(right to work in the uk|authori[sz]ed to work in the uk|indefinite leave to remain|skilled worker visa|tier 2 visa|british citizen)\b/i, country: 'GB', label: 'UK work authorization stated' },
+  { re: /\b(authori[sz]ed to work in australia|australian citizen|australian permanent resident)\b/i, country: 'AU', label: 'Australian work authorization stated' },
+  { re: /\b(authori[sz]ed to work in canada|canadian citizen|canadian permanent resident)\b/i, country: 'CA', label: 'Canadian work authorization stated' },
+];
+
+// Education-system terms — highly diagnostic of where someone studied, and they
+// rarely appear outside their home country's résumés.
+const EDUCATION_SIGNALS: Array<{ re: RegExp; country: string; label: string }> = [
+  { re: /\b(a-?levels?|gcses?|as-?levels?|btec|ucas)\b/i, country: 'GB', label: 'UK education system (A-Levels/GCSE)' },
+  { re: /\b(atar|\bhsc\b|\bvce\b|tafe)\b/i, country: 'AU', label: 'Australian education system (ATAR/HSC)' },
+  { re: /\b(abitur|realschule|fachhochschule)\b/i, country: 'DE', label: 'German education system (Abitur)' },
+  { re: /\b(baccalaur[eé]at|classe pr[eé]paratoire|grande [eé]cole)\b/i, country: 'FR', label: 'French education system (Baccalauréat)' },
+  { re: /\b(cbse|icse|iit[\s-]?jee|\bneet\b|b\.?tech|12th standard)\b/i, country: 'IN', label: 'Indian education system (CBSE/IIT/B.Tech)' },
+  { re: /\b(leaving certificate|leaving cert)\b/i, country: 'IE', label: 'Irish education system (Leaving Cert)' },
+];
+
+// Spelling conventions only CORROBORATE a country that already has another
+// signal — they never introduce a country alone (British spelling can't tell GB
+// from AU/CA/IN). Their job is to break US-vs-Commonwealth ties.
+const COMMONWEALTH_SPELLING = /\b(colours?|favour|behaviour|organis(e|ed|ing|ation)|recognis(e|ed)|centre|licence|programme|catalogue|defence|labour|analyse|optimis(e|ed|ation)|specialis(e|ed|ation)|utilis(e|ed))\b/i;
+const US_SPELLING = /\b(colors?|favor|behavior|organiz(e|ed|ing|ation)|recogniz(e|ed)|\bcenter\b|\blicense\b|\bprogram\b|catalog|defense|\blabor\b|analyze|optimiz(e|ed|ation)|specializ(e|ed|ation)|utiliz(e|ed))\b/i;
+const COMMONWEALTH = ['GB', 'AU', 'CA', 'IN', 'IE', 'NZ', 'SG', 'ZA'];
+
 /**
- * Detect country from resume text using phone format, city names, currency, and institutions.
- * Returns null country if nothing is found — caller uses IP-based country as fallback.
+ * Detect country from resume text by SCORING weighted signals (work
+ * authorization, phone, education system, city/address, currency, spelling)
+ * rather than first-match-wins. Multiple corroborating signals raise confidence;
+ * a lone city mention no longer overrides a phone or work-authorization
+ * statement. Returns null country if nothing is found — caller falls back to IP.
  */
 export function detectCountryFromResume(resumeText: string): GeoDetectionResult {
   const text = resumeText;
-  const lower = text.toLowerCase();
+  const scores: Record<string, number> = {};
+  const best: Record<string, { w: number; kind: GeoDetectionResult['source'] }> = {};
   const signals: string[] = [];
 
-  // 1. Phone number format (highest confidence)
+  const add = (country: string, weight: number, kind: GeoDetectionResult['source'], label: string) => {
+    scores[country] = (scores[country] ?? 0) + weight;
+    if (!best[country] || weight > best[country].w) best[country] = { w: weight, kind };
+    signals.push(label);
+  };
+
+  // 1. Work authorization / citizenship (strongest — names the target country)
+  for (const { re, country, label } of WORK_AUTH) {
+    if (re.test(text)) add(country, 6, 'work_authorization', label);
+  }
+
+  // 2. Phone number format (very strong — it's the candidate's own number)
   for (const { pattern, country } of PHONE_TO_COUNTRY) {
-    if (pattern.test(text)) {
-      signals.push(`Phone prefix matches ${country}`);
-      return { country, confidence: 'high', signals, source: 'phone' };
-    }
+    if (pattern.test(text)) { add(country, 5, 'phone', `Phone prefix matches ${country}`); break; }
   }
 
-  // 2. Address / city patterns (medium-high)
-  if (UK_SIGNALS.test(text)) {
-    signals.push('UK city or postcode detected');
-    return { country: 'GB', confidence: 'medium', signals, source: 'address' };
-  }
-  if (CA_SIGNALS.test(text)) {
-    signals.push('Canadian city/province detected');
-    return { country: 'CA', confidence: 'medium', signals, source: 'address' };
-  }
-  if (AU_SIGNALS.test(text)) {
-    signals.push('Australian city/state detected');
-    return { country: 'AU', confidence: 'medium', signals, source: 'address' };
-  }
-  if (DE_SIGNALS.test(text)) {
-    signals.push('German city or company suffix detected');
-    return { country: 'DE', confidence: 'medium', signals, source: 'address' };
-  }
-  if (IN_SIGNALS.test(text)) {
-    signals.push('Indian city detected');
-    return { country: 'IN', confidence: 'medium', signals, source: 'address' };
-  }
-  if (SG_SIGNALS.test(text)) {
-    signals.push('Singapore location detected');
-    return { country: 'SG', confidence: 'medium', signals, source: 'address' };
-  }
-  if (UAE_SIGNALS.test(text)) {
-    signals.push('UAE location detected');
-    return { country: 'AE', confidence: 'medium', signals, source: 'address' };
-  }
-  if (FR_SIGNALS.test(text)) {
-    signals.push('French city detected');
-    return { country: 'FR', confidence: 'medium', signals, source: 'address' };
-  }
-  if (ES_SIGNALS.test(text)) {
-    signals.push('Spanish city detected');
-    return { country: 'ES', confidence: 'medium', signals, source: 'address' };
-  }
-  if (IT_SIGNALS.test(text)) {
-    signals.push('Italian city detected');
-    return { country: 'IT', confidence: 'medium', signals, source: 'address' };
-  }
-  if (NL_SIGNALS.test(text)) {
-    signals.push('Dutch city detected');
-    return { country: 'NL', confidence: 'medium', signals, source: 'address' };
-  }
-  if (JP_SIGNALS.test(text)) {
-    signals.push('Japanese city detected');
-    return { country: 'JP', confidence: 'medium', signals, source: 'address' };
-  }
-  if (KR_SIGNALS.test(text)) {
-    signals.push('Korean city detected');
-    return { country: 'KR', confidence: 'medium', signals, source: 'address' };
-  }
-  if (MX_SIGNALS.test(text)) {
-    signals.push('Mexican city detected');
-    return { country: 'MX', confidence: 'medium', signals, source: 'address' };
-  }
-  if (BR_SIGNALS.test(text)) {
-    signals.push('Brazilian city detected');
-    return { country: 'BR', confidence: 'medium', signals, source: 'address' };
+  // 3. Education system (diagnostic of where they studied)
+  for (const { re, country, label } of EDUCATION_SIGNALS) {
+    if (re.test(text)) add(country, 3, 'education', label);
   }
 
-  // 3. Currency symbols (medium)
+  // 4. City / address mentions (weak — a place named ≠ where they live)
+  for (const { re, country, label } of CITY_SIGNALS) {
+    if (re.test(text)) add(country, 2, 'address', `${label} detected`);
+  }
+  if (US_CITY.test(text)) add('US', 2, 'address', 'US city detected');
+
+  // 5. Currency symbols
   for (const [symbol, country] of Object.entries(CURRENCY_TO_COUNTRY)) {
-    if (new RegExp(symbol).test(text)) {
-      signals.push(`Currency symbol "${symbol}" detected`);
-      return { country, confidence: 'medium', signals, source: 'currency' };
-    }
+    if (new RegExp(symbol).test(text)) add(country, 2, 'currency', `Currency symbol "${symbol}" detected`);
   }
 
-  // 4. US fallback — no international signals, US is most common
-  const hasUSCity = /\b(new york|san francisco|los angeles|chicago|boston|seattle|austin|denver|atlanta|miami|brooklyn|manhattan|bay area|silicon valley)\b/i.test(text);
-  if (hasUSCity) {
-    signals.push('US city detected');
-    return { country: 'US', confidence: 'medium', signals, source: 'address' };
+  // 6. Spelling convention — corroborate an already-signaled country / break ties
+  const commonwealth = COMMONWEALTH_SPELLING.test(text);
+  const american = US_SPELLING.test(text);
+  if (commonwealth && !american) {
+    for (const c of COMMONWEALTH) if (scores[c]) add(c, 2, best[c].kind, 'British/Commonwealth spelling corroborates');
+    if (scores['US']) { scores['US'] -= 2; signals.push('Commonwealth spelling contradicts US'); }
+  } else if (american && !commonwealth && scores['US']) {
+    add('US', 1, best['US'].kind, 'American spelling corroborates');
   }
 
-  return { country: null, confidence: 'low', signals: ['No country signals found in resume'], source: 'none' };
+  // Resolve — highest score wins; a near-tie with another country lowers confidence
+  const ranked = Object.entries(scores).filter(([, s]) => s > 0).sort((a, b) => b[1] - a[1]);
+  if (ranked.length === 0) {
+    return { country: null, confidence: 'low', signals: ['No country signals found in resume'], source: 'none' };
+  }
+  const [topCountry, topScore] = ranked[0];
+  const secondScore = ranked[1]?.[1] ?? 0;
+
+  let confidence: 'high' | 'medium' | 'low' = topScore >= 5 ? 'high' : 'medium';
+  if (ranked[1] && (topScore - secondScore) <= 1) {
+    if (confidence === 'high') confidence = 'medium';
+    signals.push(`Conflicting location signals (${topCountry} vs ${ranked[1][0]}) — confidence lowered`);
+  }
+
+  return { country: topCountry, confidence, signals, source: best[topCountry]?.kind ?? 'address' };
 }
 
 // ─── 2. MARKET INTELLIGENCE DATA ─────────────────────────────────────────────

@@ -4633,10 +4633,25 @@ export function detectIndustry(
     s.score >= 5
   );
 
-  if (nonPhantomSecond && nonPhantomSecond.score >= adjustedTop.score * 0.5) {
-    secondaryIndustry = nonPhantomSecond.industry;
-    secondaryScore = nonPhantomSecond.score;
-    console.log(`[INDUSTRY-DETECTION] Multi-industry: primary="${finalIndustry}" (${finalScore}), secondary="${secondaryIndustry}" (${secondaryScore})`);
+  if (nonPhantomSecond) {
+    // A secondary normally has to clear 50% of the primary's score. But when the
+    // primary is role-locked/cert-locked, that INFLATES its score and the 50% bar
+    // suppresses a genuine second field — the documented health-tech → machine
+    // learning miss (ML sits ~40% behind and gets dropped, so the confirmation
+    // strip never sees a blend to flag). Fix: if the runner-up has its OWN strong
+    // evidence (a matched job title or the field's required anchor terms), let it
+    // through at a lower 35% bar. Skills-list noise lacks title/anchor evidence,
+    // so this doesn't manufacture spurious blends.
+    const strongBar = adjustedTop.score * 0.5;
+    const relaxedBar = adjustedTop.score * 0.35;
+    const hasOwnEvidence =
+      hasStrongTitleSignal(nonPhantomSecond.signals) ||
+      checkRequiredAnchors(nonPhantomSecond.industry, resumeText);
+    if (nonPhantomSecond.score >= strongBar || (hasOwnEvidence && nonPhantomSecond.score >= relaxedBar)) {
+      secondaryIndustry = nonPhantomSecond.industry;
+      secondaryScore = nonPhantomSecond.score;
+      console.log(`[INDUSTRY-DETECTION] Multi-industry: primary="${finalIndustry}" (${finalScore}), secondary="${secondaryIndustry}" (${secondaryScore})${hasOwnEvidence && nonPhantomSecond.score < strongBar ? ' [surfaced via own title/anchor evidence at relaxed bar]' : ''}`);
+    }
   }
   
   // === SUB-ROLE DETECTION ===

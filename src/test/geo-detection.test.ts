@@ -67,3 +67,42 @@ describe("detectCountryFromResume — city fallback + euro fix", () => {
     expect(r.country).toBeNull();
   });
 });
+
+describe("detectCountryFromResume — scoring: city mention ≠ candidate location", () => {
+  it("does NOT tag a US candidate as GB/AU for naming foreign markets in a bullet", () => {
+    const r = detectCountryFromResume(
+      "Senior Product Manager, San Francisco, CA. Led expansion into the London and Sydney markets. Authorized to work in the US.",
+    );
+    expect(r.country).toBe("US");
+  });
+
+  it("lets a US city + US spelling outweigh a lone foreign city mention", () => {
+    const r = detectCountryFromResume(
+      "Alex Kim — New York, NY. Product Manager. Led the London team; optimized the color scheme and organized the launch program.",
+    );
+    expect(r.country).toBe("US");
+  });
+
+  it("flags a genuine two-country tie with lowered confidence", () => {
+    const r = detectCountryFromResume("Operations Lead across our Toronto and New York offices.");
+    expect(r.confidence).not.toBe("high"); // a real tie should never read as high-confidence
+  });
+});
+
+describe("detectCountryFromResume — work authorization (strongest signal)", () => {
+  it("reads an explicit work-authorization statement as the target country", () => {
+    const uk = detectCountryFromResume("Product Manager. British citizen with the right to work in the UK.");
+    expect(uk.country).toBe("GB");
+    expect(uk.source).toBe("work_authorization");
+
+    expect(detectCountryFromResume("Engineer. Authorized to work in the US. Green card holder.").country).toBe("US");
+  });
+});
+
+describe("detectCountryFromResume — education-system signals", () => {
+  it("uses the education system to pin the country", () => {
+    expect(detectCountryFromResume("Klaus Weber — Berlin. Software Engineer. Abitur 2010.").country).toBe("DE");
+    expect(detectCountryFromResume("Priya Sharma — Bengaluru. Data Engineer. B.Tech from IIT.").country).toBe("IN");
+    expect(detectCountryFromResume("James Carter. Marketing Manager. A-Levels, University of Manchester.").country).toBe("GB");
+  });
+});
