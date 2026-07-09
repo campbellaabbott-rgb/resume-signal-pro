@@ -9,7 +9,6 @@ import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { INDUSTRY_KEYWORDS } from "../../supabase/functions/free-keyword-scan/industry-detection";
-import { ONET_EXPECTATIONS } from "../../supabase/functions/free-keyword-scan/onet-expectations";
 
 import { ES_INDUSTRIES, isSpanish } from "@/data/es-industries";
 
@@ -22,7 +21,6 @@ export default function IndustryKeywordsEs() {
   const esKeywords = [...new Set(data.primary.filter(isSpanish))].slice(0, 20);
   const esTitles = [...new Set(data.titles.filter(isSpanish))].slice(0, 14);
   const enKeywords = [...new Set(data.primary.filter((t) => !isSpanish(t)))].slice(0, 14);
-  const onet = ONET_EXPECTATIONS[slug];
 
   return (
     <div className="min-h-screen bg-background">
@@ -76,18 +74,6 @@ export default function IndustryKeywordsEs() {
               ))}
             </div>
           </section>
-
-          {onet && (
-            <section className="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-8">
-              <h2 className="font-semibold text-foreground mb-1">Habilidades clave según el Departamento de Trabajo de EE. UU.</h2>
-              <p className="text-xs text-muted-foreground mb-3">Fuente: O*NET {onet.code} — {onet.occupation} (onetonline.org, dominio público)</p>
-              <div className="flex flex-wrap gap-1.5">
-                {onet.skills.map((s) => (
-                  <span key={s} className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium capitalize">{s}</span>
-                ))}
-              </div>
-            </section>
-          )}
 
           <section className="rounded-2xl border-2 border-primary bg-card p-6 text-center">
             <h2 className="text-xl font-bold mb-2">Escanea tu currículum gratis — también en español</h2>
