@@ -41,6 +41,8 @@ export { ES_INDUSTRIES, isSpanish } from "../src/data/es-industries";
 export { SCREENER_NOTES } from "../src/data/screener-notes";
 export { GUIDES } from "../src/data/guides";
 export { buildIndustryFaqs } from "../src/data/industry-faqs";
+export { COUNTRY_STANDARDS } from "../supabase/functions/free-keyword-scan/country-standards";
+export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from "../src/data/cv-standards-content";
 `);
   const bundle = join(root, "scripts", ".prerender-data.mjs");
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
@@ -142,8 +144,12 @@ export { buildIndustryFaqs } from "../src/data/industry-faqs";
 
     let headExtra = `${isFallback ? "" : `<link rel="canonical" href="${SITE}${path}" />\n`}<meta name="x-prerendered" content="1" />\n`;
     if (hreflang) {
-      headExtra += `<link rel="alternate" hreflang="en" href="${SITE}${hreflang.en}" />\n`;
-      headExtra += `<link rel="alternate" hreflang="es" href="${SITE}${hreflang.es}" />\n`;
+      // hreflang is a { locale: path } map (any number of locales). Every
+      // cluster member emits the SAME set of alternates (reciprocity is what
+      // makes crawlers honor them) + x-default pointing at the English page.
+      for (const [hl, href] of Object.entries(hreflang)) {
+        headExtra += `<link rel="alternate" hreflang="${hl}" href="${SITE}${href}" />\n`;
+      }
       headExtra += `<link rel="alternate" hreflang="x-default" href="${SITE}${hreflang.en}" />\n`;
     }
     for (const ld of jsonLd) headExtra += `<script type="application/ld+json">${JSON.stringify(ld)}</script>\n`;
@@ -563,6 +569,88 @@ export { buildIndustryFaqs } from "../src/data/industry-faqs";
       </section>`,
   });
 
+  // ---- /cv-standards: per-country CV norms (EN for all countries, localized per CV_LOCALES) ----
+  {
+    const isoList = Object.keys(D.COUNTRY_SLUGS).filter((iso) => D.COUNTRY_STANDARDS[iso]);
+    const sorted = [...isoList].sort((a, b) => D.COUNTRY_STANDARDS[a].name.localeCompare(D.COUNTRY_STANDARDS[b].name));
+    write({
+      path: "/cv-standards",
+      title: "CV & Resume Standards by Country — Photo, Length, Format Rules",
+      description: `What a resume or CV actually looks like in ${isoList.length} countries: photo norms, expected length, personal-data rules, and formatting conventions — the live data our resume scanner applies per market.`,
+      jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "CV Standards", path: "/cv-standards" }])],
+      content: `
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "CV Standards" }])}
+        <h1 class="text-3xl font-bold mb-3">CV &amp; resume standards by country</h1>
+        <p class="text-muted-foreground mb-8">Resume rules change at every border — a photo is expected in Germany and gets you discarded in the US. These pages are the live per-country data our scanner applies when your resume targets a market: ${isoList.length} countries, updated whenever the engine improves.</p>
+        <div class="grid sm:grid-cols-2 gap-2.5">${sorted.map((iso) => `<a href="/cv-standards/${D.COUNTRY_SLUGS[iso]}" class="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground"><span>${esc(D.COUNTRY_STANDARDS[iso].name)}</span></a>`).join("")}</div>`,
+    });
+
+    const sectionHtml = (t, std, notes, name) => `
+      <div class="grid sm:grid-cols-2 gap-3 mb-8">
+        <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold mb-1">${esc(t.docTermLabel)}</h2><p class="font-medium">${esc(std.docTerm)}</p><p class="text-xs text-muted-foreground mt-1">${esc(t.paperLabel)}: ${esc(std.paper)}</p></div>
+        <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold mb-1">${esc(t.lengthLabel)}</h2><p class="font-medium">${esc(notes.lengthNote)}</p></div>
+      </div>
+      <section class="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-8"><h2 class="text-lg font-bold mb-1">${esc(t.photoLabel)} <span class="ml-2 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">${esc(t.photoNorms[std.photo])}</span></h2><p class="text-sm text-muted-foreground">${esc(notes.photoNote)}</p></section>
+      <section class="mb-8"><h2 class="text-lg font-bold mb-1">${esc(t.personalLabel)}</h2><p class="text-sm text-muted-foreground">${esc(notes.personalDataNote)}</p></section>
+      ${notes.conventions.length ? `<section class="mb-8"><h2 class="text-lg font-bold mb-2">${esc(t.conventionsLabel)}</h2><ul class="space-y-2 text-sm text-muted-foreground">${notes.conventions.map((c) => `<li>• ${esc(c)}</li>`).join("")}</ul></section>` : ""}
+      <section class="rounded-2xl border-2 border-primary bg-card p-6 text-center"><h2 class="text-xl font-bold mb-2">${esc(t.ctaTitle)}</h2><p class="text-sm text-muted-foreground mb-4">${esc(D.fill(t.ctaText, { name }))}</p><a href="/" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm">${esc(t.ctaButton)}</a></section>
+      <p class="text-[11px] text-muted-foreground mt-6">${esc(t.sourceNote)}</p>`;
+
+    // EN page per country
+    for (const iso of isoList) {
+      const std = D.COUNTRY_STANDARDS[iso];
+      const t = D.EN_TEMPLATE;
+      const name = std.name;
+      const vars = { name, docTerm: std.docTerm };
+      const notes = { lengthNote: std.lengthNote, photoNote: std.photoNote, personalDataNote: std.personalDataNote, conventions: std.conventions };
+      write({
+        path: `/cv-standards/${D.COUNTRY_SLUGS[iso]}`,
+        hreflang: D.hreflangCluster(iso),
+        title: D.fill(t.title, vars),
+        description: D.fill(t.metaDescription, vars),
+        jsonLd: [
+          breadcrumbLd([{ name: "Home", path: "/" }, { name: "CV Standards", path: "/cv-standards" }, { name, path: `/cv-standards/${D.COUNTRY_SLUGS[iso]}` }]),
+          faqLd([
+            { q: D.fill(t.faqPhoto, vars), a: `${t.photoNorms[std.photo]}. ${std.photoNote}` },
+            { q: D.fill(t.faqLength, vars), a: std.lengthNote },
+          ]),
+        ],
+        content: `
+          ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "CV Standards", href: "/cv-standards" }, { name }])}
+          <h1 class="text-3xl font-bold mb-3">${esc(D.fill(t.h1, vars))}</h1>
+          <p class="text-muted-foreground mb-8">${esc(D.fill(t.intro, vars))}</p>
+          ${sectionHtml(t, std, notes, name)}`,
+      });
+    }
+
+    // Localized pages per CV_LOCALES
+    for (const [locale, cfg] of Object.entries(D.CV_LOCALES)) {
+      for (const [iso, slug] of Object.entries(cfg.slugs)) {
+        const std = D.COUNTRY_STANDARDS[iso];
+        const notes = cfg.content[iso];
+        if (!std || !notes) continue;
+        const t = cfg.t;
+        const name = notes.countryName;
+        const vars = { name, docTerm: std.docTerm };
+        write({
+          path: `/${cfg.pathBase}/${slug}`,
+          lang: cfg.htmlLang,
+          hreflang: D.hreflangCluster(iso),
+          title: D.fill(t.title, vars),
+          description: D.fill(t.metaDescription, vars),
+          jsonLd: [faqLd([
+            { q: D.fill(t.faqPhoto, vars), a: `${t.photoNorms[std.photo]}. ${notes.photoNote}` },
+            { q: D.fill(t.faqLength, vars), a: notes.lengthNote },
+          ])],
+          content: `
+            <h1 class="text-3xl font-bold mb-3">${esc(D.fill(t.h1, vars))}</h1>
+            <p class="text-muted-foreground mb-8">${esc(D.fill(t.intro, vars))}</p>
+            ${sectionHtml(t, std, notes, name)}`,
+        });
+      }
+    }
+  }
+
   // ---- /llms-full.txt: complete citable text in one fetch ----
   // Companion to the hand-written public/llms.txt overview. AI engines that
   // find llms.txt can pull this for full guide text and the data-page map
@@ -603,6 +691,7 @@ export { buildIndustryFaqs } from "../src/data/industry-faqs";
     lines.push(`- Role keyword pages (${Object.keys(D.ROLE_PAGES).length}): ${SITE}/roles/{slug} — per-job-title keyword and certification data.`);
     lines.push(`- Spanish industry pages (15): ${SITE}/es/industrias/{slug} — native Spanish keyword data with English ATS terms.`);
     lines.push(`- ATS vendor guides: ${Object.keys(D.VENDORS).map((v) => `${SITE}/ats/${v}`).join(", ")} — documented parsing behaviors.`);
+    lines.push(`- CV standards by country: ${SITE}/cv-standards — photo, length, and personal-data norms for ${Object.keys(D.COUNTRY_SLUGS).length} countries (the scanner's own market rules), with localized pages in Spanish, French, German, Portuguese, and Dutch.`);
     lines.push(`- Honest comparisons: ${Object.values(D.COMPETITORS).map((c) => `${SITE}/vs/${c.slug}`).join(", ")} — each names where the competitor wins.`);
     lines.push("");
     lines.push("Citation policy: everything above is publishable product truth — keyword tables are the scanner's real detection data, O*NET data is U.S. public domain, and vendor behaviors are the documented checks the scanner runs. Cite freely with a link.");

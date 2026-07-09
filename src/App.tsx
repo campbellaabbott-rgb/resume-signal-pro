@@ -42,6 +42,8 @@ const AtsVendorGuide = lazy(() => import("./pages/AtsVendorGuide"));
 const VsCompetitor = lazy(() => import("./pages/VsCompetitor"));
 const IndustryKeywordsEs = lazy(() => import("./pages/IndustryKeywordsEs"));
 const RoleKeywords = lazy(() => import("./pages/RoleKeywords"));
+const CvStandards = lazy(() => import("./pages/CvStandards"));
+const CvStandardsIndex = lazy(() => import("./pages/CvStandards").then((m) => ({ default: m.CvStandardsIndex })));
 const GuidesIndex = lazy(() => import("./pages/GuidesIndex"));
 const GuideArticle = lazy(() => import("./pages/GuideArticle"));
 const ScoreStudy = lazy(() => import("./pages/ScoreStudy"));
@@ -87,6 +89,14 @@ const App = () => (
           <Route path="/vs/:slug" element={<VsCompetitor />} />
           <Route path="/es/industrias/:slug" element={<IndustryKeywordsEs />} />
           <Route path="/roles/:slug" element={<RoleKeywords />} />
+          {/* Per-country CV standards — EN for every country, localized per CV_LOCALES */}
+          <Route path="/cv-standards" element={<CvStandardsIndex />} />
+          <Route path="/cv-standards/:country" element={<CvStandards />} />
+          <Route path="/es/normas-cv/:country" element={<CvStandards locale="es" />} />
+          <Route path="/fr/normes-cv/:country" element={<CvStandards locale="fr" />} />
+          <Route path="/de/lebenslauf-standards/:country" element={<CvStandards locale="de" />} />
+          <Route path="/pt/padroes-cv/:country" element={<CvStandards locale="pt" />} />
+          <Route path="/nl/cv-normen/:country" element={<CvStandards locale="nl" />} />
           <Route path="/guides" element={<GuidesIndex />} />
           <Route path="/guides/:slug" element={<GuideArticle />} />
           <Route path="/research/ats-score-benchmarks" element={<ScoreStudy />} />
