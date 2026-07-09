@@ -2780,6 +2780,10 @@
     }
   },
   "changelogEntries": {
+    "resumeLanguageReports": {
+      "title": "Ang iyong ulat ay nagsasalita na ngayon ng wika ng iyong resume",
+      "description": "Mag-scan ng resume na nakasulat sa Tagalog, French, Spanish, German, Portuguese, Dutch, Italian o Hindi at ang buong ulat — mga tip, babala, muling pagsulat, mungkahing keyword — ay babalik sa wikang iyon. Dati, paminsan-minsan lang itong gumagana; ngayon, maaasahang natutukoy ang wika bago magsimula ang pagsusuri, kaya hindi na ito sapalaran. Bonus: ang wika ng iyong resume ay tumutulong ding tukuyin kung aling job market ka naroroon, para tumama sa tamang bansa ang payo."
+    },
     "sharperDetection": {
       "title": "Mas matalas na pagtukoy ng lokasyon at industriya",
       "description": "Ang iyong ulat ay sumusunod na ngayon sa merkado kung saan ka talaga, kahit na may binabanggit na ibang lungsod ang iyong resume. Mas binibigyang-timbang namin ang tunay na senyales (kung saan ka awtorisadong magtrabaho, ang iyong sistema ng edukasyon, ang iyong telepono) kaysa sa basta pagbanggit ng lungsod, kaya ang isang kandidatong US na \"namuno sa London launch\" ay ihahambing pa rin sa merkado ng US. Ang mga multi-functional na resume ay nagpapakita rin ng tunay na pangalawang larangan — ang isang Sales Director na naging Marketing Manager din ay nasasaklaw sa dalawa."

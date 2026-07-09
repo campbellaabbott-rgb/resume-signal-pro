@@ -2780,6 +2780,10 @@
     }
   },
   "changelogEntries": {
+    "resumeLanguageReports": {
+      "title": "Seu relatório agora fala o idioma do seu currículo",
+      "description": "Escaneie um currículo escrito em português, francês, espanhol, alemão, holandês, italiano, hindi ou tagalo e o relatório inteiro — dicas, alertas, reescritas, sugestões de palavras-chave — volta nesse idioma. Antes isso funcionava só às vezes; agora o idioma é detectado de forma confiável antes de a análise começar, então não é mais questão de sorte. Bônus: o idioma do seu currículo também ajuda a identificar seu mercado de trabalho, para que os conselhos por país cheguem ao lugar certo."
+    },
     "sharperDetection": {
       "title": "Detecção mais precisa de localização e setor",
       "description": "Seu relatório agora segue o mercado em que você realmente está, mesmo que seu currículo cite outras cidades. Damos mais peso a sinais reais (onde você está autorizado a trabalhar, seu sistema de ensino, seu telefone) do que a uma menção passageira de cidade, então um candidato dos EUA que \"liderou o lançamento em Londres\" continua sendo comparado ao mercado americano. Currículos multifuncionais também revelam um segundo campo real — um Diretor de Vendas que também foi Gerente de Marketing tem os dois cobertos."

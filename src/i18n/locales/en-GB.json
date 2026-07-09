@@ -2780,6 +2780,10 @@
     }
   },
   "changelogEntries": {
+    "resumeLanguageReports": {
+      "title": "Your report now speaks your résumé's language",
+      "description": "Scan a résumé written in French, Spanish, German, Portuguese, Dutch, Italian, Hindi or Tagalog and the entire report — tips, red flags, rewrites, keyword suggestions — comes back in that language. This worked only sometimes before; now the language is detected reliably before the analysis starts, so it's no longer a coin flip. Bonus: the language your résumé is written in also helps pin down which job market you're in, so location-specific advice lands on the right country."
+    },
     "sharperDetection": {
       "title": "Sharper location & industry detection",
       "description": "Your report now follows the market you're actually in — even if your résumé name-drops other cities. We weigh real signals (where you're authorized to work, your education system, your phone number) over a passing city mention, so a US candidate who \"led the London launch\" is still benchmarked against the US market. Cross-functional résumés also surface a genuine second field — a Sales Director who was also a Marketing Manager gets both covered."

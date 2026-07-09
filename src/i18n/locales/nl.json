@@ -2780,6 +2780,10 @@
     }
   },
   "changelogEntries": {
+    "resumeLanguageReports": {
+      "title": "Je rapport spreekt nu de taal van je cv",
+      "description": "Scan een cv geschreven in het Nederlands, Frans, Spaans, Duits, Portugees, Italiaans, Hindi of Tagalog en het volledige rapport — tips, waarschuwingen, herschrijvingen, trefwoordsuggesties — komt terug in die taal. Dit werkte eerder maar soms; nu wordt de taal betrouwbaar gedetecteerd voordat de analyse start, dus het is geen kwestie van geluk meer. Bonus: de taal van je cv helpt ook je arbeidsmarkt te bepalen, zodat landspecifiek advies op het juiste land gericht is."
+    },
     "sharperDetection": {
       "title": "Scherpere locatie- en sectordetectie",
       "description": "Je rapport volgt nu de markt waar je echt zit, ook als je cv andere steden noemt. We wegen echte signalen (waar je mag werken, je opleidingssysteem, je telefoonnummer) zwaarder dan een terloopse vermelding van een stad, zodat een Amerikaanse kandidaat die \"de lancering in Londen leidde\" nog steeds met de Amerikaanse markt wordt vergeleken. Multifunctionele cv's tonen ook een echt tweede vakgebied — een Sales Director die ook Marketing Manager was, krijgt beide gedekt."

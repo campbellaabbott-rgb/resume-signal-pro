@@ -2780,6 +2780,10 @@
     }
   },
   "changelogEntries": {
+    "resumeLanguageReports": {
+      "title": "Ihr Bericht spricht jetzt die Sprache Ihres Lebenslaufs",
+      "description": "Scannen Sie einen auf Deutsch, Französisch, Spanisch, Portugiesisch, Niederländisch, Italienisch, Hindi oder Tagalog verfassten Lebenslauf, und der gesamte Bericht — Tipps, Warnsignale, Umformulierungen, Keyword-Vorschläge — kommt in dieser Sprache zurück. Das funktionierte bisher nur manchmal; jetzt wird die Sprache zuverlässig erkannt, bevor die Analyse startet — kein Glücksspiel mehr. Bonus: Die Sprache Ihres Lebenslaufs hilft auch dabei, Ihren Arbeitsmarkt zu bestimmen, damit länderspezifische Hinweise das richtige Land treffen."
+    },
     "sharperDetection": {
       "title": "Präzisere Standort- und Branchenerkennung",
       "description": "Ihr Bericht richtet sich jetzt nach dem Markt, in dem Sie tatsächlich sind — selbst wenn Ihr Lebenslauf andere Städte nennt. Wir gewichten echte Signale (wo Sie arbeiten dürfen, Ihr Bildungssystem, Ihre Telefonnummer) höher als eine beiläufige Städteerwähnung, sodass ein US-Kandidat, der „den Launch in London leitete\", weiterhin am US-Markt gemessen wird. Fachübergreifende Lebensläufe zeigen außerdem ein echtes zweites Feld — ein Vertriebsleiter, der auch Marketing Manager war, wird für beides berücksichtigt."
