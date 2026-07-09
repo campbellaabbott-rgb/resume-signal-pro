@@ -15,6 +15,16 @@ describe("detectResumeLanguage — non-English resumes", () => {
     expect(r.languageName).toBe("French");
   });
 
+  it("detects French on the compact resume that missed in production (score-bar + accent-boundary regression)", () => {
+    // This exact resume returned detectedLanguage:"en" live on 2026-07-09: only
+    // 4 distinct words matched (failing the old >=6 bar) and \b could never
+    // match accent-initial words like "équipe". Locks in both fixes.
+    const r = detectResumeLanguage(
+      "Claire Dubois — Responsable Marketing, Paris\nRÉSUMÉ\nResponsable marketing avec 8 ans d'expérience en génération de demande, référencement et gestion de marque pour des entreprises SaaS. Budget annuel de 2M€, équipe de 6 personnes.\nEXPÉRIENCE\nResponsable Marketing, Acme (2020-présent)\n- Augmentation du trafic organique de 140% grâce au contenu et au référencement technique\n- Réduction du coût d'acquisition de 32%\nCOMPÉTENCES\nmarketing, campagnes, marque, référencement, contenu, réseaux sociaux",
+    );
+    expect(r.language).toBe("fr");
+  });
+
   it("detects Spanish", () => {
     const r = detectResumeLanguage(
       "Gerente de marketing con 8 años de experiencia en desarrollo de marca y gestión de equipo. Responsable de campañas para la empresa. Habilidades: ventas, mejora continua. Educación: Licenciatura. Logros: aumenté el trabajo del equipo.",

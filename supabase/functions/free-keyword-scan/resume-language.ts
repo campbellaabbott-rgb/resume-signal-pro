@@ -31,6 +31,7 @@ const LANGUAGE_WORDS: Record<string, { name: string; words: string[] }> = {
       'años', 'experiencia', 'desarrollo', 'gestión', 'empresa', 'equipo',
       'responsable de', 'trabajo', 'habilidades', 'educación', 'ventas',
       'logros', 'conocimientos', 'puesto', 'mejora', 'aumenté', 'lideré',
+      'también', 'según', 'a través de', 'más de', 'y de',
     ],
   },
   fr: {
@@ -39,6 +40,7 @@ const LANGUAGE_WORDS: Record<string, { name: string; words: string[] }> = {
       'années', "d'expérience", 'développement', 'gestion', 'entreprise',
       'équipe', 'compétences', 'formation', 'chez', 'mise en place',
       'augmentation', 'réalisé', 'projets', 'poste', 'maîtrise', 'auprès',
+      'avec', 'pour', 'dans', 'grâce', 'ainsi que', "d'une", 'ans de', 'marque',
     ],
   },
   de: {
@@ -111,7 +113,10 @@ export function detectResumeLanguage(resumeText: string): ResumeLanguageResult {
     const hits: string[] = [];
     for (const w of words) {
       const escaped = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const count = (text.match(new RegExp(`\\b${escaped}\\b`, 'g')) || []).length;
+      // NOT \b: JS \b only understands ASCII \w, so it silently never matches at
+      // accented edges — \béquipe\b can't fire (space→é is \W→\W, no boundary).
+      // Unicode letter/digit lookarounds give real word boundaries for any script.
+      const count = (text.match(new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'gu')) || []).length;
       if (count > 0) {
         distinct++;
         score += Math.min(count, 5); // cap per-word so one repeated term can't dominate
@@ -128,7 +133,12 @@ export function detectResumeLanguage(resumeText: string): ResumeLanguageResult {
   const [topCode, top] = ranked[0];
 
   // Non-English wins only with real evidence AND a clear lead over English.
-  if (top.distinct >= 3 && top.score >= 6 && top.score > en.score * 1.2) {
+  // Bar tuned on a real miss: a compact French resume matched 4 distinct words
+  // (score 4) and failed the original >=6 bar, so the language hint never fired
+  // and the report language was left to chance. >=3 distinct collision-safe
+  // words with a 1.2x lead is already far beyond anything an English resume
+  // produces against these lists.
+  if (top.distinct >= 3 && top.score >= 4 && top.score > en.score * 1.2) {
     const runnerUp = ranked[1]?.[1].score ?? 0;
     const confidence: 'high' | 'medium' =
       top.score >= runnerUp * 2 && top.score >= en.score * 2 ? 'high' : 'medium';
