@@ -7702,7 +7702,14 @@ What is the PRIMARY industry? Reply with only the industry name.`
 
       // Build prompts with resume type awareness and accuracy improvements
       const detectedResumeLanguage = detectResumeLanguage(resumeText);
-      const reportLanguage = language || detectedResumeLanguage.languageName;
+      // The client ALWAYS sends language (UI locale, default 'en'), so
+      // `language || detected` would never use detection — a French resume on
+      // an English UI got an English report from this fallback while the
+      // primary scan answered in French. Resume language wins when confidently
+      // non-English (mirrors the primary); the UI locale covers the rest.
+      const reportLanguage = detectedResumeLanguage.language !== 'en'
+        ? detectedResumeLanguage.languageName
+        : (language || "English");
       const systemPrompt = `Expert ATS resume analyst. Respond in ${reportLanguage}. Every string value in your JSON must be written in ${reportLanguage} (keys stay in English).
 
 RESUME TYPE DETECTED: ${resumeType.type} (${resumeType.label})

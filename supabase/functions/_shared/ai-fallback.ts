@@ -59,13 +59,27 @@ export async function callAIWithModelFallback(
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            model,
-            messages: options.messages,
-            ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
-            ...(options.maxTokens !== undefined ? { max_tokens: options.maxTokens } : {}),
-            ...(options.jsonResponse ? { response_format: { type: 'json_object' } } : {}),
-          }),
+          // OpenAI gpt-5-family models reject temperature and use
+          // max_completion_tokens (see generate-cover-letter / -apply-package —
+          // none send temperature or response_format to openai/*). Google
+          // models take the standard params. Callers' JSON parsing already has
+          // a regex fallback, so dropping response_format on the last-resort
+          // leg is safe.
+          body: JSON.stringify(
+            model.startsWith('openai/')
+              ? {
+                  model,
+                  messages: options.messages,
+                  ...(options.maxTokens !== undefined ? { max_completion_tokens: options.maxTokens } : {}),
+                }
+              : {
+                  model,
+                  messages: options.messages,
+                  ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+                  ...(options.maxTokens !== undefined ? { max_tokens: options.maxTokens } : {}),
+                  ...(options.jsonResponse ? { response_format: { type: 'json_object' } } : {}),
+                },
+          ),
           signal: controller.signal,
         });
 
