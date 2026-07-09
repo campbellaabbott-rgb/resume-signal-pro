@@ -4,6 +4,7 @@ import { detectIndustry, formatDetectionForPrompt, buildDynamicCorrectionBoosts,
 import { getOnetExpectation } from "./onet-expectations.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
+import { detectResumeLanguage } from "./resume-language.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import {
   detectCountryFromResume,
@@ -1559,7 +1560,7 @@ serve(async (req) => {
     // Identical resume + JD + stated context + engine version → serve the
     // finished report instantly (rescans, repeat uploads, shared samples).
     // Rule-based-fallback and partial reports are never cached.
-    const REPORT_ENGINE_VERSION = 'scan-v2026-07-09c';
+    const REPORT_ENGINE_VERSION = 'scan-v2026-07-09d';
     const reportCacheKey = await (async () => {
       const ctx = (body.userContext ?? {}) as Record<string, unknown>;
       const ctxPart = ['situation', 'targetRole', 'confirmedIndustry', 'confirmedExperience']
@@ -2183,6 +2184,18 @@ This resume must be judged as ${seniorityDetection.level === 'executive' ? 'a C-
     // Deterministic structure scaffold — grounds the model so it can't hallucinate
     // a missing section/contact/role that the raw text actually contains.
     const structureHint = formatStructureForPrompt(parseResumeStructure(resumeText));
+    // Deterministic resume-language detection. The in-prompt "detect the language
+    // and respond in it" ask demonstrably fails (a French resume got an English
+    // report in prod) — the model defaults to the prompt's English. Detect it
+    // server-side and state it as a hard fact, appended LAST in the user prompt
+    // so it's the freshest instruction the model reads.
+    const resumeLanguage = detectResumeLanguage(resumeText);
+    const languageHint = resumeLanguage.language !== 'en'
+      ? `\n\n**DETECTED RESUME LANGUAGE: ${resumeLanguage.languageName.toUpperCase()} (MANDATORY).** This resume is written in ${resumeLanguage.languageName}. Your ENTIRE response must be written in ${resumeLanguage.languageName} — every string value (tips, red flags, rewrites, explanations, verdicts). Keep the JSON keys in English exactly as specified. Keyword suggestions must be ${resumeLanguage.languageName} terms actually used in that job market. Do NOT respond in English.`
+      : '';
+    if (resumeLanguage.language !== 'en') {
+      console.log(`[FREE-KEYWORD-SCAN] Resume language: ${resumeLanguage.language} (${resumeLanguage.confidence}) — ${resumeLanguage.evidence[0] ?? ''}`);
+    }
     const marketInsight = getMarketInsight(effectiveCountry, industryDetection.industry);
     console.log(`[FREE-KEYWORD-SCAN] Geo: ${effectiveCountry} (resume: ${resumeGeo.country || 'none'}, ip: ${country || 'none'}, source: ${resumeGeo.source})`);
 
@@ -2254,14 +2267,14 @@ ${resumeText.substring(0, 20000)}
 
 <job_description>
 ${truncatedJobDescription}
-</job_description>${corpusHint}${bulletHint}${seniorityHint}${execModeHint}${userContextHint}${confidenceHint}${freelanceHint}${onetHint}${contactHint}${gapHint}${geoHint}${structureHint}${skillsRecencyHint}${careerTrajHint}${atsHint}${compGapHint}${timelineHint}${phraseHint}${sparseNote}`
+</job_description>${corpusHint}${bulletHint}${seniorityHint}${execModeHint}${userContextHint}${confidenceHint}${freelanceHint}${onetHint}${contactHint}${gapHint}${geoHint}${structureHint}${skillsRecencyHint}${careerTrajHint}${atsHint}${compGapHint}${timelineHint}${phraseHint}${sparseNote}${languageHint}`
       : `Analyze this resume comprehensively:
 
 ${sectionStructure}
 
 <resume>
 ${resumeText.substring(0, 20000)}
-</resume>${corpusHint}${bulletHint}${seniorityHint}${execModeHint}${userContextHint}${confidenceHint}${freelanceHint}${onetHint}${contactHint}${gapHint}${geoHint}${structureHint}${skillsRecencyHint}${careerTrajHint}${atsHint}${compGapHint}${timelineHint}${phraseHint}${sparseNote}`;
+</resume>${corpusHint}${bulletHint}${seniorityHint}${execModeHint}${userContextHint}${confidenceHint}${freelanceHint}${onetHint}${contactHint}${gapHint}${geoHint}${structureHint}${skillsRecencyHint}${careerTrajHint}${atsHint}${compGapHint}${timelineHint}${phraseHint}${sparseNote}${languageHint}`;
 
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -3928,6 +3941,9 @@ ${resumeText.substring(0, 20000)}
     const detBlend = industryDetection.industryBlend;
     const closeRunnerUp = !!detBlend && (detBlend.primaryPct - detBlend.secondaryPct) <= 30;
     responseData.industryNeedsConfirmation = finalConfidence !== 'high' || closeRunnerUp;
+    // Deterministically-detected resume language (drives the report language).
+    // Exposed so the frontend and post-publish probes can verify compliance.
+    responseData.detectedLanguage = resumeLanguage.language;
     responseData.industryTransition = transitionDetected
       ? { historical: industryDetection.industry, recent: splitDetection!.industry }
       : null;

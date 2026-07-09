@@ -135,6 +135,8 @@ const EDUCATION_SIGNALS: Array<{ re: RegExp; country: string; label: string }> =
   { re: /\b(leaving certificate|leaving cert)\b/i, country: 'IE', label: 'Irish education system (Leaving Cert)' },
 ];
 
+import { detectResumeLanguage, LANGUAGE_GEO } from './resume-language.ts';
+
 // Spelling conventions only CORROBORATE a country that already has another
 // signal — they never introduce a country alone (British spelling can't tell GB
 // from AU/CA/IN). Their job is to break US-vs-Commonwealth ties.
@@ -195,6 +197,22 @@ export function detectCountryFromResume(resumeText: string): GeoDetectionResult 
     if (scores['US']) { scores['US'] -= 2; signals.push('Commonwealth spelling contradicts US'); }
   } else if (american && !commonwealth && scores['US']) {
     add('US', 1, best['US'].kind, 'American spelling corroborates');
+  }
+
+  // 7. Resume language — a resume WRITTEN in French/German/etc. is strong
+  // evidence the candidate targets that language's market. Corroborates (+2)
+  // any of the language's countries that already has a signal (so a
+  // pt-BR resume with São Paulo reinforces BR, not PT); if none has a signal,
+  // introduces the homeland at city weight. English adds nothing — it's global.
+  const resumeLang = detectResumeLanguage(text);
+  const langGeo = LANGUAGE_GEO[resumeLang.language];
+  if (langGeo && resumeLang.confidence !== 'low') {
+    const signaled = langGeo.countries.filter((c) => scores[c]);
+    if (signaled.length > 0) {
+      for (const c of signaled) add(c, 2, best[c].kind, `Resume written in ${resumeLang.languageName} corroborates ${c}`);
+    } else {
+      add(langGeo.homeland, 2, 'address', `Resume written in ${resumeLang.languageName} suggests ${langGeo.homeland}`);
+    }
   }
 
   // Resolve — highest score wins; a near-tie with another country lowers confidence

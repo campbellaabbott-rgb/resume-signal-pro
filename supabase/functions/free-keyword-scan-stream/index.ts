@@ -8,6 +8,7 @@ import { detectIndustry as detectIndustryShared } from "./industry-detection.ts"
 import { detectCountryFromResume } from "./market-intelligence.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
+import { detectResumeLanguage } from "./resume-language.ts";
 const serve = Deno.serve;
 
 // Declare EdgeRuntime for background tasks
@@ -7700,7 +7701,9 @@ What is the PRIMARY industry? Reply with only the industry name.`
       const scoringRubric = INDUSTRY_SCORING_RUBRICS[specificIndustry] || INDUSTRY_SCORING_RUBRICS[parentForRubric] || INDUSTRY_SCORING_RUBRICS.general;
 
       // Build prompts with resume type awareness and accuracy improvements
-      const systemPrompt = `Expert ATS resume analyst. Respond in ${language || "the resume's"} language. All fields in that language.
+      const detectedResumeLanguage = detectResumeLanguage(resumeText);
+      const reportLanguage = language || detectedResumeLanguage.languageName;
+      const systemPrompt = `Expert ATS resume analyst. Respond in ${reportLanguage}. Every string value in your JSON must be written in ${reportLanguage} (keys stay in English).
 
 RESUME TYPE DETECTED: ${resumeType.type} (${resumeType.label})
 SENIORITY LEVEL: ${seniority}
