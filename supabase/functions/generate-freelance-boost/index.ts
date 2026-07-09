@@ -215,7 +215,11 @@ ${p.repeatOrReferral ? `Repeat/referral: ${p.repeatOrReferral}` : ""}`).join("\n
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        // $29 flagship product — runs on pro to match its price and its
+        // document-writing siblings (cover-letter, tailored-resume), not the
+        // flash it shipped on. Prompt was already recruiter-grade; the model
+        // was the ceiling.
+        model: "google/gemini-2.5-pro",
         messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
         temperature: 0.5,
         max_tokens: 3000,

@@ -102,7 +102,7 @@ Create questions that reference their ACTUAL experience from the resume.`;
         "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro", // paid deliverable — pro over flash for quality
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
@@ -178,7 +178,7 @@ async function handleEvaluate(req: Request, apiKey: string, resumeText: string) 
       "Authorization": `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "google/gemini-2.5-pro", // paid deliverable — pro over flash for quality
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `Question (${category}): ${question}\n\nCandidate's Answer: ${answer}\n\nResume context:\n<resume>\n${resumeText}\n</resume>\n\nEvaluate this answer.` }
