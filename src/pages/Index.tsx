@@ -1011,6 +1011,14 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         setIsCachedResult(!!result.cached);
         
         setFreeKeywordResult({
+          // Spread the raw scan result FIRST so every backend-emitted field
+          // flows through; the curated keys below then override with their
+          // defaults/transforms. This kills an entire bug class: the hand-
+          // maintained list silently dropped ~19 fields the backend emits and
+          // the report reads (dualScore, seniorityLevel, resumeType,
+          // calibratedLanguage, usageRecommendations, credibilityIssues,
+          // countryStandards, …) → their cards never rendered.
+          ...(result as any),
           detectedLanguage: (result as any).detectedLanguage || null,
           candidateName: (result as any).candidateName || null,
           currentRole: (result as any).currentRole || undefined,
@@ -1221,6 +1229,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
 
       if (data?.success) {
         setFreeKeywordResult({
+          // Spread raw result first (same rationale as the primary path) so no
+          // backend field is silently dropped.
+          ...(data as any),
           detectedLanguage: data.detectedLanguage || null,
           candidateName: data.candidateName || null,
           currentRole: data.currentRole || undefined,
