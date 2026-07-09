@@ -2768,6 +2768,10 @@
     }
   },
   "changelogEntries": {
+    "liveBenchmarks": {
+      "title": "Tingnan kung paano nag-iiskor ang totoong resume: live na ATS benchmarks",
+      "description": "Ipinapakita na ngayon ng benchmarks page ang live na ATS-score distributions mula sa aming totoong scan corpus — pangkalahatang median at quartiles, benchmarks kada industriya, at median kada antas ng karanasan, bawat isa may sample size. At ang scan counter sa homepage ay sumasalamin na ngayon sa totoong all-time total."
+    },
     "reportCardsFix": {
       "title": "Naayos: may mga bahagi ng report mo na hindi lumalabas",
       "description": "May display bug na tahimik na nagtatago ng ilang seksyon ng report sa ilang scan — kabilang ang country-specific na pamantayan ng resume, ang ATS parsing breakdown, ang quick wins, at ang ATS-vs-recruiter score. Bumalik na silang lahat. Nagdagdag din kami ng automated na proteksyon para hindi na muling mawala nang tahimik ang isang buong seksyon."

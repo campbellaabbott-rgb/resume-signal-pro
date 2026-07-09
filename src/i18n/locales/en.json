@@ -2768,6 +2768,10 @@
     }
   },
   "changelogEntries": {
+    "liveBenchmarks": {
+      "title": "See how real resumes score: live ATS benchmarks",
+      "description": "The benchmarks page now shows live ATS-score distributions from our real scan corpus — overall median and quartiles, per-industry benchmarks, and experience-level medians, each labeled with its sample size. The homepage scan counter now reflects the real all-time total too."
+    },
     "reportCardsFix": {
       "title": "Fixed: parts of your report weren't showing",
       "description": "A display bug quietly hid several report sections on some scans — country-specific resume standards, the ATS parsing breakdown, quick wins, and the ATS-vs-recruiter score among them. They're all back. We also added an automated safeguard so a whole section can't silently go missing again."

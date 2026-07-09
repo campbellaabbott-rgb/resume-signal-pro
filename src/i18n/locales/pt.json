@@ -2768,6 +2768,10 @@
     }
   },
   "changelogEntries": {
+    "liveBenchmarks": {
+      "title": "Veja como currículos reais pontuam: benchmarks de ATS ao vivo",
+      "description": "A página de benchmarks agora mostra distribuições de pontuação de ATS ao vivo do nosso corpus real de análises — mediana e quartis gerais, benchmarks por setor e medianas por nível de experiência, cada um com seu tamanho de amostra. E o contador de análises da página inicial agora reflete o total real acumulado."
+    },
     "reportCardsFix": {
       "title": "Corrigido: partes do seu relatório não apareciam",
       "description": "Um erro de exibição ocultava silenciosamente várias seções do relatório em alguns scans — os padrões de currículo por país, a análise de parsing ATS, as melhorias rápidas e a pontuação ATS vs. recrutador, entre outras. Todas voltaram. Também adicionamos uma proteção automática para que uma seção inteira não desapareça de novo sem aviso."

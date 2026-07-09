@@ -2768,6 +2768,10 @@
     }
   },
   "changelogEntries": {
+    "liveBenchmarks": {
+      "title": "Sehen Sie, wie echte Lebensläufe abschneiden: Live-ATS-Benchmarks",
+      "description": "Die Benchmark-Seite zeigt jetzt Live-ATS-Score-Verteilungen aus unserem echten Scan-Korpus – Gesamtmedian und Quartile, Benchmarks pro Branche und Mediane pro Erfahrungsstufe, jeweils mit Stichprobengröße. Und der Scan-Zähler auf der Startseite spiegelt jetzt den echten Gesamtwert aller Zeiten wider."
+    },
     "reportCardsFix": {
       "title": "Behoben: Teile Ihres Berichts wurden nicht angezeigt",
       "description": "Ein Anzeigefehler blendete bei manchen Scans still mehrere Berichtsabschnitte aus – darunter die länderspezifischen Lebenslauf-Standards, die ATS-Parsing-Analyse, die Quick Wins und den ATS-vs.-Recruiter-Score. Sie sind alle wieder da. Außerdem haben wir eine automatische Absicherung ergänzt, damit ein ganzer Abschnitt nicht erneut unbemerkt verschwindet."

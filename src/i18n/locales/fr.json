@@ -2768,6 +2768,10 @@
     }
   },
   "changelogEntries": {
+    "liveBenchmarks": {
+      "title": "Voyez comment les vrais CV se classent : benchmarks ATS en direct",
+      "description": "La page de benchmarks affiche désormais des distributions de scores ATS en direct issues de notre corpus réel d'analyses — médiane et quartiles globaux, benchmarks par secteur et médianes par niveau d'expérience, chacun avec sa taille d'échantillon. Et le compteur d'analyses de la page d'accueil reflète maintenant le vrai total cumulé."
+    },
     "reportCardsFix": {
       "title": "Corrigé : certaines parties de votre rapport ne s'affichaient pas",
       "description": "Un bug d'affichage masquait discrètement plusieurs sections du rapport sur certains scans : les standards de CV par pays, l'analyse du parsing ATS, les gains rapides et le score ATS/recruteur, entre autres. Elles sont toutes de retour. Nous avons aussi ajouté une protection automatique pour qu'une section entière ne puisse plus disparaître silencieusement."

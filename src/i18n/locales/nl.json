@@ -2768,6 +2768,10 @@
     }
   },
   "changelogEntries": {
+    "liveBenchmarks": {
+      "title": "Zie hoe echte cv's scoren: live ATS-benchmarks",
+      "description": "De benchmarkpagina toont nu live ATS-scoreverdelingen uit ons echte scancorpus — algemene mediaan en kwartielen, benchmarks per branche en medianen per ervaringsniveau, elk met steekproefgrootte. En de scanteller op de homepage weerspiegelt nu het echte totaal aller tijden."
+    },
     "reportCardsFix": {
       "title": "Opgelost: delen van je rapport werden niet getoond",
       "description": "Een weergavefout verborg bij sommige scans stilletjes meerdere rapportsecties — waaronder de landspecifieke cv-normen, de ATS-parsinganalyse, de quick wins en de ATS-versus-recruiterscore. Ze zijn allemaal terug. We hebben ook een automatische controle toegevoegd zodat een hele sectie niet nog eens ongemerkt kan verdwijnen."
