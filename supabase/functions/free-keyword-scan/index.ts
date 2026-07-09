@@ -1566,7 +1566,10 @@ serve(async (req) => {
         .map(k => typeof ctx[k] === 'string' ? (ctx[k] as string).toLowerCase().trim() : '')
         .join('|');
       const jdPart = typeof jobDescriptionText === 'string' ? jobDescriptionText.replace(/\s+/g, ' ').trim().toLowerCase() : '';
-      const raw = `${resumeHash}|${jdPart}|${ctxPart}|${REPORT_ENGINE_VERSION}`;
+      // targetCountry MUST be part of the key: the same résumé applying to a
+      // different market gets different country standards, so it can't share a
+      // cached report (was missing → target override silently ignored on cache hit).
+      const raw = `${resumeHash}|${jdPart}|${ctxPart}|${validTargetCountry ?? ''}|${REPORT_ENGINE_VERSION}`;
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
       return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
     })();
