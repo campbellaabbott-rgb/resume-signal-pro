@@ -344,6 +344,11 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
         <Check className={compact ? "w-2.5 h-2.5 text-success" : "w-3 h-3 sm:w-4 sm:h-4 text-success"} />
         {t('hero.private')}
       </span>
+      {/* The anti-chatbot wedge, stated where every variant's CTA renders:
+          what a ChatGPT/Claude answer structurally isn't. */}
+      <span className="basis-full text-center text-[11px] sm:text-xs text-primary/90 font-medium mt-1">
+        {t('hero.measureStrip', 'Measurements, not opinions · Every quote verified · A score that shows its work')}
+      </span>
     </div>
   );
 

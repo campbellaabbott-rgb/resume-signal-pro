@@ -538,8 +538,8 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
   write({
     isFallback: true,
     path: "/",
-    title: "Resume Booster | Free ATS Resume Scan — Recruiter-Grade Feedback",
-    description: "Free diagnostic resume scan in ~20 seconds: ATS score with an audit trail, missing keywords, weak bullets rewritten, per-vendor parsing checks. No sign-up, resume never stored.",
+    title: "Resume Booster | Free ATS Resume Scan — Measured, Not Guessed",
+    description: "Free resume scan with a reproducible score, benchmarked against real scans in your industry. Every quote verified, per-vendor ATS checks — not another chatbot opinion. No sign-up, resume never stored.",
     jsonLd: [
       {
         "@context": "https://schema.org",
@@ -553,8 +553,8 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
       },
     ],
     content: `
-      <h1 class="text-3xl font-bold mb-3">Is your resume invisible to recruiters?</h1>
-      <p class="text-muted-foreground mb-6">Find out in about 20 seconds. Our free scan simulates how applicant tracking systems parse your resume and shows exactly what's costing you interviews — score with a full audit trail, missing keywords, weak bullets rewritten, and per-vendor checks for Workday, Greenhouse, Lever, and iCIMS. No sign-up; your resume is never stored.</p>
+      <h1 class="text-3xl font-bold mb-3">Your resume's real score — measured, not guessed</h1>
+      <p class="text-muted-foreground mb-6">Same document, same score, every time — benchmarked against real scans in your industry, with every quoted line verified against your actual resume. Not a ChatGPT or Claude opinion: a reproducible reading with a full audit trail, missing keywords, weak bullets rewritten, and per-vendor parsing checks for Workday, Greenhouse, Lever, and iCIMS. No sign-up; your resume is never stored. <a href="/vs/chatgpt" class="text-primary">How this differs from asking a chatbot →</a></p>
       ${cta("Check my resume now — free", "Upload or paste your resume and get the complete diagnostic report. 7 scans a day free, 15 with a free account.", "Check my resume free")}
       <section class="mt-10 mb-8">
         <h2 class="text-xl font-bold mb-3">What the free scan covers</h2>

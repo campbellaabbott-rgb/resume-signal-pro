@@ -1655,6 +1655,20 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border-2 border-primary/40 bg-gradient-to-r from-primary/10 to-primary/5 p-5 mb-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1.5">{t('freeResults.enterprise.verdictLabel', 'The Verdict')}</p>
           <p className="text-base md:text-lg font-semibold text-foreground leading-snug">{reportVerdict}</p>
+          {/* Lead with the thing a chatbot can't say: placement in a REAL
+              distribution. Quartile language only — exact percentiles aren't
+              derivable from the published quartiles, so we don't invent them. */}
+          {realBenchmark && realBenchmark.n >= 20 && (
+            <p className="text-sm font-semibold text-primary mt-1.5">
+              {t(
+                atsScoreEstimate >= realBenchmark.p75 ? 'freeResults.enterprise.placementTopQuartile'
+                : atsScoreEstimate >= realBenchmark.median ? 'freeResults.enterprise.placementAboveMedian'
+                : atsScoreEstimate >= realBenchmark.p25 ? 'freeResults.enterprise.placementBelowMedian'
+                : 'freeResults.enterprise.placementBottomQuartile',
+                { n: realBenchmark.n.toLocaleString(), industry: realBenchmark.industry.replace(/_/g, ' ') },
+              )}
+            </p>
+          )}
           <div className="flex items-center justify-between gap-3 mt-2 flex-wrap">
             <p className="text-xs text-muted-foreground">{t('freeResults.enterprise.verdictEvidence', 'Everything below is the evidence — and the fix.')}</p>
             <button

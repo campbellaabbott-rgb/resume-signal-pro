@@ -29,7 +29,7 @@
     "freeScan": "Try Free Scan",
     "heading": "Stop guessing.",
     "headingHighlight": "Start landing interviews.",
-    "subheading": "Get brutally honest, recruiter-grade feedback on your CV. No fluff, no sugar-coating — just actionable fixes that get you hired.",
+    "subheading": "Same document, same score, every time — benchmarked against real scans in your industry, with every quote verified against your actual resume. Not a ChatGPT or Claude opinion.",
     "price": "£20",
     "oneTime": "one-time",
     "nofees": "No subscriptions • No hidden fees • Instant results",
@@ -50,9 +50,9 @@
     "actionableFixes": "Actionable fixes included",
     "private": "100% private",
     "headline": {
-      "get": "Get",
-      "recruiterGrade": "Recruiter-Grade",
-      "feedback": "CV Feedback in 60 Seconds"
+      "get": "Your resume's",
+      "recruiterGrade": "real score",
+      "feedback": "— measured, not guessed"
     },
     "description": "Upload your CV and get ATS-optimised rewrites, red-flag warnings, and keyword improvements — written the way hiring managers actually review CVs.",
     "benefits": {
@@ -105,7 +105,7 @@
     },
     "socialFirst": {
       "joinThousands": "Free scan · No sign-up · Results in about 60 seconds",
-      "subheading": "Upload your CV and see exactly what ATS systems and recruiters will flag — with specific fixes you can apply today.",
+      "subheading": "Upload your resume and get a reproducible score — benchmarked against real scans in your industry, every quoted line verified. Not a chatbot's opinion.",
       "recentActivityCount": "{{count}} people",
       "recentActivityText": "scanned their CV in the last hour"
     },
@@ -140,7 +140,8 @@
     "transparentScoring": "transparent AI scoring, no black box",
     "factGdpr": "GDPR compliant",
     "factAutoDelete": "CVs auto-deleted within 24h",
-    "factNoStorage": "Never stored, never shared"
+    "factNoStorage": "Never stored, never shared",
+    "measureStrip": "Measurements, not opinions · Every quote verified · A score that shows its work"
   },
   "footer": {
     "copyright": "© {{year}} CV Booster. All rights reserved.",
@@ -1600,7 +1601,11 @@
       "emailSend": "Send",
       "emailSent": "Sent! Check your inbox for your scan summary and fix plan.",
       "emailPrivacy": "Only the analysis results are emailed — never your CV. No spam.",
-      "pulseOptIn": "Also send me a monthly market pulse: the keywords rising in my industry, with a free rescan link. Unsubscribe anytime."
+      "pulseOptIn": "Also send me a monthly market pulse: the keywords rising in my industry, with a free rescan link. Unsubscribe anytime.",
+      "placementTopQuartile": "Top quartile of {{n}} real {{industry}} scans",
+      "placementAboveMedian": "Above the median of {{n}} real {{industry}} scans",
+      "placementBelowMedian": "Below the median of {{n}} real {{industry}} scans",
+      "placementBottomQuartile": "Bottom quartile of {{n}} real {{industry}} scans — big upside from the fixes below"
     }
   },
   "analysisPreviewSample": {

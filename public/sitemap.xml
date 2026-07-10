@@ -1211,6 +1211,11 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://resumebooster.work/vs/chatgpt</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://resumebooster.work/vs/jobscan</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

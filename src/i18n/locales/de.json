@@ -29,7 +29,7 @@
     "freeScan": "Kostenloser Scan",
     "heading": "Schluss mit Raten.",
     "headingHighlight": "Mehr Vorstellungsgespräche.",
-    "subheading": "Erhalten Sie ehrliches Recruiter-Feedback zu Ihrem Lebenslauf. Keine Floskeln – nur konkrete Verbesserungen, die zum Job führen.",
+    "subheading": "Gleiches Dokument, gleicher Score, jedes Mal — verglichen mit echten Scans Ihrer Branche, jedes Zitat gegen Ihren Lebenslauf verifiziert. Keine ChatGPT- oder Claude-Meinung.",
     "price": "25 $",
     "oneTime": "einmalig",
     "nofees": "Kein Abo • Keine versteckten Kosten • Sofortige Ergebnisse",
@@ -56,9 +56,9 @@
     "trustedBy": "Vertraut von Fachleuten bei",
     "freeScanReveals": "Ihr kostenloser Scan zeigt:",
     "headline": {
-      "get": "Erhalten Sie",
-      "recruiterGrade": "Recruiter-Level",
-      "feedback": "Lebenslauf-Feedback in 60 Sekunden"
+      "get": "Der echte Score",
+      "recruiterGrade": "Ihres Lebenslaufs",
+      "feedback": "— gemessen, nicht geraten"
     },
     "description": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie ATS-optimierte Umschreibungen, Red-Flag-Warnungen und Keyword-Verbesserungen — so wie Personalverantwortliche Lebensläufe wirklich prüfen.",
     "benefits": {
@@ -105,7 +105,7 @@
     },
     "socialFirst": {
       "joinThousands": "Kostenloser Scan · Keine Anmeldung · Ergebnisse in ca. 60 Sekunden",
-      "subheading": "Laden Sie Ihren Lebenslauf hoch und sehen Sie genau, was ATS-Systeme und Recruiter beanstanden — mit konkreten Korrekturen, die Sie sofort umsetzen können.",
+      "subheading": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie einen reproduzierbaren Score — verglichen mit echten Scans Ihrer Branche, jedes Zitat verifiziert. Keine Chatbot-Meinung.",
       "recentActivityCount": "{{count}} Personen",
       "recentActivityText": "haben in der letzten Stunde ihren Lebenslauf gescannt"
     },
@@ -140,7 +140,8 @@
     "transparentScoring": "transparente KI-Bewertung, keine Blackbox",
     "factGdpr": "DSGVO-konform",
     "factAutoDelete": "Lebensläufe werden nach 24 h automatisch gelöscht",
-    "factNoStorage": "Nie gespeichert, nie geteilt"
+    "factNoStorage": "Nie gespeichert, nie geteilt",
+    "measureStrip": "Messungen statt Meinungen · Jedes Zitat verifiziert · Ein Score, der seine Arbeit zeigt"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle Rechte vorbehalten.",
@@ -1600,7 +1601,11 @@
       "emailSend": "Senden",
       "emailSent": "Gesendet! Prüfen Sie Ihren Posteingang.",
       "emailPrivacy": "Nur die Analyseergebnisse werden gesendet — nie Ihr Lebenslauf. Kein Spam.",
-      "pulseOptIn": "Senden Sie mir auch einen monatlichen Markt-Puls: die aufsteigenden Keywords meiner Branche, mit kostenlosem Rescan-Link. Jederzeit abbestellbar."
+      "pulseOptIn": "Senden Sie mir auch einen monatlichen Markt-Puls: die aufsteigenden Keywords meiner Branche, mit kostenlosem Rescan-Link. Jederzeit abbestellbar.",
+      "placementTopQuartile": "Oberstes Quartil von {{n}} echten {{industry}}-Scans",
+      "placementAboveMedian": "Über dem Median von {{n}} echten {{industry}}-Scans",
+      "placementBelowMedian": "Unter dem Median von {{n}} echten {{industry}}-Scans",
+      "placementBottomQuartile": "Unterstes Quartil von {{n}} echten {{industry}}-Scans — großes Potenzial mit den Fixes unten"
     }
   },
   "analysisPreviewSample": {

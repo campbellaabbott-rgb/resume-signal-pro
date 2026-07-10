@@ -29,7 +29,7 @@
     "freeScan": "Escaneo Gratis",
     "heading": "Deja de adivinar.",
     "headingHighlight": "Empieza a conseguir entrevistas.",
-    "subheading": "Obtén comentarios brutalmente honestos de nivel reclutador sobre tu currículum. Sin rodeos, sin endulzar — solo correcciones prácticas que te ayudan a ser contratado.",
+    "subheading": "Mismo documento, misma puntuación, siempre — comparada con escaneos reales de tu sector y con cada cita verificada contra tu currículum. No es la opinión de ChatGPT ni de Claude.",
     "price": "$25",
     "oneTime": "único pago",
     "nofees": "Sin suscripciones • Sin tarifas ocultas • Resultados instantáneos",
@@ -50,9 +50,9 @@
     "actionableFixes": "Correcciones prácticas incluidas",
     "private": "100% privado",
     "headline": {
-      "get": "Obtén",
-      "recruiterGrade": "nivel reclutador",
-      "feedback": "feedback de CV en 60 segundos"
+      "get": "La puntuación",
+      "recruiterGrade": "real de tu currículum",
+      "feedback": "— medida, no adivinada"
     },
     "description": "Sube tu CV y obtén reescrituras optimizadas para ATS, alertas de red flags y mejoras de palabras clave — como lo revisan los reclutadores.",
     "benefits": {
@@ -105,7 +105,7 @@
     },
     "socialFirst": {
       "joinThousands": "Escaneo gratis · Sin registro · Resultados en unos 60 segundos",
-      "subheading": "Sube tu currículum y ve exactamente qué señalarán los sistemas ATS y los reclutadores — con correcciones específicas que puedes aplicar hoy.",
+      "subheading": "Sube tu currículum y obtén una puntuación reproducible — comparada con escaneos reales de tu sector, con cada cita verificada. No es la opinión de un chatbot.",
       "recentActivityCount": "{{count}} personas",
       "recentActivityText": "escanearon su currículum en la última hora"
     },
@@ -140,7 +140,8 @@
     "transparentScoring": "puntuación de IA transparente, sin caja negra",
     "factGdpr": "Cumple con GDPR",
     "factAutoDelete": "Currículums eliminados automáticamente en 24 h",
-    "factNoStorage": "Nunca almacenados, nunca compartidos"
+    "factNoStorage": "Nunca almacenados, nunca compartidos",
+    "measureStrip": "Mediciones, no opiniones · Cada cita verificada · Una puntuación que muestra su trabajo"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Todos los derechos reservados.",
@@ -1600,7 +1601,11 @@
       "emailSend": "Enviar",
       "emailSent": "¡Enviado! Revisa tu bandeja de entrada.",
       "emailPrivacy": "Solo se envían los resultados del análisis — nunca tu currículum. Sin spam.",
-      "pulseOptIn": "Envíame también un pulso de mercado mensual: las palabras clave en alza en mi industria, con un enlace de reescaneo gratis. Cancela cuando quieras."
+      "pulseOptIn": "Envíame también un pulso de mercado mensual: las palabras clave en alza en mi industria, con un enlace de reescaneo gratis. Cancela cuando quieras.",
+      "placementTopQuartile": "Cuartil superior de {{n}} escaneos reales de {{industry}}",
+      "placementAboveMedian": "Por encima de la mediana de {{n}} escaneos reales de {{industry}}",
+      "placementBelowMedian": "Por debajo de la mediana de {{n}} escaneos reales de {{industry}}",
+      "placementBottomQuartile": "Cuartil inferior de {{n}} escaneos reales de {{industry}} — gran margen de mejora con los arreglos de abajo"
     }
   },
   "analysisPreviewSample": {

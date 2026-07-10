@@ -29,7 +29,7 @@
     "freeScan": "Gratis scan",
     "heading": "Stop met gissen.",
     "headingHighlight": "Begin met sollicitatiegesprekken.",
-    "subheading": "Krijg eerlijke recruiter-feedback op je CV. Geen onzin – alleen concrete verbeteringen die je aan een baan helpen.",
+    "subheading": "Zelfde document, zelfde score, elke keer — vergeleken met echte scans in jouw sector, elk citaat geverifieerd tegen je cv. Geen mening van ChatGPT of Claude.",
     "price": "$ 25",
     "oneTime": "eenmalig",
     "nofees": "Geen abonnement • Geen verborgen kosten • Directe resultaten",
@@ -50,9 +50,9 @@
     "actionableFixes": "Concrete verbeteringen inbegrepen",
     "private": "100% privé",
     "headline": {
-      "get": "Krijg",
-      "recruiterGrade": "recruiter-niveau",
-      "feedback": "cv-feedback in 60 seconden"
+      "get": "De echte score",
+      "recruiterGrade": "van je cv",
+      "feedback": "— gemeten, niet geraden"
     },
     "description": "Upload je cv en krijg ATS-geoptimaliseerde herschrijvingen, red-flag waarschuwingen en keyword-verbeteringen — zoals hiring managers cv’s echt beoordelen.",
     "benefits": {
@@ -105,7 +105,7 @@
     },
     "socialFirst": {
       "joinThousands": "Gratis scan · Geen aanmelding · Resultaten in ongeveer 60 seconden",
-      "subheading": "Upload je cv en zie precies wat ATS-systemen en recruiters zullen aanmerken — met concrete verbeteringen die je vandaag kunt toepassen.",
+      "subheading": "Upload je cv en krijg een reproduceerbare score — vergeleken met echte scans in jouw sector, elk citaat geverifieerd. Geen chatbot-mening.",
       "recentActivityCount": "{{count}} mensen",
       "recentActivityText": "hebben hun cv in het afgelopen uur gescand"
     },
@@ -140,7 +140,8 @@
     "transparentScoring": "transparante AI-beoordeling, geen black box",
     "factGdpr": "AVG-conform",
     "factAutoDelete": "Cv's automatisch verwijderd binnen 24 u",
-    "factNoStorage": "Nooit opgeslagen, nooit gedeeld"
+    "factNoStorage": "Nooit opgeslagen, nooit gedeeld",
+    "measureStrip": "Metingen, geen meningen · Elk citaat geverifieerd · Een score die zijn werk laat zien"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle rechten voorbehouden.",
@@ -1600,7 +1601,11 @@
       "emailSend": "Versturen",
       "emailSent": "Verzonden! Check je inbox.",
       "emailPrivacy": "Alleen de analyseresultaten worden gemaild — nooit je cv. Geen spam.",
-      "pulseOptIn": "Stuur mij ook een maandelijkse marktpuls: de opkomende trefwoorden in mijn sector, met een gratis rescan-link. Altijd uitschrijfbaar."
+      "pulseOptIn": "Stuur mij ook een maandelijkse marktpuls: de opkomende trefwoorden in mijn sector, met een gratis rescan-link. Altijd uitschrijfbaar.",
+      "placementTopQuartile": "Bovenste kwartiel van {{n}} echte {{industry}}-scans",
+      "placementAboveMedian": "Boven de mediaan van {{n}} echte {{industry}}-scans",
+      "placementBelowMedian": "Onder de mediaan van {{n}} echte {{industry}}-scans",
+      "placementBottomQuartile": "Onderste kwartiel van {{n}} echte {{industry}}-scans — veel winst met de fixes hieronder"
     }
   },
   "analysisPreviewSample": {

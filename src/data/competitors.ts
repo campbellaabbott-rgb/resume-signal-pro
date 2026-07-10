@@ -15,6 +15,10 @@ export interface Competitor {
   name: string;
   intro: string;
   rows: CompetitorRow[];
+  /** Overrides the FAQ's default "uses a subscription model" pricing answer —
+      required for competitors where that claim would be false (e.g. chatbots
+      with generous free tiers). */
+  pricingNote?: string;
 }
 
 const US_FREE = "Full diagnostic report — score with audit trail, bullets graded and rewritten, recruiter panel, interview questions, per-vendor ATS checks. 7 scans/day (15 with a free account).";
@@ -22,6 +26,23 @@ const US_HONESTY = "Score shown with its modeling band, a point-by-point audit t
 const US_PRICING = "Free scan; paid tools $3–29 one-time; optional all-access subscription.";
 
 export const COMPETITORS: Record<string, Competitor> = {
+  chatgpt: {
+    slug: "chatgpt",
+    name: "ChatGPT & Claude",
+    intro:
+      "ChatGPT and Claude are what we're most often compared to — fairly, because they're genuinely excellent at resume advice. The honest difference is category: they are conversationalists, this is an instrument. Ask a chatbot to rate your resume five times and you'll get five different answers; an instrument gives the same reading for the same document and tells you where that reading sits among real ones.",
+    pricingNote:
+      "ChatGPT and Claude both have generous free tiers, with paid plans around $20/month (as of mid-2026). Resume Booster's diagnostic scan is free with no sign-up; paid tools are $3–29 one-time with an optional all-access subscription.",
+    rows: [
+      { dim: "Reproducible score", us: US_HONESTY, them: "Ask five times, get five different numbers — chat output isn't calibrated or repeatable, and there is no fixed score to track between edits.", usWins: true },
+      { dim: "Real benchmarks", us: "Your score is placed against a live corpus of real scans — published medians and quartiles per industry, with sample sizes.", them: "No corpus. A chatbot can estimate what a 'good' resume looks like, but it cannot place yours in a real distribution.", usWins: true },
+      { dim: "Verified claims", us: "Every quoted line is checked against your actual document before it reaches the report; nothing invented survives.", them: "Chatbots routinely misquote resumes — flagging 'missing' items that are present, or praising things that aren't there.", usWins: true },
+      { dim: "Deterministic checks", us: "Per-vendor ATS parsing checks (Workday, Greenhouse, Lever, iCIMS), structure parsing, per-country CV rules (photo norms, data laws), keyword provenance (posting > O*NET > model).", them: "General advice recalled from training data — it cannot run your file through parser or format checks.", usWins: true },
+      { dim: "Conversation & iteration", us: "Focused reports and grounded rewrites — deliberately not a chat.", them: "Genuinely excellent: brainstorming, endless rewrites, tone changes, follow-up questions. Use them for this — many of our users do both.", usWins: false },
+      { dim: "Breadth beyond resumes", us: "Resume-scoped by design: scanning, rewrites, cover letters, interview prep.", them: "Everything else too — salary negotiation scripts, company research, mock interviews on any topic.", usWins: false },
+      { dim: "Price", us: US_PRICING, them: "Generous free tiers; ~$20/month for paid plans (as of mid-2026).", usWins: false },
+    ],
+  },
   jobscan: {
     slug: "jobscan",
     name: "Jobscan",

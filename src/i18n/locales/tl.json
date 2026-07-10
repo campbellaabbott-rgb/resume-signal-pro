@@ -29,7 +29,7 @@
     "freeScan": "Libreng Scan",
     "heading": "Huwag nang hulaan.",
     "headingHighlight": "Simulan na ang makakuha ng interview.",
-    "subheading": "Kumuha ng tapat at recruiter-level na feedback sa iyong resume. Walang paliguy-ligoy — praktikal na mga pagwawasto lamang na makakatulong sa iyo na ma-hire.",
+    "subheading": "Parehong dokumento, parehong iskor, tuwing susubukan — ikinumpara sa tunay na mga scan sa iyong industriya, bawat sipi beripikado laban sa iyong resume. Hindi opinyon ng ChatGPT o Claude.",
     "price": "$25",
     "oneTime": "isang beses lang",
     "nofees": "Walang subscription • Walang nakatagong bayad • Instant na resulta",
@@ -50,9 +50,9 @@
     "actionableFixes": "May kasamang praktikal na ayos",
     "private": "100% private",
     "headline": {
-      "get": "Kumuha ng",
-      "recruiterGrade": "Recruiter-grade",
-      "feedback": "na resume feedback sa 60 segundo"
+      "get": "Ang tunay na iskor",
+      "recruiterGrade": "ng iyong resume",
+      "feedback": "— sinukat, hindi hinulaan"
     },
     "description": "I-upload ang iyong resume at makakuha ng ATS-optimized rewrites, red-flag warnings, at keyword improvements — gaya ng tunay na pag-review ng hiring managers.",
     "benefits": {
@@ -105,7 +105,7 @@
     },
     "socialFirst": {
       "joinThousands": "Libreng scan · Walang sign-up · Resulta sa humigit-kumulang 60 segundo",
-      "subheading": "I-upload ang iyong resume at makita mismo kung ano ang mamarkahan ng mga ATS system at recruiter — may mga tiyak na ayos na magagamit mo ngayon din.",
+      "subheading": "I-upload ang iyong resume at makakuha ng nauulit na iskor — ikinumpara sa tunay na mga scan sa iyong industriya, bawat sipi beripikado. Hindi opinyon ng chatbot.",
       "recentActivityCount": "{{count}} katao",
       "recentActivityText": "ang nag-scan ng kanilang resume sa huling oras"
     },
@@ -140,7 +140,8 @@
     "transparentScoring": "transparent na AI scoring, walang black box",
     "factGdpr": "Sumusunod sa GDPR",
     "factAutoDelete": "Awtomatikong binubura ang mga resume sa loob ng 24 oras",
-    "factNoStorage": "Hindi kailanman iniimbak o ibinabahagi"
+    "factNoStorage": "Hindi kailanman iniimbak o ibinabahagi",
+    "measureStrip": "Sukat, hindi opinyon · Bawat sipi beripikado · Iskor na nagpapakita ng trabaho nito"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Lahat ng karapatan ay nakalaan.",
@@ -1600,7 +1601,11 @@
       "emailSend": "Ipadala",
       "emailSent": "Naipadala! Tingnan ang iyong inbox.",
       "emailPrivacy": "Tanging mga resulta ng pagsusuri lang ang ipinapadala — hindi kailanman ang iyong resume. Walang spam.",
-      "pulseOptIn": "Padalhan din ako ng buwanang market pulse: ang mga tumataas na keyword sa aking industriya, may libreng rescan link. Mag-unsubscribe anumang oras."
+      "pulseOptIn": "Padalhan din ako ng buwanang market pulse: ang mga tumataas na keyword sa aking industriya, may libreng rescan link. Mag-unsubscribe anumang oras.",
+      "placementTopQuartile": "Nangungunang quartile ng {{n}} tunay na {{industry}} scan",
+      "placementAboveMedian": "Lampas sa median ng {{n}} tunay na {{industry}} scan",
+      "placementBelowMedian": "Mababa sa median ng {{n}} tunay na {{industry}} scan",
+      "placementBottomQuartile": "Pinakamababang quartile ng {{n}} tunay na {{industry}} scan — malaking pag-angat mula sa mga ayos sa ibaba"
     }
   },
   "analysisPreviewSample": {

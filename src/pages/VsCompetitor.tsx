@@ -37,7 +37,7 @@ export default function VsCompetitor() {
     },
     {
       q: `How much does Resume Booster cost compared to ${c.name}?`,
-      a: `Resume Booster's diagnostic scan is free with no sign-up; paid tools are $3–29 one-time with an optional all-access subscription. ${c.name} uses a subscription model (as of mid-2026 — check their site for current pricing).`,
+      a: c.pricingNote ?? `Resume Booster's diagnostic scan is free with no sign-up; paid tools are $3–29 one-time with an optional all-access subscription. ${c.name} uses a subscription model (as of mid-2026 — check their site for current pricing).`,
     },
   ];
 

@@ -1661,8 +1661,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free resume scan — no signup required" },
       }) }} />
       <SEO
-        title={landing?.title ?? "Resume Booster: Free ATS Resume Scan"}
-        description={landing?.description ?? "Free AI resume scan: ATS score, missing keywords, red flags, and recruiter-grade fixes in under 30 seconds."}
+        title={landing?.title ?? "Resume Booster: Free ATS Resume Scan — Measured, Not Guessed"}
+        description={landing?.description ?? "Free resume scan with a reproducible score, benchmarked against real scans in your industry. Every quote verified, per-vendor ATS checks — not another chatbot opinion."}
         path={landing?.path ?? "/"}
       />
       {landing?.alternates && (

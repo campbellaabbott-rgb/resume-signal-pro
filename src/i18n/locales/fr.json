@@ -29,7 +29,7 @@
     "freeScan": "Scan gratuit",
     "heading": "Arrêtez de deviner.",
     "headingHighlight": "Décrochez des entretiens.",
-    "subheading": "Obtenez un feedback honnête et professionnel sur votre CV. Pas de blabla – des corrections concrètes pour décrocher un emploi.",
+    "subheading": "Même document, même score, à chaque fois — comparé à de vrais scans de votre secteur, chaque citation vérifiée contre votre CV. Pas l'avis de ChatGPT ou de Claude.",
     "price": "25 $",
     "oneTime": "paiement unique",
     "nofees": "Sans abonnement • Sans frais cachés • Résultats instantanés",
@@ -50,9 +50,9 @@
     "actionableFixes": "Corrections concrètes incluses",
     "private": "100% privé",
     "headline": {
-      "get": "Obtenez",
-      "recruiterGrade": "niveau recruteur",
-      "feedback": "un feedback CV en 60 secondes"
+      "get": "Le score",
+      "recruiterGrade": "réel de votre CV",
+      "feedback": "— mesuré, pas deviné"
     },
     "description": "Téléchargez votre CV et obtenez des réécritures optimisées ATS, des alertes red flags et des améliorations de mots-clés — comme les recruteurs évaluent réellement les CV.",
     "benefits": {
@@ -105,7 +105,7 @@
     },
     "socialFirst": {
       "joinThousands": "Analyse gratuite · Sans inscription · Résultats en 60 secondes environ",
-      "subheading": "Téléchargez votre CV et voyez exactement ce que les systèmes ATS et les recruteurs signaleront — avec des corrections concrètes à appliquer dès aujourd’hui.",
+      "subheading": "Téléversez votre CV et obtenez un score reproductible — comparé à de vrais scans de votre secteur, chaque citation vérifiée. Pas l'avis d'un chatbot.",
       "recentActivityCount": "{{count}} personnes",
       "recentActivityText": "ont scanné leur CV dans la dernière heure"
     },
@@ -140,7 +140,8 @@
     "transparentScoring": "notation IA transparente, sans boîte noire",
     "factGdpr": "Conforme au RGPD",
     "factAutoDelete": "CV supprimés automatiquement sous 24 h",
-    "factNoStorage": "Jamais stockés, jamais partagés"
+    "factNoStorage": "Jamais stockés, jamais partagés",
+    "measureStrip": "Des mesures, pas des opinions · Chaque citation vérifiée · Un score qui montre son travail"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Tous droits réservés.",
@@ -1600,7 +1601,11 @@
       "emailSend": "Envoyer",
       "emailSent": "Envoyé ! Vérifiez votre boîte de réception.",
       "emailPrivacy": "Seuls les résultats de l’analyse sont envoyés — jamais votre CV. Pas de spam.",
-      "pulseOptIn": "Envoyez-moi aussi un pouls du marché mensuel : les mots-clés en hausse dans mon secteur, avec un lien de réanalyse gratuite. Désabonnement à tout moment."
+      "pulseOptIn": "Envoyez-moi aussi un pouls du marché mensuel : les mots-clés en hausse dans mon secteur, avec un lien de réanalyse gratuite. Désabonnement à tout moment.",
+      "placementTopQuartile": "Quartile supérieur de {{n}} vrais scans {{industry}}",
+      "placementAboveMedian": "Au-dessus de la médiane de {{n}} vrais scans {{industry}}",
+      "placementBelowMedian": "Sous la médiane de {{n}} vrais scans {{industry}}",
+      "placementBottomQuartile": "Quartile inférieur de {{n}} vrais scans {{industry}} — fort potentiel avec les corrections ci-dessous"
     }
   },
   "analysisPreviewSample": {
