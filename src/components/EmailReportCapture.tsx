@@ -23,9 +23,13 @@ interface EmailReportCaptureProps {
     findingsSummary?: { critical: number; warnings: number; passed: number } | null;
     keywordSource?: { source: 'job_description' | 'onet' | 'model'; occupation?: string; code?: string } | null;
   };
+  /** "compact" = one-row capture for the top of the report (peak attention). */
+  variant?: "full" | "compact";
+  /** Hide when we already have this visitor's email — don't nag repeat scanners. */
+  hideIfKnown?: boolean;
 }
 
-export function EmailReportCapture({ payload }: EmailReportCaptureProps) {
+export function EmailReportCapture({ payload, variant = "full", hideIfKnown = false }: EmailReportCaptureProps) {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -59,11 +63,49 @@ export function EmailReportCapture({ payload }: EmailReportCaptureProps) {
     }
   };
 
+  // Placed AFTER the hooks (hooks must run unconditionally).
+  if (hideIfKnown && status === "idle") {
+    try {
+      if (localStorage.getItem("rb_last_email")) return null;
+    } catch { /* storage unavailable — show the form */ }
+  }
+
   if (status === "sent") {
     return (
       <div className="rounded-2xl border border-success/30 bg-success/5 p-4 flex items-center gap-2">
         <Check className="w-4 h-4 text-success shrink-0" />
         <p className="text-sm text-foreground">{t('freeResults.enterprise.emailSent', 'Sent! Check your inbox for your scan summary and fix plan.')}</p>
+      </div>
+    );
+  }
+
+  if (variant === "compact") {
+    return (
+      <div className="rounded-2xl border border-primary/25 bg-primary/5 px-4 py-3 mb-4 flex flex-wrap items-center gap-2">
+        <Mail className="w-4 h-4 text-primary shrink-0" />
+        <p className="text-sm font-medium text-foreground">{t('freeResults.enterprise.emailTitle', 'Email me my report')}</p>
+        <div className="flex flex-1 min-w-[230px] gap-2">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); if (errorMsg) setErrorMsg(null); }}
+            onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+            placeholder="you@example.com"
+            className="flex-1 min-w-0 px-3 py-1.5 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            disabled={status === "sending"}
+            aria-label={t('freeResults.enterprise.emailTitle', 'Email me my report')}
+          />
+          <button
+            onClick={send}
+            disabled={status === "sending"}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors"
+          >
+            {status === "sending" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+            {t('freeResults.enterprise.emailSend', 'Send')}
+          </button>
+        </div>
+        {errorMsg && <p className="basis-full text-xs text-destructive">{errorMsg}</p>}
+        <p className="basis-full text-[10px] text-muted-foreground">{t('freeResults.enterprise.emailPrivacy', 'Only the analysis results are emailed — never your resume. No spam.')}</p>
       </div>
     );
   }

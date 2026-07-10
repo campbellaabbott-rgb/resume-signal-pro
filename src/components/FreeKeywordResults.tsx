@@ -1626,6 +1626,28 @@ export function FreeKeywordResults({
     return out;
   })();
 
+  // One payload for BOTH email-capture placements (compact at the verdict,
+  // full at the end of the report) — identical email either way.
+  const emailReportPayload = {
+    verdict: reportVerdict,
+    score: atsScoreEstimate,
+    projectedScore: projectedScore ?? null,
+    scoreBreakdown: scoreBreakdown ?? null,
+    peerPercentile: peerPercentile ?? null,
+    applicationPassRate: applicationPassRate ?? null,
+    redFlags: redFlags.map(f => ({ issue: f.issue })),
+    fixRoadmap: fixRoadmap ?? null,
+    industry: effectiveIndustry,
+    reportId: reportMeta?.reportId ?? null,
+    scoreBand: scoreBand ?? null,
+    findingsSummary: {
+      critical: findings.filter(f => f.severity === 'critical').length,
+      warnings: findings.filter(f => f.severity === 'warning').length,
+      passed: findings.filter(f => f.severity === 'pass').length,
+    },
+    keywordSource: keywordSource ?? null,
+  };
+
   return (
     <TooltipProvider delayDuration={200}>
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
@@ -1729,6 +1751,11 @@ export function FreeKeywordResults({
           </div>
         </div>
       )}
+
+      {/* Email capture at peak attention — compact, optional, hidden for
+          visitors whose email we already have. The full variant (with the
+          pulse/drip opt-ins) stays at the end of the report. */}
+      <EmailReportCapture payload={emailReportPayload} variant="compact" hideIfKnown />
 
       {/* Specimen header — report ID, engine, provenance */}
       {reportMeta && <DiagnosticHeader meta={reportMeta} candidateName={candidateName} />}
@@ -4521,28 +4548,7 @@ export function FreeKeywordResults({
       )}
 
       {/* ── Email me my report — first lead-capture touchpoint ──────────────── */}
-      <EmailReportCapture
-        payload={{
-          verdict: reportVerdict,
-          score: atsScoreEstimate,
-          projectedScore: projectedScore ?? null,
-          scoreBreakdown: scoreBreakdown ?? null,
-          peerPercentile: peerPercentile ?? null,
-          applicationPassRate: applicationPassRate ?? null,
-          redFlags: redFlags.map(f => ({ issue: f.issue })),
-          fixRoadmap: fixRoadmap ?? null,
-          industry: effectiveIndustry,
-          // Diagnostic anatomy — same report ID/band/triage as on-screen and PDF
-          reportId: reportMeta?.reportId ?? null,
-          scoreBand: scoreBand ?? null,
-          findingsSummary: {
-            critical: findings.filter(f => f.severity === 'critical').length,
-            warnings: findings.filter(f => f.severity === 'warning').length,
-            passed: findings.filter(f => f.severity === 'pass').length,
-          },
-          keywordSource: keywordSource ?? null,
-        }}
-      />
+      <EmailReportCapture payload={emailReportPayload} />
 
       {/* ── The Recruiter Panel — three personas, three verdicts ────────────── */}
       {recruiterPanel && (
