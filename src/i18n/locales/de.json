@@ -10,7 +10,7 @@
     "error": "Beispiel konnte gerade nicht erstellt werden.",
     "tryAgain": "Erneut versuchen",
     "tryAnother": "Anderes ausprobieren",
-    "guarantee": "Nicht zufrieden mit dem Ergebnis? Kostenlose Neugenerierung oder Rückerstattung."
+    "guarantee": "Nicht zufrieden mit dem Ergebnis? Wir generieren es kostenlos neu."
   },
   "header": {
     "tagline": "Recruiter-KI-Feedback",
@@ -2673,7 +2673,7 @@
     "ladderFixDesc": "Die Komplettlösung: vollständige Analyse, Ihr Lebenslauf ATS-sauber umgeschrieben und ein passendes Anschreiben.",
     "ladderSpecialistDesc": "Für Quereinsteiger: Freelance-, Gig- und Projektarbeit übersetzt in Recruiter-taugliche Berufserfahrung.",
     "allToolsToggle": "Alle Tools ansehen ({{count}} weitere)",
-    "guarantee": "Jedes kostenpflichtige Tool ist abgesichert: nicht zufrieden mit dem Ergebnis? Kostenlose Neugenerierung oder Rückerstattung — antworten Sie einfach auf Ihre Quittung."
+    "guarantee": "Jedes kostenpflichtige Tool ist abgesichert: nicht zufrieden mit dem Ergebnis? Wir generieren es kostenlos neu — antworten Sie einfach auf Ihre Quittung."
   },
   "scanPackPurchase": {
     "topUpCredits": "Credits aufladen",
@@ -2814,7 +2814,7 @@
   "changelogEntries": {
     "suiteV2": {
       "title": "Einfachere Preise, eine echte Garantie und Hilfe bei genau dieser Bewerbung",
-      "description": "Drei Änderungen an den kostenpflichtigen Tools. Die Preisseite führt jetzt mit drei klaren Optionen statt einer Wand aus dreizehn — der volle Katalog bleibt einen Klick entfernt. Jedes kostenpflichtige Tool trägt jetzt eine Zufriedenheitsgarantie: nicht zufrieden mit dem Ergebnis? Kostenlose Neugenerierung oder Rückerstattung (die AGB sagen das jetzt ausdrücklich). Und nachdem Sie Ihren Lebenslauf gegen eine echte Stelle geprüft haben, kann der Bericht genau diese Bewerbung vorbereiten — zugeschnittener Lebenslauf, passendes Anschreiben, ehrliche Lückenliste — mit einer kostenlosen Vorschau aus Ihrem eigenen Lebenslauf vor dem Kauf."
+      "description": "Drei Änderungen an den kostenpflichtigen Tools. Die Preisseite führt jetzt mit drei klaren Optionen statt einer Wand aus dreizehn — der volle Katalog bleibt einen Klick entfernt. Jedes kostenpflichtige Tool trägt jetzt ein Versprechen: nicht zufrieden mit dem Ergebnis? Wir generieren es kostenlos neu. Und nachdem Sie Ihren Lebenslauf gegen eine echte Stelle geprüft haben, kann der Bericht genau diese Bewerbung vorbereiten — zugeschnittener Lebenslauf, passendes Anschreiben, ehrliche Lückenliste — mit einer kostenlosen Vorschau aus Ihrem eigenen Lebenslauf vor dem Kauf."
     },
     "roleTargeting": {
       "title": "Ihr Bericht sagt Ihnen jetzt, worauf Sie sich bewerben sollten",

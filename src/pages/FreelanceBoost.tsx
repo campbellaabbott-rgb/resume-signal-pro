@@ -465,7 +465,7 @@ export default function FreelanceBoost() {
                 />
                 <p className="text-[11px] text-muted-foreground mt-3">
                   Your answers stay on this device until you purchase. We never invent clients, payments, or metrics —
-                  honest framing is the whole product. Not happy with the output? Free regeneration or a refund.
+                  honest framing is the whole product. Not happy with the output? We'll regenerate it free.
                 </p>
               </div>
             </>

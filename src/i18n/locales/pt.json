@@ -10,7 +10,7 @@
     "error": "Não foi possível gerar um exemplo agora.",
     "tryAgain": "Tentar novamente",
     "tryAnother": "Tentar outro",
-    "guarantee": "Não gostou do resultado? Regeneração grátis ou reembolso."
+    "guarantee": "Não gostou do resultado? Regeneramos grátis."
   },
   "header": {
     "tagline": "Feedback de IA de nível recrutador",
@@ -2673,7 +2673,7 @@
     "ladderFixDesc": "A solução completa: análise total, seu currículo reescrito limpo para ATS e uma carta de apresentação sob medida.",
     "ladderSpecialistDesc": "Para quem muda de carreira: trabalho freelance e por projetos traduzido em experiência de nível profissional.",
     "allToolsToggle": "Ver todas as ferramentas ({{count}} a mais)",
-    "guarantee": "Toda ferramenta paga está coberta: não gostou do resultado? Regeneração grátis ou reembolso — basta responder ao seu recibo."
+    "guarantee": "Toda ferramenta paga está coberta: não gostou do resultado? Regeneramos grátis — basta responder ao seu recibo."
   },
   "scanPackPurchase": {
     "topUpCredits": "Recarregar créditos",
@@ -2814,7 +2814,7 @@
   "changelogEntries": {
     "suiteV2": {
       "title": "Preços mais simples, garantia de verdade e ajuda para se candidatar àquela vaga",
-      "description": "Três mudanças nas ferramentas pagas. A página de preços agora apresenta três escolhas claras em vez de um muro de treze — o catálogo completo continua lá, a um clique. Toda ferramenta paga agora tem garantia de satisfação: não gostou do resultado? Regeneração grátis ou reembolso (os Termos agora dizem exatamente isso). E depois de comparar seu currículo com uma vaga real, o relatório pode preparar essa candidatura exata — currículo adaptado, carta combinando, lista honesta de lacunas — com uma amostra grátis do seu próprio currículo antes de pagar."
+      "description": "Três mudanças nas ferramentas pagas. A página de preços agora apresenta três escolhas claras em vez de um muro de treze — o catálogo completo continua lá, a um clique. Toda ferramenta paga agora carrega um compromisso: não gostou do resultado? Regeneramos grátis. E depois de comparar seu currículo com uma vaga real, o relatório pode preparar essa candidatura exata — currículo adaptado, carta combinando, lista honesta de lacunas — com uma amostra grátis do seu próprio currículo antes de pagar."
     },
     "roleTargeting": {
       "title": "Seu relatório agora diz para o que você deve se candidatar",

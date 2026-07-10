@@ -10,7 +10,7 @@
     "error": "Impossible de générer un exemple pour le moment.",
     "tryAgain": "Réessayer",
     "tryAnother": "Essayer un autre",
-    "guarantee": "Pas satisfait du résultat ? Régénération gratuite ou remboursement."
+    "guarantee": "Pas satisfait du résultat ? Nous le régénérons gratuitement."
   },
   "header": {
     "tagline": "Feedback IA niveau recruteur",
@@ -2673,7 +2673,7 @@
     "ladderFixDesc": "La correction complète : analyse totale, votre CV réécrit compatible ATS et une lettre de motivation sur mesure.",
     "ladderSpecialistDesc": "Pour les reconversions : le travail freelance et les missions traduits en expérience de niveau recruteur.",
     "allToolsToggle": "Voir tous les outils ({{count}} de plus)",
-    "guarantee": "Chaque outil payant est couvert : pas satisfait du résultat ? Régénération gratuite ou remboursement — répondez à votre reçu."
+    "guarantee": "Chaque outil payant est couvert : pas satisfait du résultat ? Nous le régénérons gratuitement — répondez simplement à votre reçu."
   },
   "scanPackPurchase": {
     "topUpCredits": "Recharger les crédits",
@@ -2814,7 +2814,7 @@
   "changelogEntries": {
     "suiteV2": {
       "title": "Des prix plus simples, une vraie garantie et de l'aide pour postuler",
-      "description": "Trois changements dans les outils payants. La page tarifs présente désormais trois choix clairs au lieu d'un mur de treize — le catalogue complet reste accessible en un clic. Chaque outil payant est couvert par une garantie de satisfaction : pas satisfait du résultat ? Régénération gratuite ou remboursement (les Conditions le disent désormais noir sur blanc). Et après avoir comparé votre CV à une vraie offre, le rapport peut préparer cette candidature précise — CV adapté, lettre assortie, liste honnête des écarts — avec un aperçu gratuit depuis votre propre CV avant de payer."
+      "description": "Trois changements dans les outils payants. La page tarifs présente désormais trois choix clairs au lieu d'un mur de treize — le catalogue complet reste accessible en un clic. Chaque outil payant inclut désormais un engagement : pas satisfait du résultat ? Nous le régénérons gratuitement. Et après avoir comparé votre CV à une vraie offre, le rapport peut préparer cette candidature précise — CV adapté, lettre assortie, liste honnête des écarts — avec un aperçu gratuit depuis votre propre CV avant de payer."
     },
     "roleTargeting": {
       "title": "Votre rapport vous dit désormais à quoi postuler",

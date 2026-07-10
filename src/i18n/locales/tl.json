@@ -10,7 +10,7 @@
     "error": "Hindi makabuo ng sample ngayon.",
     "tryAgain": "Subukan muli",
     "tryAnother": "Sumubok ng iba",
-    "guarantee": "Hindi masaya sa resulta? Libreng regeneration o refund."
+    "guarantee": "Hindi masaya sa resulta? Ire-regenerate namin ito nang libre."
   },
   "header": {
     "tagline": "Recruiter-grade AI feedback",
@@ -2673,7 +2673,7 @@
     "ladderFixDesc": "Ang kumpletong ayos: buong pagsusuri, resume mong muling isinulat na malinis sa ATS, at akmang cover letter.",
     "ladderSpecialistDesc": "Para sa mga nagpapalit ng karera: freelance, gig, at side-hustle na trabaho na isinalin sa recruiter-grade na karanasan.",
     "allToolsToggle": "Tingnan ang lahat ng tool ({{count}} pa)",
-    "guarantee": "Sakop ang bawat bayad na tool: hindi masaya sa resulta? Libreng regeneration o refund — sumagot lang sa iyong resibo."
+    "guarantee": "Sakop ang bawat bayad na tool: hindi masaya sa resulta? Ire-regenerate namin ito nang libre — sumagot lang sa iyong resibo."
   },
   "scanPackPurchase": {
     "topUpCredits": "I-top Up ang Credits",
@@ -2814,7 +2814,7 @@
   "changelogEntries": {
     "suiteV2": {
       "title": "Mas simpleng presyo, totoong garantiya, at tulong sa pag-apply sa trabahong iyon",
-      "description": "Tatlong pagbabago sa mga bayad na tool. Ang pricing page ay nagsisimula na ngayon sa tatlong malinaw na pagpipilian sa halip na pader ng labintatlo — nariyan pa rin ang buong katalogo, isang click lang. Bawat bayad na tool ay may satisfaction guarantee na: hindi masaya sa resulta? Libreng regeneration o refund (malinaw na itong nakasaad sa Terms). At pagkatapos mong itapat ang resume mo sa totoong posting, kaya nang ihanda ng ulat ang eksaktong aplikasyong iyon — resume na naka-angkop sa trabaho, akmang cover letter, tapat na listahan ng kakulangan — may libreng preview mula sa sarili mong resume bago ka magbayad."
+      "description": "Tatlong pagbabago sa mga bayad na tool. Ang pricing page ay nagsisimula na ngayon sa tatlong malinaw na pagpipilian sa halip na pader ng labintatlo — nariyan pa rin ang buong katalogo, isang click lang. Bawat bayad na tool ay may pangako na: hindi masaya sa resulta? Ire-regenerate namin ito nang libre. At pagkatapos mong itapat ang resume mo sa totoong posting, kaya nang ihanda ng ulat ang eksaktong aplikasyong iyon — resume na naka-angkop sa trabaho, akmang cover letter, tapat na listahan ng kakulangan — may libreng preview mula sa sarili mong resume bago ka magbayad."
     },
     "roleTargeting": {
       "title": "Sinasabi na ngayon ng ulat mo kung saan ka dapat mag-apply",

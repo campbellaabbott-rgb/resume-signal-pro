@@ -10,7 +10,7 @@
     "error": "Kon nu geen voorbeeld genereren.",
     "tryAgain": "Opnieuw proberen",
     "tryAnother": "Probeer een andere",
-    "guarantee": "Niet tevreden met het resultaat? Gratis regeneratie of terugbetaling."
+    "guarantee": "Niet blij met het resultaat? We regenereren het gratis."
   },
   "header": {
     "tagline": "Recruiter-niveau AI-feedback",
@@ -2673,7 +2673,7 @@
     "ladderFixDesc": "De complete oplossing: volledige analyse, je cv ATS-schoon herschreven en een passende sollicitatiebrief.",
     "ladderSpecialistDesc": "Voor carrièreswitchers: freelance-, gig- en projectwerk vertaald naar ervaring op recruiterniveau.",
     "allToolsToggle": "Bekijk alle tools ({{count}} meer)",
-    "guarantee": "Elke betaalde tool is gedekt: niet tevreden met het resultaat? Gratis regeneratie of terugbetaling — beantwoord gewoon je bon."
+    "guarantee": "Elke betaalde tool is gedekt: niet blij met het resultaat? We regenereren het gratis — beantwoord gewoon je bon."
   },
   "scanPackPurchase": {
     "topUpCredits": "Credits opwaarderen",
@@ -2814,7 +2814,7 @@
   "changelogEntries": {
     "suiteV2": {
       "title": "Eenvoudigere prijzen, een echte garantie en hulp bij precies die sollicitatie",
-      "description": "Drie veranderingen aan de betaalde tools. De prijzenpagina begint nu met drie duidelijke keuzes in plaats van een muur van dertien — de volledige catalogus blijft één klik verwijderd. Elke betaalde tool heeft nu een tevredenheidsgarantie: niet blij met het resultaat? Gratis regeneratie of terugbetaling (de Voorwaarden zeggen dat nu expliciet). En nadat je je cv aan een echte vacature hebt getoetst, kan het rapport precies die sollicitatie voorbereiden — cv op maat, bijpassende brief, eerlijke lijst van hiaten — met een gratis voorbeeld uit je eigen cv vóór je betaalt."
+      "description": "Drie veranderingen aan de betaalde tools. De prijzenpagina begint nu met drie duidelijke keuzes in plaats van een muur van dertien — de volledige catalogus blijft één klik verwijderd. Elke betaalde tool draagt nu een belofte: niet blij met het resultaat? We regenereren het gratis. En nadat je je cv aan een echte vacature hebt getoetst, kan het rapport precies die sollicitatie voorbereiden — cv op maat, bijpassende brief, eerlijke lijst van hiaten — met een gratis voorbeeld uit je eigen cv vóór je betaalt."
     },
     "roleTargeting": {
       "title": "Je rapport vertelt nu waarop je moet solliciteren",

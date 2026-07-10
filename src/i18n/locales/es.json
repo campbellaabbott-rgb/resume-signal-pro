@@ -10,7 +10,7 @@
     "error": "No pudimos generar un ejemplo ahora mismo.",
     "tryAgain": "Inténtalo de nuevo",
     "tryAnother": "Prueba otro",
-    "guarantee": "¿No te convence el resultado? Regeneración gratis o reembolso."
+    "guarantee": "¿No te convence el resultado? Lo regeneramos gratis."
   },
   "header": {
     "tagline": "Feedback de IA nivel reclutador",
@@ -2673,7 +2673,7 @@
     "ladderFixDesc": "El arreglo completo: análisis total, tu currículum reescrito para los ATS y una carta de presentación a medida.",
     "ladderSpecialistDesc": "Para quienes cambian de carrera: trabajo freelance y por proyectos traducido a experiencia de nivel profesional.",
     "allToolsToggle": "Ver todas las herramientas ({{count}} más)",
-    "guarantee": "Cada herramienta de pago está cubierta: ¿no te convence el resultado? Regeneración gratis o reembolso — responde a tu recibo."
+    "guarantee": "Cada herramienta de pago está cubierta: ¿no te convence el resultado? Lo regeneramos gratis — solo responde a tu recibo."
   },
   "scanPackPurchase": {
     "topUpCredits": "Recargar créditos",
@@ -2814,7 +2814,7 @@
   "changelogEntries": {
     "suiteV2": {
       "title": "Precios más simples, una garantía real y ayuda para postular a ese empleo",
-      "description": "Tres cambios en las herramientas de pago. La página de precios ahora presenta tres opciones claras en vez de un muro de trece — el catálogo completo sigue ahí, a un clic. Cada herramienta de pago tiene ahora garantía de satisfacción: ¿no te convence el resultado? Regeneración gratis o reembolso (los Términos ahora lo dicen exactamente). Y tras comparar tu currículum con una oferta real, el informe puede preparar esa candidatura exacta — currículum adaptado, carta a juego y lista honesta de brechas — con una muestra gratis desde tu propio currículum antes de pagar."
+      "description": "Tres cambios en las herramientas de pago. La página de precios ahora presenta tres opciones claras en vez de un muro de trece — el catálogo completo sigue ahí, a un clic. Cada herramienta de pago incluye ahora un compromiso: ¿no te convence el resultado? Lo regeneramos gratis. Y tras comparar tu currículum con una oferta real, el informe puede preparar esa candidatura exacta — currículum adaptado, carta a juego y lista honesta de brechas — con una muestra gratis desde tu propio currículum antes de pagar."
     },
     "roleTargeting": {
       "title": "Tu informe ahora te dice a qué postularte",
