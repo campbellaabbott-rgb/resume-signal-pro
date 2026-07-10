@@ -2785,6 +2785,14 @@
     }
   },
   "changelogEntries": {
+    "countryCvPages": {
+      "title": "Regras de currículo para 56 países — grátis, em 6 idiomas",
+      "description": "Novo: um guia por país de como um currículo realmente é em 56 mercados — normas de foto (com estatísticas e leis reais), extensão esperada, dados pessoais e o nome do documento local. Gerado pelo mesmo motor que o scanner aplica quando seu currículo mira aquele mercado, com páginas em português, inglês, espanhol, francês, alemão e holandês. Comece em /cv-standards."
+    },
+    "sharperGeo": {
+      "title": "O escaneamento agora segue para onde você vai, não só onde esteve",
+      "description": "Escreva \"relocating to London\" ou \"seeking roles in Germany\" e o escaneamento compara com o mercado de destino — antes, você era julgado pela localização atual. Endereços reais (estado + ZIP dos EUA, código postal canadense, endereço alemão) agora pesam mais que uma cidade citada de passagem, ~34 países a mais são detectados, e uma segunda área especializada (como enfermagem + machine learning) agora aparece em vez de ser abafada pela profissão principal."
+    },
     "resumeLanguageReports": {
       "title": "Seu relatório agora fala o idioma do seu currículo",
       "description": "Escaneie um currículo escrito em português, francês, espanhol, alemão, holandês, italiano, hindi ou tagalo e o relatório inteiro — dicas, alertas, reescritas, sugestões de palavras-chave — volta nesse idioma. Antes isso funcionava só às vezes; agora o idioma é detectado de forma confiável antes de a análise começar, então não é mais questão de sorte. Bônus: o idioma do seu currículo também ajuda a identificar seu mercado de trabalho, para que os conselhos por país cheguem ao lugar certo."

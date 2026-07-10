@@ -2785,6 +2785,14 @@
     }
   },
   "changelogEntries": {
+    "countryCvPages": {
+      "title": "Les règles du CV dans 56 pays — gratuit, en 6 langues",
+      "description": "Nouveau : un guide par pays de ce à quoi ressemble vraiment un CV dans 56 marchés — normes de photo (avec statistiques et lois réelles), longueur attendue, données personnelles et nom du document local. Généré par le même moteur que le scanner applique quand votre CV vise ce marché, avec des pages en français, anglais, espagnol, allemand, portugais et néerlandais. Commencez sur /cv-standards."
+    },
+    "sharperGeo": {
+      "title": "Le scan suit désormais votre destination, pas seulement votre passé",
+      "description": "Écrivez « relocating to London » ou « seeking roles in Germany » et le scan se compare à votre marché de destination — avant, il vous jugeait sur votre lieu actuel. Il lit aussi les vraies adresses (état + ZIP américain, code postal canadien, adresse allemande) comme une preuve plus forte qu'une ville citée en passant, détecte ~34 pays de plus, et un second domaine spécialisé (comme infirmière + machine learning) apparaît désormais au lieu d'être noyé par la profession principale."
+    },
     "resumeLanguageReports": {
       "title": "Votre rapport parle désormais la langue de votre CV",
       "description": "Analysez un CV rédigé en français, espagnol, allemand, portugais, néerlandais, italien, hindi ou tagalog et l'intégralité du rapport — conseils, points d'alerte, réécritures, suggestions de mots-clés — revient dans cette langue. Avant, cela ne fonctionnait que parfois ; désormais la langue est détectée de façon fiable avant le début de l'analyse, ce n'est plus une question de chance. Bonus : la langue de votre CV aide aussi à identifier votre marché de l'emploi, pour que les conseils par pays visent le bon endroit."

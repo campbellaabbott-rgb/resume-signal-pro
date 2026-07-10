@@ -2785,6 +2785,14 @@
     }
   },
   "changelogEntries": {
+    "countryCvPages": {
+      "title": "Lebenslauf-Regeln für 56 Länder — kostenlos, in 6 Sprachen",
+      "description": "Neu: ein Länder-Guide, wie ein Lebenslauf in 56 Märkten wirklich aussieht — Foto-Normen (mit echten Statistiken und Gesetzen), erwartete Länge, persönliche Daten und der Name des lokalen Dokuments. Erzeugt aus derselben Engine, die der Scanner anwendet, wenn Ihr Lebenslauf diesen Markt anvisiert — mit Seiten auf Deutsch, Englisch, Spanisch, Französisch, Portugiesisch und Niederländisch. Start: /cv-standards."
+    },
+    "sharperGeo": {
+      "title": "Der Scan folgt jetzt Ihrem Ziel, nicht nur Ihrer Herkunft",
+      "description": "Schreiben Sie \"relocating to London\" oder \"seeking roles in Germany\", und der Scan vergleicht mit Ihrem Zielmarkt — vorher zählte nur der aktuelle Standort. Echte Adressen (US-Staat + ZIP, kanadische Postleitzahl, deutsche Anschrift) wiegen jetzt schwerer als eine beiläufig erwähnte Stadt, ~34 weitere Länder werden erkannt, und ein spezialisiertes Zweitfeld (etwa Pflege + Machine Learning) erscheint jetzt, statt vom Hauptberuf verdrängt zu werden."
+    },
     "resumeLanguageReports": {
       "title": "Ihr Bericht spricht jetzt die Sprache Ihres Lebenslaufs",
       "description": "Scannen Sie einen auf Deutsch, Französisch, Spanisch, Portugiesisch, Niederländisch, Italienisch, Hindi oder Tagalog verfassten Lebenslauf, und der gesamte Bericht — Tipps, Warnsignale, Umformulierungen, Keyword-Vorschläge — kommt in dieser Sprache zurück. Das funktionierte bisher nur manchmal; jetzt wird die Sprache zuverlässig erkannt, bevor die Analyse startet — kein Glücksspiel mehr. Bonus: Die Sprache Ihres Lebenslaufs hilft auch dabei, Ihren Arbeitsmarkt zu bestimmen, damit länderspezifische Hinweise das richtige Land treffen."

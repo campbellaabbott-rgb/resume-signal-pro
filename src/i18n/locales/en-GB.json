@@ -2785,6 +2785,14 @@
     }
   },
   "changelogEntries": {
+    "countryCvPages": {
+      "title": "CV rules for 56 countries — free, in 6 languages",
+      "description": "New: a per-country guide to what a CV actually looks like in 56 markets — photo norms (with the real stats and laws), expected length, personal-data conventions, and the local document's name. Built from the same engine the scanner uses when your resume targets that market, with pages in English, Spanish, French, German, Portuguese, and Dutch. Start at /cv-standards."
+    },
+    "sharperGeo": {
+      "title": "The scan now follows where you're going, not just where you've been",
+      "description": "Write \"relocating to London\" or \"seeking roles in Germany\" and the scan now benchmarks against your destination market — previously it judged you by your current location. It also reads real addresses (a US state + ZIP, a Canadian postal code, a German street address) as stronger evidence than a city name in a bullet, detects ~34 more countries, and a specialist second field (like a nurse who builds machine-learning models) now shows up instead of being drowned out by the primary profession."
+    },
     "resumeLanguageReports": {
       "title": "Your report now speaks your résumé's language",
       "description": "Scan a résumé written in French, Spanish, German, Portuguese, Dutch, Italian, Hindi or Tagalog and the entire report — tips, red flags, rewrites, keyword suggestions — comes back in that language. This worked only sometimes before; now the language is detected reliably before the analysis starts, so it's no longer a coin flip. Bonus: the language your résumé is written in also helps pin down which job market you're in, so location-specific advice lands on the right country."

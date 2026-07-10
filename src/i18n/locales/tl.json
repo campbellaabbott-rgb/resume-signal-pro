@@ -2785,6 +2785,14 @@
     }
   },
   "changelogEntries": {
+    "countryCvPages": {
+      "title": "Mga panuntunan ng CV para sa 56 bansa — libre, sa 6 na wika",
+      "description": "Bago: gabay bawat bansa kung ano talaga ang hitsura ng CV sa 56 merkado — mga panuntunan sa litrato (may tunay na estadistika at batas), inaasahang haba, personal na datos, at pangalan ng lokal na dokumento. Gawa mula sa parehong engine na ginagamit ng scanner kapag tinatarget ng resume mo ang merkadong iyon, may mga pahina sa Ingles, Espanyol, Pranses, Aleman, Portuges, at Olandes. Magsimula sa /cv-standards."
+    },
+    "sharperGeo": {
+      "title": "Sinusundan na ngayon ng scan kung saan ka pupunta, hindi lang kung saan ka nanggaling",
+      "description": "Isulat ang \"relocating to London\" o \"seeking roles in Germany\" at ikukumpara ng scan sa iyong destinasyong merkado — dati, hinuhusgahan ka sa kasalukuyang lokasyon. Binabasa rin nito ang tunay na address (US state + ZIP, Canadian postal code, German address) bilang mas matibay na ebidensya kaysa lungsod na nabanggit lang, ~34 pang bansa ang natutukoy, at ang espesyalistang pangalawang larangan (tulad ng nursing + machine learning) ay lumalabas na ngayon sa halip na malunod sa pangunahing propesyon."
+    },
     "resumeLanguageReports": {
       "title": "Ang iyong ulat ay nagsasalita na ngayon ng wika ng iyong resume",
       "description": "Mag-scan ng resume na nakasulat sa Tagalog, French, Spanish, German, Portuguese, Dutch, Italian o Hindi at ang buong ulat — mga tip, babala, muling pagsulat, mungkahing keyword — ay babalik sa wikang iyon. Dati, paminsan-minsan lang itong gumagana; ngayon, maaasahang natutukoy ang wika bago magsimula ang pagsusuri, kaya hindi na ito sapalaran. Bonus: ang wika ng iyong resume ay tumutulong ding tukuyin kung aling job market ka naroroon, para tumama sa tamang bansa ang payo."

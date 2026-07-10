@@ -2785,6 +2785,14 @@
     }
   },
   "changelogEntries": {
+    "countryCvPages": {
+      "title": "Normas de CV para 56 países — gratis y en 6 idiomas",
+      "description": "Nuevo: una guía por país de cómo es realmente un CV en 56 mercados — normas de foto (con estadísticas y leyes reales), extensión esperada, datos personales y el nombre del documento local. Generada con el mismo motor que usa el escáner cuando tu currículum apunta a ese mercado, con páginas en español, inglés, francés, alemán, portugués y neerlandés. Empieza en /cv-standards."
+    },
+    "sharperGeo": {
+      "title": "El escáner ahora sigue a dónde vas, no solo dónde has estado",
+      "description": "Escribe \"relocating to London\" o \"seeking roles in Germany\" y el escáner compara contra tu mercado de destino — antes te juzgaba por tu ubicación actual. También lee direcciones reales (estado + ZIP de EE. UU., código postal canadiense, dirección alemana) como evidencia más fuerte que una ciudad mencionada de pasada, detecta ~34 países más, y un segundo campo especializado (como enfermería + aprendizaje automático) ahora aparece en vez de quedar ahogado por la profesión principal."
+    },
     "resumeLanguageReports": {
       "title": "Tu informe ahora habla el idioma de tu currículum",
       "description": "Escanea un currículum escrito en español, francés, alemán, portugués, neerlandés, italiano, hindi o tagalo y todo el informe — consejos, señales de alerta, reescrituras, sugerencias de palabras clave — vuelve en ese idioma. Antes esto funcionaba solo a veces; ahora el idioma se detecta de forma fiable antes de empezar el análisis, así que ya no es cuestión de suerte. Además: el idioma en que está escrito tu currículum también ayuda a identificar tu mercado laboral, para que los consejos por país lleguen al lugar correcto."

@@ -2785,6 +2785,14 @@
     }
   },
   "changelogEntries": {
+    "countryCvPages": {
+      "title": "Cv-regels voor 56 landen — gratis, in 6 talen",
+      "description": "Nieuw: een gids per land over hoe een cv er in 56 markten echt uitziet — fotonormen (met echte statistieken en wetten), verwachte lengte, persoonsgegevens en de naam van het lokale document. Gemaakt met dezelfde engine die de scanner toepast wanneer je cv op die markt mikt, met pagina's in het Nederlands, Engels, Spaans, Frans, Duits en Portugees. Begin op /cv-standards."
+    },
+    "sharperGeo": {
+      "title": "De scan volgt nu waar je heen gaat, niet alleen waar je was",
+      "description": "Schrijf \"relocating to London\" of \"seeking roles in Germany\" en de scan vergelijkt met je bestemmingsmarkt — voorheen werd je beoordeeld op je huidige locatie. Echte adressen (Amerikaanse staat + ZIP, Canadese postcode, Duits adres) wegen nu zwaarder dan een terloops genoemde stad, ~34 extra landen worden herkend, en een gespecialiseerd tweede vakgebied (zoals verpleging + machine learning) verschijnt nu in plaats van te verdrinken in het hoofdberoep."
+    },
     "resumeLanguageReports": {
       "title": "Je rapport spreekt nu de taal van je cv",
       "description": "Scan een cv geschreven in het Nederlands, Frans, Spaans, Duits, Portugees, Italiaans, Hindi of Tagalog en het volledige rapport — tips, waarschuwingen, herschrijvingen, trefwoordsuggesties — komt terug in die taal. Dit werkte eerder maar soms; nu wordt de taal betrouwbaar gedetecteerd voordat de analyse start, dus het is geen kwestie van geluk meer. Bonus: de taal van je cv helpt ook je arbeidsmarkt te bepalen, zodat landspecifiek advies op het juiste land gericht is."
