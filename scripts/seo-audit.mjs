@@ -1,8 +1,10 @@
 // Full-site SEO + regional-integrity audit over dist/ (the crawler-facing truth).
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const DIST = "/Users/campbellaabbott/Documents/GitHub/resume-signal-pro/dist";
+// Repo-relative so the audit runs on any checkout/CI, not just one machine.
+const DIST = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
 const SITE = "https://resumebooster.work";
 
 // collect all prerendered html (the <path>.html layout; skip the /index.html duplicates)
