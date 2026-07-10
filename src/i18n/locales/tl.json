@@ -2798,6 +2798,10 @@
     }
   },
   "changelogEntries": {
+    "roleTargeting": {
+      "title": "Sinasabi na ngayon ng ulat mo kung saan ka dapat mag-apply",
+      "description": "Bawat libreng scan ay nagtatapos na ngayon sa game plan, hindi lang grado. May bagong card na naglilista ng mga role na talagang papasa ang resume mo sa screening — mula sa parehong detection na ginamit ng iskor mo, may mga search na nakatutok sa iyong target na merkado — kasama ang mga role na abot-kaya sa pamamagitan ng iyong pangalawang lakas, may tapat na paalala kung ano talaga ang kulang. At kung nag-scan ka nang walang job posting, iminumungkahi na ngayon ng ulat ang pinaka-epektibong susunod na hakbang: mag-paste ng totoong opening at mag-rescan laban sa eksaktong requirements nito, libre."
+    },
     "countryCvPages": {
       "title": "Mga panuntunan ng CV para sa 56 bansa — libre, sa 6 na wika",
       "description": "Bago: gabay bawat bansa kung ano talaga ang hitsura ng CV sa 56 merkado — mga panuntunan sa litrato (may tunay na estadistika at batas), inaasahang haba, personal na datos, at pangalan ng lokal na dokumento. Gawa mula sa parehong engine na ginagamit ng scanner kapag tinatarget ng resume mo ang merkadong iyon, may mga pahina sa Ingles, Espanyol, Pranses, Aleman, Portuges, at Olandes. Magsimula sa /cv-standards."

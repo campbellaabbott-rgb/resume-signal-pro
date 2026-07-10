@@ -2798,6 +2798,10 @@
     }
   },
   "changelogEntries": {
+    "roleTargeting": {
+      "title": "Tu informe ahora te dice a qué postularte",
+      "description": "Cada escaneo gratuito termina ahora con un plan de acción, no solo una nota. Una nueva tarjeta lista los puestos para los que tu currículum realmente pasa el filtro — de la misma detección que usó tu puntuación, con búsquedas apuntadas a tu mercado objetivo — más los puestos a tu alcance por tu fortaleza secundaria, con una nota honesta sobre cuál es la brecha real. Y si escaneaste sin una oferta, el informe ahora te propone el paso de mayor impacto: pega una oferta real y reescanea contra sus requisitos exactos, gratis."
+    },
     "countryCvPages": {
       "title": "Normas de CV para 56 países — gratis y en 6 idiomas",
       "description": "Nuevo: una guía por país de cómo es realmente un CV en 56 mercados — normas de foto (con estadísticas y leyes reales), extensión esperada, datos personales y el nombre del documento local. Generada con el mismo motor que usa el escáner cuando tu currículum apunta a ese mercado, con páginas en español, inglés, francés, alemán, portugués y neerlandés. Empieza en /cv-standards."

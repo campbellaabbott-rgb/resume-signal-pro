@@ -2798,6 +2798,10 @@
     }
   },
   "changelogEntries": {
+    "roleTargeting": {
+      "title": "Seu relatório agora diz para o que você deve se candidatar",
+      "description": "Cada escaneamento gratuito agora termina com um plano de ação, não só uma nota. Um novo cartão lista os cargos para os quais seu currículo realmente passa na triagem — da mesma detecção que sua pontuação usou, com buscas apontadas para seu mercado-alvo — mais os cargos ao seu alcance pela sua força secundária, com uma nota honesta sobre qual é a lacuna real. E se você escaneou sem uma vaga, o relatório agora propõe o passo de maior impacto: cole uma vaga real e reescaneie contra os requisitos exatos, grátis."
+    },
     "countryCvPages": {
       "title": "Regras de currículo para 56 países — grátis, em 6 idiomas",
       "description": "Novo: um guia por país de como um currículo realmente é em 56 mercados — normas de foto (com estatísticas e leis reais), extensão esperada, dados pessoais e o nome do documento local. Gerado pelo mesmo motor que o scanner aplica quando seu currículo mira aquele mercado, com páginas em português, inglês, espanhol, francês, alemão e holandês. Comece em /cv-standards."

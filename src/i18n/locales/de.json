@@ -2798,6 +2798,10 @@
     }
   },
   "changelogEntries": {
+    "roleTargeting": {
+      "title": "Ihr Bericht sagt Ihnen jetzt, worauf Sie sich bewerben sollten",
+      "description": "Jeder kostenlose Scan endet jetzt mit einem Spielplan, nicht nur einer Note. Eine neue Karte listet die Rollen, für die Ihr Lebenslauf wirklich durchs Screening kommt — aus derselben Erkennung wie Ihr Score, mit Suchen, die auf Ihren Zielmarkt zielen — plus die Rollen in Reichweite über Ihre zweite Stärke, mit einer ehrlichen Notiz, worin die Lücke wirklich besteht. Und wenn Sie ohne Stellenausschreibung gescannt haben, schlägt der Bericht jetzt den wirkungsvollsten nächsten Schritt vor: eine echte Stelle einfügen und kostenlos gegen deren exakte Anforderungen neu scannen."
+    },
     "countryCvPages": {
       "title": "Lebenslauf-Regeln für 56 Länder — kostenlos, in 6 Sprachen",
       "description": "Neu: ein Länder-Guide, wie ein Lebenslauf in 56 Märkten wirklich aussieht — Foto-Normen (mit echten Statistiken und Gesetzen), erwartete Länge, persönliche Daten und der Name des lokalen Dokuments. Erzeugt aus derselben Engine, die der Scanner anwendet, wenn Ihr Lebenslauf diesen Markt anvisiert — mit Seiten auf Deutsch, Englisch, Spanisch, Französisch, Portugiesisch und Niederländisch. Start: /cv-standards."

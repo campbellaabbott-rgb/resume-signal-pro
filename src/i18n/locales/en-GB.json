@@ -2798,6 +2798,10 @@
     }
   },
   "changelogEntries": {
+    "roleTargeting": {
+      "title": "Your report now tells you what to apply for",
+      "description": "Every free scan now ends with a game plan, not just a grade. A new card lists the roles your resume actually screens for — drawn from the same detection your score used, with search links pre-aimed at your target market — plus the roles within reach through your secondary strength, with an honest note on what the gap really is. And if you scanned without a job posting, the report now leads with the single highest-leverage next step: paste a real opening and rescan against its exact requirements, free."
+    },
     "countryCvPages": {
       "title": "CV rules for 56 countries — free, in 6 languages",
       "description": "New: a per-country guide to what a CV actually looks like in 56 markets — photo norms (with the real stats and laws), expected length, personal-data conventions, and the local document's name. Built from the same engine the scanner uses when your resume targets that market, with pages in English, Spanish, French, German, Portuguese, and Dutch. Start at /cv-standards."

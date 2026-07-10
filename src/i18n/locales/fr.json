@@ -2798,6 +2798,10 @@
     }
   },
   "changelogEntries": {
+    "roleTargeting": {
+      "title": "Votre rapport vous dit désormais à quoi postuler",
+      "description": "Chaque scan gratuit se termine maintenant par un plan d'action, pas seulement une note. Une nouvelle carte liste les postes pour lesquels votre CV passe réellement le filtre — issus de la même détection que votre score, avec des recherches orientées vers votre marché cible — plus les postes à votre portée via votre force secondaire, avec une note honnête sur l'écart réel. Et si vous avez scanné sans offre d'emploi, le rapport propose désormais l'étape la plus rentable : collez une vraie offre et rescannez selon ses exigences exactes, gratuitement."
+    },
     "countryCvPages": {
       "title": "Les règles du CV dans 56 pays — gratuit, en 6 langues",
       "description": "Nouveau : un guide par pays de ce à quoi ressemble vraiment un CV dans 56 marchés — normes de photo (avec statistiques et lois réelles), longueur attendue, données personnelles et nom du document local. Généré par le même moteur que le scanner applique quand votre CV vise ce marché, avec des pages en français, anglais, espagnol, allemand, portugais et néerlandais. Commencez sur /cv-standards."

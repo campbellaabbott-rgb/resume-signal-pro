@@ -2798,6 +2798,10 @@
     }
   },
   "changelogEntries": {
+    "roleTargeting": {
+      "title": "Je rapport vertelt nu waarop je moet solliciteren",
+      "description": "Elke gratis scan eindigt nu met een spelplan, niet alleen een cijfer. Een nieuwe kaart toont de rollen waarvoor je cv echt door de screening komt — uit dezelfde detectie als je score, met zoekopdrachten gericht op jouw doelmarkt — plus de rollen binnen bereik via je tweede sterkte, met een eerlijke noot over wat het gat werkelijk is. En als je zonder vacature scande, stelt het rapport nu de meest waardevolle vervolgstap voor: plak een echte vacature en scan gratis opnieuw tegen de exacte eisen."
+    },
     "countryCvPages": {
       "title": "Cv-regels voor 56 landen — gratis, in 6 talen",
       "description": "Nieuw: een gids per land over hoe een cv er in 56 markten echt uitziet — fotonormen (met echte statistieken en wetten), verwachte lengte, persoonsgegevens en de naam van het lokale document. Gemaakt met dezelfde engine die de scanner toepast wanneer je cv op die markt mikt, met pagina's in het Nederlands, Engels, Spaans, Frans, Duits en Portugees. Begin op /cv-standards."
