@@ -5,7 +5,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Sparkles, FileText, Crown, Package, Loader2, ArrowRight, Star, Shield, Zap, ShieldCheck, Flame, MessageSquare, TrendingUp, Send, Briefcase } from "lucide-react";
+import { Check, Sparkles, FileText, Crown, Package, Loader2, ArrowRight, Star, Shield, Zap, ShieldCheck, Flame, MessageSquare, TrendingUp, Send, Briefcase, ChevronDown } from "lucide-react";
 import { PRODUCTS, ProductId, isProductHidden } from "@/config/products";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,6 @@ import { ProductPreview } from "@/components/ProductPreview";
 import { getResumeFromSession } from "@/hooks/use-session-resume";
 import { useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
 
 const productIcons: Record<string, React.ElementType> = {
   basicKeywordFix: FileText,
@@ -96,7 +95,7 @@ export default function Pricing() {
           priceCurrency: "USD",
           lowPrice: "0",
           highPrice: "59",
-          offerCount: Object.keys(PRODUCTS).length + 1,
+          offerCount: (Object.keys(PRODUCTS) as ProductId[]).filter((k) => !isProductHidden(k)).length + 1,
         },
       }) }} />
       <Header />
