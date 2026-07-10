@@ -2812,6 +2812,10 @@
     }
   },
   "changelogEntries": {
+    "suiteV2": {
+      "title": "Des prix plus simples, une vraie garantie et de l'aide pour postuler",
+      "description": "Trois changements dans les outils payants. La page tarifs présente désormais trois choix clairs au lieu d'un mur de treize — le catalogue complet reste accessible en un clic. Chaque outil payant est couvert par une garantie de satisfaction : pas satisfait du résultat ? Régénération gratuite ou remboursement (les Conditions le disent désormais noir sur blanc). Et après avoir comparé votre CV à une vraie offre, le rapport peut préparer cette candidature précise — CV adapté, lettre assortie, liste honnête des écarts — avec un aperçu gratuit depuis votre propre CV avant de payer."
+    },
     "roleTargeting": {
       "title": "Votre rapport vous dit désormais à quoi postuler",
       "description": "Chaque scan gratuit se termine maintenant par un plan d'action, pas seulement une note. Une nouvelle carte liste les postes pour lesquels votre CV passe réellement le filtre — issus de la même détection que votre score, avec des recherches orientées vers votre marché cible — plus les postes à votre portée via votre force secondaire, avec une note honnête sur l'écart réel. Et si vous avez scanné sans offre d'emploi, le rapport propose désormais l'étape la plus rentable : collez une vraie offre et rescannez selon ses exigences exactes, gratuitement."

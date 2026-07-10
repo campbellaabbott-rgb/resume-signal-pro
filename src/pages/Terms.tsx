@@ -57,7 +57,7 @@ export default function Terms() {
                 The Service costs {fullAnalysisPrice} per analysis. Payment is processed securely through Stripe, a third-party payment processor. By making a purchase, you authorize us to charge your payment method for the total amount.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                <strong className="text-foreground">No Refunds:</strong> All sales are final. Due to the immediate delivery of digital analysis results upon payment, refunds are not available except where required by applicable law. By completing a purchase, you acknowledge and agree that you are waiving any right to a refund.
+                <strong className="text-foreground">Satisfaction Guarantee &amp; Refunds:</strong> If you are not satisfied with the output of a paid tool, contact us (for example by replying to your purchase receipt) and we will regenerate the deliverable free of charge or refund that purchase — your choice. Beyond this guarantee, because digital analysis results are delivered immediately upon payment, additional refunds are not available except where required by applicable law.
               </p>
               <p className="text-muted-foreground leading-relaxed">
                 <strong className="text-foreground">Chargebacks:</strong> Initiating a chargeback or payment dispute without first contacting us may result in permanent suspension of your access to the Service. We reserve the right to dispute any chargeback and provide evidence of service delivery.
