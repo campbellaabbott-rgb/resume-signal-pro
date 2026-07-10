@@ -18,6 +18,8 @@ import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 import { ProductPreview } from "@/components/ProductPreview";
 import { getResumeFromSession } from "@/hooks/use-session-resume";
 import { useState } from "react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 
 const productIcons: Record<string, React.ElementType> = {
   basicKeywordFix: FileText,
@@ -40,9 +42,9 @@ const productIcons: Record<string, React.ElementType> = {
 // Flagship-first: the complete rewrite package leads; single-purpose tools
 // follow. Order is a merchandising decision — the strongest deliverable
 // (rewritten resume content) earns the first slot.
+// premiumPackage + freelanceBoost live in the ladder above the fold; the
+// collapsed catalog carries the rest.
 const productOrder: ProductId[] = ([
-  'premiumPackage',
-  'freelanceBoost',
   'atsDefense',
   'careerSnapshot',
   'graduateGamePlan',
@@ -131,11 +133,63 @@ export default function Pricing() {
             </div>
           </div>
 
+          {/* Risk reversal — the last-step trust flinch is the funnel's known leak */}
+          <p className="text-center text-sm text-muted-foreground mb-12 max-w-xl mx-auto">
+            ✓ {t('pricingPage.guarantee')}
+          </p>
+
+          {/* The ladder: three choices convert; thirteen don't. */}
+          <div className="text-center mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold mb-1">{t('pricingPage.ladderTitle')}</h2>
+            <p className="text-muted-foreground">{t('pricingPage.ladderSubtitle')}</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-14">
+            <div className="flex flex-col p-6 rounded-2xl border-2 border-success/50 bg-card">
+              <h3 className="font-bold text-lg mb-1">{t('pricingPage.ladderFreeTitle')}</h3>
+              <p className="text-3xl font-bold text-success mb-2">$0</p>
+              <p className="text-sm text-muted-foreground mb-4 flex-1">{t('pricingPage.ladderFreeDesc')}</p>
+              <Button asChild variant="outline" className="w-full gap-2 border-success/50">
+                <a href="/#upload">{t('pricingPage.ladderFreeCta')}<ArrowRight className="w-4 h-4" /></a>
+              </Button>
+            </div>
+            <div className="relative flex flex-col p-6 rounded-2xl border-2 border-primary ring-2 ring-primary/20 bg-card shadow-xl">
+              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground shadow-lg">{PRODUCTS.premiumPackage.badge}</Badge>
+              <h3 className="font-bold text-lg mb-1">{PRODUCTS.premiumPackage.name}</h3>
+              <p className="text-3xl font-bold mb-2">${PRODUCTS.premiumPackage.priceUsd}</p>
+              <p className="text-sm text-muted-foreground mb-4 flex-1">{t('pricingPage.ladderFixDesc')}</p>
+              <Button onClick={() => handlePurchase('premiumPackage')} disabled={isLoading} className="w-full gap-2">
+                {isLoading && currentProduct === 'premiumPackage' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                {t('pricingPage.getProduct', { name: PRODUCTS.premiumPackage.name.split(' ')[0] })}
+              </Button>
+              <ProductPreview productId="premiumPackage" resumeText={sessionResume.resumeText} jobDescription={sessionResume.jobDescriptionText ?? undefined} className="mt-3" />
+            </div>
+            <div className="flex flex-col p-6 rounded-2xl border-2 border-border bg-card hover:border-primary/50 transition-all">
+              <h3 className="font-bold text-lg mb-1">{PRODUCTS.freelanceBoost.name}</h3>
+              <p className="text-3xl font-bold mb-2">${PRODUCTS.freelanceBoost.priceUsd}</p>
+              <p className="text-sm text-muted-foreground mb-4 flex-1">{t('pricingPage.ladderSpecialistDesc')}</p>
+              <Button asChild variant="outline" className="w-full gap-2">
+                <Link to="/freelance-boost">{PRODUCTS.freelanceBoost.badge}<ArrowRight className="w-4 h-4" /></Link>
+              </Button>
+              <ProductPreview productId="freelanceBoost" resumeText={sessionResume.resumeText} jobDescription={sessionResume.jobDescriptionText ?? undefined} className="mt-3" />
+            </div>
+          </div>
+
           {/* Pro subscription — all tools, one price */}
           <div className="max-w-xl mx-auto mb-16">
             <ProSubscriptionCard />
           </div>
 
+          {/* Everything else, collapsed: the SKU wall demonstrably converts ~0 */}
+          <Collapsible>
+            <div className="text-center mb-10">
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  {t('pricingPage.allToolsToggle', { count: productOrder.length + 2 })}
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+            <CollapsibleContent>
           {/* $5 Add-Ons Section */}
           <AddOnsShowcase
             variant="full"
@@ -265,6 +319,9 @@ export default function Pricing() {
               );
             })}
           </div>
+
+            </CollapsibleContent>
+          </Collapsible>
 
           {/* Value Comparison */}
           <div className="max-w-2xl mx-auto mb-16">

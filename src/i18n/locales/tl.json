@@ -9,7 +9,8 @@
     "unlockCta": "I-unlock ang {{name}} — {{price}}",
     "error": "Hindi makabuo ng sample ngayon.",
     "tryAgain": "Subukan muli",
-    "tryAnother": "Sumubok ng iba"
+    "tryAnother": "Sumubok ng iba",
+    "guarantee": "Hindi masaya sa resulta? Libreng regeneration o refund."
   },
   "header": {
     "tagline": "Recruiter-grade AI feedback",
@@ -1619,6 +1620,10 @@
       "placeholder": "I-paste dito ang buong job posting…",
       "cta": "I-rescan laban sa posting na ito",
       "tooShort": "I-paste ang buong posting para sa totoong paghahambing"
+    },
+    "applyBridge": {
+      "title": "Ihanda ang eksaktong aplikasyong ito",
+      "desc": "Kakatapos mo lang itapat sa totoong posting — ginagawa itong aplikasyon ng Apply Assistant: resume mong naka-angkop sa trabahong ito, akmang cover letter, at tapat na listahan ng kakulangan. Tingnan muna ang sample mula sa sarili mong resume."
     }
   },
   "analysisPreviewSample": {
@@ -2659,7 +2664,16 @@
     "allProductsOneTime": "Lahat ng produkto ay isang-pagkakataong bili na may instant na access.",
     "freeScanLink": "libreng scan",
     "seeScoreFirst": "para makita muna ang iyong score.",
-    "tryFreeScanFirst": "Subukan Muna ang Libreng Scan"
+    "tryFreeScanFirst": "Subukan Muna ang Libreng Scan",
+    "ladderTitle": "Tatlong daan papasok",
+    "ladderSubtitle": "Karamihan ay nangangailangan ng eksaktong isa sa mga ito — nasa ibaba ang buong katalogo kung gusto mo.",
+    "ladderFreeTitle": "Magsimula nang libre",
+    "ladderFreeDesc": "Ang buong diagnostic scan — iskor, benchmark, muling isinulat ang pinakamahina mong mga linya, mga target na role. Walang sign-up.",
+    "ladderFreeCta": "I-scan ang resume ko nang libre",
+    "ladderFixDesc": "Ang kumpletong ayos: buong pagsusuri, resume mong muling isinulat na malinis sa ATS, at akmang cover letter.",
+    "ladderSpecialistDesc": "Para sa mga nagpapalit ng karera: freelance, gig, at side-hustle na trabaho na isinalin sa recruiter-grade na karanasan.",
+    "allToolsToggle": "Tingnan ang lahat ng tool ({{count}} pa)",
+    "guarantee": "Sakop ang bawat bayad na tool: hindi masaya sa resulta? Libreng regeneration o refund — sumagot lang sa iyong resibo."
   },
   "scanPackPurchase": {
     "topUpCredits": "I-top Up ang Credits",

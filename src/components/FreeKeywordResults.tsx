@@ -45,6 +45,7 @@ import { ResumeXRay } from "./ResumeXRay";
 import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard, FreelanceGuidanceCard, IndustryChecksCard, CountryStandardsCard, DiagnosticHeader, FindingsIndex, computeVendorChecks, type Finding } from "./ReportInsightCards";
 import { EmailReportCapture } from "./EmailReportCapture";
 import { RoleTargetingCard, CheckAgainstPostingCard } from "./RoleTargeting";
+import { ProductPreview } from "./ProductPreview";
 import { CardErrorBoundary } from "./CardErrorBoundary";
 import { getAvailableIndustries } from "./IndustryConfidenceIndicator";
 import { diffWords } from "@/lib/diff-words";
@@ -1774,6 +1775,17 @@ export function FreeKeywordResults({
         industryBlend={industryBlend}
         countryName={countryStandards?.country ?? null}
       />
+
+      {/* The highest-intent moment in the product: the user just checked
+          against a SPECIFIC opening. Offer to prepare that exact application,
+          preview-first, from their own resume against this posting. */}
+      {keywordSource?.source === 'job_description' && resumeText && (
+        <div className="rounded-2xl border border-primary/30 bg-card p-5 mb-4">
+          <h3 className="font-bold text-foreground mb-1">{t('freeResults.applyBridge.title', 'Prepare this exact application')}</h3>
+          <p className="text-xs text-muted-foreground mb-3">{t('freeResults.applyBridge.desc', 'You just checked against a real posting — Apply Assistant turns it into a submission: your resume tailored to this job, a matching cover letter, and an honest gap list. Preview it from your own resume first.')}</p>
+          <ProductPreview productId="applyAssistant" resumeText={resumeText} jobDescription={jobDescriptionText} industry={effectiveIndustry} />
+        </div>
+      )}
 
       {/* Specimen header — report ID, engine, provenance */}
       {reportMeta && <DiagnosticHeader meta={reportMeta} candidateName={candidateName} />}

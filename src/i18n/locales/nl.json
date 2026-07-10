@@ -9,7 +9,8 @@
     "unlockCta": "{{name}} ontgrendelen — {{price}}",
     "error": "Kon nu geen voorbeeld genereren.",
     "tryAgain": "Opnieuw proberen",
-    "tryAnother": "Probeer een andere"
+    "tryAnother": "Probeer een andere",
+    "guarantee": "Niet tevreden met het resultaat? Gratis regeneratie of terugbetaling."
   },
   "header": {
     "tagline": "Recruiter-niveau AI-feedback",
@@ -1619,6 +1620,10 @@
       "placeholder": "Plak hier de volledige vacature…",
       "cta": "Opnieuw scannen tegen deze vacature",
       "tooShort": "Plak de volledige vacature voor een echte vergelijking"
+    },
+    "applyBridge": {
+      "title": "Bereid precies deze sollicitatie voor",
+      "desc": "Je hebt net getoetst aan een echte vacature — Apply Assistant maakt er een sollicitatie van: je cv afgestemd op deze baan, een bijpassende brief en een eerlijke lijst van hiaten. Bekijk eerst een voorbeeld uit je eigen cv."
     }
   },
   "analysisPreviewSample": {
@@ -2659,7 +2664,16 @@
     "allProductsOneTime": "Alle producten zijn eenmalige aankopen met directe toegang.",
     "freeScanLink": "gratis scan",
     "seeScoreFirst": "om eerst je score te zien.",
-    "tryFreeScanFirst": "Probeer eerst de gratis scan"
+    "tryFreeScanFirst": "Probeer eerst de gratis scan",
+    "ladderTitle": "Drie ingangen",
+    "ladderSubtitle": "De meeste mensen hebben er precies één nodig — de rest van de catalogus staat eronder als je wilt.",
+    "ladderFreeTitle": "Begin gratis",
+    "ladderFreeDesc": "De volledige diagnosescan — score, benchmarks, je zwakste regels herschreven, doelrollen. Zonder registratie.",
+    "ladderFreeCta": "Scan mijn cv gratis",
+    "ladderFixDesc": "De complete oplossing: volledige analyse, je cv ATS-schoon herschreven en een passende sollicitatiebrief.",
+    "ladderSpecialistDesc": "Voor carrièreswitchers: freelance-, gig- en projectwerk vertaald naar ervaring op recruiterniveau.",
+    "allToolsToggle": "Bekijk alle tools ({{count}} meer)",
+    "guarantee": "Elke betaalde tool is gedekt: niet tevreden met het resultaat? Gratis regeneratie of terugbetaling — beantwoord gewoon je bon."
   },
   "scanPackPurchase": {
     "topUpCredits": "Credits opwaarderen",

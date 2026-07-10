@@ -9,7 +9,8 @@
     "unlockCta": "Desbloquear {{name}} — {{price}}",
     "error": "Não foi possível gerar um exemplo agora.",
     "tryAgain": "Tentar novamente",
-    "tryAnother": "Tentar outro"
+    "tryAnother": "Tentar outro",
+    "guarantee": "Não gostou do resultado? Regeneração grátis ou reembolso."
   },
   "header": {
     "tagline": "Feedback de IA de nível recrutador",
@@ -1619,6 +1620,10 @@
       "placeholder": "Cole a vaga completa aqui…",
       "cta": "Reescanear contra esta vaga",
       "tooShort": "Cole a vaga completa para uma comparação real"
+    },
+    "applyBridge": {
+      "title": "Prepare esta candidatura exata",
+      "desc": "Você acabou de se comparar com uma vaga real — o Apply Assistant a transforma em candidatura: seu currículo adaptado a esta vaga, uma carta combinando e uma lista honesta de lacunas. Veja antes uma amostra a partir do seu próprio currículo."
     }
   },
   "analysisPreviewSample": {
@@ -2659,7 +2664,16 @@
     "allProductsOneTime": "Todos os produtos são compras únicas com acesso instantâneo.",
     "freeScanLink": "verificação gratuita",
     "seeScoreFirst": "para ver primeiro a sua pontuação.",
-    "tryFreeScanFirst": "Experimentar primeiro a verificação gratuita"
+    "tryFreeScanFirst": "Experimentar primeiro a verificação gratuita",
+    "ladderTitle": "Três portas de entrada",
+    "ladderSubtitle": "A maioria precisa exatamente de uma delas — o resto do catálogo está abaixo, se quiser.",
+    "ladderFreeTitle": "Comece grátis",
+    "ladderFreeDesc": "O escaneamento diagnóstico completo — pontuação, comparativos, suas piores linhas reescritas, cargos-alvo. Sem cadastro.",
+    "ladderFreeCta": "Escanear meu currículo grátis",
+    "ladderFixDesc": "A solução completa: análise total, seu currículo reescrito limpo para ATS e uma carta de apresentação sob medida.",
+    "ladderSpecialistDesc": "Para quem muda de carreira: trabalho freelance e por projetos traduzido em experiência de nível profissional.",
+    "allToolsToggle": "Ver todas as ferramentas ({{count}} a mais)",
+    "guarantee": "Toda ferramenta paga está coberta: não gostou do resultado? Regeneração grátis ou reembolso — basta responder ao seu recibo."
   },
   "scanPackPurchase": {
     "topUpCredits": "Recarregar créditos",

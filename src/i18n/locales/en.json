@@ -9,7 +9,8 @@
     "unlockCta": "Unlock {{name}} — {{price}}",
     "error": "Couldn't generate a sample right now.",
     "tryAgain": "Try again",
-    "tryAnother": "Try another"
+    "tryAnother": "Try another",
+    "guarantee": "Not happy with the output? Free regeneration or refund."
   },
   "header": {
     "tagline": "Recruiter-grade AI feedback",
@@ -1619,6 +1620,10 @@
       "placeholder": "Paste the full job posting here…",
       "cta": "Rescan against this posting",
       "tooShort": "Paste the full posting for a real comparison"
+    },
+    "applyBridge": {
+      "title": "Prepare this exact application",
+      "desc": "You just checked against a real posting — Apply Assistant turns it into a submission: your resume tailored to this job, a matching cover letter, and an honest gap list. Preview it from your own resume first."
     }
   },
   "analysisPreviewSample": {
@@ -2659,7 +2664,16 @@
     "allProductsOneTime": "All products are one-time purchases with instant access.",
     "freeScanLink": "free scan",
     "seeScoreFirst": "to see your score first.",
-    "tryFreeScanFirst": "Try Free Scan First"
+    "tryFreeScanFirst": "Try Free Scan First",
+    "ladderTitle": "Three ways in",
+    "ladderSubtitle": "Most people need exactly one of these — the rest of the catalog is below if you want it.",
+    "ladderFreeTitle": "Start free",
+    "ladderFreeDesc": "The full diagnostic scan — score, benchmarks, weakest bullets rewritten, role targeting. No sign-up.",
+    "ladderFreeCta": "Scan my resume free",
+    "ladderFixDesc": "The complete fix: full analysis, your resume rewritten ATS-clean, and a tailored cover letter.",
+    "ladderSpecialistDesc": "For career changers: freelance, gig, and side-hustle work translated into recruiter-grade experience.",
+    "allToolsToggle": "See every tool ({{count}} more)",
+    "guarantee": "Every paid tool is covered: not happy with the output? Free regeneration or a refund — just reply to your receipt."
   },
   "scanPackPurchase": {
     "topUpCredits": "Top Up Credits",

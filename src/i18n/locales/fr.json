@@ -9,7 +9,8 @@
     "unlockCta": "Débloquer {{name}} — {{price}}",
     "error": "Impossible de générer un exemple pour le moment.",
     "tryAgain": "Réessayer",
-    "tryAnother": "Essayer un autre"
+    "tryAnother": "Essayer un autre",
+    "guarantee": "Pas satisfait du résultat ? Régénération gratuite ou remboursement."
   },
   "header": {
     "tagline": "Feedback IA niveau recruteur",
@@ -1619,6 +1620,10 @@
       "placeholder": "Collez l'offre d'emploi complète ici…",
       "cta": "Rescanner avec cette offre",
       "tooShort": "Collez l'offre complète pour une vraie comparaison"
+    },
+    "applyBridge": {
+      "title": "Préparez cette candidature précise",
+      "desc": "Vous venez de vous comparer à une vraie offre — Apply Assistant en fait une candidature : votre CV adapté à ce poste, une lettre assortie et une liste honnête des écarts. Voyez d'abord un échantillon depuis votre propre CV."
     }
   },
   "analysisPreviewSample": {
@@ -2659,7 +2664,16 @@
     "allProductsOneTime": "Tous les produits sont des achats uniques avec accès instantané.",
     "freeScanLink": "scan gratuit",
     "seeScoreFirst": "pour voir d'abord votre score.",
-    "tryFreeScanFirst": "Essayer le scan gratuit d'abord"
+    "tryFreeScanFirst": "Essayer le scan gratuit d'abord",
+    "ladderTitle": "Trois portes d'entrée",
+    "ladderSubtitle": "La plupart des gens n'ont besoin que d'une seule — le reste du catalogue est en dessous si vous y tenez.",
+    "ladderFreeTitle": "Commencez gratuitement",
+    "ladderFreeDesc": "Le scan diagnostic complet — score, comparatifs, vos pires lignes réécrites, postes cibles. Sans inscription.",
+    "ladderFreeCta": "Scanner mon CV gratuitement",
+    "ladderFixDesc": "La correction complète : analyse totale, votre CV réécrit compatible ATS et une lettre de motivation sur mesure.",
+    "ladderSpecialistDesc": "Pour les reconversions : le travail freelance et les missions traduits en expérience de niveau recruteur.",
+    "allToolsToggle": "Voir tous les outils ({{count}} de plus)",
+    "guarantee": "Chaque outil payant est couvert : pas satisfait du résultat ? Régénération gratuite ou remboursement — répondez à votre reçu."
   },
   "scanPackPurchase": {
     "topUpCredits": "Recharger les crédits",

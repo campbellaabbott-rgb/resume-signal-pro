@@ -9,7 +9,8 @@
     "unlockCta": "{{name}} freischalten — {{price}}",
     "error": "Beispiel konnte gerade nicht erstellt werden.",
     "tryAgain": "Erneut versuchen",
-    "tryAnother": "Anderes ausprobieren"
+    "tryAnother": "Anderes ausprobieren",
+    "guarantee": "Nicht zufrieden mit dem Ergebnis? Kostenlose Neugenerierung oder Rückerstattung."
   },
   "header": {
     "tagline": "Recruiter-KI-Feedback",
@@ -1619,6 +1620,10 @@
       "placeholder": "Vollständige Stellenausschreibung hier einfügen…",
       "cta": "Gegen diese Stelle neu scannen",
       "tooShort": "Fügen Sie die vollständige Ausschreibung ein"
+    },
+    "applyBridge": {
+      "title": "Genau diese Bewerbung vorbereiten",
+      "desc": "Sie haben gerade gegen eine echte Ausschreibung geprüft — Apply Assistant macht daraus eine Bewerbung: Ihr Lebenslauf auf diese Stelle zugeschnitten, ein passendes Anschreiben und eine ehrliche Lückenliste. Sehen Sie zuerst eine Probe aus Ihrem eigenen Lebenslauf."
     }
   },
   "analysisPreviewSample": {
@@ -2659,7 +2664,16 @@
     "allProductsOneTime": "Alle Produkte sind Einmalkäufe mit sofortigem Zugang.",
     "freeScanLink": "kostenlosen Scan",
     "seeScoreFirst": "um zuerst deine Punktzahl zu sehen.",
-    "tryFreeScanFirst": "Zuerst kostenlosen Scan ausprobieren"
+    "tryFreeScanFirst": "Zuerst kostenlosen Scan ausprobieren",
+    "ladderTitle": "Drei Wege hinein",
+    "ladderSubtitle": "Die meisten brauchen genau einen davon — der restliche Katalog steht darunter, falls gewünscht.",
+    "ladderFreeTitle": "Kostenlos starten",
+    "ladderFreeDesc": "Der vollständige Diagnose-Scan — Score, Benchmarks, Ihre schwächsten Zeilen umgeschrieben, Zielrollen. Ohne Anmeldung.",
+    "ladderFreeCta": "Lebenslauf kostenlos scannen",
+    "ladderFixDesc": "Die Komplettlösung: vollständige Analyse, Ihr Lebenslauf ATS-sauber umgeschrieben und ein passendes Anschreiben.",
+    "ladderSpecialistDesc": "Für Quereinsteiger: Freelance-, Gig- und Projektarbeit übersetzt in Recruiter-taugliche Berufserfahrung.",
+    "allToolsToggle": "Alle Tools ansehen ({{count}} weitere)",
+    "guarantee": "Jedes kostenpflichtige Tool ist abgesichert: nicht zufrieden mit dem Ergebnis? Kostenlose Neugenerierung oder Rückerstattung — antworten Sie einfach auf Ihre Quittung."
   },
   "scanPackPurchase": {
     "topUpCredits": "Credits aufladen",

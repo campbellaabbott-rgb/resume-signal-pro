@@ -224,7 +224,12 @@ export function getProduct(id: ProductId) {
 // converts worse than a short ladder, and zero-sellers earn their spot here.
 // Ask Lovable's agent: select product_type, count(*) from purchases group by 1
 // (or the product_purchases table) and hide the zeros.
-export const HIDDEN_PRODUCT_IDS: ProductId[] = [];
+export const HIDDEN_PRODUCT_IDS: ProductId[] = [
+  // Reachable from nowhere in the UI, worst margin in the catalog (Stripe's
+  // flat fee is 13% of $3), and zero recorded sales — first real use of the
+  // pruning mechanism. Existing links/grants keep working.
+  "basicKeywordFix",
+];
 
 export function isProductHidden(id: ProductId): boolean {
   return (HIDDEN_PRODUCT_IDS as readonly ProductId[]).includes(id);
