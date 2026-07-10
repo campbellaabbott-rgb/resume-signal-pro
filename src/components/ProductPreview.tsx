@@ -169,7 +169,7 @@ export function ProductPreview({
             {t("productPreview.tryAnother")}
           </button>
         </div>
-        <p className="text-[11px] text-muted-foreground mt-2">{t("productPreview.guarantee", "Not happy with the output? Free regeneration or refund.")}</p>
+        <p className="text-[11px] text-muted-foreground mt-2">{t("productPreview.guarantee", "Not happy with the output? We'll regenerate it free.")}</p>
       </div>
     </div>
   );
