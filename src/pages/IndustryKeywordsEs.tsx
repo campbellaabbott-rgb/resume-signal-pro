@@ -87,7 +87,7 @@ export default function IndustryKeywordsEs() {
           </section>
 
           <nav className="mt-8 flex flex-wrap gap-2 text-xs" aria-label="Otras industrias">
-            {Object.entries(ES_INDUSTRIES).filter(([s]) => s !== slug).slice(0, 8).map(([s, n]) => (
+            {Object.entries(ES_INDUSTRIES).filter(([s]) => s !== slug).map(([s, n]) => (
               <Link key={s} to={`/es/industrias/${s}`} className="px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors">
                 {n} →
               </Link>

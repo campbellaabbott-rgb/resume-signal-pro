@@ -139,6 +139,11 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
           <a href="/ats-resume-test" class="hover:text-foreground">ATS resume test</a>
           <a href="/resume-score" class="hover:text-foreground">Resume score</a>
           <a href="/industries" class="hover:text-foreground">Resume keywords by industry</a>
+          <a href="/cv-standards" class="hover:text-foreground">CV standards by country</a>
+          <a href="/changelog" class="hover:text-foreground">Changelog</a>
+          <a href="/trust" class="hover:text-foreground">Trust &amp; privacy</a>
+          <a href="/affiliates" class="hover:text-foreground">Affiliates</a>
+          <a href="/shortlist" class="hover:text-foreground">Shortlist for employers</a>
           <a href="/ats/workday" class="hover:text-foreground">Workday ATS guide</a>
           <a href="/vs/jobscan" class="hover:text-foreground">vs Jobscan</a>
           <a href="/methodology" class="hover:text-foreground">Methodology</a>
@@ -155,6 +160,11 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
   // the browser path isn't "/" (crawlers don't run it; JS users on other
   // routes get the same blank-then-render they had before).
   const renderFile = ({ path, title, description, content, jsonLd = [], hreflang = null, lang = null, isFallback = false }) => {
+    // SERP snippets truncate ~160 chars; clamp at a word boundary so no page
+    // (current or future) ships an overlong description.
+    if (description && description.length > 160) {
+      description = description.slice(0, 157).replace(/\s+\S*$/, "") + "…";
+    }
     let html = template;
     html = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`);
     html = html.replace(/(<meta name="description" content=")[^"]*(")/, `$1${esc(description)}$2`);
@@ -249,6 +259,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
         ${note ? `<section class="rounded-2xl border border-warning/30 bg-warning/5 p-5 mb-8"><h2 class="font-semibold text-foreground mb-1">What screeners check first in ${esc(name.toLowerCase())}</h2><p class="text-sm text-muted-foreground">${esc(note)}</p></section>` : ""}
         ${industryFaqs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-3">Common questions</h2><div class="space-y-3">${industryFaqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4"><h3 class="font-semibold text-foreground text-sm mb-1.5">${esc(f.q)}</h3><p class="text-xs text-muted-foreground leading-relaxed">${esc(f.a)}</p></div>`).join("")}</div></section>` : ""}
         ${cta(`See how your resume scores against this data — free`, "A full diagnostic report in seconds: missing keywords, ATS parsing, weakest bullets rewritten, and a fix plan. No signup, resume never stored.", "Scan my resume free")}
+        ${D.ES_INDUSTRIES[slug] ? `<p class="text-xs text-muted-foreground mb-4"><a href="/es/industrias/${slug}" class="text-primary">Versión en español →</a></p>` : ""}
         ${roles.length ? `<section class="mt-8"><h2 class="text-xl font-bold mb-2">Role-specific keyword guides</h2><div class="flex flex-wrap gap-1.5">${roles.map((r) => `<a href="/roles/${r.slug}" class="px-3 py-1.5 rounded-full border border-primary/40 text-primary text-sm">${esc(r.title)} resume keywords →</a>`).join("")}</div></section>` : ""}
         <nav class="mt-8 flex flex-wrap gap-2 text-xs">${related.map((s) => pill(`/industries/${s}`, `${label(s)} keywords →`)).join("")}${pill("/industries", "All industries")}</nav>
         <p class="text-xs text-muted-foreground mt-8">Methodology: keyword and title lists come directly from the detection tables our scanner runs on every ${esc(name.toLowerCase())} resume, validated by a pinned regression suite. O*NET data is public domain from the U.S. Department of Labor. See <a href="/methodology" class="underline">our methodology</a>.</p>`,
@@ -267,7 +278,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
     const siblings = D.rolesForIndustry(role.industry).filter((r) => r.slug !== role.slug);
     write({
       path: `/roles/${role.slug}`,
-      title: `${role.title} Resume Keywords — What ATS Systems Look For`,
+      title: `${role.title} Resume Keywords — What ATS Systems Look For`.length > 68 ? `${role.title} Resume Keywords — ATS Guide` : `${role.title} Resume Keywords — What ATS Systems Look For`,
       description: `${keywords.slice(0, 5).join(", ")} and more: the keywords, certifications, and titles our scanner checks on ${role.title.toLowerCase()} resumes. Free ATS scan included.`,
       jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Industries", path: "/industries" }, { name: indName, path: `/industries/${role.industry}` }, { name: role.title, path: `/roles/${role.slug}` }])],
       content: `
@@ -344,7 +355,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
       path: `/es/industrias/${slug}`,
       lang: "es",
       hreflang: { en: `/industries/${slug}`, es: `/es/industrias/${slug}` },
-      title: `Palabras Clave para Currículum de ${name} — Qué Buscan los ATS`,
+      title: `Palabras Clave para Currículum de ${name} — Qué Buscan los ATS`.length > 68 ? `Palabras Clave para CV de ${name} — Guía ATS` : `Palabras Clave para Currículum de ${name} — Qué Buscan los ATS`,
       description: `${esKeywords.slice(0, 5).join(", ")} y más: las palabras clave, títulos y certificaciones que nuestro escáner de currículums busca en el sector de ${name.toLowerCase()}. Escaneo gratis incluido.`,
       content: `
         ${breadcrumbNav([{ name: "Inicio", href: "/" }, { name: "Industrias", href: "/industries" }, { name }])}
@@ -354,7 +365,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
         ${esTitles.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Títulos profesionales reconocidos</h2>${chips(esTitles, "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>` : ""}
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Términos en inglés que los ATS también esperan</h2>${chips(enKeywords)}</section>
         ${cta("Escanea tu currículum gratis — también en español", "Informe diagnóstico completo en segundos: palabras clave faltantes, cómo leen tu archivo los sistemas ATS, tus viñetas más débiles reescritas y un plan de mejoras. Sin registro; tu currículum nunca se guarda.", "Escanear mi currículum gratis")}
-        <nav class="mt-8 flex flex-wrap gap-2 text-xs">${Object.entries(D.ES_INDUSTRIES).filter(([s]) => s !== slug).slice(0, 8).map(([s, n]) => pill(`/es/industrias/${s}`, `${n} →`)).join("")}${pill("/es/revisar-curriculum", "Revisar mi currículum gratis →")}${pill(`/industries/${slug}`, "English version →")}</nav>`,
+        <nav class="mt-8 flex flex-wrap gap-2 text-xs">${Object.entries(D.ES_INDUSTRIES).filter(([s]) => s !== slug).map(([s, n]) => pill(`/es/industrias/${s}`, `${n} →`)).join("")}${pill("/es/revisar-curriculum", "Revisar mi currículum gratis →")}${pill(`/industries/${slug}`, "English version →")}</nav>`,
     });
   }
 
@@ -640,6 +651,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
           ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "CV Standards", href: "/cv-standards" }, { name }])}
           <h1 class="text-3xl font-bold mb-3">${esc(D.fill(t.h1, vars))}</h1>
           <p class="text-muted-foreground mb-8">${esc(D.fill(t.intro, vars))}</p>
+          ${(() => { const cl = D.hreflangCluster(iso); const names = { es: "Español", fr: "Français", de: "Deutsch", pt: "Português", nl: "Nederlands" }; const alts = Object.entries(cl).filter(([l]) => l !== "en"); return alts.length ? `<p class="text-xs text-muted-foreground mb-6">${alts.map(([l, href]) => `<a href="${href}" class="text-primary mr-3">${names[l] ?? l} →</a>`).join("")}</p>` : ""; })()}
           ${sectionHtml(t, std, notes, name)}`,
       });
     }
@@ -666,6 +678,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
           content: `
             <h1 class="text-3xl font-bold mb-3">${esc(D.fill(t.h1, vars))}</h1>
             <p class="text-muted-foreground mb-8">${esc(D.fill(t.intro, vars))}</p>
+            <p class="text-xs text-muted-foreground mb-6"><a href="/cv-standards/${D.COUNTRY_SLUGS[iso]}" class="text-primary">English version →</a></p>
             ${sectionHtml(t, std, notes, name)}`,
         });
       }

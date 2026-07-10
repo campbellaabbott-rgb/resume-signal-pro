@@ -96,7 +96,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
   "ats-resume-test": {
     slug: "ats-resume-test",
     path: "/ats-resume-test",
-    title: "ATS Resume Test — See How Workday, Greenhouse & More Parse Your Resume",
+    title: "ATS Resume Test — How Workday & Greenhouse Parse You",
     description:
       "Test your resume against ATS parsing free: see exactly what applicant tracking systems extract from your file, which keywords are missing, and per-vendor checks for Workday, Greenhouse, Lever, and iCIMS.",
     heading: "Test how ATS systems actually read your resume",

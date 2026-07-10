@@ -65,6 +65,18 @@ export default function CvStandards({ locale }: CvStandardsProps) {
           </nav>
           <h1 className="text-3xl md:text-4xl font-bold mb-3">{fill(t.h1, vars)}</h1>
           <p className="text-muted-foreground mb-8">{fill(t.intro, vars)}</p>
+          {/* Visible language links — hreflang alone isn't crawlable navigation */}
+          {Object.keys(cluster).length > 1 && (
+            <p className="text-xs text-muted-foreground -mt-4 mb-6">
+              {Object.entries(cluster)
+                .filter(([lang, href]) => href !== `${SITE}${path}`.replace(SITE, "") && `${href}` !== path)
+                .map(([lang, href]) => (
+                  <Link key={lang} to={href} className="text-primary mr-3">
+                    {{ en: "English", es: "Español", fr: "Français", de: "Deutsch", pt: "Português", nl: "Nederlands" }[lang] ?? lang} →
+                  </Link>
+                ))}
+            </p>
+          )}
 
           <div className="grid sm:grid-cols-2 gap-3 mb-8">
             <div className="rounded-xl border border-border bg-card p-4">

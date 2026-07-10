@@ -17,7 +17,8 @@
     "check:functions": "bash scripts/check-functions.sh",
     "smoke": "node scripts/post-publish-smoke.mjs",
     "verify:deploy": "node scripts/post-publish-smoke.mjs",
-    "indexnow": "node scripts/indexnow-ping.mjs"
+    "indexnow": "node scripts/indexnow-ping.mjs",
+    "seo:audit": "node scripts/seo-audit.mjs"
   },
   "dependencies": {
     "@lovable.dev/cloud-auth-js": "^1.1.2",

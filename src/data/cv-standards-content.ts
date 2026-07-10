@@ -60,9 +60,9 @@ export interface CvLocaleConfig {
 }
 
 export const EN_TEMPLATE: CvTemplateStrings = {
-  title: "CV & Resume Standards in {name} — Photo, Length, Format ({docTerm})",
+  title: "CV Rules in {name}: Photo, Length, Format",
   metaDescription:
-    "What a {docTerm} in {name} actually looks like: photo norms, expected length, personal-data conventions, and formatting standards — the same rules our resume scanner applies for the {name} market.",
+    "Photo norms, expected length, and personal-data rules for a {docTerm} in {name} — the live standards our resume scanner applies for that market.",
   h1: "CV & resume standards in {name}",
   intro:
     "This is the live market data our scanner applies when a resume targets {name} — not an opinion piece. The local document is the {docTerm}; here is what employers there actually expect.",
@@ -90,9 +90,9 @@ export const EN_TEMPLATE: CvTemplateStrings = {
 };
 
 const ES_T: CvTemplateStrings = {
-  title: "Normas de CV en {name} — Foto, Extensión y Formato ({docTerm})",
+  title: "Normas de CV en {name}: foto, extensión y formato",
   metaDescription:
-    "Cómo es realmente un {docTerm} en {name}: normas sobre la foto, extensión esperada, datos personales y formato — las mismas reglas que nuestro escáner aplica para el mercado de {name}.",
+    "Normas de foto, extensión y datos personales para un {docTerm} en {name} — los estándares reales que aplica nuestro escáner.",
   h1: "Normas de currículum en {name}",
   intro:
     "Estos son los datos reales que nuestro escáner aplica cuando un currículum apunta a {name} — no es un artículo de opinión. El documento local es el {docTerm}; esto es lo que los empleadores esperan.",
@@ -120,9 +120,9 @@ const ES_T: CvTemplateStrings = {
 };
 
 const FR_T: CvTemplateStrings = {
-  title: "Normes de CV en {name} — Photo, Longueur, Format ({docTerm})",
+  title: "Normes de CV en {name} : photo, longueur, format",
   metaDescription:
-    "À quoi ressemble vraiment un {docTerm} en {name} : photo, longueur attendue, données personnelles et format — les mêmes règles que notre scanner applique pour le marché {name}.",
+    "Photo, longueur et données personnelles pour un {docTerm} en {name} — les normes réelles qu'applique notre scanner.",
   h1: "Normes de CV en {name}",
   intro:
     "Ce sont les données réelles que notre scanner applique quand un CV vise {name} — pas un article d'opinion. Le document local est le {docTerm} ; voici ce que les employeurs attendent.",
@@ -150,9 +150,9 @@ const FR_T: CvTemplateStrings = {
 };
 
 const DE_T: CvTemplateStrings = {
-  title: "Lebenslauf-Standards in {name} — Foto, Länge, Format ({docTerm})",
+  title: "Lebenslauf in {name}: Foto, Länge, Format",
   metaDescription:
-    "Wie ein {docTerm} in {name} wirklich aussieht: Foto-Normen, erwartete Länge, persönliche Daten und Format — dieselben Regeln, die unser Scanner für den Markt {name} anwendet.",
+    "Foto-Normen, Länge und persönliche Daten für einen {docTerm} in {name} — die realen Standards unseres Scanners.",
   h1: "Lebenslauf-Standards in {name}",
   intro:
     "Das sind die echten Marktdaten, die unser Scanner anwendet, wenn ein Lebenslauf auf {name} zielt — kein Meinungsartikel. Das lokale Dokument ist der {docTerm}; das erwarten Arbeitgeber dort.",
@@ -180,9 +180,9 @@ const DE_T: CvTemplateStrings = {
 };
 
 const PT_T: CvTemplateStrings = {
-  title: "Padrões de Currículo em {name} — Foto, Extensão, Formato ({docTerm})",
+  title: "Currículo em {name}: foto, extensão e formato",
   metaDescription:
-    "Como é realmente um {docTerm} em {name}: normas de foto, extensão esperada, dados pessoais e formato — as mesmas regras que nosso scanner aplica para o mercado de {name}.",
+    "Normas de foto, extensão e dados pessoais para um {docTerm} em {name} — os padrões reais do nosso scanner.",
   h1: "Padrões de currículo em {name}",
   intro:
     "Estes são os dados reais que nosso scanner aplica quando um currículo mira {name} — não é um artigo de opinião. O documento local é o {docTerm}; isto é o que os empregadores esperam.",
@@ -210,9 +210,9 @@ const PT_T: CvTemplateStrings = {
 };
 
 const NL_T: CvTemplateStrings = {
-  title: "CV-normen in {name} — Foto, Lengte, Format ({docTerm})",
+  title: "CV-normen in {name}: foto, lengte, format",
   metaDescription:
-    "Hoe een {docTerm} in {name} er echt uitziet: fotonormen, verwachte lengte, persoonsgegevens en opmaak — dezelfde regels die onze scanner toepast voor de markt {name}.",
+    "Fotonormen, lengte en persoonsgegevens voor een {docTerm} in {name} — de echte standaarden van onze scanner.",
   h1: "CV-normen in {name}",
   intro:
     "Dit zijn de echte marktgegevens die onze scanner toepast wanneer een cv op {name} mikt — geen opinieartikel. Het lokale document is het {docTerm}; dit verwachten werkgevers daar.",

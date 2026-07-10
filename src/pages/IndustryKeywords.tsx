@@ -7,6 +7,7 @@ import { useMemo } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
+import { ES_INDUSTRIES } from "@/data/es-industries";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { INDUSTRY_KEYWORDS } from "../../supabase/functions/free-keyword-scan/industry-detection";
@@ -78,6 +79,11 @@ export default function IndustryKeywords() {
           </nav>
 
           <h1 className="text-3xl md:text-4xl font-bold mb-3">{name} Resume Keywords & ATS Expectations</h1>
+          {slug && ES_INDUSTRIES[slug] && (
+            <p className="text-xs text-muted-foreground mb-4">
+              <Link to={`/es/industrias/${slug}`} className="text-primary">Versión en español →</Link>
+            </p>
+          )}
           <p className="text-muted-foreground mb-8">
             This isn't an article — it's the live data our resume scanner uses to analyze {name.toLowerCase()} resumes.
             When the engine improves, this page updates with it.
