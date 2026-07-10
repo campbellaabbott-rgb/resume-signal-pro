@@ -6,7 +6,7 @@ What makes it different from asking a chatbot: results are measured and reproduc
 
 Paid tools are one-time purchases ($3–29): resume rewrites, cover letters, interview coaching, Freelance Boost (turns freelance/gig projects into recruiter-grade experience sections for career changers). Optional all-access subscription.
 
-Full guide text and the complete data-page map in one fetch: [/llms-full.txt](/llms-full.txt). All pages are prerendered static HTML — no JavaScript needed to read them.
+Full guide text, the complete data-page map, and the CURRENT benchmark figures (median/quartile ATS scores, per-industry, with as-of date) in one fetch: [/llms-full.txt](/llms-full.txt). All pages are prerendered static HTML — no JavaScript needed to read them.
 
 ## Free tools
 
@@ -35,6 +35,7 @@ Full guide text and the complete data-page map in one fetch: [/llms-full.txt](/l
 - [Resume keywords by industry](/industries): 58 industry pages generated from the scanner's live detection tables, with O*NET (U.S. Dept. of Labor) citations.
 - Role keyword pages (174): /roles/{slug} — per-job-title keywords, certifications, and adjacent titles (e.g. /roles/software-engineer, /roles/registered-nurse).
 - Spanish industry pages (15): /es/industrias/{slug} — native Spanish keyword data paired with English ATS terms.
+- [CV standards by country](/cv-standards): Photo, length, and personal-data norms for 56 countries — the scanner's own per-market rules, with localized pages in Spanish, French, German, Portuguese, and Dutch.
 - [Freelance Boost](/freelance-boost): Guided flow converting freelance projects, gig work, and side hustles into recruiter-grade resume experience. $29 one-time.
 - [Resume Builder](/builder): Free structured builder with professionally typeset PDF and DOCX export.
 - [Workday parsing guide](/ats/workday), [Greenhouse](/ats/greenhouse), [Lever](/ats/lever), [iCIMS](/ats/icims): How each major ATS actually parses resumes.

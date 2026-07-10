@@ -4331,6 +4331,23 @@ function checkRequiredAnchors(industry: string, resumeText: string): boolean {
   return anchors.some(a => lower.includes(a));
 }
 
+// Unambiguous, field-exclusive terms for the strong-anchor secondary path.
+// REQUIRED_ANCHORS is deliberately loose (single words like "model"/"training")
+// and would false-positive there — a nurse who mentions "staff training" must
+// NOT read as machine learning. Every term here only appears on resumes that
+// genuinely work in the field. Substring-matched on lowercased text, so avoid
+// short strings that can occur inside other words.
+const STRONG_SECONDARY_ANCHORS: Record<string, string[]> = {
+  machine_learning: ['tensorflow', 'pytorch', 'deep learning', 'neural network', 'scikit-learn', 'keras', 'hugging face', 'xgboost', 'model inference'],
+  data_science: ['pandas', 'scikit-learn', 'jupyter', 'statistical modeling', 'regression analysis', 'rstudio', 'r studio'],
+  data_engineering: ['airflow', 'databricks', 'snowflake', 'etl pipeline', 'data warehouse', 'kafka'],
+  cybersecurity: ['penetration testing', 'incident response', 'vulnerability assessment', 'siem', 'threat intelligence', 'crowdstrike', 'splunk'],
+  technology: ['kubernetes', 'docker', 'typescript', 'microservices', 'ci/cd', 'postgresql', 'graphql'],
+  finance: ['financial modeling', 'discounted cash flow', 'gaap', 'ifrs', 'balance sheet'],
+  legal: ['litigation', 'paralegal', 'juris doctor', 'legal counsel'],
+  marketing: ['demand generation', 'google ads', 'marketing automation', 'brand strategy', 'content calendar'],
+};
+
 // ─── FIX #6: SENIORITY × INDUSTRY PLAUSIBILITY ───────────────────────────────
 
 // Patterns in job titles that suggest a seniority level (for plausibility check only;
@@ -4653,7 +4670,29 @@ export function detectIndustry(
       console.log(`[INDUSTRY-DETECTION] Multi-industry: primary="${finalIndustry}" (${finalScore}), secondary="${secondaryIndustry}" (${secondaryScore})${hasOwnEvidence && nonPhantomSecond.score < strongBar ? ' [surfaced via own title/anchor evidence at relaxed bar]' : ''}`);
     }
   }
-  
+
+  // A role/cert-locked primary can inflate its score ~10x and crush a genuine
+  // second field below even the >=5 floor — the documented health→ML case
+  // (healthcare ~103, machine_learning ~3). The loose REQUIRED_ANCHORS can't
+  // gate this safely, so this last-resort path demands >=2 DISTINCT
+  // field-exclusive strong anchors before surfacing a low-score secondary.
+  if (!secondaryIndustry) {
+    const lowerResume = resumeText.toLowerCase();
+    for (const s of scores) {
+      if (s.industry === finalIndustry || ['military', 'general'].includes(s.industry)) continue;
+      if (s.score < 2) continue;
+      const strongAnchors = STRONG_SECONDARY_ANCHORS[s.industry];
+      if (!strongAnchors) continue;
+      const hits = strongAnchors.filter((a) => lowerResume.includes(a));
+      if (hits.length >= 2) {
+        secondaryIndustry = s.industry;
+        secondaryScore = s.score;
+        console.log(`[INDUSTRY-DETECTION] Strong-anchor secondary: "${s.industry}" via [${hits.slice(0, 3).join(', ')}] under dominant primary "${finalIndustry}"`);
+        break;
+      }
+    }
+  }
+
   // === SUB-ROLE DETECTION ===
   const subRole = detectSubRole(finalIndustry, resumeText);
 

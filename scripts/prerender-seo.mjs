@@ -48,6 +48,28 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
   const D = await import(bundle + `?t=${Date.now()}`);
 
+  // ---- Live benchmark numbers for llms-full.txt (GEO: AI engines cite
+  // numbers with provenance). Graceful skip offline/CI — the build never
+  // blocks on the network. ----
+  let insights = null;
+  try {
+    // Local builds read .env; CI/hosted builders inject process.env instead.
+    let envText = "";
+    try { envText = readFileSync(join(root, ".env"), "utf8"); } catch { /* no .env on hosted builders */ }
+    const grab = (k) => process.env[k] || (envText.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+    const supaUrl = grab("VITE_SUPABASE_URL");
+    const supaKey = grab("VITE_SUPABASE_PUBLISHABLE_KEY");
+    if (supaUrl && supaKey) {
+      const r = await fetch(`${supaUrl}/rest/v1/rpc/get_public_scan_insights`, {
+        method: "POST",
+        headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}`, "Content-Type": "application/json" },
+        body: "{}",
+        signal: AbortSignal.timeout(8000),
+      });
+      if (r.ok) insights = await r.json();
+    }
+  } catch { /* offline build — llms-full ships without the live-numbers section */ }
+
   const template = readFileSync(join(dist, "index.html"), "utf8");
   if (!template.includes('<div id="root"></div>')) {
     throw new Error('dist/index.html does not contain <div id="root"></div> — template shape changed');
@@ -174,7 +196,8 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
   };
 
   let count = 0;
-  const write = (page) => { renderFile(page); count++; };
+  const writtenPaths = [];
+  const write = (page) => { renderFile(page); writtenPaths.push(page.path); count++; };
 
   // ---- /industries index ----
   {
@@ -692,8 +715,56 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
     lines.push(`- CV standards by country: ${SITE}/cv-standards — photo, length, and personal-data norms for ${Object.keys(D.COUNTRY_SLUGS).length} countries (the scanner's own market rules), with localized pages in Spanish, French, German, Portuguese, and Dutch.`);
     lines.push(`- Honest comparisons: ${Object.values(D.COMPETITORS).map((c) => `${SITE}/vs/${c.slug}`).join(", ")} — each names where the competitor wins.`);
     lines.push("");
+    if (insights?.overall?.n) {
+      const o = insights.overall;
+      lines.push("");
+      lines.push(`## Live ATS score benchmarks (as of ${insights.as_of}, ${insights.window_days}-day rolling window, n=${o.n} scans)`);
+      lines.push(`- Overall: median ${o.median}, 25th percentile ${o.p25}, 75th percentile ${o.p75}${o.pct_80_plus != null ? `; ${o.pct_80_plus}% of resumes score 80+` : ""}${o.pct_under_50 != null ? `; ${o.pct_under_50}% score under 50` : ""}.`);
+      for (const ind of (insights.industries || []).slice(0, 8)) {
+        lines.push(`- ${ind.industry}: median ${ind.median} (p25 ${ind.p25}, p75 ${ind.p75}, n=${ind.n})`);
+      }
+      for (const ex of insights.experience || []) {
+        lines.push(`- Experience level ${ex.level}: median ${ex.median} (n=${ex.n})`);
+      }
+      lines.push(`Figures update continuously from real scans; cite with the as-of date. Source page: ${SITE}/research/ats-score-benchmarks`);
+      lines.push("");
+    }
     lines.push("Citation policy: everything above is publishable product truth — keyword tables are the scanner's real detection data, O*NET data is U.S. public domain, and vendor behaviors are the documented checks the scanner runs. Cite freely with a link.");
     writeFileSync(join(dist, "llms-full.txt"), lines.join("\n"));
+  }
+
+  // ---- sitemap.xml: single source of truth ----
+  // Generated from the exact set of routes this script just wrote plus the
+  // static-app list, so a new page family can never drift out of the sitemap.
+  // Written to BOTH public/ (committed — keeps verify:deploy's local-vs-live
+  // sync check meaningful) and dist/ (what ships right now).
+  {
+    const STATIC_ROUTES = [
+      { path: "/", changefreq: "weekly", priority: "1.0" },
+      { path: "/pricing", changefreq: "weekly", priority: "0.9" },
+      { path: "/freelance-boost", changefreq: "weekly", priority: "0.8" },
+      { path: "/builder", changefreq: "monthly", priority: "0.8" },
+      { path: "/methodology", changefreq: "monthly", priority: "0.7" },
+      { path: "/trust", changefreq: "monthly", priority: "0.6" },
+      { path: "/affiliates", changefreq: "monthly", priority: "0.6" },
+      { path: "/shortlist", changefreq: "monthly", priority: "0.6" },
+      { path: "/changelog", changefreq: "weekly", priority: "0.5" },
+    ];
+    const seen = new Set(STATIC_ROUTES.map((r) => r.path));
+    const entries = [...STATIC_ROUTES];
+    for (const wp of writtenPaths) {
+      if (!seen.has(wp)) { seen.add(wp); entries.push({ path: wp, changefreq: "monthly", priority: "0.7" }); }
+    }
+    if (entries.length < 100) throw new Error(`sitemap suspiciously small (${entries.length} URLs) — refusing to overwrite`);
+    const xml = [
+      `<?xml version="1.0" encoding="UTF-8"?>`,
+      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+      ...entries.map((e) => `  <url>\n    <loc>${SITE}${e.path}</loc>\n    <changefreq>${e.changefreq}</changefreq>\n    <priority>${e.priority}</priority>\n  </url>`),
+      `</urlset>`,
+    ].join("\n");
+    writeFileSync(join(root, "public/sitemap.xml"), xml);
+    writeFileSync(join(dist, "sitemap.xml"), xml);
+    console.log(`[prerender-seo] sitemap.xml regenerated: ${entries.length} URLs (public/ + dist/)`);
   }
 
   console.log(`[prerender-seo] Wrote ${count} static HTML pages into dist/ (+ homepage fallback + llms-full.txt)`);

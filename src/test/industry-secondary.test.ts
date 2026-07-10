@@ -30,6 +30,29 @@ describe("industry secondary detection — relaxed bar for evidence-backed runne
     expect(r.secondaryIndustry).toBeUndefined();
   });
 
+  it("surfaces ML under a role-locked healthcare primary via strong anchors (the correction-log case)", () => {
+    // healthcare role-locks to ~100 while genuine ML work scores ~3 — below the
+    // normal >=5 floor. The strong-anchor path (tensorflow + pytorch + deep
+    // learning = field-exclusive terms) must surface it anyway.
+    const r = detectIndustry(
+      "Maria Lopez, RN — Registered Nurse\nPROFESSIONAL EXPERIENCE\n" +
+        "Registered Nurse, ICU, Mercy Hospital (2018-present)\n- Provided direct patient care in a 6-bed ICU; medication administration, triage, vitals, charting in Epic EHR\n- Acute care nursing, clinical documentation, patient safety\n- Built machine learning models (TensorFlow, PyTorch) predicting patient deterioration; trained deep learning classifiers, model training pipelines in Python\n" +
+        "SKILLS\nnursing, patient care, clinical, Epic EHR, triage, machine learning, deep learning, TensorFlow, PyTorch, model training, neural networks",
+    );
+    expect(r.industry).toBe("healthcare");
+    expect(r.secondaryIndustry).toBe("machine_learning");
+  });
+
+  it("does NOT read 'staff training' and 'care model' as an ML secondary (loose-anchor trap)", () => {
+    const r = detectIndustry(
+      "James Wu, RN — Registered Nurse\nPROFESSIONAL EXPERIENCE\n" +
+        "Registered Nurse, ICU, Mercy Hospital (2018-present)\n- Provided direct patient care; medication administration, triage, vitals, charting in Epic EHR\n- Led staff training programs and improved the unit's care model; training new nurses on clinical documentation\n" +
+        "SKILLS\nnursing, patient care, clinical, Epic EHR, triage, staff training, mentorship",
+    );
+    expect(r.industry).toBe("healthcare");
+    expect(r.secondaryIndustry).not.toBe("machine_learning");
+  });
+
   it("does NOT surface a low-scoring noise runner-up that lacks title/anchor evidence", () => {
     // A sales resume whose runner-ups are incidental keyword noise (no real
     // second field, no matching title or required anchors) must stay single.
