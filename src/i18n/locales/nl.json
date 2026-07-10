@@ -1606,6 +1606,19 @@
       "placementAboveMedian": "Boven de mediaan van {{n}} echte {{industry}}-scans",
       "placementBelowMedian": "Onder de mediaan van {{n}} echte {{industry}}-scans",
       "placementBottomQuartile": "Onderste kwartiel van {{n}} echte {{industry}}-scans — veel winst met de fixes hieronder"
+    },
+    "targeting": {
+      "title": "Rollen waarvoor dit cv door de screening komt",
+      "subtitle": "Uit dezelfde detectie als je score — geen gok. Zoeklinks openen in jouw doelmarkt.",
+      "reachTitle": "Binnen bereik — jouw {{industry}}-kant ({{pct}}%)",
+      "reachNote": "Het gat is hier trefwoorddekking, geen ervaring — elke rolpagina somt precies op wat toe te voegen."
+    },
+    "posting": {
+      "title": "Toets het nu aan een echte vacature",
+      "desc": "Dit rapport beoordeelde je cv in het algemeen. De versie die interviews oplevert is afgestemd op één vacature — plak er een en we scannen gratis opnieuw tegen de exacte eisen.",
+      "placeholder": "Plak hier de volledige vacature…",
+      "cta": "Opnieuw scannen tegen deze vacature",
+      "tooShort": "Plak de volledige vacature voor een echte vergelijking"
     }
   },
   "analysisPreviewSample": {

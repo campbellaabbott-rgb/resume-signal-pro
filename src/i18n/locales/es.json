@@ -1606,6 +1606,19 @@
       "placementAboveMedian": "Por encima de la mediana de {{n}} escaneos reales de {{industry}}",
       "placementBelowMedian": "Por debajo de la mediana de {{n}} escaneos reales de {{industry}}",
       "placementBottomQuartile": "Cuartil inferior de {{n}} escaneos reales de {{industry}} — gran margen de mejora con los arreglos de abajo"
+    },
+    "targeting": {
+      "title": "Puestos para los que tu currículum pasa el filtro",
+      "subtitle": "De la misma detección que usó tu puntuación — no es una suposición. Los enlaces de búsqueda se abren en tu mercado objetivo.",
+      "reachTitle": "A tu alcance — tu lado de {{industry}} ({{pct}}%)",
+      "reachNote": "Para estos puestos la brecha son las palabras clave, no la experiencia — cada página de puesto lista exactamente qué añadir."
+    },
+    "posting": {
+      "title": "Ahora compáralo con una oferta real",
+      "desc": "Este informe evaluó tu currículum en general. La versión que consigue entrevistas está adaptada a una oferta — pega una y volveremos a escanear contra sus requisitos exactos, gratis.",
+      "placeholder": "Pega aquí la oferta de trabajo completa…",
+      "cta": "Reescanear contra esta oferta",
+      "tooShort": "Pega la oferta completa para una comparación real"
     }
   },
   "analysisPreviewSample": {

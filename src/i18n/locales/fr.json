@@ -1606,6 +1606,19 @@
       "placementAboveMedian": "Au-dessus de la médiane de {{n}} vrais scans {{industry}}",
       "placementBelowMedian": "Sous la médiane de {{n}} vrais scans {{industry}}",
       "placementBottomQuartile": "Quartile inférieur de {{n}} vrais scans {{industry}} — fort potentiel avec les corrections ci-dessous"
+    },
+    "targeting": {
+      "title": "Postes pour lesquels ce CV passe le filtre",
+      "subtitle": "Issu de la même détection que votre score — pas une supposition. Les liens de recherche s'ouvrent sur votre marché cible.",
+      "reachTitle": "À votre portée — votre côté {{industry}} ({{pct}} %)",
+      "reachNote": "Pour ces postes, l'écart tient aux mots-clés, pas à l'expérience — chaque page de poste liste exactement quoi ajouter."
+    },
+    "posting": {
+      "title": "Comparez-le maintenant à une vraie offre",
+      "desc": "Ce rapport a évalué votre CV en général. La version qui décroche des entretiens est adaptée à une offre précise — collez-en une et nous rescannerons selon ses exigences exactes, gratuitement.",
+      "placeholder": "Collez l'offre d'emploi complète ici…",
+      "cta": "Rescanner avec cette offre",
+      "tooShort": "Collez l'offre complète pour une vraie comparaison"
     }
   },
   "analysisPreviewSample": {

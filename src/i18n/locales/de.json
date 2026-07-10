@@ -1606,6 +1606,19 @@
       "placementAboveMedian": "Über dem Median von {{n}} echten {{industry}}-Scans",
       "placementBelowMedian": "Unter dem Median von {{n}} echten {{industry}}-Scans",
       "placementBottomQuartile": "Unterstes Quartil von {{n}} echten {{industry}}-Scans — großes Potenzial mit den Fixes unten"
+    },
+    "targeting": {
+      "title": "Rollen, für die dieser Lebenslauf durchs Screening kommt",
+      "subtitle": "Aus derselben Erkennung wie Ihr Score — keine Vermutung. Such-Links öffnen in Ihrem Zielmarkt.",
+      "reachTitle": "In Reichweite — Ihre {{industry}}-Seite ({{pct}} %)",
+      "reachNote": "Die Lücke sind hier Keywords, nicht Erfahrung — jede Rollenseite listet genau, was zu ergänzen ist."
+    },
+    "posting": {
+      "title": "Jetzt gegen eine echte Stelle prüfen",
+      "desc": "Dieser Bericht hat Ihren Lebenslauf allgemein bewertet. Die Version, die Interviews bringt, ist auf EINE Ausschreibung zugeschnitten — fügen Sie eine ein und wir scannen kostenlos gegen deren exakte Anforderungen.",
+      "placeholder": "Vollständige Stellenausschreibung hier einfügen…",
+      "cta": "Gegen diese Stelle neu scannen",
+      "tooShort": "Fügen Sie die vollständige Ausschreibung ein"
     }
   },
   "analysisPreviewSample": {

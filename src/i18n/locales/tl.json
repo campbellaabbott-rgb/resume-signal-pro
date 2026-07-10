@@ -1606,6 +1606,19 @@
       "placementAboveMedian": "Lampas sa median ng {{n}} tunay na {{industry}} scan",
       "placementBelowMedian": "Mababa sa median ng {{n}} tunay na {{industry}} scan",
       "placementBottomQuartile": "Pinakamababang quartile ng {{n}} tunay na {{industry}} scan — malaking pag-angat mula sa mga ayos sa ibaba"
+    },
+    "targeting": {
+      "title": "Mga role na papasa ang resume na ito sa screening",
+      "subtitle": "Mula sa parehong detection na ginamit ng iskor mo — hindi hula. Bubukas ang mga search link sa iyong target na merkado.",
+      "reachTitle": "Abot-kaya — ang iyong {{industry}} na panig ({{pct}}%)",
+      "reachNote": "Ang kulang dito ay keyword coverage, hindi karanasan — nakalista sa bawat role page kung ano mismo ang idadagdag."
+    },
+    "posting": {
+      "title": "Ngayon, itapat ito sa totoong job opening",
+      "desc": "Sininuri ng ulat na ito ang resume mo sa pangkalahatan. Ang bersyong nakakakuha ng interview ay naka-angkop sa isang posting — mag-paste ng isa at muli naming i-i-scan laban sa eksaktong requirements nito, libre.",
+      "placeholder": "I-paste dito ang buong job posting…",
+      "cta": "I-rescan laban sa posting na ito",
+      "tooShort": "I-paste ang buong posting para sa totoong paghahambing"
     }
   },
   "analysisPreviewSample": {

@@ -1606,6 +1606,19 @@
       "placementAboveMedian": "Above the median of {{n}} real {{industry}} scans",
       "placementBelowMedian": "Below the median of {{n}} real {{industry}} scans",
       "placementBottomQuartile": "Bottom quartile of {{n}} real {{industry}} scans — big upside from the fixes below"
+    },
+    "targeting": {
+      "title": "Roles this resume screens for",
+      "subtitle": "From the same detection your score used — not a guess. Search links open in your target market.",
+      "reachTitle": "Within reach — your {{pct}}% {{industry}} side",
+      "reachNote": "The gap for these is keyword coverage, not experience — each role page lists exactly what to add."
+    },
+    "posting": {
+      "title": "Now check it against a real opening",
+      "desc": "This report graded your resume in general. The version that gets interviews is tailored to one posting — paste one and we'll rescan against its exact requirements, free.",
+      "placeholder": "Paste the full job posting here…",
+      "cta": "Rescan against this posting",
+      "tooShort": "Paste the full posting for a real comparison"
     }
   },
   "analysisPreviewSample": {

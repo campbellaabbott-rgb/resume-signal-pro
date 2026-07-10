@@ -44,6 +44,7 @@ import { ShareableScoreCard } from "./ShareableScoreCard";
 import { ResumeXRay } from "./ResumeXRay";
 import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard, FreelanceGuidanceCard, IndustryChecksCard, CountryStandardsCard, DiagnosticHeader, FindingsIndex, computeVendorChecks, type Finding } from "./ReportInsightCards";
 import { EmailReportCapture } from "./EmailReportCapture";
+import { RoleTargetingCard, CheckAgainstPostingCard } from "./RoleTargeting";
 import { CardErrorBoundary } from "./CardErrorBoundary";
 import { getAvailableIndustries } from "./IndustryConfidenceIndicator";
 import { diffWords } from "@/lib/diff-words";
@@ -798,6 +799,9 @@ export interface FreeKeywordResultsProps {
   benchmarkIndustry?: string | null;
   /** Detection wasn't high-confidence — make the confirmation strip prominent */
   industryNeedsConfirmation?: boolean;
+  /** Rescan with a pasted job posting (the grade→game-plan flow). */
+  onScanWithPosting?: (jobDescription: string) => void;
+  isRescanning?: boolean;
   /** Full-text vs recent-role detection disagreed — likely career transition */
   industryTransition?: { historical: string; recent: string } | null;
   freelanceGuidance?: {
@@ -932,6 +936,8 @@ export function FreeKeywordResults({
   scoreAudit,
   benchmarkIndustry,
   industryNeedsConfirmation,
+  onScanWithPosting,
+  isRescanning,
   industryTransition,
   freelanceGuidance,
   realBenchmark,
@@ -1756,6 +1762,18 @@ export function FreeKeywordResults({
           visitors whose email we already have. The full variant (with the
           pulse/drip opt-ins) stays at the end of the report. */}
       <EmailReportCapture payload={emailReportPayload} variant="compact" hideIfKnown />
+
+      {/* Grade → game plan: what to apply for (from the same detection the
+          score used) and the single highest-leverage next action (a real
+          posting) when this scan ran without one. */}
+      {keywordSource?.source !== 'job_description' && onScanWithPosting && (
+        <CheckAgainstPostingCard onScanWithPosting={onScanWithPosting} isScanning={isRescanning} />
+      )}
+      <RoleTargetingCard
+        industry={effectiveIndustry}
+        industryBlend={industryBlend}
+        countryName={countryStandards?.country ?? null}
+      />
 
       {/* Specimen header — report ID, engine, provenance */}
       {reportMeta && <DiagnosticHeader meta={reportMeta} candidateName={candidateName} />}

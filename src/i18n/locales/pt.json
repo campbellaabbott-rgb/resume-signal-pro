@@ -1606,6 +1606,19 @@
       "placementAboveMedian": "Acima da mediana de {{n}} escaneamentos reais de {{industry}}",
       "placementBelowMedian": "Abaixo da mediana de {{n}} escaneamentos reais de {{industry}}",
       "placementBottomQuartile": "Quartil inferior de {{n}} escaneamentos reais de {{industry}} — grande potencial com as correções abaixo"
+    },
+    "targeting": {
+      "title": "Cargos para os quais este currículo passa na triagem",
+      "subtitle": "Da mesma detecção que sua pontuação usou — não é um palpite. Os links de busca abrem no seu mercado-alvo.",
+      "reachTitle": "Ao seu alcance — seu lado de {{industry}} ({{pct}}%)",
+      "reachNote": "Para esses cargos a lacuna são as palavras-chave, não a experiência — cada página de cargo lista exatamente o que adicionar."
+    },
+    "posting": {
+      "title": "Agora compare com uma vaga real",
+      "desc": "Este relatório avaliou seu currículo em geral. A versão que consegue entrevistas é adaptada a uma vaga — cole uma e reescanearemos contra os requisitos exatos, grátis.",
+      "placeholder": "Cole a vaga completa aqui…",
+      "cta": "Reescanear contra esta vaga",
+      "tooShort": "Cole a vaga completa para uma comparação real"
     }
   },
   "analysisPreviewSample": {

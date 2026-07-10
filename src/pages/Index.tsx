@@ -815,10 +815,14 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     setSelectedFile(null);
   };
 
-  const handleFreeScan = async (skipCacheArg?: unknown) => {
+  const handleFreeScan = async (skipCacheArg?: unknown, jdOverride?: string) => {
     // NOTE: onClick handlers pass a MouseEvent as the first arg; only treat explicit `true` as skipCache.
     const skipCache = skipCacheArg === true;
     const overrideText = typeof skipCacheArg === "string" ? skipCacheArg : undefined;
+    // Grade→game-plan rescan: a posting pasted in the report arrives here
+    // directly (state updates are async, so the param wins over state).
+    const jdForScan = (jdOverride ?? jobDescriptionText) || undefined;
+    if (jdOverride) setJobDescriptionText(jdOverride);
 
     // Warm the lazy report chunk while the scan runs so results render instantly.
     import("@/components/FreeKeywordResults").catch(() => {});
@@ -889,7 +893,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         console.log('[FreeScan] Running enriched non-streaming scan');
         const scanResult = await resilientCallers.freeKeywordScan({
           resumeText: contentToAnalyze,
-          jobDescriptionText: jobDescriptionText || undefined,
+          jobDescriptionText: jdForScan,
           honeypot,
           skipCache,
           targetCountry: targetCountry || undefined,
@@ -921,7 +925,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           // keeps scans working if the primary endpoint is down.
           console.warn('[FreeScan] Primary endpoint failed, falling back to streaming scan');
           const streamResult = await startStreamingScan(contentToAnalyze, {
-            jobDescriptionText: jobDescriptionText || undefined,
+            jobDescriptionText: jdForScan,
             honeypot,
             skipCache,
             targetCountry: targetCountry || undefined,
@@ -1971,6 +1975,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 scoreAudit={freeKeywordResult.scoreAudit ?? undefined}
                 benchmarkIndustry={freeKeywordResult.benchmarkIndustry ?? undefined}
                 industryNeedsConfirmation={freeKeywordResult.industryNeedsConfirmation}
+                onScanWithPosting={(jd) => handleFreeScan(true, jd)}
+                isRescanning={isFreeScanLoading}
                 industryTransition={freeKeywordResult.industryTransition ?? undefined}
                 freelanceGuidance={freeKeywordResult.freelanceGuidance ?? undefined}
                 realBenchmark={freeKeywordResult.realBenchmark ?? undefined}
