@@ -89,6 +89,71 @@ describe("detectCountryFromResume — scoring: city mention ≠ candidate locati
   });
 });
 
+describe("detectCountryFromResume — relocation intent (declared target market wins outright)", () => {
+  it("destination beats a fully-documented current US location", () => {
+    const r = detectCountryFromResume(
+      "Senior Engineer — Austin, TX 78701. Authorized to work in the US. Relocating to London in September; seeking UK-based roles.",
+    );
+    expect(r.country).toBe("GB");
+    expect(r.source).toBe("relocation");
+    expect(r.confidence).toBe("high");
+  });
+
+  it("'seeking roles in Germany' targets DE", () => {
+    const r = detectCountryFromResume("Product Manager, Toronto, ON M5V 2T6. Seeking roles in Germany.");
+    expect(r.country).toBe("DE");
+    expect(r.source).toBe("relocation");
+  });
+
+  it("historical 'relocated to' does NOT trigger the override", () => {
+    const r = detectCountryFromResume(
+      "Marketing Manager, Austin, TX 78701. Relocated to London in 2015, returned to the US in 2018.",
+    );
+    expect(r.source).not.toBe("relocation");
+    expect(r.country).toBe("US");
+  });
+});
+
+describe("detectCountryFromResume — postal addresses (strong) vs city mentions (weak)", () => {
+  it("US state + ZIP resolves without a famous city name", () => {
+    const r = detectCountryFromResume("Jane Roe — 44 Elm Street, Boise, ID 83702. Operations manager, 10 years experience.");
+    expect(r.country).toBe("US");
+    expect(r.confidence).toBe("high");
+  });
+
+  it("Canadian postal code resolves CA", () => {
+    const r = detectCountryFromResume("John Doe — 12 King St W, Hamilton L8P 1A1. Financial analyst.");
+    expect(r.country).toBe("CA");
+    expect(r.confidence).toBe("high");
+  });
+
+  it("a German postal address beats a stray foreign-city mention", () => {
+    const r = detectCountryFromResume(
+      "Anna Schmidt — Musterstraße 5, 10115 Berlin. Managed the Paris client portfolio.",
+    );
+    expect(r.country).toBe("DE");
+    expect(r.confidence).toBe("high");
+  });
+});
+
+describe("detectCountryFromResume — widened work-auth, education, cities", () => {
+  it("native-language work authorization resolves the country", () => {
+    expect(detectCountryFromResume("Chef de projet. Titre de séjour en cours de validité.").country).toBe("FR");
+    expect(detectCountryFromResume("Software engineer, Singapore PR, available immediately.").country).toBe("SG");
+  });
+
+  it("new education systems resolve", () => {
+    expect(detectCountryFromResume("Laurea in Ingegneria, liceo scientifico, esperienza in sviluppo software.").country).toBe("IT");
+    expect(detectCountryFromResume("Data analyst. Vestibular 2015, ensino médio completo.").country).toBe("BR");
+  });
+
+  it("newly covered cities resolve their countries", () => {
+    expect(detectCountryFromResume("Based in Warsaw, 8 years in fintech.").country).toBe("PL");
+    expect(detectCountryFromResume("Operations lead, Nairobi.").country).toBe("KE");
+    expect(detectCountryFromResume("Software developer in Zurich.").country).toBe("CH");
+  });
+});
+
 describe("detectCountryFromResume — work authorization (strongest signal)", () => {
   it("reads an explicit work-authorization statement as the target country", () => {
     const uk = detectCountryFromResume("Product Manager. British citizen with the right to work in the UK.");

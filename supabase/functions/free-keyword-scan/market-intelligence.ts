@@ -85,7 +85,7 @@ export interface GeoDetectionResult {
   country: string | null;
   confidence: 'high' | 'medium' | 'low';
   signals: string[];
-  source: 'phone' | 'address' | 'institution' | 'currency' | 'work_authorization' | 'education' | 'ip' | 'none';
+  source: 'phone' | 'address' | 'institution' | 'currency' | 'work_authorization' | 'education' | 'relocation' | 'ip' | 'none';
 }
 
 // City/address regexes as a weighted list so multiple signals ACCUMULATE
@@ -109,6 +109,44 @@ const CITY_SIGNALS: Array<{ re: RegExp; country: string; label: string }> = [
   { re: KR_SIGNALS, country: 'KR', label: 'Korean city' },
   { re: MX_SIGNALS, country: 'MX', label: 'Mexican city' },
   { re: BR_SIGNALS, country: 'BR', label: 'Brazilian city' },
+  // Distinctive-city coverage for the remaining standards-covered markets.
+  // Deliberately omits collision-prone names (Alexandria→VA, Lima→OH,
+  // Córdoba→ES/AR, Santiago→ES/CL, Cali→informal California).
+  { re: /\b(warszawa|warsaw|kraków|krakow|wrocław|wroclaw|gdańsk|gdansk|poznań|poznan)\b/i, country: 'PL', label: 'Polish city' },
+  { re: /\b(stockholm|gothenburg|göteborg|malmö|malmo|uppsala)\b/i, country: 'SE', label: 'Swedish city' },
+  { re: /\b(oslo|bergen|trondheim|stavanger)\b/i, country: 'NO', label: 'Norwegian city' },
+  { re: /\b(copenhagen|københavn|aarhus|odense)\b/i, country: 'DK', label: 'Danish city' },
+  { re: /\b(helsinki|espoo|tampere|oulu)\b/i, country: 'FI', label: 'Finnish city' },
+  { re: /\b(istanbul|ankara|izmir|bursa)\b/i, country: 'TR', label: 'Turkish city' },
+  { re: /\b(prague|praha|brno|ostrava)\b/i, country: 'CZ', label: 'Czech city' },
+  { re: /\b(lisbon|lisboa|porto|braga|coimbra)\b/i, country: 'PT', label: 'Portuguese city' },
+  { re: /\b(dublin|cork|galway|limerick)\b/i, country: 'IE', label: 'Irish city' },
+  { re: /\b(zurich|zürich|geneva|genève|basel|lausanne)\b/i, country: 'CH', label: 'Swiss city' },
+  { re: /\b(vienna|wien|graz|linz|salzburg)\b/i, country: 'AT', label: 'Austrian city' },
+  { re: /\b(brussels|bruxelles|antwerp|antwerpen|ghent|gent|liège)\b/i, country: 'BE', label: 'Belgian city' },
+  { re: /\b(auckland|wellington|christchurch|hamilton nz)\b/i, country: 'NZ', label: 'New Zealand city' },
+  { re: /\b(johannesburg|cape town|durban|pretoria)\b/i, country: 'ZA', label: 'South African city' },
+  { re: /\b(tel aviv|jerusalem|haifa)\b/i, country: 'IL', label: 'Israeli city' },
+  { re: /\b(riyadh|jeddah|dammam)\b/i, country: 'SA', label: 'Saudi city' },
+  { re: /\b(cairo|giza)\b/i, country: 'EG', label: 'Egyptian city' },
+  { re: /\b(lagos|abuja|port harcourt)\b/i, country: 'NG', label: 'Nigerian city' },
+  { re: /\b(nairobi|mombasa)\b/i, country: 'KE', label: 'Kenyan city' },
+  { re: /\b(karachi|lahore|islamabad|rawalpindi)\b/i, country: 'PK', label: 'Pakistani city' },
+  { re: /\b(dhaka|chittagong)\b/i, country: 'BD', label: 'Bangladeshi city' },
+  { re: /\b(hanoi|ho chi minh|saigon|da nang)\b/i, country: 'VN', label: 'Vietnamese city' },
+  { re: /\b(bangkok|chiang mai)\b/i, country: 'TH', label: 'Thai city' },
+  { re: /\b(manila|quezon city|cebu|makati|taguig)\b/i, country: 'PH', label: 'Philippine city' },
+  { re: /\b(jakarta|surabaya|bandung|medan)\b/i, country: 'ID', label: 'Indonesian city' },
+  { re: /\b(kuala lumpur|penang|johor bahru)\b/i, country: 'MY', label: 'Malaysian city' },
+  { re: /\b(hong kong|kowloon)\b/i, country: 'HK', label: 'Hong Kong' },
+  { re: /\b(taipei|kaohsiung|taichung|hsinchu)\b/i, country: 'TW', label: 'Taiwanese city' },
+  { re: /\b(beijing|shanghai|shenzhen|guangzhou|hangzhou|chengdu)\b/i, country: 'CN', label: 'Chinese city' },
+  { re: /\b(athens|thessaloniki)\b/i, country: 'GR', label: 'Greek city' },
+  { re: /\b(kyiv|kiev|lviv|kharkiv)\b/i, country: 'UA', label: 'Ukrainian city' },
+  { re: /\b(buenos aires|rosario|mendoza)\b/i, country: 'AR', label: 'Argentine city' },
+  { re: /\b(bogotá|bogota|medellín|medellin|barranquilla)\b/i, country: 'CO', label: 'Colombian city' },
+  { re: /\b(arequipa|cusco|trujillo)\b/i, country: 'PE', label: 'Peruvian city' },
+  { re: /\b(valparaíso|valparaiso|concepción|viña del mar)\b/i, country: 'CL', label: 'Chilean city' },
 ];
 const US_CITY = /\b(new york|san francisco|los angeles|chicago|boston|seattle|austin|denver|atlanta|miami|brooklyn|manhattan|bay area|silicon valley|washington,? d\.?c\.?)\b/i;
 
@@ -122,6 +160,61 @@ const WORK_AUTH: Array<{ re: RegExp; country: string; label: string }> = [
   { re: /\b(right to work in the uk|authori[sz]ed to work in the uk|indefinite leave to remain|skilled worker visa|tier 2 visa|british citizen)\b/i, country: 'GB', label: 'UK work authorization stated' },
   { re: /\b(authori[sz]ed to work in australia|australian citizen|australian permanent resident)\b/i, country: 'AU', label: 'Australian work authorization stated' },
   { re: /\b(authori[sz]ed to work in canada|canadian citizen|canadian permanent resident)\b/i, country: 'CA', label: 'Canadian work authorization stated' },
+  { re: /\b(arbeitserlaubnis|niederlassungserlaubnis|deutsche staatsbürgerschaft|deutsche staatsangehörigkeit)\b/i, country: 'DE', label: 'German work authorization stated' },
+  { re: /\b(titre de séjour|carte de séjour|autorisation de travail|nationalité française)\b/i, country: 'FR', label: 'French work authorization stated' },
+  { re: /\b(permiso de trabajo|autorización de trabajo|nacionalidad española)\b/i, country: 'ES', label: 'Spanish work authorization stated' },
+  { re: /\b(cidadania brasileira|carteira de trabalho)\b/i, country: 'BR', label: 'Brazilian work authorization stated' },
+  { re: /\b(nacionalidade portuguesa|autorização de residência)\b/i, country: 'PT', label: 'Portuguese work authorization stated' },
+  { re: /\b(werkvergunning|nederlandse nationaliteit)\b/i, country: 'NL', label: 'Dutch work authorization stated' },
+  { re: /\b(stamp 4|irish citizen)\b/i, country: 'IE', label: 'Irish work authorization stated' },
+  { re: /\b(singapore pr|employment pass|s pass holder|singapore citizen)\b/i, country: 'SG', label: 'Singapore work authorization stated' },
+  { re: /\b(new zealand citizen|nz citizen|right to work in new zealand)\b/i, country: 'NZ', label: 'NZ work authorization stated' },
+  { re: /\b(uae residence visa|emirates id)\b/i, country: 'AE', label: 'UAE residency stated' },
+];
+
+// Relocation / target-market intent — "relocating to London", "seeking roles
+// in Germany". The DESTINATION is what the resume should be judged against
+// (same philosophy as the explicit target-country selector), so these outrank
+// current-location signals.
+const RELOCATION_PHRASE = /\b(?:relocat(?:e|ing)\s+to|moving\s+to|seeking\s+(?:roles?|opportunities|positions?)\s+in|open\s+to\s+(?:roles?|opportunities|positions?)\s+in|targeting\s+(?:roles?|positions?)\s+in)\s+(?:the\s+)?([a-zà-ÿA-ZÀ-Ÿ .'-]{3,30})/gi;
+const PLACE_TO_COUNTRY: Array<{ re: RegExp; country: string }> = [
+  { re: /\b(united states|usa|u\.s\.|america)\b/i, country: 'US' },
+  { re: /\b(uk|united kingdom|england|scotland|london)\b/i, country: 'GB' },
+  { re: /\b(germany|deutschland|berlin|munich)\b/i, country: 'DE' },
+  { re: /\b(france|paris)\b/i, country: 'FR' },
+  { re: /\b(spain|españa|madrid|barcelona)\b/i, country: 'ES' },
+  { re: /\b(netherlands|amsterdam)\b/i, country: 'NL' },
+  { re: /\b(canada|toronto|vancouver)\b/i, country: 'CA' },
+  { re: /\b(australia|sydney|melbourne)\b/i, country: 'AU' },
+  { re: /\b(new zealand|auckland)\b/i, country: 'NZ' },
+  { re: /\b(ireland|dublin)\b/i, country: 'IE' },
+  { re: /\b(switzerland|zurich|zürich|geneva)\b/i, country: 'CH' },
+  { re: /\b(singapore)\b/i, country: 'SG' },
+  { re: /\b(dubai|uae|united arab emirates|abu dhabi)\b/i, country: 'AE' },
+  { re: /\b(japan|tokyo)\b/i, country: 'JP' },
+  { re: /\b(brazil|brasil|são paulo)\b/i, country: 'BR' },
+  { re: /\b(mexico|méxico)\b/i, country: 'MX' },
+  { re: /\b(italy|italia|milan|milano)\b/i, country: 'IT' },
+  { re: /\b(portugal|lisbon|lisboa)\b/i, country: 'PT' },
+  { re: /\b(sweden|stockholm)\b/i, country: 'SE' },
+  { re: /\b(poland|warsaw)\b/i, country: 'PL' },
+];
+
+// US "City, ST 12345" — the most common location format on American resumes.
+// Comma + 2-letter state code + ZIP is near-zero false-positive.
+const US_STATE_ZIP = /,\s*(A[LKZR]|C[AOT]|D[EC]|FL|GA|HI|I[DLNA]|K[SY]|LA|M[EDAINSOT]|N[EVHJMYCD]|O[HKR]|PA|RI|S[CD]|T[NX]|UT|V[TA]|W[AVIY])\s+\d{5}(?:-\d{4})?\b/;
+
+// Canadian postal code — LDL DLD with valid first letters; unambiguous.
+const CA_POSTAL = /\b[ABCEGHJ-NPRSTVXY]\d[A-Z]\s?\d[A-Z]\d\b/;
+
+// European "postcode City" — a REAL address (postcode before the city name)
+// is far stronger evidence than the city name appearing in a bullet.
+const POSTCODE_CITY: Array<{ re: RegExp; country: string; label: string }> = [
+  { re: /\b\d{5}\s+(berlin|hamburg|münchen|munich|frankfurt|köln|cologne|stuttgart|düsseldorf|leipzig|dresden)\b/i, country: 'DE', label: 'German postal address' },
+  { re: /\b\d{5}\s+(paris|lyon|marseille|toulouse|bordeaux|nantes|lille|strasbourg)\b/i, country: 'FR', label: 'French postal address' },
+  { re: /\b\d{5}\s+(madrid|barcelona|valencia|sevilla|bilbao|zaragoza)\b/i, country: 'ES', label: 'Spanish postal address' },
+  { re: /\b\d{5}\s+(roma|milano|napoli|torino|firenze|bologna)\b/i, country: 'IT', label: 'Italian postal address' },
+  { re: /\b\d{4}\s?[A-Z]{2}\s+(amsterdam|rotterdam|den haag|utrecht|eindhoven)\b/i, country: 'NL', label: 'Dutch postal address' },
 ];
 
 // Education-system terms — highly diagnostic of where someone studied, and they
@@ -133,6 +226,13 @@ const EDUCATION_SIGNALS: Array<{ re: RegExp; country: string; label: string }> =
   { re: /\b(baccalaur[eé]at|classe pr[eé]paratoire|grande [eé]cole)\b/i, country: 'FR', label: 'French education system (Baccalauréat)' },
   { re: /\b(cbse|icse|iit[\s-]?jee|\bneet\b|b\.?tech|12th standard)\b/i, country: 'IN', label: 'Indian education system (CBSE/IIT/B.Tech)' },
   { re: /\b(leaving certificate|leaving cert)\b/i, country: 'IE', label: 'Irish education system (Leaving Cert)' },
+  { re: /\b(selectividad|evau|ebau)\b/i, country: 'ES', label: 'Spanish education system (Selectividad)' },
+  { re: /\b(laurea|liceo scientifico|liceo classico|politecnico di)\b/i, country: 'IT', label: 'Italian education system (Laurea)' },
+  { re: /\b(vwo|havo|hbo diploma|mbo niveau)\b/i, country: 'NL', label: 'Dutch education system (VWO/HAVO/HBO)' },
+  { re: /\b(vestibular|enem|ensino médio)\b/i, country: 'BR', label: 'Brazilian education system (ENEM/vestibular)' },
+  { re: /\b(ensino secundário)\b/i, country: 'PT', label: 'Portuguese education system' },
+  { re: /\b(matura|politechnika)\b/i, country: 'PL', label: 'Polish education system (Matura)' },
+  { re: /\b(gymnasiet|högskola)\b/i, country: 'SE', label: 'Swedish education system' },
 ];
 
 import { detectResumeLanguage, LANGUAGE_GEO } from './resume-language.ts';
@@ -163,6 +263,24 @@ export function detectCountryFromResume(resumeText: string): GeoDetectionResult 
     signals.push(label);
   };
 
+  // 0. Relocation / target-market intent — an explicit "relocating to X" /
+  // "seeking roles in X" is the candidate DECLARING the target market, so it
+  // behaves like the UI's target-country selector: it wins outright rather
+  // than entering the scoring contest (where a well-documented current
+  // location would outvote the destination). Present tense only — the regex
+  // deliberately does not match historical "relocated to".
+  for (const m of text.matchAll(RELOCATION_PHRASE)) {
+    const hit = PLACE_TO_COUNTRY.find((pc) => pc.re.test(m[1]));
+    if (hit) {
+      return {
+        country: hit.country,
+        confidence: 'high',
+        signals: [`Relocation/target intent: "${m[0].trim()}"`],
+        source: 'relocation',
+      };
+    }
+  }
+
   // 1. Work authorization / citizenship (strongest — names the target country)
   for (const { re, country, label } of WORK_AUTH) {
     if (re.test(text)) add(country, 6, 'work_authorization', label);
@@ -176,6 +294,13 @@ export function detectCountryFromResume(resumeText: string): GeoDetectionResult 
   // 3. Education system (diagnostic of where they studied)
   for (const { re, country, label } of EDUCATION_SIGNALS) {
     if (re.test(text)) add(country, 3, 'education', label);
+  }
+
+  // 3b. Real postal addresses (strong — an address ≠ a city name in a bullet)
+  if (US_STATE_ZIP.test(text)) add('US', 5, 'address', 'US state + ZIP address');
+  if (CA_POSTAL.test(text)) add('CA', 5, 'address', 'Canadian postal code');
+  for (const { re, country, label } of POSTCODE_CITY) {
+    if (re.test(text)) add(country, 5, 'address', label);
   }
 
   // 4. City / address mentions (weak — a place named ≠ where they live)
