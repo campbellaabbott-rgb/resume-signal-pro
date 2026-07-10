@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { postTrackEvent } from '@/lib/track-transport';
 import { ProductId } from '@/config/products';
 import { AB_TESTS } from '@/hooks/use-ab-test';
 
@@ -28,14 +28,12 @@ const trackABTestConversions = async (metadata?: Record<string, unknown>) => {
     const variant = localStorage.getItem(`ab_${testName}`);
     if (variant) {
       try {
-        await supabase.functions.invoke('track-ab-event', {
-          body: {
+        postTrackEvent({
             testName,
             variant,
             eventType: 'conversion',
             visitorId,
             metadata
-          }
         });
         console.log(`[A/B Conversion] Tracked conversion for ${testName}:${variant}`);
       } catch (error) {
@@ -55,8 +53,7 @@ const trackConversionEvent = async (
     const visitorId = getVisitorId();
     
     // Use existing A/B event tracking infrastructure
-    await supabase.functions.invoke('track-ab-event', {
-      body: {
+    postTrackEvent({
         testName: 'product_conversion',
         variant: productId,
         eventType: eventType === 'button_click' ? 'view' : 'conversion',
@@ -69,7 +66,6 @@ const trackConversionEvent = async (
           page: window.location.pathname,
           referrer: document.referrer || 'direct',
         }
-      }
     });
     
     console.log(`[Conversion] Tracked ${eventType} for ${productId}`);

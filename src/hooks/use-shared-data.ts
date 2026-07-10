@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { postTrackEvent } from '@/lib/track-transport';
 
 // =============================================================================
 // SHARED DATA CACHE
@@ -212,12 +213,18 @@ async function flushABEvents() {
     return true;
   });
   
-  // Fire all events in parallel
-  await Promise.allSettled(
-    deduped.map(event => 
-      supabase.functions.invoke('track-ab-event', { body: event })
-    )
-  );
+  // Keepalive posts survive navigation (a pending batch used to be silently
+  // dropped when the user left for Stripe before the 100ms timer fired).
+  for (const event of deduped) postTrackEvent(event);
+}
+
+// Flush any queued events at the last reliable moment before the page goes
+// away — keepalive lets the posts complete after unload.
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => {
+    if (abBatchTimer) { clearTimeout(abBatchTimer); abBatchTimer = null; }
+    void flushABEvents();
+  });
 }
 
 export function queueABEvent(event: ABEvent) {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { postTrackEvent } from '@/lib/track-transport';
 import { getCohortData, initCohortTracking } from './use-cohort-tracking';
 // Funnel stages in order
 export const FUNNEL_STAGES = [
@@ -78,8 +78,11 @@ const trackFunnelEvent = async (
     const skippedStages = expectedPrevious - previousStages;
     
     // Track the event with cohort context
-    await supabase.functions.invoke('track-ab-event', {
-      body: {
+    // Keepalive transport, not a plain client invoke: checkout_started fires
+    // milliseconds before window.location.assign(stripe) and plain fetches are
+    // cancelled by navigation — this funnel recorded purchases with zero
+    // checkout_starts until this was switched.
+    postTrackEvent({
         testName: 'conversion_funnel',
         variant: stage,
         eventType: stage === 'purchase_completed' ? 'conversion' : 'view',
@@ -107,7 +110,6 @@ const trackFunnelEvent = async (
           isReturningUser: cohortData.isReturningUser,
           cohortSegment: `${cohortData.trafficSource}_${cohortData.deviceType}_${cohortData.isReturningUser ? 'returning' : 'new'}`,
         }
-      }
     });
     
     // Update progress (only add if not already tracked)
