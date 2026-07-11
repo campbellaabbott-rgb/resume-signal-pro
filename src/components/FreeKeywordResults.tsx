@@ -2897,9 +2897,11 @@ export function FreeKeywordResults({
             const roleLabel = industryDetection?.detectedRole || currentRole || null;
             const senLabel = seniorityLevel || industryDetection?.seniorityLevel || null;
             // Build cohort label: "Senior Software Engineer" or "Technology" fallback
-            const cohortLabel = [senLabel, roleLabel].filter(Boolean).join(' ') || industry.replace(/_/g, ' ');
+            const cohortLabel = [senLabel, roleLabel].filter(Boolean).join(' ') || (industry ?? 'your industry').replace(/_/g, ' ');
             // Compute numeric percentile for emotional framing
-            const pctRaw = industryBenchmark.percentile;
+            // Cached payloads from before the percentile field exists — an
+            // empty string degrades every downstream use safely.
+            const pctRaw = industryBenchmark.percentile ?? "";
             const numMatch = pctRaw.match(/\d+/);
             const numPct = numMatch ? parseInt(numMatch[0]) : null;
             // bottom X% or top X%
