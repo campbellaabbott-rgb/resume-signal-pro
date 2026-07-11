@@ -14,6 +14,7 @@ import { categorize, JOB_CATEGORIES } from "../../supabase/functions/job-board/c
 import { normalizeSmartRecruiters, normalizeWorkable } from "../../supabase/functions/job-board/normalize";
 import { searchName, searchToQuery } from "../../src/lib/job-search-params";
 import { computeFit } from "../../supabase/functions/_shared/fit-score";
+import { normalizeBambooHR } from "../../supabase/functions/job-board/normalize";
 import { leverSalary } from "../../supabase/functions/job-board/normalize";
 
 // ── real captured fixtures (trimmed to the fields the APIs actually send) ──
@@ -208,6 +209,32 @@ describe("fit scoring + salary mapping", () => {
     expect(leverSalary({ min: 120000, max: 160000, currency: "USD", interval: "yearly" })).toContain("$");
     expect(leverSalary(undefined)).toBeNull();
     expect(leverSalary({ currency: "USD" })).toBeNull();
+  });
+});
+
+describe("BambooHR normalizer (real captured shape)", () => {
+  it("maps the careers/list payload with atsLocation fallbacks", () => {
+    const jobs = normalizeBambooHR(
+      { result: [{
+        id: "109",
+        jobOpeningName: "Solutions Architect",
+        departmentLabel: "CSM",
+        isRemote: null,
+        location: { city: null, state: null },
+        atsLocation: { country: "United Kingdom", state: null, province: null, city: "London" },
+      }] },
+      "Bitrise", "bitrise",
+    );
+    expect(jobs[0]).toMatchObject({
+      id: "bamboohr:bitrise:109",
+      company: "Bitrise",
+      title: "Solutions Architect",
+      location: "London, United Kingdom",
+      remote: false,
+      department: "CSM",
+      postedAt: null,
+      applyUrl: "https://bitrise.bamboohr.com/careers/109",
+    });
   });
 });
 

@@ -18,6 +18,7 @@ import { JOB_SOURCES, type JobSource } from "./sources.ts";
 import {
   htmlToText,
   normalizeAshby,
+  normalizeBambooHR,
   normalizeGreenhouse,
   normalizeLever,
   normalizeSmartRecruiters,
@@ -44,7 +45,7 @@ const FETCH_TIMEOUT_MS = 8_000;
 // read-triggered SWR calls walk the full list continuously. Facets swap in
 // when a cycle completes; until then the previous complete cycle serves.
 const CONCURRENCY = 4;
-const SLICE = 35;
+const SLICE = 50;
 const SLICE_LOCK_MS = 3 * 60_000; // min gap between slices
 const DESC_CAP = 14_000; // matches the scanner's own input bounds
 
@@ -74,12 +75,14 @@ const listUrl = (s: JobSource) =>
         ? `https://api.ashbyhq.com/posting-api/job-board/${s.token}?includeCompensation=true`
         : s.source === "smartrecruiters"
           ? `https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=100`
-          : `https://apply.workable.com/api/v1/widget/accounts/${s.token}?details=false`;
+          : s.source === "workable"
+            ? `https://apply.workable.com/api/v1/widget/accounts/${s.token}?details=false`
+            : `https://${s.token}.bamboohr.com/careers/list`;
 
-// SmartRecruiters paginates; Bosch alone lists ~4.7k postings. 500/board
-// keeps a full refresh under ~90s — the board never claimed per-company
-// exhaustiveness, and newest-first ordering surfaces the fetched ones.
-const SR_CAP = 500;
+// SmartRecruiters paginates; Bosch alone lists ~4.7k postings. The slim SR
+// payloads are CPU-cheap (no description work), so the cap is generous —
+// with sliced refresh, one giant board dominating a slice is fine.
+const SR_CAP = 3000;
 async function fetchSmartRecruiters(s: JobSource): Promise<{ content: unknown[] }> {
   const first = await fetchWithTimeout(listUrl(s));
   if (!first.ok) throw new Error(`HTTP ${first.status}`);
@@ -122,7 +125,9 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
             ? normalizeAshby(raw, s.name, s.token)
             : s.source === "smartrecruiters"
               ? normalizeSmartRecruiters(raw, s.name, s.token)
-              : normalizeWorkable(raw, s.name, s.token);
+              : s.source === "workable"
+                ? normalizeWorkable(raw, s.name, s.token)
+                : normalizeBambooHR(raw, s.name, s.token);
     return { jobs, raw };
   } catch (e) {
     console.warn(`[JOB-BOARD] board ${s.source}:${s.token} failed:`, String(e).slice(0, 100));
@@ -303,6 +308,8 @@ async function getDescription(src: JobSource, id: string, externalId: string): P
       const job = (j.jobs ?? []).find((x: { shortcode: string }) => x.shortcode === externalId);
       if (job?.description) text = htmlToText(String(job.description)).slice(0, DESC_CAP) || null;
     }
+  } else if (src.source === "bamboohr") {
+    text = null; // detail endpoint is unreliable (observed 500s) — honest null
   } else if (src.source === "greenhouse") {
     const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${src.token}/jobs/${externalId}?questions=false`);
     if (res.ok) {

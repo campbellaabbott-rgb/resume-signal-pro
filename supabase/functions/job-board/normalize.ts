@@ -248,6 +248,41 @@ export function normalizeWorkable(raw: { jobs?: WorkableJob[] }, company: string
     .filter((j) => j.applyUrl !== "");
 }
 
+interface BambooJob {
+  id: string | number;
+  jobOpeningName: string;
+  departmentLabel?: string | null;
+  isRemote?: boolean | null;
+  location?: { city?: string | null; state?: string | null };
+  atsLocation?: { country?: string | null; state?: string | null; province?: string | null; city?: string | null };
+}
+
+export function normalizeBambooHR(raw: { result?: BambooJob[] }, company: string, token: string): JobPosting[] {
+  return (raw.result ?? [])
+    .map((j) => {
+      const location = [
+        j.atsLocation?.city ?? j.location?.city,
+        j.atsLocation?.state ?? j.atsLocation?.province ?? j.location?.state,
+        j.atsLocation?.country,
+      ].filter(Boolean).join(", ");
+      return {
+        id: `bamboohr:${token}:${j.id}`,
+        source: "bamboohr" as const,
+        token,
+        company,
+        title: j.jobOpeningName ?? "",
+        location,
+        remote: j.isRemote === true || looksRemote(location) || looksRemote(j.jobOpeningName ?? ""),
+        department: j.departmentLabel ?? null,
+        postedAt: null, // the list feed carries no dates
+        category: categorize(j.jobOpeningName ?? "", j.departmentLabel),
+        salary: null,
+        applyUrl: safeUrl(`https://${token}.bamboohr.com/careers/${j.id}`),
+      };
+    })
+    .filter((j) => j.applyUrl !== "");
+}
+
 export interface JobFilter {
   q?: string;
   location?: string;
