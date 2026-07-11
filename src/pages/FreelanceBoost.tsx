@@ -185,7 +185,7 @@ export default function FreelanceBoost() {
     const text = [
       `${result.header}`,
       result.scopeStatement,
-      ...result.projects.flatMap(p => p.bullets.map(b => `• ${b}`)),
+      ...(result.projects ?? []).flatMap(p => (p.bullets ?? []).map(b => `• ${b}`)),
     ].filter(Boolean).join("\n");
     navigator.clipboard.writeText(text);
     toast({ title: "Copied", description: "Experience section copied — paste it into your resume." });
@@ -242,7 +242,7 @@ export default function FreelanceBoost() {
                 <p className="font-bold">{result.header}</p>
                 {result.scopeStatement && <p className="italic text-neutral-600 text-[13px] mt-0.5">{result.scopeStatement}</p>}
                 <ul className="list-disc ml-4 mt-2 space-y-1">
-                  {result.projects.flatMap((p, i) => p.bullets.map((b, j) => <li key={`${i}-${j}`}>{b}</li>))}
+                  {(result.projects ?? []).flatMap((p, i) => (p.bullets ?? []).map((b, j) => <li key={`${i}-${j}`}>{b}</li>))}
                 </ul>
               </div>
               {result.keywordCoverage && result.keywordCoverage.total > 0 && (
@@ -288,7 +288,7 @@ export default function FreelanceBoost() {
                         header: result.header,
                         structure: result.structure,
                         scopeStatement: result.scopeStatement,
-                        projects: result.projects.map(p => ({ clientLabel: p.clientLabel, bullets: p.bullets })),
+                        projects: (result.projects ?? []).map(p => ({ clientLabel: p.clientLabel, bullets: p.bullets })),
                       }));
                     } catch { /* session unavailable — button still navigates */ }
                     window.location.href = "/builder";

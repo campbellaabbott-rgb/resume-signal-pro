@@ -45,7 +45,7 @@ const FETCH_TIMEOUT_MS = 8_000;
 // read-triggered SWR calls walk the full list continuously. Facets swap in
 // when a cycle completes; until then the previous complete cycle serves.
 const CONCURRENCY = 4;
-const SLICE = 50;
+const SLICE = 30; // lighter slices: heavy GH-description batches were intermittently hitting the compute ceiling and stalling the chain
 const SLICE_LOCK_MS = 3 * 60_000; // min gap between slices
 const DESC_CAP = 14_000; // matches the scanner's own input bounds
 

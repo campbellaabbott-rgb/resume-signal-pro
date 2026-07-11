@@ -206,7 +206,7 @@ export default function Account() {
   const toggleFixItem = async (scanId: string, index: number) => {
     const scan = scans.find(s => s.id === scanId);
     if (!scan?.fix_plan) return;
-    const updated = scan.fix_plan.map((f, i) => i === index ? { ...f, done: !f.done } : f);
+    const updated = (scan.fix_plan ?? []).map((f, i) => i === index ? { ...f, done: !f.done } : f);
     setScans(scans.map(s => s.id === scanId ? { ...s, fix_plan: updated } : s));
     await supabase.from("user_scans").update({ fix_plan: fixPlanToJson(updated) }).eq("id", scanId);
   };
@@ -455,7 +455,7 @@ export default function Account() {
             </div>
             <p className="text-xs text-muted-foreground mb-3">From your scan on {new Date(latestFixPlan.created_at).toLocaleDateString()}. Check items off as you fix them, then rescan to see the lift.</p>
             <div className="space-y-1.5">
-              {latestFixPlan.fix_plan.map((f, i) => (
+              {(latestFixPlan.fix_plan ?? []).map((f, i) => (
                 <label key={i} className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border/50 cursor-pointer hover:bg-muted/20 transition-colors">
                   <input
                     type="checkbox"

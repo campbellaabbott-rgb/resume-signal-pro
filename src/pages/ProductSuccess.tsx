@@ -1134,7 +1134,7 @@ export default function ProductSuccess() {
                     Missing Keywords to Add
                   </h3>
                   <div className="grid gap-3">
-                    {keywordData.missingKeywords.slice(0, 10).map((kw, i) => (
+                    {(keywordData.missingKeywords ?? []).slice(0, 10).map((kw, i) => (
                       <div key={i} className="p-4 rounded-xl bg-card border border-border">
                         <div className="flex items-start justify-between gap-4">
                           <div>
@@ -1162,7 +1162,7 @@ export default function ProductSuccess() {
                     Stronger Action Verbs
                   </h3>
                   <div className="grid sm:grid-cols-2 gap-3">
-                    {keywordData.actionVerbs.slice(0, 6).map((verb, i) => (
+                    {(keywordData.actionVerbs ?? []).slice(0, 6).map((verb, i) => (
                       <div key={i} className="p-4 rounded-xl bg-card border border-border">
                         <div className="flex items-center gap-2 mb-2">
                           {verb.current && (
@@ -1188,7 +1188,7 @@ export default function ProductSuccess() {
                     Skill Gaps to Address
                   </h3>
                   <div className="grid gap-3">
-                    {keywordData.skillGaps.slice(0, 5).map((gap, i) => (
+                    {(keywordData.skillGaps ?? []).slice(0, 5).map((gap, i) => (
                       <div key={i} className="p-4 rounded-xl bg-card border border-border">
                         <div className="font-semibold mb-1">{gap.skill}</div>
                         <p className="text-sm text-muted-foreground mb-2">{gap.reason}</p>
