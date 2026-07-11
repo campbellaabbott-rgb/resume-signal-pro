@@ -714,12 +714,14 @@ export type Database = {
           company: string
           company_token: string
           department: string | null
+          description: string | null
           first_seen: string
           id: string
           last_seen: string
           location: string
           posted_at: string | null
           remote: boolean
+          salary: string | null
           source: string
           title: string
         }
@@ -729,12 +731,14 @@ export type Database = {
           company: string
           company_token: string
           department?: string | null
+          description?: string | null
           first_seen?: string
           id: string
           last_seen?: string
           location?: string
           posted_at?: string | null
           remote?: boolean
+          salary?: string | null
           source: string
           title: string
         }
@@ -744,12 +748,14 @@ export type Database = {
           company?: string
           company_token?: string
           department?: string | null
+          description?: string | null
           first_seen?: string
           id?: string
           last_seen?: string
           location?: string
           posted_at?: string | null
           remote?: boolean
+          salary?: string | null
           source?: string
           title?: string
         }
