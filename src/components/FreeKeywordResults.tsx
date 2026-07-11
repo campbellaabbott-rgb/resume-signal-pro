@@ -1728,7 +1728,7 @@ export function FreeKeywordResults({
                 line('RESUME DIAGNOSTIC REPORT', 15, true, [30, 30, 30]);
                 if (reportMeta) {
                   line(`Report #${reportMeta.reportId}  ·  ${new Date(reportMeta.generatedAt).toLocaleDateString()}  ·  Engine ${reportMeta.engineVersion}`, 8.5, false, [120, 120, 120]);
-                  line(`Subject: ${candidateName || 'Candidate'}  ·  Industry: ${reportMeta.industry.replace(/_/g, ' ')} (${reportMeta.industryConfidence} confidence)  ·  Benchmarks: ${reportMeta.benchmarkSource === 'measured' ? 'measured from real scans' : 'industry estimates'}`, 8.5, false, [120, 120, 120]);
+                  line(`Subject: ${candidateName || 'Candidate'}  ·  Industry: ${(reportMeta.industry ?? 'general').replace(/_/g, ' ')} (${reportMeta.industryConfidence} confidence)  ·  Benchmarks: ${reportMeta.benchmarkSource === 'measured' ? 'measured from real scans' : 'industry estimates'}`, 8.5, false, [120, 120, 120]);
                 } else {
                   line(new Date().toLocaleDateString(), 9, false, [120, 120, 120]);
                 }
@@ -1854,7 +1854,7 @@ export function FreeKeywordResults({
         <div className="rounded-xl border border-warning/40 bg-warning/10 px-4 py-2.5 mb-2 text-xs text-foreground">
           <span className="font-semibold">Quick check:</span> we weren't fully sure of your industry on this one
           {industryTransition ? (
-            <> — your history reads as <span className="font-semibold capitalize">{industryTransition.historical.replace(/_/g, ' ')}</span> but your latest role reads as <span className="font-semibold capitalize">{industryTransition.recent.replace(/_/g, ' ')}</span>. Confirm below and the whole report recalibrates.</>
+            <> — your history reads as <span className="font-semibold capitalize">{(industryTransition.historical ?? '').replace(/_/g, ' ')}</span> but your latest role reads as <span className="font-semibold capitalize">{(industryTransition.recent ?? '').replace(/_/g, ' ')}</span>. Confirm below and the whole report recalibrates.</>
           ) : (
             <>. Confirm or correct it below — benchmarks and keywords sharpen instantly.</>
           )}
@@ -2152,9 +2152,9 @@ export function FreeKeywordResults({
           {industryBlend && (
             <p className="text-xs text-foreground/80">
               {candidateName ? `${candidateName.split(' ')[0]}, your` : 'Your'} resume reads as{' '}
-              <span className="font-semibold text-foreground">{industryBlend.primaryPct}% {industryBlend.primary.replace(/_/g, ' ')}</span>
+              <span className="font-semibold text-foreground">{industryBlend.primaryPct}% {(industryBlend.primary ?? '').replace(/_/g, ' ')}</span>
               {' / '}
-              <span className="font-semibold text-foreground">{industryBlend.secondaryPct}% {industryBlend.secondary.replace(/_/g, ' ')}</span>
+              <span className="font-semibold text-foreground">{industryBlend.secondaryPct}% {(industryBlend.secondary ?? '').replace(/_/g, ' ')}</span>
               {' '}— recruiters in both fields will consider you, and the advice below covers both.
             </p>
           )}
@@ -2176,7 +2176,7 @@ export function FreeKeywordResults({
           <div className="grid grid-cols-2 gap-3">
             {([dualIndustryComparison.primary, dualIndustryComparison.secondary]).map((side, i) => (
               <div key={i} className={cn("rounded-xl border p-3", side.score >= (i === 0 ? dualIndustryComparison.secondary : dualIndustryComparison.primary).score ? "border-primary/30 bg-primary/5" : "border-border bg-muted/20")}>
-                <p className="text-xs font-semibold text-foreground capitalize mb-1">As a {side.industry.replace(/_/g, ' ')} candidate</p>
+                <p className="text-xs font-semibold text-foreground capitalize mb-1">As a {(side.industry ?? '').replace(/_/g, ' ')} candidate</p>
                 <p className="text-2xl font-bold text-foreground">{side.score}</p>
                 <p className="text-[10px] text-muted-foreground mt-1">
                   Keyword coverage: {side.keywordCoveragePct}% · Industry median: {side.benchmarkMedian}
@@ -3257,7 +3257,7 @@ export function FreeKeywordResults({
                   <LockedPremiumInsight
                     title={t('freeResults.personalizedCareerInsights.interviewStories')}
                     description={t('freeResults.lockedInsights.careerInterview')}
-                    previewLines={(personalizedCareerInsights.interviewTalkingPoints ?? []).slice(0, 2).map(p => `"${p.achievement.substring(0, 60)}..."`)}
+                    previewLines={(personalizedCareerInsights.interviewTalkingPoints ?? []).slice(0, 2).map(p => `"${(p.achievement ?? '').substring(0, 60)}..."`)}
                     onUnlock={() => handleUpgradeClick('locked_interview_stories')}
                     isLoading={isLoading}
                   />
@@ -4196,7 +4196,7 @@ export function FreeKeywordResults({
               interviewLikelihood.band === 'moderate' ? "bg-primary/15 text-primary" :
               "bg-destructive/15 text-destructive"
             )}>
-              {interviewLikelihood.band.replace('_', ' ')}
+              {(interviewLikelihood.band ?? '').replace('_', ' ')}
             </span>
           </div>
           <div className="h-2 rounded-full bg-muted overflow-hidden mb-2">

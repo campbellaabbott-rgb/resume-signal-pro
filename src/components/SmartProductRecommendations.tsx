@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, ArrowRight, Target, FileText, Briefcase, Star, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PRODUCTS } from '@/config/products';
+import { PRODUCTS, isProductHidden, type ProductId } from '@/config/products';
 
 interface SmartProductRecommendationsProps {
   onSelectProduct?: (productId: string) => void;
@@ -90,6 +90,8 @@ export function SmartProductRecommendations({ onSelectProduct, className }: Smar
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {topRecommendations.map((rec) => {
           const product = productDetails[rec.productId];
+          // Never surface pruned/hidden catalog items.
+          if (product?.productKey && isProductHidden(product.productKey as ProductId)) return null;
           if (!product) return null;
           
           return (

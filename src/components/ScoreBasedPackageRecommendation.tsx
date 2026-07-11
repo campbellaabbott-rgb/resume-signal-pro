@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Crown, FileText, Sparkles, ArrowRight, TrendingUp, AlertTriangle, Clock, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PRODUCTS } from "@/config/products";
+import { PRODUCTS, isProductHidden, type ProductId } from "@/config/products";
 
 interface ScoreBasedPackageRecommendationProps {
   atsScore: number;
@@ -11,7 +11,30 @@ interface ScoreBasedPackageRecommendationProps {
 export function ScoreBasedPackageRecommendation({ atsScore }: ScoreBasedPackageRecommendationProps) {
   const { t } = useTranslation();
   // Determine recommendation based on score - use prices from products config
-  const getRecommendation = () => {
+  // Pruned/hidden products must never be recommended (basicKeywordFix leaked
+  // here after the catalog pruning). Swap a hidden slot for the next visible
+  // product that isn't already occupying the other slot.
+  // deno-lint-ignore-file -- loose typing here: the three score-band literals
+  // over-narrow the slot types; substitution is structural (id/name/price).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const substituteHidden = (rec: any) => {
+    const fallbacks: ProductId[] = ["premiumPackage", "fullAnalysis", "atsDefense", "coverLetter"];
+    const pick = (excludeId: string) => {
+      const id = fallbacks.find((f) => !isProductHidden(f) && f !== excludeId);
+      return id ? { id, name: PRODUCTS[id].name, price: PRODUCTS[id].priceUsd } : null;
+    };
+    if (isProductHidden(rec.recommended.id as ProductId)) {
+      const sub = pick(rec.alternative.id);
+      if (sub) rec.recommended = { ...rec.recommended, ...sub };
+    }
+    if (isProductHidden(rec.alternative.id as ProductId)) {
+      const sub = pick(rec.recommended.id);
+      if (sub) rec.alternative = { ...rec.alternative, ...sub };
+    }
+    return rec;
+  };
+
+  const buildRecommendation = () => {
     if (atsScore < 50) {
       return {
         urgency: "high",
@@ -81,7 +104,7 @@ export function ScoreBasedPackageRecommendation({ atsScore }: ScoreBasedPackageR
     }
   };
 
-  const recommendation = getRecommendation();
+  const recommendation = substituteHidden(buildRecommendation());
   const RecommendedIcon = recommendation.recommended.icon;
   const isHighUrgency = recommendation.urgency === "high";
 
