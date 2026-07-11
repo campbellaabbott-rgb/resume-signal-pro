@@ -3993,7 +3993,7 @@
     "checkFit": "Passung prüfen — Gratis-Scan",
     "apply": "Auf der Seite von {{company}} bewerben",
     "loadMore": "Mehr laden",
-    "sourceNote": "Quellen: die offiziellen öffentlichen Job-Board-APIs, die jedes Unternehmen auf Greenhouse, Lever oder Ashby veröffentlicht, beim Laden aktualisiert (Cache ~10 Minuten). Ein Feed, der nicht mehr antwortet, fällt aus der Börse, statt sie zu brechen.",
+    "sourceNote": "Quellen: die offiziellen öffentlichen Job-Board-APIs, die Unternehmen auf Greenhouse, Lever, Ashby, SmartRecruiters, Workable und BambooHR veröffentlichen. Der Feed jedes Unternehmens wird etwa alle 10–15 Minuten neu geprüft; zurückgezogene Stellen verschwinden im nächsten Durchlauf. Ein Feed, der nicht mehr antwortet, fällt aus der Börse, statt sie zu brechen.",
     "fitFetchErrorTitle": "Diese Stelle konnte nicht geladen werden",
     "fitFetchError": "Der Feed des Unternehmens lieferte keine Beschreibung. Öffnen Sie die Stelle und fügen Sie sie in den Scanner ein.",
     "fitLoadedTitle": "Stellenbeschreibung geladen",

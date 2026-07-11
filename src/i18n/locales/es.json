@@ -3993,7 +3993,7 @@
     "checkFit": "Comprobar mi encaje — escaneo gratis",
     "apply": "Postularme en el sitio de {{company}}",
     "loadMore": "Cargar más",
-    "sourceNote": "Fuentes: las API públicas oficiales que cada empresa publica en Greenhouse, Lever o Ashby, actualizadas al cargar (caché ~10 minutos). Una fuente que deja de responder sale del tablón en lugar de romperlo.",
+    "sourceNote": "Fuentes: las API públicas oficiales que las empresas publican en Greenhouse, Lever, Ashby, SmartRecruiters, Workable y BambooHR. El portal de cada empresa se revisa aproximadamente cada 10–15 minutos, y las ofertas retiradas desaparecen en la siguiente pasada. Una fuente que deja de responder sale del tablón en lugar de romperlo.",
     "fitFetchErrorTitle": "No se pudo cargar esa oferta",
     "fitFetchError": "La fuente de la empresa no devolvió la descripción. Abre la oferta y pégala en el escáner.",
     "fitLoadedTitle": "Descripción del puesto cargada",

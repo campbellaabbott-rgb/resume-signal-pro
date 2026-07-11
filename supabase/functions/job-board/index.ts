@@ -137,7 +137,22 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
 
 // ── refresh: fan-out → upsert → prune (only successful boards) ─────────────
 
-async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: boolean; detail: string }> {
+// Self-chaining: a completed slice background-invokes the next one, so a
+// single cron tick walks the WHOLE corpus in minutes — per-board freshness
+// stays ~10-15 min even at 609 boards. The hop cap stops runaway chains;
+// the cycle-complete branch ends the chain naturally.
+const CHAIN_CAP = Math.ceil(700 / SLICE); // headroom above current board count
+
+function chainNextSlice(hop: number) {
+  const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+  waitUntil(fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "refresh", force: true, chain: hop + 1 }),
+  }).then((r) => r.text()).catch(() => {}));
+}
+
+async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): Promise<{ ok: boolean; detail: string }> {
   // Slice lock: cron + SWR + manual calls may overlap; one slice per window.
   const { data: prog } = await client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle();
   if (!force && prog && Date.now() - new Date(prog.updated_at).getTime() < SLICE_LOCK_MS) {
@@ -249,6 +264,10 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
   const allFailed = [...(pv.failed ?? []), ...failed];
   const runningTotal = (pv.total ?? 0) + sliceTotal;
 
+  if (!cycleDone && chainHop < CHAIN_CAP) {
+    chainNextSlice(chainHop); // walk the rest of the cycle in the background
+  }
+
   if (cycleDone) {
     // Swap the completed cycle into the live facets.
     const companiesFacet: Array<{ token: string; name: string; count: number }> = [];
@@ -359,7 +378,8 @@ Deno.serve(async (req) => {
 
   try {
     if (action === "refresh") {
-      const r = await runRefresh(client, body.force === true);
+      const hop = Number.isFinite(Number(body.chain)) ? Math.max(0, Number(body.chain)) : 0;
+      const r = await runRefresh(client, body.force === true, hop);
       return json(r, r.ok ? 200 : 502);
     }
 

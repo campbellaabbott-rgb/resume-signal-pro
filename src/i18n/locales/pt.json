@@ -3993,7 +3993,7 @@
     "checkFit": "Checar meu encaixe — escaneio grátis",
     "apply": "Candidatar-se no site da {{company}}",
     "loadMore": "Carregar mais",
-    "sourceNote": "Fontes: as APIs públicas oficiais que cada empresa publica no Greenhouse, Lever ou Ashby, atualizadas ao carregar (cache ~10 minutos). Um feed que para de responder sai do mural em vez de quebrá-lo.",
+    "sourceNote": "Fontes: as APIs públicas oficiais que as empresas publicam no Greenhouse, Lever, Ashby, SmartRecruiters, Workable e BambooHR. O feed de cada empresa é reverificado a cada 10–15 minutos, e vagas retiradas somem na próxima passada. Um feed que para de responder sai do mural em vez de quebrá-lo.",
     "fitFetchErrorTitle": "Não foi possível carregar essa vaga",
     "fitFetchError": "O feed da empresa não retornou a descrição. Abra a vaga e cole-a no escâner.",
     "fitLoadedTitle": "Descrição da vaga carregada",

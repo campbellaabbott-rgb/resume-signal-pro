@@ -3993,7 +3993,7 @@
     "checkFit": "Check my fit — free scan",
     "apply": "Apply on {{company}}'s site",
     "loadMore": "Load more",
-    "sourceNote": "Sources: the official public job-board APIs each company publishes on Greenhouse, Lever, or Ashby, refreshed on load (cached ~10 minutes). A feed that stops responding drops off the board rather than breaking it.",
+    "sourceNote": "Sources: the official public job-board APIs companies publish on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and BambooHR. Every company's feed is re-checked about every 10–15 minutes, and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.",
     "fitFetchErrorTitle": "Couldn't load that posting",
     "fitFetchError": "The company's feed didn't return the description. Open the posting and paste it into the scanner instead.",
     "fitLoadedTitle": "Job description loaded",

@@ -3993,7 +3993,7 @@
     "checkFit": "I-check ang fit ko — libreng scan",
     "apply": "Mag-apply sa site ng {{company}}",
     "loadMore": "Mag-load pa",
-    "sourceNote": "Mga source: ang opisyal na pampublikong job-board API na inilalathala ng bawat kumpanya sa Greenhouse, Lever, o Ashby, nire-refresh sa pag-load (cache ~10 minuto). Ang feed na tumigil sumagot ay natatanggal sa board sa halip na sirain ito.",
+    "sourceNote": "Mga source: ang opisyal na pampublikong job-board API na inilalathala ng mga kumpanya sa Greenhouse, Lever, Ashby, SmartRecruiters, Workable, at BambooHR. Ang feed ng bawat kumpanya ay muling sinusuri humigit-kumulang bawat 10–15 minuto, at ang mga tinanggal na posting ay nawawala sa susunod na pasada. Ang feed na tumigil sumagot ay natatanggal sa board sa halip na sirain ito.",
     "fitFetchErrorTitle": "Hindi ma-load ang posting na iyon",
     "fitFetchError": "Walang ibinalik na deskripsyon ang feed ng kumpanya. Buksan ang posting at i-paste ito sa scanner.",
     "fitLoadedTitle": "Na-load ang job description",

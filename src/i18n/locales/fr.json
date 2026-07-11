@@ -3993,7 +3993,7 @@
     "checkFit": "Vérifier mon adéquation — scan gratuit",
     "apply": "Candidater sur le site de {{company}}",
     "loadMore": "Afficher plus",
-    "sourceNote": "Sources : les API publiques officielles que chaque entreprise publie sur Greenhouse, Lever ou Ashby, rafraîchies au chargement (cache ~10 minutes). Un flux qui ne répond plus disparaît du tableau au lieu de le casser.",
+    "sourceNote": "Sources : les API publiques officielles que les entreprises publient sur Greenhouse, Lever, Ashby, SmartRecruiters, Workable et BambooHR. Le flux de chaque entreprise est re-vérifié environ toutes les 10–15 minutes, et les offres retirées disparaissent à la passe suivante. Un flux qui ne répond plus disparaît du tableau au lieu de le casser.",
     "fitFetchErrorTitle": "Impossible de charger cette offre",
     "fitFetchError": "Le flux de l'entreprise n'a pas renvoyé la description. Ouvrez l'offre et collez-la dans le scanner.",
     "fitLoadedTitle": "Description du poste chargée",
