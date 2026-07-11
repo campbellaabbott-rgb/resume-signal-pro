@@ -8,7 +8,7 @@
 // Tokens rot when companies migrate ATSs; the fetcher tolerates failures and
 // reports failedSources so a dead token degrades, never breaks, the board.
 
-export type JobSourceKind = "greenhouse" | "lever" | "ashby";
+export type JobSourceKind = "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "workable";
 
 export interface JobSource {
   name: string; // display name
@@ -17,6 +17,21 @@ export interface JobSource {
 }
 
 export const JOB_SOURCES: JobSource[] = [
+  // SmartRecruiters (enterprise; API caps our fetch at 500/board)
+  { name: "Bosch Group", source: "smartrecruiters", token: "BoschGroup" },
+  { name: "JYSK", source: "smartrecruiters", token: "JYSK" },
+  { name: "Devoteam", source: "smartrecruiters", token: "Devoteam" },
+  { name: "Continental", source: "smartrecruiters", token: "Continental" },
+  { name: "Experian", source: "smartrecruiters", token: "Experian" },
+  { name: "Accor", source: "smartrecruiters", token: "Accor" },
+  { name: "Ubisoft", source: "smartrecruiters", token: "Ubisoft2" },
+  { name: "LGC Group", source: "smartrecruiters", token: "LGCGroup" },
+  { name: "Colliers", source: "smartrecruiters", token: "Colliers" },
+  { name: "McDonald's", source: "smartrecruiters", token: "McDonaldsCorporation" },
+  { name: "Visa", source: "smartrecruiters", token: "visa" },
+  // Workable
+  { name: "Blueground", source: "workable", token: "blueground" },
+  { name: "Plum", source: "workable", token: "withplum" },
   { name: "10x Genomics", source: "greenhouse", token: "10xgenomics" },
   { name: "Affirm", source: "greenhouse", token: "affirm" },
   { name: "Airbnb", source: "greenhouse", token: "airbnb" },

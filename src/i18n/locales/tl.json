@@ -3992,6 +3992,16 @@
       "security": "Seguridad at trust",
       "admin": "Administratibo",
       "other": "Iba pa"
-    }
+    },
+    "signInToSaveTitle": "Mag-sign in para subaybayan ang mga trabaho",
+    "signInToSave": "Ang mga naka-save na trabaho at paghahanap ay nasa libreng account mo.",
+    "jobSaved": "Na-save sa iyong application tracker",
+    "saveFailed": "Hindi ma-save — subukan ulit.",
+    "savedBadge": "Naka-save",
+    "saveJob": "I-save",
+    "saveSearch": "I-save ang paghahanap na ito",
+    "searchExists": "Na-save mo na ang paghahanap na ito.",
+    "searchSaved": "Na-save ang paghahanap",
+    "searchSavedDesc": "Ipinapakita ng account mo kung ilang bagong posting ang tumugma mula noong huli kang tumingin."
   }
 }

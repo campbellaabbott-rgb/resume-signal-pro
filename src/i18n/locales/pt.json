@@ -3992,6 +3992,16 @@
       "security": "Segurança e confiança",
       "admin": "Administrativo",
       "other": "Outros"
-    }
+    },
+    "signInToSaveTitle": "Entre para acompanhar vagas",
+    "signInToSave": "Vagas e buscas salvas ficam na sua conta gratuita.",
+    "jobSaved": "Salvo no seu rastreador de candidaturas",
+    "saveFailed": "Não foi possível salvar — tente de novo.",
+    "savedBadge": "Salvo",
+    "saveJob": "Salvar",
+    "saveSearch": "Salvar esta busca",
+    "searchExists": "Você já salvou esta busca.",
+    "searchSaved": "Busca salva",
+    "searchSavedDesc": "Sua conta mostra quantas vagas novas surgiram desde sua última olhada."
   }
 }

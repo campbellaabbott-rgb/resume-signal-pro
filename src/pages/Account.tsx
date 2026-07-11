@@ -7,12 +7,13 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   TrendingUp, Coins, ShoppingBag, LogOut, Loader2, ScanSearch, Target,
-  ListChecks, GitCompare, Briefcase, Plus, Trash2, AlertTriangle,
+  ListChecks, GitCompare, Briefcase, Plus, Trash2, AlertTriangle, ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
+import { SavedSearchesCard } from "@/components/account/SavedSearchesCard";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
@@ -46,6 +47,9 @@ interface Application {
   job_posting?: string | null;
   fit_pct?: number | null;
   fit_missing?: string[] | null;
+  job_id?: string | null;
+  apply_url?: string | null;
+  location?: string | null;
 }
 
 // Display name for a saved scan acting as a resume version.
@@ -81,12 +85,14 @@ const mapScanRow = (row: { id: string; ats_score: number; projected_score: numbe
 
 const fixPlanToJson = (items: FixItem[]): Json => items.map((item) => ({ step: item.step, done: item.done }));
 
-const APP_STATUSES = ["applied", "interviewing", "offer", "rejected"] as const;
+const APP_STATUSES = ["saved", "applied", "interviewing", "offer", "rejected", "no_response"] as const;
 const STATUS_STYLES: Record<string, string> = {
+  saved: "bg-secondary text-secondary-foreground",
   applied: "bg-primary/10 text-primary",
   interviewing: "bg-warning/10 text-warning",
   offer: "bg-success/10 text-success",
   rejected: "bg-muted text-muted-foreground",
+  no_response: "bg-muted text-muted-foreground",
 };
 
 export default function Account() {
@@ -597,6 +603,8 @@ export default function Account() {
         </div>
 
         {/* Application tracker */}
+        <SavedSearchesCard />
+
         <div className="rounded-2xl border border-border bg-card p-5 mb-6">
           <div className="flex items-center gap-2 mb-3">
             <Briefcase className="w-4 h-4 text-primary" />
@@ -664,6 +672,17 @@ export default function Account() {
                     >
                       {a.fit_pct != null ? `fit ${a.fit_pct}%` : "check fit"}
                     </button>
+                  )}
+                  {a.apply_url && (
+                    <a
+                      href={a.apply_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="Open the job posting"
+                      className="text-muted-foreground hover:text-primary shrink-0"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
                   )}
                   <select
                     value={a.status}

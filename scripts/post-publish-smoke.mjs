@@ -202,6 +202,7 @@ const dbObjects = {
   "record_scan_outcome()": await rpcState("record_scan_outcome", { p_report_id: "deploy-verify-probe", p_outcome: "interview", p_ip: "deploy-verify" }),
   "table scan_outcomes": await tableState("scan_outcomes"),
   "table job_board_postings": await tableState("job_board_postings"),
+  "table user_job_searches": await tableState("user_job_searches"),
 };
 const dbMissing = Object.entries(dbObjects).filter(([, v]) => v === "MISSING").map(([k]) => k);
 record("migrations applied (critical DB objects)", dbMissing.length === 0,

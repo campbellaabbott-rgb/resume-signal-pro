@@ -3992,6 +3992,16 @@
       "security": "Sicherheit & Trust",
       "admin": "Verwaltung",
       "other": "Sonstiges"
-    }
+    },
+    "signInToSaveTitle": "Anmelden, um Jobs zu verfolgen",
+    "signInToSave": "Gespeicherte Jobs und Suchen leben in Ihrem kostenlosen Konto.",
+    "jobSaved": "Im Bewerbungstracker gespeichert",
+    "saveFailed": "Speichern fehlgeschlagen — bitte erneut versuchen.",
+    "savedBadge": "Gespeichert",
+    "saveJob": "Speichern",
+    "saveSearch": "Diese Suche speichern",
+    "searchExists": "Diese Suche ist bereits gespeichert.",
+    "searchSaved": "Suche gespeichert",
+    "searchSavedDesc": "Ihr Konto zeigt, wie viele neue Stellen seit Ihrem letzten Blick passen."
   }
 }

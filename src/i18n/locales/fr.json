@@ -3992,6 +3992,16 @@
       "security": "Sécurité & confiance",
       "admin": "Administratif",
       "other": "Autres"
-    }
+    },
+    "signInToSaveTitle": "Connectez-vous pour suivre des offres",
+    "signInToSave": "Les offres et recherches enregistrées vivent dans votre compte gratuit.",
+    "jobSaved": "Ajouté à votre suivi de candidatures",
+    "saveFailed": "Enregistrement impossible — réessayez.",
+    "savedBadge": "Enregistré",
+    "saveJob": "Enregistrer",
+    "saveSearch": "Enregistrer cette recherche",
+    "searchExists": "Vous avez déjà enregistré cette recherche.",
+    "searchSaved": "Recherche enregistrée",
+    "searchSavedDesc": "Votre compte affiche le nombre de nouvelles offres depuis votre dernier passage."
   }
 }

@@ -3992,6 +3992,16 @@
       "security": "Security & Trust",
       "admin": "Administrative",
       "other": "Other"
-    }
+    },
+    "signInToSaveTitle": "Sign in to track jobs",
+    "signInToSave": "Saved jobs and searches live in your free account.",
+    "jobSaved": "Saved to your application tracker",
+    "saveFailed": "Couldn't save — try again.",
+    "savedBadge": "Saved",
+    "saveJob": "Save",
+    "saveSearch": "Save this search",
+    "searchExists": "You already saved this search.",
+    "searchSaved": "Search saved",
+    "searchSavedDesc": "Your account shows how many new postings match since your last look."
   }
 }

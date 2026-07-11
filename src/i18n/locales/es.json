@@ -3992,6 +3992,16 @@
       "security": "Seguridad y confianza",
       "admin": "Administración",
       "other": "Otros"
-    }
+    },
+    "signInToSaveTitle": "Inicia sesión para seguir empleos",
+    "signInToSave": "Los empleos y búsquedas guardados viven en tu cuenta gratuita.",
+    "jobSaved": "Guardado en tu registro de candidaturas",
+    "saveFailed": "No se pudo guardar — inténtalo de nuevo.",
+    "savedBadge": "Guardado",
+    "saveJob": "Guardar",
+    "saveSearch": "Guardar esta búsqueda",
+    "searchExists": "Ya guardaste esta búsqueda.",
+    "searchSaved": "Búsqueda guardada",
+    "searchSavedDesc": "Tu cuenta muestra cuántas ofertas nuevas coinciden desde tu última visita."
   }
 }

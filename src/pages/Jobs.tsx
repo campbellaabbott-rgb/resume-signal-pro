@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Briefcase, ExternalLink, Loader2, MapPin, Search, Target } from "lucide-react";
+import { Bookmark, BookmarkCheck, Briefcase, ExternalLink, Loader2, MapPin, Search, Target } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -16,6 +16,13 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { postTrackEvent } from "@/lib/track-transport";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { searchName, searchToQuery } from "@/lib/job-search-params";
+
+// user_applications gained board columns after the last typegen — untyped
+// access until Lovable regenerates types.ts.
+const appsTable = () => (supabase as unknown as { from: (t: string) => any }).from("user_applications");
+const searchesTable = () => (supabase as unknown as { from: (t: string) => any }).from("user_job_searches");
 
 interface BoardJob {
   id: string;
@@ -70,6 +77,106 @@ export default function Jobs() {
   const [fitFetching, setFitFetching] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const reqSeq = useRef(0);
+  const { session } = useAuth();
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+
+  // Which postings are already in the user's application tracker.
+  useEffect(() => {
+    if (!session) return;
+    appsTable()
+      .select("job_id")
+      .not("job_id", "is", null)
+      .then(({ data }: { data: Array<{ job_id: string }> | null }) => {
+        setSavedIds(new Set((data ?? []).map((r) => r.job_id)));
+      }, () => {});
+  }, [session]);
+
+  const requireAuth = () => {
+    toast({
+      title: t("jobsPage.signInToSaveTitle", "Sign in to track jobs"),
+      description: t("jobsPage.signInToSave", "Saved jobs and searches live in your free account."),
+    });
+    navigate("/auth");
+  };
+
+  // Save = a 'saved' row in the SAME application tracker Account already
+  // shows. Best effort afterwards: pull the description so the tracker's
+  // deterministic fit check is one click instead of a paste.
+  const saveJob = async (job: BoardJob) => {
+    if (!session) return requireAuth();
+    if (savedIds.has(job.id)) return;
+    setSavedIds((prev) => new Set(prev).add(job.id));
+    const { error: err } = await appsTable().insert({
+      user_id: session.user.id,
+      company: job.company,
+      role: job.title,
+      status: "saved",
+      job_id: job.id,
+      apply_url: job.applyUrl,
+      location: job.location,
+    });
+    if (err) {
+      if (err.code !== "23505") {
+        setSavedIds((prev) => { const n = new Set(prev); n.delete(job.id); return n; });
+        toast({ title: t("jobsPage.saveFailed", "Couldn't save — try again.") });
+      }
+      return;
+    }
+    toast({ title: t("jobsPage.jobSaved", "Saved to your application tracker") });
+    try {
+      const { data: res } = await supabase.functions.invoke("job-board", { body: { action: "detail", id: job.id } });
+      const description = (res as { description?: string })?.description;
+      if (description) {
+        await appsTable().update({ job_posting: description.slice(0, 20000) }).eq("user_id", session.user.id).eq("job_id", job.id);
+      }
+    } catch { /* description is a bonus */ }
+  };
+
+  // Signed-in Apply clicks promote the row to 'applied' (never downgrading
+  // a richer status) — the tracker fills itself.
+  const promoteApplied = async (job: BoardJob) => {
+    if (!session) return;
+    if (savedIds.has(job.id)) {
+      await appsTable().update({ status: "applied", applied_at: new Date().toISOString().slice(0, 10) })
+        .eq("user_id", session.user.id).eq("job_id", job.id).eq("status", "saved");
+    } else {
+      setSavedIds((prev) => new Set(prev).add(job.id));
+      await appsTable().insert({
+        user_id: session.user.id,
+        company: job.company,
+        role: job.title,
+        status: "applied",
+        job_id: job.id,
+        apply_url: job.applyUrl,
+        location: job.location,
+      }).then(() => {}, () => {});
+    }
+  };
+
+  const saveCurrentSearch = async () => {
+    if (!session) return requireAuth();
+    const params = {
+      q: q || undefined,
+      category: category || undefined,
+      location: location || undefined,
+      remote: remoteOnly || undefined,
+      company: company || undefined,
+    };
+    const name = searchName(params, category ? t(`jobsPage.categories.${category}`, category) : undefined);
+    const { error: err } = await searchesTable().insert({ user_id: session.user.id, name, params });
+    if (err && err.code === "23505") {
+      toast({ title: t("jobsPage.searchExists", "You already saved this search.") });
+      return;
+    }
+    if (err) {
+      toast({ title: t("jobsPage.saveFailed", "Couldn't save — try again.") });
+      return;
+    }
+    toast({
+      title: t("jobsPage.searchSaved", "Search saved"),
+      description: t("jobsPage.searchSavedDesc", "Your account shows how many new postings match since your last look."),
+    });
+  };
 
   const fetchJobs = useCallback(
     async (offset: number) => {
@@ -247,6 +354,12 @@ export default function Jobs() {
               <input type="checkbox" checked={remoteOnly} onChange={(e) => setRemoteOnly(e.target.checked)} className="accent-primary" />
               {t("jobsPage.remoteOnly", "Remote only")}
             </label>
+            {(q || location || remoteOnly || company || category) && (
+              <Button size="sm" variant="ghost" className="gap-1.5" onClick={saveCurrentSearch}>
+                <BookmarkCheck className="w-3.5 h-3.5" />
+                {t("jobsPage.saveSearch", "Save this search")}
+              </Button>
+            )}
           </div>
 
           {/* Results */}
@@ -305,12 +418,23 @@ export default function Jobs() {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 mt-3">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="gap-1.5 px-2"
+                          aria-label={savedIds.has(job.id) ? t("jobsPage.savedBadge", "Saved") : t("jobsPage.saveJob", "Save")}
+                          onClick={() => saveJob(job)}
+                        >
+                          {savedIds.has(job.id)
+                            ? <BookmarkCheck className="w-4 h-4 text-primary" />
+                            : <Bookmark className="w-4 h-4" />}
+                        </Button>
                         <Button size="sm" variant="outline" className="gap-1.5" disabled={fitFetching === job.id} onClick={() => checkFit(job)}>
                           {fitFetching === job.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
                           {t("jobsPage.checkFit", "Check my fit — free scan")}
                         </Button>
                         <Button size="sm" variant="ghost" className="gap-1.5" asChild>
-                          <a href={job.applyUrl} target="_blank" rel="noopener noreferrer" onClick={() => trackApply(job)}>
+                          <a href={job.applyUrl} target="_blank" rel="noopener noreferrer" onClick={() => { trackApply(job); void promoteApplied(job); }}>
                             {t("jobsPage.apply", "Apply on {{company}}'s site", { company: job.company })}
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>

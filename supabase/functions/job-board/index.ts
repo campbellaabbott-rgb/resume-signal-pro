@@ -20,6 +20,8 @@ import {
   normalizeAshby,
   normalizeGreenhouse,
   normalizeLever,
+  normalizeSmartRecruiters,
+  normalizeWorkable,
   type JobPosting,
 } from "./normalize.ts";
 import { JOB_CATEGORIES } from "./categories.ts";
@@ -57,7 +59,30 @@ const listUrl = (s: JobSource) =>
     ? `https://boards-api.greenhouse.io/v1/boards/${s.token}/jobs`
     : s.source === "lever"
       ? `https://api.lever.co/v0/postings/${s.token}?mode=json`
-      : `https://api.ashbyhq.com/posting-api/job-board/${s.token}`;
+      : s.source === "ashby"
+        ? `https://api.ashbyhq.com/posting-api/job-board/${s.token}`
+        : s.source === "smartrecruiters"
+          ? `https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=100`
+          : `https://apply.workable.com/api/v1/widget/accounts/${s.token}?details=false`;
+
+// SmartRecruiters paginates; Bosch alone lists ~4.7k postings. 500/board
+// keeps a full refresh under ~90s — the board never claimed per-company
+// exhaustiveness, and newest-first ordering surfaces the fetched ones.
+const SR_CAP = 500;
+async function fetchSmartRecruiters(s: JobSource): Promise<{ content: unknown[] }> {
+  const first = await fetchWithTimeout(listUrl(s));
+  if (!first.ok) throw new Error(`HTTP ${first.status}`);
+  const page1 = await first.json();
+  const total = Math.min(Number(page1.totalFound) || 0, SR_CAP);
+  const content: unknown[] = [...(page1.content ?? [])];
+  for (let offset = 100; offset < total; offset += 100) {
+    const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=100&offset=${offset}`);
+    if (!res.ok) break; // partial page set is fine — prune guard keys off success of THIS board overall
+    const page = await res.json();
+    content.push(...(page.content ?? []));
+  }
+  return { content };
+}
 
 async function fetchWithTimeout(url: string): Promise<Response> {
   const ctrl = new AbortController();
@@ -72,15 +97,21 @@ async function fetchWithTimeout(url: string): Promise<Response> {
 /** Fetch + normalize one board. Returns null on failure (caller decides). */
 async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unknown } | null> {
   try {
-    const res = await fetchWithTimeout(listUrl(s));
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const raw = await res.json();
+    const raw = s.source === "smartrecruiters" ? await fetchSmartRecruiters(s) : await (async () => {
+      const res = await fetchWithTimeout(listUrl(s));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    })();
     const jobs =
       s.source === "greenhouse"
         ? normalizeGreenhouse(raw, s.name, s.token)
         : s.source === "lever"
           ? normalizeLever(raw, s.name, s.token)
-          : normalizeAshby(raw, s.name, s.token);
+          : s.source === "ashby"
+            ? normalizeAshby(raw, s.name, s.token)
+            : s.source === "smartrecruiters"
+              ? normalizeSmartRecruiters(raw, s.name, s.token)
+              : normalizeWorkable(raw, s.name, s.token);
     return { jobs, raw };
   } catch (e) {
     console.warn(`[JOB-BOARD] board ${s.source}:${s.token} failed:`, String(e).slice(0, 100));
@@ -186,7 +217,22 @@ async function getDescription(src: JobSource, id: string, externalId: string): P
   const hit = detailCache.get(id);
   if (hit && Date.now() - hit.at < DETAIL_TTL_MS) return hit.text;
   let text: string | null = null;
-  if (src.source === "greenhouse") {
+  if (src.source === "smartrecruiters") {
+    const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${src.token}/postings/${externalId}`);
+    if (res.ok) {
+      const j = await res.json();
+      const s = j.jobAd?.sections ?? {};
+      const html = [s.jobDescription?.text, s.qualifications?.text, s.additionalInformation?.text].filter(Boolean).join("\n");
+      text = htmlToText(html).slice(0, DESC_CAP) || null;
+    }
+  } else if (src.source === "workable") {
+    const res = await fetchWithTimeout(`https://apply.workable.com/api/v1/widget/accounts/${src.token}?details=true`);
+    if (res.ok) {
+      const j = await res.json();
+      const job = (j.jobs ?? []).find((x: { shortcode: string }) => x.shortcode === externalId);
+      if (job?.description) text = htmlToText(String(job.description)).slice(0, DESC_CAP) || null;
+    }
+  } else if (src.source === "greenhouse") {
     const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${src.token}/jobs/${externalId}?questions=false`);
     if (res.ok) {
       const j = await res.json();
@@ -299,6 +345,7 @@ async function serveList(
 ) {
   const limit = Math.min(Math.max(Number(body.limit) || 60, 1), 200);
   const offset = Math.max(Number(body.offset) || 0, 0);
+  const countOnly = body.countOnly === true;
 
   let q = client
     .from("job_board_postings")
@@ -314,6 +361,15 @@ async function serveList(
   if (Array.isArray(body.companies)) {
     const tokens = body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length);
     if (tokens.length) q = q.in("company_token", tokens);
+  }
+  // Saved searches ask "how many NEW since I last looked" — a cheap count.
+  if (typeof body.postedAfter === "string" && !Number.isNaN(Date.parse(body.postedAfter))) {
+    q = q.gt("posted_at", body.postedAfter);
+  }
+  if (countOnly) {
+    const { count, error } = await q.range(0, 0);
+    if (error) throw error;
+    return json({ total: count ?? 0 });
   }
 
   // Stable pagination: posted_at desc (nulls last), id as tiebreaker so

@@ -11,6 +11,8 @@ import {
   sortJobs,
 } from "../../supabase/functions/job-board/normalize";
 import { categorize, JOB_CATEGORIES } from "../../supabase/functions/job-board/categories";
+import { normalizeSmartRecruiters, normalizeWorkable } from "../../supabase/functions/job-board/normalize";
+import { searchName, searchToQuery } from "../../src/lib/job-search-params";
 
 // ── real captured fixtures (trimmed to the fields the APIs actually send) ──
 const GH_FIXTURE = {
@@ -130,6 +132,67 @@ describe("normalizers", () => {
       department: "Growth",
       applyUrl: "https://jobs.ashbyhq.com/supabase/d5573afa",
     });
+  });
+});
+
+describe("new vendor normalizers (real captured shapes)", () => {
+  it("maps SmartRecruiters (Visa sample): location object, function label, constructed apply URL", () => {
+    const jobs = normalizeSmartRecruiters(
+      { content: [{
+        id: "744000133907678",
+        name: "Sr. Manager",
+        releasedDate: "2026-06-24T10:00:11.853Z",
+        location: { city: "Austin", region: "TX", country: "us", remote: false, fullLocation: "Austin, TX, United States" },
+        department: { label: "Software Development/Engineering" },
+        function: { label: "Engineering" },
+      }] },
+      "Visa", "visa",
+    );
+    expect(jobs[0]).toMatchObject({
+      id: "smartrecruiters:visa:744000133907678",
+      company: "Visa",
+      location: "Austin, TX, United States",
+      department: "Engineering",
+      category: "engineering",
+      postedAt: "2026-06-24T10:00:11.853Z",
+      applyUrl: "https://jobs.smartrecruiters.com/visa/744000133907678",
+    });
+  });
+
+  it("maps Workable (Blueground sample): shortcode id, telecommuting remote, date-only postedAt", () => {
+    const jobs = normalizeWorkable(
+      { jobs: [{
+        title: "Business Development Account Executive - Partner Network",
+        shortcode: "38ABFA8E0D",
+        telecommuting: true,
+        department: "Shared Services",
+        url: "https://apply.workable.com/j/38ABFA8E0D",
+        published_on: "2026-03-02",
+        created_at: "2026-02-24",
+        country: "Greece",
+        city: "",
+        state: "",
+      }] },
+      "Blueground", "blueground",
+    );
+    expect(jobs[0]).toMatchObject({
+      id: "workable:blueground:38ABFA8E0D",
+      remote: true,
+      location: "Greece",
+      category: "sales",
+      applyUrl: "https://apply.workable.com/j/38ABFA8E0D",
+    });
+    expect(jobs[0].postedAt).toBe(new Date("2026-03-02").toISOString());
+  });
+});
+
+describe("saved-search helpers", () => {
+  it("builds readable names and round-trippable URLs", () => {
+    const p = { q: "nurse", category: "healthcare", remote: true };
+    expect(searchName(p, "Healthcare & Clinical")).toBe("nurse · Healthcare & Clinical · remote");
+    expect(searchName({})).toBe("All jobs");
+    expect(searchToQuery(p)).toBe("/jobs?q=nurse&remote=1&category=healthcare");
+    expect(searchToQuery({})).toBe("/jobs");
   });
 });
 

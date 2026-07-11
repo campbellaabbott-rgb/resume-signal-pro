@@ -3992,6 +3992,16 @@
       "security": "Security & trust",
       "admin": "Administratief",
       "other": "Overig"
-    }
+    },
+    "signInToSaveTitle": "Log in om vacatures te volgen",
+    "signInToSave": "Opgeslagen vacatures en zoekopdrachten staan in je gratis account.",
+    "jobSaved": "Opgeslagen in je sollicitatietracker",
+    "saveFailed": "Opslaan mislukt — probeer opnieuw.",
+    "savedBadge": "Opgeslagen",
+    "saveJob": "Opslaan",
+    "saveSearch": "Deze zoekopdracht opslaan",
+    "searchExists": "Je hebt deze zoekopdracht al opgeslagen.",
+    "searchSaved": "Zoekopdracht opgeslagen",
+    "searchSavedDesc": "Je account toont hoeveel nieuwe vacatures er sinds je laatste bezoek zijn."
   }
 }

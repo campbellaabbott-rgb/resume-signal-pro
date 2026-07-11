@@ -158,6 +158,75 @@ export function normalizeAshby(raw: { jobs?: AshbyJob[] }, company: string, toke
     .filter((j) => j.applyUrl !== "");
 }
 
+interface SmartRecruitersPosting {
+  id: string | number;
+  name: string;
+  releasedDate?: string;
+  location?: { city?: string; region?: string; country?: string; remote?: boolean; fullLocation?: string };
+  function?: { label?: string };
+  department?: { label?: string };
+}
+
+export function normalizeSmartRecruiters(raw: { content?: SmartRecruitersPosting[] }, company: string, token: string): JobPosting[] {
+  return (raw.content ?? [])
+    .map((p) => {
+      const location =
+        p.location?.fullLocation ||
+        [p.location?.city, p.location?.region, p.location?.country?.toUpperCase()].filter(Boolean).join(", ");
+      const department = p.function?.label ?? p.department?.label ?? null;
+      return {
+        id: `smartrecruiters:${token}:${p.id}`,
+        source: "smartrecruiters" as const,
+        token,
+        company,
+        title: p.name ?? "",
+        location,
+        remote: p.location?.remote === true || looksRemote(location),
+        department,
+        postedAt: p.releasedDate ?? null,
+        category: categorize(p.name ?? "", department),
+        // The public posting page is deterministic from company identifier + id.
+        applyUrl: safeUrl(`https://jobs.smartrecruiters.com/${token}/${p.id}`),
+      };
+    })
+    .filter((j) => j.applyUrl !== "");
+}
+
+interface WorkableJob {
+  title: string;
+  shortcode: string;
+  telecommuting?: boolean;
+  department?: string | null;
+  url?: string;
+  published_on?: string;
+  created_at?: string;
+  country?: string;
+  city?: string;
+  state?: string;
+}
+
+export function normalizeWorkable(raw: { jobs?: WorkableJob[] }, company: string, token: string): JobPosting[] {
+  return (raw.jobs ?? [])
+    .map((j) => {
+      const location = [j.city, j.state, j.country].filter(Boolean).join(", ");
+      const posted = j.published_on ?? j.created_at;
+      return {
+        id: `workable:${token}:${j.shortcode}`,
+        source: "workable" as const,
+        token,
+        company,
+        title: j.title ?? "",
+        location,
+        remote: j.telecommuting === true || looksRemote(location),
+        department: j.department ?? null,
+        postedAt: posted ? new Date(posted).toISOString() : null,
+        category: categorize(j.title ?? "", j.department),
+        applyUrl: safeUrl(j.url ?? `https://apply.workable.com/j/${j.shortcode}`),
+      };
+    })
+    .filter((j) => j.applyUrl !== "");
+}
+
 export interface JobFilter {
   q?: string;
   location?: string;
