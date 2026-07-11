@@ -3331,6 +3331,10 @@
     "boardExpansion": {
       "title": "609 empresas, quase 40.000 vagas ao vivo",
       "description": "O mural de vagas foi de 194 a 609 empresas em uma única varredura — pouco menos de 40.000 vagas ao vivo. Sondamos milhares de feeds de carreiras em seis provedores ATS oficiais (BambooHR é novo), mantivemos as 415 que responderam com vagas reais e liberamos a profundidade completa dos gigantes que já tínhamos: Bosch, JYSK, Accor e Securitas agora listam milhares de vagas cada em vez das primeiras 500. A precisão escalou com o volume: o nome de cada novo mural vem do próprio provedor ATS — não do nosso palpite — e dez murais cuja identidade não pôde ser verificada foram descartados em vez de publicados com rótulo errado. A cobertura salarial mais que dobrou no caminho. O mesmo mural, o mesmo ranking por encaixe, o mesmo ciclo de 10 minutos — quatro vezes mais vagas do que esta manhã."
+    },
+    "reportMatches": {
+      "title": "Seu relatório de escaneio agora termina com vagas ao vivo",
+      "description": "O escaneio grátis não para mais na pontuação e no plano de ajustes — cada relatório agora fecha com as melhores vagas ao vivo que combinam com seu currículo, classificadas com a mesma pontuação determinística que o próprio relatório usa, tiradas das ~40.000 vagas do mural e atualizadas a cada ~10 minutos. O salário aparece quando a empresa publica; Candidatar leva direto à página da empresa. E uma conta gratuita mantém tudo vivo entre as visitas: salve sua versão do currículo e o mural classifica cada vaga contra ela quando você voltar, buscas salvas contam o que há de novo desde a última olhada, e vagas salvas caem no seu rastreador de candidaturas com a pontuação de encaixe."
     }
   },
   "sampleReportPreview": {

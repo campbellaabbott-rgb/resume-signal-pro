@@ -3331,6 +3331,10 @@
     "boardExpansion": {
       "title": "609 entreprises, près de 40 000 offres en direct",
       "description": "Le job board est passé de 194 à 609 entreprises en une seule passe — un peu moins de 40 000 offres en direct. Nous avons sondé des milliers de flux carrières sur six fournisseurs ATS officiels (BambooHR est nouveau), gardé les 415 qui répondaient avec de vraies offres, et débloqué toute la profondeur des géants déjà présents : Bosch, JYSK, Accor et Securitas listent désormais des milliers de postes chacun au lieu de leurs 500 premiers. La précision a suivi le volume : le nom affiché de chaque nouveau board vient du fournisseur ATS lui-même — pas de notre supposition — et dix boards dont l'identité n'a pas pu être vérifiée ont été écartés plutôt que publiés mal étiquetés. La couverture salariale a plus que doublé au passage. Même board, même classement par adéquation, même cycle de 10 minutes — quatre fois plus d'offres que ce matin."
+    },
+    "reportMatches": {
+      "title": "Votre rapport de scan se termine désormais par des offres en direct",
+      "description": "Le scan gratuit ne s'arrête plus à un score et un plan de correction — chaque rapport se clôt désormais sur les meilleures offres en direct correspondant à votre CV, classées avec le même score d'adéquation déterministe que le rapport lui-même, tirées des ~40 000 offres du job board et rafraîchies toutes les ~10 minutes. Le salaire apparaît quand l'entreprise le publie ; Candidater mène directement à la page de l'entreprise. Et un compte gratuit garde tout cela vivant entre vos visites : enregistrez votre version de CV et le board classe chaque offre contre elle à chaque retour, les recherches enregistrées comptent les nouveautés depuis votre dernier passage, et les offres enregistrées atterrissent dans votre suivi de candidatures avec leur score d'adéquation."
     }
   },
   "sampleReportPreview": {

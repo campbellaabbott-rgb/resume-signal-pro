@@ -3331,6 +3331,10 @@
     "boardExpansion": {
       "title": "609 companies, nearly 40,000 live openings",
       "description": "The job board grew from 194 to 609 companies in one sweep — just under 40,000 live postings. We probed thousands of company career feeds across six official ATS providers (BambooHR is new), kept the 415 that answered with real openings, and unlocked full depth on the giants we already carried: Bosch, JYSK, Accor and Securitas now list thousands of roles each instead of their first 500. Accuracy scaled with volume: every new board's display name comes from the ATS provider itself — not our guess — and ten boards whose identity couldn't be verified were dropped rather than shipped mislabeled. Salary coverage more than doubled along the way. Same board, same fit-ranking, same 10-minute refresh loop — four times the jobs it launched with this morning."
+    },
+    "reportMatches": {
+      "title": "Your scan report now ends with live job matches",
+      "description": "The free scan no longer stops at a score and a fix plan — every report now closes with the top live openings matching your resume, ranked by the same deterministic fit scoring the report itself uses, drawn from the job board's ~40,000 postings and refreshed every ~10 minutes. Salary appears where companies publish it; Apply goes straight to the company's own page. And a free account keeps the whole thing alive between visits: save your resume version and the board ranks every opening against it whenever you return, saved searches count what's new since you last looked, and bookmarked jobs land in your application tracker with fit scores attached."
     }
   },
   "sampleReportPreview": {

@@ -3331,6 +3331,10 @@
     "boardExpansion": {
       "title": "609 empresas, casi 40.000 ofertas en vivo",
       "description": "La bolsa de empleo pasó de 194 a 609 empresas en una sola pasada — poco menos de 40.000 ofertas en vivo. Sondeamos miles de portales de empleo de empresas en seis proveedores ATS oficiales (BambooHR es nuevo), conservamos las 415 que respondieron con ofertas reales y desbloqueamos la profundidad completa de los gigantes que ya teníamos: Bosch, JYSK, Accor y Securitas ahora listan miles de puestos cada una en vez de sus primeros 500. La precisión escaló con el volumen: el nombre de cada nueva empresa viene del propio proveedor ATS — no de nuestra suposición — y diez tablones cuya identidad no pudo verificarse se descartaron antes que publicarse mal etiquetados. La cobertura salarial se duplicó con creces por el camino. La misma bolsa, el mismo ranking por encaje, el mismo ciclo de 10 minutos — cuatro veces más empleos que esta mañana."
+    },
+    "reportMatches": {
+      "title": "Tu informe de escaneo ahora termina con ofertas en vivo",
+      "description": "El escaneo gratuito ya no se detiene en una puntuación y un plan de mejoras — cada informe cierra ahora con las mejores ofertas en vivo que encajan con tu currículum, ordenadas con la misma puntuación determinista que usa el propio informe, extraídas de las ~40.000 ofertas de la bolsa y actualizadas cada ~10 minutos. El salario aparece cuando la empresa lo publica; Postular lleva directo a la página de la empresa. Y una cuenta gratuita mantiene todo vivo entre visitas: guarda tu versión del currículum y la bolsa ordena cada oferta contra ella cuando vuelvas, las búsquedas guardadas cuentan las novedades desde tu última visita, y los empleos guardados aterrizan en tu registro de candidaturas con su puntuación de encaje."
     }
   },
   "sampleReportPreview": {

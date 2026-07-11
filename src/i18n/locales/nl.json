@@ -3331,6 +3331,10 @@
     "boardExpansion": {
       "title": "609 bedrijven, bijna 40.000 live vacatures",
       "description": "De vacaturebank groeide in één veegbeurt van 194 naar 609 bedrijven — net geen 40.000 live vacatures. We hebben duizenden carrière-feeds over zes officiële ATS-aanbieders gepeild (BambooHR is nieuw), de 415 met echte vacatures gehouden en de volledige diepte van onze bestaande reuzen ontgrendeld: Bosch, JYSK, Accor en Securitas tonen nu elk duizenden functies in plaats van hun eerste 500. De nauwkeurigheid schaalde mee: de weergavenaam van elk nieuw board komt van de ATS-aanbieder zelf — niet van onze gok — en tien boards waarvan de identiteit niet te verifiëren was, zijn geschrapt in plaats van verkeerd gelabeld gepubliceerd. De salarisdekking is onderweg meer dan verdubbeld. Dezelfde bank, dezelfde match-ranking, dezelfde 10-minutencyclus — vier keer zoveel banen als vanochtend."
+    },
+    "reportMatches": {
+      "title": "Je scanrapport eindigt nu met live vacaturematches",
+      "description": "De gratis scan stopt niet meer bij een score en een fixplan — elk rapport sluit nu af met de beste live vacatures die bij je cv passen, gerangschikt met dezelfde deterministische matchscore die het rapport zelf gebruikt, uit de ~40.000 vacatures van de bank en elke ~10 minuten ververst. Salaris verschijnt waar bedrijven het publiceren; Solliciteer gaat rechtstreeks naar de bedrijfspagina. En een gratis account houdt alles levend tussen bezoeken: bewaar je cv-versie en de bank rangschikt elke vacature ertegen wanneer je terugkomt, opgeslagen zoekopdrachten tellen wat er nieuw is sinds je laatste bezoek, en gebookmarkte banen belanden met matchscore in je sollicitatietracker."
     }
   },
   "sampleReportPreview": {

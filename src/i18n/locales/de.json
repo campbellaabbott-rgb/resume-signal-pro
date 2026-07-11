@@ -3331,6 +3331,10 @@
     "boardExpansion": {
       "title": "609 Unternehmen, fast 40.000 Live-Stellen",
       "description": "Die Jobbörse wuchs in einem Durchgang von 194 auf 609 Unternehmen — knapp 40.000 Live-Stellen. Wir haben Tausende Karriere-Feeds über sechs offizielle ATS-Anbieter geprüft (BambooHR ist neu), die 415 mit echten Stellen behalten und die volle Tiefe der vorhandenen Riesen freigeschaltet: Bosch, JYSK, Accor und Securitas listen jetzt jeweils Tausende Stellen statt ihrer ersten 500. Die Genauigkeit skalierte mit: Der Anzeigename jedes neuen Boards stammt vom ATS-Anbieter selbst — nicht von unserer Vermutung — und zehn Boards ohne verifizierbare Identität wurden verworfen statt falsch etikettiert ausgeliefert. Die Gehaltsabdeckung hat sich dabei mehr als verdoppelt. Dieselbe Börse, dasselbe Passungs-Ranking, derselbe 10-Minuten-Zyklus — viermal so viele Jobs wie heute Morgen."
+    },
+    "reportMatches": {
+      "title": "Ihr Scan-Bericht endet jetzt mit Live-Job-Treffern",
+      "description": "Der Gratis-Scan endet nicht mehr bei Score und Fix-Plan — jeder Bericht schließt jetzt mit den besten Live-Stellen, die zu Ihrem Lebenslauf passen, gerankt mit demselben deterministischen Passungswert, den der Bericht selbst nutzt, gezogen aus den ~40.000 Stellen der Jobbörse und ca. alle 10 Minuten aktualisiert. Gehalt erscheint, wo Unternehmen es veröffentlichen; Bewerben führt direkt zur Unternehmensseite. Und ein kostenloses Konto hält alles zwischen den Besuchen lebendig: Speichern Sie Ihre Lebenslauf-Version und die Börse rankt bei jeder Rückkehr jede Stelle dagegen, gespeicherte Suchen zählen Neues seit Ihrem letzten Blick, und gemerkte Jobs landen mit Passungswert im Bewerbungstracker."
     }
   },
   "sampleReportPreview": {

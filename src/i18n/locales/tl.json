@@ -3331,6 +3331,10 @@
     "boardExpansion": {
       "title": "609 kumpanya, halos 40,000 live na opening",
       "description": "Ang job board ay lumaki mula 194 hanggang 609 kumpanya sa isang pasada — halos 40,000 live na posting. Sinuri namin ang libu-libong career feed sa anim na opisyal na ATS provider (bago ang BambooHR), itinago ang 415 na sumagot ng totoong opening, at binuksan ang buong lalim ng mga higanteng dati nang kasama: sina Bosch, JYSK, Accor at Securitas ay naglilista na ngayon ng libu-libong role bawat isa sa halip na unang 500. Sumabay ang katumpakan sa dami: ang display name ng bawat bagong board ay galing mismo sa ATS provider — hindi sa hula namin — at sampung board na hindi ma-verify ang pagkakakilanlan ay tinanggal sa halip na ipadala nang maling label. Mahigit dumoble ang saklaw ng sahod sa daan. Parehong board, parehong fit-ranking, parehong 10-minutong cycle — apat na beses na mas maraming trabaho kaysa kaninang umaga."
+    },
+    "reportMatches": {
+      "title": "Ang scan report mo ay nagtatapos na ngayon sa live na job match",
+      "description": "Ang libreng scan ay hindi na humihinto sa score at fix plan — bawat report ay nagsasara na ngayon sa mga nangungunang live na opening na tugma sa resume mo, naka-rank gamit ang parehong deterministikong fit scoring na ginagamit ng mismong report, mula sa ~40,000 posting ng job board at nire-refresh bawat ~10 minuto. Lumalabas ang sahod kung saan inilalathala ng kumpanya; ang Mag-apply ay dumidiretso sa pahina ng kumpanya. At pinapanatiling buhay ng libreng account ang lahat sa pagitan ng mga bisita: i-save ang bersyon ng resume mo at irar-rank ng board ang bawat opening laban dito sa tuwing babalik ka, binibilang ng mga naka-save na paghahanap ang bago mula noong huli mong tingin, at ang mga naka-bookmark na trabaho ay pumapasok sa application tracker mo na may kasamang fit score."
     }
   },
   "sampleReportPreview": {
