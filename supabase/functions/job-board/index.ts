@@ -37,10 +37,15 @@ const json = (body: unknown, status = 200) =>
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
 const FETCH_TIMEOUT_MS = 8_000;
-// Refresh memory budget: GH content=true payloads run to tens of MB
-// (SpaceX ~1.9k postings with full HTML). Low fan-out + per-board flush
-// keeps peak memory at a few boards, not the whole corpus.
+// Refresh budget: a single edge invocation cannot afford the CPU of
+// converting the whole corpus's HTML to text (WORKER_RESOURCE_LIMIT, seen
+// live twice). So refresh is CURSOR-SLICED: each call processes SLICE
+// boards and advances a cursor in job_board_meta; the 10-minute cron and
+// read-triggered SWR calls walk the full list continuously. Facets swap in
+// when a cycle completes; until then the previous complete cycle serves.
 const CONCURRENCY = 4;
+const SLICE = 35;
+const SLICE_LOCK_MS = 3 * 60_000; // min gap between slices
 const DESC_CAP = 14_000; // matches the scanner's own input bounds
 
 const db = (): SupabaseClient =>
@@ -128,20 +133,29 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
 // ── refresh: fan-out → upsert → prune (only successful boards) ─────────────
 
 async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: boolean; detail: string }> {
-  // Lock: skip if a pass finished recently (cron + SWR + manual can overlap).
-  const { data: meta } = await client.from("job_board_meta").select("updated_at").eq("k", "refresh").maybeSingle();
-  if (!force && meta && Date.now() - new Date(meta.updated_at).getTime() < LOCK_MS) {
-    return { ok: true, detail: "skipped — refreshed recently" };
+  // Slice lock: cron + SWR + manual calls may overlap; one slice per window.
+  const { data: prog } = await client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle();
+  if (!force && prog && Date.now() - new Date(prog.updated_at).getTime() < SLICE_LOCK_MS) {
+    return { ok: true, detail: "skipped — a slice ran moments ago" };
   }
+  const pv = (prog?.v ?? {}) as {
+    cursor?: number;
+    total?: number;
+    failed?: string[];
+    companyCounts?: Record<string, number>;
+    categories?: Record<string, number>;
+  };
+  const cursor = Number.isFinite(pv.cursor) ? Math.max(0, Number(pv.cursor)) : 0;
+  const slice = JOB_SOURCES.slice(cursor, cursor + SLICE);
   const startIso = new Date().toISOString();
 
-  const queue = [...JOB_SOURCES];
+  const queue = [...slice];
   const okTokens: string[] = [];
   const failed: string[] = [];
-  let total = 0;
+  let sliceTotal = 0;
   let lastUpsertError: string | null = null;
-  const companyCounts = new Map<string, number>();
-  const categoriesFacet: Record<string, number> = {};
+  const companyCounts: Record<string, number> = pv.companyCounts ?? {};
+  const categories: Record<string, number> = pv.categories ?? {};
 
   await Promise.all(
     Array.from({ length: CONCURRENCY }, async () => {
@@ -153,8 +167,6 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
           failed.push(s.name);
           continue;
         }
-        // Build this board's rows, then flush to the DB immediately —
-        // nothing beyond counts survives the iteration.
         const descs = new Map<string, string>();
         if (s.source === "lever") {
           for (const j of (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; descriptionBodyPlain?: string }>) {
@@ -168,13 +180,13 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
           }
         } else if (s.source === "greenhouse") {
           for (const j of ((r.raw as { jobs?: Array<{ id: number; content?: string }> }).jobs ?? [])) {
-            const text = j.content ? htmlToText(String(j.content)).trim() : "";
+            // Cap the expensive HTML→text work per posting.
+            const text = j.content ? htmlToText(String(j.content).slice(0, 24000)).trim() : "";
             if (text) descs.set(`greenhouse:${s.token}:${j.id}`, text.slice(0, 6000));
           }
         }
-        const rowsById = new Map<string, Record<string, unknown>>();
-        // Postgres text columns reject NUL bytes — some feeds carry them.
         const clean = (x: string | null | undefined) => (x == null ? null : x.replace(/\u0000/g, ""));
+        const rowsById = new Map<string, Record<string, unknown>>();
         for (const j of r.jobs) {
           rowsById.set(j.id, {
             id: j.id,
@@ -201,7 +213,7 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
             boardOk = false;
             lastUpsertError = `${s.token}: ${error.message}`;
             console.warn(`[JOB-BOARD] upsert failed for ${s.token}:`, error.message.slice(0, 200));
-            break; // this board only — the pass continues
+            break; // this board only — the slice continues
           }
         }
         if (!boardOk) {
@@ -209,21 +221,16 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
           continue;
         }
         okTokens.push(s.token);
-        total += rows.length;
-        companyCounts.set(s.token, rows.length);
+        sliceTotal += rows.length;
+        companyCounts[s.token] = rows.length;
         for (const row of rows) {
-          categoriesFacet[row.category as string] = (categoriesFacet[row.category as string] ?? 0) + 1;
+          categories[row.category as string] = (categories[row.category as string] ?? 0) + 1;
         }
       }
     }),
   );
 
-  if (okTokens.length === 0) {
-    return { ok: false, detail: lastUpsertError ? `every board failed — last upsert error: ${lastUpsertError}` : "every board fetch failed — nothing written" };
-  }
-
-  // Prune vanished postings — but ONLY for boards that answered this pass,
-  // so a transient feed outage never mass-deletes a company's listings.
+  // Prune vanished postings for boards that answered THIS slice only.
   for (let i = 0; i < okTokens.length; i += 50) {
     await client
       .from("job_board_postings")
@@ -232,25 +239,44 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
       .in("company_token", okTokens.slice(i, i + 50));
   }
 
-  // Facets accumulated during the pass (global, not filter-aware) so the
-  // hot list path never pays for aggregation.
-  const companiesFacet: Array<{ token: string; name: string; count: number }> = [];
-  for (const s of JOB_SOURCES) {
-    const c = companyCounts.get(s.token) ?? 0;
-    if (c > 0) companiesFacet.push({ token: s.token, name: s.name, count: c });
+  const nextCursor = cursor + SLICE;
+  const cycleDone = nextCursor >= JOB_SOURCES.length;
+  const allFailed = [...(pv.failed ?? []), ...failed];
+  const runningTotal = (pv.total ?? 0) + sliceTotal;
+
+  if (cycleDone) {
+    // Swap the completed cycle into the live facets.
+    const companiesFacet: Array<{ token: string; name: string; count: number }> = [];
+    for (const s of JOB_SOURCES) {
+      const c = companyCounts[s.token] ?? 0;
+      if (c > 0) companiesFacet.push({ token: s.token, name: s.name, count: c });
+    }
+    const v = {
+      total: runningTotal,
+      boards: JOB_SOURCES.length - allFailed.length,
+      failedSources: allFailed,
+      companiesFacet,
+      categoriesFacet: categories,
+      refreshedAt: startIso,
+    };
+    await client.from("job_board_meta").upsert({ k: "refresh", v, updated_at: new Date().toISOString() }, { onConflict: "k" });
+    await client.from("job_board_meta").upsert(
+      { k: "refresh_progress", v: { cursor: 0 }, updated_at: new Date().toISOString() },
+      { onConflict: "k" },
+    );
+    console.log(`[JOB-BOARD] cycle complete: ${runningTotal} postings, ${allFailed.length} boards failed`);
+    return { ok: true, detail: `cycle complete: ${runningTotal} postings from ${JOB_SOURCES.length - allFailed.length}/${JOB_SOURCES.length} boards${allFailed.length ? ` — failed: ${allFailed.slice(0, 6).join(", ")}${allFailed.length > 6 ? "…" : ""}` : ""}${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 140)}` : ""}` };
   }
 
-  const v = {
-    total,
-    boards: okTokens.length,
-    failedSources: failed,
-    companiesFacet,
-    categoriesFacet,
-    refreshedAt: startIso,
-  };
-  await client.from("job_board_meta").upsert({ k: "refresh", v, updated_at: new Date().toISOString() }, { onConflict: "k" });
-  console.log(`[JOB-BOARD] refresh: ${total} postings from ${okTokens.length}/${JOB_SOURCES.length} boards (${failed.length} failed)`);
-  return { ok: true, detail: `${total} postings from ${okTokens.length}/${JOB_SOURCES.length} boards${failed.length ? ` — failed: ${failed.slice(0, 6).join(", ")}${failed.length > 6 ? "…" : ""}` : ""}${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 160)}` : ""}` };
+  await client.from("job_board_meta").upsert(
+    {
+      k: "refresh_progress",
+      v: { cursor: nextCursor, total: runningTotal, failed: allFailed, companyCounts, categories },
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "k" },
+  );
+  return { ok: true, detail: `slice ${cursor}–${nextCursor - 1} done (${sliceTotal} postings, ${failed.length} failed) — cycle at ${nextCursor}/${JOB_SOURCES.length}` };
 }
 
 // ── detail: one posting's description (bounded memo, no bulk caching) ─────
