@@ -1641,6 +1641,13 @@
     "applyBridge": {
       "title": "Prepare esta candidatura exata",
       "desc": "Você acabou de se comparar com uma vaga real — o Apply Assistant a transforma em candidatura: seu currículo adaptado a esta vaga, uma carta combinando e uma lista honesta de lacunas. Veja antes uma amostra a partir do seu próprio currículo."
+    },
+    "matches": {
+      "title": "Vagas ao vivo que combinam com este currículo",
+      "subtitle": "Classificadas com a mesma pontuação determinística do seu relatório — de murais de vagas reais, atualizados a cada ~10 minutos.",
+      "loading": "Classificando vagas ao vivo contra seu currículo…",
+      "apply": "Candidatar",
+      "seeAll": "Ver todas as combinações no mural — salve buscas e acompanhe candidaturas"
     }
   },
   "analysisPreviewSample": {

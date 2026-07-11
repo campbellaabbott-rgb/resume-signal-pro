@@ -24,13 +24,21 @@ export function SaveResumeVersion({
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   if (!user) {
+    // The post-scan account hook: concrete features, at peak conviction.
     return (
-      <div className="rounded-2xl border border-border bg-card/60 p-4 mb-6">
-        <p className="text-sm font-semibold text-foreground mb-0.5">Save this resume version</p>
-        <p className="text-xs text-muted-foreground">
-          <Link to="/auth" className="text-primary underline">Sign in free</Link> to save versions, tag each
-          application with the exact version you sent, and see which version actually lands interviews.
-        </p>
+      <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 mb-6">
+        <p className="text-sm font-semibold text-foreground mb-1.5">Keep this scan working for you</p>
+        <ul className="text-xs text-muted-foreground space-y-1 mb-3">
+          <li>• Save this resume — the job board ranks all ~40,000 live openings against it, every visit</li>
+          <li>• Save searches ("remote healthcare") and see how many new postings match since you last looked</li>
+          <li>• Bookmark jobs and your application tracker fills itself — fit scores included</li>
+        </ul>
+        <Link
+          to="/auth"
+          className="inline-flex items-center px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
+        >
+          Create a free account
+        </Link>
       </div>
     );
   }
@@ -70,7 +78,8 @@ export function SaveResumeVersion({
       <p className="text-sm font-semibold text-foreground mb-0.5">Save this resume version</p>
       <p className="text-xs text-muted-foreground mb-3">
         Stored in your account until you delete it — this is the only time we keep resume content, and only
-        because you asked. Tag applications with a version to see which one lands interviews.
+        because you asked. It powers fit-ranking across the job board's ~40,000 openings, automatic fit
+        scores on tracked applications, and the which-version-lands-interviews view.
       </p>
       <div className="flex gap-2">
         <input

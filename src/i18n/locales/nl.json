@@ -1641,6 +1641,13 @@
     "applyBridge": {
       "title": "Bereid precies deze sollicitatie voor",
       "desc": "Je hebt net getoetst aan een echte vacature — Apply Assistant maakt er een sollicitatie van: je cv afgestemd op deze baan, een bijpassende brief en een eerlijke lijst van hiaten. Bekijk eerst een voorbeeld uit je eigen cv."
+    },
+    "matches": {
+      "title": "Live vacatures die bij dit cv passen",
+      "subtitle": "Gerangschikt met dezelfde deterministische matchscore als je rapport — uit echte vacaturebanken, elke ~10 minuten ververst.",
+      "loading": "Live vacatures worden gerangschikt tegen je cv…",
+      "apply": "Solliciteer",
+      "seeAll": "Bekijk alle matches op de vacaturebank — zoekopdrachten opslaan, sollicitaties volgen"
     }
   },
   "analysisPreviewSample": {

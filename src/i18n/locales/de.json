@@ -1641,6 +1641,13 @@
     "applyBridge": {
       "title": "Genau diese Bewerbung vorbereiten",
       "desc": "Sie haben gerade gegen eine echte Ausschreibung geprüft — Apply Assistant macht daraus eine Bewerbung: Ihr Lebenslauf auf diese Stelle zugeschnitten, ein passendes Anschreiben und eine ehrliche Lückenliste. Sehen Sie zuerst eine Probe aus Ihrem eigenen Lebenslauf."
+    },
+    "matches": {
+      "title": "Live-Stellen, die zu diesem Lebenslauf passen",
+      "subtitle": "Gerankt mit demselben deterministischen Passungswert wie Ihr Bericht — aus echten Firmen-Jobbörsen, ca. alle 10 Minuten aktualisiert.",
+      "loading": "Live-Stellen werden gegen Ihren Lebenslauf gerankt…",
+      "apply": "Bewerben",
+      "seeAll": "Alle Treffer auf der Jobbörse ansehen — Suchen speichern, Bewerbungen verfolgen"
     }
   },
   "analysisPreviewSample": {

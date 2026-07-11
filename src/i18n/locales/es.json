@@ -1641,6 +1641,13 @@
     "applyBridge": {
       "title": "Prepara esta candidatura exacta",
       "desc": "Acabas de compararte con una oferta real — Apply Assistant la convierte en una candidatura: tu currículum adaptado a este puesto, una carta a juego y una lista honesta de brechas. Primero ve una muestra con tu propio currículum."
+    },
+    "matches": {
+      "title": "Ofertas en vivo que encajan con este currículum",
+      "subtitle": "Ordenadas con la misma puntuación determinista de tu informe — desde bolsas de empleo reales, actualizadas cada ~10 minutos.",
+      "loading": "Clasificando ofertas en vivo contra tu currículum…",
+      "apply": "Postular",
+      "seeAll": "Ver todas las coincidencias en la bolsa — guarda búsquedas y sigue candidaturas"
     }
   },
   "analysisPreviewSample": {

@@ -45,6 +45,7 @@ import { ResumeXRay } from "./ResumeXRay";
 import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard, FreelanceGuidanceCard, IndustryChecksCard, CountryStandardsCard, DiagnosticHeader, FindingsIndex, computeVendorChecks, type Finding } from "./ReportInsightCards";
 import { EmailReportCapture } from "./EmailReportCapture";
 import { RoleTargetingCard, CheckAgainstPostingCard } from "./RoleTargeting";
+import { LiveMatches } from "./LiveMatches";
 import { ProductPreview } from "./ProductPreview";
 import { CardErrorBoundary } from "./CardErrorBoundary";
 import { getAvailableIndustries } from "./IndustryConfidenceIndicator";
@@ -1782,6 +1783,8 @@ export function FreeKeywordResults({
         industryBlend={industryBlend}
         countryName={countryStandards?.country ?? null}
       />
+
+      <LiveMatches resumeText={resumeText} industry={effectiveIndustry} />
 
       {/* The highest-intent moment in the product: the user just checked
           against a SPECIFIC opening. Offer to prepare that exact application,

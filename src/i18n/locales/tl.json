@@ -1641,6 +1641,13 @@
     "applyBridge": {
       "title": "Ihanda ang eksaktong aplikasyong ito",
       "desc": "Kakatapos mo lang itapat sa totoong posting — ginagawa itong aplikasyon ng Apply Assistant: resume mong naka-angkop sa trabahong ito, akmang cover letter, at tapat na listahan ng kakulangan. Tingnan muna ang sample mula sa sarili mong resume."
+    },
+    "matches": {
+      "title": "Mga live na opening na tugma sa resume na ito",
+      "subtitle": "Naka-rank gamit ang parehong deterministikong fit scoring ng report mo — mula sa totoong job boards ng mga kumpanya, nire-refresh bawat ~10 minuto.",
+      "loading": "Nira-rank ang mga live na opening laban sa resume mo…",
+      "apply": "Mag-apply",
+      "seeAll": "Tingnan ang lahat ng tugma sa job board — mag-save ng paghahanap, subaybayan ang aplikasyon"
     }
   },
   "analysisPreviewSample": {
