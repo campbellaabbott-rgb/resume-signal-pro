@@ -146,6 +146,15 @@ describe("htmlToText", () => {
   it("keeps &amp; content and drops script/style blocks", () => {
     expect(htmlToText("R&amp;D <style>p{}</style><script>x()</script> team")).toBe("R&D team");
   });
+
+  it("handles Greenhouse's double-escaped entities (&amp;nbsp; inside escaped HTML)", () => {
+    // Real production artifact: "Req ID: FEQ227R81&nbsp;" survived one pass.
+    const doubleEscaped = "&lt;p&gt;Req ID: FEQ227R81&amp;nbsp;Location: Osaka&amp;amp;Kyoto&lt;/p&gt;";
+    const text = htmlToText(doubleEscaped);
+    expect(text).toContain("Req ID: FEQ227R81 Location: Osaka&Kyoto");
+    expect(text).not.toContain("&nbsp;");
+    expect(text).not.toContain("&amp;");
+  });
 });
 
 describe("filter + sort", () => {

@@ -21,16 +21,21 @@ export interface JobPosting {
   applyUrl: string;
 }
 
-// Greenhouse escapes the HTML it returns (&lt;p&gt;…), so unescape BEFORE
-// stripping tags or every tag survives stripping.
-export function htmlToText(html: string): string {
-  const unescaped = html
+// Greenhouse escapes the HTML it returns (&lt;p&gt;…) — and entities INSIDE
+// that HTML arrive double-escaped (&amp;nbsp;), so unescape must run twice:
+// once to recover the markup, once to recover the text's own entities.
+// Two passes are a no-op on plain text.
+const unescapeEntities = (s: string) =>
+  s
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&");
+    .replace(/&amp;/g, "&"); // last, so &amp;lt; needs the second pass, not this one
+
+export function htmlToText(html: string): string {
+  const unescaped = unescapeEntities(unescapeEntities(html));
   return unescaped
     .replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ")
     .replace(/<br\s*\/?>/gi, "\n")
