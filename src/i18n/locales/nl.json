@@ -3312,6 +3312,14 @@
     "jobTracker": {
       "title": "Vacatures opslaan, sollicitaties volgen, zoekopdrachten bewaken — vanuit je gratis account",
       "description": "De vacaturebank groeide opnieuw — 159 bedrijven en zo'n 20.000 vacatures, nu ook grote werkgevers op SmartRecruiters en Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). En je gratis account werkt er nu mee samen: sla een vacature op en hij belandt in je sollicitatietracker met de vacaturetekst eraan, klaar voor een match-check met één klik. Klik ingelogd op Solliciteer en de rij markeert zichzelf als verzonden, met datum. Sla een zoekopdracht op — zeg, remote zorgbanen — en je account toont hoeveel nieuwe vacatures er sinds je laatste bezoek bij zijn. Solliciteren, met een geheugen."
+    },
+    "fitRankedBoard": {
+      "title": "De vacaturebank rangschikt nu 25.000 vacatures tegen je cv",
+      "description": "Scan je cv, open de bank en zet “Sorteer op mijn match” aan: elke vacature krijgt een matchscore — deterministische trefwoorddekking tegen je echte cv, volledig reproduceerbaar, zonder AI-giswerk — en de lijst sorteert beste eerst. In onze live test scoorde het cv van een verpleegkundige 17–24% op zorgvacatures en 3% op al het andere; dat verschil is precies de bedoeling. Ook nieuw: salaris op de kaart waar bedrijven het publiceren, filters “Vandaag / Deze week”, en 35 extra bedrijven — SpaceX, OpenAI, Securitas, ServiceNow, Rocket Lab, Sodexo — samen 194 bedrijven en zo'n 25.000 live vacatures."
+    },
+    "groundedApplyKits": {
+      "title": "Sollicitatiekits: op maat gemaakte cv's, feitelijk gecheckt, in sjablonen die je echt verstuurt",
+      "description": "Het op maat gemaakte cv van de Apply Assistant wordt nu geverifieerd, niet alleen geïnstrueerd: elke werkgever, functietitel, school en datum wordt gecheckt tegen je originele cv, niet-onderbouwde vaardigheden worden verwijderd en gemeld, en verzint de generatie twee keer iets, dan weigeren we te leveren in plaats van fictie te versturen — je ziet de feitencheck-banner op elke kit. Kies uit drie ATS-veilige sjablonen (Modern, Klassiek, Compact) voor PDF en Word. En de sollicitatietracker werd slimmer: een vacature opslaan vanaf de bank koppelt je nieuwste cv-versie en berekent je match automatisch, en elke sollicitatie biedt een kit met één klik — inbegrepen bij Pro."
     }
   },
   "sampleReportPreview": {

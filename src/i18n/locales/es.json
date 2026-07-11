@@ -3312,6 +3312,14 @@
     "jobTracker": {
       "title": "Guarda empleos, sigue candidaturas y vigila búsquedas — desde tu cuenta gratuita",
       "description": "La bolsa de empleo creció de nuevo — 159 empresas y unas 20.000 ofertas, ahora con grandes empleadores en SmartRecruiters y Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). Y tu cuenta gratuita aprendió a trabajar con ella: guarda cualquier oferta y aterriza en tu registro de candidaturas con la descripción adjunta, lista para comprobar el encaje en un clic. Pulsa Postularme con sesión iniciada y la fila se marca sola como enviada, con fecha. Guarda una búsqueda — por ejemplo, sanidad en remoto — y tu cuenta muestra cuántas ofertas nuevas coinciden desde tu última visita. Buscar trabajo, con memoria."
+    },
+    "fitRankedBoard": {
+      "title": "La bolsa de empleo ahora clasifica 25.000 ofertas según tu currículum",
+      "description": "Escanea tu currículum, abre la bolsa y pulsa “Ordenar por mi encaje”: cada oferta recibe una puntuación — cobertura determinista de palabras clave contra tu currículum real, totalmente reproducible, sin conjeturas de IA — y la lista se ordena de mejor a peor. En nuestra prueba en vivo, el currículum de una enfermera puntuó 17–24% en puestos de enfermería y 3% en el resto; esa brecha es el objetivo. También: salario en la tarjeta cuando la empresa lo publica, filtros de “Hoy / Esta semana”, y 35 empresas más — SpaceX, OpenAI, Securitas, ServiceNow, Rocket Lab, Sodexo — hasta 194 empresas y unas 25.000 ofertas en vivo."
+    },
+    "groundedApplyKits": {
+      "title": "Kits de candidatura: currículums adaptados con verificación de hechos y plantillas dignas de enviar",
+      "description": "El currículum adaptado del Apply Assistant ahora se verifica, no solo se instruye: cada empleador, cargo, centro y fecha se comprueba contra tu currículum original, las habilidades sin respaldo se eliminan y se declaran, y si la generación inventa algo dos veces nos negamos a entregarlo antes que enviar ficción — verás el sello de verificación en cada kit. Elige entre tres plantillas aptas para ATS (Moderna, Clásica, Compacta) en PDF y Word. Y el registro de candidaturas es más listo: guardar una oferta desde la bolsa adjunta tu última versión del currículum y calcula tu encaje automáticamente, y cada candidatura ofrece un kit con un clic — incluido en Pro."
     }
   },
   "sampleReportPreview": {

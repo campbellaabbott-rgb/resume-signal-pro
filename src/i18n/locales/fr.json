@@ -3312,6 +3312,14 @@
     "jobTracker": {
       "title": "Enregistrez des offres, suivez vos candidatures, surveillez des recherches — depuis votre compte gratuit",
       "description": "Le job board a encore grandi — 159 entreprises et environ 20 000 offres, incluant désormais de grands employeurs sur SmartRecruiters et Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). Et votre compte gratuit a appris à travailler avec : enregistrez une offre et elle rejoint votre suivi de candidatures avec la description attachée, prête pour une vérification d'adéquation en un clic. Cliquez Candidater en étant connecté et la ligne se marque envoyée, avec la date. Enregistrez une recherche — par exemple, santé en télétravail — et votre compte affiche combien de nouvelles offres correspondent depuis votre dernier passage. La recherche d'emploi, avec de la mémoire."
+    },
+    "fitRankedBoard": {
+      "title": "Le job board classe désormais 25 000 offres selon votre CV",
+      "description": "Scannez votre CV, ouvrez le board et activez « Classer selon mon adéquation » : chaque offre reçoit un score — couverture déterministe des mots-clés contre votre CV réel, entièrement reproductible, sans divination d'IA — et la liste se trie du meilleur au moins bon. Dans notre test en direct, le CV d'une infirmière a obtenu 17–24 % sur les postes de soins et 3 % sur tout le reste ; cet écart est le but. Aussi : salaire sur la carte quand l'entreprise le publie, filtres « Aujourd'hui / Cette semaine », et 35 entreprises de plus — SpaceX, OpenAI, Securitas, ServiceNow, Rocket Lab, Sodexo — soit 194 entreprises et environ 25 000 offres en direct."
+    },
+    "groundedApplyKits": {
+      "title": "Kits de candidature : des CV adaptés vérifiés, dans des modèles dignes d'être envoyés",
+      "description": "Le CV adapté de l'Apply Assistant est désormais vérifié, pas seulement consigné : chaque employeur, poste, école et date est contrôlé contre votre CV original, les compétences non étayées sont retirées et signalées, et si la génération invente deux fois, nous refusons de livrer plutôt que d'expédier de la fiction — le bandeau de vérification apparaît sur chaque kit. Choisissez parmi trois modèles compatibles ATS (Moderne, Classique, Compact) en PDF et Word. Et le suivi de candidatures s'est affûté : enregistrer une offre depuis le board attache votre dernière version de CV et calcule votre adéquation automatiquement, et chaque candidature offre un kit en un clic — inclus avec Pro."
     }
   },
   "sampleReportPreview": {

@@ -3312,6 +3312,14 @@
     "jobTracker": {
       "title": "Jobs speichern, Bewerbungen verfolgen, Suchen beobachten — aus Ihrem kostenlosen Konto",
       "description": "Die Jobbörse ist wieder gewachsen — 159 Unternehmen und rund 20.000 Stellen, jetzt auch große Arbeitgeber auf SmartRecruiters und Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). Und Ihr kostenloses Konto arbeitet jetzt mit ihr zusammen: Speichern Sie eine Stelle und sie landet im Bewerbungstracker, mit angehängter Beschreibung, bereit für den Ein-Klick-Passungscheck. Klicken Sie angemeldet auf Bewerben, markiert sich die Zeile selbst als beworben, mit Datum. Speichern Sie eine Suche — etwa Remote-Pflegejobs — und Ihr Konto zeigt, wie viele neue Stellen seit Ihrem letzten Blick passen. Jobsuche, mit Gedächtnis."
+    },
+    "fitRankedBoard": {
+      "title": "Die Jobbörse rankt jetzt 25.000 Stellen gegen Ihren Lebenslauf",
+      "description": "Lebenslauf scannen, Börse öffnen, „Nach meiner Passung sortieren“: Jede Stelle erhält einen Passungswert — deterministische Keyword-Abdeckung gegen Ihren echten Lebenslauf, voll reproduzierbar, ohne KI-Raterei — und die Liste sortiert sich bestpassend zuerst. Im Live-Test erzielte der Lebenslauf einer Pflegekraft 17–24 % auf Pflegestellen und 3 % auf allem anderen; genau diese Lücke ist der Zweck. Außerdem: Gehalt auf der Karte, wo Unternehmen es veröffentlichen, „Heute / Diese Woche“-Filter und 35 weitere Unternehmen — SpaceX, OpenAI, Securitas, ServiceNow, Rocket Lab, Sodexo — insgesamt 194 Unternehmen und rund 25.000 Live-Stellen."
+    },
+    "groundedApplyKits": {
+      "title": "Bewerbungs-Kits: faktengeprüfte zugeschnittene Lebensläufe in Vorlagen, die man wirklich abschickt",
+      "description": "Der zugeschnittene Lebenslauf des Apply Assistant wird jetzt verifiziert, nicht nur instruiert: Jeder Arbeitgeber, Titel, jede Schule und jedes Datum wird gegen Ihren Original-Lebenslauf geprüft, unbelegte Skills werden entfernt und offengelegt, und erfindet die Generierung zweimal etwas, verweigern wir die Lieferung, statt Fiktion zu versenden — das Prüfsiegel sehen Sie auf jedem Kit. Drei ATS-sichere Vorlagen (Modern, Klassisch, Kompakt) für PDF und Word. Und der Bewerbungstracker wurde klüger: Eine Stelle von der Börse zu speichern hängt Ihre neueste Lebenslauf-Version an und berechnet die Passung automatisch, und jede Bewerbung bietet ein Ein-Klick-Kit — in Pro enthalten."
     }
   },
   "sampleReportPreview": {

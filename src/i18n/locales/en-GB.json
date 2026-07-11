@@ -3312,6 +3312,14 @@
     "jobTracker": {
       "title": "Save jobs, track applications, watch searches — from your free account",
       "description": "The job board grew again — 159 companies and about 20,000 openings, now including major employers on SmartRecruiters and Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). And your free account learned to work with it: bookmark any posting and it lands in your application tracker with the job description attached, ready for a one-click fit check. Click Apply while signed in and the row marks itself applied, with the date. Save a search — say, remote healthcare roles — and your account shows how many new postings match since you last looked. Job hunting, with a memory."
+    },
+    "fitRankedBoard": {
+      "title": "The job board now ranks 25,000 openings against your resume",
+      "description": "Scan your resume, open the board, and hit “Rank by my fit”: every posting gets a fit score — deterministic keyword coverage against your actual resume, fully reproducible, no AI guesswork — and the list sorts best-first. In our live test, a nurse's resume scored 17–24% on nursing roles and 3% on everything else; that gap is the point. Also new: salary on the card where company feeds publish it, “Today / This week” freshness filters, and 35 more companies — SpaceX, OpenAI, Securitas, ServiceNow, Rocket Lab, Sodexo — bringing the board to 194 companies and roughly 25,000 live openings."
+    },
+    "groundedApplyKits": {
+      "title": "Application kits: tailored resumes that are fact-checked, in templates worth submitting",
+      "description": "The Apply Assistant's tailored resume is now verified, not just instructed: every employer, job title, school, and date in the output is checked against your original resume, unsupported skills are removed and disclosed, and if generation invents anything twice we refuse to deliver rather than ship fiction — you'll see the fact-check banner on every kit. Choose from three ATS-safe templates (Modern, Classic, Compact) for both PDF and Word downloads. And the application tracker got smarter: saving a job from the board now attaches your latest resume version and computes your fit score automatically, and every tracked application offers a one-click kit — included with Pro."
     }
   },
   "sampleReportPreview": {

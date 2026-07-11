@@ -3312,6 +3312,14 @@
     "jobTracker": {
       "title": "Salve vagas, acompanhe candidaturas, vigie buscas — da sua conta gratuita",
       "description": "O mural de vagas cresceu de novo — 159 empresas e cerca de 20.000 vagas, agora incluindo grandes empregadores no SmartRecruiters e Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). E sua conta gratuita aprendeu a trabalhar com ele: salve qualquer vaga e ela cai no seu rastreador de candidaturas com a descrição anexada, pronta para checar o encaixe em um clique. Clique em Candidatar-se logado e a linha se marca sozinha como enviada, com data. Salve uma busca — digamos, saúde remota — e sua conta mostra quantas vagas novas surgiram desde sua última olhada. Busca de emprego, com memória."
+    },
+    "fitRankedBoard": {
+      "title": "O mural de vagas agora classifica 25.000 vagas contra o seu currículo",
+      "description": "Escaneie seu currículo, abra o mural e acione “Ordenar pelo meu encaixe”: cada vaga recebe uma pontuação — cobertura determinística de palavras-chave contra seu currículo real, totalmente reproduzível, sem adivinhação de IA — e a lista ordena do melhor para o pior. No teste ao vivo, o currículo de uma enfermeira pontuou 17–24% em vagas de enfermagem e 3% no resto; essa distância é o objetivo. Também: salário no cartão quando a empresa publica, filtros “Hoje / Esta semana”, e mais 35 empresas — SpaceX, OpenAI, Securitas, ServiceNow, Rocket Lab, Sodexo — chegando a 194 empresas e cerca de 25.000 vagas ao vivo."
+    },
+    "groundedApplyKits": {
+      "title": "Kits de candidatura: currículos adaptados com checagem de fatos, em modelos dignos de envio",
+      "description": "O currículo adaptado do Apply Assistant agora é verificado, não apenas instruído: cada empregador, cargo, escola e data é conferido contra seu currículo original, habilidades sem respaldo são removidas e declaradas, e se a geração inventar algo duas vezes, recusamos entregar em vez de enviar ficção — você verá o selo de verificação em cada kit. Escolha entre três modelos seguros para ATS (Moderno, Clássico, Compacto) em PDF e Word. E o rastreador de candidaturas ficou mais esperto: salvar uma vaga do mural anexa sua versão mais recente do currículo e calcula seu encaixe automaticamente, e cada candidatura oferece um kit em um clique — incluído no Pro."
     }
   },
   "sampleReportPreview": {

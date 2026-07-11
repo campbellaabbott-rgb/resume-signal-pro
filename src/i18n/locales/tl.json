@@ -3312,6 +3312,14 @@
     "jobTracker": {
       "title": "Mag-save ng trabaho, subaybayan ang aplikasyon, bantayan ang paghahanap — mula sa libreng account mo",
       "description": "Lumaki ulit ang job board — 159 kumpanya at humigit-kumulang 20,000 opening, kasama na ngayon ang malalaking employer sa SmartRecruiters at Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). At natuto nang makipagtulungan dito ang libreng account mo: i-save ang anumang posting at papasok ito sa iyong application tracker na may kalakip na deskripsyon, handa para sa isang-click na fit check. I-click ang Mag-apply habang naka-sign in at ang row ay magmamarka ng sarili bilang nag-apply, may petsa. Mag-save ng paghahanap — halimbawa, remote healthcare — at ipapakita ng account mo kung ilang bagong posting ang tumugma mula noong huli kang tumingin. Paghahanap ng trabaho, na may memorya."
+    },
+    "fitRankedBoard": {
+      "title": "Ang job board ay nagra-rank na ngayon ng 25,000 opening laban sa resume mo",
+      "description": "I-scan ang resume mo, buksan ang board, at pindutin ang “I-rank ayon sa fit ko”: bawat posting ay may fit score — deterministikong keyword coverage laban sa totoong resume mo, ganap na maru-reproduce, walang hula ng AI — at ang listahan ay nag-aayos mula sa pinakaangkop. Sa aming live na pagsubok, ang resume ng isang nurse ay nakakuha ng 17–24% sa mga nursing role at 3% sa lahat ng iba; ang agwat na iyon ang mismong punto. Bago rin: sahod sa card kung saan inilalathala ng kumpanya, mga filter na “Ngayon / Ngayong linggo”, at 35 pang kumpanya — SpaceX, OpenAI, Securitas, ServiceNow, Rocket Lab, Sodexo — kaya 194 kumpanya at humigit-kumulang 25,000 live na opening."
+    },
+    "groundedApplyKits": {
+      "title": "Application kits: na-fact-check na tailored resume, sa mga template na talagang maipapasa",
+      "description": "Ang tailored resume ng Apply Assistant ay bine-verify na ngayon, hindi lang inuutusan: bawat employer, titulo, paaralan, at petsa sa output ay sinusuri laban sa orihinal mong resume, ang mga kasanayang walang batayan ay inaalis at idinedeklara, at kung dalawang beses mag-imbento ang generation, tumatanggi kaming maghatid kaysa magpadala ng kathang-isip — makikita mo ang fact-check banner sa bawat kit. Pumili sa tatlong ATS-safe na template (Moderno, Klasiko, Compact) para sa PDF at Word. At mas matalino na ang application tracker: ang pag-save ng trabaho mula sa board ay nagkakabit ng pinakabagong bersyon ng resume mo at awtomatikong kinukuwenta ang fit mo, at bawat aplikasyon ay may isang-click na kit — kasama sa Pro."
     }
   },
   "sampleReportPreview": {
