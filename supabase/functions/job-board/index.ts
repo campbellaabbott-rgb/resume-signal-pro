@@ -139,7 +139,7 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
   const okTokens: string[] = [];
   const failed: string[] = [];
   let total = 0;
-  let upsertError: string | null = null;
+  let lastUpsertError: string | null = null;
   const companyCounts = new Map<string, number>();
   const categoriesFacet: Record<string, number> = {};
 
@@ -147,7 +147,7 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
     Array.from({ length: CONCURRENCY }, async () => {
       for (;;) {
         const s = queue.shift();
-        if (!s || upsertError) return;
+        if (!s) return;
         const r = await fetchBoard(s);
         if (!r) {
           failed.push(s.name);
@@ -173,21 +173,23 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
           }
         }
         const rowsById = new Map<string, Record<string, unknown>>();
+        // Postgres text columns reject NUL bytes — some feeds carry them.
+        const clean = (x: string | null | undefined) => (x == null ? null : x.replace(/\u0000/g, ""));
         for (const j of r.jobs) {
           rowsById.set(j.id, {
             id: j.id,
             source: j.source,
             company_token: j.token,
             company: j.company,
-            title: j.title.slice(0, 300),
-            location: j.location.slice(0, 300),
+            title: clean(j.title.slice(0, 300)),
+            location: clean(j.location.slice(0, 300)),
             remote: j.remote,
-            department: j.department?.slice(0, 200) ?? null,
+            department: clean(j.department?.slice(0, 200) ?? null),
             category: j.category,
             posted_at: j.postedAt,
             apply_url: j.applyUrl,
-            salary: j.salary?.slice(0, 200) ?? null,
-            description: descs.get(j.id) ?? null,
+            salary: clean(j.salary?.slice(0, 200) ?? null),
+            description: clean(descs.get(j.id) ?? null),
             last_seen: startIso,
           });
         }
@@ -197,8 +199,9 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
           const { error } = await client.from("job_board_postings").upsert(rows.slice(i, i + 250), { onConflict: "id" });
           if (error) {
             boardOk = false;
-            upsertError = `upsert failed for ${s.token}: ${error.message}`;
-            break;
+            lastUpsertError = `${s.token}: ${error.message}`;
+            console.warn(`[JOB-BOARD] upsert failed for ${s.token}:`, error.message.slice(0, 200));
+            break; // this board only — the pass continues
           }
         }
         if (!boardOk) {
@@ -215,8 +218,9 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
     }),
   );
 
-  if (upsertError && okTokens.length === 0) return { ok: false, detail: upsertError };
-  if (okTokens.length === 0) return { ok: false, detail: "every board fetch failed — nothing written" };
+  if (okTokens.length === 0) {
+    return { ok: false, detail: lastUpsertError ? `every board failed — last upsert error: ${lastUpsertError}` : "every board fetch failed — nothing written" };
+  }
 
   // Prune vanished postings — but ONLY for boards that answered this pass,
   // so a transient feed outage never mass-deletes a company's listings.
@@ -246,7 +250,7 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
   };
   await client.from("job_board_meta").upsert({ k: "refresh", v, updated_at: new Date().toISOString() }, { onConflict: "k" });
   console.log(`[JOB-BOARD] refresh: ${total} postings from ${okTokens.length}/${JOB_SOURCES.length} boards (${failed.length} failed)`);
-  return { ok: true, detail: `${total} postings from ${okTokens.length} boards${failed.length ? ` (${failed.length} boards failed)` : ""}` };
+  return { ok: true, detail: `${total} postings from ${okTokens.length}/${JOB_SOURCES.length} boards${failed.length ? ` — failed: ${failed.slice(0, 6).join(", ")}${failed.length > 6 ? "…" : ""}` : ""}${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 160)}` : ""}` };
 }
 
 // ── detail: one posting's description (bounded memo, no bulk caching) ─────
