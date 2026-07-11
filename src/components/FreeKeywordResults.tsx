@@ -3112,7 +3112,7 @@ export function FreeKeywordResults({
           </p>
 
           {/* Indicators */}
-          {careerSituation.indicators && careerSituation.indicators.length > 0 && (
+          {careerSituation.indicators && careerSituation.indicators?.length > 0 && (
             <div className="mb-4">
               <p className="text-xs font-medium text-muted-foreground mb-2">{t('freeResults.careerSituationDetected.whatDetected')}</p>
               <div className="flex flex-wrap gap-2">
@@ -3126,7 +3126,7 @@ export function FreeKeywordResults({
           )}
 
           {/* Tailored Advice */}
-          {careerSituation.tailoredAdvice && careerSituation.tailoredAdvice.length > 0 && (
+          {careerSituation.tailoredAdvice && careerSituation.tailoredAdvice?.length > 0 && (
             <div className="space-y-3">
               <p className="text-sm font-semibold text-foreground">{t('freeResults.careerSituationDetected.tailoredAdvice')}</p>
               {(careerSituation.tailoredAdvice ?? []).map((advice, index) => (
@@ -3215,7 +3215,7 @@ export function FreeKeywordResults({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Next Role Suggestions */}
-              {personalizedCareerInsights.nextRoleSuggestions && personalizedCareerInsights.nextRoleSuggestions.length > 0 && (
+              {personalizedCareerInsights.nextRoleSuggestions && personalizedCareerInsights.nextRoleSuggestions?.length > 0 && (
                 gateDeepInsights ? (
                   <LockedPremiumInsight
                     title={t('freeResults.personalizedCareerInsights.nextMoves')}
@@ -3254,7 +3254,7 @@ export function FreeKeywordResults({
               )}
 
               {/* Interview Talking Points */}
-              {personalizedCareerInsights.interviewTalkingPoints && personalizedCareerInsights.interviewTalkingPoints.length > 0 && (
+              {personalizedCareerInsights.interviewTalkingPoints && personalizedCareerInsights.interviewTalkingPoints?.length > 0 && (
                 gateDeepInsights ? (
                   <LockedPremiumInsight
                     title={t('freeResults.personalizedCareerInsights.interviewStories')}
@@ -3288,7 +3288,7 @@ export function FreeKeywordResults({
                 <LockedPremiumInsight
                   title={t('freeResults.personalizedCareerInsights.salaryInsightTitle')}
                   description={t('freeResults.lockedInsights.careerSalary')}
-                  previewLines={[`💰 ${personalizedCareerInsights.salaryInsight.estimatedRange}`, ...(personalizedCareerInsights.salaryInsight.leveragePoints?.slice(0,2) ?? [])]}
+                  previewLines={[`💰 ${personalizedCareerInsights.salaryInsight?.estimatedRange}`, ...(personalizedCareerInsights.salaryInsight?.leveragePoints?.slice(0,2) ?? [])]}
                   onUnlock={() => handleUpgradeClick('locked_salary')}
                   isLoading={isLoading}
                   variant="highlight"
@@ -3301,23 +3301,23 @@ export function FreeKeywordResults({
                   <h5 className="font-semibold text-sm">{t('freeResults.personalizedCareerInsights.salaryInsightTitle')}</h5>
                   <span className={cn(
                     "text-xs px-2 py-0.5 rounded-full ml-auto",
-                    personalizedCareerInsights.salaryInsight.marketPosition === "above_market" ? "bg-success/20 text-success" :
-                    personalizedCareerInsights.salaryInsight.marketPosition === "at_market" ? "bg-primary/20 text-primary" :
+                    personalizedCareerInsights.salaryInsight?.marketPosition === "above_market" ? "bg-success/20 text-success" :
+                    personalizedCareerInsights.salaryInsight?.marketPosition === "at_market" ? "bg-primary/20 text-primary" :
                     "bg-warning/20 text-warning"
                   )}>
-                    {personalizedCareerInsights.salaryInsight.marketPosition === "above_market" ? t('freeResults.marketPosition.aboveMarket') :
-                     personalizedCareerInsights.salaryInsight.marketPosition === "at_market" ? t('freeResults.marketPosition.atMarket') : t('freeResults.marketPosition.belowMarket')}
+                    {personalizedCareerInsights.salaryInsight?.marketPosition === "above_market" ? t('freeResults.marketPosition.aboveMarket') :
+                     personalizedCareerInsights.salaryInsight?.marketPosition === "at_market" ? t('freeResults.marketPosition.atMarket') : t('freeResults.marketPosition.belowMarket')}
                   </span>
                 </div>
                 <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-2xl font-bold text-success">{personalizedCareerInsights.salaryInsight.estimatedRange}</span>
+                  <span className="text-2xl font-bold text-success">{personalizedCareerInsights.salaryInsight?.estimatedRange}</span>
                   <span className="text-xs text-muted-foreground">{t('freeResults.personalizedCareerInsights.estimatedRange')}</span>
                 </div>
-                {personalizedCareerInsights.salaryInsight.leveragePoints && personalizedCareerInsights.salaryInsight.leveragePoints.length > 0 && (
+                {personalizedCareerInsights.salaryInsight?.leveragePoints && personalizedCareerInsights.salaryInsight?.leveragePoints.length > 0 && (
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-2">{t('freeResults.personalizedCareerInsights.negotiationLeverage')}</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {(personalizedCareerInsights.salaryInsight.leveragePoints ?? []).map((point, index) => (
+                      {(personalizedCareerInsights.salaryInsight?.leveragePoints ?? []).map((point, index) => (
                         <span key={index} className="text-xs px-2 py-1 rounded-full bg-success/10 text-success">
                           {point}
                         </span>
@@ -3331,7 +3331,7 @@ export function FreeKeywordResults({
             {/* Hidden Strengths & Personal Brand */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
               {/* Hidden Strengths */}
-              {personalizedCareerInsights.hiddenStrengths && personalizedCareerInsights.hiddenStrengths.length > 0 && (
+              {personalizedCareerInsights.hiddenStrengths && personalizedCareerInsights.hiddenStrengths?.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Lightbulb className="w-4 h-4 text-warning" />
@@ -3355,7 +3355,7 @@ export function FreeKeywordResults({
                     title={t('freeResults.personalizedCareerInsights.personalBrand')}
                     description={t('freeResults.lockedInsights.careerBrand')}
                     previewLines={[
-                      `${t('freeResults.personalizedCareerInsights.currentLabel')} ${personalizedCareerInsights.personalBrand.currentBrand.substring(0, 50)}...`,
+                      `${t('freeResults.personalizedCareerInsights.currentLabel')} ${personalizedCareerInsights.personalBrand?.currentBrand.substring(0, 50)}...`,
                       `${t('freeResults.personalizedCareerInsights.idealLabel')} ...`,
                     ]}
                     onUnlock={() => handleUpgradeClick('locked_personal_brand')}
@@ -3370,15 +3370,15 @@ export function FreeKeywordResults({
                   <div className="space-y-2 text-sm">
                     <div className="flex items-start gap-2">
                       <span className="text-xs text-muted-foreground shrink-0 w-16">{t('freeResults.personalizedCareerInsights.currentLabel')}</span>
-                      <span className="text-muted-foreground">{personalizedCareerInsights.personalBrand.currentBrand}</span>
+                      <span className="text-muted-foreground">{personalizedCareerInsights.personalBrand?.currentBrand}</span>
                     </div>
                     <div className="flex items-start gap-2">
                       <span className="text-xs text-success shrink-0 w-16">{t('freeResults.personalizedCareerInsights.idealLabel')}</span>
-                      <span className="text-success font-medium">{personalizedCareerInsights.personalBrand.idealBrand}</span>
+                      <span className="text-success font-medium">{personalizedCareerInsights.personalBrand?.idealBrand}</span>
                     </div>
                     <div className="flex items-start gap-2">
                       <span className="text-xs text-warning shrink-0 w-16">{t('freeResults.personalizedCareerInsights.gapLabel')}</span>
-                      <span className="text-warning">{personalizedCareerInsights.personalBrand.brandGap}</span>
+                      <span className="text-warning">{personalizedCareerInsights.personalBrand?.brandGap}</span>
                     </div>
                   </div>
                 </div>
@@ -3415,12 +3415,12 @@ export function FreeKeywordResults({
           {/* Current Format Assessment */}
           <div className={cn(
             "p-4 rounded-xl mb-4 border",
-            formatRecommendation.currentFormatAssessment.isAppropriate 
+            formatRecommendation.currentFormatAssessment?.isAppropriate 
               ? "bg-success/10 border-success/20" 
               : "bg-warning/10 border-warning/20"
           )}>
             <div className="flex items-start gap-3">
-              {formatRecommendation.currentFormatAssessment.isAppropriate ? (
+              {formatRecommendation.currentFormatAssessment?.isAppropriate ? (
                 <CheckCircle className="w-5 h-5 text-success shrink-0" />
               ) : (
                 <AlertTriangle className="w-5 h-5 text-warning shrink-0" />
@@ -3428,19 +3428,19 @@ export function FreeKeywordResults({
               <div>
                 <p className={cn(
                   "font-medium",
-                  formatRecommendation.currentFormatAssessment.isAppropriate ? "text-success" : "text-warning"
+                  formatRecommendation.currentFormatAssessment?.isAppropriate ? "text-success" : "text-warning"
                 )}>
-                  {formatRecommendation.currentFormatAssessment.isAppropriate
+                  {formatRecommendation.currentFormatAssessment?.isAppropriate
                     ? t('freeResults.formatRecommendationSection.fitsIndustry')
                     : t('freeResults.formatRecommendationSection.needsAdjustment')}
                 </p>
-                {!formatRecommendation.currentFormatAssessment.isAppropriate && (
+                {!formatRecommendation.currentFormatAssessment?.isAppropriate && (
                   <p className="text-sm text-muted-foreground mt-1">
-                    {formatRecommendation.currentFormatAssessment.mainIssue}
+                    {formatRecommendation.currentFormatAssessment?.mainIssue}
                   </p>
                 )}
                 <p className="text-sm font-medium text-primary mt-2">
-                  {t('freeResults.formatRecommendationSection.quickFixLabel', { fix: formatRecommendation.currentFormatAssessment.quickFix })}
+                  {t('freeResults.formatRecommendationSection.quickFixLabel', { fix: formatRecommendation.currentFormatAssessment?.quickFix })}
                 </p>
               </div>
             </div>
@@ -3451,19 +3451,19 @@ export function FreeKeywordResults({
             <div className="p-3 rounded-lg bg-muted/50 text-center">
               <p className="text-xs text-muted-foreground mb-1">{t('freeResults.formatRecommendationSection.layoutLabel')}</p>
               <p className="text-sm font-semibold capitalize">
-                {formatRecommendation.layoutAdvice.columns === "one_column" ? t('freeResults.columns.oneColumn') : t('freeResults.columns.twoColumn')}
+                {formatRecommendation.layoutAdvice?.columns === "one_column" ? t('freeResults.columns.oneColumn') : t('freeResults.columns.twoColumn')}
               </p>
             </div>
             <div className="p-3 rounded-lg bg-muted/50 text-center">
               <p className="text-xs text-muted-foreground mb-1">{t('freeResults.formatRecommendationSection.colorLabel')}</p>
               <p className="text-sm font-semibold">
-                {formatRecommendation.layoutAdvice.useColor ? t('freeResults.formatRecommendationSection.colorAcceptable') : t('freeResults.formatRecommendationSection.colorAvoid')}
+                {formatRecommendation.layoutAdvice?.useColor ? t('freeResults.formatRecommendationSection.colorAcceptable') : t('freeResults.formatRecommendationSection.colorAvoid')}
               </p>
             </div>
             <div className="p-3 rounded-lg bg-muted/50 text-center">
               <p className="text-xs text-muted-foreground mb-1">{t('freeResults.formatRecommendationSection.visualsLabel')}</p>
               <p className="text-sm font-semibold capitalize">
-                {formatRecommendation.layoutAdvice.visualElements}
+                {formatRecommendation.layoutAdvice?.visualElements}
               </p>
             </div>
             <div className="p-3 rounded-lg bg-muted/50 text-center col-span-2 md:col-span-1">
@@ -3475,7 +3475,7 @@ export function FreeKeywordResults({
           </div>
 
           {/* Industry Norms */}
-          {formatRecommendation.industryNorms && formatRecommendation.industryNorms.length > 0 && (
+          {formatRecommendation.industryNorms && formatRecommendation.industryNorms?.length > 0 && (
             <div className="mb-4">
               <p className="text-sm font-semibold mb-3">{t('freeResults.formatRecommendationSection.whatTopResumesDo', { industry })}</p>
               <div className="space-y-2">
@@ -3497,7 +3497,7 @@ export function FreeKeywordResults({
           )}
 
           {/* Things to Avoid */}
-          {formatRecommendation.avoidList && formatRecommendation.avoidList.length > 0 && (
+          {formatRecommendation.avoidList && formatRecommendation.avoidList?.length > 0 && (
             <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20 mb-4">
               <p className="text-xs font-semibold text-destructive mb-2">{t('freeResults.formatRecommendationSection.avoidForIndustry', { industry })}</p>
               <div className="flex flex-wrap gap-2">
@@ -3727,7 +3727,7 @@ export function FreeKeywordResults({
             </span>
           </div>
           <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{marketIntelligence.marketSummary}</p>
-          {marketIntelligence.hotSkills.length > 0 && (
+          {marketIntelligence.hotSkills?.length > 0 && (
             <div className="mb-3">
               <p className="text-xs font-semibold text-foreground mb-1.5">🔥 Hot skills right now</p>
               <div className="flex flex-wrap gap-1.5">
@@ -3737,7 +3737,7 @@ export function FreeKeywordResults({
               </div>
             </div>
           )}
-          {marketIntelligence.risingKeywords.length > 0 && (
+          {marketIntelligence.risingKeywords?.length > 0 && (
             <div className="mb-3">
               <p className="text-xs font-semibold text-foreground mb-1.5">📈 Rising keywords in job postings</p>
               <div className="flex flex-wrap gap-1.5">
@@ -3747,7 +3747,7 @@ export function FreeKeywordResults({
               </div>
             </div>
           )}
-          {marketIntelligence.cvNorms.length > 0 && (
+          {marketIntelligence.cvNorms?.length > 0 && (
             <div className="mb-2">
               <p className="text-xs font-semibold text-foreground mb-1.5">📋 {marketIntelligence.countryName} CV norms</p>
               <ul className="space-y-1">
@@ -3768,7 +3768,7 @@ export function FreeKeywordResults({
       )}
 
       {/* ── SKILLS RECENCY CARD ── */}
-      {skillsRecency && (skillsRecency.agingSkills.length > 0 || skillsRecency.freshSkills.length > 0) && (
+      {skillsRecency && (skillsRecency.agingSkills?.length > 0 || skillsRecency.freshSkills?.length > 0) && (
         <div className={cn(
           "rounded-2xl border p-5 mb-5",
           skillsRecency.hasAgingSignals ? "border-warning/30 bg-warning/5" : "border-success/20 bg-success/5"
@@ -3784,7 +3784,7 @@ export function FreeKeywordResults({
               {skillsRecency.freshnessScore}/100
             </span>
           </div>
-          {skillsRecency.agingSkills.length > 0 && (
+          {skillsRecency.agingSkills?.length > 0 && (
             <div className="mb-3">
               <p className="text-xs font-semibold text-warning mb-1.5">⚠️ Aging skills (declining in job postings)</p>
               <div className="flex flex-wrap gap-1.5">
@@ -3795,7 +3795,7 @@ export function FreeKeywordResults({
               <p className="text-xs text-muted-foreground mt-1.5">These appear in fewer current job postings — consider pairing with modern equivalents.</p>
             </div>
           )}
-          {skillsRecency.freshSkills.length > 0 && (
+          {skillsRecency.freshSkills?.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-success mb-1.5">✓ Current skills (high demand 2025)</p>
               <div className="flex flex-wrap gap-1.5">
@@ -3842,7 +3842,7 @@ export function FreeKeywordResults({
       )}
 
       {/* ── COMPETITIVE KEYWORD GAP CARD ── */}
-      {competitiveGap && competitiveGap.missingHighFrequency.length > 0 && (
+      {competitiveGap && competitiveGap.missingHighFrequency?.length > 0 && (
         <div className="rounded-2xl border border-destructive/20 bg-card p-5 mb-5">
           <div className="flex items-center gap-2 mb-3">
             <Target className="w-4 h-4 text-destructive" />
@@ -3865,7 +3865,7 @@ export function FreeKeywordResults({
               </span>
             ))}
           </div>
-          {competitiveGap.presentHighFrequency.length > 0 && (
+          {competitiveGap.presentHighFrequency?.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
               {(competitiveGap.presentHighFrequency ?? []).map((kw, i) => (
                 <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20">
@@ -4340,7 +4340,7 @@ export function FreeKeywordResults({
           <p className="text-xs text-muted-foreground mb-3">
             Your title signals <strong>{titleLevelMismatch.claimedLevel}</strong> but your bullets read like <strong>{titleLevelMismatch.bulletLevel}</strong> work.
           </p>
-          {titleLevelMismatch.icVerbs.length > 0 && (
+          {titleLevelMismatch.icVerbs?.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-3">
               {(titleLevelMismatch.icVerbs ?? []).map((v, i) => (
                 <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/25 line-through">{v}</span>
