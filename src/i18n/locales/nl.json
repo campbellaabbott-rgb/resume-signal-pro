@@ -3320,6 +3320,10 @@
     "groundedApplyKits": {
       "title": "Sollicitatiekits: op maat gemaakte cv's, feitelijk gecheckt, in sjablonen die je echt verstuurt",
       "description": "Het op maat gemaakte cv van de Apply Assistant wordt nu geverifieerd, niet alleen geïnstrueerd: elke werkgever, functietitel, school en datum wordt gecheckt tegen je originele cv, niet-onderbouwde vaardigheden worden verwijderd en gemeld, en verzint de generatie twee keer iets, dan weigeren we te leveren in plaats van fictie te versturen — je ziet de feitencheck-banner op elke kit. Kies uit drie ATS-veilige sjablonen (Modern, Klassiek, Compact) voor PDF en Word. En de sollicitatietracker werd slimmer: een vacature opslaan vanaf de bank koppelt je nieuwste cv-versie en berekent je match automatisch, en elke sollicitatie biedt een kit met één klik — inbegrepen bij Pro."
+    },
+    "boardExpansion": {
+      "title": "609 bedrijven, bijna 40.000 live vacatures",
+      "description": "De vacaturebank groeide in één veegbeurt van 194 naar 609 bedrijven — net geen 40.000 live vacatures. We hebben duizenden carrière-feeds over zes officiële ATS-aanbieders gepeild (BambooHR is nieuw), de 415 met echte vacatures gehouden en de volledige diepte van onze bestaande reuzen ontgrendeld: Bosch, JYSK, Accor en Securitas tonen nu elk duizenden functies in plaats van hun eerste 500. De nauwkeurigheid schaalde mee: de weergavenaam van elk nieuw board komt van de ATS-aanbieder zelf — niet van onze gok — en tien boards waarvan de identiteit niet te verifiëren was, zijn geschrapt in plaats van verkeerd gelabeld gepubliceerd. De salarisdekking is onderweg meer dan verdubbeld. Dezelfde bank, dezelfde match-ranking, dezelfde 10-minutencyclus — vier keer zoveel banen als vanochtend."
     }
   },
   "sampleReportPreview": {

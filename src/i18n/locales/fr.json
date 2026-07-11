@@ -3320,6 +3320,10 @@
     "groundedApplyKits": {
       "title": "Kits de candidature : des CV adaptés vérifiés, dans des modèles dignes d'être envoyés",
       "description": "Le CV adapté de l'Apply Assistant est désormais vérifié, pas seulement consigné : chaque employeur, poste, école et date est contrôlé contre votre CV original, les compétences non étayées sont retirées et signalées, et si la génération invente deux fois, nous refusons de livrer plutôt que d'expédier de la fiction — le bandeau de vérification apparaît sur chaque kit. Choisissez parmi trois modèles compatibles ATS (Moderne, Classique, Compact) en PDF et Word. Et le suivi de candidatures s'est affûté : enregistrer une offre depuis le board attache votre dernière version de CV et calcule votre adéquation automatiquement, et chaque candidature offre un kit en un clic — inclus avec Pro."
+    },
+    "boardExpansion": {
+      "title": "609 entreprises, près de 40 000 offres en direct",
+      "description": "Le job board est passé de 194 à 609 entreprises en une seule passe — un peu moins de 40 000 offres en direct. Nous avons sondé des milliers de flux carrières sur six fournisseurs ATS officiels (BambooHR est nouveau), gardé les 415 qui répondaient avec de vraies offres, et débloqué toute la profondeur des géants déjà présents : Bosch, JYSK, Accor et Securitas listent désormais des milliers de postes chacun au lieu de leurs 500 premiers. La précision a suivi le volume : le nom affiché de chaque nouveau board vient du fournisseur ATS lui-même — pas de notre supposition — et dix boards dont l'identité n'a pas pu être vérifiée ont été écartés plutôt que publiés mal étiquetés. La couverture salariale a plus que doublé au passage. Même board, même classement par adéquation, même cycle de 10 minutes — quatre fois plus d'offres que ce matin."
     }
   },
   "sampleReportPreview": {

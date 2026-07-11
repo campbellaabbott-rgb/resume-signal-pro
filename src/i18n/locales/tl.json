@@ -3320,6 +3320,10 @@
     "groundedApplyKits": {
       "title": "Application kits: na-fact-check na tailored resume, sa mga template na talagang maipapasa",
       "description": "Ang tailored resume ng Apply Assistant ay bine-verify na ngayon, hindi lang inuutusan: bawat employer, titulo, paaralan, at petsa sa output ay sinusuri laban sa orihinal mong resume, ang mga kasanayang walang batayan ay inaalis at idinedeklara, at kung dalawang beses mag-imbento ang generation, tumatanggi kaming maghatid kaysa magpadala ng kathang-isip — makikita mo ang fact-check banner sa bawat kit. Pumili sa tatlong ATS-safe na template (Moderno, Klasiko, Compact) para sa PDF at Word. At mas matalino na ang application tracker: ang pag-save ng trabaho mula sa board ay nagkakabit ng pinakabagong bersyon ng resume mo at awtomatikong kinukuwenta ang fit mo, at bawat aplikasyon ay may isang-click na kit — kasama sa Pro."
+    },
+    "boardExpansion": {
+      "title": "609 kumpanya, halos 40,000 live na opening",
+      "description": "Ang job board ay lumaki mula 194 hanggang 609 kumpanya sa isang pasada — halos 40,000 live na posting. Sinuri namin ang libu-libong career feed sa anim na opisyal na ATS provider (bago ang BambooHR), itinago ang 415 na sumagot ng totoong opening, at binuksan ang buong lalim ng mga higanteng dati nang kasama: sina Bosch, JYSK, Accor at Securitas ay naglilista na ngayon ng libu-libong role bawat isa sa halip na unang 500. Sumabay ang katumpakan sa dami: ang display name ng bawat bagong board ay galing mismo sa ATS provider — hindi sa hula namin — at sampung board na hindi ma-verify ang pagkakakilanlan ay tinanggal sa halip na ipadala nang maling label. Mahigit dumoble ang saklaw ng sahod sa daan. Parehong board, parehong fit-ranking, parehong 10-minutong cycle — apat na beses na mas maraming trabaho kaysa kaninang umaga."
     }
   },
   "sampleReportPreview": {

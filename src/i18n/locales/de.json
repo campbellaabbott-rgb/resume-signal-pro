@@ -3320,6 +3320,10 @@
     "groundedApplyKits": {
       "title": "Bewerbungs-Kits: faktengeprüfte zugeschnittene Lebensläufe in Vorlagen, die man wirklich abschickt",
       "description": "Der zugeschnittene Lebenslauf des Apply Assistant wird jetzt verifiziert, nicht nur instruiert: Jeder Arbeitgeber, Titel, jede Schule und jedes Datum wird gegen Ihren Original-Lebenslauf geprüft, unbelegte Skills werden entfernt und offengelegt, und erfindet die Generierung zweimal etwas, verweigern wir die Lieferung, statt Fiktion zu versenden — das Prüfsiegel sehen Sie auf jedem Kit. Drei ATS-sichere Vorlagen (Modern, Klassisch, Kompakt) für PDF und Word. Und der Bewerbungstracker wurde klüger: Eine Stelle von der Börse zu speichern hängt Ihre neueste Lebenslauf-Version an und berechnet die Passung automatisch, und jede Bewerbung bietet ein Ein-Klick-Kit — in Pro enthalten."
+    },
+    "boardExpansion": {
+      "title": "609 Unternehmen, fast 40.000 Live-Stellen",
+      "description": "Die Jobbörse wuchs in einem Durchgang von 194 auf 609 Unternehmen — knapp 40.000 Live-Stellen. Wir haben Tausende Karriere-Feeds über sechs offizielle ATS-Anbieter geprüft (BambooHR ist neu), die 415 mit echten Stellen behalten und die volle Tiefe der vorhandenen Riesen freigeschaltet: Bosch, JYSK, Accor und Securitas listen jetzt jeweils Tausende Stellen statt ihrer ersten 500. Die Genauigkeit skalierte mit: Der Anzeigename jedes neuen Boards stammt vom ATS-Anbieter selbst — nicht von unserer Vermutung — und zehn Boards ohne verifizierbare Identität wurden verworfen statt falsch etikettiert ausgeliefert. Die Gehaltsabdeckung hat sich dabei mehr als verdoppelt. Dieselbe Börse, dasselbe Passungs-Ranking, derselbe 10-Minuten-Zyklus — viermal so viele Jobs wie heute Morgen."
     }
   },
   "sampleReportPreview": {

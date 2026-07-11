@@ -3320,6 +3320,10 @@
     "groundedApplyKits": {
       "title": "Application kits: tailored resumes that are fact-checked, in templates worth submitting",
       "description": "The Apply Assistant's tailored resume is now verified, not just instructed: every employer, job title, school, and date in the output is checked against your original resume, unsupported skills are removed and disclosed, and if generation invents anything twice we refuse to deliver rather than ship fiction — you'll see the fact-check banner on every kit. Choose from three ATS-safe templates (Modern, Classic, Compact) for both PDF and Word downloads. And the application tracker got smarter: saving a job from the board now attaches your latest resume version and computes your fit score automatically, and every tracked application offers a one-click kit — included with Pro."
+    },
+    "boardExpansion": {
+      "title": "609 companies, nearly 40,000 live openings",
+      "description": "The job board grew from 194 to 609 companies in one sweep — just under 40,000 live postings. We probed thousands of company career feeds across six official ATS providers (BambooHR is new), kept the 415 that answered with real openings, and unlocked full depth on the giants we already carried: Bosch, JYSK, Accor and Securitas now list thousands of roles each instead of their first 500. Accuracy scaled with volume: every new board's display name comes from the ATS provider itself — not our guess — and ten boards whose identity couldn't be verified were dropped rather than shipped mislabeled. Salary coverage more than doubled along the way. Same board, same fit-ranking, same 10-minute refresh loop — four times the jobs it launched with this morning."
     }
   },
   "sampleReportPreview": {
