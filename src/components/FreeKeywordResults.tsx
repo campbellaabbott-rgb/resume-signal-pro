@@ -1806,7 +1806,7 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border border-primary/40 bg-primary/5 p-4 mb-6">
           <p className="text-sm font-semibold text-foreground mb-0.5">This looks like a freelance platform profile, not a resume</p>
           <p className="text-xs text-muted-foreground mb-3">
-            We detected {platformProfileDetected.signals.slice(0, 3).join(", ")} — the markers of a profile export.
+            We detected {(platformProfileDetected.signals ?? []).slice(0, 3).join(", ")} — the markers of a profile export.
             The score below treats this as a resume, which understates you: recruiters need your projects translated
             into employer language, not platform stats. That's exactly what Freelance Boost does.
           </p>
@@ -2144,7 +2144,7 @@ export function FreeKeywordResults({
               </span>
               {subIndustry.matchedSignals?.length > 0 && (
                 <span className="text-xs text-muted-foreground">
-                  Detected from: {subIndustry.matchedSignals.slice(0, 3).join(', ')}
+                  Detected from: {(subIndustry.matchedSignals ?? []).slice(0, 3).join(', ')}
                 </span>
               )}
             </div>
@@ -3114,7 +3114,7 @@ export function FreeKeywordResults({
             <div className="mb-4">
               <p className="text-xs font-medium text-muted-foreground mb-2">{t('freeResults.careerSituationDetected.whatDetected')}</p>
               <div className="flex flex-wrap gap-2">
-                {careerSituation.indicators.map((indicator, index) => (
+                {(careerSituation.indicators ?? []).map((indicator, index) => (
                   <span key={index} className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
                     {indicator}
                   </span>
@@ -3127,7 +3127,7 @@ export function FreeKeywordResults({
           {careerSituation.tailoredAdvice && careerSituation.tailoredAdvice.length > 0 && (
             <div className="space-y-3">
               <p className="text-sm font-semibold text-foreground">{t('freeResults.careerSituationDetected.tailoredAdvice')}</p>
-              {careerSituation.tailoredAdvice.map((advice, index) => (
+              {(careerSituation.tailoredAdvice ?? []).map((advice, index) => (
                 <div 
                   key={index}
                   className={cn(
@@ -3218,7 +3218,7 @@ export function FreeKeywordResults({
                   <LockedPremiumInsight
                     title={t('freeResults.personalizedCareerInsights.nextMoves')}
                     description={t('freeResults.lockedInsights.careerNextRole')}
-                    previewLines={personalizedCareerInsights.nextRoleSuggestions.slice(0, 2).map(r => `→ ${r.title}`)}
+                    previewLines={(personalizedCareerInsights.nextRoleSuggestions ?? []).slice(0, 2).map(r => `→ ${r.title}`)}
                     onUnlock={() => handleUpgradeClick('locked_next_roles')}
                     isLoading={isLoading}
                   />
@@ -3229,7 +3229,7 @@ export function FreeKeywordResults({
                     <h5 className="font-semibold text-sm">{t('freeResults.personalizedCareerInsights.nextMoves')}</h5>
                   </div>
                   <div className="space-y-2">
-                    {personalizedCareerInsights.nextRoleSuggestions.map((role, index) => (
+                    {(personalizedCareerInsights.nextRoleSuggestions ?? []).map((role, index) => (
                       <div key={index} className="p-3 rounded-lg bg-muted/30 border border-border/50">
                         <div className="flex items-center justify-between mb-1">
                           <span className="font-medium text-sm">{role.title}</span>
@@ -3257,7 +3257,7 @@ export function FreeKeywordResults({
                   <LockedPremiumInsight
                     title={t('freeResults.personalizedCareerInsights.interviewStories')}
                     description={t('freeResults.lockedInsights.careerInterview')}
-                    previewLines={personalizedCareerInsights.interviewTalkingPoints.slice(0, 2).map(p => `"${p.achievement.substring(0, 60)}..."`)}
+                    previewLines={(personalizedCareerInsights.interviewTalkingPoints ?? []).slice(0, 2).map(p => `"${p.achievement.substring(0, 60)}..."`)}
                     onUnlock={() => handleUpgradeClick('locked_interview_stories')}
                     isLoading={isLoading}
                   />
@@ -3268,7 +3268,7 @@ export function FreeKeywordResults({
                     <h5 className="font-semibold text-sm">{t('freeResults.personalizedCareerInsights.interviewStories')}</h5>
                   </div>
                   <div className="space-y-2">
-                    {personalizedCareerInsights.interviewTalkingPoints.map((point, index) => (
+                    {(personalizedCareerInsights.interviewTalkingPoints ?? []).map((point, index) => (
                       <div key={index} className="p-3 rounded-lg bg-muted/30 border border-border/50">
                         <p className="text-xs font-medium text-foreground mb-1">"{point.achievement}"</p>
                         <p className="text-xs text-primary">💡 {point.storyAngle}</p>
@@ -3315,7 +3315,7 @@ export function FreeKeywordResults({
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-2">{t('freeResults.personalizedCareerInsights.negotiationLeverage')}</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {personalizedCareerInsights.salaryInsight.leveragePoints.map((point, index) => (
+                      {(personalizedCareerInsights.salaryInsight.leveragePoints ?? []).map((point, index) => (
                         <span key={index} className="text-xs px-2 py-1 rounded-full bg-success/10 text-success">
                           {point}
                         </span>
@@ -3336,7 +3336,7 @@ export function FreeKeywordResults({
                     <h5 className="font-semibold text-sm">{t('freeResults.personalizedCareerInsights.hiddenStrengths')}</h5>
                   </div>
                   <div className="space-y-1.5">
-                    {personalizedCareerInsights.hiddenStrengths.map((strength, index) => (
+                    {(personalizedCareerInsights.hiddenStrengths ?? []).map((strength, index) => (
                       <div key={index} className="flex items-center gap-2 text-sm">
                         <span className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" />
                         <span className="text-muted-foreground">{strength}</span>
@@ -3477,7 +3477,7 @@ export function FreeKeywordResults({
             <div className="mb-4">
               <p className="text-sm font-semibold mb-3">{t('freeResults.formatRecommendationSection.whatTopResumesDo', { industry })}</p>
               <div className="space-y-2">
-                {formatRecommendation.industryNorms.map((norm, index) => (
+                {(formatRecommendation.industryNorms ?? []).map((norm, index) => (
                   <div key={index} className="flex items-start gap-2">
                     <span className={cn(
                       "text-xs px-2 py-0.5 rounded shrink-0 mt-0.5",
@@ -3499,7 +3499,7 @@ export function FreeKeywordResults({
             <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20 mb-4">
               <p className="text-xs font-semibold text-destructive mb-2">{t('freeResults.formatRecommendationSection.avoidForIndustry', { industry })}</p>
               <div className="flex flex-wrap gap-2">
-                {formatRecommendation.avoidList.map((item, index) => (
+                {(formatRecommendation.avoidList ?? []).map((item, index) => (
                   <span key={index} className="text-xs px-2 py-1 rounded-full bg-destructive/10 text-destructive">
                     ✗ {item}
                   </span>
@@ -3729,7 +3729,7 @@ export function FreeKeywordResults({
             <div className="mb-3">
               <p className="text-xs font-semibold text-foreground mb-1.5">🔥 Hot skills right now</p>
               <div className="flex flex-wrap gap-1.5">
-                {marketIntelligence.hotSkills.map((skill, i) => (
+                {(marketIntelligence.hotSkills ?? []).map((skill, i) => (
                   <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20 font-medium">{skill}</span>
                 ))}
               </div>
@@ -3739,7 +3739,7 @@ export function FreeKeywordResults({
             <div className="mb-3">
               <p className="text-xs font-semibold text-foreground mb-1.5">📈 Rising keywords in job postings</p>
               <div className="flex flex-wrap gap-1.5">
-                {marketIntelligence.risingKeywords.map((kw, i) => (
+                {(marketIntelligence.risingKeywords ?? []).map((kw, i) => (
                   <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning border border-warning/20 font-medium">{kw}</span>
                 ))}
               </div>
@@ -3749,7 +3749,7 @@ export function FreeKeywordResults({
             <div className="mb-2">
               <p className="text-xs font-semibold text-foreground mb-1.5">📋 {marketIntelligence.countryName} CV norms</p>
               <ul className="space-y-1">
-                {marketIntelligence.cvNorms.map((norm, i) => (
+                {(marketIntelligence.cvNorms ?? []).map((norm, i) => (
                   <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
                     <span className="text-primary mt-0.5 shrink-0">•</span>{norm}
                   </li>
@@ -3786,7 +3786,7 @@ export function FreeKeywordResults({
             <div className="mb-3">
               <p className="text-xs font-semibold text-warning mb-1.5">⚠️ Aging skills (declining in job postings)</p>
               <div className="flex flex-wrap gap-1.5">
-                {skillsRecency.agingSkills.map((s, i) => (
+                {(skillsRecency.agingSkills ?? []).map((s, i) => (
                   <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning border border-warning/20 line-through">{s}</span>
                 ))}
               </div>
@@ -3797,7 +3797,7 @@ export function FreeKeywordResults({
             <div>
               <p className="text-xs font-semibold text-success mb-1.5">✓ Current skills (high demand 2025)</p>
               <div className="flex flex-wrap gap-1.5">
-                {skillsRecency.freshSkills.map((s, i) => (
+                {(skillsRecency.freshSkills ?? []).map((s, i) => (
                   <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20 font-medium">{s}</span>
                 ))}
               </div>
@@ -3857,7 +3857,7 @@ export function FreeKeywordResults({
             Keywords that appear in 70%+ of top-quartile resumes at your level — and are missing from yours.
           </p>
           <div className="flex flex-wrap gap-1.5 mb-2">
-            {competitiveGap.missingHighFrequency.map((kw, i) => (
+            {(competitiveGap.missingHighFrequency ?? []).map((kw, i) => (
               <span key={i} className="text-xs px-2 py-1 rounded-full border border-destructive/30 bg-destructive/5 text-destructive font-medium">
                 − {kw}
               </span>
@@ -3865,7 +3865,7 @@ export function FreeKeywordResults({
           </div>
           {competitiveGap.presentHighFrequency.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
-              {competitiveGap.presentHighFrequency.map((kw, i) => (
+              {(competitiveGap.presentHighFrequency ?? []).map((kw, i) => (
                 <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20">
                   ✓ {kw}
                 </span>
@@ -4340,7 +4340,7 @@ export function FreeKeywordResults({
           </p>
           {titleLevelMismatch.icVerbs.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-3">
-              {titleLevelMismatch.icVerbs.map((v, i) => (
+              {(titleLevelMismatch.icVerbs ?? []).map((v, i) => (
                 <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/25 line-through">{v}</span>
               ))}
             </div>

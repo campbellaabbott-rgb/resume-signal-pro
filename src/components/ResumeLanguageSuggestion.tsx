@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { languages } from "@/i18n";
 
 interface ResumeLanguageSuggestionProps {
-  detectedLanguage?: { code: string; name: string } | null;
+  /** Server payload shape has varied across engine versions (string code,
+      object with/without fields, cached older formats) — accept them all. */
+  detectedLanguage?: { code?: string | null; name?: string | null } | string | null;
 }
 
 /** Maps common language codes from AI to our supported i18n codes */
@@ -31,9 +33,16 @@ export function ResumeLanguageSuggestion({ detectedLanguage }: ResumeLanguageSug
 
   if (!detectedLanguage || dismissed) return null;
 
+  // Cached scan payloads have carried this as a plain string OR an object
+  // that may lack `code` — a missing field must mean "no suggestion",
+  // never a crash (it took the whole report down via the error boundary).
+  const rawCode = typeof detectedLanguage === "string" ? detectedLanguage : detectedLanguage.code;
+  const rawName = typeof detectedLanguage === "string" ? detectedLanguage : detectedLanguage.name;
+  if (!rawCode || typeof rawCode !== "string") return null;
+
   // Normalize the detected code to our supported codes
-  const detectedCode = LANGUAGE_CODE_MAP[detectedLanguage.code] 
-    || LANGUAGE_CODE_MAP[detectedLanguage.code.split("-")[0]] 
+  const detectedCode = LANGUAGE_CODE_MAP[rawCode]
+    || LANGUAGE_CODE_MAP[rawCode.split("-")[0]]
     || null;
 
   // Don't show if we can't map it, or if it already matches current language
@@ -57,7 +66,7 @@ export function ResumeLanguageSuggestion({ detectedLanguage }: ResumeLanguageSug
     <div className="flex items-center gap-3 p-3 rounded-xl border border-primary/20 bg-primary/5 text-sm animate-fade-in">
       <Globe className="w-4 h-4 text-primary flex-shrink-0" />
       <p className="flex-1 text-muted-foreground">
-        {t("languageDetection.detected", { language: detectedLanguage.name })}
+        {t("languageDetection.detected", { language: rawName || targetLang.name })}
       </p>
       <Button
         variant="outline"
