@@ -1606,7 +1606,9 @@
       "placementTopQuartile": "Cuartil superior de {{n}} escaneos reales de {{industry}}",
       "placementAboveMedian": "Por encima de la mediana de {{n}} escaneos reales de {{industry}}",
       "placementBelowMedian": "Por debajo de la mediana de {{n}} escaneos reales de {{industry}}",
-      "placementBottomQuartile": "Cuartil inferior de {{n}} escaneos reales de {{industry}} — gran margen de mejora con los arreglos de abajo"
+      "placementBottomQuartile": "Cuartil inferior de {{n}} escaneos reales de {{industry}} — gran margen de mejora con los arreglos de abajo",
+      "emailSpotted": "Encontramos esta dirección en tu currículum — no se envía nada a menos que pulses Enviar.",
+      "dripOptIn": "Divide mi plan en una secuencia breve de correos: los arreglos clave el día 2, el resto el día 4, un recordatorio de reescaneo el día 6 — y una pregunta el día 14: ¿conseguiste entrevistas? Cuatro correos breves, cancela cuando quieras."
     },
     "targeting": {
       "title": "Puestos para los que tu currículum pasa el filtro",

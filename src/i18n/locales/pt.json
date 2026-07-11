@@ -1606,7 +1606,9 @@
       "placementTopQuartile": "Quartil superior de {{n}} escaneamentos reais de {{industry}}",
       "placementAboveMedian": "Acima da mediana de {{n}} escaneamentos reais de {{industry}}",
       "placementBelowMedian": "Abaixo da mediana de {{n}} escaneamentos reais de {{industry}}",
-      "placementBottomQuartile": "Quartil inferior de {{n}} escaneamentos reais de {{industry}} — grande potencial com as correções abaixo"
+      "placementBottomQuartile": "Quartil inferior de {{n}} escaneamentos reais de {{industry}} — grande potencial com as correções abaixo",
+      "emailSpotted": "Encontramos este endereço no seu currículo — nada é enviado a menos que você clique em Enviar.",
+      "dripOptIn": "Divida meu plano em uma sequência curta de e-mails: os ajustes principais no dia 2, o resto no dia 4, um lembrete de nova análise no dia 6 — e uma pergunta no dia 14: conseguiu entrevistas? Quatro e-mails curtos, cancele quando quiser."
     },
     "targeting": {
       "title": "Cargos para os quais este currículo passa na triagem",

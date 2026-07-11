@@ -1606,7 +1606,9 @@
       "placementTopQuartile": "Nangungunang quartile ng {{n}} tunay na {{industry}} scan",
       "placementAboveMedian": "Lampas sa median ng {{n}} tunay na {{industry}} scan",
       "placementBelowMedian": "Mababa sa median ng {{n}} tunay na {{industry}} scan",
-      "placementBottomQuartile": "Pinakamababang quartile ng {{n}} tunay na {{industry}} scan — malaking pag-angat mula sa mga ayos sa ibaba"
+      "placementBottomQuartile": "Pinakamababang quartile ng {{n}} tunay na {{industry}} scan — malaking pag-angat mula sa mga ayos sa ibaba",
+      "emailSpotted": "Nakita namin ang address na ito sa resume mo — walang ipapadala maliban kung i-click mo ang Ipadala.",
+      "dripOptIn": "Hatiin ang fix plan ko sa maikling email sequence: pangunahing ayos sa araw 2, ang iba sa araw 4, paalala sa muling pag-scan sa araw 6 — at isang tanong sa araw 14: nakakuha ka ba ng interview? Apat na maikling email, kanselahin anumang oras."
     },
     "targeting": {
       "title": "Mga role na papasa ang resume na ito sa screening",

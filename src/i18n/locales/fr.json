@@ -1606,7 +1606,9 @@
       "placementTopQuartile": "Quartile supérieur de {{n}} vrais scans {{industry}}",
       "placementAboveMedian": "Au-dessus de la médiane de {{n}} vrais scans {{industry}}",
       "placementBelowMedian": "Sous la médiane de {{n}} vrais scans {{industry}}",
-      "placementBottomQuartile": "Quartile inférieur de {{n}} vrais scans {{industry}} — fort potentiel avec les corrections ci-dessous"
+      "placementBottomQuartile": "Quartile inférieur de {{n}} vrais scans {{industry}} — fort potentiel avec les corrections ci-dessous",
+      "emailSpotted": "Nous avons repéré cette adresse sur votre CV — rien n'est envoyé tant que vous ne cliquez pas sur Envoyer.",
+      "dripOptIn": "Découpez mon plan en une courte séquence d'e-mails : les corrections clés au jour 2, le reste au jour 4, un rappel de re-scan au jour 6 — et une question au jour 14 : avez-vous décroché des entretiens ? Quatre courts e-mails, annulable à tout moment."
     },
     "targeting": {
       "title": "Postes pour lesquels ce CV passe le filtre",

@@ -27,11 +27,15 @@ interface EmailReportCaptureProps {
   variant?: "full" | "compact";
   /** Hide when we already have this visitor's email — don't nag repeat scanners. */
   hideIfKnown?: boolean;
+  /** The email found ON the resume itself. Only ever used to PRE-FILL the
+      visible input with a disclosure line — nothing is stored or sent until
+      the user clicks Send. Consent is the click. */
+  suggestedEmail?: string | null;
 }
 
-export function EmailReportCapture({ payload, variant = "full", hideIfKnown = false }: EmailReportCaptureProps) {
+export function EmailReportCapture({ payload, variant = "full", hideIfKnown = false, suggestedEmail = null }: EmailReportCaptureProps) {
   const { t } = useTranslation();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(suggestedEmail ?? "");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [subscribePulse, setSubscribePulse] = useState(true);
@@ -105,6 +109,9 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
           </button>
         </div>
         {errorMsg && <p className="basis-full text-xs text-destructive">{errorMsg}</p>}
+        {suggestedEmail && email === suggestedEmail && (
+          <p className="basis-full text-[10px] text-primary">{t('freeResults.enterprise.emailSpotted', 'We spotted this address on your resume — nothing is sent unless you click Send.')}</p>
+        )}
         <p className="basis-full text-[10px] text-muted-foreground">{t('freeResults.enterprise.emailPrivacy', 'Only the analysis results are emailed — never your resume. No spam.')}</p>
       </div>
     );
@@ -139,6 +146,9 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
         </button>
       </div>
       {errorMsg && <p className="text-xs text-destructive mt-2">{errorMsg}</p>}
+      {suggestedEmail && email === suggestedEmail && (
+        <p className="text-[10px] text-primary mt-1.5">{t('freeResults.enterprise.emailSpotted', 'We spotted this address on your resume — nothing is sent unless you click Send.')}</p>
+      )}
       <label className="flex items-start gap-2 mt-2.5 cursor-pointer">
         <input
           type="checkbox"
@@ -158,7 +168,7 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
           className="mt-0.5 accent-primary"
         />
         <span className="text-xs text-muted-foreground">
-          {t('freeResults.enterprise.dripOptIn', 'Break my fix plan into a 7-day sequence: your top fixes on day 2, the rest on day 4, and a rescan reminder on day 6. Three emails total, cancel anytime.')}
+          {t('freeResults.enterprise.dripOptIn', 'Break my fix plan into a short email sequence: top fixes on day 2, the rest on day 4, a rescan reminder on day 6 — and one question on day 14: did it get you interviews? Four short emails, cancel anytime.')}
         </span>
       </label>
       <p className="text-[10px] text-muted-foreground mt-2">{t('freeResults.enterprise.emailPrivacy', 'Only the analysis results are emailed — never your resume. No spam.')}</p>

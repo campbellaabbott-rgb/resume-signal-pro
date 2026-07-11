@@ -276,7 +276,7 @@ Deno.serve(async (req) => {
           await admin.from("email_unsubscribe_tokens").insert({ token, email });
         }
         const unsubUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-scan-report?action=unsubscribe&token=${token}`;
-        const footer = `<p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:18px">Part of the 7-day fix plan you asked for at resumebooster.work. <a href="${unsubUrl}" style="color:#94a3b8">Unsubscribe</a> any time — remaining emails cancel too.</p>`;
+        const footer = `<p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:18px">Part of the fix-plan emails you asked for at resumebooster.work. <a href="${unsubUrl}" style="color:#94a3b8">Unsubscribe</a> any time — remaining emails cancel too.</p>`;
         const wrap = (inner: string) => `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif"><div style="max-width:560px;margin:0 auto;padding:24px 16px"><div style="background:#fff;border-radius:14px;padding:26px 24px;border:1px solid #e2e8f0">${inner}</div>${footer}</div></body></html>`;
 
         const steps = body.fixRoadmap?.steps ?? [];
@@ -295,12 +295,22 @@ Deno.serve(async (req) => {
           <h2 style="font-size:17px;color:#0f172a;margin:0 0 8px">Day 6: verify the fixes worked</h2>
           <p style="font-size:13px;color:#475569">You scored ${score}/100 last week. Rescan the fixed version — same rubric, so the before/after is real: <a href="${rescanUrl}" style="color:#2563eb">rescan free</a>.</p>
           <p style="font-size:13px;color:#475569">And if you've applied anywhere with it, one anonymous click tells us how it went — that's how we measure what actually works: <a href="${SITE_URL}/?outcome=interview&rid=${encodeURIComponent(body.reportId ?? "")}" style="color:#2563eb">got interviews</a> · <a href="${SITE_URL}/?outcome=no_response&rid=${encodeURIComponent(body.reportId ?? "")}" style="color:#2563eb">no response</a>.</p>`);
+        // Day 14: THE outcome ask — the one question the capture checkbox
+        // promises. Links land on the homepage handler (?outcome=&rid=) which
+        // records via the record_scan_outcome RPC, anonymously.
+        const day14 = wrap(`
+          <h2 style="font-size:17px;color:#0f172a;margin:0 0 8px">One question — did it work?</h2>
+          <p style="font-size:13px;color:#475569">Two weeks ago your resume scored ${score}/100 and you got a fix plan. One anonymous click, honest answer either way:</p>
+          <p style="font-size:14px;font-weight:600"><a href="${SITE_URL}/?outcome=interview&rid=${encodeURIComponent(body.reportId ?? "")}" style="color:#2563eb">I got interviews</a> &nbsp;·&nbsp; <a href="${SITE_URL}/?outcome=no_response&rid=${encodeURIComponent(body.reportId ?? "")}" style="color:#2563eb">No response yet</a> &nbsp;·&nbsp; <a href="${SITE_URL}/?outcome=rejected&rid=${encodeURIComponent(body.reportId ?? "")}" style="color:#2563eb">Rejected</a></p>
+          <p style="font-size:13px;color:#475569">Every answer sharpens the public benchmarks — measuring what actually works is the whole product.</p>
+          <p style="font-size:13px;color:#475569">Still mid-fix? <a href="${rescanUrl}" style="color:#2563eb">Rescan free</a> first — same rubric, so the before/after is real.</p>`);
 
         const DAY = 86400;
         const drips: Array<{ html: string; subject: string; delay: number }> = [
           { html: day2, subject: "Day 2: your three highest-impact resume fixes", delay: 2 * DAY },
           { html: day4, subject: "Day 4: finishing your resume fix plan", delay: 4 * DAY },
           { html: day6, subject: "Day 6: did the fixes work? Verify free", delay: 6 * DAY },
+          { html: day14, subject: "One question: did the new resume get interviews?", delay: 14 * DAY },
         ];
         for (const d of drips) {
           await admin.rpc("enqueue_email_delayed", {
@@ -321,7 +331,7 @@ Deno.serve(async (req) => {
             delay_seconds: d.delay,
           });
         }
-        console.log(`[SEND-SCAN-REPORT] Fix-plan drip queued for ${email} (3 emails)`);
+        console.log(`[SEND-SCAN-REPORT] Fix-plan drip queued for ${email} (4 emails)`);
       } catch (e) {
         // Drip is a bonus — never fail the report send over it.
         console.warn("[SEND-SCAN-REPORT] Drip enqueue failed (report already sent):", e);

@@ -1606,7 +1606,9 @@
       "placementTopQuartile": "Top quartile of {{n}} real {{industry}} scans",
       "placementAboveMedian": "Above the median of {{n}} real {{industry}} scans",
       "placementBelowMedian": "Below the median of {{n}} real {{industry}} scans",
-      "placementBottomQuartile": "Bottom quartile of {{n}} real {{industry}} scans — big upside from the fixes below"
+      "placementBottomQuartile": "Bottom quartile of {{n}} real {{industry}} scans — big upside from the fixes below",
+      "emailSpotted": "We spotted this address on your resume — nothing is sent unless you click Send.",
+      "dripOptIn": "Break my fix plan into a short email sequence: top fixes on day 2, the rest on day 4, a rescan reminder on day 6 — and one question on day 14: did it get you interviews? Four short emails, cancel anytime."
     },
     "targeting": {
       "title": "Roles this resume screens for",

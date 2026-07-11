@@ -1606,7 +1606,9 @@
       "placementTopQuartile": "Bovenste kwartiel van {{n}} echte {{industry}}-scans",
       "placementAboveMedian": "Boven de mediaan van {{n}} echte {{industry}}-scans",
       "placementBelowMedian": "Onder de mediaan van {{n}} echte {{industry}}-scans",
-      "placementBottomQuartile": "Onderste kwartiel van {{n}} echte {{industry}}-scans — veel winst met de fixes hieronder"
+      "placementBottomQuartile": "Onderste kwartiel van {{n}} echte {{industry}}-scans — veel winst met de fixes hieronder",
+      "emailSpotted": "We zagen dit adres op je cv — er wordt niets verzonden tenzij je op Verzenden klikt.",
+      "dripOptIn": "Verdeel mijn plan over een korte e-mailreeks: de belangrijkste fixes op dag 2, de rest op dag 4, een rescan-herinnering op dag 6 — en één vraag op dag 14: leverde het sollicitatiegesprekken op? Vier korte e-mails, altijd opzegbaar."
     },
     "targeting": {
       "title": "Rollen waarvoor dit cv door de screening komt",

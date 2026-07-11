@@ -1633,6 +1633,13 @@ export function FreeKeywordResults({
     return out;
   })();
 
+  // The address the candidate printed on their own resume. Used ONLY to
+  // pre-fill the capture input, visibly disclosed — never stored or sent
+  // without the user's click (GDPR: display-back within the session; the
+  // Send click is the consent event).
+  const resumeEmailSuggestion =
+    resumeText?.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/)?.[0]?.toLowerCase() ?? null;
+
   // One payload for BOTH email-capture placements (compact at the verdict,
   // full at the end of the report) — identical email either way.
   const emailReportPayload = {
@@ -1762,7 +1769,7 @@ export function FreeKeywordResults({
       {/* Email capture at peak attention — compact, optional, hidden for
           visitors whose email we already have. The full variant (with the
           pulse/drip opt-ins) stays at the end of the report. */}
-      <EmailReportCapture payload={emailReportPayload} variant="compact" hideIfKnown />
+      <EmailReportCapture payload={emailReportPayload} variant="compact" hideIfKnown suggestedEmail={resumeEmailSuggestion} />
 
       {/* Grade → game plan: what to apply for (from the same detection the
           score used) and the single highest-leverage next action (a real
@@ -4578,7 +4585,7 @@ export function FreeKeywordResults({
       )}
 
       {/* ── Email me my report — first lead-capture touchpoint ──────────────── */}
-      <EmailReportCapture payload={emailReportPayload} />
+      <EmailReportCapture payload={emailReportPayload} suggestedEmail={resumeEmailSuggestion} />
 
       {/* ── The Recruiter Panel — three personas, three verdicts ────────────── */}
       {recruiterPanel && (

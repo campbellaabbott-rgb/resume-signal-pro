@@ -1606,7 +1606,9 @@
       "placementTopQuartile": "Oberstes Quartil von {{n}} echten {{industry}}-Scans",
       "placementAboveMedian": "Über dem Median von {{n}} echten {{industry}}-Scans",
       "placementBelowMedian": "Unter dem Median von {{n}} echten {{industry}}-Scans",
-      "placementBottomQuartile": "Unterstes Quartil von {{n}} echten {{industry}}-Scans — großes Potenzial mit den Fixes unten"
+      "placementBottomQuartile": "Unterstes Quartil von {{n}} echten {{industry}}-Scans — großes Potenzial mit den Fixes unten",
+      "emailSpotted": "Diese Adresse stand auf Ihrem Lebenslauf — gesendet wird nur, wenn Sie auf Senden klicken.",
+      "dripOptIn": "Meinen Plan als kurze E-Mail-Sequenz: die wichtigsten Fixes an Tag 2, der Rest an Tag 4, eine Rescan-Erinnerung an Tag 6 — und eine Frage an Tag 14: gab es Vorstellungsgespräche? Vier kurze E-Mails, jederzeit abbestellbar."
     },
     "targeting": {
       "title": "Rollen, für die dieser Lebenslauf durchs Screening kommt",
