@@ -548,7 +548,10 @@ export default function Jobs() {
                         </div>
                         <div className="flex items-center gap-2">
                           {typeof fit === "number" && (
-                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${fit >= 70 ? "bg-success/10 text-success" : fit >= 40 ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"}`}>
+                            /* Calibrated on live data: full JDs carry benefits/EEO
+                               boilerplate, so same-field full resumes score ~17-24
+                               and cross-field ~3. 20/10 separates those cleanly. */
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${fit >= 20 ? "bg-success/10 text-success" : fit >= 10 ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"}`}>
                               {t("jobsPage.fitBadge", "fit {{pct}}%", { pct: fit })}
                             </span>
                           )}

@@ -671,7 +671,7 @@ export default function Account() {
                   {version?.resume_text && (
                     <button
                       onClick={() => { setFitOpenId(fitOpenId === a.id ? null : a.id); setFitPosting(a.job_posting ?? ""); }}
-                      className={`text-[11px] px-2 py-1 rounded-full border shrink-0 transition-colors ${a.fit_pct != null ? (a.fit_pct >= 70 ? "border-success/40 text-success" : "border-warning/40 text-warning") : "border-border text-muted-foreground hover:text-foreground"}`}
+                      className={`text-[11px] px-2 py-1 rounded-full border shrink-0 transition-colors ${a.fit_pct != null ? (a.fit_pct >= 20 ? "border-success/40 text-success" : "border-warning/40 text-warning") : "border-border text-muted-foreground hover:text-foreground"}`}
                     >
                       {a.fit_pct != null ? `fit ${a.fit_pct}%` : "check fit"}
                     </button>
