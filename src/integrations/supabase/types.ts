@@ -689,6 +689,72 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_meta: {
+        Row: {
+          k: string
+          updated_at: string
+          v: Json
+        }
+        Insert: {
+          k: string
+          updated_at?: string
+          v?: Json
+        }
+        Update: {
+          k?: string
+          updated_at?: string
+          v?: Json
+        }
+        Relationships: []
+      }
+      job_board_postings: {
+        Row: {
+          apply_url: string
+          category: string
+          company: string
+          company_token: string
+          department: string | null
+          first_seen: string
+          id: string
+          last_seen: string
+          location: string
+          posted_at: string | null
+          remote: boolean
+          source: string
+          title: string
+        }
+        Insert: {
+          apply_url: string
+          category?: string
+          company: string
+          company_token: string
+          department?: string | null
+          first_seen?: string
+          id: string
+          last_seen?: string
+          location?: string
+          posted_at?: string | null
+          remote?: boolean
+          source: string
+          title: string
+        }
+        Update: {
+          apply_url?: string
+          category?: string
+          company?: string
+          company_token?: string
+          department?: string | null
+          first_seen?: string
+          id?: string
+          last_seen?: string
+          location?: string
+          posted_at?: string | null
+          remote?: boolean
+          source?: string
+          title?: string
+        }
+        Relationships: []
+      }
       market_pulse_subscribers: {
         Row: {
           email: string
