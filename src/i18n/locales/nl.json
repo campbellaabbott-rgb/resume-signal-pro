@@ -3297,6 +3297,10 @@
     "oneClickCapture": {
       "title": "E-mail invullen met één klik en de dag-14-vraag",
       "description": "Je rapport naar jezelf mailen is nu één klik: staat je adres op je cv, dan is het veld vooraf ingevuld — duidelijk aangegeven, en er wordt niets verzonden tenzij je op Verzenden drukt. De optionele planreeks kreeg een vierde e-mail: twee weken na je scan stellen we één vraag — leverde het sollicitatiegesprekken op? — en elk anoniem antwoord scherpt de publieke benchmarks aan. De beschrijving van de reeks bestaat nu in alle negen talen (eerst alleen Engels)."
+    },
+    "jobTracker": {
+      "title": "Vacatures opslaan, sollicitaties volgen, zoekopdrachten bewaken — vanuit je gratis account",
+      "description": "De vacaturebank groeide opnieuw — 159 bedrijven en zo'n 20.000 vacatures, nu ook grote werkgevers op SmartRecruiters en Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). En je gratis account werkt er nu mee samen: sla een vacature op en hij belandt in je sollicitatietracker met de vacaturetekst eraan, klaar voor een match-check met één klik. Klik ingelogd op Solliciteer en de rij markeert zichzelf als verzonden, met datum. Sla een zoekopdracht op — zeg, remote zorgbanen — en je account toont hoeveel nieuwe vacatures er sinds je laatste bezoek bij zijn. Solliciteren, met een geheugen."
     }
   },
   "sampleReportPreview": {

@@ -3297,6 +3297,10 @@
     "oneClickCapture": {
       "title": "Capture d'e-mail en un clic et la question du 14e jour",
       "description": "Recevoir le rapport par e-mail ne prend plus qu'un clic : si votre adresse figure sur votre CV, le champ arrive pré-rempli — clairement signalé, et rien n'est envoyé sans appuyer sur Envoyer. La séquence optionnelle du plan gagne un quatrième e-mail : deux semaines après votre scan, une seule question — avez-vous décroché des entretiens ? — et chaque réponse anonyme affine les référentiels publics. La description de la séquence existe désormais dans les neuf langues (anglais uniquement auparavant)."
+    },
+    "jobTracker": {
+      "title": "Enregistrez des offres, suivez vos candidatures, surveillez des recherches — depuis votre compte gratuit",
+      "description": "Le job board a encore grandi — 159 entreprises et environ 20 000 offres, incluant désormais de grands employeurs sur SmartRecruiters et Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). Et votre compte gratuit a appris à travailler avec : enregistrez une offre et elle rejoint votre suivi de candidatures avec la description attachée, prête pour une vérification d'adéquation en un clic. Cliquez Candidater en étant connecté et la ligne se marque envoyée, avec la date. Enregistrez une recherche — par exemple, santé en télétravail — et votre compte affiche combien de nouvelles offres correspondent depuis votre dernier passage. La recherche d'emploi, avec de la mémoire."
     }
   },
   "sampleReportPreview": {

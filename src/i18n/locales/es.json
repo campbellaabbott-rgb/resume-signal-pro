@@ -3297,6 +3297,10 @@
     "oneClickCapture": {
       "title": "Captura de correo en un clic y la pregunta del día 14",
       "description": "Enviarte el informe por correo ahora es un clic: si tu dirección aparece en tu currículum, la casilla viene rellenada — claramente indicado, y no se envía nada salvo que pulses Enviar. La secuencia opcional del plan ganó un cuarto correo: dos semanas después de tu escaneo hacemos una pregunta — ¿conseguiste entrevistas? — y cada respuesta anónima afina los datos públicos. La descripción de la secuencia ahora aparece en los nueve idiomas (antes solo en inglés)."
+    },
+    "jobTracker": {
+      "title": "Guarda empleos, sigue candidaturas y vigila búsquedas — desde tu cuenta gratuita",
+      "description": "La bolsa de empleo creció de nuevo — 159 empresas y unas 20.000 ofertas, ahora con grandes empleadores en SmartRecruiters y Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). Y tu cuenta gratuita aprendió a trabajar con ella: guarda cualquier oferta y aterriza en tu registro de candidaturas con la descripción adjunta, lista para comprobar el encaje en un clic. Pulsa Postularme con sesión iniciada y la fila se marca sola como enviada, con fecha. Guarda una búsqueda — por ejemplo, sanidad en remoto — y tu cuenta muestra cuántas ofertas nuevas coinciden desde tu última visita. Buscar trabajo, con memoria."
     }
   },
   "sampleReportPreview": {

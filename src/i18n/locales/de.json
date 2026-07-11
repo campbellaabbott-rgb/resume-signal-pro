@@ -3297,6 +3297,10 @@
     "oneClickCapture": {
       "title": "Ein-Klick-E-Mail-Erfassung und die Tag-14-Frage",
       "description": "Den Bericht per E-Mail zu erhalten ist jetzt ein Klick: Steht Ihre Adresse im Lebenslauf, ist das Feld vorausgefüllt — klar gekennzeichnet, und nichts wird ohne Klick auf Senden verschickt. Die optionale Plan-Sequenz erhält eine vierte E-Mail: Zwei Wochen nach dem Scan stellen wir eine Frage — gab es Vorstellungsgespräche? — und jede anonyme Antwort schärft die öffentlichen Benchmarks. Die Beschreibung der Sequenz gibt es jetzt in allen neun Sprachen (vorher nur Englisch)."
+    },
+    "jobTracker": {
+      "title": "Jobs speichern, Bewerbungen verfolgen, Suchen beobachten — aus Ihrem kostenlosen Konto",
+      "description": "Die Jobbörse ist wieder gewachsen — 159 Unternehmen und rund 20.000 Stellen, jetzt auch große Arbeitgeber auf SmartRecruiters und Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). Und Ihr kostenloses Konto arbeitet jetzt mit ihr zusammen: Speichern Sie eine Stelle und sie landet im Bewerbungstracker, mit angehängter Beschreibung, bereit für den Ein-Klick-Passungscheck. Klicken Sie angemeldet auf Bewerben, markiert sich die Zeile selbst als beworben, mit Datum. Speichern Sie eine Suche — etwa Remote-Pflegejobs — und Ihr Konto zeigt, wie viele neue Stellen seit Ihrem letzten Blick passen. Jobsuche, mit Gedächtnis."
     }
   },
   "sampleReportPreview": {

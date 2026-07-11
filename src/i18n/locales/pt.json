@@ -3297,6 +3297,10 @@
     "oneClickCapture": {
       "title": "Captura de e-mail em um clique e a pergunta do dia 14",
       "description": "Enviar o relatório para seu e-mail agora é um clique: se seu endereço aparece no currículo, o campo vem preenchido — claramente sinalizado, e nada é enviado sem apertar Enviar. A sequência opcional do plano ganhou um quarto e-mail: duas semanas após o escaneio fazemos uma pergunta — conseguiu entrevistas? — e cada resposta anônima refina os dados públicos. A descrição da sequência agora existe nos nove idiomas (antes só em inglês)."
+    },
+    "jobTracker": {
+      "title": "Salve vagas, acompanhe candidaturas, vigie buscas — da sua conta gratuita",
+      "description": "O mural de vagas cresceu de novo — 159 empresas e cerca de 20.000 vagas, agora incluindo grandes empregadores no SmartRecruiters e Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). E sua conta gratuita aprendeu a trabalhar com ele: salve qualquer vaga e ela cai no seu rastreador de candidaturas com a descrição anexada, pronta para checar o encaixe em um clique. Clique em Candidatar-se logado e a linha se marca sozinha como enviada, com data. Salve uma busca — digamos, saúde remota — e sua conta mostra quantas vagas novas surgiram desde sua última olhada. Busca de emprego, com memória."
     }
   },
   "sampleReportPreview": {

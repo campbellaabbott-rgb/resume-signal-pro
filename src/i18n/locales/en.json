@@ -3297,6 +3297,10 @@
     "oneClickCapture": {
       "title": "One-click email capture and the day-14 question",
       "description": "Emailing yourself the report is now one click: if your address appears on your resume, the box comes pre-filled — clearly labeled, and nothing is sent unless you press Send. The optional fix-plan sequence gained a fourth email: two weeks after your scan we ask one question — did it get you interviews? — and every anonymous answer sharpens the public benchmarks. The sequence description now appears in all nine languages (it was English-only before)."
+    },
+    "jobTracker": {
+      "title": "Save jobs, track applications, watch searches — from your free account",
+      "description": "The job board grew again — 159 companies and about 20,000 openings, now including major employers on SmartRecruiters and Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). And your free account learned to work with it: bookmark any posting and it lands in your application tracker with the job description attached, ready for a one-click fit check. Click Apply while signed in and the row marks itself applied, with the date. Save a search — say, remote healthcare roles — and your account shows how many new postings match since you last looked. Job hunting, with a memory."
     }
   },
   "sampleReportPreview": {

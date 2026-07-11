@@ -3297,6 +3297,10 @@
     "oneClickCapture": {
       "title": "Isang-click na email capture at ang tanong sa araw 14",
       "description": "Ang pag-email ng report sa sarili mo ay isang click na lang: kung nasa resume mo ang address mo, paunang nakalagay na ito sa box — malinaw na nakalagay, at walang ipapadala hangga't hindi mo pinipindot ang Ipadala. Ang opsyonal na fix-plan sequence ay nagkaroon ng ikaapat na email: dalawang linggo pagkatapos ng scan mo, isang tanong — nakakuha ka ba ng interview? — at bawat anonimong sagot ay nagpapatalas sa mga pampublikong benchmark. Ang paglalarawan ng sequence ay nasa lahat na ng siyam na wika (dati ay Ingles lamang)."
+    },
+    "jobTracker": {
+      "title": "Mag-save ng trabaho, subaybayan ang aplikasyon, bantayan ang paghahanap — mula sa libreng account mo",
+      "description": "Lumaki ulit ang job board — 159 kumpanya at humigit-kumulang 20,000 opening, kasama na ngayon ang malalaking employer sa SmartRecruiters at Workable (Bosch, JYSK, Accor, Continental, Experian, Ubisoft). At natuto nang makipagtulungan dito ang libreng account mo: i-save ang anumang posting at papasok ito sa iyong application tracker na may kalakip na deskripsyon, handa para sa isang-click na fit check. I-click ang Mag-apply habang naka-sign in at ang row ay magmamarka ng sarili bilang nag-apply, may petsa. Mag-save ng paghahanap — halimbawa, remote healthcare — at ipapakita ng account mo kung ilang bagong posting ang tumugma mula noong huli kang tumingin. Paghahanap ng trabaho, na may memorya."
     }
   },
   "sampleReportPreview": {
