@@ -49,6 +49,12 @@ export function Footer() {
               {t('footer.pricing')}
             </Link>
             <Link
+              to="/jobs"
+              className="hover:text-foreground transition-colors focus-visible:outline-none focus-visible:text-primary min-h-[44px] flex items-center touch-manipulation"
+            >
+              {t('footer.jobs', 'Job board')}
+            </Link>
+            <Link
               to="/changelog"
               className="hover:text-foreground transition-colors focus-visible:outline-none focus-visible:text-primary min-h-[44px] flex items-center touch-manipulation"
             >

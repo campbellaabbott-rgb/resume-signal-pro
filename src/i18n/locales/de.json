@@ -152,7 +152,8 @@
     "questions": "Fragen oder Feedback?",
     "pricing": "Preise",
     "changelog": "Neuigkeiten",
-    "navAriaLabel": "Footer-Navigation"
+    "navAriaLabel": "Footer-Navigation",
+    "jobs": "Jobbörse"
   },
   "howItWorks": {
     "badge": "KI-gestützte Analyse",
@@ -1614,7 +1615,8 @@
       "title": "Rollen, für die dieser Lebenslauf durchs Screening kommt",
       "subtitle": "Aus derselben Erkennung wie Ihr Score — keine Vermutung. Such-Links öffnen in Ihrem Zielmarkt.",
       "reachTitle": "In Reichweite — Ihre {{industry}}-Seite ({{pct}} %)",
-      "reachNote": "Die Lücke sind hier Keywords, nicht Erfahrung — jede Rollenseite listet genau, was zu ergänzen ist."
+      "reachNote": "Die Lücke sind hier Keywords, nicht Erfahrung — jede Rollenseite listet genau, was zu ergänzen ist.",
+      "browseBoard": "Oder live Stellen durchsuchen und die Passung direkt hier prüfen →"
     },
     "posting": {
       "title": "Jetzt gegen eine echte Stelle prüfen",
@@ -3281,6 +3283,10 @@
     "accountToolkit": {
       "title": "Ein Jobsuche-Toolkit direkt im Konto",
       "description": "Angemeldete Nutzer erhalten jetzt 15 kostenlose Scans pro Tag (statt 7) plus vier neue Werkzeuge: eine persistente Checkliste mit dem Verbesserungsplan Ihres Scans zum Abhaken vor dem Rescan; ein Zielpunktzahl-Ziel mit Fortschrittsbalken direkt im Diagramm; einen Bewerbungs-Tracker mit Status und der Punktzahl, mit der Sie sich beworben haben; und Scan-Vergleich — zwei beliebige Scans nebeneinander."
+    },
+    "jobBoard": {
+      "title": "Live-Jobbörse mit eingebautem Passungs-Check",
+      "description": "Die neue Jobs-Seite zieht Stellen live aus den offiziellen Job-Boards der Unternehmen (Greenhouse, Lever und Ashby — 56 Unternehmen zum Start) und ergänzt, was keine Jobbörse bietet: den Lebenslauf gegen eine Stelle scannen, bevor Sie eine Bewerbung darauf verwenden. Ein Klick lädt die Stelle in den Gratis-Scanner; beworben wird immer auf der Unternehmensseite. Zu finden im Footer oder über die Rollenvorschläge Ihres Berichts."
     }
   },
   "sampleReportPreview": {
@@ -3927,5 +3933,33 @@
       "skills": "Fähigkeiten",
       "certifications": "Zertifikate"
     }
+  },
+  "jobsPage": {
+    "seoTitle": "Live-Jobbörse — Stellen zum Abgleich mit Ihrem Lebenslauf",
+    "seoDescription": "Live-Stellen direkt aus den offiziellen Job-Boards der Unternehmen (Greenhouse, Lever, Ashby). Prüfen Sie kostenlos die Passung Ihres Lebenslaufs und bewerben Sie sich auf der Unternehmensseite.",
+    "h1": "Live-Jobbörse",
+    "subtitle": "Echte Stellen, live aus dem offiziellen Job-Board jedes Unternehmens. Scannen Sie Ihren Lebenslauf gegen eine Stelle, bevor Sie eine Bewerbung darauf verwenden.",
+    "honestyNote": "Die Anzeigen gehören den Unternehmen; beworben wird auf deren Seite. Wir ergänzen, was dort fehlt: zuerst ein ehrlicher Passungs-Check.",
+    "searchPlaceholder": "Titel oder Stichwort — z. B. Product Designer",
+    "locationPlaceholder": "Ort",
+    "allCompanies": "Alle Unternehmen",
+    "remoteOnly": "Nur Remote",
+    "remoteBadge": "Remote",
+    "loadingFirst": "Live-Boards werden abgerufen — der erste Ladevorgang kann einige Sekunden dauern.",
+    "error": "Die Jobbörse konnte gerade nicht geladen werden.",
+    "retry": "Erneut versuchen",
+    "empty": "Keine Stelle passt zu diesen Filtern. Lockern Sie einen und versuchen Sie es erneut.",
+    "resultsSummary": "{{shown}} von {{total}} passenden Stellen aus {{companies}} Unternehmen",
+    "sourcesDown": "{{count}} Unternehmens-Feeds sind gerade nicht erreichbar",
+    "postedToday": "heute",
+    "postedDaysAgo": "vor {{count}} T",
+    "checkFit": "Passung prüfen — Gratis-Scan",
+    "apply": "Auf der Seite von {{company}} bewerben",
+    "loadMore": "Mehr laden",
+    "sourceNote": "Quellen: die offiziellen öffentlichen Job-Board-APIs, die jedes Unternehmen auf Greenhouse, Lever oder Ashby veröffentlicht, beim Laden aktualisiert (Cache ~10 Minuten). Ein Feed, der nicht mehr antwortet, fällt aus der Börse, statt sie zu brechen.",
+    "fitFetchErrorTitle": "Diese Stelle konnte nicht geladen werden",
+    "fitFetchError": "Der Feed des Unternehmens lieferte keine Beschreibung. Öffnen Sie die Stelle und fügen Sie sie in den Scanner ein.",
+    "fitLoadedTitle": "Stellenbeschreibung geladen",
+    "fitLoadedDesc": "{{title}} bei {{company}} — laden Sie Ihren Lebenslauf hoch oder fügen Sie ihn ein, und der Scan prüft die Passung zu genau dieser Stelle."
   }
 }

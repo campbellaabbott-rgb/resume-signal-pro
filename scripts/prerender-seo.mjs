@@ -130,6 +130,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
           <a href="/resume-checker" class="hover:text-foreground">Resume checker</a>
           <a href="/industries" class="hover:text-foreground">Industries</a>
           <a href="/pricing" class="hover:text-foreground">Pricing</a>
+          <a href="/jobs" class="hover:text-foreground">Job board</a>
         </nav>
       </div></header>
       <main class="pt-10 pb-20"><div class="container max-w-3xl">${contentHtml}</div></main>
@@ -148,6 +149,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
           <a href="/vs/jobscan" class="hover:text-foreground">vs Jobscan</a>
           <a href="/methodology" class="hover:text-foreground">Methodology</a>
           <a href="/pricing" class="hover:text-foreground">Pricing</a>
+          <a href="/jobs" class="hover:text-foreground">Job board</a>
         </nav>
       </div></footer>
     </div>`;
@@ -761,6 +763,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
       { path: "/trust", changefreq: "monthly", priority: "0.6" },
       { path: "/affiliates", changefreq: "monthly", priority: "0.6" },
       { path: "/shortlist", changefreq: "monthly", priority: "0.6" },
+      { path: "/jobs", changefreq: "daily", priority: "0.8" },
       { path: "/changelog", changefreq: "weekly", priority: "0.5" },
     ];
     const seen = new Set(STATIC_ROUTES.map((r) => r.path));

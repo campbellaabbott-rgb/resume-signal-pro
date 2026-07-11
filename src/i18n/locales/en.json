@@ -152,7 +152,8 @@
     "questions": "Questions or feedback?",
     "pricing": "Pricing",
     "changelog": "What's New",
-    "navAriaLabel": "Footer navigation"
+    "navAriaLabel": "Footer navigation",
+    "jobs": "Job board"
   },
   "howItWorks": {
     "badge": "AI-Powered Analysis",
@@ -1614,7 +1615,8 @@
       "title": "Roles this resume screens for",
       "subtitle": "From the same detection your score used — not a guess. Search links open in your target market.",
       "reachTitle": "Within reach — your {{pct}}% {{industry}} side",
-      "reachNote": "The gap for these is keyword coverage, not experience — each role page lists exactly what to add."
+      "reachNote": "The gap for these is keyword coverage, not experience — each role page lists exactly what to add.",
+      "browseBoard": "Or browse live openings you can fit-check right here →"
     },
     "posting": {
       "title": "Now check it against a real opening",
@@ -3281,6 +3283,10 @@
     "accountToolkit": {
       "title": "A job-search toolkit built into your account",
       "description": "Signed-in users now get 15 free scans a day (up from 7) plus four new tools: a persistent fix checklist that saves your scan's fix plan and lets you tick items off before rescanning; a target score goal with a progress bar drawn right on your score chart; an application tracker for logging where you've applied, with status updates and the score you applied with; and scan compare — pick any two scans to see exactly what improved."
+    },
+    "jobBoard": {
+      "title": "Live job board with a fit check built in",
+      "description": "A new Jobs page pulls live openings straight from official company job boards (Greenhouse, Lever, and Ashby — 56 companies at launch) and adds the thing no job board offers: scan your resume against a posting before you spend an application on it. One click loads the posting into the free scanner; applying always happens on the company's own site. Find it in the footer or from your scan report's role suggestions."
     }
   },
   "sampleReportPreview": {
@@ -3927,5 +3933,33 @@
       "skills": "Skills",
       "certifications": "Certifications"
     }
+  },
+  "jobsPage": {
+    "seoTitle": "Live Job Board — Openings You Can Check Your Resume Against",
+    "seoDescription": "Live openings pulled from official company job boards (Greenhouse, Lever, Ashby). Check your resume's fit against any posting free, then apply on the company's own site.",
+    "h1": "Live job board",
+    "subtitle": "Real openings, pulled live from each company's official job board. Scan your resume against a posting before you spend an application on it.",
+    "honestyNote": "Listings belong to the companies; applying happens on their site. We add the part they don't have: an honest fit check first.",
+    "searchPlaceholder": "Title or keyword — e.g. product designer",
+    "locationPlaceholder": "Location",
+    "allCompanies": "All companies",
+    "remoteOnly": "Remote only",
+    "remoteBadge": "Remote",
+    "loadingFirst": "Pulling live boards — the first load can take a few seconds.",
+    "error": "The board couldn't load right now.",
+    "retry": "Try again",
+    "empty": "No openings match those filters. Loosen one and try again.",
+    "resultsSummary": "Showing {{shown}} of {{total}} matching openings across {{companies}} companies",
+    "sourcesDown": "{{count}} company feeds are unreachable right now",
+    "postedToday": "today",
+    "postedDaysAgo": "{{count}}d ago",
+    "checkFit": "Check my fit — free scan",
+    "apply": "Apply on {{company}}'s site",
+    "loadMore": "Load more",
+    "sourceNote": "Sources: the official public job-board APIs each company publishes on Greenhouse, Lever, or Ashby, refreshed on load (cached ~10 minutes). A feed that stops responding drops off the board rather than breaking it.",
+    "fitFetchErrorTitle": "Couldn't load that posting",
+    "fitFetchError": "The company's feed didn't return the description. Open the posting and paste it into the scanner instead.",
+    "fitLoadedTitle": "Job description loaded",
+    "fitLoadedDesc": "{{title}} at {{company}} — upload or paste your resume and the scan will check fit against this posting."
   }
 }

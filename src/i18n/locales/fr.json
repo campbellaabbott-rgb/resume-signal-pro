@@ -152,7 +152,8 @@
     "questions": "Questions ou commentaires ?",
     "pricing": "Tarifs",
     "changelog": "Nouveautés",
-    "navAriaLabel": "Navigation du pied de page"
+    "navAriaLabel": "Navigation du pied de page",
+    "jobs": "Offres d'emploi"
   },
   "howItWorks": {
     "badge": "Analyse par IA",
@@ -1614,7 +1615,8 @@
       "title": "Postes pour lesquels ce CV passe le filtre",
       "subtitle": "Issu de la même détection que votre score — pas une supposition. Les liens de recherche s'ouvrent sur votre marché cible.",
       "reachTitle": "À votre portée — votre côté {{industry}} ({{pct}} %)",
-      "reachNote": "Pour ces postes, l'écart tient aux mots-clés, pas à l'expérience — chaque page de poste liste exactement quoi ajouter."
+      "reachNote": "Pour ces postes, l'écart tient aux mots-clés, pas à l'expérience — chaque page de poste liste exactement quoi ajouter.",
+      "browseBoard": "Ou parcourez des offres en direct et vérifiez votre adéquation ici →"
     },
     "posting": {
       "title": "Comparez-le maintenant à une vraie offre",
@@ -3281,6 +3283,10 @@
     "accountToolkit": {
       "title": "Une boîte à outils de recherche d'emploi intégrée au compte",
       "description": "Les utilisateurs connectés ont désormais 15 analyses gratuites par jour (au lieu de 7) plus quatre nouveaux outils : une check-list de corrections persistante à cocher avant de réanalyser ; un objectif de score avec barre de progression tracée sur votre courbe ; un suivi de candidatures avec statut et le score au moment de postuler ; et la comparaison d'analyses — choisissez-en deux pour voir ce qui s'est amélioré."
+    },
+    "jobBoard": {
+      "title": "Job board en direct avec vérification d'adéquation intégrée",
+      "description": "La nouvelle page Offres tire des postes en direct des job boards officiels des entreprises (Greenhouse, Lever et Ashby — 56 entreprises au lancement) et ajoute ce qu'aucun job board n'offre : scanner votre CV contre une offre avant d'y consacrer une candidature. Un clic charge l'offre dans le scanner gratuit ; la candidature se fait toujours sur le site de l'entreprise. À retrouver dans le pied de page ou via les suggestions de rôles de votre rapport."
     }
   },
   "sampleReportPreview": {
@@ -3927,5 +3933,33 @@
       "skills": "Compétences",
       "certifications": "Certifications"
     }
+  },
+  "jobsPage": {
+    "seoTitle": "Offres d'emploi en direct — à confronter à votre CV",
+    "seoDescription": "Offres en direct depuis les job boards officiels des entreprises (Greenhouse, Lever, Ashby). Vérifiez gratuitement l'adéquation de votre CV avec chaque offre, puis candidatez sur le site de l'entreprise.",
+    "h1": "Offres d'emploi en direct",
+    "subtitle": "De vraies offres, tirées en direct du job board officiel de chaque entreprise. Scannez votre CV contre une offre avant d'y consacrer une candidature.",
+    "honestyNote": "Les offres appartiennent aux entreprises ; la candidature se fait sur leur site. Nous ajoutons ce qu'elles n'ont pas : une vérification honnête de l'adéquation d'abord.",
+    "searchPlaceholder": "Intitulé ou mot-clé — p. ex. product designer",
+    "locationPlaceholder": "Lieu",
+    "allCompanies": "Toutes les entreprises",
+    "remoteOnly": "Télétravail uniquement",
+    "remoteBadge": "Télétravail",
+    "loadingFirst": "Consultation des job boards en direct — le premier chargement peut prendre quelques secondes.",
+    "error": "Le tableau n'a pas pu se charger.",
+    "retry": "Réessayer",
+    "empty": "Aucune offre ne correspond à ces filtres. Assouplissez-en un et réessayez.",
+    "resultsSummary": "{{shown}} offres affichées sur {{total}} dans {{companies}} entreprises",
+    "sourcesDown": "{{count}} flux d'entreprises sont injoignables pour le moment",
+    "postedToday": "aujourd'hui",
+    "postedDaysAgo": "il y a {{count}} j",
+    "checkFit": "Vérifier mon adéquation — scan gratuit",
+    "apply": "Candidater sur le site de {{company}}",
+    "loadMore": "Afficher plus",
+    "sourceNote": "Sources : les API publiques officielles que chaque entreprise publie sur Greenhouse, Lever ou Ashby, rafraîchies au chargement (cache ~10 minutes). Un flux qui ne répond plus disparaît du tableau au lieu de le casser.",
+    "fitFetchErrorTitle": "Impossible de charger cette offre",
+    "fitFetchError": "Le flux de l'entreprise n'a pas renvoyé la description. Ouvrez l'offre et collez-la dans le scanner.",
+    "fitLoadedTitle": "Description du poste chargée",
+    "fitLoadedDesc": "{{title}} chez {{company}} — téléversez ou collez votre CV et le scan vérifiera l'adéquation avec cette offre."
   }
 }

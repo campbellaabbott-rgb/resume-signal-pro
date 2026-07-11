@@ -152,7 +152,8 @@
     "questions": "Perguntas ou feedback?",
     "pricing": "Preços",
     "changelog": "Novidades",
-    "navAriaLabel": "Navegação do rodapé"
+    "navAriaLabel": "Navegação do rodapé",
+    "jobs": "Vagas"
   },
   "howItWorks": {
     "badge": "Análise com IA",
@@ -1614,7 +1615,8 @@
       "title": "Cargos para os quais este currículo passa na triagem",
       "subtitle": "Da mesma detecção que sua pontuação usou — não é um palpite. Os links de busca abrem no seu mercado-alvo.",
       "reachTitle": "Ao seu alcance — seu lado de {{industry}} ({{pct}}%)",
-      "reachNote": "Para esses cargos a lacuna são as palavras-chave, não a experiência — cada página de cargo lista exatamente o que adicionar."
+      "reachNote": "Para esses cargos a lacuna são as palavras-chave, não a experiência — cada página de cargo lista exatamente o que adicionar.",
+      "browseBoard": "Ou navegue por vagas ao vivo e cheque seu encaixe aqui mesmo →"
     },
     "posting": {
       "title": "Agora compare com uma vaga real",
@@ -3281,6 +3283,10 @@
     "accountToolkit": {
       "title": "Um kit de busca de emprego dentro da sua conta",
       "description": "Usuários registrados agora têm 15 análises grátis por dia (antes 7) mais quatro novas ferramentas: uma checklist de correções persistente para marcar antes de reescanear; uma meta de pontuação com barra de progresso no seu gráfico; um rastreador de candidaturas com status e a pontuação com que você aplicou; e comparação de análises — escolha duas e veja exatamente o que melhorou."
+    },
+    "jobBoard": {
+      "title": "Mural de vagas ao vivo com checagem de encaixe integrada",
+      "description": "A nova página de vagas puxa oportunidades ao vivo direto dos murais oficiais das empresas (Greenhouse, Lever e Ashby — 56 empresas no lançamento) e adiciona o que nenhum mural oferece: escanear seu currículo contra uma vaga antes de gastar uma candidatura. Um clique carrega a vaga no escâner gratuito; a candidatura sempre acontece no site da empresa. Encontre no rodapé ou nas sugestões de cargos do seu relatório."
     }
   },
   "sampleReportPreview": {
@@ -3927,5 +3933,33 @@
       "skills": "Habilidades",
       "certifications": "Certificações"
     }
+  },
+  "jobsPage": {
+    "seoTitle": "Mural de vagas ao vivo — confira seu currículo contra cada vaga",
+    "seoDescription": "Vagas ao vivo direto dos murais oficiais das empresas (Greenhouse, Lever, Ashby). Verifique grátis o encaixe do seu currículo com qualquer vaga e candidate-se no site da empresa.",
+    "h1": "Mural de vagas ao vivo",
+    "subtitle": "Vagas reais, puxadas ao vivo do mural oficial de cada empresa. Escaneie seu currículo contra uma vaga antes de gastar uma candidatura nela.",
+    "honestyNote": "As vagas pertencem às empresas; a candidatura acontece no site delas. Nós adicionamos o que elas não têm: uma checagem honesta de encaixe primeiro.",
+    "searchPlaceholder": "Cargo ou palavra-chave — ex.: product designer",
+    "locationPlaceholder": "Localização",
+    "allCompanies": "Todas as empresas",
+    "remoteOnly": "Somente remoto",
+    "remoteBadge": "Remoto",
+    "loadingFirst": "Consultando os murais ao vivo — o primeiro carregamento pode levar alguns segundos.",
+    "error": "O mural não pôde carregar agora.",
+    "retry": "Tentar de novo",
+    "empty": "Nenhuma vaga corresponde a esses filtros. Afrouxe um deles e tente de novo.",
+    "resultsSummary": "Mostrando {{shown}} de {{total}} vagas em {{companies}} empresas",
+    "sourcesDown": "{{count}} feeds de empresas estão fora do ar agora",
+    "postedToday": "hoje",
+    "postedDaysAgo": "há {{count}} d",
+    "checkFit": "Checar meu encaixe — escaneio grátis",
+    "apply": "Candidatar-se no site da {{company}}",
+    "loadMore": "Carregar mais",
+    "sourceNote": "Fontes: as APIs públicas oficiais que cada empresa publica no Greenhouse, Lever ou Ashby, atualizadas ao carregar (cache ~10 minutos). Um feed que para de responder sai do mural em vez de quebrá-lo.",
+    "fitFetchErrorTitle": "Não foi possível carregar essa vaga",
+    "fitFetchError": "O feed da empresa não retornou a descrição. Abra a vaga e cole-a no escâner.",
+    "fitLoadedTitle": "Descrição da vaga carregada",
+    "fitLoadedDesc": "{{title}} na {{company}} — envie ou cole seu currículo e o escaneio vai checar o encaixe com esta vaga."
   }
 }

@@ -152,7 +152,8 @@
     "questions": "¿Preguntas o comentarios?",
     "pricing": "Precios",
     "changelog": "Novedades",
-    "navAriaLabel": "Navegación del pie de página"
+    "navAriaLabel": "Navegación del pie de página",
+    "jobs": "Bolsa de empleo"
   },
   "howItWorks": {
     "badge": "Análisis con IA",
@@ -1614,7 +1615,8 @@
       "title": "Puestos para los que tu currículum pasa el filtro",
       "subtitle": "De la misma detección que usó tu puntuación — no es una suposición. Los enlaces de búsqueda se abren en tu mercado objetivo.",
       "reachTitle": "A tu alcance — tu lado de {{industry}} ({{pct}}%)",
-      "reachNote": "Para estos puestos la brecha son las palabras clave, no la experiencia — cada página de puesto lista exactamente qué añadir."
+      "reachNote": "Para estos puestos la brecha son las palabras clave, no la experiencia — cada página de puesto lista exactamente qué añadir.",
+      "browseBoard": "O explora ofertas en vivo y comprueba tu encaje aquí mismo →"
     },
     "posting": {
       "title": "Ahora compáralo con una oferta real",
@@ -3281,6 +3283,10 @@
     "accountToolkit": {
       "title": "Un kit de búsqueda de empleo integrado en tu cuenta",
       "description": "Los usuarios registrados ahora tienen 15 escaneos gratis al día (antes 7) más cuatro herramientas nuevas: una lista de correcciones persistente para marcar arreglos antes de reescanear; una meta de puntuación con barra de progreso dibujada en tu gráfico; un registro de candidaturas con estado y la puntuación con la que aplicaste; y comparación de escaneos — elige dos y ve exactamente qué mejoró."
+    },
+    "jobBoard": {
+      "title": "Bolsa de empleo en vivo con comprobación de encaje integrada",
+      "description": "La nueva página de empleo extrae ofertas en vivo directamente de las bolsas oficiales de las empresas (Greenhouse, Lever y Ashby — 56 empresas de inicio) y añade lo que ninguna bolsa ofrece: escanear tu currículum contra una oferta antes de gastar una candidatura. Un clic carga la oferta en el escáner gratuito; la candidatura siempre se hace en el sitio de la empresa. Está en el pie de página y en las sugerencias de roles de tu informe."
     }
   },
   "sampleReportPreview": {
@@ -3927,5 +3933,33 @@
       "skills": "Habilidades",
       "certifications": "Certificaciones"
     }
+  },
+  "jobsPage": {
+    "seoTitle": "Bolsa de empleo en vivo — Ofertas para contrastar tu currículum",
+    "seoDescription": "Ofertas en vivo desde las bolsas oficiales de cada empresa (Greenhouse, Lever, Ashby). Comprueba gratis el encaje de tu currículum con cualquier oferta y postúlate en el sitio de la empresa.",
+    "h1": "Bolsa de empleo en vivo",
+    "subtitle": "Ofertas reales, extraídas en vivo de la bolsa oficial de cada empresa. Escanea tu currículum contra una oferta antes de gastar una candidatura en ella.",
+    "honestyNote": "Las ofertas son de las empresas; la candidatura se hace en su sitio. Nosotros añadimos lo que ellas no tienen: una comprobación honesta de encaje primero.",
+    "searchPlaceholder": "Título o palabra clave — p. ej. diseñador de producto",
+    "locationPlaceholder": "Ubicación",
+    "allCompanies": "Todas las empresas",
+    "remoteOnly": "Solo remoto",
+    "remoteBadge": "Remoto",
+    "loadingFirst": "Consultando las bolsas en vivo — la primera carga puede tardar unos segundos.",
+    "error": "La bolsa no se pudo cargar ahora mismo.",
+    "retry": "Reintentar",
+    "empty": "Ninguna oferta coincide con esos filtros. Relaja alguno e inténtalo de nuevo.",
+    "resultsSummary": "Mostrando {{shown}} de {{total}} ofertas en {{companies}} empresas",
+    "sourcesDown": "{{count}} fuentes de empresas no responden ahora mismo",
+    "postedToday": "hoy",
+    "postedDaysAgo": "hace {{count}} d",
+    "checkFit": "Comprobar mi encaje — escaneo gratis",
+    "apply": "Postularme en el sitio de {{company}}",
+    "loadMore": "Cargar más",
+    "sourceNote": "Fuentes: las API públicas oficiales que cada empresa publica en Greenhouse, Lever o Ashby, actualizadas al cargar (caché ~10 minutos). Una fuente que deja de responder sale del tablón en lugar de romperlo.",
+    "fitFetchErrorTitle": "No se pudo cargar esa oferta",
+    "fitFetchError": "La fuente de la empresa no devolvió la descripción. Abre la oferta y pégala en el escáner.",
+    "fitLoadedTitle": "Descripción del puesto cargada",
+    "fitLoadedDesc": "{{title}} en {{company}} — sube o pega tu currículum y el escaneo comprobará el encaje con esta oferta."
   }
 }

@@ -152,7 +152,8 @@
     "questions": "May tanong o feedback?",
     "pricing": "Presyo",
     "changelog": "Bago",
-    "navAriaLabel": "Footer navigation"
+    "navAriaLabel": "Footer navigation",
+    "jobs": "Job board"
   },
   "howItWorks": {
     "badge": "AI-Powered Analysis",
@@ -1614,7 +1615,8 @@
       "title": "Mga role na papasa ang resume na ito sa screening",
       "subtitle": "Mula sa parehong detection na ginamit ng iskor mo — hindi hula. Bubukas ang mga search link sa iyong target na merkado.",
       "reachTitle": "Abot-kaya — ang iyong {{industry}} na panig ({{pct}}%)",
-      "reachNote": "Ang kulang dito ay keyword coverage, hindi karanasan — nakalista sa bawat role page kung ano mismo ang idadagdag."
+      "reachNote": "Ang kulang dito ay keyword coverage, hindi karanasan — nakalista sa bawat role page kung ano mismo ang idadagdag.",
+      "browseBoard": "O mag-browse ng live na openings at i-check ang fit mo dito mismo →"
     },
     "posting": {
       "title": "Ngayon, itapat ito sa totoong job opening",
@@ -3281,6 +3283,10 @@
     "accountToolkit": {
       "title": "Toolkit sa paghahanap ng trabaho sa loob ng iyong account",
       "description": "Ang mga naka-sign in ay may 15 libreng scan bawat araw na ngayon (dating 7) at apat na bagong tool: persistent na fix checklist; target na iskor na may progress bar; application tracker na may status at ang iskor noong nag-apply ka; at paghahambing ng scan — pumili ng dalawa at makita kung ano mismo ang bumuti."
+    },
+    "jobBoard": {
+      "title": "Live na job board na may built-in na fit check",
+      "description": "Ang bagong Jobs page ay humihila ng live na openings diretso mula sa opisyal na job boards ng mga kumpanya (Greenhouse, Lever, at Ashby — 56 kumpanya sa simula) at nagdadagdag ng hindi inaalok ng ibang job board: i-scan ang resume mo laban sa posting bago ka gumastos ng aplikasyon. Isang click ang naglo-load ng posting sa libreng scanner; ang pag-apply ay palaging sa site ng kumpanya. Makikita sa footer o sa mga role suggestion ng iyong report."
     }
   },
   "sampleReportPreview": {
@@ -3927,5 +3933,33 @@
       "skills": "Mga Kasanayan",
       "certifications": "Mga Sertipikasyon"
     }
+  },
+  "jobsPage": {
+    "seoTitle": "Live na Job Board — mga opening na maitatapat mo sa resume mo",
+    "seoDescription": "Live na openings mula sa opisyal na job boards ng mga kumpanya (Greenhouse, Lever, Ashby). I-check nang libre ang fit ng resume mo sa anumang posting, saka mag-apply sa site mismo ng kumpanya.",
+    "h1": "Live na job board",
+    "subtitle": "Totoong openings, hinihila nang live mula sa opisyal na job board ng bawat kumpanya. I-scan ang resume mo laban sa posting bago ka gumastos ng aplikasyon dito.",
+    "honestyNote": "Sa mga kumpanya ang listings; sa site nila nangyayari ang pag-apply. Idinadagdag namin ang wala sila: tapat na fit check muna.",
+    "searchPlaceholder": "Titulo o keyword — hal. product designer",
+    "locationPlaceholder": "Lokasyon",
+    "allCompanies": "Lahat ng kumpanya",
+    "remoteOnly": "Remote lang",
+    "remoteBadge": "Remote",
+    "loadingFirst": "Hinihila ang mga live na board — maaaring abutin ng ilang segundo ang unang pag-load.",
+    "error": "Hindi ma-load ang board ngayon.",
+    "retry": "Subukan ulit",
+    "empty": "Walang opening na tumutugma sa mga filter. Luwagan ang isa at subukan ulit.",
+    "resultsSummary": "Ipinapakita ang {{shown}} sa {{total}} tumutugmang opening sa {{companies}} kumpanya",
+    "sourcesDown": "{{count}} feed ng kumpanya ang hindi maabot ngayon",
+    "postedToday": "ngayon",
+    "postedDaysAgo": "{{count}} araw na nakalipas",
+    "checkFit": "I-check ang fit ko — libreng scan",
+    "apply": "Mag-apply sa site ng {{company}}",
+    "loadMore": "Mag-load pa",
+    "sourceNote": "Mga source: ang opisyal na pampublikong job-board API na inilalathala ng bawat kumpanya sa Greenhouse, Lever, o Ashby, nire-refresh sa pag-load (cache ~10 minuto). Ang feed na tumigil sumagot ay natatanggal sa board sa halip na sirain ito.",
+    "fitFetchErrorTitle": "Hindi ma-load ang posting na iyon",
+    "fitFetchError": "Walang ibinalik na deskripsyon ang feed ng kumpanya. Buksan ang posting at i-paste ito sa scanner.",
+    "fitLoadedTitle": "Na-load ang job description",
+    "fitLoadedDesc": "{{title}} sa {{company}} — i-upload o i-paste ang resume mo at iche-check ng scan ang fit sa posting na ito."
   }
 }

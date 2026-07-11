@@ -50,6 +50,11 @@ export function RoleTargetingCard({ industry, industryBlend, countryName }: Role
       <p className="text-xs text-muted-foreground mb-3">
         {t('freeResults.targeting.subtitle', 'From the same detection your score used — not a guess. Search links open in your target market.')}
       </p>
+      <p className="text-xs mb-3 -mt-2">
+        <Link to="/jobs" className="text-primary hover:underline">
+          {t('freeResults.targeting.browseBoard', 'Or browse live openings you can fit-check right here →')}
+        </Link>
+      </p>
 
       {primaryRoles.length > 0 && (
         <ul className="space-y-1.5 mb-3">

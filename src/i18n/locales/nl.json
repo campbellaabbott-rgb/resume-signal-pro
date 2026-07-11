@@ -152,7 +152,8 @@
     "questions": "Vragen of feedback?",
     "pricing": "Prijzen",
     "changelog": "Nieuw",
-    "navAriaLabel": "Footer-navigatie"
+    "navAriaLabel": "Footer-navigatie",
+    "jobs": "Vacaturebank"
   },
   "howItWorks": {
     "badge": "AI-gestuurde Analyse",
@@ -1614,7 +1615,8 @@
       "title": "Rollen waarvoor dit cv door de screening komt",
       "subtitle": "Uit dezelfde detectie als je score — geen gok. Zoeklinks openen in jouw doelmarkt.",
       "reachTitle": "Binnen bereik — jouw {{industry}}-kant ({{pct}}%)",
-      "reachNote": "Het gat is hier trefwoorddekking, geen ervaring — elke rolpagina somt precies op wat toe te voegen."
+      "reachNote": "Het gat is hier trefwoorddekking, geen ervaring — elke rolpagina somt precies op wat toe te voegen.",
+      "browseBoard": "Of blader door live vacatures en check je match meteen hier →"
     },
     "posting": {
       "title": "Toets het nu aan een echte vacature",
@@ -3281,6 +3283,10 @@
     "accountToolkit": {
       "title": "Een sollicitatie-toolkit ingebouwd in je account",
       "description": "Ingelogde gebruikers krijgen nu 15 gratis scans per dag (was 7) plus vier nieuwe tools: een blijvende fix-checklist om verbeteringen af te vinken vóór je herscan; een doelscore met voortgangsbalk in je grafiek; een sollicitatietracker met status en de score waarmee je solliciteerde; en scanvergelijking — kies twee scans en zie precies wat verbeterde."
+    },
+    "jobBoard": {
+      "title": "Live vacaturebank met ingebouwde match-check",
+      "description": "De nieuwe vacaturepagina haalt vacatures live uit de officiële vacaturebanken van bedrijven (Greenhouse, Lever en Ashby — 56 bedrijven bij de start) en voegt toe wat geen enkele vacaturebank biedt: je cv scannen tegen een vacature vóór je er een sollicitatie aan besteedt. Eén klik laadt de vacature in de gratis scanner; solliciteren gebeurt altijd op de site van het bedrijf. Te vinden in de footer of via de rolsuggesties van je rapport."
     }
   },
   "sampleReportPreview": {
@@ -3927,5 +3933,33 @@
       "skills": "Vaardigheden",
       "certifications": "Certificeringen"
     }
+  },
+  "jobsPage": {
+    "seoTitle": "Live vacaturebank — vacatures om je cv tegen af te zetten",
+    "seoDescription": "Live vacatures rechtstreeks uit de officiële vacaturebanken van bedrijven (Greenhouse, Lever, Ashby). Check gratis de match van je cv met elke vacature en solliciteer op de site van het bedrijf.",
+    "h1": "Live vacaturebank",
+    "subtitle": "Echte vacatures, live opgehaald uit de officiële vacaturebank van elk bedrijf. Scan je cv tegen een vacature vóór je er een sollicitatie aan besteedt.",
+    "honestyNote": "De vacatures zijn van de bedrijven; solliciteren gebeurt op hun site. Wij voegen toe wat zij niet hebben: eerst een eerlijke match-check.",
+    "searchPlaceholder": "Functie of trefwoord — bijv. product designer",
+    "locationPlaceholder": "Locatie",
+    "allCompanies": "Alle bedrijven",
+    "remoteOnly": "Alleen remote",
+    "remoteBadge": "Remote",
+    "loadingFirst": "Live banken worden opgehaald — de eerste keer laden kan een paar seconden duren.",
+    "error": "De vacaturebank kon nu niet laden.",
+    "retry": "Opnieuw proberen",
+    "empty": "Geen vacature past bij deze filters. Versoepel er één en probeer opnieuw.",
+    "resultsSummary": "{{shown}} van {{total}} passende vacatures bij {{companies}} bedrijven",
+    "sourcesDown": "{{count}} bedrijfsfeeds zijn nu onbereikbaar",
+    "postedToday": "vandaag",
+    "postedDaysAgo": "{{count}} d geleden",
+    "checkFit": "Check mijn match — gratis scan",
+    "apply": "Solliciteer op de site van {{company}}",
+    "loadMore": "Meer laden",
+    "sourceNote": "Bronnen: de officiële publieke vacature-API's die elk bedrijf publiceert op Greenhouse, Lever of Ashby, ververst bij het laden (cache ~10 minuten). Een feed die niet meer reageert valt van de bank af in plaats van hem te breken.",
+    "fitFetchErrorTitle": "Kon die vacature niet laden",
+    "fitFetchError": "De feed van het bedrijf gaf geen omschrijving terug. Open de vacature en plak hem in de scanner.",
+    "fitLoadedTitle": "Vacaturetekst geladen",
+    "fitLoadedDesc": "{{title}} bij {{company}} — upload of plak je cv en de scan checkt de match met precies deze vacature."
   }
 }

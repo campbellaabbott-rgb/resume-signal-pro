@@ -22,6 +22,7 @@ const Success = lazy(() => import("./pages/Success"));
 const ProductSuccess = lazy(() => import("./pages/ProductSuccess"));
 const PaymentFailed = lazy(() => import("./pages/PaymentFailed"));
 const Terms = lazy(() => import("./pages/Terms"));
+const Jobs = lazy(() => import("./pages/Jobs"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Methodology = lazy(() => import("./pages/Methodology"));
@@ -69,6 +70,7 @@ const App = () => (
           <Route path="/product-success" element={<ProductSuccess />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
           <Route path="/terms" element={<Terms />} />
+          <Route path="/jobs" element={<Jobs />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/methodology" element={<Methodology />} />

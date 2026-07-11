@@ -115,3 +115,5 @@ project_id = "bwhdazbotpblihdxcmho"
     verify_jwt = false
   [functions.warm-up]
     verify_jwt = false
+  [functions.job-board]
+    verify_jwt = false

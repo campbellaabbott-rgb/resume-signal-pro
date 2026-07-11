@@ -475,6 +475,27 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   const { currency } = useCurrency();
   const [searchParams] = useSearchParams();
 
+  // Job-board handoff: /jobs stores the selected posting's description in
+  // sessionStorage and navigates here with #upload. Prefill the JD so the
+  // next scan is a fit check against that exact posting.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("rb_jd_handoff");
+      if (!raw) return;
+      sessionStorage.removeItem("rb_jd_handoff");
+      const h = JSON.parse(raw) as { jd?: string; title?: string; company?: string };
+      if (!h.jd || h.jd.trim().length < 80) return;
+      setJobDescriptionText(h.jd);
+      toast({
+        title: t("jobsPage.fitLoadedTitle", "Job description loaded"),
+        description: t("jobsPage.fitLoadedDesc", "{{title}} at {{company}} — upload or paste your resume and the scan will check fit against this posting.", {
+          title: h.title ?? "", company: h.company ?? "",
+        }),
+      });
+    } catch { /* malformed handoff — ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Outcome links from the scan-report email land here (?outcome=&rid=).
   // Record via the same anonymous RPC the in-report buttons use, thank the
   // visitor, and clean the URL so refreshes don't re-record.
