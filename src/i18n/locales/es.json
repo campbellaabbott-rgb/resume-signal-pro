@@ -3289,6 +3289,14 @@
     "jobBoard": {
       "title": "Bolsa de empleo en vivo con comprobación de encaje integrada",
       "description": "La nueva página de empleo extrae ofertas en vivo directamente de las bolsas oficiales de las empresas (Greenhouse, Lever y Ashby — 56 empresas de inicio) y añade lo que ninguna bolsa ofrece: escanear tu currículum contra una oferta antes de gastar una candidatura. Un clic carga la oferta en el escáner gratuito; la candidatura siempre se hace en el sitio de la empresa. Está en el pie de página y en las sugerencias de roles de tu informe."
+    },
+    "jobBoardV2": {
+      "title": "Bolsa de empleo: 146 empresas, filtros por área y frescura de 10 minutos",
+      "description": "La bolsa de empleo en vivo ahora extrae de 146 bolsas de empresas verificadas — unas 15.000 ofertas — y va mucho más allá de la tecnología: salud, finanzas, alimentación y logística, educación, aeroespacial, retail y más. Un nuevo filtro de “Todos los campos” te lleva a tu área (enfermería, contabilidad, almacén — no solo ingeniería), las búsquedas son enlaces compartibles y tu informe abre la bolsa con tu rol detectado ya buscado. Por debajo, la bolsa se actualiza cada 10 minutos y las ofertas retiradas desaparecen en la siguiente pasada — sin anuncios muertos."
+    },
+    "oneClickCapture": {
+      "title": "Captura de correo en un clic y la pregunta del día 14",
+      "description": "Enviarte el informe por correo ahora es un clic: si tu dirección aparece en tu currículum, la casilla viene rellenada — claramente indicado, y no se envía nada salvo que pulses Enviar. La secuencia opcional del plan ganó un cuarto correo: dos semanas después de tu escaneo hacemos una pregunta — ¿conseguiste entrevistas? — y cada respuesta anónima afina los datos públicos. La descripción de la secuencia ahora aparece en los nueve idiomas (antes solo en inglés)."
     }
   },
   "sampleReportPreview": {

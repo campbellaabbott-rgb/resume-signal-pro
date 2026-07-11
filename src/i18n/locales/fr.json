@@ -3289,6 +3289,14 @@
     "jobBoard": {
       "title": "Job board en direct avec vérification d'adéquation intégrée",
       "description": "La nouvelle page Offres tire des postes en direct des job boards officiels des entreprises (Greenhouse, Lever et Ashby — 56 entreprises au lancement) et ajoute ce qu'aucun job board n'offre : scanner votre CV contre une offre avant d'y consacrer une candidature. Un clic charge l'offre dans le scanner gratuit ; la candidature se fait toujours sur le site de l'entreprise. À retrouver dans le pied de page ou via les suggestions de rôles de votre rapport."
+    },
+    "jobBoardV2": {
+      "title": "Job board : 146 entreprises, filtres par domaine, fraîcheur de 10 minutes",
+      "description": "Le job board en direct puise désormais dans 146 job boards d'entreprises vérifiés — environ 15 000 offres — et dépasse largement la tech : santé, finance, alimentation et logistique, éducation, aérospatial, commerce et plus. Un nouveau filtre “Tous les domaines” vous mène à votre voie (infirmier, comptable, magasinier — pas seulement ingénieur), les recherches sont des liens partageables et votre rapport ouvre le board pré-recherché sur votre rôle détecté. En coulisses, le board se rafraîchit toutes les 10 minutes et les offres retirées disparaissent à la passe suivante — aucune annonce morte."
+    },
+    "oneClickCapture": {
+      "title": "Capture d'e-mail en un clic et la question du 14e jour",
+      "description": "Recevoir le rapport par e-mail ne prend plus qu'un clic : si votre adresse figure sur votre CV, le champ arrive pré-rempli — clairement signalé, et rien n'est envoyé sans appuyer sur Envoyer. La séquence optionnelle du plan gagne un quatrième e-mail : deux semaines après votre scan, une seule question — avez-vous décroché des entretiens ? — et chaque réponse anonyme affine les référentiels publics. La description de la séquence existe désormais dans les neuf langues (anglais uniquement auparavant)."
     }
   },
   "sampleReportPreview": {

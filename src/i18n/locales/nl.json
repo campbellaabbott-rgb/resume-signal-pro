@@ -3289,6 +3289,14 @@
     "jobBoard": {
       "title": "Live vacaturebank met ingebouwde match-check",
       "description": "De nieuwe vacaturepagina haalt vacatures live uit de officiële vacaturebanken van bedrijven (Greenhouse, Lever en Ashby — 56 bedrijven bij de start) en voegt toe wat geen enkele vacaturebank biedt: je cv scannen tegen een vacature vóór je er een sollicitatie aan besteedt. Eén klik laadt de vacature in de gratis scanner; solliciteren gebeurt altijd op de site van het bedrijf. Te vinden in de footer of via de rolsuggesties van je rapport."
+    },
+    "jobBoardV2": {
+      "title": "Vacaturebank: 146 bedrijven, vakgebied-filters, 10 minuten vers",
+      "description": "De live vacaturebank haalt nu uit 146 geverifieerde bedrijfsbanken — zo'n 15.000 vacatures — en reikt ver voorbij tech: zorg, financiën, voeding en logistiek, onderwijs, ruimtevaart, retail en meer. Een nieuw filter “Alle vakgebieden” brengt je naar jouw baan (verpleegkundige, accountant, magazijnmedewerker — niet alleen engineer), zoekopdrachten zijn deelbare links en je rapport opent de bank met jouw gedetecteerde rol al ingevuld. Onder de motorkap ververst de bank elke 10 minuten en verdwenen vacatures vallen er bij de volgende ronde af — geen dode advertenties."
+    },
+    "oneClickCapture": {
+      "title": "E-mail invullen met één klik en de dag-14-vraag",
+      "description": "Je rapport naar jezelf mailen is nu één klik: staat je adres op je cv, dan is het veld vooraf ingevuld — duidelijk aangegeven, en er wordt niets verzonden tenzij je op Verzenden drukt. De optionele planreeks kreeg een vierde e-mail: twee weken na je scan stellen we één vraag — leverde het sollicitatiegesprekken op? — en elk anoniem antwoord scherpt de publieke benchmarks aan. De beschrijving van de reeks bestaat nu in alle negen talen (eerst alleen Engels)."
     }
   },
   "sampleReportPreview": {

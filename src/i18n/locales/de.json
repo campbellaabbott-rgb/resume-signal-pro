@@ -3289,6 +3289,14 @@
     "jobBoard": {
       "title": "Live-Jobbörse mit eingebautem Passungs-Check",
       "description": "Die neue Jobs-Seite zieht Stellen live aus den offiziellen Job-Boards der Unternehmen (Greenhouse, Lever und Ashby — 56 Unternehmen zum Start) und ergänzt, was keine Jobbörse bietet: den Lebenslauf gegen eine Stelle scannen, bevor Sie eine Bewerbung darauf verwenden. Ein Klick lädt die Stelle in den Gratis-Scanner; beworben wird immer auf der Unternehmensseite. Zu finden im Footer oder über die Rollenvorschläge Ihres Berichts."
+    },
+    "jobBoardV2": {
+      "title": "Jobbörse: 146 Unternehmen, Bereichsfilter, 10-Minuten-Frische",
+      "description": "Die Live-Jobbörse zieht jetzt aus 146 verifizierten Unternehmens-Boards — rund 15.000 Stellen — und reicht weit über Tech hinaus: Gesundheit, Finanzen, Lebensmittel und Logistik, Bildung, Raumfahrt, Handel und mehr. Ein neuer Filter „Alle Bereiche“ führt in Ihre Spur (Pflege, Buchhaltung, Lager — nicht nur Engineering), Suchen sind teilbare Links, und Ihr Bericht öffnet die Börse mit Ihrer erkannten Rolle vorgesucht. Im Hintergrund aktualisiert sich die Börse alle 10 Minuten; zurückgezogene Stellen verschwinden im nächsten Durchlauf — keine toten Anzeigen."
+    },
+    "oneClickCapture": {
+      "title": "Ein-Klick-E-Mail-Erfassung und die Tag-14-Frage",
+      "description": "Den Bericht per E-Mail zu erhalten ist jetzt ein Klick: Steht Ihre Adresse im Lebenslauf, ist das Feld vorausgefüllt — klar gekennzeichnet, und nichts wird ohne Klick auf Senden verschickt. Die optionale Plan-Sequenz erhält eine vierte E-Mail: Zwei Wochen nach dem Scan stellen wir eine Frage — gab es Vorstellungsgespräche? — und jede anonyme Antwort schärft die öffentlichen Benchmarks. Die Beschreibung der Sequenz gibt es jetzt in allen neun Sprachen (vorher nur Englisch)."
     }
   },
   "sampleReportPreview": {

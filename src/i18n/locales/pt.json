@@ -3289,6 +3289,14 @@
     "jobBoard": {
       "title": "Mural de vagas ao vivo com checagem de encaixe integrada",
       "description": "A nova página de vagas puxa oportunidades ao vivo direto dos murais oficiais das empresas (Greenhouse, Lever e Ashby — 56 empresas no lançamento) e adiciona o que nenhum mural oferece: escanear seu currículo contra uma vaga antes de gastar uma candidatura. Um clique carrega a vaga no escâner gratuito; a candidatura sempre acontece no site da empresa. Encontre no rodapé ou nas sugestões de cargos do seu relatório."
+    },
+    "jobBoardV2": {
+      "title": "Mural de vagas: 146 empresas, filtros por área e frescor de 10 minutos",
+      "description": "O mural de vagas ao vivo agora puxa de 146 murais de empresas verificados — cerca de 15.000 vagas — e vai muito além de tecnologia: saúde, finanças, alimentação e logística, educação, aeroespacial, varejo e mais. Um novo filtro de “Todas as áreas” leva você à sua pista (enfermagem, contabilidade, armazém — não só engenharia), as buscas viram links compartilháveis e seu relatório abre o mural já pesquisado com seu cargo detectado. Por trás, o mural se atualiza a cada 10 minutos e vagas retiradas somem na próxima passada — sem anúncios mortos."
+    },
+    "oneClickCapture": {
+      "title": "Captura de e-mail em um clique e a pergunta do dia 14",
+      "description": "Enviar o relatório para seu e-mail agora é um clique: se seu endereço aparece no currículo, o campo vem preenchido — claramente sinalizado, e nada é enviado sem apertar Enviar. A sequência opcional do plano ganhou um quarto e-mail: duas semanas após o escaneio fazemos uma pergunta — conseguiu entrevistas? — e cada resposta anônima refina os dados públicos. A descrição da sequência agora existe nos nove idiomas (antes só em inglês)."
     }
   },
   "sampleReportPreview": {

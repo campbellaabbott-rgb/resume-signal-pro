@@ -3289,6 +3289,14 @@
     "jobBoard": {
       "title": "Live na job board na may built-in na fit check",
       "description": "Ang bagong Jobs page ay humihila ng live na openings diretso mula sa opisyal na job boards ng mga kumpanya (Greenhouse, Lever, at Ashby — 56 kumpanya sa simula) at nagdadagdag ng hindi inaalok ng ibang job board: i-scan ang resume mo laban sa posting bago ka gumastos ng aplikasyon. Isang click ang naglo-load ng posting sa libreng scanner; ang pag-apply ay palaging sa site ng kumpanya. Makikita sa footer o sa mga role suggestion ng iyong report."
+    },
+    "jobBoardV2": {
+      "title": "Job board: 146 kumpanya, filter ayon sa larangan, 10-minutong presko",
+      "description": "Ang live na job board ay kumukuha na ngayon mula sa 146 na-verify na company board — humigit-kumulang 15,000 opening — at lumalampas nang malayo sa tech: kalusugan, pananalapi, pagkain at logistics, edukasyon, aerospace, retail at iba pa. Ang bagong filter na “Lahat ng larangan” ay dadalhin ka sa iyong linya (nurse, accountant, warehouse lead — hindi lang engineer), ang mga paghahanap ay naibabahaging link, at binubuksan ng iyong report ang board na naka-search na sa natuklasang role mo. Sa likod, nagre-refresh ang board bawat 10 minuto at nawawala sa susunod na pasada ang mga tinanggal na posting — walang patay na listing."
+    },
+    "oneClickCapture": {
+      "title": "Isang-click na email capture at ang tanong sa araw 14",
+      "description": "Ang pag-email ng report sa sarili mo ay isang click na lang: kung nasa resume mo ang address mo, paunang nakalagay na ito sa box — malinaw na nakalagay, at walang ipapadala hangga't hindi mo pinipindot ang Ipadala. Ang opsyonal na fix-plan sequence ay nagkaroon ng ikaapat na email: dalawang linggo pagkatapos ng scan mo, isang tanong — nakakuha ka ba ng interview? — at bawat anonimong sagot ay nagpapatalas sa mga pampublikong benchmark. Ang paglalarawan ng sequence ay nasa lahat na ng siyam na wika (dati ay Ingles lamang)."
     }
   },
   "sampleReportPreview": {

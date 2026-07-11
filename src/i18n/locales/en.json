@@ -3289,6 +3289,14 @@
     "jobBoard": {
       "title": "Live job board with a fit check built in",
       "description": "A new Jobs page pulls live openings straight from official company job boards (Greenhouse, Lever, and Ashby — 56 companies at launch) and adds the thing no job board offers: scan your resume against a posting before you spend an application on it. One click loads the posting into the free scanner; applying always happens on the company's own site. Find it in the footer or from your scan report's role suggestions."
+    },
+    "jobBoardV2": {
+      "title": "Job board: 146 companies, field filters, 10-minute freshness",
+      "description": "The live job board now pulls from 146 verified company boards — around 15,000 openings — and reaches far beyond tech: healthcare, finance, food and logistics, education, aerospace, retail and more. A new “All fields” filter routes you to your lane (nurse, accountant, warehouse lead — not just engineer), searches are shareable links, and your scan report opens the board pre-searched for your detected role. Under the hood the board refreshes every 10 minutes, and postings a company takes down disappear on the next pass — no dead listings."
+    },
+    "oneClickCapture": {
+      "title": "One-click email capture and the day-14 question",
+      "description": "Emailing yourself the report is now one click: if your address appears on your resume, the box comes pre-filled — clearly labeled, and nothing is sent unless you press Send. The optional fix-plan sequence gained a fourth email: two weeks after your scan we ask one question — did it get you interviews? — and every anonymous answer sharpens the public benchmarks. The sequence description now appears in all nine languages (it was English-only before)."
     }
   },
   "sampleReportPreview": {
