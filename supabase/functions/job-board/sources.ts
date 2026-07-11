@@ -139,7 +139,7 @@ export const JOB_SOURCES: JobSource[] = [
   { name: "Scout Motors", source: "greenhouse", token: "scoutmotors" },
   { name: "Sierra", source: "ashby", token: "sierra" },
   { name: "SoFi", source: "greenhouse", token: "sofi" },
-  { name: "Spotify (Lever)", source: "lever", token: "spotify" },
+  { name: "Spotify", source: "lever", token: "spotify" },
   { name: "Sprout Social", source: "greenhouse", token: "sproutsocial" },
   { name: "Squarespace", source: "greenhouse", token: "squarespace" },
   { name: "StockX", source: "greenhouse", token: "stockx" },
