@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Sparkles, Info, X, ArrowRight, Package, Award, Check, ScanSearch, Globe2 } from "lucide-react";
+import { FileText, Zap, Target, AlertTriangle, Shield, Clock, Star, Sparkles, Info, X, ArrowRight, Package, Award, Check, ScanSearch, Globe2, Briefcase } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
@@ -314,8 +314,16 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
           }}
         />
       </label>
-      {/* First-viewport answer to the question every visitor silently asks */}
-      <div className="mt-3 flex justify-center">
+      {/* First-viewport answer to the question every visitor silently asks,
+          plus the front door to the live job board (all hero variants). */}
+      <div className="mt-3 flex flex-wrap justify-center gap-2">
+        <Link
+          to="/jobs"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-primary/40 bg-primary/10 text-primary text-xs sm:text-sm font-semibold hover:bg-primary/20 transition-colors"
+        >
+          <Briefcase className="w-3.5 h-3.5" />
+          {t('hero.jobsCta', 'Live job board — check your fit before you apply →')}
+        </Link>
         <button
           onClick={() => {
             trackLayout({ action: 'why_not_chatgpt_click', layout: layoutVariant });

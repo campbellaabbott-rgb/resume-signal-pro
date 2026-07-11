@@ -23,7 +23,8 @@
     "homeAriaLabel": "Resume Booster - Home",
     "getStartedAriaLabel": "Get started - scroll to upload section",
     "mainNavAriaLabel": "Main navigation",
-    "guides": "Guides"
+    "guides": "Guides",
+    "jobs": "Jobs"
   },
   "hero": {
     "badge": "AI-Powered Resume Analysis",
@@ -142,7 +143,8 @@
     "factGdpr": "GDPR compliant",
     "factAutoDelete": "Resumes auto-deleted within 24h",
     "factNoStorage": "Never stored, never shared",
-    "measureStrip": "Measurements, not opinions · Every quote verified · A score that shows its work"
+    "measureStrip": "Measurements, not opinions · Every quote verified · A score that shows its work",
+    "jobsCta": "Live job board — check your fit before you apply →"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. All rights reserved.",

@@ -23,7 +23,8 @@
     "homeAriaLabel": "Resume Booster - Accueil",
     "getStartedAriaLabel": "Commencer - défiler vers la section de téléversement",
     "mainNavAriaLabel": "Navigation principale",
-    "guides": "Guides"
+    "guides": "Guides",
+    "jobs": "Offres"
   },
   "hero": {
     "badge": "Analyse de CV par IA",
@@ -142,7 +143,8 @@
     "factGdpr": "Conforme au RGPD",
     "factAutoDelete": "CV supprimés automatiquement sous 24 h",
     "factNoStorage": "Jamais stockés, jamais partagés",
-    "measureStrip": "Des mesures, pas des opinions · Chaque citation vérifiée · Un score qui montre son travail"
+    "measureStrip": "Des mesures, pas des opinions · Chaque citation vérifiée · Un score qui montre son travail",
+    "jobsCta": "Offres en direct — vérifiez votre adéquation avant de candidater →"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Tous droits réservés.",

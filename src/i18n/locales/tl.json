@@ -23,7 +23,8 @@
     "homeAriaLabel": "Resume Booster - Home",
     "getStartedAriaLabel": "Magsimula - mag-scroll sa upload section",
     "mainNavAriaLabel": "Main navigation",
-    "guides": "Mga Gabay"
+    "guides": "Mga Gabay",
+    "jobs": "Trabaho"
   },
   "hero": {
     "badge": "AI-Powered Resume Analysis",
@@ -142,7 +143,8 @@
     "factGdpr": "Sumusunod sa GDPR",
     "factAutoDelete": "Awtomatikong binubura ang mga resume sa loob ng 24 oras",
     "factNoStorage": "Hindi kailanman iniimbak o ibinabahagi",
-    "measureStrip": "Sukat, hindi opinyon · Bawat sipi beripikado · Iskor na nagpapakita ng trabaho nito"
+    "measureStrip": "Sukat, hindi opinyon · Bawat sipi beripikado · Iskor na nagpapakita ng trabaho nito",
+    "jobsCta": "Live na job board — i-check ang fit mo bago mag-apply →"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Lahat ng karapatan ay nakalaan.",

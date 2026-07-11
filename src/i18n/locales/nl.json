@@ -23,7 +23,8 @@
     "homeAriaLabel": "Resume Booster - Home",
     "getStartedAriaLabel": "Aan de slag - scroll naar de uploadsectie",
     "mainNavAriaLabel": "Hoofdnavigatie",
-    "guides": "Gidsen"
+    "guides": "Gidsen",
+    "jobs": "Vacatures"
   },
   "hero": {
     "badge": "AI-gestuurde CV-analyse",
@@ -142,7 +143,8 @@
     "factGdpr": "AVG-conform",
     "factAutoDelete": "Cv's automatisch verwijderd binnen 24 u",
     "factNoStorage": "Nooit opgeslagen, nooit gedeeld",
-    "measureStrip": "Metingen, geen meningen · Elk citaat geverifieerd · Een score die zijn werk laat zien"
+    "measureStrip": "Metingen, geen meningen · Elk citaat geverifieerd · Een score die zijn werk laat zien",
+    "jobsCta": "Live vacaturebank — check je match vóór je solliciteert →"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle rechten voorbehouden.",

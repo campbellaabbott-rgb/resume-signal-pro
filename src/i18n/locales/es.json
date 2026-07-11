@@ -23,7 +23,8 @@
     "homeAriaLabel": "Resume Booster - Inicio",
     "getStartedAriaLabel": "Empezar - desplazarse a la sección de carga",
     "mainNavAriaLabel": "Navegación principal",
-    "guides": "Guías"
+    "guides": "Guías",
+    "jobs": "Empleo"
   },
   "hero": {
     "badge": "Análisis de CV con IA",
@@ -142,7 +143,8 @@
     "factGdpr": "Cumple con GDPR",
     "factAutoDelete": "Currículums eliminados automáticamente en 24 h",
     "factNoStorage": "Nunca almacenados, nunca compartidos",
-    "measureStrip": "Mediciones, no opiniones · Cada cita verificada · Una puntuación que muestra su trabajo"
+    "measureStrip": "Mediciones, no opiniones · Cada cita verificada · Una puntuación que muestra su trabajo",
+    "jobsCta": "Bolsa de empleo en vivo — comprueba tu encaje antes de postularte →"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Todos los derechos reservados.",
