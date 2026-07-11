@@ -37,7 +37,10 @@ const json = (body: unknown, status = 200) =>
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
 const FETCH_TIMEOUT_MS = 8_000;
-const CONCURRENCY = 12;
+// Refresh memory budget: GH content=true payloads run to tens of MB
+// (SpaceX ~1.9k postings with full HTML). Low fan-out + per-board flush
+// keeps peak memory at a few boards, not the whole corpus.
+const CONCURRENCY = 4;
 const DESC_CAP = 14_000; // matches the scanner's own input bounds
 
 const db = (): SupabaseClient =>
@@ -135,39 +138,43 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
   const queue = [...JOB_SOURCES];
   const okTokens: string[] = [];
   const failed: string[] = [];
-  const allRows: Record<string, unknown>[] = [];
+  let total = 0;
+  let upsertError: string | null = null;
+  const companyCounts = new Map<string, number>();
+  const categoriesFacet: Record<string, number> = {};
+
   await Promise.all(
     Array.from({ length: CONCURRENCY }, async () => {
       for (;;) {
         const s = queue.shift();
-        if (!s) return;
+        if (!s || upsertError) return;
         const r = await fetchBoard(s);
         if (!r) {
           failed.push(s.name);
           continue;
         }
-        okTokens.push(s.token);
-        // Descriptions ride along where the list payload includes them
-        // (Lever/Ashby) so fit-batch can rank without refetching boards.
+        // Build this board's rows, then flush to the DB immediately —
+        // nothing beyond counts survives the iteration.
         const descs = new Map<string, string>();
         if (s.source === "lever") {
           for (const j of (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; descriptionBodyPlain?: string }>) {
             const text = ((j.descriptionPlain ?? "") + (j.descriptionBodyPlain ? `\n${j.descriptionBodyPlain}` : "")).trim();
-            if (text) descs.set(`lever:${s.token}:${j.id}`, text);
+            if (text) descs.set(`lever:${s.token}:${j.id}`, text.slice(0, 6000));
           }
         } else if (s.source === "ashby") {
           for (const j of ((r.raw as { jobs?: Array<{ id: string; descriptionPlain?: string; descriptionHtml?: string }> }).jobs ?? [])) {
             const text = (j.descriptionPlain ?? (j.descriptionHtml ? htmlToText(j.descriptionHtml) : "")).trim();
-            if (text) descs.set(`ashby:${s.token}:${j.id}`, text);
+            if (text) descs.set(`ashby:${s.token}:${j.id}`, text.slice(0, 6000));
           }
         } else if (s.source === "greenhouse") {
           for (const j of ((r.raw as { jobs?: Array<{ id: number; content?: string }> }).jobs ?? [])) {
             const text = j.content ? htmlToText(String(j.content)).trim() : "";
-            if (text) descs.set(`greenhouse:${s.token}:${j.id}`, text);
+            if (text) descs.set(`greenhouse:${s.token}:${j.id}`, text.slice(0, 6000));
           }
         }
+        const rowsById = new Map<string, Record<string, unknown>>();
         for (const j of r.jobs) {
-          allRows.push({
+          rowsById.set(j.id, {
             id: j.id,
             source: j.source,
             company_token: j.token,
@@ -180,26 +187,36 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
             posted_at: j.postedAt,
             apply_url: j.applyUrl,
             salary: j.salary?.slice(0, 200) ?? null,
-            description: descs.get(j.id)?.slice(0, 6000) ?? null,
+            description: descs.get(j.id) ?? null,
             last_seen: startIso,
           });
+        }
+        const rows = [...rowsById.values()];
+        let boardOk = true;
+        for (let i = 0; i < rows.length; i += 250) {
+          const { error } = await client.from("job_board_postings").upsert(rows.slice(i, i + 250), { onConflict: "id" });
+          if (error) {
+            boardOk = false;
+            upsertError = `upsert failed for ${s.token}: ${error.message}`;
+            break;
+          }
+        }
+        if (!boardOk) {
+          failed.push(s.name);
+          continue;
+        }
+        okTokens.push(s.token);
+        total += rows.length;
+        companyCounts.set(s.token, rows.length);
+        for (const row of rows) {
+          categoriesFacet[row.category as string] = (categoriesFacet[row.category as string] ?? 0) + 1;
         }
       }
     }),
   );
 
+  if (upsertError && okTokens.length === 0) return { ok: false, detail: upsertError };
   if (okTokens.length === 0) return { ok: false, detail: "every board fetch failed — nothing written" };
-
-  // One pass can legitimately carry the same posting twice (Greenhouse lists
-  // a job once per department; SmartRecruiters offset pages can overlap while
-  // the remote list shifts) — Postgres refuses ON CONFLICT hitting a row
-  // twice in one statement, so de-dupe by id, last write wins.
-  const rows = [...new Map(allRows.map((r) => [r.id as string, r])).values()];
-
-  for (let i = 0; i < rows.length; i += 500) {
-    const { error } = await client.from("job_board_postings").upsert(rows.slice(i, i + 500), { onConflict: "id" });
-    if (error) return { ok: false, detail: `upsert failed at chunk ${i}: ${error.message}` };
-  }
 
   // Prune vanished postings — but ONLY for boards that answered this pass,
   // so a transient feed outage never mass-deletes a company's listings.
@@ -211,22 +228,16 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
       .in("company_token", okTokens.slice(i, i + 50));
   }
 
-  // Facets are computed here once per pass (global, not filter-aware) so the
+  // Facets accumulated during the pass (global, not filter-aware) so the
   // hot list path never pays for aggregation.
   const companiesFacet: Array<{ token: string; name: string; count: number }> = [];
-  const categoriesFacet: Record<string, number> = {};
-  {
-    const counts = new Map<string, number>();
-    for (const r of rows) counts.set(r.company_token as string, (counts.get(r.company_token as string) ?? 0) + 1);
-    for (const s of JOB_SOURCES) {
-      const c = counts.get(s.token) ?? 0;
-      if (c > 0) companiesFacet.push({ token: s.token, name: s.name, count: c });
-    }
-    for (const r of rows) categoriesFacet[r.category as string] = (categoriesFacet[r.category as string] ?? 0) + 1;
+  for (const s of JOB_SOURCES) {
+    const c = companyCounts.get(s.token) ?? 0;
+    if (c > 0) companiesFacet.push({ token: s.token, name: s.name, count: c });
   }
 
   const v = {
-    total: rows.length,
+    total,
     boards: okTokens.length,
     failedSources: failed,
     companiesFacet,
@@ -234,8 +245,8 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
     refreshedAt: startIso,
   };
   await client.from("job_board_meta").upsert({ k: "refresh", v, updated_at: new Date().toISOString() }, { onConflict: "k" });
-  console.log(`[JOB-BOARD] refresh: ${rows.length} postings from ${okTokens.length}/${JOB_SOURCES.length} boards (${failed.length} failed)`);
-  return { ok: true, detail: `${allRows.length} postings from ${okTokens.length} boards` };
+  console.log(`[JOB-BOARD] refresh: ${total} postings from ${okTokens.length}/${JOB_SOURCES.length} boards (${failed.length} failed)`);
+  return { ok: true, detail: `${total} postings from ${okTokens.length} boards${failed.length ? ` (${failed.length} boards failed)` : ""}` };
 }
 
 // ── detail: one posting's description (bounded memo, no bulk caching) ─────
