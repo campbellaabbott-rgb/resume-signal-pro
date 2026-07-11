@@ -3962,6 +3962,28 @@
     "fitFetchErrorTitle": "Hindi ma-load ang posting na iyon",
     "fitFetchError": "Walang ibinalik na deskripsyon ang feed ng kumpanya. Buksan ang posting at i-paste ito sa scanner.",
     "fitLoadedTitle": "Na-load ang job description",
-    "fitLoadedDesc": "{{title}} sa {{company}} — i-upload o i-paste ang resume mo at iche-check ng scan ang fit sa posting na ito."
+    "fitLoadedDesc": "{{title}} sa {{company}} — i-upload o i-paste ang resume mo at iche-check ng scan ang fit sa posting na ito.",
+    "allFields": "Lahat ng larangan",
+    "updatedAgo": "na-update {{min}} min ang nakalipas",
+    "categories": {
+      "engineering": "Engineering at IT",
+      "data_ai": "Data at AI",
+      "design": "Disenyo",
+      "product": "Produkto",
+      "marketing": "Marketing at komunikasyon",
+      "sales": "Sales at partnership",
+      "customer": "Customer success at suporta",
+      "finance": "Pananalapi at accounting",
+      "legal": "Legal at compliance",
+      "people_hr": "HR at recruitment",
+      "operations": "Operasyon at logistics",
+      "healthcare": "Kalusugan at klinikal",
+      "science": "Agham at pananaliksik",
+      "education": "Edukasyon",
+      "hospitality_retail": "Hospitality at retail",
+      "security": "Seguridad at trust",
+      "admin": "Administratibo",
+      "other": "Iba pa"
+    }
   }
 }

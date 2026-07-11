@@ -3962,6 +3962,28 @@
     "fitFetchErrorTitle": "Diese Stelle konnte nicht geladen werden",
     "fitFetchError": "Der Feed des Unternehmens lieferte keine Beschreibung. Öffnen Sie die Stelle und fügen Sie sie in den Scanner ein.",
     "fitLoadedTitle": "Stellenbeschreibung geladen",
-    "fitLoadedDesc": "{{title}} bei {{company}} — laden Sie Ihren Lebenslauf hoch oder fügen Sie ihn ein, und der Scan prüft die Passung zu genau dieser Stelle."
+    "fitLoadedDesc": "{{title}} bei {{company}} — laden Sie Ihren Lebenslauf hoch oder fügen Sie ihn ein, und der Scan prüft die Passung zu genau dieser Stelle.",
+    "allFields": "Alle Bereiche",
+    "updatedAgo": "aktualisiert vor {{min}} Min.",
+    "categories": {
+      "engineering": "Engineering & IT",
+      "data_ai": "Daten & KI",
+      "design": "Design",
+      "product": "Produkt",
+      "marketing": "Marketing & Kommunikation",
+      "sales": "Vertrieb & Partnerschaften",
+      "customer": "Customer Success & Support",
+      "finance": "Finanzen & Buchhaltung",
+      "legal": "Recht & Compliance",
+      "people_hr": "HR & Recruiting",
+      "operations": "Operations & Logistik",
+      "healthcare": "Gesundheit & Klinik",
+      "science": "Wissenschaft & Forschung",
+      "education": "Bildung",
+      "hospitality_retail": "Gastgewerbe & Handel",
+      "security": "Sicherheit & Trust",
+      "admin": "Verwaltung",
+      "other": "Sonstiges"
+    }
   }
 }

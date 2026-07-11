@@ -33,8 +33,17 @@ interface BoardResponse {
   total: number;
   totalAllCompanies: number;
   companies: Array<{ token: string; name: string; count: number }>;
+  categories: Record<string, number>;
   failedSources: string[];
+  refreshedAt: string | null;
 }
+
+// Mirrors JOB_CATEGORIES in the edge function — the filterable fields.
+const CATEGORY_IDS = [
+  "engineering", "data_ai", "design", "product", "marketing", "sales",
+  "customer", "finance", "legal", "people_hr", "operations", "healthcare",
+  "science", "education", "hospitality_retail", "security", "admin", "other",
+] as const;
 
 const PAGE = 60;
 
@@ -47,10 +56,13 @@ function daysAgo(iso: string | null): number | null {
 export default function Jobs() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [q, setQ] = useState("");
-  const [location, setLocation] = useState("");
-  const [remoteOnly, setRemoteOnly] = useState(false);
-  const [company, setCompany] = useState("");
+  // Deep-linkable filters: /jobs?q=nurse&category=healthcare&remote=1&company=oscar
+  const initial = new URLSearchParams(window.location.search);
+  const [q, setQ] = useState(initial.get("q") ?? "");
+  const [location, setLocation] = useState(initial.get("location") ?? "");
+  const [remoteOnly, setRemoteOnly] = useState(initial.get("remote") === "1");
+  const [company, setCompany] = useState(initial.get("company") ?? "");
+  const [category, setCategory] = useState(initial.get("category") ?? "");
   const [data, setData] = useState<BoardResponse | null>(null);
   const [jobs, setJobs] = useState<BoardJob[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +83,7 @@ export default function Jobs() {
             q: q || undefined,
             location: location || undefined,
             remote: remoteOnly || undefined,
+            category: category || undefined,
             companies: company ? [company] : undefined,
             limit: PAGE,
             offset,
@@ -90,8 +103,20 @@ export default function Jobs() {
         }
       }
     },
-    [q, location, remoteOnly, company],
+    [q, location, remoteOnly, company, category],
   );
+
+  // Keep the URL shareable — filters in, defaults out.
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (q) p.set("q", q);
+    if (location) p.set("location", location);
+    if (remoteOnly) p.set("remote", "1");
+    if (company) p.set("company", company);
+    if (category) p.set("category", category);
+    const qs = p.toString();
+    window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
+  }, [q, location, remoteOnly, company, category]);
 
   // Debounced re-query on filter change (immediate on first mount).
   const first = useRef(true);
@@ -192,6 +217,20 @@ export default function Jobs() {
               />
             </div>
             <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              aria-label={t("jobsPage.allFields", "All fields")}
+            >
+              <option value="">{t("jobsPage.allFields", "All fields")}</option>
+              {CATEGORY_IDS.map((c) => (
+                <option key={c} value={c}>
+                  {t(`jobsPage.categories.${c}`, c)}
+                  {data?.categories?.[c] ? ` (${data.categories[c]})` : ""}
+                </option>
+              ))}
+            </select>
+            <select
               value={company}
               onChange={(e) => setCompany(e.target.value)}
               className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -235,6 +274,9 @@ export default function Jobs() {
                   total: data?.total ?? jobs.length,
                   companies: companies.length,
                 })}
+                {data?.refreshedAt && (
+                  <span> · {t("jobsPage.updatedAgo", "updated {{min}} min ago", { min: Math.max(0, Math.round((Date.now() - new Date(data.refreshedAt).getTime()) / 60000)) })}</span>
+                )}
                 {data && data.failedSources.length > 0 && (
                   <span> · {t("jobsPage.sourcesDown", "{{count}} company feeds are unreachable right now", { count: data.failedSources.length })}</span>
                 )}

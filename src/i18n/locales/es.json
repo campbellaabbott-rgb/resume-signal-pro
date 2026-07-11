@@ -3962,6 +3962,28 @@
     "fitFetchErrorTitle": "No se pudo cargar esa oferta",
     "fitFetchError": "La fuente de la empresa no devolvió la descripción. Abre la oferta y pégala en el escáner.",
     "fitLoadedTitle": "Descripción del puesto cargada",
-    "fitLoadedDesc": "{{title}} en {{company}} — sube o pega tu currículum y el escaneo comprobará el encaje con esta oferta."
+    "fitLoadedDesc": "{{title}} en {{company}} — sube o pega tu currículum y el escaneo comprobará el encaje con esta oferta.",
+    "allFields": "Todos los campos",
+    "updatedAgo": "actualizado hace {{min}} min",
+    "categories": {
+      "engineering": "Ingeniería e IT",
+      "data_ai": "Datos e IA",
+      "design": "Diseño",
+      "product": "Producto",
+      "marketing": "Marketing y comunicación",
+      "sales": "Ventas y alianzas",
+      "customer": "Éxito y soporte al cliente",
+      "finance": "Finanzas y contabilidad",
+      "legal": "Legal y cumplimiento",
+      "people_hr": "Personas y selección",
+      "operations": "Operaciones y logística",
+      "healthcare": "Salud y clínica",
+      "science": "Ciencia e investigación",
+      "education": "Educación",
+      "hospitality_retail": "Hostelería y retail",
+      "security": "Seguridad y confianza",
+      "admin": "Administración",
+      "other": "Otros"
+    }
   }
 }

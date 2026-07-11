@@ -3962,6 +3962,28 @@
     "fitFetchErrorTitle": "Impossible de charger cette offre",
     "fitFetchError": "Le flux de l'entreprise n'a pas renvoyé la description. Ouvrez l'offre et collez-la dans le scanner.",
     "fitLoadedTitle": "Description du poste chargée",
-    "fitLoadedDesc": "{{title}} chez {{company}} — téléversez ou collez votre CV et le scan vérifiera l'adéquation avec cette offre."
+    "fitLoadedDesc": "{{title}} chez {{company}} — téléversez ou collez votre CV et le scan vérifiera l'adéquation avec cette offre.",
+    "allFields": "Tous les domaines",
+    "updatedAgo": "mis à jour il y a {{min}} min",
+    "categories": {
+      "engineering": "Ingénierie & IT",
+      "data_ai": "Data & IA",
+      "design": "Design",
+      "product": "Produit",
+      "marketing": "Marketing & communication",
+      "sales": "Ventes & partenariats",
+      "customer": "Succès & support client",
+      "finance": "Finance & comptabilité",
+      "legal": "Juridique & conformité",
+      "people_hr": "RH & recrutement",
+      "operations": "Opérations & logistique",
+      "healthcare": "Santé & clinique",
+      "science": "Science & recherche",
+      "education": "Éducation",
+      "hospitality_retail": "Hôtellerie & commerce",
+      "security": "Sécurité & confiance",
+      "admin": "Administratif",
+      "other": "Autres"
+    }
   }
 }

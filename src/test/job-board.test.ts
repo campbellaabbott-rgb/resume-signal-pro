@@ -10,6 +10,7 @@ import {
   normalizeLever,
   sortJobs,
 } from "../../supabase/functions/job-board/normalize";
+import { categorize, JOB_CATEGORIES } from "../../supabase/functions/job-board/categories";
 
 // ── real captured fixtures (trimmed to the fields the APIs actually send) ──
 const GH_FIXTURE = {
@@ -157,6 +158,59 @@ describe("htmlToText", () => {
   });
 });
 
+describe("categorize", () => {
+  it("maps departments first (curated signal wins)", () => {
+    expect(categorize("Team Member", "Sales")).toBe("sales");
+    expect(categorize("Software Engineer", "Clinical Operations")).toBe("healthcare");
+    expect(categorize("Coordinator", "People")).toBe("people_hr");
+  });
+
+  it("maps titles across non-tech fields", () => {
+    expect(categorize("Registered Nurse - ICU")).toBe("healthcare");
+    expect(categorize("Senior Accountant")).toBe("finance");
+    expect(categorize("Warehouse Associate, Night Shift")).toBe("operations");
+    expect(categorize("Line Cook")).toBe("hospitality_retail");
+    expect(categorize("Corporate Counsel")).toBe("legal");
+    expect(categorize("Curriculum Designer")).toBe("education");
+    expect(categorize("Research Associate, Protein Sciences")).toBe("science");
+    expect(categorize("Executive Assistant to the CEO")).toBe("admin");
+  });
+
+  it("resolves the security/engineering boundary deliberately", () => {
+    expect(categorize("Security Engineer")).toBe("engineering");
+    expect(categorize("SOC Analyst")).toBe("security");
+    expect(categorize("Fraud Investigator")).toBe("security");
+  });
+
+  it("handles compounds, cyber, and comp — real misses from the live smoke", () => {
+    expect(categorize("Cybersecurity Analyst")).toBe("security");
+    expect(categorize("Allround Onderhoudsmonteur (v/m/x)")).toBe("operations");
+    expect(categorize("Compensation Specialist")).toBe("people_hr");
+    expect(categorize("Analyst, Continuous Improvement Operational Excellence")).toBe("operations");
+  });
+
+  it("falls back to other, and every category id is unique", () => {
+    expect(categorize("Chief Vibes Officer")).toBe("other");
+    expect(new Set(JOB_CATEGORIES).size).toBe(JOB_CATEGORIES.length);
+  });
+});
+
+describe("applyUrl hardening", () => {
+  it("upgrades http apply URLs and drops non-http(s) schemes", () => {
+    const jobs = normalizeGreenhouse(
+      { jobs: [
+        { id: 1, title: "A", absolute_url: "javascript:alert(1)", location: { name: "X" } },
+        { id: 2, title: "B", absolute_url: "http://www.onemedical.com/careers/x", location: { name: "X" } },
+        { id: 3, title: "C", absolute_url: "https://ok.example/x", location: { name: "X" } },
+      ] } as never,
+      "T", "t",
+    );
+    // One Medical ships http:// URLs for 340 real postings — upgrade, don't drop.
+    expect(jobs.map((j) => j.title)).toEqual(["B", "C"]);
+    expect(jobs[0].applyUrl).toBe("https://www.onemedical.com/careers/x");
+  });
+});
+
 describe("filter + sort", () => {
   const all = [
     ...normalizeGreenhouse(GH_FIXTURE, "Stripe", "stripe"),
@@ -173,6 +227,11 @@ describe("filter + sort", () => {
     expect(filterJobs(all, { location: "palo alto" })).toHaveLength(1);
     expect(filterJobs(all, { remote: true }).every((j) => j.remote)).toBe(true);
     expect(filterJobs(all, { remote: true })).toHaveLength(3);
+  });
+
+  it("category filter composes with the rest", () => {
+    expect(filterJobs(all, { category: "engineering" }).every((j) => j.category === "engineering")).toBe(true);
+    expect(filterJobs(all, { category: "healthcare" })).toHaveLength(0);
   });
 
   it("companies filter uses board tokens", () => {

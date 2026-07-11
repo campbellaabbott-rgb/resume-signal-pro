@@ -51,7 +51,10 @@ export function RoleTargetingCard({ industry, industryBlend, countryName }: Role
         {t('freeResults.targeting.subtitle', 'From the same detection your score used — not a guess. Search links open in your target market.')}
       </p>
       <p className="text-xs mb-3 -mt-2">
-        <Link to="/jobs" className="text-primary hover:underline">
+        <Link
+          to={primaryRoles[0] ? `/jobs?q=${encodeURIComponent(label(primaryRoles[0].slug))}` : "/jobs"}
+          className="text-primary hover:underline"
+        >
           {t('freeResults.targeting.browseBoard', 'Or browse live openings you can fit-check right here →')}
         </Link>
       </p>

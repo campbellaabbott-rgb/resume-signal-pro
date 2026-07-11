@@ -3962,6 +3962,28 @@
     "fitFetchErrorTitle": "Kon die vacature niet laden",
     "fitFetchError": "De feed van het bedrijf gaf geen omschrijving terug. Open de vacature en plak hem in de scanner.",
     "fitLoadedTitle": "Vacaturetekst geladen",
-    "fitLoadedDesc": "{{title}} bij {{company}} — upload of plak je cv en de scan checkt de match met precies deze vacature."
+    "fitLoadedDesc": "{{title}} bij {{company}} — upload of plak je cv en de scan checkt de match met precies deze vacature.",
+    "allFields": "Alle vakgebieden",
+    "updatedAgo": "{{min}} min geleden bijgewerkt",
+    "categories": {
+      "engineering": "Engineering & IT",
+      "data_ai": "Data & AI",
+      "design": "Design",
+      "product": "Product",
+      "marketing": "Marketing & communicatie",
+      "sales": "Sales & partnerships",
+      "customer": "Customer success & support",
+      "finance": "Financiën & boekhouding",
+      "legal": "Juridisch & compliance",
+      "people_hr": "HR & recruitment",
+      "operations": "Operations & logistiek",
+      "healthcare": "Zorg & klinisch",
+      "science": "Wetenschap & onderzoek",
+      "education": "Onderwijs",
+      "hospitality_retail": "Horeca & retail",
+      "security": "Security & trust",
+      "admin": "Administratief",
+      "other": "Overig"
+    }
   }
 }

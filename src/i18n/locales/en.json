@@ -3962,6 +3962,28 @@
     "fitFetchErrorTitle": "Couldn't load that posting",
     "fitFetchError": "The company's feed didn't return the description. Open the posting and paste it into the scanner instead.",
     "fitLoadedTitle": "Job description loaded",
-    "fitLoadedDesc": "{{title}} at {{company}} — upload or paste your resume and the scan will check fit against this posting."
+    "fitLoadedDesc": "{{title}} at {{company}} — upload or paste your resume and the scan will check fit against this posting.",
+    "allFields": "All fields",
+    "updatedAgo": "updated {{min}} min ago",
+    "categories": {
+      "engineering": "Engineering & IT",
+      "data_ai": "Data & AI",
+      "design": "Design",
+      "product": "Product",
+      "marketing": "Marketing & Comms",
+      "sales": "Sales & Partnerships",
+      "customer": "Customer Success & Support",
+      "finance": "Finance & Accounting",
+      "legal": "Legal & Compliance",
+      "people_hr": "People & Recruiting",
+      "operations": "Operations & Logistics",
+      "healthcare": "Healthcare & Clinical",
+      "science": "Science & Research",
+      "education": "Education",
+      "hospitality_retail": "Hospitality & Retail",
+      "security": "Security & Trust",
+      "admin": "Administrative",
+      "other": "Other"
+    }
   }
 }

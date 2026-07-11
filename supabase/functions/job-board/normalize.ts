@@ -3,6 +3,7 @@
 // from each ATS's public API (src/test/job-board.test.ts).
 
 import type { JobSourceKind } from "./sources.ts";
+import { categorize, type JobCategory } from "./categories.ts";
 
 export interface JobPosting {
   /** `${source}:${token}:${externalId}` — stable across refreshes. */
@@ -17,9 +18,21 @@ export interface JobPosting {
   department: string | null;
   /** ISO date, null when the ATS doesn't expose one in the list payload. */
   postedAt: string | null;
+  /** Deterministic field bucket (department-first, title fallback). */
+  category: JobCategory;
   /** The company's own posting/application page — where Apply goes. */
   applyUrl: string;
 }
+
+// Feeds are official vendor APIs, but a posting URL still passes through us
+// into an <a href> — http gets upgraded to https (One Medical ships http://
+// apply URLs), anything that isn't http(s) becomes "" and the posting drops.
+const safeUrl = (u: unknown): string => {
+  if (typeof u !== "string") return "";
+  if (/^https:\/\//i.test(u)) return u;
+  if (/^http:\/\//i.test(u)) return "https://" + u.slice(7);
+  return "";
+};
 
 // Greenhouse escapes the HTML it returns (&lt;p&gt;…) — and entities INSIDE
 // that HTML arrive double-escaped (&amp;nbsp;), so unescape must run twice:
@@ -71,9 +84,10 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
       remote: looksRemote(location) || looksRemote(j.title ?? ""),
       department: j.departments?.[0]?.name ?? null,
       postedAt: j.first_published ?? j.updated_at ?? null,
-      applyUrl: j.absolute_url,
+      category: categorize(j.title ?? "", j.departments?.[0]?.name),
+      applyUrl: safeUrl(j.absolute_url),
     };
-  });
+  }).filter((j) => j.applyUrl !== "");
 }
 
 interface LeverJob {
@@ -101,9 +115,10 @@ export function normalizeLever(raw: LeverJob[], company: string, token: string):
       remote: j.workplaceType === "remote" || looksRemote(location),
       department: j.categories?.team ?? null,
       postedAt: j.createdAt ? new Date(j.createdAt).toISOString() : null,
-      applyUrl: j.hostedUrl ?? j.applyUrl ?? "",
+      category: categorize(j.text ?? "", j.categories?.team),
+      applyUrl: safeUrl(j.hostedUrl ?? j.applyUrl),
     };
-  });
+  }).filter((j) => j.applyUrl !== "");
 }
 
 interface AshbyJob {
@@ -136,15 +151,18 @@ export function normalizeAshby(raw: { jobs?: AshbyJob[] }, company: string, toke
         remote: j.isRemote === true || looksRemote(location),
         department: j.department ?? j.team ?? null,
         postedAt: j.publishedAt ?? null,
-        applyUrl: j.jobUrl ?? j.applyUrl ?? "",
+        category: categorize(j.title ?? "", j.department ?? j.team),
+        applyUrl: safeUrl(j.jobUrl ?? j.applyUrl),
       };
-    });
+    })
+    .filter((j) => j.applyUrl !== "");
 }
 
 export interface JobFilter {
   q?: string;
   location?: string;
   remote?: boolean;
+  category?: string;
   /** Board tokens to include; empty/undefined = all. */
   companies?: string[];
 }
@@ -157,6 +175,7 @@ export function filterJobs(jobs: JobPosting[], f: JobFilter): JobPosting[] {
   const companies = f.companies?.length ? new Set(f.companies) : null;
   return jobs.filter((j) => {
     if (companies && !companies.has(j.token)) return false;
+    if (f.category && j.category !== f.category) return false;
     if (f.remote && !j.remote) return false;
     if (loc && !j.location.toLowerCase().includes(loc)) return false;
     if (terms.length) {

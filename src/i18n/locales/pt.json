@@ -3962,6 +3962,28 @@
     "fitFetchErrorTitle": "Não foi possível carregar essa vaga",
     "fitFetchError": "O feed da empresa não retornou a descrição. Abra a vaga e cole-a no escâner.",
     "fitLoadedTitle": "Descrição da vaga carregada",
-    "fitLoadedDesc": "{{title}} na {{company}} — envie ou cole seu currículo e o escaneio vai checar o encaixe com esta vaga."
+    "fitLoadedDesc": "{{title}} na {{company}} — envie ou cole seu currículo e o escaneio vai checar o encaixe com esta vaga.",
+    "allFields": "Todas as áreas",
+    "updatedAgo": "atualizado há {{min}} min",
+    "categories": {
+      "engineering": "Engenharia e TI",
+      "data_ai": "Dados e IA",
+      "design": "Design",
+      "product": "Produto",
+      "marketing": "Marketing e comunicação",
+      "sales": "Vendas e parcerias",
+      "customer": "Sucesso e suporte ao cliente",
+      "finance": "Finanças e contabilidade",
+      "legal": "Jurídico e compliance",
+      "people_hr": "Pessoas e recrutamento",
+      "operations": "Operações e logística",
+      "healthcare": "Saúde e clínica",
+      "science": "Ciência e pesquisa",
+      "education": "Educação",
+      "hospitality_retail": "Hotelaria e varejo",
+      "security": "Segurança e confiança",
+      "admin": "Administrativo",
+      "other": "Outros"
+    }
   }
 }
