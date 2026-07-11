@@ -106,6 +106,17 @@ export default function Jobs() {
     if (!session) return requireAuth();
     if (savedIds.has(job.id)) return;
     setSavedIds((prev) => new Set(prev).add(job.id));
+    // Attach the latest scan as the working resume version — keeps "sent
+    // version" and outcome analytics coherent when this row gets applied.
+    let latestScan: { id: string; ats_score: number | null; resume_text: string | null } | null = null;
+    try {
+      const { data: scans } = await (supabase as unknown as { from: (t: string) => any })
+        .from("user_scans")
+        .select("id, ats_score, resume_text")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      latestScan = scans?.[0] ?? null;
+    } catch { /* fine without */ }
     const { error: err } = await appsTable().insert({
       user_id: session.user.id,
       company: job.company,
@@ -114,6 +125,8 @@ export default function Jobs() {
       job_id: job.id,
       apply_url: job.applyUrl,
       location: job.location,
+      scan_id: latestScan?.id ?? null,
+      scan_score: latestScan?.ats_score ?? null,
     });
     if (err) {
       if (err.code !== "23505") {
@@ -126,10 +139,20 @@ export default function Jobs() {
     try {
       const { data: res } = await supabase.functions.invoke("job-board", { body: { action: "detail", id: job.id } });
       const description = (res as { description?: string })?.description;
-      if (description) {
-        await appsTable().update({ job_posting: description.slice(0, 20000) }).eq("user_id", session.user.id).eq("job_id", job.id);
+      if (!description) return;
+      await appsTable().update({ job_posting: description.slice(0, 20000) }).eq("user_id", session.user.id).eq("job_id", job.id);
+      // Auto fit-check: deterministic keyword coverage of the resume they'd
+      // send — the tracker becomes a ranked queue, not just a list.
+      if (latestScan?.resume_text) {
+        const { data: fit } = await supabase.functions.invoke("application-fit", {
+          body: { jobPosting: description, resumeText: latestScan.resume_text },
+        });
+        if ((fit as { success?: boolean })?.success) {
+          const { pct, missing } = (fit as { data: { pct: number | null; missing: string[] } }).data;
+          await appsTable().update({ fit_pct: pct, fit_missing: missing }).eq("user_id", session.user.id).eq("job_id", job.id);
+        }
       }
-    } catch { /* description is a bonus */ }
+    } catch { /* enrichment is a bonus — the save already landed */ }
   };
 
   // Signed-in Apply clicks promote the row to 'applied' (never downgrading

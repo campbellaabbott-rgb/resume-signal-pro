@@ -1000,6 +1000,17 @@
       "exportDocxFailedDescription": "Could not generate the Word document. Please try again.",
       "copied": "Copied",
       "copiedDescription": "Cover letter copied to clipboard."
+    },
+    "grounding": {
+      "title": "Fact-checked against your resume",
+      "description": "Every employer, title, school, and date was verified against your original resume — nothing was invented.",
+      "removed": "Removed as unsupported by your resume:"
+    },
+    "template": {
+      "label": "Template:",
+      "modern": "Modern",
+      "classic": "Classic",
+      "compact": "Compact"
     }
   },
   "homepage": {

@@ -10,6 +10,35 @@ import type { BuilderResume } from "@/types/resume-builder";
 // rejects outright or silently mangles. Strips those, collapses repeated
 // underscores from adjacent stripped characters, and trims leading/trailing
 // underscores so "  / Mary / " doesn't become "_Mary_".
+// ── Templates ───────────────────────────────────────────────────────────────
+// Three print-quality, ATS-safe single-column templates. Same structure,
+// different type systems — every one is something a candidate would actually
+// submit. "modern" is the default and matches the product's own look.
+export type ResumeTemplate = "modern" | "classic" | "compact";
+
+export interface ResumeExportOptions {
+  template?: ResumeTemplate;
+}
+
+interface TemplateSpec {
+  pdfFont: "helvetica" | "times";
+  docxFont: string;
+  accentHex: string;
+  accentRGB: [number, number, number];
+  ruleRGB: [number, number, number];
+  margin: number;
+  name: number;   // pt
+  heading: number;
+  body: number;
+  lh: number;     // mm line height for body
+}
+
+const TEMPLATES: Record<ResumeTemplate, TemplateSpec> = {
+  modern: { pdfFont: "helvetica", docxFont: "Calibri", accentHex: "1F3A5F", accentRGB: [31, 58, 95], ruleRGB: [31, 58, 95], margin: 18, name: 20, heading: 12, body: 10, lh: 5 },
+  classic: { pdfFont: "times", docxFont: "Georgia", accentHex: "000000", accentRGB: [0, 0, 0], ruleRGB: [70, 70, 70], margin: 20, name: 21, heading: 12.5, body: 10.5, lh: 5.2 },
+  compact: { pdfFont: "helvetica", docxFont: "Calibri", accentHex: "222222", accentRGB: [34, 34, 34], ruleRGB: [150, 150, 150], margin: 14, name: 16, heading: 10.5, body: 9, lh: 4.3 },
+};
+
 export function sanitizeFilename(name: string): string {
   const sanitized = name
     .trim()
@@ -27,13 +56,15 @@ function formatDateRange(startDate: string, endDate: string): string {
   return `${startDate} – ${endDate}`;
 }
 
-export async function exportResumeBuilderPDF(resume: BuilderResume): Promise<void> {
+export async function exportResumeBuilderPDF(resume: BuilderResume, options: ResumeExportOptions = {}): Promise<void> {
   const { default: jsPDF } = await import("jspdf");
+  const spec = TEMPLATES[options.template ?? "modern"];
+  const F = spec.pdfFont;
 
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  const margin = 18;
+  const margin = spec.margin;
   const contentWidth = pageWidth - margin * 2;
   let y = margin;
 
@@ -47,7 +78,7 @@ export async function exportResumeBuilderPDF(resume: BuilderResume): Promise<voi
   const addWrappedText = (text: string, fontSize: number, lineHeight: number, isBold = false) => {
     if (!text) return;
     pdf.setFontSize(fontSize);
-    pdf.setFont("helvetica", isBold ? "bold" : "normal");
+    pdf.setFont(F, isBold ? "bold" : "normal");
     const lines = pdf.splitTextToSize(text, contentWidth);
     for (const line of lines) {
       ensureSpace(lineHeight);
@@ -59,24 +90,28 @@ export async function exportResumeBuilderPDF(resume: BuilderResume): Promise<voi
   const addSectionHeading = (text: string) => {
     y += 2;
     ensureSpace(8);
-    pdf.setFontSize(12);
-    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(spec.heading);
+    pdf.setFont(F, "bold");
+    pdf.setTextColor(...spec.accentRGB);
     pdf.text(text.toUpperCase(), margin, y);
+    pdf.setTextColor(0, 0, 0);
     y += 1.5;
-    pdf.setDrawColor(180, 180, 180);
+    pdf.setDrawColor(...spec.ruleRGB);
     pdf.line(margin, y, pageWidth - margin, y);
     y += 5;
   };
 
   // Header
-  pdf.setFontSize(18);
-  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(spec.name);
+  pdf.setFont(F, "bold");
+  pdf.setTextColor(...spec.accentRGB);
   pdf.text(resume.contact.fullName || "Your Name", margin, y);
+  pdf.setTextColor(0, 0, 0);
   y += 7;
 
   if (resume.contact.title) {
     pdf.setFontSize(11);
-    pdf.setFont("helvetica", "normal");
+    pdf.setFont(F, "normal");
     pdf.text(resume.contact.title, margin, y);
     y += 6;
   }
@@ -94,7 +129,7 @@ export async function exportResumeBuilderPDF(resume: BuilderResume): Promise<voi
 
   if (resume.summary) {
     addSectionHeading("Summary");
-    addWrappedText(resume.summary, 10, 5);
+    addWrappedText(resume.summary, spec.body, spec.lh);
   }
 
   if (resume.experience.length > 0) {
@@ -103,12 +138,12 @@ export async function exportResumeBuilderPDF(resume: BuilderResume): Promise<voi
       // Keep-together: never orphan a job title at the bottom of a page —
       // require room for title + company + first bullet before starting.
       ensureSpace(16);
-      pdf.setFontSize(10.5);
-      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(spec.body + 0.5);
+      pdf.setFont(F, "bold");
       pdf.text(entry.title || "Role", margin, y);
       const dateRange = formatDateRange(entry.startDate, entry.endDate);
       if (dateRange) {
-        pdf.setFont("helvetica", "normal");
+        pdf.setFont(F, "normal");
         pdf.setFontSize(9);
         pdf.text(dateRange, pageWidth - margin, y, { align: "right" });
       }
@@ -116,13 +151,13 @@ export async function exportResumeBuilderPDF(resume: BuilderResume): Promise<voi
 
       const companyLine = [entry.company, entry.location].filter(Boolean).join(" — ");
       if (companyLine) {
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "italic");
-        addWrappedText(companyLine, 10, 5);
+        pdf.setFontSize(spec.body);
+        pdf.setFont(F, "italic");
+        addWrappedText(companyLine, spec.body, spec.lh);
       }
 
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9.5);
+      pdf.setFont(F, "normal");
+      pdf.setFontSize(spec.body - 0.5);
       for (const bullet of entry.bullets) {
         if (!bullet.trim()) continue;
         // Hanging indent: wrapped lines align under the bullet's text, not
@@ -133,7 +168,7 @@ export async function exportResumeBuilderPDF(resume: BuilderResume): Promise<voi
           ensureSpace(5);
           if (i === 0) pdf.text("•", margin + 1, y);
           pdf.text(line, margin + 1 + bulletIndent, y);
-          y += 4.6;
+          y += spec.lh - 0.4;
         });
       }
       y += 2;
@@ -144,24 +179,24 @@ export async function exportResumeBuilderPDF(resume: BuilderResume): Promise<voi
     addSectionHeading("Education");
     for (const entry of resume.education) {
       ensureSpace(6);
-      pdf.setFontSize(10.5);
-      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(spec.body + 0.5);
+      pdf.setFont(F, "bold");
       const degreeLine = [entry.degree, entry.field].filter(Boolean).join(", ");
       pdf.text(degreeLine || entry.school, margin, y);
       const dateRange = formatDateRange(entry.startDate, entry.endDate);
       if (dateRange) {
-        pdf.setFont("helvetica", "normal");
+        pdf.setFont(F, "normal");
         pdf.setFontSize(9);
         pdf.text(dateRange, pageWidth - margin, y, { align: "right" });
       }
       y += 5;
       if (degreeLine && entry.school) {
         pdf.setFontSize(10);
-        pdf.setFont("helvetica", "italic");
+        pdf.setFont(F, "italic");
         addWrappedText(entry.school, 10, 5);
       }
       if (entry.details) {
-        pdf.setFont("helvetica", "normal");
+        pdf.setFont(F, "normal");
         addWrappedText(entry.details, 9.5, 4.6);
       }
       y += 2;
@@ -170,31 +205,32 @@ export async function exportResumeBuilderPDF(resume: BuilderResume): Promise<voi
 
   if (resume.skills.length > 0) {
     addSectionHeading("Skills");
-    addWrappedText(resume.skills.join("  •  "), 9.5, 4.8);
+    addWrappedText(resume.skills.join("  •  "), spec.body - 0.5, spec.lh - 0.2);
   }
 
   if (resume.certifications.length > 0) {
     addSectionHeading("Certifications");
-    addWrappedText(resume.certifications.join("  •  "), 9.5, 4.8);
+    addWrappedText(resume.certifications.join("  •  "), spec.body - 0.5, spec.lh - 0.2);
   }
 
   const fileName = `${sanitizeFilename(resume.contact.fullName || "resume")}.pdf`;
   pdf.save(fileName);
 }
 
-export async function buildResumeDocxDocument(resume: BuilderResume) {
+export async function buildResumeDocxDocument(resume: BuilderResume, options: ResumeExportOptions = {}) {
   const { Document, Paragraph, TextRun, BorderStyle, TabStopType } = await import("docx");
+  const spec = TEMPLATES[options.template ?? "modern"];
 
   // Typography constants (docx sizes are half-points). One consistent scale —
   // the output should read like a professionally typeset resume, not a Word
   // default theme: black headings with a hairline rule (never Word's blue
   // built-in heading styles), right-aligned dates at the true right margin.
-  const NAME_SIZE = 32;      // 16pt
-  const TITLE_SIZE = 22;     // 11pt
-  const HEADING_SIZE = 21;   // 10.5pt
-  const BODY_SIZE = 21;      // 10.5pt
-  const META_SIZE = 18;      // 9pt
-  const FONT = "Calibri";
+  const NAME_SIZE = Math.round(spec.name * 2 * 0.85);
+  const TITLE_SIZE = Math.round((spec.body + 0.5) * 2);
+  const HEADING_SIZE = Math.round(spec.heading * 1.75);
+  const BODY_SIZE = Math.round(spec.body * 2);
+  const META_SIZE = Math.round((spec.body - 1.2) * 2);
+  const FONT = spec.docxFont;
   // Right tab at the right margin: 8.5" page - 2x1" margins = 6.5" = 9360 twips
   const RIGHT_TAB = 9360;
 
@@ -203,7 +239,7 @@ export async function buildResumeDocxDocument(resume: BuilderResume) {
 
   const children: InstanceType<typeof Paragraph>[] = [];
 
-  children.push(new Paragraph({ children: [run(resume.contact.fullName || "Your Name", { bold: true, size: NAME_SIZE })], spacing: { after: 40 } }));
+  children.push(new Paragraph({ children: [run(resume.contact.fullName || "Your Name", { bold: true, size: NAME_SIZE, color: spec.accentHex })], spacing: { after: 40 } }));
 
   if (resume.contact.title) {
     children.push(new Paragraph({ children: [run(resume.contact.title, { size: TITLE_SIZE, color: "444444" })], spacing: { after: 40 } }));
@@ -218,9 +254,9 @@ export async function buildResumeDocxDocument(resume: BuilderResume) {
 
   const addHeading = (text: string) => {
     children.push(new Paragraph({
-      children: [run(text.toUpperCase(), { bold: true, size: HEADING_SIZE })],
+      children: [run(text.toUpperCase(), { bold: true, size: HEADING_SIZE, color: spec.accentHex })],
       spacing: { before: 240, after: 100 },
-      border: { bottom: { color: "999999", style: BorderStyle.SINGLE, size: 4, space: 2 } },
+      border: { bottom: { color: spec.accentHex, style: BorderStyle.SINGLE, size: 4, space: 2 } },
     }));
   };
 
@@ -284,9 +320,9 @@ export async function buildResumeDocxDocument(resume: BuilderResume) {
   });
 }
 
-export async function exportResumeBuilderDocx(resume: BuilderResume): Promise<void> {
+export async function exportResumeBuilderDocx(resume: BuilderResume, options: ResumeExportOptions = {}): Promise<void> {
   const { Packer } = await import("docx");
-  const doc = await buildResumeDocxDocument(resume);
+  const doc = await buildResumeDocxDocument(resume, options);
   const blob = await Packer.toBlob(doc);
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

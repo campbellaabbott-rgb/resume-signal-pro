@@ -1000,6 +1000,17 @@
       "exportDocxFailedDescription": "No se pudo generar el documento de Word. Inténtalo de nuevo.",
       "copied": "Copiado",
       "copiedDescription": "Carta de presentación copiada al portapapeles."
+    },
+    "grounding": {
+      "title": "Verificado contra tu currículum",
+      "description": "Cada empleador, cargo, centro de estudios y fecha se verificó contra tu currículum original — no se inventó nada.",
+      "removed": "Eliminado por no estar respaldado por tu currículum:"
+    },
+    "template": {
+      "label": "Plantilla:",
+      "modern": "Moderna",
+      "classic": "Clásica",
+      "compact": "Compacta"
     }
   },
   "homepage": {

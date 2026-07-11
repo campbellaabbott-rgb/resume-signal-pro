@@ -1000,6 +1000,17 @@
       "exportDocxFailedDescription": "Impossible de générer le document Word. Veuillez réessayer.",
       "copied": "Copié",
       "copiedDescription": "Lettre de motivation copiée dans le presse-papiers."
+    },
+    "grounding": {
+      "title": "Vérifié contre votre CV",
+      "description": "Chaque employeur, poste, école et date a été vérifié contre votre CV original — rien n'a été inventé.",
+      "removed": "Retiré car non étayé par votre CV :"
+    },
+    "template": {
+      "label": "Modèle :",
+      "modern": "Moderne",
+      "classic": "Classique",
+      "compact": "Compact"
     }
   },
   "homepage": {

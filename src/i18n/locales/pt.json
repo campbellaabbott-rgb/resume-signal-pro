@@ -1000,6 +1000,17 @@
       "exportDocxFailedDescription": "Não foi possível gerar o documento Word. Tente novamente.",
       "copied": "Copiado",
       "copiedDescription": "Carta de apresentação copiada para a área de transferência."
+    },
+    "grounding": {
+      "title": "Verificado contra o seu currículo",
+      "description": "Cada empregador, cargo, escola e data foi verificado contra o seu currículo original — nada foi inventado.",
+      "removed": "Removido por não ter respaldo no seu currículo:"
+    },
+    "template": {
+      "label": "Modelo:",
+      "modern": "Moderno",
+      "classic": "Clássico",
+      "compact": "Compacto"
     }
   },
   "homepage": {

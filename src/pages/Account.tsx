@@ -14,6 +14,8 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { SavedSearchesCard } from "@/components/account/SavedSearchesCard";
+import { ApplyKitPanel } from "@/components/account/ApplyKitPanel";
+import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
@@ -97,6 +99,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function Account() {
   const { session, user, loading, signOut } = useAuth();
+  const { pro } = useProSubscription();
   const navigate = useNavigate();
   const [scans, setScans] = useState<UserScan[]>([]);
   const [account, setAccount] = useState<AccountData | null>(null);
@@ -696,6 +699,13 @@ export default function Account() {
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                   </div>
+                  {(a.job_posting || version?.resume_text) && (
+                    <ApplyKitPanel
+                      jobPosting={a.job_posting ?? ""}
+                      resumeText={version?.resume_text ?? scans[0]?.resume_text ?? ""}
+                      proActive={pro.active}
+                    />
+                  )}
                   {fitOpenId === a.id && version?.resume_text && (
                     <div className="mt-2 pt-2 border-t border-border/50">
                       <p className="text-[11px] text-muted-foreground mb-1.5">

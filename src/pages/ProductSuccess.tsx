@@ -238,7 +238,7 @@ export default function ProductSuccess() {
       try {
         const [packageResult, coverLetterResult] = await Promise.all([
           supabase.functions.invoke('generate-apply-package', {
-            body: { resumeText, jobPostingText: jobDescription, language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })() }
+            body: { resumeText, jobPostingText: jobDescription, sessionId, language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })() }
           }),
           supabase.functions.invoke('generate-cover-letter', {
             body: { resumeText, jobDescription, jobTitle: 'Target Position', tone: 'professional', language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })() }
@@ -786,6 +786,7 @@ export default function ProductSuccess() {
                 body: {
                   resumeText: sessionData.resumeText,
                   jobPostingText: sessionData.jobDescriptionText,
+                  sessionId,
                   language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })()
                 }
               }),

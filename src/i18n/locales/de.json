@@ -1000,6 +1000,17 @@
       "exportDocxFailedDescription": "Das Word-Dokument konnte nicht erstellt werden. Bitte versuche es erneut.",
       "copied": "Kopiert",
       "copiedDescription": "Anschreiben in die Zwischenablage kopiert."
+    },
+    "grounding": {
+      "title": "Gegen Ihren Lebenslauf geprüft",
+      "description": "Jeder Arbeitgeber, Titel, jede Schule und jedes Datum wurde gegen Ihren Original-Lebenslauf verifiziert — nichts wurde erfunden.",
+      "removed": "Entfernt, weil durch Ihren Lebenslauf nicht gedeckt:"
+    },
+    "template": {
+      "label": "Vorlage:",
+      "modern": "Modern",
+      "classic": "Klassisch",
+      "compact": "Kompakt"
     }
   },
   "homepage": {

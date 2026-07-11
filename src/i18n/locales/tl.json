@@ -1000,6 +1000,17 @@
       "exportDocxFailedDescription": "Hindi magawa ang Word document. Pakisubukan ulit.",
       "copied": "Na-copy",
       "copiedDescription": "Na-copy ang cover letter sa clipboard."
+    },
+    "grounding": {
+      "title": "Na-fact-check laban sa resume mo",
+      "description": "Bawat employer, titulo, paaralan, at petsa ay na-verify laban sa orihinal mong resume — walang inimbento.",
+      "removed": "Inalis dahil hindi suportado ng resume mo:"
+    },
+    "template": {
+      "label": "Template:",
+      "modern": "Moderno",
+      "classic": "Klasiko",
+      "compact": "Compact"
     }
   },
   "homepage": {

@@ -7,6 +7,8 @@ import { ResumePreview } from "@/components/builder/ResumePreview";
 import { BuilderResume } from "@/types/resume-builder";
 import { useToast } from "@/hooks/use-toast";
 import { hasUnsupportedPdfCharacters } from "@/lib/pdf-text-support";
+import type { ResumeTemplate } from "@/lib/resume-builder-export";
+import { ShieldCheck } from "lucide-react";
 
 export interface ApplyPackageData {
   jobMetadata: {
@@ -17,6 +19,11 @@ export interface ApplyPackageData {
   tailoredResume: BuilderResume;
   skillGaps: string[];
   checklist: string[];
+  groundingReport?: {
+    verified: boolean;
+    removedSkills: string[];
+    removedCertifications: string[];
+  };
 }
 
 interface ApplyAssistantResultsProps {
@@ -28,6 +35,7 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
   const { t } = useTranslation();
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
+  const [template, setTemplate] = useState<ResumeTemplate>("modern");
   const { toast } = useToast();
 
   const handleExportPdf = async () => {
@@ -40,7 +48,7 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
         toast({ title: t('applyAssistant.toast.headsUp'), description: t('applyAssistant.toast.pdfCharWarning') });
       }
       const { exportResumeBuilderPDF } = await import("@/lib/resume-builder-export");
-      await exportResumeBuilderPDF(data.tailoredResume);
+      await exportResumeBuilderPDF(data.tailoredResume, { template });
     } catch (err) {
       console.error("[ApplyAssistantResults] PDF export failed:", err);
       toast({ title: t('applyAssistant.toast.exportFailed'), description: t('applyAssistant.toast.exportPdfFailedDescription'), variant: "destructive" });
@@ -53,7 +61,7 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
     setIsExportingDocx(true);
     try {
       const { exportResumeBuilderDocx } = await import("@/lib/resume-builder-export");
-      await exportResumeBuilderDocx(data.tailoredResume);
+      await exportResumeBuilderDocx(data.tailoredResume, { template });
     } catch (err) {
       console.error("[ApplyAssistantResults] DOCX export failed:", err);
       toast({ title: t('applyAssistant.toast.exportFailed'), description: t('applyAssistant.toast.exportDocxFailedDescription'), variant: "destructive" });
@@ -79,6 +87,40 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
             {t('applyAssistant.prepBanner.description')}
           </p>
         </div>
+      </div>
+
+      {/* Grounding: this resume was fact-checked against the source, and we
+          say so — including what got stripped for being unsupported. */}
+      {data.groundingReport?.verified && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-success/5 border border-success/25">
+          <ShieldCheck className="w-5 h-5 text-success shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-sm">{t('applyAssistant.grounding.title', 'Fact-checked against your resume')}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t('applyAssistant.grounding.description', 'Every employer, title, school, and date was verified against your original resume — nothing was invented.')}
+              {(data.groundingReport.removedSkills.length > 0 || data.groundingReport.removedCertifications.length > 0) && (
+                <> {t('applyAssistant.grounding.removed', 'Removed as unsupported by your resume:')} {[...data.groundingReport.removedSkills, ...data.groundingReport.removedCertifications].join(", ")}</>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Template picker — three ATS-safe layouts, applied to PDF and DOCX */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground">{t('applyAssistant.template.label', 'Template:')}</span>
+        {(["modern", "classic", "compact"] as const).map((tpl) => (
+          <button
+            key={tpl}
+            type="button"
+            onClick={() => setTemplate(tpl)}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+              template === tpl ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t(`applyAssistant.template.${tpl}`, tpl.charAt(0).toUpperCase() + tpl.slice(1))}
+          </button>
+        ))}
       </div>
 
       {/* Job metadata */}

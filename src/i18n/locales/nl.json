@@ -1000,6 +1000,17 @@
       "exportDocxFailedDescription": "Het Word-document kon niet worden gegenereerd. Probeer het opnieuw.",
       "copied": "Gekopieerd",
       "copiedDescription": "Motivatiebrief gekopieerd naar klembord."
+    },
+    "grounding": {
+      "title": "Gecheckt tegen je cv",
+      "description": "Elke werkgever, functietitel, school en datum is geverifieerd tegen je originele cv — niets is verzonnen.",
+      "removed": "Verwijderd omdat je cv het niet onderbouwt:"
+    },
+    "template": {
+      "label": "Sjabloon:",
+      "modern": "Modern",
+      "classic": "Klassiek",
+      "compact": "Compact"
     }
   },
   "homepage": {
