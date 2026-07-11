@@ -166,8 +166,14 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
 
   if (okTokens.length === 0) return { ok: false, detail: "every board fetch failed — nothing written" };
 
-  for (let i = 0; i < allRows.length; i += 500) {
-    const { error } = await client.from("job_board_postings").upsert(allRows.slice(i, i + 500), { onConflict: "id" });
+  // One pass can legitimately carry the same posting twice (Greenhouse lists
+  // a job once per department; SmartRecruiters offset pages can overlap while
+  // the remote list shifts) — Postgres refuses ON CONFLICT hitting a row
+  // twice in one statement, so de-dupe by id, last write wins.
+  const rows = [...new Map(allRows.map((r) => [r.id as string, r])).values()];
+
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await client.from("job_board_postings").upsert(rows.slice(i, i + 500), { onConflict: "id" });
     if (error) return { ok: false, detail: `upsert failed at chunk ${i}: ${error.message}` };
   }
 
@@ -187,16 +193,16 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
   const categoriesFacet: Record<string, number> = {};
   {
     const counts = new Map<string, number>();
-    for (const r of allRows) counts.set(r.company_token as string, (counts.get(r.company_token as string) ?? 0) + 1);
+    for (const r of rows) counts.set(r.company_token as string, (counts.get(r.company_token as string) ?? 0) + 1);
     for (const s of JOB_SOURCES) {
       const c = counts.get(s.token) ?? 0;
       if (c > 0) companiesFacet.push({ token: s.token, name: s.name, count: c });
     }
-    for (const r of allRows) categoriesFacet[r.category as string] = (categoriesFacet[r.category as string] ?? 0) + 1;
+    for (const r of rows) categoriesFacet[r.category as string] = (categoriesFacet[r.category as string] ?? 0) + 1;
   }
 
   const v = {
-    total: allRows.length,
+    total: rows.length,
     boards: okTokens.length,
     failedSources: failed,
     companiesFacet,
@@ -204,7 +210,7 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
     refreshedAt: startIso,
   };
   await client.from("job_board_meta").upsert({ k: "refresh", v, updated_at: new Date().toISOString() }, { onConflict: "k" });
-  console.log(`[JOB-BOARD] refresh: ${allRows.length} postings from ${okTokens.length}/${JOB_SOURCES.length} boards (${failed.length} failed)`);
+  console.log(`[JOB-BOARD] refresh: ${rows.length} postings from ${okTokens.length}/${JOB_SOURCES.length} boards (${failed.length} failed)`);
   return { ok: true, detail: `${allRows.length} postings from ${okTokens.length} boards` };
 }
 
