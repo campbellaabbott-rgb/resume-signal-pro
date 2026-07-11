@@ -475,6 +475,16 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   const { currency } = useCurrency();
   const [searchParams] = useSearchParams();
 
+  // Session-only stash so /jobs can rank postings against the scanned
+  // resume. Never persisted server-side — same lifetime as the tab, same
+  // privacy stance as the scan itself.
+  useEffect(() => {
+    if (resumeText && resumeText.length >= 100 && freeKeywordResult) {
+      try { sessionStorage.setItem("rb_resume_for_fit", resumeText); } catch { /* ignore */ }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeText, freeKeywordResult]);
+
   // Job-board handoff: /jobs stores the selected posting's description in
   // sessionStorage and navigates here with #upload. Prefill the JD so the
   // next scan is a fit check against that exact posting.

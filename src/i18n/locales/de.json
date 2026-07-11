@@ -4017,6 +4017,15 @@
     "saveSearch": "Diese Suche speichern",
     "searchExists": "Diese Suche ist bereits gespeichert.",
     "searchSaved": "Suche gespeichert",
-    "searchSavedDesc": "Ihr Konto zeigt, wie viele neue Stellen seit Ihrem letzten Blick passen."
+    "searchSavedDesc": "Ihr Konto zeigt, wie viele neue Stellen seit Ihrem letzten Blick passen.",
+    "freshAll": "Beliebiges Datum",
+    "freshDay": "Heute",
+    "freshWeek": "Diese Woche",
+    "fitRankingCta": "Nach meiner Passung sortieren",
+    "fitRankingOn": "Nach Ihrer Passung sortiert",
+    "fitRankingNote": "Deterministische Keyword-Abdeckung gegen Ihren gescannten Lebenslauf — Stellen ohne gespeicherte Beschreibung zeigen keinen Wert.",
+    "fitBadge": "Passung {{pct}} %",
+    "fitNeedsResumeTitle": "Zuerst Lebenslauf scannen",
+    "fitNeedsResume": "Führen Sie den Gratis-Scan aus (oder speichern Sie eine Version im Konto), dann sortiert die Börse jede Stelle nach Ihrer Passung."
   }
 }

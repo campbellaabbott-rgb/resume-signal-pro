@@ -25,6 +25,7 @@ import {
   type JobPosting,
 } from "./normalize.ts";
 import { JOB_CATEGORIES } from "./categories.ts";
+import { computeFit } from "../_shared/fit-score.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -56,11 +57,13 @@ const waitUntil = (p: Promise<unknown>) => {
 
 const listUrl = (s: JobSource) =>
   s.source === "greenhouse"
-    ? `https://boards-api.greenhouse.io/v1/boards/${s.token}/jobs`
+    // content=true costs a bigger payload but delivers every description in
+    // ONE call — fit-ranking coverage for GH boards, plus real departments.
+    ? `https://boards-api.greenhouse.io/v1/boards/${s.token}/jobs?content=true`
     : s.source === "lever"
       ? `https://api.lever.co/v0/postings/${s.token}?mode=json`
       : s.source === "ashby"
-        ? `https://api.ashbyhq.com/posting-api/job-board/${s.token}`
+        ? `https://api.ashbyhq.com/posting-api/job-board/${s.token}?includeCompensation=true`
         : s.source === "smartrecruiters"
           ? `https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=100`
           : `https://apply.workable.com/api/v1/widget/accounts/${s.token}?details=false`;
@@ -144,6 +147,25 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
           continue;
         }
         okTokens.push(s.token);
+        // Descriptions ride along where the list payload includes them
+        // (Lever/Ashby) so fit-batch can rank without refetching boards.
+        const descs = new Map<string, string>();
+        if (s.source === "lever") {
+          for (const j of (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; descriptionBodyPlain?: string }>) {
+            const text = ((j.descriptionPlain ?? "") + (j.descriptionBodyPlain ? `\n${j.descriptionBodyPlain}` : "")).trim();
+            if (text) descs.set(`lever:${s.token}:${j.id}`, text);
+          }
+        } else if (s.source === "ashby") {
+          for (const j of ((r.raw as { jobs?: Array<{ id: string; descriptionPlain?: string; descriptionHtml?: string }> }).jobs ?? [])) {
+            const text = (j.descriptionPlain ?? (j.descriptionHtml ? htmlToText(j.descriptionHtml) : "")).trim();
+            if (text) descs.set(`ashby:${s.token}:${j.id}`, text);
+          }
+        } else if (s.source === "greenhouse") {
+          for (const j of ((r.raw as { jobs?: Array<{ id: number; content?: string }> }).jobs ?? [])) {
+            const text = j.content ? htmlToText(String(j.content)).trim() : "";
+            if (text) descs.set(`greenhouse:${s.token}:${j.id}`, text);
+          }
+        }
         for (const j of r.jobs) {
           allRows.push({
             id: j.id,
@@ -157,6 +179,8 @@ async function runRefresh(client: SupabaseClient, force = false): Promise<{ ok: 
             category: j.category,
             posted_at: j.postedAt,
             apply_url: j.applyUrl,
+            salary: j.salary?.slice(0, 200) ?? null,
+            description: descs.get(j.id)?.slice(0, 6000) ?? null,
             last_seen: startIso,
           });
         }
@@ -307,6 +331,37 @@ Deno.serve(async (req) => {
       return await serveList(client, body, meta);
     }
 
+    if (action === "fit-batch") {
+      const resumeText = typeof body.resumeText === "string" ? body.resumeText.slice(0, 50000) : "";
+      const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, 60) : [];
+      if (resumeText.trim().length < 100 || ids.length === 0) {
+        return json({ error: "resumeText (100+ chars) and ids are required" }, 400);
+      }
+      // Deterministic compute, but still rate-limited (it reads 60 rows a call).
+      const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+      const { data: allowed } = await client.rpc("check_rate_limit", {
+        p_function: "job-board-fit", p_ip: clientIp, p_max_requests: 120, p_window_minutes: 1440,
+      });
+      if (allowed === false) return json({ error: "Daily fit-ranking limit reached.", rateLimited: true }, 429);
+
+      const { data: rows, error } = await client
+        .from("job_board_postings")
+        .select("id, description")
+        .in("id", ids);
+      if (error) throw error;
+      const fits: Record<string, number | null> = {};
+      let scored = 0;
+      for (const r of rows ?? []) {
+        if (r.description && r.description.length > 150) {
+          fits[r.id] = computeFit(r.description, resumeText, 40).pct;
+          scored++;
+        } else {
+          fits[r.id] = null; // no stored description (GH/SR/Workable) — honest null
+        }
+      }
+      return json({ fits, scored, of: ids.length });
+    }
+
     if (action === "detail") {
       const id = String(body.id ?? "");
       const [source, token, ...rest] = id.split(":");
@@ -314,10 +369,11 @@ Deno.serve(async (req) => {
       // Allowlist gate — the token must be one of ours (no SSRF via crafted ids).
       const src = JOB_SOURCES.find((s) => s.source === source && s.token === token);
       if (!src || !externalId) return json({ error: "Unknown job id" }, 404);
-      const [description, { data: jobRow }] = await Promise.all([
-        getDescription(src, id, externalId),
-        client.from("job_board_postings").select("*").eq("id", id).maybeSingle(),
-      ]);
+      const { data: jobRow } = await client.from("job_board_postings").select("*").eq("id", id).maybeSingle();
+      // Stored description first (Lever/Ashby); live fetch covers the rest.
+      const description = (jobRow?.description && jobRow.description.length > 200)
+        ? jobRow.description
+        : await getDescription(src, id, externalId);
       if (!description && !jobRow) return json({ error: "Posting not found (it may have closed)" }, 404);
       return json({ job: jobRow ? rowToJob(jobRow) : null, description });
     }
@@ -342,6 +398,7 @@ const rowToJob = (r: any) => ({
   category: r.category,
   postedAt: r.posted_at,
   applyUrl: r.apply_url,
+  salary: r.salary ?? null,
 });
 
 async function serveList(
@@ -355,7 +412,7 @@ async function serveList(
 
   let q = client
     .from("job_board_postings")
-    .select("id,source,company_token,company,title,location,remote,department,category,posted_at,apply_url", { count: "exact" });
+    .select("id,source,company_token,company,title,location,remote,department,category,posted_at,apply_url,salary", { count: "exact" });
 
   const terms = String(body.q ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean).slice(0, 8);
   for (const t of terms) q = q.or(`title.ilike.%${t}%,company.ilike.%${t}%,department.ilike.%${t}%`);

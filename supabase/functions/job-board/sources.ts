@@ -1,6 +1,6 @@
 // The job board's company allowlist. Every entry was LIVE-VERIFIED against
 // the ATS's official public job-board API before shipping (200 + >0 postings,
-// last sweep 2026-07-11, 146 companies). These endpoints are published by the vendors for exactly
+// last sweep 2026-07-11, 194 companies). These endpoints are published by the vendors for exactly
 // this consumption — no scraping, no auth, no ToS gray zone:
 //   Greenhouse: https://boards-api.greenhouse.io/v1/boards/{token}/jobs
 //   Lever:      https://api.lever.co/v0/postings/{token}?mode=json
@@ -17,6 +17,42 @@ export interface JobSource {
 }
 
 export const JOB_SOURCES: JobSource[] = [
+  // Sweep #4 (2026-07-11): 35 boards
+  { name: "SpaceX", source: "greenhouse", token: "spacex" },
+  { name: "Securitas", source: "smartrecruiters", token: "Securitas" },
+  { name: "OpenAI", source: "ashby", token: "openai" },
+  { name: "ServiceNow", source: "smartrecruiters", token: "ServiceNow" },
+  { name: "Rocket Lab", source: "greenhouse", token: "rocketlab" },
+  { name: "BetterHelp", source: "greenhouse", token: "betterhelp" },
+  { name: "Optiver", source: "greenhouse", token: "optiverus" },
+  { name: "IMC Trading", source: "greenhouse", token: "imc" },
+  { name: "DRW", source: "greenhouse", token: "drweng" },
+  { name: "Sodexo", source: "smartrecruiters", token: "Sodexo" },
+  { name: "Vanta", source: "ashby", token: "vanta" },
+  { name: "Decagon", source: "ashby", token: "decagon" },
+  { name: "Squarepoint", source: "greenhouse", token: "squarepointcapital" },
+  { name: "Hudson River Trading", source: "greenhouse", token: "wehrtyou" },
+  { name: "Ethos Life", source: "greenhouse", token: "ethoslife" },
+  { name: "Suno", source: "ashby", token: "suno" },
+  { name: "Mercor", source: "ashby", token: "mercor" },
+  { name: "Akuna Capital", source: "greenhouse", token: "akunacapital" },
+  { name: "Warp", source: "ashby", token: "warp" },
+  { name: "PostHog", source: "ashby", token: "posthog" },
+  { name: "TaskRabbit", source: "greenhouse", token: "taskrabbit" },
+  { name: "Bombas", source: "greenhouse", token: "bombas" },
+  { name: "Talkspace", source: "greenhouse", token: "talkspace" },
+  { name: "Railway", source: "ashby", token: "railway" },
+  { name: "Neon", source: "ashby", token: "neon" },
+  { name: "Aircall", source: "lever", token: "aircall" },
+  { name: "BlaBlaCar", source: "lever", token: "blablacar" },
+  { name: "Voodoo", source: "lever", token: "voodoo" },
+  { name: "Qonto", source: "lever", token: "qonto" },
+  { name: "Swile", source: "lever", token: "swile" },
+  { name: "360Learning", source: "lever", token: "360learning" },
+  { name: "Persado", source: "workable", token: "persado" },
+  { name: "Zed", source: "ashby", token: "zed" },
+  { name: "Thales", source: "smartrecruiters", token: "Thales" },
+  { name: "Ledger", source: "lever", token: "ledger" },
   // SmartRecruiters (enterprise; API caps our fetch at 500/board)
   { name: "Bosch Group", source: "smartrecruiters", token: "BoschGroup" },
   { name: "JYSK", source: "smartrecruiters", token: "JYSK" },

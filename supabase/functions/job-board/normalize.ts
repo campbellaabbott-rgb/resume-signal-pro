@@ -20,6 +20,8 @@ export interface JobPosting {
   postedAt: string | null;
   /** Deterministic field bucket (department-first, title fallback). */
   category: JobCategory;
+  /** Freeform salary summary when the feed provides one; null otherwise. */
+  salary: string | null;
   /** The company's own posting/application page — where Apply goes. */
   applyUrl: string;
 }
@@ -85,6 +87,7 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
       department: j.departments?.[0]?.name ?? null,
       postedAt: j.first_published ?? j.updated_at ?? null,
       category: categorize(j.title ?? "", j.departments?.[0]?.name),
+      salary: null,
       applyUrl: safeUrl(j.absolute_url),
     };
   }).filter((j) => j.applyUrl !== "");
@@ -98,8 +101,21 @@ interface LeverJob {
   createdAt?: number; // epoch ms
   workplaceType?: string;
   categories?: { location?: string; team?: string; allLocations?: string[] };
+  salaryRange?: { min?: number; max?: number; currency?: string; interval?: string };
   descriptionPlain?: string;
   descriptionBodyPlain?: string;
+}
+
+const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", EUR: "€", GBP: "£", CAD: "CA$", AUD: "A$" };
+const fmtAmount = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
+
+export function leverSalary(r?: { min?: number; max?: number; currency?: string; interval?: string }): string | null {
+  if (!r || (!r.min && !r.max)) return null;
+  const sym = CURRENCY_SYMBOL[r.currency ?? ""] ?? (r.currency ? `${r.currency} ` : "");
+  const range = [r.min, r.max].filter((n): n is number => typeof n === "number" && n > 0).map(fmtAmount).join("–");
+  if (!range) return null;
+  const interval = r.interval ? `/${r.interval.replace(/-time|ly$/i, (m) => (m.toLowerCase() === "ly" ? "" : m))}` : "";
+  return `${sym}${range}${interval ? interval.toLowerCase() : ""}`;
 }
 
 export function normalizeLever(raw: LeverJob[], company: string, token: string): JobPosting[] {
@@ -116,6 +132,7 @@ export function normalizeLever(raw: LeverJob[], company: string, token: string):
       department: j.categories?.team ?? null,
       postedAt: j.createdAt ? new Date(j.createdAt).toISOString() : null,
       category: categorize(j.text ?? "", j.categories?.team),
+      salary: leverSalary(j.salaryRange),
       applyUrl: safeUrl(j.hostedUrl ?? j.applyUrl),
     };
   }).filter((j) => j.applyUrl !== "");
@@ -124,6 +141,7 @@ export function normalizeLever(raw: LeverJob[], company: string, token: string):
 interface AshbyJob {
   id: string;
   title: string;
+  compensation?: { compensationTierSummary?: string; scrapeableCompensationSalarySummary?: string };
   location?: string;
   secondaryLocations?: Array<{ location?: string } | string>;
   department?: string;
@@ -152,6 +170,7 @@ export function normalizeAshby(raw: { jobs?: AshbyJob[] }, company: string, toke
         department: j.department ?? j.team ?? null,
         postedAt: j.publishedAt ?? null,
         category: categorize(j.title ?? "", j.department ?? j.team),
+        salary: j.compensation?.compensationTierSummary ?? j.compensation?.scrapeableCompensationSalarySummary ?? null,
         applyUrl: safeUrl(j.jobUrl ?? j.applyUrl),
       };
     })
@@ -185,6 +204,7 @@ export function normalizeSmartRecruiters(raw: { content?: SmartRecruitersPosting
         department,
         postedAt: p.releasedDate ?? null,
         category: categorize(p.name ?? "", department),
+        salary: null,
         // The public posting page is deterministic from company identifier + id.
         applyUrl: safeUrl(`https://jobs.smartrecruiters.com/${token}/${p.id}`),
       };
@@ -221,6 +241,7 @@ export function normalizeWorkable(raw: { jobs?: WorkableJob[] }, company: string
         department: j.department ?? null,
         postedAt: posted ? new Date(posted).toISOString() : null,
         category: categorize(j.title ?? "", j.department),
+        salary: null,
         applyUrl: safeUrl(j.url ?? `https://apply.workable.com/j/${j.shortcode}`),
       };
     })

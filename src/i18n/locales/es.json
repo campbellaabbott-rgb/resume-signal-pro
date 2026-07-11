@@ -4017,6 +4017,15 @@
     "saveSearch": "Guardar esta búsqueda",
     "searchExists": "Ya guardaste esta búsqueda.",
     "searchSaved": "Búsqueda guardada",
-    "searchSavedDesc": "Tu cuenta muestra cuántas ofertas nuevas coinciden desde tu última visita."
+    "searchSavedDesc": "Tu cuenta muestra cuántas ofertas nuevas coinciden desde tu última visita.",
+    "freshAll": "Cualquier fecha",
+    "freshDay": "Hoy",
+    "freshWeek": "Esta semana",
+    "fitRankingCta": "Ordenar por mi encaje",
+    "fitRankingOn": "Ordenado por tu encaje",
+    "fitRankingNote": "Cobertura determinista de palabras clave frente a tu currículum escaneado — las ofertas sin descripción almacenada no muestran puntuación.",
+    "fitBadge": "encaje {{pct}}%",
+    "fitNeedsResumeTitle": "Escanea tu currículum primero",
+    "fitNeedsResume": "Haz el escaneo gratuito (o guarda una versión en tu cuenta) y el tablón podrá ordenar cada oferta según tu encaje."
   }
 }

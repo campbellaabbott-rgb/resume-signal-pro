@@ -4,34 +4,13 @@
 // when it's both (a) in the posting and (b) a term the engine actually knows.
 // No AI call, so it's fast, free, and always explainable.
 
-import { INDUSTRY_KEYWORDS } from "../_shared/industry-detection.ts";
+import { computeFit } from "../_shared/fit-score.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-// Flatten the detection tables once per isolate: every keyword, cert, and
-// title the engine recognizes, lowercase, 3+ chars (short tokens like "or"
-// false-positive too easily; real short terms like SQL/AWS survive as-is).
-const DICTIONARY: string[] = (() => {
-  const set = new Set<string>();
-  for (const data of Object.values(INDUSTRY_KEYWORDS)) {
-    for (const list of [data.primary, data.secondary, data.certifications, data.titles]) {
-      for (const term of list) {
-        const t = term.toLowerCase().trim();
-        if (t.length >= 3) set.add(t);
-      }
-    }
-  }
-  // Longest first so "project management" wins before "project"
-  return [...set].sort((a, b) => b.length - a.length);
-})();
-
-const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const containsTerm = (haystack: string, term: string) =>
-  new RegExp(`(^|[^a-z0-9])${escapeRegex(term)}([^a-z0-9]|$)`, "i").test(haystack);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -58,22 +37,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const postingLower = jobPosting.toLowerCase();
-    const resumeLower = resumeText.toLowerCase();
-
-    // Terms the posting asks for (that the engine recognizes), longest-first;
-    // once a longer phrase matches, its sub-terms are skipped to avoid
-    // double-counting ("project management" also containing "management").
-    const postingTerms: string[] = [];
-    for (const term of DICTIONARY) {
-      if (postingTerms.length >= 60) break;
-      if (postingTerms.some((p) => p.includes(term))) continue;
-      if (containsTerm(postingLower, term)) postingTerms.push(term);
-    }
-
-    const matched = postingTerms.filter((t) => containsTerm(resumeLower, t));
-    const missing = postingTerms.filter((t) => !containsTerm(resumeLower, t));
-    const pct = postingTerms.length === 0 ? null : Math.round((matched.length / postingTerms.length) * 100);
+    const { pct, matched, missing, totalRecognized } = computeFit(jobPosting, resumeText);
 
     return new Response(JSON.stringify({
       success: true,
@@ -81,7 +45,7 @@ Deno.serve(async (req) => {
         pct,
         matched,
         missing,
-        totalRecognized: postingTerms.length,
+        totalRecognized,
         method: "Deterministic: terms from the posting that our detection engine recognizes, checked verbatim against the resume version. No AI, fully reproducible.",
       },
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });

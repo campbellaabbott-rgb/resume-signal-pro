@@ -33,6 +33,7 @@ interface BoardJob {
   department: string | null;
   postedAt: string | null;
   applyUrl: string;
+  salary?: string | null;
 }
 
 interface BoardResponse {
@@ -70,6 +71,13 @@ export default function Jobs() {
   const [remoteOnly, setRemoteOnly] = useState(initial.get("remote") === "1");
   const [company, setCompany] = useState(initial.get("company") ?? "");
   const [category, setCategory] = useState(initial.get("category") ?? "");
+  const [freshness, setFreshness] = useState<"" | "day" | "week">("");
+  const [fitRanking, setFitRanking] = useState(false);
+  const [fits, setFits] = useState<Record<string, number | null>>({});
+  const [fitLoading, setFitLoading] = useState(false);
+  // The resume available for ranking: this tab's scan first, else the
+  // signed-in user's latest saved version (fetched lazily on toggle).
+  const fitResume = useRef<string | null>(null);
   const [data, setData] = useState<BoardResponse | null>(null);
   const [jobs, setJobs] = useState<BoardJob[]>([]);
   const [loading, setLoading] = useState(true);
@@ -215,6 +223,7 @@ export default function Jobs() {
             remote: remoteOnly || undefined,
             category: category || undefined,
             companies: company ? [company] : undefined,
+            postedAfter: freshness ? new Date(Date.now() - (freshness === "day" ? 1 : 7) * 86_400_000).toISOString() : undefined,
             limit: PAGE,
             offset,
           },
@@ -233,7 +242,7 @@ export default function Jobs() {
         }
       }
     },
-    [q, location, remoteOnly, company, category],
+    [q, location, remoteOnly, company, category, freshness],
   );
 
   // Keep the URL shareable — filters in, defaults out.
@@ -297,6 +306,77 @@ export default function Jobs() {
       metadata: { company: job.company, title: job.title.slice(0, 120) },
     });
   };
+
+  const resolveFitResume = async (): Promise<string | null> => {
+    if (fitResume.current) return fitResume.current;
+    try {
+      const stashed = sessionStorage.getItem("rb_resume_for_fit");
+      if (stashed && stashed.length >= 100) {
+        fitResume.current = stashed;
+        return stashed;
+      }
+    } catch { /* ignore */ }
+    if (session) {
+      const { data } = await (supabase as unknown as { from: (t: string) => any })
+        .from("user_scans")
+        .select("resume_text")
+        .not("resume_text", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const text = data?.[0]?.resume_text;
+      if (typeof text === "string" && text.length >= 100) {
+        fitResume.current = text;
+        return text;
+      }
+    }
+    return null;
+  };
+
+  const toggleFitRanking = async () => {
+    if (fitRanking) {
+      setFitRanking(false);
+      return;
+    }
+    const resume = await resolveFitResume();
+    if (!resume) {
+      toast({
+        title: t("jobsPage.fitNeedsResumeTitle", "Scan your resume first"),
+        description: t("jobsPage.fitNeedsResume", "Run the free scan (or save a resume version in your account) and the board can rank every posting against it."),
+      });
+      navigate("/#upload");
+      return;
+    }
+    setFitRanking(true);
+  };
+
+  // Score whatever's loaded whenever ranking is on.
+  useEffect(() => {
+    if (!fitRanking || jobs.length === 0) return;
+    const unscored = jobs.filter((j) => !(j.id in fits)).map((j) => j.id);
+    if (unscored.length === 0) return;
+    (async () => {
+      setFitLoading(true);
+      try {
+        const resume = await resolveFitResume();
+        if (!resume) return;
+        for (let i = 0; i < unscored.length; i += 60) {
+          const { data } = await supabase.functions.invoke("job-board", {
+            body: { action: "fit-batch", resumeText: resume, ids: unscored.slice(i, i + 60) },
+          });
+          const batch = (data as { fits?: Record<string, number | null> })?.fits;
+          if (batch) setFits((prev) => ({ ...prev, ...batch }));
+        }
+      } finally {
+        setFitLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitRanking, jobs]);
+
+  const displayJobs = useMemo(() => {
+    if (!fitRanking) return jobs;
+    return [...jobs].sort((a, b) => (fits[b.id] ?? -1) - (fits[a.id] ?? -1));
+  }, [jobs, fitRanking, fits]);
 
   const companies = useMemo(
     () => (data?.companies ?? []).filter((c) => c.count > 0 || c.token === company).sort((a, b) => a.name.localeCompare(b.name)),
@@ -385,6 +465,37 @@ export default function Jobs() {
             )}
           </div>
 
+          {/* Freshness + fit-ranking row */}
+          <div className="flex flex-wrap items-center gap-2 mb-5 -mt-2">
+            {([["", t("jobsPage.freshAll", "Any date")], ["day", t("jobsPage.freshDay", "Today")], ["week", t("jobsPage.freshWeek", "This week")]] as const).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setFreshness(v)}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                  freshness === v ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={toggleFitRanking}
+              className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                fitRanking ? "border-success bg-success/10 text-success font-semibold" : "border-primary/40 text-primary hover:bg-primary/10"
+              }`}
+            >
+              {fitLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Target className="w-3 h-3" />}
+              {fitRanking ? t("jobsPage.fitRankingOn", "Ranked by your fit") : t("jobsPage.fitRankingCta", "Rank by my fit")}
+            </button>
+            {fitRanking && (
+              <span className="text-[11px] text-muted-foreground">
+                {t("jobsPage.fitRankingNote", "Deterministic keyword coverage vs your scanned resume — postings without stored descriptions show no score.")}
+              </span>
+            )}
+          </div>
+
           {/* Results */}
           {loading ? (
             <div className="py-16 text-center text-muted-foreground">
@@ -418,8 +529,9 @@ export default function Jobs() {
                 )}
               </p>
               <ul className="space-y-3">
-                {jobs.map((job) => {
+                {displayJobs.map((job) => {
                   const d = daysAgo(job.postedAt);
+                  const fit = fitRanking ? fits[job.id] : undefined;
                   return (
                     <li key={job.id} className="rounded-2xl border border-border bg-card p-4">
                       <div className="flex flex-wrap items-start gap-2">
@@ -430,8 +542,16 @@ export default function Jobs() {
                             {job.location ? ` · ${job.location}` : ""}
                             {job.department ? ` · ${job.department}` : ""}
                           </p>
+                          {job.salary && (
+                            <p className="text-xs text-success font-medium mt-0.5">{job.salary}</p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
+                          {typeof fit === "number" && (
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${fit >= 70 ? "bg-success/10 text-success" : fit >= 40 ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"}`}>
+                              {t("jobsPage.fitBadge", "fit {{pct}}%", { pct: fit })}
+                            </span>
+                          )}
                           {job.remote && <Badge variant="secondary" className="text-[10px]">{t("jobsPage.remoteBadge", "Remote")}</Badge>}
                           {d !== null && (
                             <span className="text-[11px] text-muted-foreground whitespace-nowrap">

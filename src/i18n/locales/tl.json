@@ -4017,6 +4017,15 @@
     "saveSearch": "I-save ang paghahanap na ito",
     "searchExists": "Na-save mo na ang paghahanap na ito.",
     "searchSaved": "Na-save ang paghahanap",
-    "searchSavedDesc": "Ipinapakita ng account mo kung ilang bagong posting ang tumugma mula noong huli kang tumingin."
+    "searchSavedDesc": "Ipinapakita ng account mo kung ilang bagong posting ang tumugma mula noong huli kang tumingin.",
+    "freshAll": "Anumang petsa",
+    "freshDay": "Ngayon",
+    "freshWeek": "Ngayong linggo",
+    "fitRankingCta": "I-rank ayon sa fit ko",
+    "fitRankingOn": "Naka-rank ayon sa fit mo",
+    "fitRankingNote": "Deterministikong keyword coverage laban sa na-scan mong resume — walang score ang mga posting na walang nakaimbak na deskripsyon.",
+    "fitBadge": "fit {{pct}}%",
+    "fitNeedsResumeTitle": "I-scan muna ang resume mo",
+    "fitNeedsResume": "Patakbuhin ang libreng scan (o mag-save ng bersyon sa account mo) at irar-rank ng board ang bawat posting ayon sa fit mo."
   }
 }

@@ -4017,6 +4017,15 @@
     "saveSearch": "Enregistrer cette recherche",
     "searchExists": "Vous avez déjà enregistré cette recherche.",
     "searchSaved": "Recherche enregistrée",
-    "searchSavedDesc": "Votre compte affiche le nombre de nouvelles offres depuis votre dernier passage."
+    "searchSavedDesc": "Votre compte affiche le nombre de nouvelles offres depuis votre dernier passage.",
+    "freshAll": "Toutes dates",
+    "freshDay": "Aujourd'hui",
+    "freshWeek": "Cette semaine",
+    "fitRankingCta": "Classer selon mon adéquation",
+    "fitRankingOn": "Classé selon votre adéquation",
+    "fitRankingNote": "Couverture déterministe des mots-clés vs votre CV scanné — les offres sans description stockée n'affichent pas de score.",
+    "fitBadge": "adéquation {{pct}} %",
+    "fitNeedsResumeTitle": "Scannez d'abord votre CV",
+    "fitNeedsResume": "Lancez le scan gratuit (ou enregistrez une version dans votre compte) et le board classera chaque offre selon votre profil."
   }
 }

@@ -13,6 +13,8 @@ import {
 import { categorize, JOB_CATEGORIES } from "../../supabase/functions/job-board/categories";
 import { normalizeSmartRecruiters, normalizeWorkable } from "../../supabase/functions/job-board/normalize";
 import { searchName, searchToQuery } from "../../src/lib/job-search-params";
+import { computeFit } from "../../supabase/functions/_shared/fit-score";
+import { leverSalary } from "../../supabase/functions/job-board/normalize";
 
 // ── real captured fixtures (trimmed to the fields the APIs actually send) ──
 const GH_FIXTURE = {
@@ -183,6 +185,29 @@ describe("new vendor normalizers (real captured shapes)", () => {
       applyUrl: "https://apply.workable.com/j/38ABFA8E0D",
     });
     expect(jobs[0].postedAt).toBe(new Date("2026-03-02").toISOString());
+  });
+});
+
+describe("fit scoring + salary mapping", () => {
+  it("computeFit is deterministic and directionally sane", () => {
+    const posting = "We need Python, Kubernetes, SQL and project management experience.";
+    const strong = computeFit(posting, "Led project management for Python services on Kubernetes with SQL analytics.");
+    const weak = computeFit(posting, "Barista experience with latte art and customer service.");
+    expect(strong.pct).not.toBeNull();
+    expect(weak.pct ?? 0).toBeLessThan(strong.pct ?? 0);
+    expect(computeFit(posting, "Python Kubernetes SQL project management").pct)
+      .toBe(computeFit(posting, "Python Kubernetes SQL project management").pct);
+  });
+
+  it("computeFit returns null when the posting has no recognized terms", () => {
+    expect(computeFit("", "any resume").pct).toBeNull();
+  });
+
+  it("leverSalary formats ranges and rejects empties", () => {
+    expect(leverSalary({ min: 120000, max: 160000, currency: "USD", interval: "yearly" })).toContain("120k");
+    expect(leverSalary({ min: 120000, max: 160000, currency: "USD", interval: "yearly" })).toContain("$");
+    expect(leverSalary(undefined)).toBeNull();
+    expect(leverSalary({ currency: "USD" })).toBeNull();
   });
 });
 

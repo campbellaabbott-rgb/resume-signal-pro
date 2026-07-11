@@ -4017,6 +4017,15 @@
     "saveSearch": "Save this search",
     "searchExists": "You already saved this search.",
     "searchSaved": "Search saved",
-    "searchSavedDesc": "Your account shows how many new postings match since your last look."
+    "searchSavedDesc": "Your account shows how many new postings match since your last look.",
+    "freshAll": "Any date",
+    "freshDay": "Today",
+    "freshWeek": "This week",
+    "fitRankingCta": "Rank by my fit",
+    "fitRankingOn": "Ranked by your fit",
+    "fitRankingNote": "Deterministic keyword coverage vs your scanned resume — postings without stored descriptions show no score.",
+    "fitBadge": "fit {{pct}}%",
+    "fitNeedsResumeTitle": "Scan your resume first",
+    "fitNeedsResume": "Run the free scan (or save a resume version in your account) and the board can rank every posting against it."
   }
 }

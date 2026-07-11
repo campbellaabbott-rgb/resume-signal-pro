@@ -4017,6 +4017,15 @@
     "saveSearch": "Deze zoekopdracht opslaan",
     "searchExists": "Je hebt deze zoekopdracht al opgeslagen.",
     "searchSaved": "Zoekopdracht opgeslagen",
-    "searchSavedDesc": "Je account toont hoeveel nieuwe vacatures er sinds je laatste bezoek zijn."
+    "searchSavedDesc": "Je account toont hoeveel nieuwe vacatures er sinds je laatste bezoek zijn.",
+    "freshAll": "Elke datum",
+    "freshDay": "Vandaag",
+    "freshWeek": "Deze week",
+    "fitRankingCta": "Sorteer op mijn match",
+    "fitRankingOn": "Gesorteerd op jouw match",
+    "fitRankingNote": "Deterministische trefwoorddekking tegen je gescande cv — vacatures zonder opgeslagen omschrijving tonen geen score.",
+    "fitBadge": "match {{pct}}%",
+    "fitNeedsResumeTitle": "Scan eerst je cv",
+    "fitNeedsResume": "Doe de gratis scan (of bewaar een versie in je account) en de bank sorteert elke vacature op jouw match."
   }
 }

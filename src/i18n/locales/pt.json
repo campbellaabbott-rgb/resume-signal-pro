@@ -4017,6 +4017,15 @@
     "saveSearch": "Salvar esta busca",
     "searchExists": "Você já salvou esta busca.",
     "searchSaved": "Busca salva",
-    "searchSavedDesc": "Sua conta mostra quantas vagas novas surgiram desde sua última olhada."
+    "searchSavedDesc": "Sua conta mostra quantas vagas novas surgiram desde sua última olhada.",
+    "freshAll": "Qualquer data",
+    "freshDay": "Hoje",
+    "freshWeek": "Esta semana",
+    "fitRankingCta": "Ordenar pelo meu encaixe",
+    "fitRankingOn": "Ordenado pelo seu encaixe",
+    "fitRankingNote": "Cobertura determinística de palavras-chave contra seu currículo escaneado — vagas sem descrição armazenada não mostram pontuação.",
+    "fitBadge": "encaixe {{pct}}%",
+    "fitNeedsResumeTitle": "Escaneie seu currículo primeiro",
+    "fitNeedsResume": "Faça o escaneio grátis (ou salve uma versão na sua conta) e o mural ordenará cada vaga pelo seu encaixe."
   }
 }
