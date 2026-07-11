@@ -459,14 +459,14 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
       {/* ATS Compatibility Audit */}
       <CollapsibleSection title={t('atsDefenseResults.compatibilityAudit')} icon={ShieldCheck} badge={<Badge variant={data.compatibilityAudit.overallGrade === 'A' || data.compatibilityAudit.overallGrade === 'B' ? 'default' : 'destructive'}>Grade: {data.compatibilityAudit.overallGrade}</Badge>}>
         {/* Critical Issues */}
-        {data.compatibilityAudit.criticalIssues.length > 0 && (
+        {(data.compatibilityAudit.criticalIssues ?? []).length > 0 && (
           <div className="mb-4">
             <h4 className="font-medium text-destructive mb-2 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4" />
-              Critical Issues ({data.compatibilityAudit.criticalIssues.length})
+              Critical Issues ({(data.compatibilityAudit.criticalIssues ?? []).length})
             </h4>
             <div className="space-y-2">
-              {data.compatibilityAudit.criticalIssues.map((item, i) => (
+              {(data.compatibilityAudit.criticalIssues ?? []).map((item, i) => (
                 <div key={i} className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                   <p className="font-medium text-sm">{item.issue}</p>
                   <p className="text-xs text-muted-foreground mt-1">Impact: {item.impact}</p>
@@ -481,7 +481,7 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
         <div>
           <h4 className="font-medium mb-2">ATS Platform Compatibility</h4>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {data.compatibilityAudit.atsSystemsCompatibility.map((system, i) => (
+            {(data.compatibilityAudit.atsSystemsCompatibility ?? []).map((system, i) => (
               <div key={i} className={cn(
                 "p-3 rounded-lg border text-center",
                 system.compatible ? 'border-success/30 bg-success/5' : 'border-destructive/30 bg-destructive/5'
@@ -517,7 +517,7 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
             <div className="mb-3">
               <p className="text-sm text-muted-foreground mb-2">Missing Keywords:</p>
               <div className="flex flex-wrap gap-2">
-                {data.keywordOptimization.primaryRole.missingKeywords.map((kw, i) => (
+                {(data.keywordOptimization.primaryRole?.missingKeywords ?? []).map((kw, i) => (
                   <Badge key={i} variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">{kw}</Badge>
                 ))}
               </div>
@@ -525,7 +525,7 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
             
             {/* Keywords to Add with Context */}
             <div className="space-y-2">
-              {data.keywordOptimization.primaryRole.keywordsToAdd.slice(0, 5).map((item, i) => (
+              {(data.keywordOptimization.primaryRole?.keywordsToAdd ?? []).slice(0, 5).map((item, i) => (
                 <div key={i} className="p-3 rounded-lg bg-muted/50">
                   <div className="flex items-center justify-between mb-1">
                     <Badge className="bg-primary">{item.keyword}</Badge>
@@ -541,7 +541,7 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
           {data.keywordOptimization.secondaryRoles.length > 0 && (
             <div className="pt-4 border-t border-border">
               <h4 className="font-medium mb-3">Secondary Role Targeting</h4>
-              {data.keywordOptimization.secondaryRoles.map((role, i) => (
+              {(data.keywordOptimization.secondaryRoles ?? []).map((role, i) => (
                 <div key={i} className="mb-3 p-3 rounded-lg bg-muted/30">
                   <p className="font-medium text-sm">{role.roleName}</p>
                   <div className="flex flex-wrap gap-1 my-2">

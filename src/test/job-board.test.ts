@@ -273,6 +273,16 @@ describe("htmlToText", () => {
   });
 });
 
+describe("client/server category contract", () => {
+  it("Jobs.tsx CATEGORY_IDS mirrors the edge function's JOB_CATEGORIES exactly", async () => {
+    const fs = await import("node:fs");
+    const client = fs.readFileSync("src/pages/Jobs.tsx", "utf8");
+    const m = client.match(/CATEGORY_IDS = \[([\s\S]*?)\]/);
+    const clientIds = [...(m?.[1] ?? "").matchAll(/"(\w+)"/g)].map((x) => x[1]).sort();
+    expect(clientIds).toEqual([...JOB_CATEGORIES].sort());
+  });
+});
+
 describe("categorize", () => {
   it("maps departments first (curated signal wins)", () => {
     expect(categorize("Team Member", "Sales")).toBe("sales");

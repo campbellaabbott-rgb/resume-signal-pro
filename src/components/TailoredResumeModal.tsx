@@ -214,7 +214,7 @@ export function TailoredResumeModal({
                   <div>
                     <p className="text-xs text-muted-foreground mb-2">Required keywords — covered in your tailored resume:</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {content.keywordsRequired.map((kw, i) => {
+                      {(content.keywordsRequired ?? []).map((kw, i) => {
                         const isGap = content.keywordGaps?.some(g => g.toLowerCase() === kw.toLowerCase());
                         return (
                           <span key={i} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isGap ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
@@ -277,7 +277,7 @@ export function TailoredResumeModal({
                 </Button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {content.keySkills.map((skill, i) => (
+                {(content.keySkills ?? []).map((skill, i) => (
                   <span key={i} className={`px-3 py-1 rounded-full text-sm font-medium ${
                     content.keywordsRequired?.some(k => k.toLowerCase() === skill.toLowerCase())
                       ? 'bg-green-100 text-green-800 border border-green-200'
@@ -295,12 +295,12 @@ export function TailoredResumeModal({
                   <h4 className="font-semibold">{t('tailoredResumeModal.experienceBullets')}</h4>
                   <Badge variant="secondary" className="text-xs">Before → After</Badge>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => copyToClipboard(content.experienceHighlights.map(h => `• ${h.tailored}`).join("\n"), t('tailoredResumeModal.sections.experience'))} className="h-8">
+                <Button variant="ghost" size="sm" onClick={() => copyToClipboard((content.experienceHighlights ?? []).map(h => `• ${h.tailored}`).join("\n"), t('tailoredResumeModal.sections.experience'))} className="h-8">
                   {copiedSection === t('tailoredResumeModal.sections.experience') ? <CheckCircle2 className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
               <div className="space-y-3">
-                {content.experienceHighlights.map((highlight, i) => (
+                {(content.experienceHighlights ?? []).map((highlight, i) => (
                   <div key={i} className="rounded-lg border border-border overflow-hidden">
                     {/* Tailored (always visible) */}
                     <div className="p-3 bg-green-50/50">
@@ -315,7 +315,7 @@ export function TailoredResumeModal({
                       </div>
                       {highlight.keywordsInjected?.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2 pl-5">
-                          {highlight.keywordsInjected.map((kw, j) => (
+                          {(highlight.keywordsInjected ?? []).map((kw, j) => (
                             <span key={j} className="px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-700 font-medium">+{kw}</span>
                           ))}
                         </div>
@@ -362,7 +362,7 @@ export function TailoredResumeModal({
                 <h4 className="font-semibold">{t('tailoredResumeModal.applicationTips')}</h4>
               </div>
               <div className="space-y-2">
-                {content.applicationTips.map((tip, i) => (
+                {(content.applicationTips ?? []).map((tip, i) => (
                   <div key={i} className="flex items-start gap-2">
                     <span className="text-warning font-bold text-sm">{i + 1}.</span>
                     <p className="text-muted-foreground text-sm">{tip}</p>

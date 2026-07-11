@@ -144,7 +144,7 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
           {t('applyAssistant.nextSteps')}
         </h3>
         <ol className="space-y-2">
-          {data.checklist.map((step, i) => (
+          {(data.checklist ?? []).map((step, i) => (
             <li key={i} className="flex items-start gap-2.5 text-sm">
               <span className="w-5 h-5 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                 {i + 1}
@@ -156,7 +156,7 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
       </div>
 
       {/* Skill gaps — honest callout, not fabricated into the resume */}
-      {data.skillGaps.length > 0 && (
+      {(data.skillGaps ?? []).length > 0 && (
         <div className="p-4 rounded-xl border border-warning/30 bg-warning/5">
           <h3 className="font-semibold text-sm mb-2 flex items-center gap-2 text-warning">
             <AlertTriangle className="w-4 h-4" />
@@ -166,7 +166,7 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
             {t('applyAssistant.honestGaps.description')}
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {data.skillGaps.map((gap, i) => (
+            {(data.skillGaps ?? []).map((gap, i) => (
               <span key={i} className="text-xs px-2 py-1 rounded-full bg-warning/10 text-warning border border-warning/20">
                 {gap}
               </span>
