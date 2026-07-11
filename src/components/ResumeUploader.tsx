@@ -215,6 +215,17 @@ export function ResumeUploader({
   const [showJobDescription, setShowJobDescription] = useState(!isMobile);
   const [localJobDescriptionText, setLocalJobDescriptionText] = useState("");
   const [jobDescriptionMode, setJobDescriptionMode] = useState<"paste" | "url" | "spreadsheet" | "gsheets">("paste");
+  // A JD arriving via prop (job-board handoff, restored session) must be
+  // VISIBLE in the paste box, not just silently used by the scan — hydrate
+  // local state when the box is empty, and uncollapse the section so the
+  // user can see what loaded.
+  useEffect(() => {
+    if (jobDescriptionText && !localJobDescriptionText) {
+      setLocalJobDescriptionText(jobDescriptionText);
+      setShowJobDescription(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobDescriptionText]);
   const [jobDescriptionUrl, setJobDescriptionUrl] = useState("");
   const [googleSheetsUrl, setGoogleSheetsUrl] = useState("");
   const [isLoadingGoogleSheet, setIsLoadingGoogleSheet] = useState(false);
