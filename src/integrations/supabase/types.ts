@@ -1546,12 +1546,15 @@ export type Database = {
       user_applications: {
         Row: {
           applied_at: string
+          apply_url: string | null
           company: string
           created_at: string
           fit_missing: Json | null
           fit_pct: number | null
           id: string
+          job_id: string | null
           job_posting: string | null
+          location: string | null
           role: string
           scan_id: string | null
           scan_score: number | null
@@ -1560,12 +1563,15 @@ export type Database = {
         }
         Insert: {
           applied_at?: string
+          apply_url?: string | null
           company: string
           created_at?: string
           fit_missing?: Json | null
           fit_pct?: number | null
           id?: string
+          job_id?: string | null
           job_posting?: string | null
+          location?: string | null
           role?: string
           scan_id?: string | null
           scan_score?: number | null
@@ -1574,12 +1580,15 @@ export type Database = {
         }
         Update: {
           applied_at?: string
+          apply_url?: string | null
           company?: string
           created_at?: string
           fit_missing?: Json | null
           fit_pct?: number | null
           id?: string
+          job_id?: string | null
           job_posting?: string | null
+          location?: string | null
           role?: string
           scan_id?: string | null
           scan_score?: number | null
@@ -1595,6 +1604,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_job_searches: {
+        Row: {
+          created_at: string
+          id: string
+          last_seen_at: string
+          name: string
+          params: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          name: string
+          params?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          name?: string
+          params?: Json
+          user_id?: string
+        }
+        Relationships: []
       }
       user_profiles: {
         Row: {
