@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowRight, Briefcase, ExternalLink, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { rolesForIndustry } from "@/data/roles";
+import { INDUSTRY_TO_CATEGORY } from "@/lib/job-board-categories";
 
 interface MatchJob {
   id: string;
@@ -21,32 +22,6 @@ interface MatchJob {
   fit: number | null;
 }
 
-// Scanner industries → board categories, where the mapping is safe.
-const INDUSTRY_TO_CATEGORY: Record<string, string> = {
-  technology: "engineering",
-  software_engineering: "engineering",
-  machine_learning: "data_ai",
-  data_science: "data_ai",
-  data_engineering: "data_ai",
-  design: "design",
-  product_management: "product",
-  marketing: "marketing",
-  sales: "sales",
-  customer_service: "customer",
-  finance: "finance",
-  accounting: "finance",
-  legal: "legal",
-  human_resources: "people_hr",
-  healthcare: "healthcare",
-  nursing: "healthcare",
-  education: "education",
-  hospitality: "hospitality_retail",
-  retail: "hospitality_retail",
-  cybersecurity: "security",
-  logistics: "operations",
-  supply_chain: "operations",
-  manufacturing: "operations",
-};
 
 export function LiveMatches({ resumeText, industry }: { resumeText: string; industry: string }) {
   const { t } = useTranslation();

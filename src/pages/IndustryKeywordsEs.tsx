@@ -11,6 +11,7 @@ import { Footer } from "@/components/Footer";
 import { INDUSTRY_KEYWORDS } from "../../supabase/functions/free-keyword-scan/industry-detection";
 
 import { ES_INDUSTRIES, isSpanish } from "@/data/es-industries";
+import { INDUSTRY_TO_CATEGORY } from "@/lib/job-board-categories";
 
 export default function IndustryKeywordsEs() {
   const { slug } = useParams();
@@ -74,6 +75,15 @@ export default function IndustryKeywordsEs() {
               ))}
             </div>
           </section>
+
+          {slug && INDUSTRY_TO_CATEGORY[slug] && (
+            <p className="mb-8">
+              <Link to={`/jobs/field/${INDUSTRY_TO_CATEGORY[slug]}`} className="text-primary font-medium">
+                Ver empleos activos de este campo en el tablón →
+              </Link>{" "}
+              <span className="text-xs text-muted-foreground">extraídos de las bolsas oficiales de las empresas, reverificados todo el día</span>
+            </p>
+          )}
 
           <section className="rounded-2xl border-2 border-primary bg-card p-6 text-center">
             <h2 className="text-xl font-bold mb-2">Escanea tu currículum gratis — también en español</h2>

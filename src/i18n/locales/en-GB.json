@@ -3988,7 +3988,7 @@
   },
   "jobsPage": {
     "seoTitle": "Live Job Board — Openings You Can Check Your Resume Against",
-    "seoDescription": "Live openings pulled from official company job boards (Greenhouse, Lever, Ashby). Check your resume's fit against any posting free, then apply on the company's own site.",
+    "seoDescription": "Live openings pulled from nearly 900 companies' official job boards on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and BambooHR. Check your CV's fit against any posting free, then apply on the company's own site.",
     "h1": "Live job board",
     "subtitle": "Real openings, pulled live from each company's official job board. Scan your resume against a posting before you spend an application on it.",
     "honestyNote": "Listings belong to the companies; applying happens on their site. We add the part they don't have: an honest fit check first.",
@@ -4053,6 +4053,9 @@
     "fitRankingNote": "Deterministic keyword coverage vs your scanned resume — postings without stored descriptions show no score.",
     "fitBadge": "fit {{pct}}%",
     "fitNeedsResumeTitle": "Scan your resume first",
-    "fitNeedsResume": "Run the free scan (or save a resume version in your account) and the board can rank every posting against it."
+    "fitNeedsResume": "Run the free scan (or save a resume version in your account) and the board can rank every posting against it.",
+    "landerSeoTitle": "Live {{category}} Jobs — From Official Company Job Boards",
+    "landerSeoDescription": "Browse live {{category}} openings pulled from nearly 900 companies' official job boards and re-verified all day. Check your CV's fit free, then apply on the company's own site.",
+    "landerH1": "Live {{category}} jobs"
   }
 }

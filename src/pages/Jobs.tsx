@@ -5,7 +5,7 @@
 // company's own site. We never fake an in-house "apply".
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Bookmark, BookmarkCheck, Briefcase, ExternalLink, Loader2, MapPin, Search, Target } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
@@ -18,6 +18,7 @@ import { postTrackEvent } from "@/lib/track-transport";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchName, searchToQuery } from "@/lib/job-search-params";
+import { isBoardCategory } from "@/lib/job-board-categories";
 
 // user_applications gained board columns after the last typegen — untyped
 // access until Lovable regenerates types.ts.
@@ -70,7 +71,9 @@ export default function Jobs() {
   const [location, setLocation] = useState(initial.get("location") ?? "");
   const [remoteOnly, setRemoteOnly] = useState(initial.get("remote") === "1");
   const [company, setCompany] = useState(initial.get("company") ?? "");
-  const [category, setCategory] = useState(initial.get("category") ?? "");
+  const { category: pathCategory } = useParams<{ category?: string }>();
+  const landerCategory = isBoardCategory(pathCategory) ? pathCategory : undefined;
+  const [category, setCategory] = useState(initial.get("category") ?? landerCategory ?? "");
   const [freshness, setFreshness] = useState<"" | "day" | "week">("");
   const [fitRanking, setFitRanking] = useState(false);
   const [fits, setFits] = useState<Record<string, number | null>>({});
@@ -268,7 +271,9 @@ export default function Jobs() {
     [q, location, remoteOnly, company, category, freshness],
   );
 
-  // Keep the URL shareable — filters in, defaults out.
+  // Keep the URL shareable — filters in, defaults out. A category lander
+  // (/jobs/field/engineering) keeps its crawlable URL while its category is
+  // the only active filter; touching any other filter moves to query form.
   useEffect(() => {
     const p = new URLSearchParams();
     if (q) p.set("q", q);
@@ -277,8 +282,12 @@ export default function Jobs() {
     if (company) p.set("company", company);
     if (category) p.set("category", category);
     const qs = p.toString();
+    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !company) {
+      window.history.replaceState({}, "", `/jobs/field/${landerCategory}`);
+      return;
+    }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, company, category]);
+  }, [q, location, remoteOnly, company, category, landerCategory]);
 
   // Debounced re-query on filter change (immediate on first mount).
   const first = useRef(true);
@@ -407,16 +416,22 @@ export default function Jobs() {
   return (
     <div className="min-h-screen bg-background">
       <SEO
-        title={t("jobsPage.seoTitle", "Live Job Board — Openings You Can Check Your Resume Against")}
-        description={t("jobsPage.seoDescription", "Live openings pulled from official company job boards (Greenhouse, Lever, Ashby). Check your resume's fit against any posting free, then apply on the company's own site.")}
-        path="/jobs"
+        title={landerCategory
+          ? t("jobsPage.landerSeoTitle", "Live {{category}} Jobs — From Official Company Job Boards", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
+          : t("jobsPage.seoTitle", "Live Job Board — Openings You Can Check Your Resume Against")}
+        description={landerCategory
+          ? t("jobsPage.landerSeoDescription", "Browse live {{category}} openings pulled from nearly 900 companies' official job boards and re-verified all day. Check your resume's fit free, then apply on the company's own site.", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
+          : t("jobsPage.seoDescription", "Live openings pulled from nearly 900 companies' official job boards on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and BambooHR. Check your resume's fit against any posting free, then apply on the company's own site.")}
+        path={landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
       />
       <Header />
       <main className="pt-20 pb-20">
         <div className="container max-w-4xl">
           <div className="flex items-center gap-2 mb-2">
             <Briefcase className="w-6 h-6 text-primary" />
-            <h1 className="text-3xl md:text-4xl font-bold">{t("jobsPage.h1", "Live job board")}</h1>
+            <h1 className="text-3xl md:text-4xl font-bold">{landerCategory
+              ? t("jobsPage.landerH1", "Live {{category}} jobs", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
+              : t("jobsPage.h1", "Live job board")}</h1>
           </div>
           <p className="text-muted-foreground mb-1">
             {t("jobsPage.subtitle", "Real openings, pulled live from each company's official job board. Scan your resume against a posting before you spend an application on it.")}

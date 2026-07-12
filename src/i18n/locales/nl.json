@@ -3988,7 +3988,7 @@
   },
   "jobsPage": {
     "seoTitle": "Live vacaturebank — vacatures om je cv tegen af te zetten",
-    "seoDescription": "Live vacatures rechtstreeks uit de officiële vacaturebanken van bedrijven (Greenhouse, Lever, Ashby). Check gratis de match van je cv met elke vacature en solliciteer op de site van het bedrijf.",
+    "seoDescription": "Actieve vacatures van de officiële vacaturebanken van bijna 900 bedrijven op Greenhouse, Lever, Ashby, SmartRecruiters, Workable en BambooHR. Check gratis hoe je cv past en solliciteer op de site van het bedrijf.",
     "h1": "Live vacaturebank",
     "subtitle": "Echte vacatures, live opgehaald uit de officiële vacaturebank van elk bedrijf. Scan je cv tegen een vacature vóór je er een sollicitatie aan besteedt.",
     "honestyNote": "De vacatures zijn van de bedrijven; solliciteren gebeurt op hun site. Wij voegen toe wat zij niet hebben: eerst een eerlijke match-check.",
@@ -4053,6 +4053,9 @@
     "fitRankingNote": "Deterministische trefwoorddekking tegen je gescande cv — vacatures zonder opgeslagen omschrijving tonen geen score.",
     "fitBadge": "match {{pct}}%",
     "fitNeedsResumeTitle": "Scan eerst je cv",
-    "fitNeedsResume": "Doe de gratis scan (of bewaar een versie in je account) en de bank sorteert elke vacature op jouw match."
+    "fitNeedsResume": "Doe de gratis scan (of bewaar een versie in je account) en de bank sorteert elke vacature op jouw match.",
+    "landerSeoTitle": "Live {{category}}-vacatures — Van de officiële vacaturebanken van bedrijven",
+    "landerSeoDescription": "Bekijk actieve {{category}}-vacatures van de officiële vacaturebanken van bijna 900 bedrijven, de hele dag opnieuw geverifieerd. Check gratis hoe je cv past en solliciteer op de site van het bedrijf.",
+    "landerH1": "Live {{category}}-vacatures"
   }
 }

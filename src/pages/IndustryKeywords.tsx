@@ -12,6 +12,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { INDUSTRY_KEYWORDS } from "../../supabase/functions/free-keyword-scan/industry-detection";
 import { ONET_EXPECTATIONS } from "../../supabase/functions/free-keyword-scan/onet-expectations";
+import { INDUSTRY_TO_CATEGORY } from "@/lib/job-board-categories";
 import { SUB_INDUSTRY_TAXONOMY } from "../../supabase/functions/free-keyword-scan/industry-detection";
 import { rolesForIndustry } from "@/data/roles";
 
@@ -88,6 +89,15 @@ export default function IndustryKeywords() {
             This isn't an article — it's the live data our resume scanner uses to analyze {name.toLowerCase()} resumes.
             When the engine improves, this page updates with it.
           </p>
+
+          {slug && INDUSTRY_TO_CATEGORY[slug] && (
+            <p className="mb-8 -mt-4">
+              <Link to={`/jobs/field/${INDUSTRY_TO_CATEGORY[slug]}`} className="text-primary font-medium">
+                See live {name.toLowerCase()} openings on the job board →
+              </Link>{" "}
+              <span className="text-xs text-muted-foreground">pulled from companies' official job boards, re-verified all day</span>
+            </p>
+          )}
 
           {onet && (
             <section className="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-6">

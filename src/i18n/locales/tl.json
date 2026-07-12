@@ -3988,7 +3988,7 @@
   },
   "jobsPage": {
     "seoTitle": "Live na Job Board — mga opening na maitatapat mo sa resume mo",
-    "seoDescription": "Live na openings mula sa opisyal na job boards ng mga kumpanya (Greenhouse, Lever, Ashby). I-check nang libre ang fit ng resume mo sa anumang posting, saka mag-apply sa site mismo ng kumpanya.",
+    "seoDescription": "Mga aktibong opening mula sa opisyal na job boards ng halos 900 kumpanya sa Greenhouse, Lever, Ashby, SmartRecruiters, Workable, at BambooHR. Suriin nang libre ang fit ng resume mo, saka mag-apply sa site ng kumpanya.",
     "h1": "Live na job board",
     "subtitle": "Totoong openings, hinihila nang live mula sa opisyal na job board ng bawat kumpanya. I-scan ang resume mo laban sa posting bago ka gumastos ng aplikasyon dito.",
     "honestyNote": "Sa mga kumpanya ang listings; sa site nila nangyayari ang pag-apply. Idinadagdag namin ang wala sila: tapat na fit check muna.",
@@ -4053,6 +4053,9 @@
     "fitRankingNote": "Deterministikong keyword coverage laban sa na-scan mong resume — walang score ang mga posting na walang nakaimbak na deskripsyon.",
     "fitBadge": "fit {{pct}}%",
     "fitNeedsResumeTitle": "I-scan muna ang resume mo",
-    "fitNeedsResume": "Patakbuhin ang libreng scan (o mag-save ng bersyon sa account mo) at irar-rank ng board ang bawat posting ayon sa fit mo."
+    "fitNeedsResume": "Patakbuhin ang libreng scan (o mag-save ng bersyon sa account mo) at irar-rank ng board ang bawat posting ayon sa fit mo.",
+    "landerSeoTitle": "Live na {{category}} Jobs — Mula sa opisyal na job boards ng mga kumpanya",
+    "landerSeoDescription": "Tingnan ang mga aktibong {{category}} opening mula sa opisyal na job boards ng halos 900 kumpanya, muling bineberipika buong araw. Suriin nang libre ang fit ng resume mo, saka mag-apply sa site ng kumpanya.",
+    "landerH1": "Live na {{category}} jobs"
   }
 }

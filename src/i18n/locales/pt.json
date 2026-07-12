@@ -3988,7 +3988,7 @@
   },
   "jobsPage": {
     "seoTitle": "Mural de vagas ao vivo — confira seu currículo contra cada vaga",
-    "seoDescription": "Vagas ao vivo direto dos murais oficiais das empresas (Greenhouse, Lever, Ashby). Verifique grátis o encaixe do seu currículo com qualquer vaga e candidate-se no site da empresa.",
+    "seoDescription": "Vagas ativas extraídas dos murais oficiais de quase 900 empresas no Greenhouse, Lever, Ashby, SmartRecruiters, Workable e BambooHR. Confira grátis o encaixe do seu currículo e candidate-se no site da empresa.",
     "h1": "Mural de vagas ao vivo",
     "subtitle": "Vagas reais, puxadas ao vivo do mural oficial de cada empresa. Escaneie seu currículo contra uma vaga antes de gastar uma candidatura nela.",
     "honestyNote": "As vagas pertencem às empresas; a candidatura acontece no site delas. Nós adicionamos o que elas não têm: uma checagem honesta de encaixe primeiro.",
@@ -4053,6 +4053,9 @@
     "fitRankingNote": "Cobertura determinística de palavras-chave contra seu currículo escaneado — vagas sem descrição armazenada não mostram pontuação.",
     "fitBadge": "encaixe {{pct}}%",
     "fitNeedsResumeTitle": "Escaneie seu currículo primeiro",
-    "fitNeedsResume": "Faça o escaneio grátis (ou salve uma versão na sua conta) e o mural ordenará cada vaga pelo seu encaixe."
+    "fitNeedsResume": "Faça o escaneio grátis (ou salve uma versão na sua conta) e o mural ordenará cada vaga pelo seu encaixe.",
+    "landerSeoTitle": "Vagas de {{category}} ao vivo — Dos murais oficiais das empresas",
+    "landerSeoDescription": "Veja vagas ativas de {{category}} extraídas dos murais oficiais de quase 900 empresas e reverificadas o dia todo. Confira grátis o encaixe do seu currículo e candidate-se no site da empresa.",
+    "landerH1": "Vagas de {{category}} ao vivo"
   }
 }

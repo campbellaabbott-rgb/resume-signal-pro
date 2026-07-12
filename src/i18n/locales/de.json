@@ -3988,7 +3988,7 @@
   },
   "jobsPage": {
     "seoTitle": "Live-Jobbörse — Stellen zum Abgleich mit Ihrem Lebenslauf",
-    "seoDescription": "Live-Stellen direkt aus den offiziellen Job-Boards der Unternehmen (Greenhouse, Lever, Ashby). Prüfen Sie kostenlos die Passung Ihres Lebenslaufs und bewerben Sie sich auf der Unternehmensseite.",
+    "seoDescription": "Aktive Stellen von den offiziellen Jobbörsen von fast 900 Unternehmen auf Greenhouse, Lever, Ashby, SmartRecruiters, Workable und BambooHR. Prüfen Sie kostenlos die Passung Ihres Lebenslaufs und bewerben Sie sich auf der Unternehmensseite.",
     "h1": "Live-Jobbörse",
     "subtitle": "Echte Stellen, live aus dem offiziellen Job-Board jedes Unternehmens. Scannen Sie Ihren Lebenslauf gegen eine Stelle, bevor Sie eine Bewerbung darauf verwenden.",
     "honestyNote": "Die Anzeigen gehören den Unternehmen; beworben wird auf deren Seite. Wir ergänzen, was dort fehlt: zuerst ein ehrlicher Passungs-Check.",
@@ -4053,6 +4053,9 @@
     "fitRankingNote": "Deterministische Keyword-Abdeckung gegen Ihren gescannten Lebenslauf — Stellen ohne gespeicherte Beschreibung zeigen keinen Wert.",
     "fitBadge": "Passung {{pct}} %",
     "fitNeedsResumeTitle": "Zuerst Lebenslauf scannen",
-    "fitNeedsResume": "Führen Sie den Gratis-Scan aus (oder speichern Sie eine Version im Konto), dann sortiert die Börse jede Stelle nach Ihrer Passung."
+    "fitNeedsResume": "Führen Sie den Gratis-Scan aus (oder speichern Sie eine Version im Konto), dann sortiert die Börse jede Stelle nach Ihrer Passung.",
+    "landerSeoTitle": "Live {{category}}-Jobs — Von den offiziellen Jobbörsen der Unternehmen",
+    "landerSeoDescription": "Aktive {{category}}-Stellen von den offiziellen Jobbörsen von fast 900 Unternehmen, den ganzen Tag neu verifiziert. Prüfen Sie kostenlos die Passung Ihres Lebenslaufs und bewerben Sie sich auf der Unternehmensseite.",
+    "landerH1": "Live {{category}}-Jobs"
   }
 }

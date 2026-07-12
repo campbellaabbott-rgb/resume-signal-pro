@@ -52,6 +52,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
   // numbers with provenance). Graceful skip offline/CI — the build never
   // blocks on the network. ----
   let insights = null;
+  let boardFacets = null;
   try {
     // Local builds read .env; CI/hosted builders inject process.env instead.
     let envText = "";
@@ -67,6 +68,15 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
         signal: AbortSignal.timeout(8000),
       });
       if (r.ok) insights = await r.json();
+      try {
+        const fr = await fetch(`${supaUrl}/rest/v1/rpc/get_job_board_facets`, {
+          method: "POST",
+          headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}`, "Content-Type": "application/json" },
+          body: "{}",
+          signal: AbortSignal.timeout(12000),
+        });
+        if (fr.ok) boardFacets = await fr.json();
+      } catch { /* offline build — landers ship without live counts */ }
     }
   } catch { /* offline build — llms-full ships without the live-numbers section */ }
 
@@ -687,6 +697,69 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
     }
   }
 
+  // ---- Job-board category landers: the queries people actually type are
+  // "healthcare jobs", not "job board". 17 crawlable pages, counts baked
+  // from the live corpus at build time (omitted gracefully offline), copy
+  // limited to what the board verifiably does.
+  {
+    const CATEGORY_LANDERS = [
+      ["engineering", "Engineering & IT"],
+      ["data_ai", "Data & AI"],
+      ["design", "Design"],
+      ["product", "Product"],
+      ["marketing", "Marketing & Comms"],
+      ["sales", "Sales & Partnerships"],
+      ["customer", "Customer Success & Support"],
+      ["finance", "Finance & Accounting"],
+      ["legal", "Legal & Compliance"],
+      ["people_hr", "People & Recruiting"],
+      ["operations", "Operations & Logistics"],
+      ["healthcare", "Healthcare & Clinical"],
+      ["science", "Science & Research"],
+      ["education", "Education"],
+      ["hospitality_retail", "Hospitality & Retail"],
+      ["security", "Security & Trust"],
+      ["admin", "Administrative"],
+    ];
+    const catCounts = boardFacets?.categoriesFacet ?? {};
+    const boardTotal = typeof boardFacets?.total === "number" ? boardFacets.total : null;
+    const boardCompanies = Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet.length : null;
+    const fmt = (n) => n.toLocaleString("en-US");
+    for (const [slug, label] of CATEGORY_LANDERS) {
+      const n = typeof catCounts[slug] === "number" ? catCounts[slug] : null;
+      const countPhrase = n ? `${fmt(n)} live ${label} openings right now` : `live ${label} openings`;
+      const siblings = CATEGORY_LANDERS.filter(([s]) => s !== slug).slice(0, 6)
+        .map(([s, l]) => `<a href="/jobs/field/${s}" class="underline">${l} jobs</a>`).join(" · ");
+      write({
+        path: `/jobs/field/${slug}`,
+        title: n ? `${label} Jobs — ${fmt(n)}+ Live Openings` : `${label} Jobs — Live Openings from Company Boards`,
+        description: `Browse ${countPhrase}, pulled from ${boardCompanies ? `${boardCompanies}` : "nearly 900"} companies' official job boards and re-verified all day. Check your resume's fit free before you apply.`,
+        content: `
+          <h1>Live ${label} jobs</h1>
+          <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} companies` : ""}, pulled directly from the official job boards companies publish on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and BambooHR. No scraped listings, no aggregators, no reposts: every opening belongs to the company that published it, and applying happens on the company's own site.</p>
+          <p>The largest boards are re-checked about every 10–15 minutes and the whole catalog is re-verified within about an hour, so postings a company takes down disappear on the next pass. Counts on this page were measured when it was last built; the live board always shows the current number.</p>
+          <p><a href="/jobs/field/${slug}">Browse ${label} openings on the live board</a> — filter by keyword, location, remote, and company; save searches with a free account; and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
+          <p>Other fields: ${siblings} — or see <a href="/jobs">the full job board</a>.</p>
+        `,
+        jsonLd: [{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: `Live ${label} jobs`,
+          description: `Live ${label} openings from companies' official job boards, re-verified throughout the day.`,
+          url: `${SITE}/jobs/field/${slug}`,
+          isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
+        }, {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Job board", item: `${SITE}/jobs` },
+            { "@type": "ListItem", position: 2, name: `${label} jobs`, item: `${SITE}/jobs/field/${slug}` },
+          ],
+        }],
+      });
+    }
+  }
+
   // ---- /llms-full.txt: complete citable text in one fetch ----
   // Companion to the hand-written public/llms.txt overview. AI engines that
   // find llms.txt can pull this for full guide text and the data-page map
@@ -697,6 +770,10 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
     lines.push("# Resume Booster — full text for AI/answer engines");
     lines.push("");
     lines.push("> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. 58 industries, 10 languages including native Spanish detection. Free scan, no signup, resumes never stored. See /llms.txt for the short overview.");
+    if (boardFacets?.total) {
+      lines.push("");
+      lines.push(`> Live job board (/jobs): ${Number(boardFacets.total).toLocaleString("en-US")} postings from ${Array.isArray(boardFacets.companiesFacet) ? boardFacets.companiesFacet.length : "~900"} companies' OFFICIAL job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no scraping, no aggregators; the largest boards re-check every 10-15 minutes and the whole catalog re-verifies within about an hour. Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
+    }
     lines.push("");
     lines.push("## Guides (full text)");
     for (const g of Object.values(D.GUIDES)) {
@@ -769,7 +846,10 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
     const seen = new Set(STATIC_ROUTES.map((r) => r.path));
     const entries = [...STATIC_ROUTES];
     for (const wp of writtenPaths) {
-      if (!seen.has(wp)) { seen.add(wp); entries.push({ path: wp, changefreq: "monthly", priority: "0.7" }); }
+      if (seen.has(wp)) continue;
+      seen.add(wp);
+      const lander = wp.startsWith("/jobs/field/");
+      entries.push({ path: wp, changefreq: lander ? "daily" : "monthly", priority: "0.7" });
     }
     if (entries.length < 100) throw new Error(`sitemap suspiciously small (${entries.length} URLs) — refusing to overwrite`);
     const xml = [
