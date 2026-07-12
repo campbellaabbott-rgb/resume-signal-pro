@@ -1579,7 +1579,7 @@ serve(async (req) => {
     // Identical resume + JD + stated context + engine version → serve the
     // finished report instantly (rescans, repeat uploads, shared samples).
     // Rule-based-fallback and partial reports are never cached.
-    const REPORT_ENGINE_VERSION = 'scan-v2026-07-12i';
+    const REPORT_ENGINE_VERSION = 'scan-v2026-07-12j';
     const reportCacheKey = await (async () => {
       const ctx = (body.userContext ?? {}) as Record<string, unknown>;
       const ctxPart = ['situation', 'targetRole', 'confirmedIndustry', 'confirmedExperience']

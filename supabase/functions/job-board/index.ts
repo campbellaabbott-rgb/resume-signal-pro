@@ -681,10 +681,18 @@ Deno.serve(async (req) => {
         return json({ ok: true, done: true });
       }
       const s = BOARDS[ti];
-      const r = await fetchBoard(s);
+      // Fetch WITH content — fetchBoard/listUrl deliberately OMIT content for
+      // these light tokens (that is what made them light), so going through
+      // it would return description-less jobs and store nothing. This
+      // action's whole purpose is the content payload, run in isolation.
+      let jobs: Array<{ id: number; content?: string }> = [];
+      let reachable = false;
+      try {
+        const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${s.token}/jobs?content=true`);
+        if (res.ok) { jobs = ((await res.json()) as { jobs?: Array<{ id: number; content?: string }> }).jobs ?? []; reachable = true; }
+      } catch { /* unreachable this hop */ }
       let updated = 0;
-      if (r && s.source === "greenhouse") {
-        const jobs = ((r.raw as { jobs?: Array<{ id: number; content?: string }> }).jobs ?? []);
+      if (reachable && s.source === "greenhouse") {
         const clean = (x: string) => x.replace(/\u0000/g, "");
         const slice = jobs.slice(off, off + SLICE_ROWS);
         for (const j of slice) {

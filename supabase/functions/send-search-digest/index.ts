@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
       }
       const listRes = await callBoard({ limit: 5, offset: 0 });
       const jobs = ((listRes as { jobs?: Array<{ company: string; title: string; location: string; applyUrl: string }> } | null)?.jobs) ?? [];
+      if (jobs.length === 0) { skipped++; continue; } // count said new but list empty (transient) — retry next run, don't stamp
 
       const token = await hmacToken(s.id as string);
       const unsubUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-search-digest?action=unsubscribe&id=${encodeURIComponent(s.id as string)}&token=${token}`;
@@ -144,7 +145,7 @@ Deno.serve(async (req) => {
 </body></html>`;
 
       try {
-        await resend.emails.send({ from: "Resume Booster <jobs@resumebooster.work>", to: email, subject: `${newCount} new ${p.category || p.q || "job"} ${newCount === 1 ? "match" : "matches"} — ${s.name}`, html });
+        await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, subject: `${newCount} new ${p.category || p.q || "job"} ${newCount === 1 ? "match" : "matches"} — ${s.name}`, html });
         await supabase.from("user_job_searches").update({ digest_last_sent_at: new Date().toISOString() }).eq("id", s.id);
         sent++;
       } catch (e) {
