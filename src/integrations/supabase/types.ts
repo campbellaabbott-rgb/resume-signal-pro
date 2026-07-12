@@ -1566,6 +1566,7 @@ export type Database = {
           location: string | null
           posting_checked_at: string | null
           posting_closed_at: string | null
+          posting_closed_notified_at: string | null
           role: string
           scan_id: string | null
           scan_score: number | null
@@ -1585,6 +1586,7 @@ export type Database = {
           location?: string | null
           posting_checked_at?: string | null
           posting_closed_at?: string | null
+          posting_closed_notified_at?: string | null
           role?: string
           scan_id?: string | null
           scan_score?: number | null
@@ -1604,6 +1606,7 @@ export type Database = {
           location?: string | null
           posting_checked_at?: string | null
           posting_closed_at?: string | null
+          posting_closed_notified_at?: string | null
           role?: string
           scan_id?: string | null
           scan_score?: number | null
@@ -1655,6 +1658,7 @@ export type Database = {
       }
       user_profiles: {
         Row: {
+          closure_alerts_opt_in: boolean
           confirmed_experience: string | null
           confirmed_industry: string | null
           situation: string | null
@@ -1664,6 +1668,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          closure_alerts_opt_in?: boolean
           confirmed_experience?: string | null
           confirmed_industry?: string | null
           situation?: string | null
@@ -1673,6 +1678,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          closure_alerts_opt_in?: boolean
           confirmed_experience?: string | null
           confirmed_industry?: string | null
           situation?: string | null
