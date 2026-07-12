@@ -206,7 +206,43 @@ serve(async (req) => {
       });
     }
 
-    // Check 5: END-TO-END scan through the real deployed function. The
+    // Check 5: job-board refresh liveness. The board serves stale data
+    // gracefully, so a wedged refresh pipeline is invisible to every other
+    // check — this is what would have caught the 2026-07-12 death loop
+    // (WORKER_RESOURCE_LIMIT re-running the same slice for an hour) before
+    // a human noticed. The tiered refresh writes refresh_progress on every
+    // slice (~every 30-60s while healthy); 45 minutes of silence means the
+    // pipeline is down, not merely slow.
+    const boardStart = Date.now();
+    try {
+      const { data: prog, error } = await supabase
+        .from('job_board_meta')
+        .select('updated_at')
+        .eq('k', 'refresh_progress')
+        .maybeSingle();
+      const ageMin = prog ? Math.round((Date.now() - new Date(prog.updated_at).getTime()) / 60000) : null;
+      const stalled = error != null || ageMin === null || ageMin > 45;
+      checks.push({
+        name: 'job_board_refresh',
+        passed: !stalled,
+        responseTimeMs: Date.now() - boardStart,
+        error: stalled ? (error?.message ?? `no refresh slice for ${ageMin ?? '∞'} min — postings going stale; check job-board function logs for WORKER_RESOURCE_LIMIT`) : undefined,
+      });
+      if (stalled) {
+        if (overallStatus === 'healthy') overallStatus = 'degraded';
+        errorMessage = errorMessage || `Job board refresh stalled (${ageMin ?? 'no meta'} min since last slice)`;
+      }
+    } catch (e) {
+      checks.push({
+        name: 'job_board_refresh',
+        passed: false,
+        responseTimeMs: Date.now() - boardStart,
+        error: e instanceof Error ? e.message : 'Unknown error'
+      });
+      if (overallStatus === 'healthy') overallStatus = 'degraded';
+    }
+
+    // Check 6: END-TO-END scan through the real deployed function. The
     // component checks above can all pass while free-keyword-scan itself is
     // crashed or stale-deployed (exactly the July 4 outage) — this is the
     // check that would have caught it. Sends x-heartbeat-secret so the scan

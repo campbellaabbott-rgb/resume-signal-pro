@@ -172,13 +172,27 @@ const COLD_LIST = JOB_SOURCES.filter((s) => !HOT_TOKENS.has(s.token));
 const COLD_SLICES_PER_PASS = 8;
 const CHAIN_CAP = Math.ceil(HOT_LIST.length / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
+// force=true bypasses the slice lock, so it must not be reachable from the
+// open internet (the function serves anonymous traffic): chain hops carry a
+// secret derived from the service-role key, and refresh demotes force to a
+// lock-guarded run when the secret doesn't match.
+let chainKeyPromise: Promise<string> | null = null;
+function chainKey(): Promise<string> {
+  chainKeyPromise ??= (async () => {
+    const seed = `${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}:board-chain`;
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(seed));
+    return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+  })();
+  return chainKeyPromise;
+}
+
 function chainNextSlice(hop: number) {
   const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-  waitUntil(fetch(url, {
+  waitUntil(chainKey().then((key) => fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "refresh", force: true, chain: hop + 1 }),
-  }).then((r) => r.text()).catch(() => {}));
+    body: JSON.stringify({ action: "refresh", force: true, chain: hop + 1, chainKey: key }),
+  })).then((r) => r.text()).catch(() => {}));
 }
 
 // Two-tier refresh: HOT boards (heavy inventory) re-verify on every chain
@@ -436,7 +450,8 @@ Deno.serve(async (req) => {
   try {
     if (action === "refresh") {
       const hop = Number.isFinite(Number(body.chain)) ? Math.max(0, Number(body.chain)) : 0;
-      const r = await runRefresh(client, body.force === true, hop);
+      const force = body.force === true && typeof body.chainKey === "string" && body.chainKey === await chainKey();
+      const r = await runRefresh(client, force, force ? hop : 0);
       return json(r, r.ok ? 200 : 502);
     }
 

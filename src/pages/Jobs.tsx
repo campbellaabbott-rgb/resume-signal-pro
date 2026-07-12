@@ -145,7 +145,7 @@ export default function Jobs() {
     }
     toast({ title: t("jobsPage.jobSaved", "Saved to your application tracker") });
     try {
-      const { data: res } = await supabase.functions.invoke("job-board", { body: { action: "detail", id: job.id } });
+      const { data: res } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
       const description = (res as { description?: string })?.description;
       if (!description) return;
       await appsTable().update({ job_posting: description.slice(0, 20000) }).eq("user_id", session.user.id).eq("job_id", job.id);
@@ -212,6 +212,15 @@ export default function Jobs() {
   // Company facet arrives once and is cached — refetches skip it (it can be
   // hundreds of KB at full catalog size) and splice the cache back in.
   const companiesCache = useRef<BoardResponse["companies"]>([]);
+
+  // One quiet retry for board calls: a refresh slice hitting the function's
+  // resource ceiling can bounce a single request off the worker pool.
+  const invokeBoard = async <T,>(body: Record<string, unknown>): Promise<{ data: T | null; error: { message?: string } | null }> => {
+    const first = await supabase.functions.invoke("job-board", { body });
+    if (!first.error && first.data != null) return first as { data: T; error: null };
+    await new Promise((r) => setTimeout(r, 1200));
+    return await supabase.functions.invoke("job-board", { body }) as { data: T | null; error: { message?: string } | null };
+  };
 
   const fetchJobs = useCallback(
     async (offset: number) => {
@@ -286,9 +295,7 @@ export default function Jobs() {
   const checkFit = async (job: BoardJob) => {
     setFitFetching(job.id);
     try {
-      const { data: res, error: err } = await supabase.functions.invoke("job-board", {
-        body: { action: "detail", id: job.id },
-      });
+      const { data: res, error: err } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
       const description: string | undefined = res?.description;
       if (err || !description) throw new Error(err?.message ?? "no description");
       sessionStorage.setItem(
