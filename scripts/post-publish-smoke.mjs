@@ -59,6 +59,7 @@ const FUNCTIONS = [
   "send-scan-report", "check-subscription", "parse-pdf", "parse-docx",
   "generate-premium-package-stream", "generate-cover-letter", "recover-purchase",
   "generate-product-preview", "scan-heartbeat", "health-check", "job-board",
+  "send-search-digest",
 ];
 const optionsChecks = await Promise.all(FUNCTIONS.map(async (fn) => {
   try {

@@ -52,6 +52,8 @@ interface Application {
   job_id?: string | null;
   apply_url?: string | null;
   location?: string | null;
+  posting_closed_at?: string | null;
+  posting_checked_at?: string | null;
 }
 
 // Display name for a saved scan acting as a resume version.
@@ -188,12 +190,40 @@ export default function Account() {
     }
 
     setScans(cloudScans);
-    setApplications((appsRes.data as unknown as Application[] | null) ?? []);
+    const apps = (appsRes.data as unknown as Application[] | null) ?? [];
+    setApplications(apps);
     setTargetScore((profileRes.data as { target_score?: number } | null)?.target_score ?? null);
     const acc = (accountRes as { data?: { credits?: number; purchases?: AccountData["purchases"] } }).data;
     setAccount({ credits: acc?.credits ?? 0, purchases: acc?.purchases ?? [] });
     setFetching(false);
+    void checkPostingFreshness(apps);
   }, [session]);
+
+  // Feature 7: tell the user which tracked postings are still open. A job_id
+  // the live board no longer serves means the company took the posting down
+  // (the board deletes vanished ids within the hour). We stamp posting_closed_at
+  // once and never un-close — a reopened req is rare and a stale "closed" is
+  // safer than pinging the board on every visit. Best-effort; never blocks load.
+  const checkPostingFreshness = async (apps: Application[]) => {
+    const toCheck = apps.filter((a) => a.job_id && !a.posting_closed_at).map((a) => a.job_id as string);
+    if (toCheck.length === 0) return;
+    try {
+      const { data } = await supabase.functions.invoke("job-board", { body: { action: "exists", ids: toCheck } });
+      const open = (data as { open?: Record<string, boolean> })?.open;
+      if (!open) return;
+      const nowIso = new Date().toISOString();
+      const closedIds = Object.entries(open).filter(([, isOpen]) => !isOpen).map(([id]) => id);
+      if (closedIds.length === 0) return;
+      setApplications((prev) => prev.map((a) => (a.job_id && closedIds.includes(a.job_id) ? { ...a, posting_closed_at: nowIso, posting_checked_at: nowIso } : a)));
+      // Persist the closed stamps (RLS restricts to the owner's rows).
+      // Untyped access: these columns postdate the generated types.ts, same
+      // pattern as user_job_searches until Lovable regenerates types.
+      const appsTable = (supabase as unknown as { from: (t: string) => { update: (v: Record<string, unknown>) => { eq: (c: string, v: string) => { is: (c: string, v: null) => Promise<unknown> } } } }).from("user_applications");
+      for (const jobId of closedIds) {
+        await appsTable.update({ posting_closed_at: nowIso, posting_checked_at: nowIso }).eq("job_id", jobId).is("posting_closed_at", null);
+      }
+    } catch { /* freshness is a bonus signal — never surface an error for it */ }
+  };
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
@@ -667,6 +697,15 @@ export default function Account() {
                       {new Date(a.applied_at).toLocaleDateString()}
                       {version ? ` · sent "${versionName(version)}" (score ${a.scan_score ?? version.ats_score})` : (a.scan_score ? ` · applied with score ${a.scan_score}` : "")}
                     </p>
+                    {a.job_id && (
+                      a.posting_closed_at ? (
+                        <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                          ⚠ This posting closed by {new Date(a.posting_closed_at).toLocaleDateString()} — no longer on the company's board
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-success/80 mt-0.5">● Posting still open</p>
+                      )
+                    )}
                   </div>
                   {version?.resume_text && (
                     <button

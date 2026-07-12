@@ -480,7 +480,13 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   // privacy stance as the scan itself.
   useEffect(() => {
     if (resumeText && resumeText.length >= 100 && freeKeywordResult) {
-      try { sessionStorage.setItem("rb_resume_for_fit", resumeText); } catch { /* ignore */ }
+      try {
+        sessionStorage.setItem("rb_resume_for_fit", resumeText);
+        // Detected industry rides along so post-purchase LiveMatches (and any
+        // later board handoff) can rank by the right field, not a generic list.
+        const ind = (freeKeywordResult as { industry?: string })?.industry;
+        if (ind) sessionStorage.setItem("rb_scan_industry", ind);
+      } catch { /* ignore */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeText, freeKeywordResult]);

@@ -14,6 +14,7 @@ interface SavedSearch {
   name: string;
   params: JobSearchParams;
   last_seen_at: string;
+  digest_opt_in?: boolean;
 }
 
 // user_job_searches postdates the generated DB types — untyped access, same
@@ -28,7 +29,7 @@ export function SavedSearchesCard() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await table().select("id,name,params,last_seen_at").order("created_at", { ascending: false }).limit(20);
+      const { data } = await table().select("id,name,params,last_seen_at,digest_opt_in").order("created_at", { ascending: false }).limit(20);
       const rows: SavedSearch[] = data ?? [];
       setSearches(rows);
       setLoaded(true);
@@ -59,6 +60,16 @@ export function SavedSearchesCard() {
     await table().delete().eq("id", id);
   };
 
+  // Feature 4: opt a saved search into the weekly email digest. Off by
+  // default — we never email without an explicit toggle.
+  const toggleDigest = async (s: SavedSearch) => {
+    const next = !s.digest_opt_in;
+    setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, digest_opt_in: next } : x)));
+    await table().update({ digest_opt_in: next }).eq("id", s.id).then(() => {}, () => {
+      setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, digest_opt_in: !next } : x)));
+    });
+  };
+
   if (!loaded || searches.length === 0) return null;
 
   return (
@@ -82,6 +93,14 @@ export function SavedSearchesCard() {
                 {newCounts[s.id]} new
               </span>
             )}
+            <button
+              onClick={() => toggleDigest(s)}
+              aria-label={s.digest_opt_in ? `Turn off weekly email for ${s.name}` : `Email me weekly about ${s.name}`}
+              title={s.digest_opt_in ? "Weekly email on — click to turn off" : "Email me weekly when new jobs match"}
+              className={`shrink-0 transition-colors ${s.digest_opt_in ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
+            >
+              <BellRing className="w-3.5 h-3.5" />
+            </button>
             <button onClick={() => open(s)} aria-label={`Open search ${s.name}`} className="text-muted-foreground hover:text-foreground shrink-0">
               <ExternalLink className="w-3.5 h-3.5" />
             </button>
@@ -92,7 +111,8 @@ export function SavedSearchesCard() {
         ))}
       </div>
       <p className="text-[11px] text-muted-foreground mt-2">
-        "New" counts postings published since you last opened each search.
+        "New" counts postings published since you last opened each search. Tap the
+        <BellRing className="w-3 h-3 inline mx-0.5 align-text-bottom" /> to get a weekly email when fresh jobs match.
       </p>
     </div>
   );

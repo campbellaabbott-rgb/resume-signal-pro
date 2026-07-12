@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { LiveMatches } from "@/components/LiveMatches";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -2124,6 +2125,23 @@ export default function ProductSuccess() {
             </div>
           </div>
         </section>
+
+        {/* Feature 6: now that they have an improved resume, show live openings
+            to spend it on — closes the paid → board → next-application loop. */}
+        {(() => {
+          let matchResume = recoveryResumeText || coachResumeText || atsDefenseResumeText || "";
+          if (matchResume.length < 100) { try { matchResume = sessionStorage.getItem("rb_resume_text") || sessionStorage.getItem("rb_resume_for_fit") || ""; } catch { /* ignore */ } }
+          if (matchResume.trim().length < 100) return null;
+          let industry = "";
+          try { industry = sessionStorage.getItem("rb_scan_industry") || ""; } catch { /* ignore */ }
+          return (
+            <section className="py-12 border-t border-border/50">
+              <div className="container max-w-3xl">
+                <LiveMatches resumeText={matchResume} industry={industry} />
+              </div>
+            </section>
+          );
+        })()}
 
         {/* Help Section */}
         <section className="py-12 border-t border-border/50">

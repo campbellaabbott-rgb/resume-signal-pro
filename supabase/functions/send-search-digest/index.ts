@@ -1,0 +1,160 @@
+// Feature 4 — weekly saved-search digest. Each opted-in saved search gets an
+// email counting how many NEW postings match it since the search's last
+// digest, with the freshest handful listed and a link back to the live board.
+// Opt-in only (user_job_searches.digest_opt_in); HMAC unsubscribe like the
+// market pulse. Trigger on a schedule: POST /send-search-digest {"action":"send"}.
+import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+const SITE_URL = "https://resumebooster.work";
+const MIN_DAYS_BETWEEN_SENDS = 6; // weekly-ish; never faster than every 6 days
+
+function escapeHtml(text: string | number | undefined | null): string {
+  if (text === undefined || text === null) return "";
+  return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+async function hmacToken(id: string): Promise<string> {
+  const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "digest-secret";
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(id.toLowerCase()));
+  return Array.from(new Uint8Array(sig)).slice(0, 16).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+type SearchParams = { q?: string; category?: string; location?: string; remote?: boolean; company?: string };
+
+function boardUrl(p: SearchParams): string {
+  const qs = new URLSearchParams();
+  if (p.q) qs.set("q", p.q);
+  if (p.location) qs.set("location", p.location);
+  if (p.remote) qs.set("remote", "1");
+  if (p.company) qs.set("company", p.company);
+  if (p.category) qs.set("category", p.category);
+  const s = qs.toString();
+  return `${SITE_URL}/jobs${s ? `?${s}` : ""}`;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+
+  // ── Unsubscribe (GET link from the email) — turns digest_opt_in off ──
+  const url = new URL(req.url);
+  if (req.method === "GET" && url.searchParams.get("action") === "unsubscribe") {
+    const id = url.searchParams.get("id") ?? "";
+    const token = url.searchParams.get("token") ?? "";
+    if (!id || token !== (await hmacToken(id))) {
+      return new Response("Invalid unsubscribe link.", { status: 400, headers: { "Content-Type": "text/plain" } });
+    }
+    await supabase.from("user_job_searches").update({ digest_opt_in: false }).eq("id", id);
+    return new Response(
+      "<html><body style='font-family:sans-serif;text-align:center;padding:60px'><h2>Unsubscribed.</h2><p>No more digest emails for that saved search. Your other saved searches are unaffected.</p></body></html>",
+      { headers: { "Content-Type": "text/html" } },
+    );
+  }
+
+  try {
+    const body = await req.json().catch(() => ({}));
+    if (body.action !== "send") {
+      return new Response(JSON.stringify({ error: "POST { action: 'send' }" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (!RESEND_API_KEY) return new Response(JSON.stringify({ error: "RESEND_API_KEY not configured" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const resend = new Resend(RESEND_API_KEY);
+    const boardBase = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+
+    const cutoff = new Date(Date.now() - MIN_DAYS_BETWEEN_SENDS * 24 * 3600 * 1000).toISOString();
+    const { data: searches, error } = await supabase
+      .from("user_job_searches")
+      .select("id, user_id, name, params, digest_last_sent_at")
+      .eq("digest_opt_in", true)
+      .or(`digest_last_sent_at.is.null,digest_last_sent_at.lt.${cutoff}`)
+      .limit(200);
+    if (error) throw error;
+
+    // Suppressed addresses (global unsubscribes) are honored too.
+    const { data: suppressedRows } = await supabase.from("suppressed_emails").select("email");
+    const suppressed = new Set((suppressedRows ?? []).map((r) => (r.email as string).toLowerCase()));
+
+    let sent = 0, skipped = 0;
+    for (const s of searches ?? []) {
+      const p = (s.params ?? {}) as SearchParams;
+      const since = (s.digest_last_sent_at as string | null) ?? new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+
+      // Resolve the recipient email (service-role admin lookup by user_id).
+      const { data: userRes } = await supabase.auth.admin.getUserById(s.user_id as string);
+      const email = userRes?.user?.email?.toLowerCase();
+      if (!email || suppressed.has(email)) { skipped++; continue; }
+
+      // Count NEW matches since last digest, and pull the freshest few.
+      const callBoard = (extra: Record<string, unknown>) =>
+        fetch(boardBase, {
+          method: "POST",
+          headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "list", q: p.q || undefined, category: p.category || undefined, location: p.location || undefined, remote: p.remote || undefined, companies: p.company ? [p.company] : undefined, includeFacets: false, ...extra }),
+        }).then((r) => r.json()).catch(() => null);
+
+      const countRes = await callBoard({ countOnly: true, postedAfter: since });
+      const newCount = (countRes as { total?: number } | null)?.total ?? 0;
+      if (newCount === 0) {
+        await supabase.from("user_job_searches").update({ digest_last_sent_at: new Date().toISOString() }).eq("id", s.id);
+        skipped++;
+        continue;
+      }
+      const listRes = await callBoard({ limit: 5, offset: 0 });
+      const jobs = ((listRes as { jobs?: Array<{ company: string; title: string; location: string; applyUrl: string }> } | null)?.jobs) ?? [];
+
+      const token = await hmacToken(s.id as string);
+      const unsubUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-search-digest?action=unsubscribe&id=${encodeURIComponent(s.id as string)}&token=${token}`;
+      const viewUrl = `${boardUrl(p)}${boardUrl(p).includes("?") ? "&" : "?"}utm_source=email&utm_medium=search_digest`;
+
+      const rows = jobs.map((j) => `
+        <tr><td style="padding:10px 0;border-bottom:1px solid #eef2f7">
+          <div style="font-size:14px;font-weight:600;color:#0f172a">${escapeHtml(j.title)}</div>
+          <div style="font-size:12px;color:#64748b">${escapeHtml(j.company)}${j.location ? " · " + escapeHtml(j.location) : ""}</div>
+        </td><td style="padding:10px 0;border-bottom:1px solid #eef2f7;text-align:right;vertical-align:middle">
+          <a href="${escapeHtml(j.applyUrl)}" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:600">Apply&nbsp;→</a>
+        </td></tr>`).join("");
+
+      const html = `
+<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif">
+  <div style="max-width:560px;margin:0 auto;padding:24px 16px">
+    <div style="text-align:center;padding:0 0 14px">
+      <span style="font-size:17px;font-weight:800;color:#0f172a">Resume <span style="color:#2563eb">Booster</span></span>
+      <div style="font-size:11px;color:#94a3b8;margin-top:2px">Saved search · ${escapeHtml(s.name as string)}</div>
+    </div>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:22px">
+      <p style="font-size:15px;color:#0f172a;margin:0 0 4px"><b>${escapeHtml(newCount)}</b> new ${newCount === 1 ? "opening" : "openings"} since we last checked</p>
+      <p style="font-size:13px;color:#64748b;margin:0 0 16px">matching “${escapeHtml(s.name as string)}”, pulled from companies' official job boards.</p>
+      <table style="width:100%;border-collapse:collapse">${rows}</table>
+      <div style="text-align:center;margin:20px 0 4px">
+        <a href="${escapeHtml(viewUrl)}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:11px 22px;border-radius:10px;text-decoration:none">See all ${escapeHtml(newCount)} on the board</a>
+      </div>
+      <p style="font-size:12px;color:#94a3b8;text-align:center;margin:10px 0 0">Tip: <a href="${SITE_URL}" style="color:#2563eb;text-decoration:none">scan your resume</a> against any posting before you apply.</p>
+    </div>
+    <p style="font-size:11px;color:#94a3b8;text-align:center;margin:14px 0 0">
+      You turned on the digest for this saved search. <a href="${escapeHtml(unsubUrl)}" style="color:#94a3b8">Turn it off</a>.
+    </p>
+  </div>
+</body></html>`;
+
+      try {
+        await resend.emails.send({ from: "Resume Booster <jobs@resumebooster.work>", to: email, subject: `${newCount} new ${p.category || p.q || "job"} ${newCount === 1 ? "match" : "matches"} — ${s.name}`, html });
+        await supabase.from("user_job_searches").update({ digest_last_sent_at: new Date().toISOString() }).eq("id", s.id);
+        sent++;
+      } catch (e) {
+        console.error("[SEARCH-DIGEST] send failed:", e instanceof Error ? e.message : e);
+        skipped++;
+      }
+    }
+    return new Response(JSON.stringify({ ok: true, sent, skipped, considered: (searches ?? []).length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  } catch (e) {
+    console.error("[SEARCH-DIGEST] error:", e instanceof Error ? e.message : e);
+    return new Response(JSON.stringify({ error: "digest run failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+});

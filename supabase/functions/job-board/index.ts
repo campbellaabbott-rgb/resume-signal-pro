@@ -441,6 +441,22 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         body: JSON.stringify({ action: "recategorize", chainKey: key }),
       })).then((r) => r.text()).catch(() => {}));
     }
+    // Feature 1: refresh the light boards' descriptions daily (they arrive
+    // description-less on the refresh path). Only when the last backfill is
+    // stale, and never concurrent with recategorize — stagger by requiring
+    // the category stamp to be current first.
+    else {
+      const { data: bf } = await client.from("job_board_meta").select("updated_at").eq("k", "desc_backfill").maybeSingle();
+      const bfAge = bf ? Date.now() - new Date(bf.updated_at).getTime() : Infinity;
+      if (bfAge > 24 * 60 * 60_000) {
+        const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+        waitUntil(chainKey().then((key) => fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "backfill-desc", chainKey: key, ti: 0, off: 0 }),
+        })).then((r) => r.text()).catch(() => {}));
+      }
+    }
     return { ok: true, detail: `pass complete — corpus ${f.total} postings from ${companies.length} boards; cold rotation at ${cold}/${COLD_LIST.length}${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 120)}` : ""}` };
   }
 
@@ -634,6 +650,83 @@ Deno.serve(async (req) => {
         }
       }
       return json({ fits, scored, of: ids.length });
+    }
+
+    if (action === "backfill-desc") {
+      // Feature 1: the four Greenhouse giants fetch WITHOUT content on the
+      // refresh path (their bulk htmlToText wedged the pipeline — see
+      // LIGHT_DESC_TOKENS), so their ~9k postings carry no description and
+      // no fit badge. This maintenance sweep restores descriptions in
+      // BOUNDED slices that never run alongside refresh: one board's
+      // content=true payload per hop, at most 500 descriptions processed,
+      // self-chaining through the rest. chainKey-gated like force-refresh.
+      if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
+        return json({ error: "backfill-desc is a maintenance action" }, 403);
+      }
+      const BOARDS = JOB_SOURCES.filter((s) => LIGHT_DESC_TOKENS.has(s.token));
+      const SLICE_ROWS = 500;
+      let ti = Math.max(0, Number(body.ti) || 0);
+      let off = Math.max(0, Number(body.off) || 0);
+      // Touch the meta each hop so the pass-end trigger's 24h staleness check
+      // sees a fresh timestamp and can't spawn an overlapping sweep mid-run.
+      await client.from("job_board_meta").upsert(
+        { k: "desc_backfill", v: { runningTi: ti, runningOff: off }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+      if (ti >= BOARDS.length) {
+        await client.from("job_board_meta").upsert(
+          { k: "desc_backfill", v: { doneAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        );
+        return json({ ok: true, done: true });
+      }
+      const s = BOARDS[ti];
+      const r = await fetchBoard(s);
+      let updated = 0;
+      if (r && s.source === "greenhouse") {
+        const jobs = ((r.raw as { jobs?: Array<{ id: number; content?: string }> }).jobs ?? []);
+        const clean = (x: string) => x.replace(/\u0000/g, "");
+        const slice = jobs.slice(off, off + SLICE_ROWS);
+        for (const j of slice) {
+          const text = j.content ? clean(htmlToText(String(j.content).slice(0, 12000)).trim()).slice(0, 4000) : "";
+          if (text) {
+            const { error } = await client.from("job_board_postings")
+              .update({ description: text }).eq("id", `greenhouse:${s.token}:${j.id}`);
+            if (!error) updated++;
+          }
+        }
+        off += SLICE_ROWS;
+        if (off >= jobs.length) { ti += 1; off = 0; }
+      } else {
+        // board unreachable this hop — skip to the next board rather than stall
+        ti += 1; off = 0;
+      }
+      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+      waitUntil(chainKey().then((key) => fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "backfill-desc", chainKey: key, ti, off }),
+      })).then((rr) => rr.text()).catch(() => {}));
+      return json({ ok: true, board: s.token, updated, nextTi: ti, nextOff: off });
+    }
+
+    if (action === "exists") {
+      // Feature 7: the tracker asks which of a user's saved/applied job ids
+      // are still live. A missing id means the company took the posting down
+      // (refresh deletes vanished ids within the hour). Read-only, cheap.
+      const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, 200) : [];
+      if (ids.length === 0) return json({ open: {} });
+      const openMap: Record<string, boolean> = {};
+      for (const id of ids) openMap[id] = false;
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data, error } = await client
+          .from("job_board_postings")
+          .select("id")
+          .in("id", ids.slice(i, i + 200));
+        if (error) throw error;
+        for (const r of data ?? []) openMap[r.id as string] = true;
+      }
+      return json({ open: openMap });
     }
 
     if (action === "detail") {
