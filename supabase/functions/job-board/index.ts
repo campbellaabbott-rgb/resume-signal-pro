@@ -446,9 +446,26 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       console.warn("[JOB-BOARD] facets RPC unavailable — previous refresh meta kept:", facetsErr?.message ?? "empty result");
       return { ok: true, detail: `pass complete but facets RPC unavailable (${facetsErr?.message ?? "empty result"}) — run migration 20260712080000` };
     }
-    const companies = Array.isArray(f.companiesFacet) ? f.companiesFacet : [];
+    let companies = Array.isArray(f.companiesFacet) ? f.companiesFacet : [];
+
+    // Orphan prune: a board removed from sources.ts is never fetched again, so
+    // its postings would linger forever. Diff the DB's live company list
+    // (from the facets we just computed) against the source of truth and
+    // delete any token no longer aboard — so a removal actually disappears.
+    const validTokens = new Set(JOB_SOURCES.map((s) => s.token));
+    const orphanTokens = companies
+      .map((c) => (c as { token?: string }).token)
+      .filter((tk): tk is string => typeof tk === "string" && !validTokens.has(tk));
+    if (orphanTokens.length > 0) {
+      for (const tk of orphanTokens) {
+        await client.from("job_board_postings").delete().eq("company_token", tk);
+      }
+      console.log(`[JOB-BOARD] orphan-pruned ${orphanTokens.length} removed board(s): ${orphanTokens.slice(0, 8).join(", ")}`);
+      companies = companies.filter((c) => !orphanTokens.includes((c as { token?: string }).token ?? ""));
+    }
+
     const v = {
-      total: f.total,
+      total: f.total, // includes just-pruned orphans until the next pass recomputes — harmless
       boards: companies.length,
       failedSources: failedAcc,
       companiesFacet: companies,
