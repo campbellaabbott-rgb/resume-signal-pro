@@ -14,7 +14,7 @@
 // never linger. A refresh lock in job_board_meta stops stampedes.
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { JOB_SOURCES, type JobSource } from "./sources.ts";
+import { HOT_TOKENS, JOB_SOURCES, type JobSource } from "./sources.ts";
 import {
   htmlToText,
   normalizeAshby,
@@ -45,7 +45,8 @@ const FETCH_TIMEOUT_MS = 8_000;
 // read-triggered SWR calls walk the full list continuously. Facets swap in
 // when a cycle completes; until then the previous complete cycle serves.
 const CONCURRENCY = 4;
-const SLICE = 30; // lighter slices: heavy GH-description batches were intermittently hitting the compute ceiling and stalling the chain
+const SLICE = 30; // hot slices: heavy GH-description batches were intermittently hitting the compute ceiling and stalling the chain
+const COLD_SLICE = 60; // cold boards are small (that's why they're cold) — bigger slices keep full-tail rotation inside the hour
 const SLICE_LOCK_MS = 3 * 60_000; // min gap between slices
 const DESC_CAP = 14_000; // matches the scanner's own input bounds
 
@@ -137,11 +138,15 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
 
 // ── refresh: fan-out → upsert → prune (only successful boards) ─────────────
 
-// Self-chaining: a completed slice background-invokes the next one, so a
-// single cron tick walks the WHOLE corpus in minutes — per-board freshness
-// stays ~10-15 min even at 609 boards. The hop cap stops runaway chains;
-// the cycle-complete branch ends the chain naturally.
-const CHAIN_CAP = Math.ceil(700 / SLICE); // headroom above current board count
+// Two-tier cadence: HOT boards (heaviest inventory) re-verify on every
+// chain pass (~10 min); the long tail rotates through a fixed budget of
+// cold slices per pass, so a full tail rotation is bounded regardless of
+// how many boards the catalog grows to. Pass length is therefore FIXED:
+// ceil(hot/SLICE) hot hops + COLD_SLICES_PER_PASS cold hops.
+const HOT_LIST = JOB_SOURCES.filter((s) => HOT_TOKENS.has(s.token));
+const COLD_LIST = JOB_SOURCES.filter((s) => !HOT_TOKENS.has(s.token));
+const COLD_SLICES_PER_PASS = 8;
+const CHAIN_CAP = Math.ceil(HOT_LIST.length / SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 function chainNextSlice(hop: number) {
   const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
@@ -152,21 +157,28 @@ function chainNextSlice(hop: number) {
   }).then((r) => r.text()).catch(() => {}));
 }
 
+// Two-tier refresh: HOT boards (heavy inventory) re-verify on every chain
+// pass (~10 min); the long tail rotates through cold slices across passes
+// (full rotation bounded by tail size / slices-per-pass). Facets come from
+// the get_job_board_facets() RPC at pass end — always DB-true, no
+// accumulator bookkeeping.
 async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): Promise<{ ok: boolean; detail: string }> {
-  // Slice lock: cron + SWR + manual calls may overlap; one slice per window.
   const { data: prog } = await client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle();
   if (!force && prog && Date.now() - new Date(prog.updated_at).getTime() < SLICE_LOCK_MS) {
     return { ok: true, detail: "skipped — a slice ran moments ago" };
   }
-  const pv = (prog?.v ?? {}) as {
-    cursor?: number;
-    total?: number;
-    failed?: string[];
-    companyCounts?: Record<string, number>;
-    categories?: Record<string, number>;
-  };
-  const cursor = Number.isFinite(pv.cursor) ? Math.max(0, Number(pv.cursor)) : 0;
-  const slice = JOB_SOURCES.slice(cursor, cursor + SLICE);
+  const pv = (prog?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
+  // A fresh chain (hop 0) starts a new hot pass; the cold cursor persists
+  // across passes so the tail keeps rotating.
+  let hot = chainHop === 0 ? 0 : Math.max(0, Number(pv.hot) || 0);
+  let cold = Math.max(0, Number(pv.cold) || 0) % Math.max(1, COLD_LIST.length);
+  let coldDone = chainHop === 0 ? 0 : Math.max(0, Number(pv.coldDone) || 0);
+  if (chainHop === 0) pv.failedAcc = [];
+
+  const inHotPhase = hot < HOT_LIST.length;
+  const slice = inHotPhase
+    ? HOT_LIST.slice(hot, hot + SLICE)
+    : COLD_LIST.slice(cold, cold + COLD_SLICE);
   const startIso = new Date().toISOString();
 
   const queue = [...slice];
@@ -174,8 +186,6 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   const failed: string[] = [];
   let sliceTotal = 0;
   let lastUpsertError: string | null = null;
-  const companyCounts: Record<string, number> = pv.companyCounts ?? {};
-  const categories: Record<string, number> = pv.categories ?? {};
 
   await Promise.all(
     Array.from({ length: CONCURRENCY }, async () => {
@@ -200,7 +210,6 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           }
         } else if (s.source === "greenhouse") {
           for (const j of ((r.raw as { jobs?: Array<{ id: number; content?: string }> }).jobs ?? [])) {
-            // Cap the expensive HTML→text work per posting.
             const text = j.content ? htmlToText(String(j.content).slice(0, 24000)).trim() : "";
             if (text) descs.set(`greenhouse:${s.token}:${j.id}`, text.slice(0, 4000));
           }
@@ -233,7 +242,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             boardOk = false;
             lastUpsertError = `${s.token}: ${error.message}`;
             console.warn(`[JOB-BOARD] upsert failed for ${s.token}:`, error.message.slice(0, 200));
-            break; // this board only — the slice continues
+            break;
           }
         }
         if (!boardOk) {
@@ -242,10 +251,6 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         }
         okTokens.push(s.token);
         sliceTotal += rows.length;
-        companyCounts[s.token] = rows.length;
-        for (const row of rows) {
-          categories[row.category as string] = (categories[row.category as string] ?? 0) + 1;
-        }
       }
     }),
   );
@@ -259,48 +264,49 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       .in("company_token", okTokens.slice(i, i + 50));
   }
 
-  const nextCursor = cursor + SLICE;
-  const cycleDone = nextCursor >= JOB_SOURCES.length;
-  const allFailed = [...(pv.failed ?? []), ...failed];
-  const runningTotal = (pv.total ?? 0) + sliceTotal;
-
-  if (!cycleDone && chainHop < CHAIN_CAP) {
-    chainNextSlice(chainHop); // walk the rest of the cycle in the background
+  // Advance cursors. Cold advances by the ACTUAL slice length — the tail
+  // slice is short, and advancing by a full SLICE would skip the boards
+  // just past the wrap point on every rotation.
+  if (inHotPhase) hot += SLICE;
+  else {
+    cold = (cold + slice.length) % Math.max(1, COLD_LIST.length);
+    coldDone += 1;
   }
+  const passDone = hot >= HOT_LIST.length && coldDone >= COLD_SLICES_PER_PASS;
 
-  if (cycleDone) {
-    // Swap the completed cycle into the live facets.
-    const companiesFacet: Array<{ token: string; name: string; count: number }> = [];
-    for (const s of JOB_SOURCES) {
-      const c = companyCounts[s.token] ?? 0;
-      if (c > 0) companiesFacet.push({ token: s.token, name: s.name, count: c });
+  const failedAcc = [...(Array.isArray(pv.failedAcc) ? pv.failedAcc : []), ...failed].slice(-120);
+  await client.from("job_board_meta").upsert(
+    { k: "refresh_progress", v: { hot, cold, coldDone, failedAcc }, updated_at: new Date().toISOString() },
+    { onConflict: "k" },
+  );
+
+  if (passDone) {
+    // Facets from the database — always true to what the board serves. If
+    // the RPC isn't migrated yet (function published before migration ran),
+    // keep the previous meta instead of clobbering it with zeros.
+    const { data: facets, error: facetsErr } = await client.rpc("get_job_board_facets");
+    const f = (facets ?? {}) as Record<string, unknown>;
+    if (facetsErr || !f.total) {
+      console.warn("[JOB-BOARD] facets RPC unavailable — previous refresh meta kept:", facetsErr?.message ?? "empty result");
+      return { ok: true, detail: `pass complete but facets RPC unavailable (${facetsErr?.message ?? "empty result"}) — run migration 20260712080000` };
     }
+    const companies = Array.isArray(f.companiesFacet) ? f.companiesFacet : [];
     const v = {
-      total: runningTotal,
-      boards: JOB_SOURCES.length - allFailed.length,
-      failedSources: allFailed,
-      companiesFacet,
-      categoriesFacet: categories,
+      total: f.total,
+      boards: companies.length,
+      failedSources: failedAcc,
+      companiesFacet: companies,
+      categoriesFacet: f.categoriesFacet ?? {},
       refreshedAt: startIso,
     };
     await client.from("job_board_meta").upsert({ k: "refresh", v, updated_at: new Date().toISOString() }, { onConflict: "k" });
-    await client.from("job_board_meta").upsert(
-      { k: "refresh_progress", v: { cursor: 0 }, updated_at: new Date().toISOString() },
-      { onConflict: "k" },
-    );
-    console.log(`[JOB-BOARD] cycle complete: ${runningTotal} postings, ${allFailed.length} boards failed`);
-    return { ok: true, detail: `cycle complete: ${runningTotal} postings from ${JOB_SOURCES.length - allFailed.length}/${JOB_SOURCES.length} boards${allFailed.length ? ` — failed: ${allFailed.slice(0, 6).join(", ")}${allFailed.length > 6 ? "…" : ""}` : ""}${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 140)}` : ""}` };
+    console.log(`[JOB-BOARD] pass complete: hot ${HOT_LIST.length} boards + ${COLD_SLICES_PER_PASS} cold slices; corpus total ${f.total}`);
+    return { ok: true, detail: `pass complete — corpus ${f.total} postings from ${companies.length} boards; cold rotation at ${cold}/${COLD_LIST.length}${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 120)}` : ""}` };
   }
 
-  await client.from("job_board_meta").upsert(
-    {
-      k: "refresh_progress",
-      v: { cursor: nextCursor, total: runningTotal, failed: allFailed, companyCounts, categories },
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "k" },
-  );
-  return { ok: true, detail: `slice ${cursor}–${nextCursor - 1} done (${sliceTotal} postings, ${failed.length} failed) — cycle at ${nextCursor}/${JOB_SOURCES.length}` };
+  if (chainHop < CHAIN_CAP) chainNextSlice(chainHop);
+  const phase = inHotPhase ? `hot ${Math.min(hot, HOT_LIST.length)}/${HOT_LIST.length}` : `cold slice ${coldDone}/${COLD_SLICES_PER_PASS} (rotation ${cold}/${COLD_LIST.length})`;
+  return { ok: true, detail: `slice done (${sliceTotal} postings, ${failed.length} failed) — ${phase}` };
 }
 
 // ── detail: one posting's description (bounded memo, no bulk caching) ─────
@@ -512,11 +518,15 @@ async function serveList(
   if (error) throw error;
 
   const v = (meta?.v ?? {}) as Record<string, unknown>;
+  // The company facet grows with the catalog (~60 bytes/company); refetches
+  // that already hold it can opt out instead of re-downloading it per filter
+  // change. Absent/true keeps the old contract for deployed frontends.
+  const includeFacets = (body as { includeFacets?: boolean }).includeFacets !== false;
   return json({
     jobs: (data ?? []).map(rowToJob),
     total: count ?? 0,
     totalAllCompanies: (v.total as number) ?? count ?? 0,
-    companies: (v.companiesFacet as unknown[]) ?? [],
+    companies: includeFacets ? ((v.companiesFacet as unknown[]) ?? []) : [],
     categories: (v.categoriesFacet as Record<string, number>) ?? {},
     failedSources: (v.failedSources as string[]) ?? [],
     refreshedAt: (v.refreshedAt as string) ?? null,

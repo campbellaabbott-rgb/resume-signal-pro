@@ -372,3 +372,16 @@ describe("filter + sort", () => {
     expect([...dated].sort().reverse()).toEqual(dated);
   });
 });
+
+describe("tiered refresh invariants", () => {
+  it("every HOT token matches a real source token (silent-shrink guard)", async () => {
+    const { HOT_TOKENS, JOB_SOURCES } = await import("../../supabase/functions/job-board/sources");
+    const tokens = new Set(JOB_SOURCES.map((s) => s.token));
+    const missing = [...HOT_TOKENS].filter((t) => !tokens.has(t));
+    expect(missing).toEqual([]);
+    // Hot tier must stay small enough that the hot phase fits a few slices —
+    // it re-runs every pass, so its size bounds per-pass cost.
+    expect(HOT_TOKENS.size).toBeGreaterThan(20);
+    expect(HOT_TOKENS.size).toBeLessThan(300);
+  });
+});

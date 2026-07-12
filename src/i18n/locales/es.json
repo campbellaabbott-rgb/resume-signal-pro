@@ -1644,7 +1644,7 @@
     },
     "matches": {
       "title": "Ofertas en vivo que encajan con este currículum",
-      "subtitle": "Ordenadas con la misma puntuación determinista de tu informe — desde bolsas de empleo reales, actualizadas cada ~10 minutos.",
+      "subtitle": "Ordenadas con la misma puntuación determinista de tu informe — desde bolsas de empleo reales, verificadas continuamente contra el feed oficial de cada empresa.",
       "loading": "Clasificando ofertas en vivo contra tu currículum…",
       "apply": "Postular",
       "seeAll": "Ver todas las coincidencias en la bolsa — guarda búsquedas y sigue candidaturas"
@@ -2836,6 +2836,10 @@
     }
   },
   "changelogEntries": {
+    "board90k": {
+      "title": "La bolsa de empleo se duplica: ~90.000 ofertas activas de casi 900 empresas",
+      "description": "La bolsa pasó de unas 40.000 a unas 90.000 ofertas activas. Nuevos esta ronda: grandes empleadores como AECOM, Domino's, SGS, Veolia, Carvana, Turner & Townsend, Eurofins, Sopra Steria, Greene King, BAYADA Home Health Care, CROSSMARK, EōS Fitness y BoxLunch — con mucho peso en sanidad, ingeniería, restauración, comercio, hostelería y laboratorio, no solo tecnología. Cada empresa entró igual: encontrada en un censo de las principales plataformas de contratación, verificada contra la API pública oficial de la plataforma y nombrada según los registros de la propia plataforma. En ese censo también encontramos agregadores y feeds de ofertas republicadas, y los excluimos — cada oferta aquí pertenece a la empresa que la publicó. La actualización se volvió más inteligente con el tamaño: los tablones más grandes se revisan cada 10–15 minutos y el catálogo completo se vuelve a verificar en cerca de una hora, así que las ofertas retiradas siguen desapareciendo en la siguiente pasada."
+    },
     "suiteV2": {
       "title": "Precios más simples, una garantía real y ayuda para postular a ese empleo",
       "description": "Tres cambios en las herramientas de pago. La página de precios ahora presenta tres opciones claras en vez de un muro de trece — el catálogo completo sigue ahí, a un clic. Cada herramienta de pago incluye ahora un compromiso: ¿no te convence el resultado? Lo regeneramos gratis. Y tras comparar tu currículum con una oferta real, el informe puede preparar esa candidatura exacta — currículum adaptado, carta a juego y lista honesta de brechas — con una muestra gratis desde tu propio currículum antes de pagar."
@@ -4004,7 +4008,7 @@
     "checkFit": "Comprobar mi encaje — escaneo gratis",
     "apply": "Postularme en el sitio de {{company}}",
     "loadMore": "Cargar más",
-    "sourceNote": "Fuentes: las API públicas oficiales que las empresas publican en Greenhouse, Lever, Ashby, SmartRecruiters, Workable y BambooHR. El portal de cada empresa se revisa aproximadamente cada 10–15 minutos, y las ofertas retiradas desaparecen en la siguiente pasada. Una fuente que deja de responder sale del tablón en lugar de romperlo.",
+    "sourceNote": "Fuentes: las API públicas oficiales que las empresas publican en Greenhouse, Lever, Ashby, SmartRecruiters, Workable y BambooHR. Los tablones más grandes se revisan aproximadamente cada 10–15 minutos y el resto del catálogo rota de forma continua — cada fuente se vuelve a verificar en cerca de una hora, y las ofertas retiradas desaparecen en la siguiente pasada. Una fuente que deja de responder sale del tablón en lugar de romperlo.",
     "fitFetchErrorTitle": "No se pudo cargar esa oferta",
     "fitFetchError": "La fuente de la empresa no devolvió la descripción. Abre la oferta y pégala en el escáner.",
     "fitLoadedTitle": "Descripción del puesto cargada",

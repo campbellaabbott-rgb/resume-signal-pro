@@ -16,7 +16,50 @@ export interface JobSource {
   token: string; // the company's board token on that ATS
 }
 
+// Boards with heavy inventory get re-checked every cycle (~10 min); the
+// long tail rotates through cold slices (full rotation ≤ ~1 hour). The set
+// is recomputed at each discovery sweep from verified posting counts.
+export const HOT_TOKENS: Set<string> = new Set([
+  "boxlunch", "BoschGroup", "CROSSMARK1", "SGS", "AECOM2", "Dominos",
+  "GreeneKing", "VeoliaEnvironnementSA", "JYSK", "TurnerTownsend", "eosfitness", "pulse",
+  "bayada", "Eurofins", "andurilindustries", "carvana", "SopraSteria1", "spacex",
+  "liquidpersonnel", "Securitas", "Devoteam", "Continental", "agency", "databricks",
+  "veeva", "plscareers", "openai", "Experian", "Accor", "stripe",
+  "datadog", "snowflake", "ServiceNow", "anthropic", "mongodb", "hellofresh",
+  "rocketlab", "okta", "harvey", "relativity", "onemedical", "latitudeinc",
+  "samsara", "toast", "coreweave", "remotecom", "palantir", "sila",
+  "brex", "oscar", "applied", "CesiumAstro", "lucidmotors", "cloudflare",
+  "distro", "point72", "scoutmotors", "legora", "braze", "Ubisoft2",
+  "zoox", "janestreet", "xai", "airbnb", "icapitalnetwork", "sezzle",
+  "betterhelp", "urbancompass", "deliveroo", "super", "optiverus", "sonyinteractiveentertainmentglobal",
+  "pinterest", "reddit", "scaleai", "trueanomalyinc", "wyetechllc", "elevenlabs",
+  "affirm", "prolific", "figma", "klaviyo", "clera", "base-power",
+  "imc", "sierra", "stage", "twilio", "whoop", "gitlab",
+  "asana", "aurorainnovation", "flexport", "notion", "instacart", "scopely",
+  "drweng", "intercom", "hadrian-automation", "zip", "coinbase", "octoenergy",
+  "cohere", "handshake", "fivetran", "ramp", "Sodexo", "LGCGroup",
+  "ixllearning", "lilasciences", "trm-labs", "vanta", "decagon", "cursor",
+  "robinhood", "tractian", "Colliers", "spotify", "billiontoone", "justworks",
+]);
+
 export const JOB_SOURCES: JobSource[] = [
+  // CDX census sweep (2026-07-12): Wayback CDX enumeration of vendor domains,
+  // every board live-verified via the vendor's official public API and named
+  // from the vendor's own metadata. 14 boards, ~37782 postings at selection time.
+  { name: "EōS Fitness", source: "greenhouse", token: "eosfitness" },
+  { name: "BAYADA Home Health Care", source: "greenhouse", token: "bayada" },
+  { name: "Carvana", source: "greenhouse", token: "carvana" },
+  { name: "Liquid Personnel", source: "greenhouse", token: "liquidpersonnel" },
+  { name: "BoxLunch & Hot Topic", source: "lever", token: "boxlunch" },
+  { name: "CROSSMARK", source: "smartrecruiters", token: "CROSSMARK1" },
+  { name: "SGS", source: "smartrecruiters", token: "SGS" },
+  { name: "AECOM", source: "smartrecruiters", token: "AECOM2" },
+  { name: "Domino's", source: "smartrecruiters", token: "Dominos" },
+  { name: "Greene King", source: "smartrecruiters", token: "GreeneKing" },
+  { name: "Veolia Environnement SA", source: "smartrecruiters", token: "VeoliaEnvironnementSA" },
+  { name: "Turner & Townsend", source: "smartrecruiters", token: "TurnerTownsend" },
+  { name: "Eurofins", source: "smartrecruiters", token: "Eurofins" },
+  { name: "Sopra Steria", source: "smartrecruiters", token: "SopraSteria1" },
   // Sweep #5 (2026-07-11): 261 boards from public link corpora + YC remainder.
   { name: "8vc", source: "ashby", token: "8vc" },
   { name: "ABACUS", source: "greenhouse", token: "abacus" },

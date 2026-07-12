@@ -209,6 +209,10 @@ export default function Jobs() {
     });
   };
 
+  // Company facet arrives once and is cached — refetches skip it (it can be
+  // hundreds of KB at full catalog size) and splice the cache back in.
+  const companiesCache = useRef<BoardResponse["companies"]>([]);
+
   const fetchJobs = useCallback(
     async (offset: number) => {
       const seq = ++reqSeq.current;
@@ -226,12 +230,16 @@ export default function Jobs() {
             postedAfter: freshness ? new Date(Date.now() - (freshness === "day" ? 1 : 7) * 86_400_000).toISOString() : undefined,
             limit: PAGE,
             offset,
+            includeFacets: companiesCache.current.length === 0,
           },
         });
         if (err || !res?.jobs) throw new Error(err?.message ?? "no jobs field");
         if (seq !== reqSeq.current) return; // a newer filter superseded this request
-        setData(res as BoardResponse);
-        setJobs((prev) => (offset === 0 ? (res as BoardResponse).jobs : [...prev, ...(res as BoardResponse).jobs]));
+        const br = res as BoardResponse;
+        if (br.companies?.length) companiesCache.current = br.companies;
+        else br.companies = companiesCache.current;
+        setData(br);
+        setJobs((prev) => (offset === 0 ? br.jobs : [...prev, ...br.jobs]));
       } catch (e) {
         console.error("[Jobs] list failed:", e);
         if (seq === reqSeq.current) setError(true);
@@ -602,7 +610,7 @@ export default function Jobs() {
           )}
 
           <p className="text-[11px] text-muted-foreground mt-10">
-            {t("jobsPage.sourceNote", "Sources: the official public job-board APIs each company publishes on Greenhouse, Lever, or Ashby, refreshed on load (cached ~10 minutes). A feed that stops responding drops off the board rather than breaking it.")}
+            {t("jobsPage.sourceNote", "Sources: the official public job-board APIs companies publish on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and BambooHR. The largest boards are re-checked about every 10–15 minutes and the whole catalog rotates continuously — every feed is re-verified within about an hour, and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.")}
           </p>
         </div>
       </main>

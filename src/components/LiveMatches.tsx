@@ -109,7 +109,7 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
         <h3 className="font-bold text-foreground">{t("freeResults.matches.title", "Live openings matching this resume")}</h3>
       </div>
       <p className="text-xs text-muted-foreground mb-3">
-        {t("freeResults.matches.subtitle", "Ranked by the same deterministic fit scoring as your report — from live company job boards, refreshed every ~10 minutes.")}
+        {t("freeResults.matches.subtitle", "Ranked by the same deterministic fit scoring as your report — from live company job boards, continuously re-verified against each company's official feed.")}
       </p>
 
       {matches === null ? (

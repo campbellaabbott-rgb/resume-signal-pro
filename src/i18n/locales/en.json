@@ -1644,7 +1644,7 @@
     },
     "matches": {
       "title": "Live openings matching this resume",
-      "subtitle": "Ranked by the same deterministic fit scoring as your report — from live company job boards, refreshed every ~10 minutes.",
+      "subtitle": "Ranked by the same deterministic fit scoring as your report — from live company job boards, continuously re-verified against each company's official feed.",
       "loading": "Ranking live openings against your resume…",
       "apply": "Apply",
       "seeAll": "See all matches on the job board — save searches, track applications"
@@ -2836,6 +2836,10 @@
     }
   },
   "changelogEntries": {
+    "board90k": {
+      "title": "Job board doubles: ~90,000 live postings across nearly 900 companies",
+      "description": "The board grew from roughly 40,000 to roughly 90,000 live postings. New this round: major employers like AECOM, Domino's, SGS, Veolia, Carvana, Turner & Townsend, Eurofins, Sopra Steria, Greene King, BAYADA Home Health Care, CROSSMARK, EōS Fitness and BoxLunch — heavy on healthcare, engineering, food service, retail, hospitality and lab work, not just tech. Every company joined the same way: found in a census of the major hiring platforms, then verified against the platform's official public API and named from the platform's own records. We also found aggregators and reposted-listing feeds in that census and excluded them — every posting here belongs to the company that published it. The refresh got smarter with the size: the largest boards are re-checked about every 10–15 minutes and the whole catalog is re-verified within about an hour, so postings a company takes down keep disappearing on the next pass."
+    },
     "suiteV2": {
       "title": "Simpler pricing, a real guarantee, and apply-for-this-job help",
       "description": "Three changes to how the paid tools work. Pricing now leads with three clear choices instead of a wall of thirteen — the full catalog is still there, one click away. Every paid tool now carries a make-it-right promise: not happy with the output? We'll regenerate it free. And after you check your resume against a real posting, the report can now prepare that exact application — resume tailored to the job, matching cover letter, honest gap list — with a free preview from your own resume before you pay."
@@ -4004,7 +4008,7 @@
     "checkFit": "Check my fit — free scan",
     "apply": "Apply on {{company}}'s site",
     "loadMore": "Load more",
-    "sourceNote": "Sources: the official public job-board APIs companies publish on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and BambooHR. Every company's feed is re-checked about every 10–15 minutes, and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.",
+    "sourceNote": "Sources: the official public job-board APIs companies publish on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and BambooHR. The largest boards are re-checked about every 10–15 minutes and the whole catalog rotates continuously — every feed is re-verified within about an hour, and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.",
     "fitFetchErrorTitle": "Couldn't load that posting",
     "fitFetchError": "The company's feed didn't return the description. Open the posting and paste it into the scanner instead.",
     "fitLoadedTitle": "Job description loaded",

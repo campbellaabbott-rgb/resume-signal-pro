@@ -1644,7 +1644,7 @@
     },
     "matches": {
       "title": "Vagas ao vivo que combinam com este currículo",
-      "subtitle": "Classificadas com a mesma pontuação determinística do seu relatório — de murais de vagas reais, atualizados a cada ~10 minutos.",
+      "subtitle": "Classificadas com a mesma pontuação determinística do seu relatório — de murais de vagas reais, verificados continuamente contra o feed oficial de cada empresa.",
       "loading": "Classificando vagas ao vivo contra seu currículo…",
       "apply": "Candidatar",
       "seeAll": "Ver todas as combinações no mural — salve buscas e acompanhe candidaturas"
@@ -2836,6 +2836,10 @@
     }
   },
   "changelogEntries": {
+    "board90k": {
+      "title": "O mural de vagas dobra: ~90.000 vagas ativas de quase 900 empresas",
+      "description": "O mural cresceu de cerca de 40.000 para cerca de 90.000 vagas ativas. Novidades desta rodada: grandes empregadores como AECOM, Domino's, SGS, Veolia, Carvana, Turner & Townsend, Eurofins, Sopra Steria, Greene King, BAYADA Home Health Care, CROSSMARK, EōS Fitness e BoxLunch — com muito peso em saúde, engenharia, alimentação, varejo, hotelaria e laboratório, não só tecnologia. Cada empresa entrou do mesmo jeito: encontrada em um censo das principais plataformas de contratação, verificada contra a API pública oficial da plataforma e nomeada pelos registros da própria plataforma. Nesse censo também encontramos agregadores e feeds de vagas republicadas — e os excluímos. Cada vaga aqui pertence à empresa que a publicou. A atualização ficou mais inteligente com o tamanho: os murais maiores são reverificados a cada 10–15 minutos e o catálogo inteiro é reverificado em cerca de uma hora, então vagas retiradas continuam sumindo na próxima passada."
+    },
     "suiteV2": {
       "title": "Preços mais simples, garantia de verdade e ajuda para se candidatar àquela vaga",
       "description": "Três mudanças nas ferramentas pagas. A página de preços agora apresenta três escolhas claras em vez de um muro de treze — o catálogo completo continua lá, a um clique. Toda ferramenta paga agora carrega um compromisso: não gostou do resultado? Regeneramos grátis. E depois de comparar seu currículo com uma vaga real, o relatório pode preparar essa candidatura exata — currículo adaptado, carta combinando, lista honesta de lacunas — com uma amostra grátis do seu próprio currículo antes de pagar."
@@ -4004,7 +4008,7 @@
     "checkFit": "Checar meu encaixe — escaneio grátis",
     "apply": "Candidatar-se no site da {{company}}",
     "loadMore": "Carregar mais",
-    "sourceNote": "Fontes: as APIs públicas oficiais que as empresas publicam no Greenhouse, Lever, Ashby, SmartRecruiters, Workable e BambooHR. O feed de cada empresa é reverificado a cada 10–15 minutos, e vagas retiradas somem na próxima passada. Um feed que para de responder sai do mural em vez de quebrá-lo.",
+    "sourceNote": "Fontes: as APIs públicas oficiais que as empresas publicam no Greenhouse, Lever, Ashby, SmartRecruiters, Workable e BambooHR. Os murais maiores são reverificados a cada 10–15 minutos e o restante do catálogo gira continuamente — cada feed é reverificado em cerca de uma hora, e vagas retiradas somem na próxima passada. Um feed que para de responder sai do mural em vez de quebrá-lo.",
     "fitFetchErrorTitle": "Não foi possível carregar essa vaga",
     "fitFetchError": "O feed da empresa não retornou a descrição. Abra a vaga e cole-a no escâner.",
     "fitLoadedTitle": "Descrição da vaga carregada",

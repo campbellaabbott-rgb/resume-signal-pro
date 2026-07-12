@@ -1644,7 +1644,7 @@
     },
     "matches": {
       "title": "Live vacatures die bij dit cv passen",
-      "subtitle": "Gerangschikt met dezelfde deterministische matchscore als je rapport — uit echte vacaturebanken, elke ~10 minuten ververst.",
+      "subtitle": "Gerangschikt met dezelfde deterministische matchscore als je rapport — uit echte vacaturebanken, doorlopend geverifieerd tegen de officiële feed van elk bedrijf.",
       "loading": "Live vacatures worden gerangschikt tegen je cv…",
       "apply": "Solliciteer",
       "seeAll": "Bekijk alle matches op de vacaturebank — zoekopdrachten opslaan, sollicitaties volgen"
@@ -2836,6 +2836,10 @@
     }
   },
   "changelogEntries": {
+    "board90k": {
+      "title": "Vacaturebank verdubbelt: ~90.000 actieve vacatures van bijna 900 bedrijven",
+      "description": "De bank groeide van ongeveer 40.000 naar ongeveer 90.000 actieve vacatures. Nieuw deze ronde: grote werkgevers zoals AECOM, Domino's, SGS, Veolia, Carvana, Turner & Townsend, Eurofins, Sopra Steria, Greene King, BAYADA Home Health Care, CROSSMARK, EōS Fitness en BoxLunch — met veel zorg, techniek, horeca, retail en laboratoriumwerk, niet alleen tech. Elk bedrijf kwam op dezelfde manier binnen: gevonden in een census van de grote wervingsplatforms, geverifieerd tegen de officiële publieke API van het platform en benoemd volgens de registers van het platform zelf. In die census vonden we ook aggregators en feeds met doorgeplaatste vacatures — die hebben we uitgesloten. Elke vacature hier is van het bedrijf dat haar publiceerde. De verversing groeide mee: de grootste borden worden elke 10–15 minuten opnieuw gecheckt en de hele catalogus wordt binnen ongeveer een uur opnieuw geverifieerd, dus ingetrokken vacatures blijven bij de volgende ronde verdwijnen."
+    },
     "suiteV2": {
       "title": "Eenvoudigere prijzen, een echte garantie en hulp bij precies die sollicitatie",
       "description": "Drie veranderingen aan de betaalde tools. De prijzenpagina begint nu met drie duidelijke keuzes in plaats van een muur van dertien — de volledige catalogus blijft één klik verwijderd. Elke betaalde tool draagt nu een belofte: niet blij met het resultaat? We regenereren het gratis. En nadat je je cv aan een echte vacature hebt getoetst, kan het rapport precies die sollicitatie voorbereiden — cv op maat, bijpassende brief, eerlijke lijst van hiaten — met een gratis voorbeeld uit je eigen cv vóór je betaalt."
@@ -4004,7 +4008,7 @@
     "checkFit": "Check mijn match — gratis scan",
     "apply": "Solliciteer op de site van {{company}}",
     "loadMore": "Meer laden",
-    "sourceNote": "Bronnen: de officiële publieke vacature-API's die bedrijven publiceren op Greenhouse, Lever, Ashby, SmartRecruiters, Workable en BambooHR. De feed van elk bedrijf wordt ongeveer elke 10–15 minuten opnieuw gecheckt, en ingetrokken vacatures verdwijnen bij de volgende ronde. Een feed die niet meer reageert valt van de bank af in plaats van hem te breken.",
+    "sourceNote": "Bronnen: de officiële publieke vacature-API's die bedrijven publiceren op Greenhouse, Lever, Ashby, SmartRecruiters, Workable en BambooHR. De grootste borden worden ongeveer elke 10–15 minuten opnieuw gecheckt en de rest van de catalogus roteert continu — elke feed wordt binnen ongeveer een uur opnieuw geverifieerd, en ingetrokken vacatures verdwijnen bij de volgende ronde. Een feed die niet meer reageert valt van het bord af in plaats van het te breken.",
     "fitFetchErrorTitle": "Kon die vacature niet laden",
     "fitFetchError": "De feed van het bedrijf gaf geen omschrijving terug. Open de vacature en plak hem in de scanner.",
     "fitLoadedTitle": "Vacaturetekst geladen",

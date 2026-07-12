@@ -1644,7 +1644,7 @@
     },
     "matches": {
       "title": "Offres en direct correspondant à ce CV",
-      "subtitle": "Classées avec le même score d'adéquation déterministe que votre rapport — depuis de vrais job boards, rafraîchis toutes les ~10 minutes.",
+      "subtitle": "Classées avec le même score d'adéquation déterministe que votre rapport — depuis de vrais job boards, re-vérifiés en continu auprès du flux officiel de chaque entreprise.",
       "loading": "Classement des offres en direct contre votre CV…",
       "apply": "Candidater",
       "seeAll": "Voir toutes les correspondances sur le job board — recherches enregistrées, suivi des candidatures"
@@ -2836,6 +2836,10 @@
     }
   },
   "changelogEntries": {
+    "board90k": {
+      "title": "Le job board double : ~90 000 offres actives de près de 900 entreprises",
+      "description": "Le board est passé d'environ 40 000 à environ 90 000 offres actives. Nouveaux cette fois : de grands employeurs comme AECOM, Domino's, SGS, Veolia, Carvana, Turner & Townsend, Eurofins, Sopra Steria, Greene King, BAYADA Home Health Care, CROSSMARK, EōS Fitness et BoxLunch — avec beaucoup de santé, d'ingénierie, de restauration, de commerce, d'hôtellerie et de laboratoire, pas seulement de la tech. Chaque entreprise est entrée de la même façon : trouvée dans un recensement des grandes plateformes de recrutement, vérifiée auprès de l'API publique officielle de la plateforme et nommée d'après les registres de la plateforme elle-même. Ce recensement a aussi révélé des agrégateurs et des flux d'offres republiées : nous les avons exclus — chaque offre ici appartient à l'entreprise qui l'a publiée. Le rafraîchissement s'est adapté à la taille : les plus gros tableaux sont re-vérifiés toutes les 10–15 minutes et tout le catalogue est re-vérifié en une heure environ, donc les offres retirées continuent de disparaître à la passe suivante."
+    },
     "suiteV2": {
       "title": "Des prix plus simples, une vraie garantie et de l'aide pour postuler",
       "description": "Trois changements dans les outils payants. La page tarifs présente désormais trois choix clairs au lieu d'un mur de treize — le catalogue complet reste accessible en un clic. Chaque outil payant inclut désormais un engagement : pas satisfait du résultat ? Nous le régénérons gratuitement. Et après avoir comparé votre CV à une vraie offre, le rapport peut préparer cette candidature précise — CV adapté, lettre assortie, liste honnête des écarts — avec un aperçu gratuit depuis votre propre CV avant de payer."
@@ -4004,7 +4008,7 @@
     "checkFit": "Vérifier mon adéquation — scan gratuit",
     "apply": "Candidater sur le site de {{company}}",
     "loadMore": "Afficher plus",
-    "sourceNote": "Sources : les API publiques officielles que les entreprises publient sur Greenhouse, Lever, Ashby, SmartRecruiters, Workable et BambooHR. Le flux de chaque entreprise est re-vérifié environ toutes les 10–15 minutes, et les offres retirées disparaissent à la passe suivante. Un flux qui ne répond plus disparaît du tableau au lieu de le casser.",
+    "sourceNote": "Sources : les API publiques officielles que les entreprises publient sur Greenhouse, Lever, Ashby, SmartRecruiters, Workable et BambooHR. Les plus gros tableaux sont re-vérifiés environ toutes les 10–15 minutes et le reste du catalogue tourne en continu — chaque flux est re-vérifié en une heure environ, et les offres retirées disparaissent à la passe suivante. Un flux qui ne répond plus disparaît du tableau au lieu de le casser.",
     "fitFetchErrorTitle": "Impossible de charger cette offre",
     "fitFetchError": "Le flux de l'entreprise n'a pas renvoyé la description. Ouvrez l'offre et collez-la dans le scanner.",
     "fitLoadedTitle": "Description du poste chargée",
