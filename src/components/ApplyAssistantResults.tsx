@@ -126,10 +126,10 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
       {/* Job metadata */}
       <div className="p-4 rounded-xl border border-border bg-card">
         <div className="flex items-center gap-2 mb-1">
-          <Badge variant="secondary">{data.jobMetadata.company || t('applyAssistant.unknownCompany')}</Badge>
-          <span className="text-sm font-semibold">{data.jobMetadata.roleTitle || t('applyAssistant.unknownRole')}</span>
+          <Badge variant="secondary">{data.jobMetadata?.company || t('applyAssistant.unknownCompany')}</Badge>
+          <span className="text-sm font-semibold">{data.jobMetadata?.roleTitle || t('applyAssistant.unknownRole')}</span>
         </div>
-        {data.jobMetadata.applyMethodHint && (
+        {data.jobMetadata?.applyMethodHint && (
           <p className="text-xs text-muted-foreground mt-2 flex items-start gap-1.5">
             <ExternalLink className="w-3 h-3 mt-0.5 shrink-0" />
             {data.jobMetadata.applyMethodHint}

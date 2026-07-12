@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import { Sparkles, Loader2, ExternalLink, ChevronDown, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ApplyAssistantResults, type ApplyPackageData } from "@/components/ApplyAssistantResults";
+import { CardErrorBoundary } from "@/components/CardErrorBoundary";
 import { normalizeBuilderResume } from "@/types/resume-builder";
 import { toast } from "sonner";
 
@@ -29,7 +30,18 @@ function toKit(raw: unknown): (ApplyPackageData & { coverLetter?: string }) | nu
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
   if (!r.tailoredResume) return null;
-  return { ...(r as unknown as ApplyPackageData), tailoredResume: normalizeBuilderResume(r.tailoredResume as Record<string, unknown>), coverLetter: typeof r.coverLetter === "string" ? r.coverLetter : undefined };
+  const jm = (r.jobMetadata ?? {}) as Record<string, unknown>;
+  return {
+    ...(r as unknown as ApplyPackageData),
+    tailoredResume: normalizeBuilderResume(r.tailoredResume as Record<string, unknown>),
+    // Defensive defaults: a truncated/legacy stored kit missing these would
+    // otherwise crash ApplyAssistantResults (which reads jobMetadata.company
+    // etc. directly). Belt-and-suspenders with the CardErrorBoundary below.
+    jobMetadata: { company: String(jm.company ?? ""), roleTitle: String(jm.roleTitle ?? ""), applyMethodHint: String(jm.applyMethodHint ?? "") },
+    skillGaps: Array.isArray(r.skillGaps) ? (r.skillGaps as string[]) : [],
+    checklist: Array.isArray(r.checklist) ? (r.checklist as string[]) : [],
+    coverLetter: typeof r.coverLetter === "string" ? r.coverLetter : undefined,
+  };
 }
 
 export function ApplyCopilotPanel({
@@ -157,7 +169,9 @@ export function ApplyCopilotPanel({
                 </div>
                 {isOpen && kit && (
                   <div className="px-3 pb-3 pt-1 border-t border-border/50">
-                    <ApplyAssistantResults data={kit} coverLetter={kit.coverLetter} />
+                    <CardErrorBoundary section="apply-kit">
+                      <ApplyAssistantResults data={kit} coverLetter={kit.coverLetter} />
+                    </CardErrorBoundary>
                   </div>
                 )}
                 {isOpen && !kit && (
