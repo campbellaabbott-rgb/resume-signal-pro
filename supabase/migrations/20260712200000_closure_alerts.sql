@@ -1,11 +1,12 @@
--- Feature 5 (tracked-job closure alerts): opt-in email when a posting the
--- user is tracking closes. Opt-in flag on the profile; a notified stamp on
--- the application so we email each closure exactly once.
-ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS closure_alerts_opt_in boolean NOT NULL DEFAULT false;
-ALTER TABLE public.user_applications ADD COLUMN IF NOT EXISTS posting_closed_notified_at timestamptz;
-
--- The notifier (service-role) scans for closed-but-unnotified tracked jobs
--- across all users; this partial index keeps that scan cheap.
-CREATE INDEX IF NOT EXISTS user_applications_closure_notify_idx
-  ON public.user_applications (posting_closed_at)
-  WHERE posting_closed_at IS NOT NULL AND posting_closed_notified_at IS NULL;
+-- Superseded: the proactive/email closure-alert feature was removed in favor
+-- of click-time verification (you're told a listing closed only when you
+-- click it). The columns below were applied to production before the
+-- reversal; they're harmless and left in place rather than dropped
+-- (destructive). This migration is now a documented no-op — new environments
+-- simply won't create the unused columns.
+--
+-- Original (kept for the historical record, not executed):
+--   ALTER TABLE public.user_profiles ADD COLUMN closure_alerts_opt_in boolean NOT NULL DEFAULT false;
+--   ALTER TABLE public.user_applications ADD COLUMN posting_closed_notified_at timestamptz;
+--   CREATE INDEX ... ON public.user_applications (posting_closed_at) WHERE ...;
+SELECT 1;

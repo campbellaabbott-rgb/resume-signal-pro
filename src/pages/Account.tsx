@@ -7,7 +7,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   TrendingUp, Coins, ShoppingBag, LogOut, Loader2, ScanSearch, Target,
-  ListChecks, GitCompare, Briefcase, Plus, Trash2, AlertTriangle, ExternalLink, BellRing,
+  ListChecks, GitCompare, Briefcase, Plus, Trash2, AlertTriangle, ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Header } from "@/components/Header";
@@ -107,7 +107,6 @@ export default function Account() {
   const [account, setAccount] = useState<AccountData | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
   const [targetScore, setTargetScore] = useState<number | null>(null);
-  const [closureAlerts, setClosureAlerts] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [newApp, setNewApp] = useState({ company: "", role: "" });
@@ -152,7 +151,7 @@ export default function Account() {
       supabase.from("user_scans").select("*").order("created_at", { ascending: false }).limit(50),
       supabase.functions.invoke("get-account-data").catch(() => ({ data: null })),
       supabase.from("user_applications").select("*").order("created_at", { ascending: false }).limit(100),
-      (supabase as unknown as { from: (t: string) => { select: (c: string) => { eq: (col: string, v: string) => { maybeSingle: () => Promise<{ data: { target_score?: number; closure_alerts_opt_in?: boolean } | null }> } } } }).from("user_profiles").select("target_score, closure_alerts_opt_in").eq("user_id", session.user.id).maybeSingle(),
+      supabase.from("user_profiles").select("target_score").eq("user_id", session.user.id).maybeSingle(),
     ]);
     let cloudScans = scansRes.data?.map(mapScanRow) ?? [];
 
@@ -194,7 +193,6 @@ export default function Account() {
     const apps = (appsRes.data as unknown as Application[] | null) ?? [];
     setApplications(apps);
     setTargetScore((profileRes.data as { target_score?: number } | null)?.target_score ?? null);
-    setClosureAlerts(!!(profileRes.data as { closure_alerts_opt_in?: boolean } | null)?.closure_alerts_opt_in);
     const acc = (accountRes as { data?: { credits?: number; purchases?: AccountData["purchases"] } }).data;
     setAccount({ credits: acc?.credits ?? 0, purchases: acc?.purchases ?? [] });
     setFetching(false);
@@ -646,23 +644,6 @@ export default function Account() {
             <h2 className="font-semibold text-foreground text-sm">Application tracker</h2>
             <span className="ml-auto text-xs text-muted-foreground">{applications.length} tracked</span>
           </div>
-          {applications.some((a) => a.job_id) && (
-            <button
-              onClick={async () => {
-                const next = !closureAlerts;
-                setClosureAlerts(next);
-                await (supabase as unknown as { from: (t: string) => { upsert: (v: Record<string, unknown>) => Promise<unknown> } })
-                  .from("user_profiles").upsert({ user_id: session!.user.id, closure_alerts_opt_in: next, updated_at: new Date().toISOString() })
-                  .then(() => {}, () => setClosureAlerts(!next));
-              }}
-              className={`flex items-center gap-1.5 mb-3 text-[11px] px-2.5 py-1.5 rounded-lg border w-full ${closureAlerts ? "border-primary/40 text-primary bg-primary/5" : "border-border text-muted-foreground hover:text-foreground"}`}
-            >
-              <BellRing className="w-3.5 h-3.5 shrink-0" />
-              {closureAlerts
-                ? "Email alerts on — we'll tell you when a tracked posting closes"
-                : "Email me when a posting I'm tracking closes"}
-            </button>
-          )}
           <div className="flex gap-2 mb-3">
             <input
               value={newApp.company}
