@@ -73,9 +73,15 @@ record("edge functions respond", missing.length === 0,
   missing.length ? `NOT deployed: ${missing.map((c) => c.fn).join(", ")}` : `${FUNCTIONS.length}/${FUNCTIONS.length}`);
 
 // ---- 2. Real scan returns a well-formed diagnostic report ----
+// Costs one AI scan. `npm run verify:deploy` sets NO_SCAN=1 and skips it;
+// use `npm run verify:deploy:scan` when the report pipeline needs
+// end-to-end proof.
 let deployedEngine = null;
 let scanFields = null;
-try {
+if (process.env.NO_SCAN) {
+  record("free scan end-to-end", true, "SKIPPED (NO_SCAN=1) — zero-cost mode; run verify:deploy:scan for end-to-end proof");
+  record("AI generation live", true, "SKIPPED (NO_SCAN=1)");
+} else try {
   const t0 = Date.now();
   // Prefer the heartbeat bypass (guaranteed run, logged as scan_type='heartbeat'
   // so it stays out of published stats). Without the secret, fall back to
@@ -119,7 +125,9 @@ try {
 if (!COMMITTED_ENGINE) {
   record("engine version fresh", false, "could not read committed REPORT_ENGINE_VERSION from source");
 } else if (!deployedEngine) {
-  record("engine version fresh", true, `UNVERIFIED (no scan response; rate-limited?) — committed ${COMMITTED_ENGINE}; re-run with HEARTBEAT_SECRET`);
+  record("engine version fresh", true, process.env.NO_SCAN
+    ? `UNVERIFIED (NO_SCAN=1) — committed ${COMMITTED_ENGINE}; a user-run scan on the site shows the deployed version`
+    : `UNVERIFIED (no scan response; rate-limited?) — committed ${COMMITTED_ENGINE}; re-run with HEARTBEAT_SECRET`);
 } else {
   const fresh = deployedEngine === COMMITTED_ENGINE;
   record("engine version fresh", fresh,

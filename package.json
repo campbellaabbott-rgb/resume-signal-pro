@@ -16,9 +16,10 @@
     "hooks:install": "node scripts/install-hooks.mjs",
     "check:functions": "bash scripts/check-functions.sh",
     "smoke": "node scripts/post-publish-smoke.mjs",
-    "verify:deploy": "node scripts/post-publish-smoke.mjs",
+    "verify:deploy": "NO_SCAN=1 node scripts/post-publish-smoke.mjs",
     "indexnow": "node scripts/indexnow-ping.mjs",
-    "seo:audit": "node scripts/seo-audit.mjs"
+    "seo:audit": "node scripts/seo-audit.mjs",
+    "verify:deploy:scan": "node scripts/post-publish-smoke.mjs"
   },
   "dependencies": {
     "@lovable.dev/cloud-auth-js": "^1.1.2",
