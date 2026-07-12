@@ -2836,6 +2836,14 @@
     }
   },
   "changelogEntries": {
+    "fieldPages": {
+      "title": "Browse the job board by field: 17 dedicated pages with live counts",
+      "description": "Every field on the board — Engineering & IT, Healthcare & Clinical, Finance & Accounting, Hospitality & Retail, and 13 more — now has its own page at /jobs/field with that field's live openings and the filter already set. Each page shows the field's real posting count, measured from the live corpus when the site was last built (Engineering & IT: 21,610 at this writing). Our 59 industry keyword guides link straight to their matching field, in English and Spanish. Same rules as everywhere on the board: official company feeds only, and applying happens on the company's own site."
+    },
+    "boardSelfTuning": {
+      "title": "The board now tunes and monitors itself",
+      "description": "Three quieter upgrades behind the 90,000-posting board. The fast lane re-ranks itself: after every refresh pass, the boards with the most live openings automatically get the fastest re-check cadence, so a company on a hiring spree speeds up without anyone touching a setting. Postings that arrive without a published date (some feeds never include one) now use their first-seen time for sorting and freshness filters, so they can't sink to the bottom unseen — displayed dates remain only what the company actually published. And the refresh pipeline watches itself: if it ever stalls, we're alerted within the hour, before the board goes stale enough for anyone to notice. Categorisation got sharper too — corporate IT, service desk, research, investor relations, district management, and French retail roles arriving now file into their proper fields instead of Other."
+    },
     "board90k": {
       "title": "Job board doubles: ~90,000 live postings across nearly 900 companies",
       "description": "The board grew from roughly 40,000 to roughly 90,000 live postings. New this round: major employers like AECOM, Domino's, SGS, Veolia, Carvana, Turner & Townsend, Eurofins, Sopra Steria, Greene King, BAYADA Home Health Care, CROSSMARK, EōS Fitness and BoxLunch — heavy on healthcare, engineering, food service, retail, hospitality and lab work, not just tech. Every company joined the same way: found in a census of the major hiring platforms, then verified against the platform's official public API and named from the platform's own records. We also found aggregators and reposted-listing feeds in that census and excluded them — every posting here belongs to the company that published it. The refresh got smarter with the size: the largest boards are re-checked about every 10–15 minutes and the whole catalogue is re-verified within about an hour, so postings a company takes down keep disappearing on the next pass."

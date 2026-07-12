@@ -2836,6 +2836,14 @@
     }
   },
   "changelogEntries": {
+    "fieldPages": {
+      "title": "Navegue o mural por área: 17 páginas dedicadas com contagens ao vivo",
+      "description": "Cada área do mural — Engenharia e TI, Saúde e Clínica, Finanças e Contabilidade, Hotelaria e Varejo, e mais 13 — agora tem página própria em /jobs/field com as vagas ativas da área e o filtro já aplicado. Cada página mostra a contagem real de vagas da área, medida no corpus ao vivo na última compilação do site (Engenharia e TI: 21.610 no momento em que escrevemos). Nossos 59 guias de palavras-chave por setor apontam direto para a área correspondente, em inglês e espanhol. As mesmas regras de sempre: só feeds oficiais das empresas, e a candidatura acontece no site da empresa."
+    },
+    "boardSelfTuning": {
+      "title": "O mural agora se ajusta e se monitora sozinho",
+      "description": "Três melhorias silenciosas por trás do mural de 90.000 vagas. A via rápida se reordena sozinha: após cada passada de atualização, os murais com mais vagas ativas recebem automaticamente o ritmo de verificação mais rápido — uma empresa em ritmo forte de contratação acelera sem ninguém mexer em nada. Vagas que chegam sem data de publicação (alguns feeds nunca incluem) agora usam a hora em que foram vistas pela primeira vez para ordenação e filtros de frescor, então não afundam mais sem serem vistas — as datas exibidas continuam sendo só as que a empresa publicou. E a atualização se vigia sozinha: se algum dia parar, somos alertados em menos de uma hora, antes de alguém notar o mural desatualizado. A categorização também ficou mais precisa — vagas de TI corporativa, service desk, pesquisa, relações com investidores, gerência distrital e varejo em francês que chegam agora entram na área certa em vez de Outros."
+    },
     "board90k": {
       "title": "O mural de vagas dobra: ~90.000 vagas ativas de quase 900 empresas",
       "description": "O mural cresceu de cerca de 40.000 para cerca de 90.000 vagas ativas. Novidades desta rodada: grandes empregadores como AECOM, Domino's, SGS, Veolia, Carvana, Turner & Townsend, Eurofins, Sopra Steria, Greene King, BAYADA Home Health Care, CROSSMARK, EōS Fitness e BoxLunch — com muito peso em saúde, engenharia, alimentação, varejo, hotelaria e laboratório, não só tecnologia. Cada empresa entrou do mesmo jeito: encontrada em um censo das principais plataformas de contratação, verificada contra a API pública oficial da plataforma e nomeada pelos registros da própria plataforma. Nesse censo também encontramos agregadores e feeds de vagas republicadas — e os excluímos. Cada vaga aqui pertence à empresa que a publicou. A atualização ficou mais inteligente com o tamanho: os murais maiores são reverificados a cada 10–15 minutos e o catálogo inteiro é reverificado em cerca de uma hora, então vagas retiradas continuam sumindo na próxima passada."

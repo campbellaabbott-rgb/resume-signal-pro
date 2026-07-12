@@ -2836,6 +2836,14 @@
     }
   },
   "changelogEntries": {
+    "fieldPages": {
+      "title": "Blader door de vacaturebank per vakgebied: 17 eigen pagina's met live tellers",
+      "description": "Elk vakgebied van de bank — Engineering & IT, Zorg & Kliniek, Finance & Accounting, Horeca & Retail, en 13 andere — heeft nu een eigen pagina op /jobs/field met de actieve vacatures van dat vakgebied en het filter al ingesteld. Elke pagina toont het echte aantal vacatures, gemeten op het live corpus bij de laatste build van de site (Engineering & IT: 21.610 op het moment van schrijven). Onze 59 keyword-gidsen per branche linken rechtstreeks naar hun vakgebied, in het Engels en Spaans. Dezelfde regels als overal: alleen officiële bedrijfsfeeds, en solliciteren gebeurt op de site van het bedrijf."
+    },
+    "boardSelfTuning": {
+      "title": "De bank stelt zichzelf nu af en houdt zichzelf in de gaten",
+      "description": "Drie stillere verbeteringen achter de bank met 90.000 vacatures. De snelle rijstrook herschikt zichzelf: na elke verversronde krijgen de borden met de meeste actieve vacatures automatisch het snelste hercontrole-ritme — een bedrijf midden in een wervingsgolf versnelt zonder dat iemand iets aanpast. Vacatures die zonder publicatiedatum binnenkomen (sommige feeds leveren er nooit een) gebruiken nu hun eerst-gezien-tijd voor sortering en versheidsfilters, zodat ze niet ongezien naar de bodem kunnen zakken — getoonde datums blijven alleen wat het bedrijf zelf publiceerde. En de verversing bewaakt zichzelf: valt die ooit stil, dan krijgen we binnen het uur een melding, vóór iemand een verouderde bank opmerkt. De categorisering werd ook scherper — bedrijfs-IT, servicedesk, onderzoek, investor relations, districtsmanagement en Franse retailfuncties die nu binnenkomen, belanden in het juiste vakgebied in plaats van bij Overig."
+    },
     "board90k": {
       "title": "Vacaturebank verdubbelt: ~90.000 actieve vacatures van bijna 900 bedrijven",
       "description": "De bank groeide van ongeveer 40.000 naar ongeveer 90.000 actieve vacatures. Nieuw deze ronde: grote werkgevers zoals AECOM, Domino's, SGS, Veolia, Carvana, Turner & Townsend, Eurofins, Sopra Steria, Greene King, BAYADA Home Health Care, CROSSMARK, EōS Fitness en BoxLunch — met veel zorg, techniek, horeca, retail en laboratoriumwerk, niet alleen tech. Elk bedrijf kwam op dezelfde manier binnen: gevonden in een census van de grote wervingsplatforms, geverifieerd tegen de officiële publieke API van het platform en benoemd volgens de registers van het platform zelf. In die census vonden we ook aggregators en feeds met doorgeplaatste vacatures — die hebben we uitgesloten. Elke vacature hier is van het bedrijf dat haar publiceerde. De verversing groeide mee: de grootste borden worden elke 10–15 minuten opnieuw gecheckt en de hele catalogus wordt binnen ongeveer een uur opnieuw geverifieerd, dus ingetrokken vacatures blijven bij de volgende ronde verdwijnen."
