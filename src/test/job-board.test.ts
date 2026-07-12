@@ -385,6 +385,13 @@ describe("tiered refresh invariants", () => {
     expect(HOT_TOKENS.size).toBeLessThan(300);
   });
 
+  it("CATEGORIZE_VERSION is stamped and bumps with rules changes", async () => {
+    const { CATEGORIZE_VERSION } = await import("../../supabase/functions/job-board/categories");
+    // v1 = launch rules; v2 = the 2026-07-12 Other-bucket audit. If you
+    // changed RULES without bumping this, the stored corpus never refiles.
+    expect(CATEGORIZE_VERSION).toBeGreaterThanOrEqual(2);
+  });
+
   it("every LIGHT_DESC token is a real Greenhouse source (light fetch only means anything there)", async () => {
     const { LIGHT_DESC_TOKENS, JOB_SOURCES } = await import("../../supabase/functions/job-board/sources");
     const gh = new Set(JOB_SOURCES.filter((s) => s.source === "greenhouse").map((s) => s.token));

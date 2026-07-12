@@ -25,7 +25,7 @@ import {
   normalizeWorkable,
   type JobPosting,
 } from "./normalize.ts";
-import { JOB_CATEGORIES } from "./categories.ts";
+import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
 import { computeFit } from "../_shared/fit-score.ts";
 
 const corsHeaders = {
@@ -428,6 +428,19 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       );
     }
     console.log(`[JOB-BOARD] pass complete: hot ${HOT_LIST.length} boards + ${COLD_SLICES_PER_PASS} cold slices; corpus total ${f.total}`);
+    // Categorization rules changed since the corpus was stamped? Sweep the
+    // stored "other" rows through the current rules in a fresh invocation
+    // (own compute budget). Idempotent: the stamp is written only when the
+    // sweep completes, so a died sweep retries after the next pass.
+    const { data: catVer } = await client.from("job_board_meta").select("v").eq("k", "category_rules_version").maybeSingle();
+    if ((catVer?.v as { version?: number } | null)?.version !== CATEGORIZE_VERSION) {
+      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+      waitUntil(chainKey().then((key) => fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "recategorize", chainKey: key }),
+      })).then((r) => r.text()).catch(() => {}));
+    }
     return { ok: true, detail: `pass complete — corpus ${f.total} postings from ${companies.length} boards; cold rotation at ${cold}/${COLD_LIST.length}${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 120)}` : ""}` };
   }
 
@@ -510,6 +523,65 @@ Deno.serve(async (req) => {
   const client = db();
 
   try {
+    if (action === "recategorize") {
+      // Maintenance sweep, self-invoked at pass end (chainKey-gated like
+      // force-refresh). Re-runs the CURRENT rules over stored "other" rows
+      // — the only bucket new rules can rescue — updating rows whose
+      // category changes. Pages by id cursor; self-chains past the budget.
+      if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
+        return json({ error: "recategorize is a maintenance action" }, 403);
+      }
+      let cursor = typeof body.cursor === "string" ? body.cursor : "";
+      let scanned = 0;
+      const changed = new Map<string, string[]>(); // new category -> ids
+      const PAGES = 8;
+      for (let page = 0; page < PAGES; page++) {
+        let q = client
+          .from("job_board_postings")
+          .select("id,title,department")
+          .eq("category", "other")
+          .order("id")
+          .limit(1000);
+        if (cursor) q = q.gt("id", cursor);
+        const { data: rows, error } = await q;
+        if (error) throw error;
+        for (const r of rows ?? []) {
+          scanned++;
+          const cat = categorize(r.title ?? "", r.department ?? null);
+          if (cat !== "other") {
+            if (!changed.has(cat)) changed.set(cat, []);
+            changed.get(cat)!.push(r.id as string);
+          }
+        }
+        if (!rows || rows.length < 1000) { cursor = ""; break; }
+        cursor = rows[rows.length - 1].id as string;
+      }
+      let updated = 0;
+      for (const [cat, ids] of changed) {
+        for (let i = 0; i < ids.length; i += 200) {
+          const { error } = await client.from("job_board_postings").update({ category: cat }).in("id", ids.slice(i, i + 200));
+          if (error) throw error;
+          updated += Math.min(200, ids.length - i);
+        }
+      }
+      if (cursor) {
+        // more pages remain — continue in a fresh invocation
+        const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+        waitUntil(chainKey().then((key) => fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "recategorize", chainKey: key, cursor }),
+        })).then((r) => r.text()).catch(() => {}));
+        return json({ ok: true, scanned, updated, nextCursor: cursor });
+      }
+      await client.from("job_board_meta").upsert(
+        { k: "category_rules_version", v: { version: CATEGORIZE_VERSION, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+      console.log(`[JOB-BOARD] recategorize sweep complete: ${scanned} scanned, ${updated} refiled (rules v${CATEGORIZE_VERSION})`);
+      return json({ ok: true, scanned, updated, done: true });
+    }
+
     if (action === "refresh") {
       const hop = Number.isFinite(Number(body.chain)) ? Math.max(0, Number(body.chain)) : 0;
       const force = body.force === true && typeof body.chainKey === "string" && body.chainKey === await chainKey();

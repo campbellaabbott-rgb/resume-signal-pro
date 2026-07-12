@@ -3,6 +3,13 @@
 // primary signal (ATS departments are human-curated); title keywords refine
 // or fill in. Pure module — unit-tested from vitest.
 
+// Bump on EVERY rules change: a completed refresh pass compares this
+// against the version stamped in job_board_meta and, on mismatch, sweeps
+// the stored "other" rows through the current rules — so categorization
+// improvements reach the existing corpus, not just newly inserted rows
+// (the insert-only refresh never rewrites them otherwise).
+export const CATEGORIZE_VERSION = 2;
+
 export const JOB_CATEGORIES = [
   "engineering",
   "data_ai",
