@@ -761,16 +761,21 @@ Deno.serve(async (req) => {
         .in("id", ids);
       if (error) throw error;
       const fits: Record<string, number | null> = {};
+      // Top missing keywords per posting — the "add these to compete" signal
+      // that turns a bare score into an actionable one on each card.
+      const missing: Record<string, string[]> = {};
       let scored = 0;
       for (const r of rows ?? []) {
         if (r.description && r.description.length > 150) {
-          fits[r.id] = computeFit(r.description, resumeText, 40).pct;
+          const f = computeFit(r.description, resumeText, 40);
+          fits[r.id] = f.pct;
+          if (f.missing.length > 0) missing[r.id] = f.missing.slice(0, 4);
           scored++;
         } else {
-          fits[r.id] = null; // no stored description (GH/SR/Workable) — honest null
+          fits[r.id] = null; // no stored description — honest null
         }
       }
-      return json({ fits, scored, of: ids.length });
+      return json({ fits, missing, scored, of: ids.length });
     }
 
     if (action === "backfill-desc") {

@@ -2836,6 +2836,10 @@
     }
   },
   "changelogEntries": {
+    "fitFirstBoard": {
+      "title": "The board now opens ranked to your CV",
+      "description": "Scan your CV once and the board opens already sorted by fit — no extra click. Each listing shows a plain-language match tier (Strong match, Possible match, or Stretch) rather than a raw percentage, with the exact keyword coverage on hover and the specific terms to add to compete. Every card is marked as pulled straight from that company's official careers feed — never an aggregator or a scraped copy — and re-checked live the moment you click Apply. In your account, the application co-pilot now preps your strongest-matched saved jobs first, so if you reach the daily limit the best ones are already done."
+    },
     "fieldPages": {
       "title": "Browse the job board by field: 17 dedicated pages with live counts",
       "description": "Every field on the board — Engineering & IT, Healthcare & Clinical, Finance & Accounting, Hospitality & Retail, and 13 more — now has its own page at /jobs/field with that field's live openings and the filter already set. Each page shows the field's real posting count, measured from the live corpus when the site was last built (Engineering & IT: 21,610 at this writing). Our 59 industry keyword guides link straight to their matching field, in English and Spanish. Same rules as everywhere on the board: official company feeds only, and applying happens on the company's own site."
@@ -4064,6 +4068,13 @@
     "fitNeedsResume": "Run the free scan (or save a resume version in your account) and the board can rank every posting against it.",
     "landerSeoTitle": "Live {{category}} Jobs — From Official Company Job Boards",
     "landerSeoDescription": "Browse live {{category}} openings pulled from nearly 900 companies' official job boards and re-verified all day. Check your CV's fit free, then apply on the company's own site.",
-    "landerH1": "Live {{category}} jobs"
+    "landerH1": "Live {{category}} jobs",
+    "trustBadge": "Direct from {{company}}'s careers page",
+    "trustBadgeTip": "Pulled directly from this company's official applicant-tracking feed — not an aggregator or a scraped copy. Re-checked live when you click Apply.",
+    "addToCompete": "Add to compete:",
+    "matchStrong": "Strong match",
+    "matchPossible": "Possible match",
+    "matchStretch": "Stretch",
+    "matchCoverage": "{{pct}}% of this posting's recognised keywords are already in your CV"
   }
 }

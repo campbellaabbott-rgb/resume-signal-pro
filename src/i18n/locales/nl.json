@@ -2836,6 +2836,10 @@
     }
   },
   "changelogEntries": {
+    "fitFirstBoard": {
+      "title": "Het bord opent nu gerangschikt op je cv",
+      "description": "Scan je cv één keer en het bord opent al gesorteerd op match — zonder extra klik. Elke vacature toont een begrijpelijk matchniveau (Sterke match, Mogelijke match of Weinig kans) in plaats van een kaal percentage, met de exacte trefwoorddekking bij het zweven en de concrete termen die je kunt toevoegen om mee te dingen. Elke kaart is gemarkeerd als rechtstreeks afkomstig uit het officiële sollicitatiesysteem van het bedrijf — nooit uit een aggregator of een gekopieerde versie — en wordt live opnieuw gecontroleerd zodra je op Solliciteren klikt. In je account bereidt de sollicitatie-copiloot nu eerst je best passende opgeslagen vacatures voor, dus als je de daglimiet bereikt, zijn de beste al klaar."
+    },
     "fieldPages": {
       "title": "Blader door de vacaturebank per vakgebied: 17 eigen pagina's met live tellers",
       "description": "Elk vakgebied van de bank — Engineering & IT, Zorg & Kliniek, Finance & Accounting, Horeca & Retail, en 13 andere — heeft nu een eigen pagina op /jobs/field met de actieve vacatures van dat vakgebied en het filter al ingesteld. Elke pagina toont het echte aantal vacatures, gemeten op het live corpus bij de laatste build van de site (Engineering & IT: 21.610 op het moment van schrijven). Onze 59 keyword-gidsen per branche linken rechtstreeks naar hun vakgebied, in het Engels en Spaans. Dezelfde regels als overal: alleen officiële bedrijfsfeeds, en solliciteren gebeurt op de site van het bedrijf."
@@ -4064,6 +4068,13 @@
     "fitNeedsResume": "Doe de gratis scan (of bewaar een versie in je account) en de bank sorteert elke vacature op jouw match.",
     "landerSeoTitle": "Live {{category}}-vacatures — Van de officiële vacaturebanken van bedrijven",
     "landerSeoDescription": "Bekijk actieve {{category}}-vacatures van de officiële vacaturebanken van bijna 900 bedrijven, de hele dag opnieuw geverifieerd. Check gratis hoe je cv past en solliciteer op de site van het bedrijf.",
-    "landerH1": "Live {{category}}-vacatures"
+    "landerH1": "Live {{category}}-vacatures",
+    "trustBadge": "Rechtstreeks van de vacaturepagina van {{company}}",
+    "trustBadgeTip": "Rechtstreeks uit het officiële sollicitatiesysteem van het bedrijf — geen aggregator of gekopieerde versie. Live opnieuw gecontroleerd wanneer je op Solliciteren klikt.",
+    "addToCompete": "Toevoegen om mee te dingen:",
+    "matchStrong": "Sterke match",
+    "matchPossible": "Mogelijke match",
+    "matchStretch": "Weinig kans",
+    "matchCoverage": "{{pct}}% van de herkende trefwoorden in deze vacature staat al in je cv"
   }
 }

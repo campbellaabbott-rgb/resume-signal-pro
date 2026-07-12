@@ -204,6 +204,20 @@ describe("fit scoring + salary mapping", () => {
     expect(computeFit("", "any resume").pct).toBeNull();
   });
 
+  it("computeFit surfaces missing keywords the board card nudges on", () => {
+    // Board fit-first (#1): a term the posting needs but the resume lacks must
+    // land in `missing` (rendered as "Add to compete: …"), and a term the
+    // resume covers must land in `matched`, never `missing`.
+    const posting = "We need Python, Kubernetes, SQL and project management experience.";
+    const fit = computeFit(posting, "Senior engineer with Python and SQL experience.");
+    expect(fit.matched).toEqual(expect.arrayContaining(["python", "sql"]));
+    expect(fit.missing).toEqual(expect.arrayContaining(["kubernetes"]));
+    // A term can't be both matched and missing.
+    expect(fit.matched.filter((m) => fit.missing.includes(m))).toEqual([]);
+    // Missing is bounded enough to slice the top few for the card without going empty.
+    expect(fit.missing.length).toBeGreaterThan(0);
+  });
+
   it("leverSalary formats ranges and rejects empties", () => {
     expect(leverSalary({ min: 120000, max: 160000, currency: "USD", interval: "yearly" })).toContain("120k");
     expect(leverSalary({ min: 120000, max: 160000, currency: "USD", interval: "yearly" })).toContain("$");

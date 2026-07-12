@@ -2836,6 +2836,10 @@
     }
   },
   "changelogEntries": {
+    "fitFirstBoard": {
+      "title": "Das Board öffnet sich jetzt passend zu deinem Lebenslauf sortiert",
+      "description": "Scanne deinen Lebenslauf einmal, und das Board öffnet sich bereits nach Passung sortiert – ohne zusätzlichen Klick. Jede Stelle zeigt eine verständliche Übereinstimmungsstufe (Starke Übereinstimmung, Mögliche Übereinstimmung oder Unwahrscheinlich) statt einer nackten Prozentzahl, mit der genauen Stichwortabdeckung beim Überfahren und den konkreten Begriffen, die du ergänzen kannst, um mitzuhalten. Jede Karte ist als direkt aus dem offiziellen Bewerbersystem des Unternehmens stammend gekennzeichnet – nie aus einem Aggregator oder einer kopierten Version – und wird live erneut geprüft, sobald du auf „Bewerben“ klickst. In deinem Konto bereitet der Bewerbungs-Copilot jetzt zuerst deine am besten passenden gespeicherten Stellen vor, sodass bei Erreichen des Tageslimits die besten bereits fertig sind."
+    },
     "fieldPages": {
       "title": "Die Jobbörse nach Bereich durchstöbern: 17 eigene Seiten mit Live-Zählern",
       "description": "Jeder Bereich der Börse — Ingenieurwesen & IT, Gesundheitswesen & Klinik, Finanzen & Buchhaltung, Hotellerie & Einzelhandel und 13 weitere — hat jetzt eine eigene Seite unter /jobs/field mit den aktiven Stellen des Bereichs und bereits gesetztem Filter. Jede Seite zeigt die echte Stellenzahl des Bereichs, gemessen am Live-Korpus beim letzten Build der Seite (Ingenieurwesen & IT: 21.610 zum Zeitpunkt dieses Eintrags). Unsere 59 Keyword-Guides je Branche verlinken direkt auf ihren passenden Bereich, auf Englisch und Spanisch. Dieselben Regeln wie überall: nur offizielle Unternehmens-Feeds, beworben wird auf der Unternehmensseite."
@@ -4064,6 +4068,13 @@
     "fitNeedsResume": "Führen Sie den Gratis-Scan aus (oder speichern Sie eine Version im Konto), dann sortiert die Börse jede Stelle nach Ihrer Passung.",
     "landerSeoTitle": "Live {{category}}-Jobs — Von den offiziellen Jobbörsen der Unternehmen",
     "landerSeoDescription": "Aktive {{category}}-Stellen von den offiziellen Jobbörsen von fast 900 Unternehmen, den ganzen Tag neu verifiziert. Prüfen Sie kostenlos die Passung Ihres Lebenslaufs und bewerben Sie sich auf der Unternehmensseite.",
-    "landerH1": "Live {{category}}-Jobs"
+    "landerH1": "Live {{category}}-Jobs",
+    "trustBadge": "Direkt von der Karriereseite von {{company}}",
+    "trustBadgeTip": "Direkt aus dem offiziellen Bewerbersystem des Unternehmens – kein Aggregator, keine kopierte Version. Beim Klick auf „Bewerben“ live erneut geprüft.",
+    "addToCompete": "Zum Mithalten ergänzen:",
+    "matchStrong": "Starke Übereinstimmung",
+    "matchPossible": "Mögliche Übereinstimmung",
+    "matchStretch": "Unwahrscheinlich",
+    "matchCoverage": "{{pct}} % der erkannten Schlüsselbegriffe dieser Stelle stehen bereits in deinem Lebenslauf"
   }
 }

@@ -2836,6 +2836,10 @@
     }
   },
   "changelogEntries": {
+    "fitFirstBoard": {
+      "title": "Le tableau s'ouvre désormais classé selon votre CV",
+      "description": "Analysez votre CV une seule fois et le tableau s'ouvre déjà trié par pertinence, sans clic supplémentaire. Chaque offre affiche un niveau de correspondance en langage clair (Bonne correspondance, Correspondance possible ou Peu probable) plutôt qu'un pourcentage brut, avec la couverture exacte des mots-clés au survol et les termes précis à ajouter pour être compétitif. Chaque carte indique qu'elle provient directement du système de recrutement officiel de l'entreprise — jamais d'un agrégateur ni d'une copie récupérée — et elle est revérifiée en direct dès que vous cliquez sur Postuler. Dans votre compte, le copilote de candidatures prépare désormais en priorité vos offres enregistrées les mieux notées : si vous atteignez la limite quotidienne, les meilleures sont déjà prêtes."
+    },
     "fieldPages": {
       "title": "Parcourez le board par domaine : 17 pages dédiées avec compteurs en direct",
       "description": "Chaque domaine du board — Ingénierie & IT, Santé & Clinique, Finance & Comptabilité, Hôtellerie & Commerce, et 13 autres — a désormais sa propre page sur /jobs/field avec les offres actives du domaine et le filtre déjà appliqué. Chaque page affiche le nombre réel d'offres du domaine, mesuré sur le corpus en direct à la dernière compilation du site (Ingénierie & IT : 21 610 à l'heure où nous écrivons). Nos 59 guides de mots-clés par industrie renvoient directement vers leur domaine, en anglais et en espagnol. Mêmes règles que partout : uniquement les flux officiels des entreprises, et la candidature se fait sur le site de l'entreprise."
@@ -4064,6 +4068,13 @@
     "fitNeedsResume": "Lancez le scan gratuit (ou enregistrez une version dans votre compte) et le board classera chaque offre selon votre profil.",
     "landerSeoTitle": "Offres {{category}} en direct — Depuis les job boards officiels des entreprises",
     "landerSeoDescription": "Parcourez les offres {{category}} actives tirées des job boards officiels de près de 900 entreprises et re-vérifiées toute la journée. Testez gratuitement l'adéquation de votre CV, puis postulez sur le site de l'entreprise.",
-    "landerH1": "Offres {{category}} en direct"
+    "landerH1": "Offres {{category}} en direct",
+    "trustBadge": "Directement depuis la page carrières de {{company}}",
+    "trustBadgeTip": "Provient directement du système de recrutement officiel de l'entreprise, pas d'un agrégateur ni d'une copie récupérée. Revérifié en direct lorsque vous cliquez sur Postuler.",
+    "addToCompete": "À ajouter pour être compétitif :",
+    "matchStrong": "Bonne correspondance",
+    "matchPossible": "Correspondance possible",
+    "matchStretch": "Peu probable",
+    "matchCoverage": "{{pct}} % des mots-clés reconnus de cette offre figurent déjà dans votre CV"
   }
 }

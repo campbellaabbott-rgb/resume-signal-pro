@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Bookmark, BookmarkCheck, Briefcase, ExternalLink, Loader2, MapPin, Search, Target } from "lucide-react";
+import { Bookmark, BookmarkCheck, Briefcase, ExternalLink, Loader2, MapPin, Search, ShieldCheck, Target } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -77,7 +77,13 @@ export default function Jobs() {
   const [freshness, setFreshness] = useState<"" | "day" | "week">("");
   const [fitRanking, setFitRanking] = useState(false);
   const [fits, setFits] = useState<Record<string, number | null>>({});
+  // Top missing keywords per posting id — the "add these to compete" signal
+  // rendered inline on each card once fit-ranking is on.
+  const [misses, setMisses] = useState<Record<string, string[]>>({});
   const [fitLoading, setFitLoading] = useState(false);
+  // True once we've checked for a resume on mount, so the auto-enable only
+  // fires once and never fights a user who deliberately toggled fit off.
+  const fitAutoChecked = useRef(false);
   // The resume available for ranking: this tab's scan first, else the
   // signed-in user's latest saved version (fetched lazily on toggle).
   const fitResume = useRef<string | null>(null);
@@ -386,6 +392,9 @@ export default function Jobs() {
   };
 
   const toggleFitRanking = async () => {
+    // Any manual interaction hands control to the user for the rest of the
+    // session — auto-enable must never fight a deliberate choice.
+    fitAutoChecked.current = true;
     if (fitRanking) {
       setFitRanking(false);
       return;
@@ -416,8 +425,9 @@ export default function Jobs() {
           const { data } = await supabase.functions.invoke("job-board", {
             body: { action: "fit-batch", resumeText: resume, ids: unscored.slice(i, i + 60) },
           });
-          const batch = (data as { fits?: Record<string, number | null> })?.fits;
-          if (batch) setFits((prev) => ({ ...prev, ...batch }));
+          const payload = data as { fits?: Record<string, number | null>; missing?: Record<string, string[]> } | null;
+          if (payload?.fits) setFits((prev) => ({ ...prev, ...payload.fits }));
+          if (payload?.missing) setMisses((prev) => ({ ...prev, ...payload.missing }));
         }
       } finally {
         setFitLoading(false);
@@ -425,6 +435,27 @@ export default function Jobs() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitRanking, jobs]);
+
+  // Fit-first by default: the moment we can tell there's a resume to score
+  // against (a fresh scan stashed this session, or the signed-in user's latest
+  // scan), turn ranking on automatically so the board opens personalized — no
+  // extra click. We only *lock* auto-management once a resume is actually found
+  // (or the user manually toggles), so a null->signed-in session transition
+  // still gets a shot at the DB lookup rather than being pre-empted by the
+  // first, session-less run.
+  useEffect(() => {
+    if (fitAutoChecked.current || fitRanking) return;
+    let cancelled = false;
+    (async () => {
+      const resume = await resolveFitResume();
+      if (cancelled || !resume) return; // no resume yet — stay unlocked, retry when session lands
+      fitAutoChecked.current = true;
+      setFitRanking(true);
+    })();
+    return () => { cancelled = true; };
+    // session gates the DB lookup inside resolveFitResume; re-run when it lands.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
   const displayJobs = useMemo(() => {
     if (!fitRanking) return jobs;
@@ -591,6 +622,13 @@ export default function Jobs() {
                 {displayJobs.map((job) => {
                   const d = daysAgo(job.postedAt);
                   const fit = fitRanking ? fits[job.id] : undefined;
+                  const gaps = fitRanking ? (misses[job.id] ?? []) : [];
+                  // Calibrated on live data: full JDs are keyword-dense, so a
+                  // strong same-field resume covers ~20-24% of recognized terms
+                  // and a cross-field one ~3%. Show a qualitative tier (precise
+                  // coverage in the tooltip) so a genuinely strong 22% doesn't
+                  // read as a bad match to a layperson.
+                  const tier = typeof fit === "number" ? (fit >= 20 ? "strong" : fit >= 10 ? "possible" : "stretch") : null;
                   return (
                     <li key={job.id} className="rounded-2xl border border-border bg-card p-4">
                       <div className="flex flex-wrap items-start gap-2">
@@ -604,14 +642,37 @@ export default function Jobs() {
                           {job.salary && (
                             <p className="text-xs text-success font-medium mt-0.5">{job.salary}</p>
                           )}
+                          {/* Trust moat: every posting is pulled straight from the
+                              company's own ATS feed (Greenhouse/Lever/Ashby/…),
+                              never an aggregator or a scrape. Always true, so it's
+                              always shown. */}
+                          <span
+                            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground mt-1"
+                            title={t("jobsPage.trustBadgeTip", "Pulled directly from this company's official applicant-tracking feed — not an aggregator or a scraped copy. Re-checked live when you click Apply.")}
+                          >
+                            <ShieldCheck className="w-3 h-3 text-success shrink-0" />
+                            {t("jobsPage.trustBadge", "Direct from {{company}}'s careers page", { company: job.company })}
+                          </span>
+                          {/* Missing-keyword nudge — turns the score into an action:
+                              "Strong match · add Kubernetes, gRPC". */}
+                          {gaps.length > 0 && (
+                            <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                              <span className="text-primary font-medium">{t("jobsPage.addToCompete", "Add to compete:")}</span>{" "}
+                              {gaps.join(", ")}
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
-                          {typeof fit === "number" && (
-                            /* Calibrated on live data: full JDs carry benefits/EEO
-                               boilerplate, so same-field full resumes score ~17-24
-                               and cross-field ~3. 20/10 separates those cleanly. */
-                            <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${fit >= 20 ? "bg-success/10 text-success" : fit >= 10 ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"}`}>
-                              {t("jobsPage.fitBadge", "fit {{pct}}%", { pct: fit })}
+                          {tier && (
+                            <span
+                              className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${tier === "strong" ? "bg-success/10 text-success" : tier === "possible" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"}`}
+                              title={t("jobsPage.matchCoverage", "{{pct}}% of this posting's recognized keywords are already in your resume", { pct: fit })}
+                            >
+                              {tier === "strong"
+                                ? t("jobsPage.matchStrong", "Strong match")
+                                : tier === "possible"
+                                ? t("jobsPage.matchPossible", "Possible match")
+                                : t("jobsPage.matchStretch", "Stretch")}
                             </span>
                           )}
                           {job.remote && <Badge variant="secondary" className="text-[10px]">{t("jobsPage.remoteBadge", "Remote")}</Badge>}

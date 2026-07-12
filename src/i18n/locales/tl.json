@@ -2836,6 +2836,10 @@
     }
   },
   "changelogEntries": {
+    "fitFirstBoard": {
+      "title": "Bubukas na ngayon ang board na naka-rank ayon sa iyong resume",
+      "description": "I-scan ang iyong resume nang isang beses at bubukas na ang board na naka-sort na ayon sa fit — walang dagdag na click. Ipinapakita ng bawat listing ang antas ng tugma sa simpleng wika (Malakas na tugma, Posibleng tugma, o Mahirap abutin) sa halip na hilaw na porsiyento, kasama ang eksaktong keyword coverage kapag ni-hover at ang mga tiyak na terminong maidaragdag para makipagsabayan. Bawat card ay nakamarka na direktang mula sa opisyal na careers feed ng kumpanya — hindi mula sa aggregator o kopyang na-scrape — at muling sinusuri nang live sa sandaling mag-click ka ng Mag-apply. Sa iyong account, inuuna na ngayon ng application co-pilot na ihanda ang iyong mga na-save na trabahong may pinakamataas na tugma, kaya kung maabot mo ang pang-araw-araw na limitasyon, tapos na ang pinakamahusay."
+    },
     "fieldPages": {
       "title": "I-browse ang job board ayon sa larangan: 17 nakalaang pahina na may live na bilang",
       "description": "Bawat larangan sa board — Engineering & IT, Healthcare & Clinical, Finance & Accounting, Hospitality & Retail, at 13 pa — ay may sariling pahina na ngayon sa /jobs/field na may mga aktibong opening ng larangan at nakatakda na ang filter. Ipinapakita ng bawat pahina ang totoong bilang ng posting ng larangan, sinukat mula sa live na corpus noong huling build ng site (Engineering & IT: 21,610 sa pagsulat nito). Ang aming 59 na industry keyword guide ay direktang naka-link sa katugmang larangan, sa Ingles at Espanyol. Parehong panuntunan tulad ng dati: opisyal na feed lang ng mga kumpanya, at sa site ng kumpanya ang pag-apply."
@@ -4064,6 +4068,13 @@
     "fitNeedsResume": "Patakbuhin ang libreng scan (o mag-save ng bersyon sa account mo) at irar-rank ng board ang bawat posting ayon sa fit mo.",
     "landerSeoTitle": "Live na {{category}} Jobs — Mula sa opisyal na job boards ng mga kumpanya",
     "landerSeoDescription": "Tingnan ang mga aktibong {{category}} opening mula sa opisyal na job boards ng halos 900 kumpanya, muling bineberipika buong araw. Suriin nang libre ang fit ng resume mo, saka mag-apply sa site ng kumpanya.",
-    "landerH1": "Live na {{category}} jobs"
+    "landerH1": "Live na {{category}} jobs",
+    "trustBadge": "Direkta mula sa careers page ng {{company}}",
+    "trustBadgeTip": "Direktang kinuha mula sa opisyal na applicant-tracking feed ng kumpanya — hindi mula sa aggregator o kopyang na-scrape. Muling sinusuri nang live kapag nag-click ka ng Mag-apply.",
+    "addToCompete": "Idagdag para makipagsabayan:",
+    "matchStrong": "Malakas na tugma",
+    "matchPossible": "Posibleng tugma",
+    "matchStretch": "Mahirap abutin",
+    "matchCoverage": "{{pct}}% ng mga kinilalang keyword sa posting na ito ay nasa resume mo na"
   }
 }

@@ -2836,6 +2836,10 @@
     }
   },
   "changelogEntries": {
+    "fitFirstBoard": {
+      "title": "O painel agora abre ordenado pelo seu currículo",
+      "description": "Analise seu currículo uma vez e o painel abre já ordenado por afinidade — sem cliques extras. Cada vaga mostra um nível de correspondência em linguagem clara (Boa correspondência, Correspondência possível ou Pouco provável) em vez de uma porcentagem crua, com a cobertura exata de palavras-chave ao passar o cursor e os termos específicos a adicionar para competir. Cada cartão é marcado como vindo diretamente do sistema de recrutamento oficial da empresa — nunca de um agregador ou de uma cópia rastreada — e é verificado ao vivo assim que você clica em Candidatar-se. Na sua conta, o copiloto de candidaturas agora prepara primeiro as vagas salvas com melhor correspondência, então, se você atingir o limite diário, as melhores já estão prontas."
+    },
     "fieldPages": {
       "title": "Navegue o mural por área: 17 páginas dedicadas com contagens ao vivo",
       "description": "Cada área do mural — Engenharia e TI, Saúde e Clínica, Finanças e Contabilidade, Hotelaria e Varejo, e mais 13 — agora tem página própria em /jobs/field com as vagas ativas da área e o filtro já aplicado. Cada página mostra a contagem real de vagas da área, medida no corpus ao vivo na última compilação do site (Engenharia e TI: 21.610 no momento em que escrevemos). Nossos 59 guias de palavras-chave por setor apontam direto para a área correspondente, em inglês e espanhol. As mesmas regras de sempre: só feeds oficiais das empresas, e a candidatura acontece no site da empresa."
@@ -4064,6 +4068,13 @@
     "fitNeedsResume": "Faça o escaneio grátis (ou salve uma versão na sua conta) e o mural ordenará cada vaga pelo seu encaixe.",
     "landerSeoTitle": "Vagas de {{category}} ao vivo — Dos murais oficiais das empresas",
     "landerSeoDescription": "Veja vagas ativas de {{category}} extraídas dos murais oficiais de quase 900 empresas e reverificadas o dia todo. Confira grátis o encaixe do seu currículo e candidate-se no site da empresa.",
-    "landerH1": "Vagas de {{category}} ao vivo"
+    "landerH1": "Vagas de {{category}} ao vivo",
+    "trustBadge": "Direto da página de carreiras da {{company}}",
+    "trustBadgeTip": "Extraído diretamente do sistema de recrutamento oficial da empresa — não de um agregador nem de uma cópia rastreada. Verificado ao vivo quando você clica em Candidatar-se.",
+    "addToCompete": "Adicione para competir:",
+    "matchStrong": "Boa correspondência",
+    "matchPossible": "Correspondência possível",
+    "matchStretch": "Pouco provável",
+    "matchCoverage": "{{pct}}% das palavras-chave reconhecidas desta vaga já estão no seu currículo"
   }
 }

@@ -21,7 +21,18 @@ export interface CopilotApp {
   apply_url?: string | null;
   status: string;
   scan_id?: string | null;
+  fit_pct?: number | null;
   kit?: unknown;
+}
+
+// Same qualitative buckets as the board: full JDs are keyword-dense, so a
+// strong same-field resume covers ~20%+ of recognized terms. Show a word, not
+// a raw percentage that reads as "bad" to a layperson.
+function fitTier(pct: number | null | undefined): { label: string; cls: string } | null {
+  if (typeof pct !== "number") return null;
+  if (pct >= 20) return { label: "Strong match", cls: "bg-success/10 text-success" };
+  if (pct >= 10) return { label: "Possible match", cls: "bg-warning/10 text-warning" };
+  return { label: "Stretch", cls: "bg-muted text-muted-foreground" };
 }
 
 const appsTable = () => (supabase as unknown as { from: (t: string) => any }).from("user_applications");
@@ -66,7 +77,12 @@ export function ApplyCopilotPanel({
     () => apps.filter((a) => (a.job_posting?.trim().length ?? 0) > 30 && (resumeFor(a)?.trim().length ?? 0) >= 50),
     [apps, resumeFor],
   );
-  const pending = preppable.filter((a) => !a.kit);
+  // Prep strongest fit first: if the daily generation limit cuts the batch
+  // short, the best-matched jobs are the ones that got prepped, not whichever
+  // happened to be saved first. Unknown fit sorts last (treated as -1).
+  const pending = preppable
+    .filter((a) => !a.kit)
+    .sort((a, b) => (b.fit_pct ?? -1) - (a.fit_pct ?? -1));
   const prepped = preppable.filter((a) => a.kit);
 
   if (preppable.length === 0) return null;
@@ -74,11 +90,13 @@ export function ApplyCopilotPanel({
   const prepAll = async () => {
     if (!proActive || busy) return;
     setBusy(true);
-    let done = 0;
+    let succeeded = 0; // only real kits — not skips, refusals, or failures
+    let i = 0;
     for (const a of pending) {
-      setProgress({ done, total: pending.length, company: a.company });
+      setProgress({ done: i, total: pending.length, company: a.company });
+      i++;
       const resumeText = resumeFor(a);
-      if (!resumeText) { done++; continue; }
+      if (!resumeText) continue;
       try {
         const { data, error } = await supabase.functions.invoke("generate-apply-package", {
           body: { resumeText, jobPostingText: a.job_posting, jobTitle: a.role, jobCompany: a.company },
@@ -89,21 +107,25 @@ export function ApplyCopilotPanel({
           const status = (error as { context?: { status?: number } })?.context?.status;
           if (status === 402) { toast.error("Batch prep needs Pro. Upgrade to prep applications in bulk."); break; }
           if (status === 429) { toast.error("Daily generation limit reached — the ones prepped so far are saved. Try the rest tomorrow."); break; }
-          done++; continue; // 422 grounding refusal or transient — skip this one, keep going
+          continue; // 422 grounding refusal or transient — skip this one, keep going
         }
-        if (!(data as { success?: boolean } | null)?.success) { done++; continue; }
+        if (!(data as { success?: boolean } | null)?.success) continue;
         // Persist the kit so it survives reloads and never re-charges.
         await appsTable().update({ kit: data, kit_generated_at: new Date().toISOString() }).eq("id", a.id);
         onKit(a.id, data);
+        succeeded++;
       } catch {
         // network hiccup — leave it pending, next run picks it up
       }
-      done++;
       await new Promise((r) => setTimeout(r, 900)); // gentle pacing
     }
     setProgress(null);
     setBusy(false);
-    toast.success(`Prepped ${done} application${done === 1 ? "" : "s"} — review and apply below.`);
+    if (succeeded > 0) {
+      toast.success(`Prepped ${succeeded} application${succeeded === 1 ? "" : "s"} — review and apply below.`);
+    } else {
+      toast("Nothing new to prep — the saved postings couldn't be tailored (missing description or grounding check). Add a job posting and try again.");
+    }
   };
 
   return (
@@ -143,6 +165,7 @@ export function ApplyCopilotPanel({
           {prepped.map((a) => {
             const kit = toKit(a.kit);
             const isOpen = openId === a.id;
+            const tier = fitTier(a.fit_pct);
             return (
               <div key={a.id} className="border border-border/60 rounded-lg bg-card">
                 <div className="flex items-center gap-2 px-3 py-2">
@@ -152,6 +175,11 @@ export function ApplyCopilotPanel({
                       {a.company}{a.role ? <span className="text-muted-foreground font-normal"> · {a.role}</span> : null}
                     </span>
                   </button>
+                  {tier && (
+                    <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${tier.cls}`} title={`${a.fit_pct}% of the posting's recognized keywords are in your resume`}>
+                      {tier.label}
+                    </span>
+                  )}
                   {a.apply_url && (
                     <a
                       href={a.apply_url}

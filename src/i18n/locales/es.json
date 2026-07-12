@@ -2836,6 +2836,10 @@
     }
   },
   "changelogEntries": {
+    "fitFirstBoard": {
+      "title": "El tablero ahora se abre ordenado según tu currículum",
+      "description": "Escanea tu currículum una vez y el tablero se abre ya ordenado por afinidad, sin clics adicionales. Cada oferta muestra un nivel de coincidencia en lenguaje claro (Buena coincidencia, Coincidencia posible o Poco probable) en lugar de un porcentaje, con la cobertura exacta de palabras clave al pasar el cursor y los términos concretos que puedes añadir para competir. Cada tarjeta indica que proviene directamente del sistema de empleo oficial de la empresa —nunca de un agregador ni de una copia rastreada— y se vuelve a verificar en vivo en cuanto haces clic en Postular. En tu cuenta, el copiloto de solicitudes ahora prepara primero los empleos guardados con mejor coincidencia, así que si alcanzas el límite diario los mejores ya están listos."
+    },
     "fieldPages": {
       "title": "Explora la bolsa por campo: 17 páginas dedicadas con recuentos en vivo",
       "description": "Cada campo de la bolsa — Ingeniería y TI, Sanidad y Clínica, Finanzas y Contabilidad, Hostelería y Comercio, y 13 más — tiene ahora su propia página en /jobs/field con las ofertas activas de ese campo y el filtro ya aplicado. Cada página muestra el recuento real de ofertas del campo, medido del corpus en vivo en la última compilación del sitio (Ingeniería y TI: 21.610 al escribir esto). Nuestras 59 guías de palabras clave por industria enlazan directamente a su campo correspondiente, en inglés y español. Las mismas reglas de siempre: solo feeds oficiales de las empresas, y la postulación ocurre en el sitio de cada empresa."
@@ -4064,6 +4068,13 @@
     "fitNeedsResume": "Haz el escaneo gratuito (o guarda una versión en tu cuenta) y el tablón podrá ordenar cada oferta según tu encaje.",
     "landerSeoTitle": "Empleos de {{category}} en vivo — De las bolsas oficiales de las empresas",
     "landerSeoDescription": "Explora ofertas activas de {{category}} extraídas de las bolsas de empleo oficiales de casi 900 empresas y reverificadas durante todo el día. Comprueba gratis el encaje de tu currículum y postula en el sitio de la empresa.",
-    "landerH1": "Empleos de {{category}} en vivo"
+    "landerH1": "Empleos de {{category}} en vivo",
+    "trustBadge": "Directo desde la página de empleo de {{company}}",
+    "trustBadgeTip": "Extraído directamente del sistema de selección oficial de la empresa, no de un agregador ni de una copia rastreada. Se vuelve a verificar en vivo cuando haces clic en Postular.",
+    "addToCompete": "Añade para competir:",
+    "matchStrong": "Buena coincidencia",
+    "matchPossible": "Coincidencia posible",
+    "matchStretch": "Poco probable",
+    "matchCoverage": "El {{pct}}% de las palabras clave reconocidas de esta oferta ya están en tu currículum"
   }
 }

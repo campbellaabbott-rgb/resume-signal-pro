@@ -50,4 +50,14 @@ describe("ApplyCopilotPanel", () => {
     expect(screen.getByText("Apply")).toBeInTheDocument();
     expect(screen.getByText(/1\/1 prepped/)).toBeInTheDocument();
   });
+
+  it("surfaces a qualitative fit tier on prepped rows so users prioritize", () => {
+    const kit = { tailoredResume: { name: "Jo" }, jobMetadata: { company: "Acme", roleTitle: "Engineer", applyMethodHint: "" }, skillGaps: [], checklist: [] };
+    // 25% coverage is a strong same-field match on this compressed scale; the
+    // row shows the word, never a bare "25%" that reads as poor to a layperson.
+    wrap(<ApplyCopilotPanel apps={[withPosting({ kit, fit_pct: 25 })]} resumeFor={resumeFor} proActive onKit={noop} onStatus={noop} />);
+    expect(screen.getByText("Strong match")).toBeInTheDocument();
+    // No raw percentage leaks into the visible label.
+    expect(screen.queryByText(/25%/)).not.toBeInTheDocument();
+  });
 });
