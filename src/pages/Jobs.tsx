@@ -251,16 +251,17 @@ export default function Jobs() {
           if (seq !== reqSeq.current) return;
           ({ data: res, error: err } = await supabase.functions.invoke("job-board", { body }));
         }
+        if (seq !== reqSeq.current) return; // a newer filter superseded this request — abandon quietly
         if (err || !res?.jobs) throw new Error(err?.message ?? "no jobs field");
-        if (seq !== reqSeq.current) return; // a newer filter superseded this request
         const br = res as BoardResponse;
         if (br.companies?.length) companiesCache.current = br.companies;
         else br.companies = companiesCache.current;
         setData(br);
         setJobs((prev) => (offset === 0 ? br.jobs : [...prev, ...br.jobs]));
       } catch (e) {
+        if (seq !== reqSeq.current) return; // superseded request failed — not user-visible, don't log or flag
         console.error("[Jobs] list failed:", e);
-        if (seq === reqSeq.current) setError(true);
+        setError(true);
       } finally {
         if (seq === reqSeq.current) {
           setLoading(false);
