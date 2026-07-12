@@ -400,8 +400,19 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // just past the wrap point on every rotation.
   if (inHotPhase) hot += HOT_SLICE;
   else {
+    const before = cold;
     cold = (cold + slice.length) % Math.max(1, COLD_LIST.length);
     coldDone += 1;
+    // The cold cursor just wrapped past the end → the ENTIRE cold tail has
+    // now been re-verified. Stamp it: this is the direct measurement of
+    // freshness (max staleness of any cold posting = time since this stamp).
+    // The heartbeat alerts if it ever falls behind the SLA.
+    if (cold < before) {
+      await client.from("job_board_meta").upsert(
+        { k: "cold_rotation", v: { completedAt: new Date().toISOString(), coldBoards: COLD_LIST.length }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+    }
   }
   const passDone = hot >= HOT_LIST.length && coldDone >= COLD_SLICES_PER_PASS;
 

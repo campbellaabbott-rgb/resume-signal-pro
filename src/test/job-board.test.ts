@@ -423,6 +423,18 @@ describe("category gap fixes (2026-07-12 Other-bucket audit)", () => {
   }
 });
 
+describe("cold-rotation wrap detection (freshness SLA)", () => {
+  // The refresh stamps cold_rotation when the modular cursor wraps past the
+  // end — this is the signal the heartbeat's freshness SLA reads.
+  it("detects a wrap when the new cursor is less than the old", () => {
+    const wrapped = (before: number, len: number, total: number) => ((before + len) % total) < before;
+    expect(wrapped(580, 60, 600)).toBe(true);   // 580 -> 40, wrapped
+    expect(wrapped(0, 60, 600)).toBe(false);     // 0 -> 60, no wrap
+    expect(wrapped(300, 60, 600)).toBe(false);   // 300 -> 360, no wrap
+    expect(wrapped(599, 1, 600)).toBe(true);     // 599 -> 0, wrapped exactly
+  });
+});
+
 describe("never-stale arc invariants (2026-07-12)", () => {
   it("verify treats unknown/null liveness as still-live (never a false close)", async () => {
     // Mirrors the verify action's rule: only an explicit false prunes.

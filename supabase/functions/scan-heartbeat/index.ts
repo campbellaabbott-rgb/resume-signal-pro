@@ -232,6 +232,27 @@ serve(async (req) => {
         if (overallStatus === 'healthy') overallStatus = 'degraded';
         errorMessage = errorMessage || `Job board refresh stalled (${ageMin ?? 'no meta'} min since last slice)`;
       }
+
+      // Freshness SLA: the slice check above proves the pipeline is MOVING,
+      // but not that the whole catalog is actually fresh. The cold tail is
+      // fully re-verified once per rotation; if that rotation hasn't
+      // completed within the SLA, cold-tail postings are going stale even
+      // though slices keep ticking. This measures freshness directly.
+      const COLD_ROTATION_SLA_MIN = 90;
+      const { data: rot } = await supabase
+        .from('job_board_meta').select('v, updated_at').eq('k', 'cold_rotation').maybeSingle();
+      const rotAgeMin = rot ? Math.round((Date.now() - new Date((rot.v as { completedAt?: string })?.completedAt ?? rot.updated_at).getTime()) / 60000) : null;
+      const rotStale = rotAgeMin !== null && rotAgeMin > COLD_ROTATION_SLA_MIN;
+      checks.push({
+        name: 'job_board_freshness',
+        passed: !rotStale,
+        responseTimeMs: 0,
+        error: rotStale ? `cold-tail last fully re-verified ${rotAgeMin} min ago (SLA ${COLD_ROTATION_SLA_MIN}) — long-tail postings may be stale; check for failing boards or too-slow rotation` : undefined,
+      });
+      if (rotStale) {
+        if (overallStatus === 'healthy') overallStatus = 'degraded';
+        errorMessage = errorMessage || `Job board cold-tail freshness behind SLA (${rotAgeMin} min)`;
+      }
     } catch (e) {
       checks.push({
         name: 'job_board_refresh',
