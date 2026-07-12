@@ -253,6 +253,32 @@ serve(async (req) => {
         if (overallStatus === 'healthy') overallStatus = 'degraded';
         errorMessage = errorMessage || `Job board cold-tail freshness behind SLA (${rotAgeMin} min)`;
       }
+
+      // Capacity headroom: the corpus is bounded by the free-tier DB (~100k).
+      // Warn BEFORE the governor has to evict live postings — a shrinking
+      // headroom is the signal to widen the DB tier or trim the board
+      // selection, rather than silently shedding real jobs to stay under cap.
+      const { data: cap } = await supabase
+        .from('job_board_meta').select('v').eq('k', 'capacity').maybeSingle();
+      const capV = (cap?.v ?? {}) as { active?: boolean; headroom?: number; corpusBefore?: number; evicted?: number; ceiling?: number };
+      const headroom = typeof capV.headroom === 'number'
+        ? capV.headroom
+        : (typeof capV.ceiling === 'number' && typeof capV.corpusBefore === 'number' ? capV.ceiling - capV.corpusBefore : null);
+      const capTight = capV.active === true || (headroom !== null && headroom < 2000);
+      checks.push({
+        name: 'job_board_capacity',
+        passed: !capTight,
+        responseTimeMs: 0,
+        error: capTight
+          ? (capV.active
+              ? `capacity governor active — evicted ${capV.evicted ?? '?'} stalest postings last pass (ceiling ${capV.ceiling ?? '?'}); widen the DB tier or trim board selection`
+              : `corpus near cap — headroom ${headroom} below ceiling ${capV.ceiling ?? '?'}`)
+          : undefined,
+      });
+      if (capTight) {
+        if (overallStatus === 'healthy') overallStatus = 'degraded';
+        errorMessage = errorMessage || `Job board near capacity (${capV.active ? 'governor evicting' : `headroom ${headroom}`})`;
+      }
     } catch (e) {
       checks.push({
         name: 'job_board_refresh',

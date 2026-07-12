@@ -23,6 +23,8 @@ import {
   normalizeLever,
   normalizeSmartRecruiters,
   normalizeWorkable,
+  POSTED_AT_MAX_AGE_MS,
+  sanePostedAt,
   type JobPosting,
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
@@ -191,6 +193,18 @@ async function tierLists(client: SupabaseClient): Promise<{ hotList: JobSource[]
 const COLD_SLICES_PER_PASS = 8;
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
+// Capacity governor: the free-tier database holds ~100k postings before writes
+// start failing — and a failed insert stalls the whole refresh, which is the
+// opposite of fresh. Keep the corpus under a ceiling with headroom; when a
+// hiring surge or a wider board selection pushes past it, shed the STALEST
+// postings (oldest effective_posted — the exact rows sitting last on the
+// board) so the slots we keep are the freshest. Dormant while supply is under
+// the ceiling (the common case today at ~90k), so it costs nothing until it's
+// actually needed. Hysteresis (evict down to TARGET, arm at CEILING) keeps it
+// from thrashing every pass once it does engage.
+const CORPUS_CEILING = 97_000; // arm eviction above this
+const CORPUS_TARGET = 95_000;  // evict down to this
+
 // force=true bypasses the slice lock, so it must not be reachable from the
 // open internet (the function serves anonymous traffic): chain hops carry a
 // secret derived from the service-role key, and refresh demotes force to a
@@ -326,7 +340,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             remote: j.remote,
             department: clean(j.department?.slice(0, 200) ?? null),
             category: j.category,
-            posted_at: j.postedAt,
+            posted_at: sanePostedAt(j.postedAt), // reject garbage feed dates at the door
             apply_url: j.applyUrl,
             salary: clean(j.salary?.slice(0, 200) ?? null),
             // Light boards omit the column so previously stored descriptions
@@ -473,6 +487,60 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       }
       console.log(`[JOB-BOARD] orphan-pruned ${orphanTokens.length} removed board(s): ${orphanTokens.slice(0, 8).join(", ")}`);
       companies = companies.filter((c) => !orphanTokens.includes((c as { token?: string }).token ?? ""));
+    }
+
+    // Date hygiene: repair any stored posted_at that's absurd (future, or older
+    // than our trust window — a 2009-dated req is bad feed data, not a 15-year
+    // opening). New inserts are already sanitized at ingestion; this fixes rows
+    // stored before that guard. UPDATE, not delete — the posting is still live,
+    // only its date was junk. Self-terminating: once nulled a row stops
+    // matching, so later passes update nothing.
+    const nowIso = new Date().toISOString();
+    {
+      const futureIso = new Date(Date.now() + 2 * 86_400_000).toISOString();
+      const ancientIso = new Date(Date.now() - POSTED_AT_MAX_AGE_MS).toISOString();
+      const { error: e1 } = await client.from("job_board_postings").update({ posted_at: null }).gt("posted_at", futureIso);
+      const { error: e2 } = await client.from("job_board_postings").update({ posted_at: null }).lt("posted_at", ancientIso);
+      if (e1 || e2) console.warn("[JOB-BOARD] date-hygiene error:", (e1 ?? e2)?.message);
+    }
+
+    // Capacity governor (see CORPUS_CEILING). Accurate post-prune count — this
+    // gates a destructive op, so don't reuse the orphan-inflated facet total.
+    const { count: corpusSize } = await client.from("job_board_postings").select("id", { count: "exact", head: true });
+    if ((corpusSize ?? 0) > CORPUS_CEILING) {
+      const overflow = (corpusSize as number) - CORPUS_TARGET;
+      // Page the oldest ids (PostgREST caps a response at 1,000 rows) so a big
+      // jump — e.g. a wider board selection — can be shed in one pass.
+      const ids: string[] = [];
+      for (let from = 0; ids.length < overflow; from += 1000) {
+        const take = Math.min(1000, overflow - ids.length);
+        const { data: page, error } = await client
+          .from("job_board_postings")
+          .select("id")
+          .order("effective_posted", { ascending: true })
+          .range(from, from + take - 1);
+        if (error) { console.warn("[JOB-BOARD] capacity select error:", error.message); break; }
+        ids.push(...(page ?? []).map((r) => r.id as string));
+        if (!page || page.length < take) break;
+      }
+      let evicted = 0;
+      for (let i = 0; i < ids.length; i += 200) {
+        const { error } = await client.from("job_board_postings").delete().in("id", ids.slice(i, i + 200));
+        if (error) { console.warn("[JOB-BOARD] capacity evict error:", error.message); break; }
+        evicted += Math.min(200, ids.length - i);
+      }
+      await client.from("job_board_meta").upsert(
+        { k: "capacity", v: { at: nowIso, corpusBefore: corpusSize, ceiling: CORPUS_CEILING, target: CORPUS_TARGET, evicted, active: true }, updated_at: nowIso },
+        { onConflict: "k" },
+      );
+      console.warn(`[JOB-BOARD] capacity governor: corpus ${corpusSize} > ${CORPUS_CEILING} — evicted ${evicted} stalest postings toward ${CORPUS_TARGET}`);
+    } else {
+      // Record headroom each pass so the heartbeat can watch the corpus trend
+      // toward the ceiling before it ever binds.
+      await client.from("job_board_meta").upsert(
+        { k: "capacity", v: { at: nowIso, corpus: corpusSize ?? 0, ceiling: CORPUS_CEILING, headroom: CORPUS_CEILING - (corpusSize ?? 0), evicted: 0, active: false }, updated_at: nowIso },
+        { onConflict: "k" },
+      );
     }
 
     const v = {

@@ -15,7 +15,7 @@ import { normalizeSmartRecruiters, normalizeWorkable } from "../../supabase/func
 import { searchName, searchToQuery } from "../../src/lib/job-search-params";
 import { computeFit } from "../../supabase/functions/_shared/fit-score";
 import { normalizeBambooHR } from "../../supabase/functions/job-board/normalize";
-import { leverSalary } from "../../supabase/functions/job-board/normalize";
+import { leverSalary, sanePostedAt } from "../../supabase/functions/job-board/normalize";
 
 // ── real captured fixtures (trimmed to the fields the APIs actually send) ──
 const GH_FIXTURE = {
@@ -216,6 +216,24 @@ describe("fit scoring + salary mapping", () => {
     expect(fit.matched.filter((m) => fit.missing.includes(m))).toEqual([]);
     // Missing is bounded enough to slice the top few for the card without going empty.
     expect(fit.missing.length).toBeGreaterThan(0);
+  });
+
+  it("sanePostedAt rejects garbage feed dates, keeps real ones", () => {
+    const now = Date.parse("2026-07-12T00:00:00Z");
+    // Real recent date passes through unchanged.
+    expect(sanePostedAt("2026-07-01T00:00:00Z", now)).toBe("2026-07-01T00:00:00Z");
+    // The live 2009 Palantir-style garbage date is rejected.
+    expect(sanePostedAt("2009-12-05T00:00:00Z", now)).toBeNull();
+    // Future beyond clock-skew grace is rejected; within grace is kept.
+    expect(sanePostedAt("2027-01-01T00:00:00Z", now)).toBeNull();
+    expect(sanePostedAt("2026-07-13T06:00:00Z", now)).toBe("2026-07-13T06:00:00Z");
+    // Just inside the ~3y window is kept; well outside is rejected.
+    expect(sanePostedAt("2023-08-01T00:00:00Z", now)).toBe("2023-08-01T00:00:00Z");
+    expect(sanePostedAt("2022-01-01T00:00:00Z", now)).toBeNull();
+    // Null / empty / unparseable all collapse to null.
+    expect(sanePostedAt(null, now)).toBeNull();
+    expect(sanePostedAt("", now)).toBeNull();
+    expect(sanePostedAt("not a date", now)).toBeNull();
   });
 
   it("leverSalary formats ranges and rejects empties", () => {

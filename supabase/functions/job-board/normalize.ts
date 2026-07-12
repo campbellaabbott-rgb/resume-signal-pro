@@ -36,6 +36,26 @@ const safeUrl = (u: unknown): string => {
   return "";
 };
 
+// Oldest posted_at we'll trust from a feed. Beyond this it's almost certainly
+// bad data (some feeds return epoch-ish or decade-old timestamps — e.g. a
+// Palantir role dated 2009) or an evergreen pipeline req that shouldn't wear a
+// stale date. Kept here so ingestion and any date-hygiene share one bound.
+export const POSTED_AT_MAX_AGE_MS = 3 * 365 * 24 * 60 * 60_000; // ~3 years
+
+// A posted_at is trustworthy only if it parses and sits in a sane window: not
+// in the future (small clock-skew grace) and not absurdly old. Garbage dates
+// collapse to null — so effective_posted falls back to first-seen for sorting
+// and the card shows no date instead of "posted 6000 days ago". The board's
+// freshness signal is only as honest as the dates feeding it.
+export function sanePostedAt(iso: string | null | undefined, now: number = Date.now()): string | null {
+  if (!iso || typeof iso !== "string") return null;
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return null;
+  if (t > now + 2 * 86_400_000) return null;        // future beyond clock-skew grace
+  if (t < now - POSTED_AT_MAX_AGE_MS) return null;  // absurdly old
+  return iso;
+}
+
 // Greenhouse escapes the HTML it returns (&lt;p&gt;…) — and entities INSIDE
 // that HTML arrive double-escaped (&amp;nbsp;), so unescape must run twice:
 // once to recover the markup, once to recover the text's own entities.
