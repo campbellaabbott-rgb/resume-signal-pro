@@ -15,7 +15,7 @@ import { normalizeSmartRecruiters, normalizeWorkable } from "../../supabase/func
 import { searchName, searchToQuery } from "../../src/lib/job-search-params";
 import { computeFit } from "../../supabase/functions/_shared/fit-score";
 import { normalizeBambooHR } from "../../supabase/functions/job-board/normalize";
-import { leverSalary, sanePostedAt } from "../../supabase/functions/job-board/normalize";
+import { leverSalary, sanePostedAt, isDatedBefore } from "../../supabase/functions/job-board/normalize";
 
 // ── real captured fixtures (trimmed to the fields the APIs actually send) ──
 const GH_FIXTURE = {
@@ -234,6 +234,20 @@ describe("fit scoring + salary mapping", () => {
     expect(sanePostedAt(null, now)).toBeNull();
     expect(sanePostedAt("", now)).toBeNull();
     expect(sanePostedAt("not a date", now)).toBeNull();
+  });
+
+  it("isDatedBefore drops known-old postings but never undated ones", () => {
+    const cutoff = Date.parse("2026-06-12T00:00:00Z"); // 30 days before 2026-07-12
+    // A real date past the window is dropped.
+    expect(isDatedBefore("2026-05-01T00:00:00Z", cutoff)).toBe(true);
+    // A real date inside the window is kept.
+    expect(isDatedBefore("2026-07-01T00:00:00Z", cutoff)).toBe(false);
+    // Undated / garbage-dated (sanePostedAt already collapsed to null) is NEVER
+    // dropped on age — we can't prove it's old. This is the subtle safety point.
+    expect(isDatedBefore(null, cutoff)).toBe(false);
+    // Composed with sanePostedAt: a garbage 2009 date sanitizes to null, so the
+    // freshness cap keeps the posting (shown dateless) rather than dropping it.
+    expect(isDatedBefore(sanePostedAt("2009-01-01T00:00:00Z", cutoff), cutoff)).toBe(false);
   });
 
   it("leverSalary formats ranges and rejects empties", () => {

@@ -56,6 +56,14 @@ export function sanePostedAt(iso: string | null | undefined, now: number = Date.
   return iso;
 }
 
+// Freshness-cap decision: a posting is dropped on age ONLY when it carries a
+// trustworthy date older than the cutoff. A null (undated or garbage-dated,
+// per sanePostedAt) posting is never dropped on age — we can't prove it's old,
+// and the vast majority of feeds do date their postings anyway.
+export function isDatedBefore(sanitizedPostedAt: string | null, cutoffMs: number): boolean {
+  return sanitizedPostedAt !== null && Date.parse(sanitizedPostedAt) < cutoffMs;
+}
+
 // Greenhouse escapes the HTML it returns (&lt;p&gt;…) — and entities INSIDE
 // that HTML arrive double-escaped (&amp;nbsp;), so unescape must run twice:
 // once to recover the markup, once to recover the text's own entities.

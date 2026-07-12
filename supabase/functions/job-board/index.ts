@@ -25,6 +25,7 @@ import {
   normalizeWorkable,
   POSTED_AT_MAX_AGE_MS,
   sanePostedAt,
+  isDatedBefore,
   type JobPosting,
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
@@ -205,6 +206,15 @@ const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; //
 const CORPUS_CEILING = 97_000; // arm eviction above this
 const CORPUS_TARGET = 95_000;  // evict down to this
 
+// Freshness cap: the board shows only roles posted within this window. Dated
+// postings past it are dropped at ingestion (never stored) and swept from the
+// stored corpus each pass; the id-diff prune then keeps them out for good.
+// Nearly 100% of feed postings carry a real date, so this is churn-free — a
+// dropped dated posting can't re-enter. One constant to dial (30d ≈ 31k live
+// board, 45d ≈ 43k, 60d ≈ 50k on the current selection).
+const FRESH_WINDOW_DAYS = 30;
+const FRESH_PRUNE_MAX = 6_000; // cap the aged-tail sweep per pass so a big backlog drains without a giant delete
+
 // force=true bypasses the slice lock, so it must not be reachable from the
 // open internet (the function serves anonymous traffic): chain hops carry a
 // secret derived from the service-role key, and refresh demotes force to a
@@ -278,6 +288,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   }
   const slice = [...demandBoards, ...baseSlice];
   const startIso = new Date().toISOString();
+  const freshCutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000; // roles older than this are dropped
 
   // Cursors advance BEFORE processing (optimistic): if this invocation dies
   // on the resource ceiling, the next attempt continues with the NEXT
@@ -330,6 +341,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         const lightDescs = LIGHT_DESC_TOKENS.has(s.token);
         const rowsById = new Map<string, Record<string, unknown>>();
         for (const j of r.jobs) {
+          const posted = sanePostedAt(j.postedAt); // reject garbage feed dates at the door
+          // Freshness cap: a posting with a REAL date older than the window is
+          // dropped here — left out of rowsById, so the id-diff prune deletes it
+          // if we already had it and never re-adds it (churn-free because it
+          // won't reappear as "new"). Undated / garbage-dated postings can't be
+          // judged old, so they're kept and simply carry no displayed date.
+          if (isDatedBefore(posted, freshCutoffMs)) continue;
           rowsById.set(j.id, {
             id: j.id,
             source: j.source,
@@ -340,7 +358,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             remote: j.remote,
             department: clean(j.department?.slice(0, 200) ?? null),
             category: j.category,
-            posted_at: sanePostedAt(j.postedAt), // reject garbage feed dates at the door
+            posted_at: posted,
             apply_url: j.applyUrl,
             salary: clean(j.salary?.slice(0, 200) ?? null),
             // Light boards omit the column so previously stored descriptions
@@ -502,6 +520,36 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       const { error: e1 } = await client.from("job_board_postings").update({ posted_at: null }).gt("posted_at", futureIso);
       const { error: e2 } = await client.from("job_board_postings").update({ posted_at: null }).lt("posted_at", ancientIso);
       if (e1 || e2) console.warn("[JOB-BOARD] date-hygiene error:", (e1 ?? e2)?.message);
+    }
+
+    // Freshness cap sweep: drop the aged tail (effective_posted past the window)
+    // so the corpus reclaims itself immediately rather than waiting a full cold
+    // rotation for the per-board prune. Bounded per pass (a single delete of the
+    // ~65k initial backlog risks a statement timeout on the free tier); the
+    // ingestion filter keeps dated-old postings from re-entering, so this
+    // converges within a few passes and then only trims the daily trickle.
+    {
+      const freshCutoffIso = new Date(freshCutoffMs).toISOString();
+      const ids: string[] = [];
+      for (let from = 0; ids.length < FRESH_PRUNE_MAX; from += 1000) {
+        const take = Math.min(1000, FRESH_PRUNE_MAX - ids.length);
+        const { data: page, error } = await client
+          .from("job_board_postings")
+          .select("id")
+          .lt("effective_posted", freshCutoffIso)
+          .order("effective_posted", { ascending: true })
+          .range(from, from + take - 1);
+        if (error) { console.warn("[JOB-BOARD] freshness sweep select error:", error.message); break; }
+        ids.push(...(page ?? []).map((r) => r.id as string));
+        if (!page || page.length < take) break;
+      }
+      let dropped = 0;
+      for (let i = 0; i < ids.length; i += 200) {
+        const { error } = await client.from("job_board_postings").delete().in("id", ids.slice(i, i + 200));
+        if (error) { console.warn("[JOB-BOARD] freshness sweep delete error:", error.message); break; }
+        dropped += Math.min(200, ids.length - i);
+      }
+      if (dropped > 0) console.log(`[JOB-BOARD] freshness cap: dropped ${dropped} postings older than ${FRESH_WINDOW_DAYS}d`);
     }
 
     // Capacity governor (see CORPUS_CEILING). Accurate post-prune count — this
