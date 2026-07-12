@@ -2089,6 +2089,7 @@ export type Database = {
           sample_size: number
         }[]
       }
+      get_job_board_facets: { Args: never; Returns: Json }
       get_parse_failure_stats: {
         Args: { p_hours_back?: number }
         Returns: {
