@@ -193,6 +193,7 @@ const tableState = async (name) => {
 };
 const dbObjects = {
   "get_scan_totals()": await rpcState("get_scan_totals"),
+  "get_job_board_facets()": await rpcState("get_job_board_facets"),
   "get_public_scan_insights()": await rpcState("get_public_scan_insights"),
   "get_real_score_distribution()": await rpcState("get_real_score_distribution", { p_industry: "technology" }),
   "get_industry_score_benchmark()": await rpcState("get_industry_score_benchmark", { p_industry: "technology", p_score: 70 }),
