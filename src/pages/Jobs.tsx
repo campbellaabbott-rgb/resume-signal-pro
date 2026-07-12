@@ -302,9 +302,31 @@ export default function Jobs() {
     return () => clearTimeout(h);
   }, [fetchJobs]);
 
+  // Feature 1 (verify-on-apply): confirm a posting is still live on the
+  // company's own board at the moment of interaction — the refresh window
+  // means the board can be up to a slice-cycle behind a takedown. Returns
+  // true if live (or unverifiable — never a false close); on a confirmed
+  // close, drops the card for everyone here and tells the user.
+  const verifyJob = async (job: BoardJob): Promise<boolean> => {
+    try {
+      const { data } = await supabase.functions.invoke("job-board", { body: { action: "verify", ids: [job.id] } });
+      const live = (data as { live?: Record<string, boolean> })?.live;
+      if (live && live[job.id] === false) {
+        setJobs((prev) => prev.filter((j) => j.id !== job.id));
+        toast({
+          title: t("jobsPage.postingClosedTitle", "That posting just closed"),
+          description: t("jobsPage.postingClosedBody", "{{company}} took this one down. It's off the board now — the openings below are still live.", { company: job.company }),
+        });
+        return false;
+      }
+    } catch { /* unverifiable — don't block the user */ }
+    return true;
+  };
+
   const checkFit = async (job: BoardJob) => {
     setFitFetching(job.id);
     try {
+      if (!(await verifyJob(job))) return;
       const { data: res, error: err } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
       const description: string | undefined = res?.description;
       if (err || !description) throw new Error(err?.message ?? "no description");
@@ -617,7 +639,7 @@ export default function Jobs() {
                           {t("jobsPage.checkFit", "Check my fit — free scan")}
                         </Button>
                         <Button size="sm" variant="ghost" className="gap-1.5" asChild>
-                          <a href={job.applyUrl} target="_blank" rel="noopener noreferrer" onClick={() => { trackApply(job); void promoteApplied(job); }}>
+                          <a href={job.applyUrl} target="_blank" rel="noopener noreferrer" onClick={() => { trackApply(job); void promoteApplied(job); void verifyJob(job); }}>
                             {t("jobsPage.apply", "Apply on {{company}}'s site", { company: job.company })}
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>

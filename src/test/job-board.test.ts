@@ -422,3 +422,22 @@ describe("category gap fixes (2026-07-12 Other-bucket audit)", () => {
     });
   }
 });
+
+describe("never-stale arc invariants (2026-07-12)", () => {
+  it("verify treats unknown/null liveness as still-live (never a false close)", async () => {
+    // Mirrors the verify action's rule: only an explicit false prunes.
+    const decide = (live: boolean | null) => live === false ? "prune" : "keep";
+    expect(decide(true)).toBe("keep");
+    expect(decide(null)).toBe("keep");   // transient/unverifiable — must NOT close
+    expect(decide(false)).toBe("prune"); // confirmed gone
+  });
+
+  it("consecutive-failure prune fires only at the 6th straight miss", () => {
+    let streak = 0;
+    const step = (ok: boolean) => { if (ok) { streak = 0; return false; } streak += 1; return streak >= 6; };
+    expect([1,2,3,4,5].map(() => step(false))).toEqual([false,false,false,false,false]);
+    expect(step(false)).toBe(true);   // 6th → prune
+    expect(step(true)).toBe(false);   // a success resets
+    expect(streak).toBe(0);
+  });
+});

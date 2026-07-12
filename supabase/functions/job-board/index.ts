@@ -244,9 +244,25 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   }
 
   const inHotPhase = hot < HOT_LIST.length;
-  const slice = inHotPhase
+  const baseSlice = inHotPhase
     ? HOT_LIST.slice(hot, hot + HOT_SLICE)
     : COLD_LIST.slice(cold, cold + COLD_SLICE);
+  // Feature 3 (demand-driven freshness): boards a user just opened/verified
+  // jump the queue. Injected only on COLD slices — hot boards already
+  // re-check every pass (~10 min), and cold slices have the compute headroom
+  // that hot slices of giants do not. So a takedown on a viewed cold-board
+  // job disappears within one pass instead of waiting for its rotation.
+  let demandBoards: JobSource[] = [];
+  if (!inHotPhase) {
+    const sliceTokens = new Set(baseSlice.map((s) => s.token));
+    const { data: demandMeta } = await client.from("job_board_meta").select("v").eq("k", "demand").maybeSingle();
+    demandBoards = (((demandMeta?.v as { tokens?: Array<{ t: string; at: number }> } | null)?.tokens ?? [])
+      .filter((x) => Date.now() - x.at < 20 * 60_000 && !sliceTokens.has(x.t))
+      .slice(0, 5)
+      .map((x) => JOB_SOURCES.find((s) => s.token === x.t))
+      .filter((s): s is JobSource => !!s));
+  }
+  const slice = [...demandBoards, ...baseSlice];
   const startIso = new Date().toISOString();
 
   // Cursors advance BEFORE processing (optimistic): if this invocation dies
@@ -395,6 +411,31 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     { onConflict: "k" },
   );
 
+  // Feature 2 (consecutive-failure pruning): a feed that stops responding
+  // keeps its postings (a transient blip must not wipe a company). But a
+  // feed dead for ~6 straight attempts is gone for good — prune its stale
+  // postings so they can't rot on the board. okTokens reset the streak.
+  {
+    const okSet = new Set(okTokens);
+    const attempted = slice.map((s) => s.token);
+    const failedTokens = attempted.filter((tk) => !okSet.has(tk));
+    if (okTokens.length > 0 || failedTokens.length > 0) {
+      const { data: bfMeta } = await client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle();
+      const streaks = { ...((bfMeta?.v as { streaks?: Record<string, number> } | null)?.streaks ?? {}) };
+      for (const tk of okTokens) delete streaks[tk];
+      const toPrune: string[] = [];
+      for (const tk of failedTokens) {
+        streaks[tk] = (streaks[tk] ?? 0) + 1;
+        if (streaks[tk] >= 6) { toPrune.push(tk); delete streaks[tk]; }
+      }
+      for (const tk of toPrune) {
+        await client.from("job_board_postings").delete().eq("company_token", tk);
+        console.warn(`[JOB-BOARD] pruned dead board ${tk} (6 consecutive failures)`);
+      }
+      await client.from("job_board_meta").upsert({ k: "board_failures", v: { streaks }, updated_at: new Date().toISOString() }, { onConflict: "k" });
+    }
+  }
+
   if (passDone) {
     // Facets from the database — always true to what the board serves. If
     // the RPC isn't migrated yet (function published before migration ran),
@@ -482,6 +523,45 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
 
 const detailCache = new Map<string, { at: number; text: string }>();
 const DETAIL_TTL_MS = 60 * 60_000;
+
+// Single-posting liveness against the vendor RIGHT NOW — the moment-of-apply
+// freshness check. Uses cheap per-job endpoints where they exist (never the
+// 20-36 MB whole-board payload for the light giants); falls back to board
+// membership for vendors without one. Returns true=live, false=confirmed gone,
+// null=couldn't tell (transient) so callers don't wrongly mark a job closed.
+const liveBoardMemo = new Map<string, Set<string>>();
+async function checkLive(src: JobSource, externalId: string): Promise<boolean | null> {
+  try {
+    if (src.source === "greenhouse") {
+      const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${src.token}/jobs/${externalId}?questions=false`);
+      return res.status === 404 ? false : res.ok ? true : null;
+    }
+    if (src.source === "lever") {
+      const res = await fetchWithTimeout(`https://api.lever.co/v0/postings/${src.token}/${externalId}?mode=json`);
+      return res.status === 404 ? false : res.ok ? true : null;
+    }
+    if (src.source === "smartrecruiters") {
+      const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${src.token}/postings/${externalId}`);
+      return res.status === 404 ? false : res.ok ? true : null;
+    }
+    // ashby / workable / bamboohr have no cheap per-job endpoint — fetch the
+    // board once (memoized per request) and check membership.
+    const memoKey = `${src.source}:${src.token}`;
+    let ids = liveBoardMemo.get(memoKey);
+    if (!ids) {
+      const r = await fetchBoard(src);
+      if (!r) return null;
+      // Only ashby / workable / bamboohr reach here (gh/lever/SR return above).
+      ids = new Set<string>();
+      if (src.source === "ashby") for (const j of ((r.raw as { jobs?: Array<{ id: string }> }).jobs ?? [])) ids.add(String(j.id));
+      else for (const j of r.jobs) ids.add(j.id.split(":").slice(2).join(":")); // workable/bamboohr composite ids
+      liveBoardMemo.set(memoKey, ids);
+    }
+    return ids.has(externalId);
+  } catch {
+    return null; // network hiccup — unknown, never a false "closed"
+  }
+}
 
 async function getDescription(src: JobSource, id: string, externalId: string): Promise<string | null> {
   const hit = detailCache.get(id);
@@ -739,6 +819,42 @@ Deno.serve(async (req) => {
         body: JSON.stringify({ action: "backfill-desc", chainKey: key, ti }),
       })).then((rr) => rr.text()).catch(() => {}));
       return json({ ok: true, board: s.token, updated, remaining: (rows ?? []).length === PER_HOP ? "more" : "board-done", nextTi: ti });
+    }
+
+    if (action === "verify") {
+      // Live-now liveness for a batch of posting ids (verify-on-apply,
+      // surfaced-match re-check). Confirms against the vendor, prunes ids
+      // confirmed gone from the DB so they vanish for everyone, and records
+      // the boards touched as a demand signal for prioritized refresh.
+      const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, 12) : [];
+      if (ids.length === 0) return json({ live: {} });
+      const liveMap: Record<string, boolean> = {};
+      const deadIds: string[] = [];
+      const demandTokens = new Set<string>();
+      liveBoardMemo.clear();
+      for (const id of ids) {
+        const [source, token, ...rest] = id.split(":");
+        const externalId = rest.join(":");
+        const src = JOB_SOURCES.find((s) => s.source === source && s.token === token);
+        if (!src || !externalId) { liveMap[id] = false; deadIds.push(id); continue; }
+        demandTokens.add(src.token);
+        const live = await checkLive(src, externalId);
+        if (live === false) { liveMap[id] = false; deadIds.push(id); }
+        else liveMap[id] = true; // true OR null(unknown) → keep showing, never a false close
+      }
+      if (deadIds.length > 0) {
+        for (let i = 0; i < deadIds.length; i += 50) {
+          await client.from("job_board_postings").delete().in("id", deadIds.slice(i, i + 50));
+        }
+      }
+      // Demand signal: boards a user just looked at jump the refresh queue.
+      if (demandTokens.size > 0) {
+        const { data: dm } = await client.from("job_board_meta").select("v").eq("k", "demand").maybeSingle();
+        const prev = ((dm?.v as { tokens?: Array<{ t: string; at: number }> } | null)?.tokens ?? []).filter((x) => Date.now() - x.at < 20 * 60_000);
+        const merged = [...prev.filter((x) => !demandTokens.has(x.t)), ...[...demandTokens].map((t) => ({ t, at: Date.now() }))].slice(-60);
+        await client.from("job_board_meta").upsert({ k: "demand", v: { tokens: merged }, updated_at: new Date().toISOString() }, { onConflict: "k" });
+      }
+      return json({ live: liveMap, pruned: deadIds.length });
     }
 
     if (action === "exists") {

@@ -64,7 +64,19 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
           }))
           .sort((a, b) => (b.fit ?? -1) - (a.fit ?? -1))
           .slice(0, 5);
-        if (!cancelled) setMatches(ranked);
+        // Feature 4 (re-verify surfaced matches): the top few are what the
+        // reader will actually click — confirm they're still live right now
+        // and drop any the company just closed, so a surfaced match is never
+        // a dead link. Unverifiable ones are kept (never a false close).
+        let shown = ranked;
+        try {
+          const { data: vr } = await supabase.functions.invoke("job-board", {
+            body: { action: "verify", ids: ranked.map((r) => r.id) },
+          });
+          const live = (vr as { live?: Record<string, boolean> })?.live;
+          if (live) shown = ranked.filter((r) => live[r.id] !== false);
+        } catch { /* verify unavailable — show the fit-ranked set as-is */ }
+        if (!cancelled) setMatches(shown);
       } catch {
         if (!cancelled) setFailed(true);
       }
