@@ -219,20 +219,26 @@ export default function Jobs() {
       offset === 0 ? setLoading(true) : setLoadingMore(true);
       setError(false);
       try {
-        const { data: res, error: err } = await supabase.functions.invoke("job-board", {
-          body: {
-            action: "list",
-            q: q || undefined,
-            location: location || undefined,
-            remote: remoteOnly || undefined,
-            category: category || undefined,
-            companies: company ? [company] : undefined,
-            postedAfter: freshness ? new Date(Date.now() - (freshness === "day" ? 1 : 7) * 86_400_000).toISOString() : undefined,
-            limit: PAGE,
-            offset,
-            includeFacets: companiesCache.current.length === 0,
-          },
-        });
+        const body = {
+          action: "list",
+          q: q || undefined,
+          location: location || undefined,
+          remote: remoteOnly || undefined,
+          category: category || undefined,
+          companies: company ? [company] : undefined,
+          postedAfter: freshness ? new Date(Date.now() - (freshness === "day" ? 1 : 7) * 86_400_000).toISOString() : undefined,
+          limit: PAGE,
+          offset,
+          includeFacets: companiesCache.current.length === 0,
+        };
+        let { data: res, error: err } = await supabase.functions.invoke("job-board", { body });
+        if (err || !res?.jobs) {
+          // One quiet retry: a refresh slice hitting the function's resource
+          // ceiling can bounce a single request; the next instance serves fine.
+          await new Promise((r) => setTimeout(r, 1200));
+          if (seq !== reqSeq.current) return;
+          ({ data: res, error: err } = await supabase.functions.invoke("job-board", { body }));
+        }
         if (err || !res?.jobs) throw new Error(err?.message ?? "no jobs field");
         if (seq !== reqSeq.current) return; // a newer filter superseded this request
         const br = res as BoardResponse;
