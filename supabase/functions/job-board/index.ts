@@ -167,10 +167,29 @@ const interleaveByVendor = (list: JobSource[]): JobSource[] => {
   }
   return out;
 };
-const HOT_LIST = interleaveByVendor(JOB_SOURCES.filter((s) => HOT_TOKENS.has(s.token)));
-const COLD_LIST = JOB_SOURCES.filter((s) => !HOT_TOKENS.has(s.token));
+const HOT_SIZE = 120;
+const FALLBACK_HOT_LIST = interleaveByVendor(JOB_SOURCES.filter((s) => HOT_TOKENS.has(s.token)));
+const FALLBACK_COLD_LIST = JOB_SOURCES.filter((s) => !HOT_TOKENS.has(s.token));
+
+// Self-tuning tiers: each completed pass writes the current top boards by
+// live posting count (meta k=hot_tokens), so a board that grows gets hot
+// cadence automatically instead of drifting from the static snapshot the
+// catalog shipped with. The static HOT_TOKENS set stays as the fallback
+// for a fresh deploy or a glitched meta row.
+async function tierLists(client: SupabaseClient): Promise<{ hotList: JobSource[]; coldList: JobSource[] }> {
+  const { data } = await client.from("job_board_meta").select("v").eq("k", "hot_tokens").maybeSingle();
+  const tokens = (data?.v as { tokens?: unknown } | null)?.tokens;
+  if (!Array.isArray(tokens) || tokens.length < 50) {
+    return { hotList: FALLBACK_HOT_LIST, coldList: FALLBACK_COLD_LIST };
+  }
+  const hot = new Set(tokens.filter((x): x is string => typeof x === "string"));
+  return {
+    hotList: interleaveByVendor(JOB_SOURCES.filter((s) => hot.has(s.token))),
+    coldList: JOB_SOURCES.filter((s) => !hot.has(s.token)),
+  };
+}
 const COLD_SLICES_PER_PASS = 8;
-const CHAIN_CAP = Math.ceil(HOT_LIST.length / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
+const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 // force=true bypasses the slice lock, so it must not be reachable from the
 // open internet (the function serves anonymous traffic): chain hops carry a
@@ -205,6 +224,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   if (!force && prog && Date.now() - new Date(prog.updated_at).getTime() < SLICE_LOCK_MS) {
     return { ok: true, detail: "skipped — a slice ran moments ago" };
   }
+  const { hotList: HOT_LIST, coldList: COLD_LIST } = await tierLists(client);
   const pv = (prog?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
   let hot = Math.max(0, Number(pv.hot) || 0);
   let cold = Math.max(0, Number(pv.cold) || 0) % Math.max(1, COLD_LIST.length);
@@ -395,6 +415,18 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       refreshedAt: startIso,
     };
     await client.from("job_board_meta").upsert({ k: "refresh", v, updated_at: new Date().toISOString() }, { onConflict: "k" });
+    // Re-rank the hot tier from what the corpus actually holds now.
+    const ranked = [...companies]
+      .filter((c): c is { token: string; count: number } => typeof (c as { token?: unknown }).token === "string" && typeof (c as { count?: unknown }).count === "number")
+      .sort((a, b) => b.count - a.count)
+      .slice(0, HOT_SIZE)
+      .map((c) => c.token);
+    if (ranked.length >= 50) {
+      await client.from("job_board_meta").upsert(
+        { k: "hot_tokens", v: { tokens: ranked }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+    }
     console.log(`[JOB-BOARD] pass complete: hot ${HOT_LIST.length} boards + ${COLD_SLICES_PER_PASS} cold slices; corpus total ${f.total}`);
     return { ok: true, detail: `pass complete — corpus ${f.total} postings from ${companies.length} boards; cold rotation at ${cold}/${COLD_LIST.length}${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 120)}` : ""}` };
   }
@@ -580,37 +612,49 @@ async function serveList(
   const offset = Math.max(Number(body.offset) || 0, 0);
   const countOnly = body.countOnly === true;
 
-  let q = client
-    .from("job_board_postings")
-    .select("id,source,company_token,company,title,location,remote,department,category,posted_at,apply_url,salary", { count: "exact" });
+  // effective_posted = coalesce(posted_at, first_seen): undated feeds
+  // (BambooHR) participate in freshness filters and recency sort. If the
+  // function deploys before its migration, the column is missing — fall
+  // back to posted_at for that window instead of 500ing the board.
+  const buildQuery = (dateCol: string) => {
+    let q = client
+      .from("job_board_postings")
+      .select("id,source,company_token,company,title,location,remote,department,category,posted_at,apply_url,salary", { count: "exact" });
+    const terms = String(body.q ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean).slice(0, 8);
+    for (const t of terms) q = q.or(`title.ilike.%${t}%,company.ilike.%${t}%,department.ilike.%${t}%`);
+    const loc = sanitizeTerm(String(body.location ?? ""));
+    if (loc) q = q.ilike("location", `%${loc}%`);
+    if (body.remote === true) q = q.eq("remote", true);
+    const category = String(body.category ?? "");
+    if ((JOB_CATEGORIES as readonly string[]).includes(category)) q = q.eq("category", category);
+    if (Array.isArray(body.companies)) {
+      const tokens = body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length);
+      if (tokens.length) q = q.in("company_token", tokens);
+    }
+    // Saved searches ask "how many NEW since I last looked" — a cheap count.
+    if (typeof body.postedAfter === "string" && !Number.isNaN(Date.parse(body.postedAfter))) {
+      q = q.gt(dateCol, body.postedAfter);
+    }
+    return q;
+  };
+  const missingColumn = (e: { message?: string } | null) => !!e?.message?.includes("effective_posted");
 
-  const terms = String(body.q ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean).slice(0, 8);
-  for (const t of terms) q = q.or(`title.ilike.%${t}%,company.ilike.%${t}%,department.ilike.%${t}%`);
-  const loc = sanitizeTerm(String(body.location ?? ""));
-  if (loc) q = q.ilike("location", `%${loc}%`);
-  if (body.remote === true) q = q.eq("remote", true);
-  const category = String(body.category ?? "");
-  if ((JOB_CATEGORIES as readonly string[]).includes(category)) q = q.eq("category", category);
-  if (Array.isArray(body.companies)) {
-    const tokens = body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length);
-    if (tokens.length) q = q.in("company_token", tokens);
-  }
-  // Saved searches ask "how many NEW since I last looked" — a cheap count.
-  if (typeof body.postedAfter === "string" && !Number.isNaN(Date.parse(body.postedAfter))) {
-    q = q.gt("posted_at", body.postedAfter);
-  }
   if (countOnly) {
-    const { count, error } = await q.range(0, 0);
+    let { count, error } = await buildQuery("effective_posted").range(0, 0);
+    if (missingColumn(error)) ({ count, error } = await buildQuery("posted_at").range(0, 0));
     if (error) throw error;
     return json({ total: count ?? 0 });
   }
 
-  // Stable pagination: posted_at desc (nulls last), id as tiebreaker so
+  // Stable pagination: recency desc (nulls last), id as tiebreaker so
   // equal dates can't shuffle between "load more" pages.
-  const { data, error, count } = await q
-    .order("posted_at", { ascending: false, nullsFirst: false })
-    .order("id", { ascending: true })
-    .range(offset, offset + limit - 1);
+  const page = (dateCol: string) =>
+    buildQuery(dateCol)
+      .order(dateCol, { ascending: false, nullsFirst: false })
+      .order("id", { ascending: true })
+      .range(offset, offset + limit - 1);
+  let { data, error, count } = await page("effective_posted");
+  if (missingColumn(error)) ({ data, error, count } = await page("posted_at"));
   if (error) throw error;
 
   const v = (meta?.v ?? {}) as Record<string, unknown>;
