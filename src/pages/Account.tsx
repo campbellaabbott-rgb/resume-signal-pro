@@ -15,6 +15,7 @@ import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { SavedSearchesCard } from "@/components/account/SavedSearchesCard";
 import { ApplyKitPanel } from "@/components/account/ApplyKitPanel";
+import { ApplyCopilotPanel } from "@/components/account/ApplyCopilotPanel";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
@@ -54,6 +55,7 @@ interface Application {
   location?: string | null;
   posting_closed_at?: string | null;
   posting_checked_at?: string | null;
+  kit?: unknown;
 }
 
 // Display name for a saved scan acting as a resume version.
@@ -637,6 +639,17 @@ export default function Account() {
 
         {/* Application tracker */}
         <SavedSearchesCard />
+
+        <ApplyCopilotPanel
+          apps={applications}
+          resumeFor={(a) => {
+            const v = a.scan_id ? scans.find((s) => s.id === a.scan_id) : null;
+            return v?.resume_text ?? scans[0]?.resume_text ?? null;
+          }}
+          proActive={pro.active}
+          onKit={(appId, kit) => setApplications((prev) => prev.map((a) => (a.id === appId ? { ...a, kit } : a)))}
+          onStatus={updateAppStatus}
+        />
 
         <div className="rounded-2xl border border-border bg-card p-5 mb-6">
           <div className="flex items-center gap-2 mb-3">

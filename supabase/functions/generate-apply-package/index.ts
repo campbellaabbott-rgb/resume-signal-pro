@@ -10,7 +10,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const RATE_LIMIT = 15; // per IP per day — same order as other paid AI generation endpoints
+const RATE_LIMIT = 40; // per IP per day — raised from 15 so the account batch-prep co-pilot has real room (entitlement-gated, so only paying users reach this counter)
 const RATE_WINDOW_MINUTES = 1440;
 
 const getClientIp = (req: Request): string =>
