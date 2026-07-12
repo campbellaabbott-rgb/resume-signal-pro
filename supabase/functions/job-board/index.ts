@@ -449,9 +449,19 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       const { data: bf } = await client.from("job_board_meta").select("v, updated_at").eq("k", "desc_backfill").maybeSingle();
       const bfAge = bf ? Date.now() - new Date(bf.updated_at).getTime() : Infinity;
       const bfIncomplete = !!(bf?.v as { incompleteAt?: string } | null)?.incompleteAt;
+      // Self-healing override: if meaningful description coverage is still
+      // missing on the light boards, run regardless of the stamp — this
+      // recovers from a stamp written by an older/buggy sweep without any
+      // manual reset. One cheap capped count per pass (indexed).
+      const lightTokens = JOB_SOURCES.filter((s) => LIGHT_DESC_TOKENS.has(s.token)).map((s) => s.token);
+      let missingCoverage = false;
+      if (lightTokens.length > 0 && bfAge > 30 * 60_000) {
+        const { count } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).in("company_token", lightTokens).is("description", null);
+        missingCoverage = (count ?? 0) > 50;
+      }
       // Incomplete sweeps (a board failed) retry within the hour; complete
       // ones wait a day (descriptions persist, so only the delta needs work).
-      if (bfAge > (bfIncomplete ? 60 * 60_000 : 24 * 60 * 60_000)) {
+      if (missingCoverage || bfAge > (bfIncomplete ? 60 * 60_000 : 24 * 60 * 60_000)) {
         const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
         waitUntil(chainKey().then((key) => fetch(url, {
           method: "POST",
