@@ -715,6 +715,7 @@ export type Database = {
           company_token: string
           department: string | null
           description: string | null
+          effective_posted: string | null
           first_seen: string
           id: string
           last_seen: string
@@ -732,6 +733,7 @@ export type Database = {
           company_token: string
           department?: string | null
           description?: string | null
+          effective_posted?: string | null
           first_seen?: string
           id: string
           last_seen?: string
@@ -749,6 +751,7 @@ export type Database = {
           company_token?: string
           department?: string | null
           description?: string | null
+          effective_posted?: string | null
           first_seen?: string
           id?: string
           last_seen?: string
