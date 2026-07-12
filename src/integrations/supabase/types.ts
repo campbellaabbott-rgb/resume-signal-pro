@@ -1563,6 +1563,8 @@ export type Database = {
           id: string
           job_id: string | null
           job_posting: string | null
+          kit: Json | null
+          kit_generated_at: string | null
           location: string | null
           posting_checked_at: string | null
           posting_closed_at: string | null
@@ -1583,6 +1585,8 @@ export type Database = {
           id?: string
           job_id?: string | null
           job_posting?: string | null
+          kit?: Json | null
+          kit_generated_at?: string | null
           location?: string | null
           posting_checked_at?: string | null
           posting_closed_at?: string | null
@@ -1603,6 +1607,8 @@ export type Database = {
           id?: string
           job_id?: string | null
           job_posting?: string | null
+          kit?: Json | null
+          kit_generated_at?: string | null
           location?: string | null
           posting_checked_at?: string | null
           posting_closed_at?: string | null
