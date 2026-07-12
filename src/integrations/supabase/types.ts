@@ -1564,6 +1564,8 @@ export type Database = {
           job_id: string | null
           job_posting: string | null
           location: string | null
+          posting_checked_at: string | null
+          posting_closed_at: string | null
           role: string
           scan_id: string | null
           scan_score: number | null
@@ -1581,6 +1583,8 @@ export type Database = {
           job_id?: string | null
           job_posting?: string | null
           location?: string | null
+          posting_checked_at?: string | null
+          posting_closed_at?: string | null
           role?: string
           scan_id?: string | null
           scan_score?: number | null
@@ -1598,6 +1602,8 @@ export type Database = {
           job_id?: string | null
           job_posting?: string | null
           location?: string | null
+          posting_checked_at?: string | null
+          posting_closed_at?: string | null
           role?: string
           scan_id?: string | null
           scan_score?: number | null
@@ -1617,6 +1623,8 @@ export type Database = {
       user_job_searches: {
         Row: {
           created_at: string
+          digest_last_sent_at: string | null
+          digest_opt_in: boolean
           id: string
           last_seen_at: string
           name: string
@@ -1625,6 +1633,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          digest_last_sent_at?: string | null
+          digest_opt_in?: boolean
           id?: string
           last_seen_at?: string
           name: string
@@ -1633,6 +1643,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          digest_last_sent_at?: string | null
+          digest_opt_in?: boolean
           id?: string
           last_seen_at?: string
           name?: string
