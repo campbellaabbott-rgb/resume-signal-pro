@@ -395,6 +395,12 @@ async function sendAlertEmail(alertType: string, subject: string, details: Recor
       console.log(`[ALERT] Sent ${alertType} alert`);
     }
   } catch (error) {
+    if (((error) as { badJson?: boolean })?.badJson) {
+      return new Response(
+        JSON.stringify({ error: 'Request body must be valid JSON.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     console.error("[ALERT] Error sending alert:", error);
   }
 }
@@ -1264,7 +1270,9 @@ serve(async (req) => {
     // them sequentially was adding that latency to every request without one.
     const [country, body] = await Promise.all([
       getCountryCode(req, clientIp),
-      req.json()
+      // Malformed JSON is a client error, not a server incident — without
+      // this it fell through to the generic 500 handler (found by fuzzing).
+      req.json().catch(() => { throw Object.assign(new Error('bad json'), { badJson: true }); })
     ]);
     const { resumeText, jobDescriptionText, honeypot } = body;
     // Target market the candidate is applying TO (ISO-2). Optional; overrides
@@ -1323,6 +1331,17 @@ serve(async (req) => {
     if (resumeText.length > MAX_RESUME_LENGTH) {
       return new Response(
         JSON.stringify({ error: 'Resume text is too long. Please limit to 50,000 characters.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Cost gate as much as UX: without a floor, 3-character "resumes" walk
+    // the full AI pipeline (found by fuzzing 2026-07-12). Any real resume is
+    // 1,500+ characters; 120 blocks junk and bots without ever blocking a
+    // person. Heartbeat scans use a full test resume and are unaffected.
+    if (resumeText.trim().length < 120) {
+      return new Response(
+        JSON.stringify({ error: "That doesn't look like a complete resume. Please paste the full text (or upload the file) so there's enough to measure." }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -1560,7 +1579,7 @@ serve(async (req) => {
     // Identical resume + JD + stated context + engine version → serve the
     // finished report instantly (rescans, repeat uploads, shared samples).
     // Rule-based-fallback and partial reports are never cached.
-    const REPORT_ENGINE_VERSION = 'scan-v2026-07-12g';
+    const REPORT_ENGINE_VERSION = 'scan-v2026-07-12h';
     const reportCacheKey = await (async () => {
       const ctx = (body.userContext ?? {}) as Record<string, unknown>;
       const ctxPart = ['situation', 'targetRole', 'confirmedIndustry', 'confirmedExperience']
