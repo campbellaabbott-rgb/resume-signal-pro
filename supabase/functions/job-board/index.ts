@@ -446,9 +446,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     // stale, and never concurrent with recategorize — stagger by requiring
     // the category stamp to be current first.
     else {
-      const { data: bf } = await client.from("job_board_meta").select("updated_at").eq("k", "desc_backfill").maybeSingle();
+      const { data: bf } = await client.from("job_board_meta").select("v, updated_at").eq("k", "desc_backfill").maybeSingle();
       const bfAge = bf ? Date.now() - new Date(bf.updated_at).getTime() : Infinity;
-      if (bfAge > 24 * 60 * 60_000) {
+      const bfIncomplete = !!(bf?.v as { incompleteAt?: string } | null)?.incompleteAt;
+      // Incomplete sweeps (a board failed) retry within the hour; complete
+      // ones wait a day (descriptions persist, so only the delta needs work).
+      if (bfAge > (bfIncomplete ? 60 * 60_000 : 24 * 60 * 60_000)) {
         const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
         waitUntil(chainKey().then((key) => fetch(url, {
           method: "POST",
@@ -654,68 +657,78 @@ Deno.serve(async (req) => {
 
     if (action === "backfill-desc") {
       // Feature 1: the four Greenhouse giants fetch WITHOUT content on the
-      // refresh path (their bulk htmlToText wedged the pipeline — see
-      // LIGHT_DESC_TOKENS), so their ~9k postings carry no description and
-      // no fit badge. This maintenance sweep restores descriptions in
-      // BOUNDED slices that never run alongside refresh: one board's
-      // content=true payload per hop, at most 500 descriptions processed,
-      // self-chaining through the rest. chainKey-gated like force-refresh.
+      // refresh path (bulk htmlToText wedged the pipeline — see
+      // LIGHT_DESC_TOKENS), so their postings land description-less. This
+      // maintenance sweep fills the gaps using Greenhouse's PER-JOB endpoint
+      // (tiny payloads) — never the 20-36 MB whole-board content payload,
+      // which OOM'd/timed out when re-fetched per slice. It targets only
+      // rows still missing a description, so after the initial fill the
+      // daily delta is near-zero and transient per-job failures self-heal
+      // (the row stays null and is retried next run). chainKey-gated.
       if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
         return json({ error: "backfill-desc is a maintenance action" }, 403);
       }
       const BOARDS = JOB_SOURCES.filter((s) => LIGHT_DESC_TOKENS.has(s.token));
-      const SLICE_ROWS = 500;
+      const PER_HOP = 50; // small per-job fetches; keeps each invocation light
       let ti = Math.max(0, Number(body.ti) || 0);
-      let off = Math.max(0, Number(body.off) || 0);
-      // Touch the meta each hop so the pass-end trigger's 24h staleness check
-      // sees a fresh timestamp and can't spawn an overlapping sweep mid-run.
+      // Touch meta each hop so the 24h staleness trigger can't spawn an
+      // overlapping sweep while this one is chaining.
       await client.from("job_board_meta").upsert(
-        { k: "desc_backfill", v: { runningTi: ti, runningOff: off }, updated_at: new Date().toISOString() },
+        { k: "desc_backfill", v: { runningTi: ti }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       if (ti >= BOARDS.length) {
+        // How much is still missing? A whole failed board (transient) should
+        // retry within the hour; a handful of permanently-broken jobs should
+        // not thrash the sweep — settle to the daily cadence for those.
+        let remaining = 0;
+        for (const b of BOARDS) {
+          const { count } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).eq("company_token", b.token).is("description", null);
+          remaining += count ?? 0;
+        }
+        const incomplete = remaining > 50;
         await client.from("job_board_meta").upsert(
-          { k: "desc_backfill", v: { doneAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+          { k: "desc_backfill", v: incomplete ? { incompleteAt: new Date().toISOString(), remaining } : { doneAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
           { onConflict: "k" },
         );
-        return json({ ok: true, done: true });
+        return json({ ok: true, done: true, remaining });
       }
       const s = BOARDS[ti];
-      // Fetch WITH content — fetchBoard/listUrl deliberately OMIT content for
-      // these light tokens (that is what made them light), so going through
-      // it would return description-less jobs and store nothing. This
-      // action's whole purpose is the content payload, run in isolation.
-      let jobs: Array<{ id: number; content?: string }> = [];
-      let reachable = false;
-      try {
-        const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${s.token}/jobs?content=true`);
-        if (res.ok) { jobs = ((await res.json()) as { jobs?: Array<{ id: number; content?: string }> }).jobs ?? []; reachable = true; }
-      } catch { /* unreachable this hop */ }
+      // Next PER_HOP postings for this board that still lack a description.
+      const { data: rows, error: readErr } = await client
+        .from("job_board_postings")
+        .select("id")
+        .eq("company_token", s.token)
+        .is("description", null)
+        .order("id")
+        .limit(PER_HOP);
+      if (readErr) throw readErr;
       let updated = 0;
-      if (reachable && s.source === "greenhouse") {
-        const clean = (x: string) => x.replace(/\u0000/g, "");
-        const slice = jobs.slice(off, off + SLICE_ROWS);
-        for (const j of slice) {
-          const text = j.content ? clean(htmlToText(String(j.content).slice(0, 12000)).trim()).slice(0, 4000) : "";
+      const clean = (x: string) => x.replace(/\u0000/g, "");
+      for (const row of rows ?? []) {
+        const ghId = String(row.id).split(":")[2] ?? "";
+        if (!ghId) continue;
+        try {
+          const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${s.token}/jobs/${ghId}?questions=false`);
+          if (!res.ok) continue;
+          const job = (await res.json()) as { content?: string };
+          const text = job.content ? clean(htmlToText(String(job.content).slice(0, 12000)).trim()).slice(0, 4000) : "";
           if (text) {
-            const { error } = await client.from("job_board_postings")
-              .update({ description: text }).eq("id", `greenhouse:${s.token}:${j.id}`);
+            const { error } = await client.from("job_board_postings").update({ description: text }).eq("id", row.id);
             if (!error) updated++;
           }
-        }
-        off += SLICE_ROWS;
-        if (off >= jobs.length) { ti += 1; off = 0; }
-      } else {
-        // board unreachable this hop — skip to the next board rather than stall
-        ti += 1; off = 0;
+        } catch { /* transient — row stays null, retried next run */ }
       }
+      // Fewer than a full page means this board has no more null rows to
+      // fill — advance to the next board. A full page means keep going here.
+      if (!rows || rows.length < PER_HOP) ti += 1;
       const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
       waitUntil(chainKey().then((key) => fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "backfill-desc", chainKey: key, ti, off }),
+        body: JSON.stringify({ action: "backfill-desc", chainKey: key, ti }),
       })).then((rr) => rr.text()).catch(() => {}));
-      return json({ ok: true, board: s.token, updated, nextTi: ti, nextOff: off });
+      return json({ ok: true, board: s.token, updated, remaining: (rows ?? []).length === PER_HOP ? "more" : "board-done", nextTi: ti });
     }
 
     if (action === "exists") {
