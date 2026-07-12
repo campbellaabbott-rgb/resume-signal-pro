@@ -56,8 +56,14 @@ function formatDateRange(startDate: string, endDate: string): string {
   return `${startDate} – ${endDate}`;
 }
 
-export async function exportResumeBuilderPDF(resume: BuilderResume, options: ResumeExportOptions = {}): Promise<void> {
-  const { default: jsPDF } = await import("jspdf");
+// Builds the jsPDF document (no save) — kept separate from the download so the
+// exact rendering can be unit-tested / rendered headless.
+export async function buildResumePdf(resume: BuilderResume, options: ResumeExportOptions = {}) {
+  // Resolve the constructor from whichever slot the bundler/runtime exposes —
+  // vite gives it on .default, Node ESM interop gives it on .jsPDF. Picking
+  // the one that's actually a function works in both without surprises.
+  const jsPDFModule = await import("jspdf");
+  const jsPDF = (typeof jsPDFModule.default === "function" ? jsPDFModule.default : jsPDFModule.jsPDF) as typeof jsPDFModule.jsPDF;
   const spec = TEMPLATES[options.template ?? "modern"];
   const F = spec.pdfFont;
 
@@ -87,6 +93,33 @@ export async function exportResumeBuilderPDF(resume: BuilderResume, options: Res
     }
   };
 
+  // Inline list (skills, certs, contact) fitted by hand so the " • " separator
+  // only ever sits BETWEEN two items on a line — never dangling at a wrap
+  // boundary the way join()+splitTextToSize leaves it.
+  const addInlineList = (items: string[], fontSize: number, lineHeight: number, sep = "  •  ") => {
+    const parts = items.filter(Boolean);
+    if (parts.length === 0) return;
+    pdf.setFontSize(fontSize);
+    pdf.setFont(F, "normal");
+    let line = "";
+    for (const item of parts) {
+      const candidate = line ? line + sep + item : item;
+      if (line && pdf.getTextWidth(candidate) > contentWidth) {
+        ensureSpace(lineHeight);
+        pdf.text(line, margin, y);
+        y += lineHeight;
+        line = item;
+      } else {
+        line = candidate;
+      }
+    }
+    if (line) {
+      ensureSpace(lineHeight);
+      pdf.text(line, margin, y);
+      y += lineHeight;
+    }
+  };
+
   const addSectionHeading = (text: string) => {
     y += 2;
     ensureSpace(8);
@@ -101,28 +134,67 @@ export async function exportResumeBuilderPDF(resume: BuilderResume, options: Res
     y += 5;
   };
 
-  // Header
-  pdf.setFontSize(spec.name);
+  // Entry header (job title / degree on the left, date range on the right).
+  // The date's width is reserved FIRST so the bold left text wraps into the
+  // remaining space instead of printing on top of the date — the collision
+  // that turned long titles into unreadable garble.
+  const addEntryHeader = (leftText: string, dateRange: string, leftSize: number) => {
+    let dateW = 0;
+    if (dateRange) {
+      pdf.setFont(F, "normal");
+      pdf.setFontSize(9);
+      dateW = pdf.getTextWidth(dateRange);
+    }
+    pdf.setFont(F, "bold");
+    pdf.setFontSize(leftSize);
+    const leftAvail = contentWidth - (dateRange ? dateW + 4 : 0);
+    const lines = pdf.splitTextToSize(leftText || " ", Math.max(20, leftAvail));
+    ensureSpace(5);
+    pdf.text(lines[0], margin, y);
+    if (dateRange) {
+      pdf.setFont(F, "normal");
+      pdf.setFontSize(9);
+      pdf.text(dateRange, pageWidth - margin, y, { align: "right" });
+    }
+    y += 5;
+    if (lines.length > 1) {
+      pdf.setFont(F, "bold");
+      pdf.setFontSize(leftSize);
+      for (let i = 1; i < lines.length; i++) {
+        ensureSpace(5);
+        pdf.text(lines[i], margin, y);
+        y += 5;
+      }
+    }
+  };
+
+  // Header — auto-shrink the name to fit one line (a name that wraps or runs
+  // off the page edge looks broken); wrap the title so a long one can't
+  // overflow the right margin either.
+  const nameStr = resume.contact.fullName || "Your Name";
+  let nameSize = spec.name;
   pdf.setFont(F, "bold");
+  pdf.setFontSize(nameSize);
+  while (nameSize > 12 && pdf.getTextWidth(nameStr) > contentWidth) {
+    nameSize -= 0.5;
+    pdf.setFontSize(nameSize);
+  }
   pdf.setTextColor(...spec.accentRGB);
-  pdf.text(resume.contact.fullName || "Your Name", margin, y);
+  pdf.text(nameStr, margin, y);
   pdf.setTextColor(0, 0, 0);
   y += 7;
 
   if (resume.contact.title) {
     pdf.setFontSize(11);
     pdf.setFont(F, "normal");
-    pdf.text(resume.contact.title, margin, y);
-    y += 6;
+    addWrappedText(resume.contact.title, 11, 5.5);
+    y += 0.5;
   }
 
-  const contactLine = [resume.contact.email, resume.contact.phone, resume.contact.location, resume.contact.linkedIn, resume.contact.website]
-    .filter(Boolean)
-    .join("  •  ");
-  if (contactLine) {
-    pdf.setFontSize(9);
+  const contactItems = [resume.contact.email, resume.contact.phone, resume.contact.location, resume.contact.linkedIn, resume.contact.website].filter(Boolean);
+  if (contactItems.length > 0) {
     pdf.setTextColor(90, 90, 90);
-    addWrappedText(contactLine, 9, 4.5);
+    addInlineList(contactItems, 9, 4.5);
     pdf.setTextColor(0, 0, 0);
   }
   y += 2;
@@ -138,16 +210,7 @@ export async function exportResumeBuilderPDF(resume: BuilderResume, options: Res
       // Keep-together: never orphan a job title at the bottom of a page —
       // require room for title + company + first bullet before starting.
       ensureSpace(16);
-      pdf.setFontSize(spec.body + 0.5);
-      pdf.setFont(F, "bold");
-      pdf.text(entry.title || "Role", margin, y);
-      const dateRange = formatDateRange(entry.startDate, entry.endDate);
-      if (dateRange) {
-        pdf.setFont(F, "normal");
-        pdf.setFontSize(9);
-        pdf.text(dateRange, pageWidth - margin, y, { align: "right" });
-      }
-      y += 5;
+      addEntryHeader(entry.title || "Role", formatDateRange(entry.startDate, entry.endDate), spec.body + 0.5);
 
       const companyLine = [entry.company, entry.location].filter(Boolean).join(" — ");
       if (companyLine) {
@@ -179,17 +242,8 @@ export async function exportResumeBuilderPDF(resume: BuilderResume, options: Res
     addSectionHeading("Education");
     for (const entry of resume.education) {
       ensureSpace(6);
-      pdf.setFontSize(spec.body + 0.5);
-      pdf.setFont(F, "bold");
       const degreeLine = [entry.degree, entry.field].filter(Boolean).join(", ");
-      pdf.text(degreeLine || entry.school, margin, y);
-      const dateRange = formatDateRange(entry.startDate, entry.endDate);
-      if (dateRange) {
-        pdf.setFont(F, "normal");
-        pdf.setFontSize(9);
-        pdf.text(dateRange, pageWidth - margin, y, { align: "right" });
-      }
-      y += 5;
+      addEntryHeader(degreeLine || entry.school, formatDateRange(entry.startDate, entry.endDate), spec.body + 0.5);
       if (degreeLine && entry.school) {
         pdf.setFontSize(10);
         pdf.setFont(F, "italic");
@@ -205,16 +259,20 @@ export async function exportResumeBuilderPDF(resume: BuilderResume, options: Res
 
   if (resume.skills.length > 0) {
     addSectionHeading("Skills");
-    addWrappedText(resume.skills.join("  •  "), spec.body - 0.5, spec.lh - 0.2);
+    addInlineList(resume.skills, spec.body - 0.5, spec.lh - 0.2);
   }
 
   if (resume.certifications.length > 0) {
     addSectionHeading("Certifications");
-    addWrappedText(resume.certifications.join("  •  "), spec.body - 0.5, spec.lh - 0.2);
+    addInlineList(resume.certifications, spec.body - 0.5, spec.lh - 0.2);
   }
 
-  const fileName = `${sanitizeFilename(resume.contact.fullName || "resume")}.pdf`;
-  pdf.save(fileName);
+  return pdf;
+}
+
+export async function exportResumeBuilderPDF(resume: BuilderResume, options: ResumeExportOptions = {}): Promise<void> {
+  const pdf = await buildResumePdf(resume, options);
+  pdf.save(`${sanitizeFilename(resume.contact.fullName || "resume")}.pdf`);
 }
 
 export async function buildResumeDocxDocument(resume: BuilderResume, options: ResumeExportOptions = {}) {
