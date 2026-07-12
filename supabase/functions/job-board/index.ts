@@ -40,12 +40,17 @@ const LOCK_MS = 5 * 60_000; // min gap between refresh passes
 const FETCH_TIMEOUT_MS = 8_000;
 // Refresh budget: a single edge invocation cannot afford the CPU of
 // converting the whole corpus's HTML to text (WORKER_RESOURCE_LIMIT, seen
-// live twice). So refresh is CURSOR-SLICED: each call processes SLICE
+// live twice). So refresh is CURSOR-SLICED: each call processes one slice of
 // boards and advances a cursor in job_board_meta; the 10-minute cron and
 // read-triggered SWR calls walk the full list continuously. Facets swap in
 // when a cycle completes; until then the previous complete cycle serves.
 const CONCURRENCY = 4;
-const SLICE = 30; // hot slices: heavy GH-description batches were intermittently hitting the compute ceiling and stalling the chain
+// Slice sizes are calibrated to the per-invocation compute budget. Hot
+// slices are UNIFORMLY giant boards (that's what makes them hot), so they
+// must be much smaller than the old mixed slices: the first tiered deploy
+// died mid-slice at HOT=30 (one upsert chunk of carvana landed, then the
+// worker hit the ceiling and the cron retried the same slice forever).
+const HOT_SLICE = 10;
 const COLD_SLICE = 60; // cold boards are small (that's why they're cold) — bigger slices keep full-tail rotation inside the hour
 const SLICE_LOCK_MS = 3 * 60_000; // min gap between slices
 const DESC_CAP = 14_000; // matches the scanner's own input bounds
@@ -142,11 +147,11 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
 // chain pass (~10 min); the long tail rotates through a fixed budget of
 // cold slices per pass, so a full tail rotation is bounded regardless of
 // how many boards the catalog grows to. Pass length is therefore FIXED:
-// ceil(hot/SLICE) hot hops + COLD_SLICES_PER_PASS cold hops.
+// ceil(hot/HOT_SLICE) hot hops + COLD_SLICES_PER_PASS cold hops.
 const HOT_LIST = JOB_SOURCES.filter((s) => HOT_TOKENS.has(s.token));
 const COLD_LIST = JOB_SOURCES.filter((s) => !HOT_TOKENS.has(s.token));
 const COLD_SLICES_PER_PASS = 8;
-const CHAIN_CAP = Math.ceil(HOT_LIST.length / SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
+const CHAIN_CAP = Math.ceil(HOT_LIST.length / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 function chainNextSlice(hop: number) {
   const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
@@ -177,7 +182,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
 
   const inHotPhase = hot < HOT_LIST.length;
   const slice = inHotPhase
-    ? HOT_LIST.slice(hot, hot + SLICE)
+    ? HOT_LIST.slice(hot, hot + HOT_SLICE)
     : COLD_LIST.slice(cold, cold + COLD_SLICE);
   const startIso = new Date().toISOString();
 
@@ -210,7 +215,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           }
         } else if (s.source === "greenhouse") {
           for (const j of ((r.raw as { jobs?: Array<{ id: number; content?: string }> }).jobs ?? [])) {
-            const text = j.content ? htmlToText(String(j.content).slice(0, 24000)).trim() : "";
+            const text = j.content ? htmlToText(String(j.content).slice(0, 12000)).trim() : "";
             if (text) descs.set(`greenhouse:${s.token}:${j.id}`, text.slice(0, 4000));
           }
         }
@@ -265,9 +270,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   }
 
   // Advance cursors. Cold advances by the ACTUAL slice length — the tail
-  // slice is short, and advancing by a full SLICE would skip the boards
+  // slice is short, and advancing by a full COLD_SLICE would skip the boards
   // just past the wrap point on every rotation.
-  if (inHotPhase) hot += SLICE;
+  if (inHotPhase) hot += HOT_SLICE;
   else {
     cold = (cold + slice.length) % Math.max(1, COLD_LIST.length);
     coldDone += 1;
