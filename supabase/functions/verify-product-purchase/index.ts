@@ -145,10 +145,20 @@ serve(async (req) => {
       };
       logStep("Pro grant verified", { grantId, productType: session.metadata.product_type });
     } else {
-      // Retrieve checkout session
-      session = await stripe.checkout.sessions.retrieve(sessionId, {
-        expand: ['line_items', 'customer']
-      }) as unknown as typeof session;
+      // Retrieve checkout session. A malformed/expired/unknown id makes Stripe
+      // throw — return a clean 400 the client can message, not a bare 500
+      // (a user reloading a stale success URL would otherwise hit an error page).
+      try {
+        session = await stripe.checkout.sessions.retrieve(sessionId, {
+          expand: ['line_items', 'customer']
+        }) as unknown as typeof session;
+      } catch (e) {
+        logStep("Session retrieve failed", { message: e instanceof Error ? e.message : String(e) });
+        return new Response(
+          JSON.stringify({ error: "We couldn't find that purchase. If you just paid, wait a moment and refresh; otherwise the link may have expired." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     logStep("Session retrieved", { 

@@ -55,10 +55,20 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
 
-    // Retrieve session with line items
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ['line_items']
-    });
+    // Retrieve session with line items. Guard the Stripe call so a
+    // malformed/expired id returns a clean 400, not a bare 500.
+    let session;
+    try {
+      session = await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ['line_items']
+      });
+    } catch (e) {
+      logStep("Session retrieve failed", { message: e instanceof Error ? e.message : String(e) });
+      return new Response(
+        JSON.stringify({ error: "We couldn't find that purchase. If you just paid, wait a moment and refresh; otherwise the link may have expired." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
     logStep("Session retrieved", { 
       status: session.payment_status, 
