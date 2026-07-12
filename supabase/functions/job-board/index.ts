@@ -191,18 +191,18 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         if (s.source === "lever") {
           for (const j of (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; descriptionBodyPlain?: string }>) {
             const text = ((j.descriptionPlain ?? "") + (j.descriptionBodyPlain ? `\n${j.descriptionBodyPlain}` : "")).trim();
-            if (text) descs.set(`lever:${s.token}:${j.id}`, text.slice(0, 6000));
+            if (text) descs.set(`lever:${s.token}:${j.id}`, text.slice(0, 4000));
           }
         } else if (s.source === "ashby") {
           for (const j of ((r.raw as { jobs?: Array<{ id: string; descriptionPlain?: string; descriptionHtml?: string }> }).jobs ?? [])) {
             const text = (j.descriptionPlain ?? (j.descriptionHtml ? htmlToText(j.descriptionHtml) : "")).trim();
-            if (text) descs.set(`ashby:${s.token}:${j.id}`, text.slice(0, 6000));
+            if (text) descs.set(`ashby:${s.token}:${j.id}`, text.slice(0, 4000));
           }
         } else if (s.source === "greenhouse") {
           for (const j of ((r.raw as { jobs?: Array<{ id: number; content?: string }> }).jobs ?? [])) {
             // Cap the expensive HTML→text work per posting.
             const text = j.content ? htmlToText(String(j.content).slice(0, 24000)).trim() : "";
-            if (text) descs.set(`greenhouse:${s.token}:${j.id}`, text.slice(0, 6000));
+            if (text) descs.set(`greenhouse:${s.token}:${j.id}`, text.slice(0, 4000));
           }
         }
         const clean = (x: string | null | undefined) => (x == null ? null : x.replace(/\u0000/g, ""));
