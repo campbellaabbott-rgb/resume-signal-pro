@@ -45,6 +45,7 @@ const FETCH_TIMEOUT_MS = 8_000;
 // read-triggered SWR calls walk the full list continuously. Facets swap in
 // when a cycle completes; until then the previous complete cycle serves.
 const CONCURRENCY = 4;
+const HOT_CONCURRENCY = 2; // hot boards are giants — two multi-MB parses at once is the memory ceiling
 // Slice sizes are calibrated to the per-invocation compute budget. Hot
 // slices are UNIFORMLY giant boards (that's what makes them hot), so they
 // must be much smaller than the old mixed slices: the first tiered deploy
@@ -148,7 +149,25 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
 // cold slices per pass, so a full tail rotation is bounded regardless of
 // how many boards the catalog grows to. Pass length is therefore FIXED:
 // ceil(hot/HOT_SLICE) hot hops + COLD_SLICES_PER_PASS cold hops.
-const HOT_LIST = JOB_SOURCES.filter((s) => HOT_TOKENS.has(s.token));
+// Hot boards interleaved round-robin by vendor: Greenhouse giants fetch as
+// multi-MB JSON (content=true), and a slice whose first concurrent fetches
+// are ALL Greenhouse blew the isolate's memory ceiling instantly (the
+// 13:04 + 13:20 WORKER_RESOURCE_LIMITs — carvana froze at one 250-row
+// chunk). Spreading vendors bounds concurrent heavy parses.
+const interleaveByVendor = (list: JobSource[]): JobSource[] => {
+  const buckets = new Map<string, JobSource[]>();
+  for (const s of list) {
+    if (!buckets.has(s.source)) buckets.set(s.source, []);
+    buckets.get(s.source)!.push(s);
+  }
+  const out: JobSource[] = [];
+  const qs = [...buckets.values()];
+  for (let i = 0; out.length < list.length; i++) {
+    for (const q of qs) if (q[i]) out.push(q[i]);
+  }
+  return out;
+};
+const HOT_LIST = interleaveByVendor(JOB_SOURCES.filter((s) => HOT_TOKENS.has(s.token)));
 const COLD_LIST = JOB_SOURCES.filter((s) => !HOT_TOKENS.has(s.token));
 const COLD_SLICES_PER_PASS = 8;
 const CHAIN_CAP = Math.ceil(HOT_LIST.length / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
@@ -193,7 +212,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   let lastUpsertError: string | null = null;
 
   await Promise.all(
-    Array.from({ length: CONCURRENCY }, async () => {
+    Array.from({ length: inHotPhase ? HOT_CONCURRENCY : CONCURRENCY }, async () => {
       for (;;) {
         const s = queue.shift();
         if (!s) return;
@@ -227,8 +246,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             source: j.source,
             company_token: j.token,
             company: j.company,
-            title: clean(j.title.slice(0, 300)),
-            location: clean(j.location.slice(0, 300)),
+            title: clean(j.title.trim().slice(0, 300)),
+            location: clean(j.location.trim().slice(0, 300)),
             remote: j.remote,
             department: clean(j.department?.slice(0, 200) ?? null),
             category: j.category,

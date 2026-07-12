@@ -385,3 +385,27 @@ describe("tiered refresh invariants", () => {
     expect(HOT_TOKENS.size).toBeLessThan(300);
   });
 });
+
+describe("category gap fixes (2026-07-12 Other-bucket audit)", () => {
+  const cases: Array<[string, string | null, string]> = [
+    ["IT Administrator", "Information Technology", "engineering"],
+    ["Analyst, Enterprise Service Desk", "Enterprise Service Desk", "engineering"],
+    ["Forward Deployed Researcher", "Data & AI", "data_ai"],
+    ["Master Thesis AI-based Sensorless Edrive Control", "Research", "science"],
+    ["Investor Relations - Associate", "Investor Relations", "finance"],
+    ["District Manager In Training Bilingual Spanish", "District Management", "operations"],
+    ["Vendeur Polyvalent (H/F)", "Management", "hospitality_retail"],
+    ["Manager, Premium Support (Italian/English)", "Community Support", "customer"],
+    ["ESTÁGIO SUPERIOR - COMUNICAÇÃO INTERNA (35119)", null, "marketing"],
+    // regressions that must NOT move — "Research Scientist" hits science's
+    // bare "scientist" stem (science precedes data_ai); long-standing behavior
+    ["Research Scientist", null, "science"],
+    ["Clinical Research Nurse", "Clinical", "healthcare"],
+    ["Security Engineer", null, "engineering"],
+  ];
+  for (const [title, dept, want] of cases) {
+    it(`${title} → ${want}`, () => {
+      expect(categorize(title, dept)).toBe(want);
+    });
+  }
+});
