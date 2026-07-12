@@ -296,17 +296,53 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             // Light boards omit the column so previously stored descriptions
             // survive the upsert instead of being nulled.
             ...(lightDescs ? {} : { description: clean(descs.get(j.id) ?? null) }),
-            last_seen: startIso,
+            last_seen: startIso, // set at INSERT only — semantically first_seen; rows are never rewritten
           });
         }
         const rows = [...rowsById.values()];
+
+        // Postings are immutable in practice (companies repost rather than
+        // edit), so unchanged rows are never rewritten: insert only ids the
+        // DB doesn't have, delete ids the feed no longer serves. The old
+        // upsert-everything design rewrote all ~91k rows every pass
+        // (~450k dead tuples/hour) — enough table bloat that aggregates
+        // started hitting statement timeouts.
         let boardOk = true;
-        for (let i = 0; i < rows.length; i += 250) {
-          const { error } = await client.from("job_board_postings").upsert(rows.slice(i, i + 250), { onConflict: "id" });
+        // Paginated: PostgREST caps responses at 1,000 rows, and the biggest
+        // boards hold 3,000+ — a truncated id set would re-insert live rows
+        // and never delete old ones.
+        const existingIds: string[] = [];
+        for (let from = 0; ; from += 1000) {
+          const { data: page, error: readErr } = await client
+            .from("job_board_postings")
+            .select("id")
+            .eq("company_token", s.token)
+            .order("id")
+            .range(from, from + 999);
+          if (readErr) {
+            boardOk = false;
+            lastUpsertError = `${s.token}: ${readErr.message}`;
+            break;
+          }
+          existingIds.push(...(page ?? []).map((r) => r.id as string));
+          if (!page || page.length < 1000) break;
+        }
+        if (!boardOk) {
+          failed.push(s.name);
+          continue;
+        }
+        const prefix = `${s.source}:`;
+        const existing = new Set(existingIds.filter((id) => id.startsWith(prefix)));
+        const liveIds = new Set(rowsById.keys());
+        const newRows = rows.filter((r) => !existing.has(r.id as string));
+        const vanished = [...existing].filter((id) => !liveIds.has(id));
+
+        for (let i = 0; i < newRows.length; i += 250) {
+          const { error } = await client.from("job_board_postings").upsert(newRows.slice(i, i + 250), { onConflict: "id" });
           if (error) {
             boardOk = false;
             lastUpsertError = `${s.token}: ${error.message}`;
-            console.warn(`[JOB-BOARD] upsert failed for ${s.token}:`, error.message.slice(0, 200));
+            console.warn(`[JOB-BOARD] insert failed for ${s.token}:`, error.message.slice(0, 200));
             break;
           }
         }
@@ -314,20 +350,14 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           failed.push(s.name);
           continue;
         }
+        for (let i = 0; i < vanished.length; i += 200) {
+          await client.from("job_board_postings").delete().in("id", vanished.slice(i, i + 200));
+        }
         okTokens.push(s.token);
         sliceTotal += rows.length;
       }
     }),
   );
-
-  // Prune vanished postings for boards that answered THIS slice only.
-  for (let i = 0; i < okTokens.length; i += 50) {
-    await client
-      .from("job_board_postings")
-      .delete()
-      .lt("last_seen", startIso)
-      .in("company_token", okTokens.slice(i, i + 50));
-  }
 
   // Advance cursors. Cold advances by the ACTUAL slice length — the tail
   // slice is short, and advancing by a full COLD_SLICE would skip the boards
