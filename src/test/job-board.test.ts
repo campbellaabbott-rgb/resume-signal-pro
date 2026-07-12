@@ -384,6 +384,12 @@ describe("tiered refresh invariants", () => {
     expect(HOT_TOKENS.size).toBeGreaterThan(20);
     expect(HOT_TOKENS.size).toBeLessThan(300);
   });
+
+  it("every LIGHT_DESC token is a real Greenhouse source (light fetch only means anything there)", async () => {
+    const { LIGHT_DESC_TOKENS, JOB_SOURCES } = await import("../../supabase/functions/job-board/sources");
+    const gh = new Set(JOB_SOURCES.filter((s) => s.source === "greenhouse").map((s) => s.token));
+    expect([...LIGHT_DESC_TOKENS].filter((t) => !gh.has(t))).toEqual([]);
+  });
 });
 
 describe("category gap fixes (2026-07-12 Other-bucket audit)", () => {

@@ -42,6 +42,15 @@ export const HOT_TOKENS: Set<string> = new Set([
   "robinhood", "tractian", "Colliers", "spotify", "billiontoone", "justworks",
 ]);
 
+// Greenhouse giants whose per-posting HTML would blow the per-invocation
+// CPU budget (measured 2026-07-12: htmlToText over ~9k descriptions killed
+// the slice). Fetched WITHOUT content; their postings carry no stored
+// description and fit-ranking shows an honest null — same degradation the
+// SR giants already have.
+export const LIGHT_DESC_TOKENS: Set<string> = new Set([
+  "eosfitness", "bayada", "carvana", "liquidpersonnel",
+]);
+
 export const JOB_SOURCES: JobSource[] = [
   // CDX census sweep (2026-07-12): Wayback CDX enumeration of vendor domains,
   // every board live-verified via the vendor's official public API and named

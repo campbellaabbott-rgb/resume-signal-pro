@@ -14,7 +14,7 @@
 // never linger. A refresh lock in job_board_meta stops stampedes.
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { HOT_TOKENS, JOB_SOURCES, type JobSource } from "./sources.ts";
+import { HOT_TOKENS, JOB_SOURCES, LIGHT_DESC_TOKENS, type JobSource } from "./sources.ts";
 import {
   htmlToText,
   normalizeAshby,
@@ -75,7 +75,7 @@ const listUrl = (s: JobSource) =>
   s.source === "greenhouse"
     // content=true costs a bigger payload but delivers every description in
     // ONE call — fit-ranking coverage for GH boards, plus real departments.
-    ? `https://boards-api.greenhouse.io/v1/boards/${s.token}/jobs?content=true`
+    ? `https://boards-api.greenhouse.io/v1/boards/${s.token}/jobs${LIGHT_DESC_TOKENS.has(s.token) ? "" : "?content=true"}`
     : s.source === "lever"
       ? `https://api.lever.co/v0/postings/${s.token}?mode=json`
       : s.source === "ashby"
@@ -192,18 +192,42 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     return { ok: true, detail: "skipped — a slice ran moments ago" };
   }
   const pv = (prog?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
-  // A fresh chain (hop 0) starts a new hot pass; the cold cursor persists
-  // across passes so the tail keeps rotating.
-  let hot = chainHop === 0 ? 0 : Math.max(0, Number(pv.hot) || 0);
+  let hot = Math.max(0, Number(pv.hot) || 0);
   let cold = Math.max(0, Number(pv.cold) || 0) % Math.max(1, COLD_LIST.length);
-  let coldDone = chainHop === 0 ? 0 : Math.max(0, Number(pv.coldDone) || 0);
-  if (chainHop === 0) pv.failedAcc = [];
+  let coldDone = Math.max(0, Number(pv.coldDone) || 0);
+  // Hop 0 RESUMES a recent incomplete pass rather than resetting: when a
+  // slice dies on the resource ceiling, the re-run must move FORWARD, not
+  // re-die on the same boards (the 13:04-13:38 wedge re-ran slice 0
+  // forever). A completed or stale (>45 min) pass starts fresh.
+  if (chainHop === 0) {
+    const progAge = prog ? Date.now() - new Date(prog.updated_at).getTime() : Infinity;
+    const storedDone = hot >= HOT_LIST.length && coldDone >= COLD_SLICES_PER_PASS;
+    if (storedDone || progAge > 45 * 60_000) {
+      hot = 0;
+      coldDone = 0;
+      pv.failedAcc = [];
+    }
+  }
 
   const inHotPhase = hot < HOT_LIST.length;
   const slice = inHotPhase
     ? HOT_LIST.slice(hot, hot + HOT_SLICE)
     : COLD_LIST.slice(cold, cold + COLD_SLICE);
   const startIso = new Date().toISOString();
+
+  // Cursors advance BEFORE processing (optimistic): if this invocation dies
+  // on the resource ceiling, the next attempt continues with the NEXT
+  // slice — a died slice's boards go one rotation stale instead of wedging
+  // the whole pipeline. Failure accounting is finalized after the slice.
+  {
+    const nextHot = inHotPhase ? hot + HOT_SLICE : hot;
+    const nextCold = inHotPhase ? cold : (cold + slice.length) % Math.max(1, COLD_LIST.length);
+    const nextColdDone = inHotPhase ? coldDone : coldDone + 1;
+    await client.from("job_board_meta").upsert(
+      { k: "refresh_progress", v: { hot: nextHot, cold: nextCold, coldDone: nextColdDone, failedAcc: Array.isArray(pv.failedAcc) ? pv.failedAcc : [] }, updated_at: new Date().toISOString() },
+      { onConflict: "k" },
+    );
+  }
 
   const queue = [...slice];
   const okTokens: string[] = [];
@@ -232,13 +256,14 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             const text = (j.descriptionPlain ?? (j.descriptionHtml ? htmlToText(j.descriptionHtml) : "")).trim();
             if (text) descs.set(`ashby:${s.token}:${j.id}`, text.slice(0, 4000));
           }
-        } else if (s.source === "greenhouse") {
+        } else if (s.source === "greenhouse" && !LIGHT_DESC_TOKENS.has(s.token)) {
           for (const j of ((r.raw as { jobs?: Array<{ id: number; content?: string }> }).jobs ?? [])) {
             const text = j.content ? htmlToText(String(j.content).slice(0, 12000)).trim() : "";
             if (text) descs.set(`greenhouse:${s.token}:${j.id}`, text.slice(0, 4000));
           }
         }
         const clean = (x: string | null | undefined) => (x == null ? null : x.replace(/\u0000/g, ""));
+        const lightDescs = LIGHT_DESC_TOKENS.has(s.token);
         const rowsById = new Map<string, Record<string, unknown>>();
         for (const j of r.jobs) {
           rowsById.set(j.id, {
@@ -254,7 +279,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             posted_at: j.postedAt,
             apply_url: j.applyUrl,
             salary: clean(j.salary?.slice(0, 200) ?? null),
-            description: clean(descs.get(j.id) ?? null),
+            // Light boards omit the column so previously stored descriptions
+            // survive the upsert instead of being nulled.
+            ...(lightDescs ? {} : { description: clean(descs.get(j.id) ?? null) }),
             last_seen: startIso,
           });
         }
