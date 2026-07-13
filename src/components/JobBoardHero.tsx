@@ -16,9 +16,15 @@ function useBoardTotals() {
       .invoke("job-board", { body: { action: "list", limit: 1, includeFacets: true } })
       .then(({ data }) => {
         if (cancelled) return;
-        const d = data as { totalAllCompanies?: number; total?: number; companies?: unknown[] } | null;
-        const jobs = d?.totalAllCompanies || d?.total || 0;
-        const companies = Array.isArray(d?.companies) ? d!.companies.length : 0;
+        // Use `total` — the read-filtered (≤30-day) count the /jobs board
+        // actually serves — NOT `totalAllCompanies` (the pre-sweep facet total,
+        // which still counts aged rows the read filter hides). This keeps the
+        // homepage number identical to what a visitor sees on the board, and
+        // honest with the "nothing older than 30 days" claim. Companies counted
+        // the same way /jobs does (count > 0).
+        const d = data as { total?: number; companies?: Array<{ count?: number }> } | null;
+        const jobs = d?.total || 0;
+        const companies = Array.isArray(d?.companies) ? d!.companies.filter((c) => (c?.count ?? 0) > 0).length : 0;
         if (jobs > 0) setTotals({ jobs, companies });
       })
       .catch(() => {});
