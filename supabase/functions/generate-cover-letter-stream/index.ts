@@ -1,6 +1,7 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { checkInputLimits } from "../_shared/input-limits.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,6 +29,9 @@ serve(async (req) => {
 
   try {
     const { resumeText, jobDescription, jobTitle, jobCompany, tone = "professional", language } = await req.json();
+
+    const limitError = checkInputLimits({ resumeText, jobDescription });
+    if (limitError) return new Response(JSON.stringify({ error: limitError }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     if (!resumeText) {
       return new Response(

@@ -1,6 +1,7 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { checkInputLimits } from "../_shared/input-limits.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,6 +30,9 @@ serve(async (req) => {
     }
 
     const { resumeText, industry, currentRole, experienceLevel, candidateName, targetRole } = await req.json();
+
+    const limitError = checkInputLimits({ resumeText });
+    if (limitError) return new Response(JSON.stringify({ error: limitError }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     if (!resumeText || resumeText.length < 50) {
       return new Response(JSON.stringify({ error: "Resume text is required" }), {
