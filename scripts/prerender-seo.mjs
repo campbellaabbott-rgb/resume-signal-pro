@@ -758,6 +758,37 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
         }],
       });
     }
+
+    // Main board page — the parent of the field landers. Without its own write()
+    // it fell back to the homepage (scanner) meta, wasting the single most
+    // important jobs URL. Board-specific title/description, live counts when the
+    // build can reach the board, honest '3,000+' fallback otherwise.
+    {
+      const jobsPhrase = boardTotal
+        ? `${fmt(boardTotal)} live openings across ${fmt(boardCompanies)} companies`
+        : "live openings across 3,000+ companies";
+      write({
+        path: "/jobs",
+        title: boardTotal
+          ? `Live Job Board — ${fmt(boardTotal)} Openings Direct From Company Career Pages`
+          : "Live Job Board — Openings Direct From Company Career Pages",
+        description: `Browse ${jobsPhrase}, pulled from official job boards on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and BambooHR — no aggregators, nothing older than 30 days. Check your resume's fit against any posting free, then apply on the company's own site.`,
+        content: `
+          <h1>Live job board</h1>
+          <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)}, pulled directly from the official job boards companies publish on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and BambooHR. No scraped listings, no aggregators, no reposts — every opening belongs to the company that published it, applying happens on the company's own site, and nothing older than 30 days stays on the board.</p>
+          <p>Browse by field: ${CATEGORY_LANDERS.map(([s, l]) => `<a href="/jobs/field/${s}">${l} jobs</a>`).join(" · ")}.</p>
+          <p>Check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it, and save searches with a free account.</p>
+        `,
+        jsonLd: [{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: "Live job board",
+          description: "Live openings from companies' official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR), re-verified throughout the day — no aggregators, nothing older than 30 days.",
+          url: `${SITE}/jobs`,
+          isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
+        }],
+      });
+    }
   }
 
   // ---- /llms-full.txt: complete citable text in one fetch ----
