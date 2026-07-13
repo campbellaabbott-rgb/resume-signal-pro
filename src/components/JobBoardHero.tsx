@@ -71,7 +71,7 @@ export function JobBoardHero() {
           <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-5 animate-fade-in" style={{ animationDelay: "0.1s" }}>
             {t(
               "boardHero.subhead",
-              "Live openings pulled straight from companies' own career pages — then ranked against your resume, so you spend applications where you'll actually win.",
+              "Live openings pulled straight from companies' own career pages — then ranked against your resume, so you apply where you'll actually win.",
             )}
           </p>
 
