@@ -377,29 +377,38 @@ serve(async (req) => {
       );
     }
 
-    // Check if session already used (skip check if allowRegeneration is true for recovery scenarios)
-    const { data: existingSession } = await supabase
+    // Atomically claim the session by INSERTing first (PRIMARY KEY on session_id),
+    // rather than SELECT-then-INSERT. The old check-then-insert had a race window
+    // where two concurrent calls both saw "not used" and both proceeded to the
+    // (expensive, AI-billed) generation — double spend — and the INSERT error was
+    // never even checked. This mirrors the atomic claim already used by
+    // stripe-webhook, verify-product-purchase and verify-scan-pack-purchase.
+    // allowRegeneration (recovery) semantics are preserved: an already-claimed
+    // session is rejected 409 normally, but allowed through when regeneration is
+    // explicitly requested.
+    const { error: claimError } = await supabase
       .from('used_stripe_sessions')
-      .select('session_id')
-      .eq('session_id', sessionId)
-      .maybeSingle();
+      .insert({ session_id: sessionId, ip_address: clientIp });
 
-    if (existingSession && !allowRegeneration) {
-      console.log("[ATS-DEFENSE] Session already used and regeneration not allowed");
-      return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
-        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Mark session as used (only if not already marked)
-    if (!existingSession) {
-      await supabase.from('used_stripe_sessions').insert({
-        session_id: sessionId,
-        ip_address: clientIp
-      });
-    } else {
-      console.log("[ATS-DEFENSE] Session already marked as used, proceeding with regeneration");
+    if (claimError) {
+      if (claimError.code === '23505') {
+        // Session already claimed by a prior/concurrent call.
+        if (!allowRegeneration) {
+          console.log("[ATS-DEFENSE] Session already used and regeneration not allowed");
+          return new Response(
+            JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        console.log("[ATS-DEFENSE] Session already claimed, proceeding with regeneration");
+      } else {
+        // Unexpected DB error — fail closed rather than risk double-generating.
+        console.error("[ATS-DEFENSE] Error claiming session:", claimError.message);
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Call AI for analysis
