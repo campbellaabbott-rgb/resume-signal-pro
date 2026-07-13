@@ -7,6 +7,7 @@ import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
+import { JobBoardHero } from "@/components/JobBoardHero";
 import { ResumeUploader } from "@/components/ResumeUploader";
 import { AnalysisPreview } from "@/components/AnalysisPreview";
 import { SocialProof } from "@/components/SocialProof";
@@ -1727,6 +1728,24 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       <Header />
 
       <main id="main-content" className="pt-16" role="main">
+        {/* Board-first: the live job board leads the page; the resume tools
+            below are the toolkit to land what's on it. Hidden on landing-page
+            variants (they keep their query-specific message) and once a scan
+            result is showing (the report takes over). */}
+        {!landing && !freeKeywordResult && (
+          <>
+            <JobBoardHero />
+            <div className="container">
+              <div className="max-w-3xl mx-auto flex items-center gap-3 py-2">
+                <div className="h-px flex-1 bg-border/60" />
+                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+                  {t('boardHero.toolkitLabel', 'Your free toolkit to land them')}
+                </span>
+                <div className="h-px flex-1 bg-border/60" />
+              </div>
+            </div>
+          </>
+        )}
         <Hero onFileSelect={handleFileSelect} />
 
         {/* Landing-variant copy: the query-specific promise, right under the tool */}
