@@ -34,7 +34,14 @@ export function useTimeOnPage(pageName: string = 'home') {
     // Load already tracked milestones for this session
     const tracked = sessionStorage.getItem(sessionKey);
     if (tracked) {
-      trackedMilestones.current = new Set(JSON.parse(tracked) as TimeMilestone[]);
+      // Guarded: a corrupt/legacy value would otherwise throw synchronously
+      // inside this effect and can take the page down. Start fresh instead —
+      // every other storage parse in the app is guarded the same way.
+      try {
+        trackedMilestones.current = new Set(JSON.parse(tracked) as TimeMilestone[]);
+      } catch {
+        trackedMilestones.current = new Set();
+      }
     }
 
     const trackMilestone = async (milestone: TimeMilestone) => {
