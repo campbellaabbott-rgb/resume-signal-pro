@@ -201,20 +201,26 @@ async function tierLists(client: SupabaseClient): Promise<{ hotList: JobSource[]
     coldList: JOB_SOURCES.filter((s) => !hot.has(s.token)),
   };
 }
-const COLD_SLICES_PER_PASS = 16; // widened with the pool: 80×16 = 1,280 cold boards/pass keeps a ~3,700-board tail re-verifying in ~2.9 passes (inside the 90-min freshness SLA); more hops of proven-safe slice size, not bigger slices. SR_CAP bounds any single board's fetch so mixing SR boards into cold slices stays under the edge wall-time limit.
+const COLD_SLICES_PER_PASS = 20; // widened again for the capacity scale-up: 80×20 = 1,600 cold boards/pass keeps a ~10.4k-board tail re-verifying in ~6.5 passes (~65 min — inside the 90-min freshness SLA and honest to the "about an hour" copy); more hops of the proven-safe slice size, not bigger slices. SR_CAP bounds any single board's fetch so mixing SR boards into cold slices stays under the edge wall-time limit.
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
-// Capacity governor: the free-tier database holds ~100k postings before writes
-// start failing — and a failed insert stalls the whole refresh, which is the
-// opposite of fresh. Keep the corpus under a ceiling with headroom; when a
+// Capacity governor: keep the corpus under a ceiling with headroom; when a
 // hiring surge or a wider board selection pushes past it, shed the STALEST
 // postings (oldest effective_posted — the exact rows sitting last on the
 // board) so the slots we keep are the freshest. Dormant while supply is under
-// the ceiling (the common case today at ~90k), so it costs nothing until it's
-// actually needed. Hysteresis (evict down to TARGET, arm at CEILING) keeps it
-// from thrashing every pass once it does engage.
-const CORPUS_CEILING = 97_000; // arm eviction above this
-const CORPUS_TARGET = 95_000;  // evict down to this
+// the ceiling, so it costs nothing until it's actually needed. Hysteresis
+// (evict down to TARGET, arm at CEILING) keeps it from thrashing every pass
+// once it does engage.
+//
+// Ceiling sizing (2026-07-13): the database moved off the free tier to an 8GB
+// plan (~6.6GB free at the time of the raise). A posting row costs ~5-6KB all
+// in (≤4KB description + metadata + indexes), so 300k rows ≈ ~1.7GB — well
+// inside headroom while leaving most of the disk for everything else. Raised
+// from the old free-tier 97k in one measured step, NOT straight to the
+// theoretical max: watch write latency and disk at this level before stepping
+// again (500k ≈ ~2.8GB would be the next stop).
+const CORPUS_CEILING = 300_000; // arm eviction above this
+const CORPUS_TARGET = 290_000;  // evict down to this
 
 // Freshness cap: the board shows only roles posted within this window. Dated
 // postings past it are dropped at ingestion (never stored) and swept from the
@@ -1146,11 +1152,21 @@ async function serveList(
   // that already hold it can opt out instead of re-downloading it per filter
   // change. Absent/true keeps the old contract for deployed frontends.
   const includeFacets = (body as { includeFacets?: boolean }).includeFacets !== false;
+  // At the scaled-up pool (~8.7k companies) the full facet is ~500KB per list
+  // response and thousands of dropdown nodes — serve the top slice by count and
+  // report the full number separately so stat displays stay exact. The facets
+  // RPC (used by prerender/SEO) still returns the complete set.
+  const FACET_COMPANY_LIMIT = 1_500;
+  const fullCompanies = (v.companiesFacet as Array<{ count?: number }>) ?? [];
+  const servedCompanies = includeFacets
+    ? [...fullCompanies].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, FACET_COMPANY_LIMIT)
+    : [];
   return json({
     jobs: (data ?? []).map(rowToJob),
     total: count ?? 0,
     totalAllCompanies: (v.total as number) ?? count ?? 0,
-    companies: includeFacets ? ((v.companiesFacet as unknown[]) ?? []) : [],
+    companies: servedCompanies,
+    companiesCount: fullCompanies.length,
     categories: (v.categoriesFacet as Record<string, number>) ?? {},
     failedSources: (v.failedSources as string[]) ?? [],
     refreshedAt: (v.refreshedAt as string) ?? null,

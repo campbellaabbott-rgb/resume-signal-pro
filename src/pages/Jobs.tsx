@@ -41,6 +41,9 @@ interface BoardResponse {
   jobs: BoardJob[];
   total: number;
   totalAllCompanies: number;
+  // Untrimmed company count — the served `companies` array is capped (top-N by
+  // count) for payload weight, so stat displays must use this, not .length.
+  companiesCount?: number;
   companies: Array<{ token: string; name: string; count: number }>;
   categories: Record<string, number>;
   failedSources: string[];
@@ -609,7 +612,7 @@ export default function Jobs() {
                 {t("jobsPage.resultsSummary", "Showing {{shown}} of {{total}} matching openings across {{companies}} companies", {
                   shown: jobs.length,
                   total: data?.total ?? jobs.length,
-                  companies: companies.length,
+                  companies: data?.companiesCount ?? companies.length,
                 })}
                 {data?.refreshedAt && (
                   <span> · {t("jobsPage.updatedAgo", "updated {{min}} min ago", { min: Math.max(0, Math.round((Date.now() - new Date(data.refreshedAt).getTime()) / 60000)) })}</span>

@@ -22,9 +22,13 @@ function useBoardTotals() {
         // homepage number identical to what a visitor sees on the board, and
         // honest with the "nothing older than 30 days" claim. Companies counted
         // the same way /jobs does (count > 0).
-        const d = data as { total?: number; companies?: Array<{ count?: number }> } | null;
+        const d = data as { total?: number; companiesCount?: number; companies?: Array<{ count?: number }> } | null;
         const jobs = d?.total || 0;
-        const companies = Array.isArray(d?.companies) ? d!.companies.filter((c) => (c?.count ?? 0) > 0).length : 0;
+        // companiesCount is the untrimmed facet size (the served `companies`
+        // array is capped for payload weight); fall back to counting the array
+        // for older deployed function versions.
+        const companies = d?.companiesCount
+          ?? (Array.isArray(d?.companies) ? d!.companies.filter((c) => (c?.count ?? 0) > 0).length : 0);
         if (jobs > 0) setTotals({ jobs, companies });
       })
       .catch(() => {});
