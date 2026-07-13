@@ -55,7 +55,7 @@ const HOT_CONCURRENCY = 2; // hot boards are giants — two multi-MB parses at o
 // died mid-slice at HOT=30 (one upsert chunk of carvana landed, then the
 // worker hit the ceiling and the cron retried the same slice forever).
 const HOT_SLICE = 10;
-const COLD_SLICE = 60; // cold boards are small (that's why they're cold) — bigger slices keep full-tail rotation inside the hour
+const COLD_SLICE = 80; // cold boards are small (that's why they're cold) — bigger slices keep full-tail rotation inside the hour even at ~2,300 boards (still 20 sequential rounds at CONCURRENCY=4, well under the edge wall-time limit)
 const SLICE_LOCK_MS = 3 * 60_000; // min gap between slices
 const DESC_CAP = 14_000; // matches the scanner's own input bounds
 
@@ -191,7 +191,7 @@ async function tierLists(client: SupabaseClient): Promise<{ hotList: JobSource[]
     coldList: JOB_SOURCES.filter((s) => !hot.has(s.token)),
   };
 }
-const COLD_SLICES_PER_PASS = 8;
+const COLD_SLICES_PER_PASS = 12; // widened with the pool: 80×12 = 960 cold boards/pass keeps a ~2,250-board tail re-verifying in ~2.3 passes (well inside the 90-min freshness SLA)
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 // Capacity governor: the free-tier database holds ~100k postings before writes
