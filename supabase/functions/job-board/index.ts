@@ -89,10 +89,14 @@ const listUrl = (s: JobSource) =>
             ? `https://apply.workable.com/api/v1/widget/accounts/${s.token}?details=false`
             : `https://${s.token}.bamboohr.com/careers/list`;
 
-// SmartRecruiters paginates; Bosch alone lists ~4.7k postings. The slim SR
-// payloads are CPU-cheap (no description work), so the cap is generous —
-// with sliced refresh, one giant board dominating a slice is fine.
-const SR_CAP = 3000;
+// SmartRecruiters paginates 100/page. With ~1,000 SR boards now in the pool, an
+// unbounded cap could let one giant board's pagination wedge a cold hop under
+// the edge wall-time limit. Bound it so no single board costs more than ~8
+// sequential pages — the vast majority of boards hold fewer than this, and the
+// 30-day freshness cap discards most of a mega-board's inventory anyway. Big
+// boards still get full coverage once the self-tuning hot tier promotes them
+// (fetched alone in small hot slices).
+const SR_CAP = 800;
 async function fetchSmartRecruiters(s: JobSource): Promise<{ content: unknown[] }> {
   const first = await fetchWithTimeout(listUrl(s));
   if (!first.ok) throw new Error(`HTTP ${first.status}`);
@@ -191,7 +195,7 @@ async function tierLists(client: SupabaseClient): Promise<{ hotList: JobSource[]
     coldList: JOB_SOURCES.filter((s) => !hot.has(s.token)),
   };
 }
-const COLD_SLICES_PER_PASS = 14; // widened with the pool: 80×14 = 1,120 cold boards/pass keeps a ~2,800-board tail re-verifying in ~2.5 passes (well inside the 90-min freshness SLA); more hops of proven-safe slice size, not bigger slices
+const COLD_SLICES_PER_PASS = 16; // widened with the pool: 80×16 = 1,280 cold boards/pass keeps a ~3,700-board tail re-verifying in ~2.9 passes (inside the 90-min freshness SLA); more hops of proven-safe slice size, not bigger slices. SR_CAP bounds any single board's fetch so mixing SR boards into cold slices stays under the edge wall-time limit.
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 // Capacity governor: the free-tier database holds ~100k postings before writes
