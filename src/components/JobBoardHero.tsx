@@ -89,7 +89,7 @@ export function JobBoardHero() {
                   </>
                 )}
                 {" · "}
-                {t("boardHero.updatedContinuously", "updated continuously")}
+                {t("boardHero.freshness", "new roles added continuously")}
               </p>
             )}
           </div>
