@@ -40,7 +40,13 @@ const json = (body: unknown, status = 200) =>
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
-const FETCH_TIMEOUT_MS = 8_000;
+// 8s was too tight for large boards: Greenhouse content=true payloads run
+// 3–4 MB and Ashby 2.5 MB, which from the edge can exceed 8s and fail the fetch
+// — repeatedly, so ~100 boards with hundreds of fresh postings each (stone, pei,
+// bridgebio, deliveroo…) never ingested at all. A worker only blocks on the
+// slow board, and the queue keeps a hop well under the invocation wall-time, so
+// a wider ceiling is safe. Descriptions are preserved (unlike light-desc).
+const FETCH_TIMEOUT_MS = 20_000;
 // Refresh budget: a single edge invocation cannot afford the CPU of
 // converting the whole corpus's HTML to text (WORKER_RESOURCE_LIMIT, seen
 // live twice). So refresh is CURSOR-SLICED: each call processes one slice of
