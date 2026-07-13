@@ -168,6 +168,18 @@ async function triggerProductDelivery(
     return { success: true, productType };
   }
 
+  // Freelance products are fulfilled interactively on /freelance-boost, against
+  // an intake the buyer completes AFTER paying — so there is no resume/intake at
+  // webhook time and nothing to auto-generate here. Recognize them explicitly:
+  // otherwise they fall through to a "No resume session ID" failure (or, with a
+  // resume session, to the switch's "Unknown product type" throw), which logs a
+  // bogus webhook failure and can drop a valid purchase into the
+  // generation-failed retry queue. The intake page owns delivery.
+  if (productType === 'freelance_boost' || productType === 'freelance_transition_pro') {
+    logStep("Freelance product — fulfilled via intake page; deferring webhook generation", { productType });
+    return { success: true, productType, deferred: 'freelance_intake' };
+  }
+
   // For content products, need resume data
   if (!resumeSessionId) {
     logStep("No resume session ID");
