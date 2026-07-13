@@ -296,8 +296,20 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
       );
     }
 
-    const tailoredContent = JSON.parse(toolCall.function.arguments);
-    
+    // Guard the parse: a response truncated at max_tokens yields malformed JSON,
+    // which otherwise fell through to the outer catch and leaked the raw parser
+    // error to the client as a 500. Return a clean, retryable message instead.
+    let tailoredContent;
+    try {
+      tailoredContent = JSON.parse(toolCall.function.arguments);
+    } catch (e) {
+      console.warn("[TAILORED-RESUME] tool-call JSON parse failed:", String(e).slice(0, 120));
+      return new Response(
+        JSON.stringify({ error: "The AI returned a malformed draft. Please try again.", retryable: true }),
+        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log("[TAILORED-RESUME] Successfully generated tailored resume");
 
     return new Response(

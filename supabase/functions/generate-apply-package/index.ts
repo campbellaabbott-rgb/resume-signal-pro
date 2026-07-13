@@ -343,7 +343,21 @@ Prepare the tailored application package.`;
       );
     }
 
-    let result = JSON.parse(toolCall.function.arguments);
+    // Tool-call arguments are usually valid JSON, but a response truncated at
+    // max_tokens (or a model hiccup) yields malformed JSON. Unguarded, that
+    // threw to the outer catch as a generic 500 — and skipped the grounding
+    // retry below. Return the same retryable shape the grounding refusal uses,
+    // so the UI (and the batch co-pilot) handle it gracefully with "try again".
+    let result;
+    try {
+      result = JSON.parse(toolCall.function.arguments);
+    } catch (e) {
+      console.warn("[GENERATE-APPLY-PACKAGE] tool-call JSON parse failed:", String(e).slice(0, 120));
+      return new Response(
+        JSON.stringify({ error: "The generator returned a malformed draft. Try again — regeneration is free.", retryable: true }),
+        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // ── Grounding check: verify, don't trust ────────────────────────────────
     let grounding = validateTailoredResume(resumeText, result.tailoredResume as TailoredResumeShape);
