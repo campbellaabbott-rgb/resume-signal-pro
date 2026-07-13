@@ -15,7 +15,7 @@ import { normalizeSmartRecruiters, normalizeWorkable } from "../../supabase/func
 import { searchName, searchToQuery } from "../../src/lib/job-search-params";
 import { computeFit } from "../../supabase/functions/_shared/fit-score";
 import { normalizeBambooHR } from "../../supabase/functions/job-board/normalize";
-import { leverSalary, sanePostedAt, isDatedBefore } from "../../supabase/functions/job-board/normalize";
+import { leverSalary, sanePostedAt, isDatedBefore, safeIso } from "../../supabase/functions/job-board/normalize";
 
 // ── real captured fixtures (trimmed to the fields the APIs actually send) ──
 const GH_FIXTURE = {
@@ -234,6 +234,35 @@ describe("fit scoring + salary mapping", () => {
     expect(sanePostedAt(null, now)).toBeNull();
     expect(sanePostedAt("", now)).toBeNull();
     expect(sanePostedAt("not a date", now)).toBeNull();
+  });
+
+  it("safeIso converts feed dates without ever throwing on garbage", () => {
+    // Valid epoch number (Lever's createdAt shape) → ISO.
+    expect(safeIso(Date.parse("2026-07-01T00:00:00Z"))).toBe("2026-07-01T00:00:00.000Z");
+    // Valid date string (Workable's published_on shape) → ISO.
+    expect(safeIso("2026-07-01")).toBe("2026-07-01T00:00:00.000Z");
+    // Absent values collapse to null.
+    expect(safeIso(null)).toBeNull();
+    expect(safeIso(undefined)).toBeNull();
+    expect(safeIso("")).toBeNull();
+    // The crash regression: a non-empty garbage date must return null, NOT throw.
+    // `new Date("garbage").toISOString()` raises a RangeError — inside a normalizer
+    // that would silently fail the board's entire ingest. safeIso absorbs it.
+    expect(() => safeIso("garbage")).not.toThrow();
+    expect(safeIso("garbage")).toBeNull();
+    expect(safeIso("2026-13-45")).toBeNull();
+  });
+
+  it("normalizeWorkable survives a malformed published_on (no throw, null date)", () => {
+    // A board whose feed carries a broken date must still ingest — the posting
+    // just shows dateless — rather than throwing and taking the whole board down.
+    const jobs = normalizeWorkable(
+      { jobs: [{ title: "Engineer", shortcode: "abc", published_on: "not-a-date", url: "https://apply.workable.com/j/abc" } as never] },
+      "Acme",
+      "acme",
+    );
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0].postedAt).toBeNull();
   });
 
   it("isDatedBefore drops known-old postings but never undated ones", () => {

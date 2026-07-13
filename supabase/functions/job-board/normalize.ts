@@ -56,6 +56,19 @@ export function sanePostedAt(iso: string | null | undefined, now: number = Date.
   return iso;
 }
 
+// Convert a feed's raw date value (epoch number, ISO/date string, whatever the
+// vendor sends) to an ISO string — WITHOUT throwing. `new Date(x).toISOString()`
+// raises a RangeError on an invalid date, and a normalizer that throws fails its
+// ENTIRE board upstream (fetchBoard swallows it → the board silently stops
+// ingesting, the same class as a fetch timeout). A non-empty garbage date string
+// is exactly the input that trips this. Bad or absent values collapse to null;
+// window-sanity (future/too-old) stays a separate concern for sanePostedAt.
+export function safeIso(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  const d = new Date(value as string | number);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 // Freshness-cap decision: a posting is dropped on age ONLY when it carries a
 // trustworthy date older than the cutoff. A null (undated or garbage-dated,
 // per sanePostedAt) posting is never dropped on age — we can't prove it's old,
@@ -158,7 +171,7 @@ export function normalizeLever(raw: LeverJob[], company: string, token: string):
       location,
       remote: j.workplaceType === "remote" || looksRemote(location),
       department: j.categories?.team ?? null,
-      postedAt: j.createdAt ? new Date(j.createdAt).toISOString() : null,
+      postedAt: safeIso(j.createdAt),
       category: categorize(j.text ?? "", j.categories?.team),
       salary: leverSalary(j.salaryRange),
       applyUrl: safeUrl(j.hostedUrl ?? j.applyUrl),
@@ -267,7 +280,7 @@ export function normalizeWorkable(raw: { jobs?: WorkableJob[] }, company: string
         location,
         remote: j.telecommuting === true || looksRemote(location),
         department: j.department ?? null,
-        postedAt: posted ? new Date(posted).toISOString() : null,
+        postedAt: safeIso(posted),
         category: categorize(j.title ?? "", j.department),
         salary: null,
         applyUrl: safeUrl(j.url ?? `https://apply.workable.com/j/${j.shortcode}`),
