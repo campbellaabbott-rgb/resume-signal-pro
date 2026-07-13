@@ -117,3 +117,9 @@ project_id = "bwhdazbotpblihdxcmho"
     verify_jwt = false
   [functions.job-board]
     verify_jwt = false
+  # Public so the cron can trigger {action:send} and, critically, so the email
+  # unsubscribe link (a plain browser click with no JWT) works. Safe: the send
+  # action is opt-in only and self-throttled to once per search per 6 days, and
+  # unsubscribe requires a valid HMAC token.
+  [functions.send-search-digest]
+    verify_jwt = false
