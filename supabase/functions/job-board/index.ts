@@ -300,7 +300,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // the whole pipeline. Failure accounting is finalized after the slice.
   {
     const nextHot = inHotPhase ? hot + HOT_SLICE : hot;
-    const nextCold = inHotPhase ? cold : (cold + slice.length) % Math.max(1, COLD_LIST.length);
+    // Advance by the COLD_LIST boards actually consumed (baseSlice) — NOT
+    // slice.length, which includes prepended demand boards. Counting the demand
+    // extras would skip that many cold boards each demand-injected hop, so the
+    // long tail would rotate unevenly (some boards re-checked late).
+    const nextCold = inHotPhase ? cold : (cold + baseSlice.length) % Math.max(1, COLD_LIST.length);
     const nextColdDone = inHotPhase ? coldDone : coldDone + 1;
     await client.from("job_board_meta").upsert(
       { k: "refresh_progress", v: { hot: nextHot, cold: nextCold, coldDone: nextColdDone, failedAcc: Array.isArray(pv.failedAcc) ? pv.failedAcc : [] }, updated_at: new Date().toISOString() },
