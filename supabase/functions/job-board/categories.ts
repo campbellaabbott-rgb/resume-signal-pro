@@ -8,7 +8,7 @@
 // the stored "other" rows through the current rules — so categorization
 // improvements reach the existing corpus, not just newly inserted rows
 // (the insert-only refresh never rewrites them otherwise).
-export const CATEGORIZE_VERSION = 2;
+export const CATEGORIZE_VERSION = 3;
 
 export const JOB_CATEGORIES = [
   "engineering",
@@ -39,11 +39,11 @@ export type JobCategory = (typeof JOB_CATEGORIES)[number];
 // "Security Engineer" lands in engineering while "SOC Analyst" lands in
 // security.
 const RULES: Array<[JobCategory, RegExp]> = [
-  ["healthcare", /\b(nurs(e|ing)\w*|clinic\w*|physician|doctor|psychiatr\w*|therap(ist|y)|pharmac\w*|medical|dental|veterinar\w*|care (manager|coordinator|navigator|team)|behavioral health|patient|midwife|paramedic|phlebotom\w*|krankenpfleg\w*|verpleegkundig\w*|enfermer\w*|infirmier\w*|arzt|médic\w*)\b/i],
+  ["healthcare", /\b(nurs(e|ing)\w*|clinic\w*|physician\w*|doctor|psychiatr\w*|therap(ist|y)|pharmac\w*|medical|dental|veterinar\w*|care (manager|coordinator|navigator|team)|behavioral health|patient|midwife|paramedic|phlebotom\w*|optometr\w*|optician\w*|neuropsycholog\w*|audiolog\w*|radiolog\w*|sonograph\w*|chiropract\w*|podiatr\w*|orthodont\w*|hygienist\w*|krankenpfleg\w*|verpleegkundig\w*|enfermer\w*|infirmier\w*|arzt|médic\w*)\b/i],
   ["science", /\b(scientist|research associate|laborator\w*|lab (tech\w*|manager|operations)|biolog\w*|chemist\w*|genomic\w*|bioinformatic\w*|microbiolog\w*|toxicolog\w*|r&d)\b/i],
-  ["education", /\b(teacher|instructor|tutor\w*|curriculum|professor|educator|instructional|school|learning designer|lehrer\w*|leraar|profesor\w*|enseignant\w*)\b/i],
+  ["education", /\b(teachers?|teaching|instructor|tutor\w*|curriculum|professor|educator|instructional|preschool|school|learning designer|lehrer\w*|leraar|profesor\w*|enseignant\w*)\b/i],
   ["data_ai", /\b(data (& |and )?ai|data platform|data (scien\w*|engineer\w*|analyst\w*|analytics)|machine learning|ml engineer\w*|ai\b.{0,20}(specialist|engineer|research\w*|scientist|automation)|artificial intelligence|research (scientist|engineer)|analytics engineer\w*|business intelligence|quant(itative)? (research\w*|analyst\w*|trad\w*|developer)|datenanalyst\w*)\b/i],
-  ["design", /\b(design(er|ers)|design (lead|manager|director)|ux|ui|user experience|user research\w*|creative director|illustrator|brand design\w*|motion design\w*)\b/i],
+  ["design", /\b(design(er|ers)|design (lead|manager|director)|ux|ui|user experience|user research\w*|creative director|art director|graphic design\w*|illustrator|brand design\w*|motion design\w*)\b/i],
   ["product", /\b(product manager\w*|product management|product owner|product lead|technical program manager\w*|program manager\w*|product operations)\b/i],
   ["marketing", /\b(marketing|growth|seo|sem\b|content (strategist|writer|marketer|lead)|copywrit\w*|communications|public relations|social media|brand (manager|lead)|demand gen\w*|lifecycle|events? (manager|coordinator)|comunica\w*|kommunikation\w*|communicatie)\b/i],
   ["sales", /\b(sales\b|account (executive|manager|director)|business development|partnerships?|revenue|solutions? (architect|consultant|engineer)|pre-?sales|customer acquisition|gtm|vertrieb\w*|verkäufer\w*|commercial\w*)\b/i],

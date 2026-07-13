@@ -376,6 +376,26 @@ describe("categorize", () => {
     expect(categorize("Executive Assistant to the CEO")).toBe("admin");
   });
 
+  it("recovers roles that previously fell into Other (v3 rules)", () => {
+    // Medical professions the healthcare regex now names explicitly.
+    expect(categorize("Optometrist")).toBe("healthcare");
+    expect(categorize("Optometrist - Full-time")).toBe("healthcare");
+    expect(categorize("Neuropsychologist - Tinley Park, IL")).toBe("healthcare");
+    // Creative-director titles → design (alongside the existing "creative director").
+    expect(categorize("Associate Art Director - Rainbow Six Siege")).toBe("design");
+    // The \bteacher\b-only bug: plural "Teachers" and "Preschool" now match education.
+    expect(categorize("Child Care and Preschool Teachers")).toBe("education");
+    expect(categorize("Teachers Assistant")).toBe("education");
+  });
+
+  it("does not regress existing categorizations after the v3 additions", () => {
+    expect(categorize("Senior Software Engineer")).toBe("engineering");
+    expect(categorize("Product Manager")).toBe("product");
+    expect(categorize("Account Executive")).toBe("sales");
+    expect(categorize("UX Designer")).toBe("design");
+    expect(categorize("Registered Nurse")).toBe("healthcare");
+  });
+
   it("resolves the security/engineering boundary deliberately", () => {
     expect(categorize("Security Engineer")).toBe("engineering");
     expect(categorize("SOC Analyst")).toBe("security");
