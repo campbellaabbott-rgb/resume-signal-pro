@@ -72,6 +72,10 @@ export function SavedSearchesCard() {
 
   if (!loaded || searches.length === 0) return null;
 
+  // Aggregate the per-search "new since last visit" counts into one headline —
+  // the strongest reason to come back is knowing there's something new waiting.
+  const totalNew = Object.values(newCounts).reduce((sum, n) => sum + n, 0);
+
   return (
     <div className="rounded-2xl border border-border bg-card p-5 mb-6">
       <div className="flex items-center gap-2 mb-3">
@@ -79,6 +83,22 @@ export function SavedSearchesCard() {
         <h2 className="font-semibold text-foreground text-sm">Saved job searches</h2>
         <span className="ml-auto text-xs text-muted-foreground">{searches.length} saved</span>
       </div>
+      {totalNew > 0 && (
+        <button
+          onClick={() => {
+            // Open the search with the most new matches (most worth the click).
+            const top = [...searches].sort((a, b) => (newCounts[b.id] ?? 0) - (newCounts[a.id] ?? 0))[0];
+            if (top) open(top);
+          }}
+          className="w-full flex items-center gap-2 mb-3 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2.5 text-left hover:bg-primary/10 transition-colors"
+        >
+          <BellRing className="w-4 h-4 text-primary shrink-0" />
+          <span className="text-sm text-foreground font-medium">
+            {totalNew} new {totalNew === 1 ? "job matches" : "jobs match"} your saved searches since your last visit
+          </span>
+          <span className="ml-auto text-[11px] text-primary font-semibold shrink-0 whitespace-nowrap">View →</span>
+        </button>
+      )}
       <div className="space-y-1.5">
         {searches.map((s) => (
           <div key={s.id} className="flex items-center gap-2 border border-border/50 rounded-lg px-3 py-2">
