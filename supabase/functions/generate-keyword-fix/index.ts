@@ -18,6 +18,13 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Public (verify_jwt=false) LLM endpoint — per-IP rate limit so it can't be
+  // looped to burn AI credits. Mirrors the throttle on the other generators.
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+  const { data: allowed } = await supabase.rpc("check_rate_limit", { p_function: "generate-keyword-fix", p_ip: clientIp, p_max_requests: 20, p_window_minutes: 60 });
+  if (!allowed) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
   try {
     const { resumeText, jobDescription, jobTitle, jobCompany, personalizationContext, language } = await req.json();
 

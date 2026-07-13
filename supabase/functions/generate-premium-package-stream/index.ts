@@ -1,5 +1,6 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,6 +9,14 @@ const corsHeaders = {
   "Cache-Control": "no-cache",
   "Connection": "keep-alive",
 };
+
+// This endpoint is public (verify_jwt=false) and streams an expensive LLM call
+// with no payment/JWT gate, so without a throttle anyone could burn AI credits
+// (and pull premium content) in a loop. Per-IP rate limit as an abuse backstop,
+// matching the pattern used across the other generators. NOTE: this caps burst
+// abuse but does not verify the purchase — closing the revenue leak fully needs
+// a session/entitlement check on the paid streaming path.
+const RATE_LIMIT = { p_max_requests: 20, p_window_minutes: 60 };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[PREMIUM-PACKAGE-STREAM] ${step}`, details ? JSON.stringify(details) : '');
@@ -20,6 +29,11 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+  const { data: allowed } = await supabase.rpc("check_rate_limit", { p_function: "generate-premium-package-stream", p_ip: clientIp, ...RATE_LIMIT });
+  if (!allowed) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
     const { resumeText, jobDescription, jobTitle, jobCompany, language } = await req.json();
