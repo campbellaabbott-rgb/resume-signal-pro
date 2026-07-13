@@ -1077,10 +1077,19 @@ async function serveList(
   // (BambooHR) participate in freshness filters and recency sort. If the
   // function deploys before its migration, the column is missing — fall
   // back to posted_at for that window instead of 500ing the board.
+  //
+  // Freshness guarantee (read side of the 30-day cap): the board NEVER serves a
+  // posting past the window, independent of how far the bounded background sweep
+  // has drained. This decouples what users see from refresh timing — during the
+  // initial drain, or in the gap between a posting aging out and the next sweep,
+  // the list and its headline count stay ≤ the cap. effective_posted is NOT NULL
+  // (coalesces to first-seen), so undated postings are correctly included.
+  const freshCutoffIso = new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString();
   const buildQuery = (dateCol: string) => {
     let q = client
       .from("job_board_postings")
-      .select("id,source,company_token,company,title,location,remote,department,category,posted_at,apply_url,salary", { count: "exact" });
+      .select("id,source,company_token,company,title,location,remote,department,category,posted_at,apply_url,salary", { count: "exact" })
+      .gte(dateCol, freshCutoffIso);
     const terms = String(body.q ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean).slice(0, 8);
     for (const t of terms) q = q.or(`title.ilike.%${t}%,company.ilike.%${t}%,department.ilike.%${t}%`);
     const loc = sanitizeTerm(String(body.location ?? ""));
