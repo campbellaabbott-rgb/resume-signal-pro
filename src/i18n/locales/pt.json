@@ -2836,6 +2836,14 @@
     }
   },
   "changelogEntries": {
+    "boardScaleUp": {
+      "title": "O grupo de empresas mais que dobra: mais de 8.600 empregadores verificados no mural",
+      "description": "Uma atualização do banco de dados removeu o antigo teto de capacidade do mural, então todos os empregadores limpos restantes do nosso censo das grandes plataformas de recrutamento entraram a bordo — o grupo cresceu de cerca de 3.900 para mais de 8.600 empresas, cada uma verificada ao vivo na API pública oficial da sua plataforma e nomeada pelos registros da própria plataforma. As vagas ativas seguem subindo à medida que os novos murais chegam, com as mesmas regras de sempre: cada vaga vem direto do mural da própria empresa, agregadores e agências de recrutamento em massa ficam de fora, e nada permanece listado por mais de 30 dias. O mural ficou mais limpo e mais rápido na mesma leva: algumas empresas que apareciam duas vezes sob nomes com capitalização diferente foram deduplicadas, cargos mal classificados (optometristas, diretores de arte, professores de pré-escola) saíram de “Outros” para seus campos corretos, e a página de vagas carrega metade dos dados — filtrar ficou mais ágil."
+    },
+    "comeBackSignals": {
+      "title": "Sua conta agora avisa quando vale a pena voltar",
+      "description": "Três melhorias discretas que transformam o mural em um ciclo, não em uma visita única. O resumo semanal por e-mail das buscas salvas agora é enviado de verdade — havia um botão de inscrição, mas nada agendado por trás, então as buscas inscritas não recebiam nada; agora chega um e-mail mais ou menos semanal quando novas vagas combinam, com cancelamento em um clique que funciona. O cartão de buscas salvas da sua conta mostra primeiro o total que importa: quantas vagas novas combinam com suas buscas desde a última visita, a um clique da busca com mais resultados. E quando uma vaga em que você se candidatou sai do ar, o rastreador não deixa você num beco sem saída: ele traz vagas ativas do mesmo cargo direto do mural, para você manter o ritmo."
+    },
     "fitFirstBoard": {
       "title": "O painel agora abre ordenado pelo seu currículo",
       "description": "Analise seu currículo uma vez e o painel abre já ordenado por afinidade — sem cliques extras. Cada vaga mostra um nível de correspondência em linguagem clara (Boa correspondência, Correspondência possível ou Pouco provável) em vez de uma porcentagem crua, com a cobertura exata de palavras-chave ao passar o cursor e os termos específicos a adicionar para competir. Cada cartão é marcado como vindo diretamente do sistema de recrutamento oficial da empresa — nunca de um agregador ou de uma cópia rastreada — e é verificado ao vivo assim que você clica em Candidatar-se. Na sua conta, o copiloto de candidaturas agora prepara primeiro as vagas salvas com melhor correspondência, então, se você atingir o limite diário, as melhores já estão prontas."

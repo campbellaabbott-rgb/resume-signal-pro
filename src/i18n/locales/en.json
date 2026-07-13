@@ -2836,6 +2836,14 @@
     }
   },
   "changelogEntries": {
+    "boardScaleUp": {
+      "title": "Company pool more than doubles: 8,600+ verified employers on the board",
+      "description": "A database upgrade removed the board's old capacity ceiling, so every remaining clean employer from our census of the major hiring platforms came aboard — the pool grew from about 3,900 to more than 8,600 companies, each one live-verified against its platform's official public API and named from the platform's own records. Live postings are climbing as the new boards stream in, under the same rules as always: every job comes straight from the company's own board, aggregators and staffing mills are excluded, and nothing older than 30 days stays listed. The board got cleaner and faster in the same pass — a handful of companies that appeared twice under differently-cased board names were deduplicated, misfiled roles (optometrists, art directors, preschool teachers) moved out of “Other” into their proper fields, and the jobs page payload slimmed by half so filtering feels snappier."
+    },
+    "comeBackSignals": {
+      "title": "Your account now tells you when it's worth coming back",
+      "description": "Three quieter upgrades that turn the board into a loop instead of a one-time visit. The weekly email digest for saved searches now actually sends — it had an opt-in toggle but nothing scheduled behind it, so opted-in searches silently got nothing; now they get a weekly-ish email when new postings match, with a working one-click unsubscribe. Your account's saved-search card leads with the total that matters: how many new jobs match your saved searches since your last visit, one click from the search with the most. And when a posting you applied to gets taken down, the tracker no longer leaves you at a dead end — it pulls live openings for the same role straight off the board so you keep momentum."
+    },
     "fitFirstBoard": {
       "title": "The board now opens ranked to your resume",
       "description": "Scan your resume once and the board opens already sorted by fit — no extra click. Each listing shows a plain-language match tier (Strong match, Possible match, or Stretch) rather than a raw percentage, with the exact keyword coverage on hover and the specific terms to add to compete. Every card is marked as pulled straight from that company's official careers feed — never an aggregator or a scraped copy — and re-checked live the moment you click Apply. In your account, the application co-pilot now preps your strongest-matched saved jobs first, so if you reach the daily limit the best ones are already done."
