@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Briefcase, Target, ShieldCheck, ArrowRight, Sparkles } from "lucide-react";
+import { Briefcase, Target, ShieldCheck, ArrowRight, Sparkles, CalendarClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 // Page-leading hero for the live job board. The board is the destination; the
@@ -118,6 +118,11 @@ export function JobBoardHero() {
             <span className="inline-flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-success" />
               {t("boardHero.trustDirect", "Direct from company career pages — no aggregators")}
+            </span>
+            <span className="w-1 h-1 rounded-full bg-muted-foreground/30 hidden sm:block" />
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarClock className="w-4 h-4 text-success" />
+              {t("boardHero.trustFresh", "Nothing older than 30 days — stale listings removed automatically")}
             </span>
             <span className="w-1 h-1 rounded-full bg-muted-foreground/30 hidden sm:block" />
             <span className="inline-flex items-center gap-1.5">
