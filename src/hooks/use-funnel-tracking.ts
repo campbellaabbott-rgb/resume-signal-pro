@@ -42,10 +42,18 @@ const getVisitorId = (): string => {
   return visitorId;
 };
 
-// Get the funnel progress from this session
+// Get the funnel progress from this session. Guarded: a corrupt/legacy
+// funnel_progress value would otherwise throw from JSON.parse, and this runs on
+// the landing page (via getFunnelState, which the hook exports) — an unguarded
+// throw there white-screens the homepage. Every other storage parse in the app
+// is guarded the same way.
 const getFunnelProgress = (): FunnelStage[] => {
-  const stored = sessionStorage.getItem('funnel_progress');
-  return stored ? JSON.parse(stored) : [];
+  try {
+    const stored = sessionStorage.getItem('funnel_progress');
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
 };
 
 // Save funnel progress
