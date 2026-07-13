@@ -428,8 +428,11 @@ export default function ProductSuccess() {
 
     try {
       let endpoint = '';
-      const body: Record<string, unknown> = { resumeText };
-      
+      // sessionId proves the purchase to the paid streaming endpoints (they
+      // verify it against used_stripe_sessions). Always present on the success
+      // page; the verify call above has already claimed it by this point.
+      const body: Record<string, unknown> = { resumeText, sessionId };
+
       if (productKey === 'coverLetter') {
         endpoint = 'generate-cover-letter-stream';
         body.jobTitle = 'Target Position';
