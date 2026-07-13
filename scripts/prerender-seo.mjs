@@ -733,7 +733,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
       write({
         path: `/jobs/field/${slug}`,
         title: n ? `${label} Jobs — ${fmt(n)}+ Live Openings` : `${label} Jobs — Live Openings from Company Boards`,
-        description: `Browse ${countPhrase}, pulled from ${boardCompanies ? `${boardCompanies}` : "nearly 900"} companies' official job boards and re-verified all day. Check your resume's fit free before you apply.`,
+        description: `Browse ${countPhrase}, pulled from ${boardCompanies ? `${boardCompanies}` : "3,000+"} companies' official job boards and re-verified all day. Check your resume's fit free before you apply.`,
         content: `
           <h1>Live ${label} jobs</h1>
           <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} companies` : ""}, pulled directly from the official job boards companies publish on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and BambooHR. No scraped listings, no aggregators, no reposts: every opening belongs to the company that published it, and applying happens on the company's own site.</p>
@@ -772,7 +772,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
     lines.push("> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. 58 industries, 10 languages including native Spanish detection. Free scan, no signup, resumes never stored. See /llms.txt for the short overview.");
     if (boardFacets?.total) {
       lines.push("");
-      lines.push(`> Live job board (/jobs): ${Number(boardFacets.total).toLocaleString("en-US")} postings from ${Array.isArray(boardFacets.companiesFacet) ? boardFacets.companiesFacet.length : "~900"} companies' OFFICIAL job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no scraping, no aggregators; the largest boards re-check every 10-15 minutes and the whole catalog re-verifies within about an hour. Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
+      lines.push(`> Live job board (/jobs): ${Number(boardFacets.total).toLocaleString("en-US")} postings from ${Array.isArray(boardFacets.companiesFacet) ? boardFacets.companiesFacet.length : "3,000+"} companies' OFFICIAL job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no scraping, no aggregators; the largest boards re-check every 10-15 minutes and the whole catalog re-verifies within about an hour. Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
     }
     lines.push("");
     lines.push("## Guides (full text)");

@@ -4000,7 +4000,7 @@
   },
   "jobsPage": {
     "seoTitle": "Bolsa de empleo en vivo — Ofertas para contrastar tu currículum",
-    "seoDescription": "Ofertas activas extraídas de las bolsas oficiales de casi 900 empresas en Greenhouse, Lever, Ashby, SmartRecruiters, Workable y BambooHR. Comprueba gratis el encaje de tu currículum y postula en el sitio de la empresa.",
+    "seoDescription": "Ofertas activas extraídas de las bolsas oficiales de más de 3.000 empresas en Greenhouse, Lever, Ashby, SmartRecruiters, Workable y BambooHR. Comprueba gratis el encaje de tu currículum y postula en el sitio de la empresa.",
     "h1": "Bolsa de empleo en vivo",
     "subtitle": "Ofertas reales, extraídas en vivo de la bolsa oficial de cada empresa. Escanea tu currículum contra una oferta antes de gastar una candidatura en ella.",
     "honestyNote": "Las ofertas son de las empresas; la candidatura se hace en su sitio. Nosotros añadimos lo que ellas no tienen: una comprobación honesta de encaje primero.",
@@ -4067,7 +4067,7 @@
     "fitNeedsResumeTitle": "Escanea tu currículum primero",
     "fitNeedsResume": "Haz el escaneo gratuito (o guarda una versión en tu cuenta) y el tablón podrá ordenar cada oferta según tu encaje.",
     "landerSeoTitle": "Empleos de {{category}} en vivo — De las bolsas oficiales de las empresas",
-    "landerSeoDescription": "Explora ofertas activas de {{category}} extraídas de las bolsas de empleo oficiales de casi 900 empresas y reverificadas durante todo el día. Comprueba gratis el encaje de tu currículum y postula en el sitio de la empresa.",
+    "landerSeoDescription": "Explora ofertas activas de {{category}} extraídas de las bolsas de empleo oficiales de más de 3.000 empresas y reverificadas durante todo el día. Comprueba gratis el encaje de tu currículum y postula en el sitio de la empresa.",
     "landerH1": "Empleos de {{category}} en vivo",
     "trustBadge": "Directo desde la página de empleo de {{company}}",
     "trustBadgeTip": "Extraído directamente del sistema de selección oficial de la empresa, no de un agregador ni de una copia rastreada. Se vuelve a verificar en vivo cuando haces clic en Postular.",

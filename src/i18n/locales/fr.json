@@ -4000,7 +4000,7 @@
   },
   "jobsPage": {
     "seoTitle": "Offres d'emploi en direct — à confronter à votre CV",
-    "seoDescription": "Offres actives tirées des job boards officiels de près de 900 entreprises sur Greenhouse, Lever, Ashby, SmartRecruiters, Workable et BambooHR. Testez gratuitement l'adéquation de votre CV, puis postulez sur le site de l'entreprise.",
+    "seoDescription": "Offres actives tirées des job boards officiels de plus de 3 000 entreprises sur Greenhouse, Lever, Ashby, SmartRecruiters, Workable et BambooHR. Testez gratuitement l'adéquation de votre CV, puis postulez sur le site de l'entreprise.",
     "h1": "Offres d'emploi en direct",
     "subtitle": "De vraies offres, tirées en direct du job board officiel de chaque entreprise. Scannez votre CV contre une offre avant d'y consacrer une candidature.",
     "honestyNote": "Les offres appartiennent aux entreprises ; la candidature se fait sur leur site. Nous ajoutons ce qu'elles n'ont pas : une vérification honnête de l'adéquation d'abord.",
@@ -4067,7 +4067,7 @@
     "fitNeedsResumeTitle": "Scannez d'abord votre CV",
     "fitNeedsResume": "Lancez le scan gratuit (ou enregistrez une version dans votre compte) et le board classera chaque offre selon votre profil.",
     "landerSeoTitle": "Offres {{category}} en direct — Depuis les job boards officiels des entreprises",
-    "landerSeoDescription": "Parcourez les offres {{category}} actives tirées des job boards officiels de près de 900 entreprises et re-vérifiées toute la journée. Testez gratuitement l'adéquation de votre CV, puis postulez sur le site de l'entreprise.",
+    "landerSeoDescription": "Parcourez les offres {{category}} actives tirées des job boards officiels de plus de 3 000 entreprises et re-vérifiées toute la journée. Testez gratuitement l'adéquation de votre CV, puis postulez sur le site de l'entreprise.",
     "landerH1": "Offres {{category}} en direct",
     "trustBadge": "Directement depuis la page carrières de {{company}}",
     "trustBadgeTip": "Provient directement du système de recrutement officiel de l'entreprise, pas d'un agrégateur ni d'une copie récupérée. Revérifié en direct lorsque vous cliquez sur Postuler.",
