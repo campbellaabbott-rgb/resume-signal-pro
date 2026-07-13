@@ -191,7 +191,7 @@ async function tierLists(client: SupabaseClient): Promise<{ hotList: JobSource[]
     coldList: JOB_SOURCES.filter((s) => !hot.has(s.token)),
   };
 }
-const COLD_SLICES_PER_PASS = 12; // widened with the pool: 80×12 = 960 cold boards/pass keeps a ~2,250-board tail re-verifying in ~2.3 passes (well inside the 90-min freshness SLA)
+const COLD_SLICES_PER_PASS = 14; // widened with the pool: 80×14 = 1,120 cold boards/pass keeps a ~2,800-board tail re-verifying in ~2.5 passes (well inside the 90-min freshness SLA); more hops of proven-safe slice size, not bigger slices
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 // Capacity governor: the free-tier database holds ~100k postings before writes
