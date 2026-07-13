@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { SavedSearchesCard } from "@/components/account/SavedSearchesCard";
 import { ApplyKitPanel } from "@/components/account/ApplyKitPanel";
 import { ApplyCopilotPanel } from "@/components/account/ApplyCopilotPanel";
+import { ClosedReplacementsPanel } from "@/components/account/ClosedReplacementsPanel";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
@@ -650,6 +651,12 @@ export default function Account() {
           onKit={(appId, kit) => setApplications((prev) => prev.map((a) => (a.id === appId ? { ...a, kit } : a)))}
           onStatus={updateAppStatus}
         />
+
+        {(() => {
+          const closed = applications.filter((a) => a.posting_closed_at);
+          const rolesKey = [...new Set(closed.map((a) => a.role).filter(Boolean))].slice(0, 3).join("|");
+          return <ClosedReplacementsPanel closedCount={closed.length} rolesKey={rolesKey} />;
+        })()}
 
         <div className="rounded-2xl border border-border bg-card p-5 mb-6">
           <div className="flex items-center gap-2 mb-3">
