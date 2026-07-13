@@ -232,9 +232,36 @@ serve(async (req) => {
     // If content generation is requested and we have resume data
     let generatedContent: any = null;
     
-    if (generateContent && resumeSessionId) {
+    // Idempotency for the (expensive, AI-billed) generation path. The Stripe
+    // webhook ALSO generates every product's content, gated on the atomic
+    // session claim — and it almost always wins that claim because it fires
+    // server-side with no browser round-trip. This browser-side generation is a
+    // fallback for when the webhook is slow/fails, but it was gated on NEITHER
+    // the claim nor resume consumption (get_temp_resume was changed to a
+    // non-consuming read). Result: for products the frontend asks to generate
+    // here (e.g. basicKeywordFix) the webhook and this path both generated the
+    // same content — double AI spend — and every success-page refresh generated
+    // it yet again. Reuse already-saved content when it exists; only fall
+    // through to generate if nothing has been produced for this session yet.
+    if (generateContent && resumeSessionId && !generatedContent) {
+      try {
+        const { data: priorRows } = await supabase
+          .rpc('get_purchased_content_by_session', { p_session_id: sessionId });
+        const prior = Array.isArray(priorRows)
+          ? priorRows.find((r: { generated_content?: unknown }) => r?.generated_content)?.generated_content
+          : null;
+        if (prior) {
+          generatedContent = prior;
+          logStep("Reusing already-generated content — skipping regeneration (idempotent)", { sessionId });
+        }
+      } catch (e) {
+        logStep("Idempotency lookup failed, proceeding to generate", { error: String(e) });
+      }
+    }
+
+    if (generateContent && resumeSessionId && !generatedContent) {
       logStep("Content generation requested", { productType, resumeSessionId });
-      
+
       // Log generation started
       await supabase.rpc('log_delivery_step', {
         p_stripe_session_id: sessionId,
