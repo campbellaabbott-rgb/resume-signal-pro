@@ -1,0 +1,54 @@
+#!/bin/sh
+# Pre-push gate: the full zero-bug battery before code leaves the machine.
+#
+# pre-commit runs a fast frontend typecheck on staged src changes. This hook is
+# the heavier net that runs once per push (not per commit): the vitest suite
+# always, plus the frontend typecheck and the edge-function deno gate WHEN the
+# push actually touches those areas. The deno gate matters because `tsc` does
+# not type-check Supabase edge functions — that blind spot shipped a live outage
+# before, and the AI-spend edge bugs on 2026-07-13 pushed without any gate at all.
+#
+# Scope: compares HEAD against the upstream branch so a docs/config push stays
+# instant. No upstream (first push of a branch) → run the full battery.
+#
+# Bypass an intentional WIP push with:  git push --no-verify
+
+fail=0
+
+range=""
+if git rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
+  range="@{u}...HEAD"
+fi
+if [ -n "$range" ]; then
+  changed=$(git diff --name-only $range 2>/dev/null || echo "ALL")
+else
+  changed="ALL"
+fi
+
+run() { # label, command
+  echo "[pre-push] $1…"
+  if ! sh -c "$2"; then
+    echo "[pre-push] ✗ $1 FAILED"
+    fail=1
+  fi
+}
+
+# 1. Tests — fast, always.
+run "tests (vitest)" "npm run --silent test"
+
+# 2. Frontend typecheck — only if src changed (or unknown scope).
+if [ "$changed" = "ALL" ] || printf '%s\n' "$changed" | grep -qE '^src/.*\.(ts|tsx)$'; then
+  run "frontend typecheck" "npm run --silent typecheck"
+fi
+
+# 3. Edge-function deno gate — only if edge functions changed (or unknown scope).
+if [ "$changed" = "ALL" ] || printf '%s\n' "$changed" | grep -qE '^supabase/functions/'; then
+  run "edge-function deno check" "npm run --silent check:functions"
+fi
+
+if [ "$fail" -ne 0 ]; then
+  echo "[pre-push] blocked — fix the failures above, or bypass a WIP push with: git push --no-verify"
+  exit 1
+fi
+echo "[pre-push] ✓ all gates passed"
+exit 0
