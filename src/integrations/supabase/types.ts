@@ -716,10 +716,12 @@ export type Database = {
           department: string | null
           description: string | null
           effective_posted: string | null
+          experience_band: string | null
           first_seen: string
           id: string
           last_seen: string
           location: string
+          min_years: number | null
           posted_at: string | null
           remote: boolean
           salary: string | null
@@ -734,10 +736,12 @@ export type Database = {
           department?: string | null
           description?: string | null
           effective_posted?: string | null
+          experience_band?: string | null
           first_seen?: string
           id: string
           last_seen?: string
           location?: string
+          min_years?: number | null
           posted_at?: string | null
           remote?: boolean
           salary?: string | null
@@ -752,10 +756,12 @@ export type Database = {
           department?: string | null
           description?: string | null
           effective_posted?: string | null
+          experience_band?: string | null
           first_seen?: string
           id?: string
           last_seen?: string
           location?: string
+          min_years?: number | null
           posted_at?: string | null
           remote?: boolean
           salary?: string | null
