@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Bookmark, BookmarkCheck, Briefcase, Copy, ExternalLink, FileText, Loader2, MapPin, MessageSquare, Search, ShieldCheck, Sparkles, Target } from "lucide-react";
+import { AlertTriangle, Bookmark, BookmarkCheck, Briefcase, Clock, Copy, ExternalLink, FileText, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, Sparkles, Target } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -703,9 +703,30 @@ export default function Jobs() {
               ? t("jobsPage.companySubtitle", "Every {{company}} opening here comes straight from {{company}}'s own careers system — verified, still open, and re-checked the moment you apply.", { company: landerCompanyName })
               : t("jobsPage.subtitle", "Every job here comes straight from the company's own careers system — no aggregators, no reposts, no dead links — and each is re-checked live the moment you apply.")}
           </p>
-          <p className="text-xs text-muted-foreground mb-6">
+          <p className="text-xs text-muted-foreground mb-3">
             {t("jobsPage.honestyNote", "Then we do the part other boards skip: check your resume against any posting free and see exactly what to add — so you apply prepared, not hoping.")}
           </p>
+
+          {/* Anti-ghost-job guarantee — scannable proof points, each literally true:
+              official feeds, the real 30-day freshness cap (stale/ghost postings
+              are auto-dropped), and the live re-check on apply. */}
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-6">
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <ShieldCheck className="w-3.5 h-3.5 text-success shrink-0" />
+              {t("jobsPage.guaranteeFeeds", "Straight from official company ATS feeds")}
+            </span>
+            <span
+              className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground"
+              title={t("jobsPage.guaranteeFreshTip", "Any role whose posting date passes 30 days is automatically dropped from the board — the ghost/pipeline postings other boards leave up for months never appear here.")}
+            >
+              <Clock className="w-3.5 h-3.5 text-success shrink-0" />
+              {t("jobsPage.guaranteeFresh", "Posted in the last 30 days — stale postings auto-dropped")}
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <RefreshCw className="w-3.5 h-3.5 text-success shrink-0" />
+              {t("jobsPage.guaranteeLive", "Re-checked live the moment you apply")}
+            </span>
+          </div>
 
           {/* Filters */}
           <div className="flex flex-wrap gap-2 mb-5">
