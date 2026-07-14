@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Bookmark, BookmarkCheck, Briefcase, ExternalLink, Loader2, MapPin, MessageSquare, Search, ShieldCheck, Sparkles, Target } from "lucide-react";
+import { AlertTriangle, Bookmark, BookmarkCheck, Briefcase, Copy, ExternalLink, FileText, Loader2, MapPin, MessageSquare, Search, ShieldCheck, Sparkles, Target } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -132,6 +132,10 @@ export default function Jobs() {
   const [tailoredOpen, setTailoredOpen] = useState(false);
   const [tailoredLoading, setTailoredLoading] = useState(false);
   const [tailoredContent, setTailoredContent] = useState<TailoredResumeContent | null>(null);
+  // Per-application cover letter (uses the already-deployed generate-cover-letter).
+  const [coverOpen, setCoverOpen] = useState(false);
+  const [coverLoading, setCoverLoading] = useState(false);
+  const [coverText, setCoverText] = useState<string | null>(null);
 
   // Which postings are already in the user's application tracker.
   useEffect(() => {
@@ -474,6 +478,44 @@ export default function Jobs() {
       setTailoredOpen(false);
     } finally {
       setTailoredLoading(false);
+    }
+  };
+
+  // Draft a cover letter for the posting open in the prepare modal, grounded in
+  // the user's résumé by the already-deployed generate-cover-letter.
+  const draftCoverLetter = async () => {
+    if (coverLoading || !prepareJob || !fitResume.current) return;
+    setCoverOpen(true);
+    setCoverLoading(true);
+    setCoverText(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-cover-letter", {
+        body: {
+          resumeText: fitResume.current,
+          jobTitle: prepareJob.job.title,
+          jobCompany: prepareJob.job.company,
+          jobDescription: prepareJob.description || `${prepareJob.job.title} at ${prepareJob.job.company}.`,
+        },
+      });
+      const d = data as { success?: boolean; data?: { coverLetter?: string } } | null;
+      const letter = d?.data?.coverLetter;
+      if (error || !d?.success || !letter) {
+        const status = (error as { context?: { status?: number } })?.context?.status;
+        toast({
+          title: status === 429 ? t("jobsPage.coverBusyTitle", "Busy right now") : t("jobsPage.coverErrorTitle", "Couldn't draft a cover letter"),
+          description: status === 429
+            ? t("jobsPage.coverBusy", "The cover-letter writer is busy — try again in a moment.")
+            : t("jobsPage.coverError", "Something went wrong drafting your cover letter. Please try again."),
+        });
+        setCoverOpen(false);
+        return;
+      }
+      setCoverText(letter);
+    } catch {
+      toast({ title: t("jobsPage.coverErrorTitle", "Couldn't draft a cover letter"), description: t("jobsPage.coverError", "Something went wrong drafting your cover letter. Please try again.") });
+      setCoverOpen(false);
+    } finally {
+      setCoverLoading(false);
     }
   };
 
@@ -1015,6 +1057,10 @@ export default function Jobs() {
                   {tailoredLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                   {t("jobsPage.tailorResume", "Tailor my résumé for this role")}
                 </Button>
+                <Button size="sm" variant="outline" className="gap-1.5" disabled={coverLoading} onClick={draftCoverLetter}>
+                  {coverLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                  {t("jobsPage.coverLetter", "Draft a cover letter")}
+                </Button>
                 <a
                   href={prepareJob.job.applyUrl}
                   target="_blank"
@@ -1037,6 +1083,33 @@ export default function Jobs() {
         content={tailoredContent}
         isLoading={tailoredLoading}
       />
+
+      <Dialog open={coverOpen} onOpenChange={(o) => { if (!o) setCoverOpen(false); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t("jobsPage.coverTitle", "Your cover letter")}</DialogTitle>
+            <DialogDescription>{t("jobsPage.coverSubtitle", "Grounded in your résumé for this role — review and edit before you send. We never invent experience you don't have.")}</DialogDescription>
+          </DialogHeader>
+          {coverLoading && (
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" /> {t("jobsPage.coverLoading", "Writing your cover letter…")}
+            </div>
+          )}
+          {!coverLoading && coverText && (
+            <div className="space-y-3">
+              <p className="text-[13px] text-foreground whitespace-pre-wrap leading-relaxed">{coverText}</p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 w-fit"
+                onClick={() => navigator.clipboard?.writeText(coverText).then(() => toast({ title: t("jobsPage.copied", "Copied") }))}
+              >
+                <Copy className="w-3.5 h-3.5" /> {t("jobsPage.copyCoverLetter", "Copy cover letter")}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Footer />
     </div>
