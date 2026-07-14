@@ -563,7 +563,7 @@ export default function Jobs() {
               <option value="">{t("jobsPage.allExperience", "Any experience")}</option>
               {EXPERIENCE_IDS.map((x) => (
                 <option key={x} value={x}>
-                  {t(`jobsPage.experience.${x}`, x)}
+                  {t(`jobsPage.experience.${x}`, x)} ({EXPERIENCE_YEARS[x]})
                 </option>
               ))}
             </select>
