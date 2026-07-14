@@ -479,6 +479,23 @@ export default function Jobs() {
     return [...jobs].sort((a, b) => (fits[b.id] ?? -1) - (fits[a.id] ?? -1));
   }, [jobs, fitRanking, fits]);
 
+  // Aggregate the per-card tiers into one motivating headline for the personalized
+  // view — the reason a returning seeker stays. Counts only SCORED postings among
+  // the ones loaded (same thresholds as the card tiers), so "these openings" is
+  // honest: it's what's on the board here, not a claim about all 164k.
+  const fitSummary = useMemo(() => {
+    if (!fitRanking) return null;
+    let strong = 0, possible = 0, scored = 0;
+    for (const j of jobs) {
+      const f = fits[j.id];
+      if (typeof f !== "number") continue;
+      scored++;
+      if (f >= 20) strong++;
+      else if (f >= 10) possible++;
+    }
+    return { strong, possible, scored };
+  }, [fitRanking, jobs, fits]);
+
   const companies = useMemo(
     () => (data?.companies ?? []).filter((c) => c.count > 0 || c.token === company).sort((a, b) => a.name.localeCompare(b.name)),
     [data, company],
@@ -635,6 +652,26 @@ export default function Jobs() {
             </p>
           ) : (
             <>
+              {fitSummary && (fitSummary.strong > 0 || fitSummary.possible > 0) && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-success/30 bg-success/5 px-3.5 py-2.5 mb-4">
+                  <Target className="w-4 h-4 text-success shrink-0 mt-0.5" />
+                  <div className="text-sm min-w-0">
+                    <p className="font-semibold text-foreground">
+                      {fitSummary.strong > 0
+                        ? t("jobsPage.fitSummaryStrong", "You're a strong fit for {{count}} of these openings", { count: fitSummary.strong })
+                        : t("jobsPage.fitSummaryPossible", "You're a possible fit for {{count}} of these openings", { count: fitSummary.possible })}
+                      {fitSummary.strong > 0 && fitSummary.possible > 0 && (
+                        <span className="font-normal text-muted-foreground">
+                          {" · "}{t("jobsPage.fitSummaryAndPossible", "and a possible fit for {{count}} more", { count: fitSummary.possible })}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {t("jobsPage.fitSummaryHow", "Ranked to the top by how well your resume covers each posting's keywords — open any card to see what to add.")}
+                    </p>
+                  </div>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground mb-3">
                 {t("jobsPage.resultsSummary", "Showing {{shown}} of {{total}} matching openings across {{companies}} companies", {
                   shown: jobs.length,

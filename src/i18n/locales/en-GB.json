@@ -4034,6 +4034,10 @@
     "fitLoadedTitle": "Job description loaded",
     "fitLoadedDesc": "{{title}} at {{company}} — upload or paste your resume and the scan will check fit against this posting.",
     "allFields": "All fields",
+    "fitSummaryStrong": "You’re a strong fit for {{count}} of these openings",
+    "fitSummaryPossible": "You’re a possible fit for {{count}} of these openings",
+    "fitSummaryAndPossible": "and a possible fit for {{count}} more",
+    "fitSummaryHow": "Ranked to the top by how well your CV covers each posting’s keywords — open any card to see what to add.",
     "allExperience": "Any experience",
     "minYears": "{{n}}+ yrs",
     "experience": {

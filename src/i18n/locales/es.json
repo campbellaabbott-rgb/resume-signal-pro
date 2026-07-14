@@ -4034,6 +4034,10 @@
     "fitLoadedTitle": "Descripción del puesto cargada",
     "fitLoadedDesc": "{{title}} en {{company}} — sube o pega tu currículum y el escaneo comprobará el encaje con esta oferta.",
     "allFields": "Todos los campos",
+    "fitSummaryStrong": "Encajas muy bien en {{count}} de estas ofertas",
+    "fitSummaryPossible": "Podrías encajar en {{count}} de estas ofertas",
+    "fitSummaryAndPossible": "y podrías encajar en {{count}} más",
+    "fitSummaryHow": "Ordenadas arriba según qué tan bien tu currículum cubre las palabras clave de cada oferta — abre cualquier tarjeta para ver qué añadir.",
     "allExperience": "Cualquier experiencia",
     "minYears": "{{n}}+ años",
     "experience": {

@@ -4034,6 +4034,10 @@
     "fitLoadedTitle": "Na-load ang job description",
     "fitLoadedDesc": "{{title}} sa {{company}} — i-upload o i-paste ang resume mo at iche-check ng scan ang fit sa posting na ito.",
     "allFields": "Lahat ng larangan",
+    "fitSummaryStrong": "Malakas ang tugma mo sa {{count}} sa mga trabahong ito",
+    "fitSummaryPossible": "Maaaring tumugma ka sa {{count}} sa mga trabahong ito",
+    "fitSummaryAndPossible": "at maaaring tumugma sa {{count}} pa",
+    "fitSummaryHow": "Nakaayos sa itaas base sa kung gaano kahusay saklaw ng iyong resume ang mga keyword ng bawat posting — buksan ang anumang card para makita kung ano ang idadagdag.",
     "allExperience": "Anumang karanasan",
     "minYears": "{{n}}+ taon",
     "experience": {

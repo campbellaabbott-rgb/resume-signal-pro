@@ -4034,6 +4034,10 @@
     "fitLoadedTitle": "Vacaturetekst geladen",
     "fitLoadedDesc": "{{title}} bij {{company}} — upload of plak je cv en de scan checkt de match met precies deze vacature.",
     "allFields": "Alle vakgebieden",
+    "fitSummaryStrong": "Je past sterk bij {{count}} van deze vacatures",
+    "fitSummaryPossible": "Je past mogelijk bij {{count}} van deze vacatures",
+    "fitSummaryAndPossible": "en mogelijk bij {{count}} meer",
+    "fitSummaryHow": "Bovenaan gesorteerd op hoe goed je cv de trefwoorden van elke vacature dekt — open een kaart om te zien wat je moet toevoegen.",
     "allExperience": "Alle ervaring",
     "minYears": "{{n}}+ jaar",
     "experience": {

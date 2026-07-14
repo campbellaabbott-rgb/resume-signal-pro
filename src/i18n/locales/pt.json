@@ -4034,6 +4034,10 @@
     "fitLoadedTitle": "Descrição da vaga carregada",
     "fitLoadedDesc": "{{title}} na {{company}} — envie ou cole seu currículo e o escaneio vai checar o encaixe com esta vaga.",
     "allFields": "Todas as áreas",
+    "fitSummaryStrong": "Você encaixa muito bem em {{count}} destas vagas",
+    "fitSummaryPossible": "Você pode encaixar em {{count}} destas vagas",
+    "fitSummaryAndPossible": "e pode encaixar em mais {{count}}",
+    "fitSummaryHow": "Ordenadas no topo pelo quanto seu currículo cobre as palavras-chave de cada vaga — abra qualquer cartão para ver o que adicionar.",
     "allExperience": "Qualquer experiência",
     "minYears": "{{n}}+ anos",
     "experience": {

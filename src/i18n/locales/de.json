@@ -4034,6 +4034,10 @@
     "fitLoadedTitle": "Stellenbeschreibung geladen",
     "fitLoadedDesc": "{{title}} bei {{company}} — laden Sie Ihren Lebenslauf hoch oder fügen Sie ihn ein, und der Scan prüft die Passung zu genau dieser Stelle.",
     "allFields": "Alle Bereiche",
+    "fitSummaryStrong": "Du passt sehr gut zu {{count}} dieser Stellen",
+    "fitSummaryPossible": "Du passt möglicherweise zu {{count}} dieser Stellen",
+    "fitSummaryAndPossible": "und möglicherweise zu {{count}} weiteren",
+    "fitSummaryHow": "Nach oben sortiert danach, wie gut dein Lebenslauf die Schlüsselwörter jeder Stelle abdeckt — öffne eine Karte, um zu sehen, was zu ergänzen ist.",
     "allExperience": "Alle Erfahrung",
     "minYears": "{{n}}+ Jahre",
     "experience": {
