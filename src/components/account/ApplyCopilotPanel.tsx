@@ -23,6 +23,9 @@ export interface CopilotApp {
   scan_id?: string | null;
   fit_pct?: number | null;
   kit?: unknown;
+  /** Board posting id (e.g. "greenhouse:stripe:123") — lets us fetch the REAL
+   *  application questions for Greenhouse jobs instead of inferring them. */
+  job_id?: string | null;
 }
 
 // Same qualitative buckets as the board: full JDs are keyword-dense, so a
@@ -71,8 +74,28 @@ function ApplicationAnswers({ app, resumeText }: { app: CopilotApp; resumeText: 
     if (loading || !resumeText) return;
     setLoading(true);
     try {
+      // For Greenhouse postings we can fetch the posting's REAL application
+      // questions (labels, required, field types) and draft to those exact
+      // questions. Every other ATS doesn't publish its form, so we pass no
+      // questions and the function infers the likely ones from the JD.
+      let questions: Array<{ label: string; required?: boolean; type?: string }> | undefined;
+      if (app.job_id?.startsWith("greenhouse:")) {
+        try {
+          const { data: q } = await supabase.functions.invoke("job-board", {
+            body: { action: "application-questions", id: app.job_id },
+          });
+          const qd = q as { supported?: boolean; questions?: Array<{ label?: string; required?: boolean; type?: string }> } | null;
+          if (qd?.supported && Array.isArray(qd.questions) && qd.questions.length) {
+            questions = qd.questions
+              .filter((x): x is { label: string; required?: boolean; type?: string } => typeof x?.label === "string" && !!x.label.trim())
+              .map((x) => ({ label: x.label, required: x.required, type: x.type }));
+          }
+        } catch {
+          // Real-questions fetch is best-effort; fall through to JD-inference.
+        }
+      }
       const { data, error } = await supabase.functions.invoke("generate-application-answers", {
-        body: { resumeText, jobTitle: app.role, jobCompany: app.company, jobDescription: app.job_posting },
+        body: { resumeText, jobTitle: app.role, jobCompany: app.company, jobDescription: app.job_posting, questions },
       });
       if (error || !data) {
         const status = (error as { context?: { status?: number } })?.context?.status;
