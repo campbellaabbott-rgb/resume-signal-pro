@@ -40,15 +40,8 @@ interface BoardJob {
 }
 
 // Experience bands mirror EXPERIENCE_BANDS in the edge function's experience.ts.
+// The year range is baked into each localized label (jobsPage.experience.*).
 const EXPERIENCE_IDS = ["entry", "mid", "senior", "expert"] as const;
-// Year ranges mirror bandFromYears in the edge function's experience.ts:
-// 0–2 entry, 3–5 mid, 6–9 senior, 10+ expert.
-const EXPERIENCE_YEARS: Record<(typeof EXPERIENCE_IDS)[number], string> = {
-  entry: "0–2 yrs",
-  mid: "3–5 yrs",
-  senior: "6–9 yrs",
-  expert: "10+ yrs",
-};
 
 interface BoardResponse {
   jobs: BoardJob[];
@@ -563,7 +556,7 @@ export default function Jobs() {
               <option value="">{t("jobsPage.allExperience", "Any experience")}</option>
               {EXPERIENCE_IDS.map((x) => (
                 <option key={x} value={x}>
-                  {t(`jobsPage.experience.${x}`, x)} ({EXPERIENCE_YEARS[x]})
+                  {t(`jobsPage.experience.${x}`, x)}
                 </option>
               ))}
             </select>
