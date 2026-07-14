@@ -201,7 +201,7 @@ async function tierLists(client: SupabaseClient): Promise<{ hotList: JobSource[]
     coldList: JOB_SOURCES.filter((s) => !hot.has(s.token)),
   };
 }
-const COLD_SLICES_PER_PASS = 20; // widened again for the capacity scale-up: 80×20 = 1,600 cold boards/pass keeps a ~10.4k-board tail re-verifying in ~6.5 passes (~65 min — inside the 90-min freshness SLA and honest to the "about an hour" copy); more hops of the proven-safe slice size, not bigger slices. SR_CAP bounds any single board's fetch so mixing SR boards into cold slices stays under the edge wall-time limit.
+const COLD_SLICES_PER_PASS = 24; // widened for the Common Crawl round: 80×24 = 1,920 cold boards/pass keeps a ~11.8k-board tail re-verifying in ~6.1 passes (~61 min — inside the 90-min freshness SLA and honest to the "about an hour" copy); more hops of the proven-safe slice size, not bigger slices. SR_CAP bounds any single board's fetch so mixing SR boards into cold slices stays under the edge wall-time limit.
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 // Capacity governor: keep the corpus under a ceiling with headroom; when a
