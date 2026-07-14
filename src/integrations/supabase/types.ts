@@ -1977,6 +1977,7 @@ export type Database = {
           payments_completed: number
         }[]
       }
+      get_db_size_stats: { Args: never; Returns: Json }
       get_delivery_health: {
         Args: { p_hours_back?: number }
         Returns: {
