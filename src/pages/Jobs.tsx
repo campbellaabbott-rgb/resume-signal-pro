@@ -679,12 +679,13 @@ export default function Jobs() {
                           {job.salary && (
                             <p className="text-xs text-success font-medium mt-0.5">{job.salary}</p>
                           )}
-                          {/* Experience level — the band the role reads as, with the
-                              cited minimum years when the posting actually states one. */}
+                          {/* Experience level: the cited minimum years when the posting
+                              states one (the precise fact), else the band's range. */}
                           {job.experienceBand && (
                             <span className="inline-flex items-center text-[11px] text-muted-foreground mt-1 border border-border rounded-full px-2 py-0.5">
-                              {t(`jobsPage.experience.${job.experienceBand}`, job.experienceBand)}
-                              {typeof job.minYears === "number" ? ` · ${t("jobsPage.minYears", "{{n}}+ yrs", { n: job.minYears })}` : ""}
+                              {typeof job.minYears === "number"
+                                ? t("jobsPage.minYears", "{{n}}+ yrs", { n: job.minYears })
+                                : t(`jobsPage.experience.${job.experienceBand}`, job.experienceBand)}
                             </span>
                           )}
                           {/* Trust moat: every posting is pulled straight from the

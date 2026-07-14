@@ -4037,10 +4037,10 @@
     "allExperience": "Alle ervaring",
     "minYears": "{{n}}+ jaar",
     "experience": {
-      "entry": "Startersniveau",
-      "mid": "Medior",
-      "senior": "Senior",
-      "expert": "Expert"
+      "entry": "Startersniveau (0–2 jaar)",
+      "mid": "Medior (3–5 jaar)",
+      "senior": "Senior (6–9 jaar)",
+      "expert": "Expert (10+ jaar)"
     },
     "updatedAgo": "{{min}} min geleden bijgewerkt",
     "categories": {

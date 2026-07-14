@@ -4037,10 +4037,10 @@
     "allExperience": "Toute expérience",
     "minYears": "{{n}}+ ans",
     "experience": {
-      "entry": "Débutant",
-      "mid": "Intermédiaire",
-      "senior": "Senior",
-      "expert": "Expert"
+      "entry": "Débutant (0–2 ans)",
+      "mid": "Intermédiaire (3–5 ans)",
+      "senior": "Senior (6–9 ans)",
+      "expert": "Expert (10+ ans)"
     },
     "updatedAgo": "mis à jour il y a {{min}} min",
     "categories": {

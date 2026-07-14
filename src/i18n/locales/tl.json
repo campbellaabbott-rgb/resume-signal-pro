@@ -4037,10 +4037,10 @@
     "allExperience": "Anumang karanasan",
     "minYears": "{{n}}+ taon",
     "experience": {
-      "entry": "Entry level",
-      "mid": "Mid level",
-      "senior": "Senior",
-      "expert": "Eksperto"
+      "entry": "Entry level (0–2 taon)",
+      "mid": "Mid level (3–5 taon)",
+      "senior": "Senior (6–9 taon)",
+      "expert": "Eksperto (10+ taon)"
     },
     "updatedAgo": "na-update {{min}} min ang nakalipas",
     "categories": {
