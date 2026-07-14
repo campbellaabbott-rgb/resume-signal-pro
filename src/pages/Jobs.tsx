@@ -41,6 +41,14 @@ interface BoardJob {
 
 // Experience bands mirror EXPERIENCE_BANDS in the edge function's experience.ts.
 const EXPERIENCE_IDS = ["entry", "mid", "senior", "expert"] as const;
+// Year ranges mirror bandFromYears in the edge function's experience.ts:
+// 0–2 entry, 3–5 mid, 6–9 senior, 10+ expert.
+const EXPERIENCE_YEARS: Record<(typeof EXPERIENCE_IDS)[number], string> = {
+  entry: "0–2 yrs",
+  mid: "3–5 yrs",
+  senior: "6–9 yrs",
+  expert: "10+ yrs",
+};
 
 interface BoardResponse {
   jobs: BoardJob[];
