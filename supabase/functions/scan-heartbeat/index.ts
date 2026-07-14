@@ -300,6 +300,72 @@ serve(async (req) => {
       if (overallStatus === 'healthy') overallStatus = 'degraded';
     }
 
+    // Check: DEPLOY INTROSPECTION. The meta checks above pass even when the
+    // job-board FUNCTION is stale-deployed or failing to boot (the "pushed ≠ live"
+    // failure mode — the rung-2 publish took hours to diagnose because nothing
+    // confirmed what build was actually live). This calls the function's read-only
+    // `status` action so a boot failure, an empty catalog, or a broken deploy shows
+    // up within the hour. Concerns kept separate: this verifies the BUILD is live
+    // and sane; job_board_refresh above verifies the pipeline is MOVING.
+    const deployStart = Date.now();
+    try {
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      let resp: Response;
+      try {
+        resp = await fetch(`${supabaseUrl}/functions/v1/job-board`, {
+          method: 'POST',
+          headers: { 'apikey': anonKey, 'Authorization': `Bearer ${anonKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'status' }),
+          signal: controller.signal,
+        });
+      } finally { clearTimeout(timeoutId); }
+      const sBody = await resp.json().catch(() => null) as Record<string, unknown> | null;
+      // An older bundle (pre-status-action) answers unknown actions with 400
+      // "Unknown action" — that means the new build isn't live yet, a transient
+      // deploy state, NOT an incident. Don't page on it; just note it.
+      const oldBuild = resp.status === 400 && /unknown action/i.test(String(sBody?.error ?? ''));
+      const hasStatus = sBody != null && typeof sBody.catalogSize === 'number';
+      let deployBad = false;
+      let deployErr: string | undefined;
+      if (oldBuild) {
+        console.log('[HEARTBEAT] job-board status action not live yet (older bundle) — deploy check unverified, not paging');
+      } else if (!resp.ok || !hasStatus) {
+        deployBad = true;
+        deployErr = `job-board status HTTP ${resp.status}${hasStatus ? '' : ' / malformed response'} — function may be down or failing to boot`;
+      } else {
+        const catalogSize = sBody.catalogSize as number;
+        deployBad = catalogSize <= 0;
+        deployErr = deployBad
+          ? `deployed job-board has an empty catalog (size ${catalogSize}, build v${sBody.version ?? '?'}) — bad publish`
+          : undefined;
+        if (!deployBad) {
+          console.log(`[HEARTBEAT] job-board build v${sBody.version}, catalog ${catalogSize}, ${sBody.dormantBoards ?? 0} dormant, cold cursor ${(sBody.cursor as { cold?: number } | undefined)?.cold ?? '?'}`);
+        }
+      }
+      checks.push({
+        name: 'job_board_deploy',
+        passed: !deployBad,
+        responseTimeMs: Date.now() - deployStart,
+        error: deployErr,
+      });
+      if (deployBad) {
+        if (overallStatus === 'healthy') overallStatus = 'degraded';
+        errorMessage = errorMessage || deployErr || 'Job board deploy check failed';
+      }
+    } catch (e) {
+      // Timeout/abort/network error calling status = the function isn't answering.
+      checks.push({
+        name: 'job_board_deploy',
+        passed: false,
+        responseTimeMs: Date.now() - deployStart,
+        error: e instanceof Error ? `job-board status unreachable: ${e.message}` : 'job-board status unreachable',
+      });
+      if (overallStatus === 'healthy') overallStatus = 'degraded';
+      errorMessage = errorMessage || 'Job board status endpoint unreachable';
+    }
+
     // Check 6: END-TO-END scan through the real deployed function. The
     // component checks above can all pass while free-keyword-scan itself is
     // crashed or stale-deployed (exactly the July 4 outage) — this is the

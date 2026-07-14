@@ -39,6 +39,14 @@ const corsHeaders = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+// Deploy identity. BUMP THIS whenever you ship a code change you want to confirm
+// went live — the `status` action echoes it straight from the DEPLOYED bundle, so
+// "did my publish take?" is one call instead of hours of inferring it from posting
+// counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
+// moves with every catalog change with no discipline required. Sortable string so
+// a future check can tell "prod is behind" from "prod is ahead".
+const BUILD_VERSION = "2026-07-14.1";
+
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
 // 8s was too tight for large boards: Greenhouse content=true payloads run
@@ -832,6 +840,44 @@ Deno.serve(async (req) => {
   const client = db();
 
   try {
+    if (action === "status") {
+      // Deploy + health introspection. Read-only, zero-cost (meta rows only — no
+      // feed fetches, no AI). BUILD_VERSION and catalogSize come from the DEPLOYED
+      // bundle, so a stale/failed publish is visible in ONE call instead of being
+      // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
+      // Also the source of truth for the heartbeat's job_board_deploy check.
+      const [prog, rot, refreshMeta, bf, hotMeta] = await Promise.all([
+        client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
+        client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
+        client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle(),
+        client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle(),
+        client.from("job_board_meta").select("v").eq("k", "hot_tokens").maybeSingle(),
+      ]);
+      const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
+      const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
+      const rfV = (refreshMeta.data?.v ?? {}) as { total?: number };
+      const dormant = ((bf.data?.v ?? {}) as { dormant?: Record<string, number> }).dormant ?? {};
+      const hotTokens = ((hotMeta.data?.v ?? {}) as { tokens?: unknown[] }).tokens;
+      const now = Date.now();
+      const ageMin = (ts?: string | null) => (ts ? Math.round((now - new Date(ts).getTime()) / 60000) : null);
+      return json({
+        // deployed build identity (constants baked into THIS bundle)
+        version: BUILD_VERSION,
+        catalogSize: JOB_SOURCES.length,
+        categorizeVersion: CATEGORIZE_VERSION,
+        hotTier: Array.isArray(hotTokens) && hotTokens.length >= 50 ? hotTokens.length : HOT_SIZE,
+        // live pipeline health (meta-derived)
+        totalPostings: rfV.total ?? null,
+        coldBoards: rotV.coldBoards ?? null,
+        dormantBoards: Object.keys(dormant).length,
+        cursor: { hot: pgV.hot ?? 0, cold: pgV.cold ?? 0, coldDone: pgV.coldDone ?? 0 },
+        lastSliceAgeMin: ageMin(prog.data?.updated_at),
+        lastRotationAgeMin: ageMin(rotV.completedAt ?? rot.data?.updated_at ?? null),
+        recentFailures: Array.isArray(pgV.failedAcc) ? pgV.failedAcc.slice(-10) : [],
+        at: new Date().toISOString(),
+      });
+    }
+
     if (action === "recategorize") {
       // Maintenance sweep, self-invoked at pass end (chainKey-gated like
       // force-refresh). Re-runs the CURRENT rules over stored "other" rows
