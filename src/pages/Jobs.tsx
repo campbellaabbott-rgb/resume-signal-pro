@@ -107,6 +107,7 @@ export default function Jobs() {
   // Top missing keywords per posting id — the "add these to compete" signal
   // rendered inline on each card once fit-ranking is on.
   const [misses, setMisses] = useState<Record<string, string[]>>({});
+  const [hits, setHits] = useState<Record<string, string[]>>({});
   const [fitLoading, setFitLoading] = useState(false);
   // True once we've checked for a resume on mount, so the auto-enable only
   // fires once and never fights a user who deliberately toggled fit off.
@@ -592,9 +593,10 @@ export default function Jobs() {
           const { data } = await supabase.functions.invoke("job-board", {
             body: { action: "fit-batch", resumeText: resume, ids: unscored.slice(i, i + 60) },
           });
-          const payload = data as { fits?: Record<string, number | null>; missing?: Record<string, string[]> } | null;
+          const payload = data as { fits?: Record<string, number | null>; missing?: Record<string, string[]>; matched?: Record<string, string[]> } | null;
           if (payload?.fits) setFits((prev) => ({ ...prev, ...payload.fits }));
           if (payload?.missing) setMisses((prev) => ({ ...prev, ...payload.missing }));
+          if (payload?.matched) setHits((prev) => ({ ...prev, ...payload.matched }));
         }
       } finally {
         setFitLoading(false);
@@ -874,6 +876,7 @@ export default function Jobs() {
                   const openRoles = job.token ? companyCounts.get(job.token) : undefined;
                   const fit = fitRanking ? fits[job.id] : undefined;
                   const gaps = fitRanking ? (misses[job.id] ?? []) : [];
+                  const strengths = fitRanking ? (hits[job.id] ?? []) : [];
                   // Calibrated on live data: full JDs are keyword-dense, so a
                   // strong same-field resume covers ~20-24% of recognized terms
                   // and a cross-field one ~3%. Show a qualitative tier (precise
@@ -926,6 +929,15 @@ export default function Jobs() {
                               <Briefcase className="w-3 h-3 shrink-0" />
                               {t("jobsPage.openRoles", "{{count}} open roles", { count: openRoles })}
                             </span>
+                          )}
+                          {/* Explainable fit — the "why you match" half: the posting's
+                              own keywords already in the résumé, so the score isn't a
+                              bare number. */}
+                          {strengths.length > 0 && (
+                            <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                              <span className="text-success font-medium">{t("jobsPage.youHave", "You already have:")}</span>{" "}
+                              {strengths.join(", ")}
+                            </p>
                           )}
                           {/* Missing-keyword nudge — turns the score into an action:
                               "Strong match · add Kubernetes, gRPC". */}

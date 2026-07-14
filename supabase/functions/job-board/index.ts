@@ -1122,18 +1122,22 @@ Deno.serve(async (req) => {
       // Top missing keywords per posting — the "add these to compete" signal
       // that turns a bare score into an actionable one on each card.
       const missing: Record<string, string[]> = {};
+      // Top MATCHED keywords — the "why you fit" half, so the score is explainable
+      // ("you already have: React, TypeScript") not just a bare number.
+      const matched: Record<string, string[]> = {};
       let scored = 0;
       for (const r of rows ?? []) {
         if (r.description && r.description.length > 150) {
           const f = computeFit(r.description, resumeText, 40);
           fits[r.id] = f.pct;
           if (f.missing.length > 0) missing[r.id] = f.missing.slice(0, 4);
+          if (f.matched.length > 0) matched[r.id] = f.matched.slice(0, 6);
           scored++;
         } else {
           fits[r.id] = null; // no stored description — honest null
         }
       }
-      return json({ fits, missing, scored, of: ids.length });
+      return json({ fits, missing, matched, scored, of: ids.length });
     }
 
     if (action === "backfill-desc") {
