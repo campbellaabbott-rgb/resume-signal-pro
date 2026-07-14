@@ -24,6 +24,10 @@ export interface FallbackAIOptions {
   temperature?: number;
   maxTokens?: number;
   jsonResponse?: boolean;
+  /** Function-calling tools (passed through to every model in the chain). */
+  tools?: unknown[];
+  /** tool_choice, e.g. { type: "function", function: { name: "..." } }. */
+  toolChoice?: unknown;
   /** Override the default chain (pro → flash → gpt-5-mini). */
   models?: string[];
   /** Label for log lines, e.g. "FREELANCE-BOOST". */
@@ -37,6 +41,16 @@ const DEFAULT_MODELS = [
   'google/gemini-2.5-flash',
   'openai/gpt-5-mini',
 ];
+
+// Build a fallback chain that KEEPS a function's current primary model first (so
+// its latency/quality profile is unchanged on the happy path) and appends
+// cross-provider fallbacks for resilience, de-duped. Use when converting a
+// single-model call site: chainFrom("google/gemini-2.5-flash-lite") preserves the
+// fast primary, then falls back across family and provider only on failure.
+export function chainFrom(primary: string): string[] {
+  const tail = ['google/gemini-2.5-pro', 'google/gemini-2.5-flash', 'openai/gpt-5-mini'];
+  return [primary, ...tail.filter((m) => m !== primary)];
+}
 
 export async function callAIWithModelFallback(
   apiKey: string,
@@ -71,6 +85,8 @@ export async function callAIWithModelFallback(
                   model,
                   messages: options.messages,
                   ...(options.maxTokens !== undefined ? { max_completion_tokens: options.maxTokens } : {}),
+                  ...(options.tools ? { tools: options.tools } : {}),
+                  ...(options.toolChoice ? { tool_choice: options.toolChoice } : {}),
                 }
               : {
                   model,
@@ -78,6 +94,8 @@ export async function callAIWithModelFallback(
                   ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
                   ...(options.maxTokens !== undefined ? { max_tokens: options.maxTokens } : {}),
                   ...(options.jsonResponse ? { response_format: { type: 'json_object' } } : {}),
+                  ...(options.tools ? { tools: options.tools } : {}),
+                  ...(options.toolChoice ? { tool_choice: options.toolChoice } : {}),
                 },
           ),
           signal: controller.signal,

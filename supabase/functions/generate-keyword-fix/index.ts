@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
+import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 
@@ -98,21 +99,15 @@ Provide a comprehensive keyword analysis with actionable suggestions.`;
 
     logStep("Calling AI API");
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite", // Using lite for faster keyword analysis
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        max_tokens: 4000,
-        temperature: 0.3,
-      }),
+    const { response } = await callAIWithModelFallback(apiKey, {
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      maxTokens: 4000,
+      temperature: 0.3,
+      models: chainFrom("google/gemini-2.5-flash-lite"), // lite primary for fast keyword analysis
+      context: "KEYWORD-FIX",
     });
 
     const rateLimitResponse = await checkAiGatewayResponse(response, corsHeaders);

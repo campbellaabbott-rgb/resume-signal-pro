@@ -13,6 +13,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -72,19 +73,16 @@ serve(async (req) => {
   "sourceGuess": "upwork | fiverr | linkedin | portfolio | unknown"
 }`;
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `<profile>\n${text}\n</profile>` },
-        ],
-        temperature: 0.2,
-        max_tokens: 2000,
-        response_format: { type: "json_object" },
-      }),
+    const { response: aiRes } = await callAIWithModelFallback(apiKey, {
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `<profile>\n${text}\n</profile>` },
+      ],
+      temperature: 0.2,
+      maxTokens: 2000,
+      jsonResponse: true,
+      models: chainFrom("google/gemini-2.5-flash"),
+      context: "IMPORT-FREELANCE",
     });
     if (!aiRes.ok) throw new Error(`AI gateway ${aiRes.status}`);
     const aiJson = await aiRes.json();

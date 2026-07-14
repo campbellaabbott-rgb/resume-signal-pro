@@ -1,5 +1,6 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -157,18 +158,12 @@ NEVER use placeholders like "[Name]". Use actual name or skip it.`;
     console.log(`[GENERATE-SUMMARY] Cache MISS for key ${cacheKey.substring(0, 8)}...`);
 
     // Prompt already prepared above - proceed to AI call
-    const response = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite", // Using lite for faster response on simple summaries
-        messages: [
-          { role: "user", content: prompt }
-        ],
-      }),
+    const { response } = await callAIWithModelFallback(LOVABLE_API_KEY, {
+      messages: [
+        { role: "user", content: prompt }
+      ],
+      models: chainFrom("google/gemini-2.5-flash-lite"), // lite primary for fast simple summaries
+      context: "GENERATE-SUMMARY",
     });
 
     const duration = Date.now() - startTime;

@@ -1,5 +1,6 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
@@ -1128,23 +1129,17 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
       userMessage += `\n\n<job_description>\n${escapeXml(jobDescriptionText)}\n</job_description>`;
     }
 
-    const response = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        // Keep gemini-2.5-pro for paid analysis - quality matters here
-        // Free tier uses flash for volume, paid tier uses pro for accuracy
-        model: "google/gemini-2.5-pro",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage }
-        ],
-        tools: getAnalysisTools(hasLinkedIn, hasJobDescription),
-        tool_choice: { type: "function", function: { name: "submit_resume_analysis" } }
-      }),
+    // gemini-2.5-pro stays the primary for paid analysis (quality matters); on a
+    // pro outage the chain falls back cross-provider rather than failing the scan.
+    const { response } = await callAIWithModelFallback(LOVABLE_API_KEY, {
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage }
+      ],
+      tools: getAnalysisTools(hasLinkedIn, hasJobDescription),
+      toolChoice: { type: "function", function: { name: "submit_resume_analysis" } },
+      models: chainFrom("google/gemini-2.5-pro"),
+      context: "ANALYZE-RESUME",
     });
 
     if (!response.ok) {

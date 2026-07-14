@@ -1,6 +1,7 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
+import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 
@@ -105,22 +106,16 @@ ${currentRole ? `Current/Target Role: ${currentRole}` : ''}
 
 Give them a roast they'll remember AND learn from.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        temperature: 1.0,
-        max_tokens: 3000,
-        response_format: { type: "json_object" }
-      }),
+    const { response } = await callAIWithModelFallback(apiKey, {
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 1.0,
+      maxTokens: 3000,
+      jsonResponse: true,
+      models: chainFrom("google/gemini-2.5-flash"),
+      context: "RESUME-ROAST",
     });
 
     const rateLimitResponse = await checkAiGatewayResponse(response, corsHeaders);

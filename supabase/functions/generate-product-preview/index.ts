@@ -8,6 +8,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
+import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 
 const corsHeaders = {
@@ -181,22 +182,16 @@ ${industry ? `\nDetected field: ${industry}` : ""}${jd ? `\n\nTarget job posting
 
 Produce the single preview slice described in your instructions.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash", // preview teaser — flash keeps it cheap; full product uses pro
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.6,
-        max_tokens: 600,
-        response_format: { type: "json_object" },
-      }),
+    const { response } = await callAIWithModelFallback(apiKey, {
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.6,
+      maxTokens: 600,
+      jsonResponse: true,
+      models: chainFrom("google/gemini-2.5-flash"), // flash primary keeps the teaser cheap
+      context: "PRODUCT-PREVIEW",
     });
 
     const rateLimitResponse = await checkAiGatewayResponse(response, corsHeaders);

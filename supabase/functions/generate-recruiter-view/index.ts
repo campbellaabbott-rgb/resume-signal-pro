@@ -1,6 +1,7 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
+import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 
@@ -107,22 +108,16 @@ ${jobTitle ? `Target Role: ${jobTitle}` : ''}
 
 Show exactly what happens from ATS parsing → recruiter scan → screening decision.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 4000,
-        response_format: { type: "json_object" }
-      }),
+    const { response } = await callAIWithModelFallback(apiKey, {
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.7,
+      maxTokens: 4000,
+      jsonResponse: true,
+      models: chainFrom("google/gemini-2.5-flash"),
+      context: "RECRUITER-VIEW",
     });
 
     const rateLimitResponse = await checkAiGatewayResponse(response, corsHeaders);
