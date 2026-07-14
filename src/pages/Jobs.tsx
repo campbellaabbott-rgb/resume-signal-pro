@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Bookmark, BookmarkCheck, Briefcase, Clock, Copy, ExternalLink, FileText, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, Sparkles, Target } from "lucide-react";
+import { Activity, AlertTriangle, Bookmark, BookmarkCheck, Briefcase, Clock, Copy, ExternalLink, FileText, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, Sparkles, Target } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -47,6 +47,18 @@ interface BoardJob {
 // anti-ghost-job signal. Show the count at/above this bar; below it, the number
 // isn't a meaningful "actively hiring" tell, so we stay quiet.
 const HIRING_INTENT_MIN = 8;
+
+// Per-company hiring-health, from get_company_hiring_health (lifecycle data).
+interface HiringHealth {
+  open_roles: number;
+  closed_90d: number;
+  median_days_open: number | null;
+  median_days_to_close: number | null;
+  tracking_days: number;
+}
+// Closures needed before we'll call a company "actively hiring" — enough that
+// it's a real pattern, not one data point. Below it we show only neutral facts.
+const ACTIVELY_HIRING_MIN_CLOSED = 3;
 
 // Experience bands mirror EXPERIENCE_BANDS in the edge function's experience.ts.
 // The year range is baked into each localized label (jobsPage.experience.*).
@@ -124,6 +136,8 @@ export default function Jobs() {
   const reqSeq = useRef(0);
   const { session } = useAuth();
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  // Company-page hiring-health (lifecycle-derived; only fetched on a company page).
+  const [hiringHealth, setHiringHealth] = useState<HiringHealth | null>(null);
   // Apply-agent: the posting whose questions we're drafting (with its fetched JD
   // and whether the user already applied — the dedup guard), and which card is
   // currently loading its description.
@@ -667,6 +681,24 @@ export default function Jobs() {
       ?? prettyToken(landerCompany);
   }, [landerCompany, jobs, data]);
 
+  // Company-page hiring-health: one lifecycle-derived lookup per company page.
+  useEffect(() => {
+    if (!landerCompany) { setHiringHealth(null); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: rows } = await (supabase as unknown as {
+          rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown }>;
+        }).rpc("get_company_hiring_health", { p_tokens: [landerCompany] });
+        const row = Array.isArray(rows) ? (rows[0] as HiringHealth | undefined) : undefined;
+        if (!cancelled) setHiringHealth(row ?? null);
+      } catch {
+        if (!cancelled) setHiringHealth(null); // non-fatal — the panel just hides
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [landerCompany]);
+
   const companies = useMemo(
     () => (data?.companies ?? []).filter((c) => c.count > 0 || c.token === company).sort((a, b) => a.name.localeCompare(b.name)),
     [data, company],
@@ -727,6 +759,49 @@ export default function Jobs() {
               {t("jobsPage.guaranteeLive", "Re-checked live the moment you apply")}
             </span>
           </div>
+
+          {/* Company-page Hiring-Health: the lifecycle signal aggregators can't
+              build — open roles now + how fast this company actually fills roles.
+              Honest + staged: the "actively hiring" label needs real closure volume,
+              and with no closures yet we say we're still gathering, never "doesn't hire". */}
+          {landerCompany && hiringHealth && (hiringHealth.open_roles > 0 || hiringHealth.closed_90d > 0) && (
+            <div className="rounded-xl border border-border bg-card p-4 mb-6 max-w-xl">
+              <div className="flex items-center gap-2 mb-2">
+                <Activity className="w-4 h-4 text-primary shrink-0" />
+                <h2 className="text-sm font-semibold text-foreground">{t("jobsPage.hhTitle", "Hiring Health")}</h2>
+                {hiringHealth.closed_90d >= ACTIVELY_HIRING_MIN_CLOSED && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-success/10 text-success">
+                    {t("jobsPage.hhActive", "Actively hiring")}
+                  </span>
+                )}
+              </div>
+              <ul className="space-y-1 text-[13px] text-muted-foreground">
+                {hiringHealth.open_roles > 0 && (
+                  <li>
+                    <span className="text-foreground font-semibold">{hiringHealth.open_roles}</span>{" "}
+                    {t("jobsPage.hhOpen", "open roles verified on the board right now")}
+                  </li>
+                )}
+                {hiringHealth.closed_90d > 0 ? (
+                  <li>
+                    {t("jobsPage.hhClosedPre", "Filled or closed")}{" "}
+                    <span className="text-foreground font-semibold">{hiringHealth.closed_90d}</span>{" "}
+                    {t("jobsPage.hhClosedPost", "in the last 90 days")}
+                    {hiringHealth.median_days_to_close != null && (
+                      <> · {t("jobsPage.hhSpeed", "typically within ~{{d}} days", { d: Math.round(hiringHealth.median_days_to_close) })}</>
+                    )}
+                  </li>
+                ) : (
+                  <li className="italic text-muted-foreground/80">
+                    {t("jobsPage.hhGathering", "We just started tracking this company's role closures — hiring-health fills in as roles close.")}
+                  </li>
+                )}
+              </ul>
+              <p className="text-[10px] text-muted-foreground/70 mt-2">
+                {t("jobsPage.hhFootnote", "Computed from the full lifecycle of this company's official postings — when they open and when they close — not a one-time snapshot.")}
+              </p>
+            </div>
+          )}
 
           {/* Filters */}
           <div className="flex flex-wrap gap-2 mb-5">
