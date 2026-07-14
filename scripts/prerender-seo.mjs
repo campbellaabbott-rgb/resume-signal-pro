@@ -68,15 +68,25 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
         signal: AbortSignal.timeout(8000),
       });
       if (r.ok) insights = await r.json();
-      try {
-        const fr = await fetch(`${supaUrl}/rest/v1/rpc/get_job_board_facets`, {
-          method: "POST",
-          headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}`, "Content-Type": "application/json" },
-          body: "{}",
-          signal: AbortSignal.timeout(12000),
-        });
-        if (fr.ok) boardFacets = await fr.json();
-      } catch { /* offline build — landers ship without live counts */ }
+      // Retry + shape-validate: the facets RPC is heavy over 160k+ rows and
+      // occasionally returns a transient error body or times out cold. Company
+      // landing pages depend on companiesFacet, so accept only a real payload and
+      // give it a few tries before falling back to countless landers.
+      for (let attempt = 0; attempt < 3 && !boardFacets; attempt++) {
+        try {
+          if (attempt) await new Promise((r) => setTimeout(r, 1500));
+          const fr = await fetch(`${supaUrl}/rest/v1/rpc/get_job_board_facets`, {
+            method: "POST",
+            headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}`, "Content-Type": "application/json" },
+            body: "{}",
+            signal: AbortSignal.timeout(20000),
+          });
+          if (fr.ok) {
+            const j = await fr.json();
+            if (j && typeof j.total === "number" && Array.isArray(j.companiesFacet)) boardFacets = j;
+          }
+        } catch { /* retry; offline/slow build ships landers with fallback counts */ }
+      }
     }
   } catch { /* offline build — llms-full ships without the live-numbers section */ }
 
@@ -759,6 +769,50 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
       });
     }
 
+    // Company landing pages: the top employers by open-role count each get a
+    // crawlable "verified roles at {Company}" page — a real seeker destination and
+    // a large SEO surface, generated from the company facet already fetched above.
+    // Count-gated and capped so only substantive companies get a page; if the
+    // build can't reach the board, this simply produces none.
+    {
+      const companyFacet = Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [];
+      const topCompanies = companyFacet
+        .filter((c) => c && typeof c.token === "string" && /^[A-Za-z0-9._-]+$/.test(c.token)
+          && typeof c.count === "number" && c.count >= 8 && typeof c.name === "string" && c.name.trim())
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 500);
+      for (const c of topCompanies) {
+        const nm = c.name.trim();
+        write({
+          path: `/jobs/company/${c.token}`,
+          title: `${nm} Jobs — ${fmt(c.count)} Verified Openings`,
+          description: `Browse ${fmt(c.count)} open roles at ${nm}, pulled straight from ${nm}'s own job board and re-verified all day — no aggregators, no reposts. Check your resume's fit free, then apply on ${nm}'s own site.`,
+          content: `
+            <h1>Open roles at ${esc(nm)}</h1>
+            <p>${fmt(c.count)} verified ${esc(nm)} openings right now, pulled straight from ${esc(nm)}'s own official job board (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, or BambooHR) and re-verified all day. No aggregators, no reposts, no scraped copies — every role belongs to ${esc(nm)}, and applying happens on ${esc(nm)}'s own site. Counts were measured when this page was last built; the live board always shows the current number.</p>
+            <p><a href="/jobs/company/${c.token}">Browse all ${esc(nm)} openings on the live board</a> — filter by role, location, experience, and remote, and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
+            <p>See <a href="/jobs">the full job board</a>${boardCompanies ? ` for openings across ${fmt(boardCompanies)} companies` : ""}.</p>
+          `,
+          jsonLd: [{
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            name: `Open roles at ${nm}`,
+            description: `Verified ${nm} openings from ${nm}'s official job board, re-verified throughout the day.`,
+            url: `${SITE}/jobs/company/${c.token}`,
+            isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
+          }, {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Job board", item: `${SITE}/jobs` },
+              { "@type": "ListItem", position: 2, name: `${nm} jobs`, item: `${SITE}/jobs/company/${c.token}` },
+            ],
+          }],
+        });
+      }
+      console.log(`[prerender-seo] company pages: ${topCompanies.length}`);
+    }
+
     // Main board page — the parent of the field landers. Without its own write()
     // it fell back to the homepage (scanner) meta, wasting the single most
     // important jobs URL. Board-specific title/description, live counts when the
@@ -879,8 +933,8 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
     for (const wp of writtenPaths) {
       if (seen.has(wp)) continue;
       seen.add(wp);
-      const lander = wp.startsWith("/jobs/field/");
-      entries.push({ path: wp, changefreq: lander ? "daily" : "monthly", priority: "0.7" });
+      const jobsPage = wp.startsWith("/jobs/field/") || wp.startsWith("/jobs/company/");
+      entries.push({ path: wp, changefreq: jobsPage ? "daily" : "monthly", priority: "0.7" });
     }
     if (entries.length < 100) throw new Error(`sitemap suspiciously small (${entries.length} URLs) — refusing to overwrite`);
     const xml = [

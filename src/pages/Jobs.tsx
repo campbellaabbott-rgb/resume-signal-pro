@@ -5,7 +5,7 @@
 // company's own site. We never fake an in-house "apply".
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Bookmark, BookmarkCheck, Briefcase, ExternalLink, Loader2, MapPin, Search, ShieldCheck, Target } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
@@ -71,6 +71,12 @@ const CATEGORY_IDS = [
 
 const PAGE = 60;
 
+// Fallback company display name from a token, used only until the real name loads
+// (e.g. "public-storage" → "Public Storage").
+function prettyToken(token: string): string {
+  return token.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()).trim();
+}
+
 function daysAgo(iso: string | null): number | null {
   if (!iso) return null;
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
@@ -85,9 +91,11 @@ export default function Jobs() {
   const [q, setQ] = useState(initial.get("q") ?? "");
   const [location, setLocation] = useState(initial.get("location") ?? "");
   const [remoteOnly, setRemoteOnly] = useState(initial.get("remote") === "1");
-  const [company, setCompany] = useState(initial.get("company") ?? "");
-  const { category: pathCategory } = useParams<{ category?: string }>();
+  const { category: pathCategory, companyToken } = useParams<{ category?: string; companyToken?: string }>();
   const landerCategory = isBoardCategory(pathCategory) ? pathCategory : undefined;
+  // /jobs/company/:token — the board scoped to one employer's verified openings.
+  const landerCompany = companyToken || undefined;
+  const [company, setCompany] = useState(initial.get("company") ?? landerCompany ?? "");
   const [category, setCategory] = useState(initial.get("category") ?? landerCategory ?? "");
   const [experience, setExperience] = useState(initial.get("experience") ?? "");
   const [freshness, setFreshness] = useState<"" | "day" | "week">("");
@@ -312,12 +320,16 @@ export default function Jobs() {
     if (category) p.set("category", category);
     if (experience) p.set("experience", experience);
     const qs = p.toString();
+    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !category && !experience) {
+      window.history.replaceState({}, "", `/jobs/company/${landerCompany}`);
+      return;
+    }
     if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !company && !experience) {
       window.history.replaceState({}, "", `/jobs/field/${landerCategory}`);
       return;
     }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, company, category, experience, landerCategory]);
+  }, [q, location, remoteOnly, company, category, experience, landerCategory, landerCompany]);
 
   // Debounced re-query on filter change (immediate on first mount).
   const first = useRef(true);
@@ -512,6 +524,15 @@ export default function Jobs() {
     return m;
   }, [data]);
 
+  // Display name for a company landing page: the real name from a loaded posting
+  // (or the facet), falling back to the prettified token until data arrives.
+  const landerCompanyName = useMemo(() => {
+    if (!landerCompany) return undefined;
+    return jobs.find((j) => j.token === landerCompany)?.company
+      ?? data?.companies?.find((c) => c.token === landerCompany)?.name
+      ?? prettyToken(landerCompany);
+  }, [landerCompany, jobs, data]);
+
   const companies = useMemo(
     () => (data?.companies ?? []).filter((c) => c.count > 0 || c.token === company).sort((a, b) => a.name.localeCompare(b.name)),
     [data, company],
@@ -522,23 +543,31 @@ export default function Jobs() {
       <SEO
         title={landerCategory
           ? t("jobsPage.landerSeoTitle", "Live {{category}} Jobs — From Official Company Job Boards", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
+          : landerCompany
+          ? t("jobsPage.companySeoTitle", "{{company}} Jobs — Real, Verified Openings", { company: landerCompanyName })
           : t("jobsPage.seoTitle", "Live Jobs From Companies' Own Boards — Check Your Fit Before You Apply")}
         description={landerCategory
           ? t("jobsPage.landerSeoDescription", "Live {{category}} openings pulled straight from companies' own official job boards — no aggregators, no reposts, re-verified all day. Check your resume's fit free, then apply on the company's own site.", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
+          : landerCompany
+          ? t("jobsPage.companySeoDescription", "Browse {{company}}'s open roles, pulled straight from {{company}}'s own job board and re-verified all day — no aggregators, no reposts. Check your resume's fit against any role free, then apply on {{company}}'s own site.", { company: landerCompanyName })
           : t("jobsPage.seoDescription", "Real openings pulled straight from thousands of companies' own official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no aggregators, no reposts, re-verified all day and checked live when you apply. See how your resume fits any posting free, then apply on the company's own site.")}
-        path={landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
+        path={landerCompany ? `/jobs/company/${landerCompany}` : landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
       />
       <Header />
       <main className="pt-20 pb-20">
         <div className="container max-w-4xl">
           <div className="flex items-center gap-2 mb-2">
             <Briefcase className="w-6 h-6 text-primary" />
-            <h1 className="text-3xl md:text-4xl font-bold">{landerCategory
+            <h1 className="text-3xl md:text-4xl font-bold">{landerCompany
+              ? t("jobsPage.companyH1", "Open roles at {{company}}", { company: landerCompanyName })
+              : landerCategory
               ? t("jobsPage.landerH1", "Live {{category}} jobs", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
               : t("jobsPage.h1", "Live job board")}</h1>
           </div>
           <p className="text-muted-foreground mb-1">
-            {t("jobsPage.subtitle", "Every job here comes straight from the company's own careers system — no aggregators, no reposts, no dead links — and each is re-checked live the moment you apply.")}
+            {landerCompany
+              ? t("jobsPage.companySubtitle", "Every {{company}} opening here comes straight from {{company}}'s own careers system — verified, still open, and re-checked the moment you apply.", { company: landerCompanyName })
+              : t("jobsPage.subtitle", "Every job here comes straight from the company's own careers system — no aggregators, no reposts, no dead links — and each is re-checked live the moment you apply.")}
           </p>
           <p className="text-xs text-muted-foreground mb-6">
             {t("jobsPage.honestyNote", "Then we do the part other boards skip: check your resume against any posting free and see exactly what to add — so you apply prepared, not hoping.")}
@@ -689,7 +718,13 @@ export default function Jobs() {
                 </div>
               )}
               <p className="text-xs text-muted-foreground mb-3">
-                {t("jobsPage.resultsSummary", "Showing {{shown}} of {{total}} matching openings across {{companies}} companies", {
+                {landerCompany
+                  ? t("jobsPage.companyResultsSummary", "Showing {{shown}} of {{total}} open roles at {{company}}", {
+                      shown: jobs.length,
+                      total: data?.total ?? jobs.length,
+                      company: landerCompanyName,
+                    })
+                  : t("jobsPage.resultsSummary", "Showing {{shown}} of {{total}} matching openings across {{companies}} companies", {
                   shown: jobs.length,
                   total: data?.total ?? jobs.length,
                   companies: data?.companiesCount ?? companies.length,
@@ -719,7 +754,9 @@ export default function Jobs() {
                         <div className="flex-1 min-w-[220px]">
                           <p className="font-semibold text-foreground leading-snug">{job.title}</p>
                           <p className="text-sm text-muted-foreground mt-0.5">
-                            {job.company}
+                            {job.token
+                              ? <Link to={`/jobs/company/${job.token}`} className="hover:text-primary hover:underline">{job.company}</Link>
+                              : job.company}
                             {job.location ? ` · ${job.location}` : ""}
                             {job.department ? ` · ${job.department}` : ""}
                           </p>
