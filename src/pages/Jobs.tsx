@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Bookmark, BookmarkCheck, Briefcase, ExternalLink, Loader2, MapPin, MessageSquare, Search, ShieldCheck, Target } from "lucide-react";
+import { AlertTriangle, Bookmark, BookmarkCheck, Briefcase, ExternalLink, Loader2, MapPin, MessageSquare, Search, ShieldCheck, Sparkles, Target } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ApplicationAnswers } from "@/components/apply/ApplicationAnswers";
+import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
 import { supabase } from "@/integrations/supabase/client";
 import { postTrackEvent } from "@/lib/track-transport";
 import { toast } from "@/hooks/use-toast";
@@ -127,6 +128,10 @@ export default function Jobs() {
   // currently loading its description.
   const [prepareJob, setPrepareJob] = useState<{ job: BoardJob; description: string | null; alreadyApplied: boolean } | null>(null);
   const [preparingId, setPreparingId] = useState<string | null>(null);
+  // Per-application resume rewrite (uses the already-deployed generate-tailored-resume).
+  const [tailoredOpen, setTailoredOpen] = useState(false);
+  const [tailoredLoading, setTailoredLoading] = useState(false);
+  const [tailoredContent, setTailoredContent] = useState<TailoredResumeContent | null>(null);
 
   // Which postings are already in the user's application tracker.
   useEffect(() => {
@@ -431,6 +436,44 @@ export default function Jobs() {
       setPrepareJob({ job, description, alreadyApplied });
     } finally {
       setPreparingId(null);
+    }
+  };
+
+  // Rewrite the résumé for the posting currently open in the prepare modal.
+  // Grounded by generate-tailored-resume (deployed): it rewrites summary/bullets
+  // toward the JD's real keywords and flags gaps — never invents experience.
+  const tailorForRole = async () => {
+    if (tailoredLoading || !prepareJob || !fitResume.current) return;
+    setTailoredOpen(true);
+    setTailoredLoading(true);
+    setTailoredContent(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-tailored-resume", {
+        body: {
+          resumeText: fitResume.current,
+          jobTitle: prepareJob.job.title,
+          jobCompany: prepareJob.job.company,
+          jobDescription: prepareJob.description || `${prepareJob.job.title} at ${prepareJob.job.company}.`,
+        },
+      });
+      const d = data as (TailoredResumeContent & { success?: boolean }) | null;
+      if (error || !d?.success) {
+        const status = (error as { context?: { status?: number } })?.context?.status;
+        toast({
+          title: status === 429 ? t("jobsPage.tailorBusyTitle", "Busy right now") : t("jobsPage.tailorErrorTitle", "Couldn't tailor your résumé"),
+          description: status === 429
+            ? t("jobsPage.tailorBusy", "The résumé tailor is busy — try again in a moment.")
+            : t("jobsPage.tailorError", "Something went wrong tailoring your résumé. Please try again."),
+        });
+        setTailoredOpen(false);
+        return;
+      }
+      setTailoredContent(d);
+    } catch {
+      toast({ title: t("jobsPage.tailorErrorTitle", "Couldn't tailor your résumé"), description: t("jobsPage.tailorError", "Something went wrong tailoring your résumé. Please try again.") });
+      setTailoredOpen(false);
+    } finally {
+      setTailoredLoading(false);
     }
   };
 
@@ -948,20 +991,33 @@ export default function Jobs() {
                 jobId={prepareJob.job.id}
                 autoStart
               />
-              <a
-                href={prepareJob.job.applyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => { trackApply(prepareJob.job); void promoteApplied(prepareJob.job); void verifyJob(prepareJob.job); }}
-                className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-              >
-                {t("jobsPage.apply", "Apply on {{company}}'s site", { company: prepareJob.job.company })}
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
+              <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border/60 pt-4">
+                <Button size="sm" variant="outline" className="gap-1.5" disabled={tailoredLoading} onClick={tailorForRole}>
+                  {tailoredLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                  {t("jobsPage.tailorResume", "Tailor my résumé for this role")}
+                </Button>
+                <a
+                  href={prepareJob.job.applyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => { trackApply(prepareJob.job); void promoteApplied(prepareJob.job); void verifyJob(prepareJob.job); }}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                >
+                  {t("jobsPage.apply", "Apply on {{company}}'s site", { company: prepareJob.job.company })}
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
             </>
           )}
         </DialogContent>
       </Dialog>
+
+      <TailoredResumeModal
+        isOpen={tailoredOpen}
+        onClose={() => setTailoredOpen(false)}
+        content={tailoredContent}
+        isLoading={tailoredLoading}
+      />
 
       <Footer />
     </div>

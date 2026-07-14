@@ -17,7 +17,7 @@ interface ExperienceHighlight {
   keywordsInjected: string[];
 }
 
-interface TailoredResumeContent {
+export interface TailoredResumeContent {
   professionalSummary: string;
   keySkills: string[];
   experienceHighlights: ExperienceHighlight[];
