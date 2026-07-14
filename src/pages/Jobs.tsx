@@ -7,12 +7,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Bookmark, BookmarkCheck, Briefcase, ExternalLink, Loader2, MapPin, Search, ShieldCheck, Target } from "lucide-react";
+import { Bookmark, BookmarkCheck, Briefcase, ExternalLink, Loader2, MapPin, MessageSquare, Search, ShieldCheck, Target } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ApplicationAnswers } from "@/components/apply/ApplicationAnswers";
 import { supabase } from "@/integrations/supabase/client";
 import { postTrackEvent } from "@/lib/track-transport";
 import { toast } from "@/hooks/use-toast";
@@ -120,6 +122,10 @@ export default function Jobs() {
   const reqSeq = useRef(0);
   const { session } = useAuth();
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  // Apply-agent: the posting whose questions we're drafting (with its fetched JD),
+  // and which card is currently loading its description.
+  const [prepareJob, setPrepareJob] = useState<{ job: BoardJob; description: string | null } | null>(null);
+  const [preparingId, setPreparingId] = useState<string | null>(null);
 
   // Which postings are already in the user's application tracker.
   useEffect(() => {
@@ -384,6 +390,35 @@ export default function Jobs() {
       });
     } finally {
       setFitFetching(null);
+    }
+  };
+
+  // Apply-agent entry point from a board card. Needs the user's resume (their
+  // latest scan) and the posting's JD; then opens the drafting modal, which pulls
+  // the REAL Greenhouse questions and grounds every answer in that resume.
+  const prepareApplication = async (job: BoardJob) => {
+    if (!session) return requireAuth();
+    setPreparingId(job.id);
+    try {
+      const resume = await resolveFitResume();
+      if (!resume) {
+        toast({
+          title: t("jobsPage.prepNeedsResumeTitle", "Scan your resume first"),
+          description: t("jobsPage.prepNeedsResume", "Run the free scan (or save a resume version in your account) so the agent can ground every answer in your real experience."),
+        });
+        navigate("/#upload");
+        return;
+      }
+      // The JD gives grounding context (and, for non-Greenhouse, the inferred
+      // questions). Best-effort — drafting still works from the resume alone.
+      let description: string | null = null;
+      try {
+        const { data: res } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
+        description = res?.description ?? null;
+      } catch { /* JD is optional */ }
+      setPrepareJob({ job, description });
+    } finally {
+      setPreparingId(null);
     }
   };
 
@@ -841,6 +876,12 @@ export default function Jobs() {
                           {fitFetching === job.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
                           {t("jobsPage.checkFit", "Check my fit — free scan")}
                         </Button>
+                        {job.id.startsWith("greenhouse:") && (
+                          <Button size="sm" variant="outline" className="gap-1.5" disabled={preparingId === job.id} onClick={() => prepareApplication(job)}>
+                            {preparingId === job.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
+                            {t("jobsPage.prepAnswers", "Prep answers")}
+                          </Button>
+                        )}
                         <Button size="sm" variant="ghost" className="gap-1.5" asChild>
                           <a href={job.applyUrl} target="_blank" rel="noopener noreferrer" onClick={() => { trackApply(job); void promoteApplied(job); void verifyJob(job); }}>
                             {t("jobsPage.apply", "Apply on {{company}}'s site", { company: job.company })}
@@ -868,6 +909,42 @@ export default function Jobs() {
           </p>
         </div>
       </main>
+
+      {/* Apply-agent: draft grounded answers to a Greenhouse posting's real
+          questions. Human reviews/edits, then applies on the company's own site. */}
+      <Dialog open={!!prepareJob} onOpenChange={(o) => { if (!o) setPrepareJob(null); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          {prepareJob && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{t("jobsPage.prepTitle", "Prepare your application")}</DialogTitle>
+                <DialogDescription>
+                  {t("jobsPage.prepSubtitle", "Grounded answers to {{company}}'s real application questions, drawn from your scanned resume. Review and edit each one, then apply on {{company}}'s own site — we never submit for you.", { company: prepareJob.job.company })}
+                </DialogDescription>
+              </DialogHeader>
+              <ApplicationAnswers
+                resumeText={fitResume.current}
+                jobTitle={prepareJob.job.title}
+                jobCompany={prepareJob.job.company}
+                jobDescription={prepareJob.description}
+                jobId={prepareJob.job.id}
+                autoStart
+              />
+              <a
+                href={prepareJob.job.applyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => { trackApply(prepareJob.job); void promoteApplied(prepareJob.job); void verifyJob(prepareJob.job); }}
+                className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+              >
+                {t("jobsPage.apply", "Apply on {{company}}'s site", { company: prepareJob.job.company })}
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Footer />
     </div>
   );

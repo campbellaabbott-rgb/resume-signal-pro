@@ -6,8 +6,9 @@
 // everyone lives in ApplyKitPanel.
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Sparkles, Loader2, ExternalLink, ChevronDown, CheckCircle2, Copy, AlertTriangle, MessageSquare } from "lucide-react";
+import { Sparkles, Loader2, ExternalLink, ChevronDown, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { ApplicationAnswers } from "@/components/apply/ApplicationAnswers";
 import { ApplyAssistantResults, type ApplyPackageData } from "@/components/ApplyAssistantResults";
 import { CardErrorBoundary } from "@/components/CardErrorBoundary";
 import { normalizeBuilderResume } from "@/types/resume-builder";
@@ -58,110 +59,8 @@ function toKit(raw: unknown): (ApplyPackageData & { coverLetter?: string }) | nu
   };
 }
 
-interface DraftedAnswer { question: string; answer: string; supported: boolean; note: string; anticipated?: boolean; }
-
-// The agent's screening-answer step: drafts grounded answers to the application's
-// questions — the REAL ones when the ATS exposes them (Greenhouse), else the likely
-// questions inferred from the JD (clearly labeled). Every answer is grounded in the
-// resume; unsupported ones are flagged for the candidate, never fabricated. The
-// human reviews, edits, and pastes into the company's own form.
-function ApplicationAnswers({ app, resumeText }: { app: CopilotApp; resumeText: string | null }) {
-  const [loading, setLoading] = useState(false);
-  const [answers, setAnswers] = useState<DraftedAnswer[] | null>(null);
-  const [inferred, setInferred] = useState(false);
-
-  const draft = async () => {
-    if (loading || !resumeText) return;
-    setLoading(true);
-    try {
-      // For Greenhouse postings we can fetch the posting's REAL application
-      // questions (labels, required, field types) and draft to those exact
-      // questions. Every other ATS doesn't publish its form, so we pass no
-      // questions and the function infers the likely ones from the JD.
-      let questions: Array<{ label: string; required?: boolean; type?: string }> | undefined;
-      if (app.job_id?.startsWith("greenhouse:")) {
-        try {
-          const { data: q } = await supabase.functions.invoke("job-board", {
-            body: { action: "application-questions", id: app.job_id },
-          });
-          const qd = q as { supported?: boolean; questions?: Array<{ label?: string; required?: boolean; type?: string }> } | null;
-          if (qd?.supported && Array.isArray(qd.questions) && qd.questions.length) {
-            questions = qd.questions
-              .filter((x): x is { label: string; required?: boolean; type?: string } => typeof x?.label === "string" && !!x.label.trim())
-              .map((x) => ({ label: x.label, required: x.required, type: x.type }));
-          }
-        } catch {
-          // Real-questions fetch is best-effort; fall through to JD-inference.
-        }
-      }
-      const { data, error } = await supabase.functions.invoke("generate-application-answers", {
-        body: { resumeText, jobTitle: app.role, jobCompany: app.company, jobDescription: app.job_posting, questions },
-      });
-      if (error || !data) {
-        const status = (error as { context?: { status?: number } })?.context?.status;
-        toast.error(status === 429 ? "Busy — try again shortly." : "Couldn't draft answers right now.");
-        return;
-      }
-      const d = data as { answers?: DraftedAnswer[]; inferred?: boolean };
-      setAnswers(Array.isArray(d.answers) ? d.answers : []);
-      setInferred(!!d.inferred);
-    } catch {
-      toast.error("Couldn't draft answers right now.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!resumeText) return null;
-
-  if (answers === null) {
-    return (
-      <button
-        onClick={draft}
-        disabled={loading}
-        className="mt-3 inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-full border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-60"
-      >
-        {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageSquare className="w-3 h-3" />}
-        Draft this application's questions
-      </button>
-    );
-  }
-
-  if (answers.length === 0) {
-    return <p className="mt-3 text-[11px] text-muted-foreground">No auto-draftable questions — the rest are yours to complete honestly.</p>;
-  }
-
-  return (
-    <div className="mt-3 space-y-2">
-      <p className="text-[11px] text-muted-foreground">
-        {inferred
-          ? "Likely questions for this role (this ATS doesn't publish its form) — grounded in your resume. Review before you paste."
-          : "This application's real questions, drafted from your resume. Review before you paste."}
-      </p>
-      {answers.map((a, i) => (
-        <div key={i} className="rounded-lg border border-border/60 bg-background p-2.5">
-          <div className="flex items-start gap-1.5">
-            <p className="flex-1 text-[12px] font-medium text-foreground">{a.question}</p>
-            <button
-              onClick={() => navigator.clipboard?.writeText(a.answer).then(() => toast.success("Copied"))}
-              className="shrink-0 text-muted-foreground hover:text-foreground"
-              aria-label="Copy answer"
-            >
-              <Copy className="w-3 h-3" />
-            </button>
-          </div>
-          <p className="mt-1 text-[12px] text-muted-foreground whitespace-pre-wrap">{a.answer}</p>
-          {!a.supported && (
-            <p className="mt-1 inline-flex items-start gap-1 text-[11px] text-warning">
-              <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
-              {a.note || "Add specifics from your own experience — we won't invent them."}
-            </p>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
+// The agent's screening-answer step lives in the shared ApplicationAnswers
+// component (also used by the live board). Here we feed it each saved app.
 
 export function ApplyCopilotPanel({
   apps,
@@ -309,7 +208,13 @@ export function ApplyCopilotPanel({
                       <ApplyAssistantResults data={kit} coverLetter={kit.coverLetter} />
                     </CardErrorBoundary>
                     <CardErrorBoundary section="application-answers">
-                      <ApplicationAnswers app={a} resumeText={resumeFor(a)} />
+                      <ApplicationAnswers
+                        resumeText={resumeFor(a)}
+                        jobTitle={a.role}
+                        jobCompany={a.company}
+                        jobDescription={a.job_posting}
+                        jobId={a.job_id}
+                      />
                     </CardErrorBoundary>
                   </div>
                 )}
