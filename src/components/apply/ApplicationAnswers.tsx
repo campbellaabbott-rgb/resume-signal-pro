@@ -32,6 +32,7 @@ export function ApplicationAnswers({
   const [loading, setLoading] = useState(false);
   const [answers, setAnswers] = useState<DraftedAnswer[] | null>(null);
   const [inferred, setInferred] = useState(false);
+  const [skipped, setSkipped] = useState<Array<{ question: string; class: string }>>([]);
   const started = useRef(false);
 
   const draft = async () => {
@@ -66,9 +67,16 @@ export function ApplicationAnswers({
         toast.error(status === 429 ? "Busy — try again shortly." : "Couldn't draft answers right now.");
         return;
       }
-      const d = data as { answers?: DraftedAnswer[]; inferred?: boolean };
+      const d = data as { answers?: DraftedAnswer[]; inferred?: boolean; skipped?: Array<{ question?: string; class?: string }> };
       setAnswers(Array.isArray(d.answers) ? d.answers : []);
       setInferred(!!d.inferred);
+      setSkipped(
+        Array.isArray(d.skipped)
+          ? d.skipped
+              .filter((s): s is { question: string; class?: string } => typeof s?.question === "string" && !!s.question.trim())
+              .map((s) => ({ question: s.question, class: s.class ?? "" }))
+          : [],
+      );
     } catch {
       toast.error("Couldn't draft answers right now.");
     } finally {
@@ -101,38 +109,53 @@ export function ApplicationAnswers({
     );
   }
 
-  if (answers.length === 0) {
+  if (answers.length === 0 && skipped.length === 0) {
     return <p className="mt-3 text-[11px] text-muted-foreground">No auto-draftable questions — the rest are yours to complete honestly.</p>;
   }
 
   return (
     <div className="mt-3 space-y-2">
-      <p className="text-[11px] text-muted-foreground">
-        {inferred
-          ? "Likely questions for this role (this ATS doesn't publish its form) — grounded in your resume. Review before you paste."
-          : "This application's real questions, drafted from your resume. Review before you paste."}
-      </p>
-      {answers.map((a, i) => (
-        <div key={i} className="rounded-lg border border-border/60 bg-background p-2.5">
-          <div className="flex items-start gap-1.5">
-            <p className="flex-1 text-[12px] font-medium text-foreground">{a.question}</p>
-            <button
-              onClick={() => navigator.clipboard?.writeText(a.answer).then(() => toast.success("Copied"))}
-              className="shrink-0 text-muted-foreground hover:text-foreground"
-              aria-label="Copy answer"
-            >
-              <Copy className="w-3 h-3" />
-            </button>
-          </div>
-          <p className="mt-1 text-[12px] text-muted-foreground whitespace-pre-wrap">{a.answer}</p>
-          {!a.supported && (
-            <p className="mt-1 inline-flex items-start gap-1 text-[11px] text-warning">
-              <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
-              {a.note || "Add specifics from your own experience — we won't invent them."}
-            </p>
-          )}
+      {answers.length > 0 && (
+        <>
+          <p className="text-[11px] text-muted-foreground">
+            {inferred
+              ? "Likely questions for this role (this ATS doesn't publish its form) — grounded in your resume. Review before you paste."
+              : "This application's real questions, drafted from your resume. Review before you paste."}
+          </p>
+          {answers.map((a, i) => (
+            <div key={i} className="rounded-lg border border-border/60 bg-background p-2.5">
+              <div className="flex items-start gap-1.5">
+                <p className="flex-1 text-[12px] font-medium text-foreground">{a.question}</p>
+                <button
+                  onClick={() => navigator.clipboard?.writeText(a.answer).then(() => toast.success("Copied"))}
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  aria-label="Copy answer"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
+              </div>
+              <p className="mt-1 text-[12px] text-muted-foreground whitespace-pre-wrap">{a.answer}</p>
+              {!a.supported && (
+                <p className="mt-1 inline-flex items-start gap-1 text-[11px] text-warning">
+                  <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
+                  {a.note || "Add specifics from your own experience — we won't invent them."}
+                </p>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+      {skipped.length > 0 && (
+        <div className="rounded-lg border border-border/60 bg-muted/40 p-2.5">
+          <p className="text-[11px] font-medium text-foreground">You'll answer these yourself</p>
+          <p className="text-[11px] text-muted-foreground">We don't guess your identity, work authorization, salary, or demographics — the honest answer to each is yours alone.</p>
+          <ul className="mt-1.5 space-y-0.5">
+            {skipped.map((s, i) => (
+              <li key={i} className="text-[11px] text-muted-foreground">• {s.question}</li>
+            ))}
+          </ul>
         </div>
-      ))}
+      )}
     </div>
   );
 }
