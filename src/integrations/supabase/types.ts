@@ -689,6 +689,45 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_closures: {
+        Row: {
+          category: string
+          closed_at: string
+          company: string
+          company_token: string
+          event_id: number
+          first_seen: string | null
+          posted_at: string | null
+          posting_id: string
+          source: string
+          title: string
+        }
+        Insert: {
+          category?: string
+          closed_at?: string
+          company?: string
+          company_token: string
+          event_id?: never
+          first_seen?: string | null
+          posted_at?: string | null
+          posting_id: string
+          source: string
+          title?: string
+        }
+        Update: {
+          category?: string
+          closed_at?: string
+          company?: string
+          company_token?: string
+          event_id?: never
+          first_seen?: string | null
+          posted_at?: string | null
+          posting_id?: string
+          source?: string
+          title?: string
+        }
+        Relationships: []
+      }
       job_board_meta: {
         Row: {
           k: string
