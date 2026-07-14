@@ -94,6 +94,15 @@ export function ApplicationAnswers({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart, resumeText]);
 
+  const copyAll = () => {
+    if (!answers) return;
+    const text = answers
+      .filter((a) => a.answer.trim())
+      .map((a) => `Q: ${a.question}\nA: ${a.answer}`)
+      .join("\n\n");
+    if (text) navigator.clipboard?.writeText(text).then(() => toast.success("All answers copied"));
+  };
+
   if (!resumeText) return null;
 
   if (answers === null) {
@@ -117,11 +126,19 @@ export function ApplicationAnswers({
     <div className="mt-3 space-y-2">
       {answers.length > 0 && (
         <>
-          <p className="text-[11px] text-muted-foreground">
-            {inferred
-              ? "Likely questions for this role (this ATS doesn't publish its form) — grounded in your resume. Review before you paste."
-              : "This application's real questions, drafted from your resume. Review before you paste."}
-          </p>
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-[11px] text-muted-foreground">
+              {inferred
+                ? "Likely questions for this role (this ATS doesn't publish its form) — grounded in your resume. Review before you paste."
+                : "This application's real questions, drafted from your resume. Review before you paste."}
+            </p>
+            <button
+              onClick={copyAll}
+              className="shrink-0 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              <Copy className="w-3 h-3" /> Copy all
+            </button>
+          </div>
           {answers.map((a, i) => (
             <div key={i} className="rounded-lg border border-border/60 bg-background p-2.5">
               <div className="flex items-start gap-1.5">

@@ -977,6 +977,25 @@ export default function Jobs() {
                   {t("jobsPage.prepSubtitle", "Grounded answers to {{company}}'s real application questions, drawn from your scanned resume. Review and edit each one, then apply on {{company}}'s own site — we never submit for you.", { company: prepareJob.job.company })}
                 </DialogDescription>
               </DialogHeader>
+              {(() => {
+                // Reuse the board's fit tier (same 20/10 thresholds + labels) so
+                // the user sees how strong a match this posting is before drafting.
+                const fit = fits[prepareJob.job.id];
+                if (typeof fit !== "number") return null;
+                const tier = fit >= 20 ? "strong" : fit >= 10 ? "possible" : "stretch";
+                return (
+                  <span
+                    className={`inline-flex w-fit text-[11px] px-2 py-0.5 rounded-full font-bold ${tier === "strong" ? "bg-success/10 text-success" : tier === "possible" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"}`}
+                    title={t("jobsPage.matchCoverage", "{{pct}}% of this posting's recognized keywords are already in your resume", { pct: fit })}
+                  >
+                    {tier === "strong"
+                      ? t("jobsPage.matchStrong", "Strong match")
+                      : tier === "possible"
+                      ? t("jobsPage.matchPossible", "Possible match")
+                      : t("jobsPage.matchStretch", "Stretch")}
+                  </span>
+                );
+              })()}
               {prepareJob.alreadyApplied && (
                 <div className="rounded-lg border border-warning/40 bg-warning/10 p-2.5 text-[12px] text-warning flex items-start gap-1.5">
                   <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
