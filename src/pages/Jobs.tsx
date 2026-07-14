@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Bookmark, BookmarkCheck, Briefcase, ExternalLink, Loader2, MapPin, MessageSquare, Search, ShieldCheck, Target } from "lucide-react";
+import { AlertTriangle, Bookmark, BookmarkCheck, Briefcase, ExternalLink, Loader2, MapPin, MessageSquare, Search, ShieldCheck, Target } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -122,9 +122,10 @@ export default function Jobs() {
   const reqSeq = useRef(0);
   const { session } = useAuth();
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
-  // Apply-agent: the posting whose questions we're drafting (with its fetched JD),
-  // and which card is currently loading its description.
-  const [prepareJob, setPrepareJob] = useState<{ job: BoardJob; description: string | null } | null>(null);
+  // Apply-agent: the posting whose questions we're drafting (with its fetched JD
+  // and whether the user already applied — the dedup guard), and which card is
+  // currently loading its description.
+  const [prepareJob, setPrepareJob] = useState<{ job: BoardJob; description: string | null; alreadyApplied: boolean } | null>(null);
   const [preparingId, setPreparingId] = useState<string | null>(null);
 
   // Which postings are already in the user's application tracker.
@@ -409,6 +410,17 @@ export default function Jobs() {
         navigate("/#upload");
         return;
       }
+      // Dedup guard: if this posting is already marked applied, warn before we
+      // draft — re-applying to the same role is a known self-inflicted red flag.
+      let alreadyApplied = false;
+      try {
+        const { data: existing } = await appsTable()
+          .select("status, applied_at")
+          .eq("user_id", session.user.id)
+          .eq("job_id", job.id)
+          .limit(1);
+        alreadyApplied = Array.isArray(existing) && existing.some((r: { status?: string; applied_at?: string | null }) => r.status === "applied" || !!r.applied_at);
+      } catch { /* dedup is advisory — never block on it */ }
       // The JD gives grounding context (and, for non-Greenhouse, the inferred
       // questions). Best-effort — drafting still works from the resume alone.
       let description: string | null = null;
@@ -416,7 +428,7 @@ export default function Jobs() {
         const { data: res } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
         description = res?.description ?? null;
       } catch { /* JD is optional */ }
-      setPrepareJob({ job, description });
+      setPrepareJob({ job, description, alreadyApplied });
     } finally {
       setPreparingId(null);
     }
@@ -922,6 +934,12 @@ export default function Jobs() {
                   {t("jobsPage.prepSubtitle", "Grounded answers to {{company}}'s real application questions, drawn from your scanned resume. Review and edit each one, then apply on {{company}}'s own site — we never submit for you.", { company: prepareJob.job.company })}
                 </DialogDescription>
               </DialogHeader>
+              {prepareJob.alreadyApplied && (
+                <div className="rounded-lg border border-warning/40 bg-warning/10 p-2.5 text-[12px] text-warning flex items-start gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  {t("jobsPage.prepAlreadyApplied", "You've already marked this posting as applied. Re-applying to the same role can count against you — double-check before you submit again.")}
+                </div>
+              )}
               <ApplicationAnswers
                 resumeText={fitResume.current}
                 jobTitle={prepareJob.job.title}
