@@ -489,10 +489,10 @@ export default function Jobs() {
       <SEO
         title={landerCategory
           ? t("jobsPage.landerSeoTitle", "Live {{category}} Jobs — From Official Company Job Boards", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
-          : t("jobsPage.seoTitle", "Live Job Board — Openings You Can Check Your Resume Against")}
+          : t("jobsPage.seoTitle", "Live Jobs From Companies' Own Boards — Check Your Fit Before You Apply")}
         description={landerCategory
-          ? t("jobsPage.landerSeoDescription", "Browse live {{category}} openings pulled from nearly 900 companies' official job boards and re-verified all day. Check your resume's fit free, then apply on the company's own site.", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
-          : t("jobsPage.seoDescription", "Live openings pulled from nearly 900 companies' official job boards on Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and BambooHR. Check your resume's fit against any posting free, then apply on the company's own site.")}
+          ? t("jobsPage.landerSeoDescription", "Live {{category}} openings pulled straight from companies' own official job boards — no aggregators, no reposts, re-verified all day. Check your resume's fit free, then apply on the company's own site.", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
+          : t("jobsPage.seoDescription", "Real openings pulled straight from thousands of companies' own official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no aggregators, no reposts, re-verified all day and checked live when you apply. See how your resume fits any posting free, then apply on the company's own site.")}
         path={landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
       />
       <Header />
@@ -505,10 +505,10 @@ export default function Jobs() {
               : t("jobsPage.h1", "Live job board")}</h1>
           </div>
           <p className="text-muted-foreground mb-1">
-            {t("jobsPage.subtitle", "Real openings, pulled live from each company's official job board. Scan your resume against a posting before you spend an application on it.")}
+            {t("jobsPage.subtitle", "Every job here comes straight from the company's own careers system — no aggregators, no reposts, no dead links — and each is re-checked live the moment you apply.")}
           </p>
           <p className="text-xs text-muted-foreground mb-6">
-            {t("jobsPage.honestyNote", "Listings belong to the companies; applying happens on their site. We add the part they don't have: an honest fit check first.")}
+            {t("jobsPage.honestyNote", "Then we do the part other boards skip: check your resume against any posting free and see exactly what to add — so you apply prepared, not hoping.")}
           </p>
 
           {/* Filters */}
@@ -686,11 +686,11 @@ export default function Jobs() {
                               never an aggregator or a scrape. Always true, so it's
                               always shown. */}
                           <span
-                            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground mt-1"
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-success/90 mt-1"
                             title={t("jobsPage.trustBadgeTip", "Pulled directly from this company's official applicant-tracking feed — not an aggregator or a scraped copy. Re-checked live when you click Apply.")}
                           >
                             <ShieldCheck className="w-3 h-3 text-success shrink-0" />
-                            {t("jobsPage.trustBadge", "Direct from {{company}}'s careers page", { company: job.company })}
+                            {t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: job.company })}
                           </span>
                           {/* Missing-keyword nudge — turns the score into an action:
                               "Strong match · add Kubernetes, gRPC". */}
