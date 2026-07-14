@@ -489,8 +489,39 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           failed.push(s.name);
           continue;
         }
-        for (let i = 0; i < vanished.length; i += 200) {
-          await client.from("job_board_postings").delete().in("id", vanished.slice(i, i + 200));
+        // Log closures BEFORE deleting: the live table hard-deletes, so this is
+        // the only record these roles were ever open — it powers per-company
+        // hiring-health. Best-effort per chunk: the prune (and board freshness)
+        // must never be blocked by the history write, so a failed log still deletes.
+        if (vanished.length) {
+          const closedAt = new Date().toISOString();
+          for (let i = 0; i < vanished.length; i += 200) {
+            const chunk = vanished.slice(i, i + 200);
+            try {
+              const { data: toLog } = await client
+                .from("job_board_postings")
+                .select("id, source, company_token, company, title, category, first_seen, posted_at")
+                .in("id", chunk);
+              if (toLog && toLog.length) {
+                await client.from("job_board_closures").insert(
+                  (toLog as Array<Record<string, unknown>>).map((r) => ({
+                    posting_id: r.id,
+                    source: r.source,
+                    company_token: r.company_token,
+                    company: r.company ?? "",
+                    title: r.title ?? "",
+                    category: r.category ?? "other",
+                    first_seen: r.first_seen ?? null,
+                    posted_at: r.posted_at ?? null,
+                    closed_at: closedAt,
+                  })),
+                );
+              }
+            } catch (e) {
+              console.warn(`[JOB-BOARD] closure log failed for ${s.token} (non-fatal):`, String(e).slice(0, 150));
+            }
+            await client.from("job_board_postings").delete().in("id", chunk);
+          }
         }
         okTokens.push(s.token);
         sliceTotal += rows.length;
