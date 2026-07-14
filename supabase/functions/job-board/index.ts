@@ -33,6 +33,7 @@ import { computeFit } from "../_shared/fit-score.ts";
 import { classifyDormancy, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
+import { classifyQuestion } from "../_shared/application-questions.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1249,6 +1250,31 @@ Deno.serve(async (req) => {
         : await getDescription(src, id, externalId);
       if (!description && !jobRow) return json({ error: "Posting not found (it may have closed)" }, 404);
       return json({ job: jobRow ? rowToJob(jobRow) : null, description });
+    }
+
+    if (action === "application-questions") {
+      // Apply agent: fetch a posting's REAL application questions. Only Greenhouse
+      // exposes them publicly (?questions=true); other vendors return supported:
+      // false so the client falls back to JD-inferred questions. Each question is
+      // classified so the UI/answer-drafter knows what may be auto-drafted vs. what
+      // the candidate must answer (identity, demographics, work-auth, salary).
+      const id = String(body.id ?? "");
+      const [source, token, ...rest] = id.split(":");
+      const externalId = rest.join(":");
+      const src = JOB_SOURCES.find((s) => s.source === source && s.token === token);
+      if (!src || !externalId) return json({ error: "Unknown job id" }, 404);
+      if (source !== "greenhouse") return json({ vendor: source, supported: false, questions: [] });
+      const res = await fetchWithTimeout(`https://boards-api.greenhouse.io/v1/boards/${token}/jobs/${externalId}?questions=true`);
+      if (!res.ok) return json({ vendor: source, supported: false, questions: [] });
+      const gh = await res.json() as { questions?: Array<{ label?: string; required?: boolean; fields?: Array<{ type?: string }> }> };
+      const questions = (gh.questions ?? [])
+        .map((q) => {
+          const label = (q.label ?? "").trim();
+          const type = q.fields?.[0]?.type ?? "";
+          return { label, required: !!q.required, type, class: classifyQuestion(label, type) };
+        })
+        .filter((q) => q.label);
+      return json({ vendor: source, supported: true, questions });
     }
 
     return json({ error: "Unknown action" }, 400);
