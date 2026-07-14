@@ -5,6 +5,7 @@ import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
+import { assertPaidSession } from "../_shared/paid-session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,10 +29,17 @@ serve(async (req) => {
   if (!allowed) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
-    const { resumeText, jobDescription, jobTitle, jobCompany, personalizationContext, language } = await req.json();
+    const { resumeText, jobDescription, jobTitle, jobCompany, personalizationContext, language, sessionId } = await req.json();
 
     const limitError = checkInputLimits({ resumeText, jobDescription });
     if (limitError) return new Response(JSON.stringify({ error: limitError }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    // Paid content: confirm the caller actually purchased (see paid-session.ts).
+    // Safe on the recovery/regenerate path this endpoint serves — ProductSuccess
+    // always awaits verify-product-purchase (which claims the session) first, so a
+    // real buyer's session is already present; assertPaidSession only checks it exists.
+    const paidError = await assertPaidSession(supabase, sessionId);
+    if (paidError) return new Response(JSON.stringify({ error: paidError, retryable: true }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     if (!resumeText) {
       return new Response(

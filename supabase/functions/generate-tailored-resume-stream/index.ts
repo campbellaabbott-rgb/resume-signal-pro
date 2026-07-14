@@ -1,6 +1,7 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { assertPaidSession } from "../_shared/paid-session.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +28,11 @@ serve(async (req) => {
   if (!allowed) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
-    const { resumeText, jobTitle, jobCompany, jobDescription, matchingSkills, missingSkills, language } = await req.json();
+    const { resumeText, jobTitle, jobCompany, jobDescription, matchingSkills, missingSkills, language, sessionId } = await req.json();
+
+    // Paid content: confirm the caller actually purchased (see paid-session.ts).
+    const paidError = await assertPaidSession(supabase, sessionId);
+    if (paidError) return new Response(JSON.stringify({ error: paidError, retryable: true }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     if (!resumeText || !jobTitle) {
       return new Response(

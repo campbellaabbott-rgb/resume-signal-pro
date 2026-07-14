@@ -282,6 +282,7 @@ export default function ProductSuccess() {
 
       if (productKey === 'basicKeywordFix') {
         endpoint = 'generate-keyword-fix';
+        body.sessionId = sessionId; // proves the purchase to the now-gated endpoint
         if (jobDescription) body.jobDescription = jobDescription;
       } else if (productKey === 'coverLetter') {
         endpoint = 'generate-cover-letter';
