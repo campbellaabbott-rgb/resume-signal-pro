@@ -4034,6 +4034,14 @@
     "fitLoadedTitle": "Job description loaded",
     "fitLoadedDesc": "{{title}} at {{company}} — upload or paste your resume and the scan will check fit against this posting.",
     "allFields": "All fields",
+    "allExperience": "Any experience",
+    "minYears": "{{n}}+ yrs",
+    "experience": {
+      "entry": "Entry level",
+      "mid": "Mid level",
+      "senior": "Senior",
+      "expert": "Expert"
+    },
     "updatedAgo": "updated {{min}} min ago",
     "categories": {
       "engineering": "Engineering & IT",

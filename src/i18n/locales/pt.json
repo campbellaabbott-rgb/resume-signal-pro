@@ -4034,6 +4034,14 @@
     "fitLoadedTitle": "Descrição da vaga carregada",
     "fitLoadedDesc": "{{title}} na {{company}} — envie ou cole seu currículo e o escaneio vai checar o encaixe com esta vaga.",
     "allFields": "Todas as áreas",
+    "allExperience": "Qualquer experiência",
+    "minYears": "{{n}}+ anos",
+    "experience": {
+      "entry": "Nível inicial",
+      "mid": "Nível médio",
+      "senior": "Sênior",
+      "expert": "Especialista"
+    },
     "updatedAgo": "atualizado há {{min}} min",
     "categories": {
       "engineering": "Engenharia e TI",

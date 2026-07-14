@@ -4034,6 +4034,14 @@
     "fitLoadedTitle": "Vacaturetekst geladen",
     "fitLoadedDesc": "{{title}} bij {{company}} — upload of plak je cv en de scan checkt de match met precies deze vacature.",
     "allFields": "Alle vakgebieden",
+    "allExperience": "Alle ervaring",
+    "minYears": "{{n}}+ jaar",
+    "experience": {
+      "entry": "Startersniveau",
+      "mid": "Medior",
+      "senior": "Senior",
+      "expert": "Expert"
+    },
     "updatedAgo": "{{min}} min geleden bijgewerkt",
     "categories": {
       "engineering": "Engineering & IT",

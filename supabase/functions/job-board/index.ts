@@ -32,6 +32,7 @@ import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts"
 import { computeFit } from "../_shared/fit-score.ts";
 import { classifyDormancy, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
+import { detectExperience, isExperienceBand } from "./experience.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -223,6 +224,11 @@ const COLD_SLICES_PER_PASS = 24; // widened for the Common Crawl round: 80×24 =
 const DEAD_BOARD_THRESHOLD = 6; // consecutive failures before prune + dormancy (unchanged bar from the prior prune)
 const DORMANT_RECHECK_MS = 12 * 60 * 60_000; // recovery probe cadence for a dormant board
 const DORMANT_CAP = 3_000; // max tracked dormant boards (keeps most-recently-detected)
+
+// Experience-band rules version: bump to re-derive bands from richer text later.
+// The one-time backfill fills existing rows (experience_band IS NULL) once; new
+// rows carry a band from ingestion, so this only fires the sweep on first deploy.
+const EXPERIENCE_VERSION = 1;
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 // Capacity governor: keep the corpus under a ceiling with headroom; when a
@@ -407,6 +413,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           // won't reappear as "new"). Undated / garbage-dated postings can't be
           // judged old, so they're kept and simply carry no displayed date.
           if (isDatedBefore(posted, freshCutoffMs)) continue;
+          // Experience band from the best text we have this pass (title + the
+          // fetched description where the vendor provides one). null → "unspecified".
+          const exp = detectExperience(j.title ?? "", lightDescs ? null : (descs.get(j.id) ?? null));
           rowsById.set(j.id, {
             id: j.id,
             source: j.source,
@@ -420,6 +429,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             posted_at: posted,
             apply_url: j.applyUrl,
             salary: clean(j.salary?.slice(0, 200) ?? null),
+            experience_band: exp.band ?? "unspecified",
+            min_years: exp.minYears,
             // Light boards omit the column so previously stored descriptions
             // survive the upsert instead of being nulled.
             ...(lightDescs ? {} : { description: clean(descs.get(j.id) ?? null) }),
@@ -678,6 +689,19 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       );
     }
     console.log(`[JOB-BOARD] pass complete: hot ${HOT_LIST.length} boards + ${COLD_SLICES_PER_PASS} cold slices; corpus total ${f.total}`);
+    // Experience bands not yet backfilled (fresh column on existing rows)? Fill
+    // the NULL tail in a self-chaining sweep with its own compute budget. Stamped
+    // on completion so it runs once; new rows already carry a band from ingestion.
+    const { data: expVer } = await client.from("job_board_meta").select("v").eq("k", "experience_version").maybeSingle();
+    if ((expVer?.v as { version?: number } | null)?.version !== EXPERIENCE_VERSION) {
+      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+      waitUntil(chainKey().then((key) => fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "backfill-experience", chainKey: key }),
+      })).then((r) => r.text()).catch(() => {}));
+    }
+
     // Categorization rules changed since the corpus was stamped? Sweep the
     // stored "other" rows through the current rules in a fresh invocation
     // (own compute budget). Idempotent: the stamp is written only when the
@@ -960,6 +984,67 @@ Deno.serve(async (req) => {
       return json({ ok: true, scanned, updated, done: true });
     }
 
+    if (action === "backfill-experience") {
+      // One-time sweep populating experience_band on rows that predate the column
+      // (experience_band IS NULL). chainKey-gated + self-chaining like
+      // recategorize; stamps experience_version when the NULL tail is exhausted.
+      if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
+        return json({ error: "backfill-experience is a maintenance action" }, 403);
+      }
+      let cursor = typeof body.cursor === "string" ? body.cursor : "";
+      let scanned = 0;
+      const groups = new Map<string, string[]>(); // "band|minYears" -> ids
+      const PAGES = 6;
+      for (let page = 0; page < PAGES; page++) {
+        let q = client
+          .from("job_board_postings")
+          .select("id,title,description")
+          .is("experience_band", null)
+          .order("id")
+          .limit(1000);
+        if (cursor) q = q.gt("id", cursor);
+        const { data: rows, error } = await q;
+        if (error) throw error;
+        for (const r of rows ?? []) {
+          scanned++;
+          const exp = detectExperience(
+            (r as { title?: string }).title ?? "",
+            (r as { description?: string | null }).description ?? null,
+          );
+          const key = `${exp.band ?? "unspecified"}|${exp.minYears ?? ""}`;
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key)!.push(r.id as string);
+        }
+        if (!rows || rows.length < 1000) { cursor = ""; break; }
+        cursor = rows[rows.length - 1].id as string;
+      }
+      let updated = 0;
+      for (const [key, ids] of groups) {
+        const [band, minStr] = key.split("|");
+        const patch = { experience_band: band, min_years: minStr === "" ? null : Number(minStr) };
+        for (let i = 0; i < ids.length; i += 200) {
+          const { error } = await client.from("job_board_postings").update(patch).in("id", ids.slice(i, i + 200));
+          if (error) throw error;
+          updated += Math.min(200, ids.length - i);
+        }
+      }
+      if (cursor) {
+        const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+        waitUntil(chainKey().then((key) => fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "backfill-experience", chainKey: key, cursor }),
+        })).then((r) => r.text()).catch(() => {}));
+        return json({ ok: true, scanned, updated, nextCursor: cursor });
+      }
+      await client.from("job_board_meta").upsert(
+        { k: "experience_version", v: { version: EXPERIENCE_VERSION, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+      console.log(`[JOB-BOARD] experience backfill complete: ${scanned} scanned, ${updated} filled (v${EXPERIENCE_VERSION})`);
+      return json({ ok: true, scanned, updated, done: true });
+    }
+
     if (action === "refresh") {
       const hop = Number.isFinite(Number(body.chain)) ? Math.max(0, Number(body.chain)) : 0;
       const force = body.force === true && typeof body.chainKey === "string" && body.chainKey === await chainKey();
@@ -1187,6 +1272,8 @@ const rowToJob = (r: any) => ({
   postedAt: r.posted_at,
   applyUrl: r.apply_url,
   salary: r.salary ?? null,
+  experienceBand: r.experience_band && r.experience_band !== "unspecified" ? r.experience_band : null,
+  minYears: typeof r.min_years === "number" ? r.min_years : null,
 });
 
 async function serveList(
@@ -1213,7 +1300,7 @@ async function serveList(
   const buildQuery = (dateCol: string) => {
     let q = client
       .from("job_board_postings")
-      .select("id,source,company_token,company,title,location,remote,department,category,posted_at,apply_url,salary", { count: "exact" })
+      .select("id,source,company_token,company,title,location,remote,department,category,posted_at,apply_url,salary,experience_band,min_years", { count: "exact" })
       .gte(dateCol, freshCutoffIso);
     const terms = String(body.q ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean).slice(0, 8);
     for (const t of terms) q = q.or(`title.ilike.%${t}%,company.ilike.%${t}%,department.ilike.%${t}%`);
@@ -1222,6 +1309,12 @@ async function serveList(
     if (body.remote === true) q = q.eq("remote", true);
     const category = String(body.category ?? "");
     if ((JOB_CATEGORIES as readonly string[]).includes(category)) q = q.eq("category", category);
+    // Experience filter: one of entry/mid/senior/expert. "unspecified" rows are
+    // never returned by a band filter — we only surface postings we can honestly
+    // place. Accepts a comma list so a user can widen (e.g. "senior,expert").
+    const expParam = String(body.experience ?? "").split(",").map((s) => s.trim()).filter(isExperienceBand);
+    if (expParam.length === 1) q = q.eq("experience_band", expParam[0]);
+    else if (expParam.length > 1) q = q.in("experience_band", expParam);
     if (Array.isArray(body.companies)) {
       const tokens = body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length);
       if (tokens.length) q = q.in("company_token", tokens);

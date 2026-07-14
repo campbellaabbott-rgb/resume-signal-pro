@@ -7,12 +7,14 @@ export interface JobSearchParams {
   location?: string;
   remote?: boolean;
   company?: string;
+  /** Experience band: entry | mid | senior | expert (from job-board/experience.ts). */
+  experience?: string;
 }
 
 /** Human name for a saved search, e.g. "nurse · Healthcare & Clinical · remote". */
-export function searchName(p: JobSearchParams, categoryLabel?: string): string {
+export function searchName(p: JobSearchParams, categoryLabel?: string, experienceLabel?: string): string {
   return (
-    [p.q, categoryLabel ?? p.category, p.location, p.remote ? "remote" : "", p.company]
+    [p.q, categoryLabel ?? p.category, experienceLabel ?? p.experience, p.location, p.remote ? "remote" : "", p.company]
       .map((s) => (s ?? "").trim())
       .filter(Boolean)
       .join(" · ") || "All jobs"
@@ -27,6 +29,7 @@ export function searchToQuery(p: JobSearchParams): string {
   if (p.remote) qs.set("remote", "1");
   if (p.company) qs.set("company", p.company);
   if (p.category) qs.set("category", p.category);
+  if (p.experience) qs.set("experience", p.experience);
   const s = qs.toString();
   return s ? `/jobs?${s}` : "/jobs";
 }

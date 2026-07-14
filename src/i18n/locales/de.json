@@ -4034,6 +4034,14 @@
     "fitLoadedTitle": "Stellenbeschreibung geladen",
     "fitLoadedDesc": "{{title}} bei {{company}} — laden Sie Ihren Lebenslauf hoch oder fügen Sie ihn ein, und der Scan prüft die Passung zu genau dieser Stelle.",
     "allFields": "Alle Bereiche",
+    "allExperience": "Alle Erfahrung",
+    "minYears": "{{n}}+ Jahre",
+    "experience": {
+      "entry": "Einstiegslevel",
+      "mid": "Mittleres Level",
+      "senior": "Senior",
+      "expert": "Experte"
+    },
     "updatedAgo": "aktualisiert vor {{min}} Min.",
     "categories": {
       "engineering": "Engineering & IT",

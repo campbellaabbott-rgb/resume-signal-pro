@@ -4034,6 +4034,14 @@
     "fitLoadedTitle": "जॉब विवरण लोड हो गया",
     "fitLoadedDesc": "{{company}} में {{title}} — अपना रिज़्यूमे अपलोड या पेस्ट करें, स्कैन इसी पोस्टिंग के साथ फिट जांचेगा।",
     "allFields": "सभी क्षेत्र",
+    "allExperience": "कोई भी अनुभव",
+    "minYears": "{{n}}+ वर्ष",
+    "experience": {
+      "entry": "एंट्री लेवल",
+      "mid": "मिड लेवल",
+      "senior": "सीनियर",
+      "expert": "विशेषज्ञ"
+    },
     "updatedAgo": "{{min}} मिनट पहले अपडेट",
     "categories": {
       "engineering": "इंजीनियरिंग और IT",

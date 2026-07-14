@@ -4034,6 +4034,14 @@
     "fitLoadedTitle": "Description du poste chargée",
     "fitLoadedDesc": "{{title}} chez {{company}} — téléversez ou collez votre CV et le scan vérifiera l'adéquation avec cette offre.",
     "allFields": "Tous les domaines",
+    "allExperience": "Toute expérience",
+    "minYears": "{{n}}+ ans",
+    "experience": {
+      "entry": "Débutant",
+      "mid": "Intermédiaire",
+      "senior": "Senior",
+      "expert": "Expert"
+    },
     "updatedAgo": "mis à jour il y a {{min}} min",
     "categories": {
       "engineering": "Ingénierie & IT",

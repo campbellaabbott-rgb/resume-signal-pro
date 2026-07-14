@@ -35,7 +35,12 @@ interface BoardJob {
   postedAt: string | null;
   applyUrl: string;
   salary?: string | null;
+  experienceBand?: string | null;
+  minYears?: number | null;
 }
+
+// Experience bands mirror EXPERIENCE_BANDS in the edge function's experience.ts.
+const EXPERIENCE_IDS = ["entry", "mid", "senior", "expert"] as const;
 
 interface BoardResponse {
   jobs: BoardJob[];
@@ -77,6 +82,7 @@ export default function Jobs() {
   const { category: pathCategory } = useParams<{ category?: string }>();
   const landerCategory = isBoardCategory(pathCategory) ? pathCategory : undefined;
   const [category, setCategory] = useState(initial.get("category") ?? landerCategory ?? "");
+  const [experience, setExperience] = useState(initial.get("experience") ?? "");
   const [freshness, setFreshness] = useState<"" | "day" | "week">("");
   const [fitRanking, setFitRanking] = useState(false);
   const [fits, setFits] = useState<Record<string, number | null>>({});
@@ -201,11 +207,16 @@ export default function Jobs() {
     const params = {
       q: q || undefined,
       category: category || undefined,
+      experience: experience || undefined,
       location: location || undefined,
       remote: remoteOnly || undefined,
       company: company || undefined,
     };
-    const name = searchName(params, category ? t(`jobsPage.categories.${category}`, category) : undefined);
+    const name = searchName(
+      params,
+      category ? t(`jobsPage.categories.${category}`, category) : undefined,
+      experience ? t(`jobsPage.experience.${experience}`, experience) : undefined,
+    );
     const { error: err } = await searchesTable().insert({ user_id: session.user.id, name, params });
     if (err && err.code === "23505") {
       toast({ title: t("jobsPage.searchExists", "You already saved this search.") });
@@ -246,6 +257,7 @@ export default function Jobs() {
           location: location || undefined,
           remote: remoteOnly || undefined,
           category: category || undefined,
+          experience: experience || undefined,
           companies: company ? [company] : undefined,
           postedAfter: freshness ? new Date(Date.now() - (freshness === "day" ? 1 : 7) * 86_400_000).toISOString() : undefined,
           limit: PAGE,
@@ -278,7 +290,7 @@ export default function Jobs() {
         }
       }
     },
-    [q, location, remoteOnly, company, category, freshness],
+    [q, location, remoteOnly, company, category, experience, freshness],
   );
 
   // Keep the URL shareable — filters in, defaults out. A category lander
@@ -291,13 +303,14 @@ export default function Jobs() {
     if (remoteOnly) p.set("remote", "1");
     if (company) p.set("company", company);
     if (category) p.set("category", category);
+    if (experience) p.set("experience", experience);
     const qs = p.toString();
-    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !company) {
+    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !company && !experience) {
       window.history.replaceState({}, "", `/jobs/field/${landerCategory}`);
       return;
     }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, company, category, landerCategory]);
+  }, [q, location, remoteOnly, company, category, experience, landerCategory]);
 
   // Debounced re-query on filter change (immediate on first mount).
   const first = useRef(true);
@@ -534,6 +547,19 @@ export default function Jobs() {
               ))}
             </select>
             <select
+              value={experience}
+              onChange={(e) => setExperience(e.target.value)}
+              className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              aria-label={t("jobsPage.allExperience", "Any experience")}
+            >
+              <option value="">{t("jobsPage.allExperience", "Any experience")}</option>
+              {EXPERIENCE_IDS.map((x) => (
+                <option key={x} value={x}>
+                  {t(`jobsPage.experience.${x}`, x)}
+                </option>
+              ))}
+            </select>
+            <select
               value={company}
               onChange={(e) => setCompany(e.target.value)}
               className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -550,7 +576,7 @@ export default function Jobs() {
               <input type="checkbox" checked={remoteOnly} onChange={(e) => setRemoteOnly(e.target.checked)} className="accent-primary" />
               {t("jobsPage.remoteOnly", "Remote only")}
             </label>
-            {(q || location || remoteOnly || company || category) && (
+            {(q || location || remoteOnly || company || category || experience) && (
               <Button size="sm" variant="ghost" className="gap-1.5" onClick={saveCurrentSearch}>
                 <BookmarkCheck className="w-3.5 h-3.5" />
                 {t("jobsPage.saveSearch", "Save this search")}
@@ -644,6 +670,14 @@ export default function Jobs() {
                           </p>
                           {job.salary && (
                             <p className="text-xs text-success font-medium mt-0.5">{job.salary}</p>
+                          )}
+                          {/* Experience level — the band the role reads as, with the
+                              cited minimum years when the posting actually states one. */}
+                          {job.experienceBand && (
+                            <span className="inline-flex items-center text-[11px] text-muted-foreground mt-1 border border-border rounded-full px-2 py-0.5">
+                              {t(`jobsPage.experience.${job.experienceBand}`, job.experienceBand)}
+                              {typeof job.minYears === "number" ? ` · ${t("jobsPage.minYears", "{{n}}+ yrs", { n: job.minYears })}` : ""}
+                            </span>
                           )}
                           {/* Trust moat: every posting is pulled straight from the
                               company's own ATS feed (Greenhouse/Lever/Ashby/…),

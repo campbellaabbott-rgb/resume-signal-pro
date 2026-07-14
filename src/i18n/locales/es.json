@@ -4034,6 +4034,14 @@
     "fitLoadedTitle": "Descripción del puesto cargada",
     "fitLoadedDesc": "{{title}} en {{company}} — sube o pega tu currículum y el escaneo comprobará el encaje con esta oferta.",
     "allFields": "Todos los campos",
+    "allExperience": "Cualquier experiencia",
+    "minYears": "{{n}}+ años",
+    "experience": {
+      "entry": "Nivel inicial",
+      "mid": "Nivel medio",
+      "senior": "Senior",
+      "expert": "Experto"
+    },
     "updatedAgo": "actualizado hace {{min}} min",
     "categories": {
       "engineering": "Ingeniería e IT",

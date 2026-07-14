@@ -4034,6 +4034,14 @@
     "fitLoadedTitle": "Na-load ang job description",
     "fitLoadedDesc": "{{title}} sa {{company}} — i-upload o i-paste ang resume mo at iche-check ng scan ang fit sa posting na ito.",
     "allFields": "Lahat ng larangan",
+    "allExperience": "Anumang karanasan",
+    "minYears": "{{n}}+ taon",
+    "experience": {
+      "entry": "Entry level",
+      "mid": "Mid level",
+      "senior": "Senior",
+      "expert": "Eksperto"
+    },
     "updatedAgo": "na-update {{min}} min ang nakalipas",
     "categories": {
       "engineering": "Engineering at IT",
