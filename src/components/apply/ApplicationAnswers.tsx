@@ -5,7 +5,7 @@
 // resume; unsupported ones are flagged for the candidate, never fabricated. The human
 // reviews, edits, and pastes into the company's own form — we never auto-submit.
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Copy, AlertTriangle, MessageSquare } from "lucide-react";
+import { Loader2, Copy, AlertTriangle, MessageSquare, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -122,10 +122,23 @@ export function ApplicationAnswers({
     return <p className="mt-3 text-[11px] text-muted-foreground">No auto-draftable questions — the rest are yours to complete honestly.</p>;
   }
 
+  const gaps = answers.filter((a) => !a.supported).length;
+
   return (
     <div className="mt-3 space-y-2">
       {answers.length > 0 && (
         <>
+          {/* The honesty guarantee, made visible: this is the anti-spray-bot moat —
+              every answer is résumé-grounded, and gaps are flagged, never invented. */}
+          {gaps === 0 ? (
+            <p className="inline-flex items-center gap-1 text-[11px] font-medium text-success">
+              <ShieldCheck className="w-3 h-3 shrink-0" /> Every answer is grounded in your résumé — nothing invented.
+            </p>
+          ) : (
+            <p className="inline-flex items-start gap-1 text-[11px] font-medium text-warning">
+              <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" /> {gaps} of {answers.length} need your input — we flagged them instead of inventing anything.
+            </p>
+          )}
           <div className="flex items-start justify-between gap-2">
             <p className="text-[11px] text-muted-foreground">
               {inferred
