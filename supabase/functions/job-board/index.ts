@@ -30,6 +30,7 @@ import {
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
 import { computeFit } from "../_shared/fit-score.ts";
+import { classifyDormancy, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -202,6 +203,17 @@ async function tierLists(client: SupabaseClient): Promise<{ hotList: JobSource[]
   };
 }
 const COLD_SLICES_PER_PASS = 24; // widened for the Common Crawl round: 80×24 = 1,920 cold boards/pass keeps a ~11.8k-board tail re-verifying in ~6.1 passes (~61 min — inside the 90-min freshness SLA and honest to the "about an hour" copy); more hops of the proven-safe slice size, not bigger slices. SR_CAP bounds any single board's fetch so mixing SR boards into cold slices stays under the edge wall-time limit.
+
+// Dormancy skip-list (throughput): a feed dead for DEAD_BOARD_THRESHOLD straight
+// rotations has its postings pruned and is marked dormant — future cold slices
+// SKIP fetching it (a dead feed would otherwise burn the full FETCH_TIMEOUT every
+// rotation for nothing) and only recheck it once per DORMANT_RECHECK_MS so a feed
+// that comes back rejoins on its own. The board stays in COLD_LIST, so the
+// rotation cursor and sweep coverage are untouched — only the wasted fetch is
+// removed. DORMANT_CAP bounds the meta row against a mass die-off.
+const DEAD_BOARD_THRESHOLD = 6; // consecutive failures before prune + dormancy (unchanged bar from the prior prune)
+const DORMANT_RECHECK_MS = 12 * 60 * 60_000; // recovery probe cadence for a dormant board
+const DORMANT_CAP = 3_000; // max tracked dormant boards (keeps most-recently-detected)
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 // Capacity governor: keep the corpus under a ceiling with headroom; when a
@@ -306,6 +318,21 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   const startIso = new Date().toISOString();
   const freshCutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000; // roles older than this are dropped
 
+  // Board-failure state (streaks + dormancy) drives both the consecutive-failure
+  // prune and the dormancy skip-list. Read once here so hot and cold hops share a
+  // single read/write, and so cold slices know which dead boards to skip BEFORE
+  // fetching. Demand-injected boards are never skipped (a user just opened them).
+  const { data: bfMeta } = await client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle();
+  const bfV = (bfMeta?.v ?? {}) as Partial<BoardFailureState>;
+  const boardFailures: BoardFailureState = { streaks: { ...(bfV.streaks ?? {}) }, dormant: { ...(bfV.dormant ?? {}) } };
+  let skipTokens = new Set<string>();
+  let recheckTokens = new Set<string>();
+  if (!inHotPhase) {
+    const demandSet = new Set(demandBoards.map((s) => s.token));
+    const eligible = baseSlice.map((s) => s.token).filter((t) => !demandSet.has(t));
+    ({ skip: skipTokens, recheck: recheckTokens } = classifyDormancy(eligible, boardFailures.dormant, Date.now(), DORMANT_RECHECK_MS));
+  }
+
   // Cursors advance BEFORE processing (optimistic): if this invocation dies
   // on the resource ceiling, the next attempt continues with the NEXT
   // slice — a died slice's boards go one rotation stale instead of wedging
@@ -335,6 +362,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       for (;;) {
         const s = queue.shift();
         if (!s) return;
+        // Dormant, not due for recheck: skip the dead fetch (no postings to gain,
+        // ~20s of FETCH_TIMEOUT to lose). Not counted as attempted below.
+        if (skipTokens.has(s.token)) continue;
         const r = await fetchBoard(s);
         if (!r) {
           failed.push(s.name);
@@ -474,28 +504,34 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     { onConflict: "k" },
   );
 
-  // Feature 2 (consecutive-failure pruning): a feed that stops responding
-  // keeps its postings (a transient blip must not wipe a company). But a
-  // feed dead for ~6 straight attempts is gone for good — prune its stale
-  // postings so they can't rot on the board. okTokens reset the streak.
+  // Consecutive-failure pruning + dormancy: a feed that stops responding keeps its
+  // postings (a transient blip must not wipe a company), but a feed dead for
+  // DEAD_BOARD_THRESHOLD straight attempts is gone for good — prune its stale
+  // postings AND mark it dormant so future rotations skip the dead fetch (see the
+  // dormancy skip-list at the top of the slice). okTokens clear both streak and
+  // dormancy; a failed recheck probe stays dormant with a refreshed timer. Skipped
+  // dormant boards weren't attempted, so they don't count as failures here.
   {
     const okSet = new Set(okTokens);
-    const attempted = slice.map((s) => s.token);
-    const failedTokens = attempted.filter((tk) => !okSet.has(tk));
-    if (okTokens.length > 0 || failedTokens.length > 0) {
-      const { data: bfMeta } = await client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle();
-      const streaks = { ...((bfMeta?.v as { streaks?: Record<string, number> } | null)?.streaks ?? {}) };
-      for (const tk of okTokens) delete streaks[tk];
-      const toPrune: string[] = [];
-      for (const tk of failedTokens) {
-        streaks[tk] = (streaks[tk] ?? 0) + 1;
-        if (streaks[tk] >= 6) { toPrune.push(tk); delete streaks[tk]; }
-      }
+    const failedTokens = slice
+      .map((s) => s.token)
+      .filter((tk) => !skipTokens.has(tk) && !okSet.has(tk));
+    if (okTokens.length > 0 || failedTokens.length > 0 || recheckTokens.size > 0) {
+      const { streaks, dormant, toPrune } = updateBoardFailures({
+        okTokens,
+        failedTokens,
+        recheckTokens,
+        streaks: boardFailures.streaks,
+        dormant: boardFailures.dormant,
+        deadThreshold: DEAD_BOARD_THRESHOLD,
+        dormantCap: DORMANT_CAP,
+        now: Date.now(),
+      });
       for (const tk of toPrune) {
         await client.from("job_board_postings").delete().eq("company_token", tk);
-        console.warn(`[JOB-BOARD] pruned dead board ${tk} (6 consecutive failures)`);
+        console.warn(`[JOB-BOARD] board ${tk} dormant after ${DEAD_BOARD_THRESHOLD} consecutive failures (postings pruned; fetch skipped until recheck)`);
       }
-      await client.from("job_board_meta").upsert({ k: "board_failures", v: { streaks }, updated_at: new Date().toISOString() }, { onConflict: "k" });
+      await client.from("job_board_meta").upsert({ k: "board_failures", v: { streaks, dormant }, updated_at: new Date().toISOString() }, { onConflict: "k" });
     }
   }
 

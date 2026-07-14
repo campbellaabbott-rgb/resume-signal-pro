@@ -16,6 +16,7 @@ import { searchName, searchToQuery } from "../../src/lib/job-search-params";
 import { computeFit } from "../../supabase/functions/_shared/fit-score";
 import { normalizeBambooHR } from "../../supabase/functions/job-board/normalize";
 import { leverSalary, sanePostedAt, isDatedBefore, safeIso } from "../../supabase/functions/job-board/normalize";
+import { classifyDormancy, updateBoardFailures } from "../../supabase/functions/job-board/dormancy";
 
 // ── real captured fixtures (trimmed to the fields the APIs actually send) ──
 const GH_FIXTURE = {
@@ -546,5 +547,107 @@ describe("never-stale arc invariants (2026-07-12)", () => {
     expect(step(false)).toBe(true);   // 6th → prune
     expect(step(true)).toBe(false);   // a success resets
     expect(streak).toBe(0);
+  });
+});
+
+describe("dormancy skip-list (cold-tail throughput)", () => {
+  const RECHECK = 12 * 60 * 60_000;
+  const NOW = 1_000_000_000_000;
+
+  it("classifyDormancy: active boards fetch, not-due dormant skip, due dormant recheck", () => {
+    const dormant = {
+      dead_recent: NOW - 1 * 60 * 60_000, // 1h dormant → still skip
+      dead_old: NOW - 13 * 60 * 60_000, // 13h dormant → due for recheck
+    };
+    const { skip, recheck } = classifyDormancy(
+      ["active_a", "dead_recent", "dead_old", "active_b"],
+      dormant,
+      NOW,
+      RECHECK,
+    );
+    expect([...skip]).toEqual(["dead_recent"]);
+    expect([...recheck]).toEqual(["dead_old"]);
+    // active boards appear in neither set
+    expect(skip.has("active_a")).toBe(false);
+    expect(recheck.has("active_b")).toBe(false);
+  });
+
+  it("a responding board clears both its streak and dormancy", () => {
+    const r = updateBoardFailures({
+      okTokens: ["revived"],
+      failedTokens: [],
+      recheckTokens: new Set(["revived"]),
+      streaks: { revived: 3 },
+      dormant: { revived: NOW - RECHECK - 1 },
+      deadThreshold: 6, dormantCap: 3000, now: NOW,
+    });
+    expect(r.streaks.revived).toBeUndefined();
+    expect(r.dormant.revived).toBeUndefined();
+    expect(r.toPrune).toEqual([]);
+  });
+
+  it("crossing the dead threshold prunes once and marks dormant", () => {
+    // 5 prior failures, one more → hits 6 → prune + dormant + streak cleared
+    const r = updateBoardFailures({
+      okTokens: [],
+      failedTokens: ["dying"],
+      recheckTokens: new Set(),
+      streaks: { dying: 5 },
+      dormant: {},
+      deadThreshold: 6, dormantCap: 3000, now: NOW,
+    });
+    expect(r.toPrune).toEqual(["dying"]);
+    expect(r.dormant.dying).toBe(NOW);
+    expect(r.streaks.dying).toBeUndefined();
+  });
+
+  it("a failed recheck probe stays dormant with a refreshed timer and is NOT re-pruned", () => {
+    const r = updateBoardFailures({
+      okTokens: [],
+      failedTokens: ["still_dead"],
+      recheckTokens: new Set(["still_dead"]),
+      streaks: {},
+      dormant: { still_dead: NOW - RECHECK - 5 },
+      deadThreshold: 6, dormantCap: 3000, now: NOW,
+    });
+    expect(r.toPrune).toEqual([]); // no double-delete of already-pruned postings
+    expect(r.dormant.still_dead).toBe(NOW); // timer reset → skipped again until next window
+    expect(r.streaks.still_dead).toBeUndefined(); // recheck failures don't touch the streak
+  });
+
+  it("an ordinary (non-recheck, sub-threshold) failure just increments the streak", () => {
+    const r = updateBoardFailures({
+      okTokens: [],
+      failedTokens: ["flaky"],
+      recheckTokens: new Set(),
+      streaks: { flaky: 2 },
+      dormant: {},
+      deadThreshold: 6, dormantCap: 3000, now: NOW,
+    });
+    expect(r.streaks.flaky).toBe(3);
+    expect(r.dormant.flaky).toBeUndefined();
+    expect(r.toPrune).toEqual([]);
+  });
+
+  it("the dormant map is capped, keeping the most recently detected", () => {
+    const dormant: Record<string, number> = {};
+    for (let i = 0; i < 10; i++) dormant[`d${i}`] = NOW - i * 1000; // d0 newest, d9 oldest
+    const r = updateBoardFailures({
+      okTokens: [], failedTokens: [], recheckTokens: new Set(),
+      streaks: {}, dormant, deadThreshold: 6, dormantCap: 3, now: NOW,
+    });
+    const kept = Object.keys(r.dormant).sort();
+    expect(kept).toEqual(["d0", "d1", "d2"]); // three most recent survive
+  });
+
+  it("does not mutate the input streaks/dormant objects", () => {
+    const streaks = { a: 1 };
+    const dormant = { b: NOW };
+    updateBoardFailures({
+      okTokens: ["b"], failedTokens: ["a"], recheckTokens: new Set(),
+      streaks, dormant, deadThreshold: 6, dormantCap: 3000, now: NOW,
+    });
+    expect(streaks).toEqual({ a: 1 }); // unchanged
+    expect(dormant).toEqual({ b: NOW }); // unchanged
   });
 });
