@@ -4034,6 +4034,8 @@
     "fitLoadedTitle": "Description du poste chargée",
     "fitLoadedDesc": "{{title}} chez {{company}} — téléversez ou collez votre CV et le scan vérifiera l'adéquation avec cette offre.",
     "allFields": "Tous les domaines",
+    "openRoles": "{{count}} postes ouverts",
+    "openRolesTip": "Cette entreprise a {{count}} offres vérifiées actives sur le tableau en ce moment — un vrai signal de recrutement actif.",
     "fitSummaryStrong": "Vous correspondez très bien à {{count}} de ces offres",
     "fitSummaryPossible": "Vous pourriez correspondre à {{count}} de ces offres",
     "fitSummaryAndPossible": "et vous pourriez correspondre à {{count}} de plus",

@@ -4034,6 +4034,8 @@
     "fitLoadedTitle": "Descrição da vaga carregada",
     "fitLoadedDesc": "{{title}} na {{company}} — envie ou cole seu currículo e o escaneio vai checar o encaixe com esta vaga.",
     "allFields": "Todas as áreas",
+    "openRoles": "{{count}} vagas abertas",
+    "openRolesTip": "Esta empresa tem {{count}} vagas verificadas ativas no mural agora — um sinal real de contratação ativa.",
     "fitSummaryStrong": "Você encaixa muito bem em {{count}} destas vagas",
     "fitSummaryPossible": "Você pode encaixar em {{count}} destas vagas",
     "fitSummaryAndPossible": "e pode encaixar em mais {{count}}",

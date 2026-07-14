@@ -27,6 +27,7 @@ const searchesTable = () => (supabase as unknown as { from: (t: string) => any }
 
 interface BoardJob {
   id: string;
+  token?: string; // company_token — used to look up the company's open-role count
   company: string;
   title: string;
   location: string;
@@ -38,6 +39,11 @@ interface BoardJob {
   experienceBand?: string | null;
   minYears?: number | null;
 }
+
+// A company with several fresh, still-open roles is demonstrably hiring — the
+// anti-ghost-job signal. Show the count at/above this bar; below it, the number
+// isn't a meaningful "actively hiring" tell, so we stay quiet.
+const HIRING_INTENT_MIN = 8;
 
 // Experience bands mirror EXPERIENCE_BANDS in the edge function's experience.ts.
 // The year range is baked into each localized label (jobsPage.experience.*).
@@ -496,6 +502,16 @@ export default function Jobs() {
     return { strong, possible, scored };
   }, [fitRanking, jobs, fits]);
 
+  // Per-company open-role counts from the (global) company facet, so each card
+  // can show a hiring-intent signal. The facet holds the top companies by count —
+  // exactly the ones where "actively hiring" is worth surfacing; smaller ones
+  // simply don't get the chip.
+  const companyCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of data?.companies ?? []) m.set(c.token, c.count);
+    return m;
+  }, [data]);
+
   const companies = useMemo(
     () => (data?.companies ?? []).filter((c) => c.count > 0 || c.token === company).sort((a, b) => a.name.localeCompare(b.name)),
     [data, company],
@@ -688,6 +704,7 @@ export default function Jobs() {
               <ul className="space-y-3">
                 {displayJobs.map((job) => {
                   const d = daysAgo(job.postedAt);
+                  const openRoles = job.token ? companyCounts.get(job.token) : undefined;
                   const fit = fitRanking ? fits[job.id] : undefined;
                   const gaps = fitRanking ? (misses[job.id] ?? []) : [];
                   // Calibrated on live data: full JDs are keyword-dense, so a
@@ -729,6 +746,18 @@ export default function Jobs() {
                             <ShieldCheck className="w-3 h-3 text-success shrink-0" />
                             {t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: job.company })}
                           </span>
+                          {/* Hiring-intent signal: a company with many fresh, still-open
+                              roles is demonstrably hiring — the anti-ghost-job tell. The
+                              count is that company's verified open roles on the board. */}
+                          {typeof openRoles === "number" && openRoles >= HIRING_INTENT_MIN && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground mt-1 ml-2"
+                              title={t("jobsPage.openRolesTip", "This company has {{count}} verified openings live on the board right now — a real, active hiring signal.", { count: openRoles })}
+                            >
+                              <Briefcase className="w-3 h-3 shrink-0" />
+                              {t("jobsPage.openRoles", "{{count}} open roles", { count: openRoles })}
+                            </span>
+                          )}
                           {/* Missing-keyword nudge — turns the score into an action:
                               "Strong match · add Kubernetes, gRPC". */}
                           {gaps.length > 0 && (
@@ -753,7 +782,7 @@ export default function Jobs() {
                           )}
                           {job.remote && <Badge variant="secondary" className="text-[10px]">{t("jobsPage.remoteBadge", "Remote")}</Badge>}
                           {d !== null && (
-                            <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                            <span className={`text-[11px] whitespace-nowrap ${d <= 2 ? "text-success font-medium" : "text-muted-foreground"}`}>
                               {d === 0 ? t("jobsPage.postedToday", "today") : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: d })}
                             </span>
                           )}

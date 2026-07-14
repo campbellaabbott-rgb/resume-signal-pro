@@ -4034,6 +4034,8 @@
     "fitLoadedTitle": "Stellenbeschreibung geladen",
     "fitLoadedDesc": "{{title}} bei {{company}} — laden Sie Ihren Lebenslauf hoch oder fügen Sie ihn ein, und der Scan prüft die Passung zu genau dieser Stelle.",
     "allFields": "Alle Bereiche",
+    "openRoles": "{{count}} offene Stellen",
+    "openRolesTip": "Dieses Unternehmen hat gerade {{count}} verifizierte offene Stellen auf der Börse — ein echtes Zeichen für aktive Einstellung.",
     "fitSummaryStrong": "Du passt sehr gut zu {{count}} dieser Stellen",
     "fitSummaryPossible": "Du passt möglicherweise zu {{count}} dieser Stellen",
     "fitSummaryAndPossible": "und möglicherweise zu {{count}} weiteren",

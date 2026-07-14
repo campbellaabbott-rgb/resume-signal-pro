@@ -4034,6 +4034,8 @@
     "fitLoadedTitle": "Job description loaded",
     "fitLoadedDesc": "{{title}} at {{company}} — upload or paste your resume and the scan will check fit against this posting.",
     "allFields": "All fields",
+    "openRoles": "{{count}} open roles",
+    "openRolesTip": "This company has {{count}} verified openings live on the board right now — a real, active hiring signal.",
     "fitSummaryStrong": "You’re a strong fit for {{count}} of these openings",
     "fitSummaryPossible": "You’re a possible fit for {{count}} of these openings",
     "fitSummaryAndPossible": "and a possible fit for {{count}} more",

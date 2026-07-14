@@ -4034,6 +4034,8 @@
     "fitLoadedTitle": "Vacaturetekst geladen",
     "fitLoadedDesc": "{{title}} bij {{company}} — upload of plak je cv en de scan checkt de match met precies deze vacature.",
     "allFields": "Alle vakgebieden",
+    "openRoles": "{{count}} openstaande functies",
+    "openRolesTip": "Dit bedrijf heeft nu {{count}} geverifieerde vacatures live op het bord — een echt signaal van actief werven.",
     "fitSummaryStrong": "Je past sterk bij {{count}} van deze vacatures",
     "fitSummaryPossible": "Je past mogelijk bij {{count}} van deze vacatures",
     "fitSummaryAndPossible": "en mogelijk bij {{count}} meer",

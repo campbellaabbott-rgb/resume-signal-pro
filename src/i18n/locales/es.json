@@ -4034,6 +4034,8 @@
     "fitLoadedTitle": "Descripción del puesto cargada",
     "fitLoadedDesc": "{{title}} en {{company}} — sube o pega tu currículum y el escaneo comprobará el encaje con esta oferta.",
     "allFields": "Todos los campos",
+    "openRoles": "{{count}} vacantes abiertas",
+    "openRolesTip": "Esta empresa tiene {{count}} vacantes verificadas activas en el tablón ahora mismo — una señal real de contratación activa.",
     "fitSummaryStrong": "Encajas muy bien en {{count}} de estas ofertas",
     "fitSummaryPossible": "Podrías encajar en {{count}} de estas ofertas",
     "fitSummaryAndPossible": "y podrías encajar en {{count}} más",

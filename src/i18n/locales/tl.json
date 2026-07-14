@@ -4034,6 +4034,8 @@
     "fitLoadedTitle": "Na-load ang job description",
     "fitLoadedDesc": "{{title}} sa {{company}} — i-upload o i-paste ang resume mo at iche-check ng scan ang fit sa posting na ito.",
     "allFields": "Lahat ng larangan",
+    "openRoles": "{{count}} bukas na posisyon",
+    "openRolesTip": "May {{count}} beripikadong bukas na trabaho ang kumpanyang ito sa board ngayon — isang tunay na senyales ng aktibong pagkuha.",
     "fitSummaryStrong": "Malakas ang tugma mo sa {{count}} sa mga trabahong ito",
     "fitSummaryPossible": "Maaaring tumugma ka sa {{count}} sa mga trabahong ito",
     "fitSummaryAndPossible": "at maaaring tumugma sa {{count}} pa",
