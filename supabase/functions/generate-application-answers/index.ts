@@ -66,6 +66,7 @@ serve(async (req) => {
 - Use ONLY facts present in the candidate's RESUME (and, for context, the JOB DESCRIPTION). Never invent, exaggerate, assume, or round up experience, metrics, employers, titles, tools, dates, or outcomes that are not in the resume.
 - If the resume genuinely supports an answer, write a concise, specific, first-person reply that cites the candidate's REAL roles, achievements, and skills (paraphrase actual resume content). Set "supported": true.
 - If the resume does NOT contain enough to answer truthfully, DO NOT fabricate. Set "supported": false, put a short honest scaffold in "answer" the candidate can complete, and in "note" say exactly what they must add. Flagging a gap always beats inventing a claim they cannot defend in an interview.
+- GAP RULE: if the truthful answer is that the candidate LACKS the experience, skill, tool, certification, or qualification the question asks about (i.e. the honest reply is essentially "no" / "I don't have that"), treat it as a gap: keep the answer honest and never fabricated, but set "supported": false and in "note" tell the candidate how to strengthen it — the closest transferable experience from their resume to lean on, or that they should add it if they in fact have it. Never mark a missing qualification "supported": true.
 - Keep answers tight and professional: 2–5 sentences unless the question implies otherwise. No clichés, no fluff, no fabricated numbers.
 ${langInstruction}`;
 
