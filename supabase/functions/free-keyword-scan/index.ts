@@ -411,12 +411,18 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
   const level = duration > VERY_SLOW_THRESHOLD ? 'CRITICAL' : duration > SLOW_REQUEST_THRESHOLD ? 'SLOW' : 'OK';
   console.log(`[PERF] ${operation} | ${duration}ms | ${level} | success=${success}${details ? ` | ${JSON.stringify(details)}` : ''}`);
   
-  // Send alert for CRITICAL performance or errors
-  if (level === 'CRITICAL' || !success) {
+  // Alert policy: always page on failures. For SUCCESSFUL scans, don't page on
+  // ordinary tail latency — the model (Gemini Pro, ~40–60s typical) plus the
+  // retry-on-5xx/429 path routinely yields one-off >70s successes that are the
+  // system self-healing, not an incident, and paging on each is pure noise. Page
+  // a slow success only when it is a true outlier (retries stacking / near the
+  // request wall), which signals a systemic problem rather than model variance.
+  const SUCCESS_ALERT_MS = 110_000;
+  if (!success || duration > SUCCESS_ALERT_MS) {
     EdgeRuntime.waitUntil(
       sendAlertEmail(
         success ? `${operation}_slow` : `${operation}_error`,
-        success ? `${operation} CRITICAL Performance (${duration}ms)` : `${operation} Error`,
+        success ? `${operation} slow outlier (${duration}ms)` : `${operation} Error`,
         { operation, duration, level, success, ip: clientIp || 'unknown', ...details }
       )
     );

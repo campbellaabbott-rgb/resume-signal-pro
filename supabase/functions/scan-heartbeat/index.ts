@@ -238,10 +238,21 @@ serve(async (req) => {
       // fully re-verified once per rotation; if that rotation hasn't
       // completed within the SLA, cold-tail postings are going stale even
       // though slices keep ticking. This measures freshness directly.
-      const COLD_ROTATION_SLA_MIN = 90;
       const { data: rot } = await supabase
         .from('job_board_meta').select('v, updated_at').eq('k', 'cold_rotation').maybeSingle();
-      const rotAgeMin = rot ? Math.round((Date.now() - new Date((rot.v as { completedAt?: string })?.completedAt ?? rot.updated_at).getTime()) / 60000) : null;
+      const rotV = (rot?.v ?? {}) as { completedAt?: string; coldBoards?: number };
+      const rotAgeMin = rot ? Math.round((Date.now() - new Date(rotV.completedAt ?? rot.updated_at).getTime()) / 60000) : null;
+      // The SLA scales with the catalog. Wall-time-safe slices cap re-verification
+      // throughput at ~one 80-board hop/min (measured ~0.95 min/hop in production),
+      // so an honestly larger board takes proportionally longer to fully re-verify —
+      // that is growth, not staleness. Alert only when the wrap runs well past what
+      // the catalog size can explain (a genuine stall: wedged pipeline, mass board
+      // death, or a dead cron). Users are separately protected from stale listings
+      // by the airtight 30-day read cap and live verify-on-apply, so a longer honest
+      // rotation is a freshness nuance, never a stale board.
+      const coldBoards = typeof rotV.coldBoards === 'number' && rotV.coldBoards > 0 ? rotV.coldBoards : 8700;
+      const expectedWrapMin = Math.ceil((coldBoards / 80) * 0.95);
+      const COLD_ROTATION_SLA_MIN = Math.max(120, Math.ceil(expectedWrapMin * 1.4));
       const rotStale = rotAgeMin !== null && rotAgeMin > COLD_ROTATION_SLA_MIN;
       checks.push({
         name: 'job_board_freshness',
