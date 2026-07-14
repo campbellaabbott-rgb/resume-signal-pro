@@ -17,6 +17,7 @@ import { computeFit } from "../../supabase/functions/_shared/fit-score";
 import { normalizeBambooHR } from "../../supabase/functions/job-board/normalize";
 import { leverSalary, sanePostedAt, isDatedBefore, safeIso } from "../../supabase/functions/job-board/normalize";
 import { classifyDormancy, updateBoardFailures } from "../../supabase/functions/job-board/dormancy";
+import { rawItemCount, aggregateVendorHealth, CANARIES, type CanaryResult } from "../../supabase/functions/job-board/vendor-canary";
 
 // ── real captured fixtures (trimmed to the fields the APIs actually send) ──
 const GH_FIXTURE = {
@@ -649,5 +650,70 @@ describe("dormancy skip-list (cold-tail throughput)", () => {
     });
     expect(streaks).toEqual({ a: 1 }); // unchanged
     expect(dormant).toEqual({ b: NOW }); // unchanged
+  });
+});
+
+describe("vendor schema-drift canary", () => {
+  it("rawItemCount reads each vendor's envelope shape", () => {
+    expect(rawItemCount("lever", [{ id: 1 }, { id: 2 }])).toBe(2);
+    expect(rawItemCount("greenhouse", { jobs: [1, 2, 3] })).toBe(3);
+    expect(rawItemCount("ashby", { jobs: [1] })).toBe(1);
+    expect(rawItemCount("workable", { jobs: [1, 2] })).toBe(2);
+    expect(rawItemCount("smartrecruiters", { content: [1, 2, 3, 4] })).toBe(4);
+    expect(rawItemCount("bamboohr", { result: [1] })).toBe(1);
+    // malformed / empty payloads → 0, never throws
+    expect(rawItemCount("greenhouse", null)).toBe(0);
+    expect(rawItemCount("greenhouse", { jobs: "nope" })).toBe(0);
+    expect(rawItemCount("lever", { not: "array" })).toBe(0);
+  });
+
+  it("flags drift when a vendor returns raw items that normalize to zero", () => {
+    const results: CanaryResult[] = [
+      // greenhouse healthy
+      { vendor: "greenhouse", token: "stripe", fetchOk: true, raw: 500, normalized: 500 },
+      { vendor: "greenhouse", token: "gitlab", fetchOk: true, raw: 160, normalized: 160 },
+      // lever DRIFTED: fetched raw items, parsed none (schema changed)
+      { vendor: "lever", token: "palantir", fetchOk: true, raw: 270, normalized: 0 },
+      { vendor: "lever", token: "spotify", fetchOk: true, raw: 110, normalized: 0 },
+    ];
+    const { vendors, drifted, unreachable } = aggregateVendorHealth(results);
+    expect(drifted).toEqual(["lever"]);
+    expect(unreachable).toEqual([]);
+    expect(vendors.find((v) => v.vendor === "greenhouse")!.drift).toBe(false);
+    expect(vendors.find((v) => v.vendor === "lever")!.drift).toBe(true);
+  });
+
+  it("a legitimately empty board (no raw items) is NOT drift", () => {
+    const { drifted } = aggregateVendorHealth([
+      { vendor: "bamboohr", token: "bitrise", fetchOk: true, raw: 0, normalized: 0 },
+      { vendor: "bamboohr", token: "flo", fetchOk: true, raw: 0, normalized: 0 },
+    ]);
+    expect(drifted).toEqual([]); // raw 0 → nothing to parse → not drift
+  });
+
+  it("one empty board can't fake drift when its sibling parses fine", () => {
+    const { drifted } = aggregateVendorHealth([
+      { vendor: "workable", token: "blueground", fetchOk: true, raw: 0, normalized: 0 }, // temporarily empty
+      { vendor: "workable", token: "rokt", fetchOk: true, raw: 26, normalized: 26 }, // parses fine
+    ]);
+    expect(drifted).toEqual([]); // vendor total normalized > 0 → healthy
+  });
+
+  it("a fully unreachable vendor is reported separately, not as drift", () => {
+    const { drifted, unreachable, vendors } = aggregateVendorHealth([
+      { vendor: "ashby", token: "openai", fetchOk: false, raw: 0, normalized: 0 },
+      { vendor: "ashby", token: "Notion", fetchOk: false, raw: 0, normalized: 0 },
+    ]);
+    expect(drifted).toEqual([]);
+    expect(unreachable).toEqual(["ashby"]);
+    expect(vendors[0].drift).toBe(false); // no fetchOk → can't be drift
+  });
+
+  it("ships two stable canaries for every one of the six vendors", () => {
+    const vendors = ["greenhouse", "lever", "ashby", "smartrecruiters", "workable", "bamboohr"];
+    for (const v of vendors) {
+      expect(CANARIES.filter((c) => c.vendor === v).length).toBe(2);
+    }
+    expect(CANARIES.length).toBe(12);
   });
 });

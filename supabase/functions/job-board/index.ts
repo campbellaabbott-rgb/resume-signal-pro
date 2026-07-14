@@ -31,6 +31,7 @@ import {
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
 import { computeFit } from "../_shared/fit-score.ts";
 import { classifyDormancy, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
+import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -876,6 +877,28 @@ Deno.serve(async (req) => {
         recentFailures: Array.isArray(pgV.failedAcc) ? pgV.failedAcc.slice(-10) : [],
         at: new Date().toISOString(),
       });
+    }
+
+    if (action === "vendor-health") {
+      // Schema-drift canary: probe stable reference boards per vendor through the
+      // real fetch+normalize path and compare raw feed items to normalized
+      // postings. Raw present but normalized zero ⇒ that vendor changed its API
+      // and is silently draining off the board. Result cached 30 min so the
+      // heartbeat (every ~10 min) doesn't re-probe vendor APIs each run; force
+      // bypasses the cache for manual checks.
+      const TTL_MS = 30 * 60_000;
+      const { data: cached } = await client.from("job_board_meta").select("v, updated_at").eq("k", "vendor_health").maybeSingle();
+      if (cached && body.force !== true && Date.now() - new Date(cached.updated_at).getTime() < TTL_MS) {
+        return json({ ...(cached.v as Record<string, unknown>), cached: true });
+      }
+      const results: CanaryResult[] = await Promise.all(CANARIES.map(async (c) => {
+        const r = await fetchBoard({ name: c.name, source: c.vendor, token: c.token });
+        return { vendor: c.vendor, token: c.token, fetchOk: r !== null, raw: r ? rawItemCount(c.vendor, r.raw) : 0, normalized: r?.jobs.length ?? 0 };
+      }));
+      const health = aggregateVendorHealth(results);
+      const payload = { ...health, at: new Date().toISOString() };
+      await client.from("job_board_meta").upsert({ k: "vendor_health", v: payload, updated_at: new Date().toISOString() }, { onConflict: "k" });
+      return json(payload);
     }
 
     if (action === "recategorize") {

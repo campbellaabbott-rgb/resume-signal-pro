@@ -290,6 +290,31 @@ serve(async (req) => {
         if (overallStatus === 'healthy') overallStatus = 'degraded';
         errorMessage = errorMessage || `Job board near capacity (${capV.active ? 'governor evicting' : `headroom ${headroom}`})`;
       }
+
+      // Disk headroom: the governor caps ROWS, but nothing watched BYTES on the
+      // 8GB plan — approach disk pressure blind and you discover it under load.
+      // Warn at 70% so the tier gets widened deliberately. If the size RPC isn't
+      // migrated yet, skip silently (not an incident).
+      const { data: sizeStats, error: sizeErr } = await supabase.rpc('get_db_size_stats');
+      if (!sizeErr && sizeStats) {
+        const sz = sizeStats as { db_bytes?: number; postings_bytes?: number };
+        const dbBytes = typeof sz.db_bytes === 'number' ? sz.db_bytes : 0;
+        const PLAN_BYTES = 8 * 1024 * 1024 * 1024; // 8 GB plan
+        const usedPct = dbBytes > 0 ? Math.round((dbBytes / PLAN_BYTES) * 100) : 0;
+        const diskTight = usedPct >= 70;
+        checks.push({
+          name: 'job_board_disk',
+          passed: !diskTight,
+          responseTimeMs: 0,
+          error: diskTight
+            ? `database at ${usedPct}% of the 8GB plan (${(dbBytes / 1e9).toFixed(2)} GB total, postings ${((sz.postings_bytes ?? 0) / 1e9).toFixed(2)} GB) — widen the DB tier before raising the row governor`
+            : undefined,
+        });
+        if (diskTight) {
+          if (overallStatus === 'healthy') overallStatus = 'degraded';
+          errorMessage = errorMessage || `Database near disk cap (${usedPct}% of 8GB)`;
+        }
+      }
     } catch (e) {
       checks.push({
         name: 'job_board_refresh',
@@ -364,6 +389,52 @@ serve(async (req) => {
       });
       if (overallStatus === 'healthy') overallStatus = 'degraded';
       errorMessage = errorMessage || 'Job board status endpoint unreachable';
+    }
+
+    // Check: VENDOR SCHEMA DRIFT. The normalizer tests lock our parsing to fixed
+    // captured payloads — they can't catch a vendor changing its LIVE API, after
+    // which that vendor's feeds fetch fine but normalize to zero and the whole
+    // vendor silently drains off the board. This asks job-board's vendor-health
+    // canary (cached 30 min there) whether any vendor returned raw items that
+    // parsed to nothing. Drift pages; a single unreachable vendor is transient
+    // and only logged.
+    const vendorStart = Date.now();
+    try {
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      let vResp: Response;
+      try {
+        vResp = await fetch(`${supabaseUrl}/functions/v1/job-board`, {
+          method: 'POST',
+          headers: { 'apikey': anonKey, 'Authorization': `Bearer ${anonKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'vendor-health' }),
+          signal: controller.signal,
+        });
+      } finally { clearTimeout(timeoutId); }
+      const vBody = await vResp.json().catch(() => null) as { drifted?: string[]; unreachable?: string[] } | null;
+      const oldBuild = vResp.status === 400; // older bundle without the action — not live yet
+      const drifted = Array.isArray(vBody?.drifted) ? vBody!.drifted : [];
+      const unreachable = Array.isArray(vBody?.unreachable) ? vBody!.unreachable : [];
+      const driftBad = !oldBuild && vResp.ok && drifted.length > 0;
+      checks.push({
+        name: 'job_board_vendors',
+        passed: !driftBad,
+        responseTimeMs: Date.now() - vendorStart,
+        error: driftBad
+          ? `vendor API drift: ${drifted.join(', ')} returned raw postings that normalized to ZERO — the vendor changed its API shape; update the normalizer`
+          : undefined,
+      });
+      if (driftBad) {
+        if (overallStatus === 'healthy') overallStatus = 'degraded';
+        errorMessage = errorMessage || `Job board vendor drift: ${drifted.join(', ')}`;
+      } else if (unreachable.length > 0) {
+        console.log(`[HEARTBEAT] vendor canary: ${unreachable.join(', ')} unreachable this cycle (transient, not paged)`);
+      }
+    } catch (e) {
+      // A failure to reach the canary is not itself a vendor-drift signal; log,
+      // don't page (the deploy/refresh checks already cover a down function).
+      console.log(`[HEARTBEAT] vendor-health check skipped: ${e instanceof Error ? e.message : 'unreachable'}`);
     }
 
     // Check 6: END-TO-END scan through the real deployed function. The
