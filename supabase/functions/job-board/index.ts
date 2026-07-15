@@ -499,8 +499,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             apply_url: j.applyUrl,
             // Salary: the vendor's structured field when present, else mined from
             // the posting's own description text (pay-transparency prose) — always
-            // the company's verbatim words, never an estimate.
-            salary: clean(j.salary?.slice(0, 200) ?? null) ?? (lightDescs ? null : extractSalary(descs.get(j.id) ?? null)),
+            // the company's verbatim words, never an estimate. `|| null` (not ??):
+            // an empty-string vendor salary must not block extraction.
+            salary: (clean(j.salary?.slice(0, 200) ?? null) || null) ?? (lightDescs ? null : extractSalary(descs.get(j.id) ?? null)),
             experience_band: exp.band ?? "unspecified",
             min_years: exp.minYears,
             // Light boards omit the column so previously stored descriptions

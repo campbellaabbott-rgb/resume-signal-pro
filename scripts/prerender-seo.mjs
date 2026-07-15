@@ -843,6 +843,31 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
         }],
       });
     }
+
+    // The Ghost Job Index — the board's public transparency page. Static shell
+    // only (the live stats hydrate client-side); prerendering puts the page in
+    // the sitemap and gives crawlers real head/meta + explainer content.
+    {
+      write({
+        path: "/ghost-job-index",
+        title: "The Ghost Job Index — how many job postings are actually real?",
+        description: "A live, honest look at job-posting freshness: how many roles are open right now, how long postings stay up, how fast roles actually get filled, and which companies are actively hiring — computed from companies' official job boards and audited daily.",
+        content: `
+          <h1>The Ghost Job Index</h1>
+          <p>Ghost jobs — postings that are stale, already filled, or never real — waste job seekers' time everywhere. This page is our live, honest measure of the opposite: postings that are verified, fresh, and from companies actually hiring.</p>
+          <p>Every figure is computed from the full lifecycle of postings on companies' official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — never an aggregator or a scrape. Any role whose posting date passes 30 days is automatically dropped, we log every closure to measure which employers truly fill roles, we sample random listings daily and re-check them against the companies' own systems, and every posting is re-checked live the moment you click Apply.</p>
+          <p><a href="/jobs">Browse the live board</a> — or check any posting against your resume with the <a href="/">free resume scan</a> first.</p>
+        `,
+        jsonLd: [{
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "The Ghost Job Index",
+          description: "A live, honest measure of job-posting freshness and which companies actually fill roles, computed from official company job boards and audited daily.",
+          url: `${SITE}/ghost-job-index`,
+          isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
+        }],
+      });
+    }
   }
 
   // ---- /llms-full.txt: complete citable text in one fetch ----

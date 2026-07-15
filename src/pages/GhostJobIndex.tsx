@@ -54,7 +54,14 @@ export default function GhostJobIndex() {
           (supabase as unknown as { from: (t: string) => { select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: unknown }> } } } })
             .from("job_board_meta").select("v").eq("k", "audit").maybeSingle(),
         ]);
-        const srow = Array.isArray(s.data) ? (s.data[0] as Stats) : null;
+        let srow = Array.isArray(s.data) ? (s.data[0] as Stats) : null;
+        // The stats RPC can time out on a cold cache and succeed warm — one
+        // spaced retry turns a half-blank page into a reliably full one.
+        if (!srow) {
+          await new Promise((r) => setTimeout(r, 1500));
+          const s2 = await rpc("get_ghost_job_index_stats");
+          srow = Array.isArray(s2.data) ? (s2.data[0] as Stats) : null;
+        }
         if (srow) setStats(srow);
         if (Array.isArray(l.data)) setLeaders(l.data as Leader[]);
         const av = (a.data as { v?: AuditResult } | null)?.v;
