@@ -493,8 +493,22 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // the only record these roles were ever open — it powers per-company
         // hiring-health. Best-effort per chunk: the prune (and board freshness)
         // must never be blocked by the history write, so a failed log still deletes.
-        if (vanished.length) {
+        //
+        // Accuracy guards — a "closure" must mean the company took the role down:
+        //  (a) truncated fetches log NOTHING: an SR board at the SR_CAP ceiling has
+        //      postings displaced past the cap "vanish" while still live;
+        //  (b) age-outs are skipped: a posting crossing the 30-day freshness window
+        //      is dropped at ingest and lands in `vanished` — we removed it, nobody
+        //      filled it;
+        //  (c) a closure whose exact title is still live at the same company is
+        //      marked superseded (repost/relisting churn, not a fill) and excluded
+        //      from hiring-health stats.
+        const truncatedFetch = s.source === "smartrecruiters" && rowsById.size >= SR_CAP;
+        if (vanished.length && !truncatedFetch) {
           const closedAt = new Date().toISOString();
+          const liveTitles = new Set(
+            [...rowsById.values()].map((r) => String(r.title ?? "").trim().toLowerCase()).filter(Boolean),
+          );
           for (let i = 0; i < vanished.length; i += 200) {
             const chunk = vanished.slice(i, i + 200);
             try {
@@ -502,9 +516,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
                 .from("job_board_postings")
                 .select("id, source, company_token, company, title, category, first_seen, posted_at")
                 .in("id", chunk);
-              if (toLog && toLog.length) {
+              const rows = ((toLog ?? []) as Array<Record<string, unknown>>).filter((r) => {
+                const posted = r.posted_at ? new Date(String(r.posted_at)).getTime() : NaN;
+                return !(Number.isFinite(posted) && posted < freshCutoffMs); // (b) aged out, not closed
+              });
+              if (rows.length) {
                 await client.from("job_board_closures").insert(
-                  (toLog as Array<Record<string, unknown>>).map((r) => ({
+                  rows.map((r) => ({
                     posting_id: r.id,
                     source: r.source,
                     company_token: r.company_token,
@@ -514,6 +532,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
                     first_seen: r.first_seen ?? null,
                     posted_at: r.posted_at ?? null,
                     closed_at: closedAt,
+                    superseded: liveTitles.has(String(r.title ?? "").trim().toLowerCase()), // (c)
                   })),
                 );
               }
@@ -521,6 +540,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
               console.warn(`[JOB-BOARD] closure log failed for ${s.token} (non-fatal):`, String(e).slice(0, 150));
             }
             await client.from("job_board_postings").delete().in("id", chunk);
+          }
+        } else if (vanished.length) {
+          // Truncated fetch: prune without logging — can't distinguish closed from displaced.
+          for (let i = 0; i < vanished.length; i += 200) {
+            await client.from("job_board_postings").delete().in("id", vanished.slice(i, i + 200));
           }
         }
         okTokens.push(s.token);
