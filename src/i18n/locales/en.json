@@ -3383,6 +3383,14 @@
     "reportMatches": {
       "title": "Your scan report now ends with live job matches",
       "description": "The free scan no longer stops at a score and a fix plan — every report now closes with the top live openings matching your resume, ranked by the same deterministic fit scoring the report itself uses, drawn from the job board's ~40,000 postings and refreshed every ~10 minutes. Salary appears where companies publish it; Apply goes straight to the company's own page. And a free account keeps the whole thing alive between visits: save your resume version and the board ranks every opening against it whenever you return, saved searches count what's new since you last looked, and bookmarked jobs land in your application tracker with fit scores attached."
+    },
+    "boardTenVendors": {
+      "title": "185,000+ verified openings from 12,600+ companies — four new hiring systems added",
+      "description": "The board now reads companies' official feeds on ten hiring systems (Recruitee, Teamtailor, Personio and Breezy join Greenhouse, Lever, Ashby, SmartRecruiters, Workable and BambooHR). Every new company passed the same bar as the rest of the catalog: real corporate employers, verified against their own systems — no aggregators, no staffing mills. Same freshness rules too: nothing older than 30 days, re-checked live when you apply."
+    },
+    "seekerToolkit": {
+      "title": "Salary floors, live pay benchmarks, entry-level rankings, weekly trends — and you can talk back to the board",
+      "description": "You can now filter by a pay floor using only what postings themselves state (hourly and monthly rates annualized, never estimated), and category pages show the live median advertised pay floor once at least 30 postings state pay. Two new public pages: the Entry-Level Index ranks who's actually hiring early-career right now, and Weekly Hiring Trends counts real postings per week — coverage growth can never fake a spike. On the board itself: a skill-unlock insight shows the one missing keyword blocking the most matches, urgency chips flag companies that typically fill fast, repost flags mark serial relisters, you can watch a company, hide postings, and search filters as you type. And if a posting looks wrong, report it — a 'gone' report re-checks it against the company's own board on the spot."
     }
   },
   "sampleReportPreview": {

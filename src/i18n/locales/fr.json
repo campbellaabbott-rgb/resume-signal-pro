@@ -3383,6 +3383,14 @@
     "reportMatches": {
       "title": "Votre rapport de scan se termine désormais par des offres en direct",
       "description": "Le scan gratuit ne s'arrête plus à un score et un plan de correction — chaque rapport se clôt désormais sur les meilleures offres en direct correspondant à votre CV, classées avec le même score d'adéquation déterministe que le rapport lui-même, tirées des ~40 000 offres du job board et rafraîchies toutes les ~10 minutes. Le salaire apparaît quand l'entreprise le publie ; Candidater mène directement à la page de l'entreprise. Et un compte gratuit garde tout cela vivant entre vos visites : enregistrez votre version de CV et le board classe chaque offre contre elle à chaque retour, les recherches enregistrées comptent les nouveautés depuis votre dernier passage, et les offres enregistrées atterrissent dans votre suivi de candidatures avec leur score d'adéquation."
+    },
+    "boardTenVendors": {
+      "title": "Plus de 185 000 offres vérifiées de plus de 12 600 entreprises — quatre nouveaux systèmes de recrutement",
+      "description": "Le tableau lit désormais les flux officiels des entreprises sur dix systèmes de recrutement (Recruitee, Teamtailor, Personio et Breezy rejoignent Greenhouse, Lever, Ashby, SmartRecruiters, Workable et BambooHR). Chaque nouvelle entreprise a passé le même filtre que le reste du catalogue : de vrais employeurs, vérifiés via leurs propres systèmes — sans agrégateurs ni cabinets de placement de masse. Mêmes règles de fraîcheur : rien de plus de 30 jours, re-vérifié en direct au moment de postuler."
+    },
+    "seekerToolkit": {
+      "title": "Salaire plancher, repères de paie en direct, classement junior, tendances hebdo — et vous pouvez répondre au tableau",
+      "description": "Vous pouvez désormais filtrer par salaire plancher en n'utilisant que ce que les offres déclarent elles-mêmes (taux horaires et mensuels annualisés, jamais estimés), et les pages par domaine affichent la médiane du salaire plancher publié dès que 30 offres au moins déclarent une paie. Deux nouvelles pages publiques : l'Index Junior classe qui recrute vraiment en début de carrière en ce moment, et les Tendances Hebdomadaires comptent les vraies offres par semaine — la croissance de notre couverture ne peut jamais simuler un pic. Sur le tableau : l'analyse de compétence clé montre le mot-clé manquant qui bloque le plus de correspondances, des pastilles d'urgence signalent les entreprises qui pourvoient vite, des marqueurs de republication repèrent les relisteurs en série, vous pouvez suivre une entreprise, masquer des offres, et la recherche filtre pendant la frappe. Et si une offre semble fausse, signalez-la — un signalement « disparue » la re-vérifie immédiatement auprès du site de l'entreprise."
     }
   },
   "sampleReportPreview": {

@@ -3383,6 +3383,14 @@
     "reportMatches": {
       "title": "Ihr Scan-Bericht endet jetzt mit Live-Job-Treffern",
       "description": "Der Gratis-Scan endet nicht mehr bei Score und Fix-Plan — jeder Bericht schließt jetzt mit den besten Live-Stellen, die zu Ihrem Lebenslauf passen, gerankt mit demselben deterministischen Passungswert, den der Bericht selbst nutzt, gezogen aus den ~40.000 Stellen der Jobbörse und ca. alle 10 Minuten aktualisiert. Gehalt erscheint, wo Unternehmen es veröffentlichen; Bewerben führt direkt zur Unternehmensseite. Und ein kostenloses Konto hält alles zwischen den Besuchen lebendig: Speichern Sie Ihre Lebenslauf-Version und die Börse rankt bei jeder Rückkehr jede Stelle dagegen, gespeicherte Suchen zählen Neues seit Ihrem letzten Blick, und gemerkte Jobs landen mit Passungswert im Bewerbungstracker."
+    },
+    "boardTenVendors": {
+      "title": "Über 185.000 verifizierte Stellen von über 12.600 Unternehmen — vier neue Bewerbungssysteme",
+      "description": "Das Board liest jetzt die offiziellen Feeds der Unternehmen auf zehn Bewerbungssystemen (Recruitee, Teamtailor, Personio und Breezy ergänzen Greenhouse, Lever, Ashby, SmartRecruiters, Workable und BambooHR). Jedes neue Unternehmen musste dieselben Kriterien erfüllen wie der Rest des Katalogs: echte Arbeitgeber, verifiziert über ihre eigenen Systeme — keine Aggregatoren, keine Massenvermittler. Gleiche Frische-Regeln: nichts älter als 30 Tage, live erneut geprüft, wenn Sie sich bewerben."
+    },
+    "seekerToolkit": {
+      "title": "Gehaltsuntergrenzen, Live-Gehaltsbenchmarks, Einsteiger-Ranking, Wochentrends — und Sie können dem Board antworten",
+      "description": "Sie können jetzt nach einer Gehaltsuntergrenze filtern, basierend nur auf dem, was die Stellenanzeigen selbst angeben (Stunden- und Monatssätze aufs Jahr gerechnet, nie geschätzt), und Kategorieseiten zeigen den Live-Median der ausgeschriebenen Untergrenze, sobald mindestens 30 Anzeigen ein Gehalt nennen. Zwei neue öffentliche Seiten: der Einsteiger-Index zeigt, wer gerade wirklich Berufseinsteiger einstellt, und die wöchentlichen Hiring-Trends zählen echte Anzeigen pro Woche — Katalogwachstum kann nie einen Anstieg vortäuschen. Auf dem Board selbst: Der Skill-Unlock-Hinweis zeigt das eine fehlende Stichwort, das die meisten Matches blockiert, Dringlichkeits-Chips markieren Unternehmen, die schnell besetzen, Repost-Hinweise kennzeichnen Serien-Wiedereinsteller, Sie können Unternehmen beobachten, Anzeigen ausblenden, und die Suche filtert beim Tippen. Und wenn eine Anzeige falsch aussieht: melden — eine „weg“-Meldung prüft sie sofort live gegen das Board des Unternehmens."
     }
   },
   "sampleReportPreview": {

@@ -3383,6 +3383,14 @@
     "reportMatches": {
       "title": "Seu relatório de escaneio agora termina com vagas ao vivo",
       "description": "O escaneio grátis não para mais na pontuação e no plano de ajustes — cada relatório agora fecha com as melhores vagas ao vivo que combinam com seu currículo, classificadas com a mesma pontuação determinística que o próprio relatório usa, tiradas das ~40.000 vagas do mural e atualizadas a cada ~10 minutos. O salário aparece quando a empresa publica; Candidatar leva direto à página da empresa. E uma conta gratuita mantém tudo vivo entre as visitas: salve sua versão do currículo e o mural classifica cada vaga contra ela quando você voltar, buscas salvas contam o que há de novo desde a última olhada, e vagas salvas caem no seu rastreador de candidaturas com a pontuação de encaixe."
+    },
+    "boardTenVendors": {
+      "title": "Mais de 185.000 vagas verificadas de mais de 12.600 empresas — quatro novos sistemas de contratação",
+      "description": "O quadro agora lê os feeds oficiais das empresas em dez sistemas de contratação (Recruitee, Teamtailor, Personio e Breezy juntam-se a Greenhouse, Lever, Ashby, SmartRecruiters, Workable e BambooHR). Cada nova empresa passou pelo mesmo critério do resto do catálogo: empregadores corporativos reais, verificados nos próprios sistemas — sem agregadores, sem agências de recrutamento em massa. Mesmas regras de atualidade: nada com mais de 30 dias, re-verificado ao vivo quando você se candidata."
+    },
+    "seekerToolkit": {
+      "title": "Piso salarial, referências de pagamento ao vivo, ranking de nível inicial, tendências semanais — e você pode responder ao quadro",
+      "description": "Agora você pode filtrar por um piso salarial usando apenas o que as próprias vagas declaram (valores por hora e por mês anualizados, nunca estimados), e as páginas por área mostram a mediana do piso salarial anunciado quando pelo menos 30 vagas declaram remuneração. Duas novas páginas públicas: o Índice de Nível Inicial classifica quem está de fato contratando início de carreira agora, e as Tendências Semanais de Contratação contam vagas reais por semana — o crescimento da cobertura nunca pode simular um pico. No próprio quadro: o insight de habilidade-chave mostra a palavra que desbloquearia mais matches, selos de urgência sinalizam empresas que preenchem rápido, marcações de repostagem apontam quem relista em série, você pode acompanhar uma empresa, ocultar vagas, e a busca filtra enquanto digita. E se uma vaga parecer errada, denuncie — uma denúncia de 'não existe mais' re-verifica na hora contra o quadro da própria empresa."
     }
   },
   "sampleReportPreview": {

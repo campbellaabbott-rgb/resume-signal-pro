@@ -3383,6 +3383,14 @@
     "reportMatches": {
       "title": "Tu informe de escaneo ahora termina con ofertas en vivo",
       "description": "El escaneo gratuito ya no se detiene en una puntuación y un plan de mejoras — cada informe cierra ahora con las mejores ofertas en vivo que encajan con tu currículum, ordenadas con la misma puntuación determinista que usa el propio informe, extraídas de las ~40.000 ofertas de la bolsa y actualizadas cada ~10 minutos. El salario aparece cuando la empresa lo publica; Postular lleva directo a la página de la empresa. Y una cuenta gratuita mantiene todo vivo entre visitas: guarda tu versión del currículum y la bolsa ordena cada oferta contra ella cuando vuelvas, las búsquedas guardadas cuentan las novedades desde tu última visita, y los empleos guardados aterrizan en tu registro de candidaturas con su puntuación de encaje."
+    },
+    "boardTenVendors": {
+      "title": "Más de 185.000 vacantes verificadas de más de 12.600 empresas — cuatro nuevos sistemas de contratación",
+      "description": "El tablero ahora lee los feeds oficiales de las empresas en diez sistemas de contratación (Recruitee, Teamtailor, Personio y Breezy se suman a Greenhouse, Lever, Ashby, SmartRecruiters, Workable y BambooHR). Cada empresa nueva pasó el mismo filtro que el resto del catálogo: empleadores corporativos reales, verificados contra sus propios sistemas — sin agregadores ni agencias masivas. Y con las mismas reglas de frescura: nada con más de 30 días, re-verificado en vivo al postularte."
+    },
+    "seekerToolkit": {
+      "title": "Piso salarial, referencias de pago en vivo, ranking de nivel inicial, tendencias semanales — y ahora puedes responderle al tablero",
+      "description": "Ya puedes filtrar por un piso salarial usando solo lo que las propias vacantes declaran (tarifas por hora y mes anualizadas, nunca estimadas), y las páginas por campo muestran la mediana del piso salarial publicado cuando al menos 30 vacantes declaran pago. Dos páginas públicas nuevas: el Índice de Nivel Inicial clasifica quién contrata de verdad perfiles junior ahora mismo, y Tendencias Semanales de Contratación cuenta vacantes reales por semana — el crecimiento de cobertura nunca puede fingir un pico. En el tablero: el insight de habilidad clave muestra la palabra que más matches te desbloquearía, chips de urgencia señalan empresas que suelen cubrir rápido, marcas de republicación identifican a quienes relistan en serie, puedes seguir una empresa, ocultar vacantes y la búsqueda filtra mientras escribes. Y si una vacante se ve mal, repórtala — un reporte de 'ya no existe' la re-verifica al instante contra el tablero de la propia empresa."
     }
   },
   "sampleReportPreview": {

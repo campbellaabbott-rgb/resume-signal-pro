@@ -3383,6 +3383,14 @@
     "reportMatches": {
       "title": "Je scanrapport eindigt nu met live vacaturematches",
       "description": "De gratis scan stopt niet meer bij een score en een fixplan — elk rapport sluit nu af met de beste live vacatures die bij je cv passen, gerangschikt met dezelfde deterministische matchscore die het rapport zelf gebruikt, uit de ~40.000 vacatures van de bank en elke ~10 minuten ververst. Salaris verschijnt waar bedrijven het publiceren; Solliciteer gaat rechtstreeks naar de bedrijfspagina. En een gratis account houdt alles levend tussen bezoeken: bewaar je cv-versie en de bank rangschikt elke vacature ertegen wanneer je terugkomt, opgeslagen zoekopdrachten tellen wat er nieuw is sinds je laatste bezoek, en gebookmarkte banen belanden met matchscore in je sollicitatietracker."
+    },
+    "boardTenVendors": {
+      "title": "185.000+ geverifieerde vacatures van 12.600+ bedrijven — vier nieuwe wervingssystemen toegevoegd",
+      "description": "Het bord leest nu de officiële feeds van bedrijven op tien wervingssystemen (Recruitee, Teamtailor, Personio en Breezy naast Greenhouse, Lever, Ashby, SmartRecruiters, Workable en BambooHR). Elk nieuw bedrijf voldeed aan dezelfde eisen als de rest van de catalogus: echte werkgevers, geverifieerd via hun eigen systemen — geen aggregators, geen massale uitzendbureaus. Dezelfde versheidsregels: niets ouder dan 30 dagen, live opnieuw gecheckt op het moment dat je solliciteert."
+    },
+    "seekerToolkit": {
+      "title": "Salarisondergrenzen, live loonbenchmarks, startersranking, wekelijkse trends — en je kunt terugpraten tegen het bord",
+      "description": "Je kunt nu filteren op een salarisondergrens op basis van alleen wat vacatures zelf vermelden (uur- en maandtarieven omgerekend naar jaarbasis, nooit geschat), en categoriepagina's tonen de live mediaan van de geadverteerde ondergrens zodra minstens 30 vacatures loon vermelden. Twee nieuwe openbare pagina's: de Starters-Index rangschikt wie er nu écht starters aanneemt, en Wekelijkse Wervingstrends telt echte vacatures per week — groei van onze dekking kan nooit een piek faken. Op het bord zelf: de skill-unlock-inzicht toont het ene ontbrekende trefwoord dat de meeste matches blokkeert, urgentie-chips markeren bedrijven die snel invullen, repost-markeringen wijzen serie-herplaatsers aan, je kunt een bedrijf volgen, vacatures verbergen, en zoeken filtert terwijl je typt. En ziet een vacature er fout uit? Meld het — een 'verdwenen'-melding checkt hem direct live bij het bord van het bedrijf zelf."
     }
   },
   "sampleReportPreview": {
