@@ -151,6 +151,10 @@ export default function Jobs() {
   const [coverOpen, setCoverOpen] = useState(false);
   const [coverLoading, setCoverLoading] = useState(false);
   const [coverText, setCoverText] = useState<string | null>(null);
+  // Likely interview questions for the role (generate-interview-coach, deployed).
+  const [coachOpen, setCoachOpen] = useState(false);
+  const [coachLoading, setCoachLoading] = useState(false);
+  const [coachQuestions, setCoachQuestions] = useState<Array<{ category?: string; question: string; whyAsked?: string }> | null>(null);
 
   // Which postings are already in the user's application tracker.
   useEffect(() => {
@@ -531,6 +535,39 @@ export default function Jobs() {
       setCoverOpen(false);
     } finally {
       setCoverLoading(false);
+    }
+  };
+
+  // Likely interview questions for the posting open in the prepare modal, grounded
+  // in the résumé + target role by the already-deployed generate-interview-coach.
+  const prepInterview = async () => {
+    if (coachLoading || !prepareJob || !fitResume.current) return;
+    setCoachOpen(true);
+    setCoachLoading(true);
+    setCoachQuestions(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-interview-coach", {
+        body: { resumeText: fitResume.current, targetRole: prepareJob.job.title, mode: "generate" },
+      });
+      const d = data as { success?: boolean; data?: { questions?: Array<{ category?: string; question?: string; whyAsked?: string }> } } | null;
+      const qs = d?.data?.questions;
+      if (error || !d?.success || !Array.isArray(qs) || qs.length === 0) {
+        const status = (error as { context?: { status?: number } })?.context?.status;
+        toast({
+          title: status === 429 ? t("jobsPage.coachBusyTitle", "Busy right now") : t("jobsPage.coachErrorTitle", "Couldn't prep interview questions"),
+          description: status === 429
+            ? t("jobsPage.coachBusy", "The interview coach is busy — try again in a moment.")
+            : t("jobsPage.coachError", "Something went wrong preparing questions. Please try again."),
+        });
+        setCoachOpen(false);
+        return;
+      }
+      setCoachQuestions(qs.filter((x): x is { category?: string; question: string; whyAsked?: string } => typeof x?.question === "string" && !!x.question.trim()));
+    } catch {
+      toast({ title: t("jobsPage.coachErrorTitle", "Couldn't prep interview questions"), description: t("jobsPage.coachError", "Something went wrong preparing questions. Please try again.") });
+      setCoachOpen(false);
+    } finally {
+      setCoachLoading(false);
     }
   };
 
@@ -1169,6 +1206,10 @@ export default function Jobs() {
                   {coverLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
                   {t("jobsPage.coverLetter", "Draft a cover letter")}
                 </Button>
+                <Button size="sm" variant="outline" className="gap-1.5" disabled={coachLoading} onClick={prepInterview}>
+                  {coachLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
+                  {t("jobsPage.prepInterview", "Prep interview questions")}
+                </Button>
                 <a
                   href={prepareJob.job.applyUrl}
                   target="_blank"
@@ -1214,6 +1255,37 @@ export default function Jobs() {
               >
                 <Copy className="w-3.5 h-3.5" /> {t("jobsPage.copyCoverLetter", "Copy cover letter")}
               </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={coachOpen} onOpenChange={(o) => { if (!o) setCoachOpen(false); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t("jobsPage.coachTitle", "Likely interview questions")}</DialogTitle>
+            <DialogDescription>{t("jobsPage.coachSubtitle", "Grounded in your résumé for this role — practice these before you apply, so the interview isn't the first time you answer them.")}</DialogDescription>
+          </DialogHeader>
+          {coachLoading && (
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" /> {t("jobsPage.coachLoading", "Preparing your questions…")}
+            </div>
+          )}
+          {!coachLoading && coachQuestions && (
+            <div className="space-y-2.5">
+              {coachQuestions.map((qq, i) => (
+                <div key={i} className="rounded-lg border border-border/60 bg-background p-2.5">
+                  {qq.category && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary">{qq.category}</span>
+                  )}
+                  <p className="text-[13px] font-medium text-foreground mt-1">{qq.question}</p>
+                  {qq.whyAsked && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      <span className="font-medium">{t("jobsPage.coachWhy", "Why they ask:")}</span> {qq.whyAsked}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </DialogContent>
