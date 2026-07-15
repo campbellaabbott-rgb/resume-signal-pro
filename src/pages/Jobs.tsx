@@ -786,6 +786,40 @@ export default function Jobs() {
     return { strong, possible, scored };
   }, [fitRanking, jobs, fits]);
 
+  // Skill-unlock: the single missing keyword that appears across the most of
+  // the user's scored postings, weighted toward near-misses (Possible band —
+  // the ones closest to becoming Strong). Honest framing only: we report where
+  // the keyword is missing, never a promised tier jump (the client can't
+  // recompute exact coverage). Floor of 3 occurrences — no advice off noise.
+  // JD boilerplate is excluded: "add requirements to your résumé" is not advice.
+  const JD_NOISE = useMemo(() => new Set([
+    "requirements", "requirement", "responsibilities", "responsibility", "qualifications",
+    "qualification", "benefits", "description", "opportunity", "opportunities", "candidate",
+    "candidates", "applicant", "applicants", "employment", "position", "positions", "duties",
+    "role", "roles", "job", "jobs", "salary", "compensation", "company", "employer",
+  ]), []);
+  const skillUnlock = useMemo(() => {
+    if (!fitRanking) return null;
+    const counts = new Map<string, { n: number; possible: number }>();
+    for (const j of jobs) {
+      const f = fits[j.id];
+      const miss = misses[j.id];
+      if (typeof f !== "number" || !miss) continue;
+      for (const k of miss) {
+        if (JD_NOISE.has(k.toLowerCase().trim())) continue;
+        const e = counts.get(k) ?? { n: 0, possible: 0 };
+        e.n++;
+        if (f >= 10 && f < 20) e.possible++;
+        counts.set(k, e);
+      }
+    }
+    let best: { k: string; n: number; possible: number } | null = null;
+    for (const [k, e] of counts) {
+      if (!best || e.possible > best.possible || (e.possible === best.possible && e.n > best.n)) best = { k, ...e };
+    }
+    return best && best.n >= 3 ? best : null;
+  }, [fitRanking, jobs, fits, misses, JD_NOISE]);
+
   // Per-company open-role counts from the (global) company facet, so each card
   // can show a hiring-intent signal. The facet holds the top companies by count —
   // exactly the ones where "actively hiring" is worth surfacing; smaller ones
@@ -1095,6 +1129,23 @@ export default function Jobs() {
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {t("jobsPage.fitSummaryHow", "Ranked to the top by how well your resume covers each posting's keywords — open any card to see what to add.")}
                     </p>
+                    {/* Skill-unlock: the highest-leverage missing keyword across
+                        the user's scored postings. Honest counts, no promised
+                        tier jumps; links into the scanner/builder loop. */}
+                    {skillUnlock && (
+                      <p className="text-xs mt-1.5">
+                        <span className="font-semibold text-primary">{t("jobsPage.skillUnlockLead", "Skill unlock:")}</span>{" "}
+                        <span className="text-foreground font-medium">{skillUnlock.k}</span>{" "}
+                        <span className="text-muted-foreground">
+                          {skillUnlock.possible > 0
+                            ? t("jobsPage.skillUnlockPossible", "is missing from {{n}} of these postings — including {{p}} where you're already a possible match.", { n: skillUnlock.n, p: skillUnlock.possible })
+                            : t("jobsPage.skillUnlockPlain", "is missing from {{n}} of these postings.", { n: skillUnlock.n })}
+                        </span>{" "}
+                        <Link to="/#upload" className="text-primary hover:underline">
+                          {t("jobsPage.skillUnlockCta", "Have it? Add it to your resume honestly →")}
+                        </Link>
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

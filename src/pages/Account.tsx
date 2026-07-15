@@ -153,6 +153,23 @@ export default function Account() {
     if (shown.length === 0) return null;
     return { applied: applied.length, tiers, shown };
   }, [applications]);
+  // Skill-gap insight: the missing keywords that recur across the postings this
+  // user actually pursued — the highest-signal "what to add" there is, because
+  // it's drawn from their own targets, not a generic list. Floors: ≥3 apps with
+  // fit data, keyword must recur (≥2) — no advice off a single posting.
+  const skillGap = useMemo(() => {
+    const counts = new Map<string, number>();
+    let withFit = 0;
+    for (const a of applications) {
+      const miss = a.fit_missing;
+      if (!Array.isArray(miss) || miss.length === 0) continue;
+      withFit++;
+      for (const k of miss) counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    if (withFit < 3) return null;
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).filter(([, n]) => n >= 2).slice(0, 3);
+    return top.length > 0 ? { top, withFit } : null;
+  }, [applications]);
   const [targetScore, setTargetScore] = useState<number | null>(null);
   const [fetching, setFetching] = useState(true);
   const [compareIds, setCompareIds] = useState<string[]>([]);
@@ -842,6 +859,26 @@ export default function Account() {
                   Your higher-fit applications convert to interviews more often — spend your energy where you actually match.
                 </p>
               )}
+            </div>
+          )}
+          {skillGap && (
+            <div className="rounded-xl border border-border bg-muted/30 p-3 mb-3">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <Target className="w-4 h-4 text-primary" /> Your skill gaps, from your own applications
+              </h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                The keywords most often missing across the {skillGap.withFit} postings you checked your fit against:
+              </p>
+              <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                {skillGap.top.map(([k, n]) => (
+                  <li key={k} className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                    {k} <span className="text-muted-foreground font-normal">· {n}×</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                If you genuinely have these, put them on your résumé — <Link to="/#upload" className="text-primary hover:underline">rescan to see the difference</Link>. If not, they're your clearest learning targets.
+              </p>
             </div>
           )}
           {applications.length === 0 ? (
