@@ -324,6 +324,159 @@ export function normalizeBambooHR(raw: { result?: BambooJob[] }, company: string
     .filter((j) => j.applyUrl !== "");
 }
 
+// ── Rung-3 vendors ──────────────────────────────────────────────────────────
+// Two of these feeds are XML (Personio's official feed, Teamtailor's RSS), so a
+// pair of tiny CDATA-aware helpers stands in for a parser dependency. They only
+// need to handle the well-formed, machine-generated feeds these vendors emit.
+
+/** All <tag>…</tag> block contents in document order. */
+export function xmlBlocks(xml: string, tag: string): string[] {
+  const out: string[] = [];
+  const re = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`, "gi");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(xml)) !== null) out.push(m[1]);
+  return out;
+}
+
+/** First <tag> value inside a block, CDATA unwrapped, trimmed; null if absent. */
+export function xmlValue(block: string, tag: string): string | null {
+  const m = block.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`, "i"));
+  if (!m) return null;
+  const v = m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").trim();
+  return v || null;
+}
+
+interface RecruiteeOffer {
+  id: string | number;
+  slug?: string | null;
+  title?: string | null;
+  department?: string | null;
+  city?: string | null;
+  country?: string | null;
+  location?: string | null;
+  remote?: boolean | null;
+  careers_url?: string | null;
+  published_at?: string | null;
+  created_at?: string | null;
+  salary?: { min?: string | number | null; max?: string | number | null; type?: string | null; currency?: string | null } | null;
+}
+
+export function normalizeRecruitee(raw: { offers?: RecruiteeOffer[] }, company: string, token: string): JobPosting[] {
+  return (raw.offers ?? [])
+    .map((o) => {
+      const location = o.location || [o.city, o.country].filter(Boolean).join(", ");
+      const sal = o.salary;
+      const salary = sal && sal.min && sal.max
+        ? `${sal.currency ? sal.currency + " " : ""}${sal.min} - ${sal.max}${sal.type ? ` ${sal.type}` : ""}`.trim()
+        : null;
+      return {
+        id: `recruitee:${token}:${o.id}`,
+        source: "recruitee" as const,
+        token,
+        company,
+        title: o.title ?? "",
+        location,
+        remote: o.remote === true || looksRemote(location) || looksRemote(o.title ?? ""),
+        department: o.department ?? null,
+        postedAt: safeIso(o.published_at ?? o.created_at),
+        category: categorize(o.title ?? "", o.department),
+        salary,
+        applyUrl: safeUrl(o.careers_url ?? (o.slug ? `https://${token}.recruitee.com/o/${o.slug}` : "")),
+      };
+    })
+    .filter((j) => j.applyUrl !== "" && j.title !== "");
+}
+
+/** Personio's official XML feed ({token}.jobs.personio.de/xml). `host` is the
+ *  feed host that answered (.de or .com) so Apply lands on the right domain. */
+export function normalizePersonio(xml: string, company: string, token: string, host: string): JobPosting[] {
+  return xmlBlocks(xml, "position")
+    .map((block) => {
+      const id = xmlValue(block, "id") ?? "";
+      const title = xmlValue(block, "name") ?? "";
+      const office = xmlValue(block, "office") ?? "";
+      const department = xmlValue(block, "department");
+      const schedule = xmlValue(block, "schedule") ?? "";
+      return {
+        id: `personio:${token}:${id}`,
+        source: "personio" as const,
+        token,
+        company,
+        title,
+        location: office,
+        remote: looksRemote(office) || looksRemote(title) || /remote/i.test(schedule),
+        department,
+        postedAt: safeIso(xmlValue(block, "createdAt")),
+        category: categorize(title, department),
+        salary: null, // the feed carries no compensation field
+        applyUrl: id ? safeUrl(`https://${token}.${host}/job/${id}`) : "",
+      };
+    })
+    .filter((j) => j.applyUrl !== "" && j.title !== "");
+}
+
+interface BreezyPosition {
+  id?: string | null;
+  friendly_id?: string | null;
+  name?: string | null;
+  published_date?: string | null;
+  creation_date?: string | null;
+  location?: { name?: string | null; is_remote?: boolean | null } | null;
+  department?: string | null;
+  url?: string | null;
+}
+
+export function normalizeBreezy(raw: BreezyPosition[], company: string, token: string): JobPosting[] {
+  return (Array.isArray(raw) ? raw : [])
+    .map((p) => {
+      const externalId = p.friendly_id || p.id || "";
+      const location = p.location?.name ?? "";
+      return {
+        id: `breezy:${token}:${externalId}`,
+        source: "breezy" as const,
+        token,
+        company,
+        title: p.name ?? "",
+        location,
+        remote: p.location?.is_remote === true || looksRemote(location) || looksRemote(p.name ?? ""),
+        department: p.department ?? null,
+        postedAt: safeIso(p.published_date ?? p.creation_date),
+        category: categorize(p.name ?? "", p.department),
+        salary: null,
+        applyUrl: safeUrl(p.url ?? (externalId ? `https://${token}.breezy.hr/p/${externalId}` : "")),
+      };
+    })
+    .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `breezy:${token}:`);
+}
+
+/** Teamtailor career-site RSS ({token}.teamtailor.com/jobs.rss). The feed is
+ *  title/link/pubDate only — location isn't structured, so it stays honest-empty
+ *  unless the title itself says remote. External id = the numeric slug prefix. */
+export function normalizeTeamtailor(rss: string, company: string, token: string): JobPosting[] {
+  return xmlBlocks(rss, "item")
+    .map((item) => {
+      const title = xmlValue(item, "title") ?? "";
+      const link = xmlValue(item, "link") ?? "";
+      const idMatch = link.match(/\/jobs\/(\d+)/);
+      const externalId = idMatch ? idMatch[1] : "";
+      return {
+        id: `teamtailor:${token}:${externalId}`,
+        source: "teamtailor" as const,
+        token,
+        company,
+        title,
+        location: "",
+        remote: looksRemote(title),
+        department: null,
+        postedAt: safeIso(xmlValue(item, "pubDate")),
+        category: categorize(title, null),
+        salary: null,
+        applyUrl: safeUrl(link),
+      };
+    })
+    .filter((j) => j.applyUrl !== "" && j.title !== "" && !j.id.endsWith(":"));
+}
+
 export interface JobFilter {
   q?: string;
   location?: string;

@@ -19,10 +19,16 @@ import {
   htmlToText,
   normalizeAshby,
   normalizeBambooHR,
+  normalizeBreezy,
   normalizeGreenhouse,
   normalizeLever,
+  normalizePersonio,
+  normalizeRecruitee,
   normalizeSmartRecruiters,
+  normalizeTeamtailor,
   normalizeWorkable,
+  xmlBlocks,
+  xmlValue,
   POSTED_AT_MAX_AGE_MS,
   sanePostedAt,
   isDatedBefore,
@@ -106,7 +112,13 @@ const listUrl = (s: JobSource) =>
           ? `https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=100`
           : s.source === "workable"
             ? `https://apply.workable.com/api/v1/widget/accounts/${s.token}?details=false`
-            : `https://${s.token}.bamboohr.com/careers/list`;
+            : s.source === "recruitee"
+              ? `https://${s.token}.recruitee.com/api/offers/`
+              : s.source === "breezy"
+                ? `https://${s.token}.breezy.hr/json`
+                : s.source === "teamtailor"
+                  ? `https://${s.token}.teamtailor.com/jobs.rss`
+                  : `https://${s.token}.bamboohr.com/careers/list`;
 
 // SmartRecruiters paginates 100/page. With ~1,000 SR boards now in the pool, an
 // unbounded cap could let one giant board's pagination wedge a cold hop under
@@ -141,9 +153,36 @@ async function fetchWithTimeout(url: string): Promise<Response> {
   }
 }
 
+// Personio publishes the same official feed on two hosts depending on the
+// company's region setup — try .de first (the majority), fall back to .com.
+// The winning host is carried so Apply links land on the right domain.
+async function fetchPersonio(s: JobSource): Promise<{ xml: string; host: string }> {
+  for (const host of ["jobs.personio.de", "jobs.personio.com"]) {
+    try {
+      const res = await fetchWithTimeout(`https://${s.token}.${host}/xml`);
+      if (res.ok) {
+        const xml = await res.text();
+        if (xml.includes("<position")) return { xml, host };
+      }
+    } catch { /* try the other host */ }
+  }
+  throw new Error("personio feed unavailable on .de/.com");
+}
+
 /** Fetch + normalize one board. Returns null on failure (caller decides). */
 async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unknown } | null> {
   try {
+    // XML vendors first — their raw payload is text, not JSON.
+    if (s.source === "personio") {
+      const { xml, host } = await fetchPersonio(s);
+      return { jobs: normalizePersonio(xml, s.name, s.token, host), raw: xml };
+    }
+    if (s.source === "teamtailor") {
+      const res = await fetchWithTimeout(listUrl(s));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const rss = await res.text();
+      return { jobs: normalizeTeamtailor(rss, s.name, s.token), raw: rss };
+    }
     const raw = s.source === "smartrecruiters" ? await fetchSmartRecruiters(s) : await (async () => {
       const res = await fetchWithTimeout(listUrl(s));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -160,7 +199,11 @@ async function fetchBoard(s: JobSource): Promise<{ jobs: JobPosting[]; raw: unkn
               ? normalizeSmartRecruiters(raw, s.name, s.token)
               : s.source === "workable"
                 ? normalizeWorkable(raw, s.name, s.token)
-                : normalizeBambooHR(raw, s.name, s.token);
+                : s.source === "recruitee"
+                  ? normalizeRecruitee(raw, s.name, s.token)
+                  : s.source === "breezy"
+                    ? normalizeBreezy(raw, s.name, s.token)
+                    : normalizeBambooHR(raw, s.name, s.token);
     return { jobs, raw };
   } catch (e) {
     console.warn(`[JOB-BOARD] board ${s.source}:${s.token} failed:`, String(e).slice(0, 100));
@@ -402,6 +445,30 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           for (const j of ((r.raw as { jobs?: Array<{ id: number; content?: string }> }).jobs ?? [])) {
             const text = j.content ? htmlToText(String(j.content).slice(0, 12000)).trim() : "";
             if (text) descs.set(`greenhouse:${s.token}:${j.id}`, text.slice(0, 4000));
+          }
+        } else if (s.source === "recruitee") {
+          for (const o of ((r.raw as { offers?: Array<{ id: string | number; description?: string; requirements?: string }> }).offers ?? [])) {
+            const text = htmlToText([o.description, o.requirements].filter(Boolean).join("\n").slice(0, 12000)).trim();
+            if (text) descs.set(`recruitee:${s.token}:${o.id}`, text.slice(0, 4000));
+          }
+        } else if (s.source === "breezy") {
+          for (const p of ((Array.isArray(r.raw) ? r.raw : []) as Array<{ id?: string; friendly_id?: string; description?: string }>)) {
+            const externalId = p.friendly_id || p.id || "";
+            const text = p.description ? htmlToText(String(p.description).slice(0, 12000)).trim() : "";
+            if (externalId && text) descs.set(`breezy:${s.token}:${externalId}`, text.slice(0, 4000));
+          }
+        } else if (s.source === "personio" && typeof r.raw === "string") {
+          for (const block of xmlBlocks(r.raw, "position")) {
+            const pid = xmlValue(block, "id");
+            const text = htmlToText(xmlBlocks(block, "jobDescription").map((d) => xmlValue(d, "value") ?? "").join("\n").slice(0, 12000)).trim();
+            if (pid && text) descs.set(`personio:${s.token}:${pid}`, text.slice(0, 4000));
+          }
+        } else if (s.source === "teamtailor" && typeof r.raw === "string") {
+          for (const item of xmlBlocks(r.raw, "item")) {
+            const link = xmlValue(item, "link") ?? "";
+            const idMatch = link.match(/\/jobs\/(\d+)/);
+            const text = htmlToText((xmlValue(item, "description") ?? "").slice(0, 12000)).trim();
+            if (idMatch && text) descs.set(`teamtailor:${s.token}:${idMatch[1]}`, text.slice(0, 4000));
           }
         }
         const clean = (x: string | null | undefined) => (x == null ? null : x.replace(/\u0000/g, ""));

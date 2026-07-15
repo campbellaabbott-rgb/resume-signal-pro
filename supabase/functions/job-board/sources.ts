@@ -5,10 +5,16 @@
 //   Greenhouse: https://boards-api.greenhouse.io/v1/boards/{token}/jobs
 //   Lever:      https://api.lever.co/v0/postings/{token}?mode=json
 //   Ashby:      https://api.ashbyhq.com/posting-api/job-board/{token}
+//   Recruitee:  https://{token}.recruitee.com/api/offers/
+//   Personio:   https://{token}.jobs.personio.de/xml (.com fallback)
+//   Breezy:     https://{token}.breezy.hr/json
+//   Teamtailor: https://{token}.teamtailor.com/jobs.rss
 // Tokens rot when companies migrate ATSs; the fetcher tolerates failures and
 // reports failedSources so a dead token degrades, never breaks, the board.
 
-export type JobSourceKind = "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "workable" | "bamboohr";
+export type JobSourceKind =
+  | "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "workable" | "bamboohr"
+  | "recruitee" | "teamtailor" | "personio" | "breezy";
 
 export interface JobSource {
   name: string; // display name
