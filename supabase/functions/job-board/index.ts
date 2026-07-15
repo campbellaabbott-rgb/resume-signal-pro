@@ -55,7 +55,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-14.1";
+const BUILD_VERSION = "2026-07-15.1";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -667,10 +667,21 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   if (okTokens.length > 0) {
     try {
       const stampedAt = new Date().toISOString();
-      await client.from("job_board_verifications").upsert(
-        okTokens.map((tk) => ({ company_token: tk, verified_at: stampedAt })),
+      const { error: stampErr } = await client.from("job_board_verifications").upsert(
+        [...new Set(okTokens)].map((tk) => ({ company_token: tk, verified_at: stampedAt })),
         { onConflict: "company_token" },
       );
+      // supabase-js returns errors, it doesn't throw — the old catch-only guard
+      // swallowed every failure invisibly (stamps sat at zero with no trace).
+      // Surface the last error into public-readable meta so it can be diagnosed
+      // with a plain REST read, no function-log access needed.
+      if (stampErr) {
+        console.warn("[JOB-BOARD] verification stamp failed (non-fatal):", stampErr.message?.slice(0, 150));
+        await client.from("job_board_meta").upsert(
+          { k: "verification_stamp_error", v: { at: stampedAt, message: String(stampErr.message ?? stampErr).slice(0, 300) }, updated_at: stampedAt },
+          { onConflict: "k" },
+        );
+      }
     } catch (e) {
       console.warn("[JOB-BOARD] verification stamp failed (non-fatal):", String(e).slice(0, 120));
     }
