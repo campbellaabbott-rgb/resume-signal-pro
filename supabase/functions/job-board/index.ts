@@ -55,7 +55,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-15.2";
+const BUILD_VERSION = "2026-07-15.3";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -620,6 +620,24 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           }
         }
         okTokens.push(s.token);
+        // Stamp verification IMMEDIATELY, per board — not at hop end. Heavy hot
+        // hops can die post-processing (WORKER_RESOURCE_LIMIT) before hop-end
+        // code runs, which silently starved every hot board of stamps while the
+        // light cold hops stamped fine (the 397-stale-boards incident). One tiny
+        // upsert per successful board; failure is surfaced but never blocks.
+        try {
+          const { error: stampErr } = await client.from("job_board_verifications").upsert(
+            { company_token: s.token, verified_at: new Date().toISOString() },
+            { onConflict: "company_token" },
+          );
+          if (stampErr) {
+            console.warn(`[JOB-BOARD] stamp failed for ${s.token} (non-fatal):`, stampErr.message?.slice(0, 120));
+            await client.from("job_board_meta").upsert(
+              { k: "verification_stamp_error", v: { at: new Date().toISOString(), token: s.token, message: String(stampErr.message ?? stampErr).slice(0, 300) }, updated_at: new Date().toISOString() },
+              { onConflict: "k" },
+            );
+          }
+        } catch { /* never blocks the slice */ }
         sliceTotal += rows.length;
       }
     }),
@@ -659,33 +677,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // dormancy skip-list at the top of the slice). okTokens clear both streak and
   // dormancy; a failed recheck probe stays dormant with a refreshed timer. Skipped
   // dormant boards weren't attempted, so they don't count as failures here.
-  // Per-board verification ceiling: stamp every successfully re-verified board.
-  // The nightly sweep drops postings from any board not stamped within 48h, so a
-  // cursor gap or selection bug can never let one board's postings sit stale
-  // until the 30-day cap — the last "stale by accident" hole. Best-effort: a
-  // failed stamp costs one cycle of ceiling coverage, never the refresh.
-  if (okTokens.length > 0) {
-    try {
-      const stampedAt = new Date().toISOString();
-      const { error: stampErr } = await client.from("job_board_verifications").upsert(
-        [...new Set(okTokens)].map((tk) => ({ company_token: tk, verified_at: stampedAt })),
-        { onConflict: "company_token" },
-      );
-      // supabase-js returns errors, it doesn't throw — the old catch-only guard
-      // swallowed every failure invisibly (stamps sat at zero with no trace).
-      // Surface the last error into public-readable meta so it can be diagnosed
-      // with a plain REST read, no function-log access needed.
-      if (stampErr) {
-        console.warn("[JOB-BOARD] verification stamp failed (non-fatal):", stampErr.message?.slice(0, 150));
-        await client.from("job_board_meta").upsert(
-          { k: "verification_stamp_error", v: { at: stampedAt, message: String(stampErr.message ?? stampErr).slice(0, 300) }, updated_at: stampedAt },
-          { onConflict: "k" },
-        );
-      }
-    } catch (e) {
-      console.warn("[JOB-BOARD] verification stamp failed (non-fatal):", String(e).slice(0, 120));
-    }
-  }
+  // (Verification stamping happens per-board inside the slice loop — hop-end
+  // code is unreliable on heavy hops; see the stamp at okTokens.push.)
   {
     const okSet = new Set(okTokens);
     const failedTokens = slice
