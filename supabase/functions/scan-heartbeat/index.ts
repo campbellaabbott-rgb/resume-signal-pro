@@ -231,6 +231,24 @@ serve(async (req) => {
       if (stalled) {
         if (overallStatus === 'healthy') overallStatus = 'degraded';
         errorMessage = errorMessage || `Job board refresh stalled (${ageMin ?? 'no meta'} min since last slice)`;
+        // Self-heal: an independent third recovery path beyond the two refresh
+        // crons. On a detected stall, deliver a refresh kick from here. Short
+        // timeout — we only need to RESTART a dead pipeline, not await the slice;
+        // the slice lock no-ops the kick if a slice/chain is already running, and
+        // the refresh self-chains once started. Best-effort; we still alert.
+        try {
+          const svc = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+          const ac = new AbortController();
+          const to = setTimeout(() => ac.abort(), 2500);
+          await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/job-board`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${svc}`, apikey: svc },
+            body: JSON.stringify({ action: 'refresh' }),
+            signal: ac.signal,
+          }).catch(() => {});
+          clearTimeout(to);
+          console.log('[HEARTBEAT] job-board refresh stalled — fired self-heal kick');
+        } catch { /* best-effort recovery; the alert above still fires */ }
       }
 
       // Freshness SLA: the slice check above proves the pipeline is MOVING,
