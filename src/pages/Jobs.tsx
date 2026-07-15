@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Activity, AlertTriangle, Bookmark, BookmarkCheck, Briefcase, Clock, Copy, ExternalLink, FileText, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, Sparkles, Target } from "lucide-react";
+import { Activity, AlertTriangle, Bookmark, BookmarkCheck, Briefcase, Clock, Copy, ExternalLink, FileText, Flag, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, Sparkles, Target } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -162,6 +162,10 @@ export default function Jobs() {
   // currently loading its description.
   const [prepareJob, setPrepareJob] = useState<{ job: BoardJob; description: string | null; alreadyApplied: boolean } | null>(null);
   const [preparingId, setPreparingId] = useState<string | null>(null);
+  // Report-a-posting: which card's reason menu is open, and which postings this
+  // tab already reported (prevents repeat submissions, shows the thanks state).
+  const [reportingId, setReportingId] = useState<string | null>(null);
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
   // Per-application resume rewrite (uses the already-deployed generate-tailored-resume).
   const [tailoredOpen, setTailoredOpen] = useState(false);
   const [tailoredLoading, setTailoredLoading] = useState(false);
@@ -441,6 +445,31 @@ export default function Jobs() {
       }
     } catch { /* unverifiable — don't block the user */ }
     return true;
+  };
+
+  // Report-a-posting: log the report, then honor it honestly — a "gone" report
+  // triggers the same live re-check applying does, so a confirmed-dead posting
+  // is pruned for everyone on the spot instead of sitting in a review queue.
+  const reportJob = async (job: BoardJob, reason: "gone" | "misleading" | "other") => {
+    setReportingId(null);
+    setReportedIds((prev) => new Set(prev).add(job.id));
+    try {
+      await supabase.functions.invoke("job-board", { body: { action: "report", id: job.id, reason } });
+    } catch { /* the report is best-effort — never block the user on telemetry */ }
+    if (reason === "gone") {
+      const stillLive = await verifyJob(job); // prunes + toasts if confirmed gone
+      if (stillLive) {
+        toast({
+          title: t("jobsPage.reportCheckedTitle", "We just re-checked it"),
+          description: t("jobsPage.reportCheckedBody", "{{company}}'s own board still lists this role as open. Thanks for flagging — we log every report.", { company: job.company }),
+        });
+      }
+    } else {
+      toast({
+        title: t("jobsPage.reportThanksTitle", "Report received"),
+        description: t("jobsPage.reportThanksBody", "Thanks — every report is logged and factors into which company boards we keep listing."),
+      });
+    }
   };
 
   const checkFit = async (job: BoardJob) => {
@@ -1418,6 +1447,35 @@ export default function Jobs() {
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>
                         </Button>
+                        {reportedIds.has(job.id) ? (
+                          <span className="text-[11px] text-muted-foreground">{t("jobsPage.reportedBadge", "Reported — thanks")}</span>
+                        ) : reportingId === job.id ? (
+                          <span className="inline-flex flex-wrap items-center gap-1.5 text-[11px]">
+                            <button type="button" className="px-2 py-1 rounded-full border border-border text-muted-foreground hover:text-foreground" onClick={() => reportJob(job, "gone")}>
+                              {t("jobsPage.reportGone", "Posting is gone")}
+                            </button>
+                            <button type="button" className="px-2 py-1 rounded-full border border-border text-muted-foreground hover:text-foreground" onClick={() => reportJob(job, "misleading")}>
+                              {t("jobsPage.reportMisleading", "Looks misleading")}
+                            </button>
+                            <button type="button" className="px-2 py-1 rounded-full border border-border text-muted-foreground hover:text-foreground" onClick={() => reportJob(job, "other")}>
+                              {t("jobsPage.reportOther", "Something else")}
+                            </button>
+                            <button type="button" className="px-1.5 py-1 text-muted-foreground hover:text-foreground" aria-label={t("jobsPage.reportCancel", "Cancel")} onClick={() => setReportingId(null)}>
+                              ✕
+                            </button>
+                          </span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="px-2 text-muted-foreground"
+                            aria-label={t("jobsPage.reportCta", "Report this posting")}
+                            title={t("jobsPage.reportTip", "Something wrong with this posting? A 'gone' report re-checks it against the company's own board immediately.")}
+                            onClick={() => setReportingId(job.id)}
+                          >
+                            <Flag className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                       </div>
                       {/* Near-identical siblings: the same role at other locations,
                           collapsed under this card — each still a real, applyable

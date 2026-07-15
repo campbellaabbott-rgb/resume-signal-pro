@@ -55,7 +55,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-15.6";
+const BUILD_VERSION = "2026-07-15.7";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1461,6 +1461,31 @@ Deno.serve(async (req) => {
       return json({ ok: true, board: s.token, updated, remaining: (rows ?? []).length === PER_HOP ? "more" : "board-done", nextTi: ti });
     }
 
+    if (action === "report") {
+      // Report-a-posting: a user flags a listing as gone/misleading/other.
+      // We log it (service-role-only table, no client write surface) and the
+      // frontend follows a "gone" report with the existing verify action —
+      // a confirmed-dead posting is pruned for everyone on the spot.
+      const id = String(body.id ?? "").slice(0, 200);
+      const reason = String(body.reason ?? "");
+      if (!id || !["gone", "misleading", "other"].includes(reason)) {
+        return json({ error: "id and a valid reason are required" }, 400);
+      }
+      const note = String(body.note ?? "").replace(/ /g, "").slice(0, 280);
+      const { data: row } = await client.from("job_board_postings").select("id,company_token").eq("id", id).maybeSingle();
+      const { error: repErr } = await client.from("job_board_posting_reports").insert({
+        posting_id: id,
+        company_token: (row?.company_token as string | undefined) ?? "",
+        reason,
+        note,
+      });
+      if (repErr) {
+        console.warn("[JOB-BOARD] report insert failed:", repErr.message);
+        return json({ error: "report could not be recorded" }, 500);
+      }
+      return json({ ok: true, known: !!row });
+    }
+
     if (action === "verify") {
       // Live-now liveness for a batch of posting ids (verify-on-apply,
       // surfaced-match re-check). Confirms against the vendor, prunes ids
@@ -1710,6 +1735,28 @@ async function serveList(
   let { data, error, count } = await page("effective_posted");
   if (missingColumn(error)) ({ data, error, count } = await page("posted_at"));
   if (error) throw error;
+
+  // Zero-result telemetry: a first-page search that found nothing is the
+  // honest demand signal for what the catalog lacks. Logged fire-and-forget
+  // into a service-role-only table (30-day retention) — never blocks the
+  // response, and only when the user actually typed something.
+  const missQ = String(body.q ?? "").slice(0, 120).trim();
+  const missLoc = String(body.location ?? "").slice(0, 120).trim();
+  if ((count ?? 0) === 0 && offset === 0 && (missQ || missLoc)) {
+    waitUntil(Promise.resolve(
+      client.from("job_board_search_misses").insert({
+        q: missQ,
+        location: missLoc,
+        filters: {
+          category: String(body.category ?? "") || undefined,
+          experience: String(body.experience ?? "") || undefined,
+          remote: body.remote === true || undefined,
+          salaryFloor: Number(body.salaryFloor) || undefined,
+        },
+        src: "list",
+      }).then(({ error: e }) => { if (e) console.warn("[JOB-BOARD] search-miss log failed:", e.message); }),
+    ));
+  }
 
   const v = (meta?.v ?? {}) as Record<string, unknown>;
   // The company facet grows with the catalog (~60 bytes/company); refetches
