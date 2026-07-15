@@ -283,6 +283,51 @@ serve(async (req) => {
         errorMessage = errorMessage || `Job board cold-tail freshness behind SLA (${rotAgeMin} min)`;
       }
 
+      // Ground-truth accuracy: the daily audit samples ~100 served postings and
+      // confirms each live at the vendor source. A dip below threshold means the
+      // pipeline is serving dead listings RIGHT NOW — the one failure users feel
+      // most and every other check can miss.
+      const { data: audit } = await supabase
+        .from('job_board_meta').select('v, updated_at').eq('k', 'audit').maybeSingle();
+      if (audit) {
+        const aV = (audit.v ?? {}) as { accuracyPct?: number | null; live?: number; gone?: number; at?: string };
+        const auditAgeH = Math.round((Date.now() - new Date(audit.updated_at).getTime()) / 3600_000);
+        const lowAccuracy = typeof aV.accuracyPct === 'number' && aV.accuracyPct < 97;
+        const auditStale = auditAgeH > 48;
+        checks.push({
+          name: 'job_board_accuracy',
+          passed: !lowAccuracy && !auditStale,
+          responseTimeMs: 0,
+          error: lowAccuracy
+            ? `ground-truth audit: only ${aV.accuracyPct}% of sampled postings confirmed live at the source (${aV.live}/${(aV.live ?? 0) + (aV.gone ?? 0)}) — the board is serving dead listings; check refresh/prune`
+            : auditStale ? `ground-truth audit hasn't run in ${auditAgeH}h — accuracy unmeasured; check the job-board-audit cron` : undefined,
+        });
+        if (lowAccuracy || auditStale) {
+          if (overallStatus === 'healthy') overallStatus = 'degraded';
+          errorMessage = errorMessage || (lowAccuracy ? `Board accuracy ${aV.accuracyPct}% (below 97% SLA)` : 'Board accuracy audit stale');
+        }
+      }
+
+      // Verification ceiling: boards that still hold live postings but weren't
+      // re-verified in 24h — a widening count means a cursor/selection gap the
+      // 48h sweep is about to start deleting around.
+      try {
+        const { data: staleCount } = await supabase.rpc('get_stale_board_count');
+        if (typeof staleCount === 'number') {
+          const tooMany = staleCount > 300; // transient stragglers are normal; a wide gap is not
+          checks.push({
+            name: 'job_board_verification_ceiling',
+            passed: !tooMany,
+            responseTimeMs: 0,
+            error: tooMany ? `${staleCount} boards with live postings not re-verified in 24h — rotation gap; their postings sweep in 48h` : undefined,
+          });
+          if (tooMany) {
+            if (overallStatus === 'healthy') overallStatus = 'degraded';
+            errorMessage = errorMessage || `${staleCount} boards behind the verification ceiling`;
+          }
+        }
+      } catch { /* RPC not applied yet — check appears once the migration lands */ }
+
       // Capacity headroom: the corpus is bounded by the free-tier DB (~100k).
       // Warn BEFORE the governor has to evict live postings — a shrinking
       // headroom is the signal to widen the DB tier or trim the board

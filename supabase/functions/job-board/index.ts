@@ -587,6 +587,22 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
   // dormancy skip-list at the top of the slice). okTokens clear both streak and
   // dormancy; a failed recheck probe stays dormant with a refreshed timer. Skipped
   // dormant boards weren't attempted, so they don't count as failures here.
+  // Per-board verification ceiling: stamp every successfully re-verified board.
+  // The nightly sweep drops postings from any board not stamped within 48h, so a
+  // cursor gap or selection bug can never let one board's postings sit stale
+  // until the 30-day cap — the last "stale by accident" hole. Best-effort: a
+  // failed stamp costs one cycle of ceiling coverage, never the refresh.
+  if (okTokens.length > 0) {
+    try {
+      const stampedAt = new Date().toISOString();
+      await client.from("job_board_verifications").upsert(
+        okTokens.map((tk) => ({ company_token: tk, verified_at: stampedAt })),
+        { onConflict: "company_token" },
+      );
+    } catch (e) {
+      console.warn("[JOB-BOARD] verification stamp failed (non-fatal):", String(e).slice(0, 120));
+    }
+  }
   {
     const okSet = new Set(okTokens);
     const failedTokens = slice
@@ -1274,6 +1290,61 @@ Deno.serve(async (req) => {
         await client.from("job_board_meta").upsert({ k: "demand", v: { tokens: merged }, updated_at: new Date().toISOString() }, { onConflict: "k" });
       }
       return json({ live: liveMap, pruned: deadIds.length });
+    }
+
+    if (action === "audit") {
+      // Ground-truth audit: sample ~100 random served postings and confirm each
+      // is still live at the vendor SOURCE. Produces the measured accuracy stat
+      // ("X% of sampled listings confirmed live") published on the Ghost Job
+      // Index and watched by the heartbeat — the board grading its own honesty.
+      // Pure measurement: confirmed-gone ids are left for the normal refresh
+      // prune (which owns closure logging). Self-throttled to ~1/day; a public
+      // trigger just gets the cached result back.
+      const AUDIT_SAMPLE = 100;
+      const { data: prevAudit } = await client.from("job_board_meta").select("v, updated_at").eq("k", "audit").maybeSingle();
+      const prevAge = prevAudit ? Date.now() - new Date(prevAudit.updated_at).getTime() : Infinity;
+      if (prevAge < 20 * 3600_000 && body.force !== true) {
+        return json({ ...(prevAudit?.v as Record<string, unknown>), cached: true });
+      }
+      // Random sample without an ORDER BY random() table scan: N small
+      // id-ordered pages at random offsets across the corpus.
+      const { count: totalRows } = await client.from("job_board_postings").select("id", { count: "exact", head: true });
+      const corpus = totalRows ?? 0;
+      const sampleIds: string[] = [];
+      if (corpus > AUDIT_SAMPLE) {
+        const pages = 10, per = AUDIT_SAMPLE / pages;
+        for (let p = 0; p < pages; p++) {
+          const off = Math.floor(Math.random() * Math.max(1, corpus - per));
+          const { data: page } = await client.from("job_board_postings").select("id").order("id").range(off, off + per - 1);
+          for (const r of page ?? []) if (!sampleIds.includes(r.id as string)) sampleIds.push(r.id as string);
+        }
+      }
+      let live = 0, gone = 0, unknown = 0;
+      liveBoardMemo.clear();
+      // Small parallel batches: bounded fan-out, memoized board fetches.
+      for (let i = 0; i < sampleIds.length; i += 8) {
+        const results = await Promise.all(sampleIds.slice(i, i + 8).map(async (id) => {
+          const [source, token, ...rest] = id.split(":");
+          const src = JOB_SOURCES.find((s) => s.source === source && s.token === token);
+          if (!src || rest.length === 0) return null; // deselected board — can't ground-truth
+          return await checkLive(src, rest.join(":"));
+        }));
+        for (const r of results) {
+          if (r === true) live++;
+          else if (r === false) gone++;
+          else unknown++;
+        }
+      }
+      const decided = live + gone;
+      const accuracyPct = decided > 0 ? Math.round((live / decided) * 1000) / 10 : null;
+      const prevHistory = ((prevAudit?.v as { history?: Array<Record<string, unknown>> } | null)?.history ?? []).slice(-29);
+      const result = { at: new Date().toISOString(), sampled: sampleIds.length, live, gone, unknown, accuracyPct, corpus };
+      await client.from("job_board_meta").upsert(
+        { k: "audit", v: { ...result, history: [...prevHistory, result] }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+      console.log(`[JOB-BOARD] audit: ${live}/${decided} live (${accuracyPct}%), ${unknown} unknown of ${sampleIds.length} sampled`);
+      return json(result);
     }
 
     if (action === "exists") {

@@ -25,6 +25,14 @@ interface Leader {
   closed_90d: number;
   open_roles: number;
 }
+interface AuditResult {
+  at: string;
+  sampled: number;
+  live: number;
+  gone: number;
+  unknown: number;
+  accuracyPct: number | null;
+}
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
@@ -34,17 +42,23 @@ const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocal
 export default function GhostJobIndex() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [leaders, setLeaders] = useState<Leader[]>([]);
+  const [audit, setAudit] = useState<AuditResult | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const [s, l] = await Promise.all([
+        const [s, l, a] = await Promise.all([
           rpc("get_ghost_job_index_stats"),
           rpc("get_actively_hiring_companies", { p_limit: 20 }),
+          // The daily self-audit result (job_board_meta is public-read).
+          (supabase as unknown as { from: (t: string) => { select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: unknown }> } } } })
+            .from("job_board_meta").select("v").eq("k", "audit").maybeSingle(),
         ]);
         const srow = Array.isArray(s.data) ? (s.data[0] as Stats) : null;
         if (srow) setStats(srow);
         if (Array.isArray(l.data)) setLeaders(l.data as Leader[]);
+        const av = (a.data as { v?: AuditResult } | null)?.v;
+        if (av && typeof av.accuracyPct === "number") setAudit(av);
       } catch {
         /* RPCs not deployed yet — page still renders its explainer */
       }
@@ -96,6 +110,23 @@ export default function GhostJobIndex() {
             <div className="text-[11px] text-muted-foreground mt-0.5">median age of an open posting</div>
           </div>
         </div>
+
+        {/* The measured accuracy stat — we audit ourselves daily and publish the
+            number. Shown only when a real audit result exists; never estimated. */}
+        {audit && (
+          <div className="rounded-2xl border border-success/30 bg-success/5 p-5 mb-8">
+            <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">
+              <ShieldCheck className="w-4 h-4 text-success" /> We audit ourselves — here's the number
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              On {new Date(audit.at).toLocaleDateString()}, we sampled <b className="text-foreground">{audit.sampled}</b> random
+              listings from this board and re-checked each one against the company's own system:{" "}
+              <b className="text-success">{audit.accuracyPct}% were confirmed live at the source</b>
+              {" "}({audit.live} live, {audit.gone} already taken down{audit.unknown > 0 ? `, ${audit.unknown} unreachable` : ""}).
+              The handful already taken down are pruned by the next refresh cycle. We run this audit every day.
+            </p>
+          </div>
+        )}
 
         {/* Closure-derived stats — the moat, staged honestly */}
         <div className="rounded-2xl border border-border bg-card p-5 mb-8">
