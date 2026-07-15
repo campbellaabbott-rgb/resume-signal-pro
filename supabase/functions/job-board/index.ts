@@ -55,7 +55,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-15.3";
+const BUILD_VERSION = "2026-07-15.4";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -593,7 +593,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
                 return !(Number.isFinite(posted) && posted < freshCutoffMs); // (b) aged out, not closed
               });
               if (rows.length) {
-                await client.from("job_board_closures").insert(
+                // supabase-js RETURNS errors (never throws) — check it, or a
+                // failing insert silently loses lifecycle history (the same
+                // blind spot that hid the verification-stamp failures).
+                const { error: clErr } = await client.from("job_board_closures").insert(
                   rows.map((r) => ({
                     posting_id: r.id,
                     source: r.source,
@@ -607,6 +610,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
                     superseded: liveTitles.has(String(r.title ?? "").trim().toLowerCase()), // (c)
                   })),
                 );
+                if (clErr) console.warn(`[JOB-BOARD] closure insert failed for ${s.token} (non-fatal):`, clErr.message?.slice(0, 150));
               }
             } catch (e) {
               console.warn(`[JOB-BOARD] closure log failed for ${s.token} (non-fatal):`, String(e).slice(0, 150));
@@ -719,16 +723,36 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
     // its postings would linger forever. Diff the DB's live company list
     // (from the facets we just computed) against the source of truth and
     // delete any token no longer aboard — so a removal actually disappears.
+    //
+    // STALE-BUNDLE GUARD (2026-07-15 incident): a re-deploy that ships an OLDER
+    // bundle sees every board added since as an "orphan" and wipes its real
+    // postings — a stale pre-Rung-3 bundle deleted the new vendors' entire
+    // ingestion this way, silently. A catalog high-water mark in meta makes the
+    // prune refuse to run from any bundle smaller than the largest ever deployed;
+    // an intentional catalog SHRINK must lower the mark via {action:"refresh",
+    // resetCatalogHighwater:true} with the chain key.
     const validTokens = new Set(JOB_SOURCES.map((s) => s.token));
-    const orphanTokens = companies
-      .map((c) => (c as { token?: string }).token)
-      .filter((tk): tk is string => typeof tk === "string" && !validTokens.has(tk));
-    if (orphanTokens.length > 0) {
-      for (const tk of orphanTokens) {
-        await client.from("job_board_postings").delete().eq("company_token", tk);
+    const { data: hwRow } = await client.from("job_board_meta").select("v").eq("k", "catalog_highwater").maybeSingle();
+    const highwater = Number((hwRow?.v as { size?: number } | null)?.size) || 0;
+    if (JOB_SOURCES.length < highwater) {
+      console.warn(`[JOB-BOARD] orphan prune SKIPPED: bundle catalog ${JOB_SOURCES.length} < high-water ${highwater} — stale deploy must not wipe newer boards`);
+    } else {
+      if (JOB_SOURCES.length > highwater) {
+        await client.from("job_board_meta").upsert(
+          { k: "catalog_highwater", v: { size: JOB_SOURCES.length, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        );
       }
-      console.log(`[JOB-BOARD] orphan-pruned ${orphanTokens.length} removed board(s): ${orphanTokens.slice(0, 8).join(", ")}`);
-      companies = companies.filter((c) => !orphanTokens.includes((c as { token?: string }).token ?? ""));
+      const orphanTokens = companies
+        .map((c) => (c as { token?: string }).token)
+        .filter((tk): tk is string => typeof tk === "string" && !validTokens.has(tk));
+      if (orphanTokens.length > 0) {
+        for (const tk of orphanTokens) {
+          await client.from("job_board_postings").delete().eq("company_token", tk);
+        }
+        console.log(`[JOB-BOARD] orphan-pruned ${orphanTokens.length} removed board(s): ${orphanTokens.slice(0, 8).join(", ")}`);
+        companies = companies.filter((c) => !orphanTokens.includes((c as { token?: string }).token ?? ""));
+      }
     }
 
     // Date hygiene: repair any stored posted_at that's absurd (future, or older
@@ -1195,7 +1219,19 @@ Deno.serve(async (req) => {
 
     if (action === "refresh") {
       const hop = Number.isFinite(Number(body.chain)) ? Math.max(0, Number(body.chain)) : 0;
-      const force = body.force === true && typeof body.chainKey === "string" && body.chainKey === await chainKey();
+      const keyOk = typeof body.chainKey === "string" && body.chainKey === await chainKey();
+      // Escape hatch for the stale-bundle guard: an INTENTIONAL catalog shrink
+      // must lower the high-water mark or the orphan prune stays disabled.
+      // Maintenance-gated — the mark protects real postings from stale deploys.
+      if (body.resetCatalogHighwater === true) {
+        if (!keyOk) return json({ error: "resetCatalogHighwater is a maintenance action" }, 403);
+        await client.from("job_board_meta").upsert(
+          { k: "catalog_highwater", v: { size: JOB_SOURCES.length, at: new Date().toISOString(), reset: true }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        );
+        return json({ ok: true, detail: `catalog high-water reset to ${JOB_SOURCES.length}` });
+      }
+      const force = body.force === true && keyOk;
       const r = await runRefresh(client, force, force ? hop : 0);
       return json(r, r.ok ? 200 : 502);
     }
