@@ -3,7 +3,7 @@
 // straight from RLS-protected tables; credits and purchases key by email in
 // service-role tables and are fetched through the get-account-data function.
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   TrendingUp, Coins, ShoppingBag, LogOut, Loader2, ScanSearch, Target,
@@ -109,6 +109,26 @@ export default function Account() {
   const [scans, setScans] = useState<UserScan[]>([]);
   const [account, setAccount] = useState<AccountData | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
+  // Application intelligence: does the fit you applied with predict getting an
+  // interview? Computed from the tracker; only surfaced with enough applied
+  // history to be meaningful (>=5 applied overall, >=3 per tier) — no stats on
+  // two data points. Same fit thresholds as the board (20 / 10).
+  const appIntel = useMemo(() => {
+    const applied = applications.filter((a) => a.status !== "saved" && typeof a.fit_pct === "number");
+    if (applied.length < 5) return null;
+    const tiers: Record<"strong" | "possible" | "stretch", { n: number; adv: number }> = {
+      strong: { n: 0, adv: 0 }, possible: { n: 0, adv: 0 }, stretch: { n: 0, adv: 0 },
+    };
+    for (const a of applied) {
+      const pct = a.fit_pct as number;
+      const tier = pct >= 20 ? "strong" : pct >= 10 ? "possible" : "stretch";
+      tiers[tier].n++;
+      if (a.status === "interviewing" || a.status === "offer") tiers[tier].adv++;
+    }
+    const shown = (["strong", "possible", "stretch"] as const).filter((t) => tiers[t].n >= 3);
+    if (shown.length === 0) return null;
+    return { applied: applied.length, tiers, shown };
+  }, [applications]);
   const [targetScore, setTargetScore] = useState<number | null>(null);
   const [fetching, setFetching] = useState(true);
   const [compareIds, setCompareIds] = useState<string[]>([]);
@@ -700,6 +720,34 @@ export default function Account() {
                   <option key={s.id} value={s.id}>{versionName(s)} — score {s.ats_score}</option>
                 ))}
               </select>
+            </div>
+          )}
+          {appIntel && (
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 mb-3">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <TrendingUp className="w-4 h-4 text-primary" /> Application intelligence
+              </h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Interview/offer rate by the fit you applied with, across your {appIntel.applied} tracked applications.
+              </p>
+              <ul className="mt-2 space-y-1">
+                {appIntel.shown.map((t) => {
+                  const { n, adv } = appIntel.tiers[t];
+                  const label = t === "strong" ? "Strong match (20%+)" : t === "possible" ? "Possible match (10–20%)" : "Stretch (<10%)";
+                  return (
+                    <li key={t} className="flex items-center justify-between text-[12px]">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className="text-foreground font-semibold">{Math.round((100 * adv) / n)}% <span className="text-muted-foreground font-normal">({adv}/{n})</span></span>
+                    </li>
+                  );
+                })}
+              </ul>
+              {appIntel.tiers.strong.n >= 3 && appIntel.tiers.stretch.n >= 3 &&
+                (appIntel.tiers.strong.adv / appIntel.tiers.strong.n) > (appIntel.tiers.stretch.adv / appIntel.tiers.stretch.n) && (
+                <p className="text-[11px] text-primary font-medium mt-2">
+                  Your higher-fit applications convert to interviews more often — spend your energy where you actually match.
+                </p>
+              )}
             </div>
           )}
           {applications.length === 0 ? (
