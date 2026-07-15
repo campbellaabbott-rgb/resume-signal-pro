@@ -30,6 +30,7 @@ import {
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
 import { computeFit } from "../_shared/fit-score.ts";
+import { extractSalary } from "../_shared/salary-extract.ts";
 import { classifyDormancy, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
@@ -429,7 +430,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             category: j.category,
             posted_at: posted,
             apply_url: j.applyUrl,
-            salary: clean(j.salary?.slice(0, 200) ?? null),
+            // Salary: the vendor's structured field when present, else mined from
+            // the posting's own description text (pay-transparency prose) — always
+            // the company's verbatim words, never an estimate.
+            salary: clean(j.salary?.slice(0, 200) ?? null) ?? (lightDescs ? null : extractSalary(descs.get(j.id) ?? null)),
             experience_band: exp.band ?? "unspecified",
             min_years: exp.minYears,
             // Light boards omit the column so previously stored descriptions
@@ -1239,7 +1243,13 @@ Deno.serve(async (req) => {
           const job = (await res.json()) as { content?: string };
           const text = job.content ? clean(htmlToText(String(job.content).slice(0, 12000)).trim()).slice(0, 4000) : "";
           if (text) {
-            const { error } = await client.from("job_board_postings").update({ description: text }).eq("id", row.id);
+            // Backfilled description is also the salary source for these boards
+            // (GH giants fetch without content, so ingest-time mining never saw
+            // it). Only set when extraction finds the company's own pay text.
+            const minedSalary = extractSalary(text);
+            const { error } = await client.from("job_board_postings")
+              .update({ description: text, ...(minedSalary ? { salary: minedSalary } : {}) })
+              .eq("id", row.id);
             if (!error) updated++;
           }
         } catch { /* transient — row stays null, retried next run */ }
