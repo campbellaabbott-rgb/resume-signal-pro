@@ -52,6 +52,8 @@ const HIRING_INTENT_MIN = 8;
 interface HiringHealth {
   open_roles: number;
   closed_90d: number;
+  /** Same-title relistings in 90d — repost churn (absent until the RPC ships it). */
+  superseded_90d?: number;
   median_days_open: number | null;
   median_days_to_close: number | null;
   tracking_days: number;
@@ -59,6 +61,11 @@ interface HiringHealth {
 // Closures needed before we'll call a company "actively hiring" — enough that
 // it's a real pattern, not one data point. Below it we show only neutral facts.
 const ACTIVELY_HIRING_MIN_CLOSED = 3;
+// Urgency chip: only when the fill pattern is both proven (>= the closure floor)
+// and actually fast — a 25-day median is not "apply early".
+const URGENT_FILL_MAX_DAYS = 14;
+// Repost caution: relisting the same titles this often in 90d is a pattern.
+const REPOST_FLAG_MIN = 3;
 
 // Experience bands mirror EXPERIENCE_BANDS in the edge function's experience.ts.
 // The year range is baked into each localized label (jobsPage.experience.*).
@@ -965,6 +972,11 @@ export default function Jobs() {
                     {t("jobsPage.hhGathering", "We just started tracking this company's role closures — hiring-health fills in as roles close.")}
                   </li>
                 )}
+                {(hiringHealth.superseded_90d ?? 0) >= REPOST_FLAG_MIN && (
+                  <li className="text-warning/90">
+                    {t("jobsPage.hhReposts", "Relisted the same role title {{n}} times in the last 90 days — routine reposting or roles that keep reopening.", { n: hiringHealth.superseded_90d })}
+                  </li>
+                )}
               </ul>
               <p className="text-[10px] text-muted-foreground/70 mt-2">
                 {t("jobsPage.hhFootnote", "Computed from the full lifecycle of this company's official postings — when they open and when they close — not a one-time snapshot.")}
@@ -1238,6 +1250,34 @@ export default function Jobs() {
                             >
                               <Activity className="w-3 h-3 shrink-0" />
                               {t("jobsPage.hhBadge", "Actively hiring")}
+                            </span>
+                          )}
+                          {/* Urgency: a proven, FAST fill pattern from the closure log —
+                              honest data-backed "apply early", not a fake scarcity badge. */}
+                          {job.token && (() => {
+                            const hh = healthByToken[job.token];
+                            if (!hh || hh.closed_90d < ACTIVELY_HIRING_MIN_CLOSED) return null;
+                            const m = hh.median_days_to_close;
+                            if (typeof m !== "number" || m > URGENT_FILL_MAX_DAYS) return null;
+                            return (
+                              <span
+                                className="inline-flex items-center gap-1 text-[11px] font-medium text-warning mt-1 ml-2"
+                                title={t("jobsPage.urgencyTip", "Based on {{n}} roles this company filled or closed in the last 90 days, a typical role here closes in about {{d}} days — worth applying early.", { n: hh.closed_90d, d: Math.round(m) })}
+                              >
+                                <Clock className="w-3 h-3 shrink-0" />
+                                {t("jobsPage.urgencyChip", "Typically fills in ~{{d}}d", { d: Math.round(m) })}
+                              </span>
+                            );
+                          })()}
+                          {/* Repost caution: frequent same-title relistings — shown as a
+                              neutral fact so the seeker can weigh it, never hidden. */}
+                          {job.token && (healthByToken[job.token]?.superseded_90d ?? 0) >= REPOST_FLAG_MIN && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground mt-1 ml-2"
+                              title={t("jobsPage.repostTip", "This company relisted the same role title {{n}} times in the last 90 days. That can mean routine reposting or roles that keep reopening — worth knowing before you invest in an application.", { n: healthByToken[job.token].superseded_90d })}
+                            >
+                              <RefreshCw className="w-3 h-3 shrink-0" />
+                              {t("jobsPage.repostChip", "Relists roles often ({{n}}× / 90d)", { n: healthByToken[job.token].superseded_90d })}
                             </span>
                           )}
                           {/* Explainable fit — the "why you match" half: the posting's
