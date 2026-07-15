@@ -422,18 +422,23 @@ export default function Jobs() {
   useEffect(() => {
     if (!category || benchmarksAttempted.current) return;
     benchmarksAttempted.current = true;
-    (supabase as unknown as { rpc: (fn: string) => Promise<{ data: unknown }> })
-      .rpc("get_salary_benchmarks")
-      .then(({ data: rows }) => {
-        if (!Array.isArray(rows)) return;
-        const map: Record<string, { n: number; median: number }> = {};
-        for (const r of rows as Array<{ category: string; n: number; median_annual_min: number }>) {
-          if (r.category && r.n >= 30 && Number.isFinite(Number(r.median_annual_min))) {
-            map[r.category] = { n: r.n, median: Number(r.median_annual_min) };
-          }
+    (async () => {
+      const call = () => (supabase as unknown as { rpc: (fn: string) => Promise<{ data: unknown }> }).rpc("get_salary_benchmarks");
+      let { data: rows } = await call().catch(() => ({ data: null }));
+      // Cold-cache RPCs can time out once and succeed warm — one spaced retry.
+      if (!Array.isArray(rows) || rows.length === 0) {
+        await new Promise((r) => setTimeout(r, 1500));
+        ({ data: rows } = await call().catch(() => ({ data: null })));
+      }
+      if (!Array.isArray(rows)) return;
+      const map: Record<string, { n: number; median: number }> = {};
+      for (const r of rows as Array<{ category: string; n: number; median_annual_min: number }>) {
+        if (r.category && r.n >= 30 && Number.isFinite(Number(r.median_annual_min))) {
+          map[r.category] = { n: r.n, median: Number(r.median_annual_min) };
         }
-        setBenchmarks(map);
-      }, () => {});
+      }
+      setBenchmarks(map);
+    })();
   }, [category]);
 
   // Debounced re-query on filter change (immediate on first mount).

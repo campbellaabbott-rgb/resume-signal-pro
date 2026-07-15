@@ -70,9 +70,19 @@ export default function HiringTrends() {
   const lastFull = complete.length > 0 ? complete[complete.length - 1] : null;
   const prevFull = complete.length > 1 ? complete[complete.length - 2] : null;
   const maxNew = Math.max(1, ...weeks.map((w) => w.new_postings));
-  const wow = lastFull && prevFull && prevFull.new_postings > 0
+  // Week-over-week ratios need BOTH weeks fully observed. Postings that
+  // predate our tracking are excluded from counts (that's the honesty guard),
+  // so a week we only partially observed has a structurally low count and any
+  // ratio against it ("+19,000%") would be a lie of framing. Proxy for "prevFull
+  // was fully observed": the week before it already had counted postings.
+  const beforePrev = complete.length > 2 ? complete[complete.length - 3] : null;
+  const wowMature = !!beforePrev && beforePrev.new_postings > 0;
+  const wow = wowMature && lastFull && prevFull && prevFull.new_postings > 0
     ? Math.round((100 * (lastFull.new_postings - prevFull.new_postings)) / prevFull.new_postings)
     : null;
+  // Same idea for the rolling 7d-vs-prior-7d category deltas: meaningful only
+  // once the prior rolling window falls inside fully-tracked territory.
+  const deltasMature = !!prevFull && prevFull.new_postings > 0;
 
   const weekLabel = (iso: string) =>
     new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -171,7 +181,7 @@ export default function HiringTrends() {
             </h2>
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
               {cats.map((c, i) => {
-                const delta = c.prior7 > 0 ? Math.round((100 * (c.last7 - c.prior7)) / c.prior7) : null;
+                const delta = deltasMature && c.prior7 >= 20 ? Math.round((100 * (c.last7 - c.prior7)) / c.prior7) : null;
                 return (
                   <Link
                     key={c.category}
