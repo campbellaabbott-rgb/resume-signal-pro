@@ -1679,6 +1679,7 @@ export type Database = {
           created_at: string
           digest_last_sent_at: string | null
           digest_opt_in: boolean
+          fit_threshold: number
           id: string
           last_seen_at: string
           name: string
@@ -1689,6 +1690,7 @@ export type Database = {
           created_at?: string
           digest_last_sent_at?: string | null
           digest_opt_in?: boolean
+          fit_threshold?: number
           id?: string
           last_seen_at?: string
           name: string
@@ -1699,6 +1701,7 @@ export type Database = {
           created_at?: string
           digest_last_sent_at?: string | null
           digest_opt_in?: boolean
+          fit_threshold?: number
           id?: string
           last_seen_at?: string
           name?: string
@@ -1947,6 +1950,15 @@ export type Database = {
           views: number
         }[]
       }
+      get_actively_hiring_companies: {
+        Args: { p_limit?: number }
+        Returns: {
+          closed_90d: number
+          company: string
+          company_token: string
+          open_roles: number
+        }[]
+      }
       get_affiliate_clicks: {
         Args: { p_days_back?: number; p_session_token: string }
         Returns: {
@@ -2020,6 +2032,17 @@ export type Database = {
           fully_delivered: number
           payment_to_delivery_rate: number
           payments_completed: number
+        }[]
+      }
+      get_company_hiring_health: {
+        Args: { p_tokens: string[] }
+        Returns: {
+          closed_90d: number
+          company_token: string
+          median_days_open: number
+          median_days_to_close: number
+          open_roles: number
+          tracking_days: number
         }[]
       }
       get_db_size_stats: { Args: never; Returns: Json }
@@ -2124,6 +2147,16 @@ export type Database = {
           p50_latency_ms: number
           p95_latency_ms: number
           total_scans: number
+        }[]
+      }
+      get_ghost_job_index_stats: {
+        Args: never
+        Returns: {
+          closed_90d: number
+          median_days_open: number
+          median_days_to_close: number
+          total_companies: number
+          total_open: number
         }[]
       }
       get_industry_correction_stats: {
