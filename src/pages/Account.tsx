@@ -109,6 +109,30 @@ export default function Account() {
   const [scans, setScans] = useState<UserScan[]>([]);
   const [account, setAccount] = useState<AccountData | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
+  // The account's MATCHING RÉSUMÉ: an explicit, durable choice of which résumé
+  // every matcher uses (board fit ranking, threshold digests, apply-agent
+  // grounding). Either a pinned scan or pasted text; null/null = the default
+  // (latest scan), which is what matching always used implicitly before.
+  const [matching, setMatching] = useState<{ scanId: string | null; text: string | null }>({ scanId: null, text: null });
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteDraft, setPasteDraft] = useState("");
+  const profTable = () => (supabase as unknown as { from: (t: string) => any }).from("user_profiles");
+  const saveMatching = async (next: { scanId: string | null; text: string | null }, label: string) => {
+    if (!session) return;
+    setMatching(next);
+    const { error } = await profTable().upsert({
+      user_id: session.user.id,
+      matching_scan_id: next.scanId,
+      matching_resume_text: next.text ? next.text.slice(0, 50000) : null,
+      matching_resume_updated_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    if (error) toast.error("Couldn't save your matching résumé — try again.");
+    else toast.success(label);
+  };
+  // The résumé text matching should use, in explicit-choice-first order.
+  const matchingResume = matching.text
+    ?? (matching.scanId ? scans.find((s) => s.id === matching.scanId)?.resume_text ?? null : null);
   // Application intelligence: does the fit you applied with predict getting an
   // interview? Computed from the tracker; only surfaced with enough applied
   // history to be meaningful (>=5 applied overall, >=3 per tier) — no stats on
@@ -174,7 +198,10 @@ export default function Account() {
       supabase.from("user_scans").select("*").order("created_at", { ascending: false }).limit(50),
       supabase.functions.invoke("get-account-data").catch(() => ({ data: null })),
       supabase.from("user_applications").select("*").order("created_at", { ascending: false }).limit(100),
-      supabase.from("user_profiles").select("target_score").eq("user_id", session.user.id).maybeSingle(),
+      // matching_* columns postdate the generated DB types — untyped access,
+      // same pattern as other fresh columns until Lovable regenerates types.ts.
+      (supabase as unknown as { from: (t: string) => any }).from("user_profiles")
+        .select("target_score, matching_scan_id, matching_resume_text").eq("user_id", session.user.id).maybeSingle(),
     ]);
     let cloudScans = scansRes.data?.map(mapScanRow) ?? [];
 
@@ -215,7 +242,9 @@ export default function Account() {
     setScans(cloudScans);
     const apps = (appsRes.data as unknown as Application[] | null) ?? [];
     setApplications(apps);
-    setTargetScore((profileRes.data as { target_score?: number } | null)?.target_score ?? null);
+    const prof = profileRes.data as { target_score?: number; matching_scan_id?: string | null; matching_resume_text?: string | null } | null;
+    setTargetScore(prof?.target_score ?? null);
+    setMatching({ scanId: prof?.matching_scan_id ?? null, text: prof?.matching_resume_text ?? null });
     const acc = (accountRes as { data?: { credits?: number; purchases?: AccountData["purchases"] } }).data;
     setAccount({ credits: acc?.credits ?? 0, purchases: acc?.purchases ?? [] });
     setFetching(false);
@@ -613,6 +642,19 @@ export default function Account() {
                         📄 copy
                       </button>
                     )}
+                    {s.resume_text && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (matching.scanId === s.id) void saveMatching({ scanId: null, text: null }, "Back to your latest scan.");
+                          else void saveMatching({ scanId: s.id, text: null }, "Pinned — the board, alerts, and apply agent now match against this résumé.");
+                        }}
+                        className={`text-[11px] shrink-0 hover:underline ${matching.scanId === s.id ? "text-success font-semibold" : "text-muted-foreground"}`}
+                        title={matching.scanId === s.id ? "This résumé is used for all matching — click to reset to latest scan" : "Use this résumé for job matching, alerts, and the apply agent"}
+                      >
+                        {matching.scanId === s.id ? "✓ matching" : "pin for matching"}
+                      </button>
+                    )}
                     <span className="text-[11px] text-muted-foreground shrink-0">{new Date(s.created_at).toLocaleDateString()}</span>
                   </label>
                 ))}
@@ -661,11 +703,63 @@ export default function Account() {
         {/* Application tracker */}
         <SavedSearchesCard />
 
+        {/* Matching résumé: the explicit choice every matcher references —
+            board fit ranking, threshold digests, and apply-agent grounding.
+            Default (nothing pinned) stays what it always was: the latest scan. */}
+        <div className="rounded-2xl border border-border bg-card p-5 mb-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <ScanSearch className="w-4 h-4 text-primary" />
+            <h2 className="font-semibold text-foreground text-sm">Matching résumé</h2>
+            <span className="text-xs text-muted-foreground truncate">
+              {matching.text
+                ? `Pasted résumé (${matching.text.length.toLocaleString()} chars)`
+                : matching.scanId
+                ? (() => { const s = scans.find((x) => x.id === matching.scanId); return s ? `Pinned: ${s.label ?? (s.industry ?? "scan").replace(/_/g, " ")} · ${new Date(s.created_at).toLocaleDateString()}` : "Pinned scan (no longer in your history)"; })()
+                : "Latest scan (default)"}
+            </span>
+            <div className="ml-auto flex items-center gap-2">
+              {(matching.scanId || matching.text) && (
+                <button onClick={() => void saveMatching({ scanId: null, text: null }, "Back to your latest scan.")} className="text-[11px] text-muted-foreground hover:text-foreground underline">
+                  Reset to latest scan
+                </button>
+              )}
+              <button onClick={() => setPasteOpen((v) => !v)} className="text-[11px] text-primary hover:underline">
+                {pasteOpen ? "Close" : "Paste a résumé"}
+              </button>
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            The job board's fit ranking, your email match alerts, and the apply agent's drafts are all grounded in this document. Pin a scan below, or paste the exact résumé you're sending out.
+          </p>
+          {pasteOpen && (
+            <div className="mt-3">
+              <textarea
+                value={pasteDraft}
+                onChange={(e) => setPasteDraft(e.target.value)}
+                rows={6}
+                placeholder="Paste your résumé text here (plain text)…"
+                className="w-full rounded-lg border border-border bg-background p-2.5 text-[12px] focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              <button
+                onClick={() => {
+                  if (pasteDraft.trim().length < 100) { toast.error("That's too short to match against — paste the full résumé."); return; }
+                  void saveMatching({ scanId: null, text: pasteDraft.trim() }, "Saved — matching now uses this résumé.");
+                  setPasteOpen(false);
+                  setPasteDraft("");
+                }}
+                className="mt-2 text-xs font-semibold text-primary-foreground bg-primary rounded-lg px-3 py-1.5 hover:bg-primary/90"
+              >
+                Use this résumé for matching
+              </button>
+            </div>
+          )}
+        </div>
+
         <ApplyCopilotPanel
           apps={applications}
           resumeFor={(a) => {
             const v = a.scan_id ? scans.find((s) => s.id === a.scan_id) : null;
-            return v?.resume_text ?? scans[0]?.resume_text ?? null;
+            return v?.resume_text ?? matchingResume ?? scans[0]?.resume_text ?? null;
           }}
           proActive={pro.active}
           onKit={(appId, kit) => setApplications((prev) => prev.map((a) => (a.id === appId ? { ...a, kit } : a)))}

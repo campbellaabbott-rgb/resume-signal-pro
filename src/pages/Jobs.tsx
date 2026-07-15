@@ -592,6 +592,32 @@ export default function Jobs() {
 
   const resolveFitResume = async (): Promise<string | null> => {
     if (fitResume.current) return fitResume.current;
+    // 1) The account's PINNED matching résumé — an explicit choice beats every
+    //    implicit source (matching_* columns postdate typegen → untyped access).
+    if (session) {
+      try {
+        const { data: prof } = await (supabase as unknown as { from: (t: string) => any })
+          .from("user_profiles")
+          .select("matching_scan_id, matching_resume_text")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        const pinnedText = ((prof?.matching_resume_text as string | null) ?? "").trim();
+        if (pinnedText.length >= 100) {
+          fitResume.current = pinnedText;
+          return pinnedText;
+        }
+        if (prof?.matching_scan_id) {
+          const { data: pinned } = await (supabase as unknown as { from: (t: string) => any })
+            .from("user_scans").select("resume_text").eq("id", prof.matching_scan_id).maybeSingle();
+          const t = ((pinned?.resume_text as string | null) ?? "").trim();
+          if (t.length >= 100) {
+            fitResume.current = t;
+            return t;
+          }
+        }
+      } catch { /* fall through to implicit sources */ }
+    }
+    // 2) This session's fresh scan stash.
     try {
       const stashed = sessionStorage.getItem("rb_resume_for_fit");
       if (stashed && stashed.length >= 100) {
@@ -599,6 +625,7 @@ export default function Jobs() {
         return stashed;
       }
     } catch { /* ignore */ }
+    // 3) Latest scan (the long-standing default).
     if (session) {
       const { data } = await (supabase as unknown as { from: (t: string) => any })
         .from("user_scans")

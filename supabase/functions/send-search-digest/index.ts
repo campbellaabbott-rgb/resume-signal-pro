@@ -119,11 +119,24 @@ Deno.serve(async (req) => {
 
       let resumeText = "";
       if (threshold > 0) {
-        const { data: scanRow } = await supabase
-          .from("user_scans").select("resume_text")
-          .eq("user_id", s.user_id).not("resume_text", "is", null)
-          .order("created_at", { ascending: false }).limit(1).maybeSingle();
-        resumeText = ((scanRow?.resume_text as string | null) ?? "").trim();
+        // The account's PINNED matching résumé wins (explicit choice); latest
+        // scan stays the fallback — same resolution order as the board.
+        const { data: prof } = await supabase
+          .from("user_profiles").select("matching_scan_id, matching_resume_text")
+          .eq("user_id", s.user_id).maybeSingle();
+        resumeText = ((prof?.matching_resume_text as string | null) ?? "").trim();
+        if (resumeText.length < 100 && prof?.matching_scan_id) {
+          const { data: pinned } = await supabase
+            .from("user_scans").select("resume_text").eq("id", prof.matching_scan_id).maybeSingle();
+          resumeText = ((pinned?.resume_text as string | null) ?? "").trim();
+        }
+        if (resumeText.length < 100) {
+          const { data: scanRow } = await supabase
+            .from("user_scans").select("resume_text")
+            .eq("user_id", s.user_id).not("resume_text", "is", null)
+            .order("created_at", { ascending: false }).limit(1).maybeSingle();
+          resumeText = ((scanRow?.resume_text as string | null) ?? "").trim();
+        }
       }
 
       if (threshold > 0 && resumeText.length >= 100) {
