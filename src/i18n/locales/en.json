@@ -2836,6 +2836,30 @@
     }
   },
   "changelogEntries": {
+    "matchingResume": {
+      "title": "Pin the exact resume the whole platform matches against",
+      "description": "Your account now holds an explicit matching resume: pin any scan that saved its document, or paste the exact resume you're sending out, and the job board's fit ranking, your match-alert emails, and the apply agent's drafts all ground against that document. If you don't pin anything, nothing changes — everything keeps using your latest scan, as it always has."
+    },
+    "ghostJobIndex": {
+      "title": "The Ghost Job Index: we audit our own board and publish the number",
+      "description": "A new public page shows the live, honest numbers behind the board: how many verified roles are open right now, the median age of a posting, how fast roles actually get filled, and which companies are hiring most actively. Behind it, the board now audits itself every day — sampling about a hundred random listings and re-checking each one against the company's own system — and publishes the confirmed-live percentage for everyone to see. The guarantees that were always true are now stated up front too: nothing older than 30 days stays listed, and every posting is re-checked live the moment you click Apply."
+    },
+    "hiringHealth": {
+      "title": "Hiring Health: see which companies actually fill roles",
+      "description": "The board now follows the full lifecycle of every posting — when it opens and when the company takes it down — and turns that into a signal no aggregator can offer. Company pages show how many roles a company filled or closed in the last 90 days and how quickly, an \"Actively hiring\" badge marks companies with a proven recent pattern, and a board filter lets you browse only those. Built honestly: where there isn't enough data yet, the panel says it's still gathering rather than guessing."
+    },
+    "salaryAndDedupe": {
+      "title": "Salary on more postings, and the same role no longer floods the list",
+      "description": "Many companies state the pay range in the posting text even when their hiring system has no salary field — the board now reads it from the posting's own words, never an estimate, so salary appears on more and more cards over the coming weeks. When a company posts the same role across many locations, you now see one card with a \"same role in N more locations\" expander instead of a wall of near-identical listings — every location stays applyable. And company pages now answer the question people actually search — \"is this company hiring?\" — with a live, verified count."
+    },
+    "applyAgent": {
+      "title": "The apply agent: real application questions, answered from your resume — never invented",
+      "description": "Greenhouse postings now carry a \"Prep answers\" button. The agent pulls the application's real questions from the company's own system, drafts answers grounded strictly in your resume, and flags anything it can't support instead of inventing it — identity, salary, and demographic questions are always left to you. The same panel tailors your resume for the role, drafts a cover letter, preps likely interview questions, warns you if you already applied, and states the honesty guarantee up front. You review everything and submit on the company's own site — it never applies for you."
+    },
+    "explainableFit": {
+      "title": "Fit you can read — what you have, what to add, and alerts only for strong matches",
+      "description": "Fit-ranked cards now show both sides of the score: \"You already have:\" alongside \"Add to compete:\", so the ranking explains itself instead of being a bare number. Saved-search emails gain a fit bar — choose \"strong fit only\" and we email you only about new roles that clear it, scored against your resume, staying silent otherwise. And once you have enough tracked applications, your account shows your interview rate by the fit you applied with — so you can see where your applications actually convert."
+    },
     "boardScaleUp": {
       "title": "Company pool more than doubles: 8,600+ verified employers on the board",
       "description": "A database upgrade removed the board's old capacity ceiling, so every remaining clean employer from our census of the major hiring platforms came aboard — the pool grew from about 3,900 to more than 8,600 companies, each one live-verified against its platform's official public API and named from the platform's own records. Live postings are climbing as the new boards stream in, under the same rules as always: every job comes straight from the company's own board, aggregators and staffing mills are excluded, and nothing older than 30 days stays listed. The board got cleaner and faster in the same pass — a handful of companies that appeared twice under differently-cased board names were deduplicated, misfiled roles (optometrists, art directors, preschool teachers) moved out of “Other” into their proper fields, and the jobs page payload slimmed by half so filtering feels snappier."

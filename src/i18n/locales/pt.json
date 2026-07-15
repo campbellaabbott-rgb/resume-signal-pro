@@ -2836,6 +2836,30 @@
     }
   },
   "changelogEntries": {
+    "matchingResume": {
+      "title": "Fixe o currículo exato que toda a plataforma usa para comparar",
+      "description": "Sua conta agora guarda um currículo de referência explícito: fixe qualquer escaneamento que salvou o documento, ou cole o currículo exato que você está enviando, e o ranking de compatibilidade do mural, seus alertas por e-mail e os rascunhos do agente de candidatura passam a se basear nesse documento. Se você não fixar nada, nada muda — tudo continua usando seu último escaneamento, como sempre."
+    },
+    "ghostJobIndex": {
+      "title": "O Índice de Vagas Fantasma: auditamos nosso próprio mural e publicamos o número",
+      "description": "Uma nova página pública mostra os números reais e honestos por trás do mural: quantas vagas verificadas estão abertas agora, a idade mediana de uma vaga, a velocidade real de preenchimento e quais empresas estão contratando mais ativamente. Por trás disso, o mural agora se audita todos os dias — amostra cerca de cem vagas aleatórias e reconfere cada uma no sistema da própria empresa — e publica o percentual confirmado como ativo. As garantias de sempre agora aparecem de frente: nada com mais de 30 dias permanece listado, e cada vaga é reverificada ao vivo no momento em que você clica em Candidatar-se."
+    },
+    "hiringHealth": {
+      "title": "Saúde de contratação: veja quais empresas realmente preenchem vagas",
+      "description": "O mural agora acompanha o ciclo de vida completo de cada vaga — quando abre e quando a empresa a retira — e transforma isso em um sinal que nenhum agregador pode oferecer. As páginas de empresa mostram quantas vagas uma empresa preencheu ou fechou nos últimos 90 dias e com que rapidez, um selo de \"Contratando ativamente\" marca empresas com padrão recente comprovado, e um filtro do mural permite navegar só por essas. Construído com honestidade: onde ainda não há dados suficientes, o painel diz que continua coletando, em vez de adivinhar."
+    },
+    "salaryAndDedupe": {
+      "title": "Salário em mais vagas, e a mesma função não inunda mais a lista",
+      "description": "Muitas empresas informam a faixa salarial no texto da vaga mesmo quando o sistema não tem campo de salário — o mural agora a lê das próprias palavras da vaga, nunca uma estimativa, então o salário aparecerá em cada vez mais cartões nas próximas semanas. Quando uma empresa publica a mesma função em várias localidades, você agora vê um só cartão com \"mesma função em mais N localidades\" em vez de um muro de vagas quase idênticas — cada localidade continua disponível para candidatura. E as páginas de empresa agora respondem à pergunta que as pessoas realmente pesquisam — \"essa empresa está contratando?\" — com uma contagem verificada ao vivo."
+    },
+    "applyAgent": {
+      "title": "O agente de candidatura: perguntas reais da vaga, respondidas a partir do seu currículo — nunca inventadas",
+      "description": "As vagas do Greenhouse agora têm um botão de \"Preparar respostas\". O agente busca as perguntas reais da candidatura no próprio sistema da empresa, rascunha respostas estritamente baseadas no seu currículo e sinaliza o que não pode sustentar em vez de inventar — perguntas de identidade, salário e demografia ficam sempre com você. O mesmo painel adapta seu currículo à função, rascunha uma carta de apresentação, prepara prováveis perguntas de entrevista, avisa se você já se candidatou e mostra a garantia de honestidade logo de início. Você revisa tudo e envia no site da própria empresa — ele nunca se candidata por você."
+    },
+    "explainableFit": {
+      "title": "Compatibilidade que dá para ler — o que você tem, o que adicionar, e alertas só para matches fortes",
+      "description": "Os cartões ordenados por compatibilidade agora mostram os dois lados da pontuação: \"Você já tem:\" ao lado de \"Adicione para competir:\", então o ranking se explica sozinho em vez de ser um número solto. Os e-mails de buscas salvas ganham uma régua de compatibilidade — escolha \"só compatibilidade forte\" e escrevemos apenas sobre vagas novas que a superem, pontuadas contra o seu currículo, ficando em silêncio caso contrário. E com candidaturas registradas suficientes, sua conta mostra sua taxa de entrevistas pela compatibilidade com que você se candidatou — para ver onde suas candidaturas realmente convertem."
+    },
     "boardScaleUp": {
       "title": "O grupo de empresas mais que dobra: mais de 8.600 empregadores verificados no mural",
       "description": "Uma atualização do banco de dados removeu o antigo teto de capacidade do mural, então todos os empregadores limpos restantes do nosso censo das grandes plataformas de recrutamento entraram a bordo — o grupo cresceu de cerca de 3.900 para mais de 8.600 empresas, cada uma verificada ao vivo na API pública oficial da sua plataforma e nomeada pelos registros da própria plataforma. As vagas ativas seguem subindo à medida que os novos murais chegam, com as mesmas regras de sempre: cada vaga vem direto do mural da própria empresa, agregadores e agências de recrutamento em massa ficam de fora, e nada permanece listado por mais de 30 dias. O mural ficou mais limpo e mais rápido na mesma leva: algumas empresas que apareciam duas vezes sob nomes com capitalização diferente foram deduplicadas, cargos mal classificados (optometristas, diretores de arte, professores de pré-escola) saíram de “Outros” para seus campos corretos, e a página de vagas carrega metade dos dados — filtrar ficou mais ágil."

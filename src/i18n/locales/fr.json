@@ -2836,6 +2836,30 @@
     }
   },
   "changelogEntries": {
+    "matchingResume": {
+      "title": "Épinglez le CV exact utilisé par toute la plateforme pour le matching",
+      "description": "Votre compte contient désormais un CV de référence explicite : épinglez un scan ayant conservé son document, ou collez le CV exact que vous envoyez, et le classement par affinité du tableau, vos alertes par e-mail et les brouillons de l'agent de candidature s'appuieront tous sur ce document. Sans épinglage, rien ne change : tout continue d'utiliser votre dernier scan, comme avant."
+    },
+    "ghostJobIndex": {
+      "title": "Le Ghost Job Index : nous auditons notre propre tableau et publions le chiffre",
+      "description": "Une nouvelle page publique présente les chiffres réels et honnêtes du tableau : combien de postes vérifiés sont ouverts en ce moment, l'âge médian d'une annonce, la vitesse réelle à laquelle les postes sont pourvus et quelles entreprises recrutent le plus activement. En coulisses, le tableau s'audite désormais chaque jour — une centaine d'annonces tirées au hasard, chacune revérifiée auprès du système de l'entreprise — et publie le pourcentage confirmé actif. Les garanties de toujours sont désormais affichées d'emblée : rien de plus de 30 jours ne reste listé, et chaque annonce est revérifiée en direct au moment où vous cliquez sur Postuler."
+    },
+    "hiringHealth": {
+      "title": "Santé du recrutement : voyez quelles entreprises pourvoient vraiment leurs postes",
+      "description": "Le tableau suit désormais le cycle de vie complet de chaque annonce — son ouverture et le moment où l'entreprise la retire — et en fait un signal qu'aucun agrégateur ne peut offrir. Les pages entreprise montrent combien de postes une entreprise a pourvus ou fermés au cours des 90 derniers jours et à quelle vitesse, un badge « Recrute activement » distingue les entreprises au comportement récent avéré, et un filtre du tableau permet de ne parcourir que celles-ci. Construit honnêtement : quand les données manquent encore, le panneau dit qu'il collecte toujours plutôt que de deviner."
+    },
+    "salaryAndDedupe": {
+      "title": "Le salaire sur plus d'annonces, et le même poste n'inonde plus la liste",
+      "description": "Beaucoup d'entreprises indiquent la fourchette de salaire dans le texte de l'annonce même quand leur système n'a pas de champ salaire — le tableau la lit désormais dans les mots mêmes de l'annonce, jamais une estimation, si bien que le salaire apparaîtra sur de plus en plus de cartes dans les prochaines semaines. Quand une entreprise publie le même poste dans plusieurs villes, vous voyez maintenant une seule carte avec un volet « même poste dans N autres lieux » au lieu d'un mur d'annonces quasi identiques — chaque lieu reste ouvert à candidature. Et les pages entreprise répondent désormais à la question que les gens cherchent vraiment — « cette entreprise recrute-t-elle ? » — avec un décompte vérifié en direct."
+    },
+    "applyAgent": {
+      "title": "L'agent de candidature : les vraies questions du formulaire, répondues depuis votre CV — jamais inventées",
+      "description": "Les annonces Greenhouse portent désormais un bouton « Préparer les réponses ». L'agent récupère les vraies questions de la candidature depuis le système de l'entreprise, rédige des réponses strictement ancrées dans votre CV et signale ce qu'il ne peut pas étayer au lieu de l'inventer — les questions d'identité, de salaire et démographiques vous restent toujours réservées. Le même panneau adapte votre CV au poste, rédige une lettre de motivation, prépare les questions d'entretien probables, vous prévient si vous avez déjà candidaté et affiche la garantie d'honnêteté d'emblée. Vous relisez tout et envoyez sur le site de l'entreprise — il ne candidate jamais à votre place."
+    },
+    "explainableFit": {
+      "title": "Une affinité lisible : ce que vous avez, quoi ajouter, et des alertes réservées aux fortes correspondances",
+      "description": "Les cartes classées par affinité montrent désormais les deux faces du score : « Vous avez déjà : » à côté de « À ajouter pour rivaliser : », de sorte que le classement s'explique de lui-même au lieu d'être un simple chiffre. Les e-mails de recherches enregistrées gagnent un seuil d'affinité — choisissez « forte affinité uniquement » et nous ne vous écrivons que pour les nouveaux postes qui le franchissent, évalués contre votre CV, en restant silencieux sinon. Et avec assez de candidatures suivies, votre compte affiche votre taux d'entretien selon l'affinité de candidature — pour voir où vos candidatures convertissent vraiment."
+    },
     "boardScaleUp": {
       "title": "Le vivier d'entreprises fait plus que doubler : plus de 8 600 employeurs vérifiés sur le job board",
       "description": "Une mise à niveau de la base de données a levé l'ancien plafond de capacité du job board : tous les employeurs propres restants de notre recensement des grandes plateformes de recrutement sont montés à bord. Le vivier est passé d'environ 3 900 à plus de 8 600 entreprises, chacune vérifiée en direct via l'API publique officielle de sa plateforme et nommée d'après les données de la plateforme elle-même. Les offres actives grimpent à mesure que les nouveaux boards arrivent, selon les mêmes règles que toujours : chaque offre vient directement du board de l'entreprise, les agrégateurs et les cabinets d'intérim sont exclus, et rien ne reste listé plus de 30 jours. Le board est aussi devenu plus propre et plus rapide : quelques entreprises qui apparaissaient deux fois sous des noms à casse différente ont été dédupliquées, des rôles mal classés (optométristes, directeurs artistiques, enseignants de maternelle) sont sortis d'« Autres » vers leurs bons domaines, et la page emplois charge deux fois moins de données — le filtrage est plus réactif."

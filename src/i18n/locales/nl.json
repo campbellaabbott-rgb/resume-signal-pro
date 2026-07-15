@@ -2836,6 +2836,30 @@
     }
   },
   "changelogEntries": {
+    "matchingResume": {
+      "title": "Pin het exacte cv waarmee het hele platform matcht",
+      "description": "Je account heeft nu een expliciet matching-cv: pin een scan die zijn document heeft bewaard, of plak het exacte cv dat je verstuurt, en de fit-ranking van het jobboard, je matchmeldingen per e-mail en de concepten van de sollicitatie-agent baseren zich allemaal op dat document. Pin je niets, dan verandert er niets: alles blijft je laatste scan gebruiken, zoals altijd."
+    },
+    "ghostJobIndex": {
+      "title": "De Ghost Job Index: we controleren ons eigen board en publiceren het cijfer",
+      "description": "Een nieuwe openbare pagina toont de eerlijke live-cijfers achter het board: hoeveel geverifieerde vacatures er nu openstaan, de mediane leeftijd van een vacature, hoe snel functies echt worden vervuld en welke bedrijven het actiefst werven. Daarachter controleert het board zichzelf nu dagelijks — zo'n honderd willekeurige vacatures worden opnieuw gecheckt bij het systeem van het bedrijf zelf — en publiceert het bevestigd-actieve percentage. De garanties die altijd al golden staan nu voorop: niets ouder dan 30 dagen blijft staan, en elke vacature wordt live opnieuw gecontroleerd zodra je op Solliciteren klikt."
+    },
+    "hiringHealth": {
+      "title": "Hiring Health: zie welke bedrijven vacatures echt vervullen",
+      "description": "Het board volgt nu de volledige levenscyclus van elke vacature — wanneer die opengaat en wanneer het bedrijf haar offline haalt — en maakt daarvan een signaal dat geen enkele aggregator kan bieden. Bedrijfspagina's tonen hoeveel functies een bedrijf de afgelopen 90 dagen heeft vervuld of gesloten en hoe snel, een \"Actief aan het werven\"-badge markeert bedrijven met een bewezen recent patroon, en een boardfilter laat je alleen die bekijken. Eerlijk gebouwd: waar nog te weinig data is, zegt het paneel dat het nog verzamelt in plaats van te gokken."
+    },
+    "salaryAndDedupe": {
+      "title": "Salaris op meer vacatures, en dezelfde functie overspoelt de lijst niet meer",
+      "description": "Veel bedrijven noemen de salarisrange in de vacaturetekst, ook als hun systeem geen salarisveld heeft — het board leest die nu uit de eigen woorden van de vacature, nooit een schatting, zodat salaris de komende weken op steeds meer kaarten verschijnt. Plaatst een bedrijf dezelfde functie op veel locaties, dan zie je nu één kaart met \"zelfde functie op N andere locaties\" in plaats van een muur van bijna identieke vacatures — elke locatie blijft beschikbaar om te solliciteren. En bedrijfspagina's beantwoorden nu de vraag die mensen echt zoeken — \"werft dit bedrijf?\" — met een live geverifieerde telling."
+    },
+    "applyAgent": {
+      "title": "De sollicitatie-agent: echte sollicitatievragen, beantwoord vanuit je cv — nooit verzonnen",
+      "description": "Greenhouse-vacatures hebben nu een \"Antwoorden voorbereiden\"-knop. De agent haalt de echte vragen van de sollicitatie uit het systeem van het bedrijf zelf, schrijft antwoorden die strikt op je cv gebaseerd zijn en markeert wat hij niet kan onderbouwen in plaats van het te verzinnen — vragen over identiteit, salaris en demografie blijven altijd aan jou. Hetzelfde paneel past je cv aan op de functie, schrijft een sollicitatiebrief, bereidt waarschijnlijke interviewvragen voor, waarschuwt als je al gesolliciteerd hebt en toont de eerlijkheidsgarantie vooraf. Jij controleert alles en verstuurt op de site van het bedrijf zelf — hij solliciteert nooit namens jou."
+    },
+    "explainableFit": {
+      "title": "Fit die je kunt lezen — wat je hebt, wat je toevoegt, en alleen meldingen bij sterke matches",
+      "description": "Fit-gerangschikte kaarten tonen nu beide kanten van de score: \"Dit heb je al:\" naast \"Voeg toe om mee te dingen:\", zodat de ranking zichzelf uitlegt in plaats van een kaal cijfer te zijn. E-mails van opgeslagen zoekopdrachten krijgen een fit-lat — kies \"alleen sterke fit\" en we mailen je alleen over nieuwe functies die die halen, gescoord tegen je cv, en blijven anders stil. En met genoeg bijgehouden sollicitaties toont je account je interviewpercentage per fit waarmee je solliciteerde — zodat je ziet waar je sollicitaties echt renderen."
+    },
     "boardScaleUp": {
       "title": "Bedrijvenpool meer dan verdubbeld: ruim 8.600 geverifieerde werkgevers op de vacaturebank",
       "description": "Een database-upgrade heeft het oude capaciteitsplafond van de vacaturebank weggenomen, dus alle resterende schone werkgevers uit onze telling van de grote wervingsplatforms zijn aan boord gekomen — de pool groeide van zo'n 3.900 naar ruim 8.600 bedrijven, elk live geverifieerd tegen de officiële publieke API van zijn platform en benoemd volgens de gegevens van het platform zelf. Het aantal actieve vacatures stijgt terwijl de nieuwe banken binnenstromen, volgens dezelfde regels als altijd: elke vacature komt rechtstreeks van de vacaturebank van het bedrijf zelf, aggregators en uitzendmolens zijn uitgesloten, en niets blijft langer dan 30 dagen staan. De bank werd in dezelfde ronde schoner en sneller: een handvol bedrijven dat dubbel voorkwam onder verschillend gespelde namen is gededupliceerd, verkeerd ingedeelde rollen (optometristen, artdirectors, kleuterleerkrachten) verhuisden uit „Overig” naar hun juiste vakgebied, en de vacaturepagina laadt half zoveel data — filteren voelt vlotter."

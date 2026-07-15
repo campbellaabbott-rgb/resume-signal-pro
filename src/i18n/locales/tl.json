@@ -2836,6 +2836,30 @@
     }
   },
   "changelogEntries": {
+    "matchingResume": {
+      "title": "I-pin ang eksaktong resume na ginagamit ng buong platform sa pagtutugma",
+      "description": "May explicit matching resume na ngayon ang account mo: i-pin ang alinmang scan na nag-save ng dokumento nito, o i-paste ang eksaktong resume na ipinapadala mo, at ang fit ranking ng job board, ang iyong match-alert emails, at ang mga draft ng apply agent ay ibabatay lahat sa dokumentong iyon. Kung walang i-pin, walang magbabago — patuloy na gagamitin ang pinakabago mong scan, gaya ng dati."
+    },
+    "ghostJobIndex": {
+      "title": "Ang Ghost Job Index: ina-audit namin ang sarili naming board at inilalathala ang numero",
+      "description": "Ipinapakita ng bagong pampublikong page ang totoo at tapat na mga numero sa likod ng board: ilang verified na trabaho ang bukas ngayon mismo, ang median na edad ng isang posting, gaano talaga kabilis napupunan ang mga posisyon, at aling mga kumpanya ang pinakaaktibong kumukuha. Sa likod nito, ina-audit na ng board ang sarili nito araw-araw — kumukuha ng humigit-kumulang isandaang random na listing at muling sinusuri ang bawat isa sa sistema mismo ng kumpanya — at inilalathala ang porsiyentong kumpirmadong aktibo. Ang mga garantiyang laging totoo ay nakasaad na ngayon sa unahan: walang mas luma sa 30 araw ang nananatiling nakalista, at bawat posting ay live na muling sinusuri sa sandaling i-click mo ang Apply."
+    },
+    "hiringHealth": {
+      "title": "Hiring Health: tingnan kung aling mga kumpanya ang talagang nagpupuno ng mga posisyon",
+      "description": "Sinusubaybayan na ngayon ng board ang buong lifecycle ng bawat posting — kailan ito bumukas at kailan ito tinanggal ng kumpanya — at ginagawa itong senyales na walang aggregator na makapagbibigay. Ipinapakita ng mga company page kung ilang posisyon ang napunan o isinara ng isang kumpanya sa nakaraang 90 araw at gaano kabilis, may \"Aktibong kumukuha\" na badge ang mga kumpanyang may napatunayang kamakailang pattern, at may filter sa board para makita lamang ang mga iyon. Tapat na ginawa: kung kulang pa ang datos, sinasabi ng panel na nangongolekta pa ito sa halip na manghula."
+    },
+    "salaryAndDedupe": {
+      "title": "Sahod sa mas maraming posting, at hindi na binabaha ng parehong posisyon ang listahan",
+      "description": "Maraming kumpanya ang naglalagay ng sahod sa mismong teksto ng posting kahit walang salary field ang kanilang sistema — binabasa na ito ngayon ng board mula sa sariling mga salita ng posting, hindi kailanman tantiya, kaya lalabas ang sahod sa parami nang paraming card sa mga susunod na linggo. Kapag nag-post ang isang kumpanya ng parehong posisyon sa maraming lokasyon, isang card na lang ang makikita mo na may \"parehong posisyon sa N pang lokasyon\" sa halip na pader ng halos magkakaparehong listing — bawat lokasyon ay puwede pa ring aplayan. At sinasagot na ngayon ng mga company page ang tanong na talagang hinahanap ng mga tao — \"kumukuha ba ang kumpanyang ito?\" — gamit ang live at verified na bilang."
+    },
+    "applyAgent": {
+      "title": "Ang apply agent: totoong mga tanong sa aplikasyon, sinagot mula sa resume mo — hindi kailanman inimbento",
+      "description": "May \"Prep answers\" na button na ngayon ang mga Greenhouse posting. Kinukuha ng agent ang totoong mga tanong ng aplikasyon mula sa sistema mismo ng kumpanya, gumagawa ng mga sagot na mahigpit na nakabatay sa resume mo, at minamarkahan ang hindi nito masusuportahan sa halip na imbentuhin — ang mga tanong sa pagkakakilanlan, sahod, at demograpiko ay laging iniiwan sa iyo. Ang parehong panel ay nag-aangkop ng resume mo sa posisyon, gumagawa ng cover letter, naghahanda ng malamang na mga tanong sa interview, nagbababala kung nakapag-apply ka na, at ipinapakita ang garantiya ng katapatan sa unahan. Ikaw ang magrerepaso ng lahat at magsusumite sa site mismo ng kumpanya — hinding-hindi ito mag-a-apply para sa iyo."
+    },
+    "explainableFit": {
+      "title": "Fit na nababasa — kung ano ang mayroon ka, ano ang idadagdag, at mga alerto para lamang sa malalakas na tugma",
+      "description": "Ipinapakita na ngayon ng mga fit-ranked card ang dalawang panig ng iskor: \"Mayroon ka na:\" katabi ng \"Idagdag para makipagsabayan:\", kaya ipinapaliwanag ng ranking ang sarili nito sa halip na maging hubad na numero. May fit bar na ang mga email ng naka-save na paghahanap — piliin ang \"malakas na fit lamang\" at magsusulat lang kami tungkol sa mga bagong posisyong lumampas dito, na na-iskor laban sa resume mo, at mananahimik kung hindi. At kapag sapat na ang na-track mong mga aplikasyon, ipinapakita ng account mo ang interview rate mo ayon sa fit na ginamit mo sa pag-apply — para makita kung saan talaga nagko-convert ang mga aplikasyon mo."
+    },
     "boardScaleUp": {
       "title": "Mahigit dumoble ang pool ng kumpanya: 8,600+ na beripikadong employer sa board",
       "description": "Inalis ng isang database upgrade ang lumang limitasyon sa kapasidad ng board, kaya sumakay na ang lahat ng natitirang malinis na employer mula sa aming census ng malalaking hiring platform — lumaki ang pool mula humigit-kumulang 3,900 patungong mahigit 8,600 na kumpanya, bawat isa ay live na beripikado sa opisyal na pampublikong API ng platform nito at pinangalanan mula sa sariling rekord ng platform. Patuloy na tumataas ang mga aktibong opening habang pumapasok ang mga bagong board, sa parehong mga patakaran: bawat trabaho ay direkta mula sa sariling job board ng kumpanya, hindi kasama ang mga aggregator at staffing mill, at walang nananatiling nakalista nang lampas 30 araw. Naging mas malinis at mas mabilis din ang board: na-deduplicate ang ilang kumpanyang lumalabas nang dalawang beses sa magkaibang kapitalisasyon ng pangalan, lumipat ang mga maling-pagkaka-file na role (optometrist, art director, preschool teacher) mula sa “Iba pa” patungo sa tamang larangan, at kalahati na lang ang dinadalang data ng jobs page — mas mabilis ang pag-filter."

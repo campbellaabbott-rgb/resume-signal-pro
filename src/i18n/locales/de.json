@@ -2836,6 +2836,30 @@
     }
   },
   "changelogEntries": {
+    "matchingResume": {
+      "title": "Genau der Lebenslauf, mit dem die ganze Plattform abgleicht — jetzt anpinnbar",
+      "description": "Dein Konto führt jetzt einen expliziten Matching-Lebenslauf: Pinne einen Scan mit gespeichertem Dokument an oder füge genau den Lebenslauf ein, den du verschickst — das Fit-Ranking des Boards, deine Match-Benachrichtigungen und die Entwürfe des Bewerbungsagenten stützen sich dann alle auf dieses Dokument. Ohne Pin ändert sich nichts: Alles nutzt weiterhin deinen letzten Scan, wie bisher."
+    },
+    "ghostJobIndex": {
+      "title": "Der Ghost-Job-Index: Wir prüfen unser eigenes Board und veröffentlichen die Zahl",
+      "description": "Eine neue öffentliche Seite zeigt die ehrlichen Live-Zahlen hinter dem Board: wie viele verifizierte Stellen gerade offen sind, das mediane Alter einer Anzeige, wie schnell Stellen tatsächlich besetzt werden und welche Unternehmen am aktivsten einstellen. Dahinter prüft sich das Board jetzt täglich selbst — rund hundert zufällige Anzeigen werden gegen das System des jeweiligen Unternehmens gegengeprüft — und veröffentlicht den bestätigt-aktiven Prozentsatz. Die Garantien, die immer galten, stehen jetzt sichtbar vorne: Nichts, das älter als 30 Tage ist, bleibt gelistet, und jede Anzeige wird live erneut geprüft, sobald du auf Bewerben klickst."
+    },
+    "hiringHealth": {
+      "title": "Hiring Health: sieh, welche Unternehmen Stellen wirklich besetzen",
+      "description": "Das Board verfolgt jetzt den gesamten Lebenszyklus jeder Anzeige — wann sie erscheint und wann das Unternehmen sie zurückzieht — und macht daraus ein Signal, das kein Aggregator bieten kann. Unternehmensseiten zeigen, wie viele Stellen ein Unternehmen in den letzten 90 Tagen besetzt oder geschlossen hat und wie schnell, ein \"Stellt aktiv ein\"-Badge kennzeichnet Unternehmen mit nachweislich aktuellem Muster, und ein Board-Filter zeigt nur diese. Ehrlich gebaut: Wo noch zu wenig Daten vorliegen, sagt das Panel, dass es noch sammelt, statt zu raten."
+    },
+    "salaryAndDedupe": {
+      "title": "Gehalt auf mehr Anzeigen — und dieselbe Stelle flutet nicht mehr die Liste",
+      "description": "Viele Unternehmen nennen die Gehaltsspanne im Anzeigentext, auch wenn ihr System kein Gehaltsfeld hat — das Board liest sie jetzt aus den eigenen Worten der Anzeige, nie eine Schätzung, sodass in den kommenden Wochen auf immer mehr Karten ein Gehalt erscheint. Veröffentlicht ein Unternehmen dieselbe Stelle an vielen Standorten, siehst du jetzt eine Karte mit \"gleiche Stelle an N weiteren Standorten\" statt einer Wand fast identischer Anzeigen — jeder Standort bleibt bewerbbar. Und Unternehmensseiten beantworten jetzt die Frage, die wirklich gesucht wird — \"stellt dieses Unternehmen ein?\" — mit einer live verifizierten Zahl."
+    },
+    "applyAgent": {
+      "title": "Der Bewerbungsagent: echte Bewerbungsfragen, beantwortet aus deinem Lebenslauf — nie erfunden",
+      "description": "Greenhouse-Anzeigen tragen jetzt einen \"Antworten vorbereiten\"-Button. Der Agent holt die echten Fragen der Bewerbung aus dem System des Unternehmens, entwirft Antworten, die strikt in deinem Lebenslauf verankert sind, und markiert, was er nicht belegen kann, statt es zu erfinden — Fragen zu Identität, Gehalt und Demografie bleiben immer dir überlassen. Dasselbe Panel passt deinen Lebenslauf an die Stelle an, entwirft ein Anschreiben, bereitet wahrscheinliche Interviewfragen vor, warnt dich bei einer Doppelbewerbung und zeigt die Ehrlichkeitsgarantie vorneweg. Du prüfst alles und sendest auf der Seite des Unternehmens — er bewirbt sich nie für dich."
+    },
+    "explainableFit": {
+      "title": "Fit zum Nachlesen — was du hast, was fehlt, und Alerts nur bei starken Treffern",
+      "description": "Fit-sortierte Karten zeigen jetzt beide Seiten des Scores: \"Hast du schon:\" neben \"Ergänzen, um zu punkten:\" — das Ranking erklärt sich selbst, statt eine nackte Zahl zu sein. Die E-Mails zu gespeicherten Suchen bekommen eine Fit-Schwelle — wähle \"nur starker Fit\" und wir schreiben dir nur bei neuen Stellen, die sie überspringen, bewertet gegen deinen Lebenslauf, und bleiben sonst still. Und mit genug erfassten Bewerbungen zeigt dein Konto deine Interviewquote nach dem Fit, mit dem du dich beworben hast — damit du siehst, wo deine Bewerbungen wirklich ankommen."
+    },
     "boardScaleUp": {
       "title": "Unternehmenspool mehr als verdoppelt: über 8.600 verifizierte Arbeitgeber auf der Jobbörse",
       "description": "Ein Datenbank-Upgrade hat die alte Kapazitätsgrenze der Jobbörse aufgehoben — damit sind alle verbleibenden sauberen Arbeitgeber aus unserem Zensus der großen Recruiting-Plattformen an Bord gekommen. Der Pool wuchs von rund 3.900 auf über 8.600 Unternehmen, jedes live gegen die offizielle öffentliche API seiner Plattform verifiziert und nach deren eigenen Daten benannt. Die Zahl der aktiven Stellen steigt, während die neuen Boards einlaufen — nach denselben Regeln wie immer: Jede Stelle stammt direkt von der Jobbörse des Unternehmens, Aggregatoren und Zeitarbeitsvermittler sind ausgeschlossen, und nichts bleibt länger als 30 Tage gelistet. Die Börse wurde im selben Zug sauberer und schneller: Einige Unternehmen, die unter unterschiedlich geschriebenen Board-Namen doppelt erschienen, wurden dedupliziert, falsch einsortierte Rollen (Optometristen, Art Directors, Vorschullehrkräfte) wanderten aus „Sonstiges“ in ihre richtigen Bereiche, und die Jobs-Seite lädt nur noch halb so viele Daten — das Filtern fühlt sich flotter an."
