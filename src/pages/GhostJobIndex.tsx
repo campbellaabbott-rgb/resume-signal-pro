@@ -194,9 +194,15 @@ export default function GhostJobIndex() {
             <li>· When a company removes a role, it disappears here within one refresh cycle — and we log the closure, which is how the "actually fills roles" figures are built.</li>
             <li>· Every posting is re-checked live the moment you click Apply.</li>
           </ul>
-          <div className="mt-4">
+          <div className="mt-4 flex flex-wrap gap-4">
             <Link to="/jobs" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
               Browse the live board →
+            </Link>
+            <Link to="/entry-level-index" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
+              The Entry-Level Index
+            </Link>
+            <Link to="/hiring-trends" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
+              Weekly hiring trends
             </Link>
           </div>
         </div>

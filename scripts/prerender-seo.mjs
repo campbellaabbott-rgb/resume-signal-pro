@@ -868,6 +868,53 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
         }],
       });
     }
+
+    // The Entry-Level Index — live ranking of who's hiring early-career.
+    // Static shell like the Ghost Job Index; stats hydrate client-side.
+    {
+      write({
+        path: "/entry-level-index",
+        title: "The Entry-Level Index — who's actually hiring entry-level right now?",
+        description: "A live ranking of companies with real entry-level openings — junior, graduate, and early-career roles counted from companies' official job boards, refreshed all day. No aggregators, nothing older than 30 days.",
+        content: `
+          <h1>The Entry-Level Index</h1>
+          <p>"Entry-level, 5 years' experience required" is a running joke for a reason. This page counts the real thing: openings whose own titles and requirements say early-career — internships, junior, graduate, and 0–2 year roles — and ranks the companies that post the most of them.</p>
+          <p>Every count comes live from companies' official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy) — never an aggregator or a scrape, and nothing older than 30 days. A role counts as entry-level when its own title or stated requirements say so; we never guess.</p>
+          <p><a href="/jobs?experience=entry">Browse all verified entry-level openings</a>, check the <a href="/hiring-trends">weekly hiring trends</a>, or scan your resume against any posting with the <a href="/">free resume scan</a>.</p>
+        `,
+        jsonLd: [{
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "The Entry-Level Index",
+          description: "A live ranking of companies with real entry-level openings, counted from official company job boards.",
+          url: `${SITE}/entry-level-index`,
+          isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
+        }],
+      });
+    }
+
+    // Weekly Hiring Trends — counted postings per week, trending fields.
+    {
+      write({
+        path: "/hiring-trends",
+        title: "Weekly Hiring Trends — how many jobs were really posted this week?",
+        description: "Live weekly hiring data from companies' official job boards: new postings per week, which fields are hiring, entry-level and remote shares, and how many roles actually got filled — no estimates, no surveys.",
+        content: `
+          <h1>Weekly Hiring Trends</h1>
+          <p>Is hiring up or down this week? This page answers with counted postings, not vibes: every new role companies dated this week on their own boards, which fields they're in, and how many roles actually got filled.</p>
+          <p>Counts use each posting's own stated date from the company's official applicant-tracking feed. Postings from companies newly added to our catalog are excluded from weekly counts, so growth in our coverage never shows up as a fake hiring spike. Closure counts come from our lifecycle log — the moment a company takes a posting down, we record it.</p>
+          <p><a href="/jobs">Browse the live board</a>, see <a href="/entry-level-index">who's hiring entry-level</a>, or check the <a href="/ghost-job-index">Ghost Job Index</a>.</p>
+        `,
+        jsonLd: [{
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "Weekly Hiring Trends",
+          description: "Live weekly hiring data computed from official company job boards: new postings, trending fields, and roles actually filled.",
+          url: `${SITE}/hiring-trends`,
+          isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
+        }],
+      });
+    }
   }
 
   // ---- /llms-full.txt: complete citable text in one fetch ----

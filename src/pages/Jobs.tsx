@@ -966,6 +966,15 @@ export default function Jobs() {
               <RefreshCw className="w-3.5 h-3.5 text-success shrink-0" />
               {t("jobsPage.guaranteeLive", "Re-checked live the moment you apply")}
             </span>
+            <Link to="/ghost-job-index" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
+              {t("jobsPage.dataPagesGhost", "Ghost Job Index")}
+            </Link>
+            <Link to="/hiring-trends" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
+              {t("jobsPage.dataPagesTrends", "Weekly hiring trends")}
+            </Link>
+            <Link to="/entry-level-index" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
+              {t("jobsPage.dataPagesEntry", "Entry-Level Index")}
+            </Link>
           </div>
 
           {/* Company-page Hiring-Health: the lifecycle signal aggregators can't
