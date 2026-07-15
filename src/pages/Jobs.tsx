@@ -138,6 +138,11 @@ export default function Jobs() {
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   // Company-page hiring-health (lifecycle-derived; only fetched on a company page).
   const [hiringHealth, setHiringHealth] = useState<HiringHealth | null>(null);
+  // Board-card hiring-health, batched per visible company token → "Actively hiring"
+  // badge + filter. Auto-activates as the closure log accrues real data.
+  const [healthByToken, setHealthByToken] = useState<Record<string, HiringHealth>>({});
+  const [activelyHiringOnly, setActivelyHiringOnly] = useState(false);
+  const healthAttempted = useRef<Set<string>>(new Set());
   // Apply-agent: the posting whose questions we're drafting (with its fetched JD
   // and whether the user already applied — the dedup guard), and which card is
   // currently loading its description.
@@ -677,10 +682,43 @@ export default function Jobs() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
+  // Batch-fetch hiring-health for the visible company tokens (one lookup each,
+  // deduped via a ref so a missing RPC or repeat tokens never loop).
+  useEffect(() => {
+    const batch = Array.from(new Set(jobs.map((j) => j.token).filter((x): x is string => !!x)))
+      .filter((tok) => !healthAttempted.current.has(tok))
+      .slice(0, 200);
+    if (batch.length === 0) return;
+    batch.forEach((t) => healthAttempted.current.add(t));
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await (supabase as unknown as {
+          rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown }>;
+        }).rpc("get_company_hiring_health", { p_tokens: batch });
+        if (cancelled || !Array.isArray(data)) return;
+        setHealthByToken((prev) => {
+          const next = { ...prev };
+          for (const row of data as Array<HiringHealth & { company_token?: string }>) {
+            if (row?.company_token) next[row.company_token] = row;
+          }
+          return next;
+        });
+      } catch { /* RPC not deployed yet — no badges, no error surfaced */ }
+    })();
+    return () => { cancelled = true; };
+  }, [jobs]);
+
+  const isActivelyHiring = useCallback(
+    (tok?: string) => !!tok && (healthByToken[tok]?.closed_90d ?? 0) >= ACTIVELY_HIRING_MIN_CLOSED,
+    [healthByToken],
+  );
+
   const displayJobs = useMemo(() => {
-    if (!fitRanking) return jobs;
-    return [...jobs].sort((a, b) => (fits[b.id] ?? -1) - (fits[a.id] ?? -1));
-  }, [jobs, fitRanking, fits]);
+    let list = activelyHiringOnly ? jobs.filter((j) => isActivelyHiring(j.token)) : jobs;
+    if (fitRanking) list = [...list].sort((a, b) => (fits[b.id] ?? -1) - (fits[a.id] ?? -1));
+    return list;
+  }, [jobs, fitRanking, fits, activelyHiringOnly, isActivelyHiring]);
 
   // Aggregate the per-card tiers into one motivating headline for the personalized
   // view — the reason a returning seeker stays. Counts only SCORED postings among
@@ -938,6 +976,22 @@ export default function Jobs() {
               {fitLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Target className="w-3 h-3" />}
               {fitRanking ? t("jobsPage.fitRankingOn", "Ranked by your fit") : t("jobsPage.fitRankingCta", "Rank by my fit")}
             </button>
+            <button
+              type="button"
+              onClick={() => setActivelyHiringOnly((v) => !v)}
+              className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                activelyHiringOnly ? "border-success bg-success/10 text-success font-semibold" : "border-border text-muted-foreground hover:text-foreground"
+              }`}
+              title={t("jobsPage.activelyHiringTip", "Show only companies with a proven recent hiring pattern — roles they've actually filled or closed, from our lifecycle tracking (not just open listings).")}
+            >
+              <Activity className="w-3 h-3" />
+              {t("jobsPage.activelyHiringFilter", "Actively hiring")}
+            </button>
+            {activelyHiringOnly && displayJobs.length === 0 && (
+              <span className="text-[11px] text-muted-foreground">
+                {t("jobsPage.activelyHiringEmpty", "No proven-active companies in these results yet — hiring-health data is still accruing. Turn this off to see all verified roles.")}
+              </span>
+            )}
             {fitRanking && (
               <span className="text-[11px] text-muted-foreground">
                 {t("jobsPage.fitRankingNote", "Deterministic keyword coverage vs your scanned resume — postings without stored descriptions show no score.")}
@@ -1061,6 +1115,18 @@ export default function Jobs() {
                             >
                               <Briefcase className="w-3 h-3 shrink-0" />
                               {t("jobsPage.openRoles", "{{count}} open roles", { count: openRoles })}
+                            </span>
+                          )}
+                          {/* Hiring-Health: proven-active companies (from the closure
+                              log) — the signal aggregators can't build. Self-activates
+                              as closures accrue; silent until a real pattern exists. */}
+                          {job.token && (healthByToken[job.token]?.closed_90d ?? 0) >= ACTIVELY_HIRING_MIN_CLOSED && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-success mt-1 ml-2"
+                              title={t("jobsPage.hhBadgeTip", "This company has filled or closed {{n}} roles in the last 90 days — a proven, active hiring pattern, not just open listings.", { n: healthByToken[job.token].closed_90d })}
+                            >
+                              <Activity className="w-3 h-3 shrink-0" />
+                              {t("jobsPage.hhBadge", "Actively hiring")}
                             </span>
                           )}
                           {/* Explainable fit — the "why you match" half: the posting's
