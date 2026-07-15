@@ -55,7 +55,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-15.5";
+const BUILD_VERSION = "2026-07-15.6";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -238,7 +238,13 @@ const interleaveByVendor = (list: JobSource[]): JobSource[] => {
 };
 const HOT_SIZE = 120;
 const FALLBACK_HOT_LIST = interleaveByVendor(JOB_SOURCES.filter((s) => HOT_TOKENS.has(s.token)));
-const FALLBACK_COLD_LIST = JOB_SOURCES.filter((s) => !HOT_TOKENS.has(s.token));
+// Cold list interleaved too: census merges append same-vendor blocks
+// (rung 3 added ~3k recruitee/teamtailor/personio/breezy in runs), so an
+// uninterleaved 80-board slice can be one vendor end-to-end — burst
+// rate-limits (personio 429s observed) and clustered heavy parses. The
+// rotation cursor indexes this list, so order changes cost one transient
+// partial rotation; the nightly stale-board sweep covers any laggards.
+const FALLBACK_COLD_LIST = interleaveByVendor(JOB_SOURCES.filter((s) => !HOT_TOKENS.has(s.token)));
 
 // Self-tuning tiers: each completed pass writes the current top boards by
 // live posting count (meta k=hot_tokens), so a board that grows gets hot
@@ -254,7 +260,7 @@ async function tierLists(client: SupabaseClient): Promise<{ hotList: JobSource[]
   const hot = new Set(tokens.filter((x): x is string => typeof x === "string"));
   return {
     hotList: interleaveByVendor(JOB_SOURCES.filter((s) => hot.has(s.token))),
-    coldList: JOB_SOURCES.filter((s) => !hot.has(s.token)),
+    coldList: interleaveByVendor(JOB_SOURCES.filter((s) => !hot.has(s.token))),
   };
 }
 const COLD_SLICES_PER_PASS = 24; // widened for the Common Crawl round: 80×24 = 1,920 cold boards/pass keeps a ~11.8k-board tail re-verifying in ~6.1 passes (~61 min — inside the 90-min freshness SLA and honest to the "about an hour" copy); more hops of the proven-safe slice size, not bigger slices. SR_CAP bounds any single board's fetch so mixing SR boards into cold slices stays under the edge wall-time limit.

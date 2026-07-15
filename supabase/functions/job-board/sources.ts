@@ -52,10 +52,14 @@ export const HOT_TOKENS: Set<string> = new Set([
 
 // Greenhouse giants whose per-posting HTML would blow the per-invocation
 // CPU budget (measured 2026-07-12: htmlToText over ~9k descriptions killed
-// the slice). Fetched WITHOUT content; their postings carry no stored
-// description and fit-ranking shows an honest null — same degradation the
-// SR giants already have.
-export const LIGHT_DESC_TOKENS: Set<string> = new Set([]); // emptied: the 4 light giants were retail/hourly and got pruned in the corporate re-weighting
+// the slice). Fetched WITHOUT content on the refresh path; the daily
+// backfill-desc sweep fills their descriptions via Greenhouse's per-job
+// endpoint in its own budgeted invocation, so degradation is temporary.
+// stripe/zscaler re-added 2026-07-15: their content=true payloads measure
+// 3.9 MB / 4.9 MB (521 / 338 feed jobs), and they were the only two hot
+// boards never receiving verification stamps — the heavy parse killed the
+// isolate before the per-board success site.
+export const LIGHT_DESC_TOKENS: Set<string> = new Set(["stripe", "zscaler"]);
 
 // Entry constructor: building 11,900+ elements as raw object literals makes
 // TypeScript compute a union of thousands of distinct literal types and die

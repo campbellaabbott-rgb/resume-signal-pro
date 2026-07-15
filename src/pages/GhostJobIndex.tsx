@@ -32,6 +32,8 @@ interface AuditResult {
   gone: number;
   unknown: number;
   accuracyPct: number | null;
+  /** Rolling ~30-day history of daily audits, oldest first. */
+  history?: Array<{ at: string; sampled: number; accuracyPct: number | null }>;
 }
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
@@ -132,6 +134,25 @@ export default function GhostJobIndex() {
               {" "}({audit.live} live, {audit.gone} already taken down{audit.unknown > 0 ? `, ${audit.unknown} unreachable` : ""}).
               The handful already taken down are pruned by the next refresh cycle. We run this audit every day.
             </p>
+            {/* The daily-audit trend — only once there are at least two real
+                audits to show. Every bar is a published, dated measurement. */}
+            {(audit.history?.length ?? 0) >= 2 && (
+              <div className="mt-3">
+                <div className="flex items-end gap-1">
+                  {audit.history!.slice(-14).map((h) => (
+                    <div
+                      key={h.at}
+                      className="w-6 rounded-t bg-success/70"
+                      style={{ height: `${Math.max(6, Math.round((h.accuracyPct ?? 0) * 0.4))}px` }}
+                      title={`${new Date(h.at).toLocaleDateString()}: ${h.accuracyPct ?? "—"}% of ${h.sampled} sampled confirmed live`}
+                    />
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  Daily audit results, most recent {Math.min(audit.history!.length, 14)} days — hover any bar for the dated measurement.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
