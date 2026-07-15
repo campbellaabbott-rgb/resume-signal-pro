@@ -314,7 +314,12 @@ serve(async (req) => {
       try {
         const { data: staleCount } = await supabase.rpc('get_stale_board_count');
         if (typeof staleCount === 'number') {
-          const tooMany = staleCount > 300; // transient stragglers are normal; a wide gap is not
+          // Bootstrap guard: right after the verifications table ships, EVERY board
+          // is unstamped (~10k) until the rotation stamps them over ~3h — that's
+          // day-zero, not a gap. Total-pipeline death is owned by the refresh/
+          // freshness checks above, so skipping the near-full-catalog case is safe.
+          const bootstrapping = staleCount > 8000;
+          const tooMany = !bootstrapping && staleCount > 300; // transient stragglers are normal; a wide gap is not
           checks.push({
             name: 'job_board_verification_ceiling',
             passed: !tooMany,
