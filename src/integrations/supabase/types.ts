@@ -749,6 +749,33 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_posting_reports: {
+        Row: {
+          at: string
+          company_token: string
+          id: number
+          note: string
+          posting_id: string
+          reason: string
+        }
+        Insert: {
+          at?: string
+          company_token?: string
+          id?: never
+          note?: string
+          posting_id: string
+          reason: string
+        }
+        Update: {
+          at?: string
+          company_token?: string
+          id?: never
+          note?: string
+          posting_id?: string
+          reason?: string
+        }
+        Relationships: []
+      }
       job_board_postings: {
         Row: {
           apply_url: string
@@ -767,6 +794,7 @@ export type Database = {
           posted_at: string | null
           remote: boolean
           salary: string | null
+          salary_min_annual: number | null
           source: string
           title: string
         }
@@ -787,6 +815,7 @@ export type Database = {
           posted_at?: string | null
           remote?: boolean
           salary?: string | null
+          salary_min_annual?: number | null
           source: string
           title: string
         }
@@ -807,8 +836,36 @@ export type Database = {
           posted_at?: string | null
           remote?: boolean
           salary?: string | null
+          salary_min_annual?: number | null
           source?: string
           title?: string
+        }
+        Relationships: []
+      }
+      job_board_search_misses: {
+        Row: {
+          at: string
+          filters: Json
+          id: number
+          location: string
+          q: string
+          src: string
+        }
+        Insert: {
+          at?: string
+          filters?: Json
+          id?: never
+          location?: string
+          q?: string
+          src?: string
+        }
+        Update: {
+          at?: string
+          filters?: Json
+          id?: never
+          location?: string
+          q?: string
+          src?: string
         }
         Relationships: []
       }
@@ -2069,6 +2126,7 @@ export type Database = {
           median_days_open: number
           median_days_to_close: number
           open_roles: number
+          superseded_90d: number
           tracking_days: number
         }[]
       }
@@ -2104,6 +2162,25 @@ export type Database = {
           success_rate: number
           successful_emails: number
           total_emails: number
+        }[]
+      }
+      get_entry_level_companies: {
+        Args: { p_limit?: number }
+        Returns: {
+          company: string
+          company_token: string
+          entry_roles: number
+          open_roles: number
+        }[]
+      }
+      get_entry_level_stats: {
+        Args: never
+        Returns: {
+          by_category: Json
+          companies_with_entry: number
+          remote_entry: number
+          total_entry: number
+          total_open: number
         }[]
       }
       get_error_diagnostics: {
@@ -2184,6 +2261,16 @@ export type Database = {
           median_days_to_close: number
           total_companies: number
           total_open: number
+        }[]
+      }
+      get_hiring_trends: {
+        Args: never
+        Returns: {
+          closed: number
+          entry_new: number
+          new_postings: number
+          remote_new: number
+          week_start: string
         }[]
       }
       get_industry_correction_stats: {
@@ -2285,6 +2372,14 @@ export type Database = {
           p75: number
         }[]
       }
+      get_salary_benchmarks: {
+        Args: never
+        Returns: {
+          category: string
+          median_annual_min: number
+          n: number
+        }[]
+      }
       get_scan_credits: { Args: { p_email: string }; Returns: number }
       get_scan_geo_stats: {
         Args: { p_hours_back?: number }
@@ -2344,6 +2439,14 @@ export type Database = {
         }[]
       }
       get_today_scan_count: { Args: never; Returns: number }
+      get_trending_categories: {
+        Args: never
+        Returns: {
+          category: string
+          last7: number
+          prior7: number
+        }[]
+      }
       get_user_score_trend: {
         Args: { p_email: string }
         Returns: {
