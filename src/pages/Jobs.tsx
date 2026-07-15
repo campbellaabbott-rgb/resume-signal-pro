@@ -785,12 +785,12 @@ export default function Jobs() {
         title={landerCategory
           ? t("jobsPage.landerSeoTitle", "Live {{category}} Jobs — From Official Company Job Boards", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
           : landerCompany
-          ? t("jobsPage.companySeoTitle", "{{company}} Jobs — Real, Verified Openings", { company: landerCompanyName })
+          ? t("jobsPage.companySeoTitle", "Is {{company}} hiring? — Real, verified open roles", { company: landerCompanyName })
           : t("jobsPage.seoTitle", "Live Jobs From Companies' Own Boards — Check Your Fit Before You Apply")}
         description={landerCategory
           ? t("jobsPage.landerSeoDescription", "Live {{category}} openings pulled straight from companies' own official job boards — no aggregators, no reposts, re-verified all day. Check your resume's fit free, then apply on the company's own site.", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
           : landerCompany
-          ? t("jobsPage.companySeoDescription", "Browse {{company}}'s open roles, pulled straight from {{company}}'s own job board and re-verified all day — no aggregators, no reposts. Check your resume's fit against any role free, then apply on {{company}}'s own site.", { company: landerCompanyName })
+          ? t("jobsPage.companySeoDescription", "Is {{company}} hiring right now? See {{company}}'s verified open roles, pulled straight from their own job board and re-checked today — no aggregators, no ghost postings. Check your resume's fit against any role free, then apply on {{company}}'s own site.", { company: landerCompanyName })
           : t("jobsPage.seoDescription", "Real openings pulled straight from thousands of companies' own official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no aggregators, no reposts, re-verified all day and checked live when you apply. See how your resume fits any posting free, then apply on the company's own site.")}
         path={landerCompany ? `/jobs/company/${landerCompany}` : landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
       />
@@ -810,6 +810,17 @@ export default function Jobs() {
               ? t("jobsPage.companySubtitle", "Every {{company}} opening here comes straight from {{company}}'s own careers system — verified, still open, and re-checked the moment you apply.", { company: landerCompanyName })
               : t("jobsPage.subtitle", "Every job here comes straight from the company's own careers system — no aggregators, no reposts, no dead links — and each is re-checked live the moment you apply.")}
           </p>
+          {/* Direct answer to "is {company} hiring?" — the exact high-intent query
+              this page targets. Only shown with a real count, so it's always true. */}
+          {landerCompany && typeof data?.total === "number" && data.total > 0 && (
+            <p className="text-sm font-semibold text-success mb-2">
+              {t("jobsPage.companyYesHiring", "Yes — {{count}} verified open {{roleWord}} right now, straight from {{company}}'s own job board.", {
+                count: data.total,
+                roleWord: data.total === 1 ? "role" : "roles",
+                company: landerCompanyName,
+              })}
+            </p>
+          )}
           <p className="text-xs text-muted-foreground mb-3">
             {t("jobsPage.honestyNote", "Then we do the part other boards skip: check your resume against any posting free and see exactly what to add — so you apply prepared, not hoping.")}
           </p>
