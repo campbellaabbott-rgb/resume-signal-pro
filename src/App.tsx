@@ -23,6 +23,7 @@ const ProductSuccess = lazy(() => import("./pages/ProductSuccess"));
 const PaymentFailed = lazy(() => import("./pages/PaymentFailed"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Jobs = lazy(() => import("./pages/Jobs"));
+const GhostJobIndex = lazy(() => import("./pages/GhostJobIndex"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Methodology = lazy(() => import("./pages/Methodology"));
@@ -73,6 +74,7 @@ const App = () => (
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/jobs/field/:category" element={<Jobs />} />
           <Route path="/jobs/company/:companyToken" element={<Jobs />} />
+          <Route path="/ghost-job-index" element={<GhostJobIndex />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/methodology" element={<Methodology />} />

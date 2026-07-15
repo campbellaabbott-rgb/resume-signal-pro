@@ -1,0 +1,169 @@
+// The Ghost Job Index — a public transparency page built on the board's own
+// lifecycle data (open roles now + when roles actually close). Every number is
+// real and computed live; nothing is invented. Closure data accrues from when we
+// started logging it, so the "how fast roles close" figures fill in over time —
+// we say so plainly rather than faking a history.
+
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Activity, ShieldCheck, Clock, Briefcase } from "lucide-react";
+import { SEO } from "@/components/seo/SEO";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Stats {
+  total_open: number;
+  total_companies: number;
+  closed_90d: number;
+  median_days_open: number | null;
+  median_days_to_close: number | null;
+}
+interface Leader {
+  company: string;
+  company_token: string;
+  closed_90d: number;
+  open_roles: number;
+}
+
+const rpc = (fn: string, args?: Record<string, unknown>) =>
+  (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
+
+const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString() : "—");
+
+export default function GhostJobIndex() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [leaders, setLeaders] = useState<Leader[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [s, l] = await Promise.all([
+          rpc("get_ghost_job_index_stats"),
+          rpc("get_actively_hiring_companies", { p_limit: 20 }),
+        ]);
+        const srow = Array.isArray(s.data) ? (s.data[0] as Stats) : null;
+        if (srow) setStats(srow);
+        if (Array.isArray(l.data)) setLeaders(l.data as Leader[]);
+      } catch {
+        /* RPCs not deployed yet — page still renders its explainer */
+      }
+    })();
+  }, []);
+
+  const hasClosureData = !!stats && stats.closed_90d > 0;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <SEO
+        title="The Ghost Job Index — how many job postings are actually real?"
+        description="A live, honest look at job-posting freshness: how many roles are open right now, how long they stay open, and which companies actually fill roles — computed from companies' official job boards, not aggregators or scrapes."
+        path="/ghost-job-index"
+      />
+      <Header />
+      <main className="max-w-4xl mx-auto px-4 py-10">
+        <div className="flex items-center gap-2 mb-2">
+          <Activity className="w-6 h-6 text-primary" />
+          <h1 className="text-3xl md:text-4xl font-bold">The Ghost Job Index</h1>
+        </div>
+        <p className="text-muted-foreground mb-1">
+          Ghost jobs — postings that are stale, already filled, or never real — waste job seekers' time everywhere.
+          This is our live, honest measure of the opposite: postings that are verified, fresh, and from companies actually hiring.
+        </p>
+        <p className="text-xs text-muted-foreground mb-8">
+          Every figure below is computed from the full lifecycle of postings on companies' <b>official</b> job boards
+          (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — never an aggregator or a scrape.
+        </p>
+
+        {/* Headline stats — always true */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="text-2xl font-bold text-foreground">{fmt(stats?.total_open)}</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">verified open roles right now</div>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="text-2xl font-bold text-foreground">{fmt(stats?.total_companies)}</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">companies, each from its own feed</div>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="text-2xl font-bold text-success">30 days</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">hard freshness cap — older postings auto-dropped</div>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="text-2xl font-bold text-foreground">
+              {stats?.median_days_open != null ? `${stats.median_days_open}d` : "—"}
+            </div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">median age of an open posting</div>
+          </div>
+        </div>
+
+        {/* Closure-derived stats — the moat, staged honestly */}
+        <div className="rounded-2xl border border-border bg-card p-5 mb-8">
+          <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">
+            <Clock className="w-4 h-4 text-primary" /> Do these companies actually fill roles?
+          </h2>
+          {hasClosureData ? (
+            <p className="text-sm text-muted-foreground">
+              In the last 90 days we've watched <b className="text-foreground">{fmt(stats?.closed_90d)}</b> roles get
+              filled or closed across the board
+              {stats?.median_days_to_close != null && (
+                <> — a typical role closes in about <b className="text-foreground">{Math.round(stats.median_days_to_close)} days</b></>
+              )}. Postings that never close are exactly the ghost jobs we drop.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              We log every posting the moment a company takes it down — the only way to know which employers truly
+              hire versus perpetually collect applications. We started keeping that record recently, so this fills in
+              over the coming weeks. We'd rather show it honestly than fake a history.
+            </p>
+          )}
+        </div>
+
+        {/* Actively-hiring leaderboard */}
+        {leaders.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
+              <Briefcase className="w-4 h-4 text-primary" /> Actively hiring right now
+            </h2>
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+              {leaders.map((c, i) => (
+                <Link
+                  key={c.company_token}
+                  to={`/jobs/company/${c.company_token}`}
+                  className={`flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors ${i > 0 ? "border-t border-border/60" : ""}`}
+                >
+                  <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
+                  <span className="flex-1 text-sm font-medium text-foreground truncate">{c.company}</span>
+                  <span className="text-[11px] text-success font-semibold shrink-0">{c.closed_90d} filled / 90d</span>
+                  <span className="text-[11px] text-muted-foreground shrink-0 w-24 text-right">{c.open_roles} open now</span>
+                </Link>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Ranked by roles actually filled or closed in the last 90 days — proof of hiring, not just open listings.
+            </p>
+          </div>
+        )}
+
+        {/* Methodology */}
+        <div className="rounded-2xl border border-border bg-muted/30 p-5">
+          <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-success" /> How we measure it
+          </h2>
+          <ul className="text-[13px] text-muted-foreground space-y-1.5">
+            <li>· Every posting is pulled straight from a company's official applicant-tracking feed — never an aggregator or a scraped copy.</li>
+            <li>· Any role whose posting date passes 30 days is automatically dropped, so ghost/pipeline postings other boards leave up for months never appear.</li>
+            <li>· When a company removes a role, it disappears here within one refresh cycle — and we log the closure, which is how the "actually fills roles" figures are built.</li>
+            <li>· Every posting is re-checked live the moment you click Apply.</li>
+          </ul>
+          <div className="mt-4">
+            <Link to="/jobs" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
+              Browse the live board →
+            </Link>
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
+}
