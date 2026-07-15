@@ -4,6 +4,7 @@
 // Opt-in only (user_job_searches.digest_opt_in); HMAC unsubscribe like the
 // market pulse. Trigger on a schedule: POST /send-search-digest {"action":"send"}.
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { computeFit } from "../_shared/fit-score.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -71,7 +72,7 @@ Deno.serve(async (req) => {
     const cutoff = new Date(Date.now() - MIN_DAYS_BETWEEN_SENDS * 24 * 3600 * 1000).toISOString();
     const { data: searches, error } = await supabase
       .from("user_job_searches")
-      .select("id, user_id, name, params, digest_last_sent_at")
+      .select("id, user_id, name, params, digest_last_sent_at, fit_threshold")
       .eq("digest_opt_in", true)
       .or(`digest_last_sent_at.is.null,digest_last_sent_at.lt.${cutoff}`)
       .limit(200);
@@ -100,15 +101,64 @@ Deno.serve(async (req) => {
         }).then((r) => r.json()).catch(() => null);
 
       const countRes = await callBoard({ countOnly: true, postedAfter: since });
-      const newCount = (countRes as { total?: number } | null)?.total ?? 0;
-      if (newCount === 0) {
+      const rawNew = (countRes as { total?: number } | null)?.total ?? 0;
+      if (rawNew === 0) {
         await supabase.from("user_job_searches").update({ digest_last_sent_at: new Date().toISOString() }).eq("id", s.id);
         skipped++;
         continue;
       }
-      const listRes = await callBoard({ limit: 5, offset: 0 });
-      const jobs = ((listRes as { jobs?: Array<{ company: string; title: string; location: string; applyUrl: string }> } | null)?.jobs) ?? [];
-      if (jobs.length === 0) { skipped++; continue; } // count said new but list empty (transient) — retry next run, don't stamp
+
+      // Fit-threshold alerts: when the saved search has a fit_threshold, score the
+      // new postings against the user's latest résumé and only alert on ones that
+      // actually clear the bar — so the email is "3 strong matches for you", not
+      // "40 new postings". Falls back to the plain digest if no résumé is on file.
+      const threshold = Number((s as { fit_threshold?: number }).fit_threshold) || 0;
+      let jobs: Array<{ id?: string; company: string; title: string; location: string; applyUrl: string; fit?: number }>;
+      let newCount: number;
+      let strongMode = false;
+
+      let resumeText = "";
+      if (threshold > 0) {
+        const { data: scanRow } = await supabase
+          .from("user_scans").select("resume_text")
+          .eq("user_id", s.user_id).not("resume_text", "is", null)
+          .order("created_at", { ascending: false }).limit(1).maybeSingle();
+        resumeText = ((scanRow?.resume_text as string | null) ?? "").trim();
+      }
+
+      if (threshold > 0 && resumeText.length >= 100) {
+        strongMode = true;
+        const candRes = await callBoard({ limit: 60, offset: 0, postedAfter: since });
+        const cand = ((candRes as { jobs?: Array<{ id: string; company: string; title: string; location: string; applyUrl: string }> } | null)?.jobs) ?? [];
+        const ids = cand.map((j) => j.id).filter(Boolean);
+        const descById = new Map<string, string>();
+        if (ids.length > 0) {
+          const { data: descRows } = await supabase.from("job_board_postings").select("id, description").in("id", ids);
+          for (const r of descRows ?? []) descById.set(r.id as string, ((r.description as string | null) ?? ""));
+        }
+        const passing = cand
+          .map((j) => {
+            const d = descById.get(j.id) ?? "";
+            if (d.length < 150) return null;
+            const f = computeFit(d, resumeText, 40);
+            return typeof f.pct === "number" && f.pct >= threshold ? { ...j, fit: f.pct } : null;
+          })
+          .filter((x): x is { id: string; company: string; title: string; location: string; applyUrl: string; fit: number } => x !== null)
+          .sort((a, b) => b.fit - a.fit);
+        if (passing.length === 0) {
+          // Nothing cleared the bar this window — don't email; advance the window.
+          await supabase.from("user_job_searches").update({ digest_last_sent_at: new Date().toISOString() }).eq("id", s.id);
+          skipped++;
+          continue;
+        }
+        newCount = passing.length;
+        jobs = passing.slice(0, 5);
+      } else {
+        newCount = rawNew;
+        const listRes = await callBoard({ limit: 5, offset: 0 });
+        jobs = ((listRes as { jobs?: Array<{ company: string; title: string; location: string; applyUrl: string }> } | null)?.jobs) ?? [];
+        if (jobs.length === 0) { skipped++; continue; } // count said new but list empty (transient) — retry next run, don't stamp
+      }
 
       const token = await hmacToken(s.id as string);
       const unsubUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-search-digest?action=unsubscribe&id=${encodeURIComponent(s.id as string)}&token=${token}`;
@@ -117,7 +167,7 @@ Deno.serve(async (req) => {
       const rows = jobs.map((j) => `
         <tr><td style="padding:10px 0;border-bottom:1px solid #eef2f7">
           <div style="font-size:14px;font-weight:600;color:#0f172a">${escapeHtml(j.title)}</div>
-          <div style="font-size:12px;color:#64748b">${escapeHtml(j.company)}${j.location ? " · " + escapeHtml(j.location) : ""}</div>
+          <div style="font-size:12px;color:#64748b">${escapeHtml(j.company)}${j.location ? " · " + escapeHtml(j.location) : ""}${typeof j.fit === "number" ? ` · <span style="color:#16a34a;font-weight:600">${escapeHtml(j.fit)}% match</span>` : ""}</div>
         </td><td style="padding:10px 0;border-bottom:1px solid #eef2f7;text-align:right;vertical-align:middle">
           <a href="${escapeHtml(j.applyUrl)}" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:600">Apply&nbsp;→</a>
         </td></tr>`).join("");
@@ -130,8 +180,8 @@ Deno.serve(async (req) => {
       <div style="font-size:11px;color:#94a3b8;margin-top:2px">Saved search · ${escapeHtml(s.name as string)}</div>
     </div>
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:22px">
-      <p style="font-size:15px;color:#0f172a;margin:0 0 4px"><b>${escapeHtml(newCount)}</b> new ${newCount === 1 ? "opening" : "openings"} since we last checked</p>
-      <p style="font-size:13px;color:#64748b;margin:0 0 16px">matching “${escapeHtml(s.name as string)}”, pulled from companies' official job boards.</p>
+      <p style="font-size:15px;color:#0f172a;margin:0 0 4px"><b>${escapeHtml(newCount)}</b> new ${strongMode ? (newCount === 1 ? "match for you" : "matches for you") : (newCount === 1 ? "opening" : "openings")} since we last checked</p>
+      <p style="font-size:13px;color:#64748b;margin:0 0 16px">${strongMode ? `that clear your fit bar for` : `matching`} “${escapeHtml(s.name as string)}”, pulled from companies' official job boards.</p>
       <table style="width:100%;border-collapse:collapse">${rows}</table>
       <div style="text-align:center;margin:20px 0 4px">
         <a href="${escapeHtml(viewUrl)}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:11px 22px;border-radius:10px;text-decoration:none">See all ${escapeHtml(newCount)} on the board</a>
@@ -145,7 +195,10 @@ Deno.serve(async (req) => {
 </body></html>`;
 
       try {
-        await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, subject: `${newCount} new ${p.category || p.q || "job"} ${newCount === 1 ? "match" : "matches"} — ${s.name}`, html });
+        const subject = strongMode
+          ? `${newCount} new strong ${newCount === 1 ? "match" : "matches"} for you — ${s.name}`
+          : `${newCount} new ${p.category || p.q || "job"} ${newCount === 1 ? "match" : "matches"} — ${s.name}`;
+        await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, subject, html });
         await supabase.from("user_job_searches").update({ digest_last_sent_at: new Date().toISOString() }).eq("id", s.id);
         sent++;
       } catch (e) {

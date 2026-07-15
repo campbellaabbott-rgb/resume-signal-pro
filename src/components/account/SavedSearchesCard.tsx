@@ -15,6 +15,7 @@ interface SavedSearch {
   params: JobSearchParams;
   last_seen_at: string;
   digest_opt_in?: boolean;
+  fit_threshold?: number; // 0 = any new; 10 = possible+; 20 = strong-only
 }
 
 // user_job_searches postdates the generated DB types — untyped access, same
@@ -29,7 +30,7 @@ export function SavedSearchesCard() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await table().select("id,name,params,last_seen_at,digest_opt_in").order("created_at", { ascending: false }).limit(20);
+      const { data } = await table().select("id,name,params,last_seen_at,digest_opt_in,fit_threshold").order("created_at", { ascending: false }).limit(20);
       const rows: SavedSearch[] = data ?? [];
       setSearches(rows);
       setLoaded(true);
@@ -68,6 +69,12 @@ export function SavedSearchesCard() {
     await table().update({ digest_opt_in: next }).eq("id", s.id).then(() => {}, () => {
       setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, digest_opt_in: !next } : x)));
     });
+  };
+
+  // Fit-threshold alert: only email about roles that clear this résumé-fit bar.
+  const setThreshold = async (s: SavedSearch, value: number) => {
+    setSearches((prev) => prev.map((x) => (x.id === s.id ? { ...x, fit_threshold: value } : x)));
+    await table().update({ fit_threshold: value }).eq("id", s.id).then(() => {}, () => {});
   };
 
   if (!loaded || searches.length === 0) return null;
@@ -112,6 +119,19 @@ export function SavedSearchesCard() {
               <span className="shrink-0 text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
                 {newCounts[s.id]} new
               </span>
+            )}
+            {s.digest_opt_in && (
+              <select
+                value={s.fit_threshold ?? 0}
+                onChange={(e) => setThreshold(s, Number(e.target.value))}
+                aria-label={`Minimum fit for ${s.name} email alerts`}
+                title="Only email me about roles that clear this résumé-fit bar (scored against your latest scan)"
+                className="shrink-0 text-[11px] rounded-md border border-border bg-background px-1.5 py-1 text-muted-foreground"
+              >
+                <option value={0}>Any new</option>
+                <option value={10}>Possible fit+</option>
+                <option value={20}>Strong fit only</option>
+              </select>
             )}
             <button
               onClick={() => toggleDigest(s)}
