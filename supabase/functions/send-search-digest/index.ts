@@ -26,7 +26,7 @@ async function hmacToken(id: string): Promise<string> {
   return Array.from(new Uint8Array(sig)).slice(0, 16).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-type SearchParams = { q?: string; category?: string; location?: string; remote?: boolean; company?: string };
+type SearchParams = { q?: string; category?: string; location?: string; remote?: boolean; company?: string; experience?: string; salaryFloor?: number };
 
 function boardUrl(p: SearchParams): string {
   const qs = new URLSearchParams();
@@ -35,6 +35,8 @@ function boardUrl(p: SearchParams): string {
   if (p.remote) qs.set("remote", "1");
   if (p.company) qs.set("company", p.company);
   if (p.category) qs.set("category", p.category);
+  if (p.experience) qs.set("experience", p.experience);
+  if (p.salaryFloor) qs.set("salaryFloor", String(p.salaryFloor));
   const s = qs.toString();
   return `${SITE_URL}/jobs${s ? `?${s}` : ""}`;
 }
@@ -97,7 +99,7 @@ Deno.serve(async (req) => {
         fetch(boardBase, {
           method: "POST",
           headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "list", q: p.q || undefined, category: p.category || undefined, location: p.location || undefined, remote: p.remote || undefined, companies: p.company ? [p.company] : undefined, includeFacets: false, ...extra }),
+          body: JSON.stringify({ action: "list", q: p.q || undefined, category: p.category || undefined, location: p.location || undefined, remote: p.remote || undefined, companies: p.company ? [p.company] : undefined, experience: p.experience || undefined, salaryFloor: p.salaryFloor || undefined, includeFacets: false, ...extra }),
         }).then((r) => r.json()).catch(() => null);
 
       const countRes = await callBoard({ countOnly: true, postedAfter: since });

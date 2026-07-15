@@ -120,6 +120,13 @@ export default function Jobs() {
   const [company, setCompany] = useState(initial.get("company") ?? landerCompany ?? "");
   const [category, setCategory] = useState(initial.get("category") ?? landerCategory ?? "");
   const [experience, setExperience] = useState(initial.get("experience") ?? "");
+  // Salary floor filters on the posting's OWN stated pay, annualized (hourly
+  // ×2080 etc.) but never currency-converted — postings that don't state pay
+  // are excluded while the floor is active.
+  const [salaryFloor, setSalaryFloor] = useState<number>(() => {
+    const n = Number(initial.get("salaryFloor"));
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  });
   const [freshness, setFreshness] = useState<"" | "day" | "week">("");
   const [fitRanking, setFitRanking] = useState(false);
   const [fits, setFits] = useState<Record<string, number | null>>({});
@@ -273,6 +280,7 @@ export default function Jobs() {
       location: location || undefined,
       remote: remoteOnly || undefined,
       company: company || undefined,
+      salaryFloor: salaryFloor || undefined,
     };
     const name = searchName(
       params,
@@ -321,6 +329,7 @@ export default function Jobs() {
           category: category || undefined,
           experience: experience || undefined,
           companies: company ? [company] : undefined,
+          salaryFloor: salaryFloor || undefined,
           postedAfter: freshness ? new Date(Date.now() - (freshness === "day" ? 1 : 7) * 86_400_000).toISOString() : undefined,
           limit: PAGE,
           offset,
@@ -352,7 +361,7 @@ export default function Jobs() {
         }
       }
     },
-    [q, location, remoteOnly, company, category, experience, freshness],
+    [q, location, remoteOnly, company, category, experience, salaryFloor, freshness],
   );
 
   // Keep the URL shareable — filters in, defaults out. A category lander
@@ -366,17 +375,40 @@ export default function Jobs() {
     if (company) p.set("company", company);
     if (category) p.set("category", category);
     if (experience) p.set("experience", experience);
+    if (salaryFloor) p.set("salaryFloor", String(salaryFloor));
     const qs = p.toString();
-    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !category && !experience) {
+    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !category && !experience && !salaryFloor) {
       window.history.replaceState({}, "", `/jobs/company/${landerCompany}`);
       return;
     }
-    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !company && !experience) {
+    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !company && !experience && !salaryFloor) {
       window.history.replaceState({}, "", `/jobs/field/${landerCategory}`);
       return;
     }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, company, category, experience, landerCategory, landerCompany]);
+  }, [q, location, remoteOnly, company, category, experience, salaryFloor, landerCategory, landerCompany]);
+
+  // Category salary benchmarks: median advertised pay floor per field, computed
+  // live from postings that state pay (RPC self-gates at n>=30 — a thin sample
+  // returns no row and we show nothing). Fetched once, on first category view.
+  const [benchmarks, setBenchmarks] = useState<Record<string, { n: number; median: number }> | null>(null);
+  const benchmarksAttempted = useRef(false);
+  useEffect(() => {
+    if (!category || benchmarksAttempted.current) return;
+    benchmarksAttempted.current = true;
+    (supabase as unknown as { rpc: (fn: string) => Promise<{ data: unknown }> })
+      .rpc("get_salary_benchmarks")
+      .then(({ data: rows }) => {
+        if (!Array.isArray(rows)) return;
+        const map: Record<string, { n: number; median: number }> = {};
+        for (const r of rows as Array<{ category: string; n: number; median_annual_min: number }>) {
+          if (r.category && r.n >= 30 && Number.isFinite(Number(r.median_annual_min))) {
+            map[r.category] = { n: r.n, median: Number(r.median_annual_min) };
+          }
+        }
+        setBenchmarks(map);
+      }, () => {});
+  }, [category]);
 
   // Debounced re-query on filter change (immediate on first mount).
   const first = useRef(true);
@@ -1046,11 +1078,25 @@ export default function Jobs() {
                 </option>
               ))}
             </select>
+            <select
+              value={salaryFloor || ""}
+              onChange={(e) => setSalaryFloor(Number(e.target.value) || 0)}
+              className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              aria-label={t("jobsPage.anySalary", "Any salary")}
+              title={t("jobsPage.salaryFloorTip", "Filters on pay the posting itself states (hourly and monthly rates annualized). Postings that don't publish pay are hidden while this is on — that's most of them.")}
+            >
+              <option value="">{t("jobsPage.anySalary", "Any salary")}</option>
+              {[40_000, 60_000, 80_000, 100_000, 120_000, 150_000, 200_000].map((f) => (
+                <option key={f} value={f}>
+                  {t("jobsPage.salaryFloorOption", "{{amount}}k+ stated", { amount: f / 1000 })}
+                </option>
+              ))}
+            </select>
             <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm cursor-pointer select-none">
               <input type="checkbox" checked={remoteOnly} onChange={(e) => setRemoteOnly(e.target.checked)} className="accent-primary" />
               {t("jobsPage.remoteOnly", "Remote only")}
             </label>
-            {(q || location || remoteOnly || company || category || experience) && (
+            {(q || location || remoteOnly || company || category || experience || salaryFloor > 0) && (
               <Button size="sm" variant="ghost" className="gap-1.5" onClick={saveCurrentSearch}>
                 <BookmarkCheck className="w-3.5 h-3.5" />
                 {t("jobsPage.saveSearch", "Save this search")}
@@ -1093,6 +1139,11 @@ export default function Jobs() {
               <Activity className="w-3 h-3" />
               {t("jobsPage.activelyHiringFilter", "Actively hiring")}
             </button>
+            {salaryFloor > 0 && (
+              <span className="text-[11px] text-muted-foreground">
+                {t("jobsPage.salaryFloorNote", "Only postings that state pay of ${{amount}}k+ (annualized) — most companies don't publish pay, so this hides them.", { amount: salaryFloor / 1000 })}
+              </span>
+            )}
             {activelyHiringOnly && displayJobs.length === 0 && (
               <span className="text-[11px] text-muted-foreground">
                 {t("jobsPage.activelyHiringEmpty", "No proven-active companies in these results yet — hiring-health data is still accruing. Turn this off to see all verified roles.")}
@@ -1180,6 +1231,17 @@ export default function Jobs() {
                   <span> · {t("jobsPage.sourcesDown", "{{count}} company feeds are unreachable right now", { count: data.failedSources.length })}</span>
                 )}
               </p>
+              {category && benchmarks?.[category] && (
+                <p
+                  className="text-xs text-muted-foreground mb-3 -mt-2"
+                  title={t("jobsPage.benchmarkTip", "Median of the annualized lower bounds companies publish themselves (hourly and monthly rates annualized, currencies not converted). Live from this board — not a survey or an estimate.")}
+                >
+                  {t("jobsPage.benchmarkLine", "Advertised pay in this field: median floor ${{median}} — from {{n}} postings here that state pay", {
+                    median: Math.round(benchmarks[category].median).toLocaleString(),
+                    n: benchmarks[category].n,
+                  })}
+                </p>
+              )}
               <ul className="space-y-3">
                 {groupedJobs.map(({ primary: job, siblings }) => {
                   const d = daysAgo(job.postedAt);

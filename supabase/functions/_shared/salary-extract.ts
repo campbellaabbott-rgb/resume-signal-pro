@@ -43,6 +43,72 @@ function plausible(lo: number, hi: number, hourly: boolean): boolean {
   return lo >= 10_000 && hi <= 2_000_000;
 }
 
+// ── structured parsing (for the salary-floor filter + benchmarks) ───────────
+// Parses OUR OWN stored salary strings (vendor-structured like lever's
+// "$136k–227k/per-year-salary", ashby's "$135K – $180K", recruitee's formatter,
+// and the miner's verbatim prose) into a comparable annualized floor. Honest
+// annualization: hourly×2080, weekly×52, monthly×12; when no period is stated,
+// only values that can't be anything but annual (≥20k) are accepted. Currency
+// is NOT converted — the number filters as stated in the posting's own currency.
+
+export interface ParsedSalary {
+  min: number;
+  max: number | null;
+  period: "hour" | "week" | "month" | "year" | null;
+  /** Annualized lower bound, null when the period can't be honestly determined. */
+  annualMin: number | null;
+}
+
+// Separator-grouped form first ("120,000" / "50.000"), else plain digits with
+// optional decimal ("4000", "22.5") — a bare "4000" must parse whole, not "400".
+const P_MONEY = /[$€£]?\s?(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?|\d+(?:\.\d{1,2})?)\s?([kK])?/;
+const P_RANGE = new RegExp(P_MONEY.source + String.raw`\s*(?:-|–|—|to|through)\s*` + P_MONEY.source);
+const P_HOUR = /per[\s-]?hour|\/\s?hr\b|\/\s?hour|hourly|hour-?wage/i;
+const P_WEEK = /per[\s-]?week|\/\s?wk\b|\/\s?week|weekly/i;
+const P_MONTH = /per[\s-]?month|\/\s?mo\b|\/\s?month|monthly/i;
+const P_YEAR = /per[\s-]?(?:year|annum)|\/\s?yr\b|\/\s?year|annual|yearly|year-?salary/i;
+
+export function parseSalaryStructured(text: string | null | undefined): ParsedSalary | null {
+  if (!text) return null;
+  const s = String(text).slice(0, 300);
+  const num = (raw: string, k?: string): number | null => {
+    const m = raw.match(/^(\d{1,3}(?:[.,]\d{3})*)(?:[.,](\d{1,2}))?$/);
+    const base = m ? Number(m[1].replace(/[.,]/g, "") + (m[2] ? `.${m[2]}` : "")) : Number(raw.replace(/,/g, ""));
+    if (!Number.isFinite(base)) return null;
+    return k ? base * 1000 : base;
+  };
+  const period: ParsedSalary["period"] =
+    P_HOUR.test(s) ? "hour" : P_WEEK.test(s) ? "week" : P_MONTH.test(s) ? "month" : P_YEAR.test(s) ? "year" : null;
+
+  let min: number | null = null;
+  let max: number | null = null;
+  const r = s.match(P_RANGE);
+  if (r) {
+    min = num(r[1], r[2]);
+    max = num(r[3], r[4]);
+    // "136k–227k" style: the k often marks only one side — normalize magnitude.
+    if (min !== null && max !== null && max < min && r[2] && !r[4]) max *= 1000;
+    if (min !== null && max !== null && min < max / 900 && !r[2] && r[4]) min *= 1000;
+  } else {
+    const m1 = s.match(P_MONEY);
+    if (m1 && m1[1]) min = num(m1[1], m1[2]);
+  }
+  if (min === null || min <= 0) return null;
+
+  const MULT = { hour: 2080, week: 52, month: 12, year: 1 } as const;
+  let annualMin: number | null = null;
+  if (period) {
+    annualMin = min * MULT[period];
+    // magnitude sanity per period — a "$5/hour" or "$9,000/hour" is bad data
+    const lo = period === "hour" ? 7 : period === "week" ? 200 : period === "month" ? 800 : 10_000;
+    const hi = period === "hour" ? 500 : period === "week" ? 20_000 : period === "month" ? 90_000 : 2_000_000;
+    if (min < lo || min > hi) annualMin = null;
+  } else if (min >= 20_000 && min <= 2_000_000) {
+    annualMin = min; // unlabeled but unambiguously annual
+  }
+  return { min, max, period, annualMin };
+}
+
 /** Extract the posting's own pay text, or null when nothing clearly stated. */
 export function extractSalary(text: string | null | undefined): string | null {
   if (!text) return null;

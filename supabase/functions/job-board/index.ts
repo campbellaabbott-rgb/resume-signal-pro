@@ -36,7 +36,7 @@ import {
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
 import { computeFit } from "../_shared/fit-score.ts";
-import { extractSalary } from "../_shared/salary-extract.ts";
+import { extractSalary, parseSalaryStructured } from "../_shared/salary-extract.ts";
 import { classifyDormancy, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
@@ -55,7 +55,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-15.4";
+const BUILD_VERSION = "2026-07-15.5";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -274,6 +274,10 @@ const DORMANT_CAP = 3_000; // max tracked dormant boards (keeps most-recently-de
 // The one-time backfill fills existing rows (experience_band IS NULL) once; new
 // rows carry a band from ingestion, so this only fires the sweep on first deploy.
 const EXPERIENCE_VERSION = 1;
+// Bump when parseSalaryStructured's rules change — re-sweeps stored salary
+// text into salary_min_annual (rows are insert-only, so ingest alone never
+// reaches postings that predate the parser).
+const SALARY_PARSE_VERSION = 1;
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 // Capacity governor: keep the corpus under a ceiling with headroom; when a
@@ -476,6 +480,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         const rowsById = new Map<string, Record<string, unknown>>();
         for (const j of r.jobs) {
           const posted = sanePostedAt(j.postedAt); // reject garbage feed dates at the door
+          // Salary resolves once — vendor text wins, else description mining —
+          // and the structured parse feeds the salary-floor filter/benchmarks.
+          const salaryText = (clean(j.salary?.slice(0, 200) ?? null) || null) ?? (lightDescs ? null : extractSalary(descs.get(j.id) ?? null));
           // Freshness cap: a posting with a REAL date older than the window is
           // dropped here — left out of rowsById, so the id-diff prune deletes it
           // if we already had it and never re-adds it (churn-free because it
@@ -501,7 +508,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             // the posting's own description text (pay-transparency prose) — always
             // the company's verbatim words, never an estimate. `|| null` (not ??):
             // an empty-string vendor salary must not block extraction.
-            salary: (clean(j.salary?.slice(0, 200) ?? null) || null) ?? (lightDescs ? null : extractSalary(descs.get(j.id) ?? null)),
+            salary: salaryText,
+            salary_min_annual: parseSalaryStructured(salaryText)?.annualMin ?? null,
             experience_band: exp.band ?? "unspecified",
             min_years: exp.minYears,
             // Light boards omit the column so previously stored descriptions
@@ -873,6 +881,17 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         body: JSON.stringify({ action: "backfill-experience", chainKey: key }),
       })).then((r) => r.text()).catch(() => {}));
     }
+    // Same deal for salary_min_annual: rows are insert-only, so postings that
+    // predate the structured parser need one sweep. Stamped on completion.
+    const { data: salVer } = await client.from("job_board_meta").select("v").eq("k", "salary_parse_version").maybeSingle();
+    if ((salVer?.v as { version?: number } | null)?.version !== SALARY_PARSE_VERSION) {
+      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+      waitUntil(chainKey().then((key) => fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "backfill-salary", chainKey: key }),
+      })).then((r) => r.text()).catch(() => {}));
+    }
 
     // Categorization rules changed since the corpus was stamped? Sweep the
     // stored "other" rows through the current rules in a fresh invocation
@@ -1217,6 +1236,65 @@ Deno.serve(async (req) => {
       return json({ ok: true, scanned, updated, done: true });
     }
 
+    if (action === "backfill-salary") {
+      // One-time sweep parsing stored salary text into salary_min_annual for
+      // rows that predate the structured parser. chainKey-gated + self-chaining
+      // like backfill-experience; stamps salary_parse_version when done.
+      // Unparseable rows stay NULL — the id cursor walks past them, and the
+      // completion stamp keeps the sweep from re-scanning them every pass.
+      if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
+        return json({ error: "backfill-salary is a maintenance action" }, 403);
+      }
+      let cursor = typeof body.cursor === "string" ? body.cursor : "";
+      let scanned = 0;
+      const groups = new Map<number, string[]>(); // annualMin -> ids
+      const PAGES = 6;
+      for (let page = 0; page < PAGES; page++) {
+        let q = client
+          .from("job_board_postings")
+          .select("id,salary")
+          .not("salary", "is", null)
+          .is("salary_min_annual", null)
+          .order("id")
+          .limit(1000);
+        if (cursor) q = q.gt("id", cursor);
+        const { data: rows, error } = await q;
+        if (error) throw error;
+        for (const r of rows ?? []) {
+          scanned++;
+          const annualMin = parseSalaryStructured((r as { salary?: string | null }).salary)?.annualMin ?? null;
+          if (annualMin === null) continue;
+          if (!groups.has(annualMin)) groups.set(annualMin, []);
+          groups.get(annualMin)!.push(r.id as string);
+        }
+        if (!rows || rows.length < 1000) { cursor = ""; break; }
+        cursor = rows[rows.length - 1].id as string;
+      }
+      let updated = 0;
+      for (const [annualMin, ids] of groups) {
+        for (let i = 0; i < ids.length; i += 200) {
+          const { error } = await client.from("job_board_postings").update({ salary_min_annual: annualMin }).in("id", ids.slice(i, i + 200));
+          if (error) throw error;
+          updated += Math.min(200, ids.length - i);
+        }
+      }
+      if (cursor) {
+        const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+        waitUntil(chainKey().then((key) => fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "backfill-salary", chainKey: key, cursor }),
+        })).then((r) => r.text()).catch(() => {}));
+        return json({ ok: true, scanned, updated, nextCursor: cursor });
+      }
+      await client.from("job_board_meta").upsert(
+        { k: "salary_parse_version", v: { version: SALARY_PARSE_VERSION, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+      console.log(`[JOB-BOARD] salary backfill complete: ${scanned} scanned, ${updated} parsed (v${SALARY_PARSE_VERSION})`);
+      return json({ ok: true, scanned, updated, done: true });
+    }
+
     if (action === "refresh") {
       const hop = Number.isFinite(Number(body.chain)) ? Math.max(0, Number(body.chain)) : 0;
       const keyOk = typeof body.chainKey === "string" && body.chainKey === await chainKey();
@@ -1356,7 +1434,10 @@ Deno.serve(async (req) => {
             // it). Only set when extraction finds the company's own pay text.
             const minedSalary = extractSalary(text);
             const { error } = await client.from("job_board_postings")
-              .update({ description: text, ...(minedSalary ? { salary: minedSalary } : {}) })
+              .update({
+                description: text,
+                ...(minedSalary ? { salary: minedSalary, salary_min_annual: parseSalaryStructured(minedSalary)?.annualMin ?? null } : {}),
+              })
               .eq("id", row.id);
             if (!error) updated++;
           }
@@ -1589,6 +1670,11 @@ async function serveList(
     const expParam = String(body.experience ?? "").split(",").map((s) => s.trim()).filter(isExperienceBand);
     if (expParam.length === 1) q = q.eq("experience_band", expParam[0]);
     else if (expParam.length > 1) q = q.in("experience_band", expParam);
+    // Salary floor filters the annualized lower bound of the posting's OWN
+    // stated pay (no estimates, no currency conversion) — postings without a
+    // stated salary are excluded by the filter, honestly, not guessed at.
+    const floor = Number(body.salaryFloor);
+    if (Number.isFinite(floor) && floor > 0) q = q.gte("salary_min_annual", Math.min(floor, 2_000_000));
     if (Array.isArray(body.companies)) {
       const tokens = body.companies.filter((c): c is string => typeof c === "string").slice(0, JOB_SOURCES.length);
       if (tokens.length) q = q.in("company_token", tokens);

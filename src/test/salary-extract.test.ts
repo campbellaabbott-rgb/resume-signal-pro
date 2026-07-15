@@ -2,7 +2,7 @@
 // clearly states as compensation (a range, or a figure tied to a pay period),
 // verbatim — and never mistake a bonus/stipend/benefit figure for pay.
 import { describe, it, expect } from "vitest";
-import { extractSalary } from "../../supabase/functions/_shared/salary-extract";
+import { extractSalary, parseSalaryStructured } from "../../supabase/functions/_shared/salary-extract";
 
 describe("extractSalary", () => {
   it("extracts a US annual range with commas", () => {
@@ -46,5 +46,51 @@ describe("extractSalary", () => {
     expect(extractSalary("We are looking for a senior engineer with React experience.")).toBeNull();
     expect(extractSalary(null)).toBeNull();
     expect(extractSalary("")).toBeNull();
+  });
+});
+
+// Structured parsing feeds the salary-floor filter + benchmarks. Fixtures are
+// REAL stored salary strings observed in production on 2026-07-15.
+describe("parseSalaryStructured", () => {
+  it("parses lever's per-year-salary format", () => {
+    const p = parseSalaryStructured("$136k–227k/per-year-salary");
+    expect(p?.min).toBe(136000);
+    expect(p?.max).toBe(227000);
+    expect(p?.period).toBe("year");
+    expect(p?.annualMin).toBe(136000);
+  });
+
+  it("parses lever's per-hour-wage format and annualizes at 2080h", () => {
+    const p = parseSalaryStructured("$22.5–22.5/per-hour-wage");
+    expect(p?.period).toBe("hour");
+    expect(p?.annualMin).toBe(22.5 * 2080);
+  });
+
+  it("parses ashby's K range with equity suffix (unlabeled → annual by magnitude)", () => {
+    const p = parseSalaryStructured("$135K – $180K • Offers Equity");
+    expect(p?.min).toBe(135000);
+    expect(p?.annualMin).toBe(135000);
+  });
+
+  it("parses single hourly values", () => {
+    expect(parseSalaryStructured("$75 per hour")?.annualMin).toBe(75 * 2080);
+  });
+
+  it("parses mined prose ranges", () => {
+    const p = parseSalaryStructured("$120,000 - $150,000 per year");
+    expect(p?.annualMin).toBe(120000);
+  });
+
+  it("refuses to annualize ambiguous small numbers", () => {
+    // "4000 - 6000" with no period: could be monthly — never guess.
+    expect(parseSalaryStructured("USD 4000 - 6000")?.annualMin).toBeNull();
+    // but an explicit monthly label annualizes honestly
+    expect(parseSalaryStructured("USD 4,000 - 6,000 monthly")?.annualMin).toBe(48000);
+  });
+
+  it("rejects garbage magnitudes", () => {
+    expect(parseSalaryStructured("$3 per hour")?.annualMin ?? null).toBeNull();
+    expect(parseSalaryStructured(null)).toBeNull();
+    expect(parseSalaryStructured("Competitive")).toBeNull();
   });
 });
