@@ -166,6 +166,23 @@ export default function Jobs() {
   // tab already reported (prevents repeat submissions, shows the thanks state).
   const [reportingId, setReportingId] = useState<string | null>(null);
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+  // Dismissed postings: hidden on this device only (localStorage — works
+  // signed-out). Nothing is deleted; a restore control brings them all back.
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem("rb_dismissed_jobs") ?? "[]");
+      return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : []);
+    } catch { return new Set(); }
+  });
+  // True while a filter change refetches over an already-loaded list — the list
+  // stays visible (locally filtered) instead of blanking behind a spinner.
+  const [refreshing, setRefreshing] = useState(false);
+  const jobsCount = useRef(0);
+  // The q/location the visible list actually came from: while the typed values
+  // differ (debounce window + roundtrip), the list filters locally so typing
+  // feels instant. Never applied to settled server results — the server also
+  // matches department, which a local title/company filter would wrongly hide.
+  const servedQuery = useRef({ q: "", location: "" });
   // Per-application resume rewrite (uses the already-deployed generate-tailored-resume).
   const [tailoredOpen, setTailoredOpen] = useState(false);
   const [tailoredLoading, setTailoredLoading] = useState(false);
@@ -322,7 +339,10 @@ export default function Jobs() {
   const fetchJobs = useCallback(
     async (offset: number) => {
       const seq = ++reqSeq.current;
-      offset === 0 ? setLoading(true) : setLoadingMore(true);
+      // A filter change over an already-loaded list refreshes in place (the
+      // visible list locally filters meanwhile); only a true first load or
+      // recovery-from-error blanks to the spinner.
+      offset === 0 ? (jobsCount.current > 0 ? setRefreshing(true) : setLoading(true)) : setLoadingMore(true);
       setError(false);
       try {
         const body = {
@@ -352,6 +372,7 @@ export default function Jobs() {
         const br = res as BoardResponse;
         if (br.companies?.length) companiesCache.current = br.companies;
         else br.companies = companiesCache.current;
+        servedQuery.current = { q, location };
         setData(br);
         setJobs((prev) => (offset === 0 ? br.jobs : [...prev, ...br.jobs]));
       } catch (e) {
@@ -362,6 +383,7 @@ export default function Jobs() {
         if (seq === reqSeq.current) {
           setLoading(false);
           setLoadingMore(false);
+          setRefreshing(false);
         }
       }
     },
@@ -470,6 +492,43 @@ export default function Jobs() {
         description: t("jobsPage.reportThanksBody", "Thanks — every report is logged and factors into which company boards we keep listing."),
       });
     }
+  };
+
+  const dismissJob = (job: BoardJob) => {
+    setDismissedIds((prev) => {
+      const next = new Set(prev).add(job.id);
+      try { localStorage.setItem("rb_dismissed_jobs", JSON.stringify([...next].slice(-500))); } catch { /* storage full/blocked — session-only */ }
+      return next;
+    });
+  };
+  const restoreDismissed = () => {
+    setDismissedIds(new Set());
+    try { localStorage.removeItem("rb_dismissed_jobs"); } catch { /* ignore */ }
+  };
+
+  // Watch-company: a saved search scoped to this employer — new postings show
+  // up in the account's "new since last look" counts and the weekly digest.
+  // Pure reuse of the saved-search machinery; nothing new to go stale.
+  const watchCompany = async () => {
+    if (!landerCompany) return;
+    if (!session) return requireAuth();
+    const { error: err } = await searchesTable().insert({
+      user_id: session.user.id,
+      name: t("jobsPage.watchName", "New roles at {{company}}", { company: landerCompanyName }),
+      params: { company: landerCompany },
+    });
+    if (err && err.code === "23505") {
+      toast({ title: t("jobsPage.watchExists", "You're already watching {{company}}.", { company: landerCompanyName }) });
+      return;
+    }
+    if (err) {
+      toast({ title: t("jobsPage.saveFailed", "Couldn't save — try again.") });
+      return;
+    }
+    toast({
+      title: t("jobsPage.watchSaved", "Watching {{company}}", { company: landerCompanyName }),
+      description: t("jobsPage.watchSavedDesc", "Your account now shows how many new roles they've posted since your last look."),
+    });
   };
 
   const checkFit = async (job: BoardJob) => {
@@ -809,11 +868,31 @@ export default function Jobs() {
     [healthByToken],
   );
 
+  useEffect(() => { jobsCount.current = jobs.length; }, [jobs]);
+
   const displayJobs = useMemo(() => {
     let list = activelyHiringOnly ? jobs.filter((j) => isActivelyHiring(j.token)) : jobs;
+    if (dismissedIds.size > 0) list = list.filter((j) => !dismissedIds.has(j.id));
+    // Instant search: from the first keystroke until the server result for the
+    // typed q/location lands, the visible list filters locally on the same
+    // substring semantics — typing feels immediate, the server result (which
+    // also matches department) replaces it moments later.
+    if (q !== servedQuery.current.q || location !== servedQuery.current.location) {
+      const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+      const locTerm = location.trim().toLowerCase();
+      if (terms.length > 0 || locTerm) {
+        const filtered = list.filter((j) => {
+          const hay = `${j.title} ${j.company}`.toLowerCase();
+          return terms.every((t) => hay.includes(t)) && (!locTerm || (j.location ?? "").toLowerCase().includes(locTerm));
+        });
+        // Only narrow when the loaded page actually contains matches — flashing
+        // "no results" while the real query is still in flight would be a lie.
+        if (filtered.length > 0) list = filtered;
+      }
+    }
     if (fitRanking) list = [...list].sort((a, b) => (fits[b.id] ?? -1) - (fits[a.id] ?? -1));
     return list;
-  }, [jobs, fitRanking, fits, activelyHiringOnly, isActivelyHiring]);
+  }, [jobs, fitRanking, fits, activelyHiringOnly, isActivelyHiring, dismissedIds, refreshing, q, location]);
 
   // De-dupe near-identical postings: the same role cross-posted across locations
   // (same company + same title) collapses into ONE card with a "+N more locations"
@@ -1054,6 +1133,20 @@ export default function Jobs() {
             </div>
           )}
 
+          {/* Watch-company: one click on any company page — a saved search under
+              the hood, so account new-since counts and the digest just work. */}
+          {landerCompany && (
+            <div className="flex flex-wrap items-center gap-2 mb-6 -mt-2">
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={watchCompany}>
+                <BookmarkCheck className="w-3.5 h-3.5" />
+                {t("jobsPage.watchCta", "Watch {{company}}", { company: landerCompanyName })}
+              </Button>
+              <span className="text-[11px] text-muted-foreground">
+                {t("jobsPage.watchNote", "Your account will count their new postings since your last look.")}
+              </span>
+            </div>
+          )}
+
           {/* Filters */}
           <div className="flex flex-wrap gap-2 mb-5">
             <div className="relative flex-1 min-w-[220px]">
@@ -1268,6 +1361,16 @@ export default function Jobs() {
                 {data && data.failedSources.length > 0 && (
                   <span> · {t("jobsPage.sourcesDown", "{{count}} company feeds are unreachable right now", { count: data.failedSources.length })}</span>
                 )}
+                {refreshing && <span className="text-primary"> · {t("jobsPage.updating", "updating…")}</span>}
+                {dismissedIds.size > 0 && (
+                  <span>
+                    {" · "}
+                    {t("jobsPage.hiddenCount", "{{count}} hidden", { count: dismissedIds.size })}{" "}
+                    <button type="button" className="text-primary hover:underline" onClick={restoreDismissed}>
+                      {t("jobsPage.restoreHidden", "restore")}
+                    </button>
+                  </span>
+                )}
               </p>
               {category && benchmarks?.[category] && (
                 <p
@@ -1476,6 +1579,16 @@ export default function Jobs() {
                             <Flag className="w-3.5 h-3.5" />
                           </Button>
                         )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="px-2 text-muted-foreground"
+                          aria-label={t("jobsPage.dismissCta", "Hide this posting")}
+                          title={t("jobsPage.dismissTip", "Hide this posting on this device. Restore all hidden postings any time.")}
+                          onClick={() => dismissJob(job)}
+                        >
+                          ✕
+                        </Button>
                       </div>
                       {/* Near-identical siblings: the same role at other locations,
                           collapsed under this card — each still a real, applyable
