@@ -4032,7 +4032,7 @@
   },
   "jobsPage": {
     "seoTitle": "Vagas ao vivo direto dos sites das próprias empresas — confira seu encaixe antes de se candidatar",
-    "seoDescription": "Vagas reais tiradas diretamente dos sites de carreira oficiais de milhares de empresas (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — sem agregadores, sem republicações, reverificadas o dia todo e conferidas ao vivo na hora de se candidatar. Veja grátis como seu currículo encaixa em qualquer vaga e candidate-se no site da empresa.",
+    "seoDescription": "Vagas reais tiradas diretamente dos sites de carreira oficiais de milhares de empresas (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy) — sem agregadores, sem republicações, reverificadas o dia todo e conferidas ao vivo na hora de se candidatar. Veja grátis como seu currículo encaixa em qualquer vaga e candidate-se no site da empresa.",
     "h1": "Mural de vagas ao vivo",
     "subtitle": "Cada vaga aqui vem diretamente do próprio sistema de recrutamento da empresa — sem agregadores, sem republicações, sem links quebrados — e é reverificada ao vivo no momento em que você se candidata.",
     "honestyNote": "Depois fazemos o que outros murais ignoram: analise grátis seu currículo em relação a qualquer vaga e veja exatamente o que adicionar — para você se candidatar preparado, não na sorte.",
@@ -4052,7 +4052,7 @@
     "checkFit": "Checar meu encaixe — escaneio grátis",
     "apply": "Candidatar-se no site da {{company}}",
     "loadMore": "Carregar mais",
-    "sourceNote": "Fontes: as APIs públicas oficiais que as empresas publicam no Greenhouse, Lever, Ashby, SmartRecruiters, Workable e BambooHR. Os murais maiores são reverificados a cada 10–15 minutos e o restante do catálogo gira continuamente — cada feed é reverificado em algumas horas, e vagas retiradas somem na próxima passada. Um feed que para de responder sai do mural em vez de quebrá-lo.",
+    "sourceNote": "Fontes: as APIs públicas oficiais que as empresas publicam no Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio e Breezy. Os murais maiores são reverificados a cada 10–15 minutos e o restante do catálogo gira continuamente — cada feed é reverificado em algumas horas, e vagas retiradas somem na próxima passada. Um feed que para de responder sai do mural em vez de quebrá-lo.",
     "fitFetchErrorTitle": "Não foi possível carregar essa vaga",
     "fitFetchError": "O feed da empresa não retornou a descrição. Abra a vaga e cole-a no escâner.",
     "fitLoadedTitle": "Descrição da vaga carregada",

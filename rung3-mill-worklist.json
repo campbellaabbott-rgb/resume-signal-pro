@@ -1,0 +1,572 @@
+[
+ {
+  "vendor": "recruitee",
+  "token": "transperfect",
+  "name": "TransPerfect",
+  "count": 651
+ },
+ {
+  "vendor": "recruitee",
+  "token": "duravermeer",
+  "name": "Dura Vermeer",
+  "count": 350
+ },
+ {
+  "vendor": "recruitee",
+  "token": "careyn",
+  "name": "Careyn",
+  "count": 348
+ },
+ {
+  "vendor": "recruitee",
+  "token": "aaff",
+  "name": "aaff B.V.",
+  "count": 346
+ },
+ {
+  "vendor": "recruitee",
+  "token": "tether",
+  "name": "Tether Operations Limited",
+  "count": 301
+ },
+ {
+  "vendor": "recruitee",
+  "token": "sparcareers",
+  "name": "SPAR",
+  "count": 238
+ },
+ {
+  "vendor": "recruitee",
+  "token": "techbizglobal",
+  "name": "TechBiz Global GmbH",
+  "count": 208
+ },
+ {
+  "vendor": "recruitee",
+  "token": "avedo",
+  "name": "Avedo - Eine Marke der Ströer X GmbH",
+  "count": 195
+ },
+ {
+  "vendor": "recruitee",
+  "token": "cbsconsulting",
+  "name": "cbs Corporate Business Solutions GmbH",
+  "count": 190
+ },
+ {
+  "vendor": "recruitee",
+  "token": "bakertilly",
+  "name": "Baker Tilly (Netherlands) B.V.",
+  "count": 177
+ },
+ {
+  "vendor": "recruitee",
+  "token": "huaweicanada",
+  "name": "Huawei Technologies Canada Co., Ltd.",
+  "count": 173
+ },
+ {
+  "vendor": "recruitee",
+  "token": "ballastnedam",
+  "name": "Ballast Nedam",
+  "count": 147
+ },
+ {
+  "vendor": "recruitee",
+  "token": "ggzbreburg",
+  "name": "GGz Breburg",
+  "count": 130
+ },
+ {
+  "vendor": "recruitee",
+  "token": "maximizd1",
+  "name": "Maximizd",
+  "count": 130
+ },
+ {
+  "vendor": "recruitee",
+  "token": "silverein",
+  "name": "Silverein",
+  "count": 123
+ },
+ {
+  "vendor": "recruitee",
+  "token": "onstweedethuis",
+  "name": "Ons Tweede Thuis",
+  "count": 116
+ },
+ {
+  "vendor": "recruitee",
+  "token": "stichtingkwintes",
+  "name": "Stichting Kwintes",
+  "count": 114
+ },
+ {
+  "vendor": "recruitee",
+  "token": "amsta",
+  "name": "Amsta",
+  "count": 110
+ },
+ {
+  "vendor": "recruitee",
+  "token": "piagroupnetherlands",
+  "name": "PIAGROUP Netherlands Beheer B.V.",
+  "count": 110
+ },
+ {
+  "vendor": "recruitee",
+  "token": "valleifinancegroup",
+  "name": "Vallei Finance Group",
+  "count": 107
+ },
+ {
+  "vendor": "recruitee",
+  "token": "unitedalsaqergroup",
+  "name": "United Al Saqer Group",
+  "count": 105
+ },
+ {
+  "vendor": "recruitee",
+  "token": "careersdeltacapita",
+  "name": "Delta Capita",
+  "count": 102
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "adaptiveteams",
+  "name": "Adaptive Teams",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "academee",
+  "name": "Academee CFA",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "anicuraglobal",
+  "name": "AniCura Group",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "atlantiqueautomatismesincendie",
+  "name": "Atlantique Automatismes Incendie",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "capiosverigeab",
+  "name": "Capio",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "cartrackasiacareerpage",
+  "name": "Cartrack",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "ckw",
+  "name": "CKW",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "ecm-crit",
+  "name": "ECM - Engineering Conception Maintenance",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "ekium-1706706638",
+  "name": "Ekium",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "etam",
+  "name": "Etam",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "eworgmbh",
+  "name": "EWOR GmbH",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "eyesandmoregmbh-1681220218",
+  "name": "eyes and more GmbH",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "forenadecare",
+  "name": "Forenede Care",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "groupeberto",
+  "name": "Groupe Berto",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "groupeoci",
+  "name": "OCI INFORMATIQUE",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "grupoclave",
+  "name": "Grupo Clave",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "grupomas",
+  "name": "Grupo MAS",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "huaweidusseldorf-1719303222",
+  "name": "Huawei Europe",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "itmtanzanialimited",
+  "name": "ITM Tanzania Limited",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "knightecgroup",
+  "name": "Knightec Group Sweden",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "leroymerlinpoland",
+  "name": "Leroy Merlin Polska",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "lacotelarete",
+  "name": "La Côte &amp; L'Arête",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "libra",
+  "name": "F.F. Group",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "miogruppen",
+  "name": "Mio BPA",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "naffco",
+  "name": "NAFFCO",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "nachhilfeunterricht",
+  "name": "Nachhilfeunterricht",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "neo2consultant",
+  "name": "NEO2 Consultant",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "nested",
+  "name": "Nested",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "qualacompany",
+  "name": "Quala Internacional",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "sacyr",
+  "name": "SACYR",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "spacenk",
+  "name": "Space NK",
+  "count": 100
+ },
+ {
+  "vendor": "teamtailor",
+  "token": "ssa",
+  "name": "Active Academy",
+  "count": 100
+ },
+ {
+  "vendor": "breezy",
+  "token": "american-logistics-authority",
+  "name": "American Logistics Authority",
+  "count": 2760
+ },
+ {
+  "vendor": "breezy",
+  "token": "nexthire",
+  "name": "Nexthire",
+  "count": 2297
+ },
+ {
+  "vendor": "breezy",
+  "token": "c3-trucking",
+  "name": "C3 Trucking",
+  "count": 1093
+ },
+ {
+  "vendor": "breezy",
+  "token": "alchemy-financial-group",
+  "name": "Alchemy Financial Group",
+  "count": 488
+ },
+ {
+  "vendor": "breezy",
+  "token": "kare",
+  "name": "KARE",
+  "count": 424
+ },
+ {
+  "vendor": "breezy",
+  "token": "kimmel-associates",
+  "name": "Kimmel & Associates",
+  "count": 379
+ },
+ {
+  "vendor": "breezy",
+  "token": "family-resource-home-care",
+  "name": "Family Resource Home Care",
+  "count": 309
+ },
+ {
+  "vendor": "breezy",
+  "token": "everstar",
+  "name": "Everstar",
+  "count": 299
+ },
+ {
+  "vendor": "breezy",
+  "token": "focus-group-panel",
+  "name": "FocusGroupPanel",
+  "count": 250
+ },
+ {
+  "vendor": "breezy",
+  "token": "national-assemblers-inc",
+  "name": "National Assemblers",
+  "count": 238
+ },
+ {
+  "vendor": "breezy",
+  "token": "drhouse-inc",
+  "name": "DrHouse, Inc.",
+  "count": 225
+ },
+ {
+  "vendor": "breezy",
+  "token": "everlight-solar",
+  "name": "Everlight Solar",
+  "count": 221
+ },
+ {
+  "vendor": "breezy",
+  "token": "mktg",
+  "name": "Dentsu Creative (MKTG)",
+  "count": 203
+ },
+ {
+  "vendor": "breezy",
+  "token": "ensemble-performing-arts",
+  "name": "Ensemble Performing Arts",
+  "count": 183
+ },
+ {
+  "vendor": "breezy",
+  "token": "mtm-llc",
+  "name": "MTM LLC",
+  "count": 179
+ },
+ {
+  "vendor": "breezy",
+  "token": "kmg-prestige",
+  "name": "KMG Prestige",
+  "count": 176
+ },
+ {
+  "vendor": "breezy",
+  "token": "gastro-health",
+  "name": "Gastro Health",
+  "count": 166
+ },
+ {
+  "vendor": "breezy",
+  "token": "home-genius-exteriors",
+  "name": "Home Genius Exteriors",
+  "count": 156
+ },
+ {
+  "vendor": "breezy",
+  "token": "community-dental-partners",
+  "name": "Community Dental Partners",
+  "count": 135
+ },
+ {
+  "vendor": "breezy",
+  "token": "gen-tech",
+  "name": "Genesis",
+  "count": 133
+ },
+ {
+  "vendor": "breezy",
+  "token": "blue-sky-hospitality-solutions",
+  "name": "Blue Sky Hospitality Solutions",
+  "count": 132
+ },
+ {
+  "vendor": "breezy",
+  "token": "asb-freight-co",
+  "name": "ASB Freight Co.",
+  "count": 129
+ },
+ {
+  "vendor": "breezy",
+  "token": "beacon-inspection",
+  "name": "Beacon Inspection",
+  "count": 121
+ },
+ {
+  "vendor": "breezy",
+  "token": "chess-wizards",
+  "name": "Chess Wizards",
+  "count": 115
+ },
+ {
+  "vendor": "breezy",
+  "token": "black-mcdonald-limited",
+  "name": "Black & McDonald Limited",
+  "count": 109
+ },
+ {
+  "vendor": "breezy",
+  "token": "integral-uk",
+  "name": "Integral UK",
+  "count": 102
+ },
+ {
+  "vendor": "personio",
+  "token": "1komma5grad",
+  "name": "1komma5grad",
+  "count": 301
+ },
+ {
+  "vendor": "personio",
+  "token": "skalbach-gmbh",
+  "name": "Skalbach Gmbh",
+  "count": 212
+ },
+ {
+  "vendor": "personio",
+  "token": "flatpay",
+  "name": "Flatpay",
+  "count": 210
+ },
+ {
+  "vendor": "personio",
+  "token": "bauer-elektroanlagen",
+  "name": "Bauer Elektroanlagen",
+  "count": 195
+ },
+ {
+  "vendor": "personio",
+  "token": "homeserve",
+  "name": "Homeserve",
+  "count": 187
+ },
+ {
+  "vendor": "personio",
+  "token": "sungrow-emea",
+  "name": "Sungrow Emea",
+  "count": 176
+ },
+ {
+  "vendor": "personio",
+  "token": "konzmann-gmbh",
+  "name": "Konzmann Gmbh",
+  "count": 139
+ },
+ {
+  "vendor": "personio",
+  "token": "stark",
+  "name": "Stark",
+  "count": 136
+ },
+ {
+  "vendor": "personio",
+  "token": "workidentity",
+  "name": "Workidentity",
+  "count": 131
+ },
+ {
+  "vendor": "personio",
+  "token": "hwp",
+  "name": "Hwp",
+  "count": 128
+ },
+ {
+  "vendor": "personio",
+  "token": "garla",
+  "name": "Garla",
+  "count": 121
+ },
+ {
+  "vendor": "personio",
+  "token": "tiemeyer",
+  "name": "Tiemeyer",
+  "count": 116
+ },
+ {
+  "vendor": "personio",
+  "token": "avantgarde",
+  "name": "Avantgarde",
+  "count": 114
+ },
+ {
+  "vendor": "personio",
+  "token": "init-ag",
+  "name": "Init Ag",
+  "count": 112
+ },
+ {
+  "vendor": "personio",
+  "token": "kb1",
+  "name": "Kb1",
+  "count": 104
+ }
+]

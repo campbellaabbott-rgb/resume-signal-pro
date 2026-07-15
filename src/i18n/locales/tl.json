@@ -4032,7 +4032,7 @@
   },
   "jobsPage": {
     "seoTitle": "Live na trabaho mismo mula sa mga kumpanya — suriin ang iyong fit bago mag-apply",
-    "seoDescription": "Tunay na bakante na kinuha mismo mula sa opisyal na job boards ng libu-libong kumpanya (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — walang aggregator, walang re-post, muling bineberipika buong araw at sinusuri nang live kapag nag-apply ka. Tingnan nang libre kung paano tugma ang iyong resume sa anumang posting, tapos mag-apply sa sariling site ng kumpanya.",
+    "seoDescription": "Tunay na bakante na kinuha mismo mula sa opisyal na job boards ng libu-libong kumpanya (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy) — walang aggregator, walang re-post, muling bineberipika buong araw at sinusuri nang live kapag nag-apply ka. Tingnan nang libre kung paano tugma ang iyong resume sa anumang posting, tapos mag-apply sa sariling site ng kumpanya.",
     "h1": "Live na job board",
     "subtitle": "Bawat trabaho rito ay galing mismo sa sariling hiring system ng kumpanya — walang aggregator, walang re-post, walang patay na link — at muling sinusuri nang live sa mismong sandaling mag-apply ka.",
     "honestyNote": "Pagkatapos, ginagawa namin ang nilalaktawan ng ibang board: libreng suriin ang iyong resume laban sa anumang posting at tingnan kung ano nga ba ang idadagdag — para mag-apply kang handa, hindi basta-basta.",
@@ -4052,7 +4052,7 @@
     "checkFit": "I-check ang fit ko — libreng scan",
     "apply": "Mag-apply sa site ng {{company}}",
     "loadMore": "Mag-load pa",
-    "sourceNote": "Mga source: ang opisyal na pampublikong job-board API na inilalathala ng mga kumpanya sa Greenhouse, Lever, Ashby, SmartRecruiters, Workable, at BambooHR. Ang pinakamalalaking board ay muling sinusuri humigit-kumulang bawat 10–15 minuto at ang natitirang catalog ay patuloy na umiikot — bawat feed ay muling bineberipika sa loob ng ilang oras, at ang mga tinanggal na posting ay nawawala sa susunod na pasada. Ang feed na tumigil sumagot ay natatanggal sa board sa halip na sirain ito.",
+    "sourceNote": "Mga source: ang opisyal na pampublikong job-board API na inilalathala ng mga kumpanya sa Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, at Breezy. Ang pinakamalalaking board ay muling sinusuri humigit-kumulang bawat 10–15 minuto at ang natitirang catalog ay patuloy na umiikot — bawat feed ay muling bineberipika sa loob ng ilang oras, at ang mga tinanggal na posting ay nawawala sa susunod na pasada. Ang feed na tumigil sumagot ay natatanggal sa board sa halip na sirain ito.",
     "fitFetchErrorTitle": "Hindi ma-load ang posting na iyon",
     "fitFetchError": "Walang ibinalik na deskripsyon ang feed ng kumpanya. Buksan ang posting at i-paste ito sa scanner.",
     "fitLoadedTitle": "Na-load ang job description",

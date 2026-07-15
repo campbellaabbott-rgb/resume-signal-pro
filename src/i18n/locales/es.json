@@ -4032,7 +4032,7 @@
   },
   "jobsPage": {
     "seoTitle": "Empleos en vivo de los propios portales de las empresas — comprueba tu perfil antes de postularte",
-    "seoDescription": "Ofertas reales tomadas directamente de los portales de empleo oficiales de miles de empresas (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — sin agregadores, sin republicaciones, reverificadas todo el día y comprobadas en vivo al postularte. Mira gratis cómo encaja tu currículum en cualquier oferta y postúlate en el sitio de la empresa.",
+    "seoDescription": "Ofertas reales tomadas directamente de los portales de empleo oficiales de miles de empresas (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy) — sin agregadores, sin republicaciones, reverificadas todo el día y comprobadas en vivo al postularte. Mira gratis cómo encaja tu currículum en cualquier oferta y postúlate en el sitio de la empresa.",
     "h1": "Bolsa de empleo en vivo",
     "subtitle": "Cada empleo aquí viene directamente del propio sistema de contratación de la empresa — sin agregadores, sin republicaciones, sin enlaces caídos — y se vuelve a comprobar en vivo en el momento en que te postulas.",
     "honestyNote": "Luego hacemos lo que otros tablones omiten: analiza gratis tu currículum frente a cualquier oferta y ve exactamente qué añadir — para que te postules preparado, no a la suerte.",
@@ -4052,7 +4052,7 @@
     "checkFit": "Comprobar mi encaje — escaneo gratis",
     "apply": "Postularme en el sitio de {{company}}",
     "loadMore": "Cargar más",
-    "sourceNote": "Fuentes: las API públicas oficiales que las empresas publican en Greenhouse, Lever, Ashby, SmartRecruiters, Workable y BambooHR. Los tablones más grandes se revisan aproximadamente cada 10–15 minutos y el resto del catálogo rota de forma continua — cada fuente se vuelve a verificar en algunas horas, y las ofertas retiradas desaparecen en la siguiente pasada. Una fuente que deja de responder sale del tablón en lugar de romperlo.",
+    "sourceNote": "Fuentes: las API públicas oficiales que las empresas publican en Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio y Breezy. Los tablones más grandes se revisan aproximadamente cada 10–15 minutos y el resto del catálogo rota de forma continua — cada fuente se vuelve a verificar en algunas horas, y las ofertas retiradas desaparecen en la siguiente pasada. Una fuente que deja de responder sale del tablón en lugar de romperlo.",
     "fitFetchErrorTitle": "No se pudo cargar esa oferta",
     "fitFetchError": "La fuente de la empresa no devolvió la descripción. Abre la oferta y pégala en el escáner.",
     "fitLoadedTitle": "Descripción del puesto cargada",

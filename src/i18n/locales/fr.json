@@ -4032,7 +4032,7 @@
   },
   "jobsPage": {
     "seoTitle": "Offres en direct des sites carrières des entreprises — vérifiez votre profil avant de postuler",
-    "seoDescription": "Des offres réelles tirées directement des sites d'emploi officiels de milliers d'entreprises (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — sans agrégateurs, sans republication, revérifiées toute la journée et contrôlées en direct au moment de postuler. Voyez gratuitement l'adéquation de votre CV à chaque offre, puis postulez sur le site de l'entreprise.",
+    "seoDescription": "Des offres réelles tirées directement des sites d'emploi officiels de milliers d'entreprises (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy) — sans agrégateurs, sans republication, revérifiées toute la journée et contrôlées en direct au moment de postuler. Voyez gratuitement l'adéquation de votre CV à chaque offre, puis postulez sur le site de l'entreprise.",
     "h1": "Offres d'emploi en direct",
     "subtitle": "Chaque offre ici vient directement du système de recrutement de l'entreprise — sans agrégateurs, sans republication, sans lien mort — et elle est revérifiée en direct au moment où vous postulez.",
     "honestyNote": "Ensuite, nous faisons ce que les autres sites négligent : comparez gratuitement votre CV à n'importe quelle offre et voyez exactement quoi ajouter — pour postuler préparé, pas au hasard.",
@@ -4052,7 +4052,7 @@
     "checkFit": "Vérifier mon adéquation — scan gratuit",
     "apply": "Candidater sur le site de {{company}}",
     "loadMore": "Afficher plus",
-    "sourceNote": "Sources : les API publiques officielles que les entreprises publient sur Greenhouse, Lever, Ashby, SmartRecruiters, Workable et BambooHR. Les plus gros tableaux sont re-vérifiés environ toutes les 10–15 minutes et le reste du catalogue tourne en continu — chaque flux est re-vérifié en quelques heures, et les offres retirées disparaissent à la passe suivante. Un flux qui ne répond plus disparaît du tableau au lieu de le casser.",
+    "sourceNote": "Sources : les API publiques officielles que les entreprises publient sur Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio et Breezy. Les plus gros tableaux sont re-vérifiés environ toutes les 10–15 minutes et le reste du catalogue tourne en continu — chaque flux est re-vérifié en quelques heures, et les offres retirées disparaissent à la passe suivante. Un flux qui ne répond plus disparaît du tableau au lieu de le casser.",
     "fitFetchErrorTitle": "Impossible de charger cette offre",
     "fitFetchError": "Le flux de l'entreprise n'a pas renvoyé la description. Ouvrez l'offre et collez-la dans le scanner.",
     "fitLoadedTitle": "Description du poste chargée",

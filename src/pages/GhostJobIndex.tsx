@@ -93,7 +93,7 @@ export default function GhostJobIndex() {
         </p>
         <p className="text-xs text-muted-foreground mb-8">
           Every figure below is computed from the full lifecycle of postings on companies' <b>official</b> job boards
-          (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — never an aggregator or a scrape.
+          (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy) — never an aggregator or a scrape.
         </p>
 
         {/* Headline stats — always true */}
