@@ -720,6 +720,28 @@ export default function Jobs() {
     return list;
   }, [jobs, fitRanking, fits, activelyHiringOnly, isActivelyHiring]);
 
+  // De-dupe near-identical postings: the same role cross-posted across locations
+  // (same company + same title) collapses into ONE card with a "+N more locations"
+  // expander. Nothing is deleted — every posting is a real, distinct opening and
+  // stays applyable inside the group; this only stops it flooding the list.
+  const groupedJobs = useMemo(() => {
+    const map = new Map<string, { primary: BoardJob; siblings: BoardJob[] }>();
+    const order: Array<{ primary: BoardJob; siblings: BoardJob[] }> = [];
+    for (const j of displayJobs) {
+      const key = `${(j.token ?? j.company).toLowerCase()}|${j.title.trim().toLowerCase()}`;
+      const g = map.get(key);
+      if (g) {
+        g.siblings.push(j);
+      } else {
+        const ng = { primary: j, siblings: [] as BoardJob[] };
+        map.set(key, ng);
+        order.push(ng);
+      }
+    }
+    return order;
+  }, [displayJobs]);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
   // Aggregate the per-card tiers into one motivating headline for the personalized
   // view — the reason a returning seeker stays. Counts only SCORED postings among
   // the ones loaded (same thresholds as the card tiers), so "these openings" is
@@ -1069,7 +1091,7 @@ export default function Jobs() {
                 )}
               </p>
               <ul className="space-y-3">
-                {displayJobs.map((job) => {
+                {groupedJobs.map(({ primary: job, siblings }) => {
                   const d = daysAgo(job.postedAt);
                   const openRoles = job.token ? companyCounts.get(job.token) : undefined;
                   const fit = fitRanking ? fits[job.id] : undefined;
@@ -1208,6 +1230,45 @@ export default function Jobs() {
                           </a>
                         </Button>
                       </div>
+                      {/* Near-identical siblings: the same role at other locations,
+                          collapsed under this card — each still a real, applyable
+                          posting from the company's own feed. */}
+                      {siblings.length > 0 && (
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedGroups((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(job.id)) next.delete(job.id); else next.add(job.id);
+                              return next;
+                            })}
+                            className="text-[11px] text-primary font-medium hover:underline"
+                          >
+                            {expandedGroups.has(job.id)
+                              ? t("jobsPage.hideLocations", "Hide other locations")
+                              : t("jobsPage.moreLocations", "Same role in {{count}} more locations", { count: siblings.length })}
+                          </button>
+                          {expandedGroups.has(job.id) && (
+                            <ul className="mt-1.5 space-y-1 border-l-2 border-border/60 pl-3">
+                              {siblings.map((sib) => (
+                                <li key={sib.id} className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                                  <MapPin className="w-3 h-3 shrink-0" />
+                                  <span className="flex-1 min-w-0 truncate">{sib.location || t("jobsPage.locationUnlisted", "Location unlisted")}</span>
+                                  <a
+                                    href={sib.applyUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() => { trackApply(sib); void promoteApplied(sib); void verifyJob(sib); }}
+                                    className="shrink-0 text-primary font-medium hover:underline"
+                                  >
+                                    {t("jobsPage.applyShort", "Apply →")}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
                     </li>
                   );
                 })}
