@@ -700,6 +700,7 @@ export type Database = {
           posted_at: string | null
           posting_id: string
           source: string
+          superseded: boolean
           title: string
         }
         Insert: {
@@ -712,6 +713,7 @@ export type Database = {
           posted_at?: string | null
           posting_id: string
           source: string
+          superseded?: boolean
           title?: string
         }
         Update: {
@@ -724,6 +726,7 @@ export type Database = {
           posted_at?: string | null
           posting_id?: string
           source?: string
+          superseded?: boolean
           title?: string
         }
         Relationships: []
@@ -806,6 +809,21 @@ export type Database = {
           salary?: string | null
           source?: string
           title?: string
+        }
+        Relationships: []
+      }
+      job_board_verifications: {
+        Row: {
+          company_token: string
+          verified_at: string
+        }
+        Insert: {
+          company_token: string
+          verified_at?: string
+        }
+        Update: {
+          company_token?: string
+          verified_at?: string
         }
         Relationships: []
       }
@@ -1715,6 +1733,9 @@ export type Database = {
           closure_alerts_opt_in: boolean
           confirmed_experience: string | null
           confirmed_industry: string | null
+          matching_resume_text: string | null
+          matching_resume_updated_at: string | null
+          matching_scan_id: string | null
           situation: string | null
           target_role: string | null
           target_score: number | null
@@ -1725,6 +1746,9 @@ export type Database = {
           closure_alerts_opt_in?: boolean
           confirmed_experience?: string | null
           confirmed_industry?: string | null
+          matching_resume_text?: string | null
+          matching_resume_updated_at?: string | null
+          matching_scan_id?: string | null
           situation?: string | null
           target_role?: string | null
           target_score?: number | null
@@ -1735,6 +1759,9 @@ export type Database = {
           closure_alerts_opt_in?: boolean
           confirmed_experience?: string | null
           confirmed_industry?: string | null
+          matching_resume_text?: string | null
+          matching_resume_updated_at?: string | null
+          matching_scan_id?: string | null
           situation?: string | null
           target_role?: string | null
           target_score?: number | null
@@ -2307,6 +2334,7 @@ export type Database = {
         }[]
       }
       get_scan_totals: { Args: never; Returns: Json }
+      get_stale_board_count: { Args: never; Returns: number }
       get_temp_resume: {
         Args: { p_session_id: string }
         Returns: {
