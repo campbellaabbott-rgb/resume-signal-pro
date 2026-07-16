@@ -371,6 +371,57 @@ serve(async (req) => {
         }
       } catch { /* RPC not applied yet */ }
 
+      // Label integrity: the daily audit cross-checks our experience_band and
+      // remote labels against each posting's own text. A contradiction rate
+      // above 15% means the detector is mislabeling a filterable field —
+      // users are filtering on claims the postings themselves dispute.
+      if (audit) {
+        const la = ((audit.v ?? {}) as { labelAudit?: { entryChecked?: number; entryContradicted?: number; remoteChecked?: number; remoteContradicted?: number } }).labelAudit;
+        if (la && ((la.entryChecked ?? 0) >= 10 || (la.remoteChecked ?? 0) >= 10)) {
+          const entryRate = (la.entryChecked ?? 0) >= 10 ? (la.entryContradicted ?? 0) / (la.entryChecked ?? 1) : 0;
+          const remoteRate = (la.remoteChecked ?? 0) >= 10 ? (la.remoteContradicted ?? 0) / (la.remoteChecked ?? 1) : 0;
+          const bad = entryRate > 0.15 || remoteRate > 0.15;
+          checks.push({
+            name: 'job_board_label_integrity',
+            passed: !bad,
+            responseTimeMs: 0,
+            error: bad
+              ? `label audit: ${Math.round(entryRate * 100)}% of sampled entry-band postings state 3+ years required, ${Math.round(remoteRate * 100)}% of remote-flagged state on-site only — tighten the detector; demotions only patch the sampled rows`
+              : undefined,
+          });
+          if (bad && overallStatus === 'healthy') {
+            overallStatus = 'degraded';
+            errorMessage = errorMessage || 'Board label integrity: contradiction rate above 15%';
+          }
+        }
+      }
+
+      // Per-vendor date-parser canary: a vendor whose stated-date coverage
+      // collapses means its date mapping regressed (the Lever evergreen bug
+      // was found by hand; this catches the next one). BambooHR is exempt —
+      // its feed carries no dates at all, disclosed as such.
+      try {
+        const { data: cov } = await supabase.rpc('get_date_coverage');
+        if (Array.isArray(cov)) {
+          const broken = (cov as Array<{ source: string; total: number; dated: number }>)
+            .filter((r) => r.source !== 'bamboohr' && Number(r.total) >= 1000)
+            .map((r) => ({ source: r.source, pct: Math.round(100 * Number(r.dated) / Math.max(Number(r.total), 1)) }))
+            .filter((r) => r.pct < 50);
+          checks.push({
+            name: 'job_board_date_coverage',
+            passed: broken.length === 0,
+            responseTimeMs: 0,
+            error: broken.length
+              ? `stated-date coverage collapsed for ${broken.map((b) => `${b.source} ${b.pct}%`).join(', ')} — that vendor's date mapping likely regressed; age stats are losing their basis`
+              : undefined,
+          });
+          if (broken.length && overallStatus === 'healthy') {
+            overallStatus = 'degraded';
+            errorMessage = errorMessage || `Vendor date coverage collapsed: ${broken.map((b) => b.source).join(', ')}`;
+          }
+        }
+      } catch { /* RPC not applied yet */ }
+
       // Verification ceiling: boards that still hold live postings but weren't
       // re-verified in 24h — a widening count means a cursor/selection gap the
       // 48h sweep is about to start deleting around.

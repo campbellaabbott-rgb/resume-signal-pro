@@ -13,6 +13,7 @@ import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { isBoardCategory } from "@/lib/job-board-categories";
 import { HBarList } from "@/components/DataViz";
+import { HowWeMeasure } from "@/components/HowWeMeasure";
 
 interface Stats {
   total_entry: number;
@@ -189,6 +190,13 @@ export default function EntryLevelIndex() {
             </Link>
           </div>
         </div>
+        <HowWeMeasure
+          items={[
+            { term: "Entry-level classification", method: "Detected from each posting's own title and description (explicit level markers and stated year requirements). Postings that can't be placed are labeled 'unspecified' and never counted as entry-level." },
+            { term: "Daily label audit", method: "Every day we sample postings and cross-check the entry label against the posting's own text — an 'entry' posting whose description demands 3+ years is a contradiction: it's demoted on the spot and the rate is tracked, so this page's counts can't quietly drift." },
+            { term: "Counts", method: "Exact counts from the live posting table at page load — the same rows the job board serves, under the same 30-day freshness cap." },
+          ]}
+        />
       </main>
       <Footer />
     </div>

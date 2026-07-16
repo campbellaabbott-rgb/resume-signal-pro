@@ -4143,6 +4143,10 @@
     "matchStrong": "Starke Übereinstimmung",
     "matchPossible": "Mögliche Übereinstimmung",
     "matchStretch": "Unwahrscheinlich",
-    "matchCoverage": "{{pct}} % der erkannten Schlüsselbegriffe dieser Stelle stehen bereits in deinem Lebenslauf"
+    "matchCoverage": "{{pct}} % der erkannten Schlüsselbegriffe dieser Stelle stehen bereits in deinem Lebenslauf",
+    "postedProvenance": "Alter der Anzeige laut dem Datum, das das Unternehmen in seinem eigenen Karriereportal angibt — undatierte Anzeigen zeigen kein Alter, niemals eine Schätzung",
+    "companyStated": "Firmenangabe",
+    "allCountries": "Alle Länder",
+    "countryTip": "Land aus dem Standorttext der Anzeige gelesen — nicht zuordenbare Anzeigen werden bei aktivem Filter ausgeschlossen, nie geraten."
   }
 }

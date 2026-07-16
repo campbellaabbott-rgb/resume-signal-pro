@@ -4143,6 +4143,10 @@
     "matchStrong": "Bonne correspondance",
     "matchPossible": "Correspondance possible",
     "matchStretch": "Peu probable",
-    "matchCoverage": "{{pct}} % des mots-clés reconnus de cette offre figurent déjà dans votre CV"
+    "matchCoverage": "{{pct}} % des mots-clés reconnus de cette offre figurent déjà dans votre CV",
+    "postedProvenance": "Ancienneté calculée à partir de la date indiquée par l'entreprise sur son propre site carrières — les offres non datées n'affichent aucune ancienneté, jamais d'estimation",
+    "companyStated": "date de l'entreprise",
+    "allCountries": "Tous les pays",
+    "countryTip": "Pays extrait du texte de localisation de chaque offre — celles que nous ne pouvons pas situer sont exclues quand ce filtre est actif, jamais devinées."
   }
 }

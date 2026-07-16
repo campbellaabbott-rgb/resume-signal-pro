@@ -29,9 +29,11 @@ import {
   normalizeWorkable,
   xmlBlocks,
   xmlValue,
-  POSTED_AT_MAX_AGE_MS,
+  POSTED_AT_GARBAGE_FLOOR_MS,
   sanePostedAt,
   isDatedBefore,
+  normalizeCloseTitle,
+  detectCountry,
   type JobPosting,
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
@@ -55,7 +57,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-16.3";
+const BUILD_VERSION = "2026-07-16.4";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -351,6 +353,7 @@ const EXPERIENCE_VERSION = 1;
 // capture — the sweep targets salary_currency IS NULL, which also re-covers
 // rows v1 already parsed (they have a floor but no currency).
 const SALARY_PARSE_VERSION = 4; // v4: $-variant currencies (MX$/R$/HK$/S$/NZ$) + parity monthly cap — full re-parse corrects mislabeled rows
+const COUNTRY_VERSION = 1; // v1: deterministic country from location text (names + US/CA state patterns)
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
 
 // Capacity governor: keep the corpus under a ceiling with headroom; when a
@@ -595,6 +598,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // enrolled seconds ago in this very iteration (descs skipped above).
         const lightDescs = isLight(s.token);
         const rowsById = new Map<string, Record<string, unknown>>();
+        // Ids the feed still serves but whose REAL stated date crossed the
+        // 30-day window — our freshness cap, not a feed absence. They bypass
+        // the two-pass grace below and delete this pass, unlogged, as always.
+        const agedOutIds = new Set<string>();
         for (const j of r.jobs) {
           const posted = sanePostedAt(j.postedAt); // reject garbage feed dates at the door
           // Salary resolves once — vendor text wins, else description mining —
@@ -605,7 +612,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           // if we already had it and never re-adds it (churn-free because it
           // won't reappear as "new"). Undated / garbage-dated postings can't be
           // judged old, so they're kept and simply carry no displayed date.
-          if (isDatedBefore(posted, freshCutoffMs)) continue;
+          if (isDatedBefore(posted, freshCutoffMs)) { agedOutIds.add(j.id); continue; }
           // Experience band from the best text we have this pass (title + the
           // fetched description where the vendor provides one). null → "unspecified".
           const exp = detectExperience(j.title ?? "", lightDescs ? null : (descs.get(j.id) ?? null));
@@ -616,6 +623,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
             company: j.company,
             title: clean(j.title.trim().slice(0, 300)),
             location: clean(j.location.trim().slice(0, 300)),
+            country: detectCountry(j.location),
             remote: j.remote,
             department: clean(j.department?.slice(0, 200) ?? null),
             category: j.category,
@@ -650,20 +658,31 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         // Paginated: PostgREST caps responses at 1,000 rows, and the biggest
         // boards hold 3,000+ — a truncated id set would re-insert live rows
         // and never delete old ones.
-        const existingIds: string[] = [];
+        const existingRows: Array<{ id: string; missing_since: string | null }> = [];
+        let missingColUnknown = false; // pre-migration: column absent → legacy single-pass behavior
         for (let from = 0; ; from += 1000) {
-          const { data: page, error: readErr } = await client
+          let res = await client
             .from("job_board_postings")
-            .select("id")
+            .select("id,missing_since")
             .eq("company_token", s.token)
             .order("id")
             .range(from, from + 999);
+          if (res.error?.message?.includes("missing_since")) {
+            missingColUnknown = true;
+            res = (await client
+              .from("job_board_postings")
+              .select("id")
+              .eq("company_token", s.token)
+              .order("id")
+              .range(from, from + 999)) as typeof res;
+          }
+          const { data: page, error: readErr } = res;
           if (readErr) {
             boardOk = false;
             lastUpsertError = `${s.token}: ${readErr.message}`;
             break;
           }
-          existingIds.push(...(page ?? []).map((r) => r.id as string));
+          existingRows.push(...((page ?? []) as Array<{ id: string; missing_since?: string | null }>).map((r) => ({ id: r.id, missing_since: r.missing_since ?? null })));
           if (!page || page.length < 1000) break;
         }
         if (!boardOk) {
@@ -671,13 +690,69 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
           continue;
         }
         const prefix = `${s.source}:`;
-        const existing = new Set(existingIds.filter((id) => id.startsWith(prefix)));
+        const missingSinceById = new Map(existingRows.filter((r) => r.id.startsWith(prefix)).map((r) => [r.id, r.missing_since]));
+        const existing = new Set(missingSinceById.keys());
         const liveIds = new Set(rowsById.keys());
         const newRows = rows.filter((r) => !existing.has(r.id as string));
-        const vanished = [...existing].filter((id) => !liveIds.has(id));
+        const vanishedAll = [...existing].filter((id) => !liveIds.has(id));
+
+        // ── Two-pass closure confirmation ────────────────────────────────────
+        // A posting absent from ONE successful fetch is stamped, not closed: a
+        // feed that transiently returns a partial list (HTTP 200, half the
+        // jobs) must not mass-log false closures or reset first_seen through
+        // delete+reinsert churn. Absent again after the grace window → real.
+        //  - reappeared rows get their stamp cleared (flicker fully absorbed);
+        //  - EXCEPT rows already past the freshness cap: those delete
+        //    immediately, unlogged, exactly as before (and the list query
+        //    filters by date anyway, so a stamped row never serves stale).
+        //  - shrink ratchet: when a board loses >60% of stored postings in one
+        //    pass, closures need a 6h-old stamp — a partial feed outage heals
+        //    invisibly; a genuine mass takedown still closes, just later.
+        const GRACE_MS = 5 * 60 * 1000;
+        const RATCHET_MS = 6 * 60 * 60 * 1000;
+        const SHRINK_RATIO = 0.6;
+        const nowMs = Date.now();
+        let vanished: string[];
+        const toStamp: string[] = [];
+        let toUnstamp: string[] = [];
+        if (missingColUnknown) {
+          vanished = vanishedAll; // legacy behavior until the migration applies
+        } else {
+          const bigShrink = existing.size >= 20 && vanishedAll.length > SHRINK_RATIO * existing.size;
+          const needMs = bigShrink ? RATCHET_MS : GRACE_MS;
+          if (bigShrink && vanishedAll.length) {
+            console.warn(`[JOB-BOARD] ${s.token}: ${vanishedAll.length}/${existing.size} postings vanished in one pass — shrink ratchet holds closures for 6h`);
+          }
+          vanished = [];
+          for (const id of vanishedAll) {
+            if (agedOutIds.has(id)) { vanished.push(id); continue; } // freshness cap — no grace, no log
+            const stamp = missingSinceById.get(id);
+            if (stamp && nowMs - new Date(stamp).getTime() >= needMs) vanished.push(id); // confirmed gone
+            else if (!stamp) toStamp.push(id); // first miss — stamp only
+            // recent stamp → still in grace, leave as-is
+          }
+          toUnstamp = [...liveIds].filter((id) => missingSinceById.get(id));
+        }
+        for (let i = 0; i < toStamp.length; i += 200) {
+          const { error: stErr } = await client.from("job_board_postings")
+            .update({ missing_since: startIso }).in("id", toStamp.slice(i, i + 200));
+          if (stErr) console.warn(`[JOB-BOARD] missing-stamp failed for ${s.token} (retries next pass):`, stErr.message?.slice(0, 120));
+        }
+        for (let i = 0; i < toUnstamp.length; i += 200) {
+          const { error: unErr } = await client.from("job_board_postings")
+            .update({ missing_since: null }).in("id", toUnstamp.slice(i, i + 200));
+          if (unErr) console.warn(`[JOB-BOARD] missing-unstamp failed for ${s.token} (harmless until next miss):`, unErr.message?.slice(0, 120));
+        }
 
         for (let i = 0; i < newRows.length; i += 250) {
-          const { error } = await client.from("job_board_postings").upsert(newRows.slice(i, i + 250), { onConflict: "id" });
+          let { error } = await client.from("job_board_postings").upsert(newRows.slice(i, i + 250), { onConflict: "id" });
+          // Deploy-before-migration window: the country column may not exist
+          // yet. Ingestion must NEVER stall on a new optional column — retry
+          // the chunk without it; the version-gated backfill fills it later.
+          if (error?.message?.includes("country")) {
+            const stripped = newRows.slice(i, i + 250).map((r) => { const { country: _c, ...rest } = r as Record<string, unknown>; return rest; });
+            ({ error } = await client.from("job_board_postings").upsert(stripped, { onConflict: "id" }));
+          }
           if (error) {
             boardOk = false;
             lastUpsertError = `${s.token}: ${error.message}`;
@@ -707,8 +782,25 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         if (vanished.length && !truncatedFetch) {
           const closedAt = new Date().toISOString();
           const liveTitles = new Set(
-            [...rowsById.values()].map((r) => String(r.title ?? "").trim().toLowerCase()).filter(Boolean),
+            [...rowsById.values()].map((r) => normalizeCloseTitle(String(r.title ?? ""))).filter(Boolean),
           );
+          // Relisting-spam dedupe: boards whose automation cycles req ids close
+          // the SAME title dozens of times a day (live case: one board logged
+          // "Behavior Technician" 89 times, every one correctly superseded).
+          // The first superseded closure per title per 24h carries all the
+          // signal; the rest are noise that bloats the lifecycle table. Real
+          // fills (non-superseded) always log.
+          let recentSuperseded = new Set<string>();
+          try {
+            const { data: recent } = await client
+              .from("job_board_closures")
+              .select("title")
+              .eq("company_token", s.token)
+              .eq("superseded", true)
+              .gt("closed_at", new Date(nowMs - 24 * 3600_000).toISOString())
+              .limit(1000);
+            recentSuperseded = new Set(((recent ?? []) as Array<{ title: string }>).map((r) => normalizeCloseTitle(r.title)));
+          } catch { /* dedupe is best-effort — worst case we log the duplicate */ }
           for (let i = 0; i < vanished.length; i += 200) {
             const chunk = vanished.slice(i, i + 200);
             try {
@@ -718,7 +810,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
                 .in("id", chunk);
               const rows = ((toLog ?? []) as Array<Record<string, unknown>>).filter((r) => {
                 const posted = r.posted_at ? new Date(String(r.posted_at)).getTime() : NaN;
-                return !(Number.isFinite(posted) && posted < freshCutoffMs); // (b) aged out, not closed
+                if (Number.isFinite(posted) && posted < freshCutoffMs) return false; // (b) aged out, not closed
+                const norm = normalizeCloseTitle(String(r.title ?? ""));
+                return !(liveTitles.has(norm) && recentSuperseded.has(norm)); // superseded repeat within 24h — skip
               });
               if (rows.length) {
                 // supabase-js RETURNS errors (never throws) — check it, or a
@@ -735,7 +829,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
                     first_seen: r.first_seen ?? null,
                     posted_at: r.posted_at ?? null,
                     closed_at: closedAt,
-                    superseded: liveTitles.has(String(r.title ?? "").trim().toLowerCase()), // (c)
+                    superseded: liveTitles.has(normalizeCloseTitle(String(r.title ?? ""))), // (c)
                   })),
                 );
                 if (clErr) console.warn(`[JOB-BOARD] closure insert failed for ${s.token} (non-fatal):`, clErr.message?.slice(0, 150));
@@ -915,18 +1009,20 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
       }
     }
 
-    // Date hygiene: repair any stored posted_at that's absurd (future, or older
-    // than our trust window — a 2009-dated req is bad feed data, not a 15-year
-    // opening). New inserts are already sanitized at ingestion; this fixes rows
-    // stored before that guard. UPDATE, not delete — the posting is still live,
-    // only its date was junk. Self-terminating: once nulled a row stops
+    // Date hygiene: repair any stored posted_at that's junk (future, or
+    // pre-2000 epoch-zero/typo territory). New inserts are already sanitized
+    // at ingestion; this fixes rows stored before that guard. UPDATE, not
+    // delete — the posting is still live, only its date was junk. Real-but-old
+    // dates are NOT nulled here: nulling a 3-year-old evergreen's date is what
+    // used to keep it alive undated past the 30-day promise — those rows now
+    // age out at ingest instead. Self-terminating: once nulled a row stops
     // matching, so later passes update nothing.
     const nowIso = new Date().toISOString();
     {
       const futureIso = new Date(Date.now() + 2 * 86_400_000).toISOString();
-      const ancientIso = new Date(Date.now() - POSTED_AT_MAX_AGE_MS).toISOString();
+      const garbageIso = new Date(POSTED_AT_GARBAGE_FLOOR_MS).toISOString();
       const { error: e1 } = await client.from("job_board_postings").update({ posted_at: null }).gt("posted_at", futureIso);
-      const { error: e2 } = await client.from("job_board_postings").update({ posted_at: null }).lt("posted_at", ancientIso);
+      const { error: e2 } = await client.from("job_board_postings").update({ posted_at: null }).lt("posted_at", garbageIso);
       if (e1 || e2) console.warn("[JOB-BOARD] date-hygiene error:", (e1 ?? e2)?.message);
     }
 
@@ -1031,6 +1127,17 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0): 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "backfill-experience", chainKey: key }),
+      })).then((r) => r.text()).catch(() => {}));
+    }
+    // Country not yet backfilled (fresh column on existing rows)? Same
+    // self-chaining sweep pattern; new rows carry country from ingestion.
+    const { data: coVer } = await client.from("job_board_meta").select("v").eq("k", "country_version").maybeSingle();
+    if ((coVer?.v as { version?: number } | null)?.version !== COUNTRY_VERSION) {
+      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+      waitUntil(chainKey().then((key) => fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "backfill-country", chainKey: key }),
       })).then((r) => r.text()).catch(() => {}));
     }
     // One-time name sync: ~48 rung-3 census names shipped HTML-escaped
@@ -1246,7 +1353,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, rot, refreshMeta, bf, hotMeta, fresh, breaker] = await Promise.all([
+      const [prog, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle(),
@@ -1255,6 +1362,8 @@ Deno.serve(async (req) => {
         // Measured re-verification age distribution (null until the migration lands)
         client.rpc("get_freshness_stats").then((r) => r, () => ({ data: null })),
         client.from("job_board_meta").select("v").eq("k", "vendor_breaker").maybeSingle(),
+        // Per-vendor stated-date coverage (null until the migration lands)
+        client.rpc("get_date_coverage").then((r) => r, () => ({ data: null })),
       ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[] };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -1283,6 +1392,15 @@ Deno.serve(async (req) => {
           ? ((fresh as { data: unknown[] }).data)[0]
           : null,
         quarantinedVendors: (((breaker.data?.v ?? {}) as { quarantined?: string[] }).quarantined ?? []),
+        // Which hiring systems state posting dates, and for what share of
+        // their postings — the measured basis behind every age stat.
+        dateCoverage: Array.isArray((dateCov as { data?: unknown }).data)
+          ? ((dateCov as { data: Array<{ source: string; total: number; dated: number }> }).data).map((r) => ({
+              source: r.source,
+              total: Number(r.total),
+              datedPct: Math.round(100 * Number(r.dated) / Math.max(Number(r.total), 1)),
+            }))
+          : null,
         at: new Date().toISOString(),
       });
     }
@@ -1426,6 +1544,65 @@ Deno.serve(async (req) => {
         { onConflict: "k" },
       );
       console.log(`[JOB-BOARD] experience backfill complete: ${scanned} scanned, ${updated} filled (v${EXPERIENCE_VERSION})`);
+      return json({ ok: true, scanned, updated, done: true });
+    }
+
+    if (action === "backfill-country") {
+      // Fill country on rows that predate the column — chainKey-gated,
+      // self-chaining, stamped on completion (same shape as backfill-salary).
+      // Rows whose location we can't place stay NULL; the cursor walks past
+      // them and the stamp stops re-scans.
+      if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
+        return json({ error: "backfill-country is a maintenance action" }, 403);
+      }
+      let cursor = typeof body.cursor === "string" ? body.cursor : "";
+      let scanned = 0;
+      const groups = new Map<string, string[]>(); // country -> ids
+      const PAGES = 6;
+      for (let page = 0; page < PAGES; page++) {
+        let q = client
+          .from("job_board_postings")
+          .select("id,location")
+          .is("country", null)
+          .order("id")
+          .limit(1000);
+        if (cursor) q = q.gt("id", cursor);
+        const { data: rows, error } = await q;
+        if (error) throw error;
+        for (const r of rows ?? []) {
+          scanned++;
+          const c = detectCountry((r as { location?: string | null }).location);
+          if (!c) continue;
+          const g = groups.get(c) ?? [];
+          g.push(r.id as string);
+          groups.set(c, g);
+        }
+        if (!rows || rows.length < 1000) { cursor = ""; break; }
+        cursor = rows[rows.length - 1].id as string;
+      }
+      let updated = 0;
+      for (const [c, ids] of groups) {
+        for (let i = 0; i < ids.length; i += 200) {
+          const { error } = await client.from("job_board_postings")
+            .update({ country: c }).in("id", ids.slice(i, i + 200));
+          if (error) throw error;
+          updated += Math.min(200, ids.length - i);
+        }
+      }
+      if (cursor) {
+        const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+        waitUntil(chainKey().then((key) => fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "backfill-country", chainKey: key, cursor }),
+        })).then((r) => r.text()).catch(() => {}));
+        return json({ ok: true, scanned, updated, cursor });
+      }
+      await client.from("job_board_meta").upsert(
+        { k: "country_version", v: { version: COUNTRY_VERSION, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+      console.log(`[JOB-BOARD] country backfill complete: ${scanned} scanned, ${updated} filled (v${COUNTRY_VERSION})`);
       return json({ ok: true, scanned, updated, done: true });
     }
 
@@ -1789,8 +1966,63 @@ Deno.serve(async (req) => {
       }
       const decided = live + gone;
       const accuracyPct = decided > 0 ? Math.round((live / decided) * 1000) / 10 : null;
+
+      // ── Label audit: do our OWN labels survive contact with the posting's
+      // text? Cross-checks stored experience_band / remote / category against
+      // the stored description — no network, pure measurement, published
+      // alongside the liveness number. Contradicted entry labels are demoted
+      // to "unspecified" (we can't honestly place them); remote flips only on
+      // the strongest explicit pattern — mislabeled is worse than unlabeled.
+      const labelAudit = { sampled: 0, entryChecked: 0, entryContradicted: 0, remoteChecked: 0, remoteContradicted: 0, categoryChecked: 0, categoryMismatched: 0, demoted: 0 };
+      try {
+        const LABEL_PAGES = 3;
+        const rows: Array<{ id: string; title: string; description: string; experience_band: string; remote: boolean; category: string; department: string | null }> = [];
+        const { count: descCount } = await client.from("job_board_postings")
+          .select("id", { count: "exact", head: true }).not("description", "is", null);
+        const nDesc = descCount ?? 0;
+        for (let p = 0; p < LABEL_PAGES && nDesc > 0; p++) {
+          const off = Math.floor(Math.random() * Math.max(1, nDesc - 100));
+          const { data: page } = await client.from("job_board_postings")
+            .select("id,title,description,experience_band,remote,category,department")
+            .not("description", "is", null).order("id").range(off, off + 99);
+          for (const r of (page ?? []) as typeof rows) if (!rows.some((x) => x.id === r.id)) rows.push(r);
+        }
+        labelAudit.sampled = rows.length;
+        const entryDemote: string[] = [];
+        const remoteDemote: string[] = [];
+        // "N+ years required" in the posting's own words contradicts an entry label.
+        const P_YEARS = /(\d{1,2})\s*\+?\s*(?:years?|yrs?)(?:['’]?\s*of)?\s+(?:relevant |related |professional |industry |work(?:ing)? )?experience/i;
+        const P_ONSITE = /\b(?:on-?site only|not a remote (?:role|position)|no remote work|100% on-?site|fully on-?site)\b/i;
+        for (const r of rows) {
+          const desc = String(r.description ?? "");
+          if (r.experience_band === "entry") {
+            labelAudit.entryChecked++;
+            const m = desc.match(P_YEARS);
+            if (m && Number(m[1]) >= 3) { labelAudit.entryContradicted++; entryDemote.push(r.id); }
+          }
+          if (r.remote === true) {
+            labelAudit.remoteChecked++;
+            if (P_ONSITE.test(desc)) { labelAudit.remoteContradicted++; remoteDemote.push(r.id); }
+          }
+          labelAudit.categoryChecked++;
+          if (categorize(r.title ?? "", r.department ?? undefined) !== r.category) labelAudit.categoryMismatched++;
+        }
+        for (let i = 0; i < entryDemote.length; i += 100) {
+          const { error: dErr } = await client.from("job_board_postings")
+            .update({ experience_band: "unspecified" }).in("id", entryDemote.slice(i, i + 100));
+          if (!dErr) labelAudit.demoted += Math.min(100, entryDemote.length - i);
+        }
+        for (let i = 0; i < remoteDemote.length; i += 100) {
+          const { error: dErr } = await client.from("job_board_postings")
+            .update({ remote: false }).in("id", remoteDemote.slice(i, i + 100));
+          if (!dErr) labelAudit.demoted += Math.min(100, remoteDemote.length - i);
+        }
+      } catch (e) {
+        console.warn("[JOB-BOARD] label audit failed (liveness audit unaffected):", String(e).slice(0, 150));
+      }
+
       const prevHistory = ((prevAudit?.v as { history?: Array<Record<string, unknown>> } | null)?.history ?? []).slice(-29);
-      const result = { at: new Date().toISOString(), sampled: sampleIds.length, live, gone, unknown, accuracyPct, corpus, byVendor };
+      const result = { at: new Date().toISOString(), sampled: sampleIds.length, live, gone, unknown, accuracyPct, corpus, byVendor, labelAudit };
       await client.from("job_board_meta").upsert(
         { k: "audit", v: { ...result, history: [...prevHistory, result] }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
@@ -1905,16 +2137,43 @@ async function serveList(
   // the list and its headline count stay ≤ the cap. effective_posted is NOT NULL
   // (coalesces to first-seen), so undated postings are correctly included.
   const freshCutoffIso = new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString();
+  // The exact count over the filtered set rides the page query and DOMINATES
+  // list latency on broad queries (measured: raw page 0.4s, with exact count
+  // 1.6-2.2s warm / 5-9s cold at 186k rows). The unfiltered total is already
+  // maintained by the refresh loop in meta (the same figure the homepage
+  // shows), so the default view — the most common request — skips the count
+  // entirely. Filtered queries keep exact counts: their sets are small and
+  // the zero-state logic depends on them.
+  const metaTotal = Number((meta?.v as Record<string, unknown> | undefined)?.total);
+  const unfiltered =
+    !String(body.q ?? "").trim() &&
+    !String(body.location ?? "").trim() &&
+    !/^[A-Za-z]{2}$/.test(String(body.country ?? "")) &&
+    body.remote !== true &&
+    !(JOB_CATEGORIES as readonly string[]).includes(String(body.category ?? "")) &&
+    !String(body.experience ?? "").trim() &&
+    !(Number(body.salaryFloor) > 0) &&
+    !(Array.isArray(body.companies) && body.companies.length) &&
+    typeof body.postedAfter !== "string";
+  const wantCount = !(unfiltered && Number.isFinite(metaTotal) && metaTotal > 0);
   const buildQuery = (dateCol: string) => {
     let q = client
       .from("job_board_postings")
-      .select("id,source,company_token,company,title,location,remote,department,category,posted_at,apply_url,salary,experience_band,min_years", { count: "exact" })
+      .select(
+        "id,source,company_token,company,title,location,remote,department,category,posted_at,apply_url,salary,experience_band,min_years",
+        wantCount ? { count: "exact" } : {},
+      )
       .gte(dateCol, freshCutoffIso);
     const terms = String(body.q ?? "").toLowerCase().split(/\s+/).map(sanitizeTerm).filter(Boolean).slice(0, 8);
     for (const t of terms) q = q.or(`title.ilike.%${t}%,company.ilike.%${t}%,department.ilike.%${t}%`);
     const loc = sanitizeTerm(String(body.location ?? ""));
     if (loc) q = q.ilike("location", `%${loc}%`);
     if (body.remote === true) q = q.eq("remote", true);
+    // Country filter: exact match on the deterministically extracted code.
+    // Postings whose location we couldn't place have country NULL and are
+    // excluded by the filter — honestly, never guessed (the UI says so).
+    const country = String(body.country ?? "").toUpperCase();
+    if (/^[A-Z]{2}$/.test(country)) q = q.eq("country", country);
     const category = String(body.category ?? "");
     if ((JOB_CATEGORIES as readonly string[]).includes(category)) q = q.eq("category", category);
     // Experience filter: one of entry/mid/senior/expert. "unspecified" rows are
@@ -1941,6 +2200,7 @@ async function serveList(
   const missingColumn = (e: { message?: string } | null) => !!e?.message?.includes("effective_posted");
 
   if (countOnly) {
+    if (!wantCount) return json({ total: metaTotal }); // unfiltered — the maintained catalog total
     let { count, error } = await buildQuery("effective_posted").range(0, 0);
     if (missingColumn(error)) ({ count, error } = await buildQuery("posted_at").range(0, 0));
     if (error) throw error;
@@ -2008,7 +2268,7 @@ async function serveList(
     : [];
   return json({
     jobs: (data ?? []).map(rowToJob),
-    total: count ?? 0,
+    total: wantCount ? (count ?? 0) : metaTotal,
     totalAllCompanies: (v.total as number) ?? count ?? 0,
     companies: servedCompanies,
     companiesCount: fullCompanies.length,

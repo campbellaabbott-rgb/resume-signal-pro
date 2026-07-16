@@ -4143,6 +4143,10 @@
     "matchStrong": "Buena coincidencia",
     "matchPossible": "Coincidencia posible",
     "matchStretch": "Poco probable",
-    "matchCoverage": "El {{pct}}% de las palabras clave reconocidas de esta oferta ya están en tu currículum"
+    "matchCoverage": "El {{pct}}% de las palabras clave reconocidas de esta oferta ya están en tu currículum",
+    "postedProvenance": "Antigüedad según la fecha que la empresa indica en su propio portal de empleo — las ofertas sin fecha no muestran antigüedad, nunca se estima",
+    "companyStated": "fecha de la empresa",
+    "allCountries": "Todos los países",
+    "countryTip": "País extraído del texto de ubicación de cada oferta — las que no podemos ubicar se excluyen con este filtro activo, nunca se adivina."
   }
 }

@@ -40,20 +40,46 @@ const safeUrl = (u: unknown): string => {
 // bad data (some feeds return epoch-ish or decade-old timestamps — e.g. a
 // Palantir role dated 2009) or an evergreen pipeline req that shouldn't wear a
 // stale date. Kept here so ingestion and any date-hygiene share one bound.
-export const POSTED_AT_MAX_AGE_MS = 3 * 365 * 24 * 60 * 60_000; // ~3 years
+// Garbage-date floor: only dates before this are feed junk (epoch zeros,
+// mis-parsed typos, the live 2009 Palantir date — Lever didn't exist yet).
+// A REAL old date — a 3.5-year-old evergreen Lever req — must SURVIVE
+// sanitization so the freshness cap can drop the posting. The previous
+// ~3-year "absurdly old → null" rule laundered exactly those evergreens into
+// undated-KEPT postings (live incident: a 1,295-day-old req served on a board
+// that promises nothing older than 30 days; 42% of Lever rows were undated
+// this way). 2010 predates every ATS we ingest, so anything earlier cannot be
+// a real posting date.
+export const POSTED_AT_GARBAGE_FLOOR_MS = Date.parse("2010-01-01T00:00:00Z");
 
 // A posted_at is trustworthy only if it parses and sits in a sane window: not
-// in the future (small clock-skew grace) and not absurdly old. Garbage dates
+// in the future (small clock-skew grace) and not pre-2000 junk. Garbage dates
 // collapse to null — so effective_posted falls back to first-seen for sorting
-// and the card shows no date instead of "posted 6000 days ago". The board's
-// freshness signal is only as honest as the dates feeding it.
+// and the card shows no date instead of "posted 6000 days ago". Real-but-old
+// dates pass through untouched: the ingestion freshness cap is what drops
+// those postings, and nulling them would keep the posting alive undated.
 export function sanePostedAt(iso: string | null | undefined, now: number = Date.now()): string | null {
   if (!iso || typeof iso !== "string") return null;
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return null;
-  if (t > now + 2 * 86_400_000) return null;        // future beyond clock-skew grace
-  if (t < now - POSTED_AT_MAX_AGE_MS) return null;  // absurdly old
+  if (t > now + 2 * 86_400_000) return null;      // future beyond clock-skew grace
+  if (t < POSTED_AT_GARBAGE_FLOOR_MS) return null; // epoch-zero / typo junk
   return iso;
+}
+
+// Closure "superseded" detection compares a vanished posting's title against
+// the board's still-live titles — but companies decorate reposts with req-id
+// noise ("Behavior Technician (R-48213)", "Nurse - #10422"), so exact-string
+// matching under-detects relisting churn and inflates fill-rate stats. Strip
+// only id-shaped noise: bracketed segments containing digits and trailing
+// req/id numbers. NEVER strip words (a Senior Engineer closing while Engineer
+// stays live is not automatically a repost).
+export function normalizeCloseTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[([{][^)\]}]*\d[^)\]}]*[)\]}]/g, " ")          // (R-48213), [Req 10422]
+    .replace(/\s*[-–—#·|]\s*(?:req|job|id|jr)?[\s#:-]*\d{3,}\s*$/i, " ") // trailing "- 10422" / "#10422"
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 // Convert a feed's raw date value (epoch number, ISO/date string, whatever the
@@ -103,6 +129,75 @@ export function htmlToText(html: string): string {
 }
 
 const looksRemote = (s: string) => /\bremote\b/i.test(s);
+
+// Country from free-text location — deterministic and CONSERVATIVE: an explicit
+// country name, a comma-prefixed US state / Canadian province code, or a full
+// state/province name. No city geocoding, no guessing: a location we can't
+// place stays NULL and is simply excluded from the country filter (disclosed),
+// because "London" could be Ontario and "Georgia" could be Tbilisi.
+const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\b(?:united states|u\.?s\.?a\.?|estados unidos)\b/i, "US"],
+  [/\b(?:united kingdom|england|scotland|wales|northern ireland)\b|\bUK\b/i, "GB"],
+  [/\b(?:germany|deutschland)\b/i, "DE"],
+  [/\bcanada\b/i, "CA"],
+  [/\bfrance\b/i, "FR"],
+  [/\b(?:netherlands|nederland)\b/i, "NL"],
+  [/\bindia\b/i, "IN"],
+  [/\baustralia\b/i, "AU"],
+  [/\b(?:poland|polska)\b/i, "PL"],
+  [/\b(?:spain|españa)\b/i, "ES"],
+  [/\b(?:mexico|méxico)\b/i, "MX"],
+  [/\b(?:brazil|brasil)\b/i, "BR"],
+  [/\bphilippines\b/i, "PH"],
+  [/\b(?:sweden|sverige)\b/i, "SE"],
+  [/\b(?:denmark|danmark)\b/i, "DK"],
+  [/\b(?:norway|norge)\b/i, "NO"],
+  [/\b(?:switzerland|schweiz|suisse)\b/i, "CH"],
+  [/\b(?:austria|österreich)\b/i, "AT"],
+  [/\bireland\b/i, "IE"],
+  [/\b(?:belgium|belgië|belgique)\b/i, "BE"],
+  [/\bportugal\b/i, "PT"],
+  [/\b(?:italy|italia)\b/i, "IT"],
+  [/\bjapan\b/i, "JP"],
+  [/\bsingapore\b/i, "SG"],
+  [/\bnew zealand\b/i, "NZ"],
+  [/\bczech(?:ia)?\b/i, "CZ"],
+  [/\bromania\b/i, "RO"],
+  [/\bhungary\b/i, "HU"],
+  [/\b(?:finland|suomi)\b/i, "FI"],
+  [/\bgreece\b/i, "GR"],
+  [/\bisrael\b/i, "IL"],
+  [/\b(?:united arab emirates|uae|dubai|abu dhabi)\b/i, "AE"],
+  [/\bsaudi arabia\b/i, "SA"],
+  [/\bsouth africa\b/i, "ZA"],
+  [/\bargentina\b/i, "AR"],
+  [/\bcolombia\b/i, "CO"],
+  [/\bchile\b/i, "CL"],
+  [/\bperu\b/i, "PE"],
+  [/\bviet\s?nam\b/i, "VN"],
+  [/\bindonesia\b/i, "ID"],
+  [/\bmalaysia\b/i, "MY"],
+  [/\bthailand\b/i, "TH"],
+  [/\b(?:south korea|korea)\b/i, "KR"],
+  [/\b(?:turkey|türkiye)\b/i, "TR"],
+  [/\bukraine\b/i, "UA"],
+  [/\bcosta rica\b/i, "CR"],
+];
+// Comma-prefixed uppercase state/province codes only — "Austin, TX" yes,
+// stray "in" or "or" inside words no.
+const P_US_STATE_CODE = /,\s*(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)(?![A-Za-z])/;
+const P_CA_PROV_CODE = /,\s*(ON|QC|BC|AB|MB|SK|NS|NB|PE|NL|YT|NT|NU)(?![A-Za-z])/;
+const P_US_STATE_NAME = /\b(?:alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming)\b/i;
+const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|saskatchewan|nova scotia|new brunswick|newfoundland)\b/i;
+export function detectCountry(location: string | null | undefined): string | null {
+  if (!location) return null;
+  const s = String(location).slice(0, 300);
+  for (const [re, code] of COUNTRY_PATTERNS) if (re.test(s)) return code;
+  if (P_US_STATE_CODE.test(s) || P_US_STATE_NAME.test(s)) return "US";
+  if (P_CA_PROV_CODE.test(s) || P_CA_PROV_NAME.test(s)) return "CA";
+  if (/\bUS\b/.test(s)) return "US"; // "Remote - US", "US Remote" — after state codes so ", USA" paths won
+  return null;
+}
 
 interface GreenhouseJob {
   id: number;

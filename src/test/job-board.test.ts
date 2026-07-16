@@ -15,7 +15,7 @@ import { normalizeSmartRecruiters, normalizeWorkable } from "../../supabase/func
 import { searchName, searchToQuery } from "../../src/lib/job-search-params";
 import { computeFit } from "../../supabase/functions/_shared/fit-score";
 import { normalizeBambooHR } from "../../supabase/functions/job-board/normalize";
-import { leverSalary, sanePostedAt, isDatedBefore, safeIso } from "../../supabase/functions/job-board/normalize";
+import { leverSalary, sanePostedAt, isDatedBefore, safeIso, normalizeCloseTitle, detectCountry } from "../../supabase/functions/job-board/normalize";
 import { classifyDormancy, updateBoardFailures } from "../../supabase/functions/job-board/dormancy";
 import { rawItemCount, aggregateVendorHealth, CANARIES, type CanaryResult } from "../../supabase/functions/job-board/vendor-canary";
 
@@ -95,6 +95,44 @@ const ASHBY_FIXTURE = {
     },
   ],
 };
+
+describe("detectCountry (deterministic, never guesses)", () => {
+  it("resolves explicit country names and US/CA state patterns", () => {
+    expect(detectCountry("Dallas, Texas, United States")).toBe("US");
+    expect(detectCountry("Austin, TX")).toBe("US");
+    expect(detectCountry("Remote - US")).toBe("US");
+    expect(detectCountry("Toronto, ON")).toBe("CA");
+    expect(detectCountry("Vancouver, British Columbia")).toBe("CA");
+    expect(detectCountry("Berlin, Germany")).toBe("DE");
+    expect(detectCountry("München, Deutschland")).toBe("DE");
+    expect(detectCountry("London, United Kingdom")).toBe("GB");
+    expect(detectCountry("Warszawa, Polska")).toBe("PL");
+    expect(detectCountry("Manila, Philippines")).toBe("PH");
+  });
+  it("returns null for ambiguous or unplaceable locations", () => {
+    expect(detectCountry("London")).toBeNull();          // Ontario or England
+    expect(detectCountry("Tbilisi, Georgia")).toBeNull(); // country vs US state
+    expect(detectCountry("Remote")).toBeNull();
+    expect(detectCountry("EMEA")).toBeNull();
+    expect(detectCountry("Perugia, Italy")).toBe("IT");   // not PE(ru)
+    expect(detectCountry(null)).toBeNull();
+    expect(detectCountry("")).toBeNull();
+  });
+});
+
+describe("normalizeCloseTitle (superseded detection)", () => {
+  it("strips req-id noise so decorated reposts still match", () => {
+    expect(normalizeCloseTitle("Behavior Technician (R-48213)")).toBe("behavior technician");
+    expect(normalizeCloseTitle("Registered Nurse - #10422")).toBe("registered nurse");
+    expect(normalizeCloseTitle("Software Engineer [Req 20931]")).toBe("software engineer");
+    expect(normalizeCloseTitle("Care Coordinator – 88231")).toBe("care coordinator");
+  });
+  it("never strips words — seniority differences stay distinct", () => {
+    expect(normalizeCloseTitle("Senior Software Engineer")).toBe("senior software engineer");
+    expect(normalizeCloseTitle("Engineer (Remote)")).toBe("engineer (remote)"); // no digits — kept
+    expect(normalizeCloseTitle("24/7 Support Agent")).toBe("24/7 support agent"); // leading digits kept
+  });
+});
 
 describe("normalizers", () => {
   it("maps the real Greenhouse shape (id, location.name, first_published, absolute_url)", () => {
@@ -230,9 +268,11 @@ describe("fit scoring + salary mapping", () => {
     // Future beyond clock-skew grace is rejected; within grace is kept.
     expect(sanePostedAt("2027-01-01T00:00:00Z", now)).toBeNull();
     expect(sanePostedAt("2026-07-13T06:00:00Z", now)).toBe("2026-07-13T06:00:00Z");
-    // Just inside the ~3y window is kept; well outside is rejected.
+    // Real-but-old dates PASS: the freshness cap drops those postings at
+    // ingest. Nulling them here is what used to keep 3-year-old evergreens
+    // alive undated past the 30-day promise.
     expect(sanePostedAt("2023-08-01T00:00:00Z", now)).toBe("2023-08-01T00:00:00Z");
-    expect(sanePostedAt("2022-01-01T00:00:00Z", now)).toBeNull();
+    expect(sanePostedAt("2022-01-01T00:00:00Z", now)).toBe("2022-01-01T00:00:00Z");
     // Null / empty / unparseable all collapse to null.
     expect(sanePostedAt(null, now)).toBeNull();
     expect(sanePostedAt("", now)).toBeNull();

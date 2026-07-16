@@ -4143,6 +4143,10 @@
     "matchStrong": "Boa correspondência",
     "matchPossible": "Correspondência possível",
     "matchStretch": "Pouco provável",
-    "matchCoverage": "{{pct}}% das palavras-chave reconhecidas desta vaga já estão no seu currículo"
+    "matchCoverage": "{{pct}}% das palavras-chave reconhecidas desta vaga já estão no seu currículo",
+    "postedProvenance": "Idade da vaga com base na data que a empresa informa no seu próprio site de carreiras — vagas sem data não mostram idade, nunca uma estimativa",
+    "companyStated": "informada pela empresa",
+    "allCountries": "Todos os países",
+    "countryTip": "País lido do texto de localização de cada vaga — as que não conseguimos localizar ficam de fora com este filtro ativo, nunca adivinhadas."
   }
 }

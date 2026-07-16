@@ -14,6 +14,7 @@ import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { isBoardCategory } from "@/lib/job-board-categories";
 import { WeeklyBars } from "@/components/DataViz";
+import { HowWeMeasure } from "@/components/HowWeMeasure";
 
 interface WeekRow {
   week_start: string;
@@ -229,6 +230,13 @@ export default function HiringTrends() {
             </Link>
           </div>
         </div>
+        <HowWeMeasure
+          items={[
+            { term: "New postings per week", method: "Counted by each posting's own stated post date — never by when we first saw it. A posting only counts if we observed it within 3 days of its stated date, so adding new companies to our catalog can never show up as a fake hiring spike." },
+            { term: "Filled or closed", method: "Postings whose company's feed stopped serving them, confirmed on a second pass, dated by the company's stated post date. Same-title relistings are excluded as churn." },
+            { term: "The current week", method: "Shown dimmed and marked '(so far)' — it fills in as companies post. We'd rather show a partial week honestly than extrapolate one." },
+          ]}
+        />
       </main>
       <Footer />
     </div>

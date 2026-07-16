@@ -105,6 +105,16 @@ function prettyToken(token: string): string {
   return token.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()).trim();
 }
 
+// Localized country display names from the browser's own Intl data — no
+// translation keys to maintain, falls back to the raw code if unknown.
+function countryLabel(code: string): string {
+  try {
+    return new Intl.DisplayNames(undefined, { type: "region" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
 function daysAgo(iso: string | null): number | null {
   if (!iso) return null;
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
@@ -153,6 +163,32 @@ export default function Jobs() {
   const [company, setCompany] = useState(initial.get("company") ?? landerCompany ?? "");
   const [category, setCategory] = useState(initial.get("category") ?? landerCategory ?? "");
   const [experience, setExperience] = useState(initial.get("experience") ?? "");
+  // Country: exact match on the deterministically extracted code. Postings
+  // whose location can't be placed are excluded while active — disclosed, not
+  // guessed. Facet counts come from get_country_facet at mount.
+  const [country, setCountry] = useState(() => {
+    const c = (initial.get("country") ?? "").toUpperCase();
+    return /^[A-Z]{2}$/.test(c) ? c : "";
+  });
+  const [countryFacet, setCountryFacet] = useState<Array<{ country: string; n: number }>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await (supabase as unknown as {
+          rpc: (fn: string) => Promise<{ data: unknown }>;
+        }).rpc("get_country_facet");
+        if (cancelled || !Array.isArray(data)) return;
+        setCountryFacet(
+          (data as Array<{ country?: string; n?: number }>)
+            .filter((r) => typeof r.country === "string" && r.country.length === 2)
+            .map((r) => ({ country: String(r.country), n: Number(r.n) || 0 }))
+            .slice(0, 20),
+        );
+      } catch { /* facet RPC not applied yet — the picker simply stays hidden */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   // Salary floor filters on the posting's OWN stated pay, annualized (hourly
   // ×2080 etc.) but never currency-converted — postings that don't state pay
   // are excluded while the floor is active.
@@ -413,6 +449,7 @@ export default function Jobs() {
           location: location || undefined,
           remote: remoteOnly || undefined,
           category: category || undefined,
+          country: country || undefined,
           experience: experience || undefined,
           companies: company ? [company] : undefined,
           salaryFloor: salaryFloor || undefined,
@@ -450,7 +487,7 @@ export default function Jobs() {
         }
       }
     },
-    [q, location, remoteOnly, company, category, experience, salaryFloor, sortMode, freshness],
+    [q, location, remoteOnly, company, category, experience, country, salaryFloor, sortMode, freshness],
   );
 
   // Keep the URL shareable — filters in, defaults out. A category lander
@@ -464,22 +501,23 @@ export default function Jobs() {
     if (company) p.set("company", company);
     if (category) p.set("category", category);
     if (experience) p.set("experience", experience);
+    if (country) p.set("country", country);
     if (salaryFloor) p.set("salaryFloor", String(salaryFloor));
     // The detail panel's ?job= deep link isn't filter state — preserve it, or
     // this rewrite clobbers a shared link on mount before the panel can open.
     const jobParam = new URLSearchParams(window.location.search).get("job");
     if (jobParam) p.set("job", jobParam);
     const qs = p.toString();
-    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !category && !experience && !salaryFloor) {
+    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !category && !experience && !salaryFloor && !country) {
       window.history.replaceState({}, "", `/jobs/company/${landerCompany}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
     }
-    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !company && !experience && !salaryFloor) {
+    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !company && !experience && !salaryFloor && !country) {
       window.history.replaceState({}, "", `/jobs/field/${landerCategory}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
     }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, company, category, experience, salaryFloor, landerCategory, landerCompany]);
+  }, [q, location, remoteOnly, company, category, experience, country, salaryFloor, landerCategory, landerCompany]);
 
   // Category salary benchmarks: median advertised pay floor per field, computed
   // live from postings that state pay (RPC self-gates at n>=30 — a thin sample
@@ -1265,12 +1303,13 @@ export default function Jobs() {
     if (category) f.push({ key: "category", label: t(`jobsPage.categories.${category}`, category), clear: () => setCategory("") });
     if (experience) f.push({ key: "experience", label: t(`jobsPage.experience.${experience}`, experience), clear: () => setExperience("") });
     if (company) f.push({ key: "company", label: companies.find((c) => c.token === company)?.name ?? company, clear: () => setCompany("") });
+    if (country) f.push({ key: "country", label: country, clear: () => setCountry("") });
     if (salaryFloor > 0) f.push({ key: "salaryFloor", label: `$${salaryFloor / 1000}k+`, clear: () => setSalaryFloor(0) });
     if (remoteOnly) f.push({ key: "remote", label: t("jobsPage.remoteBadge", "Remote"), clear: () => setRemoteOnly(false) });
     if (freshness) f.push({ key: "freshness", label: freshness === "day" ? t("jobsPage.freshDay", "Today") : t("jobsPage.freshWeek", "This week"), clear: () => setFreshness("") });
     return f;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, location, category, experience, company, salaryFloor, remoteOnly, freshness, companies, t]);
+  }, [q, location, category, experience, company, country, salaryFloor, remoteOnly, freshness, companies, t]);
 
   // Smart zero-result help: when the server really has nothing for this
   // combination, measure which single relaxation helps most (a few cheap
@@ -1387,10 +1426,15 @@ export default function Jobs() {
                   </span>
                 )}
                 {daysAgo(detailJob.postedAt) !== null && (
-                  <span className="text-muted-foreground">
+                  <span
+                    className="text-muted-foreground"
+                    title={t("jobsPage.postedProvenance", "Posting age from the date the company states on its own careers feed — undated postings show no age, never a guess")}
+                  >
                     {daysAgo(detailJob.postedAt) === 0
                       ? t("jobsPage.postedToday", "today")
                       : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: daysAgo(detailJob.postedAt) })}
+                    {" · "}
+                    <span className="text-[11px]">{t("jobsPage.companyStated", "company-stated")}</span>
                   </span>
                 )}
                 {isActivelyHiring(detailJob.token) && (
@@ -1770,6 +1814,22 @@ export default function Jobs() {
                 </option>
               ))}
             </select>
+            {countryFacet.length > 0 && (
+              <select
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                aria-label={t("jobsPage.allCountries", "All countries")}
+                title={t("jobsPage.countryTip", "Country read from each posting's own location text — postings we can't place are excluded while this is on, never guessed.")}
+              >
+                <option value="">{t("jobsPage.allCountries", "All countries")}</option>
+                {countryFacet.map((c) => (
+                  <option key={c.country} value={c.country}>
+                    {countryLabel(c.country)} ({c.n.toLocaleString()})
+                  </option>
+                ))}
+              </select>
+            )}
             <select
               value={company}
               onChange={(e) => setCompany(e.target.value)}
@@ -2226,7 +2286,10 @@ export default function Jobs() {
                           )}
                           {job.remote && <Badge variant="secondary" className="text-[10px]">{t("jobsPage.remoteBadge", "Remote")}</Badge>}
                           {d !== null && (
-                            <span className={`text-[11px] whitespace-nowrap ${d <= 2 ? "text-success font-medium" : "text-muted-foreground"}`}>
+                            <span
+                              className={`text-[11px] whitespace-nowrap ${d <= 2 ? "text-success font-medium" : "text-muted-foreground"}`}
+                              title={t("jobsPage.postedProvenance", "Posting age from the date the company states on its own careers feed — undated postings show no age, never a guess")}
+                            >
                               {d === 0 ? t("jobsPage.postedToday", "today") : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: d })}
                             </span>
                           )}
