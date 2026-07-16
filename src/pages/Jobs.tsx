@@ -2328,7 +2328,10 @@ export default function Jobs() {
           )}
 
           </div>
-          <div className="hidden lg:block sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl border border-border bg-card min-w-0">
+          {/* Pinned below the fixed site header (64px) PLUS the sticky search
+              row (~58px) — top-24 sat underneath the search bar and clipped
+              the panel's title once the page scrolled. */}
+          <div className="hidden lg:block sticky top-[132px] max-h-[calc(100vh-9rem)] overflow-y-auto rounded-2xl border border-border bg-card min-w-0">
             {detailJob ? detailInner : (
               <div className="p-10 text-center text-sm text-muted-foreground">
                 {t("jobsPage.paneEmpty", "Select a posting — or use the ↑ ↓ keys to move through the list.")}
