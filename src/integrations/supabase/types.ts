@@ -796,6 +796,7 @@ export type Database = {
           salary: string | null
           salary_currency: string | null
           salary_min_annual: number | null
+          salary_rank_usd: number | null
           source: string
           title: string
         }
@@ -818,6 +819,7 @@ export type Database = {
           salary?: string | null
           salary_currency?: string | null
           salary_min_annual?: number | null
+          salary_rank_usd?: number | null
           source: string
           title: string
         }
@@ -840,6 +842,7 @@ export type Database = {
           salary?: string | null
           salary_currency?: string | null
           salary_min_annual?: number | null
+          salary_rank_usd?: number | null
           source?: string
           title?: string
         }
