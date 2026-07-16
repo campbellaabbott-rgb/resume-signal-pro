@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Activity, AlertTriangle, Bookmark, BookmarkCheck, Briefcase, Clock, Copy, ExternalLink, FileText, Flag, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, Sparkles, Target } from "lucide-react";
+import { Activity, AlertTriangle, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Copy, ExternalLink, FileText, Flag, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -105,6 +105,13 @@ function daysAgo(iso: string | null): number | null {
   return Number.isFinite(d) && d >= 0 ? d : null;
 }
 
+// Company-initial avatar: an honest visual anchor per card. We don't store
+// company domains, so real logos aren't possible without guessing — a
+// deterministic colored monogram scans just as fast and never shows the
+// wrong company's logo.
+const AVATAR_HUES = [212, 262, 330, 24, 160, 96, 45, 288] as const;
+const avatarHue = (s: string) => AVATAR_HUES[[...s].reduce((n, c) => n + c.charCodeAt(0), 0) % AVATAR_HUES.length];
+
 export default function Jobs() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -128,6 +135,9 @@ export default function Jobs() {
     return Number.isFinite(n) && n > 0 ? n : 0;
   });
   const [freshness, setFreshness] = useState<"" | "day" | "week">("");
+  // Sort: newest (default) or highest STATED salary (annualized floor, server-
+  // side; unsalaried postings sort last). Fit ordering is owned by "For you".
+  const [sortMode, setSortMode] = useState<"newest" | "salary">("newest");
   const [fitRanking, setFitRanking] = useState(false);
   const [fits, setFits] = useState<Record<string, number | null>>({});
   // Top missing keywords per posting id — the "add these to compete" signal
@@ -138,6 +148,9 @@ export default function Jobs() {
   // True once we've checked for a resume on mount, so the auto-enable only
   // fires once and never fights a user who deliberately toggled fit off.
   const fitAutoChecked = useRef(false);
+  // null = not checked yet; false = definitively no resume (drives the
+  // "For you" upsell banner); true = a resume exists somewhere.
+  const [resumeAvailable, setResumeAvailable] = useState<boolean | null>(null);
   // The resume available for ranking: this tab's scan first, else the
   // signed-in user's latest saved version (fetched lazily on toggle).
   const fitResume = useRef<string | null>(null);
@@ -166,6 +179,11 @@ export default function Jobs() {
   // tab already reported (prevents repeat submissions, shows the thanks state).
   const [reportingId, setReportingId] = useState<string | null>(null);
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+  // P0 layout state: the trust explainer folds away (the old four-paragraph
+  // hero pushed the first job 2.5 screens down on mobile — the measured 76%
+  // bounce), and on mobile the secondary filters live behind one button.
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   // Dismissed postings: hidden on this device only (localStorage — works
   // signed-out). Nothing is deleted; a restore control brings them all back.
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => {
@@ -354,6 +372,7 @@ export default function Jobs() {
           experience: experience || undefined,
           companies: company ? [company] : undefined,
           salaryFloor: salaryFloor || undefined,
+          sort: sortMode === "salary" ? "salary" : undefined,
           postedAfter: freshness ? new Date(Date.now() - (freshness === "day" ? 1 : 7) * 86_400_000).toISOString() : undefined,
           limit: PAGE,
           offset,
@@ -387,7 +406,7 @@ export default function Jobs() {
         }
       }
     },
-    [q, location, remoteOnly, company, category, experience, salaryFloor, freshness],
+    [q, location, remoteOnly, company, category, experience, salaryFloor, sortMode, freshness],
   );
 
   // Keep the URL shareable — filters in, defaults out. A category lander
@@ -402,13 +421,17 @@ export default function Jobs() {
     if (category) p.set("category", category);
     if (experience) p.set("experience", experience);
     if (salaryFloor) p.set("salaryFloor", String(salaryFloor));
+    // The detail panel's ?job= deep link isn't filter state — preserve it, or
+    // this rewrite clobbers a shared link on mount before the panel can open.
+    const jobParam = new URLSearchParams(window.location.search).get("job");
+    if (jobParam) p.set("job", jobParam);
     const qs = p.toString();
     if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !category && !experience && !salaryFloor) {
-      window.history.replaceState({}, "", `/jobs/company/${landerCompany}`);
+      window.history.replaceState({}, "", `/jobs/company/${landerCompany}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
     }
     if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !company && !experience && !salaryFloor) {
-      window.history.replaceState({}, "", `/jobs/field/${landerCategory}`);
+      window.history.replaceState({}, "", `/jobs/field/${landerCategory}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
       return;
     }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
@@ -478,6 +501,71 @@ export default function Jobs() {
     } catch { /* unverifiable — don't block the user */ }
     return true;
   };
+
+  // P1 detail panel: click a card → slide-over with the full stored JD, fit,
+  // health and actions — the board becomes the destination instead of a list
+  // of exits. ?job=id makes any posting shareable; the detail action returns
+  // the posting row itself, so deep links work even when the posting isn't in
+  // the currently loaded list.
+  const [detailJob, setDetailJob] = useState<BoardJob | null>(null);
+  const [detailDesc, setDetailDesc] = useState<string | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const openDetail = useCallback(async (job: BoardJob, pushUrl = true) => {
+    setDetailJob(job);
+    setDetailDesc(null);
+    setDetailLoading(true);
+    if (pushUrl) {
+      const p = new URLSearchParams(window.location.search);
+      p.set("job", job.id);
+      window.history.pushState({ job: job.id }, "", `${window.location.pathname}?${p.toString()}`);
+    }
+    try {
+      const { data: res } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
+      setDetailDesc(res?.description ?? null);
+    } catch { /* panel still shows metadata + actions */ }
+    setDetailLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const closeDetail = useCallback((viaHistory = false) => {
+    setDetailJob(null);
+    if (!viaHistory && new URLSearchParams(window.location.search).has("job")) {
+      window.history.back(); // pops the ?job entry we pushed
+    }
+  }, []);
+  // Back button closes the panel; Escape too. Deep link opens it on load.
+  useEffect(() => {
+    const onPop = () => {
+      if (!new URLSearchParams(window.location.search).has("job")) closeDetail(true);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeDetail(); };
+    window.addEventListener("popstate", onPop);
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("popstate", onPop); window.removeEventListener("keydown", onKey); };
+  }, [closeDetail]);
+  const deepLinkTried = useRef(false);
+  useEffect(() => {
+    if (deepLinkTried.current) return;
+    const id = new URLSearchParams(window.location.search).get("job");
+    if (!id) { deepLinkTried.current = true; return; }
+    const inList = jobs.find((j) => j.id === id);
+    if (inList) {
+      deepLinkTried.current = true;
+      void openDetail(inList, false);
+    } else if (jobs.length > 0) {
+      // Loaded list doesn't contain it — the detail action resolves the row.
+      deepLinkTried.current = true;
+      (async () => {
+        try {
+          const { data: res } = await invokeBoard<{ job?: BoardJob | null; description?: string }>({ action: "detail", id });
+          if (res?.job) {
+            setDetailJob(res.job);
+            setDetailDesc(res.description ?? null);
+          }
+        } catch { /* dead link — board renders normally */ }
+      })();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs]);
 
   // Report-a-posting: log the report, then honor it honestly — a "gone" report
   // triggers the same live re-check applying does, so a confirmed-dead posting
@@ -837,7 +925,9 @@ export default function Jobs() {
     let cancelled = false;
     (async () => {
       const resume = await resolveFitResume();
-      if (cancelled || !resume) return; // no resume yet — stay unlocked, retry when session lands
+      if (cancelled) return;
+      setResumeAvailable(!!resume); // drives the "For you" upsell banner
+      if (!resume) return; // no resume yet — stay unlocked, retry when session lands
       fitAutoChecked.current = true;
       setFitRanking(true);
     })();
@@ -1019,6 +1109,13 @@ export default function Jobs() {
     [data, company],
   );
 
+  // Badge on the mobile Filters button: how many secondary filters are active
+  // (q lives in the always-visible search bar, so it doesn't count).
+  const activeFilterCount = useMemo(
+    () => [location, category, experience, company, salaryFloor > 0, remoteOnly, freshness].filter(Boolean).length,
+    [location, category, experience, company, salaryFloor, remoteOnly, freshness],
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <SEO
@@ -1037,23 +1134,22 @@ export default function Jobs() {
       <Header />
       <main className="pt-20 pb-20">
         <div className="container max-w-4xl">
-          <div className="flex items-center gap-2 mb-2">
-            <Briefcase className="w-6 h-6 text-primary" />
-            <h1 className="text-3xl md:text-4xl font-bold">{landerCompany
+          {/* P0 compressed hero: one headline, one live-count line, three tiny
+              trust badges, everything else folded — the first posting must be
+              visible without scrolling (the old four-paragraph hero measured a
+              76% bounce; mobile showed zero jobs for 2.5 screens). */}
+          <div className="flex items-center gap-2 mb-1">
+            <Briefcase className="w-5 h-5 text-primary" />
+            <h1 className="text-2xl md:text-3xl font-bold">{landerCompany
               ? t("jobsPage.companyH1", "Open roles at {{company}}", { company: landerCompanyName })
               : landerCategory
               ? t("jobsPage.landerH1", "Live {{category}} jobs", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
               : t("jobsPage.h1", "Live job board")}</h1>
           </div>
-          <p className="text-muted-foreground mb-1">
-            {landerCompany
-              ? t("jobsPage.companySubtitle", "Every {{company}} opening here comes straight from {{company}}'s own careers system — verified, still open, and re-checked the moment you apply.", { company: landerCompanyName })
-              : t("jobsPage.subtitle", "Every job here comes straight from the company's own careers system — no aggregators, no reposts, no dead links — and each is re-checked live the moment you apply.")}
-          </p>
           {/* Direct answer to "is {company} hiring?" — the exact high-intent query
               this page targets. Only shown with a real count, so it's always true. */}
           {landerCompany && typeof data?.total === "number" && data.total > 0 && (
-            <p className="text-sm font-semibold text-success mb-2">
+            <p className="text-sm font-semibold text-success mb-1">
               {t("jobsPage.companyYesHiring", "Yes — {{count}} verified open {{roleWord}} right now, straight from {{company}}'s own job board.", {
                 count: data.total,
                 roleWord: data.total === 1 ? "role" : "roles",
@@ -1061,39 +1157,60 @@ export default function Jobs() {
               })}
             </p>
           )}
-          <p className="text-xs text-muted-foreground mb-3">
-            {t("jobsPage.honestyNote", "Then we do the part other boards skip: check your resume against any posting free and see exactly what to add — so you apply prepared, not hoping.")}
+          <p className="text-sm text-muted-foreground mb-2">
+            {landerCompany
+              ? t("jobsPage.companySubtitle", "Every {{company}} opening here comes straight from {{company}}'s own careers system — verified, still open, and re-checked the moment you apply.", { company: landerCompanyName })
+              : data?.totalAllCompanies
+              ? t("jobsPage.countLine", "{{total}} live openings from {{companies}} companies — every one straight from the company's own hiring system.", {
+                  total: data.totalAllCompanies.toLocaleString(),
+                  companies: (data.companiesCount ?? companies.length).toLocaleString(),
+                })
+              : t("jobsPage.subtitleShort", "Every job straight from the company's own careers system — verified, fresh, re-checked when you apply.")}
           </p>
-
-          {/* Anti-ghost-job guarantee — scannable proof points, each literally true:
-              official feeds, the real 30-day freshness cap (stale/ghost postings
-              are auto-dropped), and the live re-check on apply. */}
-          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-6">
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-success shrink-0" />
-              {t("jobsPage.guaranteeFeeds", "Straight from official company ATS feeds")}
+              {t("jobsPage.badgeOfficial", "Official feeds only")}
             </span>
-            <span
-              className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground"
-              title={t("jobsPage.guaranteeFreshTip", "Any role whose posting date passes 30 days is automatically dropped from the board — the ghost/pipeline postings other boards leave up for months never appear here.")}
-            >
+            <span className="inline-flex items-center gap-1" title={t("jobsPage.guaranteeFreshTip", "Any role whose posting date passes 30 days is automatically dropped from the board — the ghost/pipeline postings other boards leave up for months never appear here.")}>
               <Clock className="w-3.5 h-3.5 text-success shrink-0" />
-              {t("jobsPage.guaranteeFresh", "Posted in the last 30 days — stale postings auto-dropped")}
+              {t("jobsPage.badgeFresh", "30-day freshness cap")}
             </span>
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
               <RefreshCw className="w-3.5 h-3.5 text-success shrink-0" />
-              {t("jobsPage.guaranteeLive", "Re-checked live the moment you apply")}
+              {t("jobsPage.badgeLive", "Re-checked when you apply")}
             </span>
-            <Link to="/ghost-job-index" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
-              {t("jobsPage.dataPagesGhost", "Ghost Job Index")}
-            </Link>
-            <Link to="/hiring-trends" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
-              {t("jobsPage.dataPagesTrends", "Weekly hiring trends")}
-            </Link>
-            <Link to="/entry-level-index" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
-              {t("jobsPage.dataPagesEntry", "Entry-Level Index")}
-            </Link>
+            <button
+              type="button"
+              onClick={() => setAboutOpen((v) => !v)}
+              className="inline-flex items-center gap-0.5 text-primary hover:underline"
+            >
+              {t("jobsPage.aboutToggle", "How this board works")}
+              <ChevronDown className={`w-3 h-3 transition-transform ${aboutOpen ? "rotate-180" : ""}`} />
+            </button>
           </div>
+          {aboutOpen && (
+            <div className="rounded-xl border border-border bg-card p-4 mb-4 text-[13px] text-muted-foreground space-y-2">
+              <p>
+                {t("jobsPage.subtitle", "Every job here comes straight from the company's own careers system — no aggregators, no reposts, no dead links — and each is re-checked live the moment you apply.")}
+              </p>
+              <p>{t("jobsPage.guaranteeFresh", "Posted in the last 30 days — stale postings auto-dropped")}. {t("jobsPage.guaranteeFreshTip", "Any role whose posting date passes 30 days is automatically dropped from the board — the ghost/pipeline postings other boards leave up for months never appear here.")}</p>
+              <p>
+                {t("jobsPage.honestyNote", "Then we do the part other boards skip: check your resume against any posting free and see exactly what to add — so you apply prepared, not hoping.")}
+              </p>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
+                <Link to="/ghost-job-index" className="text-primary hover:underline">
+                  {t("jobsPage.dataPagesGhost", "Ghost Job Index")}
+                </Link>
+                <Link to="/hiring-trends" className="text-primary hover:underline">
+                  {t("jobsPage.dataPagesTrends", "Weekly hiring trends")}
+                </Link>
+                <Link to="/entry-level-index" className="text-primary hover:underline">
+                  {t("jobsPage.dataPagesEntry", "Entry-Level Index")}
+                </Link>
+              </div>
+            </div>
+          )}
 
           {/* Company-page Hiring-Health: the lifecycle signal aggregators can't
               build — open roles now + how fast this company actually fills roles.
@@ -1157,19 +1274,50 @@ export default function Jobs() {
             </div>
           )}
 
-          {/* Filters */}
-          <div className="flex flex-wrap gap-2 mb-5">
-            <div className="relative flex-1 min-w-[220px]">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={t("jobsPage.searchPlaceholder", "Title or keyword — e.g. product designer")}
-                className="w-full pl-9 pr-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
+          {/* P0 filter bar: the primary search row stays put (sticky) while the
+              list scrolls; on mobile the secondary controls collapse behind one
+              "Filters" button with an active-count badge, so the first posting
+              is on-screen instead of a wall of seven controls. */}
+          <div className="sticky top-16 z-20 -mx-4 px-4 py-2 bg-background/90 backdrop-blur mb-2">
+            <div className="flex gap-2">
+              <div className="relative flex-1 min-w-0">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder={t("jobsPage.searchPlaceholder", "Title or keyword — e.g. product designer")}
+                  className="w-full pl-9 pr-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+              <div className="relative hidden md:block w-[180px]">
+                <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder={t("jobsPage.locationPlaceholder", "Location")}
+                  className="w-full pl-9 pr-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((v) => !v)}
+                className={`md:hidden inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm shrink-0 ${filtersOpen ? "border-primary text-primary" : "border-border text-muted-foreground"}`}
+                aria-expanded={filtersOpen}
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                {t("jobsPage.filtersBtn", "Filters")}
+                {activeFilterCount > 0 && (
+                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold inline-flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
             </div>
-            <div className="relative min-w-[170px]">
+          </div>
+          <div className={`${filtersOpen ? "flex" : "hidden"} md:flex flex-wrap gap-2 mb-3`}>
+            <div className="relative w-full md:hidden">
               <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
@@ -1259,16 +1407,30 @@ export default function Jobs() {
                 {label}
               </button>
             ))}
-            <button
-              type="button"
-              onClick={toggleFitRanking}
-              className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                fitRanking ? "border-success bg-success/10 text-success font-semibold" : "border-primary/40 text-primary hover:bg-primary/10"
-              }`}
-            >
-              {fitLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Target className="w-3 h-3" />}
-              {fitRanking ? t("jobsPage.fitRankingOn", "Ranked by your fit") : t("jobsPage.fitRankingCta", "Rank by my fit")}
-            </button>
+            {/* For you | All jobs — the board's differentiator as a first-class
+                mode, not a pill to discover. "For you" without a resume routes
+                to the free scan (toggleFitRanking owns that flow). */}
+            <div className="inline-flex rounded-full border border-border overflow-hidden text-xs">
+              <button
+                type="button"
+                onClick={() => { if (!fitRanking) toggleFitRanking(); }}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 transition-colors ${
+                  fitRanking ? "bg-success/15 text-success font-semibold" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {fitLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Target className="w-3 h-3" />}
+                {t("jobsPage.forYou", "For you")}
+              </button>
+              <button
+                type="button"
+                onClick={() => { if (fitRanking) toggleFitRanking(); }}
+                className={`px-3 py-1.5 transition-colors border-l border-border ${
+                  !fitRanking ? "bg-muted/60 text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t("jobsPage.allJobs", "All jobs")}
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => setActivelyHiringOnly((v) => !v)}
@@ -1280,6 +1442,15 @@ export default function Jobs() {
               <Activity className="w-3 h-3" />
               {t("jobsPage.activelyHiringFilter", "Actively hiring")}
             </button>
+            <select
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value === "salary" ? "salary" : "newest")}
+              className="text-xs px-2.5 py-1.5 rounded-full border border-border bg-background text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              aria-label={t("jobsPage.sortLabel", "Sort")}
+            >
+              <option value="newest">{t("jobsPage.sortNewest", "Newest first")}</option>
+              <option value="salary">{t("jobsPage.sortSalary", "Highest stated salary")}</option>
+            </select>
             {salaryFloor > 0 && (
               <span className="text-[11px] text-muted-foreground">
                 {t("jobsPage.salaryFloorNote", "Only postings that state pay of ${{amount}}k+ (annualized) — most companies don't publish pay, so this hides them.", { amount: salaryFloor / 1000 })}
@@ -1297,12 +1468,43 @@ export default function Jobs() {
             )}
           </div>
 
+          {/* The one thing no other board offers on arrival: match scores on
+              every opening. Shown only to visitors we KNOW have no resume yet
+              (never nags someone who deliberately switched to All jobs). */}
+          {resumeAvailable === false && !fitRanking && (
+            <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 mb-4 flex flex-wrap items-center gap-3">
+              <Sparkles className="w-4 h-4 text-primary shrink-0" />
+              <p className="text-sm text-foreground flex-1 min-w-[220px]">
+                {t("jobsPage.forYouUpsell", "See your match score on every opening — scan your resume once, free, and the board ranks itself around you.")}
+              </p>
+              <Button size="sm" onClick={() => navigate("/#upload")}>
+                {t("jobsPage.forYouUpsellCta", "Scan my resume")}
+              </Button>
+            </div>
+          )}
+
           {/* Results */}
           {loading ? (
-            <div className="py-16 text-center text-muted-foreground">
-              <Loader2 className="w-6 h-6 animate-spin mx-auto mb-3" />
-              <p className="text-sm">{t("jobsPage.loadingFirst", "Pulling live boards — the first load can take a few seconds.")}</p>
-            </div>
+            // Skeleton cards: the page keeps its shape while the first load
+            // lands — no spinner void, no layout jump when cards arrive.
+            <ul className="space-y-3" aria-hidden="true">
+              {Array.from({ length: 5 }, (_, i) => (
+                <li key={i} className="rounded-2xl border border-border bg-card p-4 animate-pulse">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-muted/60 shrink-0 hidden sm:block" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted/60 rounded w-2/3" />
+                      <div className="h-3 bg-muted/40 rounded w-1/2" />
+                      <div className="h-3 bg-muted/30 rounded w-1/3" />
+                      <div className="flex gap-2 pt-1">
+                        <div className="h-8 bg-muted/40 rounded w-36" />
+                        <div className="h-8 bg-muted/50 rounded w-20" />
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
           ) : error ? (
             <div className="py-16 text-center">
               <p className="text-sm text-muted-foreground mb-3">{t("jobsPage.error", "The board couldn't load right now.")}</p>
@@ -1409,8 +1611,24 @@ export default function Jobs() {
                   // read as a bad match to a layperson.
                   const tier = typeof fit === "number" ? (fit >= 20 ? "strong" : fit >= 10 ? "possible" : "stretch") : null;
                   return (
-                    <li key={job.id} className="rounded-2xl border border-border bg-card p-4">
-                      <div className="flex flex-wrap items-start gap-2">
+                    <li
+                      key={job.id}
+                      className="rounded-2xl border border-border bg-card p-4 cursor-pointer transition-colors hover:border-primary/40"
+                      onClick={(e) => {
+                        // The whole card opens the detail panel — except clicks
+                        // on its own controls (apply/save/fit/report/etc.).
+                        if ((e.target as HTMLElement).closest("button, a, select, input, label")) return;
+                        void openDetail(job);
+                      }}
+                    >
+                      <div className="flex flex-wrap items-start gap-3">
+                        <div
+                          aria-hidden="true"
+                          className="w-9 h-9 rounded-lg shrink-0 hidden sm:flex items-center justify-center text-sm font-bold select-none"
+                          style={{ backgroundColor: `hsl(${avatarHue(job.token || job.company)} 42% 22%)`, color: `hsl(${avatarHue(job.token || job.company)} 85% 76%)` }}
+                        >
+                          {(job.company || "?").charAt(0).toUpperCase()}
+                        </div>
                         <div className="flex-1 min-w-[220px]">
                           <p className="font-semibold text-foreground leading-snug">{job.title}</p>
                           <p className="text-sm text-muted-foreground mt-0.5">
@@ -1535,17 +1753,6 @@ export default function Jobs() {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 mt-3">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="gap-1.5 px-2"
-                          aria-label={savedIds.has(job.id) ? t("jobsPage.savedBadge", "Saved") : t("jobsPage.saveJob", "Save")}
-                          onClick={() => saveJob(job)}
-                        >
-                          {savedIds.has(job.id)
-                            ? <BookmarkCheck className="w-4 h-4 text-primary" />
-                            : <Bookmark className="w-4 h-4" />}
-                        </Button>
                         <Button size="sm" variant="outline" className="gap-1.5" disabled={fitFetching === job.id} onClick={() => checkFit(job)}>
                           {fitFetching === job.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
                           {t("jobsPage.checkFit", "Check my fit — free scan")}
@@ -1556,11 +1763,28 @@ export default function Jobs() {
                             {t("jobsPage.prepAnswers", "Prep answers")}
                           </Button>
                         )}
-                        <Button size="sm" variant="ghost" className="gap-1.5" asChild>
-                          <a href={job.applyUrl} target="_blank" rel="noopener noreferrer" onClick={() => { trackApply(job); void promoteApplied(job); void verifyJob(job); }}>
-                            {t("jobsPage.apply", "Apply on {{company}}'s site", { company: job.company })}
+                        <Button size="sm" className="gap-1.5" asChild>
+                          <a
+                            href={job.applyUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={t("jobsPage.apply", "Apply on {{company}}'s site", { company: job.company })}
+                            onClick={() => { trackApply(job); void promoteApplied(job); void verifyJob(job); }}
+                          >
+                            {t("jobsPage.applyBtn", "Apply")}
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="gap-1.5 px-2"
+                          aria-label={savedIds.has(job.id) ? t("jobsPage.savedBadge", "Saved") : t("jobsPage.saveJob", "Save")}
+                          onClick={() => saveJob(job)}
+                        >
+                          {savedIds.has(job.id)
+                            ? <BookmarkCheck className="w-4 h-4 text-primary" />
+                            : <Bookmark className="w-4 h-4" />}
                         </Button>
                         {reportedIds.has(job.id) ? (
                           <span className="text-[11px] text-muted-foreground">{t("jobsPage.reportedBadge", "Reported — thanks")}</span>
@@ -1661,6 +1885,145 @@ export default function Jobs() {
           </p>
         </div>
       </main>
+
+      {/* P1 slide-over detail panel: full JD + fit + health + actions, in-board.
+          Backdrop/Escape/back-button close; ?job=id deep-links it. */}
+      {detailJob && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/50" onClick={() => closeDetail()} />
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label={detailJob.title}
+            className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-[560px] sm:max-w-[92vw] bg-background border-l border-border overflow-y-auto"
+          >
+            <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-5 py-3 flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-bold leading-snug">{detailJob.title}</h2>
+                <p className="text-sm text-muted-foreground">
+                  <Link to={`/jobs/company/${detailJob.token}`} className="text-primary hover:underline" onClick={() => closeDetail()}>
+                    {detailJob.company}
+                  </Link>
+                  {detailJob.location ? <> · {detailJob.location}</> : null}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label={t("jobsPage.detailClose", "Close")}
+                className="text-muted-foreground hover:text-foreground text-lg leading-none px-1"
+                onClick={() => closeDetail()}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                <span className="inline-flex items-center gap-1 text-success">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  {t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: detailJob.company })}
+                </span>
+                {detailJob.remote && <Badge variant="secondary" className="text-[10px]">{t("jobsPage.remoteBadge", "Remote")}</Badge>}
+                {detailJob.experienceBand && detailJob.experienceBand !== "unspecified" && (
+                  <span className="px-2 py-0.5 rounded-full border border-border text-muted-foreground">
+                    {t(`jobsPage.experience.${detailJob.experienceBand}`, detailJob.experienceBand)}
+                  </span>
+                )}
+                {daysAgo(detailJob.postedAt) !== null && (
+                  <span className="text-muted-foreground">
+                    {daysAgo(detailJob.postedAt) === 0
+                      ? t("jobsPage.postedToday", "today")
+                      : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: daysAgo(detailJob.postedAt) })}
+                  </span>
+                )}
+                {isActivelyHiring(detailJob.token) && (
+                  <span className="inline-flex items-center gap-1 text-success">
+                    <Activity className="w-3 h-3" />
+                    {t("jobsPage.hhActive", "Actively hiring")}
+                  </span>
+                )}
+              </div>
+              {detailJob.salary && (
+                <p className="text-sm font-semibold text-foreground">
+                  {detailJob.salary}
+                  <span className="text-[11px] font-normal text-muted-foreground"> · {t("jobsPage.salaryVerbatim", "as stated in the posting")}</span>
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" className="gap-1.5" asChild>
+                  <a
+                    href={detailJob.applyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => { trackApply(detailJob); void promoteApplied(detailJob); void verifyJob(detailJob); }}
+                  >
+                    {t("jobsPage.applyShort", "Apply on company site")}
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1.5" disabled={fitFetching === detailJob.id} onClick={() => checkFit(detailJob)}>
+                  {fitFetching === detailJob.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
+                  {t("jobsPage.checkFit", "Check my fit — free scan")}
+                </Button>
+                {detailJob.id.startsWith("greenhouse:") && (
+                  <Button size="sm" variant="outline" className="gap-1.5" disabled={preparingId === detailJob.id} onClick={() => prepareApplication(detailJob)}>
+                    {preparingId === detailJob.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
+                    {t("jobsPage.prepAnswers", "Prep answers")}
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" className="px-2" aria-label={t("jobsPage.saveJob", "Save")} onClick={() => saveJob(detailJob)}>
+                  {savedIds.has(detailJob.id) ? <BookmarkCheck className="w-4 h-4 text-primary" /> : <Bookmark className="w-4 h-4" />}
+                </Button>
+              </div>
+              {typeof fits[detailJob.id] === "number" && (
+                <div className="rounded-xl border border-border bg-card p-3 text-sm">
+                  <p className="font-semibold mb-1">
+                    {t("jobsPage.detailFit", "Your keyword fit: {{pct}}%", { pct: fits[detailJob.id] })}
+                  </p>
+                  {(hits[detailJob.id]?.length ?? 0) > 0 && (
+                    <p className="text-[12px] text-muted-foreground">
+                      {t("jobsPage.matchedKeywords", "You already have:")} {hits[detailJob.id]!.slice(0, 6).join(", ")}
+                    </p>
+                  )}
+                  {(misses[detailJob.id]?.length ?? 0) > 0 && (
+                    <p className="text-[12px] text-muted-foreground">
+                      {t("jobsPage.missingKeywords", "Missing from your resume:")} {misses[detailJob.id]!.slice(0, 6).join(", ")}
+                    </p>
+                  )}
+                </div>
+              )}
+              {detailLoading ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                </div>
+              ) : detailDesc ? (
+                <div className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{detailDesc}</div>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">
+                  {t("jobsPage.detailNoDesc", "This company's feed doesn't publish the full description — the complete posting is on their own site via Apply.")}
+                </p>
+              )}
+              {jobs.filter((j) => j.category === detailJob.category && j.id !== detailJob.id).length > 0 && (
+                <div className="pt-2 border-t border-border">
+                  <p className="text-[12px] font-semibold text-muted-foreground mb-2">{t("jobsPage.detailSimilar", "Similar openings on the board")}</p>
+                  <ul className="space-y-1.5">
+                    {jobs
+                      .filter((j) => j.category === detailJob.category && j.id !== detailJob.id)
+                      .slice(0, 4)
+                      .map((j) => (
+                        <li key={j.id}>
+                          <button type="button" className="text-left text-sm text-primary hover:underline" onClick={() => void openDetail(j)}>
+                            {j.title}
+                          </button>
+                          <span className="text-[11px] text-muted-foreground"> · {j.company}</span>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </aside>
+        </>
+      )}
 
       {/* Apply-agent: draft grounded answers to a Greenhouse posting's real
           questions. Human reviews/edits, then applies on the company's own site. */}

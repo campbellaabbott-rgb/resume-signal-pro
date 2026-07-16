@@ -55,7 +55,7 @@ const json = (body: unknown, status = 200) =>
 // counts. catalogSize (JOB_SOURCES.length) is the automatic companion signal: it
 // moves with every catalog change with no discipline required. Sortable string so
 // a future check can tell "prod is behind" from "prod is ahead".
-const BUILD_VERSION = "2026-07-15.8";
+const BUILD_VERSION = "2026-07-15.9";
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
 const LOCK_MS = 5 * 60_000; // min gap between refresh passes
@@ -1940,11 +1940,16 @@ async function serveList(
     return json({ total: count ?? 0 });
   }
 
-  // Stable pagination: recency desc (nulls last), id as tiebreaker so
-  // equal dates can't shuffle between "load more" pages.
+  // Stable pagination: recency desc (nulls last) by default, or highest
+  // STATED salary first (annualized floor; unsalaried postings sort last —
+  // never excluded, never estimated). id tiebreaker so equal keys can't
+  // shuffle between "load more" pages.
+  const sortSalary = body.sort === "salary";
   const page = (dateCol: string) =>
-    buildQuery(dateCol)
-      .order(dateCol, { ascending: false, nullsFirst: false })
+    (sortSalary
+      ? buildQuery(dateCol).order("salary_min_annual", { ascending: false, nullsFirst: false })
+      : buildQuery(dateCol).order(dateCol, { ascending: false, nullsFirst: false })
+    )
       .order("id", { ascending: true })
       .range(offset, offset + limit - 1);
   let { data, error, count } = await page("effective_posted");
