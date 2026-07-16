@@ -27,7 +27,7 @@
     "jobs": "Jobs"
   },
   "hero": {
-    "badge": "AI-Powered CV Analysis",
+    "badge": "Live job board — every posting verified from the company's own system",
     "freeScan": "Try Free Scan",
     "heading": "Stop guessing.",
     "headingHighlight": "Start landing interviews.",
@@ -45,16 +45,16 @@
     "mainHeadingHighlight": "Invisible to Recruiters?",
     "atsTooltip": "ATS (Applicant Tracking Systems) parse your CV into a database recruiters search. They rarely auto-reject — but bad parsing or missing keywords means searches never surface you. Over 98% of Fortune 500 companies use them.",
     "mainSubheading": "Find out in 30 seconds. Get your ATS score and see exactly what's costing you interviews.",
-    "ctaButton": "Check My CV Now",
+    "ctaButton": "Scan my CV free",
     "freeBadge": "FREE",
     "noSignup": "No sign-up required",
     "worksWithAny": "Works with any CV",
     "actionableFixes": "Actionable fixes included",
     "private": "100% private",
     "headline": {
-      "get": "Your resume's",
-      "recruiterGrade": "real score",
-      "feedback": "— measured, not guessed"
+      "get": "The job board with",
+      "recruiterGrade": "zero ghost jobs",
+      "feedback": "— 185,000+ verified openings, matched to your CV"
     },
     "description": "Upload your CV and get ATS-optimised rewrites, red-flag warnings, and keyword improvements — written the way hiring managers actually review CVs.",
     "benefits": {
@@ -144,7 +144,8 @@
     "factAutoDelete": "CVs auto-deleted within 24h",
     "factNoStorage": "Never stored, never shared",
     "measureStrip": "Measurements, not opinions · Every quote verified · A score that shows its work",
-    "jobsCta": "Live job board — check your fit before you apply →"
+    "jobsCta": "Live job board — check your fit before you apply →",
+    "browseJobs": "Browse 185,000+ verified jobs"
   },
   "footer": {
     "copyright": "© {{year}} CV Booster. All rights reserved.",

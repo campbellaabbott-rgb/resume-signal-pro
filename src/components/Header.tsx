@@ -65,6 +65,19 @@ export function Header() {
             <div className="hidden sm:flex items-center">
               {/* How-it-works now lives inside /trust (methodology summary
                   embedded there); its slot goes to the guides library. */}
+              {/* Board-first: Jobs leads the nav, styled as the primary
+                  destination rather than one muted item among five. */}
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="gap-1.5 text-foreground font-semibold"
+              >
+                <Link to="/jobs">
+                  <Briefcase className="w-3.5 h-3.5" />
+                  {t('header.jobs', 'Jobs')}
+                </Link>
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -74,17 +87,6 @@ export function Header() {
                 <Link to="/guides">
                   <BookOpen className="w-3.5 h-3.5" />
                   {t('header.guides')}
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
-              >
-                <Link to="/jobs">
-                  <Briefcase className="w-3.5 h-3.5" />
-                  {t('header.jobs', 'Jobs')}
                 </Link>
               </Button>
               <Button

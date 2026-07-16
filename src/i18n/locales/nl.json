@@ -27,7 +27,7 @@
     "jobs": "Vacatures"
   },
   "hero": {
-    "badge": "AI-gestuurde CV-analyse",
+    "badge": "Live vacaturebord — elke vacature geverifieerd in het systeem van het bedrijf zelf",
     "freeScan": "Gratis scan",
     "heading": "Stop met gissen.",
     "headingHighlight": "Begin met sollicitatiegesprekken.",
@@ -45,16 +45,16 @@
     "mainHeadingHighlight": "onzichtbaar voor recruiters?",
     "atsTooltip": "ATS (Applicant Tracking Systems) zetten je cv om in een database die recruiters doorzoeken. Ze wijzen zelden automatisch af — maar slechte parsing of ontbrekende trefwoorden betekent dat zoekopdrachten je nooit tonen. Meer dan 98% van de Fortune 500-bedrijven gebruikt ze.",
     "mainSubheading": "Ontdek het in 30 seconden. Krijg je ATS-score en zie precies wat je sollicitatiegesprekken kost.",
-    "ctaButton": "Check mijn CV nu",
+    "ctaButton": "Scan mijn cv gratis",
     "freeBadge": "GRATIS",
     "noSignup": "Geen aanmelding nodig",
     "worksWithAny": "Werkt met elk cv",
     "actionableFixes": "Concrete verbeteringen inbegrepen",
     "private": "100% privé",
     "headline": {
-      "get": "De echte score",
-      "recruiterGrade": "van je cv",
-      "feedback": "— gemeten, niet geraden"
+      "get": "Het vacaturebord met",
+      "recruiterGrade": "nul spookvacatures",
+      "feedback": "— 185.000+ geverifieerde vacatures, gematcht met je cv"
     },
     "description": "Upload je cv en krijg ATS-geoptimaliseerde herschrijvingen, red-flag waarschuwingen en keyword-verbeteringen — zoals hiring managers cv’s echt beoordelen.",
     "benefits": {
@@ -144,7 +144,8 @@
     "factAutoDelete": "Cv's automatisch verwijderd binnen 24 u",
     "factNoStorage": "Nooit opgeslagen, nooit gedeeld",
     "measureStrip": "Metingen, geen meningen · Elk citaat geverifieerd · Een score die zijn werk laat zien",
-    "jobsCta": "Live vacaturebank — check je match vóór je solliciteert →"
+    "jobsCta": "Live vacaturebank — check je match vóór je solliciteert →",
+    "browseJobs": "Bekijk 185.000+ geverifieerde vacatures"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle rechten voorbehouden.",

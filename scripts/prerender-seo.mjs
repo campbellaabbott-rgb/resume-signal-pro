@@ -72,9 +72,12 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
       // occasionally returns a transient error body or times out cold. Company
       // landing pages depend on companiesFacet, so accept only a real payload and
       // give it a few tries before falling back to countless landers.
-      for (let attempt = 0; attempt < 3 && !boardFacets; attempt++) {
+      // 5 spaced tries: since the cold-rotation throughput bump the DB has
+      // busier windows, and this RPC flaked twice in one day at 3 tries (the
+      // sitemap ratchet caught both — this makes the flake rare again).
+      for (let attempt = 0; attempt < 5 && !boardFacets; attempt++) {
         try {
-          if (attempt) await new Promise((r) => setTimeout(r, 1500));
+          if (attempt) await new Promise((r) => setTimeout(r, 3500));
           const fr = await fetch(`${supaUrl}/rest/v1/rpc/get_job_board_facets`, {
             method: "POST",
             headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}`, "Content-Type": "application/json" },

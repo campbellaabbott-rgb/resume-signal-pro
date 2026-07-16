@@ -27,7 +27,7 @@
     "jobs": "Vagas"
   },
   "hero": {
-    "badge": "Análise de Currículo com IA",
+    "badge": "Quadro de vagas ao vivo — cada vaga verificada no sistema da própria empresa",
     "freeScan": "Experimentar Análise Grátis",
     "heading": "Pare de adivinhar.",
     "headingHighlight": "Comece a conseguir entrevistas.",
@@ -45,16 +45,16 @@
     "mainHeadingHighlight": "invisível para os recrutadores?",
     "atsTooltip": "Os ATS (sistemas de rastreamento de candidatos) transformam seu currículo em um banco de dados que os recrutadores pesquisam. Raramente rejeitam automaticamente — mas um parsing ruim ou palavras-chave ausentes fazem as buscas nunca mostrarem você. Mais de 98% das empresas Fortune 500 os usam.",
     "mainSubheading": "Descubra em 30 segundos. Obtenha a sua pontuação ATS e veja exatamente o que lhe está a custar entrevistas.",
-    "ctaButton": "Verificar o Meu Currículo Agora",
+    "ctaButton": "Escanear meu currículo grátis",
     "freeBadge": "GRÁTIS",
     "noSignup": "Sem registo necessário",
     "worksWithAny": "Funciona com qualquer currículo",
     "actionableFixes": "Correções práticas incluídas",
     "private": "100% privado",
     "headline": {
-      "get": "A pontuação",
-      "recruiterGrade": "real do seu currículo",
-      "feedback": "— medida, não adivinhada"
+      "get": "O quadro de vagas com",
+      "recruiterGrade": "zero vagas fantasma",
+      "feedback": "— mais de 185.000 vagas verificadas, combinadas com o seu currículo"
     },
     "description": "Carregue o seu currículo e receba reescritas otimizadas para ATS, alertas de red flags e melhorias de palavras‑chave — como recrutadores realmente avaliam currículos.",
     "benefits": {
@@ -144,7 +144,8 @@
     "factAutoDelete": "Currículos excluídos automaticamente em 24 h",
     "factNoStorage": "Nunca armazenados, nunca compartilhados",
     "measureStrip": "Medições, não opiniões · Cada citação verificada · Uma pontuação que mostra seu trabalho",
-    "jobsCta": "Mural de vagas ao vivo — cheque seu encaixe antes de se candidatar →"
+    "jobsCta": "Mural de vagas ao vivo — cheque seu encaixe antes de se candidatar →",
+    "browseJobs": "Ver mais de 185.000 vagas verificadas"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Todos os direitos reservados.",

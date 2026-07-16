@@ -251,17 +251,33 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
       lg: '-top-3 -right-2 sm:-right-3 px-3 py-1 text-xs',
     };
 
+    // Board-first: the job board is the headline product, the free scan is the
+    // companion step. One change here covers every hero A/B variant, since
+    // they all render CTAs through this helper.
     return (
-      <button
-        onClick={handleFreeScanClick}
-        className={`group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-success via-success to-emerald-500 text-success-foreground font-bold shadow-xl shadow-success/30 hover:shadow-2xl hover:shadow-success/40 active:scale-[0.98] transition-all duration-300 touch-manipulation ${sizeClasses[size]}`}
-      >
-        <Sparkles className={iconSize[size]} />
-        <span>{t('hero.ctaButton', 'Check My Resume Now')}</span>
-        <div className={`absolute rounded-full bg-primary text-primary-foreground font-bold shadow-lg ${badgeClasses[size]}`}>
-          {t('hero.freeBadge', 'FREE')}
-        </div>
-      </button>
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full sm:w-auto">
+        <Link
+          to="/jobs"
+          onClick={() => {
+            trackSocialProof({ action: 'browse_jobs_cta_click' });
+            trackLayout({ action: 'browse_jobs_cta_click', layout: layoutVariant });
+          }}
+          className={`group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-primary via-primary to-blue-500 text-primary-foreground font-bold shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 active:scale-[0.98] transition-all duration-300 touch-manipulation ${sizeClasses[size]}`}
+        >
+          <Briefcase className={iconSize[size]} />
+          <span>{t('hero.browseJobs', 'Browse 185,000+ verified jobs')}</span>
+        </Link>
+        <button
+          onClick={handleFreeScanClick}
+          className={`group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl border-2 border-success/60 bg-success/10 text-success font-bold hover:bg-success/20 active:scale-[0.98] transition-all duration-300 touch-manipulation ${sizeClasses[size]}`}
+        >
+          <Sparkles className={iconSize[size]} />
+          <span>{t('hero.ctaButton', 'Scan my resume free')}</span>
+          <div className={`absolute rounded-full bg-primary text-primary-foreground font-bold shadow-lg ${badgeClasses[size]}`}>
+            {t('hero.freeBadge', 'FREE')}
+          </div>
+        </button>
+      </div>
     );
   };
 
@@ -386,11 +402,11 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
             {/* Headline - slightly smaller to emphasize social proof */}
             <div className="mb-4 animate-fade-in" style={{ animationDelay: "0.05s" }}>
               <h1 id="hero-heading" className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-3 leading-tight">
-                {t('hero.headline.get', 'Get')}{" "}
+                {t('hero.headline.get', 'The job board with')}{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
-                  {t('hero.headline.recruiterGrade', 'Recruiter-Grade')}
+                  {t('hero.headline.recruiterGrade', 'zero ghost jobs')}
                 </span>{" "}
-                {t('hero.headline.feedback', 'Resume Feedback in 60 Seconds')}
+                {t('hero.headline.feedback', '— 185,000+ verified openings, matched to your resume')}
               </h1>
               <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
                 {t('hero.socialFirst.subheading')}
@@ -460,7 +476,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                 <div className="w-8 h-[2px] bg-muted-foreground/30" />
               </div>
               <h1 id="hero-heading" className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight mb-2 leading-tight">
-                {t('hero.headline.get', 'Get')}{" "}
+                {t('hero.headline.get', 'The job board with')}{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
                   {t('hero.benefitLed.solutionHeadingHighlight')}
                 </span>{" "}
@@ -520,11 +536,11 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                     : 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-5'
               }`}
             >
-              {t('hero.headline.get', 'Get')}{" "}
+              {t('hero.headline.get', 'The job board with')}{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
-                {t('hero.headline.recruiterGrade', 'Recruiter-Grade')}
+                {t('hero.headline.recruiterGrade', 'zero ghost jobs')}
               </span>{" "}
-              {t('hero.headline.feedback', 'Resume Feedback in 60 Seconds')}
+              {t('hero.headline.feedback', '— 185,000+ verified openings, matched to your resume')}
             </h1>
             
             {/* Description - shorter for ultra-compact */}

@@ -27,7 +27,7 @@
     "jobs": "Empleo"
   },
   "hero": {
-    "badge": "Análisis de CV con IA",
+    "badge": "Tablón de empleo en vivo — cada oferta verificada en el sistema de la propia empresa",
     "freeScan": "Escaneo Gratis",
     "heading": "Deja de adivinar.",
     "headingHighlight": "Empieza a conseguir entrevistas.",
@@ -45,16 +45,16 @@
     "mainHeadingHighlight": "invisible para los reclutadores?",
     "atsTooltip": "Los ATS (sistemas de seguimiento de candidatos) convierten tu currículum en una base de datos que los reclutadores buscan. Rara vez rechazan automáticamente — pero un mal análisis o palabras clave ausentes hacen que las búsquedas nunca te muestren. Más del 98% de las empresas Fortune 500 los usan.",
     "mainSubheading": "Descúbrelo en 30 segundos. Obtén tu puntuación ATS y ve exactamente qué te está costando entrevistas.",
-    "ctaButton": "Analizar Mi CV Ahora",
+    "ctaButton": "Escanear mi currículum gratis",
     "freeBadge": "GRATIS",
     "noSignup": "Sin registro requerido",
     "worksWithAny": "Funciona con cualquier CV",
     "actionableFixes": "Correcciones prácticas incluidas",
     "private": "100% privado",
     "headline": {
-      "get": "La puntuación",
-      "recruiterGrade": "real de tu currículum",
-      "feedback": "— medida, no adivinada"
+      "get": "El tablón de empleo con",
+      "recruiterGrade": "cero ofertas fantasma",
+      "feedback": "— más de 185.000 vacantes verificadas, emparejadas con tu currículum"
     },
     "description": "Sube tu CV y obtén reescrituras optimizadas para ATS, alertas de red flags y mejoras de palabras clave — como lo revisan los reclutadores.",
     "benefits": {
@@ -144,7 +144,8 @@
     "factAutoDelete": "Currículums eliminados automáticamente en 24 h",
     "factNoStorage": "Nunca almacenados, nunca compartidos",
     "measureStrip": "Mediciones, no opiniones · Cada cita verificada · Una puntuación que muestra su trabajo",
-    "jobsCta": "Bolsa de empleo en vivo — comprueba tu encaje antes de postularte →"
+    "jobsCta": "Bolsa de empleo en vivo — comprueba tu encaje antes de postularte →",
+    "browseJobs": "Ver más de 185.000 empleos verificados"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Todos los derechos reservados.",

@@ -27,7 +27,7 @@
     "jobs": "Trabaho"
   },
   "hero": {
-    "badge": "AI-Powered Resume Analysis",
+    "badge": "Live job board — bawat posting verified mula sa sariling sistema ng kumpanya",
     "freeScan": "Libreng Scan",
     "heading": "Huwag nang hulaan.",
     "headingHighlight": "Simulan na ang makakuha ng interview.",
@@ -45,16 +45,16 @@
     "mainHeadingHighlight": "hindi nakikita ng mga recruiter?",
     "atsTooltip": "Ginagawang database ng ATS (Applicant Tracking Systems) ang resume mo na hinahanapan ng mga recruiter. Bihira silang awtomatikong tumanggi — pero ang maling parsing o kulang na keywords ay nangangahulugang hindi ka kailanman lalabas sa paghahanap. Mahigit 98% ng Fortune 500 ang gumagamit nito.",
     "mainSubheading": "Alamin sa 30 segundo. Kunin ang iyong ATS score at tingnan kung ano ang nagpapababa ng iyong mga interview.",
-    "ctaButton": "I-check ang Aking Resume Ngayon",
+    "ctaButton": "I-scan ang resume ko nang libre",
     "freeBadge": "LIBRE",
     "noSignup": "Walang kailangang mag-sign-up",
     "worksWithAny": "Gumagana sa kahit anong resume",
     "actionableFixes": "May kasamang praktikal na ayos",
     "private": "100% private",
     "headline": {
-      "get": "Ang tunay na iskor",
-      "recruiterGrade": "ng iyong resume",
-      "feedback": "— sinukat, hindi hinulaan"
+      "get": "Ang job board na may",
+      "recruiterGrade": "zero ghost jobs",
+      "feedback": "— 185,000+ verified na trabaho, tugma sa resume mo"
     },
     "description": "I-upload ang iyong resume at makakuha ng ATS-optimized rewrites, red-flag warnings, at keyword improvements — gaya ng tunay na pag-review ng hiring managers.",
     "benefits": {
@@ -144,7 +144,8 @@
     "factAutoDelete": "Awtomatikong binubura ang mga resume sa loob ng 24 oras",
     "factNoStorage": "Hindi kailanman iniimbak o ibinabahagi",
     "measureStrip": "Sukat, hindi opinyon · Bawat sipi beripikado · Iskor na nagpapakita ng trabaho nito",
-    "jobsCta": "Live na job board — i-check ang fit mo bago mag-apply →"
+    "jobsCta": "Live na job board — i-check ang fit mo bago mag-apply →",
+    "browseJobs": "Tingnan ang 185,000+ verified na trabaho"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Lahat ng karapatan ay nakalaan.",

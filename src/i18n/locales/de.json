@@ -27,7 +27,7 @@
     "jobs": "Jobs"
   },
   "hero": {
-    "badge": "KI-gestützte Lebenslauf-Analyse",
+    "badge": "Live-Jobbörse — jede Stelle direkt im System des Unternehmens verifiziert",
     "freeScan": "Kostenloser Scan",
     "heading": "Schluss mit Raten.",
     "headingHighlight": "Mehr Vorstellungsgespräche.",
@@ -45,7 +45,7 @@
     "mainHeadingHighlight": "für Recruiter unsichtbar?",
     "atsTooltip": "ATS (Bewerbermanagementsysteme) überführen Ihren Lebenslauf in eine Datenbank, die Recruiter durchsuchen. Sie lehnen selten automatisch ab — aber schlechtes Parsing oder fehlende Keywords bedeuten, dass Suchen Sie nie anzeigen. Über 98 % der Fortune-500-Unternehmen nutzen sie.",
     "mainSubheading": "Finden Sie es in 30 Sekunden heraus. Erhalten Sie Ihren ATS-Score und sehen Sie genau, was Sie Vorstellungsgespräche kostet.",
-    "ctaButton": "Lebenslauf jetzt prüfen",
+    "ctaButton": "Lebenslauf kostenlos scannen",
     "freeBadge": "GRATIS",
     "noSignup": "Keine Anmeldung erforderlich",
     "worksWithAny": "Funktioniert mit jedem Lebenslauf",
@@ -58,9 +58,9 @@
     "trustedBy": "Vertraut von Fachleuten bei",
     "freeScanReveals": "Ihr kostenloser Scan zeigt:",
     "headline": {
-      "get": "Der echte Score",
-      "recruiterGrade": "Ihres Lebenslaufs",
-      "feedback": "— gemessen, nicht geraten"
+      "get": "Die Jobbörse mit",
+      "recruiterGrade": "null Geisterjobs",
+      "feedback": "— über 185.000 verifizierte Stellen, abgeglichen mit Ihrem Lebenslauf"
     },
     "description": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie ATS-optimierte Umschreibungen, Red-Flag-Warnungen und Keyword-Verbesserungen — so wie Personalverantwortliche Lebensläufe wirklich prüfen.",
     "benefits": {
@@ -144,7 +144,8 @@
     "factAutoDelete": "Lebensläufe werden nach 24 h automatisch gelöscht",
     "factNoStorage": "Nie gespeichert, nie geteilt",
     "measureStrip": "Messungen statt Meinungen · Jedes Zitat verifiziert · Ein Score, der seine Arbeit zeigt",
-    "jobsCta": "Live-Jobbörse — Passung prüfen, bevor Sie sich bewerben →"
+    "jobsCta": "Live-Jobbörse — Passung prüfen, bevor Sie sich bewerben →",
+    "browseJobs": "185.000+ verifizierte Jobs ansehen"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Alle Rechte vorbehalten.",
